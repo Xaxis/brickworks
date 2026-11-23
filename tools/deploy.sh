@@ -475,8 +475,12 @@ parts_origin=""
 [ -n "${PARTS_URL:-}" ] && parts_origin="$(origin_of "$PARTS_URL")"
 signin_origin=""
 [ -n "${SUPABASE_URL:-}" ] && signin_origin="$(origin_of "$SUPABASE_URL")"
+# And its Realtime, by its own scheme: a watch page hears a build's parts
+# land on it (buildlive, web/live.js).
+realtime_origin=""
+[ -n "$signin_origin" ] && realtime_origin="${signin_origin/#https:/wss:}"
 # Once each, even when they are the same place, as they are today.
-connect_extra="$(printf '%s\n' "$parts_origin" "$signin_origin" | awk 'NF && !seen[$0]++' | tr '\n' ' ')"
+connect_extra="$(printf '%s\n' "$parts_origin" "$signin_origin" "$realtime_origin" | awk 'NF && !seen[$0]++' | tr '\n' ' ')"
 providers="$(python3 - src/ai/provider_settings.gd <<'PY'
 import re, sys, urllib.parse as u
 seen = []
@@ -628,6 +632,7 @@ $docs_moved
     { "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" },
     { "src": "/($langs)/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists&lang=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
+    { "src": "/live/[A-Za-z0-9]{12}/?", "dest": "/live.html" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/parts[.](json|xml|csv)", "dest": "/api/share?op=catalog_parts&set=\$1&as=\$2" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]jpg", "dest": "/api/share?op=catalog_picture&set=\$1" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]page[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=page" },
@@ -640,6 +645,7 @@ $docs_moved
     { "src": "/($langs)/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$2&lang=\$1" },
     { "src": "/($langs)/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/?", "dest": "/api/share?op=set&id=\$2&lang=\$1" },
     { "src": "/($langs)/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$2&lang=\$1" },
+    { "src": "/($langs)/live/[A-Za-z0-9]{12}/?", "dest": "/\$1/live.html" },
     { "src": "/talk/?", "dest": "/api/people?op=talk_page" },
     { "src": "/talk[.]rss", "dest": "/api/people?op=talk_rss" },
     { "src": "/talk/new/?", "dest": "/api/people?op=talk_page&new=1" },
@@ -712,6 +718,9 @@ $docs_moved
       "headers": { "Vary": "Accept-Encoding" },
       "continue": true },
     { "src": "/img/(.*)",
+      "headers": { "Cache-Control": "public, max-age=86400, stale-while-revalidate=2592000" },
+      "continue": true },
+    { "src": "/minifig/(.*)",
       "headers": { "Cache-Control": "public, max-age=86400, stale-while-revalidate=2592000" },
       "continue": true },
     { "src": "/version[.]json",

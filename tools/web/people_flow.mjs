@@ -39,6 +39,7 @@ import { deleteAccount, mintCode, mintSession } from "./session.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -344,7 +345,7 @@ try {
       return "";
     }
   });
-  page.once("dialog", (dialog) => dialog.accept());
+  await answerAsks(page, { times: 1 });
   await page.click("#delete-part summary");
   await page.fill("#delete-confirm", visitorEmail);
   await page.click("#delete-go");

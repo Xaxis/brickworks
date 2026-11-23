@@ -9,11 +9,11 @@ nav: Sharing a model
 description: Publish a model at a link anyone can open in 3D, step through and build, list it in the gallery, share its progress version by version, update it, or take it down.
 ---
 
-Sharing gives a model a link anyone can open with no account: the model in 3D, its building steps, the booklet and the parts list. It is **File › Share…**, or **Share** on the toolbar, once there are parts on the baseplate. You need to be signed in.
+Sharing gives a model a link anyone can open with no account: the model in 3D, its building steps, the booklet and the parts list. It is **File › Share…**, or **Share** on the toolbar, once there are parts on the baseplate. You need to be signed in: signed out, the panel has **Sign in** beside **Publish**, and on a phone the greyed Share row in **More** says why.
 
 ## Share a model {#share}
 
-1. Turn the view to show the model as you want it seen: its picture is taken from where the view is looking.
+1. Turn the view to show the model as you want it seen: its pictures are taken from where the view is looking. Its card in the gallery is drawn as a photograph of it on a desk, which adds a second or two to sharing; on a phone it is the model on the page's own ground.
 2. **File › Share…**.
 3. Give it a **Name**: the model's own, or, for one never named that is a single minifigure or sub-assembly, that one's. **About it (shown on its page)** says what it is, up to 1,000 characters; **Tags** help people find it; **Kind** is guessed from the name, the tags and About, and you can change it.
 4. Choose a **Licence**: **CC BY 4.0** (anyone may share and change it, crediting you), **CC BY-SA 4.0** (and what they make is shared the same way) or **All rights reserved** (people may build it for themselves and ask you before sharing it).
@@ -144,7 +144,8 @@ lib:work in progress kept and ranked
 
 ## Remixes and credit {#remix}
 
-**Open in Brickworks** on any model's page copies it into your own models. Share your changed copy and its page says *Remixed from* the original, and under it [what you changed](/docs/model-pages#remix-changes) from the version you copied, counted as Compare counts it, with **See what changed in 3D**. The original's **Remixes** tab draws yours in [its tree](/docs/model-pages#remix-tree), with what you changed. A model opened from [the LDraw library](/docs/ldraw-library) keeps the name of whoever modelled it, and its page credits them, whoever shares it.
+**Open in the studio** on any model's page copies it into your own models. Share your changed copy and its page says *Remixed from* the original, and under it [what you changed](/docs/model-pages#remix-changes) from the version you copied, counted as Compare counts it, with **See what changed in 3D**. The original's **Remixes** tab draws yours in [its tree](/docs/model-pages#remix-tree), with what you changed. A model opened from [the LDraw library](/docs/ldraw-library) keeps the name of whoever modelled it, and its page credits them, whoever shares it.
+**Open in Brickworks** on any model's page copies it into your own models. Share your changed copy and its page says *Remixed from* the original, and under it [what you changed](/docs/model-pages#remix-changes) from the version you copied, counted as Compare counts it, with **See what changed in 3D**. The original's **Remixes** tab draws yours in [its tree](/docs/model-pages#remix-tree), with what you changed. And you can [send your change back](/docs/model-pages#send-back) to its designer, who takes all of it, part or none, and credits you. A model opened from [the LDraw library](/docs/ldraw-library) keeps the name of whoever modelled it, and its page credits them, whoever shares it.
 
 <!-- covers
 lib:who modelled a shared model

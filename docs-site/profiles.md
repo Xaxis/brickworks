@@ -12,7 +12,7 @@ Your profile is your page on the site: your models, your builds and what you hav
 ## Your profile {#profile}
 
 1. Open [brickworks.diy/profile](/profile). The first time, **Make your profile**: a name and a handle (3 to 24 lower-case letters, digits and dashes), then **Make my profile**. Your public page is then `/u/<handle>`.
-2. **Edit profile** sets your **Name**, **Handle**, **About you**, up to two links, **Across the top** (a model's picture for the banner) and up to three models **Pinned above the rest, in this order**. **Save** keeps them.
+2. **Edit profile** sets your **Name**, **Handle**, **About you**, up to two links, **Across the top** (a model's picture for the banner) and up to three models **Pinned above the rest, in this order**, first in the **Models** tab. **Save** keeps them.
 
 Its tabs are **Models**, **Builds**, **Likes** (only when you chose to show them, in [Settings › Privacy](#settings)), **Saved** (the models you saved and [your lists](/docs/lists)), **Sets**, **Insights** and **Achievements**. Saved, Sets and Achievements say *Only you see this tab.*
 
@@ -26,10 +26,17 @@ api:GET/POST /api/people
 
 ### Your picture {#avatar}
 
-**Edit profile › Choose a picture**: a JPEG, PNG or WebP up to 8 MB and at least 120 pixels a side. Drag it in the circle, and zoom with the buttons, the wheel, two fingers or [[+]] and [[-]]; **Use this picture** keeps it. **Remove the picture** goes back to the letter on a coloured tile.
+Everybody starts with a minifig made from their handle: a face, hair or a hat and a torso of real parts from the LDraw™ library, the same on every page. You can make your own, or put a picture of your own in its place.
+
+**Edit profile › Make a minifig** opens the maker on your minifig. Pick a **Face**, **Hair or hat** (and its **Hair colour**), a **Torso** print, the **Torso colour**, the **Legs colour** and a **Background**; each choice shows your minifig with it. **Surprise me** makes one at random. The minifig is shown large and at the sizes the site uses (beside a comment, on a card, on your profile) on a light page and a dark one. **Save** makes it your avatar; **Change your minifig** opens the maker on it again.
+
+![Make your minifig: the minifig large, then at its sizes on a light and a dark page, Surprise me, and its choices: faces, hair or a hat, hair colour, torso prints and colours, legs colour and background, then Save and Cancel.](/docs/img/profile-minifig.webp "Edit profile › Make a minifig.")
+
+**Edit profile › Choose a picture**: a JPEG, PNG or WebP up to 8 MB and at least 120 pixels a side. Drag it in the circle, and zoom with the buttons, the wheel, two fingers or [[+]] and [[-]]; **Use this picture** keeps it. Your minifig and a picture are alternatives: whichever you saved last is your avatar. **Remove the picture** (or **Remove your minifig**) goes back to the minifig made from your handle.
 
 <!-- covers
 ui:your own picture as your avatar
+ui:a minifig of your own as your avatar
 -->
 
 ### Achievements and insights {#achievements}
@@ -142,6 +149,9 @@ ui:the account menu's newest five
   **Your feed by email**: in the same email, new models and versions from people you follow.
   News from Brickworks by email is new features and planned upkeep, a few times a month at most. Every one of those emails has an **Unsubscribe** link, and your mail app's own unsubscribe button works too.
   **Muted models**: the models you muted, each with **Unmute**.
+- **Notifications**: **On this device**, **Notify me on this device** shows what your [notifications](#notifications) tell you, a comment or a reply, a mention, a photo of a build of your model, a remix, a challenge's result or a new post in [Talk](/docs/talk#thread), as this device's own notification within the minute. Your browser asks whether to allow it only once you tick it, and each device you use is chosen on its own; signing out there, from any page, stops it there, and so does that sign-in ending any other way. **Turn off on every device** stops it everywhere at once, a phone left somewhere included. Several notifications about one model, or one thread of Talk, within three minutes come as one, which says how many more. On an iPhone or iPad (iOS 16.4 or later), [add Brickworks to your Home Screen](/docs/web-and-desktop#install) first and turn it on there: it opens in the studio, so press the Brickworks mark at the top left for the home page, then **Menu › Settings**. **Install Brickworks** is here too while your browser offers it.
+  **By email**: the daily email, every box off until you tick it. **Email me when somebody comments on a model I shared**, and in the same email what came into your feed: new models and versions from people you follow, photos of builds, remixes of yours. At most one email a day.
+  **Email me Brickworks news** is off until you tick it: new features and planned upkeep, a few times a month at most. Every one of those emails has an **Unsubscribe** link, and your mail app's own unsubscribe button works too.
 - **orangecheck**: **Link orangecheck** to sign in with it as well as your email ([signing in](/docs/account#sign-in)); **Unlink** to stop. Each first sends a code to your email to confirm it is you, unless you signed in with one in the last five minutes, and your email is told.
 - **Privacy**: your age answer, **Show on my profile whom I follow**, and **Show on my profile the models I liked** (the Likes tab).
 - **Assistants**: the AI apps that can work in your Brickworks tabs ([the connector](/docs/connector)).

@@ -10,7 +10,7 @@
 // entry here; a kind with none yet is drawn plainly, with Let it go.
 //
 // Names, notes and comments strangers wrote: text, never markup.
-import { $, address, cell, make, post, rowAct as act, say, segmented, sift, timeCell } from "/admin-kit.js";
+import { $, address, ask, cell, make, post, rowAct as act, say, segmented, sift, timeCell } from "/admin-kit.js";
 import { again, keepInView, modelCell, onReport, tokenDrawnWith } from "/admin-gallery.js";
 
 const to = (href, text) => { const a = make("a", "", text); a.href = href; return a; };
@@ -18,15 +18,16 @@ const modelOf = (report) => to(`/m/${encodeURIComponent(report.model)}`, report.
 
 /// Each kind of report: its name (the filter's and the row's), what its row
 /// shows of what was reported (into [about]), and its acts, each
-/// [query, [button, done], confirm?] (api/admin.js ops).
+/// [query, [button, done], asked?] (api/admin.js ops), asked {title, body}
+/// first in the site's own ask, its button the act's.
 export const KINDS = {
   model: {
     name: "Model",
     about: (report, about) => about.append(modelOf(report), report.listed === false ? make("small", "faint", " · not listed") : ""),
     acts: (report) => [
-      [{ op: "unlist", id: report.model }, ["Take out", "Taken out."], "Take this model out of the gallery for good?"],
+      [{ op: "unlist", id: report.model }, ["Take out", "Taken out."], { title: "Take this model out of the gallery for good?" }],
       [{ op: "bar", id: report.model }, ["Take out the account", "The account is out."],
-        "Take every model of this account out of the gallery, and keep them out?"],
+        { title: "Take every model of this account out of the gallery?", body: "They are kept out." }],
     ],
   },
   takedown: {
@@ -34,7 +35,7 @@ export const KINDS = {
     about: (report, about) => about.append(make("b", "", "A copyright notice: "), report.model ? modelOf(report) : "—"),
     acts: (report) => (report.model ? [
       [{ op: "unlist", id: report.model }, ["Take it down", "Taken down."],
-        "Take this model down, at its link and any other with the same file, as the notice asks?"],
+        { title: "Take this model down, as the notice asks?", body: "It goes at its link and at any other with the same file." }],
     ] : []),
   },
   counter_notice: {
@@ -43,7 +44,7 @@ export const KINDS = {
     // Its model let back once the notice's time has passed: the owner lists it again.
     acts: (report) => (report.model ? [
       [{ op: "unbar_model", id: report.model }, ["Let the model back", "Let back: its owner may list it again."],
-        "Let this model back? Its owner may list it in the gallery again."],
+        { title: "Let this model back?", body: "Its owner may list it in the gallery again.", safe: true }],
     ] : []),
   },
   comment: {
@@ -55,7 +56,7 @@ export const KINDS = {
     },
     acts: (report) => [
       [{ op: "uncomment", comment: report.comment.id }, ["Remove the comment", "The comment is removed."],
-        "Take this comment off its page for good?"],
+        { title: "Take this comment off its page for good?" }],
     ],
   },
   photo: {
@@ -73,7 +74,7 @@ export const KINDS = {
     },
     acts: (report) => [
       [{ op: "remove_photo", photo: report.photo.id }, ["Take the photo out", "The photo is out, and its file deleted."],
-        "Take this photo out? Its file is deleted, and it is shown nowhere again."],
+        { title: "Take this photo out?", body: "Its file is deleted, and it is shown nowhere again." }],
     ],
   },
   profile: {
@@ -94,7 +95,7 @@ export const KINDS = {
     },
     acts: (report) => (report.picture ? [
       [{ op: "remove_avatar", handle: report.handle }, ["Take the picture out", "The picture is out, and its file deleted."],
-        "Take this profile's picture out? Its file is deleted, and its avatar is made from its handle again."],
+        { title: "Take this profile's picture out?", body: "Its file is deleted, and its avatar is made from its handle again." }],
     ] : []),
   },
   // A list (lists1): its name and words as its owner typed them, shown as
@@ -113,7 +114,8 @@ export const KINDS = {
     },
     acts: (report) => (report.list?.down ? [] : [
       [{ op: "list_down", id: report.collection }, ["Take the list down", "The list is down: private, and kept so."],
-        "Take this list down? It is made private and kept so: its name and words are shown to nobody but its owner, who keeps it."],
+        { title: "Take this list down?", body: "It is made private and kept so: its name and words are shown to nobody but its "
+          + "owner, who keeps it." }],
     ]),
   },
 };
@@ -173,8 +175,9 @@ function drawQueue(list) {
     who.dataset.value = report.email ?? "";
     if (report.contact) who.append(make("br"), make("small", "faint", "Reach them: ", address(report.contact)));
     const acts = make("td", "acts");
-    const go = ([query, said, ask]) => act(said[0], () => (!ask || confirm(ask)
-      ? post(query, "reports-note", said[1], { after: again }) : Promise.resolve(false)));
+    const go = ([query, said, asked]) => act(said[0], async () => (!asked
+      || await ask({ title: asked.title, body: asked.body, yes: said[0], danger: !asked.safe }))
+      && post(query, "reports-note", said[1], { after: again }));
     acts.append(...kind.acts(report).map(go), go([{ op: "dismiss", report: report.id }, ["Let it go", "Let go."]]));
     row.append(acts);
     reports.append(row);
@@ -229,8 +232,8 @@ function drawComments(list) {
       : one.hidden ? "hidden by its builder" : one.edited_at ? "edited" : "shown", one.removed ? "faint" : "");
     const acts = make("td", "acts");
     if (!one.removed) {
-      acts.append(act("Remove", () => (confirm("Take this comment off its page for good?")
-        ? post({ op: "uncomment", comment: one.id }, "comments-note", "Removed.", { after: again }) : Promise.resolve(false))));
+      acts.append(act("Remove", async () => (await ask({ title: "Take this comment off its page for good?", yes: "Remove", danger: true }))
+        && post({ op: "uncomment", comment: one.id }, "comments-note", "Removed.", { after: again })));
     }
     row.append(acts);
     comments.append(row);
@@ -270,10 +273,10 @@ function drawBarred(list, models) {
     row.append(who);
     timeCell(row, one.at);
     const acts = make("td", "acts");
-    acts.append(act("Let back in", () => (confirm(`Let "${one.name || one.id}" back? Its owner may list it in the gallery again.`)
-      ? post({ op: "unbar_model", id: one.id }, "barred-models-note", `"${one.name || one.id}" is let back: its owner may list it again.`,
-        { after: again })
-      : Promise.resolve(false))));
+    acts.append(act("Let back in", async () => (await ask({ title: `Let "${one.name || one.id}" back?`,
+      body: "Its owner may list it in the gallery again.", yes: "Let back in" }))
+      && post({ op: "unbar_model", id: one.id }, "barred-models-note", `"${one.name || one.id}" is let back: its owner may list it again.`,
+        { after: again })));
     row.append(acts);
     out.append(row);
   }

@@ -15,6 +15,18 @@ whole cycle.
 
 ### Added
 
+- **Make your own version of a set.** A set's page whose set LDraw has
+  modelled says **Build it**, which opens that model at its first step to
+  build step by step, and **Make your own version**, which opens a copy of
+  it credited to whoever modelled it. Change it and publish it, and it is
+  listed on the set's page under **Versions of this set** within a minute,
+  said to be changed from LDraw's model.
+- **Every modelled set turns in 3D on its own page.** A set's page in the
+  library whose set LDraw has modelled, about 1,300 of them, says **View
+  in 3D** on its picture, and the set turns right there, as a shared
+  model's does: drag, zoom, the keys, full screen, and **Open in the app**
+  beside it. Nothing of it loads until you ask. A set LDraw has not
+  modelled says **No 3D model of this set yet** under its picture.
 - **Choose what you hear of, and where.** Settings › Notifications has a
   row for each kind of notification, from comments on your models to news
   from Brickworks, and a box for each place it can reach you: here (the
@@ -26,6 +38,14 @@ whole cycle.
   count and into a Done view, **Mark all done** all of them, each with
   Undo, and anything new comes back. The account menu shows your five
   newest, with their pictures.
+- **Building now: watch a model being built, live.** In **File › Build
+  together…**, **Open to watchers** gives your session a page anyone can
+  watch, listed first on the home page and on your profile while you
+  build. Watchers see each part land in 3D and chat with you, and anyone
+  signed in can **Ask to build**. **Give a seat** puts them in the session
+  beside you. Nothing a watcher does changes the model. When you end the
+  session, where it got to is kept as a version in the model's log (Share
+  progress), if the model is shared.
 - **Change any model with your own Claude.** Every model's page has **With
   your Claude** beside **Open in Brickworks**: say what should change (or
   nothing, and Claude asks), press **Copy for Claude**, and paste the message
@@ -318,6 +338,26 @@ whole cycle.
 
 ### Changed
 
+- **Duplicate puts its copy down beside the original.** Edit › Duplicate
+  (Ctrl+D) seats the copy next to what was selected, selected so a drag
+  takes it where it goes, and one undo takes it back; type 5x straight after
+  for a row of five. The Clone tool still holds a copy for each click.
+- **Instructions save as a PDF when that is what you ask for.** The save
+  dialog asks for a PDF first, with a web page the other choice, and opens
+  the PDF when it is written.
+- **Recolouring a whole model.** Find and replace opened with parts selected
+  finds what they share, so parts selected by their colour are all
+  recoloured at once; its colour lists show swatches, the model's most used
+  first, and the colours made now before the rest.
+- **Versions and the Open list say when as a person does**: yesterday, or
+  how many days ago, and each version how many parts it added or took away.
+- **Smaller things the walks found:** with a part in hand, X, Y or Z opens
+  the number field ("x 1" moves it a stud); the ruler's measurement is in
+  the status line; Paint says when the parts are that colour already;
+  Simulate with nothing turning keeps its controls out of the way until
+  something turns; a model's own sub-assembly is first in the parts bin to
+  put another down; Share signed out offers Sign in, and a greyed row in a
+  phone's More says why.
 - **The home page opens on the community.** Its first screen, on a phone
   and on a computer, is a search over models, builders and real sets (what
   it finds shows as you type), **Start building**, this month's challenge
@@ -339,14 +379,16 @@ whole cycle.
   is.** "Parts have new numbers in the LDraw library" is offered only for
   your own LDraw file, and only once.
 
-- **The loading page builds its wall in 3D, with a tip under it.** While
-  the app loads in a browser, real-looking bricks drop onto a baseplate and
-  seat, course by course, as the app arrives, and the wall turns slowly
-  under one light, in the site's own colours, dark or light. Under it a tip
-  about Brickworks changes every five seconds: a key on a computer, a
+- **The loading page builds our mark in 3D bricks, with a tip under it.**
+  While the app loads in a browser, bricks fly in and build the Brickworks
+  mark, the cube with one corner cut away, course by course as the app
+  arrives: yellow on top, red and blue down the sides, the cut a shade
+  darker, as big as the window allows and turning slowly under one light.
+  The mark complete is the app ready. Under it the name, and under that a
+  tip about Brickworks changes every five seconds: a key on a computer, a
   gesture on a phone, and the menus' best commands, in your language; point
   at one to keep it, and the next visit starts with new ones. With reduced
-  motion it stands still.
+  motion the mark stands finished and still.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say

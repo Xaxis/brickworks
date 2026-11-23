@@ -88,7 +88,8 @@ def test_the_ways_are_the_same_words_in_the_app_the_card_the_server_and_the_sql(
     assert "if (!MADE_WITH.includes(given))" in SHARE
     assert "made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null," in DIRECTORY
     # The app sends it only when it knows.
-    assert 'if store.made_with in ModelStore.MADE_WAYS:\n\t\tbody["made_with"] = store.made_with' in PANEL
+    assert 'if store.made_with in ModelStore.MADE_WAYS:\n\t\tsaid["made_with"] = store.made_with' in PANEL
+    assert "body.merge(made_fields())" in PANEL
 
 
 def test_the_column_is_the_server_s_alone() -> None:

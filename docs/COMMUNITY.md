@@ -301,7 +301,11 @@ days, and the Tested mark (`gallery_week`). A model is a candidate only
 when something in the week says it builds: a build finished, a remix
 listed, or it was listed that week and is Tested, so a quiet week has no
 pick rather than last month's. Its card says why ("Built twice this
-week", "New this week, and Tested"). The site's owner can choose another
+week", "New this week, and Tested"). It is a row of its own across the
+grid: from 900 px its picture large on the left, turning in 3D while a
+mouse rests on it (`web/turn3d.js`, the site's own viewer), and beside it
+its name, who made it, why, its likes, comments and remixes, and Build it
+and Open in Brickworks (sitebold, 2026-11-23). The site's owner can choose another
 on `/admin` (Make it the pick, beside any model in the gallery or among
 the week's best five) for seven days, and End it to go back to the one
 worked out; the newest choice still in the gallery wins, and its card

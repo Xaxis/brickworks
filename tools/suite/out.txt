@@ -27,6 +27,7 @@ partplaces        # needs the relay with .env's keys, and makes an account in pr
 ppreview          # needs the relay with .env's keys, and makes an account in production Supabase: ppreview's attacks on partplaces (R1-R9)
 ppreview2         # needs the relay with .env's keys, and makes an account in production Supabase: ppreview's attacks on partplaces (R10-R11)
 harvest           # a bench: real sub-models harvested by tools/omr.py first, verdicts written, nothing judged
+card              # a bench: the house's 49 cards as they were and as photographs, for tools/bench/cardlook.py judge; on the GPU, 49 renders past a probe's ten minutes
 roundtrip         # a measure: writes what each file keeps, tools/bench/cadtask.py judges it
 candidate         # asks of one model whether it may go on the landing page, by hand or by tools/bench
 daylight          # a measuring tool for one file and box; patterns runs its functions here

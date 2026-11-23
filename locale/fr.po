@@ -16989,6 +16989,95 @@ msgid "Model name or designer"
 msgstr "Nom du modèle ou concepteur"
 msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
 msgstr "« %s » est un sous-ensemble de ce modèle : sélectionnez-le, et Édition, Dupliquer en pose un autre"
+
+# ux14: Duplicate beside, the PDF asked for, the bin's own sub-assembly, versions
+msgid "Put a copy of the selection down beside it, selected to move on"
+msgstr "Poser une copie de la sélection à côté, sélectionnée pour la déplacer"
+
+msgid "a copy of %s put beside it, selected: drag it where it goes"
+msgstr "une copie de %s posée à côté, sélectionnée : faites-la glisser là où elle va"
+
+msgid "%s puts another"
+msgstr "%s en pose une autre"
+
+msgid "no room beside it for a copy: holding one"
+msgstr "pas de place à côté pour une copie : vous en tenez une"
+
+msgid "Press %s to put a copy beside the selected part."
+msgstr "Appuyez sur %s pour poser une copie à côté de la pièce sélectionnée."
+
+msgid "Save the instructions as a PDF, or as a web page to read and print in your browser"
+msgstr "Enregistrer les instructions en PDF, ou en page web à lire et imprimer dans le navigateur"
+
+msgid "the instructions are saved as a PDF and open in your PDF reader, %d steps: %s"
+msgstr "les instructions sont enregistrées en PDF et ouvertes dans votre lecteur PDF, %d étapes : %s"
+
+msgid "the instructions are saved as a PDF, %d steps: %s"
+msgstr "les instructions sont enregistrées en PDF, %d étapes : %s"
+
+msgid "could not write the PDF %s"
+msgstr "impossible d'écrire le PDF %s"
+
+msgid "duplicated %s"
+msgstr "%s dupliqué(s)"
+
+msgid "Sign in or make an account with your email: a link needs one, a look at it does not"
+msgstr "Connectez-vous ou créez un compte avec votre e-mail : un lien en demande un, un simple regard non"
+
+msgid "“%s”, this model's sub-assembly: put another down"
+msgstr "« %s », sous-ensemble de ce modèle : en poser un autre"
+
+msgid "A copy of “%s” in hand: each click puts one down, Esc stops."
+msgstr "Une copie de « %s » en main : chaque clic en pose une, Échap arrête."
+
+msgid "Each is a copy of it, and an edit inside one changes them all"
+msgstr "Chacune en est une copie, et une modification dans l'une les change toutes"
+
+msgid "“%s” is a sub-assembly of this model: the row above puts another down"
+msgstr "« %s » est un sous-ensemble de ce modèle : la ligne au-dessus en pose un autre"
+
+msgid "“%s” is not in this model now"
+msgstr "« %s » n'est plus dans ce modèle"
+
+msgid "%d parts, %d more than the save before"
+msgstr "%d pièces, %d de plus que l'enregistrement d'avant"
+
+msgid "%d parts, %d fewer than the save before"
+msgstr "%d pièces, %d de moins que l'enregistrement d'avant"
+
+msgid "%d parts, as many as the save before"
+msgstr "%d pièces, autant que l'enregistrement d'avant"
+
+msgid "%d part, %d more than the save before"
+msgstr "%d pièce, %d de plus que l'enregistrement d'avant"
+
+msgid "%d part, %d fewer than the save before"
+msgstr "%d pièce, %d de moins que l'enregistrement d'avant"
+
+msgid "%d part, as many as the save before"
+msgstr "%d pièce, autant que l'enregistrement d'avant"
+
+msgid "Yesterday at %s"
+msgstr "Hier à %s"
+
+msgid "yesterday at %s"
+msgstr "hier à %s"
+
+msgid "%s at %s, %d days ago"
+msgstr "%s à %s, il y a %d jours"
+
+msgid "the selection is %s already: click another colour in Colour, then %s paints it"
+msgstr "la sélection est déjà %s : cliquez une autre couleur dans Couleur, puis %s la peint"
+
+msgid "straight after Duplicate a number is copies: 5x makes it 5 in a row"
+msgstr "juste après Dupliquer, un nombre donne des copies : 5x en fait 5 en rang"
+
+msgid "drag the copy to move it"
+msgstr "faites glisser la copie pour la déplacer"
+
+msgid "Not made now"
+msgstr "Plus fabriquées"
+
 # Open in Brickworks for a stranger: the model asked for behind the sign-in, and its copy's first acts (firstminute)
 msgid "Sign in to make it yours"
 msgstr "Connectez-vous pour en faire le vôtre"
@@ -17025,3 +17114,434 @@ msgstr "« %s » est votre copie, faite à l’instant : ouverte, pas copiée un
 
 msgid "could not save “%s” into your models: File › Save as… keeps it"
 msgstr "impossible d’enregistrer « %s » dans vos modèles : Fichier › Enregistrer sous… le garde"
+
+# The app's header in every mode (appchrome): the mark home, Menu at the right
+msgid "Menu"
+msgstr "Menu"
+
+msgid "Brickworks: the home page"
+msgstr "Brickworks : la page d’accueil"
+
+msgid "The site's home page, in this tab"
+msgstr "La page d’accueil du site, dans cet onglet"
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "Welcome back"
+msgstr "Bon retour"
+
+msgid "Pick up where you left off, or see what came back from other builders."
+msgstr "Reprenez là où vous en étiez, ou voyez ce que les autres constructeurs vous ont répondu."
+
+msgid "New model"
+msgstr "Nouveau modèle"
+
+msgid "Put this away (Esc): the model is behind it"
+msgstr "Masquer (Échap) : le modèle est derrière"
+
+msgid "Continue"
+msgstr "Continuer"
+
+msgid "Bringing your models here from your account…"
+msgstr "Vos modèles arrivent depuis votre compte…"
+
+msgid "Nothing saved yet: a model you save is here next time, on any device you sign in on."
+msgstr "Rien d'enregistré pour l'instant : un modèle que vous enregistrez sera ici la prochaine fois, sur tout appareil où vous vous connectez."
+
+msgid "What came back on your models"
+msgstr "Ce que vos modèles ont reçu"
+
+msgid "Find in the gallery"
+msgstr "Trouver dans la galerie"
+
+msgid "Search: a tug, a castle, a 6-wide car…"
+msgstr "Rechercher : un remorqueur, un château, une voiture de 6 de large…"
+
+msgid "Open the studio on this screen"
+msgstr "Ouvrir le studio sur cet écran"
+
+msgid "No quick build this week: the month's challenge is on its page."
+msgstr "Pas de construction rapide cette semaine : le défi du mois est sur sa page."
+
+msgid "Brickworks could not be reached just now."
+msgstr "Brickworks est injoignable pour le moment."
+
+msgid "Publish by %s"
+msgstr "Publiez d'ici %s"
+
+msgid "1 entry so far"
+msgstr "1 participation pour l'instant"
+
+msgid "%d entries so far"
+msgstr "%d participations pour l'instant"
+
+msgid "Start from its template"
+msgstr "Partir de son modèle de départ"
+
+msgid "Your own copy of its template, on the baseplate: publish it to enter"
+msgstr "Votre propre copie de son modèle de départ, sur la plaque : publiez-la pour participer"
+
+msgid "Nothing yet. Share a model, and comments, builds and remixes of it come back here."
+msgstr "Rien pour l'instant. Partagez un modèle : ses commentaires, constructions et remixes arrivent ici."
+
+msgid "on a part: shows it"
+msgstr "sur une pièce : la montre"
+
+msgid "Open the model at this comment's part"
+msgstr "Ouvrir le modèle sur la pièce de ce commentaire"
+
+msgid "Open the model"
+msgstr "Ouvrir le modèle"
+
+msgid "See the photo on its page"
+msgstr "Voir la photo sur sa page"
+
+msgid "See the remix on its page"
+msgstr "Voir le remix sur sa page"
+
+msgid "New in the gallery"
+msgstr "Nouveau dans la galerie"
+
+msgid "Found for “%s”"
+msgstr "Trouvé pour « %s »"
+
+msgid "Looking for “%s”…"
+msgstr "Recherche de « %s »…"
+
+msgid "Nothing in the gallery matches. Try fewer words."
+msgstr "Rien dans la galerie ne correspond. Essayez avec moins de mots."
+
+msgid "The gallery could not be reached just now."
+msgstr "La galerie est injoignable pour le moment."
+
+msgid "by %s · %s"
+msgstr "par %s · %s"
+
+msgid "A copy of “%s” of your own, on the baseplate"
+msgstr "Votre propre copie de « %s », sur la plaque"
+
+msgid "Open “%s”"
+msgstr "Ouvrir « %s »"
+
+msgid "%d min ago"
+msgstr "il y a %d min"
+
+msgid "%d h ago"
+msgstr "il y a %d h"
+
+msgid "yesterday"
+msgstr "hier"
+
+msgid "%d days ago"
+msgstr "il y a %d jours"
+
+msgid "%s's comment is on this part: “%s”"
+msgstr "Le commentaire de %s porte sur cette pièce : « %s »"
+
+msgid "%s commented: “%s” — reply on its page"
+msgstr "%s a commenté : « %s » — répondez sur sa page"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "Search with fewer words: at most %d letters"
+msgstr "Cherchez avec moins de mots : %d caractères au plus"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "See it and its entries"
+msgstr "La voir, avec ses participations"
+
+msgid "Its page: the brief, what others built, and how to enter"
+msgstr "Sa page : la consigne, ce que d'autres ont construit, et comment participer"
+
+msgid "Bringing “%s” from your account…"
+msgstr "« %s » arrive depuis votre compte…"
+
+msgid "“%s” could not be brought from your account just now: try File › Open in a moment"
+msgstr "« %s » n'a pas pu être récupéré depuis votre compte : réessayez dans un instant avec Fichier › Ouvrir"
+
+# Building now: a Build together session opened to watchers (buildlive).
+msgid "%s asks to build with you. Give them a seat in Build together."
+msgstr "%s demande à construire avec vous. Donnez-lui une place dans Construire ensemble."
+
+msgid "A watcher"
+msgstr "Un spectateur"
+
+msgid "Only the owner of the session opens it to watchers."
+msgstr "Seul le propriétaire de la session peut l’ouvrir aux spectateurs."
+
+msgid "Could not open it to watchers"
+msgstr "Impossible de l’ouvrir aux spectateurs"
+
+msgid "Open to watchers: anyone with its page can watch you build, and ask to join."
+msgstr "Ouvert aux spectateurs : toute personne ayant sa page peut vous regarder construire et demander à se joindre à vous."
+
+msgid "Could not close it to watchers"
+msgstr "Impossible de la fermer aux spectateurs"
+
+msgid "Only the owner of the session gives a seat."
+msgstr "Seul le propriétaire de la session peut donner une place."
+
+msgid "Could not give the seat"
+msgstr "Impossible de donner la place"
+
+msgid "Open to watchers"
+msgstr "Ouvrir aux spectateurs"
+
+msgid "Anyone may watch you build at a page of its own, listed first on the home page and your profile; signed in, they chat and can ask to build"
+msgstr "Tout le monde peut vous regarder construire sur une page à part, en tête de l’accueil et de votre profil ; connecté, on discute et on peut demander à construire"
+
+msgid "The page anyone may watch on. It never lets anyone change the model"
+msgstr "La page où tout le monde peut regarder. Elle ne permet à personne de modifier le modèle"
+
+msgid "Close to watchers"
+msgstr "Fermer aux spectateurs"
+
+msgid "Its page says it is closed, and it is listed no more; the session goes on"
+msgstr "Sa page indique qu’elle est fermée et elle n’est plus listée ; la session continue"
+
+msgid "Nobody watching yet"
+msgstr "Personne ne regarde encore"
+
+msgid "1 watching"
+msgstr "1 spectateur"
+
+msgid "%d watching"
+msgstr "%d spectateurs"
+
+msgid "Copy watch link"
+msgstr "Copier le lien à regarder"
+
+msgid "%s asks to build"
+msgstr "%s demande à construire"
+
+msgid "Give a seat"
+msgstr "Donner une place"
+
+msgid "They join the session and build with you; Remove takes them out again"
+msgstr "La personne rejoint la session et construit avec vous ; Retirer l’en fait sortir"
+
+msgid "Nobody watched it"
+msgstr "Personne ne l’a regardé"
+
+msgid "1 person watched it"
+msgstr "1 personne l’a regardé"
+
+msgid "%d people watched it"
+msgstr "%d personnes l’ont regardé"
+
+msgid "%s. Share progress keeps where it got to as a version in the model's log."
+msgstr "%s. Partager l’avancement garde où il en est comme une version dans l’historique du modèle."
+
+msgid "%s. Sharing its progress as a version in the model's log."
+msgstr "%s. Son avancement est partagé comme une version dans l’historique du modèle."
+
+# A change a remixer sent back, in Compare and Share (suggestedit).
+msgid "Compare: a change sent to you"
+msgstr "Comparer : une modification pour vous"
+
+msgid "Stop comparing: your model as it was, the change still waiting for you (Esc)"
+msgstr "Arrêter de comparer : votre modèle tel qu’il était, la modification vous attend toujours (Échap)"
+
+msgid "Added: a green ghost where it goes"
+msgstr "Ajoutée : un fantôme vert là où elle va"
+
+msgid "Taken away: red"
+msgstr "Retirée : en rouge"
+
+msgid "Moved: amber, a faint ghost where it goes"
+msgstr "Déplacée : en ambre, un fantôme pâle là où elle va"
+
+msgid "Recoloured: violet"
+msgstr "Recolorée : en violet"
+
+msgid "Take all"
+msgstr "Tout reprendre"
+
+msgid "Take the ticked"
+msgstr "Reprendre les cochées"
+
+msgid "Take the %d ticked"
+msgstr "Reprendre les %d cochées"
+
+msgid "All of the change taken into your model, opened for you to look at and publish as its next version"
+msgstr "Toute la modification reprise dans votre modèle, ouverte pour que vous la regardiez et la publiiez comme sa prochaine version"
+
+msgid "Only the changes ticked taken into your model, opened for you to look at and publish as its next version"
+msgstr "Seules les modifications cochées reprises dans votre modèle, ouvert pour que vous le regardiez et le publiiez comme sa prochaine version"
+
+msgid "Decline"
+msgstr "Refuser"
+
+msgid "Say no to this change: nothing of it is taken, and it leaves your notifications"
+msgstr "Refuser cette modification : rien n’en est repris, et elle quitte vos notifications"
+
+msgid "Tick or untick every change of this kind"
+msgstr "Cocher ou décocher chaque modification de ce type"
+
+msgid "Frame it in the view"
+msgstr "La cadrer dans la vue"
+
+msgid "Take this change, or leave it"
+msgstr "Reprendre cette modification, ou la laisser"
+
+msgid "Added: %s in %s, step %d"
+msgstr "Ajoutée : %s en %s, étape %d"
+
+msgid "Taken away: %s in %s, step %d"
+msgstr "Retirée : %s en %s, étape %d"
+
+msgid "%s: %s in %s, step %d"
+msgstr "%s : %s en %s, étape %d"
+
+msgid "%s: %s in %s, step %d (from step %d)"
+msgstr "%s : %s en %s, étape %d (depuis l’étape %d)"
+
+msgid "Recoloured %s to %s: %s, step %d"
+msgstr "Recolorée de %s en %s : %s, étape %d"
+
+msgid "Swapped %s for %s in %s, step %d"
+msgstr "%s remplacée par %s en %s, étape %d"
+
+msgid "To step %d from step %d: %s in %s"
+msgstr "À l’étape %d depuis l’étape %d : %s en %s"
+
+msgid "in sub-model “%s”"
+msgstr "dans le sous-modèle « %s »"
+
+msgid "…and %d more changes, which Take all takes."
+msgstr "…et %d modifications de plus, que Tout reprendre reprend."
+
+msgid "Your model is already as the remix has it."
+msgstr "Votre modèle est déjà tel que le remix l’a."
+
+msgid "%s, against your version %d."
+msgstr "%s, par rapport à votre version %d."
+
+msgid "Taking it into your model…"
+msgstr "Reprise dans votre modèle…"
+
+msgid "Saying no to it…"
+msgstr "Refus en cours…"
+
+msgid "Moved"
+msgstr "Déplacée"
+
+msgid "Turned"
+msgstr "Tournée"
+
+msgid "Moved %s"
+msgstr "Déplacée de %s"
+
+msgid "Moved %s and turned"
+msgstr "Déplacée de %s et tournée"
+
+msgid "1 stud and 1 plate"
+msgstr "1 tenon et 1 plaque"
+
+msgid "1 stud and %s plates"
+msgstr "1 tenon et %s plaques"
+
+msgid "%s studs and 1 plate"
+msgstr "%s tenons et 1 plaque"
+
+msgid "%s studs and %s plates"
+msgstr "%s tenons et %s plaques"
+
+msgid "A remixer"
+msgstr "Quelqu’un qui l’a remixé"
+
+msgid "%s's change from their remix “%s”"
+msgstr "La modification de %s tirée de son remix « %s »"
+
+msgid "%d added"
+msgstr "%d ajoutées"
+
+msgid "%d taken away"
+msgstr "%d retirées"
+
+msgid "%d moved"
+msgstr "%d déplacées"
+
+msgid "%d recoloured"
+msgstr "%d recolorées"
+
+msgid "%d swapped"
+msgstr "%d remplacées"
+
+msgid "%d to another step"
+msgstr "%d dans une autre étape"
+
+msgid "no change"
+msgstr "aucune modification"
+
+msgid "%s's change"
+msgstr "La modification de %s"
+
+msgid "Part of %s's change"
+msgstr "Une partie de la modification de %s"
+
+msgid "With %s's change from their remix “%s”: %s."
+msgstr "Avec la modification de %s tirée de son remix « %s » : %s."
+
+msgid "With part of %s's change from their remix “%s”: %s."
+msgstr "Avec une partie de la modification de %s tirée de son remix « %s » : %s."
+
+msgid "opening the change sent to you…"
+msgstr "ouverture de la modification qui vous est envoyée…"
+
+msgid "sign in to Brickworks to see the change sent to you"
+msgstr "connectez-vous à Brickworks pour voir la modification qui vous est envoyée"
+
+msgid "could not open the change: %s"
+msgstr "impossible d’ouvrir la modification : %s"
+
+msgid "your change from “%s” waits for its designer to look at it"
+msgstr "votre modification de « %s » attend que son créateur la regarde"
+
+msgid "that change was taken already"
+msgstr "cette modification a déjà été reprise"
+
+msgid "that change was declined already"
+msgstr "cette modification a déjà été refusée"
+
+msgid "could not open your model"
+msgstr "impossible d’ouvrir votre modèle"
+
+msgid "could not open “%s”: %s"
+msgstr "impossible d’ouvrir « %s » : %s"
+
+msgid "opening “%s” — %d parts on their way…"
+msgstr "ouverture de « %s » — %d pièces en route…"
+
+msgid "Sign in to Brickworks to take it."
+msgstr "Connectez-vous à Brickworks pour la reprendre."
+
+msgid "Brickworks could not take it just now."
+msgstr "Brickworks n’a pas pu la reprendre pour l’instant."
+
+msgid "Could not open your model with it taken in."
+msgstr "Impossible d’ouvrir votre modèle avec la modification reprise."
+
+msgid "%s is in “%s” now: publish it from Share as version %d, and its page credits them"
+msgstr "%s est maintenant dans « %s » : publiez-la depuis Partager comme version %d, et sa page en crédite l’auteur"
+
+msgid "Sign in to Brickworks to say no to it."
+msgstr "Connectez-vous à Brickworks pour la refuser."
+
+msgid "Brickworks could not say no to it just now."
+msgstr "Brickworks n’a pas pu la refuser pour l’instant."
+
+msgid "declined %s; your model is as it was"
+msgstr "%s refusée ; votre modèle est tel qu’il était"
+
+msgid "Brickworks did not answer"
+msgstr "Brickworks n’a pas répondu"
+
+msgid "Shared model"
+msgstr "Modèle partagé"
+
+msgid "%s is in this model: publish it as version %d, and its page credits them."
+msgstr "%s est dans ce modèle : publiez-le comme version %d, et sa page en crédite l’auteur."
+
+msgid "It credits %s on its page and in Versions."
+msgstr "Sa page crédite %s, ainsi que ses Versions."
+
+msgid "Not marked as taking %s's change: %s."
+msgstr "Pas marquée comme reprenant la modification de %s : %s."

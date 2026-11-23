@@ -17,6 +17,8 @@
 ##   are inside it and in sight, none scrolled out of its body;
 ##   on a finger, it says to hold a part to point it out, not a key or a
 ##   right-click; on a desktop, the key;
+##   opened to watchers (buildlive), it is whole, with Copy watch link,
+##   Close to watchers, End and Close in sight;
 ##   with the keyboard up for the chat (a finger's), the panel is above it,
 ##   and the field being typed in is in sight; the keyboard down, it is
 ##   whole again.
@@ -101,6 +103,19 @@ func _run() -> void:
 		_check("on a desktop it says the key to point a part out (%s)" % key,
 			not key.is_empty() and note.contains(key) and note.contains("right-click"))
 	await _shot("session")
+
+	# Open to watchers (buildlive): how many watch and Copy watch link on one
+	# row, Close to watchers at the far end of End's row, and End in sight.
+	_check("in a session of its own, as its designer", together.owns)
+	together.watch = {"watch": "AbcdEfghIjkL", "link": "https://brickworks.diy/live/AbcdEfghIjkL", "watchers": 3}
+	together.changed.emit()
+	await _frames(40)
+	_whole(dialog, "open to watchers")
+	_in_sight(dialog, ["together_watch_copy", "together_watch_close", "together_end", "together_close"], "open to watchers")
+	await _shot("watching")
+	together.watch = {}
+	together.changed.emit()
+	await _frames(40)
 
 	var touch := _main.get("_touch") as TouchSizing
 	if _finger and touch != null:

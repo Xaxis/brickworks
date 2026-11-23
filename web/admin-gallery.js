@@ -6,7 +6,7 @@
 // asked again after any act of theirs.
 //
 // Names, notes and comments strangers wrote: text, never markup.
-import { $, adminJson, cell, emptyRow, make, post, resort, rowAct as act, say, sift, timeCell, when } from "/admin-kit.js";
+import { $, adminJson, ask, cell, emptyRow, make, post, resort, rowAct as act, say, sift, timeCell, when } from "/admin-kit.js";
 import { token } from "/account.js";
 
 // The token the page was last drawn with, for the photos it shows: renewing
@@ -73,9 +73,9 @@ function drawListed(data) {
     cell(row, Number(model.parts).toLocaleString(), "n").dataset.value = String(model.parts);
     timeCell(row, model.listed_at);
     const acts = make("td", "acts");
-    acts.append(act("Take out", () => (confirm(`Take "${model.name}" out of the gallery? Its owner will not be able to list it again.`)
-      ? post({ op: "unlist", id: model.id }, "gallery-note", `"${model.name}" is out of the gallery.`, { after: again })
-      : Promise.resolve(false))));
+    acts.append(act("Take out", async () => (await ask({ title: `Take "${model.name}" out of the gallery?`,
+      body: "Its owner will not be able to list it again.", yes: "Take it out", danger: true }))
+      && post({ op: "unlist", id: model.id }, "gallery-note", `"${model.name}" is out of the gallery.`, { after: again })));
     if (data.picks) acts.append(pickButton(model.id, model.name));
     row.append(acts);
     listed.append(row);
@@ -97,10 +97,10 @@ function drawTested(list) {
     cell(row, Number(mark.steps).toLocaleString(), "n").dataset.value = String(mark.steps);
     timeCell(row, mark.at);
     const acts = make("td", "acts");
-    acts.append(act("Clear the mark", () => (confirm(`Clear the Tested mark of version ${mark.n}?`)
-      ? post({ op: "untest", id: mark.model, v: mark.n }, "tested-note", "Cleared: it is not marked Tested anywhere now.",
-        { after: again })
-      : Promise.resolve(false))));
+    acts.append(act("Clear the mark", async () => (await ask({ title: `Clear the Tested mark of version ${mark.n}?`,
+      body: "It is not marked Tested anywhere after.", yes: "Clear the mark", danger: true }))
+      && post({ op: "untest", id: mark.model, v: mark.n }, "tested-note", "Cleared: it is not marked Tested anywhere now.",
+        { after: again })));
     row.append(acts);
     tested.append(row);
   }
@@ -111,9 +111,9 @@ function drawTested(list) {
 
 /// Make it the pick (api/admin.js ?op=pick), for a week.
 function pickButton(id, name) {
-  return act("Make it the pick", () => (confirm(`Make "${name}" this week's pick, for seven days?`)
-    ? post({ op: "pick", id, days: 7 }, "pick-note", `"${name}" is this week's pick.`, { after: again })
-    : Promise.resolve(false)));
+  return act("Make it the pick", async () => (await ask({ title: `Make "${name}" this week's pick?`,
+    body: "Visitors see it as the pick for seven days.", yes: "Make it the pick" }))
+    && post({ op: "pick", id, days: 7 }, "pick-note", `"${name}" is this week's pick.`, { after: again }));
 }
 
 /// This week's pick: what visitors see now, the choices still open, and

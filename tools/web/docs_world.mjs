@@ -310,7 +310,7 @@ O["/api/share?op=shelves"] = { ...A["/api/share?op=shelves"], pick: { ...A["/api
 const CASTLE = "6080-1";
 const castleLists = [["DocsList05", "Castles to build", "Ada Lovelace", "ada", 9], ["DocsList06", "Classic Castle", "Ben", "ben-b", 14],
   ["DocsList07", "My childhood sets", "Kim", "kimbricks", 31]];
-O[`/api/share?op=set_based&set=${CASTLE}`] = { set: CASTLE, models: [],
+O[`/api/share?op=set_based&set=${CASTLE}`] = { set: CASTLE, models: [], versions: [],
   lists: { count: castleLists.length, lists: castleLists.map(([id, name, by, handle, count]) => ({ id, name, count,
     by: { handle, name: by } })) } };
 O[`/api/people?op=keeps&sets=${CASTLE}`] = { sets: { [CASTLE]: { own: 2, lists: [] } }, models: {}, lists: [], want: null };
@@ -337,7 +337,7 @@ const Alt = {};
 Alt[`/api/share?op=set_based&set=${rocketSet.set}`] = { set: rocketSet.set,
   models: [{ ...card(rocket), based: null, alt: basesMod.altCard({ role: rocketSet.role, have: rocketSet.have,
     pieces: rocketCount.pieces, with: rocketCount.rows.filter((row) => row.set !== rocketSet.set).map((row) => row.set) }) }],
-  lists: { count: 0, lists: [] } };
+  versions: [], lists: { count: 0, lists: [] } };
 const AltDb = {};
 AltDb["rest/v1/rpc/directory_model"] = { ...dbRow(rocket), listed: true, from: [], remixes_listed: [] };
 AltDb[`rest/v1/share_versions?model=eq.${rocket.id}`] = [{ n: 1, at: day(2), note: null, parts: rocket.parts,

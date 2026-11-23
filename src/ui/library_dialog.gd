@@ -73,6 +73,8 @@ var _grid: GridContainer
 var _page_words: Label
 var _previous: Button
 var _next: Button
+## The row of Previous, the page and Next (ux14).
+var _foot: Control
 var _typing: Timer
 ## Said where the covers would be when the words typed find nothing.
 var _none: VBoxContainer
@@ -375,10 +377,16 @@ func _build() -> void:
 	_elsewhere = _button(ways, "", func() -> void: _show("community" if _source == "sets" else "sets"),
 		"library_search_elsewhere")
 
+	# The pages' row, in the middle and only when there is more than one
+	# page: greyed Previous and Next round "Page 1 of 1" were three words of
+	# nothing to press, squeezed against the trademark line on a phone
+	# (ux13, left 4).
 	var foot := HFlowContainer.new()
+	foot.alignment = FlowContainer.ALIGNMENT_CENTER
 	foot.add_theme_constant_override("h_separation", 8)
 	foot.add_theme_constant_override("v_separation", 4)
 	column.add_child(foot)
+	_foot = foot
 	_previous = _button(foot, "‹ Previous", func() -> void: _turn(-1), "library_previous")
 	_page_words = Label.new()
 	_page_words.add_theme_font_size_override("font_size", 12)
@@ -394,6 +402,10 @@ func _build() -> void:
 	mark.modulate = Color(1, 1, 1, 0.45)
 	mark.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mark.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Clear of the pages' row above it.
+	var clear := Control.new()
+	clear.custom_minimum_size = Vector2(0, 6)
+	column.add_child(clear)
 	column.add_child(mark)
 
 
@@ -596,6 +608,7 @@ func _fill() -> void:
 	_previous.disabled = _page <= 1
 	_next.disabled = not (_page < _pages or _more)
 	_page_words.text = ("Page %d of %d" % [_page, _pages]) if _source == "sets" else "Page %d" % _page
+	_foot.visible = _page > 1 or _page < _pages or _more
 	_say(str(found.get("said", "")))
 	# Words that found nothing: said where the covers would be. With no
 	# words, the filters alone, the status line says it as it did.

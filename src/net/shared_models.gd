@@ -111,6 +111,88 @@ func unpublish(token: String, id: String) -> Dictionary:
 		HTTPClient.METHOD_POST, token, "{}")
 
 
+## A change a remixer sent back to its designer (suggestedit, 2026-11-23;
+## api/_suggestions.js): {code, body: {id, status, you, model: {id, name, n},
+## remix, by, note, changes, counts, theirs, mine (its designer alone)}}.
+func suggestion(token: String, id: int) -> Dictionary:
+	return await _fetch("/api/share?op=suggestion&id=%d" % id, HTTPClient.METHOD_GET, token, "")
+
+
+## Its designer's newest version [param n] with the changes [param take]
+## ("all", or the ids ticked) taken in: {code, body: {text, taken, whole, n,
+## model}}. Nothing is kept until that text is published.
+func take_suggestion(token: String, id: int, n: int, take: Variant) -> Dictionary:
+	return await _fetch("/api/share?op=suggestion_merge", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"id": id, "n": n, "take": take}))
+
+
+## The kinds a sent change lists, as api/_suggest.js KINDS says them.
+const SUGGEST_KINDS: Array[String] = ["added", "removed", "moved", "recoloured", "swapped",
+	"restepped"]
+
+
+## Who sent a change, by their profile's name, else their handle.
+static func sender_of(got: Dictionary) -> String:
+	var by: Dictionary = got.get("by") if got.get("by") is Dictionary else {}
+	var who: String = str(by.get("name", "")).strip_edges()
+	if who.is_empty() and not str(by.get("handle", "")).is_empty():
+		who = "@" + str(by["handle"])
+	return who if not who.is_empty() else "A remixer"
+
+
+## "Ann's change from their remix “Red car, wider”".
+static func suggestion_heading(got: Dictionary) -> String:
+	var remix: Dictionary = got.get("remix") if got.get("remix") is Dictionary else {}
+	return "%s's change from their remix “%s”" % [sender_of(got), str(remix.get("name", ""))]
+
+
+## "3 added, 1 taken away, 2 moved", as the bell says it.
+static func suggestion_counts(counts: Variant) -> String:
+	var said := PackedStringArray()
+	if counts is Dictionary:
+		for kind: String in SUGGEST_KINDS:
+			var n: int = int((counts as Dictionary).get(kind, 0))
+			if n > 0:
+				said.append(kind_count(kind, n))
+	return ", ".join(said) if not said.is_empty() else "no change"
+
+
+static func kind_count(kind: String, n: int) -> String:
+	match kind:
+		"added":
+			return "%d added" % n
+		"removed":
+			return "%d taken away" % n
+		"moved":
+			return "%d moved" % n
+		"recoloured":
+			return "%d recoloured" % n
+		"swapped":
+			return "%d swapped" % n
+	return "%d to another step" % n
+
+
+## What a version taking [param taken] (ModelStore.suggestion) says it took:
+## "Ann's change" whole, "part of Ann's change" else.
+static func taken_words(taken: Dictionary) -> String:
+	return ("%s's change" if bool(taken.get("whole", false)) else "Part of %s's change") % sender_of(taken)
+
+
+## The note its version is published with: "With Ann's change from their
+## remix “Red car, wider”: 3 added, 1 moved."
+static func taken_note(taken: Dictionary) -> String:
+	var remix: Dictionary = taken.get("remix") if taken.get("remix") is Dictionary else {}
+	return ("With %s's change from their remix “%s”: %s." if bool(taken.get("whole", false))
+		else "With part of %s's change from their remix “%s”: %s.") % [sender_of(taken),
+		str(remix.get("name", "")), suggestion_counts(taken.get("taken", {}))]
+
+
+## Declined by its designer: {code, body: {closed, status}}.
+func decline_suggestion(token: String, id: int) -> Dictionary:
+	return await _fetch("/api/share?op=suggestion_close", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"id": id, "status": "declined"}))
+
+
 ## The account's own links: {code, body: {shared: [...]}}.
 func mine(token: String) -> Dictionary:
 	return await _fetch("/api/share?op=mine", HTTPClient.METHOD_GET, token, "")
@@ -385,6 +467,27 @@ static func prompt_line(prompt: Dictionary, most: int = -1) -> String:
 	# The brief in quotes: the owner's words, drawn as written in every
 	# language (Language keeps what an entry quotes), never half translated.
 	return "This week's quick build, %s: “%s” Publish it by %s to enter." % [title, brief, day]
+
+
+## The studio's first screen (api/people.js ?op=studio_start): what came
+## back on the person's models and this week's quick build, nothing marked
+## read: {code, body: {ready, came: [...], prompt}} (StudioStart).
+## Its lines in [param lang], the interface's language (Language.current).
+func studio_start(token: String, lang: String = "en") -> Dictionary:
+	return await _fetch("/api/people?op=studio_start&lang=" + lang.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
+## A page of the gallery (api/share.js ?op=list), as the library's Community
+## shelf asks it: [param words] searched for, or the gallery's own first
+## page for none; with [param token], nobody they blocked in it. {code,
+## body: {models: [...], more}}.
+func gallery(words: String, token: String = "") -> Dictionary:
+	var asked: String = "/api/share?op=list&page=1"
+	if not words.strip_edges().is_empty():
+		asked += "&q=" + words.strip_edges().left(100).uri_encode()
+	if not token.is_empty():
+		asked += "&mine=1"
+	return await _fetch(asked, HTTPClient.METHOD_GET, token, "")
 
 
 ## One request, as Account._fetch makes it (PageFetch).

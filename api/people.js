@@ -17,13 +17,16 @@
 //                                 show them (supabase/avatars.sql)
 //   GET  ?op=avatar&id=P          picture P, a person's own avatar, while
 //                                 it may be shown
-//   GET  ?op=avatar&handle=X      X's avatar made from their handle, as an
-//                                 SVG: the image their page's structured
-//                                 data names when they have no picture
-//   POST ?op=avatar               (session) {picture: base64, type}: the
-//                                 caller's own picture as their avatar,
-//                                 the square Edit profile cropped, at most
-//                                 2 MB (api/_avatars.js)
+//   GET  ?op=avatar&handle=X      the minifigure made from X's handle, a
+//                                 JPEG (api/_minifig.js): the image their
+//                                 page's structured data names when they
+//                                 have no picture
+//   POST ?op=avatar               (session) {picture: base64, type,
+//                                 minifig?}: the caller's own picture as
+//                                 their avatar, the square Edit profile
+//                                 cropped or the minifigure its maker drew
+//                                 with its recipe, at most 2 MB
+//                                 (api/_avatars.js)
 //   POST ?op=avatar_remove        (session) that picture taken off: the
 //                                 avatar made from the handle again
 //   POST ?op=likes_choice         (session) {shows}: show on my profile the
@@ -129,7 +132,11 @@
 //   GET  ?op=notifications        (session) what happened to the caller's
 //                                 models, grouped by model; opening it
 //                                 clears its count (api/_notifications.js)
-//   POST ?op=notifications_read   (session) {model}, {challenge}, {announcement, clicked?}, {achievements: true}
+//   GET  ?op=studio_start         (session) the studio's first screen: what
+//                                 came back on the caller's models and this
+//                                 week's quick build, nothing marked read
+//                                 (api/_notifications.js studioStart)
+//   POST ?op=notifications_read  (session) {model}, {challenge}, {announcement, clicked?}, {achievements: true}
 //                                 or {all: true}: read
 //   POST ?op=news                 (session) {news}: Brickworks' news by email or not, off until chosen
 //   GET  ?op=notifications&view=done | &most=5   what was marked done; the newest few for the account menu
@@ -226,10 +233,10 @@
 // a person-shaped page, the same for everybody it shows, the site's house
 // account too. Their avatar (made from the handle, web/card.js avatarHtml),
 // name, handle, words and links, one row of numbers (each said once there
-// is one), Follow, Share and More; the models they pinned; then tabs, each a
-// page of its own: Models (every one, page by page), Builds (photos of real
-// builds, theirs and of their models) and Collections (each a card with its
-// pictures). Never a list of who follows them. Until profile_shows.sql is
+// is one), Follow, Share and More; then tabs, each a page of its own,
+// under the banner on the first screen (pagekit): Models (the ones they
+// pinned, then every one, page by page), Builds (photos of real builds,
+// theirs and of their models) and Lists (each a card with its pictures). Never a list of who follows them. Until profile_shows.sql is
 // applied it has no links, banner or pins, and is otherwise the same.
 //
 // A profile is by a name its owner chooses, never one made from their
@@ -266,8 +273,8 @@ import { chooseNews, newsOf, newsUnsubscribe } from "./_announce.js";
 import {
   feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
-import { chooseNotification, feedCount, notificationMute, notificationPrefs, notifications, notificationsDone, notificationsRead }
-  from "./_notifications.js";
+import { chooseNotification, feedCount, notificationMute, notificationPrefs, notifications, notificationsDone, notificationsRead,
+  studioStart } from "./_notifications.js";
 import { DIRECTORY_PAGE, coversOf, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf } from "./_lists.js";
 import {
   ITEMS_PAGE, KEY, LINK as LIST_LINK, MOST_MODELS_IN_A_LIST, OWNED_SIZES, OWNED_SORTS, importPreview, itemsOf, keep, keeps, listCsv,
@@ -287,7 +294,8 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml, themeSaid } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml, minifigOf, minifigShape, HOUSE_HANDLE } from "./_card.js";
+import { minifigJpeg } from "./_minifig.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, challengeRules, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
@@ -705,19 +713,24 @@ async function saveLikesChoice(request, response) {
 // ---------------------------------------------------------------------------
 // Your own picture as your avatar (api/_avatars.js).
 
-/// POST ?op=avatar {picture, type}: the square Edit profile cropped, kept
-/// as the caller's avatar.
+/// POST ?op=avatar {picture, type, minifig?}: the square Edit profile
+/// cropped, or the minifigure its maker drew with what it was made of
+/// (web/card.js minifigShape), kept as the caller's avatar.
 async function saveAvatar(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const account = await signedIn(request);
   const body = request.body && typeof request.body === "object" ? request.body : {};
+  const recipe = body.minifig === undefined || body.minifig === null ? null : minifigShape(body.minifig);
+  if (body.minifig !== undefined && body.minifig !== null && !recipe) {
+    throw new Refusal("that is not a minifigure the maker makes: a face, hair or a hat, a print and colours from its lists");
+  }
   const kept = await keepAvatar(account, body.picture, String(body.type || ""), async () => {
     const person = (await db(`people?account=eq.${account}&select=handle`))[0];
     if (!person) throw new Refusal("make your profile first: a name and a handle", 409);
     const young = await publicTrouble(account, { profile: true });
     if (young) throw new Refusal(young, 422);
     await counted(account, "avatar");
-  });
+  }, recipe);
   return response.status(200).json(kept);
 }
 
@@ -729,35 +742,28 @@ async function dropOwnAvatar(request, response) {
   return response.status(200).json(await dropAvatar(account));
 }
 
-// The eight avatar tiles' colours and the letter's (web/site.css :root
-// --avatar-1..8, --on-avatar): one set for both themes, as there.
-const TILES = ["#b42318", "#1f5fbf", "#1f7a3d", "#7a3fb0", "#9a4a00", "#0e6f8a", "#a3175a", "#4b5563"];
-const ON_TILE = "#ffffff";
-
-/// The avatar a person without a picture of their own is shown as
-/// (web/card.js avatarHtml), as an SVG: their handle's tile and their
-/// name's first letter. A search engine's image of them (seo2), as another
-/// site's default avatar is.
-function tileSvg({ handle, name }) {
-  const letter = ([...String(name || handle || "?").trim()][0] || "?").toUpperCase();
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">`
-    + `<circle cx="128" cy="128" r="128" fill="${TILES[avatarTone(handle || name) - 1]}"/>`
-    + `<text x="128" y="128" dy="0.35em" text-anchor="middle" fill="${ON_TILE}" font-family="system-ui, sans-serif" `
-    + `font-size="128" font-weight="700">${escapeHtml(letter)}</text></svg>`;
-}
+// The minifigure made from a handle never changes (web/card.js minifigOf),
+// so its picture is kept a day in a browser and a month at the CDN.
+const MINIFIG_CACHE = "public, max-age=86400, s-maxage=2592000";
 
 /// GET ?op=avatar&id=P: a person's own picture, while it may be shown.
-/// &handle=X instead: their tile (tileSvg), while their page may be shown.
+/// &handle=X instead: the minifigure made from their handle, the avatar
+/// everybody without a picture of their own is shown as (api/_minifig.js),
+/// while their page may be shown: a search engine's image of them (seo2),
+/// as another site's default avatar is.
 async function avatarServe(request, response) {
   if (request.query?.handle !== undefined) {
     const person = await personOf(String(request.query.handle).toLowerCase());
     if (!person) return response.status(404).setHeader("Cache-Control", "no-store").end("");
-    response.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    // Brickworks' own account is its mark, never a minifigure (web/card.js avatarHtml).
+    if (person.handle === HOUSE_HANDLE) {
+      return response.status(302).setHeader("Location", "/favicon-512.png").setHeader("Cache-Control", MINIFIG_CACHE).end("");
+    }
+    const jpeg = await minifigJpeg(minifigOf(person.handle));
+    response.setHeader("Content-Type", "image/jpeg");
     response.setHeader("X-Content-Type-Options", "nosniff");
-    // Opened by itself, an SVG is a document: nothing in it runs or loads.
-    response.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
-    response.setHeader("Cache-Control", PICTURE_CACHE);
-    return response.status(200).end(tileSvg(person));
+    response.setHeader("Cache-Control", MINIFIG_CACHE);
+    return response.status(200).end(jpeg);
   }
   const file = await avatarFile(String(request.query?.id || ""), shownPublicly);
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
@@ -1328,7 +1334,7 @@ function profileData(origin, { url, person, earned, about, follows, links }) {
     mainEntity: {
       "@type": "Person", name: person.name, alternateName: `@${person.handle}`, identifier: person.handle,
       url: `${origin}/u/${person.handle}`, description: person.bio || undefined,
-      image: `${origin}${person.picture || `/api/people?op=avatar&handle=${person.handle}`}`,
+      image: `${origin}${person.picture || (person.handle === HOUSE_HANDLE ? "/favicon-512.png" : `/api/people?op=avatar&handle=${person.handle}`)}`,
       sameAs: links.length ? links.map((link) => link.href) : undefined,
       interactionStatistic: ready ? [counter("FollowAction", follows.followers)] : undefined,
       agentInteractionStatistic: did.length ? did : undefined,
@@ -1385,7 +1391,8 @@ ${paged}${scriptWords}${siteChrome(lang).head}
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
 <script src="/follow.js" type="module"></script>
-<script src="/keep.js" type="module"></script>${paged ? `
+<script src="/keep.js" type="module"></script>
+<script src="/live-now.js" type="module"></script>${paged ? `
 <script src="/pager.js" type="module"></script>` : ""}${mine ? `
 <script src="/designs.js" type="module"></script>` : ""}${mine || share ? `
 <script src="/person.js" type="module"></script>` : ""}${photos ? `
@@ -1524,7 +1531,7 @@ function stripHtml(photos, { by = false } = {}) {
 /// A profile's tabs, each a page of its own (?tab=): its work, its builds,
 /// its lists, the sets they own and the models they liked, those two when
 /// they chose to show them, each with its count once there is one.
-const TABS = ["models", "builds", "lists", "sets", "likes"];
+const TABS = ["models", "lists", "builds", "sets", "likes"];
 /// A tab's name, in the page's language.
 function tabSaid(id) {
   return { models: say("Models"), builds: say("Builds"), lists: say("Lists"), sets: say("Sets"), likes: say("Likes") }[id];
@@ -1617,9 +1624,9 @@ async function challengePage(request, response) {
 
 /// /u/X: a person's page, the same for everybody it shows, the house's
 /// too. Their avatar, name, handle, words, links and numbers, Follow, Share
-/// and More; the models they pinned; then a tab: Models (every one, page by
-/// page, by Top builds), Builds (photos of their real builds, and other
-/// people's of their models) or Collections (their public lists), the first
+/// and More; then a tab: Models (the ones they pinned, then every one, page
+/// by page, by Top builds), Builds (photos of their real builds, and other
+/// people's of their models) or Lists (their public lists), the first
 /// that has something unless one is asked for. Whom they follow, when they
 /// chose to show it; never who follows them. The designer's own numbers are
 /// not in it: web/designs.js asks for them with their sign-in and puts them
@@ -1736,27 +1743,33 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`;
   // The banner is its model's picture with nothing behind the model, on
   // the theme's own ground as a card's is (web/directory.css); the server
-  // gives the picture itself for a model published before cut-outs.
-  const head = `${showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.cutout.png" alt="" width="1200" height="630" decoding="async"></div>` : ""}
-  <header class="profile-head">
+  // gives the picture itself for a model published before cut-outs. It
+  // leads the page's work, as a model's picture leads its page (pagekit).
+  const banner = showcase.banner ? `<div class="banner"><img src="/m/${showcase.banner}.cutout.png" alt="" width="1200" height="630" decoding="async"></div>` : "";
+  // Who they are, in the page's aside (pagekit, site.css .obj-aside): their
+  // avatar, name and handle, Follow (or Edit profile, for them), Share and
+  // More; their words, links, numbers and what they earned.
+  const head = `<aside class="obj-aside person-card profile-head" aria-label="${asText(say("About {name}", { name: person.name }))}">
+  <div class="person-id">
     ${avatarHtml({ handle: person.handle, name: person.name, picture: person.picture }, { size: "huge" })}
     <div class="who">
-      <h1>${name}</h1>
+      <h1 class="obj-title">${name}</h1>
       <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${earned ? asText(say("Designer")) : asText(say("Builder"))}</span>${Number.isFinite(since)
         ? ` · ${asText(say("building here since {when}", { when: sinceSaid(since) }))}` : ""}</p>
     </div>
-    <div class="acts">
-      ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
-        data-follow="${escapeHtml(person.handle)}" hidden>${asText(say("Follow"))}</button><span class="said" role="status"></span></p>
-      <a class="cta ghost" href="${at}/profile?edit=1" data-edit-own hidden>${asText(say("Edit profile"))}</a>` : ""}
-      ${iconButtonHtml({ icon: "share", name: say("Share"),
-        attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
-      ${more}
-    </div>
-  </header>
+  </div>
+  <div class="acts">
+    ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta follow"
+      data-follow="${escapeHtml(person.handle)}" hidden>${asText(say("Follow"))}</button><span class="said" role="status"></span></p>
+    <a class="cta ghost" href="${at}/profile?edit=1" data-edit-own hidden>${asText(say("Edit profile"))}</a>` : ""}
+    ${iconButtonHtml({ icon: "share", name: say("Share"),
+      attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
+    ${more}
+  </div>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="${asText(say("Elsewhere"))}">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>`;
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>
+  </aside>`;
 
   // Pinned: up to three of their models, in the order they chose.
   const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">${asText(say("Pinned"))}</h2>
@@ -1784,7 +1797,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
       eager: i < (showcase.pins.length ? 4 : FIRST_SCREEN) })).join("")}</div>
     ${pager.after}`
       : shown.page > 1 ? pastEnd(shown.page, pageHref("models"))
-      : `<p class="state">${sayHtml("Nothing in the gallery yet. The models {name} shares in the gallery with their name show here.", { name })}</p>`;
+      : `<p class="obj-empty">${sayHtml("Nothing in the gallery yet. The models {name} shares in the gallery with their name show here.", { name })}</p>`;
   } else if (tab === "builds") {
     panel = counts.builds ? `${built?.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">${sayHtml("Built by {name}", { name })}</h2>
       <p class="note">${asText(say("Photos of their real builds of models in the gallery."))}</p>
@@ -1794,7 +1807,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
         : "{n} people posted photos of their real builds of {name}’s models.", { n: escapeHtml(number(earned.builders)), name })}</p>
       <div class="build-grid">${stripHtml(theirs, { by: true })}</div></section>` : ""}`
       // Their own builds not read (null): not said to be none.
-      : !built ? "" : `<p class="state">${sayHtml("No builds yet. Photos of real builds show here: the ones {name} posts of what they built, "
+      : !built ? "" : `<p class="obj-empty">${sayHtml("No builds yet. Photos of real builds show here: the ones {name} posts of what they built, "
         + "and the ones other people post of {name}’s models.", { name })}</p>`;
   } else if (tab === "likes") {
     const pager = likedAt ? pagerHtml({ id: "models", first: likedAt.page, shown: cards.length, more: likedAt.more,
@@ -1806,7 +1819,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     <div class="models" id="models" data-models data-page="${likedAt.page}">${cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
     ${pager.after}`
       : likedAt && likedAt.page > 1 ? pastEnd(likedAt.page, pageHref("likes"))
-      : `<p class="state">${sayHtml("No likes yet. The models {name} likes in the gallery show here, as they chose.", { name })}</p>`;
+      : `<p class="obj-empty">${sayHtml("No likes yet. The models {name} likes in the gallery show here, as they chose.", { name })}</p>`;
   } else if (tab === "sets" && owned) {
     // Page n of their sets, as filtered.
     const setsHref = (n) => `${at}/u/${person.handle}${query({ tab: "sets", ...(filters.q ? { q: filters.q } : {}),
@@ -1817,18 +1830,21 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     drawn.push(...owned.cards);
   } else {
     panel = lists.length ? `<div class="list-cards">${lists.map((list, i) => listCardHtml(list, covers, { eager: i < 4 })).join("")}</div>`
-      : `<p class="state">${sayHtml("No lists yet. The lists {name} makes public show here.", { name })}</p>`;
+      : `<p class="obj-empty">${sayHtml("No lists yet. The lists {name} makes public show here.", { name })}</p>`;
   }
-  const tabsHtml = `<nav class="tabs" aria-label="${sayHtml("{name}’s work", { name })}">${tabs.map((id) =>
+  const tabsHtml = `<nav class="tabs obj-tabs" aria-label="${sayHtml("{name}’s work", { name })}">${tabs.map((id) =>
     `<a href="${at}/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: id }))}" data-tab="${id}"${id === tab ? ' aria-current="page"' : ""}>`
     + `${asText(tabSaid(id))}${counts[id] ? ` <span class="n">${escapeHtml(number(counts[id]))}</span>` : ""}</a>`).join("")}</nav>`;
 
-  const main = `<div class="wrap wide person profile${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
+  const main = `<div class="wrap wide person profile obj-page${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
+  <div class="obj-layout">
   ${head}
-  ${pinned}
+  <div class="obj-main">
+  ${banner}
+  <div class="live-now" data-live-now data-live-handle="${escapeHtml(person.handle)}" hidden></div>
   <div class="work" id="work">
   ${tabsHtml}
-  <div class="tab-panel" data-panel="${tab}">${panel}</div>
+  <div class="tab-panel" data-panel="${tab}">${tab === "models" ? pinned : ""}${panel}</div>
   </div>
   <!-- Under the work, not over it: drawn for its designer alone once their
        sign-in is read, it moved the whole page down as it came (site273). -->
@@ -1844,6 +1860,8 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     <p class="note">${sayHtml("Designers whose models share the most with {name}’s: themes, tags and parts.", { name })}</p>
     <ul class="people-list" id="alike-people"></ul>
   </section>` : ""}
+  </div>
+  </div>
 </div>
 ${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { name: person.name }),
     about: say("Its link opens their page: their models, their builds and their lists."),
@@ -1958,39 +1976,46 @@ function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, w
     + `<b>${escapeHtml(number(Number(n) || 0))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
   const ready = follows && follows.ready;
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="${asText(say("More"))}" title="${asText(say("More"))}">`
-    + `${iconHtml("more")}</summary><div class="menu-list"><button type="button" data-report="${asText(say("this list"))}" `
+    + `${iconHtml("more")}</summary><div class="menu-list">`
+    + `<a href="/api/people?op=list_csv&amp;id=${id}${link ? `&amp;link=${link}` : ""}" download data-list-csv>${asText(say("Download as CSV"))}</a>`
+    + `<button type="button" data-report="${asText(say("this list"))}" `
     + `data-report-collection="${id}"${link ? ` data-report-link="${link}"` : ""} hidden>${asText(say("Report it"))}</button><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a>`
     + "</div></details>";
   const counts = [shown.sets ? countedSaid(shown.sets, "set") : "", shown.models ? countedSaid(shown.models, "model") : ""]
     .filter(Boolean).join(", ") || countedSaid(0, "model");
-  const main = `<div class="wrap wide person list" data-id="${id}"${wish ? ' data-kind="want"' : ""}>
-  <header class="list-head">
+  // An object's page (pagekit, site.css .obj-layout): what is in it, and
+  // beside it the aside, its cover over its name, whose it is, its words,
+  // numbers, Follow, Share and More (the CSV first in it, as a model's
+  // Download is).
+  const main = `<div class="wrap wide person list obj-page" data-id="${id}"${wish ? ' data-kind="want"' : ""}>
+  <div class="obj-layout">
+  <aside class="obj-aside list-card-aside list-head" aria-label="${asText(say("About {name}", { name: list.name }))}">
     <div class="cover">${mosaicHtml(covers.get(id) || [], { eager: true })}</div>
-    <div class="who">
-      <p class="eyebrow">${asText(wish ? say("Wishlist") : say("List"))}</p>
-      <h1>${escapeHtml(list.name)}</h1>
-      <p class="handle">${Number.isFinite(updated) ? sayHtml("Made by {who} · updated {when}", { who: by, when: escapeHtml(daySaid(updated)) })
-        : sayHtml("Made by {who}", { who: by })}</p>
-      ${link ? `<p class="note unlisted-said">${asText(say("Shared with you by its link: it is not on their profile or in the gallery."))}</p>` : ""}
-      ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
-      <ul class="numbers" aria-label="${asText(say("Its numbers"))}">${shown.sets ? stat("sets", shown.sets, say("set"), say("sets")) : ""}${
-        shown.models || !shown.sets ? stat("models", shown.models, say("model"), say("models")) : ""}${ready
-        ? stat("followers", follows.followers, say("follower"), say("followers"), ` data-list-followers="${id}"`) : ""}</ul>
-      <div class="acts">
-        ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>`
-          + `${asText(say("Follow"))}</button><span class="said" role="status"></span></p>` : ""}
-        ${iconButtonHtml({ icon: "share", name: say("Share"),
-          attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
-        <a class="cta ghost small" href="/api/people?op=list_csv&amp;id=${id}${link ? `&amp;link=${link}` : ""}" download data-list-csv>${asText(say("Download as CSV"))}</a>
-        ${more}
-      </div>
+    <p class="eyebrow">${asText(wish ? say("Wishlist") : say("List"))}</p>
+    <h1 class="obj-title"${list.name.length > 48 ? ` title="${escapeHtml(list.name)}"` : ""}>${escapeHtml(list.name)}</h1>
+    <p class="handle">${Number.isFinite(updated) ? sayHtml("Made by {who} · updated {when}", { who: by, when: escapeHtml(daySaid(updated)) })
+      : sayHtml("Made by {who}", { who: by })}</p>
+    ${link ? `<p class="note unlisted-said">${asText(say("Shared with you by its link: it is not on their profile or in the gallery."))}</p>` : ""}
+    ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
+    <ul class="numbers" aria-label="${asText(say("Its numbers"))}">${shown.sets ? stat("sets", shown.sets, say("set"), say("sets")) : ""}${
+      shown.models || !shown.sets ? stat("models", shown.models, say("model"), say("models")) : ""}${ready
+      ? stat("followers", follows.followers, say("follower"), say("followers"), ` data-list-followers="${id}"`) : ""}</ul>
+    <div class="acts">
+      ${ready ? `<p class="follow-line"><button type="button" class="cta follow" data-follow-list="${id}" hidden>`
+        + `${asText(say("Follow"))}</button><span class="said" role="status"></span></p>` : ""}
+      ${iconButtonHtml({ icon: "share", name: say("Share"),
+        attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
+      ${more}
     </div>
-  </header>
+  </aside>
+  <div class="obj-main">
   ${cards.length ? `${pager.earlier}
   <div class="models" id="models">${cards.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>
   ${pager.after}`
     : at > 1 ? pastEnd(at, pageHref)
-    : `<p class="state">${asText(say("Nothing in it is in the gallery just now. The models put in it show here once they are."))}</p>`}
+    : `<p class="obj-empty">${asText(say("Nothing in it is in the gallery just now. The models put in it show here once they are."))}</p>`}
+  </div>
+  </div>
 </div>
 ${shareSheetHtml({ url, name: list.name, text: wish ? say("{name}: a wishlist on Brickworks", { name: list.name })
     : say("{name}, a list on Brickworks", { name: list.name }),
@@ -2082,6 +2107,7 @@ async function handler(request, response) {
       if (op === "feed_count") return await feedCount(request, response);
       if (op === "notifications") return await notifications(request, response, { origin: "" });
       if (op === "notification_prefs") return await notificationPrefs(request, response);
+      if (op === "studio_start") return await studioStart(request, response, { origin: "" });
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
       if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
       if (op === "challenge_entry") return await challengeEntry(request, response);

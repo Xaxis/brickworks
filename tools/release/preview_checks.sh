@@ -48,8 +48,12 @@ declare -A CMD=(
   # on the same page with no reload; a signed-out /profile opens it by
   # itself. A throwaway at a Resend test address, its code minted.
   [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
+  # local only: made_shown_flow.mjs. It runs a local relay against production's functions with throwaway accounts (aiprivate); model_page and gallery carry what a stranger sees.
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
   # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
+  # local only: set3d_flow.mjs. It turns ten sets of up to 9,092 parts in 3D at two widths and both themes,
+  # an hour of SwiftShader under load, and counts storage bytes only through the local relay's preload
+  # (store_count.mjs); library_site and model_page hold the inline viewer on previews (set3d).
   # local only: bootlook_flow.mjs. It serves a web export (--dir) itself and holds its load to a slow network, so a deployment cannot stand in (bootlook).
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and
@@ -89,6 +93,8 @@ declare -A CMD=(
   # through the sign-in; throwaway accounts, deleted after.
   [makes]="tools/web/makes_flow.mjs --url=$P --out=$S/${TAG}_makes"
   [firstminute]="tools/web/firstminute_flow.mjs --url=$P --out=$S/${TAG}_firstminute"
+  [sethub]="tools/web/sethub_flow.mjs --url=$P --out=$S/${TAG}_sethub"
+  [studiostart]="tools/web/studiostart_flow.mjs --url=$P --out=$S/${TAG}_studiostart"
   # Work in progress (buildlog, supabase/wip.sql): Share progress in the app
   # puts the model in a follower's feed and its Talk thread within 60 s, and
   # publishing it as finished ends it. Two throwaway accounts, deleted after.
@@ -333,6 +339,14 @@ declare -A CMD=(
   # keeping it and giving it back. The deployment's pages and scripts, the
   # API and the stand-in's model answered here.
   [keyboard]="tools/web/keyboard_flow.mjs --url=$P --out=$S/${TAG}_keyboard"
+  # The site's own ask where confirm() was (web/kit.js ask, dialogkit): on
+  # /admin and /settings, an alertdialog named by its question, the focus on
+  # Cancel for a danger one, Escape, Cancel and the scrim sending nothing
+  # and giving the focus back to the button that asked (in the sheet, over
+  # /admin's account sheet), Enter on the answer sending its act once; the
+  # German words at /de/settings; never the browser's own dialog. The
+  # deployment's pages and scripts, the API answered here.
+  [ask]="tools/web/ask_flow.mjs --url=$P --out=$S/${TAG}_ask"
   # The gallery as a person uses it (docs/SOCIAL.md U3): at 390 the first
   # card's picture within 330 px, at 1280 four whole cards; Top, New and
   # Following, Top over this week, a kind and Made; a like from a card;
@@ -609,6 +623,14 @@ declare -A CMD=(
   # /admin; she takes another off herself; deleting her account deletes its
   # file. 390 and 1280 px, light and dark; the accounts deleted after.
   [avatar]="tools/web/avatar_flow.mjs --url=$P --out=$S/${TAG}_avatar"
+  # A minifig of your own as your avatar (avatarkit, 2026-11-23): throwaway
+  # Ada's profile and comment show the minifig made from her handle, and
+  # ?op=avatar&handle= the same as a JPEG; Make a minifig opens on it, her
+  # picks, Surprise me, a hat hiding the hair colour, Save keeping a PNG
+  # with its recipe; her profile, a reload and her comment show it; a
+  # picture of her own instead, removed: her handle's minifig again. 1280
+  # dark, the maker at 390 light; the account deleted after.
+  [minifig]="tools/web/minifig_flow.mjs --url=$P --out=$S/${TAG}_minifig"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   # The owner's console (/admin, console1, docs/ADMIN.md): every op it
   # added refused signed out (401) and to anybody else (404); as the owner
@@ -851,6 +873,9 @@ declare -A CMD=(
   [dialogs_430]="tools/web/dialogs_flow.mjs --url=$P/app $B --sizes=430x932 --out=$S/${TAG}_dialogs_430_web"
   [dialogs_768]="tools/web/dialogs_flow.mjs --url=$P/app $B --sizes=768x1024 --out=$S/${TAG}_dialogs_768_web"
   [dialogs_1024]="tools/web/dialogs_flow.mjs --url=$P/app $B --sizes=1024x768 --out=$S/${TAG}_dialogs_1024_web"
+  # local only: suggest_flow.mjs. It runs this checkout's api/share.js and
+  # api/people.js over the Supabase in memory of tests/fixtures/suggest/world.mjs,
+  # never a deployment: run it in the checkout.
   # local only: desktop_same.mjs. It compares a build's desktop at 1280 x 800,
   # by a mouse, with a base build's to the pixel, and a preview has no base
   # build beside it: run it on two local exports.

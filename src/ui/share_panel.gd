@@ -105,6 +105,11 @@ const LICENCES: Array = [
 ]
 
 var account: Account
+## Brings up signing in (Main: Account…), for Sign in… while signed out.
+var sign_in: Callable = Callable()
+## Sign in…, shown while nobody is: Share said "Sign in to Brickworks to
+## share a model" and gave nothing to press (ux13's walk, left 5).
+var _sign_in: Button
 var store: ModelStore
 var shared: SharedModels
 ## What moves in the model as it stands (main.gd: Playable's words, from the
@@ -113,6 +118,11 @@ var moves_of: Callable = Callable()
 ## What the last publish sent of it.
 var moves: PackedStringArray = PackedStringArray()
 var picture: Picture
+## The window's environment and its Sun, Fill and Rim (main's), for the card
+## drawn as a photograph (CardPhoto).
+var look: Environment
+var rig_lights: Array[DirectionalLight3D] = []
+var _card: CardPhoto
 ## The model's name as the bar has it.
 var named: Callable = func() -> String: return "Model"
 
@@ -406,6 +416,17 @@ func setup() -> void:
 	_enter_said = _line("", 11, 0.75)
 	_enter_said.visible = false
 	column.add_child(_enter_said)
+	_sign_in = Button.new()
+	_sign_in.text = "Sign in"
+	_sign_in.name = "share_sign_in"
+	_sign_in.custom_minimum_size = Vector2(0, 34)
+	_sign_in.focus_mode = Control.FOCUS_NONE
+	_sign_in.tooltip_text = "Sign in or make an account with your email: a link needs one, a look at it does not"
+	_sign_in.visible = false
+	_sign_in.pressed.connect(func() -> void:
+		if sign_in.is_valid():
+			sign_in.call())
+	column.add_child(_sign_in)
 	# What publishing agrees to, where it is agreed to.
 	# One line, never wrapped: a wrapping label in a row is given no width
 	# and stands one letter to a line down the panel.
@@ -730,6 +751,7 @@ func open() -> void:
 	else:
 		_status.text = "This model has a link. Publish again to update what it shows."
 		_check_link(store.share_id, fresh)
+	_say_suggestion()
 	_follow_age()
 	_ask_prompt()
 	# Its way as the app knows who laid its parts; the rules ticked afresh.
@@ -892,7 +914,29 @@ func _check_link(id: String, words: bool = true) -> void:
 				_status.text = "Shared as work in progress. Share progress posts the next version; " \
 					+ "Publish as finished ends it."
 			_show_link(id)
+			_say_suggestion()
 			return
+
+
+## The change a remixer sent back that the model open takes in, when it is
+## this link's (ModelStore.suggestion), else {}.
+func _suggestion_here() -> Dictionary:
+	if store == null or store.suggestion.is_empty() or store.share_id.is_empty() \
+			or str(store.suggestion.get("model", "")) != store.share_id:
+		return {}
+	return store.suggestion
+
+
+## With a change taken in, the status says what publishing does with it, and
+## What changed? says whose it is, unless something else was typed there.
+func _say_suggestion() -> void:
+	var taking: Dictionary = _suggestion_here()
+	if taking.is_empty() or state in ["publishing", "unpublishing"]:
+		return
+	_status.text = "%s is in this model: publish it as version %d, and its page credits them." % [
+		SharedModels.taken_words(taking), int(taking.get("n", 0)) + 1]
+	if _note.text.strip_edges().is_empty():
+		_note.text = SharedModels.taken_note(taking).left(MOST_NOTE)
 
 
 ## What changed? is for a model with a link up: the next publish is its
@@ -955,6 +999,7 @@ func _fill_opens() -> void:
 ## nothing signed in, that sharing waits while the session kept here is
 ## renewed (Account.renewing), and that it needs a sign-in signed out.
 func _waiting_words() -> String:
+	_sign_in.visible = not account.renewing and not account.signed_in() and sign_in.is_valid()
 	if account.renewing:
 		return Account.waiting_words("Publish goes on")
 	return "" if account.signed_in() else "Sign in to Brickworks to share a model."
@@ -963,7 +1008,7 @@ func _waiting_words() -> String:
 ## The account's renewal answered while the panel said it waited on it.
 func _on_account() -> void:
 	if visible and state == "idle" and store.share_id.is_empty() \
-			and _status.text == Account.waiting_words("Publish goes on"):
+			and (_status.text == Account.waiting_words("Publish goes on") or _sign_in.visible):
 		_status.text = _waiting_words()
 
 
@@ -1004,6 +1049,7 @@ func publish(as_wip: bool = false) -> void:
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_fail("Sign in to Brickworks to share a model.")
+		_sign_in.visible = sign_in.is_valid()
 		return
 	if as_wip and _author.text.strip_edges().is_empty():
 		await _suggest_author()
@@ -1090,14 +1136,21 @@ func publish(as_wip: bool = false) -> void:
 	var note: String = _note.text.strip_edges()
 	if body.has("id") and _note.visible and not note.is_empty():
 		body["note"] = note
+	# A change a remixer sent back, taken into this version (suggestedit):
+	# the server marks it taken by it, and the model's page credits them.
+	var taking: Dictionary = _suggestion_here()
+	if body.has("id") and not taking.is_empty():
+		body["suggestion"] = {"id": int(taking["id"]), "taken": taking.get("taken", {}),
+			"whole": bool(taking.get("whole", false))}
 	var answer: Dictionary = await shared.publish(token, body)
 	# A link that is not this account's — the model came from somebody
 	# else's link, or another account shared it on this device — or one
 	# that has gone: the model gets a link of its own.
 	if int(answer["code"]) in [403, 404] and body.has("id"):
 		body.erase("id")
-		# A first version: nothing it changed from.
+		# A first version: nothing it changed from, and no change taken in.
 		body.erase("note")
+		body.erase("suggestion")
 		answer = await shared.publish(token, body)
 	_publish.disabled = false
 	var reply: Variant = answer.get("body")
@@ -1164,6 +1217,16 @@ func publish(as_wip: bool = false) -> void:
 	prompt_said = entry_words(entry)
 	if not prompt_said.is_empty():
 		_status.text = "%s %s" % [_status.text.strip_edges(), prompt_said]
+	# The change taken in: credited, or why not.
+	var credited: Variant = said.get("suggestion")
+	if credited is Dictionary and not taking.is_empty():
+		if bool((credited as Dictionary).get("taken", false)):
+			_status.text = "%s It credits %s on its page and in Versions." % [_status.text.strip_edges(),
+				SharedModels.sender_of(taking)]
+			store.suggestion = {}
+		else:
+			_status.text = "%s Not marked as taking %s's change: %s." % [_status.text.strip_edges(),
+				SharedModels.sender_of(taking), str((credited as Dictionary).get("why", "it could not be kept"))]
 	_follow_enter()
 
 
@@ -1204,7 +1267,10 @@ func _fail(words: String) -> void:
 ## own ground in its light theme and its dark one alike, and a WebP four
 ## to three, drawn so, for the cards. {png, cutout, thumb}, each empty when
 ## there is none to be had (a run with nothing to draw with), or when it
-## came out too large to send.
+## came out too large to send. The card is a photograph of the model on a
+## desk (CardPhoto, cardlook): path traced where the graphics card traces
+## rays, frames averaged in a browser, and the cut-out on a phone or where
+## the frames take too long.
 func _pictures() -> Dictionary:
 	var none := {"png": PackedByteArray(), "cutout": PackedByteArray(), "thumb": PackedByteArray()}
 	if picture == null:
@@ -1217,15 +1283,36 @@ func _pictures() -> Dictionary:
 	var png: PackedByteArray = _png_under(card)
 	var cutout: PackedByteArray = _png_under(shot)
 	var thumb := PackedByteArray()
-	var framed: Image = await picture.take(THUMB * 2)
+	var framed: Image = await _card_photo()
+	var photographed: bool = framed != null and not framed.is_empty()
+	if not photographed:
+		framed = await picture.take(THUMB * 2)
 	if framed != null and not framed.is_empty():
-		framed.convert(Image.FORMAT_RGBA8)
+		framed.convert(Image.FORMAT_RGB8 if photographed else Image.FORMAT_RGBA8)
 		framed.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
 		thumb = framed.save_webp_to_buffer(true, 0.8)
 		if thumb.size() > MOST_THUMB:
 			thumb = framed.save_webp_to_buffer(true, 0.55)
 	return {"png": png, "cutout": cutout,
 		"thumb": thumb if thumb.size() <= MOST_THUMB else PackedByteArray()}
+
+
+## The card as a photograph of the model (CardPhoto), at twice the card's
+## size, or null where it cannot be drawn (CardPhoto.possible) or took too
+## long.
+func _card_photo() -> Image:
+	if not CardPhoto.possible() or picture == null or picture.world == null:
+		return null
+	if _card == null:
+		_card = CardPhoto.new()
+		add_child(_card)
+	_card.world = picture.world
+	_card.library = picture.world.library
+	_card.scenery = picture.scenery
+	_card.eye = picture.camera
+	_card.look = look
+	_card.rig_lights = rig_lights
+	return await _card.take(THUMB * 2)
 
 
 ## [param image] as a PNG under the server's limit: smaller if it must be,
@@ -1278,6 +1365,7 @@ func page_state() -> Dictionary:
 		"moves": Array(moves),
 		"listed": _list.button_pressed if _list != null else false,
 		"remixed_from": store.remixed_from if store != null else "",
+		"suggestion": _suggestion_here(),
 		"name": _name.text if _name != null else "",
 		"author": _author.text if _author != null else "",
 		"about": _about.text if _about != null else "",

@@ -191,6 +191,39 @@
    "features": [
     "ui:what you hear of in settings"
    ]
+  },
+  {
+   "id": "profile-minifig",
+   "source": "site",
+   "route": "/profile?edit=1",
+   "viewport": [
+    1280,
+    1000
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": "#avatar-acts:not([hidden]) #avatar-make",
+   "steps": [
+    {
+     "click": "#avatar-make"
+    },
+    {
+     "wait": "#minifig-dialog[open] .minifig-tile"
+    }
+   ],
+   "crop": "#minifig-dialog",
+   "pad": 12,
+   "alt": "Make your minifig: the minifig large, then at its sizes on a light and a dark page, Surprise me, and its choices: faces, hair or a hat, hair colour, torso prints and colours, legs colour and background, then Save and Cancel.",
+   "caption": "Edit profile › Make a minifig.",
+   "features": [
+    "ui:a minifig of your own as your avatar"
+   ]
   }
  ]
 }

@@ -44,6 +44,7 @@ import { deleteAccount, mintCode, STORAGE_KEY } from "./session.mjs";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -252,7 +253,7 @@ try {
     // 5. Deleted with a fresh orangecheck sign-in.
     await page.goto(`${site}/settings`, { waitUntil: "domcontentloaded" });
     await page.locator("#delete-part summary").click();
-    page.once("dialog", (dialog) => dialog.accept());
+    await answerAsks(page, { times: 1 });
     const [again2] = await Promise.all([page.waitForEvent("popup", { timeout: 30000 }), page.locator("#delete-oc").click()]);
     await walletSignIn(again2, "delete");
     // "Signing in with orangecheck, in its own window." is said the moment

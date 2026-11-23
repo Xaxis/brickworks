@@ -78,7 +78,9 @@
 .beta-head .terms { max-width: 34rem; margin: var(--s-4) auto 0; color: var(--ink-soft); font-size: var(--t-small); }
 :root[data-beta-page="off"] .beta-head .terms,
 :root[data-beta-page="tester"] .beta-head .terms { visibility: hidden; }
-.beta .narrow { width: min(100% - 32px, 980px); }
+/* The page as wide as every page (homefix, 2026-11-23), what is in it
+   centred at 980 px. */
+.beta .narrow > * { max-width: 980px; margin-inline: auto; }
 .beta .section-head { margin-bottom: var(--s-5); }
 #report .actions { margin-top: var(--s-5); }
 /* What is new: each release a card, its heads a list. */
@@ -188,7 +190,7 @@
 				<p>From wherever you are, without leaving what you were doing.</p>
 			</div></div>
 			<ol class="steps">
-				<li><h3>Press Report a bug</h3><p>In the app, at the top beside Account, or in Help. On the site, in the bar at the foot of every page.</p></li>
+				<li><h3>Press Report a bug</h3><p>In the app, at the top beside Account, or in Help. On the site, in the bar at the top of every page.</p></li>
 				<li><h3>Mark the spot</h3><p>A picture of what you see is taken for you. Mark where it went wrong, and say what you expected.</p></li>
 				<li><h3>See what we do</h3><p>It says what will be sent before it goes. After, it is in Your reports, with where it stands and our answer.</p></li>
 			</ol>

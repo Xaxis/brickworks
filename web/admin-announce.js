@@ -16,7 +16,7 @@
 //
 // Loaded when the section is first opened (admin.js), so the console's
 // first screen asks none of it. Everything is put on the page as text.
-import { $, act, adminJson, cell, count, emptyRow, make, say, timeCell, when } from "/admin-kit.js";
+import { $, act, adminJson, ask, cell, count, emptyRow, make, say, timeCell, when } from "/admin-kit.js";
 import { group as noticeGroup } from "/notice-view.js";
 
 const MOST_TITLE = 120;
@@ -284,7 +284,9 @@ function drawDrafts() {
       if (await keptFirst()) fill(one);
     });
     const drop = act("Drop", async () => {
-      if (!confirm(`Drop the draft "${one.title}"? It cannot be brought back.`)) return false;
+      if (!(await ask({ title: `Drop the draft "${one.title}"?`, body: "It cannot be brought back.", yes: "Drop it", danger: true }))) {
+        return false;
+      }
       try {
         await adminJson({ op: "announce_drop" }, { method: "POST", body: { id: one.id } });
         if (editing?.id === one.id) startNew();
@@ -346,7 +348,8 @@ function drawSent() {
       edit.setAttribute("aria-label", `Edit "${one.title}" for everyone it reached`);
       edit.addEventListener("click", () => editSent(one));
       const pull = act("Withdraw", async () => {
-        if (!confirm(`Withdraw "${one.title}"? It leaves the Notifications of ${reached(one.reach)}. Mail already sent stays sent.`)) return false;
+        if (!(await ask({ title: `Withdraw "${one.title}"?`, body: `It leaves the Notifications of ${reached(one.reach)}. `
+          + "Mail already sent stays sent.", yes: "Withdraw it", danger: true }))) return false;
         return doAct("announce_withdraw", one, `Withdrawn: gone from the Notifications of ${reached(one.reach)}.`);
       }, "ghost small");
       pull.setAttribute("aria-label", `Withdraw "${one.title}"`);

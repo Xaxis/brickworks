@@ -16,8 +16,8 @@
 // and draws what came, so one that cannot be read leaves the others.
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
-import { avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
-import { counted, langAt, number, say, setPhoto, sharpPhotos, told } from "/card.js";
+import { ask, avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
+import { counted, langAt, minifigOf, number, say, setPhoto, sharpPhotos, told } from "/card.js";
 import { openShare, sheetFor } from "/share-sheet.js";
 
 // A date as the page's language writes one: "October 2026".
@@ -395,7 +395,8 @@ function listRow(list) {
     if (answer.status === 200) page.hidden = !answer.body.public;
   });
   drop.addEventListener("click", async () => {
-    if (!confirm(say("Delete the list \"{name}\"? The models in it are not touched.", { name: name.value }))) return;
+    if (!(await ask({ title: say("Delete the list \"{name}\"?", { name: name.value }),
+      body: say("The models in it are not touched."), yes: say("Delete"), danger: true }))) return;
     const answer = await call(`/api/people?op=uncollection&id=${list.id}`, { method: "POST", body: {} });
     if (answer.status === 200) row.remove();
     else $("lists-said").textContent = told(answer.body.error, say("That did not work just now."));
@@ -627,25 +628,52 @@ function drawPicture() {
   const ready = Boolean(mine?.avatar?.ready) && !young;
   $("avatar-acts").hidden = !ready;
   $("avatar-remove").hidden = !picture;
-  $("avatar-choose").textContent = picture ? say("Choose another") : say("Choose a picture");
-  $("avatar-said").textContent = picture
-    ? say("Your picture, in a circle, wherever your name is: your profile, your cards, your comments.")
-    : mine?.avatar?.removed ? say("Your picture was taken out by Brickworks, as against the guidelines: your avatar is "
-      + "made from your handle again. You may choose another.")
-      : ready ? say("Your avatar is made from your handle: its colour and your name’s first letter. Or choose a picture "
-        + "of your own: a JPEG, a PNG or a WebP, at most 8 MB, cropped to a circle.")
-        : say("Your avatar is made from your handle: its colour and your name’s first letter.");
+  const made = Boolean(picture && mine?.avatar?.minifig);
+  $("avatar-make").textContent = made ? say("Change your minifig") : say("Make a minifig");
+  $("avatar-choose").textContent = picture && !made ? say("Choose another") : say("Choose a picture");
+  $("avatar-remove").textContent = made ? say("Remove your minifig") : say("Remove the picture");
+  $("avatar-said").textContent = made
+    ? say("Your minifig, wherever your name is: your profile, your cards, your comments.")
+    : picture ? say("Your picture, in a circle, wherever your name is: your profile, your cards, your comments.")
+      : mine?.avatar?.removed ? say("Your picture was taken out by Brickworks, as against the guidelines: your avatar is "
+        + "made from your handle again. You may choose another.")
+        : ready ? say("Your avatar is a minifig made from your handle. Make your own minifig, or choose a picture of "
+          + "your own: a JPEG, a PNG or a WebP, at most 8 MB, cropped to a circle.")
+          : say("Your avatar is a minifig made from your handle.");
 }
 
 /// After the picture changed: your page, your header, Edit profile.
 function pictureChanged(said) {
-  mine.avatar = { ready: true, picture: said.picture || null, removed: false };
+  mine.avatar = { ready: true, picture: said.picture || null, removed: false, minifig: said.minifig || null };
   if (shown) shown.picture = said.picture || undefined;
   drawPicture();
   if (handleOf()) drawHead();
   showFeedCount().catch(() => null);
 }
 
+// A minifig of your own (web/minifig-maker.js): kept as your picture, with
+// what it was made of, so the maker opens on it again.
+$("avatar-make").addEventListener("click", async () => {
+  const note = $("avatar-note");
+  note.textContent = "";
+  const { makeMinifig } = await import("/minifig-maker.js");
+  const { base64Of } = await import("/picture.js");
+  const start = (pictureOf() && mine?.avatar?.minifig) || minifigOf(handleOf() || $("handle").value);
+  const made = await makeMinifig($("minifig-dialog"), start);
+  if (!made) return;
+  $("avatar-make").disabled = true;
+  note.textContent = say("Saving your minifig…");
+  const answer = await call("/api/people?op=avatar", { method: "POST",
+    body: { picture: await base64Of(made.blob), type: "image/png", minifig: made.recipe } }).catch(() => null);
+  $("avatar-make").disabled = false;
+  if (!answer || answer.status !== 200) {
+    note.textContent = told(answer?.body?.error, say("That did not work just now. Try again in a minute."));
+    return;
+  }
+  note.textContent = "";
+  pictureChanged({ ...answer.body, minifig: answer.body.minifig || made.recipe });
+  toast(say("Your minifig is your avatar now"));
+});
 $("avatar-choose").addEventListener("click", () => $("avatar-file").click());
 $("avatar-file").addEventListener("change", async () => {
   const file = $("avatar-file").files[0];
@@ -676,7 +704,8 @@ $("avatar-file").addEventListener("change", async () => {
   toast(say("Your picture is your avatar now"));
 });
 $("avatar-remove").addEventListener("click", async () => {
-  if (!confirm(say("Take your picture off? Your avatar is made from your handle again."))) return;
+  if (!(await ask({ title: say("Take your picture off?"), body: say("Your avatar is made from your handle again."),
+    yes: say("Take it off"), danger: true }))) return;
   $("avatar-remove").disabled = true;
   const answer = await call("/api/people?op=avatar_remove", { method: "POST", body: {} }).catch(() => null);
   $("avatar-remove").disabled = false;

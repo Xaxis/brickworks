@@ -17,7 +17,12 @@
 // laptop at least 60% of each first-row picture's height in it, real builds
 // plainly seen beside the hero (the lead, 2026-11-23), "in it" meaning over
 // the beta bar; the pictures drawn; the page moving not at all (CLS 0.01 at
-// most) as the feed's live answers come.
+// most) as the feed's live answers come. And the band's foot in the page's
+// rhythm (homefix, 2026-11-23, the owner on its caption sitting on the line
+// and the heading under it): at least 24 px from the band's last line (the
+// mark's caption, the search's row) down to its edge and from the edge to
+// "What builders are making" (48 from 600 px, 24 on a phone), the two the
+// same within 8 px.
 // Signed out there are no tabs, one stream, and Show more puts more posts
 // under it, none twice. The search finding as it is typed (models, builders
 // and sets, then the gallery's and the sets' own search), its arrows and
@@ -152,10 +157,11 @@ async function firstScreen(label, width, height, theme) {
     .then(() => true, () => false);
   await page.waitForTimeout(1000);
   const seen = await page.evaluate(() => {
-    // The window down to the beta bar, docked at its foot (site.css): what
-    // is under the bar is not seen.
+    // The window, down to the beta bar were it at the window's foot (since
+    // pagebar a strip at the page's top, over nothing): what is under it
+    // is not seen.
     const bar = document.querySelector("#beta-bar.shown");
-    const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
+    const foot = bar && bar.getBoundingClientRect().top > innerHeight / 2 ? bar.getBoundingClientRect().top : innerHeight;
     const whole = (el) => {
       if (!el) return false;
       const r = el.getBoundingClientRect();
@@ -194,6 +200,15 @@ async function firstScreen(label, width, height, theme) {
       words: document.getElementById("stream-said")?.textContent.trim() || "",
       tabs: Boolean(document.getElementById("feed-tabs")?.offsetHeight),
       search: whole(document.getElementById("find-q")),
+      // The room under the band's last line and over the feed's heading.
+      room: (() => {
+        const band = document.getElementById("home")?.getBoundingClientRect();
+        const line = document.getElementById("feed")?.getBoundingClientRect().top;
+        const heading = document.getElementById("feed-h")?.getBoundingClientRect();
+        const last = [...document.querySelectorAll("#home .hero-credit, #home .home-acts, #home .note")]
+          .filter((el) => el.offsetHeight).map((el) => el.getBoundingClientRect().bottom);
+        return band && heading && last.length ? { under: Math.round(band.bottom - Math.max(...last)), over: Math.round(heading.top - line) } : null;
+      })(),
       start: whole(document.querySelector('#home a[href^="/app"]')),
       shifts: window.__shifts || [],
     };
@@ -201,6 +216,9 @@ async function firstScreen(label, width, height, theme) {
   const moved = seen.shifts.reduce((sum, s) => sum + s.value, 0);
   if (!settled) problems.push(`${where}: the feed never settled (no data-feed-live after 30 s)`);
   if (!seen.search) problems.push(`${where}: the search is not whole in the first screen`);
+  if (!seen.room || seen.room.under < 24 || seen.room.over < 24 || Math.abs(seen.room.under - seen.room.over) > 8) {
+    problems.push(`${where}: the band's foot is out of the page's rhythm: ${seen.room ? `${seen.room.under} px under its last line, ${seen.room.over} px over the feed's heading` : "not measured"}`);
+  }
   if (!seen.start) problems.push(`${where}: Start building is not whole in the first screen`);
   if (seen.tabs) problems.push(`${where}: a visitor is shown the signed-in tabs`);
   if (seen.posts) {
@@ -224,7 +242,8 @@ async function firstScreen(label, width, height, theme) {
   }
   if (out) await page.screenshot({ path: `${out}/first_${width}_${theme}.png` });
   console.log(`  ${where.padEnd(13)} feed ${seen.posts ? `${seen.posts} posts (${seen.served}, then ${seen.said}: ${seen.kinds.join(" ")}), first at ${seen.first} px, its picture at ${seen.firstPicture} (foot ${seen.foot}), first row's least shown ${Math.round(seen.rowShown * 100)}% of ${seen.row}, ${seen.whole} pictures whole` : `empty (${seen.said}: "${seen.words}")`}; `
-    + `search ${seen.search ? "in view" : "OUT"}, Start building ${seen.start ? "in view" : "OUT"}; moved ${moved.toFixed(3)}`);
+    + `search ${seen.search ? "in view" : "OUT"}, Start building ${seen.start ? "in view" : "OUT"}; `
+    + `room ${seen.room ? `${seen.room.under}/${seen.room.over} px` : "?"}; moved ${moved.toFixed(3)}`);
   await page.close();
 }
 
@@ -340,7 +359,7 @@ async function talk(label, width, height) {
   const seen = await page.evaluate(() => [...document.querySelectorAll("#stream > .post.talk")].map((post) => ({
     href: post.querySelector(".post-title a")?.getAttribute("href") || "",
     title: post.querySelector(".post-title")?.textContent.trim() || "",
-    reply: post.querySelector(".post-reply")?.textContent.trim() || "",
+    reply: post.querySelector(".said-room")?.textContent.trim() || "",
   })));
   const answer = await asked(page, "/api/people?op=talk_latest&n=6&reply=1");
   const has = Array.isArray(answer?.threads) ? answer.threads.length : 0;

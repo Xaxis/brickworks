@@ -16,12 +16,21 @@
 // parts bin (/app?parts=, the same as Open its parts in Brickworks: the
 // studio has no opener that puts a set in a person's collection).
 //
+// And, for a set LDraw modelled (sethub), Versions of this set: the copies
+// of that model people published from Make your own version (the studio
+// opens it credited to its modeller, and a publish of it is counted as the
+// set's own model: supabase/set_versions.sql), changed ones first, each
+// saying whether it is changed; before any, the row says so and offers
+// Make your own version. First of the rows, before Built from this set:
+// these are the set itself, made over.
+//
 // The page says what it found on <html data-owned>: "have/pieces", "none"
 // for no collection, "broken" when it could not ask (tools/web/sets_flow.mjs
 // reads it); on <html data-based> how many models are built from it,
 // counted or said, "broken" when it could not ask (tools/web/based_on_flow.mjs,
-// tools/web/altbuilds_lcp.mjs); and on
-// <html data-lists> how many public lists it is in (ownedparts).
+// tools/web/altbuilds_lcp.mjs); on <html data-versions> how many versions
+// it has, "broken" when they could not be read (tools/web/sethub_flow.mjs);
+// and on <html data-lists> how many public lists it is in (ownedparts).
 //
 // Every word in the page's language (web/card.js say: /de/library/set/<n>
 // carries its copy's words), its numbers as the language writes them.
@@ -47,6 +56,7 @@ async function builtFrom(article) {
   if (!body || !Array.isArray(body.models)) {
     document.documentElement.dataset.based = "broken";
     document.documentElement.dataset.lists = "broken";
+    if (article.dataset.model) document.documentElement.dataset.versions = "broken";
     return;
   }
   inLists(article, body.lists);
@@ -97,6 +107,66 @@ async function builtFrom(article) {
   if (similar) similar.before(section);
   else article.append(section);
   document.documentElement.dataset.based = String(models.length);
+  if (article.dataset.model) versionsOf(article, body.versions, section);
+}
+
+/// Versions of this set (sethub): the gallery's copies of LDraw's model of
+/// it, before Built from this set ([before] is that row); each card says
+/// whether it was changed. None: the row says so, with Make your own
+/// version, the same link as the one under the set's name.
+function versionsOf(article, versions, before) {
+  if (!Array.isArray(versions)) {
+    document.documentElement.dataset.versions = "broken";
+    return;
+  }
+  const shown = versions.filter((model) => model && typeof model.id === "string");
+  const section = document.createElement("section");
+  section.className = "next versions";
+  section.id = "versions";
+  section.setAttribute("aria-labelledby", "versions-h");
+  section.innerHTML = '<div class="scroller-head"><h2 id="versions-h"></h2></div>';
+  section.querySelector("h2").textContent = say("Versions of this set");
+  const make = document.querySelector("[data-version]");
+  if (shown.length) {
+    const row = document.createElement("div");
+    row.className = "models scroller";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-labelledby", "versions-h");
+    row.append(...shown.map((model) => {
+      const card = modelCard(model);
+      const line = document.createElement("small");
+      line.className = "alt-said version-said";
+      line.dataset.changed = String(model.changed === true);
+      line.textContent = model.changed === true ? say("Their own version: changed from LDraw's model")
+        : say("LDraw's model, as it is");
+      card.querySelector(".words")?.append(line);
+      return card;
+    }));
+    section.append(row);
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "state built-empty";
+    const note = document.createElement("p");
+    note.textContent = say("Nobody has published their own version of this set yet.");
+    const how = document.createElement("p");
+    how.className = "note";
+    how.textContent = say("Make your own version: Brickworks opens a copy of LDraw's model of it, credited to "
+      + "whoever modelled it. Change it, publish it, and it is listed here.");
+    empty.append(note, how);
+    if (make) {
+      const go = document.createElement("a");
+      go.className = "cta";
+      go.href = make.getAttribute("href");
+      go.dataset.versionEmpty = "";
+      go.textContent = say("Make your own version");
+      empty.append(go);
+    }
+    section.append(empty);
+  }
+  before.before(section);
+  document.documentElement.dataset.versions = String(shown.length);
+  // From a version's own page ("A version of LEGO® set …"): the row it is in.
+  if (location.hash === "#versions") section.scrollIntoView({ block: "start" });
 }
 
 /// Parts you own: how much of the set their collection holds, and what they

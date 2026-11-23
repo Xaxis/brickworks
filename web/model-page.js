@@ -34,7 +34,8 @@
 import { askToSignIn, call, email, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
-import { avatarHtml } from "/kit.js";
+import { ask, avatarHtml } from "/kit.js";
+import { makeComposer, wireComposer } from "/composer.js";
 import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, pinPart, pinSaid, rulesSaid, say, setPhoto,
   sharpPhotos, themeSaid, told } from "/card.js";
 import { copy, wireShare } from "/share-sheet.js";
@@ -42,6 +43,7 @@ import { copy, wireShare } from "/share-sheet.js";
 import "/keep.js";
 import { start3d } from "/start3d.js";
 import { guardPhoneOpens } from "/phone-warn.js";
+import { startTabs } from "/tabs.js";
 
 // A date as the page's language writes one: "30 October 2026".
 const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
@@ -124,6 +126,10 @@ const pinHooks = {
 // The Parts list's lots, for a pin's part's name: asked for by the list
 // (startParts), whose one request this shares.
 let partLots = null;
+// The page's tabs (api/share.js pageTabs, web/tabs.js): each switches its
+// panel in place, and the address says which. Started before the comments,
+// whose link (#comment-12) opens their tab once they are listed.
+const pageTabs = startTabs(document.getElementById("page-tabs"));
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 // Its photos of real builds, the whole one where a copy would be drawn
@@ -176,9 +182,6 @@ if (frame && frame.dataset.scene) roomWay().then((how) => { if (how) offerRoom(f
 // is still the way into the viewer.
 const strip = document.getElementById("pictures");
 if (strip) startPictures(strip);
-// The page's tabs: the part being read is marked as the page scrolls.
-const tabs = document.getElementById("page-tabs");
-if (tabs) startTabs(tabs);
 // Its parts (api/share.js partsSection): the list asked for as it nears the
 // screen, so a visit that never gets there asks for nothing.
 const partsPart = document.getElementById("parts");
@@ -601,61 +604,6 @@ function startPictures(row) {
     for (const one of row.querySelectorAll("a.thumb")) one.removeAttribute("aria-current");
     thumb.setAttribute("aria-current", "true");
   });
-}
-
-/// The tab of the part at the top of the screen, under the tabs; a tab
-/// chosen stays marked until the reader scrolls on themselves, since the
-/// last parts are often too short to reach the top.
-function startTabs(nav) {
-  const links = [...nav.querySelectorAll("a[data-tab]")];
-  let held = "";
-  let queued = false;
-  const mark = (key) => {
-    for (const link of links) {
-      if (link.dataset.tab !== key) {
-        link.removeAttribute("aria-current");
-        continue;
-      }
-      link.setAttribute("aria-current", "true");
-      // On a phone the row scrolls inside itself: the marked tab in view.
-      if (link.offsetLeft < nav.scrollLeft || link.offsetLeft + link.offsetWidth > nav.scrollLeft + nav.clientWidth) {
-        nav.scrollLeft = Math.max(0, link.offsetLeft - 16);
-      }
-    }
-  };
-  const stuckAt = parseFloat(getComputedStyle(nav).top) || 0;
-  const reading = () => {
-    queued = false;
-    // Only stuck under the header does it need a ground of its own: under
-    // the picture, it would cut across the picture's shadow.
-    nav.classList.toggle("loose", nav.getBoundingClientRect().top > stuckAt + 1);
-    if (held) return mark(held);
-    // The part read is the one across the top third of what shows under the tabs.
-    const under = nav.getBoundingClientRect().bottom;
-    const line = under + Math.max(16, (innerHeight - under) / 3);
-    let key = links[0]?.dataset.tab || "";
-    for (const link of links) {
-      const part = document.getElementById(link.dataset.tab);
-      if (part && !part.hidden && !link.hidden && part.getBoundingClientRect().top <= line) key = link.dataset.tab;
-    }
-    mark(key);
-  };
-  addEventListener("scroll", () => {
-    if (!queued) {
-      queued = true;
-      requestAnimationFrame(reading);
-    }
-  }, { passive: true });
-  for (const name of ["wheel", "touchmove", "keydown"]) {
-    addEventListener(name, () => { held = ""; }, { passive: true });
-  }
-  nav.addEventListener("click", (event) => {
-    const link = event.target.closest("a[data-tab]");
-    if (!link) return;
-    held = link.dataset.tab;
-    mark(held);
-  });
-  reading();
 }
 
 // How many rows the list shows before Show all, as api/share.js LOTS_SHOWN
@@ -1084,7 +1032,6 @@ function startComments(section) {
   const step = form.querySelector("#comment-step");
   const box = form.querySelector("#comment-body");
   const send = form.querySelector('button[type="submit"]');
-  const left = form.querySelector(".comment-count");
   const why = section.querySelector(".comment-why");
   const said = section.querySelector(".comments-said");
   let state = null;
@@ -1137,17 +1084,17 @@ function startComments(section) {
     // The skeleton holding its place (api/share.js commentsSection) goes in
     // the frame it is drawn in.
     const hold = document.getElementById("comments-hold");
+    const body = section.querySelector(".comments-body");
     if (answer.status !== 200) {
-      // The section stays hidden, and so does its tab.
+      // Its tab says why, where the comments would be.
       hold?.remove();
-      const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
-      if (tab && section.hidden) tab.hidden = true;
       return tell(told(answer.body.error, say("The comments did not load just now.")));
     }
     state = answer.body;
-    // Not open on this deployment yet (comments.sql): nothing to show.
+    // Not open on this deployment yet (comments.sql): nothing to show, and
+    // no tab (commentsSaid).
     hold?.remove();
-    section.hidden = state.ready === false;
+    body.hidden = state.ready === false;
     pinsOf();
     draw();
     // The 3D view, if open, places them again.
@@ -1468,8 +1415,9 @@ function startComments(section) {
       acts.append(button(one.hidden ? say("Show it") : say("Hide it"), () => change(one, one.hidden ? "show" : "hide")));
     }
     if (one.mine) {
-      const ask = reply ? say("Remove your reply?") : replies.length ? say("Remove your comment? Its replies go with it.") : say("Remove your comment?");
-      acts.append(button(say("Remove it"), () => confirm(ask) && change(one, "remove")));
+      const asked = { title: reply ? say("Remove your reply?") : say("Remove your comment?"),
+        body: !reply && replies.length ? say("Its replies go with it.") : "", yes: say("Remove it"), danger: true };
+      acts.append(button(say("Remove it"), async () => (await ask(asked)) && change(one, "remove")));
     }
     if (!one.mine) acts.append(button(say("Report it"), () => openReport({ comment: one.id }, reply ? say("this reply") : say("this comment"))));
     // Block its writer (web/block.js): asked first in one line; their
@@ -1542,7 +1490,6 @@ function startComments(section) {
     }
     const you = state.you || {};
     form.hidden = !mayTry();
-    send.textContent = you.signed_in ? say("Add the comment") : say("Sign in and add it");
     why.replaceChildren();
     why.hidden = !you.signed_in || Boolean(you.may_write);
     if (you.signed_in && !you.may_write) {
@@ -1574,18 +1521,9 @@ function startComments(section) {
       draw.shown = true;
       if (fold.contains(named)) fold.open = true;
       named.classList.add("asked");
+      pageTabs?.show("comments", { push: false });
       named.scrollIntoView({ block: "center" });
     }
-  }
-
-  /// Signed in, or signed in now from the box: whether to go on sending.
-  async function signInFirst(words) {
-    if (signedIn()) return true;
-    if (!(await askToSignIn(words))) return false;
-    await load();
-    if (state.you?.may_write) return true;
-    tell(told(state.you?.why_not, say("That did not go just now. Try again in a minute.")));
-    return false;
   }
 
   /// The reply box under thread [to], with [text] in it.
@@ -1598,73 +1536,54 @@ function startComments(section) {
     for (const open of list.querySelectorAll("form.reply-new")) if (open.dataset.to !== String(to)) open.remove();
     let made = thread.querySelector("form.reply-new");
     if (!made) {
-      made = document.createElement("form");
-      made.className = "reply-new";
+      // The composer, as everywhere (web/composer.js): Ctrl+Enter or Post
+      // sends it, Enter is a new line, Cancel or Escape takes it away, the
+      // focus back on Reply; signed out, Post signs them in first.
+      made = makeComposer({ id: `reply-${to}`, label: say("Your reply"),
+        placeholder: say("Reply to {name}", { name: thread.querySelector(".comment-head a, .comment-head b")?.textContent || say("them") }) });
+      made.classList.add("reply-new");
       made.dataset.to = String(to);
-      const label = document.createElement("label");
-      label.className = "visually-hidden";
-      label.htmlFor = `reply-${to}`;
-      label.textContent = say("Your reply");
-      const field = document.createElement("textarea");
-      field.id = `reply-${to}`;
-      field.maxLength = 1000;
-      field.rows = 2;
-      field.placeholder = say("Reply to {name}", { name: thread.querySelector(".comment-head a, .comment-head b")?.textContent || say("them") });
-      const go = document.createElement("div");
-      go.className = "actions";
-      const post = document.createElement("button");
-      post.type = "submit";
-      post.className = "cta small";
-      post.textContent = signedIn() ? say("Reply") : say("Sign in and reply");
-      // Cancel, or Escape in the box: gone, the focus back on Reply.
+      const field = made.querySelector("textarea");
       const cancel = () => {
         replying = null;
         made.remove();
         thread.querySelector(`[data-reply="${to}"]`)?.focus();
       };
-      go.append(post, button(say("Cancel"), cancel, "cta ghost small"));
-      made.addEventListener("keydown", (event) => {
-        if (event.key !== "Escape") return;
-        event.preventDefault();
-        cancel();
+      wireComposer(made, {
+        said,
+        signIn: "Sign in to add your reply: we email you a code, no password. What you wrote is kept.",
+        ready: async () => {
+          await load();
+          return state.you?.may_write ? "" : told(state.you?.why_not, say("That did not go just now. Try again in a minute."));
+        },
+        send: async (words) => {
+          const answer = await call("/api/people?op=reply", { method: "POST", body: { id: to, body: words } });
+          return answer.status === 201 ? { ok: true, made: answer.body.comment } : { ok: false, error: told(answer.body?.error) };
+        },
+        close: cancel,
+        done: async (comment) => {
+          replying = null;
+          tell(say("Posted."));
+          await load();
+          // The reply, read out where it now is; else its comment's Reply.
+          const there = document.getElementById(`comment-${comment?.id}`);
+          if (there) {
+            there.tabIndex = -1;
+            there.focus({ preventScroll: true });
+            there.scrollIntoView({ block: "nearest" });
+          } else document.querySelector(`[data-reply="${to}"]`)?.focus();
+        },
       });
-      made.append(label, field, go);
       field.addEventListener("input", () => {
         replying = { id: to, text: field.value };
       });
       pickMentions(field, people);
-      made.addEventListener("submit", (event) => {
-        event.preventDefault();
-        sendReply(to, field, post);
-      });
       thread.querySelector(".comment-main").append(made);
     }
     const field = made.querySelector("textarea");
     if (text && !field.value) field.value = text;
     replying = { id: to, text: field.value };
     if (focus) field.focus();
-  }
-
-  async function sendReply(to, field, post) {
-    const text = field.value.trim();
-    if (!text) return tell(say("Say something first."));
-    replying = { id: to, text: field.value };
-    if (!(await signInFirst("Sign in to add your reply: we email you a code, no password. What you wrote is kept."))) return;
-    post.disabled = true;
-    tell(say("Adding it…"));
-    const answer = await call("/api/people?op=reply", { method: "POST", body: { id: to, body: text } });
-    post.disabled = false;
-    if (answer.status !== 201) return tell(told(answer.body.error, say("That did not go just now. Try again in a minute.")));
-    replying = null;
-    tell(say("Replied."));
-    await load();
-    // The reply, read out where it now is; else its comment's Reply.
-    const made = document.getElementById(`comment-${answer.body.comment?.id}`);
-    if (made) {
-      made.tabIndex = -1;
-      made.focus({ preventScroll: true });
-      made.scrollIntoView({ block: "nearest" });
-    } else document.querySelector(`[data-reply="${to}"]`)?.focus();
   }
 
   async function change(one, what) {
@@ -1681,30 +1600,29 @@ function startComments(section) {
     await load();
   }
 
-  box.addEventListener("input", () => {
-    const n = [...box.value].length;
-    left.textContent = n > 900 ? say("{n} characters left", { n: number(1000 - n) }) : "";
-  });
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const text = box.value.trim();
-    if (!text) return tell(say("Say something first."));
-    if (!(await signInFirst("Sign in to add your comment: we email you a code, no password. What you wrote is kept."))) return;
-    send.disabled = true;
-    tell(say("Adding it…"));
-    const at = step.value === "" ? null : Number(step.value);
-    // On the part pressed in 3D: a pin, the part as the 3D view had it.
-    const part = aiming && { part: aiming.part, colour: aiming.colour, at: aiming.at, turn: aiming.turn };
-    const answer = await call(part ? "/api/people?op=pin" : "/api/people?op=comment", { method: "POST",
-      body: { model, version, step: at, body: text, ...(part ? { part } : {}) } });
-    send.disabled = false;
-    if (answer.status !== 201) return tell(told(answer.body.error, say("That did not go just now. Try again in a minute.")));
-    box.value = "";
-    left.textContent = "";
-    if (part) unaim(false);
-    tell(at ? say("Added, on step {n}.", { n: at }) : say("Added."));
-    await load();
+  // The page's own box, the composer as everywhere (web/composer.js).
+  wireComposer(form, {
+    field: box,
+    button: send,
+    said,
+    signIn: "Sign in to add your comment: we email you a code, no password. What you wrote is kept.",
+    ready: async () => {
+      await load();
+      return state.you?.may_write ? "" : told(state.you?.why_not, say("That did not go just now. Try again in a minute."));
+    },
+    send: async (words) => {
+      const at = step.value === "" ? null : Number(step.value);
+      // On the part pressed in 3D: a pin, the part as the 3D view had it.
+      const part = aiming && { part: aiming.part, colour: aiming.colour, at: aiming.at, turn: aiming.turn };
+      const answer = await call(part ? "/api/people?op=pin" : "/api/people?op=comment", { method: "POST",
+        body: { model, version, step: at, body: words, ...(part ? { part } : {}) } });
+      return answer.status === 201 ? { ok: true, made: { at, part } } : { ok: false, error: told(answer.body?.error) };
+    },
+    done: async ({ at, part }) => {
+      if (part) unaim(false);
+      tell(at ? say("Posted, on step {n}.", { n: at }) : say("Posted."));
+      await load();
+    },
   });
 
   load();
@@ -1745,6 +1663,7 @@ function buildPhotos(box) {
   box.hidden = false;
   // The owner's own pictures go the same way, from the strip's last tile.
   addPicture?.addEventListener("click", () => {
+    pageTabs?.show("builds");
     document.getElementById("builds")?.scrollIntoView({ block: "start" });
     open.click();
   });
@@ -2178,14 +2097,12 @@ function tabCount(tab, n) {
 /// The action bar (api/share.js actionBar): Like; Save and its lists,
 /// which are a card's (web/keep.js: Save at a tap, the arrow beside it the
 /// panel of your lists, lists2a); Share, which opens its sheet
-/// (web/share-sheet.js); Comment and I built it, which go to their sections; and
-/// More: Report it, Takedown requests, and the owner's own. Like asks to
-/// sign in first when this browser is not, as Save does.
+/// (web/share-sheet.js); and More: Download, Report it, Takedown requests,
+/// and the owner's own. Like asks to sign in first when this browser is
+/// not, as Save does. Comments and builds are their tabs'.
 function start() {
   const like = marks.querySelector('[data-mark="like"]');
   const share = marks.querySelector("[data-share]");
-  const comment = marks.querySelector('[data-mark="comment"]');
-  const built = marks.querySelector('[data-mark="built"]');
   const said = document.querySelector(".marks-said");
   let state = null;
 
@@ -2247,44 +2164,27 @@ function start() {
   const sheet = document.getElementById("share-sheet");
   if (sheet) wireShare(share, sheet);
 
-  // The box is everybody's: sending it signs a visitor in.
-  comment.addEventListener("click", () => {
-    const section = document.getElementById("comments");
-    if (!section) return;
-    section.scrollIntoView({ block: "start" });
-    const box = document.getElementById("comment-body");
-    if (box && !box.closest("form").hidden) box.focus({ preventScroll: true });
-  });
-
-  built.addEventListener("click", () => {
-    document.getElementById("builds")?.scrollIntoView({ block: "start" });
-    const add = document.querySelector("[data-add-build]");
-    if (add && !add.hidden && !add.disabled) add.click();
-    else document.querySelector('.build-form input[type="file"]')?.focus({ preventScroll: true });
-  });
-
   load();
   // Signed in from the header (signinux): drawn for them, where they are.
   addEventListener("brickworks:signed-in-done", () => load());
 }
 
-/// What the comments, once listed, change in the action bar: Comment's
-/// count (the ones everybody sees), Comment gone where comments are not
-/// open on this deployment, and for the model's owner their own in More:
-/// comments off or on, and their models' numbers, in place of Report it.
+/// What the comments, once listed, change: the Comments tab's count (the
+/// ones everybody sees), the tab gone where comments are not open on this
+/// deployment, and for the model's owner their own in More: comments off
+/// or on, and their models' numbers, in place of Report it.
 function commentsSaid(state, setOpen) {
-  const comment = marks && marks.querySelector('[data-mark="comment"]');
-  if (!comment) return;
-  comment.hidden = state.ready === false;
   // What everybody sees: not hidden, and not under a comment that is.
   const hidden = new Set((state.comments || []).filter((one) => one.hidden).map((one) => one.id));
   const shown = (state.comments || []).filter((one) => !one.hidden && !hidden.has(one.parent)).length;
-  setCount(comment, shown, say("Comment"), "comment");
   const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
   if (tab) {
     tab.hidden = state.ready === false;
     tabCount(tab, shown);
+    // Opened on a tab that is not there: the first.
+    if (tab.hidden && tab.getAttribute("aria-selected") === "true") pageTabs?.show("overview", { push: false });
   }
+  if (!marks) return;
   const menu = marks.querySelector("#more .menu-list");
   for (const old of menu.querySelectorAll(".owner-only")) old.remove();
   if (!state.you?.owner) return;
@@ -2400,7 +2300,8 @@ async function challengeEntry() {
     out.className = "link";
     out.textContent = say("Take it out");
     out.addEventListener("click", async () => {
-      if (!confirm(say("Take it out of the challenge? Its votes go with it."))) return;
+      if (!(await ask({ title: say("Take it out of the challenge?"), body: say("Its votes go with it."), yes: say("Take it out"),
+        danger: true }))) return;
       out.disabled = true;
       const gone = await call("/api/people?op=withdraw", { method: "POST", body: { model: id } });
       if (gone.status !== 200) {
@@ -3052,3 +2953,106 @@ function muteItem() {
 }
 const ID_OK = /^[A-Za-z0-9]{10}$/;
 muteItem();
+
+// A change sent back (suggestedit, 2026-11-23; api/_suggestions.js): on a
+// remix's page, its own builder may send what their remix changed to the
+// designer of the model it came from, with a word about it; on any model's
+// page, its designer sees the changes sent to it, each to open in the
+// studio (/app?suggestion=N) and take all of or part. Nobody else sees
+// either: the answer's open list is null for anybody but the designer.
+const SUGGEST_KINDS = ["added", "removed", "moved", "recoloured", "swapped", "restepped"];
+/// "2 added, 1 taken away, 1 moved", as the bell says it.
+function suggestionCounts(counts) {
+  const words = { added: "{n} added", removed: "{n} taken away", moved: "{n} moved", recoloured: "{n} recoloured",
+    swapped: "{n} swapped", restepped: "{n} to another step" };
+  return SUGGEST_KINDS.filter((kind) => Number(counts?.[kind]) > 0)
+    .map((kind) => say(words[kind], { n: number(Number(counts[kind])) })).join(", ");
+}
+
+async function suggestBox(box) {
+  if (!signedIn()) return;
+  const model = box.dataset.model;
+  const answer = await call(`/api/share?op=suggestions&id=${model}`).catch(() => null);
+  if (!answer || answer.status !== 200 || !Array.isArray(answer.body?.open)) return;
+  // Theirs: the list of changes sent to it is an array for its designer alone.
+  const open = answer.body.open;
+  box.replaceChildren();
+  if (open.length) {
+    const head = document.createElement("h2");
+    head.className = "suggest-head";
+    head.textContent = open.length === 1 ? say("A change sent to you") : say("{n} changes sent to you", { n: number(open.length) });
+    const list = document.createElement("ul");
+    list.className = "suggest-open";
+    for (const one of open) {
+      const item = document.createElement("li");
+      const who = document.createElement("b");
+      who.textContent = one.by?.name || (one.by?.handle ? `@${one.by.handle}` : say("A remixer"));
+      const remix = document.createElement("a");
+      remix.href = `${langAt()}/m/${one.remix}`;
+      remix.textContent = `“${one.name || ""}”`;
+      const words = document.createElement("span");
+      words.textContent = `: ${suggestionCounts(one.counts)}.`;
+      item.append(who, " ", say("sent a change from their remix"), " ", remix, words);
+      if (one.note) {
+        const note = document.createElement("q");
+        note.textContent = one.note;
+        item.append(" ", note);
+      }
+      const go = document.createElement("a");
+      go.className = "cta small";
+      go.href = `/app?suggestion=${Number(one.id)}`;
+      go.textContent = say("Open it in the studio");
+      go.title = say("Your model with the change drawn on it, to take all of it, some of it, or none");
+      item.append(" ", go);
+      list.append(item);
+    }
+    box.append(head, list);
+  }
+  if (box.dataset.remixOf) {
+    const form = document.createElement("form");
+    form.className = "suggest-send";
+    const label = document.createElement("label");
+    label.htmlFor = "suggest-note";
+    label.textContent = say("Send your change back to its designer: they see it in their studio, and take all of it or part.");
+    const note = document.createElement("textarea");
+    note.id = "suggest-note";
+    note.rows = 2;
+    note.placeholder = say("What you changed, and why (if you like)");
+    const send = document.createElement("button");
+    send.type = "submit";
+    send.className = "cta ghost small";
+    send.textContent = say("Send your change");
+    const said = document.createElement("p");
+    said.className = "said";
+    said.setAttribute("role", "status");
+    form.append(label, note, send, said);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      // Over the limit refused here in words, never cut (the server says the same).
+      const length = [...note.value.trim()].length;
+      if (length > 500) {
+        said.textContent = say("What you say of it is {n} characters: 500 at most.", { n: number(length) });
+        return;
+      }
+      send.disabled = true;
+      said.textContent = say("Sending it…");
+      const sent = await call("/api/share?op=suggest", { method: "POST", body: { remix: model, note: note.value } })
+        .catch(() => null);
+      send.disabled = false;
+      if (!sent || (sent.status !== 200 && sent.status !== 201)) {
+        said.textContent = told(sent?.body?.error, say("It could not be sent just now. Try again in a minute."));
+        return;
+      }
+      const to = sent.body.to?.name || "";
+      said.textContent = sent.body.again
+        ? say("Sent again: “{model}” has your change as it is now ({changes}).", { model: to, changes: suggestionCounts(sent.body.counts) })
+        : say("Sent to the designer of “{model}”, who hears of it now: {changes}.", { model: to, changes: suggestionCounts(sent.body.counts) });
+    });
+    box.append(form);
+  }
+  box.hidden = box.childElementCount === 0;
+}
+for (const box of document.querySelectorAll("#suggest-box[data-model]")) suggestBox(box).catch(() => null);
+addEventListener("brickworks:signed-in-done", () => {
+  for (const box of document.querySelectorAll("#suggest-box[data-model]")) suggestBox(box).catch(() => null);
+});
