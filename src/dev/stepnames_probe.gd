@@ -205,6 +205,11 @@ func _editor() -> void:
 	await _timeline_at(3)
 	var named: Dictionary = _steps.controls_by_name()
 	var button: Control = named.get("steps_name")
+	# On a phone held upright (ux15) the Booklet row is in the bar's More.
+	var more: Control = named.get("steps_more")
+	if button != null and not button.is_visible_in_tree() and more != null and more.is_visible_in_tree():
+		await _press_on(more)
+		await _frames(20)
 	_check("the timeline on step 3 of the author's steps (%s), its Booklet row with Name… (%s)" % [
 		_caption(), _said_control(button)], _caption().begins_with("Step 3 of 4")
 		and button != null and button.is_visible_in_tree())
@@ -1110,7 +1115,13 @@ func _key(code: Key, shift: bool = false) -> void:
 func _press_on(control: Control) -> bool:
 	if control == null or not control.is_visible_in_tree():
 		return false
-	var seen: Rect2 = control.get_global_rect().intersection(root.get_visible_rect())
+	# A sheet's (an embedded Window's) controls are placed in the sheet.
+	var rect: Rect2 = control.get_global_rect()
+	var window: Window = control.get_window()
+	while window != null and window != root:
+		rect.position += Vector2(window.position)
+		window = window.get_parent().get_window() if window.get_parent() != null else null
+	var seen: Rect2 = rect.intersection(root.get_visible_rect())
 	if seen.size.x < 8.0 or seen.size.y < 8.0:
 		return false
 	var at: Vector2 = seen.get_center()

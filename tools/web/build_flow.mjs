@@ -78,6 +78,18 @@ function tap(page, name, seconds = 60) {
   return clickStill(page, name, { seconds, act: (at) => page.touchscreen.tap(at.x, at.y) });
 }
 
+// A timeline button a phone keeps in the bar's More (ux15: Start, Play, End,
+// the order, Find, Instructions, Done): More tapped first where it is so.
+async function tapInSteps(page, name) {
+  const shown = await page.evaluate((n) => Boolean((window.brickworksControls || {})[n]), name);
+  const more = await page.evaluate(() => Boolean((window.brickworksControls || {}).steps_more));
+  if (!shown && more) {
+    await tap(page, "steps_more");
+    await page.waitForTimeout(800);
+  }
+  return tap(page, name);
+}
+
 // A finger drawn from one point to another, as the browser sends it.
 async function drag(cdp, from, to, steps = 10) {
   const point = (p) => [{ x: p.x, y: p.y, id: 1, radiusX: 4, radiusY: 4, force: 1 }];
@@ -136,7 +148,7 @@ try {
     // the step player's frames against.
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
     const before = await page.evaluate(() => window.brickworksState.now);
-    await tap(page, "steps_start");
+    await tapInSteps(page, "steps_start");
     await page.waitForTimeout(1500);
     for (let n = 0; n < 3; n += 1) {
       await tap(page, "steps_next");
@@ -149,7 +161,7 @@ try {
     const timelineWorst = timeline.reduce((most, frame) => Math.max(most, frame[1]), 0);
     console.log(`  --    the timeline's Next, three times at a phone's speed: worst frame ${timelineWorst} ms `
       + `(over 50: ${timeline.map((frame) => frame[1]).join(", ") || "none"})`);
-    await tap(page, "steps_end");
+    await tapInSteps(page, "steps_end");
     await page.waitForTimeout(1000);
 
     // 2. Build it.

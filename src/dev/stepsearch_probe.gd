@@ -372,9 +372,14 @@ func _on_a_phone() -> void:
 	await _open(CAR, "car")
 	await _timeline_up()
 	var open: Control = _steps.controls_by_name().get("steps_find")
+	# On a phone held upright (ux15) Find… is in the bar's More: tapped first.
+	var more: Control = _steps.controls_by_name().get("steps_more")
+	if open != null and not open.is_visible_in_tree() and more != null and more.is_visible_in_tree():
+		await _click(_on_screen(more).get_center())
+		await _frames(20)
 	_check("the timeline has Find… on a phone, not a field under the keyboard (%s)" % (
 		(open as Button).text if open is Button else str(open)), open is Button and open.is_visible_in_tree())
-	await _click(open.get_global_rect().get_center())
+	await _click(_on_screen(open).get_center())
 	await _frames(10)
 	var sheet: AcceptDialog = _steps.get("_find_sheet")
 	var field: LineEdit = _steps.find_field()
@@ -597,6 +602,17 @@ func _as_event(at: Vector2) -> Vector2:
 
 
 ## A click (or a finger's tap) at [param at], in the root's units.
+## Where [param control] is drawn in the window: a sheet's (an embedded
+## Window's) controls are placed in the sheet.
+func _on_screen(control: Control) -> Rect2:
+	var rect: Rect2 = control.get_global_rect()
+	var window: Window = control.get_window()
+	while window != null and window != root:
+		rect.position += Vector2(window.position)
+		window = window.get_parent().get_window() if window.get_parent() != null else null
+	return rect
+
+
 func _click(at: Vector2) -> void:
 	var move := InputEventMouseMotion.new()
 	move.position = _as_event(at)

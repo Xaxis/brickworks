@@ -807,7 +807,11 @@ func say(words: String) -> void:
 	var said: String = Phone.touch_words(words)
 	# How many are selected and nothing more: the hint says it, and what a
 	# finger does with them.
+	# And what was said before them is over, so it says it now: a set's
+	# "opened" line stood four seconds over a tower's Edit inside (ux15).
 	if said.ends_with(" selected") and said.trim_suffix(" selected").is_valid_int():
+		_said_until = 0
+		set_process(true)
 		return
 	_said = said
 	_said_until = Time.get_ticks_msec() + 4000
@@ -842,9 +846,28 @@ func hint() -> String:
 			else "Tap parts to select them · Select when done"
 	if not builder.selection.is_empty():
 		var count: int = builder.selection.size()
+		var whole: String = _whole_assembly()
+		if not whole.is_empty():
+			return "%s selected, %d parts · hold, then Edit inside, to change one" \
+				% [Assemblies.label(whole), count]
 		return "%d selected · drag to move · Select adds more · hold for actions" % count \
 			if count > 1 else "Selected · drag to move · Select adds more · hold for actions"
 	return "Parts to pick one · tap a part to select · drag turns the view · pinch zooms"
+
+
+## The sub-assembly the selection is all of, not yet gone into: "" for a
+## part alone or a mix. From its first part, as the hint asks every frame.
+func _whole_assembly() -> String:
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	if builder == null or verbs == null or verbs.assemblies == null or builder.selection.size() < 2:
+		return ""
+	var unit: Variant = verbs.assemblies.unit_path_of(int(builder.selection.keys()[0]))
+	if unit == null or str(unit).is_empty():
+		return ""
+	# Its parts counted from the kept index, without a walk in script: the
+	# hint asks every frame, and Orthanc's sub-assemblies run to thousands.
+	return str(unit) if verbs.assemblies.bricks_under(str(unit)).size() == builder.selection.size() else ""
 
 
 func _lay_pill() -> void:
@@ -1019,6 +1042,13 @@ func _fill_context(words: String) -> void:
 	_context.clear()
 	var builder: Builder = app.get("_builder")
 	var library: PartLibrary = app.get("_library")
+	# A part of a sub-assembly takes all of it, and a phone has no
+	# double-click to go in (its double tap turns): the way in comes first.
+	# Opened as a set, a tap on the King's Castle took 308 parts and none
+	# could be painted alone (ux15's walk 3).
+	var whole: String = _whole_assembly()
+	if not whole.is_empty():
+		_context.add_row("Edit inside %s, a part at a time" % Assemblies.label(whole), "enter_assembly")
 	for item: String in shell._shown(Shell.ON_A_PART):
 		if item == "-":
 			continue

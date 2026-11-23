@@ -72,6 +72,24 @@ In **Author's steps**, a row of buttons under it changes the step showing: **Ear
 ui:build animation
 -->
 
+### On a phone {#timeline-phone}
+
+![The timeline on a phone, 390 pixels across: the car built to its fourth step, and along the foot the row of steps, the step's parts as pictures with how many of each, its words, and one row of Back, the step's number, Next, Parts and More.](/docs/img/instructions-timeline-phone.webp "On a phone: one row a thumb works, the rest in More.")
+
+On a phone held upright the timeline is one row a thumb can work: **Back**, the step's number, **Next**, **Parts** and **More**, each a fingertip.
+
+- **Swipe** along the bar to turn the page: to the left for the next step, to the right for the one before.
+- Tap the step's number, **Step 12 of 35**, for every step at once, and tap the one to go to.
+- **Parts** shows the parts the step adds as pictures, with how many of each beside them. Tap it again to give the model the room.
+- **More** has the rest: **Play**, **Start** and **End**, the order, **Find…**, **Instructions**, **Done**, and the **Booklet** row.
+- Put the steps away to build and open them again, and they come back to the step you left.
+
+A tablet, and a phone held sideways, keep the whole bar.
+
+<!-- covers
+ui:the steps bar on a phone
+-->
+
 ### The author's steps {#authors-steps}
 
 A model made in Studio, LDCad or LeoCAD keeps its author's own steps: the timeline opens in **Author's steps**, and the booklet follows them. The steps you make with [[E]] are your model's author's steps too.

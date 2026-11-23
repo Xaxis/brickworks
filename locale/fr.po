@@ -17455,3 +17455,32 @@ msgstr "De nouveau sur sa pièce, ici"
 
 msgid "Done with it: folded away here, and kept in its thread in Talk"
 msgstr "Terminé : replié ici, et gardé dans sa discussion dans Talk"
+
+# ux15: a phone's step bar
+msgid "Go to a step"
+msgstr "Aller à une étape"
+
+msgid "Go to a step: every step, to tap one"
+msgstr "Aller à une étape : toutes les étapes, touchez-en une"
+
+msgid "This step's parts as pictures, how many of each beside them"
+msgstr "Les pièces de cette étape en images, combien de chacune à côté"
+
+msgid "Play, Start and End, the order, Find, Instructions, Done and how the booklet prints the step"
+msgstr "Lecture, Début et Fin, l'ordre, Chercher, Instructions, Terminé et comment le livret imprime l'étape"
+
+msgid "%d × %s, %s"
+msgstr "%d × %s, %s"
+
+msgid "Edit a copy"
+msgstr "Modifier une copie"
+
+# ux15: a set's sub-assembly on a phone
+msgid "Edit inside %s, a part at a time"
+msgstr "Modifier dans %s, une pièce à la fois"
+
+msgid "%s selected, %d parts"
+msgstr "%s sélectionné, %d pièces"
+
+msgid "hold, then Edit inside, to change one"
+msgstr "maintenez, puis Modifier dedans, pour en changer une"
