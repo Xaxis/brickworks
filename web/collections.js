@@ -1,5 +1,5 @@
-// The gallery's Collections (W12, supabase/collection_directory.sql), its
-// tab at /collections (web/gallery.html, which switches between its lists,
+// The gallery's Lists (W12, supabase/collection_directory.sql; Collections
+// until lists2a), its tab at /gallery-lists (web/gallery.html, which switches between its lists,
 // web/gallery.js): the public collections anyone may see, the way
 // Printables lists its collections, Rebrickable its MOC lists and Flickr
 // its albums. What was put in last first, or the most followed; searched
@@ -37,10 +37,10 @@ export function collectionsList(page) {
     if (tests) asked.set("tests", "1");
     return asked;
   };
-  /// Page [n]'s address: /de/collections?sort=followed in German.
+  /// Page [n]'s address: /de/gallery-lists?sort=followed in German.
   const addressOf = (n) => {
     const query = question(n).toString();
-    return `${langAt()}/collections${query ? `?${query}` : ""}`;
+    return `${langAt()}/gallery-lists${query ? `?${query}` : ""}`;
   };
 
   function drawOrders() {
@@ -72,8 +72,8 @@ export function collectionsList(page) {
     $("collections-empty").hidden = !none || searching;
     $("nothing").hidden = !none || !searching;
     if (fresh) {
-      $("found").textContent = none ? "" : counted(Number(answer.data?.total) || grid.querySelectorAll(".model").length, "collection");
-      $("found-said").textContent = !searchable && searching ? say("Collections cannot be searched just yet: here are all of them.") : "";
+      $("found").textContent = none ? "" : counted(Number(answer.data?.total) || grid.querySelectorAll(".model").length, "list");
+      $("found-said").textContent = !searchable && searching ? say("Lists cannot be searched just yet: here are all of them.") : "";
     }
     drawOrders();
     document.documentElement.dataset.collections = none ? "none" : "ready";
@@ -88,12 +88,12 @@ export function collectionsList(page) {
 
   return {
     flag: "collections",
-    page: "collections",
-    noun: ["collection", "collections"],
+    page: "gallery-lists",
+    noun: ["list", "lists"],
     tabs: ["collections"],
     tab: () => "collections",
-    title: () => say("Collections — the Brickworks gallery"),
-    search: () => ({ label: say("Search the collections"), placeholder: say("Search collections by name or builder") }),
+    title: () => say("Lists — the Brickworks gallery"),
+    search: () => ({ label: say("Search the lists"), placeholder: say("Search lists by name or builder") }),
     enter(given) {
       order = given.get("sort") === "followed" ? "followed" : "recent";
       drawOrders();

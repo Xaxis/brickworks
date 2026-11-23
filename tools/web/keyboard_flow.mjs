@@ -256,27 +256,32 @@ const JOURNEYS = {
       const back = await until(page, () => document.activeElement?.getAttribute("aria-pressed") === "false", null, 5000);
       check(back, `${label}: Enter again takes the like back`);
     }
-    // Save: its lists, the focus in them; a list ticked; Escape back.
-    if (await tabTo(page, label, '[data-mark="save"]', { most: 5 })) {
+    // Save: the card's control (web/keep.js, lists2a); its arrow opens your
+    // lists, the focus in them; a box ticked; Escape back on the arrow.
+    if (await tabTo(page, label, "#marks .keep [data-keep-more]", { most: 5 })) {
       await page.keyboard.press("Enter");
-      const opened = await until(page, () => !document.getElementById("save-panel")?.hidden
-        && document.activeElement?.closest("#save-panel"), null, 5000);
+      const opened = await until(page, () => document.querySelector("dialog.keep-panel[open]")
+        && document.activeElement?.closest("dialog.keep-panel"), null, 5000);
       const into = await page.evaluate(focusNow);
-      check(opened, `${label}: Enter on Save opens your lists, the focus in them (${into.said})`);
-      if (opened && into.tag === "input") {
+      check(opened, `${label}: Enter on Save's arrow opens your lists, the focus in them (${into.said})`);
+      if (opened) {
+        await page.evaluate(() => document.querySelector("dialog.keep-panel .keep-row input")?.focus());
         const was = await page.evaluate(() => document.activeElement.checked);
         await page.keyboard.press("Space");
-        await until(page, () => (document.querySelector(".marks-said")?.textContent || "").trim(), null, 5000);
+        await until(page, () => (document.querySelector("dialog.keep-panel .said")?.textContent || "").trim(), null, 5000);
         await settle(page);
-        const kept = await page.evaluate(() => ({ focus: document.activeElement?.closest("#save-panel") ? document.activeElement.tagName : "",
-          checked: document.activeElement?.checked, said: document.querySelector(".marks-said")?.textContent || "" }));
-        check(kept.focus === "INPUT" && kept.checked === !was && /Saved|Out of/.test(kept.said),
-          `${label}: Space ${was ? "unticks" : "ticks"} a list, the focus stays on it, and the page says "${kept.said}"`);
+        const kept = await page.evaluate(() => ({ focus: document.activeElement?.closest("dialog.keep-panel") ? document.activeElement.tagName : "",
+          checked: document.activeElement?.checked, said: document.querySelector("dialog.keep-panel .said")?.textContent || "" }));
+        check(kept.focus === "INPUT" && kept.checked === !was && kept.said.trim().length > 0,
+          `${label}: Space ${was ? "unticks" : "ticks"} Saved, the focus stays on it, and the panel says "${kept.said}"`);
+        // Back as it was, so the next check finds the model as it was.
+        await page.keyboard.press("Space");
+        await settle(page);
       }
       await page.keyboard.press("Escape");
-      const closed = await until(page, () => document.getElementById("save-panel")?.hidden
-        && document.activeElement?.matches('[data-mark="save"]'), null, 3000);
-      check(closed, `${label}: Escape closes the lists, back on Save (${(await page.evaluate(focusNow)).said})`);
+      const closed = await until(page, () => !document.querySelector("dialog.keep-panel[open]")
+        && document.activeElement?.matches("[data-keep-more]"), null, 3000);
+      check(closed, `${label}: Escape closes your lists, back on Save's arrow (${(await page.evaluate(focusNow)).said})`);
     }
     // Share: its sheet (docs/SOCIAL.md U14), by the keyboard alone: Enter
     // opens it on the link, selected; Tab to Copy link and Enter, said by

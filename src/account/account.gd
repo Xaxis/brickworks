@@ -172,6 +172,36 @@ func _ready() -> void:
 		_load()
 		refused = _read_refused()
 	boot()
+	if keeps and OS.has_feature("web"):
+		var looking := Timer.new()
+		looking.wait_time = LOOK_ELSEWHERE_S
+		looking.timeout.connect(_look_elsewhere)
+		add_child(looking)
+		looking.start()
+
+
+## How often a tab signed out looks for a sign-in made in another of this
+## site's tabs, in seconds.
+const LOOK_ELSEWHERE_S := 1.5
+
+
+## Signed out in a browser tab, a sign-in made in another tab of this site
+## (the model's page, /profile, another studio tab) is taken up here: its
+## session is kept where every tab keeps it, so this tab renews it as at
+## start and the sign-in screen goes, with what it was waiting on carried
+## on (a stranger's Open in Brickworks, signed in on the model's page in a
+## second tab: firstminute, 2026-11-23). Before, the screen stayed until
+## the tab was reloaded. A device told accounts are for 13 and over is left
+## as it is.
+func _look_elsewhere() -> void:
+	if state != State.SIGNED_OUT or refused or not _refresh.is_empty():
+		return
+	var kept: Dictionary = _read()
+	if str(kept.get("refresh_token", "")).is_empty() or str(kept.get("email", "")).is_empty():
+		return
+	_load()
+	ended = ""
+	boot()
 
 
 func signed_in() -> bool:

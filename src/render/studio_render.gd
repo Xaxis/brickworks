@@ -160,6 +160,20 @@ const PRODUCT_BATCH := 1.0
 const PRODUCT_HANDLING := 0.0
 const PRODUCT_STUDS := 1.0
 const PRODUCT_PLAY := 1.0
+## Handled wear gathered where fingers and stacking touch (photoreal9,
+## RenderSettings.rubbed). 0 unless asked: in four pools beside the
+## photographs it lifted the close-ups by 0.025 on the mean, within the
+## judge's noise (the black 2x4 every time, the grey 1x3 down every time),
+## and the sets not at all (docs/RENDERING.md 5m).
+const PRODUCT_RUBBED := 0.0
+## The stage matched to the photographs by measure (photoreal10,
+## docs/RENDERING.md 5n), each 0 unless asked until judged: the table's own
+## relief (RenderSettings.table), the light falling off across it
+## (table_light, the model's radii) and the shade's fill tinted as daylight
+## (fill).
+const PRODUCT_TABLE := 0.0
+const PRODUCT_TABLE_LIGHT := 0.0
+const PRODUCT_FILL := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2619,6 +2633,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
+	_tracer.marked = _tracer.product and (_own(settings.rubbed, PRODUCT_RUBBED) > 0.0
+		or not _matched(settings).is_empty())
 	# The product look's picture has the samples' grain taken out
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.
@@ -3022,7 +3038,46 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([_own(settings.batch, PRODUCT_BATCH) if worn else 0.0,
 		_own(settings.handling, PRODUCT_HANDLING) if worn else 0.0,
 		_own(settings.studs, PRODUCT_STUDS) if worn else 0.0, 0.0])
+	# The wear hands leave (photoreal9).
+	data.append_array([_own(settings.rubbed, PRODUCT_RUBBED) if worn else 0.0, 0.0, 0.0, 0.0])
+	# The stage matched to the photographs (photoreal10), read only by the
+	# shader's marks version.
+	var matched: Dictionary = _matched(settings) if worn else {}
+	var key_way: Vector3 = _stage_key_way(settings)
+	data.append_array([float(matched.get("table", 0.0)), float(matched.get("table_light", 0.0)),
+		maxf(_bounds.size.length() * 0.5, 10.0), float(matched.get("fill", 0.0))])
+	data.append_array([key_way.x, key_way.y, key_way.z, 0.0])
 	return data
+
+
+## The stage matched to the photographs by measure (photoreal10) that
+## [param settings] ask for, each lever above 0 by name: {} draws none, and
+## the picture is then traced by the shader's plain version. A leather's or
+## a stone's surface (RenderSettings.surface 2 or 3) is drawn only with a
+## table's relief; without one it is a paper's fibres, as before.
+func _matched(settings: RenderSettings) -> Dictionary:
+	var out: Dictionary = {}
+	if settings.look != "product":
+		return out
+	for pair: Array in [["table", settings.table, PRODUCT_TABLE],
+			["table_light", settings.table_light, PRODUCT_TABLE_LIGHT],
+			["fill", settings.fill, PRODUCT_FILL]]:
+		var value: float = _own(float(pair[1]), float(pair[2]))
+		if value > 0.0:
+			out[pair[0]] = value
+	return out
+
+
+## Which way the staged key stands from the model (_stage_key's), for the
+## light that falls off across a table (photoreal10).
+func _stage_key_way(settings: RenderSettings) -> Vector3:
+	var toward: Vector3 = _lights[0].get_meta("toward", Vector3.UP) if not _lights.is_empty() \
+		else Vector3.UP
+	var flat := Vector3(toward.x, 0.0, toward.z)
+	if flat.length() < 0.01:
+		flat = Vector3(0.0, 0.0, 1.0)
+	var rise: float = deg_to_rad(_own(settings.key_rise, STAGE_KEY_RISE))
+	return (flat.normalized() * cos(rise) + Vector3.UP * sin(rise)).normalized()
 
 
 ## A product look's setting, or the look's own where none is asked (below 0).
@@ -3135,13 +3190,7 @@ func _read_surface(path: String, read: Dictionary) -> void:
 func _stage_key(settings: RenderSettings) -> Array:
 	var radius: float = maxf(_bounds.size.length() * 0.5, 10.0)
 	var centre: Vector3 = _bounds.get_center()
-	var toward: Vector3 = _lights[0].get_meta("toward", Vector3.UP) if not _lights.is_empty() \
-		else Vector3.UP
-	var flat := Vector3(toward.x, 0.0, toward.z)
-	if flat.length() < 0.01:
-		flat = Vector3(0.0, 0.0, 1.0)
-	var rise: float = deg_to_rad(_own(settings.key_rise, STAGE_KEY_RISE))
-	var way: Vector3 = (flat.normalized() * cos(rise) + Vector3.UP * sin(rise)).normalized()
+	var way: Vector3 = _stage_key_way(settings)
 	var far: float = _own(settings.key_far, STAGE_KEY_FAR) * radius
 	var size: float = _own(settings.key_size, STAGE_KEY_SIZE) * radius
 	var tint: Color = _paper_tint(settings) if _tented(settings) else Color(1, 1, 1)

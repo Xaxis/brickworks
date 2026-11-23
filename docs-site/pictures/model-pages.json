@@ -24,195 +24,6 @@
    ]
   },
   {
-   "id": "model-share",
-   "source": "site",
-   "route": "/m/DocsSprt01",
-   "viewport": [
-    1280,
-    860
-   ],
-   "themes": [
-    "dark",
-    "light"
-   ],
-   "use": [
-    "test-account"
-   ],
-   "steps": [
-    {
-     "click": "[aria-controls=\"share-sheet\"]"
-    },
-    {
-     "wait": "#share-sheet"
-    }
-   ],
-   "crop": "#share-sheet",
-   "pad": 12,
-   "alt": "The Share sheet of a model's page: its link with Copy link, Post it to Reddit, Bluesky, Pinterest, X, Facebook and Email, and Embed it in a page with Copy code.",
-   "caption": "Share, on a model's page.",
-   "features": [
-    "ui:model page action bar"
-   ]
-  },
-  {
-   "id": "build-it",
-   "source": "app",
-   "view": "DocsSprt01",
-   "answers": {
-    "fetch": {
-     "code": 200,
-     "body": {
-      "id": "DocsSprt01",
-      "name": "Sports car and its driver",
-      "author": "Test builder",
-      "parts": 187,
-      "url": "https://brickworks.diy/m/DocsSprt01"
-     },
-     "model_file": "res://models/sports_car.ldr"
-    }
-   },
-   "setup": [
-    {
-     "call": "_enter_build",
-     "after": 60
-    },
-    {
-     "click": "_build_mode._one_part",
-     "after": 20
-    },
-    {
-     "call": "_build_go",
-     "args": [
-      19,
-      false,
-      3
-     ],
-     "after": 60
-    }
-   ],
-   "crop": "window",
-   "width": 1000,
-   "alt": "Build it a part at a time: the model built so far, faded, with the next part outlined in its colours, and under it the part's picture with 3 of 8 in this step, its name, One part chosen over Whole step, and Back and Next.",
-   "caption": "Build it, One part.",
-   "features": [
-    "ui:build it step player"
-   ]
-  },
-  {
-   "id": "parts-missing",
-   "source": "site",
-   "route": "/m/DocsSprt01",
-   "viewport": [
-    1280,
-    860
-   ],
-   "themes": [
-    "dark",
-    "light"
-   ],
-   "use": [
-    "test-account",
-    "signed-in",
-    "owned"
-   ],
-   "steps": [
-    {
-     "scroll": "#parts"
-    },
-    {
-     "wait": ".parts-mine .segmented:not([hidden])"
-    },
-    {
-     "click": ".parts-mine [data-show=\"missing\"]"
-    },
-    {
-     "wait": ".parts-shops.missing:not([hidden])"
-    }
-   ],
-   "crop": [
-    "#parts-h",
-    "#parts .lot-list li.lot >> nth=3"
-   ],
-   "pad": 12,
-   "alt": "A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO® Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.",
-   "caption": "What you're missing, on a model's Parts tab.",
-   "features": [
-    "ui:a model's parts and its download"
-   ]
-  },
-  {
-   "id": "parts-missing-phone",
-   "source": "site",
-   "route": "/m/DocsSprt01",
-   "viewport": [
-    390,
-    844
-   ],
-   "themes": [
-    "dark",
-    "light"
-   ],
-   "use": [
-    "test-account",
-    "signed-in",
-    "owned"
-   ],
-   "phone": true,
-   "steps": [
-    {
-     "scroll": "#parts"
-    },
-    {
-     "wait": ".parts-mine .segmented:not([hidden])"
-    },
-    {
-     "click": ".parts-mine [data-show=\"missing\"]"
-    },
-    {
-     "wait": ".parts-shops.missing:not([hidden])"
-    }
-   ],
-   "crop": [
-    "#parts-h",
-    "#parts .lot-list li.lot >> nth=1"
-   ],
-   "pad": 8,
-   "alt": "What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.",
-   "caption": "What you're missing, on a phone.",
-   "features": [
-    "ui:a model's parts and its download"
-   ]
-  },
-  {
-   "id": "model-alt-build",
-   "source": "site",
-   "route": "/m/DocsRock01",
-   "viewport": [
-    1280,
-    860
-   ],
-   "themes": [
-    "dark",
-    "light"
-   ],
-   "use": [
-    "test-account",
-    "alts"
-   ],
-   "wait": "#alt-build",
-   "crop": [
-    ".side h1",
-    "#alt-build"
-   ],
-   "pad": 12,
-   "alt": "Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.",
-   "caption": "Built from three sets, as counted when it was published.",
-   "features": [
-    "ui:shared model page and card",
-    "lib:alternate builds counted"
-   ]
-  },
-  {
    "id": "comments-on-parts",
    "source": "site",
    "route": "/m/DocsSprt01",
@@ -389,6 +200,230 @@
    "features": [
     "ui:comment on a part in 3D",
     "lib:comments pinned to parts"
+   ]
+  },
+  {
+   "id": "model-share",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#share-sheet"
+    }
+   ],
+   "crop": "#share-sheet",
+   "pad": 12,
+   "alt": "The Share sheet of a model's page: its link with Copy link, Post it to Reddit, Bluesky, Pinterest, X, Facebook and Email, and Embed it in a page with Copy code.",
+   "caption": "Share, on a model's page.",
+   "features": [
+    "ui:model page action bar"
+   ]
+  },
+  {
+   "id": "model-log",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    1600
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": ".earlier.log img",
+   "db": {
+    "rest/v1/share_versions?model=eq.DocsSprt01": [
+     {
+      "n": 3,
+      "at": "2026-11-02T18:10:00Z",
+      "note": "The roof, and the driver in his seat.",
+      "parts": 187,
+      "steps": 35,
+      "bytes": 21879,
+      "has_image": true,
+      "has_thumb": true,
+      "first_changed": 33,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 43,
+      "changes": {
+       "added": [
+        {
+         "part": "3069b",
+         "colour": 4,
+         "count": 6
+        },
+        {
+         "part": "3626c",
+         "colour": 14,
+         "count": 1
+        }
+       ],
+       "removed": [],
+       "added_count": 7,
+       "removed_count": 0,
+       "added_in": [
+        34
+       ],
+       "removed_from": [],
+       "steps_added": [
+        34
+       ],
+       "steps_removed": [],
+       "steps_changed": [
+        34
+       ],
+       "first": 34,
+       "compared": true,
+       "parts": 187,
+       "steps": 35
+      }
+     },
+     {
+      "n": 2,
+      "at": "2026-10-31T16:40:00Z",
+      "note": "Doors that open, on 2 x 2 hinge bricks one plate lower.",
+      "parts": 168,
+      "steps": 32,
+      "bytes": 19810,
+      "has_image": true,
+      "has_thumb": true,
+      "first_changed": 21,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 42,
+      "changes": {
+       "added": [
+        {
+         "part": "3937",
+         "colour": 4,
+         "count": 4
+        },
+        {
+         "part": "3938",
+         "colour": 4,
+         "count": 4
+        }
+       ],
+       "removed": [],
+       "added_count": 8,
+       "removed_count": 0,
+       "added_in": [
+        21
+       ],
+       "removed_from": [],
+       "steps_added": [
+        21
+       ],
+       "steps_removed": [],
+       "steps_changed": [
+        21
+       ],
+       "first": 21,
+       "compared": true,
+       "parts": 168,
+       "steps": 32
+      }
+     },
+     {
+      "n": 1,
+      "at": "2026-10-30T10:00:00Z",
+      "note": null,
+      "parts": 160,
+      "steps": 30,
+      "bytes": 18800,
+      "has_image": true,
+      "has_thumb": true,
+      "changes": null,
+      "first_changed": null,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 41
+     }
+    ]
+   },
+   "answers": {
+    "/m/DocsSprt01/v/": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    }
+   },
+   "steps": [
+    {
+     "scroll": "#versions"
+    }
+   ],
+   "crop": "#versions",
+   "pad": 12,
+   "alt": "A model's Log while it is being built: the Work in progress mark and what it means, what changed in version 3 and its note, then every version newest first, each with its picture, its date, what changed and its note, versions marked Work in progress.",
+   "caption": "The Log of a model shared as work in progress.",
+   "features": [
+    "ui:a model's log",
+    "lib:versions of a shared model"
+   ]
+  },
+  {
+   "id": "build-it",
+   "source": "app",
+   "view": "DocsSprt01",
+   "answers": {
+    "fetch": {
+     "code": 200,
+     "body": {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "parts": 187,
+      "url": "https://brickworks.diy/m/DocsSprt01"
+     },
+     "model_file": "res://models/sports_car.ldr"
+    }
+   },
+   "setup": [
+    {
+     "call": "_enter_build",
+     "after": 60
+    },
+    {
+     "click": "_build_mode._one_part",
+     "after": 20
+    },
+    {
+     "call": "_build_go",
+     "args": [
+      19,
+      false,
+      3
+     ],
+     "after": 60
+    }
+   ],
+   "crop": "window",
+   "width": 1000,
+   "alt": "Build it a part at a time: the model built so far, faded, with the next part outlined in its colours, and under it the part's picture with 3 of 8 in this step, its name, One part chosen over Whole step, and Back and Next.",
+   "caption": "Build it, One part.",
+   "features": [
+    "ui:build it step player"
    ]
   },
   {
@@ -916,6 +951,120 @@
    "caption": "Show your build, on the last step.",
    "features": [
     "ui:show your build"
+   ]
+  },
+  {
+   "id": "parts-missing",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=3"
+   ],
+   "pad": 12,
+   "alt": "A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO® Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.",
+   "caption": "What you're missing, on a model's Parts tab.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
+  },
+  {
+   "id": "parts-missing-phone",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=1"
+   ],
+   "pad": 8,
+   "alt": "What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.",
+   "caption": "What you're missing, on a phone.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
+  },
+  {
+   "id": "model-alt-build",
+   "source": "site",
+   "route": "/m/DocsRock01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "alts"
+   ],
+   "wait": "#alt-build",
+   "crop": [
+    ".side h1",
+    "#alt-build"
+   ],
+   "pad": 12,
+   "alt": "Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.",
+   "caption": "Built from three sets, as counted when it was published.",
+   "features": [
+    "ui:shared model page and card",
+    "lib:alternate builds counted"
    ]
   }
  ]

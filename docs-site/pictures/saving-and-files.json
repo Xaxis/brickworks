@@ -36,7 +36,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "File › Open… as a menu: From a file on this computer, From the library, and Rename or delete saved models at the top; then three saved models, newest first, each with its count of bricks and when it was saved; then the examples.",
+   "alt": "File › Open… as a menu: From a file, From the library, and Rename or delete saved models at the top; then three saved models, newest first, each with its count of bricks and when it was saved; then the examples.",
    "caption": "File › Open… (Ctrl+O): your saved models, newest first, then the examples.",
    "features": [
     "lib:save and reopen",

@@ -586,8 +586,8 @@ msgstr "Transformer un modèle 3D en briques…"
 msgid "Reference picture…"
 msgstr "Image de référence…"
 
-msgid "Hose, tube or chain…"
-msgstr "Tuyau, tube ou chaîne…"
+msgid "Cable, hose or chain…"
+msgstr "Câble, tuyau ou chaîne…"
 
 msgid "Reshape the hose or chain"
 msgstr "Remodeler le tuyau ou la chaîne"
@@ -741,8 +741,8 @@ msgstr "Commencer un nouveau modèle dans son propre onglet"
 msgid "Reopen a saved model, an example, or a file from this computer"
 msgstr "Rouvrir un modèle enregistré, un exemple ou un fichier de cet ordinateur"
 
-msgid "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
-msgstr "L'un des modèles LDraw de vrais sets, ou un modèle partagé par la communauté, ouvert dans une nouvelle fenêtre"
+msgid "Any of LDraw's models of real sets, or a model shared in the gallery, opened in a new window"
+msgstr "L'un des modèles LDraw de vrais sets, ou un modèle partagé dans la galerie, ouvert dans une nouvelle fenêtre"
 
 msgid "The sets and parts you own: from Rebrickable, BrickLink, or typed in"
 msgstr "Les sets et les pièces que vous possédez : depuis Rebrickable, BrickLink, ou saisis à la main"
@@ -948,8 +948,8 @@ msgstr "Retirer l'étape où en est la chronologie ; ses pièces rejoignent l'�
 msgid "The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered"
 msgstr "Les mouvements propres du modèle, Ouvrir les portes ou Lever la flèche : joués, enregistrés en faisant glisser les pièces, et rendus"
 
-msgid "Building instructions for this model, step by step"
-msgstr "Les instructions de montage de ce modèle, étape par étape"
+msgid "Building instructions for this model, step by step, to print or to save as a PDF"
+msgstr "Les instructions de montage de ce modèle, étape par étape, à imprimer ou à enregistrer en PDF"
 
 msgid "The model turned 45 degrees for this step's picture, and the steps after it"
 msgstr "Le modèle tourné de 45 degrés pour l'image de cette étape et des suivantes"
@@ -1047,8 +1047,8 @@ msgstr "Importer un modèle OBJ, STL, PLY, 3MF, VOX, FBX ou glTF — une sculptu
 msgid "A photo, plan or drawing laid on the floor or stood behind the model, to build over"
 msgstr "Une photo, un plan ou un dessin posé au sol ou dressé derrière le modèle, pour construire dessus"
 
-msgid "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
-msgstr "Poser un tuyau, un tube, une ficelle ou une chaîne d'un connecteur à un autre, le long d'une courbe"
+msgid "Lay a motor's cable or a wire, a hose, a tube, a string or a chain from one connector to another, along a curve"
+msgstr "Poser le câble d'un moteur ou un fil, un tuyau, un tube, une ficelle ou une chaîne d'un connecteur à un autre, le long d'une courbe"
 
 msgid "Drag the selected hose's bend, or put its chain round other sprockets"
 msgstr "Faire glisser la courbe du tuyau sélectionné, ou passer sa chaîne sur d'autres pignons"
@@ -3674,11 +3674,11 @@ msgid "%s° between the %s and the %s"
 msgstr "%s° entre %s et %s"
 
 # Opening and saving: File, Open's list, Godot's file dialog, the Library, Save as, Versions, Saved models, the confirmations, Export a 3D model
-msgid "From a file on this computer (LDraw, Studio .io, LDD .lxf)…"
-msgstr "À partir d'un fichier de cet ordinateur (LDraw, Studio .io, LDD .lxf)…"
+msgid "From a file (LDraw, Studio .io, LDD .lxf)…"
+msgstr "À partir d'un fichier (LDraw, Studio .io, LDD .lxf)…"
 
-msgid "From the library: real sets and the community's models…"
-msgstr "Depuis la bibliothèque : de vrais sets et les modèles de la communauté…"
+msgid "From the library: real sets and the gallery's models…"
+msgstr "Depuis la bibliothèque : de vrais sets et les modèles de la galerie…"
 
 msgid "Rename or delete saved models…"
 msgstr "Renommer ou supprimer des modèles enregistrés…"
@@ -3821,11 +3821,11 @@ msgstr "Sets LDraw"
 msgid "Community"
 msgstr "Communauté"
 
-msgid "Search sets by name, set number, theme or designer"
-msgstr "Rechercher des sets par nom, numéro de set, thème ou concepteur"
+msgid "Set number or name, theme, designer"
+msgstr "Numéro ou nom du set, thème, concepteur"
 
-msgid "Search models by name, designer or tag"
-msgstr "Rechercher des modèles par nom, concepteur ou tag"
+msgid "Model name, designer or tag"
+msgstr "Nom du modèle, concepteur ou tag"
 
 msgid "Any theme"
 msgstr "Tous les thèmes"
@@ -3899,8 +3899,8 @@ msgstr "Les plus remixés"
 msgid "Models of real LEGO® sets from LDraw's Official Model Repository, each made by the LDraw member credited and free to use under its licence. Open puts one in a new %s; the model here stays as it is."
 msgstr "Des modèles de vrais sets LEGO® de l'Official Model Repository de LDraw, chacun réalisé par le membre LDraw crédité et libre d'utilisation selon sa licence. Ouvrir en place un dans %s ; le modèle ici reste tel quel."
 
-msgid "Models people built in Brickworks and shared. Open copies one into your models in a new %s, as Open in Brickworks on its page does: credit its designer and keep to its licence."
-msgstr "Des modèles construits dans Brickworks et partagés. Ouvrir en copie un dans vos modèles, dans %s, comme le fait « Ouvrir dans Brickworks » sur sa page : créditez son concepteur et respectez sa licence."
+msgid "Models people built in Brickworks and shared in its gallery. Open copies one into your models in a new %s, as Open in Brickworks on its page does: credit its designer and keep to its licence."
+msgstr "Des modèles construits dans Brickworks et partagés dans sa galerie. Ouvrir en copie un dans vos modèles, dans %s, comme le fait « Ouvrir dans Brickworks » sur sa page : créditez son concepteur et respectez sa licence."
 
 msgid "tab"
 msgstr "un nouvel onglet"
@@ -3944,8 +3944,8 @@ msgstr "Tous thèmes, années et tailles"
 msgid "Any kind and size"
 msgstr "Tous genres et tailles"
 
-msgid "Search Community for %s"
-msgstr "Rechercher %s dans la communauté"
+msgid "Search the gallery for %s"
+msgstr "Rechercher %s dans la galerie"
 
 msgid "Search LDraw sets for %s"
 msgstr "Rechercher %s dans les sets LDraw"
@@ -16010,6 +16010,33 @@ msgstr "Une clé est déjà à %s s : celle-ci reste où elle était."
 msgid "The key at %s s keyed again, under a frame from the time: where the camera stands, what it looks at and its lens."
 msgstr "La clé à %s s posée à nouveau, à moins d’une image du temps : où se tient la caméra, ce qu’elle regarde et son objectif."
 
+msgid "Plan steps"
+msgstr "Planifier les étapes"
+
+msgid "Work the steps out again from the model as it is, in place of these. One undo"
+msgstr "Recalculer les étapes à partir du modèle tel qu'il est, à la place de celles-ci. Une seule annulation"
+
+msgid "these are the steps of the file's author, kept as they made them"
+msgstr "ce sont les étapes de l'auteur du fichier, gardées telles qu'il les a faites"
+
+msgid "the steps are worked out already, from the model as it is"
+msgstr "les étapes sont déjà calculées à partir du modèle tel qu'il est"
+
+msgid "worked the steps out again from the model as it is"
+msgstr "étapes recalculées à partir du modèle tel qu'il est"
+
+msgid "the parts in hand are in no step: put them down, or press Escape, first"
+msgstr "les pièces en main ne sont dans aucune étape : posez-les ou appuyez d’abord sur Échap"
+
+msgid "worked the steps out again from the model as it is: %d of the %d steps with a name, notes or a page of their own share a step with another now, where one name and page stand"
+msgstr "étapes recalculées à partir du modèle tel qu'il est : %d des %d étapes avec un nom, des notes ou une page à elles partagent maintenant une étape avec une autre, où un seul nom et une seule page restent"
+
+msgid "worked the steps out again from the model as it is, each step's name, notes and page with its parts"
+msgstr "étapes recalculées à partir du modèle tel qu'il est, le nom, les notes et la page de chaque étape avec ses pièces"
+
+msgid "%d of the %d steps with a name, notes or a page of their own would share a step with another, where one name and page stand: their notes are kept. One undo brings them back."
+msgstr "%d des %d étapes avec un nom, des notes ou une page à elles partageraient une étape avec une autre, où un seul nom et une seule page restent : leurs notes sont gardées. Une annulation les rétablit."
+
 # Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
 msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
 msgstr "La photo que vous choisissez est envoyée à Brickognize (brickognize.com), un service tiers qui identifie les pièces LEGO®. Selon ses conditions, il peut garder la photo et s’en servir pour entraîner sa reconnaissance, et il est réservé à un usage personnel et non commercial : la licence commerciale de Pro ne le couvre pas.\n\nSeule la photo est envoyée, jamais votre modèle, et rien n’est envoyé avant que vous choisissiez une photo."
@@ -16104,8 +16131,8 @@ msgstr "Tourner la prise"
 msgid "Turn the plug half round on its contacts, so its motor runs the other way"
 msgstr "Tourner la prise d'un demi-tour sur ses contacts, pour que son moteur tourne dans l'autre sens"
 
-msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."
-msgstr "Rien ici n'alimente un moteur, donc Lire le tourne à la main : ajoutez un boîtier à piles ou un hub et posez son câble (Créer, Tuyau, tube ou chaîne…, Câble Power Functions)."
+msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Cable, hose or chain…, Power Functions cable)."
+msgstr "Rien ici n'alimente un moteur, donc Lire le tourne à la main : ajoutez un boîtier à piles ou un hub et posez son câble (Créer, Câble, tuyau ou chaîne…, Câble Power Functions)."
 
 msgid "Stopped at %s going back."
 msgstr "Arrêté à %s en revenant."
@@ -16168,8 +16195,8 @@ msgstr "sa prise (#%d) est %s"
 msgid "its own cable's plug is in nothing, so it turns by hand; put the plug on a box or lay a cable from it to run it by the box"
 msgstr "la prise de son propre câble n'est branchée sur rien, il tourne donc à la main ; branche la prise sur un boîtier ou pose un câble depuis lui pour que le boîtier l'entraîne"
 
-msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Hose, tube or chain…, a cable) to run it by the box"
-msgstr "aucun câble n'est dessiné depuis lui dans le modèle, il tourne donc à la main ; poses-en un de lui à un boîtier (Créer › Tuyau, tube ou chaîne…, un câble) pour que le boîtier l'entraîne"
+msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Cable, hose or chain…, a cable) to run it by the box"
+msgstr "aucun câble n'est dessiné depuis lui dans le modèle, il tourne donc à la main ; poses-en un de lui à un boîtier (Créer › Câble, tuyau ou chaîne…, un câble) pour que le boîtier l'entraîne"
 
 msgid "its cable reaches no battery box, receiver or hub"
 msgstr "son câble n'atteint aucun boîtier à piles, récepteur ou hub"
@@ -16611,3 +16638,369 @@ msgstr "Connecté : appuyez sur Publier pour publier votre photo."
 
 msgid "Sign in to add a photo of your build: we email you a code, no password."
 msgstr "Connectez-vous pour ajouter une photo de votre construction : nous vous envoyons un code par e-mail, sans mot de passe."
+# This week's quick build: the studio's line above a copy of its template, the
+# day to publish it by, and Share's box and its status line (prompts). "%d May" is
+# the comments' own, above.
+
+msgid "This week's quick build: %s"
+msgstr "Construction express de la semaine : %s"
+
+msgid "Publish it by %s to enter."
+msgstr "Publiez-le au plus tard le %s pour participer."
+
+msgid "This week's quick build, %s: “%s” Publish it by %s to enter."
+msgstr "Construction express de la semaine, %s : « %s » Publiez-le au plus tard le %s pour participer."
+
+msgid "%d January"
+msgstr "%d janvier"
+
+msgid "%d February"
+msgstr "%d février"
+
+msgid "%d March"
+msgstr "%d mars"
+
+msgid "%d April"
+msgstr "%d avril"
+
+msgid "%d June"
+msgstr "%d juin"
+
+msgid "%d July"
+msgstr "%d juillet"
+
+msgid "%d August"
+msgstr "%d août"
+
+msgid "%d September"
+msgstr "%d septembre"
+
+msgid "%d October"
+msgstr "%d octobre"
+
+msgid "%d November"
+msgstr "%d novembre"
+
+msgid "%d December"
+msgstr "%d décembre"
+
+msgid "Got it"
+msgstr "Compris"
+
+msgid "Enters this week's quick build: %s"
+msgstr "Participe à la construction express de la semaine : %s"
+
+msgid "Shown in the gallery, it enters this week's quick build"
+msgstr "Publié dans la galerie, il participe à la construction express de la semaine"
+
+msgid "Entered in this week's quick build: %s"
+msgstr "Inscrit à la construction express de la semaine : %s"
+
+msgid "Entered in this week's quick build: %s."
+msgstr "Inscrit à la construction express de la semaine : %s."
+
+msgid "Every entry is at %s."
+msgstr "Toutes les participations sont sur %s."
+
+# The month's challenge in the studio: its line, its rules ticked, Share's Enter (challengestudio)
+msgid "last day"
+msgstr "dernier jour"
+
+msgid "%d days left"
+msgstr "encore %d jours"
+
+msgid "Quick build: %s"
+msgstr "Construction rapide : %s"
+
+msgid "Its rules, ticked on this model"
+msgstr "Ses règles, cochées sur ce modèle"
+
+msgid "This week's quick build"
+msgstr "La construction rapide de la semaine"
+
+msgid "This week's quick build, %s"
+msgstr "La construction rapide de la semaine, %s"
+
+msgid "This month's challenge, %s"
+msgstr "Le défi du mois, %s"
+
+msgid "ends today"
+msgstr "se termine aujourd’hui"
+
+msgid "Show its rules"
+msgstr "Afficher ses règles"
+
+msgid "Hide its rules"
+msgstr "Masquer ses règles"
+
+msgid "Show its brief"
+msgstr "Afficher le thème"
+
+msgid "Hide its brief"
+msgstr "Masquer le thème"
+
+msgid "Hide this line for %s"
+msgstr "Masquer cette ligne pour %s"
+
+msgid "Hide the line for %s"
+msgstr "Masquer la ligne pour %s"
+
+msgid "rule kept"
+msgstr "règle respectée"
+
+msgid "rule not kept yet"
+msgstr "règle pas encore respectée"
+
+msgid "%d of %d rules kept"
+msgstr "%d règles respectées sur %d"
+
+msgid "No rules: publish this copy in the gallery by %s and it is entered."
+msgstr "Aucune règle : publiez cette copie dans la galerie d’ici le %s et elle participe."
+
+msgid "No rules but its theme: publish it in the gallery with your name on it, then Enter in Share."
+msgstr "Pas d’autre règle que le thème : publiez-le dans la galerie avec votre nom, puis Participer dans Partager."
+
+msgid "Test it"
+msgstr "Le tester"
+
+msgid "Run the four tests a publish runs: it stands at every step, every step reachable, every part made in its colour, nothing loose"
+msgstr "Lancer les quatre tests d’une publication : il tient à chaque étape, chaque étape accessible, chaque pièce fabriquée dans sa couleur, rien de lâche"
+
+msgid "Publish to enter"
+msgstr "Publier pour participer"
+
+msgid "Open Share: Enter there publishes and enters it in one press"
+msgstr "Ouvrir Partager : Participer y publie et inscrit le modèle d’une seule pression"
+
+msgid "See the challenge"
+msgstr "Voir le défi"
+
+msgid "Writing “%s” to test it…"
+msgstr "Écriture de « %s » pour le tester…"
+
+msgid "Testing “%s” as a publish would…"
+msgstr "Test de « %s » comme le ferait une publication…"
+
+msgid "At most %s parts"
+msgstr "%s pièces au plus"
+
+msgid "%s of %s parts"
+msgstr "%s pièces sur %s"
+
+msgid "Take %s away: it has %s, and the most is %s."
+msgstr "Retirez %s : il en a %s, et le maximum est %s."
+
+msgid "Only parts from set %s, %s"
+msgstr "Seulement des pièces du set %s, %s"
+
+msgid "Only parts from set %s"
+msgstr "Seulement des pièces du set %s"
+
+msgid "Tested: stands at every step, nothing loose"
+msgstr "Testé : tient à chaque étape, rien de lâche"
+
+msgid "Not tested yet: a publish tests it, or test it now."
+msgstr "Pas encore testé : une publication le teste, ou testez-le maintenant."
+
+msgid "Not shown to stand at every step"
+msgstr "Rien ne montre qu’il tient à chaque étape"
+
+msgid "Not every step shown reachable"
+msgstr "Toutes les étapes ne sont pas montrées accessibles"
+
+msgid "A part is not made in its colour"
+msgstr "Une pièce n’est pas fabriquée dans sa couleur"
+
+msgid "It does not go together"
+msgstr "Il ne s’assemble pas"
+
+msgid "Swap or take away %s."
+msgstr "Remplacez ou retirez %s."
+
+msgid "Swap or take away %s, and 1 lot more."
+msgstr "Remplacez ou retirez %s, et un lot de plus."
+
+msgid "Swap or take away %s, and %d lots more."
+msgstr "Remplacez ou retirez %s, et %d lots de plus."
+
+msgid "%d more %s than the set has"
+msgstr "%d %s de plus que le set n’en a"
+
+msgid "%d %s, which the set has none of"
+msgstr "%d %s, que le set n’a pas du tout"
+
+msgid "colour %d"
+msgstr "couleur %d"
+
+msgid "Lists it in the gallery with your name on it, publishes it and enters it"
+msgstr "Le met dans la galerie avec votre nom, le publie et l’inscrit"
+
+msgid "Built by hand"
+msgstr "Construit à la main"
+
+msgid "Built with the assistant"
+msgstr "Construit avec l’assistant"
+
+msgid "built by hand"
+msgstr "construit à la main"
+
+msgid "built with the assistant"
+msgstr "construit avec l’assistant"
+
+msgid "How it was built: the challenge judges the two apart"
+msgstr "Comment il a été construit : le défi juge les deux à part"
+
+msgid "In %s, %s. Publishing again keeps it in."
+msgstr "Dans %s, %s. Le publier à nouveau le garde inscrit."
+
+msgid "Entering…"
+msgstr "Inscription…"
+
+msgid "Enter %s"
+msgstr "Participer à %s"
+
+msgid "Not yet: %s"
+msgstr "Pas encore : %s"
+
+msgid "Ticking %s's rules on the model…"
+msgstr "Vérification des règles de %s sur le modèle…"
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it."
+msgstr "Participer le met dans la galerie avec votre nom, le publie et l’inscrit."
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it. A publish tests it, as the rules ask."
+msgstr "Participer le met dans la galerie avec votre nom, le publie et l’inscrit. La publication le teste, comme les règles le demandent."
+
+msgid "Say the name to credit under Show who made it: an entry has its designer's name on it."
+msgstr "Indiquez le nom à créditer sous « Montrer qui l’a fait » : une participation porte le nom de son créateur."
+
+msgid "Entered in %s, %s. It is on the challenge's page: %s."
+msgstr "Inscrit à %s, %s. Il est sur la page du défi : %s."
+
+msgid "Entered in %s, %s. It is on the challenge's page."
+msgstr "Inscrit à %s, %s. Il est sur la page du défi."
+
+msgid "It is in %s already."
+msgstr "Il est déjà inscrit à %s."
+
+msgid "Published, not entered: %s"
+msgstr "Publié, non inscrit : %s"
+
+msgid "Brickworks could not enter it just now. Press Enter again in a minute."
+msgstr "Brickworks n’a pas pu l’inscrire pour l’instant. Appuyez à nouveau sur Participer dans une minute."
+# ux12: the app's words made plain where people stumbled
+
+msgid "Cable, hose or chain"
+msgstr "Câble, tuyau ou chaîne"
+
+msgid "Gallery"
+msgstr "Galerie"
+
+msgid "Any of LDraw's models of real sets, or a model shared in the gallery, opened in a new tab"
+msgstr "L'un des modèles LDraw de vrais sets, ou un modèle partagé dans la galerie, ouvert dans un nouvel onglet"
+
+msgid "Search the gallery's models"
+msgstr "Rechercher dans les modèles de la galerie"
+
+msgid "%s ready to put down"
+msgstr "%s prêt à poser"
+
+msgid "fetching %s…"
+msgstr "chargement de %s…"
+
+msgid "picked %s"
+msgstr "%s pris"
+
+msgid "motor's cable outlet or contacts of a box or hub"
+msgstr "sortie de câble d'un moteur ou contacts d'un boîtier ou d'un hub"
+
+msgid "Save the instructions: they open in your browser, to print or save as a PDF"
+msgstr "Enregistrer les instructions : elles s'ouvrent dans votre navigateur, à imprimer ou à enregistrer en PDF"
+
+# ux13: the walks' frictions
+msgid "select, put down"
+msgstr "sélectionner, poser"
+
+msgid "turn; on a part, move it"
+msgstr "tourner ; sur une pièce : la déplacer"
+
+msgid "last part again"
+msgstr "la dernière pièce de nouveau"
+msgid "1 part floats"
+msgstr "1 pièce flotte"
+
+msgid "%d parts float"
+msgstr "%d pièces flottent"
+
+msgid "%s touches nothing: it floats in the air"
+msgstr "%s ne touche rien : elle flotte en l'air"
+
+msgid "%s and the part with it touch nothing else: they float in the air"
+msgstr "%s et la pièce avec elle ne touchent rien d'autre : elles flottent en l'air"
+
+msgid "%s and the %d parts with it touch nothing else: they float in the air"
+msgstr "%s et les %d pièces avec elle ne touchent rien d'autre : elles flottent en l'air"
+
+msgid "%d parts touch nothing and float in the air"
+msgstr "%d pièces ne touchent rien et flottent en l'air"
+
+msgid "%s, selected"
+msgstr "%s, sélectionnée"
+
+msgid "every part near its studs is on them"
+msgstr "chaque pièce proche de ses tenons est dessus"
+
+msgid "%s, selected: move it by hand"
+msgstr "%s, sélectionnée : déplacez-la à la main"
+
+msgid "%s, selected: move them by hand"
+msgstr "%s, sélectionnées : déplacez-les à la main"
+
+msgid "In the air: %s."
+msgstr "En l'air : %s."
+
+msgid "%s: touches nothing, floating in the air"
+msgstr "%s : ne touche rien, flotte en l'air"
+msgid "Set number or name"
+msgstr "Numéro ou nom du set"
+
+msgid "Model name or designer"
+msgstr "Nom du modèle ou concepteur"
+msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
+msgstr "« %s » est un sous-ensemble de ce modèle : sélectionnez-le, et Édition, Dupliquer en pose un autre"
+# Open in Brickworks for a stranger: the model asked for behind the sign-in, and its copy's first acts (firstminute)
+msgid "Sign in to make it yours"
+msgstr "Connectez-vous pour en faire le vôtre"
+
+msgid "“%s” opens as your own copy, saved in your models, to change as you like."
+msgstr "« %s » s’ouvre en copie à vous, enregistrée dans vos modèles, à modifier comme vous voulez."
+
+msgid "“%s” is yours to change:"
+msgstr "« %s » est à vous, à modifier :"
+
+msgid "Recolour a part"
+msgstr "Recolorer une pièce"
+
+msgid "Add a part"
+msgstr "Ajouter une pièce"
+
+msgid "The Paint tool: pick a colour, then click a part to paint it"
+msgstr "L’outil Peinture : choisissez une couleur, puis cliquez sur une pièce pour la peindre"
+
+msgid "The parts: pick one, then click where it goes"
+msgstr "Les pièces : choisissez-en une, puis cliquez là où elle va"
+
+msgid "The timeline: the model step by step, as its booklet builds it"
+msgstr "La chronologie : le modèle étape par étape, comme sa notice le construit"
+
+msgid "Paint: pick a colour, then a part to paint it that colour"
+msgstr "Peinture : choisissez une couleur, puis une pièce à peindre de cette couleur"
+
+msgid "Pick a part, then where it goes on the model"
+msgstr "Choisissez une pièce, puis l’endroit du modèle où elle va"
+
+msgid "“%s” is your copy of it, made a moment ago: opened, not copied again"
+msgstr "« %s » est votre copie, faite à l’instant : ouverte, pas copiée une seconde fois"
+
+msgid "could not save “%s” into your models: File › Save as… keeps it"
+msgstr "impossible d’enregistrer « %s » dans vos modèles : Fichier › Enregistrer sous… le garde"

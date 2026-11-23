@@ -503,6 +503,8 @@ export function cardOf(origin, row) {
     steps: row.steps ?? null, own_steps: row.own_steps === true, technic: row.technic === true,
     // Its newest version passed the app's four tests (supabase/tested.sql).
     tested: row.tested === true,
+    // Still being built, shared as work in progress (supabase/wip.sql).
+    wip: row.wip === true,
     // Who laid its parts, as its app said (supabase/made_with.sql); null
     // where it did not, and its tags say.
     made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null,

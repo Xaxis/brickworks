@@ -17,6 +17,7 @@ const outDir = path.join(wt, "docs-site/pictures/answers");
 const dir = await import(pathToFileURL(path.join(wt, "api/_directory.js")).href);
 const cards = await import(pathToFileURL(path.join(wt, "web/card.js")).href);
 const tested = await import(pathToFileURL(path.join(wt, "api/_tested.js")).href);
+const notices = await import(pathToFileURL(path.join(wt, "api/_notifications.js")).href);
 const fs = await import("node:fs");
 const TB = "d0c5d0c5-d0c5-4d0c-8d0c-d0c5d0c5d0c5";
 const BY = { handle: "test-builder", name: "Test builder" };
@@ -111,9 +112,30 @@ const CHALLENGE = { id: 7, title: "Wheels and tracks", brief: "Build something t
     { way: "hand", label: "Built by hand", entries: [entry("DocsSprt01", "hand", "2026-11-02T10:00:00Z"), entry("DocsKart01", "hand", "2026-11-03T10:00:00Z")] },
     { way: "assistant", label: "Built with the assistant", entries: [entry("DocsRckt01", "assistant", "2026-11-04T10:00:00Z")] },
   ], winners: [] };
+// This week's quick build (api/_prompts.js): the house's template and its
+// two entries, their pictures drawn by tools/prompt_pictures.mjs.
+const HOUSE = { handle: "brickworks", name: "Brickworks" };
+const houseRow = (id, name, parts, at, x = {}) => ({ id, name, author: HOUSE.name, parts, has_image: true, has_thumb: true,
+  listed_at: at, updated_at: at, kind: "town", tags: ["quick-build"], licence: "cc-by-4.0", steps: 1, own_steps: true,
+  technic: false, views: 0, likes: 0, builds: 0, remixes: 0, comments: 0, by: HOUSE, tested: false, made_with: "assistant",
+  moves: [], motions: [], ...x });
+const PROMPT_ROWS = [houseRow("DocsTmpl01", "Habitat: the template", 1, "2026-11-23T00:41:00Z", { made_with: "hand", remixes: 2 }),
+  houseRow("DocsHab001", "Reading nook", 27, "2026-11-23T01:41:00Z"), houseRow("DocsHab002", "Garden shed", 26, "2026-11-23T01:42:00Z")];
+const promptCard = (r) => {
+  const c = dir.cardOf("https://brickworks.diy", r);
+  return { ...c, url: `/m/${r.id}`, image: `/m/${r.id}.png`, thumb: c.thumb.replace("https://brickworks.diy", "") };
+};
+for (const r of PROMPT_ROWS) A[`/m/${r.id}.webp`] = { file: `docs-site/pictures/files/${r.id}.webp` };
+const PROMPT = { id: 21, title: "Habitat", brief: "A home for one minifigure on an 8×8 plate: a room, a nook, a nest, a lair. "
+  + "Keep it within 10 bricks tall, so every habitat of the week stacks into one tower.", starts_on: "2026-11-23",
+  ends_on: "2026-11-29" };
+A["/api/people?op=challenge&id=21"] = { ready: true, challenge: null, prompt: { kind: "prompt", ...PROMPT, ended_on: null,
+  state: "open", test: false, days_said: "23 November 2026 to 29 November 2026", template: promptCard(PROMPT_ROWS[0]),
+  start: "/app?copy=DocsTmpl01", stack: null, makers: 1,
+  entries: PROMPT_ROWS.slice(1).reverse().map((r) => ({ ...promptCard(r), way: "assistant", entered_at: r.listed_at })) } };
 A["/api/people?op=challenge"] = { ready: true, year: true, challenge: CHALLENGE,
   next: { id: 8, title: "Winter lights", brief: "A scene with lights in the windows: a street, a station, a cabin.", starts_on: "2026-12-01", ends_on: "2026-12-31" },
-  past: [] };
+  past: [], prompt_now: { ...PROMPT, page: "https://brickworks.diy/challenge?id=21", start: "/app?copy=DocsTmpl01", entries: 2 } };
 
 // ---- what the database answers a page the server makes (/m/DocsSprt01)
 const D = {};
@@ -177,6 +199,33 @@ S["/api/people?op=profile&handle=test-builder"] = { handle: BY.handle, name: BY.
   levels: levels.map(([track, n, level, of, reached, next]) => ({ track, n, level, of, reached, next })) };
 S["/api/people?op=favourites"] = { page: 1, per_page: 24, more: false, models: [card(byId.DocsShop01), card(byId.DocsOwl001)] };
 S["/api/people?op=following"] = { mine: true, ready: true, following: [] };
+// What keep.js asks of every card and a model's page (api/_mylists.js keeps):
+// Saved, and each list with who sees it, Ideas for later shared by its link
+// (lists2a) so the panel shows all three.
+const LINKED = "DocsList04";
+const seen = (l) => (l.public ? "public" : l.id === LINKED ? "link" : "private");
+const listed = (l) => ({ id: l.id, name: l.name, description: l.description, public: l.public, visibility: seen(l),
+  link: seen(l) === "link" ? `https://brickworks.diy/c/${l.id}?link=DocsLinkKey0000000000a` : null, kind: null,
+  sort: "added", cover: null, down: false, sets: 0, models: l.models.length, count: l.models.length,
+  updated_at: "2026-11-02T10:00:00Z" });
+S["/api/people?op=keeps"] = { signed_in: true, want: null, lists: LISTS.map((l) => listed(l)),
+  sets: {}, models: Object.fromEntries(rows.map((r) => [r.id, { saved: r.id === main.id,
+    lists: LISTS.filter((l) => l.models.includes(r.id)).map((l) => l.id) }])) };
+// Your lists (/lists, api/_mylists.js yourLists): the same lists, and one
+// only you see, Weekend builds, to share (lists2a: Share asks who may open
+// it, Anyone with the link chosen); Small and quick's Add sets answered
+// with what it would add, nothing written (op=import_preview).
+const WEEKEND = { id: "DocsList05", name: "Weekend builds", public: false, models: ["DocsShop01", "DocsHous01", "DocsTree01"],
+  description: null, followers: 0 };
+S["/api/people?op=lists"] = { lists: [...LISTS, WEEKEND].map(listed), owned: { sets: 0, unique: 0, pieces: 0, shown: false },
+  saved: { models: 1 }, profile: { handle: BY.handle } };
+for (const l of [WEEKEND, LISTS[1]]) {
+  S[`/api/people?op=list_items&id=${l.id}`] = { ...listed(l), mine: true, by: { handle: BY.handle, name: BY.name },
+    url: `https://brickworks.diy/c/${l.id}`, total: l.models.length, page: 1, more: false,
+    items: l.models.map((id) => ({ key: `model:${id}`, kind: "model", card: card(byId[id]) })) };
+}
+S["/api/people?op=import_preview"] = { into: LISTS[1].id, matched: ["10497-1", "75192-1", "42115-1"], already: ["6080-1"],
+  missing: ["99999-1"], counts: { matched: 3, already: 1, missing: 1 } };
 S["/api/people?op=alike"] = { handle: BY.handle, name: BY.name, designers: [], yours: true };
 S["/api/people?op=follows&handle=test-builder"] = { handle: BY.handle, ready: true, followers: 6, following: 0, shows: true,
   you_follow: false, mine: true, may: false, why_not: "That is you.", signed_in: true };
@@ -195,6 +244,34 @@ S[`/api/people?op=photos&id=${main.id}`] = { model: main.id, owner: true, photos
 S["/api/orangecheck?op=status"] = { ready: true, did: false, only: false, fresh: false };
 S["/api/oauth?op=connections"] = { connections: [], before: false };
 S["/api/plans?op=feedback"] = { beta: false, reports: [] };
+// Notifications (and the account menu's newest five, its first five), as
+// api/_notifications.js draws them from what the database hands it, on a
+// day of its own (NOW), so a picture never says the day's "2 hours ago";
+// and what the account chose (Settings' grid, Muted models).
+const NOW = Date.parse("2026-11-20T12:00:00Z");
+const ago = (minutes) => new Date(NOW - minutes * 60000).toISOString();
+const MIA = { handle: "mia-builds", name: "Mia" };
+const LEO = { handle: "leo-bricks", name: "Leo" };
+const SAM = { handle: "sam-makes", name: "Sam" };
+const noticeRows = [
+  { kind: "comment", at: ago(12), on: "DocsSprt01", model: "DocsSprt01", comment: 41, by: MIA,
+    said: "The steering really works. My son built it twice." },
+  { kind: "likes", at: ago(40), on: "DocsSprt01", model: "DocsSprt01", likes: 4, day: "2026-11-20" },
+  { kind: "photo", at: ago(95), on: "DocsSprt01", model: "DocsSprt01", photo: "DocsPhoto1", words: "Ours, in blue", yours: true, by: LEO },
+  { kind: "reply", at: ago(150), on: "DocsShop01", model: "DocsShop01", comment: 52, parent: 50, by: SAM,
+    said: "The awning is two slopes, yes." },
+  { kind: "achievement", at: ago(300), track: "designer", level: 3, of: 6, reached: 10 },
+  { kind: "remix", at: ago(420), on: "DocsOwl001", model: "DocsOwlRmx", of: "DocsOwl001", name: "Owl on a branch", of_name: "Barn owl", by: LEO },
+  { kind: "challenge_closing", at: ago(600), challenge: CHALLENGE.id, title: CHALLENGE.title, ends_on: CHALLENGE.ends_on },
+  { kind: "mention", at: ago(900), on: "DocsFire01", model: "DocsFire01", comment: 63, by: MIA, said: "@test-builder how did you hang the ladder?" },
+];
+const noticeModels = Object.fromEntries(["DocsSprt01", "DocsShop01", "DocsOwl001", "DocsFire01"].map((id) => [id,
+  { name: byId[id].name, has_image: true, has_thumb: true, updated_at: byId[id].updated_at }]));
+const drawnNotices = notices.noticeGroups({ rows: noticeRows, models: noticeModels, seen_at: ago(60), read_at: null, reads: {} }, "", NOW);
+S["/api/people?op=notifications"] = { ready: true, kept: true, chosen: true, view: "inbox", ...drawnNotices };
+S["/api/people?op=notification_prefs"] = { ready: true, kinds: notices.KINDS, mailed_as: notices.MAILED_AS,
+  here: notices.KINDS, push: ["reply", "mention", "comment"], email: ["reply", "mention"],
+  muted: [{ model: "DocsBoat01", name: byId.DocsBoat01.name, link: "/m/DocsBoat01", picture: "/m/DocsBoat01.webp" }] };
 const signed = { "$comment": "Signed in as the shared test account (you@example.com), over test-account.json. "
   + "Written by tools/web/docs_world.mjs: change it there.",
   answers: S, storage: { "brickworks.session": { refresh_token: "docs", email: EMAIL, user_id: TB,

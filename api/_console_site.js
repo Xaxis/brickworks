@@ -42,6 +42,8 @@ export const CRONS = [
     + "(written down when it mailed, failed, or once a day)", job: "owner_notify", every: DAY },
   { path: "/api/plans/announce-due", when: "every 15 minutes", what: "Announcements you scheduled whose time came, and the mail "
     + "of those sent to people who asked for news (written down when it did something, or once a day)", job: "announce_due", every: DAY },
+  { path: "/api/share/prompts", when: "41 past each hour", what: "The weekly quick build: each template published, the "
+    + "house's two entries, and a week's stack once it ends (written down each run)", job: "prompts", every: DAY },
   { path: "/api/share/omr", when: "05:37 Mondays", what: "What LDraw's Official Model Repository has that the library has not",
     job: "omr_watch", every: 7 * DAY },
 ];

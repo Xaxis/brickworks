@@ -184,6 +184,21 @@ var _view_version: int = 1
 var _view_newest: int = 1
 var _view_versions: Array = []
 var _copy_started: bool = false
+## Share a build, from the home page's feed (/app?share; homefeed,
+## 2026-11-23): the share panel opens for the model the app comes back
+## with, their last, once it is back and somebody is signed in
+## (_maybe_share). Once a visit.
+var _share_asked: bool = false
+## The model a copy link asked for is on the baseplate, opened at start in
+## place of the example car (_open_asked), and not the person's yet: it is
+## made theirs, saved under its own name, once they are signed in.
+var _asked_open: bool = false
+## The name the copy was saved under in their models, once it is.
+var _copy_made: String = ""
+## Three first things to do with a copy just made (src/ui/first_acts.gd).
+var _first_acts: FirstActs
+## How long a copy another tab made is waited for, its file on its way here.
+const MADE_ELSEWHERE_S := 6.0
 var _first_open_done: bool = false
 var _shared: SharedModels
 ## LDraw's models of real sets (src/net/model_library.gd): the library File,
@@ -471,7 +486,7 @@ var _hidden_colours: PanelContainer:
 ## The HiddenColoursPanel if it has been made, else null (_make_hidden_colours).
 var _hidden_colours_made: PanelContainer = null
 ## Simulate's column, docked beside the model's, and the other panels'
-## that work on the model as it is seen (Motions, Hose, tube or chain…,
+## that work on the model as it is seen (Motions, Cable, hose or chain…,
 ## Colour the hidden parts, Stress's legend): shown while any is open, so
 ## the model's column (and the lens centred on it) is what is left of the
 ## window. Over the model's left edge Simulate's covered half a gear train
@@ -555,6 +570,16 @@ var _full_offer: AccountFullOffer
 var _restore_notice: RestoreNotice
 ## This computer runs the simpler graphics mode, said once (GraphicsMode).
 var _graphics_notice: RestoreNotice
+## This week's quick build, said above the model once a copy of its template
+## is open (_ask_prompt): made the first time there is one to say.
+var _prompt_notice: RestoreNotice
+## The month's challenge open now, or this week's quick build the copy is
+## of, in one line with the other notices, its rules ticked on the model as
+## it is built (ChallengeLine, a Later class): made once the first screen is
+## up (_make_challenge_line), never in the viewer.
+var _challenge_line: Control
+## A probe's own day for the line ("2026-11-23"), else today in UTC.
+var challenge_today_for_probe: String = ""
 ## Something went wrong in the app's own scripts, said above the model with
 ## Report this while the beta is open (bugreport, _on_script_error); made
 ## the first time.
@@ -1153,6 +1178,9 @@ func _tell_page() -> void:
 	JavaScriptBridge.eval("window.brickworksShare = %s" % JSON.stringify({
 		"viewing": _viewing,
 		"copying": _copying,
+		# This week's quick build the copy is of, and what the studio says of it.
+		"prompt": _store.prompt_now(),
+		"prompt_line": _prompt_notice.words() if _prompt_notice != null else "",
 		"read_only": _store.read_only,
 		"keeps": _store.keeps,
 		"panel": _share_panel_made.page_state() if _share_panel_made != null else {},
@@ -1175,6 +1203,11 @@ func _tell_page() -> void:
 		"opened": _view_phases,
 		"parts_open": _inventory_made != null and _inventory_made.is_showing(),
 		"title": _store.title,
+		# Open in Brickworks: the link it came from, the copy made of it, and
+		# its first acts while they are offered
+		# (tools/web/firstminute_flow.mjs).
+		"copied": {"from": _store.remixed_from, "made": _copy_made, "asked_open": _asked_open},
+		"acts": _first_acts.page_state() if _first_acts != null else {},
 	}), true)
 	_lap(laps, "share", lap)
 	_told_laps = laps
@@ -1265,6 +1298,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_hidden_colours.controls_by_name())
 	if _bin != null:
 		named.merge(_bin.controls_by_name())
+	if _first_acts != null:
+		named.merge(_first_acts.controls_by_name())
 	if _elements_made != null:
 		named.merge(_elements.controls_by_name())
 	if _studio_made != null:
@@ -1297,6 +1332,10 @@ func _page_controls() -> Dictionary:
 		named.merge(_error_notice.controls_by_name())
 	if _graphics_notice != null:
 		named.merge(_graphics_notice.controls_by_name())
+	if _prompt_notice != null:
+		named.merge(_prompt_notice.controls_by_name())
+	if _challenge_line != null:
+		named.merge(_challenge_line.call("controls_by_name"))
 	if _brickify_made != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -1961,6 +2000,7 @@ func _ready() -> void:
 	# A build party's code from the link (?party=CODE): its card opens with it.
 	if _party_code_wanted.is_empty() and RegEx.create_from_string("^[A-Za-z0-9]{4}$").search(_argument("--party")) != null:
 		_party_code_wanted = _argument("--party").to_upper()
+	_share_asked = _viewing.is_empty() and _copying.is_empty() and _has_argument("--share")
 	if not _viewing.is_empty():
 		# Before anything reads or writes the visitor's own layout, or a
 		# part the model carries is kept for next time.
@@ -2005,6 +2045,12 @@ func _ready() -> void:
 		# to be, before the sample's autosave can go over it (ModelStore.restore).
 		if not OS.get_cmdline_args().has("--script"):
 			placed = await _store.restore_fetched()
+		# Open in Brickworks (/app?copy=<id>): the model asked for, from the
+		# first frame, never the example car or the model saved last; behind
+		# the sign-in screen for somebody signed out, and made theirs the
+		# moment they are in (_maybe_copy).
+		if not _copying.is_empty():
+			placed = await _open_asked(placed)
 		# A tab or window opened by New tab begins on an empty baseplate,
 		# written at once, so a reload brings it back empty; as does one
 		# the person left empty (ModelStore.left_empty).
@@ -2049,6 +2095,7 @@ func _ready() -> void:
 	if _updater != null:
 		_updater.begin()
 	_maybe_copy()
+	_maybe_share()
 	_maybe_open_library()
 	_maybe_fill_bin()
 	_maybe_join_together()
@@ -2794,7 +2841,14 @@ func _clear_undone() -> Array:
 	# undone, a clear named the model's own after its title, and Save wrote
 	# "0 FILE cf_2_saved_as.ldr" over the file's "0 FILE model.ldr".
 	back.append({"undo": "sectionfiles", "files": _world.section_files.duplicate()})
+	# And the lines its file carried that it does not read (BrickWorld
+	# .kept_lines): undone without them, the next whole write lost them.
+	back.append({"undo": "keptlines", "lines": _world.kept_lines})
 	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
+	# And whether its steps are the app's own saved ones (BrickWorld.steps_own):
+	# undone without it, the steps came back the person's, and Save wrote
+	# AUTHORED_STEPS into a file that had none (copyfaults clear_lit).
+	back.append({"undo": "stepsown", "own": _world.steps_own})
 	for unit: String in _world.unit_steps:
 		var step: int = int(_world.unit_steps[unit])
 		back.append({"undo": "unitstep", "unit": unit, "step": step, "kept": step == -1})
@@ -2928,6 +2982,7 @@ func _on_account_changed() -> void:
 		return
 	_look_for_pins()
 	_maybe_copy()
+	_maybe_share()
 	_maybe_join_together()
 	_tell_connector_who()
 
@@ -2985,6 +3040,39 @@ func _tell_connector_who() -> void:
 			_connector_made.stop()
 		# Whose connections they were is nobody's business here now.
 		_connector_made.refresh_connections()
+
+
+## How long after start the challenge's line is made and asked for.
+const CHALLENGE_LINE_AFTER := 2.5
+
+
+## The challenge's line (ChallengeLine), with the model's other notices: the
+## month's challenge open now or this week's quick build, its rules ticked
+## on the model; Publish to enter on it opens Share. Not in the viewer,
+## which has no model of its own to enter.
+func _make_challenge_line() -> void:
+	if _challenge_line != null or not _viewing.is_empty() or _notices == null or not _built:
+		return
+	# A probe's or a check's run (Outside.held) is never told the real
+	# month's challenge, which would be over the model in every one of its
+	# pictures while one is open: only a probe's own SharedModels is asked.
+	if Outside.held() and _shared.get_script() == SharedModels:
+		return
+	_challenge_line = Later.make(&"ChallengeLine")
+	_challenge_line.set("store", _store)
+	_challenge_line.set("library", _library)
+	_challenge_line.set("shared", _shared)
+	_challenge_line.set("account", _account)
+	_challenge_line.set("open_share", _share_wanted)
+	_challenge_line.set("prompt_notice", _prompt_notice)
+	_challenge_line.set("today_for_probe", challenge_today_for_probe)
+	if _phone != null:
+		_challenge_line.set("for_a_finger", _for_a_finger)
+	_challenge_line.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_challenge_line)
+	if _share_panel_made != null:
+		_share_panel_made.set("challenge_line", _challenge_line)
+	_challenge_line.call("ask")
 
 
 ## File › Share…: the panel that publishes this model as the signed-in
@@ -3739,11 +3827,17 @@ func _view_address() -> String:
 		+ ("?motion=" + _viewing_motion.uri_encode() if not _viewing_motion.is_empty() else "")
 
 
+## Where the viewer's ways out go: the whole window, also when the viewer
+## is the studio in a post of the home page's feed (web/landing.js tryHere),
+## a frame that only the site's own pages may make (deploy.sh app_closed).
+const WHOLE_WINDOW := "(window.top || window).location.assign(%s)"
+
+
 ## The newest version, from an older one: the link's own viewer.
 func _open_newest() -> void:
 	var address: String = "/app?view=" + _viewing
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
+		JavaScriptBridge.eval(WHOLE_WINDOW % JSON.stringify(address), true)
 	else:
 		Outside.open_link(SharedModels.link_for(_viewing))
 
@@ -3755,7 +3849,7 @@ func _open_copy() -> void:
 	var address: String = "/app?copy=" + _viewing \
 		+ ("&v=%d" % _view_version if _view_version < _view_newest else "")
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
+		JavaScriptBridge.eval(WHOLE_WINDOW % JSON.stringify(address), true)
 	else:
 		Outside.open_link(Deployment.api_base() + address)
 
@@ -4506,6 +4600,18 @@ func _set_address(path: String) -> void:
 	JavaScriptBridge.eval("history.replaceState(%s, '', %s)" % [mark, to], true)
 
 
+## The share panel, asked for by the address (/app?share, _share_asked):
+## once the model is back and the account lets them in, and the address
+## put back to /app, so a reload does not ask again.
+func _maybe_share() -> void:
+	if not _share_asked or not _first_open_done or _account == null or not _account.lets_in():
+		return
+	_share_asked = false
+	_set_address("")
+	if _share_panel_made == null or not _share_panel_made.visible:
+		_share_wanted()
+
+
 ## Copy a shared model into this person's own models (/app?copy=<id>): once
 ## they are signed in and whatever was on the baseplate is back. That is
 ## kept first if it was not saved, so following a link never loses work.
@@ -4513,45 +4619,246 @@ func _set_address(path: String) -> void:
 ## no link: it is theirs to change and to share as their own. It does know
 ## which link it came from (ModelStore.remixed_from), so when they share
 ## it, its page says what it was remixed from.
+##
+## The model asked for is on the baseplate already when this tab opened it
+## at start (_open_asked): a stranger saw it behind the sign-in screen, and
+## it is saved as theirs the moment they are in, nothing fetched again. A
+## copy of the same link made a moment ago on this device (a reload after
+## it, a second tab, the button pressed twice) is opened, never made again
+## (AskedCopy). Saved, it is framed, and three first things to do with it
+## are offered once (FirstActs).
 func _maybe_copy() -> void:
 	if _copying.is_empty() or _copy_started or not _first_open_done \
 			or _account == null or not _account.lets_in():
 		return
 	_copy_started = true
-	_bar.say("copying the shared model…")
-	var answer: Dictionary = await _shared.fetch(_copying, _viewing_version)
-	_set_address("")
-	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
-		_bar.say("could not copy it: " + SharedModels.trouble(answer, "Brickworks did not answer"))
+	var person: String = _person()
+	if await _open_made(person):
 		return
-	var shared: Dictionary = answer["body"]
-	var name: String = str(shared.get("name", "Shared model"))
-	if not _sample_untouched and _store.has_unsaved_work():
-		_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
-			else "Untitled"))
-	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
-	if not str(result["error"]).is_empty():
-		_bar.say("could not open that model: %s" % result["error"])
-		return
-	_store.share_id = ""
-	_store.remixed_from = _copying
-	# And which version of it: what its page says the copy was made of.
-	_store.remixed_from_version = maxi(int(shared.get("version", 0)), 0)
-	# Its designer and licence, shown in Properties (Inspector).
-	_store.credit = SharedModels.credit_of(shared, _copying)
-	_bar.opened.emit(int(result["placed"]))
+	var name: String = _store.title
+	if not _asked_open:
+		_bar.say("copying the shared model…")
+		var answer: Dictionary = await _shared.fetch(_copying, _viewing_version)
+		if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
+			_set_address("")
+			_bar.say("could not copy it: " + SharedModels.trouble(answer, "Brickworks did not answer"))
+			return
+		var shared: Dictionary = answer["body"]
+		name = str(shared.get("name", "Shared model"))
+		if not _sample_untouched and _store.has_unsaved_work():
+			_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
+				else "Untitled"))
+		var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
+		if not str(result["error"]).is_empty():
+			_set_address("")
+			_bar.say("could not open that model: %s" % result["error"])
+			return
+		_credit_copy(shared)
+		AskedCopy.mark_shown(_copying)
+		_bar.opened.emit(int(result["placed"]))
+	# This week's quick build, when the link is its template: asked once the
+	# copy is open and never waited on, so the copy opens as quickly as any.
+	_ask_prompt(_copying)
 	var since: int = Time.get_ticks_msec()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
 		_bar.say("copying “%s” — %d parts on their way…" % [name, _store.awaited.size()])
 		await get_tree().create_timer(0.3).timeout
 	if not _store.awaited.is_empty():
+		# The address and this tab's mark are kept: a reload finishes it.
 		_bar.say("“%s” is open, but %d parts did not arrive: save it once they have" % [
 			name, _store.awaited.size()])
 		return
+	# Made meanwhile in another tab on the same link (two tabs let in by one
+	# sign-in): that one, not a second.
+	if await _open_made(person):
+		return
 	var kept: String = _store.unused_name(name)
-	_store.save_as(kept)
+	if not _store.save_as(kept):
+		_bar.say("could not save “%s” into your models: File › Save as… keeps it" % kept)
+		return
+	_asked_open = false
+	_copy_made = kept
+	AskedCopy.mark_made(_copying, person, kept)
+	# Framed whole now that every part is down: framed at the start, a model
+	# whose parts were still on their way was framed small.
+	_camera.frame(_built_bounds())
+	if _offer != null:
+		_offer.visible = false
 	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was; %s"
 		% [kept, ModelBar.credit_words(_store.credit)])
+	await _offer_first_acts(kept, person)
+
+
+## The first acts on [param person]'s copy [param kept], offered once the
+## sign-in screen has gone (a new account's age question and welcome come
+## after the code), so nothing pressed there puts it away. The link stays in
+## the address till then: a reload behind the age question opens the copy
+## made (_open_made) and still offers them, where with the address gone it
+## came back as a model with nothing to say what to do with it, the
+## assistant's offer in their place (fmfin, 2026-11-23). Offered to a person
+## once ever on this device (FirstActs.offer).
+func _offer_first_acts(kept: String, person: String) -> void:
+	while _gated():
+		await get_tree().create_timer(0.25).timeout
+	_set_address("")
+	if _store.title == kept:
+		_first_acts.offer(kept, person)
+
+
+## A copy of the link [param person] made a moment ago on this device,
+## opened in place of making another: true when there is one. The working
+## model is kept first if it is work of the person's own, as a copy's open
+## keeps it.
+func _open_made(person: String) -> bool:
+	var made: String = AskedCopy.made(_copying, person)
+	if made.is_empty():
+		return false
+	# Made in another tab, its file reaches this tab's user:// a moment after
+	# that tab stored it (src/boot/shell.html copies other tabs' writes in).
+	var waited: float = 0.0
+	while not FileAccess.file_exists(ModelStore.saved_path(made)) and waited < MADE_ELSEWHERE_S:
+		await get_tree().create_timer(0.25).timeout
+		waited += 0.25
+	if not FileAccess.file_exists(ModelStore.saved_path(made)):
+		return false
+	_copy_made = made
+	if _store.title != made:
+		if not _asked_open and not _sample_untouched and _store.has_unsaved_work():
+			_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
+				else "Untitled"))
+		var placed: int = await _bar.open_with_progress(ModelStore.saved_path(made))
+		if placed >= 0:
+			_bar.opened.emit(placed)
+	_asked_open = false
+	_bar.say("“%s” is your copy of it, made a moment ago: opened, not copied again" % made)
+	await _offer_first_acts(made, person)
+	return true
+
+
+## Who is signed in, as this device keeps what was offered to whom: the
+## account's id, its address while the id is not known, or "here" where the
+## deployment has no accounts.
+func _person() -> String:
+	if _account == null:
+		return "here"
+	if not _account.user_id.is_empty():
+		return _account.user_id
+	return _account.email if not _account.email.is_empty() else "here"
+
+
+## The copy credited to the link it came from: which link and version, its
+## designer and licence (shown in Properties, Inspector); no link of its own.
+func _credit_copy(shared: Dictionary) -> void:
+	_store.share_id = ""
+	_store.remixed_from = _copying
+	# And which version of it: what its page says the copy was made of.
+	_store.remixed_from_version = maxi(int(shared.get("version", 0)), 0)
+	_store.credit = SharedModels.credit_of(shared, _copying)
+
+
+## Open in Brickworks (/app?copy=<id>), at start: the model asked for on the
+## baseplate in place of the example car, or of the model saved last, with
+## [param placed] the parts the working model brought back. A stranger sees
+## it behind the sign-in screen, which says it will be theirs to change
+## (SignInGate.asked); once they are in, _maybe_copy saves it into their
+## models. The working model brought back is left alone: it is this tab's
+## asked-for model from before a reload (AskedCopy.shown_here, and it says
+## it came from this link), or work of the person's own, which _maybe_copy
+## keeps first. Signed in already with a copy of it made a moment ago, that
+## copy (a second tab). The parts on the baseplate or on their way, or 0
+## when it could not be fetched, and the example car opens as ever.
+func _open_asked(placed: int) -> int:
+	if placed > 0:
+		_asked_open = AskedCopy.shown_here(_copying) and _store.remixed_from == _copying
+		if _asked_open and _gate != null:
+			_gate.asked = _store.title
+		# The example car as it shipped, back from a first visit's autosave,
+		# is nobody's work: the model asked for goes in its place.
+		if _asked_open or not _store.example or _store.has_unsaved_work():
+			return placed
+	if _account != null and _account.lets_in():
+		var made: String = AskedCopy.made(_copying, _person())
+		if not made.is_empty() and FileAccess.file_exists(ModelStore.saved_path(made)):
+			return _open(ModelStore.saved_path(made))
+	var answer: Dictionary = await _shared.fetch(_copying, _viewing_version)
+	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
+		return 0
+	var shared: Dictionary = answer["body"]
+	var name: String = str(shared.get("name", "Shared model"))
+	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
+	if not str(result["error"]).is_empty():
+		return 0
+	# Called by the name its page gave it, as the viewer calls a shared model
+	# (_view_shared): the file's own first line can say another ("House"
+	# for the gallery's "First Minute Probe House"), and the copy was saved
+	# under that while the sign-in screen promised the page's.
+	_store.title = name
+	_credit_copy(shared)
+	_asked_open = true
+	AskedCopy.mark_shown(_copying)
+	if _gate != null:
+		_gate.asked = name
+	return int(result["placed"]) + _store.awaited.size()
+
+
+## The first acts on a copy just made (FirstActs), each the app's own way:
+## the Paint tool with the colours out; the parts, their search ready; the
+## timeline from its first step.
+func _first_recolour() -> void:
+	_verbs.set_mode("paint")
+	if _phone != null:
+		_phone.call("_chose", "colour")
+	elif _bin_dock != null and not _bin_dock.is_open():
+		_bin_dock.set_open(true)
+	_bar.say("Paint: pick a colour, then a part to paint it that colour")
+
+
+func _first_add() -> void:
+	if _phone != null:
+		_phone.call("_chose", "parts")
+	else:
+		if _bin_dock != null and not _bin_dock.is_open():
+			_bin_dock.set_open(true)
+		_bin.focus_search()
+	_bar.say("Pick a part, then where it goes on the model")
+
+
+func _first_build_it() -> void:
+	if not _steps.is_playing_back() and not _steps.is_starting():
+		await _toggle_steps()
+	if _steps.is_playing_back():
+		_steps.to_start()
+
+
+## This week's quick build, when [param template] is the model it starts
+## from (SharedModels.prompt_of): its title, its brief and the day to publish
+## it by, said above the model with Got it, and kept with the copy in memory
+## (ModelStore.prompt) for Share. Nothing is said when it is not one, or
+## nothing answers, nor when the copy has gone by the time it answers.
+##
+## Above the model as every notice is (_notices), not over it: on a phone
+## its words over its button, as wide as the phone, and only so much of a
+## long brief that the strip stays clear of the model (prompt_probe).
+func _ask_prompt(template: String) -> void:
+	var prompt: Dictionary = await _shared.prompt_of(template)
+	if prompt.is_empty() or _store.remixed_from != template:
+		return
+	_store.prompt = prompt
+	if _prompt_notice == null:
+		_prompt_notice = RestoreNotice.new()
+		_prompt_notice.key = "prompt_got_it"
+		_prompt_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_notices.get_child(0).add_child(_prompt_notice)
+		# About the copy, not whatever is opened or begun after it.
+		_bar.opened.connect(func(_bricks: int) -> void: _prompt_notice.dismiss())
+		_bar.started_new.connect(_prompt_notice.dismiss)
+		_bar.cleared.connect(_prompt_notice.dismiss)
+		if _challenge_line != null:
+			_challenge_line.set("prompt_notice", _prompt_notice)
+	# Its name drawn as written, in every language.
+	Language.keep_name(str(prompt["title"]))
+	_prompt_notice.tell(SharedModels.prompt_line(prompt,
+		SharedModels.BRIEF_ON_A_PHONE if _phone != null else -1))
 
 
 ## The longest brief an address may draft.
@@ -4623,7 +4930,8 @@ func _maybe_open_library() -> void:
 	_bar.opened.emit(placed)
 	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
 		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
-	_bar.offer_moved()
+	# An official set, as it is: only a part with no file is asked about.
+	_bar.offer_moved(false)
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -6021,7 +6329,7 @@ func _build_ui() -> void:
 	_builder.picked.connect(func(part_id: String, color_code: int) -> void:
 		_bin.show_held(part_id, color_code)
 		_refresh_preview()
-		_bar.say("picked %s" % part_id))
+		_bar.say("picked %s" % _part_said(part_id)))
 
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.chose_by_keyboard.connect(func() -> void:
@@ -6235,6 +6543,7 @@ func _build_ui() -> void:
 
 	var hint := ControlsHint.new()
 	_hint = hint
+	hint.view = spacer
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -46.0
 	hint.offset_bottom = 0.0
@@ -6248,6 +6557,10 @@ func _build_ui() -> void:
 	# model's room stayed 26 units short (flex_room at 1400 x 900).
 	var fit_hint := func() -> void:
 		if _phone != null:
+			return
+		# Every control on it learned: the strip, and the room it kept, go.
+		if hint.is_empty():
+			hint_area.custom_minimum_size = Vector2.ZERO
 			return
 		var wants: float = maxf(hint.get_combined_minimum_size().y, 46.0)
 		hint_area.custom_minimum_size = Vector2(0, wants + 4.0)
@@ -6577,7 +6890,7 @@ func _build_ui() -> void:
 	# The ruler, made as it is first taken out.
 	_verbs.make_measure = _make_measure
 
-	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel in the
+	# Make, Cable, hose or chain…: src/ui/flex_tool.gd, its panel in the
 	# column beside the model's, as Simulate's is.
 	_flex = FlexTool.new()
 	_flex.world = _world
@@ -6604,6 +6917,17 @@ func _build_ui() -> void:
 	_notices.get_child(0).add_child(_seat_offer)
 	_bar.opened.connect(func(_bricks: int) -> void: _seat_offer.check())
 	_offer_assistant(_notices.get_child(0))
+	# A copy just made by Open in Brickworks: three first things to do with
+	# it, once (src/ui/first_acts.gd, _maybe_copy). Gone at the first edit
+	# (_on_model_edited) and when another model is opened or begun.
+	_first_acts = FirstActs.new()
+	_first_acts.acts = {"recolour": _first_recolour, "add": _first_add, "build": _first_build_it}
+	_notices.get_child(0).add_child(_first_acts)
+	_bar.opened.connect(func(_bricks: int) -> void:
+		if _store.title != _copy_made:
+			_first_acts.dismiss())
+	_bar.started_new.connect(_first_acts.dismiss)
+	_bar.cleared.connect(_first_acts.dismiss)
 	_bar.started_new.connect(_seat_offer.dismiss)
 	_bar.cleared.connect(_seat_offer.dismiss)
 	# Another tab (or window) saved the model this one has open: asked,
@@ -6630,6 +6954,10 @@ func _build_ui() -> void:
 	# Report this on it while the beta is open, should the account be known
 	# already (bugreport).
 	_offer_reports()
+	# The challenge open now, in one line over the model: made once the first
+	# screen is up, so none of its code is in the first compile (Later), and
+	# asked of the server then.
+	get_tree().create_timer(CHALLENGE_LINE_AFTER).timeout.connect(_make_challenge_line)
 	# Someone else's file an edit has written whole: how many of its own
 	# lines that leaves out, said once as it is edited (ModelStore).
 	_store.lines_left_out.connect(_bar.say)
@@ -7591,6 +7919,7 @@ func _make_share_panel() -> void:
 	share.moves_of = _moves_now
 	share.picture = _exports.picture
 	share.named = _bar.model_name
+	share.challenge_line = _challenge_line
 	share.setup()
 	_add_to_hud(share)
 	var kind: GDScript = Later.script(&"SharePanel")
@@ -7696,8 +8025,11 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		# is up (BookletMaker.warm): built in its first picture, it was a
 		# second of a frame on a first start.
 		_warm_booklet()
+		# What happens next said in the title: a parent who asked for
+		# instructions to print was asked where to put a web page, and could
+		# not tell it opens in their browser with Print there (ux12).
 		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
-			"Save the instructions")
+			"Save the instructions: they open in your browser, to print or save as a PDF")
 		if to.is_empty():
 			return ""
 	# Said in the status bar while it works (Working), and in the tab it is
@@ -8355,7 +8687,10 @@ func _offer_assistant(notes: Control) -> void:
 	var first_visit: bool = str(ShellPrefs.value("assistant")).is_empty() \
 		and not ShellPrefs.assistant_shown() \
 		and not bool(ShellPrefs.value("assistant_offered"))
-	if first_visit and _viewing.is_empty() and (offer_for_probe or _gate_wanted()):
+	# Not over a copy on its way from Open in Brickworks, which offers its
+	# own first acts (FirstActs): this waits for the person's next visit.
+	if first_visit and _viewing.is_empty() and _copying.is_empty() \
+			and (offer_for_probe or _gate_wanted()):
 		_offer.visible = true
 		ShellPrefs.put("assistant_offered", true)
 
@@ -9040,6 +9375,9 @@ func _on_model_changed() -> void:
 ## a deliberate change taking the last part off lets an empty model be
 ## written over a file with parts in it (ModelStore.emptied).
 func _on_model_edited() -> void:
+	# A first change made: the copy's first acts have done their work.
+	if _first_acts != null:
+		_first_acts.dismiss()
 	# A band or a spring on a part just moved follows it, in the same step.
 	if _flex != null:
 		_flex.follow_moved()
@@ -9114,7 +9452,7 @@ func open_render() -> void:
 	_render.open()
 
 
-## Make, Hose, tube or chain…; Make, Reshape the hose or chain.
+## Make, Cable, hose or chain…; Make, Reshape the hose or chain.
 func open_flex() -> void:
 	if _measure != null:
 		_measure.leave()
@@ -9337,8 +9675,16 @@ func _on_part_chosen(part_id: String) -> void:
 		# does nothing, which reads as the app being broken rather than
 		# as the app waiting — and on a slow connection that is several
 		# seconds of it.
-		_bar.say("fetching %s…" % part_id)
+		_bar.say("fetching %s…" % _part_said(part_id))
 	_refresh_preview()
+
+
+## A part by the name its tile shows ("Brick 2 × 4"), its number where the
+## catalogue has none: the status bar said "3001 ready" when a part came,
+## a number a first visitor never typed and does not know (ux12).
+func _part_said(part_id: String) -> String:
+	var info: PartLibrary.PartInfo = _library.parts.get(part_id) if _library != null else null
+	return PartsBin.said_name(info) if info != null else part_id
 
 
 func _on_part_fetched(part_id: String) -> void:
@@ -9350,7 +9696,7 @@ func _on_part_fetched(part_id: String) -> void:
 			_on_landed())
 	if _builder.held_part == part_id:
 		_refresh_preview()
-		_bar.say("%s ready" % part_id)
+		_bar.say("%s ready to put down" % _part_said(part_id))
 
 
 ## Parts on their way put down: as each arrives, or once motions kept as one
@@ -9457,7 +9803,7 @@ func _open_given(path: String) -> int:
 		said += " — " + str(made["note"])
 	_bar.say(said)
 	printerr("opened %s: %s" % [path, said.trim_prefix("opened ")])
-	_bar.offer_moved()
+	_bar.offer_moved(true, path)
 	return int(result["placed"])
 
 

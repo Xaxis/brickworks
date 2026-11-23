@@ -14,11 +14,19 @@
 // read by My collection as the app's import is (api/collection.js); for a
 // list, the set numbers in any such file.
 //
+// Who sees a list is one of three (lists2a, docs/LISTS.md section 5 item 3):
+// only you; anyone with its link (its page opens by a link of its own that
+// can be revoked, never on your profile or in the gallery); or public. A
+// wishlist shared is shared by its link unless you choose public. A file
+// or numbers brought in are shown first, matched, already there and not
+// found, and only Add writes anything (item 6).
+//
 // Every word a person typed (a list's name and description) goes on the
 // page as text, never markup.
 import { askToSignIn, call, signedIn, token } from "/account.js";
 import { counted, iconHtml, langAt, modelCard, number, say, told } from "/card.js";
 import { forget } from "/keep.js";
+import { kindOf, setNumbersIn } from "/set_numbers.js";
 import { toast } from "/kit.js";
 import { openShare, sheetFor } from "/share-sheet.js";
 
@@ -75,6 +83,16 @@ function hrefOf(id) {
 const ownList = (id) => mine?.lists.find((list) => list.id === id) || null;
 const wishlist = () => mine?.lists.find((list) => list.kind === "want") || null;
 
+/// Who sees a list, as op=lists says: "public", "link" or "private".
+const visibilityOf = (list) => list?.visibility || (list?.public ? "public" : "private");
+
+/// Who sees it, in words, as the rail, the head and the panel say it.
+function whoSees(list) {
+  if (list?.down) return say("Taken down by Brickworks after a report: only you see it");
+  const seen = visibilityOf(list);
+  return seen === "public" ? say("Public") : seen === "link" ? say("Anyone with the link") : say("Only you");
+}
+
 /// What a list is called where it is listed.
 function nameOf(id) {
   if (id === "owned") return say("I own");
@@ -107,7 +125,8 @@ function drawRail() {
   };
   $("rail-built").replaceChildren(entry("owned"), entry("want"), entry("saved"));
   const own = mine.lists.filter((list) => list.kind !== "want" && !going.has(list.id));
-  $("rail-mine").replaceChildren(...own.map((list) => entry(list.id, list.down ? say("taken down") : list.public ? say("public") : "")));
+  $("rail-mine").replaceChildren(...own.map((list) => entry(list.id, list.down ? say("taken down")
+    : visibilityOf(list) === "public" ? say("public") : visibilityOf(list) === "link" ? say("by its link") : "")));
   $("rail-mine-h").hidden = !own.length;
   const pick = $("pick");
   pick.replaceChildren();
@@ -223,7 +242,7 @@ function drawHead() {
   $("view-h").textContent = current === "want" ? (want?.name || say("I want")) : nameOf(current);
   const about = current === "owned"
     ? say("Every set you own, from here and from My collection in the app: their parts count as yours wherever Brickworks says what you can build.")
-    : current === "want" ? (want?.description || say("The sets you want. Make it public, and its link tells whoever gives you a present what to give."))
+    : current === "want" ? (want?.description || say("The sets you want. Share it, and its link tells whoever gives you a present what to give."))
       : current === "saved" ? say("The models you saved from the gallery: only you see them.")
         : own?.description || "";
   $("view-about").textContent = about;
@@ -236,9 +255,12 @@ function drawHead() {
     if (shown.sets) meta.push(counted(shown.sets, "set"));
     if (shown.models || !shown.sets) meta.push(counted(shown.models, "model"));
   }
-  if (list) meta.push(list.down ? say("Taken down by Brickworks after a report: only you see it") : list.public ? say("Public") : say("Only you"));
+  if (list) meta.push(whoSees(list));
   $("view-meta").textContent = meta.join(" · ");
-  $("share").hidden = !(list && list.public && !list.down);
+  // Share on any list of theirs: a private one is shared by its link first
+  // (shareList). Stop sharing while it is shared by one.
+  $("share").hidden = !(list && !list.down);
+  $("unshare").hidden = !(list && !list.down && visibilityOf(list) === "link");
   $("edit").hidden = !list;
   $("import").hidden = current === "saved";
   $("download").hidden = current === "saved";
@@ -675,15 +697,47 @@ function wordsField(value = "") {
   return area;
 }
 
-function publicChoice(on, words, disabled = false) {
-  const label = make("label", "choice");
-  const box = make("input");
-  box.type = "checkbox";
-  box.name = "public";
-  box.checked = on;
-  box.disabled = disabled;
-  label.append(box, make("span", "", words));
-  return { label, box };
+/// Who sees it: three radios (docs/DESIGN_SYSTEM.md: a choice of one is
+/// radios), [seen] chosen; [disabled] for a list taken down, which stays
+/// its owner's alone. .value() says the one chosen.
+function whoChoice(seen, { wish = false, disabled = false } = {}) {
+  const set = make("fieldset", "choices who-sees");
+  set.append(make("legend", "", say("Who sees it")));
+  const name = `who-${Date.now().toString(36)}`;
+  const radios = [];
+  for (const [value, words, note] of [
+    ["private", say("Only you"), ""],
+    ["link", say("Anyone with the link"), say("Not on your profile or in the gallery. You can stop sharing it at any time.")],
+    ["public", say("Public"), wish ? say("On your profile, for anyone with its link") : say("On your profile and in the gallery’s Lists")],
+  ]) {
+    const label = make("label", "choice");
+    const radio = make("input");
+    radio.type = "radio";
+    radio.name = name;
+    radio.value = value;
+    radio.checked = value === seen;
+    radio.disabled = disabled && value !== "private";
+    radios.push(radio);
+    const text = make("span", "", words);
+    if (note) text.append(make("small", "", note));
+    label.append(radio, text);
+    set.append(label);
+  }
+  return { set, value: () => radios.find((radio) => radio.checked)?.value || "private" };
+}
+
+/// [list] (an id of theirs, or "want") made [seen]: public or not by
+/// op=collection, then its link made or revoked by op=list_link. The last
+/// answer, or the one that refused.
+async function makeSeen(id, was, seen, body = null) {
+  let answer = { status: 200, body: {} };
+  if (body || (seen === "public") !== (was === "public")) {
+    answer = await call("/api/people?op=collection", { method: "POST", body: { ...(body || {}), id, public: seen === "public" } });
+    if (answer.status !== 200) return answer;
+  }
+  if (seen === "link" && was !== "link") return call("/api/people?op=list_link", { method: "POST", body: { id, on: true } });
+  if (seen === "private" && was === "link") return call("/api/people?op=list_link", { method: "POST", body: { id, on: false } });
+  return answer;
 }
 
 function newList() {
@@ -691,14 +745,19 @@ function newList() {
   const name = nameField();
   name.placeholder = say("Castles, To build, Gifts for Sam");
   const words = wordsField();
-  const shownTo = publicChoice(false, say("Public: on your profile and in the gallery’s lists, for anyone with its link"));
+  const shownTo = whoChoice("private");
   const { actions, send } = buttonsOf(say("Make it"), cancelButton(dialog));
-  form.append(field(say("Name"), name), field(say("What it is"), words, say("Optional")), shownTo.label, said, actions);
+  form.append(field(say("Name"), name), field(say("What it is"), words, say("Optional")), shownTo.set, said, actions);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     send.disabled = true;
+    const seen = shownTo.value();
     const answer = await call("/api/people?op=collection", { method: "POST",
-      body: { name: name.value.trim(), description: words.value.trim() || null, public: shownTo.box.checked } });
+      body: { name: name.value.trim(), description: words.value.trim() || null, public: seen === "public" } });
+    if (answer.status === 200 && seen === "link") {
+      const linked = await call("/api/people?op=list_link", { method: "POST", body: { id: answer.body.id, on: true } });
+      if (linked.status !== 200) tell(trouble(linked, say("It was made, only you see it: share it from its page.")));
+    }
     send.disabled = false;
     if (answer.status !== 200) {
       said.textContent = trouble(answer, say("That list was not made: try again in a moment."));
@@ -719,10 +778,9 @@ function editList() {
   const { dialog, form, said } = dialogOf(list.kind === "want" ? say("Your wishlist") : say("Edit list"));
   const name = nameField(list.name);
   const words = wordsField(list.description);
-  const shownTo = publicChoice(list.public, list.kind === "want"
-    ? say("Public: anyone with its link sees what you want, and it is on your profile")
-    : say("Public: on your profile and in the gallery’s lists, for anyone with its link"), list.down);
-  const rows = [field(say("Name"), name), field(say("What it is"), words, say("Optional")), shownTo.label];
+  const was = list.down ? "private" : visibilityOf(list);
+  const shownTo = whoChoice(was, { wish: list.kind === "want", disabled: list.down });
+  const rows = [field(say("Name"), name), field(say("What it is"), words, say("Optional")), shownTo.set];
   if (list.down) rows.push(make("p", "note", say("Brickworks took its name or description down after a report, so it stays private: it is still yours, with everything in it.")));
   // Its cover: what it leads with, one of what is in it.
   const cover = make("select");
@@ -749,10 +807,15 @@ function editList() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     send.disabled = true;
-    const body = { id: list.id, name: name.value.trim(), description: words.value.trim() || null };
-    if (!list.down) body.public = shownTo.box.checked;
+    const body = { name: name.value.trim(), description: words.value.trim() || null };
     if (items.length && cover.value !== (list.cover || "")) body.cover = cover.value || null;
-    const answer = await call("/api/people?op=collection", { method: "POST", body });
+    const seen = list.down ? "private" : shownTo.value();
+    let answer;
+    if (list.down) {
+      answer = await call("/api/people?op=collection", { method: "POST", body: { ...body, id: list.id } });
+    } else {
+      answer = await makeSeen(list.id, was, seen, body);
+    }
     send.disabled = false;
     if (answer.status !== 200) {
       said.textContent = trouble(answer, say("That was not saved: try again in a moment."));
@@ -760,7 +823,8 @@ function editList() {
     }
     dialog.close();
     await refresh();
-    tell(answer.body.public ? say("Saved: it is public.") : say("Saved: only you see it."));
+    tell(seen === "public" ? say("Saved: it is public.") : seen === "link" ? say("Saved: anyone with its link can open it.")
+      : was === "link" ? say("Saved: only you see it, and its old link opens nothing.") : say("Saved: only you see it."));
   });
   dialog.showModal();
   name.focus();
@@ -796,45 +860,6 @@ async function dropNow(id, { keepalive = false } = {}) {
   drawRail();
 }
 
-/// The set numbers in [text]: typed ("10497, 6080-1") or a file's
-/// (Rebrickable's Set Number, Brickset's Number and Variant, BrickLink's
-/// <ITEMID> of type S), each once.
-function setNumbersIn(text) {
-  const found = [];
-  const source = String(text || "");
-  if (/<INVENTORY>/i.test(source)) {
-    for (const item of source.matchAll(/<ITEM>([\s\S]*?)<\/ITEM>/gi)) {
-      if (!/<ITEMTYPE>\s*S\s*<\/ITEMTYPE>/i.test(item[1])) continue;
-      const id = /<ITEMID>\s*([^<\s]+)\s*<\/ITEMID>/i.exec(item[1]);
-      if (id) found.push(id[1]);
-    }
-  } else {
-    const lines = source.split(/\r?\n/);
-    const head = (lines[0] || "").toLowerCase().split(",").map((one) => one.replace(/^"|"$/g, "").trim());
-    const at = head.findIndex((one) => ["set number", "set_num", "number", "set"].includes(one));
-    const variant = head.indexOf("variant");
-    if (at >= 0 && head.length > 1) {
-      for (const line of lines.slice(1)) {
-        const cells = line.split(",").map((one) => one.replace(/^"|"$/g, "").trim());
-        if (!cells[at]) continue;
-        found.push(variant >= 0 && cells[variant] && !/-\d+$/.test(cells[at]) ? `${cells[at]}-${cells[variant]}` : cells[at]);
-      }
-    } else {
-      found.push(...source.split(/[\s,;]+/).filter((one) => /^[0-9a-z][0-9a-z._-]*$/i.test(one)));
-    }
-  }
-  return [...new Set(found.map((one) => (/-\d{1,3}$/.test(one) ? one : `${one}-1`).toLowerCase()))].slice(0, 2000);
-}
-
-/// What a file is, from its first line: BrickLink's XML, Brickset's CSV
-/// (Number with QtyOwned, Own or Want) or Rebrickable's.
-function kindOf(text) {
-  if (/^\s*(<\?xml|<INVENTORY)/i.test(text)) return "bricklink_xml";
-  const head = (text.split(/\r?\n/)[0] || "").toLowerCase();
-  if (/(^|,)"?number"?(,|$)/.test(head) && /qtyowned|(^|,)"?own"?(,|$)|(^|,)"?want"?(,|$)|setid/.test(head)) return "brickset_csv";
-  return "rebrickable_csv";
-}
-
 function importSets() {
   const owned = current === "owned";
   const { dialog, form, said } = dialogOf(owned ? say("Add sets you own") : say("Add sets to {list}", { list: nameOf(current) }));
@@ -856,36 +881,56 @@ function importSets() {
     choice.append(replace, make("span", "", say("It replaces what that site's file brought in before (else it is added)")));
     rows.push(choice);
   }
-  const { actions, send } = buttonsOf(say("Add them"), cancelButton(dialog));
-  form.append(...rows, said, actions);
+  const inputs = make("div", "import-inputs");
+  inputs.append(...rows);
+  // Step two, in the same dialog: what it would do, nothing written yet.
+  const plan = make("div", "import-preview");
+  plan.hidden = true;
+  const back = make("button", "cta ghost", say("Back"));
+  back.type = "button";
+  back.hidden = true;
+  const { actions, send } = buttonsOf(say("See what it adds"), back, cancelButton(dialog));
+  form.append(inputs, plan, said, actions);
+  // What Add sends, once it has been shown: null while the person is still
+  // choosing what to bring in.
+  let pending = null;
+  const ask = () => {
+    pending = null;
+    plan.hidden = true;
+    plan.replaceChildren();
+    inputs.hidden = false;
+    back.hidden = true;
+    send.disabled = false;
+    send.textContent = say("See what it adds");
+    said.textContent = "";
+    typed.focus();
+  };
+  back.addEventListener("click", ask);
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (pending) {
+      await addShown(pending, { dialog, said, send });
+      return;
+    }
     const text = file.files?.[0] ? await file.files[0].text() : "";
     if (!text && !typed.value.trim()) {
       said.textContent = say("Type a set number or choose a file.");
       return;
     }
     send.disabled = true;
-    said.textContent = say("Adding…");
-    let words = "";
+    said.textContent = say("Reading it…");
+    let preview;
+    let body = null;
     if (owned) {
-      const body = text ? { from: kindOf(text), text, mode: replace?.checked ? "replace" : "add" }
+      body = text ? { from: kindOf(text), text, mode: replace?.checked ? "replace" : "add" }
         : { from: "sets", text: typed.value, mode: "add" };
-      const answer = await call("/api/collection", { method: "POST", body });
-      if (answer.status !== 200) {
+      const answer = await call("/api/collection", { method: "POST", body: { ...body, preview: true } });
+      if (answer.status !== 200 || !answer.body?.preview) {
         send.disabled = false;
-        said.textContent = trouble(answer, say("Nothing was added: try again in a moment."));
+        said.textContent = trouble(answer, say("That could not be read: try again in a moment."));
         return;
       }
-      const got = answer.body.imported || {};
-      words = got.lots ? say("Added {sets} and {lots} of loose parts.", { sets: counted(got.sets, "set"), lots: counted(got.lots, "lot") })
-        : say("Added {sets}.", { sets: counted(got.sets || 0, "set") });
-      // Brickset marks the sets wanted too: those go on the wishlist.
-      const wanted = Array.isArray(answer.body.wanted) ? answer.body.wanted : [];
-      if (wanted.length) {
-        const { trouble: why } = await keepAll("want", wanted.map((set) => `set:${set}`), true);
-        words += ` ${why || say("And {sets} on your wishlist.", { sets: counted(wanted.length, "set") })}`;
-      }
+      preview = answer.body.preview;
     } else {
       const sets = setNumbersIn(text || typed.value);
       if (!sets.length) {
@@ -893,21 +938,107 @@ function importSets() {
         said.textContent = say("No set number in that.");
         return;
       }
-      const { trouble: why } = await keepAll(current, sets.map((set) => `set:${set}`), true);
-      if (why) {
+      const answer = await call("/api/people?op=import_preview", { method: "POST", body: { into: current, sets } });
+      if (answer.status !== 200) {
         send.disabled = false;
-        said.textContent = why;
+        said.textContent = trouble(answer, say("That could not be read: try again in a moment."));
         return;
       }
-      words = say("Added {sets} to {list}.", { sets: counted(sets.length, "set"), list: nameOf(current) });
+      preview = answer.body;
     }
-    dialog.close();
-    forget();
-    await refresh();
-    tell(words);
+    pending = { owned, into: current, body, preview, replace: body?.mode === "replace" };
+    drawPlan(plan, pending);
+    inputs.hidden = true;
+    plan.hidden = false;
+    back.hidden = false;
+    const adds = (preview.matched?.length || 0) + (pending.replace ? (preview.already?.length || 0) : 0);
+    const anything = adds || preview.lots || preview.wanted?.length || preview.gone?.length;
+    send.textContent = anything ? (adds ? say("Add {sets}", { sets: counted(adds, "set") }) : say("Bring it in")) : say("Nothing to add");
+    send.disabled = !anything;
+    said.textContent = say("Nothing is added until you press Add.");
+    plan.querySelector("h3")?.setAttribute("tabindex", "-1");
+    plan.querySelector("h3")?.focus();
   });
   dialog.showModal();
   typed.focus();
+}
+
+/// The three groups an import's preview says (docs/LISTS.md section 5 item
+/// 6), each with how many and, open, the numbers: to add, already there,
+/// not found; for the sets you own also what a replace takes out, the
+/// loose parts and the wishlist's. Each count is [data-import-count] for
+/// the checks (tools/web/lists_flow.mjs).
+function drawPlan(plan, shown) {
+  const { preview, owned, replace } = shown;
+  plan.replaceChildren(make("h3", "", say("What it adds")));
+  const group = (kind, words, sets, note = "") => {
+    const n = Array.isArray(sets) ? sets.length : Number(sets) || 0;
+    const part = make("details", `import-group ${kind}`);
+    part.dataset.importGroup = kind;
+    const head = make("summary");
+    const count = make("b", "", number(n));
+    count.dataset.importCount = kind;
+    head.append(count, " ", make("span", "", words));
+    part.append(head);
+    if (note) part.append(make("p", "note", note));
+    if (Array.isArray(sets) && sets.length) {
+      const list = make("ul", "import-sets");
+      for (const set of sets.slice(0, 120)) list.append(make("li", "", set));
+      if (sets.length > 120) list.append(make("li", "note", say("and {n} more", { n: number(sets.length - 120) })));
+      part.append(list);
+    }
+    plan.append(part);
+  };
+  group("matched", say("to add: sets Brickworks has, not there yet"), preview.matched || []);
+  group("already", replace ? say("already yours: kept, as the file counts them") : say("already there: left as they are"),
+    preview.already || []);
+  group("missing", say("not found: no set has that number, so they are left out"), preview.missing || [],
+    (preview.missing || []).length ? say("Check them for a typing slip, or a set too new for the catalogue.") : "");
+  if (owned && replace) group("gone", say("taken out: that site’s last file brought them, this one does not list them"), preview.gone || []);
+  if (owned && preview.lots) group("lots", say("lots of loose parts"), preview.lots);
+  if (owned && (preview.wanted || []).length) group("wanted", say("for your wishlist"), preview.wanted);
+  for (const out of preview.left_out || []) {
+    if (out && out.count) plan.append(make("p", "note", say("Left out: {n} × {why}", { n: number(out.count), why: out.why })));
+  }
+}
+
+/// What the preview showed, added: the sets you own by the same rule the
+/// server showed it by (api/collection.js asShown); a list's by the
+/// numbers it matched.
+async function addShown(shown, { dialog, said, send }) {
+  send.disabled = true;
+  said.textContent = say("Adding…");
+  let words = "";
+  if (shown.owned) {
+    const answer = await call("/api/collection", { method: "POST", body: { ...shown.body, as_shown: true } });
+    if (answer.status !== 200) {
+      send.disabled = false;
+      said.textContent = trouble(answer, say("Nothing was added: try again in a moment."));
+      return;
+    }
+    const got = answer.body.imported || {};
+    words = got.lots ? say("Added {sets} and {lots} of loose parts.", { sets: counted(got.sets, "set"), lots: counted(got.lots, "lot") })
+      : say("Added {sets}.", { sets: counted(got.sets || 0, "set") });
+    // Brickset marks the sets wanted too: those go on the wishlist.
+    const wanted = Array.isArray(answer.body.wanted) ? answer.body.wanted : [];
+    if (wanted.length) {
+      const { trouble: why } = await keepAll("want", wanted.map((set) => `set:${set}`), true);
+      words += ` ${why || say("And {sets} on your wishlist.", { sets: counted(wanted.length, "set") })}`;
+    }
+  } else {
+    const sets = shown.preview.matched || [];
+    const { trouble: why } = await keepAll(shown.into, sets.map((set) => `set:${set}`), true);
+    if (why) {
+      send.disabled = false;
+      said.textContent = why;
+      return;
+    }
+    words = say("Added {sets} to {list}.", { sets: counted(sets.length, "set"), list: nameOf(shown.into) });
+  }
+  dialog.close();
+  forget();
+  await refresh();
+  tell(words);
 }
 
 async function download() {
@@ -945,10 +1076,66 @@ async function fetchCsv(id) {
   return { ok: true, blob: await reply.blob(), name: named ? named[1] : "brickworks-list.csv" };
 }
 
+/// Share: a public list's page, or a list shared by a link its link. A
+/// private one asks first who may open it, the link chosen (the wishlist's
+/// way, Steam's), and is shared so.
 function share() {
   const list = current === "want" ? wishlist() : ownList(current);
-  if (!list || !list.public) return;
-  const url = `${location.origin}${langAt()}/c/${list.id}`;
+  if (!list || list.down) return;
+  const seen = visibilityOf(list);
+  if (seen === "private") {
+    askToShare(list);
+    return;
+  }
+  openSheet(list, seen === "link" ? list.link : `${location.origin}${langAt()}/c/${list.id}`);
+}
+
+function askToShare(list) {
+  const { dialog, form, said } = dialogOf(say("Share {list}", { list: list.name }));
+  const intro = make("p", "", say("Only you see it now. Who may open it once you send its link?"));
+  const shownTo = whoChoice("link", { wish: list.kind === "want" });
+  shownTo.set.querySelector('input[value="private"]').closest("label").hidden = true;
+  const { actions, send } = buttonsOf(say("Share it"), cancelButton(dialog));
+  form.append(intro, shownTo.set, said, actions);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    send.disabled = true;
+    const seen = shownTo.value();
+    const answer = await makeSeen(list.id, "private", seen);
+    send.disabled = false;
+    if (answer.status !== 200) {
+      said.textContent = trouble(answer, say("It is not shared: try again in a moment."));
+      return;
+    }
+    dialog.close();
+    await refresh();
+    const now = current === "want" ? wishlist() : ownList(current);
+    const url = seen === "link" ? answer.body.link || now?.link : `${location.origin}${langAt()}/c/${list.id}`;
+    if (url) openSheet(now || list, url);
+    tell(seen === "link" ? say("Shared by its link: only people you send it to can open it.") : say("It is public."));
+  });
+  dialog.showModal();
+  shownTo.set.querySelector("input:checked")?.focus();
+}
+
+/// Stop sharing a list shared by a link: its key revoked, so the link
+/// opens nothing from the next time it is opened.
+async function unshare() {
+  const list = current === "want" ? wishlist() : ownList(current);
+  if (!list || visibilityOf(list) !== "link") return;
+  const button = $("unshare");
+  button.disabled = true;
+  const answer = await call("/api/people?op=list_link", { method: "POST", body: { id: list.id, on: false } });
+  button.disabled = false;
+  if (answer.status !== 200) {
+    tell(trouble(answer));
+    return;
+  }
+  await refresh();
+  tell(say("Stopped sharing {list}: its link opens nothing now. Share it again for a new link.", { list: list.name }));
+}
+
+function openSheet(list, url) {
   const sheet = sheetFor({ url, name: list.name,
     text: list.kind === "want" ? say("{name}: a wishlist on Brickworks", { name: list.name }) : say("{name} on Brickworks", { name: list.name }),
     about: list.kind === "want" ? say("Its link opens this wishlist: the sets they want, to give or to know.")
@@ -986,6 +1173,7 @@ function wire() {
   $("new-list-pick").addEventListener("click", newList);
   $("edit").addEventListener("click", editList);
   $("share").addEventListener("click", share);
+  $("unshare").addEventListener("click", unshare);
   $("import").addEventListener("click", importSets);
   $("download").addEventListener("click", download);
   $("more").addEventListener("click", loadMore);

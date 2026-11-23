@@ -986,6 +986,136 @@
    },
    "signed_in": false
   },
+  "/m/DocsTmpl01.webp": {
+   "file": "docs-site/pictures/files/DocsTmpl01.webp"
+  },
+  "/m/DocsHab001.webp": {
+   "file": "docs-site/pictures/files/DocsHab001.webp"
+  },
+  "/m/DocsHab002.webp": {
+   "file": "docs-site/pictures/files/DocsHab002.webp"
+  },
+  "/api/people?op=challenge&id=21": {
+   "ready": true,
+   "challenge": null,
+   "prompt": {
+    "kind": "prompt",
+    "id": 21,
+    "title": "Habitat",
+    "brief": "A home for one minifigure on an 8×8 plate: a room, a nook, a nest, a lair. Keep it within 10 bricks tall, so every habitat of the week stacks into one tower.",
+    "starts_on": "2026-11-23",
+    "ends_on": "2026-11-29",
+    "ended_on": null,
+    "state": "open",
+    "test": false,
+    "days_said": "23 November 2026 to 29 November 2026",
+    "template": {
+     "id": "DocsTmpl01",
+     "name": "Habitat: the template",
+     "author": "Brickworks",
+     "parts": 1,
+     "listed_at": "2026-11-23T00:41:00Z",
+     "kind": "town",
+     "tags": [
+      "quick-build"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 1,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 2,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "/m/DocsTmpl01",
+     "image": "/m/DocsTmpl01.png",
+     "thumb": "/m/DocsTmpl01.webp?v=mwsji7hc"
+    },
+    "start": "/app?copy=DocsTmpl01",
+    "stack": null,
+    "makers": 1,
+    "entries": [
+     {
+      "id": "DocsHab002",
+      "name": "Garden shed",
+      "author": "Brickworks",
+      "parts": 26,
+      "listed_at": "2026-11-23T01:42:00Z",
+      "kind": "town",
+      "tags": [
+       "quick-build"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 1,
+      "own_steps": true,
+      "technic": false,
+      "tested": false,
+      "made_with": "assistant",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 0,
+      "remixes": 0,
+      "builds": 0,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "brickworks",
+       "name": "Brickworks"
+      },
+      "url": "/m/DocsHab002",
+      "image": "/m/DocsHab002.png",
+      "thumb": "/m/DocsHab002.webp?v=mwslonk0",
+      "way": "assistant",
+      "entered_at": "2026-11-23T01:42:00Z"
+     },
+     {
+      "id": "DocsHab001",
+      "name": "Reading nook",
+      "author": "Brickworks",
+      "parts": 27,
+      "listed_at": "2026-11-23T01:41:00Z",
+      "kind": "town",
+      "tags": [
+       "quick-build"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 1,
+      "own_steps": true,
+      "technic": false,
+      "tested": false,
+      "made_with": "assistant",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 0,
+      "remixes": 0,
+      "builds": 0,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "brickworks",
+       "name": "Brickworks"
+      },
+      "url": "/m/DocsHab001",
+      "image": "/m/DocsHab001.png",
+      "thumb": "/m/DocsHab001.webp?v=mwslnd9c",
+      "way": "assistant",
+      "entered_at": "2026-11-23T01:41:00Z"
+     }
+    ]
+   }
+  },
   "/api/people?op=challenge": {
    "ready": true,
    "year": true,
@@ -1153,7 +1283,17 @@
     "starts_on": "2026-12-01",
     "ends_on": "2026-12-31"
    },
-   "past": []
+   "past": [],
+   "prompt_now": {
+    "id": 21,
+    "title": "Habitat",
+    "brief": "A home for one minifigure on an 8×8 plate: a room, a nook, a nest, a lair. Keep it within 10 bricks tall, so every habitat of the week stacks into one tower.",
+    "starts_on": "2026-11-23",
+    "ends_on": "2026-11-29",
+    "page": "https://brickworks.diy/challenge?id=21",
+    "start": "/app?copy=DocsTmpl01",
+    "entries": 2
+   }
   }
  },
  "db": {

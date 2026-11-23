@@ -1,7 +1,9 @@
 // Own, want, save and your lists, one tap from anywhere a set or a model is
 // shown (lists1, 2026-11-13, docs/LISTS.md): every [data-keep] on the page,
-// a card's split button (web/card.js keepHtml) or a set page's bar
-// (api/_sets.js), whatever draws it and whenever (a page of cards drawn
+// a card's split button (web/card.js keepHtml), a model page's Save (the
+// same button in its action bar, api/share.js actionBar: one panel and one
+// request path for a model wherever it is saved, lists2a) or a set page's
+// bar (api/_sets.js), whatever draws it and whenever (a page of cards drawn
 // later is seen as it arrives).
 //
 //   [data-keep-main]  Own a set (one copy; again: none) or Save a model,
@@ -500,7 +502,7 @@ function panel(holder, button) {
   const shown = make("label", "choice");
   const publicBox = make("input");
   publicBox.type = "checkbox";
-  shown.append(publicBox, make("span", "", say("Public: on your profile and in the gallery's lists")));
+  shown.append(publicBox, make("span", "", say("Public: on your profile and in the gallery’s Lists")));
   const makeIt = make("button", "cta small", say("Make it"));
   makeIt.type = "submit";
   const cancel = make("button", "cta ghost small", say("Cancel"));
@@ -565,7 +567,8 @@ function panel(holder, button) {
     }
     mine.replaceChildren();
     for (const list of lists) {
-      const note = list.down ? say("taken down") : list.public ? say("public") : say("only you");
+      const note = list.down ? say("taken down") : list.public ? say("public") : list.visibility === "link" ? say("by its link")
+        : say("only you");
       mine.append(row(list.name, note, one.lists.has(list.id), (box) => {
         keepIn(key, list.id, box.checked).then((done) => {
           if (done) tell(box.checked ? say("In {list}.", { list: list.name }) : say("Out of {list}.", { list: list.name }));

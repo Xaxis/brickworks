@@ -23,6 +23,9 @@ REPLIES = (ROOT / "supabase/replies.sql").read_text()
 LATER = [line.split("\t") for line in (ROOT / "supabase/later.tsv").read_text().splitlines()
          if line.strip() and not line.startswith("#")]
 TRACKS = ("designer", "built", "builder", "remixed", "tested", "challenger")
+# The weekly quick build's track, added later (supabase/challenge_prompts.sql).
+PROMPTS = (ROOT / "supabase/challenge_prompts.sql").read_text()
+LATER_TRACKS = TRACKS + ("streak",)
 
 
 def code(text: str) -> str:
@@ -60,9 +63,13 @@ def test_the_table_and_functions_are_the_servers_alone() -> None:
 
 
 def test_it_replaces_only_notification_rows_and_keeps_every_row_it_gave() -> None:
+    # A later file may replace one of its functions only with a guard line
+    # (supabase/later.tsv) that tools/apply_sql.mjs checks.
+    guarded = {(row[1], row[2]) for row in LATER if row[0] == "achievements.sql"}
     others = {name for path in (ROOT / "supabase").glob("*.sql") if path.name != "achievements.sql"
-              for name in defined(path.read_text())}
+              for name in defined(path.read_text()) if (name, path.name) not in guarded}
     assert set(defined(SQL)) & others == {"notification_rows"}
+    assert {name for name, _ in guarded} - {"notification_rows"} == {"achievement_ladders", "achievement_numbers"}
     before, after = body("notification_rows", REPLIES), body("notification_rows", SQL)
     # replies.sql's whole, then the levels reached: nothing of it changed.
     assert after.startswith(before)
@@ -95,9 +102,15 @@ def test_the_ladders_and_the_words_name_the_same_tracks() -> None:
         assert numbers[0] == 1 and numbers == sorted(set(numbers))
     check = re.search(r"track in \(([^)]+)\)", SQL).group(1)
     assert re.findall(r"'([a-z]+)'", check) == list(TRACKS)
+    # The quick build's file keeps every ladder as it was and adds one.
+    later = re.findall(r"\('([a-z]+)', (\d), array\[([\d, ]+)\]\)", body("achievement_ladders", PROMPTS))
+    assert later[:len(ladders)] == ladders and [one[0] for one in later] == list(LATER_TRACKS)
+    assert int(later[-1][1]) == 7
+    widened = re.search(r"track in \(([^)]+)\)", PROMPTS).group(1)
+    assert re.findall(r"'([a-z]+)'", widened) == list(LATER_TRACKS)
     stand_in = (ROOT / "tools/web/design_stand_in.mjs").read_text()
     held = re.findall(r'\["([a-z]+)", \[([\d, ]+)\]\]', stand_in[stand_in.index("const LADDERS"):])
-    assert [(track, steps) for track, steps in held] == [(one[0], one[2]) for one in ladders]
+    assert [(track, steps) for track, steps in held] == [(one[0], one[2]) for one in later]
 
 
 def test_a_level_is_said_the_same_everywhere() -> None:
@@ -127,7 +140,7 @@ def test_a_level_is_said_the_same_everywhere() -> None:
     """
     out = json.loads(subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, check=True,
                                     capture_output=True, text=True).stdout)
-    assert out["tracks"] == list(TRACKS)
+    assert out["tracks"] == list(LATER_TRACKS)
     assert out["names"] == ["Designer · first model", "Designer · 10 models", "Built · once", "Remixed · 25 times",
                             "Challenger · 3 challenges", ""]
     # The highest first, the tracks' order between equals; none at level 0.
@@ -150,7 +163,8 @@ def test_the_pages_ask_for_levels_and_tell_them() -> None:
     assert people.count("achievementsOf({ about, earned, built, wins, levels })") == 2
     notices = (ROOT / "api/_notifications.js").read_text()
     # Written down before it is counted or listed, so it is told at once.
-    assert 'marked(asker).then(() => call("notification_counts"' in notices
+    assert "const levels = marked(asker);" in notices and 'levels.then(() => call("notification_counts"' in notices
+    assert 'levels.then(() => call("notification_count_kept"' in notices
     assert notices.index("await marked(asker);") < notices.index('call("notification_list"')
     assert 'call("achievement_read"' in notices
     page = (ROOT / "web/notifications.js").read_text()

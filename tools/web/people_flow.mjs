@@ -15,12 +15,12 @@
 //      sign-in dialog, their address, Email me a code (one code sent to a
 //      Resend test address that delivers nowhere; a fresh one minted on the
 //      test side, as the tests sign in), the code, Sign in — and the like
-//      goes through, the count with it. Save: Favourites, ticked; a new
-//      collection named, made and ticked.
+//      goes through, the count with it. Save (the card's, web/keep.js):
+//      Saved, pressed; its arrow's panel makes a new list, ticked.
 //   3. /profile: no profile yet, so two fields to make one and the Saved
-//      tab, the house in their favourites and their collection there; a
+//      tab, the house in their saved models and their list there; a
 //      name and a handle make the profile, drawn at once; Edit profile adds
-//      their words, shown with no reload; the collection made public, with
+//      their words, shown with no reload; the list made public, with
 //      a page of its own.
 //   4. /c/<id>: the collection's page, the house in it, its maker's name.
 //      /u/<owner>: the owner's profile, the house credited to them.
@@ -194,24 +194,28 @@ try {
   }));
   check(`signed in, and the like went through: ${state.like}`,
     !state.dialog && state.pressed === "true" && state.like === "Like, 1 like" && state.likes === "1" && state.kept);
-  // Save: their lists, Favourites first (docs/SOCIAL.md D2).
-  await page.click('[data-mark="save"]');
-  await page.waitForSelector('#save-panel:not([hidden]) label[data-list="favourites"] input', { timeout: 15000 });
-  await page.check('#save-panel label[data-list="favourites"] input');
-  await page.waitForFunction(() => document.querySelector('[data-mark="save"]')?.hasAttribute("data-on")
-    && /favourites/i.test(document.querySelector(".marks-said")?.textContent || ""), null, { timeout: 15000 }).catch(() => {});
-  check(`kept in their favourites: "${await page.textContent(".marks-said")}"`,
-    await page.evaluate(() => document.querySelector('#save-panel label[data-list="favourites"] input').checked
-      && document.querySelector('[data-mark="save"]').getAttribute("aria-label") === "Saved"));
-  await page.fill("form.collect-new input", LIST);
-  await page.click('form.collect-new button[type="submit"]');
-  await page.waitForFunction((name) => [...document.querySelectorAll(".collect-list label")]
-    .some((l) => l.textContent.includes(name) && l.querySelector("input").checked), LIST, { timeout: 15000 }).catch(() => {});
-  const listed = await page.evaluate(() => [...document.querySelectorAll(".collect-list label")]
-    .map((l) => `${l.querySelector("span").textContent}:${l.querySelector("input").checked}`));
-  check(`a collection made and the house in it: ${listed.join(", ")}`, listed.includes(`${LIST}:true`));
-  check("the collection panel open at 1280 px: nothing sideways", !(await sideways(page)));
+  // Save: the card's control (web/keep.js, lists2a), Saved at a tap, and
+  // its arrow's panel of their lists, Saved first (docs/SOCIAL.md D2).
+  const keepAt = `#marks .keep[data-keep="model:${modelId}"]`;
+  await page.click(`${keepAt} [data-keep-main]`);
+  await page.waitForFunction((at) => document.querySelector(`${at} [data-keep-main]`)?.getAttribute("aria-pressed") === "true",
+    keepAt, { timeout: 15000 }).catch(() => {});
+  check(`kept in Saved: pressed ${await page.getAttribute(`${keepAt} [data-keep-main]`, "aria-pressed")}`,
+    (await page.getAttribute(`${keepAt} [data-keep-main]`, "aria-pressed")) === "true");
+  await page.click(`${keepAt} [data-keep-more]`);
+  await page.waitForSelector("dialog.keep-panel[open]", { timeout: 15000 });
+  await page.click("dialog.keep-panel .keep-new-open");
+  await page.fill("dialog.keep-panel .keep-new input[type=text]", LIST);
+  await page.click("dialog.keep-panel .keep-new button[type=submit]");
+  await page.waitForFunction((name) => [...document.querySelectorAll("dialog.keep-panel .keep-row")]
+    .some((row) => row.querySelector(".keep-name")?.textContent === name && row.querySelector("input")?.checked), LIST, { timeout: 15000 })
+    .catch(() => {});
+  const listed = await page.evaluate(() => [...document.querySelectorAll("dialog.keep-panel .keep-row")]
+    .map((row) => `${row.querySelector(".keep-name")?.textContent}:${Boolean(row.querySelector("input")?.checked)}`));
+  check(`Saved first, and a list made with the house in it: ${listed.join(", ")}`, listed[0] === "Saved:true" && listed.includes(`${LIST}:true`));
+  check("the lists' panel open at 1280 px: nothing sideways", !(await sideways(page)));
   await shot(page, "2_model_marked-laptop.png", false);
+  await page.keyboard.press("Escape");
 
   // --- 3. /profile
   console.log("their profile page");
@@ -224,7 +228,7 @@ try {
     lists: [...document.querySelectorAll("#lists .list-mine input:not([type=checkbox])")].map((i) => i.value) }));
   check(`signed in there too, no profile yet: two fields to make one, no name made from the address ("${state.name}"), `
     + `on the ${state.tab} tab`, state.ready === "ready" && state.start && state.name === "" && state.tab === "saved");
-  check(`the house in their favourites, and their collection (${state.favourites.length}, ${state.lists.join(", ")})`,
+  check(`the house in their saved models, and their list (${state.favourites.length}, ${state.lists.join(", ")})`,
     state.favourites.includes(modelId) && state.lists.includes(LIST));
   await page.fill("#name", "Flow Visitor");
   await page.fill("#handle", visitorHandle);
@@ -251,7 +255,7 @@ try {
   await row.locator('input[type="checkbox"]').check();
   await row.locator("button", { hasText: "Save" }).click();
   await page.waitForFunction(() => /Saved/.test(document.getElementById("lists-said").textContent), null, { timeout: 15000 }).catch(() => {});
-  check(`the collection made public, with a page: /c/${listId}`, /^[A-Za-z0-9]{10}$/.test(listId || "")
+  check(`the list made public, with a page: /c/${listId}`, /^[A-Za-z0-9]{10}$/.test(listId || "")
     && !(await row.locator("a", { hasText: "Its page" }).isHidden()));
   await shot(page, "3_profile-laptop.png");
 
@@ -274,15 +278,15 @@ try {
   check(`/u/${ownerHandle}: "${state.title}", the house credited to them`, state.title === "Flow Owner" && state.cards.includes(modelId));
   await shot(look, "5_profile_public-laptop.png");
   // Nothing of theirs in the gallery, a public list: their page opens on
-  // its Collections tab, and its Models tab says what goes there.
+  // its Lists tab, and its Models tab says what goes there.
   await look.goto(`${site}/u/${visitorHandle}`, { waitUntil: "load", timeout: 60000 });
   state = await look.evaluate(() => ({ lists: [...document.querySelectorAll(".list-card b")].map((b) => b.textContent),
     tab: document.querySelector(".tabs [aria-current=page]")?.dataset.tab || "" }));
   await look.click('.tabs a[data-tab="models"]');
   await look.waitForLoadState("load");
   state.none = await look.evaluate(() => document.querySelector(".tab-panel .state")?.textContent || "");
-  check(`/u/${visitorHandle}: their public collection (the ${state.tab} tab), and nothing of theirs in the gallery yet`,
-    state.tab === "collections" && state.lists.includes(LIST) && /Nothing in the gallery/.test(state.none));
+  check(`/u/${visitorHandle}: their public list (the ${state.tab} tab), and nothing of theirs in the gallery yet`,
+    state.tab === "lists" && state.lists.includes(LIST) && /Nothing in the gallery/.test(state.none));
 
   // --- 5. At a phone's width.
   console.log("at 390 px");
@@ -297,7 +301,7 @@ try {
     [`/u/${ownerHandle}?tests=1`, "profile_public"]]) {
     await small.goto(site + where, { waitUntil: "load", timeout: 60000 });
     await small.waitForTimeout(1500);
-    if (name === "model") await small.click('[data-mark="save"]').catch(() => {});
+    if (name === "model") await small.click("#marks .keep [data-keep-more]").catch(() => {});
     check(`${where} at 390 px: nothing sideways`, !(await sideways(small)));
     await shot(small, `6_${name}-phone.png`);
   }

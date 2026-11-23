@@ -7,7 +7,7 @@
 
 The landing page, the download page and the pages a visitor goes on to
 from them (the plans, the FAQ, the comparison, the gallery and its tabs'
-own addresses, the sets, the builds and the collections (tools/browse_pages.py),
+own addresses, the sets, the builds and the lists (tools/browse_pages.py),
 this month's challenge, your own profile and your settings; the
 account menu's feed, notifications, builds, feedback and beta pages; the
 footer's terms, privacy, guidelines, takedown and changelog; the page not
@@ -64,7 +64,7 @@ A word of those scripts (SAID_ALL, or the functions of one named there)
 with a capital in it that is not said through say() fails the check, so
 none comes back in English; so does an answer's error or why_not shown as
 the server wrote it, not through told() or say() (untold); and a link to a
-page with copies written as English's (/u/..., /c/..., /collections,
+page with copies written as English's (/u/..., /c/..., /gallery-lists,
 /profile, /settings, /challenge and the rest of PAGES), in those or in
 any other script a copy loads, which leaves the visitor's language for
 English (unled: ${at}/u/ or ${langAt()}/profile).
@@ -102,7 +102,7 @@ SITE = "https://brickworks.diy"
 LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 # The pages, by their file, and where each is: / and /download in English.
 PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
-         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "collections.html": "collections",
+         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "gallery-lists.html": "gallery-lists",
          "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
          "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds", "lists.html": "lists",
          "feedback.html": "feedback", "share-model.html": "share-model", "beta.html": "beta", "terms.html": "terms",
@@ -218,7 +218,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "api/_talk.js": ("cleanPost", "cleanTitle", "bodyHtml", "boardSaid", "whenSaid", "threadRowHtml", "embedsHtml",
                              "postHtml", "postsHtml", "talkingHtml", "boardsHtml", "threadSchema", "rssOf", "listPageHtml",
                              "threadPageHtml", "newPageHtml", "talkPage", "mayWrite", "missingHtml", "talkShell"),
-            "web/talk.js": (), "web/talk-strip.js": ()}
+            "web/talk.js": ()}
 # And what the site is put together with says on a page (tools/site.py: the
 # changelog's heads, links and dates), each say("...") of it.
 WRITTEN = ("tools/site.py",)
@@ -566,8 +566,9 @@ def untold(script: str) -> list[str]:
 
 
 # A link to a page with copies, written as English's: a literal that starts
-# /u/ or /c/ (a profile, a collection), or is one of the pages (/collections,
-# /challenge, /profile?edit=1).
+# /u/ or /c/ (a profile, a list), or is one of the pages (/gallery-lists,
+# /challenge, /profile?edit=1), or the address the gallery's lists had
+# (/collections, which redirects).
 LED = re.compile(r"(?<![\w}])[`\"'](?:/[uc]/|/(?:collections|" + "|".join(where for where in PAGES.values() if where)
                  + r")(?=[`\"'?#$]))")
 

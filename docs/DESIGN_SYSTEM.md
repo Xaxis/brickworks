@@ -26,9 +26,12 @@ sized its own titles, from 26 to 74 px. Now:
   differs, or the header has more than four things. The server's pages
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
-  copy. The header (site356, 2026-10-29, the owner asking for pricing in
-  the site): Gallery · Docs · Plans (Pricing until 2026-11-03) in the middle (the Library left it
-  when it became the gallery's Sets tab, browse, 2026-11-02), then
+  copy. The header (landing, 2026-11-22, the owner: the forum and the
+  gallery "available immediately upon landing"): Gallery · Talk ·
+  Challenges · Docs in the middle; Plans, a link here from site356
+  (2026-10-29) until then, is in the footer, Menu and the account's menu
+  (the Library left the bar when it became the gallery's Sets tab,
+  browse, 2026-11-02), then
   **Open the app** · Account (Sign in, a `.cta.ghost`, until you are,
   then your avatar: the account menu, below), the account last at the
   far right (the owner, 2026-10-23: "an obvious pattern"; design_flow.mjs
@@ -62,8 +65,9 @@ sized its own titles, from 26 to 74 px. Now:
   `--t-section` 28-40 px, `--t-h2` 22-26 px, `--t-h3` 18 px, `--t-lede`,
   then the words: `--t-body` 16,
   `--t-small` 14.5, `--t-tiny` 13, `--t-micro` 12): `h1` is a page's
-  title at `--t-h1` on every page; the landing page's one line is
-  `h1.display`; `h2` a section's, at `--t-h2` wherever it is (a model's
+  title at `--t-h1` on every page; the home page's one line too, so its
+  shelf stays in the first screen (landfix; it was `h1.display` before the
+  shelf); `h2` a section's, at `--t-h2` wherever it is (a model's
   About it and More by, a settings row, a notice, a dialog's title, a
   legal page's parts); `h3` a part of a section, at `--t-h3`. A page
   does not size its own titles, and design_flow.mjs fails an h2 or an
@@ -413,16 +417,27 @@ is on the page, `hidden`, for the script to show.
   a collection's Follow on it). Not for shelves (`.models.scroller`).
 - **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
   (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
-  person, a collection, a model's page and the feed (the landing page's
+  person, a collection and a model's page (the landing page's
   two strips keep `--page` since site356, in line with its other
-  sections, and scroll inside it); and for the header and the footer on every page, so the
+  sections, and scroll inside it; the feed keeps it since sitepolish, as
+  Notifications, the tab beside it, does, so the title does not jump
+  between them); and for the header and the footer on every page, so the
   mark and the account sit where they do on the gallery. Nothing was wider
   than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
+  page keeps `--gutter` from the window's edge: 16 px on a phone, 24 from
+  600 px, 32 from 1200 px (sitepolish, 2026-11-23: the gallery, a model, a
+  person and a set ran to 16 px of a laptop's edge). A
   model's page: from 1200 px its column is 480 px, room for its action
   bar in one row inside the panel it is from 900 px (site357), and its
-  picture the rest; on a phone (under 600 px) its picture is square, the model drawn
-  as large as its width lets it (`web/model-page.js` `fitPicture`, by
-  transform alone, so nothing shifts).
+  picture the rest; on a phone (under 600 px) its picture is square, and
+  from 900 px 4:3 (16:10 from 1600 px, so it stays on a 900 px tall
+  window's first screen), as tall as the column beside it, where it was
+  the picture's own 1200 x 630 and 380 px tall beside a column of 560
+  (sitepolish); in each the model is drawn as large as its width lets it
+  (`web/model-page.js` `fitPicture`, by transform alone, so nothing
+  shifts); between 600 and 900 px the frame is the picture's own shape.
+  Its facts are one quiet line of words, a dot between two on a line,
+  those that lead somewhere links, not pills.
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
@@ -441,7 +456,14 @@ is on the page, `hidden`, for the script to show.
   /feed, /notifications, /admin and the 404. Before, each opened on a bare
   title of its own making and read as another product beside the new home
   and pricing.
-- **Empty**: `.state`, a dashed box for what has nothing yet.
+- **Empty**: `.state`, a dashed box for what has nothing yet: a quiet
+  panel on `--bg-soft`, its words and its way on (`.actions`) in the middle
+  (sitepolish, 2026-11-23: a faint line round words in its corner read as a
+  placeholder nobody finished). One laid out as a row (`.feed-ask`,
+  `.share-drop`) keeps its start.
+- **Gate**: `.gate`, what a page that is yours alone says signed out
+  (Settings, Notifications): its lede and Sign in, on a panel where the
+  page's own would be.
 - **Segmented**: `.segmented`, a few buttons in a row, the chosen one
   `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field
   (its buttons 36 px); under 600 px its buttons are a finger's 44.
@@ -749,7 +771,10 @@ is on the page, `hidden`, for the script to show.
   then a check (a filled bookmark for Save), the accent edge when
   pressed (`aria-pressed`; the words never change, so a voice names what
   it sees), ×N when more than one is owned; the chevron opens the lists,
-  with a dot when the thing is in one. In a compact grid only the icons.
+  with a dot when the thing is in one. In a compact grid, and in a phone's
+  two to a row, only the icons. With a mouse it comes over the picture as
+  the pointer or the keyboard reaches the card, and stays while the thing
+  is kept or in a list (sitepolish); on a touch screen it is always there.
   Every keep is in a toast with Undo. A set's page has the same as `.keep-bar`, three ghost `.cta`s: Own,
   Want, Add to a list.
 - **A thing's lists**: `dialog.keep-panel`, a popover by the button that
@@ -768,9 +793,11 @@ is on the page, `hidden`, for the script to show.
   with `.moves` arrows in your order, and `dialog.lists-dialog` for New
   list, Edit and Add sets.
 - **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
-  `web/theme.js` on every page while the beta is open): a floating pill
-  at the foot of the window, bottom left (centred under 600 px), above
-  the page and moving nothing in it: an accent `.badge` to /beta, a
+  `web/theme.js` on every page while the beta is open): docked at the
+  foot of the window, the whole width, its buttons centred, the page's
+  end given its height (`--betabar-h`) so it is never over what the page
+  says (floating, it covered the home's first post; hero3d, 2026-11-23),
+  moving nothing as it comes: an accent `.badge` to /beta, a
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
   hides it in this browser until it is shown again (bugbar, 2026-11-13;
@@ -1077,7 +1104,12 @@ and after scrolling, every page at 390 and 1280 px.
   here, the footer), it waits, and Show more draws it at once: put in then,
   it pushed them down under a person's eyes (site277, CLS 0.51). Show more
   stays pressable while that page is on its way, and a press then draws it
-  as soon as it comes.
+  as soon as it comes. A band that comes late in the middle of a page (the
+  home page's latest talk and its beta) goes in while the place it goes is
+  under the screen or scrolled past, never while it shows; put in above,
+  the page is scrolled on by its height where the browser keeps no anchor
+  itself. Waiting only for under the screen, it never came on a screen tall
+  enough to show that place at the top (1280 x 900, landfix).
 - **Signed in at once**: a page that is yours (/profile, /settings, /feed,
   /notifications) knows from the session kept in this browser that you
   are signed in, so it never says "Looking for your sign-in…" while it
