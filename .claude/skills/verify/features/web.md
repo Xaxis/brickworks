@@ -2841,7 +2841,7 @@ plan with Claude as the client.
   the first paint, with `hero3d` itself (run it after the mark or
   `tools/viewer/hero.js` changes, and `node tools/viewer/build.mjs`).
   `web/landing.js` imports `/viewer3d.js` `hero3d` after the load, at idle,
-  on screen, on a device drawing the finished mark in 50 ms or less
+  on screen, on a device drawing the finished mark in 40 ms or less
   (`SLOW`; sessionStorage `brickworks.hero.slow` overrides it for a check);
   the assembly starts from the finished mark (bricks leave up, then fall
   back in), `.hero-stage.assembling` fading the picture's top;
