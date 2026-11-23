@@ -16391,3 +16391,27 @@ msgstr "gesperrt"
 
 msgid "frozen"
 msgstr "eingefroren"
+
+msgid "Best, Product look: what the model stands on, lit by a light standing near it as in a photograph"
+msgstr "Beste, Produktfoto: worauf das Modell steht, beleuchtet von einem Licht in seiner Nähe wie auf einem Foto"
+
+msgid "Seamless backdrop"
+msgstr "Nahtloser Hintergrund"
+
+msgid "Photographed on white"
+msgstr "Auf Weiß fotografiert"
+
+msgid "On paper"
+msgstr "Auf Papier"
+
+msgid "On a desk"
+msgstr "Auf einem Schreibtisch"
+
+msgid "On a wooden table"
+msgstr "Auf einem Holztisch"
+
+msgid "On a leather desk pad"
+msgstr "Auf einer Schreibunterlage aus Leder"
+
+msgid "On terrazzo"
+msgstr "Auf Terrazzo"

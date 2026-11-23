@@ -94,6 +94,63 @@ var on_what_moves: bool = false
 ## The key light casts no shadow. For a probe, to measure the shadow by
 ## what taking it away changes.
 var no_shadows: bool = false
+## The product look's camera (photoreal4), path traced on a backdrop: its
+## sensor's noise, in 8-bit levels at mid grey as a photograph's ISO gives it
+## (none on a white that is white); its lens's darkening towards the corners,
+## the share of the light lost at a corner; and its colour fringes, pixels at a
+## corner, red out and blue in. Below 0, the camera's own (StudioRender
+## PRODUCT_GRAIN, PRODUCT_VIGNETTE, PRODUCT_ABERRATION). The photo bench
+## matches each to its photograph (tools/photoreal/shots.json).
+var grain: float = -1.0
+var vignette: float = -1.0
+var aberration: float = -1.0
+## How soft that camera draws an edge (0 the picture's own pixels, 1 a third
+## of each pixel's light spread to its neighbours); below 0, PRODUCT_SOFTNESS.
+var softness: float = -1.0
+## That camera's own processing (photoreal6), as a phone's or a compact's
+## picture has been through it before anyone sees it: its sharpening, the
+## share of an edge's step added back (an unsharp mask a pixel and a bit
+## wide, its halos), and the JPEG it saved, at this quality (1 to 100; 0 for
+## none). Below 0, PRODUCT_SHARPEN and PRODUCT_JPEG. The photo bench matches
+## each to its photograph's (tools/photoreal/shots.json).
+var sharpen: float = -1.0
+var jpeg: float = -1.0
+## The product look's wear (photoreal4), path traced: how played-with the
+## parts are (0 new, 1 decades: whites and greys yellowed, each part its own
+## amount), the dust on their tops (0 none, 1 a shelf's year), and how much
+## the backdrop shows a paper's or a table's grain and uneven light (0 a
+## cut-out's seamless). Below 0, the look's own (StudioRender PRODUCT_AGE,
+## PRODUCT_DUST, PRODUCT_PAPER).
+var age: float = -1.0
+var dust: float = -1.0
+var paper: float = -1.0
+## What that grain is (photoreal5), for the photo bench to match the surface
+## each photograph's parts stand on: 0 a paper's or a card's fibres, 1 a
+## matte desk's specks and smudges.
+var surface: int = 0
+## A photograph's staging (photoreal7), Best path traced in the product look:
+## one of StudioRender.STAGES (what the model stands on, lit as any surface
+## is, under a key that stands near the model so its light falls off across
+## the model and the surface), or "" for the seamless as before.
+var stage: String = ""
+## That staging's key: how high it stands (degrees), how far from the
+## model's middle and how big (the model's radii), how bright against the
+## room's light. Below 0, StudioRender's STAGE_KEY_RISE, _FAR, _SIZE and
+## _SHARE; the photo bench fits each to its photograph.
+var key_rise: float = -1.0
+var key_far: float = -1.0
+var key_size: float = -1.0
+var key_share: float = -1.0
+## That staged photograph's camera (photoreal7): how far its tone curve bends
+## the picture (0 the light's own sRGB, 1 a camera JPEG's S), and how much of
+## a white card's cast where the model stands its white balance takes out
+## (0 none, 1 all). Below 0, StudioRender's PRODUCT_TONE and PRODUCT_BALANCE.
+var tone: float = -1.0
+var balance: float = -1.0
+## How far each part sits from exactly in place, as a built set's never sit
+## quite square (0 exactly, 1 up to PathTracer.SEAT_SHIFT off and SEAT_TURN
+## degrees turned); below 0, PRODUCT_SEATING.
+var seating: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.
@@ -195,6 +252,32 @@ func take(asked: Dictionary) -> String:
 		f_stop = 4.0
 		focus = 0.4
 		quality = Quality.BEST
+	# photoreal7: what the model stands on, its own colour on the backdrop
+	# unless a backdrop was asked for too.
+	if asked.has("stage"):
+		var wrong: String = use_stage(str(asked["stage"]), not asked.has("backdrop"))
+		if not wrong.is_empty():
+			return wrong
+	return ""
+
+
+## What the model stands on (photoreal7, StudioRender.STAGES), by its key, or
+## none for the seamless backdrop; with [param coloured] the backdrop takes
+## the stage's own colour (and something to stand on), otherwise it keeps the
+## one asked for. What was wrong, or "".
+func use_stage(asked: String, coloured: bool = true) -> String:
+	if asked == "none" or asked.is_empty():
+		stage = ""
+		return ""
+	if not StudioRender.STAGES.has(asked):
+		return "stage is none, %s." % ", ".join(StudioRender.STAGES.keys())
+	if transparent and not coloured:
+		return "a stage stands the model on something, and backdrop none draws nothing under it."
+	stage = asked
+	if coloured:
+		backdrop = StudioRender.STAGES[asked][6]
+		backdrop_gradient = false
+		transparent = false
 	return ""
 
 
@@ -216,7 +299,7 @@ const PRESETS_FILE := "user://render_presets.cfg"
 ## where the window looked from nor a probe's switches.
 const PRESET_KEEPS: Array[String] = ["quality", "look", "size", "transparent", "backdrop",
 	"backdrop_gradient", "lighting", "light_turn", "contact_shadow", "view", "saved_view",
-	"focal_mm", "f_stop", "focus", "samples", "frames", "fps"]
+	"focal_mm", "f_stop", "focus", "samples", "frames", "fps", "stage"]
 
 
 ## These choices as a preset keeps them: words, numbers and the backdrop's
@@ -270,6 +353,10 @@ func use_preset(said: Dictionary) -> String:
 			"lighting":
 				if str(value) in LIGHTINGS_BESIDE or StudioRender.HDRIS.has(str(value)):
 					lighting = str(value)
+					continue
+			"stage":
+				if value is String and (str(value).is_empty() or StudioRender.STAGES.has(str(value))):
+					stage = str(value)
 					continue
 			"light_turn":
 				if number and absf(float(value)) <= 180.0:
