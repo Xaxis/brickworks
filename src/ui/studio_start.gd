@@ -37,6 +37,8 @@ const PICTURE := Vector2(176, 132)
 const SMALL := Vector2(56, 42)
 ## A search typed is asked for once the typing stops this long.
 const TYPED_WAIT := 0.45
+## The most a search says, as the gallery's own (api/share.js ?op=list q).
+const SEARCH_MOST := 100
 ## A file's head read for its link: its metas come before its first part.
 const HEAD_LINES := 400
 
@@ -200,7 +202,6 @@ func _ready() -> void:
 	_search.placeholder_text = "Search: a tug, a castle, a 6-wide car…"
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.custom_minimum_size = Vector2(0, 34)
-	_search.max_length = 100
 	_search.clear_button_enabled = true
 	_search.add_theme_font_size_override("font_size", 14)
 	_search.text_submitted.connect(func(_words: String) -> void: _find_now())
@@ -324,7 +325,12 @@ func _ask() -> void:
 
 func _find_now() -> void:
 	_typed.stop()
-	_find(_search.text.strip_edges())
+	var words: String = _search.text.strip_edges()
+	# Said, never cut: the gallery searches at most SEARCH_MOST letters.
+	if words.length() > SEARCH_MOST:
+		_found_title.text = "Search with fewer words: at most %d letters" % SEARCH_MOST
+		return
+	_find(words)
 
 
 ## The gallery's models for [param words] (its own first page for none).

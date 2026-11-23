@@ -3831,7 +3831,7 @@ func _pin_touch(event: InputEvent) -> void:
 ## The comments on parts of the model open, for its builder in the studio:
 ## with a link and somebody signed in, asked for as them (the newest
 ## version), told with the model's notices and listed (PartPins).
-func _look_for_pins() -> void:
+func _look_for_pins(again: bool = false) -> void:
 	if not _viewing.is_empty() or _shared == null or _account == null:
 		return
 	var id: String = _store.share_id
@@ -3845,6 +3845,10 @@ func _look_for_pins() -> void:
 	var answer: Dictionary = await _shared.comments(id, 0, token)
 	var body: Variant = answer.get("body")
 	if id != _store.share_id or int(answer.get("code", 0)) != 200 or not body is Dictionary:
+		return
+	# Asked again while the studio is open (_pins_again) and nothing new: the
+	# pins are not placed again, which reads every part of the model.
+	if again and _part_pins != null and _part_pins.answer == body:
 		return
 	# Made only for a model somebody has commented on a part of.
 	var any: bool = false
@@ -11162,7 +11166,7 @@ func _pins_again() -> void:
 		return
 	if OS.has_feature("web") and bool(JavaScriptBridge.eval("document.hidden === true", true)):
 		return
-	_look_for_pins()
+	_look_for_pins(true)
 
 
 ## The end of a drag that carried a part: down where the pointer is, if it

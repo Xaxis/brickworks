@@ -17119,3 +17119,7 @@ msgstr "Der Kommentar von %s ist an diesem Teil: „%s“"
 
 msgid "%s commented: “%s” — reply on its page"
 msgstr "%s hat kommentiert: „%s“ — antworte auf seiner Seite"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "Search with fewer words: at most %d letters"
+msgstr "Suche mit weniger Wörtern: höchstens %d Zeichen"
