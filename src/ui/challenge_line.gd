@@ -520,12 +520,13 @@ func passes() -> bool:
 	return true
 
 
-## The first rule the model does not keep, in words with what to change;
-## "" when none.
+## What to change for the first rule the model does not keep (its fix,
+## which names the rule: "Take 12 parts away: it has 162, and the most is
+## 150."), its words when it has none; "" when none fails.
 func first_failed() -> String:
 	for one: Dictionary in ChallengeRules.rows(challenge, checked, tested_now(), library):
 		if one["state"] == "no":
-			return "%s: %s" % [one["words"], one["fix"]] if not str(one["fix"]).is_empty() else str(one["words"])
+			return str(one["fix"]) if not str(one["fix"]).is_empty() else str(one["words"])
 	return ""
 
 

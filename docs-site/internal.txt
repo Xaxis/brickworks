@@ -103,3 +103,4 @@ entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: h
 lib:the web's catalogue as columns  # the form the web build reads the parts catalogue in (webstart11); a visitor meets the parts bin, which reads the same either way
 cli:prompts check  # tools/prompts_check.mjs checks the house's quick build models and their stack from a checkout; a person meets the models, not it
 cli:prompt pictures  # tools/prompt_pictures.mjs draws the docs world's quick build pictures; a reader meets the docs' picture, not it
+cli:challenge rules check  # tools/challenge_rules_check.mjs writes the site's challenge_check answers for the studio's ticks to be compared with; a person meets the line's ticks, not it

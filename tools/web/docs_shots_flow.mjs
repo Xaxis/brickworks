@@ -130,6 +130,8 @@ function answerOf(answers, where) {
 const SERVER = [
   [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", (m) => ({ op: "page", id: m[1] })],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", (m) => ({ op: "page", id: m[1], v: m[2] })],
+  // The embed, as a challenge's vote two at a time frames it (?blind=1).
+  [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", (m) => ({ op: "embed", id: m[1] })],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", (m) => ({ op: "page", handle: m[1] })],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", (m) => ({ op: "list_page", id: m[1] })],
   [/^\/talk\/?$/, "people", () => ({ op: "talk_page" })],

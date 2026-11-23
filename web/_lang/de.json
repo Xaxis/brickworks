@@ -1159,7 +1159,11 @@
   "Build on it, by hand or with the assistant. There are no rules but the brief, and no vote.": "Bau darauf, von Hand oder mit dem Assistenten. Es gibt keine Regeln außer der Aufgabe und keine Abstimmung.",
   "Publish": "Veröffentlichen",
   "Publish it in the gallery before the week ends, and it is entered: the publish dialog says so, and one tap keeps it out.": "Veröffentliche ihn vor Wochenende in der Galerie, und er nimmt teil: Das sagt der Veröffentlichen-Dialog, und ein Tipp hält ihn heraus.",
-  "When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.": "Wenn die Woche endet, werden alle Beiträge zu einem Modell gestapelt, mit den Namen ihrer Erbauer, das jeder drehen und nachbauen kann. Mach jede Woche mit, und deine Serie wächst auf deinem Profil."
+  "When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.": "Wenn die Woche endet, werden alle Beiträge zu einem Modell gestapelt, mit den Namen ihrer Erbauer, das jeder drehen und nachbauen kann. Mach jede Woche mit, und deine Serie wächst auf deinem Profil.",
+  "Compare them two at a time, in 3D": "Je zwei vergleichen, in 3D",
+  "Vote": "Abstimmen",
+  "Start again": "Von vorn",
+  "See every entry": "Alle Beiträge ansehen"
  },
  "scripts": {
   "Copy": "Kopieren",
@@ -3340,6 +3344,12 @@
   "{title} · Brickworks quick build": "{title} · Brickworks-Schnellbau",
   "The last two days of this week's quick build, {title}: publish yours by the end of {day}": "Die letzten zwei Tage des Schnellbaus der Woche, {title}: Veröffentliche deinen bis Ende {day}",
   "This week's quick build is {title}: start from its template, and publish by the end of {day}": "Der Schnellbau der Woche ist {title}: Leg mit seiner Vorlage los und veröffentliche bis Ende {day}",
-  "Quick build: {title}": "Schnellbau: {title}"
+  "Quick build: {title}": "Schnellbau: {title}",
+  "{name}, turning in 3D": "{name}, sich drehend in 3D",
+  "This one": "Dieses",
+  "I like “{name}” more": "„{name}“ gefällt mir besser",
+  "Of all {n} you like “{name}” most.": "Von allen {n} gefällt dir „{name}“ am besten.",
+  "You cannot vote in this challenge.": "Du kannst bei dieser Challenge nicht abstimmen.",
+  "{seen} of {n}: press This one under the one you like more. It stays, and the next comes beside it.": "{seen} von {n}: Drücke „Dieses“ unter dem, das dir besser gefällt. Es bleibt, und das nächste kommt daneben."
  }
 }

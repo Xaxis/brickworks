@@ -236,6 +236,17 @@
 			</div>
 			<div class="tabs" id="group-tabs" role="tablist" aria-label="Groups"></div>
 			<p class="vote-said" id="vote-said" hidden></p>
+			<p class="pair-go" id="pair-go" hidden><a class="cta ghost small" id="pair-link" href="?pair=hand"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#eye"></use></svg><span>Compare them two at a time, in 3D</span></a></p>
+			<!-- Two at a time: each turning in its own blind embed, its name alone (web/challenge.js drawPair). -->
+			<div class="pair" id="pair" role="tabpanel" hidden>
+				<p class="pair-said" id="pair-said" tabindex="-1" aria-live="polite"></p>
+				<div class="pair-two" id="pair-two"></div>
+				<div class="actions pair-acts">
+					<button type="button" class="cta big" id="pair-vote" hidden>Vote</button>
+					<button type="button" class="cta ghost" id="pair-again" hidden>Start again</button>
+					<a class="cta ghost" id="pair-back" href="/challenge">See every entry</a>
+				</div>
+			</div>
 			<div id="groups"></div>
 			<p class="said" id="said" role="status"></p>
 		</section>

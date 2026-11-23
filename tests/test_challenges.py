@@ -166,7 +166,8 @@ def test_the_stand_in_answers_what_the_api_asks() -> None:
     assert asked <= held | unheld, asked - held - unheld
     rounds = set(defined((ROOT / "supabase/challenge_rounds.sql").read_text()))
     assert unheld <= rounds and not unheld & held, (unheld - rounds, unheld & held)
-    both = set(defined(SQL)) | set(defined((ROOT / "supabase/challenge_year.sql").read_text())) | rounds
+    both = set(defined(SQL)) | set(defined((ROOT / "supabase/challenge_year.sql").read_text())) | rounds \
+        | set(defined((ROOT / "supabase/challenge_studio.sql").read_text()))
     assert asked <= both, asked - both
 
 

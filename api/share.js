@@ -1819,7 +1819,12 @@ async function oembed(request, response, origin) {
 /// as on the page), and its links to the page's copy and into the app in
 /// the language. It names no other copy, so it stays in the one its code
 /// asked for, whatever the browser around it reads.
-function embedCard(origin, id, row, lang = "en", words = null, clip = null) {
+///
+/// [blind] (?blind=1, a challenge's vote two at a time, web/challenge.js,
+/// unit challengestudio): the model alone, nobody's name anywhere in it,
+/// nor its bar, whose name, page link and Build it the vote's page says
+/// for itself; [row] is given it without its maker (embedAnswer).
+function embedCard(origin, id, row, lang = "en", words = null, clip = null, blind = false) {
   const link = links(origin, id);
   const poster = row.has_image ? `/m/${id}.png` : "/share.png";
   const at = lang === "en" ? "" : `/${lang}`;
@@ -1855,10 +1860,11 @@ ${scriptWords}${siteChrome().head}
   .embed-bar .words:hover b { text-decoration: underline; }
   .embed-bar b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .embed-bar small { color: var(--ink-soft); font-size: var(--t-small); }
+  main[data-blind] .media > [data-clip-toggle] { top: auto; bottom: var(--s-2); }
 </style>
 </head>
 <body>
-<main class="embed">
+<main class="embed"${blind ? " data-blind" : ""}>
 <div class="media">
 <a class="picture" href="${escapeHtml(viewer)}" rel="noopener" aria-label="${escapeHtml(say("View {name} in 3D", { name: row.name }))}"
   data-scene="/m/${id}/scene.json">${clip
@@ -1866,11 +1872,11 @@ ${scriptWords}${siteChrome().head}
     : `<img src="${escapeHtml(poster)}" alt="">`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
 ${clip ? iconButtonHtml({ icon: "pause", name: say("Pause"), small: true, attrs: 'data-clip-toggle hidden' }) : ""}
 </div>
-<div class="embed-bar">
+${blind ? "" : `<div class="embed-bar">
   <a class="words" href="${escapeHtml(page)}" rel="noopener"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small>${away}</a>
   <a class="cta small" href="${escapeHtml(`${viewer}&build`)}" rel="noopener" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}${away}</a>
 </div>
-</main>
+`}</main>
 </body>
 </html>`;
 }
@@ -2351,10 +2357,21 @@ async function read(request, response) {
     // is of the newest version; without, the picture, as it always was, and
     // nothing of the clip read.
     const autoplay = request.query?.autoplay === "1";
-    const [by, clip, versions] = await Promise.all([orUnknown("share", profileOf(id, row.author)),
+    // Blind (?blind=1, a challenge's vote two at a time): its maker neither
+    // asked nor given it, so their name is nowhere in what it draws.
+    const blind = request.query?.blind === "1";
+    const [by, clip, versions] = await Promise.all([blind ? null : orUnknown("share", profileOf(id, row.author)),
       autoplay ? orUnknown("share", clipOf(id)) : null, autoplay ? orUnknown("share", versionsOf(id, row, 1)) : null]);
     const playing = versions ? clipShown(origin, id, clip, versions[0]) : null;
-    return html(response, 200, speak(() => embedCard(origin, id, { ...row, by }, lang, words, playing)), { embed: true });
+    const shown = blind ? { ...row, author: null, by: null, modelled_by: null } : { ...row, by };
+    // Framed by the challenge's page, which is cross-origin isolated (deploy.sh's
+    // headers for every page): a frame in it must say it is too, or the
+    // browser shows nothing in its place.
+    if (blind) {
+      response.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+      response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    }
+    return html(response, 200, speak(() => embedCard(origin, id, shown, lang, words, playing, blind)), { embed: true });
   }
 
   if (op === "image" || op === "cutout" || op === "thumb") {

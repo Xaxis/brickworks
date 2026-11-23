@@ -330,6 +330,29 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .vote-said .icon { flex: none; width: 18px; height: 18px; color: var(--green); }
 .vote-said .said { min-width: 0; overflow-wrap: anywhere; }
 #groups .why-not { margin: 0 0 var(--s-4); }
+#groups[hidden] { display: none; }
+/* Two at a time: the way to it over the cards; the pair side by side,
+   each its blind embed turning in a frame of the card's shape, its name
+   and This one under it; one above the other on a phone. */
+.pair-go { margin: 0 0 var(--s-4); }
+.pair-go[hidden], .pair[hidden] { display: none; }
+.pair-go .icon { width: 18px; height: 18px; }
+.pair-said { margin: 0 0 var(--s-4); color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+.pair-said:focus { outline: none; }
+.pair-said b { color: var(--ink); }
+.pair-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.pair-two[data-state="chosen"], .pair-two[data-state="voted"] { grid-template-columns: minmax(0, 560px); justify-content: center; }
+.pair-one { margin: 0; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line);
+	border-radius: var(--radius); overflow: hidden; background: var(--panel); }
+.pair-frame { aspect-ratio: 4 / 3; background: var(--picture-ground); }
+.pair-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.pair-words { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--s-4); }
+.pair-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pair-keep { flex: none; }
+.pair-acts { margin-top: var(--s-4); }
+@media (max-width: 640px) {
+	.pair-two { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+}
 #groups .state p { margin: 0 0 var(--s-3); }
 #groups .state p:last-child { margin: 0; }
 /* What a card says of its entry, at its foot, level across a row: the

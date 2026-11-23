@@ -2976,6 +2976,11 @@ const CHALLENGE_LINE_AFTER := 2.5
 func _make_challenge_line() -> void:
 	if _challenge_line != null or not _viewing.is_empty() or _notices == null or not _built:
 		return
+	# A probe's or a check's run (Outside.held) is never told the real
+	# month's challenge, which would be over the model in every one of its
+	# pictures while one is open: only a probe's own SharedModels is asked.
+	if Outside.held() and _shared.get_script() == SharedModels:
+		return
 	_challenge_line = Later.make(&"ChallengeLine")
 	_challenge_line.set("store", _store)
 	_challenge_line.set("library", _library)

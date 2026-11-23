@@ -16479,3 +16479,190 @@ msgstr "Inscrito en la construcción rápida de la semana: %s."
 
 msgid "Every entry is at %s."
 msgstr "Todas las participaciones están en %s."
+
+# The month's challenge in the studio: its line, its rules ticked, Share's Enter (challengestudio)
+msgid "last day"
+msgstr "último día"
+
+msgid "%d days left"
+msgstr "quedan %d días"
+
+msgid "Quick build: %s"
+msgstr "Construcción rápida: %s"
+
+msgid "Its rules, ticked on this model"
+msgstr "Sus reglas, marcadas en este modelo"
+
+msgid "This week's quick build"
+msgstr "La construcción rápida de esta semana"
+
+msgid "This week's quick build, %s"
+msgstr "La construcción rápida de esta semana, %s"
+
+msgid "This month's challenge, %s"
+msgstr "El reto de este mes, %s"
+
+msgid "ends today"
+msgstr "termina hoy"
+
+msgid "Show its rules"
+msgstr "Mostrar sus reglas"
+
+msgid "Hide its rules"
+msgstr "Ocultar sus reglas"
+
+msgid "Show its brief"
+msgstr "Mostrar el tema"
+
+msgid "Hide its brief"
+msgstr "Ocultar el tema"
+
+msgid "Hide this line for %s"
+msgstr "Ocultar esta línea para %s"
+
+msgid "Hide the line for %s"
+msgstr "Ocultar la línea para %s"
+
+msgid "rule kept"
+msgstr "regla cumplida"
+
+msgid "rule not kept yet"
+msgstr "regla aún no cumplida"
+
+msgid "%d of %d rules kept"
+msgstr "%d de %d reglas cumplidas"
+
+msgid "No rules: publish this copy in the gallery by %s and it is entered."
+msgstr "Sin reglas: publica esta copia en la galería antes del %s y participa."
+
+msgid "No rules but its theme: publish it in the gallery with your name on it, then Enter in Share."
+msgstr "Sin más reglas que el tema: publícalo en la galería con tu nombre y luego Participar en Compartir."
+
+msgid "Test it"
+msgstr "Probarlo"
+
+msgid "Run the four tests a publish runs: it stands at every step, every step reachable, every part made in its colour, nothing loose"
+msgstr "Ejecutar las cuatro pruebas de una publicación: se sostiene en cada paso, cada paso alcanzable, cada pieza fabricada en su color, nada suelto"
+
+msgid "Publish to enter"
+msgstr "Publicar para participar"
+
+msgid "Open Share: Enter there publishes and enters it in one press"
+msgstr "Abrir Compartir: Participar allí lo publica y lo inscribe con una sola pulsación"
+
+msgid "See the challenge"
+msgstr "Ver el reto"
+
+msgid "Writing “%s” to test it…"
+msgstr "Escribiendo «%s» para probarlo…"
+
+msgid "Testing “%s” as a publish would…"
+msgstr "Probando «%s» como lo haría una publicación…"
+
+msgid "At most %s parts"
+msgstr "Como mucho %s piezas"
+
+msgid "%s of %s parts"
+msgstr "%s de %s piezas"
+
+msgid "Take %s away: it has %s, and the most is %s."
+msgstr "Quita %s: tiene %s y el máximo es %s."
+
+msgid "Only parts from set %s, %s"
+msgstr "Solo piezas del set %s, %s"
+
+msgid "Only parts from set %s"
+msgstr "Solo piezas del set %s"
+
+msgid "Tested: stands at every step, nothing loose"
+msgstr "Probado: se sostiene en cada paso, nada suelto"
+
+msgid "Not tested yet: a publish tests it, or test it now."
+msgstr "Aún sin probar: una publicación lo prueba, o pruébalo ahora."
+
+msgid "Not shown to stand at every step"
+msgstr "No se ha visto que se sostenga en cada paso"
+
+msgid "Not every step shown reachable"
+msgstr "No se ha visto que todos los pasos sean alcanzables"
+
+msgid "A part is not made in its colour"
+msgstr "Una pieza no se fabrica en su color"
+
+msgid "It does not go together"
+msgstr "No encaja"
+
+msgid "Swap or take away %s."
+msgstr "Cambia o quita %s."
+
+msgid "Swap or take away %s, and 1 lot more."
+msgstr "Cambia o quita %s, y un lote más."
+
+msgid "Swap or take away %s, and %d lots more."
+msgstr "Cambia o quita %s, y %d lotes más."
+
+msgid "%d more %s than the set has"
+msgstr "%d %s más de las que tiene el set"
+
+msgid "%d %s, which the set has none of"
+msgstr "%d %s, que el set no tiene"
+
+msgid "colour %d"
+msgstr "color %d"
+
+msgid "Lists it in the gallery with your name on it, publishes it and enters it"
+msgstr "Lo pone en la galería con tu nombre, lo publica y lo inscribe"
+
+msgid "Built by hand"
+msgstr "Construido a mano"
+
+msgid "Built with the assistant"
+msgstr "Construido con el asistente"
+
+msgid "built by hand"
+msgstr "construido a mano"
+
+msgid "built with the assistant"
+msgstr "construido con el asistente"
+
+msgid "How it was built: the challenge judges the two apart"
+msgstr "Cómo se construyó: el reto juzga ambos por separado"
+
+msgid "In %s, %s. Publishing again keeps it in."
+msgstr "En %s, %s. Volver a publicarlo lo mantiene inscrito."
+
+msgid "Entering…"
+msgstr "Inscribiendo…"
+
+msgid "Enter %s"
+msgstr "Participar en %s"
+
+msgid "Not yet: %s"
+msgstr "Todavía no: %s"
+
+msgid "Ticking %s's rules on the model…"
+msgstr "Comprobando las reglas de %s en el modelo…"
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it."
+msgstr "Participar lo pone en la galería con tu nombre, lo publica y lo inscribe."
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it. A publish tests it, as the rules ask."
+msgstr "Participar lo pone en la galería con tu nombre, lo publica y lo inscribe. La publicación lo prueba, como piden las reglas."
+
+msgid "Say the name to credit under Show who made it: an entry has its designer's name on it."
+msgstr "Indica el nombre en «Mostrar quién lo hizo»: una participación lleva el nombre de su diseñador."
+
+msgid "Entered in %s, %s. It is on the challenge's page: %s."
+msgstr "Inscrito en %s, %s. Está en la página del reto: %s."
+
+msgid "Entered in %s, %s. It is on the challenge's page."
+msgstr "Inscrito en %s, %s. Está en la página del reto."
+
+msgid "It is in %s already."
+msgstr "Ya está inscrito en %s."
+
+msgid "Published, not entered: %s"
+msgstr "Publicado, no inscrito: %s"
+
+msgid "Brickworks could not enter it just now. Press Enter again in a minute."
+msgstr "Brickworks no pudo inscribirlo ahora. Pulsa Participar de nuevo dentro de un minuto."

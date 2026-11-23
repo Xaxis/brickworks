@@ -6487,6 +6487,55 @@
       "area": "account"
     },
     {
+      "kind": "ui",
+      "label": "the month's challenge in the studio",
+      "entry": "src/ui/challenge_line.gd",
+      "reach": "godot --path .  while a challenge is open (GET /api/people?op=challenge_rules, each hour and with the sign-in): one line with the model's notices, its name and days left; pressed, its rules ticked on the model (src/net/challenge_rules.gd, api/share.js checkModel ported), each failed one saying what to change; Test it; x hides it for that challenge (user://challenge_line.cfg)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "Enter from Share",
+      "entry": "src/ui/share_panel.gd",
+      "reach": "File > Share while the month's rules pass on the model: Enter <title> under Publish with its way (Built by hand, Built with the assistant); one press lists it with the name, publishes and POSTs /api/people?op=enter; a failing rule says what to change, Publish stays one press",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge line probe",
+      "entry": "src/dev/challenge_line_probe.gd",
+      "reach": "PROBE_SIZE=WxH tools/probe.sh challenge_line_probe   (390x844 430x932 768x1024 1280x800 1920x1080: the line never over the model, named for a screen reader, its rules ticked live, Hide, Enter in one press)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge rules probe",
+      "entry": "src/dev/challenge_rules_probe.gd",
+      "reach": "tools/probe.sh challenge_rules_probe --fixtures=DIR   (the studio's ticks against challenge_check's answers, 30 models x 3 rules, from tools/challenge_rules_check.mjs)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge rules check",
+      "entry": "tools/challenge_rules_check.mjs",
+      "reach": "node tools/challenge_rules_check.mjs --out=DIR   (the site's challenge_check on 30 published models under 3 test challenges, in a rolled-back transaction: the rules probe's fixtures)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the fan vote two at a time",
+      "entry": "web/challenge.js",
+      "reach": "https://brickworks.diy/challenge?pair=hand (or =assistant), or Compare them two at a time, in 3D over the cards while votes are cast: two entries side by side (stacked on a phone), each its blind embed /m/<id>/embed?blind=1&autoplay=1 turning; This one keeps one and brings the next; then Vote for it",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge pair check",
+      "entry": "tools/web/challenge_pair_check.mjs",
+      "reach": "node tools/web/challenge_pair_check.mjs --url=<a local relay> --out=DIR   (the pair at 1280 and 390, no maker's name or count in the page or its frames, a vote cast, LCP beside the cards' at the same moments)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "prompts check",
       "entry": "tools/prompts_check.mjs",

@@ -1033,6 +1033,38 @@
       "tests": []
     },
     {
+      "id": "cli:challenge line probe",
+      "kind": "cli",
+      "entry": "src/dev/challenge_line_probe.gd",
+      "reach": "PROBE_SIZE=WxH tools/probe.sh challenge_line_probe   (390x844 430x932 768x1024 1280x800 1920x1080: the line never over the model, named for a screen reader, its rules ticked live, Hide, Enter in one press)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:challenge pair check",
+      "kind": "cli",
+      "entry": "tools/web/challenge_pair_check.mjs",
+      "reach": "node tools/web/challenge_pair_check.mjs --url=<a local relay> --out=DIR   (the pair at 1280 and 390, no maker's name or count in the page or its frames, a vote cast, LCP beside the cards' at the same moments)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:challenge rules check",
+      "kind": "cli",
+      "entry": "tools/challenge_rules_check.mjs",
+      "reach": "node tools/challenge_rules_check.mjs --out=DIR   (the site's challenge_check on 30 published models under 3 test challenges, in a rolled-back transaction: the rules probe's fixtures)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:challenge rules probe",
+      "kind": "cli",
+      "entry": "src/dev/challenge_rules_probe.gd",
+      "reach": "tools/probe.sh challenge_rules_probe --fixtures=DIR   (the studio's ticks against challenge_check's answers, 30 models x 3 rules, from tools/challenge_rules_check.mjs)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:challenges browser flow",
       "kind": "cli",
       "entry": "tools/web/challenges_flow.mjs",
@@ -5573,6 +5605,14 @@
       "tests": []
     },
     {
+      "id": "ui:Enter from Share",
+      "kind": "ui",
+      "entry": "src/ui/share_panel.gd",
+      "reach": "File > Share while the month's rules pass on the model: Enter <title> under Publish with its way (Built by hand, Built with the assistant); one press lists it with the name, publishes and POSTs /api/people?op=enter; a failing rule says what to change, Publish stays one press",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "ui:FAQ page",
       "kind": "ui",
       "entry": "web/faq.html",
@@ -7782,6 +7822,23 @@
       "tests": []
     },
     {
+      "id": "ui:the fan vote two at a time",
+      "kind": "ui",
+      "entry": "web/challenge.js",
+      "reach": "https://brickworks.diy/challenge?pair=hand (or =assistant), or Compare them two at a time, in 3D over the cards while votes are cast: two entries side by side (stacked on a phone), each its blind embed /m/<id>/embed?blind=1&autoplay=1 turning; This one keeps one and brings the next; then Vote for it",
+      "area": "web",
+      "tests": [
+        "tests/test_challenge_notices.py",
+        "tests/test_challenges.py",
+        "tests/fixtures/announce/api_check.mjs",
+        "tests/fixtures/insights/names_check.mjs",
+        "tests/test_insights.py",
+        "tests/test_share_unknowns.py",
+        "tests/test_site_lang.py",
+        "tests/test_talk.py"
+      ]
+    },
+    {
       "id": "ui:the gallery's builds tab",
       "kind": "ui",
       "entry": "web/builds.js",
@@ -7887,6 +7944,14 @@
       "entry": "web/turntable-clip.js",
       "reach": "the designer's own visit to https://brickworks.diy/m/<id> records its clip once per version, in a worker off the page's thread (web/model-page.js clipOwn, <html data-clip> and data-clip-of; tools/viewer/clip_worker.js built as web/turntable-worker.js from that version's own scene; WebCodecs, an MP4 of H.264 or a WebM of VP9/VP8); POST /api/share?op=clip {version, at, clip} reads it (api/_clip.js readClip: its length from its frames' own times) and keeps it in shared-clips (supabase/model_clips.sql); /m/<id>.mp4 or .webm?v=N&c=K serves it whole, the CDN answering ranges; /m/<id>'s head names it in og:video and the player's tags beside X's summary_large_image card; /m/<id>/embed?autoplay=1 plays it muted with Pause and Play (web/embed.js)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the month's challenge in the studio",
+      "kind": "ui",
+      "entry": "src/ui/challenge_line.gd",
+      "reach": "godot --path .  while a challenge is open (GET /api/people?op=challenge_rules, each hour and with the sign-in): one line with the model's notices, its name and days left; pressed, its rules ticked on the model (src/net/challenge_rules.gd, api/share.js checkModel ported), each failed one saying what to change; Test it; x hides it for that challenge (user://challenge_line.cfg)",
+      "area": "account",
       "tests": []
     },
     {

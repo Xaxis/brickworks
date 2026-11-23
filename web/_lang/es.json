@@ -1159,7 +1159,11 @@
   "Build on it, by hand or with the assistant. There are no rules but the brief, and no vote.": "Construye sobre ella, a mano o con el asistente. No hay más reglas que la consigna, ni votación.",
   "Publish": "Publicar",
   "Publish it in the gallery before the week ends, and it is entered: the publish dialog says so, and one tap keeps it out.": "Publícala en la galería antes de que acabe la semana y participa: el diálogo de publicar lo dice, y un toque la deja fuera.",
-  "When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.": "Cuando acaba la semana, todas las participaciones se apilan en un solo modelo, con el nombre de quienes las hicieron, que cualquiera puede girar y construir. Participa cada semana y tu racha crece en tu perfil."
+  "When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.": "Cuando acaba la semana, todas las participaciones se apilan en un solo modelo, con el nombre de quienes las hicieron, que cualquiera puede girar y construir. Participa cada semana y tu racha crece en tu perfil.",
+  "Compare them two at a time, in 3D": "Compararlos de dos en dos, en 3D",
+  "Vote": "Votar",
+  "Start again": "Empezar de nuevo",
+  "See every entry": "Ver todas las participaciones"
  },
  "scripts": {
   "Copy": "Copiar",
@@ -3340,6 +3344,12 @@
   "{title} · Brickworks quick build": "{title} · construcción rápida de Brickworks",
   "The last two days of this week's quick build, {title}: publish yours by the end of {day}": "Los dos últimos días de la construcción rápida de esta semana, {title}: publica la tuya antes del final del {day}",
   "This week's quick build is {title}: start from its template, and publish by the end of {day}": "La construcción rápida de esta semana es {title}: empieza desde su plantilla y publica antes del final del {day}",
-  "Quick build: {title}": "Construcción rápida: {title}"
+  "Quick build: {title}": "Construcción rápida: {title}",
+  "{name}, turning in 3D": "{name}, girando en 3D",
+  "This one": "Este",
+  "I like “{name}” more": "Me gusta más «{name}»",
+  "Of all {n} you like “{name}” most.": "De las {n}, la que más te gusta es «{name}».",
+  "You cannot vote in this challenge.": "No puedes votar en este reto.",
+  "{seen} of {n}: press This one under the one you like more. It stays, and the next comes beside it.": "{seen} de {n}: pulsa Este debajo del que más te guste. Se queda, y el siguiente aparece a su lado."
  }
 }

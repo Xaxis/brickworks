@@ -15,6 +15,19 @@ whole cycle.
 
 ### Added
 
+- **The month's challenge in the studio.** While a challenge is open, one
+  small line over the model names it and its days left; press it and its
+  rules are ticked on the model as you build (*112 of 150 parts*, *only
+  parts from set 31009*, *Tested*), each one it breaks saying what to
+  change. They are the rules the site checks, ticked the same way. When the
+  model keeps them, Share says **Enter** under Publish, with how you built
+  it: one press publishes it in the gallery with your name and enters it.
+  **×** hides the line for that challenge.
+- **The fan vote two at a time.** On the challenge's page, **Compare them
+  two at a time, in 3D** shows two entries side by side, one above the
+  other on a phone, each turning, with nobody's name and no counts. Keep
+  the one you like more and the next comes beside it, until one is left
+  to vote for.
 - **A quick build every week.** Beside the month's challenge, each week
   has a short brief and a template to start from, an 8×8 plate. **Start**,
   on its page or in its notice, opens the studio on a copy of the template

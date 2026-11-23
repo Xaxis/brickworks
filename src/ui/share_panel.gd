@@ -690,9 +690,9 @@ func _follow_enter() -> void:
 		_say_enter("Ticking %s's rules on the model…" % title)
 	else:
 		var tested_rule: bool = bool((c.get("rules", {}) as Dictionary).get("tested", false))
-		_say_enter("Enter lists it in the gallery with your name on it, publishes it and enters it%s."
-			% (": a publish tests it, which the rules ask" if tested_rule
-				and not challenge_line.call("tested_now") is Dictionary else ""))
+		_say_enter("Enter lists it in the gallery with your name on it, publishes it and enters it. "
+			+ "A publish tests it, as the rules ask." if tested_rule and not challenge_line.call("tested_now") is Dictionary
+			else "Enter lists it in the gallery with your name on it, publishes it and enters it.")
 
 
 func _say_enter(words: String) -> void:
@@ -758,9 +758,10 @@ func publish_and_enter() -> void:
 		entry = {"way": way}
 		_entry_for = store.share_id
 		var page: String = str(c.get("page", ""))
-		enter_said = "Entered in %s, %s. It is on the challenge's page%s." % [title,
-			"built with the assistant" if way == "assistant" else "built by hand",
-			(": " + page.trim_prefix("https://")) if not page.is_empty() else ""]
+		var how: String = "built with the assistant" if way == "assistant" else "built by hand"
+		enter_said = ("Entered in %s, %s. It is on the challenge's page: %s." % [title, how,
+			page.trim_prefix("https://")]) if not page.is_empty() \
+			else "Entered in %s, %s. It is on the challenge's page." % [title, how]
 	elif said is Dictionary and str((said as Dictionary).get("refused", "")) == "entered":
 		entry = {"way": way}
 		_entry_for = store.share_id

@@ -75,6 +75,234 @@
    "features": [
     "ui:enter this month's challenge"
    ]
+  },
+  {
+   "id": "challenge-studio",
+   "source": "app",
+   "answers": {
+    "challenge_rules": {
+     "code": 200,
+     "body": {
+      "ready": true,
+      "challenge": {
+       "id": 7,
+       "title": "Wheels and tracks",
+       "brief": "Build something that rolls: a car, a cart, a train or a rover, in under 1,500 parts.",
+       "starts_on": "2026-11-01",
+       "ends_on": "2026-11-30",
+       "entries_until": null,
+       "entering": true,
+       "test": false,
+       "page": "https://brickworks.diy/challenge",
+       "rules": {
+        "most_parts": 150,
+        "set": {
+         "number": "31009-1",
+         "name": "Small Cottage",
+         "from": "challenge",
+         "lots": [
+          [
+           "3001",
+           4,
+           4
+          ],
+          [
+           "3004",
+           4,
+           8
+          ],
+          [
+           "3005",
+           15,
+           6
+          ],
+          [
+           "3062b",
+           46,
+           2
+          ]
+         ]
+        },
+        "tested": true
+       }
+      }
+     }
+    }
+   },
+   "setup": [
+    {
+     "open": "res://models/house.ldr"
+    },
+    {
+     "frames": 300
+    },
+    {
+     "until": "_challenge_line.visible",
+     "is": true,
+     "frames": 900
+    },
+    {
+     "set": "_challenge_line.today_for_probe",
+     "value": "2026-11-23"
+    },
+    {
+     "click": "_challenge_line._toggle"
+    },
+    {
+     "frames": 90
+    }
+   ],
+   "crop": "window",
+   "alt": "The studio with a house open and, in the notices over it, Wheels and tracks, 8 days left, 0 of 3 rules kept; pressed, its rules ticked on the model: the parts against the most, the set's parts with what to swap, and Tested with Test it.",
+   "caption": "The month's challenge over the model, its rules ticked as you build.",
+   "features": [
+    "ui:the month's challenge in the studio"
+   ]
+  },
+  {
+   "id": "challenge-share-enter",
+   "source": "app",
+   "answers": {
+    "challenge_rules": {
+     "code": 200,
+     "body": {
+      "ready": true,
+      "challenge": {
+       "id": 7,
+       "title": "Wheels and tracks",
+       "brief": "Build something that rolls: a car, a cart, a train or a rover, in under 1,500 parts.",
+       "starts_on": "2026-11-01",
+       "ends_on": "2026-11-30",
+       "entries_until": null,
+       "entering": true,
+       "test": false,
+       "page": "https://brickworks.diy/challenge",
+       "rules": {
+        "most_parts": 1500,
+        "set": null,
+        "tested": false
+       }
+      }
+     }
+    },
+    "mine": {
+     "code": 200,
+     "body": {
+      "shared": [],
+      "credit": {
+       "name": "Test builder"
+      }
+     }
+    }
+   },
+   "setup": [
+    {
+     "open": "res://models/sports_car.ldr"
+    },
+    {
+     "frames": 300
+    },
+    {
+     "until": "_challenge_line.visible",
+     "is": true,
+     "frames": 900
+    },
+    {
+     "frames": 120
+    },
+    {
+     "run": "share",
+     "after": 60
+    }
+   ],
+   "crop": "_share_panel",
+   "alt": "Share for the sports car: its name, words and licence, List it in the gallery, Publish, and under it Enter Wheels and tracks with Built by hand, saying Enter lists it in the gallery with your name on it, publishes it and enters it.",
+   "caption": "Enter, under Publish while the model keeps the rules: one press publishes and enters it.",
+   "features": [
+    "ui:Enter from Share"
+   ]
+  },
+  {
+   "id": "challenge-pair",
+   "source": "site",
+   "route": "/challenge?pair=hand",
+   "viewport": [
+    1280,
+    1100
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "storage": {
+    "brickworks.pair_order": "docs"
+   },
+   "db": {
+    "rest/v1/shared_models?id=eq.DocsSprt01&published=is.true": [
+     {
+      "published": true,
+      "listed": true,
+      "has_image": true,
+      "has_thumb": true,
+      "updated_at": "2026-10-30T10:00:00Z",
+      "author": "Test builder",
+      "bytes": 1000,
+      "remixed_from": null,
+      "description": "",
+      "tags": [],
+      "licence": "cc-by-4.0",
+      "kind": "vehicle",
+      "modelled_by": null,
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "parts": 187
+     }
+    ],
+    "rest/v1/shared_models?id=eq.DocsKart01&published=is.true": [
+     {
+      "published": true,
+      "listed": true,
+      "has_image": true,
+      "has_thumb": true,
+      "updated_at": "2026-10-30T10:00:00Z",
+      "author": "Test builder",
+      "bytes": 1000,
+      "remixed_from": null,
+      "description": "",
+      "tags": [],
+      "licence": "cc-by-4.0",
+      "kind": "vehicle",
+      "modelled_by": null,
+      "id": "DocsKart01",
+      "name": "Technic go-kart",
+      "parts": 214
+     }
+    ]
+   },
+   "answers": {
+    "/m/DocsKart01.png": {
+     "file": "docs-site/pictures/files/DocsKart01.webp"
+    }
+   },
+   "wait": "#pair-two .pair-one iframe",
+   "steps": [
+    {
+     "scroll": "#entries"
+    },
+    {
+     "pause": 4000
+    }
+   ],
+   "crop": "#entries",
+   "pad": 8,
+   "alt": "Entries two at a time: the sports car and the go-kart side by side, each turning in 3D with its name and This one under it, and nobody's name or votes anywhere; then See every entry.",
+   "caption": "The fan vote two at a time, brickworks.diy/challenge?pair=hand.",
+   "features": [
+    "ui:the fan vote two at a time"
+   ]
   }
  ]
 }

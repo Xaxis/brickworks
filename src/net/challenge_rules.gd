@@ -373,7 +373,9 @@ static func spelled(raw_part: String, colour: int, library: PartLibrary) -> Stri
 ## the catalogue has (ownable).
 static func _known(id: String, library: PartLibrary) -> bool:
 	var info: PartLibrary.PartInfo = library.parts.get(id)
-	if info == null:
+	# A part made here or carried in by a file (PartLibrary.custom) is in the
+	# app's library only, never in the catalogue the site counts by.
+	if info == null or library.custom.has(id):
 		return false
 	var today: PartLibrary.PartInfo = info
 	for _hop: int in 8:
@@ -540,8 +542,12 @@ static func short_words(short: Array, lots: int, library: PartLibrary) -> String
 		named.append(("%d %s, which the set has none of" % [over, what]) if int(lot["have"]) == 0
 			else ("%d more %s than the set has" % [over, what]))
 	var more: int = lots - named.size()
-	var tail: String = "" if more <= 0 else (" and 1 lot more" if more == 1 else " and %d lots more" % more)
-	return "Swap or take away %s%s." % ["; ".join(named), tail]
+	# Each said whole, so each language words it its own way (locale/*.po).
+	if more <= 0:
+		return "Swap or take away %s." % "; ".join(named)
+	if more == 1:
+		return "Swap or take away %s, and 1 lot more." % "; ".join(named)
+	return "Swap or take away %s, and %d lots more." % ["; ".join(named), more]
 
 
 ## A lot as a person reads it: "Red Brick 1 x 2 (3004)".

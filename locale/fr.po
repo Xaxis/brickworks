@@ -16479,3 +16479,190 @@ msgstr "Inscrit à la construction express de la semaine : %s."
 
 msgid "Every entry is at %s."
 msgstr "Toutes les participations sont sur %s."
+
+# The month's challenge in the studio: its line, its rules ticked, Share's Enter (challengestudio)
+msgid "last day"
+msgstr "dernier jour"
+
+msgid "%d days left"
+msgstr "encore %d jours"
+
+msgid "Quick build: %s"
+msgstr "Construction rapide : %s"
+
+msgid "Its rules, ticked on this model"
+msgstr "Ses règles, cochées sur ce modèle"
+
+msgid "This week's quick build"
+msgstr "La construction rapide de la semaine"
+
+msgid "This week's quick build, %s"
+msgstr "La construction rapide de la semaine, %s"
+
+msgid "This month's challenge, %s"
+msgstr "Le défi du mois, %s"
+
+msgid "ends today"
+msgstr "se termine aujourd’hui"
+
+msgid "Show its rules"
+msgstr "Afficher ses règles"
+
+msgid "Hide its rules"
+msgstr "Masquer ses règles"
+
+msgid "Show its brief"
+msgstr "Afficher le thème"
+
+msgid "Hide its brief"
+msgstr "Masquer le thème"
+
+msgid "Hide this line for %s"
+msgstr "Masquer cette ligne pour %s"
+
+msgid "Hide the line for %s"
+msgstr "Masquer la ligne pour %s"
+
+msgid "rule kept"
+msgstr "règle respectée"
+
+msgid "rule not kept yet"
+msgstr "règle pas encore respectée"
+
+msgid "%d of %d rules kept"
+msgstr "%d règles respectées sur %d"
+
+msgid "No rules: publish this copy in the gallery by %s and it is entered."
+msgstr "Aucune règle : publiez cette copie dans la galerie d’ici le %s et elle participe."
+
+msgid "No rules but its theme: publish it in the gallery with your name on it, then Enter in Share."
+msgstr "Pas d’autre règle que le thème : publiez-le dans la galerie avec votre nom, puis Participer dans Partager."
+
+msgid "Test it"
+msgstr "Le tester"
+
+msgid "Run the four tests a publish runs: it stands at every step, every step reachable, every part made in its colour, nothing loose"
+msgstr "Lancer les quatre tests d’une publication : il tient à chaque étape, chaque étape accessible, chaque pièce fabriquée dans sa couleur, rien de lâche"
+
+msgid "Publish to enter"
+msgstr "Publier pour participer"
+
+msgid "Open Share: Enter there publishes and enters it in one press"
+msgstr "Ouvrir Partager : Participer y publie et inscrit le modèle d’une seule pression"
+
+msgid "See the challenge"
+msgstr "Voir le défi"
+
+msgid "Writing “%s” to test it…"
+msgstr "Écriture de « %s » pour le tester…"
+
+msgid "Testing “%s” as a publish would…"
+msgstr "Test de « %s » comme le ferait une publication…"
+
+msgid "At most %s parts"
+msgstr "%s pièces au plus"
+
+msgid "%s of %s parts"
+msgstr "%s pièces sur %s"
+
+msgid "Take %s away: it has %s, and the most is %s."
+msgstr "Retirez %s : il en a %s, et le maximum est %s."
+
+msgid "Only parts from set %s, %s"
+msgstr "Seulement des pièces du set %s, %s"
+
+msgid "Only parts from set %s"
+msgstr "Seulement des pièces du set %s"
+
+msgid "Tested: stands at every step, nothing loose"
+msgstr "Testé : tient à chaque étape, rien de lâche"
+
+msgid "Not tested yet: a publish tests it, or test it now."
+msgstr "Pas encore testé : une publication le teste, ou testez-le maintenant."
+
+msgid "Not shown to stand at every step"
+msgstr "Rien ne montre qu’il tient à chaque étape"
+
+msgid "Not every step shown reachable"
+msgstr "Toutes les étapes ne sont pas montrées accessibles"
+
+msgid "A part is not made in its colour"
+msgstr "Une pièce n’est pas fabriquée dans sa couleur"
+
+msgid "It does not go together"
+msgstr "Il ne s’assemble pas"
+
+msgid "Swap or take away %s."
+msgstr "Remplacez ou retirez %s."
+
+msgid "Swap or take away %s, and 1 lot more."
+msgstr "Remplacez ou retirez %s, et un lot de plus."
+
+msgid "Swap or take away %s, and %d lots more."
+msgstr "Remplacez ou retirez %s, et %d lots de plus."
+
+msgid "%d more %s than the set has"
+msgstr "%d %s de plus que le set n’en a"
+
+msgid "%d %s, which the set has none of"
+msgstr "%d %s, que le set n’a pas du tout"
+
+msgid "colour %d"
+msgstr "couleur %d"
+
+msgid "Lists it in the gallery with your name on it, publishes it and enters it"
+msgstr "Le met dans la galerie avec votre nom, le publie et l’inscrit"
+
+msgid "Built by hand"
+msgstr "Construit à la main"
+
+msgid "Built with the assistant"
+msgstr "Construit avec l’assistant"
+
+msgid "built by hand"
+msgstr "construit à la main"
+
+msgid "built with the assistant"
+msgstr "construit avec l’assistant"
+
+msgid "How it was built: the challenge judges the two apart"
+msgstr "Comment il a été construit : le défi juge les deux à part"
+
+msgid "In %s, %s. Publishing again keeps it in."
+msgstr "Dans %s, %s. Le publier à nouveau le garde inscrit."
+
+msgid "Entering…"
+msgstr "Inscription…"
+
+msgid "Enter %s"
+msgstr "Participer à %s"
+
+msgid "Not yet: %s"
+msgstr "Pas encore : %s"
+
+msgid "Ticking %s's rules on the model…"
+msgstr "Vérification des règles de %s sur le modèle…"
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it."
+msgstr "Participer le met dans la galerie avec votre nom, le publie et l’inscrit."
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it. A publish tests it, as the rules ask."
+msgstr "Participer le met dans la galerie avec votre nom, le publie et l’inscrit. La publication le teste, comme les règles le demandent."
+
+msgid "Say the name to credit under Show who made it: an entry has its designer's name on it."
+msgstr "Indiquez le nom à créditer sous « Montrer qui l’a fait » : une participation porte le nom de son créateur."
+
+msgid "Entered in %s, %s. It is on the challenge's page: %s."
+msgstr "Inscrit à %s, %s. Il est sur la page du défi : %s."
+
+msgid "Entered in %s, %s. It is on the challenge's page."
+msgstr "Inscrit à %s, %s. Il est sur la page du défi."
+
+msgid "It is in %s already."
+msgstr "Il est déjà inscrit à %s."
+
+msgid "Published, not entered: %s"
+msgstr "Publié, non inscrit : %s"
+
+msgid "Brickworks could not enter it just now. Press Enter again in a minute."
+msgstr "Brickworks n’a pas pu l’inscrire pour l’instant. Appuyez à nouveau sur Participer dans une minute."

@@ -16479,3 +16479,190 @@ msgstr "Beim Schnellbau der Woche eingereicht: %s."
 
 msgid "Every entry is at %s."
 msgstr "Alle Beiträge findest du unter %s."
+
+# The month's challenge in the studio: its line, its rules ticked, Share's Enter (challengestudio)
+msgid "last day"
+msgstr "letzter Tag"
+
+msgid "%d days left"
+msgstr "noch %d Tage"
+
+msgid "Quick build: %s"
+msgstr "Schnellbau: %s"
+
+msgid "Its rules, ticked on this model"
+msgstr "Seine Regeln, an diesem Modell abgehakt"
+
+msgid "This week's quick build"
+msgstr "Der Schnellbau dieser Woche"
+
+msgid "This week's quick build, %s"
+msgstr "Der Schnellbau dieser Woche, %s"
+
+msgid "This month's challenge, %s"
+msgstr "Die Challenge dieses Monats, %s"
+
+msgid "ends today"
+msgstr "endet heute"
+
+msgid "Show its rules"
+msgstr "Seine Regeln zeigen"
+
+msgid "Hide its rules"
+msgstr "Seine Regeln ausblenden"
+
+msgid "Show its brief"
+msgstr "Die Aufgabe zeigen"
+
+msgid "Hide its brief"
+msgstr "Die Aufgabe ausblenden"
+
+msgid "Hide this line for %s"
+msgstr "Diese Zeile für %s ausblenden"
+
+msgid "Hide the line for %s"
+msgstr "Die Zeile für %s ausblenden"
+
+msgid "rule kept"
+msgstr "Regel eingehalten"
+
+msgid "rule not kept yet"
+msgstr "Regel noch nicht eingehalten"
+
+msgid "%d of %d rules kept"
+msgstr "%d von %d Regeln eingehalten"
+
+msgid "No rules: publish this copy in the gallery by %s and it is entered."
+msgstr "Keine Regeln: Veröffentliche diese Kopie bis %s in der Galerie, dann nimmt sie teil."
+
+msgid "No rules but its theme: publish it in the gallery with your name on it, then Enter in Share."
+msgstr "Keine Regeln außer dem Thema: Veröffentliche es mit deinem Namen in der Galerie, dann Teilnehmen unter Teilen."
+
+msgid "Test it"
+msgstr "Testen"
+
+msgid "Run the four tests a publish runs: it stands at every step, every step reachable, every part made in its colour, nothing loose"
+msgstr "Die vier Tests einer Veröffentlichung ausführen: steht bei jedem Schritt, jeder Schritt erreichbar, jedes Teil in seiner Farbe hergestellt, nichts lose"
+
+msgid "Publish to enter"
+msgstr "Zum Teilnehmen veröffentlichen"
+
+msgid "Open Share: Enter there publishes and enters it in one press"
+msgstr "Teilen öffnen: Teilnehmen dort veröffentlicht es und nimmt mit einem Druck teil"
+
+msgid "See the challenge"
+msgstr "Zur Challenge"
+
+msgid "Writing “%s” to test it…"
+msgstr "„%s“ wird zum Testen geschrieben…"
+
+msgid "Testing “%s” as a publish would…"
+msgstr "„%s“ wird wie bei einer Veröffentlichung getestet…"
+
+msgid "At most %s parts"
+msgstr "Höchstens %s Teile"
+
+msgid "%s of %s parts"
+msgstr "%s von %s Teilen"
+
+msgid "Take %s away: it has %s, and the most is %s."
+msgstr "Nimm %s weg: Es hat %s, erlaubt sind höchstens %s."
+
+msgid "Only parts from set %s, %s"
+msgstr "Nur Teile aus Set %s, %s"
+
+msgid "Only parts from set %s"
+msgstr "Nur Teile aus Set %s"
+
+msgid "Tested: stands at every step, nothing loose"
+msgstr "Getestet: steht bei jedem Schritt, nichts lose"
+
+msgid "Not tested yet: a publish tests it, or test it now."
+msgstr "Noch nicht getestet: Eine Veröffentlichung testet es, oder teste es jetzt."
+
+msgid "Not shown to stand at every step"
+msgstr "Nicht gezeigt, dass es bei jedem Schritt steht"
+
+msgid "Not every step shown reachable"
+msgstr "Nicht jeder Schritt als erreichbar gezeigt"
+
+msgid "A part is not made in its colour"
+msgstr "Ein Teil wird in seiner Farbe nicht hergestellt"
+
+msgid "It does not go together"
+msgstr "Es lässt sich nicht zusammenbauen"
+
+msgid "Swap or take away %s."
+msgstr "Tausche oder entferne %s."
+
+msgid "Swap or take away %s, and 1 lot more."
+msgstr "Tausche oder entferne %s und einen Posten mehr."
+
+msgid "Swap or take away %s, and %d lots more."
+msgstr "Tausche oder entferne %s und %d Posten mehr."
+
+msgid "%d more %s than the set has"
+msgstr "%d %s mehr, als das Set hat"
+
+msgid "%d %s, which the set has none of"
+msgstr "%d %s, die das Set gar nicht hat"
+
+msgid "colour %d"
+msgstr "Farbe %d"
+
+msgid "Lists it in the gallery with your name on it, publishes it and enters it"
+msgstr "Zeigt es mit deinem Namen in der Galerie, veröffentlicht es und nimmt teil"
+
+msgid "Built by hand"
+msgstr "Von Hand gebaut"
+
+msgid "Built with the assistant"
+msgstr "Mit dem Assistenten gebaut"
+
+msgid "built by hand"
+msgstr "von Hand gebaut"
+
+msgid "built with the assistant"
+msgstr "mit dem Assistenten gebaut"
+
+msgid "How it was built: the challenge judges the two apart"
+msgstr "Wie es gebaut wurde: Die Challenge bewertet beides getrennt"
+
+msgid "In %s, %s. Publishing again keeps it in."
+msgstr "Bei %s dabei, %s. Erneutes Veröffentlichen lässt es dabei."
+
+msgid "Entering…"
+msgstr "Wird eingereicht…"
+
+msgid "Enter %s"
+msgstr "Bei %s teilnehmen"
+
+msgid "Not yet: %s"
+msgstr "Noch nicht: %s"
+
+msgid "Ticking %s's rules on the model…"
+msgstr "Die Regeln von %s werden am Modell abgehakt…"
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it."
+msgstr "Teilnehmen zeigt es mit deinem Namen in der Galerie, veröffentlicht es und reicht es ein."
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it. A publish tests it, as the rules ask."
+msgstr "Teilnehmen zeigt es mit deinem Namen in der Galerie, veröffentlicht es und reicht es ein. Die Veröffentlichung testet es, wie die Regeln es verlangen."
+
+msgid "Say the name to credit under Show who made it: an entry has its designer's name on it."
+msgstr "Gib unter „Zeigen, wer es gemacht hat“ den Namen an: Ein Beitrag trägt den Namen seines Designers."
+
+msgid "Entered in %s, %s. It is on the challenge's page: %s."
+msgstr "Bei %s eingereicht, %s. Es steht auf der Seite der Challenge: %s."
+
+msgid "Entered in %s, %s. It is on the challenge's page."
+msgstr "Bei %s eingereicht, %s. Es steht auf der Seite der Challenge."
+
+msgid "It is in %s already."
+msgstr "Es ist schon bei %s dabei."
+
+msgid "Published, not entered: %s"
+msgstr "Veröffentlicht, nicht eingereicht: %s"
+
+msgid "Brickworks could not enter it just now. Press Enter again in a minute."
+msgstr "Brickworks konnte es gerade nicht einreichen. Drücke in einer Minute erneut auf Teilnehmen."

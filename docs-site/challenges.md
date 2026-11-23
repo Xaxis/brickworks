@@ -18,7 +18,24 @@ ui:this month's challenge page
 lib:the monthly challenge's rules
 -->
 
-## Enter {#enter}
+## Enter from the studio {#studio}
+
+While a challenge is open, the studio says so in one small line over the model: its name and its days left, such as *Wheels and tracks · 8 days left · 0 of 3 rules kept*. Press it, and its rules are ticked on the model as you build: *112 of 150 parts*, *Only parts from set 31009, Small Cottage*, *Tested*. Each rule the model breaks says what to change, such as *Take 12 parts away* or *Swap or take away 2 more Red Brick 2 x 4 (3001) than the set has*. They are the rules the site checks, ticked on the model as it is now, each time it changes. For a challenge that asks for Tested, **Test it** runs the four tests a publish runs. **×** hides the line for this challenge; the next one is said again.
+
+![The studio with a house open and, in the notices over it, Wheels and tracks, 8 days left, 0 of 3 rules kept; pressed, its rules ticked on the model: the parts against the most, the set's parts with what to swap, and Tested with Test it.](/docs/img/challenge-studio.webp "The month's challenge over the model, its rules ticked as you build.")
+
+When the model keeps the rules, [Share](/docs/sharing#share) says **Enter Wheels and tracks** under **Publish**, with how you built it: **Built by hand** or **Built with the assistant**. One press lists it in the gallery with your name on it, publishes it and enters it, and the status line says it is in and where to see it. While a rule is broken, Enter says what to change, and **Publish** alone still publishes.
+
+![Share for the sports car: its name, words and licence, List it in the gallery, Publish, and under it Enter Wheels and tracks with Built by hand, saying Enter lists it in the gallery with your name on it, publishes it and enters it.](/docs/img/challenge-share-enter.webp "Enter, under Publish while the model keeps the rules: one press publishes and enters it.")
+
+A copy of this week's [quick build](#quick-build) names the quick build in the same line instead, once you have read its brief.
+
+<!-- covers
+ui:the month's challenge in the studio
+ui:Enter from Share
+-->
+
+## Enter from a model's page {#enter}
 
 1. [Share the model](/docs/sharing#share) with **List it in the gallery** and **Show who made it** ticked.
 2. Signed in, open its page. Under its buttons it says *This month's challenge is …, open until …*: press **Enter this month's challenge**.
@@ -33,6 +50,14 @@ It is checked again while the challenge runs: an entry whose newer version break
 ## Vote {#vote}
 
 Signed in and 13 or over, press **Vote for it** on the entry you like best in each group: one vote for **Built by hand** and one for **Built with the assistant**. A vote cannot be changed; your pick then says *Your vote*, and the others in that group *You voted in this group*. You cannot vote for your own entry, or for one that breaks a rule. The votes are counted when it ends, and only then shown.
+
+**Compare them two at a time, in 3D**, over the entries, shows two of a group side by side (one above the other on a phone), each turning in 3D, with only its name: nobody's name, no likes and no votes. Press **This one** under the one you like more: it stays, and the next entry comes beside it, until you have seen them all. Then **Vote for** the one left, asked once more as every vote is. **See every entry** goes back to the cards.
+
+![Entries two at a time: the sports car and the go-kart side by side, each turning in 3D with its name and This one under it, and nobody's name or votes anywhere; then See every entry.](/docs/img/challenge-pair.webp "The fan vote two at a time, brickworks.diy/challenge?pair=hand.")
+
+<!-- covers
+ui:the fan vote two at a time
+-->
 
 ## Judged in rounds {#rounds}
 

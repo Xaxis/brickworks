@@ -1159,7 +1159,11 @@
   "Build on it, by hand or with the assistant. There are no rules but the brief, and no vote.": "Construisez dessus, à la main ou avec l’assistant. Pas d’autre règle que le thème, et pas de vote.",
   "Publish": "Publier",
   "Publish it in the gallery before the week ends, and it is entered: the publish dialog says so, and one tap keeps it out.": "Publiez-la dans la galerie avant la fin de la semaine et elle participe : la fenêtre de publication le dit, et un toucher l’en retire.",
-  "When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.": "À la fin de la semaine, toutes les participations sont empilées en un seul modèle, crédité à leurs auteurs, que chacun peut faire tourner et construire. Participez chaque semaine pour faire grandir votre série sur votre profil."
+  "When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.": "À la fin de la semaine, toutes les participations sont empilées en un seul modèle, crédité à leurs auteurs, que chacun peut faire tourner et construire. Participez chaque semaine pour faire grandir votre série sur votre profil.",
+  "Compare them two at a time, in 3D": "Les comparer deux par deux, en 3D",
+  "Vote": "Voter",
+  "Start again": "Recommencer",
+  "See every entry": "Voir toutes les participations"
  },
  "scripts": {
   "Copy": "Copier",
@@ -3340,6 +3344,12 @@
   "{title} · Brickworks quick build": "{title} · construction express Brickworks",
   "The last two days of this week's quick build, {title}: publish yours by the end of {day}": "Les deux derniers jours de la construction express de la semaine, {title} : publiez la vôtre avant la fin du {day}",
   "This week's quick build is {title}: start from its template, and publish by the end of {day}": "La construction express de la semaine est {title} : partez de son modèle et publiez avant la fin du {day}",
-  "Quick build: {title}": "Construction express : {title}"
+  "Quick build: {title}": "Construction express : {title}",
+  "{name}, turning in 3D": "{name}, qui tourne en 3D",
+  "This one": "Celui-ci",
+  "I like “{name}” more": "Je préfère « {name} »",
+  "Of all {n} you like “{name}” most.": "Des {n}, vous préférez « {name} ».",
+  "You cannot vote in this challenge.": "Vous ne pouvez pas voter pour ce défi.",
+  "{seen} of {n}: press This one under the one you like more. It stays, and the next comes beside it.": "{seen} sur {n} : appuyez sur Celui-ci sous celui que vous préférez. Il reste, et le suivant vient à côté."
  }
 }
