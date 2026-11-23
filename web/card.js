@@ -510,7 +510,8 @@ export function keepHtml(key, name) {
   const main = set ? (what ? say("Own {name}", { name: what }) : say("Own it")) : (what ? say("Save {name}", { name: what }) : say("Save it"));
   const more = what ? say("Add {name} to a list", { name: what }) : say("Add it to a list");
   return `<div class="keep" data-keep="${escapeHtml(key)}" data-name="${escapeHtml(what)}">`
-    + `<button type="button" class="keep-main" data-keep-main aria-pressed="false" aria-label="${escapeHtml(main)}">`
+    + `<button type="button" class="keep-main" data-keep-main aria-pressed="false" aria-label="${escapeHtml(main)}" `
+    + `title="${escapeHtml(set ? say("Own it") : say("Save it"))}">`
     + (set ? `<span class="off">${iconHtml("plus")}</span><span class="on">${iconHtml("check")}</span>` : iconHtml("save"))
     + `<span class="word">${escapeHtml(set ? say("Own") : say("Save"))}</span><span class="n" aria-hidden="true" hidden></span></button>`
     + `<button type="button" class="keep-more" data-keep-more aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml(more)}" `

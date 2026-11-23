@@ -135,15 +135,19 @@ html[data-tab="builds"] .toolbar { position: static; }
    two, three or four to a row. The list's cards are #models' own, laid out in
    this grid. */
 .feed #models { display: contents; }
-/* Three to a row at a laptop's width, each picture its card's hero, four
-   from 1600 px (sitebold, 2026-11-23: four of 280 px read as a list). */
+/* Three to a row from 900 px, four from 1200 px: the owner's four a row
+   on a desktop (2026-10-29), each picture its card's hero. */
 @media (width >= 900px) { .feed { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (width >= 1600px) { .feed { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (width >= 1200px) { .feed { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 /* The week's pick across the grid's width: from 900 px its picture large on
    the left, wide as a share's picture is, turning in 3D under a resting
    mouse (web/turn3d.js), and beside it its name, who made it, why it is
    picked, what people did with it and the ways into the studio. */
 .feed > .pick { min-width: 0; display: grid; grid-column: 1 / -1; }
+/* On a phone the pick comes first and the month's challenge under it: over
+   it, its two lines put the first picture 425 px down (the lead,
+   2026-11-23: above 360 wanted). */
+@media (width < 600px) { .feed > .pick { order: -1; } }
 .pick-card .pick-go { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-3) 0 0; }
 .pick-card .pick-go > .cta { position: relative; z-index: 1; flex: 1 1 auto; }
 @media (width >= 900px) {

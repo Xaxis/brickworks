@@ -1215,7 +1215,8 @@ plan with Claude as the client.
   kit's icon buttons drawn by the server: Like (`[data-mark="like"]`,
   aria-pressed, its count beside it and in its label, "Like, 96 likes"),
   Save (since lists2a the card's control, `web/card.js` `keepHtml`
-  `.keep[data-keep="model:<id>"]`, one in the bar: `[data-keep-main]` keeps
+  `.keep[data-keep="model:<id>"]`, one in the bar, its icon alone there
+  with "Save it" its tooltip and "Save <name>" its label: `[data-keep-main]` keeps
   it in Saved at a tap, `[data-keep-more]` opens the same `dialog.keep-panel`
   a card opens, Saved first, then each list saying who sees it; the same
   `POST op=keep`; no `#save-panel` and no `[data-mark="save"]` any more),
@@ -1783,7 +1784,11 @@ plan with Claude as the client.
   collection cards, `api/_lists.js` `mosaicHtml`/`listCardHtml` `eager`;
   a model's strip's first five); a designer's own numbers on /u/ sit under
   the work; the gallery's challenge line is the grid's first row
-  (`#feed > #challenge-line`), drawn with the cards; a model page's
+  (`#feed > #challenge-line`), drawn with the cards, and under the week's
+  pick on a phone (`.feed > .pick { order: -1 }` under 600 px: the first
+  picture 314 px down, 360 at most in `gallery_flow`); the feed is four
+  to a row from 1200 px, three from 900 (`gallery_flow` checks four at
+  1280); a model page's
   comments are held by `#comments-hold` (bones, the height of an empty
   section and its box) until drawn, its "I built it" box is shown from
   the server, and its owner's Add a picture sits over the picture

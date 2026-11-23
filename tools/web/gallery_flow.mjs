@@ -8,10 +8,11 @@
 // dark:
 //
 //   1. the first screen: at 390 the first card's picture starts within
-//      386 px of the top, two cards to a row, four cards' names on the
+//      360 px of the top (the week's pick before the month's challenge),
+//      two cards to a row, four cards' names on the
 //      first two screens; at 1280 the week's pick whole across the first
-//      screen, its picture beside its words, and under it the cards three
-//      to a row, the first row's pictures begun on that screen (sitebold,
+//      screen, its picture beside its words, and under it the cards four
+//      to a row (the owner's four on a desktop, 2026-10-29), the first row's pictures begun on that screen (sitebold,
 //      2026-11-23: four whole small cards before it), the cards marked
 //      once (no row of marks, none that nearly every card carries, no
 //      card ending in a row that holds only its like); Top the tab shown,
@@ -236,14 +237,15 @@ try {
       if (width === 390) {
         // 330 until Share yours (bringyours) took the title's row and put
         // the search on its own, 56 px lower: rel-m318's first picture at
-        // 322 px, rel-m319's at 378. The same 8 px over it as before.
-        check(seen.firstPicture <= 386 && seen.columns === 2 && !seen.sideways,
-          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (386 at most), ${seen.columns} to a row, nothing sideways`);
+        // 322 px, rel-m319's at 378. The month's challenge over the pick put
+        // it at 425 (sitepolish); the pick comes first on a phone now.
+        check(seen.firstPicture <= 360 && seen.columns === 2 && !seen.sideways,
+          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (360 at most), ${seen.columns} to a row, nothing sideways`);
         check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
           `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
       } else {
         const pick = seen.pickFeature;
-        check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 3 && seen.cardsBegin < 900 - 60 && !seen.sideways,
+        check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin < 900 - 60 && !seen.sideways,
           `1280 ${theme}: the week's pick whole on the first screen (${pick ? `${pick.top} to ${pick.bottom} px, ${pick.width} wide, `
           + `${pick.beside ? "its words beside its picture" : "its words not beside its picture"}` : "none"}), the cards under it `
           + `${seen.columns} to a row from ${seen.cardsBegin} px (60 px of them at least on the screen), nothing sideways`);

@@ -273,6 +273,12 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 @media (width < 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
 .action-bar > .keep { border-color: var(--line); background: transparent; box-shadow: none; }
 .action-bar > .keep > button { min-height: calc(var(--control-h) - 2px); }
+/* A model's Save is its icon, as Like's and Share's are, its word in its
+   tooltip and its name ("Save Riverside Watchtower"): with the word, pre261's
+   Save took the row to a second line at 1280 (the lead, 2026-11-23). Its
+   lists' half stays as it is. */
+.model-page .action-bar > .keep > .keep-main { padding-inline: 12px 10px; }
+.model-page .action-bar > .keep > .keep-main .word { display: none; }
 .marks-said { margin: 6px 0 0; }
 .marks-said:empty { display: none; }
 

@@ -434,8 +434,9 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   `.models` (a grid: two to a row on a phone, three from 600 px and four
   from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
   page of 24 is whole rows at every width; the gallery's own feed three
-  from 900 px, each picture its card's hero, and four from 1600 px,
-  sitebold), `.models.compact` (more to a
+  from 900 px, each picture its card's hero, and four from 1200 px, the
+  owner's four on a desktop; on a phone the week's pick comes before the
+  month's challenge, so the first picture is 314 px down, sitebold), `.models.compact` (more to a
   row, beside a rail) or `.models.scroller` (one row of them, a
   Scroller). A card that carries an action keeps it inside, at its foot
   over the card's link as the designer's name is (a collection's Follow, a
@@ -697,7 +698,9 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   Turn it anyway, or Open in the app.
 - **Action bar**: `.action-bar`, a model's page's row of icon buttons
   (Like, Save, Share, Comment, I built it) with the more menu at its end;
-  one row across the column on a phone. `api/share.js` `actionBar`,
+  one row at every width: Like says its word from 600 px, Save is its
+  icon alone (its word in its tooltip and its name; sitebold, 2026-11-23:
+  with its word the row wrapped at 1280). `api/share.js` `actionBar`,
   `web/model-page.js`.
 - **Share's sheet** (docs/SOCIAL.md U14 and section 7): `dialog.share-sheet`,
   the site's dialog made wider for the embed code, the same on every page
