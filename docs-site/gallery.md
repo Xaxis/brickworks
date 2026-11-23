@@ -109,7 +109,7 @@ Every model is a card, the same everywhere on the site: its picture, its name, i
 lib:the gallery's card as a photograph
 -->
 
-A card's picture is a photograph of the model standing on a desk, drawn when it was shared: path traced in daylight where the computer's graphics card traces rays (the same stage as [Render's](/docs/render) Best), and under a studio's soft lights in a browser. A card is never more than two seconds of sharing: a traced one is finished with the light it has gathered by then, and a browser too slow to draw it in that time sends the model on the page's own ground instead, as a phone always does.
+A card's picture is a photograph of the model standing on a desk: path traced in daylight where the computer's graphics card traces rays (the same stage as [Render's](/docs/render) Best), and under a studio's soft lights in a browser. It is drawn just after the model is shared, so sharing waits for nothing: for those seconds, and for a model shared from a phone, the card is the model on the page's own ground, and Brickworks draws the photograph of those on its own graphics card later.
 
 Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/lists#own)). Only you see it, and the gallery counts it for the whole page at once.
 

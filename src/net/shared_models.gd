@@ -106,6 +106,15 @@ func publish(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/share", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 
 
+## Put [param thumb] (a WebP, base64) on the account's own link [param id] as
+## its card, with no publish counted and no version (api/share.js op=card):
+## the card drawn as a photograph after the publish answered (SharePanel).
+## [param kind] is how it was drawn, traced or raster.
+func put_card(token: String, id: String, thumb: String, kind: String) -> Dictionary:
+	return await _fetch("/api/share?op=card&id=" + id.uri_encode(), HTTPClient.METHOD_POST, token,
+		JSON.stringify({"thumb": thumb, "kind": kind}))
+
+
 func unpublish(token: String, id: String) -> Dictionary:
 	return await _fetch("/api/share?op=unpublish&id=" + id.uri_encode(),
 		HTTPClient.METHOD_POST, token, "{}")

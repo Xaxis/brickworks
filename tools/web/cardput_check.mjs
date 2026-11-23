@@ -2,7 +2,7 @@
 // no publish counted and no version made (cardlook, 2026-11-23).
 //
 //   node --env-file=.env tools/web/relay_server.mjs 11781 &
-//   node --env-file=.env tools/web/cardput_check.mjs --url=http://127.0.0.1:11781 [--dir=CARDS]
+//   node --env-file=.env tools/web/cardput_check.mjs --url=http://127.0.0.1:11781 [--dir=CARDS] [--sweep]
 //
 // The run's own throwaway account publishes a one-brick model, unlisted,
 // with a card; then puts another card on it (op=card), and the model's
@@ -11,8 +11,9 @@
 // 403, a picture that is not a WebP 415, a link nobody has 404, and no
 // sign-in 401. With --dir (tools/bench/cardlook.py cards), gallery_seed.mjs
 // --cards, run as this account on unlisted models of its own under the
-// cards' titles, puts each card on its model. Both accounts are deleted at
-// the end, with the models.
+// cards' titles, puts each card on its model. With --sweep, card_sweep.mjs
+// --ids draws a model of this account's, traced on the GPU, and puts it.
+// Both accounts are deleted at the end, with the models.
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -109,6 +110,32 @@ try {
       check(got.bytes.equals(Buffer.from(body.thumb, "base64")), `${body.name}: its card is the body's (${got.bytes.length} bytes)`);
       await ask(`/api/share?op=unpublish&id=${ids.get(body.name)}`, token, {});
     }
+  }
+
+  // --sweep: tools/web/card_sweep.mjs --ids on an unlisted model of this
+  // account's, published with a cut-out card: the card it puts is a
+  // 480 x 360 WebP with no clear pixels, and a second sweep reads its file
+  // from the cache, not the bucket.
+  if (args.sweep) {
+    const made = await ask("/api/share", token, { name: "Card sweep check", listed: false,
+      model: readFileSync("models/sports_car.ldr", "utf8"), thumb: first.toString("base64") });
+    const swept = made.said.id;
+    check(Boolean(swept), `a model to sweep: ${made.status} ${swept || made.said.error}`);
+    const cache = `/tmp/card_sweep_check.${process.pid}`;
+    const once = spawnSync(process.execPath, ["tools/web/card_sweep.mjs", `--ids=${swept}`, `--cache=${cache}`],
+      { env: process.env, encoding: "utf8", timeout: 6 * 3600 * 1000 });
+    const said = once.stdout.trim().split("\n");
+    check(once.status === 0 && said.some((line) => line.includes(`ok    ${swept}: put`)),
+      `card_sweep.mjs put its card: exit ${once.status}: ${said.slice(-3).join(" | ")} ${once.stderr.trim().slice(-200)}`);
+    const card = await ask(`/m/${swept}.webp?v=s${Date.now().toString(36)}`, "");
+    const chunk = card.bytes.subarray(12, 16).toString("latin1");
+    const alpha = chunk === "VP8X" ? (card.bytes[20] & 0x10) !== 0 : chunk === "VP8L" ? (card.bytes[24] & 0x10) !== 0 : false;
+    check(card.bytes.subarray(8, 12).toString("latin1") === "WEBP" && !card.bytes.equals(first) && !alpha,
+      `its card is the sweep's photograph: a ${card.bytes.length}-byte WebP, ${chunk}, ${alpha ? "with" : "no"} clear pixels`);
+    const again = spawnSync(process.execPath, ["tools/web/card_sweep.mjs", `--ids=${swept}`, `--cache=${cache}`, "--dry"],
+      { env: process.env, encoding: "utf8" });
+    check(again.stdout.includes("file kept"), `a second sweep reads its file from the cache: ${again.stdout.trim().split("\n").pop()}`);
+    await ask(`/api/share?op=unpublish&id=${swept}`, token, {});
   }
 } catch (trouble) {
   check(false, `the check stopped: ${trouble.message}`);

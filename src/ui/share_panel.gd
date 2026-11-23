@@ -118,6 +118,11 @@ var picture: Picture
 var look: Environment
 var rig_lights: Array[DirectionalLight3D] = []
 var _card: CardPhoto
+## The last card drawn as a photograph after a publish answered, for a check
+## to read: {id, kind (traced or raster), ms (drawing it), code (the
+## server's answer to op=card), answered_ms (how long after the publish's
+## answer it was put)}; {} while none has been.
+var card_put: Dictionary = {}
 ## The model's name as the bar has it.
 var named: Callable = func() -> String: return "Model"
 
@@ -1075,6 +1080,9 @@ func publish(as_wip: bool = false) -> void:
 		return
 	var said: Dictionary = reply
 	store.share_id = str(said.get("id", ""))
+	# Its card a photograph, drawn now the publish has answered (_card_after):
+	# not waited for.
+	_card_after(token, store.share_id, revision, Time.get_ticks_msec())
 	# Kept with the model, so the next Publish updates this link.
 	store.touch()
 	# What was said stays in the boxes, as the link now has it: the credit
@@ -1172,10 +1180,8 @@ func _fail(words: String) -> void:
 ## own ground in its light theme and its dark one alike, and a WebP four
 ## to three, drawn so, for the cards. {png, cutout, thumb}, each empty when
 ## there is none to be had (a run with nothing to draw with), or when it
-## came out too large to send. The card is a photograph of the model on a
-## desk (CardPhoto, cardlook): path traced where the graphics card traces
-## rays, frames averaged in a browser, and the cut-out on a phone or where
-## the frames take too long.
+## came out too large to send. The card goes as the cut-out, and is drawn
+## as a photograph once the publish has answered (_card_after).
 func _pictures() -> Dictionary:
 	var none := {"png": PackedByteArray(), "cutout": PackedByteArray(), "thumb": PackedByteArray()}
 	if picture == null:
@@ -1187,37 +1193,57 @@ func _pictures() -> Dictionary:
 	var card: Image = Picture.on_ground(shot)
 	var png: PackedByteArray = _png_under(card)
 	var cutout: PackedByteArray = _png_under(shot)
-	var thumb := PackedByteArray()
-	var framed: Image = await _card_photo()
-	var photographed: bool = framed != null and not framed.is_empty()
-	if not photographed:
-		framed = await picture.take(THUMB * 2)
-	if framed != null and not framed.is_empty():
-		framed.convert(Image.FORMAT_RGB8 if photographed else Image.FORMAT_RGBA8)
-		framed.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
-		thumb = framed.save_webp_to_buffer(true, 0.8)
-		if thumb.size() > MOST_THUMB:
-			thumb = framed.save_webp_to_buffer(true, 0.55)
-	return {"png": png, "cutout": cutout,
-		"thumb": thumb if thumb.size() <= MOST_THUMB else PackedByteArray()}
+	var thumb: PackedByteArray = _card_bytes(await picture.take(THUMB * 2), false)
+	return {"png": png, "cutout": cutout, "thumb": thumb}
 
 
-## The card as a photograph of the model (CardPhoto), at twice the card's
-## size, or null where it cannot be drawn (CardPhoto.possible) or took too
-## long.
-func _card_photo() -> Image:
-	if not CardPhoto.possible() or picture == null or picture.world == null:
-		return null
+## [param framed] at twice the card's size as the card's WebP: opaque when
+## [param photographed], the cut-out's clear ground kept when not. Empty when
+## there is none, or even the smaller one is over the server's limit.
+static func _card_bytes(framed: Image, photographed: bool) -> PackedByteArray:
+	if framed == null or framed.is_empty():
+		return PackedByteArray()
+	framed.convert(Image.FORMAT_RGB8 if photographed else Image.FORMAT_RGBA8)
+	framed.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
+	var thumb: PackedByteArray = framed.save_webp_to_buffer(true, 0.8)
+	if thumb.size() > MOST_THUMB:
+		thumb = framed.save_webp_to_buffer(true, 0.55)
+	return thumb if thumb.size() <= MOST_THUMB else PackedByteArray()
+
+
+## The card drawn as a photograph of the model (CardPhoto) once the publish
+## has answered, and put on its link in place of the cut-out it went with
+## (api/share.js op=card): a second or two the person does not wait for.
+## Not when the model changed since the publish began (the photograph would
+## be of another model), while another card is being drawn, or where none
+## can be (CardPhoto.possible, a phone); tools/web/card_sweep.mjs draws
+## those later, and a browser's frames-averaged ones again, traced.
+func _card_after(token: String, id: String, revision: int, answered_at: int) -> void:
+	if id.is_empty() or not CardPhoto.possible() or picture == null or picture.world == null \
+			or picture.world.revision != revision:
+		return
 	if _card == null:
 		_card = CardPhoto.new()
 		add_child(_card)
+	elif _card.busy:
+		return
 	_card.world = picture.world
 	_card.library = picture.world.library
 	_card.scenery = picture.scenery
 	_card.eye = picture.camera
 	_card.look = look
 	_card.rig_lights = rig_lights
-	return await _card.take(THUMB * 2)
+	var kind: String = "traced" if CardPhoto.traced() else "raster"
+	var thumb: PackedByteArray = _card_bytes(await _card.take(THUMB * 2), true)
+	# Not put when the model was changed, or published again, while it was drawn.
+	if thumb.is_empty() or picture.world.revision != revision or store.share_id != id:
+		return
+	var answer: Dictionary = await shared.put_card(token, id, Marshalls.raw_to_base64(thumb), kind)
+	card_put = {"id": id, "kind": kind, "ms": roundi(_card.last_ms), "code": int(answer["code"]),
+		"answered_ms": Time.get_ticks_msec() - answered_at}
+	if not int(answer["code"]) in [200, 201]:
+		push_warning("share: the card's photograph was not put on %s: %s" % [id,
+			SharedModels.trouble(answer, "no answer")])
 
 
 ## [param image] as a PNG under the server's limit: smaller if it must be,
