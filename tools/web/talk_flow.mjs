@@ -16,7 +16,10 @@
 //
 //   1. The boards, signed out: Latest and the five boards as tabs, the
 //      house's first threads in them (never empty), what is said under the
-//      models beside them, and a thread's Reply asking to sign in.
+//      models beside them; a thread's reply box there all the same, its
+//      Ctrl+Enter asking to sign in and keeping the words; and a row's Reply
+//      opening the composer in the row (web/composer.js), Enter a new line,
+//      Ctrl+Enter asking to sign in, the list not left.
 //   2. Ann shares a model; its page offers her a Show and tell thread about
 //      it; she starts one there with a step of it and @Bea in her words: the
 //      thread shows the model's card, the step's, Bea's name as a link, and
@@ -36,6 +39,8 @@
 //      no longer sees it and Bea sees it hidden.
 //   8. The month's challenge has its thread in Challenges, by Brickworks,
 //      with the way to the challenge.
+//   8b. Cy replies from Show and tell's row of Ann's thread: the reply in
+//      the row, its count one more, in the thread, the list not left.
 //   9. In German: /de/talk and the thread, their words and lang, and the
 //      alternates; and on a phone (390 x 844) nothing goes sideways.
 //
@@ -188,7 +193,7 @@ try {
     const posts = [...document.querySelectorAll("#stream > .post.talk")];
     return document.documentElement.dataset.feedLive && posts.length
       ? { rows: posts.length, title: posts[0].querySelector(".post-title a")?.getAttribute("href") || "",
-        reply: posts[0].querySelector(".post-reply")?.textContent.trim() || "" } : null;
+        reply: posts[0].querySelector(".said-room")?.textContent.trim() || "" } : null;
   }, "the homepage's Talk posts", 60);
   check(`the homepage's feed has Talk: ${strip.rows} threads, the first's reply "${strip.reply.slice(0, 60)}"`, strip.rows >= 1
     && /^\/talk\/t\/\d+/.test(strip.title) && strip.reply.length > 0);
@@ -205,9 +210,37 @@ try {
   check(`Help: its tab is the current one (${current}), every row is Help's`, /Help/.test(current) && help.length > 0);
   const firstThread = await visitor.evaluate(() => document.querySelector("#talk-list .talk-row-title a")?.getAttribute("href") || "");
   await visitor.goto(`${site}${firstThread}`);
-  await until(visitor, () => !document.querySelector("[data-signin]")?.hidden, "the sign-in offer");
-  check("a thread, signed out: Reply asks to sign in, no box", await visitor.evaluate(() => document.querySelector("[data-reply-form]")?.hidden === true
-    && Boolean(document.querySelector("[data-signin] [data-act='sign-in']:not([hidden])"))));
+  // The box is everybody's (web/composer.js): Post asks to sign in, and
+  // what was typed is still there after.
+  await until(visitor, () => (document.querySelector("[data-reply-form]") && !document.querySelector("[data-reply-form]").hidden
+    && document.querySelector("[data-signin]")?.hidden ? true : null), "the reply box, signed out");
+  await visitor.fill("#talk-reply-words", `Kept across a sign-in ${rand}`);
+  await visitor.focus("#talk-reply-words");
+  await visitor.keyboard.press("Control+Enter");
+  const askedIn = await until(visitor, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 10);
+  await visitor.keyboard.press("Escape");
+  await until(visitor, () => (!document.querySelector("dialog.sign-in[open]") ? true : null), null, 10);
+  const keptThere = await visitor.inputValue("#talk-reply-words");
+  const footThere = await visitor.evaluate(() => document.querySelector("[data-reply-form] .composer-foot")?.textContent || "");
+  check(`a thread, signed out: the box is there (its foot "${footThere}"), Ctrl+Enter asks to sign in (${Boolean(askedIn)}), the words kept`,
+    /guidelines/i.test(footThere) && Boolean(askedIn) && keptThere === `Kept across a sign-in ${rand}`);
+  // A row of a list: Reply opens the composer in the row; signed out, Post
+  // asks to sign in; the list is not left.
+  await visitor.goto(`${site}/talk/b/help?tests=1`);
+  const rowReply = await visitor.evaluate(() => document.querySelector("#talk-list .talk-row [data-reply-thread]")?.getAttribute("href") || "");
+  check(`each row of a list has Reply (${rowReply})`, /^\/talk\/t\/\d+.*#reply$/.test(rowReply));
+  await visitor.click("#talk-list .talk-row [data-reply-thread]");
+  const rowBox = await until(visitor, () => (document.activeElement?.matches("#talk-list .talk-row form.composer textarea") ? true : null), null, 10);
+  await visitor.keyboard.type("A row's reply");
+  await visitor.keyboard.press("Enter");
+  const rowEnter = await until(visitor, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 2);
+  await visitor.keyboard.press("Control+Enter");
+  const rowAsked = await until(visitor, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 10);
+  await visitor.keyboard.press("Escape");
+  await until(visitor, () => (!document.querySelector("dialog.sign-in[open]") ? true : null), null, 10);
+  check(`Reply in a row opens the composer there (${Boolean(rowBox)}), Enter is a new line (${!rowEnter}), Ctrl+Enter asks to sign in (${Boolean(rowAsked)}), `
+    + `still on ${new URL(visitor.url()).pathname}`, Boolean(rowBox) && !rowEnter && Boolean(rowAsked) && new URL(visitor.url()).pathname === "/talk/b/help");
+  await shot(visitor, "1-row-reply.png");
   await visitor.context().close();
 
   console.log("2. Ann's model, and her Show and tell thread about it");
@@ -377,6 +410,26 @@ try {
   await challenges.goto(`${site}${challengePath}`);
   check("its thread leads to the challenge", await challenges.evaluate(() => Boolean(document.querySelector(".talk-challenge a[href*='/challenge'], #talk-posts a[href*='/challenge']"))));
   await challenges.context().close();
+
+  console.log("8b. Cy replies from a row of Show and tell, without leaving the list");
+  const list = await open("/talk/b/show?tests=1", { who: people.cy });
+  const row = `#talk-list .talk-row[data-thread="${thread}"]`;
+  if (check(`Ann's thread is a row of Show and tell`, Boolean(await list.$(row)))) {
+    const counted = Number(await list.evaluate((r) => document.querySelector(`${r} [data-replies]`)?.dataset.replies || "0", row));
+    await list.click(`${row} [data-reply-thread]`);
+    await until(list, (r) => document.activeElement?.matches(`${r} form.composer textarea`) || null, "the row's box", 10, row);
+    await list.keyboard.type(`From the list ${rand}`);
+    await list.keyboard.press("Control+Enter");
+    const rowSaid = await until(list, (r) => ((/Posted/.test(document.querySelector(`${r} .said-heard`)?.textContent || "") && document.querySelector(`${r} form.composer`)?.hidden === true)
+      && !document.querySelector(`${r} .said-line.pending`) ? document.querySelector(`${r} .said-lines`)?.textContent || "" : null), "Posted in the row", 30, row);
+    const nowCounted = Number(await list.evaluate((r) => document.querySelector(`${r} [data-replies]`)?.dataset.replies || "0", row));
+    const cyPosts = (await postsOf(thread, people.cy)).filter((one) => one.mine && one.body === `From the list ${rand}`);
+    check(`Cy's reply shows in the row ("${rowSaid.slice(-40)}"), its count ${counted} then ${nowCounted}, in the thread (${cyPosts.length}), `
+      + `still on ${new URL(list.url()).pathname}`, rowSaid.includes(`From the list ${rand}`) && nowCounted === counted + 1 && cyPosts.length === 1
+      && new URL(list.url()).pathname === "/talk/b/show");
+    await shot(list, "8b-row-reply.png");
+  }
+  await list.context().close();
 
   console.log("9. In German, and on a phone");
   const german = await open("/de/talk?tests=1");

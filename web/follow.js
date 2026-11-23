@@ -131,7 +131,21 @@ export async function followsSent() {
 /// One Follow button, made live: drawn from [known] when the page already
 /// knows how it stands (the feed's designers to follow, none of whom you
 /// follow yet), else as the server says.
+// Each Follow made live once (followButton): button -> how to draw it anew
+// from a later [known], null while its first ask is out.
+const wired = new WeakMap();
+
 export async function followButton(button, known = null) {
+  // Asked again for a Follow already live (follow.js makes every Follow live
+  // as it loads, and the home feed then each of its posts'): drawn from what
+  // the page knows, never a second press. Two presses opened two sign-in
+  // dialogs at once, the second left over the page when the first was
+  // closed (rel-m320's home feed check: its 3D button under it).
+  if (wired.has(button)) {
+    if (known) wired.get(button)?.(known);
+    return;
+  }
+  wired.set(button, null);
   const named = button.dataset.followList ? "list" : "person";
   const kind = FOLLOWS[named];
   const handle = button.dataset.followList || button.dataset.follow;
@@ -185,8 +199,14 @@ export async function followButton(button, known = null) {
     state = { followers: 0, ...known };
     draw();
   } else if (!(await ask())) {
+    // Not live: a later call may make it so.
+    wired.delete(button);
     return;
   }
+  wired.set(button, (next) => {
+    state = { followers: 0, ...next };
+    draw();
+  });
   // Signed in from the header, or anywhere on the page: drawn again as it
   // stands for them (yours hidden, Following where you follow).
   addEventListener("brickworks:signed-in-done", () => {
