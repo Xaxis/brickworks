@@ -23,8 +23,9 @@
 //     container's, its top not the pattern's, its size not --t-h1; its
 //     tabs (when it has views) not the site's .tabs, their left not the
 //     container's, or their top not the pattern's distance under the head;
-//   a list page (LIST): no .list-main, its left not the container's or its
-//     width not the pattern's; an aside not at the container's right edge.
+//   a list page (LIST): no .list-main, its left not the container's, its
+//     right not the container's (or, beside an aside from 900 px, not the
+//     aside's left less --s-6); an aside not at the container's right edge.
 //
 // "The pattern's" is the feed's, drawn at the same width and theme: the
 // first page here. Its own h1 is held to the tokens (--t-h1, at the band's
@@ -130,7 +131,7 @@ function layout() {
     band: box(band), bandFirst: Boolean(band) && first === band, bandPad: band ? parseFloat(getComputedStyle(band).paddingTop) : 0,
     head: box(band?.querySelector(":scope > .wrap > .page-head")),
     h1: h1 ? { ...box(h1), size: parseFloat(getComputedStyle(h1).fontSize), inTitle: Boolean(h1.closest(".page-hero .page-title")) } : null,
-    want: { h1: token("--t-h1"), pad: px(innerWidth < 600 ? "--s-4" : "--s-6") },
+    want: { h1: token("--t-h1"), pad: px(innerWidth < 600 ? "--s-4" : "--s-6"), gap: px("--s-6") },
     tabs: box(tabs),
     listMain: box(listMain), aside: box(aside),
   };
@@ -174,8 +175,13 @@ function judge(one, got, want) {
   if (one.kind !== LIST) return found;
   if (!got.listMain) return [...found, ["its list", "is not the site's (.list-layout > .list-main)"]];
   if (!near(got.listMain.left, container.left)) found.push(["its list", `starts at ${n(got.listMain.left)} px, not the page's edge at ${n(container.left)}`]);
-  if (want?.listMain && !near(got.listMain.width, want.listMain.width) && !(got.aside && got.screen < 900)) {
-    found.push(["its list", `is ${n(got.listMain.width)} px wide, the pattern's ${n(want.listMain.width)}`]);
+  // The list runs to the page's right edge, or to the aside's left less
+  // the layout's gap beside it, so no page keeps a column of its own width.
+  const listRight = got.listMain.left + got.listMain.width;
+  const besideAside = got.aside && got.screen >= 900;
+  const wantRight = besideAside ? got.aside.left - got.want.gap : container.right;
+  if (!near(listRight, wantRight)) {
+    found.push(["its list", `ends at ${n(listRight)} px, not ${besideAside ? "the aside's gap" : "the page's edge"} at ${n(wantRight)}`]);
   }
   if (got.aside && got.screen >= 900 && !near(got.aside.right, container.right)) {
     found.push(["its aside", `ends at ${n(got.aside.right)} px, not the page's edge at ${n(container.right)}`]);
