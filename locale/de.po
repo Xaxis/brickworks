@@ -17455,3 +17455,22 @@ msgstr "Wieder an seinem Teil, hier"
 
 msgid "Done with it: folded away here, and kept in its thread in Talk"
 msgstr "Erledigt: hier eingeklappt und in seinem Thema in Talk behalten"
+
+# ux15: a phone's step bar
+msgid "Go to a step"
+msgstr "Zu einem Schritt"
+
+msgid "Go to a step: every step, to tap one"
+msgstr "Zu einem Schritt: alle Schritte, einen antippen"
+
+msgid "This step's parts as pictures, how many of each beside them"
+msgstr "Die Teile dieses Schritts als Bilder, wie viele von jedem daneben"
+
+msgid "Play, Start and End, the order, Find, Instructions, Done and how the booklet prints the step"
+msgstr "Abspielen, Anfang und Ende, die Reihenfolge, Suchen, Anleitung, Fertig und wie das Heft den Schritt druckt"
+
+msgid "%d × %s, %s"
+msgstr "%d × %s, %s"
+
+msgid "Edit a copy"
+msgstr "Kopie bearbeiten"

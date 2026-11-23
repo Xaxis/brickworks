@@ -402,8 +402,10 @@ func _scratch_builder() -> void:
 	_check15("a part put down by tapping (%d parts)" % placed, placed >= 1)
 	# What is in hand let go (Select, as the row's hint says), then the part
 	# tapped to select it, as a phone selects.
-	if _builder.is_carrying():
+	var verbs: EditVerbs = _main.get("_verbs")
+	if _builder.is_carrying() or verbs.shows_ghost():
 		await _tool("select")
+		await _frames(10)
 	var brick: BrickWorld.Brick = _newest_brick()
 	if brick != null:
 		await _tap(_camera.unproject_position(brick.transform.origin + Vector3(0, 12, 0)))
@@ -539,6 +541,12 @@ func _own_version() -> void:
 			(asking as Window).hide()
 			_bar.emit_signal("_replace_answered", "discard")
 			break
+	# The set comes from the library: fetched, then laid out.
+	var since: int = Time.get_ticks_msec()
+	while _world.brick_count() < 20 and Time.get_ticks_msec() - since < 120000:
+		await process_frame
+	print("UX15 p17: the set's %d parts in %.1f s" % [_world.brick_count(),
+		(Time.get_ticks_msec() - since) / 1000.0])
 	await _until_still(240)
 	await _step("p17_01_opened", "the set opened as a copy of its own")
 	# One part, near the middle of the screen, tapped and recoloured.
@@ -582,7 +590,14 @@ func _brick_near(at: Vector2) -> BrickWorld.Brick:
 
 
 func _centre(control: Control) -> Vector2:
-	return control.get_global_rect().get_center()
+	# A control in a sheet (an embedded Window) is placed in the sheet: the
+	# sheet's own place added, for a tap on the window it is drawn in.
+	var at: Vector2 = control.get_global_rect().get_center()
+	var window: Window = control.get_window()
+	while window != null and window != root:
+		at += Vector2(window.position)
+		window = window.get_parent().get_window() if window.get_parent() != null else null
+	return at
 
 
 ## The middle of the model's room on the screen.

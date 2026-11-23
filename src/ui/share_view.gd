@@ -401,8 +401,13 @@ func _fit_bar(pt: float) -> void:
 			face.content_margin_bottom = 4.0 * pt
 			face.set_corner_radius_all(roundi(8.0 * pt))
 			button.add_theme_stylebox_override(state, face)
-		# The longest words take the most of the line.
-		button.size_flags_stretch_ratio = 1.6 if button == _copy else 1.0
+		# Each its words' share of the line: equal shares cut Parts list
+		# and Open in Brickworks off at 360 points.
+		if button == _copy:
+			button.text = "Edit a copy"
+		var font: Font = button.get_theme_font("font")
+		button.size_flags_stretch_ratio = font.get_string_size(button.tr(button.text),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(14.0 * pt)).x + 16.0 * pt
 
 
 ## A face of its own, as the timeline's buttons have: drawn flat, the bar

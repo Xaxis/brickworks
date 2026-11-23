@@ -621,7 +621,9 @@ func _fit_compact() -> void:
 			face.content_margin_right = 10.0 * pt
 			button.add_theme_stylebox_override(state, face)
 	_pieces.add_theme_font_size_override("font_size", roundi(13.0 * pt))
-	_row.custom_minimum_size = Vector2(0, 14.0 * pt)
+	# The row of steps a selection is dropped on, where the studio shows it:
+	# a fingertip tall, to drop on and to scrub along.
+	_row.custom_minimum_size = Vector2(0, least)
 	_lay_strip()
 	_fit_at_words.call_deferred()
 
@@ -682,7 +684,9 @@ func _lay_strip() -> void:
 		_strip.remove_child(child)
 		child.queue_free()
 	_tiles.clear()
-	var lots: Array[Dictionary] = step_lots_of(at) if _parts_on and at != null and visible else []
+	var lots: Array[Dictionary] = []
+	if _parts_on and at != null and visible:
+		lots = step_lots_of(at)
 	_strip_slide.visible = not lots.is_empty()
 	if lots.is_empty():
 		if thumbnails != null:
@@ -779,7 +783,6 @@ func open_more() -> void:
 		slide.add_child(_more_box)
 		_more_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_more_sheet.add_child(slide)
-		_named["steps_more_sheet"] = _more_sheet
 		(shell if shell != null else self as Node).add_child(_more_sheet)
 	var room: Vector2 = get_viewport().get_visible_rect().size
 	var slide: ScrollContainer = _more_box.get_parent() as ScrollContainer
@@ -809,7 +812,6 @@ func open_go_to() -> void:
 		_go_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slide.add_child(_go_grid)
 		_go_sheet.add_child(slide)
-		_named["steps_go_sheet"] = _go_sheet
 		(shell if shell != null else self as Node).add_child(_go_sheet)
 	for child: Node in _go_grid.get_children():
 		_go_grid.remove_child(child)
@@ -1088,7 +1090,14 @@ func steps() -> Array[Instructions.Step]:
 
 ## Its controls, for the page to find, while it is up.
 func controls_by_name() -> Dictionary:
-	return _named.duplicate() if visible else {}
+	if not visible:
+		return {}
+	var named: Dictionary = _named.duplicate()
+	# Go to a step's chips while it is open: steps_go_<number>.
+	if _go_sheet != null and _go_sheet.visible:
+		for number: int in _go_chips:
+			named["steps_go_%d" % number] = _go_chips[number]
+	return named
 
 
 ## What a person reads on it, for a browser check; nothing while it is down.
@@ -1135,8 +1144,7 @@ func _set_mode_quietly(mode: int) -> void:
 	_show_row(_edits, mode == AUTHORS and editable)
 	# The row of steps for the steps a drop changes: the author's, or the
 	# worked-out ones of a model that has none of its own yet.
-	_row.visible = editable and (mode == AUTHORS or (mode == 0 and not _authored)) \
-		or _compact and (mode == AUTHORS or mode == 0)
+	_row.visible = editable and (mode == AUTHORS or (mode == 0 and not _authored))
 	# The booklet follows the build order or the author's steps, and an
 	# edit of how a step is printed gives a model the worked-out steps
 	# first, as a step edit does.
