@@ -7,8 +7,10 @@
 // first. This holds the page to it, at 390 x 844 and 1280 x 900, light and
 // dark:
 //
-//   1. the first screen: at 390 the first card's picture starts within
-//      360 px of the top (the week's pick before the month's challenge),
+//   1. the first screen, measured under the beta's strip while the beta is
+//      open (48 px over the header, pagebar): at 390 the first card's
+//      picture starts within 360 px of the top (the week's pick before the
+//      month's challenge),
 //      one card to a row (the owner's, 2026-10-29), three cards' names on
 //      the first two screens; at 1280 the week's pick whole across the first
 //      screen, its picture beside its words, and under it the cards four
@@ -170,6 +172,11 @@ const drawn = (page) => page.evaluate(() => {
   return {
     address: location.pathname + location.search,
     firstPicture: Math.round(firstPicture + scrollY),
+    // The beta's strip over the header while the beta is open (pagebar,
+    // web/site.css :root[data-betabar]): the room the page holds for it at
+    // its top, which scrolls away and its × takes off; 0 once it is gone.
+    strip: document.documentElement.hasAttribute("data-betabar")
+      ? Math.round(parseFloat(getComputedStyle(document.body).paddingTop) || 0) : 0,
     columns: Math.max(0, ...Object.values(rows)),
     // The marks shown: the most rows of them on a card, and the share of
     // the cards that show each; cards whose numbers' row holds only a button.
@@ -239,18 +246,22 @@ try {
         // the search on its own, 56 px lower: rel-m318's first picture at
         // 322 px, rel-m319's at 378. The month's challenge over the pick put
         // it at 425 (sitepolish); the pick comes first on a phone now.
-        check(seen.firstPicture <= 360 && seen.columns === 1 && !seen.sideways,
-          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (360 at most), ${seen.columns} to a row, nothing sideways`);
+        // Under the beta's strip, which pagebar put above the header (48 px)
+        // in place of a bar over the page: the 360 is the page's own.
+        check(seen.firstPicture - seen.strip <= 360 && seen.columns === 1 && !seen.sideways,
+          `390 ${theme}: the first card's picture at ${seen.firstPicture} px, ${seen.firstPicture - seen.strip} under the beta's strip `
+          + `(${seen.strip} px; 360 at most), ${seen.columns} to a row, nothing sideways`);
         // One to a row, a card is half a phone's screen: the pick's name and
         // two cards' (four at two a row before 2026-11-23).
         check(seen.names.length >= 3 && seen.names[2] <= 2 * 844,
           `390 ${theme}: three cards' names on the first two screens, the third's ending at ${seen.names[2]} px (${2 * 844} at most)`);
       } else {
         const pick = seen.pickFeature;
-        check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin < 900 - 60 && !seen.sideways,
+        check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin - seen.strip < 900 - 60 && !seen.sideways,
           `1280 ${theme}: the week's pick whole on the first screen (${pick ? `${pick.top} to ${pick.bottom} px, ${pick.width} wide, `
           + `${pick.beside ? "its words beside its picture" : "its words not beside its picture"}` : "none"}), the cards under it `
-          + `${seen.columns} to a row from ${seen.cardsBegin} px (60 px of them at least on the screen), nothing sideways`);
+          + `${seen.columns} to a row from ${seen.cardsBegin} px, ${seen.cardsBegin - seen.strip} under the beta's strip of ${seen.strip} `
+          + `(60 px of them at least on the screen), nothing sideways`);
       }
       const common = Object.entries(seen.markShare).filter(([, share]) => share >= 0.9).map(([mark]) => mark);
       check(seen.markRows <= 1 && !common.length && seen.lonelyLike === 0,
