@@ -338,8 +338,13 @@ export class View {
   // next, left a round one, the Falcon, two thirds.)
   fitting(from) {
     const points = this.corners;
-    const tanUp = Math.tan((this.camera.fov * Math.PI) / 360);
-    const tanAcross = tanUp * this.camera.aspect;
+    // A margin (this.o.margin, a share of the frame on each side) kept clear
+    // round the model: a question's step in Talk is seen whole, never
+    // touching the edges where the view's buttons are (askhelp).
+    const room = 1 - 2 * Math.min(0.3, Math.max(0, Number(this.o.margin) || 0));
+    const tan = Math.tan((this.camera.fov * Math.PI) / 360);
+    const tanUp = tan * room;
+    const tanAcross = tan * this.camera.aspect * room;
     const level = Math.hypot(this.from.x, this.from.z);
     const round = Math.atan2(this.from.x, this.from.z);
     const turns = this.o.spin && !this.o.still ? 16 : 1;

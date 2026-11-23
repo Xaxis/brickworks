@@ -219,6 +219,20 @@ try {
     await shot(visitor, `thread_${size}.png`);
     const view = await open3d(visitor, phone);
     check(`${size}: the 3D at step 2: ${view.n} parts drawn, the asked parts lit: ${view.lit}`, view.n === 4 && view.lit === "3003:1 3003:15");
+    // Its first view: every corner of every part of the step in the frame,
+    // about 8% clear on each side (0.84 of the frame's half each way).
+    const framed = await visitor.evaluate(() => {
+      const v = window.brickworks3d.view;
+      const at = v.camera.position.clone();
+      let most = 0;
+      for (let i = 0; i < v.corners.length; i += 3) {
+        at.set(v.corners[i], v.corners[i + 1], v.corners[i + 2]).project(v.camera);
+        most = Math.max(most, Math.abs(at.x), Math.abs(at.y));
+      }
+      return { most: Math.round(most * 1000) / 1000, corners: v.corners.length / 3 };
+    });
+    check(`${size}: its first view holds the whole step, ${(((1 - framed.most) / 2) * 100).toFixed(1)}% clear at the nearest edge`
+      + ` (${framed.corners} corners)`, framed.corners === 32 && framed.most <= 0.85 && framed.most >= 0.6);
     await visitor.waitForTimeout(600);
     await shot(visitor, `thread_3d_${size}.png`);
     check(`${size}: nothing goes sideways`, !(await sideways(visitor)));

@@ -166,6 +166,9 @@ function startAsk() {
   const big = $(".talk-ask .picture[data-scene]");
   if (!big || !askStart?.ask?.model) return;
   ask.view = start3d(big, {
+    // The step seen whole, 8% clear on every side (the view's buttons sit
+    // at its edges), before anybody turns it.
+    margin: 0.08,
     pins: () => ask.pins,
     asked: () => ask.asked,
     mayPin: () => ask.mayPin,

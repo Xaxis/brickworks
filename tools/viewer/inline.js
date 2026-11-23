@@ -262,6 +262,7 @@ export function open3d(shell, given) {
     // for somebody who asked for less motion (still).
     view = new View(stage, data, {
       still, spin: given.spin === true, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
+      margin: Number(given.margin) || 0,
       mark: (what) => {
         // Timed to the frame drawn, not to when it was asked for: a pixel
         // read back waits for the graphics (SwiftShader draws in seconds
