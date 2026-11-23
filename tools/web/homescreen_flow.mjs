@@ -303,12 +303,30 @@ async function install() {
       await page.goto(`${site}/`, { waitUntil: "load" });
       await controlled(page);
       const cdp = await made.newCDPSession(page);
-      const manifest = await cdp.send("Page.getAppManifest").catch((trouble) => ({ trouble: String(trouble) }));
+      // Chromium's own reading of the manifest. On rel-m319 it said nothing
+      // at all (no address, no data) while the same step found the site
+      // installable, and what went wrong was dropped unsaid: so it is asked
+      // again while it says no address (three times at most, each said),
+      // and a refusal is printed.
+      let manifest = {};
+      let tries = 0;
+      while (tries < 3 && !manifest.url) {
+        if (tries) await page.waitForTimeout(1000);
+        tries += 1;
+        manifest = await cdp.send("Page.getAppManifest").catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
+      }
       const said = await cdp.send("Page.getInstallabilityErrors").catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
       const errs = (said.installabilityErrors || []).map((one) => one.errorId);
-      const parsed = manifest.data ? JSON.parse(manifest.data) : {};
+      // Its text as served (data), else Chromium's structured reading of it.
+      let parsed = {};
+      try {
+        parsed = manifest.data ? JSON.parse(manifest.data) : manifest.manifest || {};
+      } catch (trouble) {
+        parsed = { name: `(not JSON: ${String(trouble).slice(0, 80)})` };
+      }
       check(`${width} px: the manifest at ${manifest.url ? new URL(manifest.url).pathname : "?"}, ${(manifest.errors || []).length} errors, `
-        + `"${parsed.name}" ${parsed.display}, ${parsed.icons?.length} icons`,
+        + `"${parsed.name}" ${parsed.display}, ${parsed.icons?.length} icons (asked ${tries} times`
+        + `${manifest.trouble ? `; ${manifest.trouble}` : ""})`,
         Boolean(manifest.url) && !(manifest.errors || []).length && parsed.name === "Brickworks" && parsed.icons?.length >= 3);
       check(`${width} px: installable, no installability errors${said.trouble ? ` (${said.trouble})` : `: [${errs.join(", ")}]`}`,
         !said.trouble && errs.length === 0);
@@ -339,6 +357,12 @@ async function offline() {
   try {
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
     await controlled(page);
+    // The worker keeps English's offline page and the browser's language's,
+    // and another's once a page in it is opened online (web/sw.js, hsfix N7,
+    // a6167673b): a German page first, as a German reader comes, and its
+    // offline page kept before the network is cut.
+    await page.goto(`${site}/de/gallery`, { waitUntil: "load" });
+    await until(page, async () => Boolean(await caches.match("/de/offline")), "the German offline page kept", 30);
     await made.setOffline(true);
     await made.route("**/*", (route) => route.abort("internetdisconnected"));
     await page.goto(`${site}/library`, { waitUntil: "load" }).catch(() => null);
@@ -353,7 +377,15 @@ async function offline() {
     const app = await offlineShown(page);
     check(`/app, offline (the installed app's start): the offline page: "${app.h1}" at ${app.at}`, app.offline && app.at === "/app" && app.h1 === "You’re offline.");
     await shot(page, "offline_app-1280-dark.png");
+    // The offline page hears the network come back through web/push.js,
+    // which theme.js asks for only after the load: the network came back
+    // the moment the page had loaded, before it listened, and nothing
+    // reloaded it (here and on hsfix's local run). So the network comes
+    // back once push.js has run, which writes this visit first thing.
+    await page.evaluate(() => localStorage.removeItem("brickworks.visits"));
     await page.goto(`${site}/library`, { waitUntil: "load" }).catch(() => null);
+    await until(page, () => document.documentElement.hasAttribute("data-offline") && Boolean(localStorage.getItem("brickworks.visits")),
+      "the offline page listening (push.js run)", 30);
     await made.unroute("**/*");
     await made.setOffline(false);
     await until(page, () => !document.documentElement.hasAttribute("data-offline") && location.pathname === "/library"
@@ -428,7 +460,9 @@ const offerNow = (page) => page.evaluate(() => {
 const card = (page) => page.evaluate(() => {
   const one = document.querySelector(".install-offer");
   return one ? { words: one.querySelector(".words")?.textContent || "", buttons: [...one.querySelectorAll("button")].map((b) => b.textContent),
-    shown: Boolean(one.offsetParent) } : null;
+    // Not offsetParent: the offer is a .site-notice, position: fixed
+    // (site.css), whose offsetParent is always null.
+    shown: one.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && one.getBoundingClientRect().height > 0 } : null;
 });
 const visits = (n) => ({ n, last: Date.now() - 2 * 3600e3 });
 /// The owner's notice, if one is up, hidden in this browser as its × hides
@@ -457,7 +491,10 @@ async function offer({ width = 1280, height = 900, phone = false, theme = "dark"
     await page.evaluate((v) => localStorage.setItem("brickworks.visits", JSON.stringify(v)), visits(1));
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
     await offerNow(page);
-    await until(page, () => document.querySelector(".install-offer")?.offsetParent, "the offer on a second visit", 15);
+    await until(page, () => {
+      const one = document.querySelector(".install-offer");
+      return Boolean(one?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && one.getBoundingClientRect().height > 0);
+    }, "the offer on a second visit", 15);
     const drawn = await card(page);
     check(`${width} ${theme}: a second visit, the offer: "${drawn.words.slice(0, 60)}…" [${drawn.buttons.join(", ")}], nothing sideways`,
       drawn.buttons.join(",") === "No thanks,Install" && !(await sideways(page)));
@@ -498,7 +535,10 @@ async function offerApple() {
     await hideNotice(page);
     await page.evaluate((v) => localStorage.setItem("brickworks.visits", JSON.stringify(v)), visits(1));
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
-    await until(page, () => document.querySelector(".install-offer")?.offsetParent, "the iPhone's offer", 15);
+    await until(page, () => {
+      const one = document.querySelector(".install-offer");
+      return Boolean(one?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) && one.getBoundingClientRect().height > 0);
+    }, "the iPhone's offer", 15);
     const drawn = await card(page);
     check(`iPhone (WebKit): how to add it: "${drawn.words.slice(0, 70)}…" [${drawn.buttons.join(", ")}]`,
       /Share/.test(drawn.words) && /Add to Home Screen/.test(drawn.words) && drawn.buttons.join(",") === "OK");
