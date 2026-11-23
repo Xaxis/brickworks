@@ -38,7 +38,8 @@
 --   set_built(set_number, tests) the gallery's models built from a set,
 --                   counted or declared, as gallery cards with what each
 --                   holds of it: a set's page lists them
---   gallery_models               made_with.sql's, and two filters: alt (a
+--   gallery_models               the live one's (made_with.sql, then wip.sql:
+--                   a work in progress only in Newest), and two filters: alt (a
 --                   set: the models built from it, whole or in a group) and
 --                   one_set (every part from one set)
 --
@@ -47,10 +48,13 @@
 -- has, and not the service role itself, reads or writes the tables.
 --
 -- Only additions: two tables, each row deleted with its model, an index,
--- and functions; gallery_models is made_with.sql's with two more filters
--- (supabase/later.tsv). No row of another table is changed, nothing dropped
+-- and functions; gallery_models is the live one's with two more filters
+-- (supabase/later.tsv): its body read from production with
+-- pg_get_functiondef on 2026-11-23, after wip.sql, and only alt and one_set
+-- added, so a work in progress stays out of Top and the ranked sorts. No row of another table is changed, nothing dropped
 -- or renamed. Applied after discovery.sql, model_bases.sql (model_bases),
--- made_with.sql (gallery_models, directory_card) and test_models.sql.
+-- made_with.sql (gallery_models, directory_card), test_models.sql and
+-- wip.sql (gallery_models, directory_card's wip).
 --
 -- Applied by the lead:
 --
@@ -225,7 +229,7 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- The gallery's list: made_with.sql's, and alt and one_set.
+-- The gallery's list: the live one's (wip.sql's), and alt and one_set.
 
 create or replace function public.gallery_models(query jsonb)
 returns setof jsonb
@@ -259,8 +263,7 @@ as $$
                     else least(greatest((query->>'days')::integer, 1), 366) end as days,
                (query->>'following')::uuid as following,
                nullif(query->>'made', '') as made,
-               -- Built from a set (alt_builds.sql): every part from it, or
-               -- it one of the fewest sets that hold every part.
+               -- Built from a set (alt_builds.sql): alt=N and one_set.
                lower(nullif(query->>'alt', '')) as alt,
                coalesce((query->>'one_set')::boolean, false) as one_set
     ),
@@ -329,6 +332,9 @@ as $$
          where m.published and not m.barred
            and not exists (select 1 from public.barred_accounts b where b.account = m.owner)
            and (m.listed or a.private)
+           -- Work in progress (wip.sql): only where the list is in time
+           -- order, never where it ranks or is built from what you own.
+           and (m.wip_at is null or (a.sort in ('newest', 'added') and not a.buildable))
            and (not m.test or a.tests or a.private)
            and (a.words is null or m.search @@ to_tsquery('simple'::regconfig, a.words))
            and (a.kind is null or m.kind = a.kind)
