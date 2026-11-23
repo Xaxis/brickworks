@@ -24,8 +24,9 @@
 //     tabs (when it has views) not the site's .tabs, their left not the
 //     container's, or their top not the pattern's distance under the head;
 //   a list page (LIST): no .list-main, its left not the container's, its
-//     right not the container's (or, beside an aside from 900 px, not the
-//     aside's left less --s-6); an aside not at the container's right edge.
+//     right not the container's (from 900 px, not the aside's column: 320
+//     px and --s-6 in from it), its width not the feed's (two tabs of one
+//     area apart); an aside not at the container's right edge.
 //
 // "The pattern's" is the feed's, drawn at the same width and theme: the
 // first page here. Its own h1 is held to the tokens (--t-h1, at the band's
@@ -65,6 +66,8 @@ const headers = remote && bypass ? { "x-vercel-protection-bypass": bypass, "x-ve
 const HEAD = "head";
 const LIST = "list";
 const EDGES = "edges";
+/// A list page's aside, from 900 px (site.css .list-layout).
+const ASIDE = 320;
 const listed = new Map(sitePages({ remote }).map((one) => [one.name, one]));
 const talkReady = (page) => until(page, () => document.querySelector("main .page-hero h1"));
 const PAGES = [
@@ -83,9 +86,10 @@ const PAGES = [
   .filter((one) => one.name && (!only || only.includes(one.name)));
 
 let passed = 0;
-let failed = 0;
+/// The pages that failed, each counted once however many faults it has.
+const failing = new Set();
 const fail = (where, what) => {
-  failed += 1;
+  failing.add(where);
   console.log(`  FAIL  ${where}: ${what}`);
 };
 
@@ -175,13 +179,18 @@ function judge(one, got, want) {
   if (one.kind !== LIST) return found;
   if (!got.listMain) return [...found, ["its list", "is not the site's (.list-layout > .list-main)"]];
   if (!near(got.listMain.left, container.left)) found.push(["its list", `starts at ${n(got.listMain.left)} px, not the page's edge at ${n(container.left)}`]);
-  // The list runs to the page's right edge, or to the aside's left less
-  // the layout's gap beside it, so no page keeps a column of its own width.
+  // Every list page keeps the aside's column from 900 px (320 px and the
+  // layout's gap), drawn or not, so its list runs to there, or under 900 px
+  // to the page's right edge: no page keeps a column of its own width.
   const listRight = got.listMain.left + got.listMain.width;
-  const besideAside = got.aside && got.screen >= 900;
-  const wantRight = besideAside ? got.aside.left - got.want.gap : container.right;
+  const wantRight = got.screen >= 900 ? container.right - ASIDE - got.want.gap : container.right;
   if (!near(listRight, wantRight)) {
-    found.push(["its list", `ends at ${n(listRight)} px, not ${besideAside ? "the aside's gap" : "the page's edge"} at ${n(wantRight)}`]);
+    found.push(["its list", `ends at ${n(listRight)} px, not ${got.screen >= 900 ? "the aside's column" : "the page's edge"} at ${n(wantRight)}`]);
+  }
+  // And it is the feed's width: two tabs of one area (the feed and the
+  // notifications, Talk and its boards) never differ, the owner's example.
+  if (want?.listMain && !near(got.listMain.width, want.listMain.width)) {
+    found.push(["its list", `is ${n(got.listMain.width)} px wide, the feed's ${n(want.listMain.width)}: one column on every list page`]);
   }
   if (got.aside && got.screen >= 900 && !near(got.aside.right, container.right)) {
     found.push(["its aside", `ends at ${n(got.aside.right)} px, not the page's edge at ${n(container.right)}`]);
@@ -237,10 +246,10 @@ try {
 } finally {
   await browser.close();
 }
-console.log(`\nlayout audit: ${pages} pages, ${passed} ok, ${failed} failed`);
+console.log(`\nlayout audit: ${pages} pages, ${passed} ok, ${failing.size} failed`);
 if (!pages) {
   console.log("layout audit: no page was judged");
   process.exit(1);
 }
-if (!failed) console.log("layout audit: all ok");
-process.exit(failed ? 1 : 0);
+if (!failing.size) console.log("layout audit: all ok");
+process.exit(failing.size ? 1 : 0);

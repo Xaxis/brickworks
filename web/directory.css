@@ -882,6 +882,25 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 @media (pointer: coarse) {
 	.notice .acts .icon-btn.small { min-width: 44px; min-height: 44px; }
 }
+/* Beside the list (listkit, 2026-11-23), the feed's column on both tabs:
+   Show, the list's kinds a line each, the one shown lit, each with how many
+   groups have it; your achievements as a card, the group's row without its
+   own frame, its newest two levels, the card lit while unread; and where to
+   choose what you hear of. */
+.kind-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.kind-list a {
+	display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); padding: 6px var(--s-2);
+	border-radius: var(--r-2); color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none;
+}
+.kind-list a:hover { color: var(--ink); background: var(--panel-hi); }
+.kind-list a[aria-current="true"] { color: var(--ink); background: var(--panel-hi); box-shadow: inset 2px 0 0 var(--accent-edge); }
+.kind-list .n { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) { .kind-list a { min-height: 44px; } }
+.achieved:has(.notice.unread) { border-color: var(--accent-edge); }
+.achieved .list-row { grid-template-columns: 48px minmax(0, 1fr) auto; column-gap: var(--s-3); padding: 0; border: 0; background: none; box-shadow: none; }
+.achieved .list-row > .row-pic { width: 48px; aspect-ratio: 1; }
+.achieved .notice .lines > li:nth-child(n + 3) { display: none; }
+.notices-aside .hear p { margin: 0; font-size: var(--t-small); }
 
 
 /* A designer's page (api/people.js earnedHtml, supabase/designers.sql): what
