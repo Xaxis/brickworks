@@ -5,7 +5,10 @@
 ## (jlfix 11-19): the room test counted the part the old one was seated in
 ## against the new one. Now the new part, laid where the old one was, is
 ## held by the joint rule a part put down by hand is (Builder.room_for), as
-## the old one was, and nothing else.
+## the old one was, and nothing else. A part of another box that makes every
+## joint the old one made is laid where it stood when moved to sit its own
+## way it has no room (smalls12): 4991-1's axle with a stop 32209 for 59426,
+## 6690-1's turntable top 3404 for 3404b.
 ##
 ##   godot --headless --path . --script src/dev/seatswap_probe.gd
 ##
@@ -26,14 +29,12 @@ const CASES := [
 	["a pin in a brick's hole", "hinge", "2780", "4459", true],
 	["minifig hips under a leg", "knee", "3815", "3815b", true],
 	["an axle pin in a set", "omr:6507-1", "3749", "43093", true],
-	["an axle with a stop in a set", "omr:4991-1", "32209", "59426", true,
-		"59426's cover reaches 49 cells into the 32064a it turns in, which 32209's never met, and the joint rule (room_for) does not hold it there"],
+	["an axle with a stop in a set", "omr:4991-1", "32209", "59426", true],
 	["a ball joint in a set", "omr:30201-1", "32474", "32474p02", true],
 	["a hinge plate in a set", "omr:1887-1", "4275b", "4275a", true],
 	["a clip in a set", "omr:6632-1", "4085b", "4085c", true],
 	["a bar in a clip in a set", "omr:60065-1", "87994", "87994p01", true],
-	["a turntable top in a set", "omr:6690-1", "3404", "3404b", true,
-		"3404b, the dimpled generation's top, has another box than 3404: moved to sit its own way, it meets the 3403 base in 2982 cells, and only a part of the old one's box laid where it stood is excused what the old one met"],
+	["a turntable top in a set", "omr:6690-1", "3404", "3404b", true],
 	["a 1 x 4 brick for a 1 x 6 against a wall", "wall", "3701", "3894", false],
 ]
 
@@ -141,7 +142,7 @@ func _case(case: Array) -> bool:
 		var brick: BrickWorld.Brick = _world.get_brick(id)
 		var was: PackedInt32Array = _builder.lattice.boxes_of(id)
 		var shape: Lbm.PartMesh = library.mesh_for(new)
-		var at: Transform3D = _builder._in_place_of(brick.transform, library.mesh_for(old), shape)
+		var at: Transform3D = _builder.swap_place(brick, new, shape)
 		var packed: PackedInt32Array = _builder.boxes_for(shape, at)
 		print("    #%d %s meets %s where it stands; %s there would meet %s" % [id, old, _met(was, id),
 			new, _met(packed, id)])

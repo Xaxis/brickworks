@@ -214,6 +214,9 @@ func _head(text: String) -> void:
 
 
 func _page(html: String) -> Page:
+	# The booklet's own parts box, put back after a frozen page's.
+	var fill: Color = box_fill
+	var frame: Color = box_frame
 	var page := Page.new()
 	page.size = size
 	page.colour = colour
@@ -258,6 +261,18 @@ func _page(html: String) -> Page:
 			"section":
 				page.kind = kind[1] if kind.size() > 1 else ""
 				page.number = str(attributes.get("id", "")).trim_prefix("page-").to_int()
+				# A frozen page's own colours (pagetools, Booklet._frozen_style):
+				# its paper's, and its parts boxes' for this page alone.
+				var own: Dictionary = _style(str(attributes.get("style", "")))
+				if own.has("--page"):
+					page.colour = _colour(str(own["--page"]))
+					page.ops[0]["fill"] = page.colour
+					if page.ops.size() > 1 and bool(page.ops[1].get("cover", false)):
+						page.ops[1]["on"] = page.colour
+				if own.has("--box"):
+					box_fill = _colour(str(own["--box"]))
+				if own.has("--box-line"):
+					box_frame = _colour(str(own["--box-line"]))
 			"svg":
 				svg = true
 			"div":
@@ -284,6 +299,8 @@ func _page(html: String) -> Page:
 			"br":
 				if not words.is_empty():
 					(words["runs"] as Array).append("\n")
+	box_fill = fill
+	box_frame = frame
 	return page
 
 

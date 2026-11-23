@@ -219,17 +219,28 @@ const pageDrawn = (page) => page.evaluate(() => {
   };
 });
 
-/// The designer's own numbers as drawn, in [box].
+/// The designer's own numbers as drawn, in [box]. Against the 30 days
+/// before (insights2, 3b8be8ad9), the large number is the last 30 whole UTC
+/// days, which end yesterday, and everything here happens today: what it
+/// earned is the "in all" line beneath it, as a person reads it. Without
+/// that period, the large number, as before.
 const mineDrawn = (page, box) => page.evaluate((id) => {
   const panel = document.getElementById(id);
+  const count = (el) => {
+    if (el.dataset.ever === undefined) return el.querySelector("b")?.textContent || "";
+    const all = [...el.querySelectorAll("small")].map((s) => s.textContent.trim()).find((said) => / in all$/.test(said)) || "";
+    return all.replace(/ in all$/, "");
+  };
   return {
     shown: Boolean(panel && !panel.hidden), state: document.documentElement.dataset.designs || "",
     heading: panel?.querySelector("h2")?.textContent || "", note: panel?.querySelector(".private")?.textContent || "",
-    totals: Object.fromEntries([...(panel?.querySelectorAll(".mine-totals li") || [])].map((li) => [li.dataset.earned,
-      li.querySelector("b")?.textContent || ""])),
+    // Against the 30 days before (insights2), opens are views: the same count.
+    totals: Object.fromEntries([...(panel?.querySelectorAll(".mine-totals li") || [])].map((li) => [li.dataset.earned === "views" ? "opens"
+      : li.dataset.earned, count(li)])),
     rows: [...(panel?.querySelectorAll(".design-row") || [])].map((li) => ({ id: li.dataset.id,
       meta: li.querySelector(".design-meta")?.textContent || "",
-      n: Object.fromEntries([...li.querySelectorAll("dd[data-kind]")].map((dd) => [dd.dataset.kind, dd.querySelector("b")?.textContent || ""])),
+      n: Object.fromEntries([...li.querySelectorAll("dd[data-kind]")].map((dd) => [dd.dataset.kind === "views" ? "opens" : dd.dataset.kind,
+        count(dd)])),
       builders: li.querySelector(".design-builders p")?.textContent.replace(/\s+/g, " ").trim() || "",
       who: [...li.querySelectorAll(".design-builders figcaption a")].map((a) => a.getAttribute("href")),
       loaded: [...li.querySelectorAll(".design-builders img, .pic img")].every((img) => img.complete && img.naturalWidth > 0) })),

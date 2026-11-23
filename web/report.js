@@ -111,7 +111,7 @@ function open(target, about) {
       return;
     }
     form.replaceChildren();
-    said.textContent = target.comment
+    said.textContent = target.comment || target.post
       ? say("Thank you. The site's owner will look at it, and remove it if it should not be there.")
       : say("Thank you. The site's owner will look at it, and take it out of the gallery if it should not be there.");
     const done = document.createElement("button");

@@ -1,0 +1,5 @@
+0 Green, red and blue 2x2 bricks side by side
+0 Name: three_2x2_top.ldr
+1 2 -40 0 0 0 0 -1 0 1 0 1 0 0 3003.dat
+1 4 0 0 0 0 0 -1 0 1 0 1 0 0 3003.dat
+1 1 40 0 0 0 0 -1 0 1 0 1 0 0 3003.dat

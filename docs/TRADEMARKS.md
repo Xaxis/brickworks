@@ -36,7 +36,12 @@ download carries `favicon-512.png`), and the desktop app's boot splash,
 `web/site.css`, and the sign-in page's own copy), the share card
 (`tools/web/make_share.mjs`) and Help, About show it. The 404 page's wall
 and the web app's loading wall (`src/boot/shell.html`) lost their studs for
-the same reason: our own pictures draw no brick and knob.
+the same reason: our own pictures draw no brick and knob. The home page's
+hero is not the badge but a model built in Brickworks, the mark's shape in
+189 real parts, credited "Built in Brickworks · 189 pieces" and opening in
+the studio: content, as any build in the gallery is, and never called our
+logo (hero3d, 2026-11-23). The header's mark, the favicons and the share
+card stay the geometric cube.
 
 **2. The name stays: Brickworks.** A quick search on 2026-10-13 found no
 live registration of BRICKWORKS for software or toys:
@@ -392,3 +397,16 @@ put, for whoever reviews them before anything paid.
 8. **The ® on every use.** [FP] asks for it "each time", which we do in
    everything a person reads. Whether the designer's replies in a person's
    own Claude must carry it too is beyond what we control; it is told to.
+9. **The LEGO word on the studs of a render** (photoreal1, 2026-11-21;
+   decided by the lead the same day, under the owner's 2026-10-13 rule that
+   nothing waits on him). Allowed, in a render only. Best in the Product look
+   draws the letters raised on every stud because the real parts carry them:
+   a render shows a part the way a photograph of the part does, as Studio's
+   Eyesight (the LEGO Group's own BrickLink), Mecabricks, LeoCAD's POV-Ray
+   path and the LDraw library's logo studs have for decades. It is never our
+   mark: rule 1 keeps the brick and its knobs out of our branding, the
+   window's own look draws no letters, and nothing we make for ourselves
+   (icons, cards, the site's chrome) shows them. A person's published render
+   may, as a photograph of their model would. Anything that brings money in
+   reopens it with the rest; RenderSettings can draw the moulding without the
+   letters in one change if it must.

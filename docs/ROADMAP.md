@@ -328,6 +328,18 @@ plainer — see the first lever below.
        Build it turns the model as its booklet does.
    - **The whole castle**, nine hours of builder, is a lead's run; the
      command is in the write-up.
+   - **A step checked from a photo of the build**, the same eyes the other
+     way round. **Tried, NO-GO** (photostep, 2026-11-22; docs/APP_UX11.md,
+     past parity 3). A session shown a phone-like photo of step N built (a
+     render, laid on a desk or carpet) beside the booklet's steps N-1, N and
+     N+1 named the fault by kind, part and place in 13 of 33 faulty builds,
+     and drew a fault on 5 of 11 right ones. A part one stud off: 1 of 11.
+     A fault under 0.1% of the picture: 0 of 6, and on such pages the right
+     build drew the same answer as the faulty ones. Framed 1.4 times closer:
+     17 of 33 named, 1 of 11 false alarms, a stud off 4 of 11. As in building
+     from pages, where exactly among parts alike is what it cannot read. The
+     bench (`src/dev/photostep_bench.gd`, `tools/bench/photostep.py`) is
+     kept to measure the next try against.
 
 ## How the levers were found
 

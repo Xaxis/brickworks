@@ -34,9 +34,12 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from loadbound import within  # noqa: E402
 
 PREAMBLE = r"""
 import { createHash, webcrypto } from 'node:crypto';
@@ -384,7 +387,7 @@ def test_an_answer_or_a_wait_while_the_sign_in_cannot_be_checked_is_not_let_thro
     assert got["answered"].startswith("The person's tab answered, but Brickworks could not check"), got
     # Not taken by the tab: taken back, only if it still was not, and refused for now.
     assert got["waited"].startswith("Nothing was done: Brickworks could not check just now"), got
-    assert len(got["takenBack"]) == 1 and got["ms"] < 5_000, got
+    assert len(got["takenBack"]) == 1 and got["ms"] < within(5_000), got
     assert got["closed"] == [], got
 
 

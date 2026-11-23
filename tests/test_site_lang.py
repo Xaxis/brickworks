@@ -84,7 +84,7 @@ def test_each_copy_points_to_its_own_pages_and_carries_its_language_into_the_app
         for name, where in site_lang.PAGES.items():
             text = (ROOT / "web" / code / (f"{where}.html" if where else "index.html")).read_text(encoding="utf-8")
             # A tab of the gallery's (tools/browse_pages.py) says which it opens on.
-            assert re.search(f'<html lang="{code}"(?: data-tab="[a-z]+")?(?: data-missing)?>', text)
+            assert re.search(f'<html lang="{code}"(?: data-tab="[a-z]+")?(?: data-missing| data-offline)?>', text)
             own = f"https://brickworks.diy/{code}" + (f"/{where}" if where else "")
             if name not in site_lang.UNLISTED:
                 assert f'<link rel="canonical" href="{own}">' in text and f'<meta property="og:url" content="{own}">' in text
@@ -105,6 +105,12 @@ def test_each_english_page_names_its_copies() -> None:
             # It has no address of its own: its copy is the one at the
             # address asked for, in the language (data-missing).
             assert "<html lang=\"en\" data-missing>" in text
+            continue
+        if name == "offline.html":
+            # Shown at the address asked for (web/sw.js), in its language:
+            # alternates would send it on to /de/offline, and the page that
+            # opens itself once online would open that, not the one asked for.
+            assert "<html lang=\"en\" data-offline>" in text and "hreflang" not in text
             continue
         for code in site_lang.LANGUAGES:
             own = f"https://brickworks.diy/{code}" + (f"/{where}" if where else "")

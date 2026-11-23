@@ -1786,6 +1786,9 @@ func _near(packed: PackedInt32Array) -> PackedInt64Array:
 	while n < packed.size():
 		for bx: int in range(_floor_div(packed[n], BUCKET),
 				_floor_div(packed[n + 3] - 1, BUCKET) + 1):
+			# A whole model's bound asked on a fiber (the surface pass's
+			# round ones, Edit › Finish the surfaces…), a turn given back.
+			Fiber.pause(&"lattice near")
 			for by: int in range(_floor_div(packed[n + 1], BUCKET),
 					_floor_div(packed[n + 4] - 1, BUCKET) + 1):
 				for bz: int in range(_floor_div(packed[n + 2], BUCKET),

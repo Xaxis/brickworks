@@ -28,7 +28,11 @@
 // in German, French or Spanish carries them, tools/site_lang.py).
 import { counted, iconButtonHtml, number, say } from "../../web/card.js";
 import { sceneShape, unpack } from "./scene.js";
-import { View, shapes, webglWorks } from "./view.js";
+import { LOOKS, View, shapes, webglWorks } from "./view.js";
+// The home's hero, the mark in bricks (tools/viewer/hero.js): in the same
+// module, so a visitor who then turns a post in 3D has its code already.
+export { hero3d } from "./hero.js";
+export { webglWorks };
 
 // The triangles a device is trusted to turn smoothly: a phone or a tablet
 // (a coarse pointer), and anything else. The library's biggest model is 6
@@ -37,13 +41,6 @@ export const BUDGET = { coarse: 3e6, fine: 9e6 };
 // The share of the parts' geometry in before the model takes the picture's
 // place, as the card does: the most-used parts come first.
 const SHOWN_AT = 0.25;
-// Where the picture was taken from, so the model turns from there and the
-// 3D takes its place without a jump. A gallery model's picture is the
-// app's view as it was shared, mostly where the app opens a model
-// (CadCamera: turned 35 degrees to the left and 26 up, a 45 degree lens);
-// a library set's is ModelShot's corner, square on, which a long lens
-// stands in for (the card's 35 degrees bent a big model away from it).
-const LOOKS = { app: { from: [-0.5155, 0.4384, 0.7362], fov: 28 }, corner: { from: [0.72, 0.52, 0.72], fov: 20 } };
 const TURN = Math.PI / 12;
 const ZOOM = 0.85;
 
@@ -211,9 +208,12 @@ export function open3d(shell, given) {
       if (shape) bytes += shape.bytes || 0;
       return shape;
     });
-    // Still as it arrives, where the picture was: the person turns it.
+    // Still as it arrives, where the picture was: the person turns it. A
+    // card of the home's feed asks it turning (given.spin, homefeed), until
+    // it is taken hold of, as the view's own autoRotate stops then; never
+    // for somebody who asked for less motion (still).
     view = new View(stage, data, {
-      still, spin: false, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
+      still, spin: given.spin === true, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
       mark: (what) => {
         // Timed to the frame drawn, not to when it was asked for: a pixel
         // read back waits for the graphics (SwiftShader draws in seconds

@@ -19,8 +19,9 @@
 class_name BookletOut
 extends Node
 
-## Save as PDF or Save pages as PNG ([param kind] "pdf" or "png") was
-## pressed in the booklet, in the browser; [param reply] takes the line to
+## Save as PDF, Save pages as PNG or Save as web page ([param kind] "pdf",
+## "png", or "html-" its layout and look: "html-long-light",
+## "html-steps-dark") was pressed in the booklet, in the browser; [param reply] takes the line to
 ## say there once it is saved, or not.
 signal save_wanted(kind: String, reply: Callable)
 
@@ -145,7 +146,10 @@ func finish(whole: bool) -> bool:
 					// (brickworksBookletSave), a moment after "Saving…" is shown:
 					// the app writes the file at once, and the tab is not drawn
 					// again until it is done.
-					for (const [id, kind] of [['save-pdf', 'pdf'], ['save-png', 'png']]) {
+					// Save as web page with them, its layout and look chosen beside it.
+					const web = tab && tab.document.getElementById('save-web');
+					if (web) web.hidden = false;
+					for (const [id, kind] of [['save-pdf', 'pdf'], ['save-png', 'png'], ['save-html', 'html']]) {
 						const save = tab && tab.document.getElementById(id);
 						if (!save) continue;
 						save.hidden = false;
@@ -153,7 +157,10 @@ func finish(whole: bool) -> bool:
 							const said = tab.document.getElementById('saved');
 							if (said) { said.hidden = false; said.textContent = 'Saving\u2026'; }
 							save.disabled = true;
-							setTimeout(() => window.brickworksBookletSave && window.brickworksBookletSave(kind), 50);
+							const chosen = (name) => (tab.document.getElementById(name) || {}).value;
+							const asked = kind != 'html' ? kind
+								: ['html', chosen('web-layout'), chosen('web-theme')].join('-');
+							setTimeout(() => window.brickworksBookletSave && window.brickworksBookletSave(asked), 50);
 						});
 					}
 				})();
@@ -190,7 +197,8 @@ func _pressed_in_tab(arguments: Array) -> void:
 		var said: JavaScriptObject = document.getElementById("saved")
 		if said != null:
 			said.textContent = line
-		var button: JavaScriptObject = document.getElementById("save-" + kind)
+		# Save as web page's kind says its layout and look too: "html-long-dark".
+		var button: JavaScriptObject = document.getElementById("save-" + kind.get_slice("-", 0))
 		if button != null:
 			button.disabled = false)
 

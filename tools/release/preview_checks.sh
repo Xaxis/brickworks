@@ -105,6 +105,15 @@ declare -A CMD=(
   # people unblocks, the follows not back; a comment's row blocks too.
   # Three throwaway accounts, deleted after with their models.
   [block]="tools/web/block_flow.mjs --url=$P --out=$S/${TAG}_block"
+  # Talk, the builders' forum (docs/SOCIAL.md section 10, supabase/talk.sql):
+  # the boards signed out and never empty, a Show and tell thread with its
+  # model and a step, a mention and a reply told, a paste over 4,000 kept
+  # and refused, Post pressed twice one reply, search, RSS, a block, a
+  # report (three, as no check signs in as the owner) hiding a post, the
+  # month's challenge thread, German and a phone. Four throwaway accounts,
+  # deleted after with their model. Before talk.sql is applied, only its
+  # waiting page: /talk says it is not open, the homepage leaves it out.
+  [talk]="tools/web/talk_flow.mjs --url=$P --out=$S/${TAG}_talk"
   # The gallery's Builds tab (docs/SOCIAL.md section 7, item 8): /builds
   # lists everybody's photos of real builds newest first, each linking its
   # model's page at the photo and its builder's profile; a photo hidden by
@@ -151,6 +160,18 @@ declare -A CMD=(
   # Achievements tab, read once opened. Throwaway accounts, deleted after;
   # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
+  # The site on a home screen, offline, and this device's notifications
+  # (homescreen): two deploys on one address served here, the next load the
+  # new one's; installable at 390 and 1280; the offline page with the
+  # network cut, in the address's language; /app, /b/ and /e/ never the
+  # worker's (a request log); the offer from a second visit, No thanks
+  # kept; a first visit waiting on nothing of it; Bob's comment on Ada's
+  # model shown on her device within 60 s (knocked as Ada: a preview takes
+  # only a check's own account), nothing once off, her device gone at the
+  # header's Sign out, Turn off on every device, her sign-in ending and her
+  # account deleted; Settings and the offline page at 390, 768 and
+  # 1280 in both themes. Throwaway accounts, deleted after.
+  [homescreen]="tools/web/homescreen_flow.mjs --url=$P --out=$S/${TAG}_homescreen"
   # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following
   # nobody shows Latest on Brickworks (the newest models as the gallery's
   # cards, every picture drawn) and designers to follow by Top builds; a
@@ -173,12 +194,31 @@ declare -A CMD=(
   # them alone and never cached: API routes only, with the bypass
   # (supabase/designers.sql).
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
+  # A designer's numbers against last month (insights2, i2fix): 50 test
+  # models with rows dated by hand (none that moves a real designer's
+  # numbers), ?op=designs within 1 s, its 3,900 numbers and days against the
+  # rows read back, Insights at 1280, 768 and 390 in both themes and German,
+  # no change against days nobody counted, and nobody else's
+  # (supabase/designer_period_2.sql; "(before the file)" until it is applied).
+  [designer_period]="tools/web/designer_period_flow.mjs --url=$P --out=$S/${TAG}_designer_period"
   # The monthly challenge: set on /admin?tests=1 (a test one, which no
   # visitor sees), entered from a model's page with each broken rule named,
   # voted in its two groups, ended and won, the winners told to a voter in
   # Notifications, and its link's own head: API routes only, with the bypass
   # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
+  # The challenge on the home page with its days left and This week's pick,
+  # both within the first two screens at 390 and 1280; /challenge moving no
+  # more than 0.1 as it loads at 390, 768 and 1280; its own picture
+  # (/challenge.png); the test challenge's How it runs panel (challengehonours,
+  # supabase/challenge_rounds.sql). Read only, signed out but the panel.
+  [challengehome]="tools/web/challengehome_check.mjs --url=$P --out=$S/${TAG}_challengehome --admin"
+  # The home's feed (homefeed): its posts in the HTML as served, Like, a
+  # comment and Follow asking a visitor to sign in on the spot, 3D, the
+  # studio in a post on the engine without threads; signed in (throwaways,
+  # deleted after) the tabs, a like, a comment and a follow made, and a
+  # visitor signing in from a like.
+  [homefeed]="tools/web/homefeed_check.mjs --url=$P --out=$S/${TAG}_homefeed --signed-in --try-start"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
   # frames held to 36 ms on average on a CPU; and 1484-1 with motions of its
@@ -286,6 +326,14 @@ declare -A CMD=(
   # its own; on a phone the blog scrolls until the model is taken hold of,
   # and a model past the phone's budget asks first. Signed out, reads only.
   [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
+  # The model turns in its link's preview (unit turntable): a throwaway
+  # designer's first visit to its page records its clip (/m/<id>.mp4, or
+  # .webm where Chromium cannot record MP4), 4 s or less, at most 1.5 MB,
+  # a seamless loop; Discordbot, Slackbot and Twitterbot get og:video and a
+  # twitter:card player, and the clip with 200; the embed with ?autoplay=1
+  # plays it muted with Pause and Play, at 390, 768 and 1280, light and
+  # dark; the clip's refusals; unpublished, its file gone from storage.
+  [turntable]="tools/web/turntable_flow.mjs --url=$P --out=$S/${TAG}_turntable"
   # In your room (APP_UX5 #13, arview), the deployment's first model: not
   # offered on a computer; on an Android phone (a WebXR stub), an iPhone (a
   # Quick Look stub) and an iPad offered, nothing of it asked before the
@@ -388,6 +436,15 @@ declare -A CMD=(
   # its own run is local, with a throwaway owner (the flow's head).
   # Throwaway accounts, deleted after.
   [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
+  # Share a model you made (bringyours): /share-model and the gallery's
+  # Share yours. Files that are no model refused in words with nothing sent,
+  # an LDD file's one tap to the app, four BrickLink Studio files read in
+  # the page; a 353-part .mpd at 1280 (60 s) and its Studio .io at 390
+  # (120 s) chosen to their own pages with one tap, each with the server's
+  # count, the file's steps, version 1 and its three pictures; signed out
+  # asked to sign in, under 13 refused, nothing kept. Throwaway accounts,
+  # deleted after with what they shared.
+  [share_model]="tools/web/share_model_flow.mjs --url=$P --out=$S/${TAG}_share_model"
   # Report a bug (bugreport): window.brickworksReportBug over the page at 390
   # and 1280, the page's picture drawn, a box marked on it and found in the
   # kept picture where it was drawn (within 2 px), Your reports listing each
@@ -475,6 +532,13 @@ declare -A CMD=(
   # which the answer says). The account deleted after, and its row of
   # profile_shows.
   [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
+  # People and lists in search (seo2, docs/SOCIAL.md rank 9): every /u/ and
+  # /c/ page the sitemap lists, in four languages, each tab and next page,
+  # carries one ProfilePage (a Person, its numbers as the page shows them)
+  # or CollectionPage (hasPart, a card each), read against schema.org's own
+  # vocabulary; the Person's image answers and robots.txt lets a crawler
+  # fetch every address in it. Read-only, about 20 s.
+  [seo]="tools/web/seo_check.mjs --url=$P"
   # Your account as your profile (docs/SOCIAL.md U6): a throwaway Ada who
   # set all the old account page could (her name, words, links, banner and
   # pins, a favourite, a collection, her emails, whom she follows shown)
@@ -839,13 +903,15 @@ run() {
   # "passed" in 0 s without running (2026-10-13).
   if [ -z "${CMD[$name]:-}" ]; then echo "$name exit=127 fails=1 0s :: FAIL no such check" >> "$S/$TAG.out"; return; fi
   # Held for the check's run only, and never by what it starts: a browser
-  # left behind would hold the database from every other run.
+  # left behind would hold the database from every other run. Taken inside
+  # heavy, once the check has its slot (live_db.sh, which also writes the
+  # "left" line): taken before heavy, a check held one of the three while it
+  # queued for a CPU, and at load 70 three checks queued 1 h 47 min holding
+  # all three, so every other unit's gave way or waited unstarted (2026-11-22).
+  local lock=()
   if live "$name"; then
-    alone "$name" && how=alone
-    if ! take_live_db "$how" "$TAG $name"; then
-      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (gave way to a release after LIVE_GIVE_WAY, $(( ${LIVE_GIVE_WAY:-0} / 60 )) min, or waited LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
-      return
-    fi
+    alone "$name" && how=--alone
+    lock=(bash "$RELEASE_HERE/live_db.sh" ${how:+"$how"} "$TAG $name")
   fi
   # The limit is on the check, inside heavy: around heavy it counted the wait
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
@@ -861,13 +927,16 @@ run() {
   # checks run back to back while the box is calm.
   local gap=""
   [ -n "$solo" ] && [ "${BOX_HEAVY_PRIORITY:-}" != 1 ] && gap="BOX_HEAVY_SOLO_GAP=0"
-  without_live_db env $gap "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
+  env $gap "$H" $solo "${lock[@]}" timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
   local code=$?
-  leave_live_db
   # heavy --solo says the load it began at, after how long, and beside what.
   local began; began=$(sed -n 's/^heavy: solo //p' "$S/${TAG}_$name.log" | head -1)
   [ -n "$solo" ] && echo "$name began ${began:-with no word from heavy}" >> "$S/${TAG}_calm.log"
-  live "$name" && echo "$(date '+%F %T') left $TAG $name exit=$code" >> "$LIVE_DB.log"
+  # live_db.sh exits 75 only when the lock stayed busy; heavy gives up with 2.
+  if [ "$code" = 75 ] && live "$name"; then
+    echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (gave way to a release after LIVE_GIVE_WAY, $(( ${LIVE_GIVE_WAY:-0} / 60 )) min, or waited LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
+    return
+  fi
   echo "$name exit=$code fails=$(grep -c 'FAIL' "$S/${TAG}_$name.log") $(( $(date +%s) - t0 ))s :: $(grep -vE '^\s*$' "$S/${TAG}_$name.log" | tail -1 | cut -c1-200)" >> "$S/$TAG.out"
 }
 : > "$S/$TAG.out"

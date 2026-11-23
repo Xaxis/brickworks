@@ -2,7 +2,7 @@
 <!--
   Your settings, at /settings: everything about the account that is not
   your profile itself (docs/SOCIAL.md U6, D9). Appearance (the theme),
-  Email (what Brickworks sends you), Privacy (your age answer, whom your
+  Notifications (on this device, and what Brickworks emails you), Privacy (your age answer, whom your
   profile shows you follow, whether it shows the models you liked), Assistants (the AI apps that may work in your tabs),
   Sign out and Delete account; and a way back to your profile, where
   Edit profile changes what it shows. These were the foot of the account
@@ -20,7 +20,7 @@
 <script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Settings · Brickworks</title>
-<meta name="description" content="Your Brickworks settings: the theme, the email you get, what your profile shows, the AI apps connected, signing out and deleting the account.">
+<meta name="description" content="Your Brickworks settings: the theme, your notifications on this device and by email, what your profile shows, the AI apps connected, signing out and deleting the account.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://brickworks.diy/settings">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/settings">
@@ -30,8 +30,6 @@
 <link rel="alternate" hreflang="x-default" href="https://brickworks.diy/settings">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/favicon-180.png">
-<link rel="manifest" href="/site.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Your Brickworks settings">
@@ -47,6 +45,9 @@
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="apple-mobile-web-app-title" content="Brickworks">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/oc-button.css">
 <style>
@@ -70,6 +71,8 @@
 .blocked button { min-height: 44px; }
 .delete-form, .code-form { display: grid; gap: 10px; margin-top: 12px; max-width: 460px; }
 #beta-bar-out { margin-top: var(--s-6); }
+/* Notifications' two parts, this device and email, each under its own heading. */
+.setting h3 { margin: var(--s-3) 0 var(--s-1); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -80,8 +83,9 @@
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
+			<a href="/talk">Talk</a>
+			<a href="/challenge">Challenges</a>
 			<a href="/docs">Docs</a>
-			<a href="/plans">Plans</a>
 			<a class="cta" href="/app">Open the app</a>
 			<a class="cta ghost" href="/profile?sign-in" data-account>Sign in</a>
 		</nav>
@@ -90,6 +94,8 @@
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
+					<a href="/talk">Talk</a>
+					<a href="/challenge">Challenges</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Plans</a>
 					<a href="/download">Desktop app</a>
@@ -112,7 +118,7 @@
 		<div class="wrap">
 			<p class="eyebrow"><a href="/profile" id="to-profile">Your profile</a></p>
 			<h1>Settings</h1>
-			<p class="lede">Your profile, how Brickworks looks, what it emails you, what others see of you, and the AI that works in your tabs.</p>
+			<p class="lede">Your profile, how Brickworks looks, what it tells you and where, what others see of you, and the AI that works in your tabs.</p>
 		</div>
 	</div>
 	<div class="wrap page-body page-grid settings-page">
@@ -122,7 +128,7 @@
 				<li><a href="#profile-part">Profile</a></li>
 				<li id="beta-toc" hidden><a href="#beta-part">Beta</a></li>
 				<li><a href="#theme-part">Appearance</a></li>
-				<li><a href="#email-part">Email</a></li>
+				<li><a href="#email-part">Notifications</a></li>
 				<li><a href="#privacy-part">Privacy</a></li>
 				<li><a href="#blocked-part">Blocked people</a></li>
 				<li><a href="#claude-part">Assistants</a></li>
@@ -211,9 +217,31 @@
 						</div>
 					</div>
 
+					<!-- What Brickworks tells you, and where: on this device, as its
+					     own notifications (web/push.js, api/_push.js; homescreen,
+					     2026-11-22), and by email. The device's choice is this
+					     browser's alone; the browser's own prompt comes only once
+					     it is turned on. -->
 					<div class="setting" id="email-part">
 						<div class="wide">
-							<h2>Email</h2>
+							<h2>Notifications</h2>
+						</div>
+						<div class="wide" id="push-part">
+							<h3>On this device</h3>
+							<p>A comment or a reply, a mention, a photo of a build of your model, a remix or a challenge’s
+								result, as this device’s own notification within the minute. Chosen for each device you use.</p>
+							<label class="choice"><input type="checkbox" id="push-on" disabled>
+								Notify me on this device</label>
+							<p class="said" id="push-said" role="status"></p>
+							<div class="actions" id="push-every-part" hidden>
+								<button class="cta ghost" type="button" id="push-every">Turn off on every device</button>
+							</div>
+							<div class="actions" id="install-part" hidden>
+								<button class="cta ghost" type="button" id="install">Install Brickworks</button>
+							</div>
+						</div>
+						<div class="wide">
+							<h3>By email</h3>
 							<p id="who"></p>
 						</div>
 						<div class="wide" id="mail" hidden>
@@ -379,8 +407,9 @@
 					<p class="foot-h" id="foot-community">Community</p>
 					<ul aria-labelledby="foot-community">
 						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
-						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/challenge">Challenges</a></li>
 						<li><a href="/collections">Collections</a></li>
 					</ul>
 				</div>

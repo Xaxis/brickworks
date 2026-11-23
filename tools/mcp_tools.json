@@ -1106,7 +1106,7 @@
       "readOnlyHint": true,
       "title": "Where a part attaches"
     },
-    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take, and its joints: holes, pins, axles, the bars (a handle is one) and clips a clip-on-bar joint is made of, and a rim's barrel and a tyre's hole, each by its middle and the way it runs, numbered for a placement by axis and joint. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it. And every connector by the address attach takes (\"#41.hinge[0]\", \"hinge[0]\"): its type and number, where it is and the way it points. Several parts in one call: parts=[{...}, {...}].",
+    "description": "Where a part's studs are and the exact coordinates something sitting on each one would take, and its joints: holes, pins, axles, the bars (a handle is one) and clips a clip-on-bar joint is made of, and a rim's barrel and a tyre's hole, each by its middle and the way it runs, numbered for a placement by axis and joint. Ask about a brick that is already placed by its number, or about one you are considering by giving part and position. Use this rather than working out sideways positions yourself — a stud on the side of a brick is not at a whole number of plates and the arithmetic is easy to get wrong. It also draws the shape of any part that is not a plain box: which way a wedge plate tapers, which way a slope falls, where an arch is open. Ask before using one of those for the first time — a wedge put on backwards looks exactly like a wedge until you look at it. And every connector by the address attach takes (\"#41.hinge[0]\", \"hinge[0]\"): its type and number, where it is and the way it points. Several parts in one call: parts=[{...}, {...}]. A part with no studs asked by part= says every face it can stand on as well, a line each, so no call is spent a face.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4190,10 +4190,14 @@
       "readOnlyHint": false,
       "title": "Edit the build steps"
     },
-    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step (a step= past the last makes a new last step of them); \"next\" or \"prev\" moves bricks= a step later or earlier, and on from the last step makes a new one; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off. callout_step= with step= names a step inside the callout step= puts on. A sub-model placed more than once has one set of steps: a name given to one of its steps is every copy's. find= lists only the steps that place a part, by its number, name or colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; a part in a sub-model is found in the sub-model's own step that puts it on.",
+    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step (a step= past the last makes a new last step of them); \"next\" or \"prev\" moves bricks= a step later or earlier, and on from the last step makes a new one; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off. callout_step= with step= names a step inside the callout step= puts on. A sub-model placed more than once has one set of steps: a name given to one of its steps is every copy's. find= lists only the steps that place a part, by its number, name or colour or both (\"red 3001\", \"2x4 brick\"), as the timeline's find does; a part in a sub-model is found in the sub-model's own step that puts it on. picture_data= (base64) or picture_url= instead: a photo of a part the person holds, named by photo search (Brickognize, a third party: only the photo is sent, never the model), answered with its top three guesses, the model's parts first, and the first step from from= that places it, with every other one. Brickognize may keep the photo and train on it, and it is for personal, non-commercial use: tell the person so and give agreed=true once they agree, unless they already have in the parts bin.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "agreed": {
+          "description": "with a picture: true once the person, told the photo goes to Brickognize, a third party, has agreed",
+          "type": "boolean"
+        },
         "bricks": {
           "description": "part numbers from look_at_model, for to, next, prev and new",
           "items": {
@@ -4232,6 +4236,14 @@
           ],
           "type": "string"
         },
+        "picture_data": {
+          "description": "for list: a photo of a part the person holds, its bytes as base64 (or a data: URI): the steps that place it",
+          "type": "string"
+        },
+        "picture_url": {
+          "description": "for list: an http(s) link to a photo of a part the person holds",
+          "type": "string"
+        },
         "step": {
           "description": "a step's number, for to, earlier, later, merge, delete and name",
           "type": "integer"
@@ -4268,7 +4280,7 @@
       "readOnlyHint": false,
       "title": "Set how a booklet step is printed"
     },
-    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. callout_step= with step= is a step inside the callout that step puts on, from 1: turn= and tilt= pose it apart, from the way the callout faces. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the page (269 x 199 unless page_setup set it up), as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added, turn= degrees clockwise and opacity= percent turning and fading it; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} lays a guide on every page, which what is dragged snaps to, never printed (was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. Studio's extras: pull= studs (2 when true, 0 or false to put back) draws the step's parts, or {studs, parts: [part ids]} those, pulled out along the way each goes in with a red arrow in; colours= true lists the step's colours under its number (colours_all= true every step's); actual_size= false leaves off the 1:1 guide the booklet gives the first Technic axle or straight beam of each length, true gives every axle and beam of the step one, [part ids] those parts, \"auto\" as the booklet does it; preview= false leaves the finished sub-assembly off the first of its own pages. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. callout_step= with step= is a step inside the callout that step puts on, from 1: turn= and tilt= pose it apart, from the way the callout faces. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the page (269 x 199 unless page_setup set it up), as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added, turn= degrees clockwise and opacity= percent turning and fading it; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} lays a guide on every page, which what is dragged snaps to, never printed (was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. lock= true locks the page step= starts: nothing on it moves or changes until lock= false (place=, text=, arrow=, turn=, zoom=, size=, page= on its steps are refused; follow= passes it by), and it holds as many steps as it has now, by count. freeze= true keeps its margins, colours, header, footer and step numbers as they are now when page_setup changes the booklet's; false undoes either. Studio's extras: pull= studs (2 when true, 0 or false to put back) draws the step's parts, or {studs, parts: [part ids]} those, pulled out along the way each goes in with a red arrow in; colours= true lists the step's colours under its number (colours_all= true every step's); actual_size= false leaves off the 1:1 guide the booklet gives the first Technic axle or straight beam of each length, true gives every axle and beam of the step one, [part ids] those parts, \"auto\" as the booklet does it; preview= false leaves the finished sub-assembly off the first of its own pages. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4344,6 +4356,10 @@
           "description": "true: the later pages laid out as step's page is",
           "type": "boolean"
         },
+        "freeze": {
+          "description": "the page step= starts frozen, or not",
+          "type": "boolean"
+        },
         "guide": {
           "description": "{axis, at, was, remove}: mm from the page's left (x) or top (y)",
           "properties": {
@@ -4368,6 +4384,10 @@
           "type": "object"
         },
         "highlight": {
+          "type": "boolean"
+        },
+        "lock": {
+          "description": "the page step= starts locked, or not",
           "type": "boolean"
         },
         "page": {
@@ -4504,7 +4524,7 @@
       "readOnlyHint": false,
       "title": "Set up the booklet's page"
     },
-    "description": "The booklet's page, as Build, Booklet page, Page setup… sets it, for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), \"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); picture_url= or picture_data= (base64) a picture behind every page, picture= \"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own page again. save_as= keeps the page as a style by that name, style= gives this model a kept style, and remove_style= takes a kept style away. One undo step, saved with the model. With nothing, says how the page is set up, its picture's size in the file, and the styles kept. The cover: title= (the model's name when none), subtitle= under it, cover_line= a line of their words on it, cover_picture_url= or cover_picture_data= a picture of their own (cover_picture= \"model\" the model drawn again). header= and footer= words on every page (\"\" none). box_frame=, box_fill= and box_corners= (mm) the parts box, number_colour= the step numbers, outline_colour= the band round the new parts; a colour \"usual\" is the booklet's own. A style keeps all of these but title= and subtitle=, which stay each model's own: style= never changes them.",
+    "description": "The booklet's page, as Build, Booklet page, Page setup… sets it, for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), \"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); picture_url= or picture_data= (base64) a picture behind every page, picture= \"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own page again. save_as= keeps the page as a style by that name, style= gives this model a kept style, and remove_style= takes a kept style away. One undo step, saved with the model. With nothing, says how the page is set up, its picture's size in the file, and the styles kept. The cover: title= (the model's name when none), subtitle= under it, cover_line= a line of their words on it, cover_picture_url= or cover_picture_data= a picture of their own (cover_picture= \"model\" the model drawn again). header= and footer= words on every page (\"\" none). box_frame=, box_fill= and box_corners= (mm) the parts box, number_colour= the step numbers, outline_colour= the band round the new parts and outline_width= its width (px at 5 a mm, 1 to 72, 3 usual); a colour \"usual\" is the booklet's own. A style keeps all of these but title= and subtitle=, which stay each model's own: style= never changes them.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4573,6 +4593,10 @@
           "description": "\"#rrggbb\", or \"usual\"",
           "type": "string"
         },
+        "outline_width": {
+          "description": "px at 5 a mm, 1 to 72 (3 usual)",
+          "type": "integer"
+        },
         "parts": {
           "description": "0.5 to 2",
           "type": "number"
@@ -4636,7 +4660,7 @@
       "readOnlyHint": false,
       "title": "Lay a hose, tube or chain"
     },
-    "description": "Lay a hose, tube, string or chain, as Make, Hose, tube or chain does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two parts' pin holes, axles or pins; string between two studs; chain or tread round sprockets= (two or more gears in one plane). The real length that fits is chosen, and it bends no tighter than the real one can. It goes in as one sub-assembly, named in the answer; item= that name lays it again between new ends. band: a rubber belt round sprockets= (pulleys, wheels, bushes or axles, in order round the loop); spring: between from= and to=, its turns kept when a part it is on moves. part= picks the band, the spring or the shock absorber by number.",
+    "description": "Lay a hose, tube, string or chain, as Make, Hose, tube or chain does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two parts' pin holes, axles or pins; string between two studs; chain or tread round sprockets= (two or more gears in one plane). The real length that fits is chosen, and it bends no tighter than the real one can. It goes in as one sub-assembly, named in the answer; item= that name lays it again between new ends. band: a rubber belt round sprockets= (pulleys, wheels, bushes or axles, in order round the loop); spring: between from= and to=, its turns kept when a part it is on moves. part= picks the band, the spring or the shock absorber by number. pf_cable, pu_cable or 9v_wire: a motor's cable, from= the motor (or an IR receiver or a pole reverser, by its own cable) to= the battery box, receiver, hub or plug it goes on, in the real cable's length; pf_cable or 9v_wire from= one part's contacts to= another's is an extension wire (8886, 8871; 9 V's 5306 lengths), and to= a plug stacks it on that plug's top. Its plug faces forward, reversed=true turns it half round so the motor runs the other way (a Powered Up plug goes in one way only). It is an item like a hose: item= lays it again, also after the model is reopened. simulate_mechanism then runs the motor as Play does.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4683,13 +4707,20 @@
             "chain",
             "tread",
             "band",
-            "spring"
+            "spring",
+            "pf_cable",
+            "pu_cable",
+            "9v_wire"
           ],
           "type": "string"
         },
         "part": {
           "description": "a band, spring or shock absorber's number (85546, 73129)",
           "type": "string"
+        },
+        "reversed": {
+          "description": "a pf_cable's or 9v_wire's plug put on turned half round, so its motor runs the other way; cables only",
+          "type": "boolean"
         },
         "sprockets": {
           "description": "part numbers of the gears a chain or tread goes round",
@@ -4767,7 +4798,7 @@
       "readOnlyHint": false,
       "title": "Move a part on its joint"
     },
-    "description": "Move a part about its joint as the person's drag on it does. With no part= it changes nothing and says what moves in the model: what its link's card says (steering, a boom, doors...) with the part to take hold of, and every part on a joint. With part=, its whole rigid body and everything beyond it turn on the joint between it and what stays (a locked part, what stands on the baseplate, else the body with the most parts, or a heavier one standing on the floor): a hinge, a clip on a bar, a turntable, a pin or an axle in a round hole, a ball, a 1x1 round part on one stud. part= a part's number (look_at_model) or a sub-assembly's name. With nothing else it changes nothing and says what would move, on what, and how the model stands. degrees= turns it that far from where it is (a ball: about axis=), along= slides it that many studs along a bar or an axle; it stops where it meets the model, gears it drives turn by their teeth, a joint without friction swings down under its own weight once let go, and the answer says what moved, where its joint then stands from where it was built (twice 20° stands at 40°), and how the model stands then. A part held at both ends (a four-bar, a crank with its rod and piston, a steering's arms) moves as its loop allows, and says so where it locks. spin= lets it go turning that many degrees a second, as a flick does: a wheel, a gear train or a turntable on free bearings coasts and slows against their friction, and the answer says how far it spun and where it stopped. A model turned past its edge falls over and says how it lies, unless it stands on the baseplate's studs. to= [x, y, z] in studs instead draws the part to that point by its whole chain of joints back to what stays, each within its range. One undo step.",
+    "description": "Move a part about its joint as the person's drag on it does. With no part= it changes nothing and says what moves in the model: what its link's card says (steering, a boom, doors...) with the part to take hold of, and every part on a joint. With part=, its whole rigid body and everything beyond it turn on the joint between it and what stays (a locked part, what stands on the baseplate, else the body with the most parts, or a heavier one standing on the floor): a hinge, a clip on a bar, a turntable, a pin or an axle in a round hole, a ball, a 1x1 round part on one stud; either half of a hinge moves the half that is not held, and the answer says which half and which way degrees= swings it. part= a part's number (look_at_model) or a sub-assembly's name. With nothing else it changes nothing and says what would move, on what, and how the model stands. degrees= turns it that far from where it is (a ball: about axis=), along= slides it that many studs along a bar or an axle; it stops where it meets the model, gears it drives turn by their teeth, a joint without friction swings down under its own weight once let go, and the answer says what moved, where its joint then stands from where it was built (twice 20° stands at 40°), and how the model stands then. A part held at both ends (a four-bar, a crank with its rod and piston, a steering's arms) moves as its loop allows, and says so where it locks. spin= lets it go turning that many degrees a second, as a flick does: a wheel, a gear train or a turntable on free bearings coasts and slows against their friction, and the answer says how far it spun and where it stopped. A model turned past its edge falls over and says how it lies, unless it stands on the baseplate's studs. to= [x, y, z] in studs instead draws the part to that point by its whole chain of joints back to what stays, each within its range. One undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5283,10 +5314,14 @@
       "readOnlyHint": false,
       "title": "Simulate the mechanism"
     },
-    "description": "Turn the model's gear train as Tools, Simulate mechanism does, and what it drives in a loop as a drag moves it (a pinion's rack slides, a crank's rod rocks and its slider strokes), without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result). program= sets the program for the model's motors (kept in its file; undo takes it back; \"\" takes it out) and runs it in the same call, as Simulate's Run does: each motor at its rated speed, each move stopped where a part meets another or the motor stalls under its load, said move by move with a picture where it ended. A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it); with two hub motors or more, each line begins with its port, A to F.",
+    "description": "Turn the model's gear train as Tools, Simulate mechanism does, and what it drives in a loop as a drag moves it (a pinion's rack slides, a crank's rod rocks and its slider strokes), without changing the model: from driver= (a part's number or a sub-assembly's name; else the one named Crank, Motor or Handle, else the one that turns most). It says each turning part's turns per driver turn and, with reference= (the part periods are counted in; Earth when one is named so), every other's period in its turns, against the real one for a planet or targets= ({name: period}). It names a locked train's meshes and the free and floating parts by number, and weighs the balance over the whole cycle: the worst frame, the arm furthest past the base's edge, a picture of it there. record=true also renders turns= turns of the reference (1) in frames= frames (24) as a WebP and an MP4 where Render saves, as a job (job gives the result). program= sets the program for the model's motors (kept in its file; undo takes it back; \"\" takes it out) and runs it in the same call, as Simulate's Run does: each motor at its rated speed, each move stopped where a part meets another or the motor stalls under its load, said move by move with a picture where it ended. A line each: to 90° at 50% (to an angle from where it was built), turn -45° at 30%, run 40% for 2 s, wait 1 s, repeat 3 (the lines indented under it); with two hub motors or more, each line begins with its port, A to F. Motors run by their cables as Play runs them: it says each motor's cable and what it reaches, and the driver's motor turns the way its plugs face, what its cable reaches switched on where it is off; a motor whose cable is pulled does not turn, and one with no cable drawn turns by hand. power=on switches every battery box, receiver and hub on first, power=off every one off. at= seconds pictures the model's program at that moment instead (with program=, the one just set), each motor's angle and the line running, without setting or changing anything.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "at": {
+          "description": "seconds into the model's program: its picture and each motor's angle at that moment, nothing set",
+          "type": "number"
+        },
         "driver": {
           "description": "a part's number from look_at_model, or a sub-assembly's name",
           "type": "string"
@@ -5294,6 +5329,14 @@
         "frames": {
           "description": "frames in a recording, 2 to 240; 24 when omitted",
           "type": "integer"
+        },
+        "power": {
+          "description": "every battery box, IR receiver, pole reverser and hub switched on or off before it turns; not given, what the driver's cable reaches is switched on where it is off, as Play does",
+          "enum": [
+            "on",
+            "off"
+          ],
+          "type": "string"
         },
         "program": {
           "description": "the program for the model's motors, its lines joined by \\n, set and run at once; \"\" takes it out",
@@ -5648,7 +5691,7 @@
       "readOnlyHint": false,
       "title": "Render a picture"
     },
-    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). look lineart is the model inked: black lines round it, where each part meets the next and where a part turns a corner, on white, the shade in halftone dots; comic the same lines and dots over each part's own flat colour; with backdrop none on nothing. backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. Saved where Render saves, never over a file: one of the name already there is kept and the new one takes the next free name (pods_render_2.png), which the answer gives. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). look lineart is the model inked: black lines round it, where each part meets the next and where a part turns a corner, on white, the shade in halftone dots; comic the same lines and dots over each part's own flat colour; with backdrop none on nothing. backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. stage stands the model on white, paper, a desk, wood, leather or terrazzo, at best in the product look, as a photograph is (the backdrop its colour unless backdrop is given), none on the seamless backdrop. Saved where Render saves, never over a file: one of the name already there is kept and the new one takes the next free name (pods_render_2.png), which the answer gives. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5721,6 +5764,19 @@
           ],
           "type": "string"
         },
+        "stage": {
+          "description": "what the model stands on at best in the product look, lit by a light near it as in a photograph; none the seamless backdrop. As Render last had it when omitted",
+          "enum": [
+            "none",
+            "white",
+            "paper",
+            "desk",
+            "wood",
+            "leather",
+            "terrazzo"
+          ],
+          "type": "string"
+        },
         "view": {
           "description": "hero, front, side, back, low or top, or a view saved with the model, by its name",
           "type": "string"
@@ -5738,7 +5794,7 @@
       "readOnlyHint": false,
       "title": "Queue renders"
     },
-    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field and light as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
+    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field, light and stage as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5808,6 +5864,19 @@
             "1080p",
             "4k",
             "square"
+          ],
+          "type": "string"
+        },
+        "stage": {
+          "description": "what the model stands on at best in the product look, lit by a light near it as in a photograph; none the seamless backdrop. As Render last had it when omitted",
+          "enum": [
+            "none",
+            "white",
+            "paper",
+            "desk",
+            "wood",
+            "leather",
+            "terrazzo"
           ],
           "type": "string"
         },

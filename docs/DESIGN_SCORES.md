@@ -8004,6 +8004,272 @@ Why it fell short:
   `tools/technic_parts.py`, its table and `technic_lay_probe`), and
   `a364a7fb1` holds what the screen ran.
 
+### The design ladder: past designs placed between their set and a naive stack of it (2026-11-21, designmeasure, `4641ea3b4`, the ladder works)
+
+**The ladder works.** The judge orders a set's rungs. Adjacent rungs whose
+pictures differ are ordered right in 322 of 328 verdicts (98%, 96 to 99),
+and each pair in each order in at least 93%. The set beats its naive stack
+in 88 of 88 (96 to 100). One design judged twice lands within one rung in
+44 of 44 (92 to 100), and on the same place in 31. Neither past lever moved
+designs up by more than the noise: design24's +0.11 rungs (-0.12 to +0.38),
+design25's +0.34 (0.00 to +0.72), most of it from two subjects. But half of
+every arm's designs sit in one gap, between the set and its SNOT taken out.
+Every Technic design but two sits there too. A lever that moves a design
+inside that gap reads as level.
+
+**Why.** design20 to design27 each ended NO-GO, and the measure could not
+steer a lever ([APP_UX11.md](APP_UX11.md), "The design track"). The subject
+decides the verdict, 30 of the 44 subjects lose to every design, and the
+noise is wider than a lever's step. A ladder gives the judge rungs between
+the set and nothing, so a design that loses to the set still gets a place.
+
+**The ladder** (`tools/design_ladder.py`, `7675c34b2` then `4641ea3b4`, on
+pre261 `b63cfd49c`):
+
+- Five rungs of each of the 44 proof sets, made from the set's own file:
+  1. the set as it is (realset's own pictures of it);
+  2. its SNOT taken out: each part whose studs do not point up is replaced,
+     in its own colour, by plain plates studs up filling the room it took;
+  3. its curves stepped: each curved slope, arch, round, cone, dome and
+     wedge is replaced by plates in columns a stud across, each as high as
+     the part's top over it;
+  4. its colours flattened: each solid colour becomes the nearest of the
+     model's three biggest by volume, and glass keeps its own;
+  5. a naive stack of its outline in plain bricks, in three colours
+     (calibrate's own anchor).
+
+  Rungs 2 to 4 are cumulative. Each is the one above it with one more thing
+  taken away.
+- Each rung is drawn by realset's renderer (the same cameras, views and GPU).
+  It is judged by realset's judge as it is: the prompt untouched, both
+  orders, the pictures under names that say nothing. 1,158 judge calls in
+  all, on the subscription, under a cap of 1,500: 440 to order the rungs,
+  718 to place 164 designs.
+- The ladder is kept in the main checkout's `bench/ladder/` (159 MB). It is
+  out of git (`.gitignore`) and has a `.gdignore`, so Godot never imports or
+  exports it. Every set's five rungs are on one contact sheet,
+  `bench/results/designmeasure-2026-11-20/ladder_sheet.png`.
+- Placing a design: it is judged against rung 3, then goes up while it wins
+  both orders and down while it loses both. A split is that rung's place,
+  and a turn is halfway between two rungs. 0.5 is above the set and 5.5
+  below the naive stack. Rung 1's verdicts are the run's own against the
+  set. A second judging asks rung 1 afresh.
+
+**Out of every session's reach.**
+
+- `design_ladder.py reach` starts the app as realset starts a design
+  session: the subject held out, MCP on, the assistant on. It then asks
+  every tool that opens a file for a ladder file: open_model by path, name,
+  link and library, open_model with into=true, brickify on the .mpd and on
+  a picture, gallery by the set's name and by "ladder", and
+  compare_with_set. 14 of 14 held. None opened a part or named the ladder,
+  and the app's log names no ladder file. The session has no file tools of
+  its own (`--tools ""`).
+- design24's leak audit, with any mention of the ladder added
+  (`design_ladder.py leaks`), was run over the ten arms from design24 to
+  design27. 0 answers named a set's own file or number, or the ladder.
+
+**What the judge orders.** Pairs whose pictures differ in at least half a
+percent of a view's pixels:
+
+| rungs | verdicts | right (95%) | better shown first | better shown second | sets with the same picture |
+|---|---|---|---|---|---|
+| 1 over 2 | 88 | 100% (96-100) | 100% | 100% | 0 |
+| 2 over 3 | 66 | 100% (94-100) | 100% | 100% | 11 |
+| 3 over 4 | 86 | 93% (86-97) | 93% | 93% | 1 |
+| 4 over 5 | 88 | 100% (96-100) | 100% | 100% | 0 |
+| 1 over 5 | 88 | 100% (96-100) | 100% | 100% | 0 |
+
+Counting every pair, adjacent rungs are ordered right in 339 of 352 (96%,
+94 to 98).
+
+- **Where rungs 2 and 3 are one picture, the judge can't order them, and
+  says so.** 11 sets have no curve left to step once their SNOT is out: 6
+  of the 9 Technic sets, three Architecture sets, The Cave and Steve &
+  Creeper. In its
+  words: "The renders of A and B are pixel-identical, so neither is better
+  and A is an arbitrary pick." 7 of those 22 verdicts went to rung 3, by
+  order alone.
+- **Rung 4 is not always worse than rung 3.** 6 of 86 verdicts went to the
+  flattened colours, on 4 sets:
+  - On the Technic Charger, flattening takes the blue and yellow pins off a
+    black body: "B's clean, uniformly black body is the more convincing
+    Dom's Charger ... A's stray blue and yellow pins on the outside look
+    unfinished."
+  - On the street sweeper, rung 2 had laid the brush as a light-blue block,
+    and rung 4 turns it black: "A's stray light-blue block looks like a
+    mistake."
+
+  The judge is right: there the rung took away a fault, not a quality.
+  Technic sets apart, 3 over 4 is 15 of 18 (83%, 61 to 94). The other 35
+  sets are 65 of 68 (96%).
+
+**One design judged twice.** design24's 44 base designs were placed a second
+time, every verdict asked afresh, rung 1 too:
+
+- within one rung 44 of 44 (92 to 100), on the same place 31, a whole rung
+  apart 2;
+- rung 1 alone, asked of 33 designs both times: the same share 27.
+
+From the judge alone, a place spreads 0.23 rungs. So on a paired 44 the
+judge adds only ±0.10 to a lever's interval. design24's interval is ±0.25:
+the rest is the sessions themselves.
+
+**Designs placed.**
+
+| arm | designs | mean place | 0.5 | 1 | 1.5 | 2 | 2.5 | 3 | 3.5 to 5.5 |
+|---|---|---|---|---|---|---|---|---|---|
+| design24 base (paired 44) | 44 | 1.59 | 8 | 5 | 22 | 1 | 3 | 3 | 2 |
+| design24 lever (feature form) | 44 | 1.48 | 9 | 5 | 21 | 4 | 1 | 3 | 1 |
+| design24 base, judged again | 44 | 1.60 | 9 | 3 | 21 | 5 | 1 | 1 | 4 |
+| design25 base (16 screen) | 16 | 1.69 | 4 | 1 | 7 | 1 | 1 | 0 | 2 |
+| design25 lever (form parts) | 16 | 1.34 | 5 | 2 | 5 | 2 | 1 | 1 | 0 |
+
+- **design24's feature form:** +0.11 rungs up (95% -0.12 to +0.38). 11
+  subjects went up, 6 down and 27 stayed level. No step, as realset said
+  (+2 subjects, -5 to +10).
+- **design25's form parts:** +0.34 rungs up (95% 0.00 to +0.72). 5 went up,
+  2 down and 9 stayed level. Two base designs below rung 4 carry 4 of its
+  5.5 rungs, the Lincoln Memorial and the Combine Harvester. This is not
+  shown: the interval
+  touches zero, and a sign test of 5 against 2 gives p 0.45.
+- **Where designs sit.** 21 or 22 of every arm's 44 sit at 1.5: they beat
+  the set with its SNOT taken out, and lose to the set, both orders. That
+  is 22 of the 31 base designs that did not beat or split with their set.
+  The Technic designs sit there too: 7 of 9 in design24's base, 9 of 9 in
+  its lever, and 2 of 2 in each of design25's arms.
+- **Why that gap is wide.** On 16 of the 44 sets, rung 2 lays wheels, tyres
+  or tracks as blocks of plates, since they do not face up. On the Dune
+  Hopper two wheels become black slabs. On the Technic sets the beams, pins
+  and the boom fill solid. The judge orders it under the set every time,
+  and a design with round wheels and an open frame beats it.
+
+**Next.**
+
+- **design28 is judged on the ladder.** Run the paired 44, base and lever at
+  the same moment. Place each design with rung 1 asked afresh, and report
+  the lever's mean gain in rungs with a 95% interval over subjects. The
+  judge alone adds ±0.10 on 44, and the sessions about ±0.25. So a lever
+  must move designs about a quarter of a rung to show.
+- **Before design28, narrow the top gap** (done by ladder2, below). This is a
+  small unit, about 400 judge calls:
+  - rung 2 keeps wheels, tyres and tracks, since a studs-up build still
+    rolls on them;
+  - a rung between the set and rung 2 takes out half its SNOT;
+  - for a Technic set, that rung is the set with its working part (the
+    boom, the bucket on its lift arms, the mast) stepped as rung 3 steps a
+    curve. design28 builds that part. Without such a rung, a Technic lever
+    that does not beat the set outright cannot be seen.
+- Leave rung 4 out of a Technic set's order, or flatten only the body's
+  colours, since its pins are what flattening takes.
+- The judge's prompt is not the next unit: it orders every rung whose
+  pictures differ.
+
+### The ladder gets a rung between the set and its SNOT out (2026-11-22, ladder2, `f2f211514`)
+
+**The gap is resolved.** The designs that sat between the set and rung 2
+now spread over three places. Of design24's 22 base designs that sat there,
+9 sit at 1.25, 4 at 1.5 and 8 at 1.75, and one fell below the new rung 2.
+All 7 Technic designs among them spread too: 1.25 to 1.75. The new rung
+reads right where its pictures differ: 1 over 1.5 in 98% of 86 verdicts (92
+to 99), 98% in each order; 1.5 over 2 in 91% (83 to 95), 91% in each order.
+444 new judge calls, 200 to order and 244 to place. The rest were read back
+from designmeasure's.
+
+**The rungs now** (`tools/design_ladder.py`; the first five are above):
+
+- **Rung 2 keeps wheels, tyres and axles** as the set has them. It had laid
+  them as slabs: "B's plate-stack wheels ... would not pass as a shippable
+  set". This changed rung 2 on 12 of the 44 proof sets and 3 of design25's
+  16 tune sets. On the others, rung 2 has the same parts as before, so its
+  pictures and verdicts stand.
+- **Rung 1.5 lays half of what rung 2 lays:**
+  - On a Technic set, its skin is laid: panels, fairings and the System
+    parts on it. Its working part is left: beams, pins, gears and links.
+  - On any other set, its SNOT parts are laid smallest first, while they
+    come to no more than half its SNOT's volume. The details go and the big
+    sideways walls stay.
+
+  On Valentine's Bee, 1.5 loses the face and keeps the wings and heart;
+  rung 2 lays those too.
+- **Rung 3 is unchanged**, byte for byte: the SNOT out with the wheels laid
+  too, and its curves stepped. Every rung keeps only parts the rung above it
+  kept (tests/test_design_ladder.py, on four sets).
+- **A remade rung gets a new version and key** (`ladder:N:r2:v2`). Its old
+  pictures move to `superseded/`. `seed` copies the earlier verdicts in, so
+  only remade rungs are asked again. The renderer has not drifted: The
+  Fashion Studio's rung 1.5 lays nothing (its one SNOT part is half its SNOT
+  by itself, so it waits for rung 2). Drawn afresh, it differs from
+  realset's set picture in 0.03% of pixels.
+
+**What the judge orders**, pairs whose pictures differ:
+
+| rungs | all sets | Technic (9) | the rest (35) |
+|---|---|---|---|
+| 1 over 1.5 | 84 of 86, 98% (92-99) | 18 of 18 | 66 of 68, 97% |
+| 1.5 over 2 | 78 of 86, 91% (83-95) | 18 of 18 | 60 of 68, 88% (78-94) |
+| 2 over 3 | 72 of 72, 100% (95-100) | 12 of 12 | 60 of 60 |
+| 3 over 4 | 80 of 86, 93% | 15 of 18 | 65 of 68 |
+| 4 over 5 | 88 of 88 | 18 of 18 | 70 of 70 |
+
+Each order is within a verdict of the other on every pair. Counting every
+pair, adjacent rungs are right in 417 of 440 (95%, 92 to 96).
+
+- **Where 1.5 lost to 2, the half looked broken.** All 8 such verdicts with
+  pictures that differ are on System sets. Laying the small SNOT parts left
+  the bigger ones they held floating, or a cell half taken stayed open and
+  showed studs or plate undersides: the Flatiron
+  "looks skeletal: bands and a tan plate float with nothing holding them";
+  the Burj Khalifa has "floating wings and exposed studs"; Steve's Creeper
+  has "sideways studs and an askew foot slope". The judge's verdict is fair:
+  the rung took away more than it says. The fix is to lay a SNOT part
+  together with the parts it holds, so nothing floats. Until then, the
+  System half of 1.5 over 2 is 88%, under the 90% the Technic half and the
+  whole clear.
+- **A rung that took nothing is the same picture.** The Fashion Studio's 1.5
+  is the set, and Bricktober Hotel's 1.5 is its rung 2 to 0.11% of pixels. A
+  walk still asks such a rung: design24's Fashion Studio design beat the set
+  in its record, then split with the 1.5 that is the set. It went from 0.5 to
+  1.5 on noise alone. A walk could pass over a rung whose picture is the one
+  above it. That is one design in 120.
+
+**Designs placed again**, rung 1 from the record as before:
+
+| arm | designs | mean place | 0.5 | 1 | 1.25 | 1.5 | 1.75 | 2 | 2.5 | 3 and below |
+|---|---|---|---|---|---|---|---|---|---|---|
+| design24 base | 44 | 1.65 | 7 | 4 | 9 | 5 | 8 | 2 | 4 | 5 |
+| design24 lever | 44 | 1.48 | 9 | 4 | 9 | 8 | 5 | 3 | 2 | 4 |
+| design25 base | 16 | 1.70 | 4 | 1 | 2 | 2 | 3 | 1 | 1 | 2 |
+| design25 lever | 16 | 1.34 | 5 | 2 | 2 | 1 | 2 | 2 | 1 | 1 |
+
+- **design24's feature form:** +0.18 rungs (95% -0.09 to +0.45), 18 up, 7
+  down, 19 level. The old ladder said +0.11 (-0.12 to +0.38). It is still no
+  step.
+- **design25's form parts:** +0.36 rungs (95% +0.02 to +0.72), 7 up, 3 down,
+  6 level. The old ladder said +0.34 (0.00 to +0.72). The interval now clears
+  zero by 0.02 rungs, but the two base designs at 4.5 (the Lincoln Memorial
+  and the Combine Harvester) still carry most of it, and a sign test of 7
+  against 3 gives p 0.34. It is not a step to build on.
+- Where the designs that sat between the set and rung 2 went:
+
+  | arm | sat there | 1.25 | 1.5 | 1.75 | below 2 | Technic among them |
+  |---|---|---|---|---|---|---|
+  | design24 base | 22 | 9 | 4 | 8 | 1 | 7, all 1.25 to 1.75 |
+  | design24 lever | 21 | 9 | 7 | 5 | 0 | 9, all 1.25 to 1.75 |
+  | design25 base | 7 | 2 | 2 | 3 | 0 | 2, both 1.25 to 1.75 |
+  | design25 lever | 5 | 2 | 1 | 2 | 0 | 2, both 1.25 to 1.75 |
+
+**Still out of reach.** design24's leak audit over the ten arms from
+design24 to design27, with `r1.5` files added to what counts as the ladder,
+found 0 answers naming a set's own file or number, or the ladder. `reach` now
+also asks open_model and brickify for `r1.5.mpd` and its picture.
+
+**Next.** design28 is judged on this ladder, as planned above. A lever must
+move designs about a quarter of a rung, and the rungs are now half a rung
+apart where designs sit. Lay SNOT parts with what they hold at rung 1.5 on
+System sets, so the half never floats. Results:
+`bench/results/ladder2-2026-11-22/` (ladder_report.md, ladder_sheet.png).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

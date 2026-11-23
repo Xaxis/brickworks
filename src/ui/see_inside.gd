@@ -892,6 +892,9 @@ const CLEAR := 8.0
 
 func _process(_delta: float) -> void:
 	_follow_knobs()
+	# Asleep at rest (Wake): the knobs and the bar follow the view and the
+	# window, each a drawn frame.
+	Wake.rest(self)
 	if bar == null or not bar.visible:
 		return
 	if not _fingered:

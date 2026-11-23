@@ -26,9 +26,12 @@ sized its own titles, from 26 to 74 px. Now:
   differs, or the header has more than four things. The server's pages
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
-  copy. The header (site356, 2026-10-29, the owner asking for pricing in
-  the site): Gallery · Docs · Plans (Pricing until 2026-11-03) in the middle (the Library left it
-  when it became the gallery's Sets tab, browse, 2026-11-02), then
+  copy. The header (landing, 2026-11-22, the owner: the forum and the
+  gallery "available immediately upon landing"): Gallery · Talk ·
+  Challenges · Docs in the middle; Plans, a link here from site356
+  (2026-10-29) until then, is in the footer, Menu and the account's menu
+  (the Library left the bar when it became the gallery's Sets tab,
+  browse, 2026-11-02), then
   **Open the app** · Account (Sign in, a `.cta.ghost`, until you are,
   then your avatar: the account menu, below), the account last at the
   far right (the owner, 2026-10-23: "an obvious pattern"; design_flow.mjs
@@ -62,8 +65,9 @@ sized its own titles, from 26 to 74 px. Now:
   `--t-section` 28-40 px, `--t-h2` 22-26 px, `--t-h3` 18 px, `--t-lede`,
   then the words: `--t-body` 16,
   `--t-small` 14.5, `--t-tiny` 13, `--t-micro` 12): `h1` is a page's
-  title at `--t-h1` on every page; the landing page's one line is
-  `h1.display`; `h2` a section's, at `--t-h2` wherever it is (a model's
+  title at `--t-h1` on every page; the home page's one line too, so its
+  shelf stays in the first screen (landfix; it was `h1.display` before the
+  shelf); `h2` a section's, at `--t-h2` wherever it is (a model's
   About it and More by, a settings row, a notice, a dialog's title, a
   legal page's parts); `h3` a part of a section, at `--t-h3`. A page
   does not size its own titles, and design_flow.mjs fails an h2 or an
@@ -768,9 +772,11 @@ is on the page, `hidden`, for the script to show.
   with `.moves` arrows in your order, and `dialog.lists-dialog` for New
   list, Edit and Add sets.
 - **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
-  `web/theme.js` on every page while the beta is open): a floating pill
-  at the foot of the window, bottom left (centred under 600 px), above
-  the page and moving nothing in it: an accent `.badge` to /beta, a
+  `web/theme.js` on every page while the beta is open): docked at the
+  foot of the window, the whole width, its buttons centred, the page's
+  end given its height (`--betabar-h`) so it is never over what the page
+  says (floating, it covered the home's first post; hero3d, 2026-11-23),
+  moving nothing as it comes: an accent `.badge` to /beta, a
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
   hides it in this browser until it is shown again (bugbar, 2026-11-13;
@@ -807,6 +813,17 @@ is on the page, `hidden`, for the script to show.
   the window's width less its gutters, centred; under 900 px, with the
   beta bar shown, it sits over the bar. While shown, `<html data-notice>`
   pads the footer. It rises in as the beta bar does.
+- **Install offer**: `aside.site-notice.install-offer` (`web/push.js`,
+  homescreen): the site notice's card, in its place, from a person's
+  second visit, never the first: its words as a paragraph (`.words`) over
+  an `.actions` row at the card's end, `.cta.ghost.small` No thanks then
+  `.cta.small` Install (the browser's own dialog); on an iPhone or iPad
+  the words say Share, then Add to Home Screen, and the one button is OK.
+  Escape puts it away for the page. No thanks is kept in the browser
+  (`brickworks.install`) and said in the toast with a Settings link and
+  Undo. Never while the owner's notice is shown, nor on /settings (which
+  has Install Brickworks under Notifications) or the offline page. While
+  shown, `<html data-offer>` pads the footer.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the
@@ -894,7 +911,16 @@ is on the page, `hidden`, for the script to show.
   `.numbers`, `.pinned` and `.tabs`), with Edit profile, Settings, Share
   and More in its head; the tabs Models · Builds as everybody sees them,
   then Saved · Sets · Insights, which only you see, each a `?tab=` of its
-  own. Edit profile is a `dialog` of the site's fields; signed in with no
+  own. Insights (`web/designs.js`, insights2) sets each number against the
+  30 days before: the `.earned` tiles, the change as words in `--green`
+  (up), `--bad` (down), `--accent-ink` (none before) or `--ink-faint` (no
+  change, and "Counted since" where a window was counted under 30 days), two
+  dropdowns in a `form` (which kind, and the order), the kind's weeks as
+  the console's chart (`--viz-1` columns on a `--viz-grid`, a `.tip`, one
+  Tab stop, its numbers in a `.table` under As a table), and each model's
+  weeks as a line in `--ink-faint` (3:1 and more; `--viz-muted` is 2.6:1 on
+  white) ending in a `--viz-1` dot (`role="img"`,
+  its numbers in its name). Edit profile is a `dialog` of the site's fields; signed in with no
   profile, the same form is in the page with its two fields, name and
   handle. `/settings` is one `.settings` panel: Profile, Appearance, Email,
   Privacy, Claude, Sign out, Delete account.
@@ -1057,7 +1083,12 @@ and after scrolling, every page at 390 and 1280 px.
   here, the footer), it waits, and Show more draws it at once: put in then,
   it pushed them down under a person's eyes (site277, CLS 0.51). Show more
   stays pressable while that page is on its way, and a press then draws it
-  as soon as it comes.
+  as soon as it comes. A band that comes late in the middle of a page (the
+  home page's latest talk and its beta) goes in while the place it goes is
+  under the screen or scrolled past, never while it shows; put in above,
+  the page is scrolled on by its height where the browser keeps no anchor
+  itself. Waiting only for under the screen, it never came on a screen tall
+  enough to show that place at the top (1280 x 900, landfix).
 - **Signed in at once**: a page that is yours (/profile, /settings, /feed,
   /notifications) knows from the session kept in this browser that you
   are signed in, so it never says "Looking for your sign-in…" while it

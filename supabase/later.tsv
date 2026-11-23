@@ -60,3 +60,13 @@ announce.sql	announcement_read	announce2.sql	public.announce_tally(p_id
 announce.sql	announce_mail_take	announce2.sql	public.news_mail_stopped()
 announce.sql	announce_mail_done	announce2.sql	public.announce_tally(p_id
 announce.sql	announce_mail_due	announce2.sql	public.announcement_to t
+announce.sql	notification_rows	talk.sql	talk_notice_rows(
+designer_period.sql	designer_period	designer_period_2.sql	'before_days'
+push.sql	push_mark	push_2.sql	push_marks
+push.sql	push_take	push_2.sql	push_collect
+push.sql	push_on_comment	push_2.sql	query_canceled
+push.sql	push_on_mention	push_2.sql	query_canceled
+push.sql	push_on_photo	push_2.sql	query_canceled
+push.sql	push_on_remix	push_2.sql	query_canceled
+push.sql	push_on_settled	push_2.sql	query_canceled
+push_2.sql	push_collect	talk.sql	'talk-' || (w.item->>'thread')

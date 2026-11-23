@@ -162,10 +162,13 @@ export async function checkToken(token) {
   // ended by itself (its revoke) before it reached us is refused
   // (site-attest). Never on the requests after (sessionStanding,
   // grantStanding): endToken revokes this very token right after the
-  // exchange, and its id on the list must sign nobody out.
+  // exchange, and its id on the list must sign nobody out. Its sub too:
+  // orangecheck folds the ended tokens it can no longer list one by one
+  // under the account (sub), not the handle, so a check without it would
+  // take a token ended and folded before it reached us (ochk-95, 11-21).
   let state;
   try {
-    state = await endedSessions().status({ rh: session.rh, aud, iat, jti });
+    state = await endedSessions().status({ rh: session.rh, aud, iat, jti, sub: session.sub });
   } catch {
     state = "unverified";
   }

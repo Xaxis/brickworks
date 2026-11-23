@@ -1,0 +1,86 @@
+/* Talk, the builders' forum (api/_talk.js draws its pages, web/talk.js
+   wires them). The site's own pieces throughout (docs/DESIGN_SYSTEM.md):
+   .tabs for the boards, .pill, .cta, the comments' posts (directory.css
+   .comment), and only the layout here. A stranger's words are kept as
+   typed: pre-wrap, broken anywhere. */
+.talk-page { padding-block: var(--s-6) var(--s-8); }
+.talk-crumbs { margin: 0 0 var(--s-2); font-size: var(--t-small); color: var(--ink-soft); min-height: 1lh; }
+.talk-head h1, .talk-thread-head h1 { margin: 0 0 var(--s-3); overflow-wrap: anywhere; }
+.talk-head .lede { margin-bottom: var(--s-4); }
+.talk-tools { gap: 12px; margin-bottom: var(--s-5); }
+.talk-search { display: flex; gap: 8px; flex: 1 1 280px; max-width: 440px; }
+.talk-search input { flex: 1; min-width: 0; }
+.talk-boards { margin-bottom: var(--s-5); }
+
+.talk-layout { display: grid; gap: var(--s-7); grid-template-columns: minmax(0, 1fr); }
+@media (width >= 960px) { .talk-layout { grid-template-columns: minmax(0, 1fr) 300px; } }
+
+.talk-more { margin: var(--s-5) 0 0; }
+
+.talk-aside h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
+.talk-aside section + section { margin-top: var(--s-6); }
+.talk-talking { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.talk-talking a { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; color: var(--ink); text-decoration: none; }
+.talk-talking a:not(:has(img)) { grid-template-columns: minmax(0, 1fr); }
+.talk-talking img { width: 64px; height: 48px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.talk-talking span { font-size: var(--t-small); overflow-wrap: anywhere; }
+.talk-talking q { display: block; color: var(--ink-soft); }
+.talk-talking small { display: block; color: var(--ink-faint); }
+.talk-board-list { margin: 0; }
+.talk-board-list dt { font-weight: 600; }
+.talk-board-list dd { margin: 0 0 10px; font-size: var(--t-small); color: var(--ink-soft); }
+
+/* A thread: its head, its model, its posts (the comments' own), the box. */
+.talk-thread-head { margin-bottom: var(--s-5); }
+.talk-model {
+	display: inline-grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; margin: 6px 0 12px;
+	border: 1px solid var(--line); border-radius: var(--r-2); padding: 8px; background: var(--panel); color: var(--ink);
+	text-decoration: none; max-width: 100%;
+}
+.talk-model img { width: 120px; height: 90px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.talk-model small { display: block; color: var(--ink-soft); font-size: var(--t-small); }
+.talk-challenge { margin: 6px 0 12px; }
+.talk-page .comment-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; max-width: 80ch; }
+.talk-page .talk-answers { margin: 0 0 4px; font-size: var(--t-small); }
+.talk-page .talk-when { color: var(--ink-soft); }
+.talk-photo { margin: 10px 0 0; }
+.talk-photo img { display: block; max-width: min(100%, 480px); height: auto; border-radius: var(--r-1); background: var(--line); }
+.talk-embeds { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.talk-embed > a, .talk-embed > span {
+	display: inline-grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; max-width: 100%;
+	border: 1px solid var(--line); border-radius: var(--r-2); padding: 8px 10px; background: var(--panel-hi, var(--panel));
+	color: var(--ink); text-decoration: none;
+}
+.talk-embed > a:not(:has(img)), .talk-embed > span { grid-template-columns: minmax(0, 1fr); }
+.talk-embed img { width: 120px; height: 90px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.talk-embed b { display: block; overflow-wrap: anywhere; }
+.talk-embed small { display: block; color: var(--ink-soft); font-size: var(--t-small); }
+.talk-reply { margin-top: var(--s-7); max-width: 80ch; }
+.talk-reply h2 { font-size: var(--t-h3); }
+.talk-form { display: grid; gap: 8px; }
+.talk-form textarea, .talk-form input[type="text"] { width: 100%; }
+.talk-answering { margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--ink-soft); }
+.talk-photo-chosen { margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: var(--t-small); }
+.talk-photo-pick { cursor: pointer; }
+.talk-signin { display: grid; gap: 8px; justify-items: start; }
+.talk-signin p { margin: 0; color: var(--ink-soft); }
+.talk-edit { margin-top: 6px; }
+
+/* Start a thread. */
+.talk-new form, .talk-new .talk-signin { max-width: 72ch; }
+.talk-board-pick { display: grid; gap: 6px; border: 0; padding: 0; margin: 0 0 var(--s-3); }
+.talk-board-pick .choice { display: block; }
+.talk-board-pick small { color: var(--ink-soft); }
+.talk-how { margin-top: var(--s-7); max-width: 72ch; }
+.talk-how h2 { font-size: var(--t-h3); }
+.talk-how ul { padding-left: 1.2em; color: var(--ink-soft); }
+
+@media (width < 600px) {
+	.talk-embed img, .talk-model img { width: 88px; height: 66px; }
+	.talk-search { max-width: none; }
+}
+
+/* A box's count (web/talk.js measured): what is left near the end, and why
+   Post waits once over; the words are never cut. */
+.talk-count { display: block; margin-top: var(--s-1, 4px); min-height: 1.2em; }
+.talk-count.bad { color: var(--bad); }

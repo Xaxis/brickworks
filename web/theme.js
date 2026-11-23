@@ -153,6 +153,21 @@
   });
 })();
 
+// Signed in here (homefeed, 2026-11-23): a sign-in kept in this browser
+// (web/account.js "brickworks.session") says so on <html data-signed="in">
+// before anything is drawn, so a page drawn otherwise for somebody signed in
+// (the home's feed: Share a build and its tabs for the band over it) is so
+// from its first frame and nothing moves. Only whether one is kept: who it
+// is, and whether it still holds, are account.js's.
+(() => {
+  try {
+    const kept = JSON.parse(localStorage.getItem("brickworks.session") || "null");
+    if (kept && kept.refresh_token) document.documentElement.dataset.signed = "in";
+  } catch {
+    // Nothing kept, or storage refused: signed out.
+  }
+})();
+
 // The beta (betahome, 2026-11-09): while it is open, a bar at the foot of
 // every page (web/betabar.js) with Report a bug and Join, and the landing
 // page's Open beta. What the site last heard of it is kept in this browser
@@ -191,6 +206,23 @@
   const load = () => import("/notice.js").catch(() => null);
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();
+})();
+
+// The site installed, and this device's notifications (homescreen,
+// 2026-11-22): web/push.js, on every page but an embed's card and the
+// connector's consent page. The browser's offer to install is held here,
+// from the first moment, so its own bar never shows: push.js offers it
+// from a second visit, never the first.
+(() => {
+  if (document.documentElement.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
+  addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    window.brickworksInstall = event;
+  });
+  // Only once the page has loaded: a first visit waits on nothing of it.
+  const load = () => import("/push.js").catch(() => null);
+  if (document.readyState === "complete") load();
+  else addEventListener("load", load, { once: true });
 })();
 
 // Whether counting is said no to here, as web/counting.js's countingState

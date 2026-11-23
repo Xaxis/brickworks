@@ -99,7 +99,9 @@ owned_end() {
 # (tools/deploy.sh without --prod: no domain points at it), in URL, with the
 # deploy's options (a unit's: --unit). Its log is NAME_preview.log, and the
 # commit it was made from NAME_preview.sha. The deploy's own 50 minutes start
-# once heavy gives it a slot; the wait for one has three hours of its own.
+# once heavy gives it a slot; the wait for one is heavy's own BOX_HEAVY_WAIT
+# (3 h, or what the caller set). An outer `timeout 10800` round heavy counted
+# the queue too, and at load 70 seo2's deploy died in it unstarted (2026-11-22).
 # With the timeout outside heavy, shareread's deploy spent its 50 minutes
 # queued behind rel-m252's checks and failed with an empty log (2026-11-03).
 # The deploy writes into a log of this run's own, NAME_preview.<run>.log,
@@ -111,7 +113,7 @@ deploy_preview() {
   own="$S/${name}_preview.$EPOCHSECONDS-$$.log"
   rm -f "$S/${name}_preview.sha"
   : > "$own" && ln -sfn "${own##*/}" "$S/${name}_preview.log"
-  run_owned "$own" timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh "$@"
+  run_owned "$own" ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh "$@"
   URL=$(grep -oE "deploy done https://[^ ]+" "$own" | cut -d' ' -f3)
   mv -f "$own" "$S/${name}_preview.log"
   [ -n "$URL" ] || { echo "$WHO: preview deploy failed"; tail -3 "$S/${name}_preview.log"; return 1; }

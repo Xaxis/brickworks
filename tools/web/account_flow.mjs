@@ -23,6 +23,10 @@
 // for carries how the visit came, kept for the tab (web/theme.js,
 // src/account/account.gd; onfix, 2026-11-18).
 //
+// Then the throwaway shares a model, gives it a clip and deletes its
+// account as a person does: the clip's file must be gone from storage
+// (unit turntable, api/_erase.js).
+//
 // --master also signs in as MASTER_EMAIL (minted the same way: no email is
 // sent) and checks the admin page lists the accounts. It signs the owner's
 // account in, in a throwaway browser, so it is not the default.
@@ -31,7 +35,7 @@
 // page as a cookie for that domain, never anywhere else.
 import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintCode, mintSession, STORAGE_KEY } from "./session.mjs";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -280,6 +284,55 @@ try {
   failures += 1;
   console.log(`  FAIL  ${trouble.message}`);
   await shot("failed");
+}
+
+// Deleting the account deletes its models' clips (unit turntable,
+// api/_erase.js): the throwaway shares a model and gives it a clip (the
+// small one tests/fixtures/clip keeps, sent as its page sends one), then
+// deletes its account as a person does, its address typed again; the clip's
+// file is then gone from storage itself, asked with the secret key, not
+// only from the site.
+try {
+  console.log("deleting the account deletes its models' clips");
+  const secret = process.env.SUPABASE_SECRET_KEY || "";
+  const supabase = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const asked = (path, { method = "GET", token = "", body } = {}) => fetch(`${origin}${path}`, { method,
+    headers: { ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  // Storage's prefix is a folder, and the clips are at the bucket's root
+  // (<id>.webm): listed by prefix, the clip was never seen, and its gone
+  // passed with nothing to see (rel-m319). Searched by name instead, as
+  // api/_erase.js asks, this model's own files only.
+  const clipsOf = async (id) => {
+    const reply = await fetch(`${supabase}/storage/v1/object/list/shared-clips`, { method: "POST",
+      headers: { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      body: JSON.stringify({ prefix: "", search: id, limit: 10, offset: 0 }) });
+    return reply.ok ? (await reply.json()).filter((file) => file.id !== null && String(file.name).startsWith(`${id}.`))
+      .map((file) => file.name) : [`(storage answered ${reply.status})`];
+  };
+  const { access_token: token } = await mintSession(email);
+  const model = ["0 FILE main.ldr", "0 Clip test", "0 Name: main.ldr", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+    "1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""].join("\r\n");
+  const shared = await asked("/api/share", { method: "POST", token, body: { name: "Clip test", model } });
+  const id = (await shared.json().catch(() => ({}))).id || "";
+  check(shared.status === 201 && /^[A-Za-z0-9]{10}$/.test(id), `the throwaway shares a model: ${shared.status} ${id}`);
+  const clip = readFileSync(new URL("../../tests/fixtures/clip/turn.webm", import.meta.url)).toString("base64");
+  // Of its version 1 as it was made, as its page asks what to record.
+  const need = await (await asked(`/api/share?op=clip_need&id=${id}`, { token })).json().catch(() => ({}));
+  const sent = await asked(`/api/share?op=clip&id=${id}`, { method: "POST", token,
+    body: { version: need.version ?? 1, at: need.at ?? "", clip } });
+  check(sent.status === 200, `...and gives it a clip: ${sent.status}`);
+  const before = await clipsOf(id);
+  check(before.includes(`${id}.webm`), `its clip is in storage: ${before.join(", ") || "nothing"}`);
+  const gone = await asked("/api/account?op=delete", { method: "POST", token, body: { confirm: email } });
+  check(gone.status === 200, `the account deleted as a person deletes it, its address typed again: ${gone.status}`);
+  const after = await clipsOf(id);
+  check(after.length === 0, `its model's clip is gone from storage with it: ${after.join(", ") || "nothing left"}`);
+  const served = await asked(`/m/${id}.webm?fresh=${Date.now()}`);
+  check(served.status === 404, `and its address answers 404: ${served.status}`);
+} catch (trouble) {
+  failures += 1;
+  console.log(`  FAIL  the clips with the account: ${trouble.message}`);
 }
 
 check(refusals.length === 0, `no refusals from the security policy${refusals.length ? ": " + refusals[0] : ""}`);

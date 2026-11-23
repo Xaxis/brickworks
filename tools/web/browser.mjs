@@ -73,6 +73,47 @@ const withRatio = (options = {}) =>
 // stopped (page_routes.mjs): a Playwright route held every request of the
 // page to the end of the task that asked for it.
 const COUNTER = "https://overlook.technology/*";
+
+/// A preview's protection lets a page in by the bypass header its context
+/// sends, but a service worker's script is fetched without that header, so
+/// sw.js was sent to Vercel's sign-in and every page logged "The script
+/// resource is behind a redirect, which is disallowed" (homescreen's push.js
+/// registers it on every page: rel-m319's site check, 80 FAILs, 2026-11-23).
+/// So the context also takes Vercel's bypass cookie, which that fetch does
+/// carry: asked for once per origin, through the context's own request API
+/// (it shares the context's cookies), before its first page goes there.
+/// The key is the context's header, or else BW_BYPASS, which every flow is
+/// run with: oc_flow and others route the header onto their own site's
+/// requests only, so that orangecheck's window is never sent it, and their
+/// pages went to Vercel's login once the worker fetched them (rel-m319's oc,
+/// 2026-11-23). Asked for only on Brickworks' own preview hosts, so the key
+/// never reaches another site, whichever way a flow was given it.
+const OWN_PREVIEW = /^brickworks-[a-z0-9-]+\.vercel\.app$/;
+export function bypassCookie(context, headers) {
+  const key = (headers && headers["x-vercel-protection-bypass"]) || process.env.BW_BYPASS || "";
+  if (!key) return context;
+  const asked = new Map();
+  const ask = (url) => {
+    let where;
+    try { where = new URL(String(url)); } catch { return null; }
+    if (where.protocol !== "https:" || !OWN_PREVIEW.test(where.hostname)) return null;
+    const origin = where.origin;
+    if (!asked.has(origin)) {
+      const at = `${origin}/sw.js?x-vercel-protection-bypass=${encodeURIComponent(key)}&x-vercel-set-bypass-cookie=true`;
+      asked.set(origin, context.request.get(at, { failOnStatusCode: false, timeout: 60000 }).catch(() => null));
+    }
+    return asked.get(origin);
+  };
+  const wrap = (page) => {
+    const goto = page.goto.bind(page);
+    page.goto = async (url, options) => { await ask(url); return goto(url, options); };
+  };
+  // A persistent context opens with its first page already there.
+  for (const page of context.pages()) wrap(page);
+  context.on("page", wrap);
+  return context;
+}
+
 export async function quietCounter(context) {
   return pageRoute(context, [COUNTER], () => ({ status: 200, body: "",
     headers: { "content-type": "application/javascript", "cross-origin-resource-policy": "cross-origin",
@@ -133,7 +174,8 @@ export async function launch(options = {}) {
   const made = browser.newContext.bind(browser);
   // Every page of every context takes a dropped picture again (steady_shots.mjs).
   const steady = (context) => { context.on("page", (page) => steadyShots(page)); return context; };
-  const bare = async (contextOptions) => instantScroll(steady(await made(contextOptions)));
+  const bare = async (contextOptions) =>
+    instantScroll(steady(bypassCookie(await made(contextOptions), contextOptions && contextOptions.extraHTTPHeaders)));
   const newContext = realCounter ? bare : async (contextOptions) => quietCounter(await bare(contextOptions));
   if (signedOut) {
     const newPage = browser.newPage.bind(browser);

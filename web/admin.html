@@ -42,6 +42,9 @@
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="apple-mobile-web-app-title" content="Brickworks">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/admin-claude.css">
 <style>
@@ -276,6 +279,13 @@
   /* The sheet's name takes focus when its body becomes the next sheet's
      (admin-social.js, openSheet): read, not pressed, so it draws no ring. */
   #social-sheet-title:focus { outline: none; }
+  /* Talk (admin-talk.js): a reported post, its words quoted, the reasons, the acts. */
+  .talk-queue { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-4); }
+  .talk-queue-item { border: 1px solid var(--line); border-radius: var(--r-2); padding: var(--s-4); background: var(--panel); }
+  .talk-queue-head { margin: 0 0 var(--s-2); color: var(--ink-soft); overflow-wrap: anywhere; }
+  .talk-queue-words { margin: 0 0 var(--s-3); padding-left: var(--s-3); border-left: 3px solid var(--line-strong);
+    white-space: pre-wrap; overflow-wrap: anywhere; max-height: 16em; overflow: auto; }
+  .talk-queue-why { margin: 0 0 var(--s-3); padding-left: 1.2em; color: var(--ink-soft); }
   /* Announcements (admin-announce.js): who it is for, its people's own view, the notice's end. */
   #announce-form fieldset.audience, #notice-form fieldset.ends { display: grid; gap: var(--s-3); min-width: 0; margin: 0; padding: 0; border: 0; }
   #announce-form fieldset.audience > legend, #notice-form fieldset.ends > legend { padding: 0; margin: 0 0 var(--s-2); font-size: var(--t-small);
@@ -357,6 +367,7 @@
         <li><a href="#analytics" data-go="analytics">Analytics</a></li>
         <li><a href="#people" data-go="people">People</a></li>
         <li><a href="#moderation" data-go="moderation">Moderation <span class="badge accent" id="nav-moderation" hidden></span></a></li>
+        <li><a href="#talk" data-go="talk">Talk <span class="badge accent" id="nav-talk" hidden></span></a></li>
         <li><a href="#gallery" data-go="gallery">Gallery</a></li>
         <li><a href="#challenges" data-go="challenges">Challenges</a></li>
         <li><a href="#beta" data-go="beta">Beta <span class="badge accent" id="nav-beta" hidden></span></a></li>
@@ -541,6 +552,44 @@
               </div>
               <p class="note" id="barred-models-note" role="status"></p>
             </div>
+          </div>
+        </section>
+
+        <!-- Talk (talk): the builders' forum's reports, threads and bans; admin-talk.js draws them. -->
+        <section data-section="talk" aria-labelledby="h-talk" hidden>
+          <div class="lead"><h2 id="h-talk">Talk</h2>
+            <p class="note">The builders' forum at <a href="/talk">/talk</a>. A post three people reported is hidden until
+              you look. Hide keeps a post or a thread for its writer alone; Remove takes it off Talk for good (its photo's
+              files deleted); Ban stops an account writing in Talk and hides its posts while the ban lasts. Every act is
+              in the <a href="#audit">audit log</a>.</p></div>
+          <p class="note" id="talk-said" role="status"></p>
+          <nav class="tabs" aria-label="Talk">
+            <a href="#talk/reports" data-tab-link="reports">Reported <span class="n" id="tab-talk-reports"></span></a>
+            <a href="#talk/threads" data-tab-link="threads">Threads</a>
+            <a href="#talk/bans" data-tab-link="bans">Banned <span class="n" id="tab-talk-bans"></span></a>
+          </nav>
+          <div data-tab="reports" hidden>
+            <p class="note">Each reported post still open, the oldest first, with every reason given for it.</p>
+            <ol class="talk-queue" id="talk-reports"></ol>
+            <p class="note" id="talk-reports-note" role="status"></p>
+          </div>
+          <div data-tab="threads" hidden>
+            <div class="tools"><input type="search" id="talk-q" placeholder="Search thread titles" aria-label="Search thread titles"></div>
+            <div class="table" tabindex="0" role="region" aria-label="Threads">
+              <table class="queue">
+                <thead><tr>
+                  <th scope="col">Thread</th><th scope="col">Board</th><th scope="col">By</th><th scope="col">Posts</th>
+                  <th scope="col">Last</th><th scope="col">State</th><th scope="col"><span class="visually-hidden">What to do</span></th>
+                </tr></thead>
+                <tbody id="talk-threads"></tbody>
+              </table>
+            </div>
+            <p class="note" id="talk-threads-note" role="status"></p>
+          </div>
+          <div data-tab="bans" hidden>
+            <p class="note">Accounts that may not write in Talk now, and until when. Ban from a reported post.</p>
+            <ol class="talk-queue" id="talk-bans"></ol>
+            <p class="note" id="talk-bans-note" role="status"></p>
           </div>
         </section>
 

@@ -327,6 +327,64 @@ required, and it is given anyway.
   (Pure Sky)", by Greg Zaal (original) and Jarod Guest (sky edits) —
   https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky ("Daylight").
 
+## Surfaces a render can stand the model on
+
+The three photographed surfaces a staged render stands the model on
+(`assets/surfaces/`, `StudioRender.STAGES`, Render's "Stands on" choice) are
+Poly Haven's diffuse maps with each one's displacement map in the alpha
+channel (the tracer's relief), downloaded at 2K on 2026-11-22 and saved
+together as one WebP (quality 85). They ship in the desktop app only (the web export leaves
+`assets/surfaces/` out: a browser does not path trace). Poly Haven publishes
+every asset under **CC0 1.0** (public domain dedication,
+https://creativecommons.org/publicdomain/zero/1.0/): no attribution is
+required, and it is given anyway.
+
+- `oak_veneer_01.webp`, "Oak Veneer 01", by Jenelle van Heerden —
+  https://polyhaven.com/a/oak_veneer_01 ("On a wooden table").
+- `leather_white.webp`, "Leather White", by Rob Tuytel —
+  https://polyhaven.com/a/leather_white ("On a leather desk pad").
+- `terrazzo_tiles.webp`, "Terrazzo Tiles", by Amal Kumar —
+  https://polyhaven.com/a/terrazzo_tiles ("On terrazzo").
+
+## Photographs of real bricks, for judging renders
+
+`tools/photoreal/photos/` holds six photographs of real LEGO® bricks that
+renders are judged beside (`tools/bench/photoreal.py`, docs/RENDERING.md
+section 5e). They are a development bench, never shipped in the app or on
+the site. Each was fetched once from Wikimedia Commons on 2026-11-21 (the
+original, or Commons' 1,280-pixel copy) and kept here, never linked to;
+those over 1,600 pixels wide were scaled down to 1,600, which their
+licences allow. Source, author and licence per file are also in
+`tools/photoreal/photos/sources.json`.
+
+- `black_2x4.jpg`: "Lego 2x4 brick" by Ziongarage, **CC0 1.0**, scaled
+  from 1,856 x 1,558 —
+  https://commons.wikimedia.org/wiki/File:Lego_2x4_brick.jpg
+- `red_slope_2x4.jpg`: "Lego Roof Brick" by Stilfehler, **CC BY-SA 3.0** —
+  https://commons.wikimedia.org/wiki/File:Lego_Roof_Brick.jpg
+- `grey_1x3.jpg`: "1x3 grey Lego brick" by Help e choose, **CC BY-SA 4.0**,
+  scaled from 3,264 x 2,448 —
+  https://commons.wikimedia.org/wiki/File:1x3_grey_Lego_brick.jpg
+- `trans_round_1x1.jpg`: "Lego Round Brick Blue" by Stilfehler,
+  **CC BY-SA 3.0** —
+  https://commons.wikimedia.org/wiki/File:Lego_Round_Brick_Blue.jpg
+- `three_2x2_top.jpg`: "Green Red Blue Lego" by Stephen Edmonds from
+  Melbourne, Australia, **CC BY-SA 2.0**, scaled from 1,903 x 1,080 —
+  https://commons.wikimedia.org/wiki/File:Green_Red_Blue_Lego_(49486875048).jpg
+- `green_plate_macro.jpg`: "Corner of a LEGO piece - Macro Mondays
+  'Corner'" by Andrew Parlette from Elkridge, MD, US, **CC BY 2.0**,
+  Commons' 1,280 x 853 copy of 5,472 x 3,648 —
+  https://commons.wikimedia.org/wiki/File:Corner_of_a_LEGO_piece_-_Macro_Mondays_%22Corner%22_(31209163404).jpg
+
+The bench also judges renders of four sets beside their pictures in
+`vendor/rebrickable/set_pictures/` (6512-1, 6532-1, 6657-1, 6660-1:
+Rebrickable, credited as below). The sets are drawn from their LDraw
+Official Model Repository files, each CCAL 2.0 (CC BY 2.0): 6512 Landscape
+Loader and 6660 Hook & Haul Wrecker modelled by Robert Paciorek, 6532
+Diesel Dumper by Tomas Kralicek, and 6657 Fire Patrol Copter by Victor Di
+Rienzo. The side-by-side pictures it writes into
+`bench/results/` carry the same credits in that folder's README.
+
 ## The booklet's type (Liberation Sans)
 
 A booklet saved as a PDF carries its type, and its pages saved as PNGs are

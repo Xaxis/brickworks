@@ -353,20 +353,29 @@ export function leftBehind(user, now = Date.now()) {
 
 let own = null;
 
-/// This run's own account's address, once earlier runs' left-behind ones
-/// are deleted. The account is made by its first sign-in (mintSession) and
-/// deleted by endOwnAccount, or when the run is stopped.
-export async function ownAccount() {
-  if (own) return own.email;
+/// Earlier runs' own accounts that they left behind (leftBehind), deleted
+/// with everything of theirs; how many. A flow that makes several accounts
+/// of its own names each with runAddress() and calls this first, as
+/// ownAccount does (designer_period_flow.mjs, i2fix 2026-11-22).
+export async function sweepLeftBehind() {
   const p = project();
   if (!p) throw new Error("no SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY — source .env");
+  let swept = 0;
   try {
-    let swept = 0;
     for (const user of await users(p)) if (leftBehind(user) && await removed(p, user)) swept += 1;
     if (swept) console.log(`  (deleted ${swept} account(s) of earlier runs, left behind when they were killed)`);
   } catch (trouble) {
     console.log(`  (earlier runs' accounts not swept: ${trouble.message})`);
   }
+  return swept;
+}
+
+/// This run's own account's address, once earlier runs' left-behind ones
+/// are deleted. The account is made by its first sign-in (mintSession) and
+/// deleted by endOwnAccount, or when the run is stopped.
+export async function ownAccount() {
+  if (own) return own.email;
+  await sweepLeftBehind();
   own = { email: runAddress(), ended: null };
   for (const [signal, code] of [["SIGINT", 130], ["SIGHUP", 129], ["SIGTERM", 143]]) {
     process.once(signal, () => {

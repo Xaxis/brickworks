@@ -1642,6 +1642,16 @@ func _process(_delta: float) -> void:
 			_settling = null
 			_keep(held)
 	_tell_page()
+	# At rest, asleep (Wake): nothing held, swung, falling, laid or settling,
+	# nothing read on a worker, the model read for a grab and its marks
+	# warmed, no shape it waits for looked at before what woke it, and the
+	# page told since. An edit, a press and a part's shape coming wake it.
+	if grab == null and chain == null and _swinging == null and _falling.is_empty() \
+			and _laying == null and _settling == null and _readying < 0 and _shapes_reading < 0 \
+			and _lay_task < 0 and (world == null or (is_ready() and (not show_marks or _mark_warmed))) \
+			and (unread_shapes.is_empty() or not Wake.owed(_unread_looked_at)) \
+			and (not OS.has_feature("web") or not Wake.owed(_told_page_at)):
+		Wake.rest(self)
 
 
 ## Whether a grab let go is still being checked before it is kept.

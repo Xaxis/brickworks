@@ -1,35 +1,34 @@
 <!DOCTYPE html>
 <!--
-  The page brickworks.diy serves at its root.
-
-  Rebuilt on the design system (site356, 2026-10-29), turned round to lead
-  with the CAD (narrative, 2026-11-02), and made to show the product, its
-  community and why to use it at a glance (landing, 2026-11-03, the owner:
-  "cleaner and more modern and elegant exemplifying our amazing product but
-  also the social features and benefits"; docs/HOME.md has the plan). In
-  the order a visitor asks: what it is, with Start building and Explore the
-  gallery over the app itself; what is made in it, five models of the
-  gallery path traced, the first turning in 3D in its picture's place; why,
-  five benefits in plain words, three of them pictures; the community, this
-  month's challenge, Build together, what a builder does here and the
-  gallery's Top, live; and one last offer, with the plans in a line. While
-  the beta is open, its section (#beta, betahome, 2026-11-09) sits under
-  the first screen: why to join, three points, and the way in for whoever
-  reads it (web/betabar.js asks the server). No
-  title or first screen calls it AI, and the assistant is named once.
-  Every claim is something the app does today
+  The page brickworks.diy serves at its root: the LEGO® builders' feed, which
+  is also the studio's best advertisement (homefeed, 2026-11-23, the owner:
+  "turn the landing into our lego 'social media' as it simultaneously
+  advertises and integrates the CAD"; docs/SOCIAL.md section 11 has the
+  research and the decisions). For everybody the first screen is the feed:
+  new builds, Talk's threads with their latest reply, the month's challenge
+  and its entries, each a post in one stream, never empty on day one (the
+  gallery's and Talk's own seeds). Each build's post is a way into the
+  studio: Open in the studio, Remix, Build it and Parts, a 3D turn of it on
+  a hover or a tap, and how it was made, each a link to that feature's docs.
+  Signed out, one band over it says what Brickworks is, with the search and
+  Start building; a post in the stream opens the studio itself in the feed
+  on a tap. Signed in, Share a build and the tabs For you, Following and
+  New. Under the feed: the beta while it is open, the studio (the app's
+  picture and five things a build needs), and one last offer. No title or
+  first screen calls it AI. Every claim is something the app does today
   (.claude/skills/verify/features/web.md, docs-site/).
 
-  Static apart from what web/landing.js fills as it nears the screen: the
-  gallery's Top and its collections, the LDraw library's sets, the month's
-  challenge and the 3D view. A card goes in only once its picture has
-  arrived and a strip only once three have, so it can never show a dead
-  card, and what does not come leaves the page's own words in its place.
-  The pictures are in web/img/ (img/manifest.json says where each came
-  from), WebP at the widths a laptop and a phone each need, every one with
-  its size given so nothing moves as they arrive. The header and footer are
-  web/_shell.html (tools/site_shell.py). The JSON-LD at the foot is data,
-  not script: the site's content security policy runs no inline script.
+  The first posts are written into the page at the deploy
+  (tools/web/home_shelf.mjs, from the live gallery, Talk and the challenge,
+  else web/_home.json), each picture copied beside the page, so the first
+  screen needs no answer from the server to be whole and a search engine
+  reads them. Then web/landing.js asks again, says each post's counts as
+  they are now, a number for a number, and puts in the rest under them,
+  so nothing in view moves. The pictures are in web/img/ (img/manifest.json
+  says where each came from), WebP, every one with its size given. The
+  header and footer are web/_shell.html (tools/site_shell.py). The JSON-LD
+  at the foot is data, not script: the site's content security policy runs
+  no inline script.
 -->
 <html lang="en">
 <head>
@@ -47,8 +46,6 @@
 <link rel="alternate" hreflang="x-default" href="https://brickworks.diy/">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/favicon-180.png">
-<link rel="manifest" href="/site.webmanifest">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
@@ -70,37 +67,153 @@
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
+<link rel="manifest" href="/site.webmanifest">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta name="apple-mobile-web-app-title" content="Brickworks">
 <link rel="stylesheet" href="/site.css">
 <style>
-/* Only layout here; every control, panel and tile is site.css's (the landing kit). */
-.hero { padding: clamp(56px, 8vw, 104px) 0 0; text-align: center; }
-.hero .wrap > .badge { margin-bottom: var(--s-5); }
-.hero h1 { max-width: 16ch; margin-inline: auto; margin-bottom: var(--s-4); }
-/* "in your browser" a line of its own: left inline, it broke after "in". */
-.hero h1 em { display: block; }
-.hero .lede { margin: 0 auto var(--s-6); max-width: 54ch; }
-.hero .note { margin-top: var(--s-4); }
-.hero-shot { margin-top: clamp(40px, 6vw, 72px); border-radius: var(--r-4); }
-.hero-shot img { aspect-ratio: 16 / 9; }
-/* The app's picture runs under the next section's line, wider than the
-   words on a big screen: it is the thing to look at. */
-@media (width >= 1600px) { .hero-shot { margin-inline: -110px; } }
+/* Only layout here; every control, panel, card and post is site.css's. */
 
-/* Made in Brickworks: the first model wide, over two of three columns,
-   beside one, then three under them; two to a row under 900 px. */
-.showcase, .benefits, .acts { margin: 0; padding: 0; list-style: none; }
-.showcase { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.showcase .lead { grid-column: 1 / -1; }
+/* The first screen (homefeed, 2026-11-23; docs/SOCIAL.md section 11): the
+   feed. Signed out, one band over it says what Brickworks is in a line,
+   with the search and Start building; signed in (<html data-signed>,
+   web/theme.js, before the first frame) the band gives way to Share a
+   build and the feed's tabs, For you, Following and New. Laid out so a
+   phone's first post starts within 600 px and a laptop's first row of
+   pictures is whole in its first screen, above the beta bar. */
+.home-band { padding: clamp(16px, 2vw, 24px) 0 var(--s-4); }
+:root[data-signed="in"] .home-band { display: none; }
+/* The words on the left and the mark in bricks beside them from 900 px,
+   large (400 px, rising into the header's shadow and over the band's
+   foot), its line on the mark's own baseline; under that a compact band
+   over the words, the mark at 45% of the width with its line beside it
+   (hero3d, 2026-11-23). Both keep the band short enough that a laptop's
+   first screen shows at least 60% of each first-row picture of the feed
+   and a phone's shows its first picture begun (tools/web/landing_check.mjs).
+   The yellow's light behind the mark. */
+.home-hero { display: grid; gap: var(--s-3); align-items: center; }
+.hero-mark { margin: 0; min-width: 0; display: flex; align-items: flex-end; gap: var(--s-3); }
+@media (width < 900px) { .hero-mark { order: -1; } }
 @media (width >= 900px) {
-	.showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-	.showcase .lead { grid-column: span 2; }
+	.home-band { padding: 16px 0 var(--s-3); background-image: radial-gradient(26% 85% at 82% 48%, rgba(242, 205, 55, 0.18), transparent 72%), var(--studs); }
+	.home-hero { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-6); }
+	/* Up 47 px under the header (the stage's empty top: the bricks begin
+	   9 px under the header's edge; the header, over it, keeps its own
+	   clicks) and over the band's bottom padding: the mark as large as it
+	   can be with the band no taller. */
+	.hero-mark { position: relative; flex-direction: column; align-items: center; gap: 0; margin: -47px 0 -12px; }
 }
-.showcase .lead .pic { aspect-ratio: 1200 / 630; }
-.showcase .tile:not(.lead) .pic { aspect-ratio: 720 / 774; }
-#made .note { margin-top: var(--s-4); }
+/* The mark: its poster in the HTML, its size given, so the page is whole
+   at its first paint and nothing moves when the 3D takes the poster's
+   place (web/landing.js, web/viewer3d.js hero3d); the poster is the same
+   drawing at the same shape. */
+.hero-stage {
+	position: relative; flex: none; width: 45%; aspect-ratio: 460 / 414; border-radius: var(--r-3);
+	touch-action: pan-y; -webkit-tap-highlight-color: transparent; outline-offset: 2px;
+}
+@media (width >= 900px) {
+	.hero-stage { width: auto; height: 400px; }
+	/* Its focus ring round the mark and its line, from the header's edge
+	   down (the stage's top is under the header). */
+	@supports selector(:has(a)) {
+		.hero-stage:focus-visible { outline: none; }
+		.hero-mark:has(> .hero-stage:focus-visible)::after {
+			content: ""; position: absolute; inset: 31px 0 0; border-radius: var(--r-3);
+			box-shadow: inset 0 0 0 3px var(--focus); pointer-events: none;
+		}
+	}
+}
+.hero-stage img, .hero-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.hero-stage img { object-fit: contain; }
+.hero-canvas { opacity: 0; transition: opacity 0.35s ease; }
+.hero-stage.live { cursor: grab; }
+.hero-stage.held { cursor: grabbing; }
+.hero-stage.live .hero-canvas { opacity: 1; }
+.hero-stage.live .hero-poster { opacity: 0; transition: opacity 0.3s ease 0.1s; }
+/* While it assembles, what crosses the picture's top fades in, so no brick
+   appears in mid-air (tools/viewer/hero.js). */
+.hero-stage.assembling .hero-canvas { -webkit-mask-image: linear-gradient(transparent, #000 7%); mask-image: linear-gradient(transparent, #000 7%); }
+/* Its line, naming it a build: what it is, and the way into the studio
+   with it. A word a row beside the phone's mark; on a laptop one line on
+   the mark's baseline, in the stage's empty foot under the bricks, so it
+   takes no row of its own. */
+.hero-credit { display: flex; flex-direction: column; gap: 2px; margin: 0; padding-bottom: var(--s-2); color: var(--ink-soft); font-size: var(--t-small); line-height: 1.4; }
+.hero-credit a { color: var(--ink); font-weight: 600; }
+.hero-credit .hero-sep { display: none; margin-inline: 0.45em; color: var(--ink-faint); }
+@media (width >= 900px) {
+	.hero-credit { position: relative; flex-direction: row; gap: 0; margin-top: -19px; padding: 0 0 8px; white-space: nowrap; }
+	.hero-credit .hero-sep { display: inline; }
+}
+/* The line at --t-h1, a page title's size. */
+.home-words h1 {
+	margin: 0 0 var(--s-2); max-width: 22ch; font-size: var(--t-h1); line-height: 1.02; letter-spacing: -0.04em; font-weight: 760;
+	text-wrap: balance;
+}
+.home-words .lede { margin: 0 0 var(--s-4); max-width: 60ch; }
+/* A laptop's band: the line and the sentence each one line, so the feed's
+   first row of pictures is whole on the first screen, over the beta bar. */
+@media (width >= 900px) { .home-words h1, .home-words .lede { max-width: none; } }
+/* The search and Start building in a row, the search taking what is left;
+   on a phone one over the other, each the whole width. Both at the 44 px
+   every field and button is (docs/DESIGN_SYSTEM.md). */
+.home-acts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; max-width: 720px; }
+.find { position: relative; flex: 1 1 320px; min-width: 0; }
+.home-acts > .cta { flex: none; }
+@media (width < 600px) {
+	.home-acts > .cta { flex: 1 1 100%; justify-content: center; }
+	.find .search .hint { display: none; }
+	.find .search input { padding-right: 12px; }
+	.home-words .note { display: none; }
+}
+.home-words .note { margin-top: var(--s-3); }
+/* What the search finds as it is typed (web/home-find.js): a list under
+   the field, over the page, a heading for each kind and a row for each. */
+.find-list {
+	position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 6px); max-height: min(70vh, 520px); overflow-y: auto;
+	padding: 6px; border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--line-strong); box-shadow: var(--highlight), var(--shadow);
+}
+.find-list[hidden] { display: none; }
+.find-list .kind { margin: 8px 10px 4px; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 650; text-transform: uppercase; letter-spacing: 0.06em; }
+.find-list [role="option"] {
+	display: flex; align-items: center; gap: var(--s-3); min-height: 44px; padding: 6px 10px; border-radius: var(--r-1);
+	color: var(--ink); text-decoration: none;
+}
+.find-list [role="option"]:hover, .find-list [role="option"][aria-selected="true"] { background: var(--panel-hi); }
+.find-list [role="option"] img, .find-list [role="option"] .avatar { flex: none; width: 48px; height: 36px; border-radius: var(--r-1); object-fit: contain; background: var(--picture-ground); }
+.find-list [role="option"] .avatar { width: 36px; height: 36px; border-radius: 50%; }
+.find-list [role="option"] span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-list [role="option"] small { margin-left: auto; padding-left: var(--s-3); color: var(--ink-faint); font-size: var(--t-tiny); white-space: nowrap; }
+.find-list .all { color: var(--ink-soft); font-size: var(--t-small); }
 
-/* Everything a build needs: three pictures, then two without. */
-.benefits { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
+/* The feed: its head (signed in, Share a build and the tabs), then the
+   stream, a column on a phone, two from 700 px, three from 1100 and four
+   from 1560; the studio to try two columns wide where there are two. */
+.home-feed { padding: 0 0 var(--section); }
+:root[data-signed="in"] .home-feed { padding-top: clamp(16px, 3vw, 32px); }
+.feed-you { display: none; flex-wrap: wrap; gap: var(--s-3); align-items: center; margin: 0 0 var(--s-4); }
+:root[data-signed="in"] .feed-you { display: flex; }
+.feed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-4); border-bottom: 1px solid var(--line); }
+.feed-head h2 { margin: 0; padding: 0 0 10px; font-size: var(--t-h2); line-height: 1.25; font-weight: 650; }
+.feed-head .tabs { display: none; margin: 0 0 -1px; border-bottom: 0; min-width: 0; overflow-x: auto; }
+:root[data-signed="in"] .feed-head h2 { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:root[data-signed="in"] .feed-head .tabs { display: flex; }
+.feed-head > a { flex: none; padding: 0 0 10px; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
+.feed-head > a:hover { color: var(--ink); text-decoration: underline; }
+.stream { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+@media (width >= 700px) { .stream { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); } .stream > .post.try { grid-column: span 2; } }
+@media (width >= 1100px) { .stream { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (width >= 1560px) { .stream { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stream > .post.try .post-pic { aspect-ratio: 16 / 9; }
+@media (width < 700px) { .stream > .post.try .post-pic { aspect-ratio: 4 / 5; } }
+.stream[aria-busy="true"] { cursor: progress; }
+.stream-more { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--s-4); margin: var(--s-6) 0 0; }
+.stream-more [hidden] { display: none; }
+.stream-said { margin: var(--s-4) 0 0; text-align: center; color: var(--ink-soft); }
+
+/* The studio, under the feed: the app itself, then what a build needs. */
+.studio-shot { margin: 0 0 var(--s-6); border-radius: var(--r-4); }
+.studio-shot img { aspect-ratio: 16 / 9; }
+.benefits { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); margin: 0; padding: 0; list-style: none; }
 @media (width >= 600px) { .benefits { grid-template-columns: repeat(2, minmax(0, 1fr)); } .benefits > :nth-child(3) { grid-column: 1 / -1; } }
 @media (width >= 900px) {
 	.benefits { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -110,17 +223,6 @@
 }
 .benefits .pic { aspect-ratio: 16 / 10; }
 @media (width >= 600px) and (width < 900px) { .benefits > :nth-child(3) .pic { aspect-ratio: 8 / 3; } }
-
-/* The community: this month's challenge beside Build together, what a
-   builder does here, then the gallery's Top. */
-.together-row { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
-@media (width >= 900px) { .together-row { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); } }
-.together-row .wide .pic { aspect-ratio: 1200 / 630; }
-.acts { display: grid; gap: var(--s-3) var(--s-5); grid-template-columns: minmax(0, 1fr); margin: var(--s-6) 0 var(--s-7); }
-@media (width >= 600px) { .acts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (width >= 1200px) { .acts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.acts li { display: flex; align-items: center; gap: var(--s-3); color: var(--ink-soft); font-size: var(--t-small); }
-#top .scroller-head h3 { margin: 0; }
 
 /* The beta, while it is open: not drawn until this browser has heard it is
    (web/theme.js, web/landing.js). Its words beside its three points from
@@ -158,8 +260,9 @@
 		<a class="mark" href="/" aria-current="page"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
+			<a href="/talk">Talk</a>
+			<a href="/challenge">Challenges</a>
 			<a href="/docs">Docs</a>
-			<a href="/plans">Plans</a>
 			<a class="cta" href="/app">Open the app</a>
 			<a class="cta ghost" href="/profile?sign-in" data-account>Sign in</a>
 		</nav>
@@ -168,6 +271,8 @@
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
+					<a href="/talk">Talk</a>
+					<a href="/challenge">Challenges</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Plans</a>
 					<a href="/download">Desktop app</a>
@@ -186,24 +291,87 @@
 </header>
 
 <main id="main">
-	<section class="hero halo" aria-labelledby="hero-h">
-		<div class="wrap">
-			<a class="badge accent" href="/compare">How it compares with Studio <span aria-hidden="true">→</span></a>
-			<h1 class="display" id="hero-h">A CAD for LEGO® models, <em>in your browser</em></h1>
-			<p class="lede">Every LDraw part, joined where the real ones join. Check that it stands, print its booklet and share it with other builders.</p>
-			<div class="actions center">
-				<a class="cta big" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
-				<a class="cta ghost big" href="/gallery">Explore the gallery</a>
+	<!-- The band over the feed, signed out (homefeed, 2026-11-23): what
+	     Brickworks is in a line, a search over models, builders and sets
+	     (web/home-find.js, asked for once the field is used) and Start
+	     building, which opens the studio. Signed in it gives way to Share a
+	     build and the feed's tabs (<html data-signed>, web/theme.js). -->
+	<section class="home-band halo" id="home" aria-labelledby="hero-h">
+		<div class="wrap wide home-hero">
+			<div class="home-words">
+				<h1 id="hero-h">Build, share and find <em>LEGO® models</em></h1>
+				<p class="lede">A free CAD in your browser. Every build here was made in it: open one, change it, build it.</p>
+				<div class="home-acts">
+					<!-- Sent, it is the gallery's search (models, builders and
+					     tags); as it is typed, sets and builders as well. -->
+					<form class="find" id="find" role="search" action="/gallery" method="get">
+						<label class="search">
+							<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+							<span class="visually-hidden">Search models, builders and sets</span>
+							<input type="search" id="find-q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+								placeholder="Search models, builders and sets" aria-keyshortcuts="/"
+								role="combobox" aria-expanded="false" aria-controls="find-list" aria-autocomplete="list">
+							<kbd class="hint" aria-hidden="true">/</kbd>
+						</label>
+						<div class="find-list" id="find-list" role="listbox" aria-label="What the search finds" hidden></div>
+					</form>
+					<a class="cta" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
+				</div>
+				<p class="note">Free, with nothing to install. <a href="/compare">How it compares with Studio</a></p>
 			</div>
-			<p class="note">Free, with nothing to install. A desktop app is coming soon.</p>
-			<figure class="shot hero-shot">
-				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
-				<img src="/img/hero-1200.webp"
-					srcset="/img/hero-1200.webp 1200w, /img/hero-2400.webp 2400w, /img/hero-3200.webp 3200w"
-					sizes="(min-width: 1600px) 1360px, (min-width: 1180px) 1140px, calc(100vw - 32px)"
-					width="2400" height="1350" fetchpriority="high" decoding="async"
-					alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
+			<!-- Our mark built in LEGO® bricks (hero3d, 2026-11-23;
+			     tools/web/hero_mark.mjs, web/hero/): its poster, drawn by the
+			     same code as its 3D (tools/web/hero_poster.mjs), until
+			     web/landing.js lets the 3D take its place, once the page is
+			     drawn, the hero is in view and the browser is idle, on a
+			     device that draws it smoothly. Open it in the studio is the
+			     gallery's Open of it (tools/web/home_shelf.mjs writes its
+			     link at the deploy), else the app's own example. -->
+			<figure class="hero-mark" id="hero-mark">
+				<div class="hero-stage" id="hero-stage" data-scene="/hero/mark.json" tabindex="0" role="application"
+					aria-roledescription="3D view" aria-label="The Brickworks mark, built in LEGO® bricks">
+					<img class="hero-poster" src="/img/hero/mark-444.webp" srcset="/img/hero/mark-222.webp 222w, /img/hero/mark-444.webp 444w, /img/hero/mark-888.webp 888w"
+						sizes="(min-width: 900px) 444px, 45vw" width="444" height="400" fetchpriority="high" decoding="async"
+						alt="The Brickworks mark built in LEGO® bricks: a cube of yellow, red and blue bricks with one corner cut away, the cut’s faces a shade darker">
+				</div>
+				<figcaption class="hero-credit">Built in Brickworks<span class="hero-sep" aria-hidden="true">·</span><span id="hero-pieces">189 pieces</span><span class="hero-sep" aria-hidden="true">·</span><a id="hero-open" href="/app?model=res://models/brickworks_mark.ldr">Open it in the studio</a></figcaption>
 			</figure>
+		</div>
+	</section>
+
+	<!-- The feed (homefeed, 2026-11-23; web/home-feed.js draws each post,
+	     web/landing.js fills it): new builds, Talk's threads with their
+	     latest reply, the month's challenge and its entries, the studio to
+	     try and builders to follow, one stream. Its first posts are in the
+	     page as it is served (tools/web/home_shelf.mjs, at the deploy, from
+	     the live gallery, Talk and the challenge, else web/_home.json), their
+	     pictures copied beside the page, so the first screen needs no answer
+	     to be whole and a search engine reads them; then landing.js asks
+	     again, says each post's counts as they are now and puts in the rest.
+	     Signed in: For you, Following (the people you follow, /feed's) and
+	     New. The skeletons are what a checkout's own page shows until then. -->
+	<section class="home-feed" id="feed" aria-labelledby="feed-h">
+		<div class="wrap wide">
+			<div class="feed-you">
+				<a class="cta" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
+				<a class="cta ghost" href="/share-model">Share a file from another program</a>
+			</div>
+			<div class="feed-head">
+				<h2 id="feed-h">What builders are making</h2>
+				<div class="tabs" role="tablist" aria-label="The feed" id="feed-tabs">
+					<button type="button" role="tab" id="tab-foryou" aria-selected="true" aria-controls="stream" data-tab="foryou">For you</button>
+					<button type="button" role="tab" id="tab-following" aria-selected="false" aria-controls="stream" tabindex="-1" data-tab="following">Following</button>
+					<button type="button" role="tab" id="tab-new" aria-selected="false" aria-controls="stream" tabindex="-1" data-tab="new">New</button>
+				</div>
+				<a id="feed-all" href="/gallery">See the gallery</a>
+			</div>
+			<div class="stream" id="stream" data-stream="skeleton" aria-busy="false"><!--feed-->
+				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
+				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
+				<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>
+			<!--/feed--></div>
+			<p class="stream-said" id="stream-said" role="status"></p>
+			<p class="stream-more"><button type="button" class="cta ghost" id="feed-more" hidden>Show more</button></p>
 		</div>
 	</section>
 
@@ -213,8 +381,8 @@
 	     welcome joins it); signed in, Join the beta; a tester, Report a bug
 	     and What's new. Under it, while any are left, the months of Pro
 	     the first testers get, or a tester's thanks, and what joining
-	     agrees to (the beta's terms, its emails). Under the app's
-	     picture, so the product stays the first thing seen. Drawn from the
+	     agrees to (the beta’s terms, its emails). Under the feed
+	     (landing, 2026-11-22: what a visitor came for first). Drawn from the
 	     first frame where this browser has heard the beta is open (<html
 	     data-beta>, web/theme.js); else put in only while its place is under
 	     the window, so nothing in view moves. Off, never drawn. -->
@@ -245,68 +413,29 @@
 		</div>
 	</section>
 
-	<!-- Five models of the gallery, path traced in Brickworks (img/manifest.json):
-	     the first turns in 3D in its picture's place when pressed
-	     (web/start3d.js, asked for only as the section nears the screen). -->
-	<section class="section defer" id="made" aria-labelledby="made-h">
-		<div class="wrap">
-			<div class="section-head">
-				<div>
-					<p class="eyebrow">The gallery</p>
-					<h2 class="title" id="made-h">Made in Brickworks</h2>
-				</div>
-				<a href="/gallery">See all models</a>
-			</div>
-			<ul class="showcase">
-				<li class="tile lead" id="made-lead">
-					<a class="pic picture" href="/app?view=XqW6brmPQs" aria-label="View 6080 King’s Castle in 3D" data-scene="/m/XqW6brmPQs/scene.json">
-						<img src="/img/show-castle-1200.webp"
-							srcset="/img/show-castle-800.webp 800w, /img/show-castle-1200.webp 1200w"
-							sizes="(min-width: 1180px) 754px, (min-width: 900px) 66vw, calc(100vw - 32px)"
-							width="1200" height="630" loading="lazy" decoding="async"
-							alt="6080 King’s Castle: grey stone walls and towers flying red and yellow flags, with its knights and horses lined up beside it.">
-						<span class="go" aria-hidden="true">View in 3D</span>
-					</a>
-					<p class="words"><a class="name" href="/m/XqW6brmPQs" translate="no">6080 King’s Castle</a><span>741 parts · modelled by Stefan Frenz</span></p>
-				</li>
-				<li class="tile"><a class="open" href="/m/j7WaRpWsuL">
-					<span class="pic"><img src="/img/show-fox-400.webp" srcset="/img/show-fox-400.webp 400w, /img/show-fox-720.webp 720w"
-						sizes="(min-width: 1180px) 369px, (min-width: 900px) 32vw, calc(50vw - 24px)" width="720" height="774" loading="lazy" decoding="async"
-						alt="An orange and white fox sitting up on a mossy log, red toadstools at its foot."></span>
-					<span class="words"><b translate="no">A red fox on a mossy log</b><span>679 parts</span></span>
-				</a></li>
-				<li class="tile"><a class="open" href="/m/ruNnGL5CWX">
-					<span class="pic"><img src="/img/show-windmill-400.webp" srcset="/img/show-windmill-400.webp 400w, /img/show-windmill-720.webp 720w"
-						sizes="(min-width: 1180px) 369px, (min-width: 900px) 32vw, calc(50vw - 24px)" width="720" height="774" loading="lazy" decoding="async"
-						alt="A windmill with four brown sails on a white tower, a miller and a cart beside it on the grass."></span>
-					<span class="words"><b translate="no">A working windmill</b><span>245 parts</span></span>
-				</a></li>
-				<li class="tile"><a class="open" href="/m/r2UCzQ7Pz3">
-					<span class="pic"><img src="/img/show-treehouse-400.webp" srcset="/img/show-treehouse-400.webp 400w, /img/show-treehouse-720.webp 720w"
-						sizes="(min-width: 1180px) 369px, (min-width: 900px) 32vw, calc(50vw - 24px)" width="720" height="774" loading="lazy" decoding="async"
-						alt="A treehouse in an old oak: decks on brown posts, a yellow slide, a swing and minifigures at play."></span>
-					<span class="words"><b translate="no">A treehouse in an old oak</b><span>633 parts</span></span>
-				</a></li>
-				<li class="tile"><a class="open" href="/m/rEBYGwnXdu">
-					<span class="pic"><img src="/img/show-dragon-400.webp" srcset="/img/show-dragon-400.webp 400w, /img/show-dragon-720.webp 720w"
-						sizes="(min-width: 1180px) 369px, (min-width: 900px) 32vw, calc(50vw - 24px)" width="720" height="774" loading="lazy" decoding="async"
-						alt="A green dragon asleep on its hoard of gold, a treasure chest and a goblet beside it."></span>
-					<span class="words"><b translate="no">A little dragon asleep on its hoard</b><span>285 parts</span></span>
-				</a></li>
-			</ul>
-			<p class="note">Each one rendered in Brickworks, path traced on the desktop.</p>
-		</div>
-	</section>
-
+	<!-- The studio: the app itself (its picture was the first screen's until
+	     landing, 2026-11-22), then five things a build needs, a short line
+	     each: stability, instructions and parts lists, real sets (four of
+	     the library's, live), free in any browser, and your own AI if you
+	     want it, named once and last. -->
 	<section class="section defer" id="why" aria-labelledby="why-h">
 		<div class="wrap">
 			<div class="section-head">
 				<div>
-					<p class="eyebrow">Why Brickworks</p>
-					<h2 class="title" id="why-h">Everything a build needs</h2>
+					<p class="eyebrow">The studio</p>
+					<h2 class="title" id="why-h">A CAD for LEGO® models, <em>in your browser</em></h2>
+					<p>Every LDraw part, joined where the real ones join. Check that it stands, print its booklet and share it with other builders.</p>
 				</div>
-				<a href="/compare">How it compares</a>
+				<a href="/compare">How it compares with Studio</a>
 			</div>
+			<figure class="shot studio-shot">
+				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
+				<img src="/img/hero-1200.webp"
+					srcset="/img/hero-1200.webp 1200w, /img/hero-2400.webp 2400w, /img/hero-3200.webp 3200w"
+					sizes="(min-width: 1180px) 1140px, calc(100vw - 32px)"
+					width="2400" height="1350" loading="lazy" decoding="async"
+					alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
+			</figure>
 			<ul class="benefits">
 				<li class="tile">
 					<span class="pic"><img src="/img/stability-400.webp"
@@ -340,65 +469,6 @@
 					<div class="words"><h3>Your own AI, if you want it</h3><p>Off until you turn it on. Then the AI you use, Claude or another, can build from a sentence or answer a question, held to the same checks.</p><a class="more" href="/docs/ai">How the assistant works</a></div>
 				</li>
 			</ul>
-		</div>
-	</section>
-
-	<section class="section defer" id="community" aria-labelledby="community-h">
-		<div class="wrap">
-			<div class="section-head">
-				<div>
-					<p class="eyebrow">The community</p>
-					<h2 class="title" id="community-h">Share it, and build with others</h2>
-				</div>
-				<a href="/collections">Browse collections</a>
-			</div>
-			<div class="together-row">
-				<!-- This month's challenge, or the next one, from
-				     /api/people?op=challenge (web/landing.js); until it comes,
-				     and if it never does, what a challenge is. -->
-				<article class="tile challenge" id="challenge" aria-labelledby="challenge-h">
-					<div class="words">
-						<p><span class="badge accent" id="challenge-when">Every month</span></p>
-						<h3 id="challenge-h">A new challenge</h3>
-						<p id="challenge-brief">Build to the month’s brief, by hand or with help, and the builders vote for their favourites.</p>
-						<p class="note" id="challenge-days" hidden></p>
-						<p class="go-on"><a class="cta ghost" href="/challenge" id="challenge-go">See the challenge</a></p>
-					</div>
-				</article>
-				<article class="tile wide">
-					<span class="pic"><img src="/img/together-720.webp" srcset="/img/together-720.webp 720w, /img/together-930.webp 930w"
-						sizes="(min-width: 1180px) 754px, (min-width: 900px) 66vw, calc(100vw - 32px)" width="930" height="488" loading="lazy" decoding="async"
-						alt="Build together in the app: its panel lists You and Ann, both here, with Follow and Remove beside Ann and a link to copy; on the red car beside it, Ann’s pointer and the part they have selected, outlined in their blue."></span>
-					<div class="words"><h3>Build together, live</h3><p>Send a link. Everyone’s parts go down as they place them, and each keeps an Undo of their own.</p><a class="more" href="/docs/build-together">How it works</a></div>
-				</article>
-			</div>
-			<ul class="acts">
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#like"></use></svg></span><span>Like and save the models you love</span></li>
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#comment"></use></svg></span><span>Comment on a model, or on one step</span></li>
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><span>Follow builders and see what they make</span></li>
-				<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><span>Post a photo of the one you built</span></li>
-			</ul>
-			<!-- Filled by web/landing.js once three cards have their pictures:
-			     the gallery's Top, then its collections; until then skeletons
-			     hold the row's place, so nothing under it moves when it comes.
-			     Taken away only when it cannot be read. Eight, as many as the
-			     cards (landing.js MOST). -->
-			<div class="strip" id="top">
-				<div class="scroller-head">
-					<h3 id="top-h">Top in the gallery</h3>
-					<a href="/gallery">See all</a>
-				</div>
-				<div class="models scroller" id="top-models" role="group" aria-labelledby="top-h">
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-				</div>
-			</div>
 		</div>
 	</section>
 
@@ -453,8 +523,9 @@
 					<p class="foot-h" id="foot-community">Community</p>
 					<ul aria-labelledby="foot-community">
 						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
-						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/challenge">Challenges</a></li>
 						<li><a href="/collections">Collections</a></li>
 					</ul>
 				</div>

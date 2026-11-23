@@ -21,6 +21,9 @@ gets the shell's <head> lines just before it: the browser bar's colour
 in each theme and /theme.js, which sets the theme the person chose
 before the page is drawn (2026-10-22). A page's old single theme-color
 line is replaced by them.
+And what installs the site (homescreen, 2026-11-22): the manifest, and
+the icon and name an iPhone's Add to Home Screen takes; a page's own
+copies of the first two, from before, are taken out.
 """
 
 from __future__ import annotations
@@ -35,16 +38,23 @@ SHELL = WEB / "_shell.html"
 
 HEADER = re.compile(r'<header class="site-head">.*?</header>', re.S)
 FOOTER = re.compile(r'<footer class="site-foot">.*?</footer>', re.S)
-HEAD = re.compile(r'(?:<meta name="theme-color"[^>]*>\n)+<script src="/theme\.js"></script>')
+HEAD = re.compile(r'(?:<meta name="theme-color"[^>]*>\n)+<script src="/theme\.js"></script>'
+                  r'(?:\n<link rel="manifest"[^>]*>)?(?:\n<link rel="apple-touch-icon"[^>]*>)?'
+                  r'(?:\n<meta name="apple-mobile-web-app-title"[^>]*>)?')
 OLD_BAR = re.compile(r'<meta name="theme-color"[^>]*>\n')
+# A page's own manifest and home screen icon, from before the shell's head
+# carried them (homescreen, 2026-11-22): sixteen pages had them, thirteen not.
+OLD_INSTALL = re.compile(r'<link rel="(?:manifest|apple-touch-icon)"[^>]*>\n')
 STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # Each page's own address, where it is one of the header's links (or
 # Menu's: Download is there since site356). The landing page marks the
 # mark; your settings are part of your account; the gallery's tabs at
-# their own addresses (tools/browse_pages.py) are the gallery.
+# their own addresses (tools/browse_pages.py) are the gallery; the
+# challenge is the header's Challenges (landing, 2026-11-22).
 OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "library.html": "/gallery",
+       "challenge.html": "/challenge",
        "collections.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
-       "settings.html": "/profile", "plans.html": "/plans"}
+       "settings.html": "/profile", "plans.html": "/plans", "share-model.html": "/gallery"}
 
 
 def shell() -> tuple[str, str, str]:
@@ -75,9 +85,10 @@ def pages() -> list[Path]:
 
 def themed(text: str, head: str) -> str:
     """[text] with the shell's <head> lines, just before the stylesheet."""
-    if HEAD.search(text):
-        return HEAD.sub(lambda _: head, text, count=1)
-    return OLD_BAR.sub("", text).replace(STYLESHEET, f"{head}\n{STYLESHEET}", 1)
+    found = HEAD.search(text)
+    if found:
+        return OLD_INSTALL.sub("", text[:found.start()]) + head + OLD_INSTALL.sub("", text[found.end():])
+    return OLD_INSTALL.sub("", OLD_BAR.sub("", text)).replace(STYLESHEET, f"{head}\n{STYLESHEET}", 1)
 
 
 def stamped(path: Path, head: str, header: str, footer: str) -> str:

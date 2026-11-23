@@ -58,12 +58,20 @@ const TEN: Array = ["models/orthanc.ldr", "models/corner_shop.ldr",
 	"models/barn_owl.ldr", "tools/web/gallery_seeds/vintage_tractor.ldr",
 	"tools/web/gallery_seeds/maintenance_robot.ldr", "tools/web/gallery_seeds/village_bakery.ldr"]
 const TIMED: Array = ["res://models/orthanc.ldr", "res://vendor/omr/files/10179-1.mpd"]
+## No frame of the swaps listed or of Use what I own over this of its own:
+## the parts list's own bar (smalls9_probe), as P opens it.
+const BAR_MS := 100.0
+## Use what I own's change itself, every lot's replace and the copies' follow
+## in one change of the model, is still one frame: 160 to 184 ms of its own
+## on Orthanc and 10179 at load 60 to 66 (smalls12). Made a lot at a time and
+## folded into one step, each lot's change laid its copies on the others
+## again and every frame was worse (260 to 680 ms). Held here, said as KNOWN
+## against BAR_MS.
+const CHANGE_MS := 300.0
 
 var _rows_out := PackedStringArray()
 var _part_number: RegEx = RegEx.create_from_string("^[a-z]?\\d+[a-z0-9]*$")
 var _owner: CollectionStore
-## What the model being timed costs live in one frame (_live_cost).
-var _live_ms: float = 0.0
 
 
 func _run() -> void:
@@ -622,26 +630,18 @@ func _case_mcp() -> void:
 
 
 ## Orthanc's and 10179's swaps, listed and then put in: no frame of either
-## with more than 16 ms of the app's own work (self_attack "Time"; osreview
-## H3: 2.1 s and 6.4 s frames), and the status bar saying so while it runs,
-## each frame's own work measured as ProbeTime.Frames measures it. The totals
-## are said. On 501e38ab9 this fails: one frame of Use what I own was 2,108
-## ms on Orthanc, and nothing was on the bar.
-##
-## The bar each act must meet is what the same model already costs live, timed
-## here in the same run: the longest frame of Find and Replace's copies'
-## frames (FindReplace.frames_paced_for), of the parts list opening as P opens
-## it, or of Find and Replace's Replace of the model's biggest lot, the
-## longest, and half again (the lead, 11-19). On 10179 the first
-## two were one frame of 961 and 366 ms before smalls9 worked them out a
-## slice of a frame at a time; the Replace, the same change Use what I own
-## makes, is still one frame (362 ms on 10179, osfix). The 16 ms target is
-## still said, as KNOWN, until all three are paced.
+## with more than [constant BAR_MS] of the app's own work, the parts list's
+## own bar (smalls9_probe), and the status bar saying so while it runs, each
+## frame's own work measured as ProbeTime.Frames measures it. The totals are
+## said, and the target of no frame over 16 ms as KNOWN. On 501e38ab9 this
+## fails: one frame of Use what I own was 2,108 ms on Orthanc, and nothing
+## was on the bar; before smalls12i1 the change went in in one frame of 160
+## to 184 ms (load 66).
 func _case_time() -> void:
 	for path: String in TIMED:
 		var name: String = path.get_file()
 		await _open(FileAccess.get_file_as_string(path))
-		_live_ms = await _live_cost(name)
+		await _shapes_read()
 		var list: InventoryPanel = await _list_up()
 		var row: Control = list.controls_by_name().get("parts_own")
 		if not _check("time %s: the row" % name, row != null):
@@ -654,12 +654,81 @@ func _case_time() -> void:
 		if not _check("time %s: Use what I own to press" % name, button != null and not button.disabled):
 			list.hide_list()
 			continue
-		var swapped: Array = await _timed_act(func() -> void: button.pressed.emit(),
-			func() -> bool: return not bool(list.get("_swapping")) and not list.is_filling() and not list.controls_by_name().has("parts_use_own"))
+		var swapped: Array = await _timed_swap(func() -> void: button.pressed.emit(),
+			func() -> bool: return not bool(list.get("_swapping")) and not list.is_filling() and not list.controls_by_name().has("parts_use_own"),
+			func() -> bool: return _builder.history_depth() > depth)
 		_time_said(name, "Use what I own", swapped, _builder.history_depth() - depth)
+		# The change itself, every lot's replace and the copies' follow in one
+		# change of the model, is one frame: held to CHANGE_MS, said as KNOWN.
+		_check("time %s: Use what I own's change itself in one frame of %.1f ms of its own, under %.0f ms"
+			% [name, float(swapped[7]), CHANGE_MS], float(swapped[7]) >= 0.0 and float(swapped[7]) <= CHANGE_MS)
+		print("  KNOWN %s: Use what I own's change itself, one replace and its copies' follow in one frame, the bar of no frame over %.0f ms of its own: %s (%.1f ms)"
+			% [name, BAR_MS, "met" if float(swapped[7]) <= BAR_MS else "not yet", float(swapped[7])])
 		list.hide_list()
 		if _builder.history_depth() > depth:
 			await _undone()
+
+
+## The copies' frames worked out once and forgotten, as Find and Replace
+## works them out (FindReplace.frames_paced_for): Use what I own then works
+## them out itself, as on a model changed since, its parts' shapes read.
+## Their first working out on a model just opened is smalls9_probe's to
+## time.
+func _shapes_read() -> void:
+	await _frames(4)
+	var finder := FindReplace.new(_main)
+	var assemblies: Assemblies = finder.assemblies
+	assemblies.set("_frames_kept", [])
+	await finder.frames_paced_for(_world.bricks(), finder._copies_by_definition())
+	assemblies.set("_frames_kept", [])
+	await _frames(2)
+
+
+## [method _timed_act], the frame in which [param changed] first holds (the
+## model's change) kept apart: its own work in ms at 7 (-1 for none), and in
+## place of the longest at 2, the longest of the rest.
+func _timed_swap(act: Callable, done: Callable, changed: Callable) -> Array:
+	var marks: Array = []   ## [usec, whether changed] as each frame's work ends
+	var frames := ProbeTime.Frames.new()
+	frames.label = func() -> String:
+		marks.append([Time.get_ticks_usec(), bool(changed.call())])
+		var job: Working.Job = Working.current()
+		return job.words if job != null else ""
+	root.add_child(frames)
+	var started: int = Time.get_ticks_usec()
+	act.call()
+	var until: int = Time.get_ticks_msec() + 120000
+	var finished: bool = false
+	while Time.get_ticks_msec() < until:
+		await process_frame
+		if done.call():
+			finished = true
+			break
+	await process_frame
+	var clock: float = (Time.get_ticks_usec() - started) / 1000.0
+	var rest: float = 0.0
+	var change: float = -1.0
+	var over: int = 0
+	var bar: bool = false
+	for frame: Array in frames.work:
+		var own: float = float(frame[1]) - float(frame[2])
+		# The label is said just after each frame's work is timed.
+		var after: bool = false
+		for mark: Array in marks:
+			if int(mark[0]) >= int(frame[0]):
+				after = bool(mark[1])
+				break
+		if change < 0.0 and after:
+			change = own
+		else:
+			rest = maxf(rest, own)
+		if own > 16.0 * frames.slack():
+			over += 1
+		bar = bar or not str(frame[3]).is_empty()
+	var slack: float = frames.slack()
+	var count: int = frames.work.size()
+	frames.queue_free()
+	return [clock, count, rest, over, bar, slack, finished, change]
 
 
 ## [param act] done, then frames until [param done] holds (120 s at most):
@@ -702,64 +771,11 @@ func _time_said(name: String, what: String, timed: Array, count: int) -> void:
 	print("  %s: %s (%d), %.0f ms over %d frames, the longest frame %.1f ms of its own, %d over %.0f ms, the bar %s"
 		% [name, what, count, float(timed[0]), int(timed[1]), float(timed[2]), int(timed[3]),
 		16.0 * float(timed[5]), "said it" if bool(timed[4]) else "said nothing"])
-	var bar: float = maxf(16.0 * float(timed[5]), 1.5 * _live_ms)
-	_check("time %s: %s done, no frame over %.0f ms of its own, half again what live's own costs here (the longest %.1f ms, in %.0f ms), the bar saying so"
-		% [name, what, bar, float(timed[2]), float(timed[0])],
-		bool(timed[6]) and float(timed[2]) <= bar and bool(timed[4]))
+	_check("time %s: %s done, no frame over %.0f ms of its own (the longest %.1f ms, in %.0f ms), the bar saying so"
+		% [name, what, BAR_MS, float(timed[2]), float(timed[0])],
+		bool(timed[6]) and float(timed[2]) <= BAR_MS and bool(timed[4]))
 	print("  KNOWN %s: %s, the target of no frame over %.0f ms of its own: %s (%d over)" % [name, what,
 		16.0 * float(timed[5]), "met" if int(timed[3]) == 0 else "not yet", int(timed[3])])
-
-
-## What [param name] costs live in its longest single frame, timed now: Find
-## and Replace's frames of its copies, or the parts list opened as P opens it,
-## each worked out a slice of a frame at a time as live works them out
-## (smalls9). The frames are then forgotten, so Use what I own works them out
-## itself as it would on a model just opened.
-func _live_cost(name: String) -> float:
-	await _frames(4)
-	var finder := FindReplace.new(_main)
-	var copies: Dictionary = finder._copies_by_definition()
-	var assemblies: Assemblies = finder.assemblies
-	assemblies.set("_frames_kept", [])
-	var framing: Array = [true]
-	var framed: Array = await _timed_act(func() -> void:
-		await finder.frames_paced_for(_world.bricks(), copies)
-		framing[0] = false,
-		func() -> bool: return not framing[0])
-	assemblies.set("_frames_kept", [])
-	await _frames(2)
-	var list: InventoryPanel = _main.get("_inventory")
-	var listed: Array = await _timed_act(func() -> void: list.show_for(_world, _library, _store.scenery, name),
-		func() -> bool: return not list.is_filling())
-	await _frames(4)
-	list.hide_list()
-	await _frames(4)
-	# Live's Replace, the change Use what I own makes: Find and Replace's
-	# Replace of the model's biggest lot, everywhere, to another colour.
-	var lots: Dictionary = {}
-	var standing: Array = assemblies.world.bricks()
-	for brick: BrickWorld.Brick in standing:
-		var key: String = "%s/%d" % [brick.part_id, brick.color_code]
-		lots[key] = int(lots.get(key, 0)) + 1
-	var biggest: String = ""
-	for key: String in lots:
-		if biggest.is_empty() or int(lots[key]) > int(lots[biggest]):
-			biggest = key
-	var replaced: Array = [0.0, 0, 0.0]
-	if not biggest.is_empty():
-		var colour: int = int(biggest.get_slice("/", 1))
-		var found: Dictionary = finder.find({"part": biggest.get_slice("/", 0), "color": colour}, "all")
-		var depth: int = _builder.history_depth()
-		replaced = await _timed_act(func() -> void: finder.replace(found, {"part": "", "color": 7 if colour != 7 else 71}),
-			func() -> bool: return _builder.history_depth() > depth)
-		await _frames(4)
-		if _builder.history_depth() > depth:
-			await _undone()
-		assemblies.set("_frames_kept", [])
-	print("  %s: live's own longest frame, Find and Replace's frames %.1f ms (over %d frames), the parts list opened %.1f ms (over %d), Replace of its biggest lot (%s, %d of %d parts) %.1f ms"
-		% [name, float(framed[2]), int(framed[1]), float(listed[2]), int(listed[1]), biggest,
-		int(lots.get(biggest, 0)), standing.size(), float(replaced[2])])
-	return maxf(maxf(float(framed[2]), float(listed[2])), float(replaced[2]))
 
 
 ## The row, the swaps, the button and what the row says after, in German,

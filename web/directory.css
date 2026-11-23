@@ -462,25 +462,25 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comments-hold .bone { margin: 0; }
 .model-page .comments-hold .title { width: 8em; height: 1.3em; font-size: var(--t-h3); }
 .model-page .comments-hold .box { width: 100%; height: calc(3lh + 22px); border-radius: var(--control-radius); }
-.model-page .comment-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
-.model-page .comment {
+:is(.model-page, .talk-page) .comment-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+:is(.model-page, .talk-page) .comment {
 	display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start;
 	border: 1px solid var(--line); border-radius: var(--r-2); padding: 12px 14px; background: var(--panel);
 }
-.model-page .comment.by-owner:not(.reply) { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
-.model-page .comment.hidden-one { opacity: 0.7; border-style: dashed; }
-.model-page .comment.asked { outline: 2px solid var(--accent-edge); outline-offset: 2px; }
-.model-page .comment-main { min-width: 0; }
-.model-page .comment-head {
+:is(.model-page, .talk-page) .comment.by-owner:not(.reply) { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
+:is(.model-page, .talk-page) .comment.hidden-one { opacity: 0.7; border-style: dashed; }
+:is(.model-page, .talk-page) .comment.asked { outline: 2px solid var(--accent-edge); outline-offset: 2px; }
+:is(.model-page, .talk-page) .comment-main { min-width: 0; }
+:is(.model-page, .talk-page) .comment-head {
 	margin: 0 0 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
 	font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere;
 }
-.model-page .comment-head a:not(.pill), .model-page .comment-head b { color: var(--ink); font-weight: 600; }
-.model-page .comment-head .where { color: var(--ink-soft); }
-.model-page .comment-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+:is(.model-page, .talk-page) .comment-head a:not(.pill), :is(.model-page, .talk-page) .comment-head b { color: var(--ink); font-weight: 600; }
+:is(.model-page, .talk-page) .comment-head .where { color: var(--ink-soft); }
+:is(.model-page, .talk-page) .comment-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
 /* An @handle its writer named (docs/SOCIAL.md section 7, item 6): a link
    to them, in the words' own size. */
-.model-page .comment-body a.mention { font-weight: 600; }
+:is(.model-page, .talk-page) .comment-body a.mention { font-weight: 600; }
 /* What a box offers as one types, under the box, a menu's panel (site.css
    .menu-list), the one marked as a hovered row: @ in a comment's box, the
    people to name; a set's name in the Based on dialog, the sets it may be. */
@@ -507,28 +507,28 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .set-pick li small { display: block; font-size: var(--t-small); }
 dialog.bases-dialog .set-chosen { margin: -6px 0 10px; font-size: var(--t-small); color: var(--ink-soft); }
 dialog.bases-dialog .set-chosen[hidden] { display: none; }
-.model-page .comment .note { margin: 6px 0 0; }
-.model-page .comment-acts { margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--t-small); }
-.model-page .comment-acts:empty { display: none; }
+:is(.model-page, .talk-page) .comment .note { margin: 6px 0 0; }
+:is(.model-page, .talk-page) .comment-acts { margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--t-small); }
+:is(.model-page, .talk-page) .comment-acts:empty { display: none; }
 /* Replies: under their comment, a line down their left, no card of their own. */
 .model-page .replies {
 	list-style: none; margin: 10px 0 0; padding: 0 0 0 12px; display: grid; gap: 12px;
 	border-left: 2px solid var(--line);
 }
-.model-page .comment.reply { border: 0; border-radius: 0; padding: 0; background: none; gap: 8px; }
-.model-page .comment.reply.hidden-one { border: 0; }
+:is(.model-page, .talk-page) .comment.reply { border: 0; border-radius: 0; padding: 0; background: none; gap: 8px; }
+:is(.model-page, .talk-page) .comment.reply.hidden-one { border: 0; }
 .model-page .reply-new { margin-top: 10px; display: grid; gap: 8px; }
 .model-page .reply-new textarea { width: 100%; }
 .model-page .reply-new .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.model-page .comment-list .none { padding: 0; }
-.model-page .comment-new { margin-top: 14px; display: grid; gap: 8px; }
-.model-page .comment-on { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.model-page .comment-new textarea { width: 100%; }
-.model-page .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.model-page .comment-new .note, .model-page .comment-why .note { margin: 0; }
-.model-page .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+:is(.model-page, .talk-page) .comment-list .none { padding: 0; }
+:is(.model-page, .talk-page) .comment-new { margin-top: 14px; display: grid; gap: 8px; }
+:is(.model-page, .talk-page) .comment-on { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+:is(.model-page, .talk-page) .comment-new textarea { width: 100%; }
+:is(.model-page, .talk-page) .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+:is(.model-page, .talk-page) .comment-new .note, .model-page .comment-why .note { margin: 0; }
+:is(.model-page, .talk-page) .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
 @media (width < 600px) {
-	.model-page .comment { gap: 10px; padding: 10px 12px; }
+	:is(.model-page, .talk-page) .comment { gap: 10px; padding: 10px 12px; }
 	.model-page .replies { padding-left: 10px; }
 }
 
@@ -624,8 +624,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
    (supabase/announce.sql): the award, the brick, or the spark, where a
    model's picture is. An announcement's words are the owner's, their lines
    kept, in the line's own ink. */
-.notice .pic.award, .notice .pic.challenge, .notice .pic.announce { display: grid; place-items: center; color: var(--ink-soft); }
-.notice .pic.award .icon, .notice .pic.challenge .icon, .notice .pic.announce .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
+.notice .pic.award, .notice .pic.challenge, .notice .pic.announce, .notice .pic.talk { display: grid; place-items: center; color: var(--ink-soft); }
+.notice .pic.award .icon, .notice .pic.challenge .icon, .notice .pic.announce .icon, .notice .pic.talk .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
 .notice .what .words { display: block; margin-top: 2px; white-space: pre-line; }
 @media (width < 600px) {
 	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
@@ -706,10 +706,66 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .design-builders .build-strip .build { width: min(200px, 60vw); }
 .design-builders .build-strip .build img { height: 140px; }
 .design-builders figcaption a { font-weight: 600; }
+/* Against the 30 days before (insights2 and i2fix, web/designs.js
+   drawPeriod): six tiles and six numbers a model, each with its change
+   (green up, red down, in words as well as colour) or, counted for under 30
+   days, the day it was counted since; the two dropdowns; the weeks as the
+   console's chart (the --viz tokens: one series, a hairline grid) with its
+   table, and each model's weeks as a line in --ink-faint (3:1 and more on
+   the panel in both themes; --viz-muted is 2.6:1 on white). */
+.designs .period-days { margin: -4px 0 12px; font-size: var(--t-small); color: var(--ink-soft); max-width: 72ch; }
+.earned.period { max-width: none; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); }
+.earned li .change, .design-numbers .change { font-size: var(--t-tiny); font-weight: 600; font-variant-numeric: tabular-nums; }
+.earned li .change { margin: 2px 0; }
+.change.up { color: var(--green); }
+.change.down { color: var(--bad); }
+.change.new { color: var(--accent-ink); }
+.change.none, .change.short { color: var(--ink-faint); font-weight: 400; }
+.period-controls { display: flex; flex-wrap: wrap; gap: var(--s-3) var(--s-4); align-items: end; margin: var(--s-4) 0 var(--s-3); }
+.period-controls label { min-width: min(100%, 220px); }
+.period-chart { margin: 0 0 var(--s-3); max-width: 920px; }
+.period-chart figcaption { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); justify-content: space-between; align-items: baseline;
+	margin: 0 0 var(--s-2); font-weight: 600; }
+.period-chart figcaption small { font-weight: 400; font-size: var(--t-tiny); color: var(--ink-faint); }
+.period-chart .plot { position: relative; padding: var(--s-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+.period-chart .plot svg { display: block; width: 100%; overflow: visible; }
+.period-chart text { fill: var(--ink-faint); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
+.period-chart .grid { stroke: var(--viz-grid); stroke-width: 1; }
+.period-chart .base { stroke: var(--viz-axis); stroke-width: 1; }
+.period-chart .bar { fill: var(--viz-1); }
+.period-chart .hit { fill: transparent; outline: none; }
+.period-chart .hit:hover + .bar, .period-chart .hit:focus-visible + .bar { fill-opacity: 0.75; }
+.period-chart .hit:focus-visible { stroke: var(--ink); stroke-width: 1; }
+.period-chart .tip { position: absolute; z-index: 5; pointer-events: none; padding: 6px 10px; border: 1px solid var(--line-strong);
+	border-radius: var(--r-2); background: var(--panel); box-shadow: var(--shadow); font-size: var(--t-tiny); white-space: nowrap; }
+.period-chart .tip b { display: block; font-size: var(--t-small); color: var(--ink); font-variant-numeric: tabular-nums; }
+.period-chart .tip span { color: var(--ink-soft); }
+.period-chart details.as-table { margin-top: var(--s-2); font-size: var(--t-small); }
+.period-chart details.as-table summary { cursor: pointer; color: var(--ink-soft); padding-block: 6px; }
+.period-chart details.as-table .table { margin-top: var(--s-2); }
+.designs details.period-what { max-width: 920px; margin: 0 0 var(--s-2); background: var(--panel); }
+.period-means { display: grid; gap: var(--s-1) var(--s-4); margin: 0; font-size: var(--t-small); }
+.period-means dt { font-weight: 600; color: var(--ink); }
+.period-means dd { margin: 0 0 var(--s-2); color: var(--ink-soft); max-width: 72ch; }
+.designs details.period-what p { margin: var(--s-2) 0 0; font-size: var(--t-small); }
+.design-numbers.period { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.design-numbers.period dd small + small { margin-top: -2px; }
+.design-weeks { display: flex; align-items: center; gap: var(--s-2); margin: 10px 0 0; font-size: var(--t-tiny); color: var(--ink-faint); }
+.design-weeks svg { flex: none; overflow: visible; }
+.design-weeks .line { fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.designs .period-left { margin: 0 0 var(--s-2); font-size: var(--t-small); color: var(--ink-soft); max-width: 72ch; }
+.design-weeks .dot { fill: var(--viz-1); }
+@media (width >= 900px) {
+	.period-means { grid-template-columns: 11em minmax(0, 1fr); }
+	.period-means dd { margin: 0; }
+	.design-numbers.period { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
 @media (width < 600px) {
 	.design-row { grid-template-columns: minmax(0, 1fr); }
 	.design-row .pic { max-width: 220px; }
 	.design-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.design-numbers.period { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.period-controls label { flex: 1 1 100%; }
 	.earned b { font-size: var(--t-h3); }
 	.earned li.lead b { font-size: var(--t-h2); }
 }

@@ -1,5 +1,5 @@
 ---
-ai: A person's profile and public page (/u/<handle>), following designers, the feed of what they make, notifications, the account menu and the site's settings (profile, appearance, the daily email, orangecheck, privacy, assistants, reports).
+ai: A person's profile and public page (/u/<handle>), following designers, the feed of what they make, notifications, the account menu and the site's settings (profile, appearance, notifications on this device and the daily email, orangecheck, privacy, assistants, reports).
 rules:
   - Following is for people 13 and over.
 title: Profiles, following and your feed
@@ -45,13 +45,14 @@ Under your numbers are your achievements, for everybody to see: each challenge y
 | **Tested** | your models marked [Tested](/docs/sharing#tested) | 1, 5, 10, 25 |
 | **Challenger** | [challenges](/docs/challenges) you entered | 1, 3, 6, 12 |
 
-The **Achievements** tab shows every track: your level, how many more reach the next and what gets you there. Reaching a level is a [notification](#notifications). **Insights** (*How your models are doing* on your own `/u/` page) says, for you alone, how each of your models is doing.
+The **Achievements** tab shows every track: your level, how many more reach the next and what gets you there. Reaching a level is a [notification](#notifications). **Insights** (*How your models are doing* on your own `/u/` page) says, for you alone, how each of your models is doing, each number set against the same number of days before it, in whole days up to yesterday.
 
 <!-- covers
 ui:achievements on a profile
 lib:achievements with levels
 ui:your achievements tab
 ui:your models as a designer
+lib:a designer's numbers against last month
 -->
 
 ## First steps {#first-steps}
@@ -98,7 +99,7 @@ ui:the app's Account count
 
 ## Notifications {#notifications}
 
-[brickworks.diy/notifications](/notifications) says what happened to your models, grouped by model, newest first: comments, replies, [mentions](/docs/model-pages#mentions), photos of builds, remixes, and how many liked it that day. **Your achievements** are a group of their own, and so is each [challenge](/docs/challenges#told). News from Brickworks, such as a new feature or planned upkeep, is a group of its own too, marked *From Brickworks* (and *edited* if it was changed after it went). Opening it clears the count on your avatar; **Mark all read** clears them all.
+[brickworks.diy/notifications](/notifications) says what happened to your models, grouped by model, newest first: comments, replies, [mentions](/docs/model-pages#mentions), photos of builds, remixes, and how many liked it that day. **Your achievements** are a group of their own, and so is each [challenge](/docs/challenges#told). News from Brickworks, such as a new feature or planned upkeep, is a group of its own too, marked *From Brickworks* (and *edited* if it was changed after it went). So is each [Talk](/docs/talk) thread you follow or that names you. Opening it clears the count on your avatar; **Mark all read** clears them all.
 
 <!-- covers
 ui:notifications page
@@ -122,7 +123,8 @@ ui:the account menu
 
 - **Profile**: **Edit profile**.
 - **Appearance**: **System**, **Light** or **Dark**, kept in this browser and with your account.
-- **Email**: the daily email, every box off until you tick it. **Email me when somebody comments on a model I shared**, and in the same email what came into your feed: new models and versions from people you follow, photos of builds, remixes of yours. At most one email a day.
+- **Notifications**: **On this device**, **Notify me on this device** shows what your [notifications](#notifications) tell you, a comment or a reply, a mention, a photo of a build of your model, a remix, a challenge's result or a new post in [Talk](/docs/talk#thread), as this device's own notification within the minute. Your browser asks whether to allow it only once you tick it, and each device you use is chosen on its own; signing out there, from any page, stops it there, and so does that sign-in ending any other way. **Turn off on every device** stops it everywhere at once, a phone left somewhere included. Several notifications about one model, or one thread of Talk, within three minutes come as one, which says how many more. On an iPhone or iPad (iOS 16.4 or later), [add Brickworks to your Home Screen](/docs/web-and-desktop#install) first and turn it on there: it opens in the studio, so open its menu, **Back to brickworks.diy**, then **Menu › Settings**. **Install Brickworks** is here too while your browser offers it.
+  **By email**: the daily email, every box off until you tick it. **Email me when somebody comments on a model I shared**, and in the same email what came into your feed: new models and versions from people you follow, photos of builds, remixes of yours. At most one email a day.
   **Email me Brickworks news** is off until you tick it: new features and planned upkeep, a few times a month at most. Every one of those emails has an **Unsubscribe** link, and your mail app's own unsubscribe button works too.
 - **orangecheck**: **Link orangecheck** to sign in with it as well as your email ([signing in](/docs/account#sign-in)); **Unlink** to stop. Each first sends a code to your email to confirm it is you, unless you signed in with one in the last five minutes, and your email is told.
 - **Privacy**: your age answer, **Show on my profile whom I follow**, and **Show on my profile the models I liked** (the Likes tab).
@@ -138,4 +140,7 @@ While the [beta](/docs/beta) is open, **Beta** comes after Profile.
 ui:your settings page
 ui:likes on a profile
 ui:theme choice
+ui:this device's notifications
+lib:push sent to devices
+lib:push subscriptions
 -->

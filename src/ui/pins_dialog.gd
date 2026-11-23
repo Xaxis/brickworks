@@ -75,6 +75,8 @@ func _process(_delta: float) -> void:
 	# Pinned, resolved or taken back by the others, or by Undo: drawn again.
 	if visible and _words() != _drawn:
 		fill()
+	elif not visible:
+		Wake.rest(self)
 
 
 ## Open, the field ready for a comment on the part selected.

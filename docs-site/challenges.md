@@ -11,7 +11,7 @@ Each month Brickworks sets a building challenge: a theme, a brief and rules it c
 
 The page has the brief and its days, **The rules**, **How to enter**, and the entries in two groups, **Built by hand** and **Built with the assistant**, judged apart.
 
-![This month's challenge page: its title, its days and brief with Share, The rules Brickworks checks, How to enter, and the entries under Built by hand and Built with the assistant, each card with Vote for it.](/docs/img/challenge-page.webp "brickworks.diy/challenge.")
+![This month's challenge page: its title and brief, The rules Brickworks checks, Enter a model and Share, and beside them the time left with its days; under them the entries in two tabs, Built by hand and Built with the assistant, each card with Vote, then How it works.](/docs/img/challenge-page.webp "brickworks.diy/challenge.")
 
 <!-- covers
 ui:this month's challenge page
@@ -33,6 +33,26 @@ It is checked again while the challenge runs: an entry whose newer version break
 ## Vote {#vote}
 
 Signed in and 13 or over, press **Vote for it** on the entry you like best in each group: one vote for **Built by hand** and one for **Built with the assistant**. A vote cannot be changed; your pick then says *Your vote*, and the others in that group *You voted in this group*. You cannot vote for your own entry, or for one that breaks a rule. The votes are counted when it ends, and only then shown.
+
+## Judged in rounds {#rounds}
+
+Some challenges are judged before the fans vote, as real building contests are. The page then says who chooses: *Brickworks chooses the shortlist*, or *Guest judge … chooses the shortlist*, and counts down each round: *Entries close in …*, *Fan vote opens in …*, *Fan vote ends in …*.
+
+1. **Entries**, until the day entries close. Entering is as above; it then says *Once entries close, the judges choose the shortlist that everyone votes for.*
+2. **The judges' shortlist:** up to five entries in each group, marked **Shortlisted**. Until the fan vote opens, the page says *Entries have closed, and the judges are choosing their shortlist*, then *The judges have chosen their shortlist*.
+3. **Fan vote:** one vote in each group, for an entry on the shortlist, by the same rules as above.
+
+<!-- covers
+lib:judges and a fan vote and honours
+-->
+
+## The winners' week {#pick}
+
+The week after a challenge ends, its winner is **This week's pick**: the first model on the [home page](/), marked **Week’s pick**, beside the open challenge and its days left (*10 days left*). Both are on the home page's first screen, and each opens its page. A winner's profile names what it won.
+
+<!-- covers
+ui:this month's challenge on the home page
+-->
 
 ## Between months {#between}
 

@@ -323,9 +323,14 @@ func set_on(value: bool) -> void:
 
 func _process(_delta: float) -> void:
 	if builder == null or world == null or library == null:
+		Wake.rest(self)
 		return
 	_follow_model()
 	_follow_hand()
+	# Asleep at rest (Wake): the hand, the part under the pointer and the
+	# model change only with a press, an edit or a drawn frame.
+	if not _partial:
+		Wake.rest(self)
 
 
 # -- what is marked --------------------------------------------------------------
