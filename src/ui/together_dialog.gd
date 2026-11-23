@@ -23,6 +23,7 @@ var _link: LineEdit
 var _copy: Button
 var _rows: VBoxContainer
 var _end: Button
+var _end_row: HBoxContainer
 var _removes: Array[Button] = []
 var _follows: Array[Button] = []
 var _chat_box: VBoxContainer
@@ -36,7 +37,6 @@ var _chat_note: Label
 var _watch_box: VBoxContainer
 var _watch_open: Button
 var _watch_row: HBoxContainer
-var _watch_link: LineEdit
 var _watch_copy: Button
 var _watch_count: Label
 var _watch_close: Button
@@ -171,7 +171,19 @@ func _ready() -> void:
 	_end.focus_mode = Control.FOCUS_NONE
 	_end.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_end.pressed.connect(_on_end)
-	column.add_child(_end)
+	# End on the left, and the owner's Open or Close to watchers at the
+	# other end of the same row: one place to open and close, apart from
+	# End, and no row of its own, so a tablet held sideways keeps End and
+	# Close in sight (together_fit).
+	_end_row = HBoxContainer.new()
+	_end_row.add_theme_constant_override("separation", 8)
+	_end_row.add_child(_end)
+	var apart := Control.new()
+	apart.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_end_row.add_child(apart)
+	_end_row.add_child(_watch_open)
+	_end_row.add_child(_watch_close)
+	column.add_child(_end_row)
 	together.changed.connect(func() -> void:
 		if visible:
 			fill())
@@ -183,7 +195,8 @@ func _ready() -> void:
 	get_tree().root.size_changed.connect(_fit, CONNECT_DEFERRED)
 
 
-## Open to watchers, its link and count, Close, and the asks to build.
+## Open to watchers, how many watch and Copy watch link, Close, and the asks
+## to build. Open and Close are placed at the end of End's row (_ready).
 func _make_watch_box(column: VBoxContainer) -> void:
 	_watch_box = VBoxContainer.new()
 	_watch_box.add_theme_constant_override("separation", 6)
@@ -194,34 +207,27 @@ func _make_watch_box(column: VBoxContainer) -> void:
 	_watch_open.tooltip_text = ("Anyone may watch you build at a page of its own, listed first on the home "
 		+ "page and your profile; signed in, they chat and can ask to build")
 	_watch_open.pressed.connect(func() -> void: _watch_act(together.open_to_watchers))
-	_watch_box.add_child(_watch_open)
+	# Open, how many watch and Copy watch link on one row.
 	_watch_row = HBoxContainer.new()
 	_watch_row.add_theme_constant_override("separation", 8)
-	_watch_link = LineEdit.new()
-	_watch_link.editable = false
-	_watch_link.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_watch_link.tooltip_text = "The page anyone may watch on. It never lets anyone change the model"
-	_watch_row.add_child(_watch_link)
+	_watch_count = Label.new()
+	_watch_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_watch_count.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_watch_row.add_child(_watch_count)
 	_watch_copy = Button.new()
-	_watch_copy.text = "Copy"
+	_watch_copy.text = "Copy watch link"
+	_watch_copy.tooltip_text = "The page anyone may watch on. It never lets anyone change the model"
 	_watch_copy.focus_mode = Control.FOCUS_NONE
 	_watch_copy.pressed.connect(func() -> void:
 		DisplayServer.clipboard_set(str(together.watch.get("link", "")))
 		_watch_copy.text = "Copied")
 	_watch_row.add_child(_watch_copy)
 	_watch_box.add_child(_watch_row)
-	var counted := HBoxContainer.new()
-	counted.add_theme_constant_override("separation", 8)
-	_watch_count = Label.new()
-	_watch_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	counted.add_child(_watch_count)
 	_watch_close = Button.new()
 	_watch_close.text = "Close to watchers"
 	_watch_close.focus_mode = Control.FOCUS_NONE
 	_watch_close.tooltip_text = "Its page says it is closed, and it is listed no more; the session goes on"
 	_watch_close.pressed.connect(func() -> void: _watch_act(together.close_to_watchers))
-	counted.add_child(_watch_close)
-	_watch_box.add_child(counted)
 	_asks = VBoxContainer.new()
 	_asks.add_theme_constant_override("separation", 4)
 	_watch_box.add_child(_asks)
@@ -259,22 +265,18 @@ func _fill_watch() -> void:
 		child.queue_free()
 	_seats.clear()
 	var shown: bool = together.live and together.owns
-	_watch_box.visible = shown
-	if not shown:
-		return
-	var open: bool = not together.watch.is_empty()
-	_watch_open.visible = not open
+	var open: bool = shown and not together.watch.is_empty()
+	_watch_box.visible = open
+	_watch_open.visible = shown and not open
 	_watch_open.disabled = _busy
 	_watch_row.visible = open
-	_watch_close.get_parent().visible = open
+	_watch_close.visible = open
 	_watch_close.disabled = _busy
 	if not open:
 		return
-	_watch_link.text = str(together.watch.get("link", ""))
-	_watch_copy.text = "Copy"
+	_watch_copy.text = "Copy watch link"
 	var n: int = int(together.watch.get("watchers", 0))
-	_watch_count.text = "Open to watchers: nobody watching yet" if n == 0 \
-		else "Open to watchers: 1 watching" if n == 1 else "Open to watchers: %d watching" % n
+	_watch_count.text = "Nobody watching yet" if n == 0 else "1 watching" if n == 1 else "%d watching" % n
 	for item: Variant in together.asks:
 		var ask: Dictionary = item
 		var row := HBoxContainer.new()
@@ -410,6 +412,7 @@ func fill() -> void:
 	_join_row.visible = not live
 	_link_row.visible = live
 	_end.visible = live
+	_end_row.visible = live
 	_people_scroll.visible = live
 	_chat_box.visible = live
 	_start.disabled = _busy
@@ -567,6 +570,7 @@ func controls_by_name() -> Dictionary:
 		out["together_watch_open"] = _watch_open
 	if _watch_row.is_visible_in_tree():
 		out["together_watch_copy"] = _watch_copy
+	if _watch_close.is_visible_in_tree():
 		out["together_watch_close"] = _watch_close
 	for n: int in _seats.size():
 		out["together_seat_%d" % (n + 1)] = _seats[n]

@@ -16902,14 +16902,17 @@ msgstr "Für Zuschauende schließen"
 msgid "Its page says it is closed, and it is listed no more; the session goes on"
 msgstr "Die Seite sagt, dass sie geschlossen ist, und sie wird nicht mehr aufgeführt; die Sitzung geht weiter"
 
-msgid "Open to watchers: nobody watching yet"
-msgstr "Für Zuschauende offen: Noch schaut niemand zu"
+msgid "Nobody watching yet"
+msgstr "Noch schaut niemand zu"
 
-msgid "Open to watchers: 1 watching"
-msgstr "Für Zuschauende offen: 1 schaut zu"
+msgid "1 watching"
+msgstr "1 schaut zu"
 
-msgid "Open to watchers: %d watching"
-msgstr "Für Zuschauende offen: %d schauen zu"
+msgid "%d watching"
+msgstr "%d schauen zu"
+
+msgid "Copy watch link"
+msgstr "Zuschau-Link kopieren"
 
 msgid "%s asks to build"
 msgstr "%s möchte mitbauen"
