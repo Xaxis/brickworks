@@ -154,10 +154,10 @@ const PRODUCT_BALANCE := 1.0
 ## stud's logo, and each part's seat, as far apart as the photographed parts
 ## are. Judged on the photo bench one at a time and together
 ## (docs/RENDERING.md 5l).
-const PRODUCT_BATCH := 0.0
+const PRODUCT_BATCH := 1.0
 const PRODUCT_HANDLING := 0.0
-const PRODUCT_STUDS := 0.0
-const PRODUCT_PLAY := 0.0
+const PRODUCT_STUDS := 1.0
+const PRODUCT_PLAY := 1.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,

@@ -643,11 +643,13 @@ float part_bell(uint which, uint salt) {
 // CIEDE2000 is 2 to 4 (yellow 2.1, reds 3.2 and 4.2, whites 2.6 and 4.2),
 // hue and chroma 1.0 to 2.6 of it. Turned in Oklab, so a stray is as far to
 // the eye in every colour: at [param amount] 1 a part's hue turns by a bell
-// of 2 degrees (sd), its chroma by 4 percent and its light by 6 (a pale
-// part's by 2, a pale part's whites already strayed by its age), and a pale
+// of 4 degrees (sd), its chroma by 8 percent and its light by 12 (a pale
+// part's by 4, a pale part's whites already strayed by its age), and a pale
 // part goes a hair warmer or cooler. A saturated red's hue is lost to the
 // camera's gamut (its green and blue are 0 in the picture), so on a red the
-// light carries it.
+// light carries it: drawn, two of 6657's reds differ by 2.7 (its
+// photograph's 4.2), 6660's whites by 3.6 (3.5 with their age alone). Half
+// as far was judged too, and gained nothing (docs/RENDERING.md 5l).
 vec3 oklab_of(vec3 c) {
 	vec3 lms = vec3(dot(c, vec3(0.4122214708, 0.5363325363, 0.0514459929)),
 		dot(c, vec3(0.2119034982, 0.6806995451, 0.1073969566)),
@@ -673,12 +675,12 @@ vec3 batch_of(vec3 body, uint which, float amount) {
 	float spread = max(max(body.r, body.g), body.b) - min(min(body.r, body.g), body.b);
 	float pale = smoothstep(0.12, 0.55, lum) * (1.0 - smoothstep(0.04, 0.2, spread));
 	vec3 lab = oklab_of(body);
-	float turn = radians(6.0) * part_bell(which, 1u) * amount;
+	float turn = radians(12.0) * part_bell(which, 1u) * amount;
 	vec2 ab = vec2(lab.y * cos(turn) - lab.z * sin(turn), lab.y * sin(turn) + lab.z * cos(turn));
-	ab *= 1.0 + 0.12 * part_bell(which, 2u) * amount;
-	ab.y += 0.006 * part_bell(which, 4u) * amount * pale;
+	ab *= 1.0 + 0.24 * part_bell(which, 2u) * amount;
+	ab.y += 0.012 * part_bell(which, 4u) * amount * pale;
 	vec3 out_colour = max(linear_of(vec3(lab.x, ab)), vec3(0.0));
-	return out_colour * (1.0 + 0.18 * (1.0 - 0.7 * pale) * part_bell(which, 3u) * amount);
+	return out_colour * (1.0 + 0.36 * (1.0 - 0.7 * pale) * part_bell(which, 3u) * amount);
 }
 
 // How much more a part has been handled than its set's age says
