@@ -18,9 +18,13 @@
 ##   castle  models/castle.ldr, Plan steps then Save: the same
 ##   into    the station put into a model whole (held_from): its saved steps
 ##           kept, as an open keeps them
+##   hand    Plan steps asked over MCP (edit_steps plan) while the person holds
+##           a part picked up: refused, or the part put down planned with the
+##           rest, never the one part with a step and the model after it; and
+##           Escape then puts the part back (control: edit_steps next instead)
 ##
 ##   godot --headless --path . --script src/dev/sk2review_probe.gd
-##   SK2R_ONLY=drag,pair,stack,mpd,castle,into   only those
+##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand   only those
 ##   SK2R_OUT=DIR                                the texts written there
 extends SceneTree
 
@@ -125,6 +129,8 @@ func _run() -> void:
 		await _castle()
 	if _asked("into"):
 		await _into()
+	if _asked("hand"):
+		await _hand()
 	print("")
 	print("%d FAILURE(S)" % _failures if _failures else "every case holds")
 	quit(1 if _failures else 0)
@@ -451,6 +457,84 @@ func _structure(text: String) -> Dictionary:
 			floor = true
 	return {"files": files, "comments": comments.size(), "in": ins, "built": built,
 		"floor": floor, "authored": text.contains(AUTHORED), "comment_lines": comments}
+
+
+# -- hand ----------------------------------------------------------------------
+
+
+func _hand() -> void:
+	print("\n== hand (station): Plan steps over MCP while the person holds a part picked up")
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	for way: String in ["put down", "Escape"]:
+		for asked: String in ["plan", "next"]:
+			await _open(STATION)
+			var total: int = _parts_on()
+			var plan: Array = _plan()
+			var at: Dictionary = _on_model_at(plan)
+			var top: BrickWorld.Brick = _top_of(func(brick: BrickWorld.Brick) -> bool:
+				return Assemblies.path_of(brick).is_empty())
+			var other: BrickWorld.Brick = _lowest_of_own(top)
+			if top == null or other == null:
+				_check("hand: a top brick to pick up and another to step", false)
+				return
+			var from: Transform3D = top.transform
+			var part: String = top.part_id
+			var was_at: int = int(at[top.id])
+			var other_id: int = other.id
+			_builder.clear_selection()
+			_builder.selection[top.id] = true
+			if not _check("hand: picked up the %s of step %d" % [part, was_at + 1],
+					_builder.lift_selection() > 0):
+				return
+			var input: Dictionary = {"op": asked}
+			if asked == "next":
+				input["bricks"] = [other_id]
+			var said: String = str(await tools.run("edit_steps", input))
+			await _frames(2)
+			print("  %s, then %s: edit_steps %s said \"%s\"" % ["held", way, asked, said.left(90)])
+			if way == "put down":
+				var carry: Carry = _builder.carrying
+				carry.stand_where_lifted(_builder.lattice, _builder)
+				carry.pin()
+				carry.show_moved(Transform3D.IDENTITY, _builder.lattice, _builder)
+				var put: int = _builder.place()
+				await _edited()
+				var back: BrickWorld.Brick = _brick_at(part, from)
+				var stepped: int = 0
+				for brick: BrickWorld.Brick in _world.bricks():
+					if not _store.scenery.has(brick.id) and brick.step >= 0:
+						stepped += 1
+				var after: Array = _plan()
+				var now: Dictionary = _on_model_at(after)
+				var text: String = _store.to_text(_store.title, true)
+				var shown: int = int(now.get(back.id, -1)) if back != null else -1
+				if asked == "plan":
+					_check("hand, plan, put down (%d): parts with a step of their own %d of %d (none, or all), the part shown in step %d of %d (was %d of %d), AUTHORED_STEPS %s"
+						% [put, stepped, _parts_on(), shown + 1, after.size(), was_at + 1, plan.size(),
+						text.contains(AUTHORED)], put > 0 and back != null
+						and (stepped == 0 or stepped == _parts_on()) and not text.contains(AUTHORED))
+				else:
+					print("  control, next, put down (%d): the part in step %d of %d (was %d of %d)"
+						% [put, shown + 1, after.size(), was_at + 1, plan.size()])
+			else:
+				_builder.cancel_carry()
+				await _frames(2)
+				var back: BrickWorld.Brick = _brick_at(part, from)
+				_check("hand, %s, Escape: the part back on the model where it was (%s; parts %d of %d)"
+					% [asked, back != null, _parts_on(), total], back != null and _parts_on() == total)
+
+
+## The lowest brick or plate of the model's own that is not [param but].
+func _lowest_of_own(but: BrickWorld.Brick) -> BrickWorld.Brick:
+	var best: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick == but or not _stack(brick) or not Assemblies.path_of(brick).is_empty():
+			continue
+		if best == null or brick.transform.origin.y < best.transform.origin.y:
+			best = brick
+	return best
 
 
 # -- into ----------------------------------------------------------------------
