@@ -1786,9 +1786,9 @@ plan with Claude as the client.
   the work; the gallery's challenge line is the grid's first row
   (`#feed > #challenge-line`), drawn with the cards, and under the week's
   pick on a phone (`.feed > .pick { order: -1 }` under 600 px: the first
-  picture 314 px down, 360 at most in `gallery_flow`); the feed is four
-  to a row from 1200 px, three from 900 (`gallery_flow` checks four at
-  1280); a model page's
+  picture 314 px down, 360 at most in `gallery_flow`); the feed is one
+  to a row on a phone, two from 600 px, three from 900 and four from 1200
+  (`gallery_flow` checks one at 390 and four at 1280); a model page's
   comments are held by `#comments-hold` (bones, the height of an empty
   section and its box) until drawn, its "I built it" box is shown from
   the server, and its owner's Add a picture sits over the picture
