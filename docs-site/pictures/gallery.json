@@ -54,6 +54,65 @@
    "features": [
     "ui:gallery page"
    ]
+  },
+  {
+   "id": "gallery-owned",
+   "source": "site",
+   "route": "/gallery",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "wait": "#models article.model small.owned",
+   "crop": [
+    "#models article.model >> nth=0",
+    "#models article.model >> nth=3"
+   ],
+   "pad": 12,
+   "alt": "Four gallery cards seen signed in with a collection: the sports car says You have 73%, the corner shop You have every part with a check, the barn owl You have 64%, and the fire station, under half, says nothing of it.",
+   "caption": "What you have of each model, on its card.",
+   "features": [
+    "ui:model card"
+   ]
+  },
+  {
+   "id": "gallery-owned-phone",
+   "source": "site",
+   "route": "/gallery",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "wait": "#models article.model small.owned",
+   "crop": [
+    "#models article.model >> nth=0",
+    "#models article.model >> nth=1"
+   ],
+   "pad": 8,
+   "alt": "Two gallery cards on a phone, signed in with a collection: the sports car says You have 73% and the corner shop You have every part.",
+   "caption": "The same on a phone.",
+   "features": [
+    "ui:model card"
+   ]
   }
  ]
 }

@@ -39,6 +39,11 @@
 //                            elements as=pab-2, /m/X/parts-pab-2.csv, and
 //                            on) a LEGO® Pick a Brick list, each to
 //                            download; with v=N, version N's
+//   GET  ?op=parts_missing&id=X  with the session: what the person is
+//                            missing of that list, and the three shops'
+//                            lists of only those (the Parts tab's What
+//                            you're missing, ownedparts); with v=N, of
+//                            version N's; never kept by the CDN
 //   GET  ?op=scene&id=X      /m/X/scene.json: the model packed for its page's
 //                            3D view (api/_parts.js sceneOf), every part's
 //                            place, turn and colour, its geometry in the
@@ -139,7 +144,8 @@
 //   GET  ?op=bases&id=X      what X is based on, and whether the caller may
 //                            change it; POST ?op=bases {model, bases} its
 //                            designer's list; GET ?op=set_based&set=N the
-//                            models based on set N (api/_bases.js)
+//                            models based on set N (api/_bases.js) and the
+//                            public lists it is in (api/_lists.js)
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
 //                            visitor, and never for a robot
 //   POST ?op=built&id=X      {device, v?}: built to its last step, in the
@@ -284,7 +290,7 @@ import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
-import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
+import { freshPool, heldOf, keyed, missingOf, ownedKey, poolOf, readShard, shardOf } from "./_owned.js";
 // Every set in the catalogue, a page each (sets364), and the picture drawn
 // of one LDraw has no model of.
 import {
@@ -2262,6 +2268,7 @@ async function read(request, response) {
   if (op === "catalog_picture") return catalogPicture(response, origin, String(request.query?.set || ""));
   if (op === "catalog_photo") return catalogPhoto(response, String(request.query?.set || ""), String(request.query?.as || "card"));
   if (op === "catalog_owned") return catalogOwned(request, response, origin, String(request.query?.set || ""));
+  if (op === "parts_missing") return partsMissing(request, response, origin, id);
   if (op === "sitemap_index") return sitemapIndex(response, origin);
   if (op === "sitemap_models") return sitemapOfModels(response, origin, String(request.query?.lang || ""));
   if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""), String(request.query?.lang || "en"));
@@ -2710,9 +2717,9 @@ async function catalogPicture(response, origin, number) {
 
 /// How much of set N the person signed in owns, as the app's collection
 /// counts it: {set, pieces, have, missing (lots), unknown (their sets no
-/// inventory has), wanted: {bricklink, rebrickable} (what they are missing,
-/// as each shop's list), left_out}. No collection is {pieces, have: 0,
-/// collection: false}. Never kept by anything between.
+/// inventory has), wanted: {bricklink, rebrickable, pickabrick: [file]}
+/// (what they are missing, as each shop's list), left_out}. No collection
+/// is {pieces, have: 0, collection: false}. Never kept by anything between.
 async function catalogOwned(request, response, origin, number) {
   response.setHeader("Cache-Control", "no-store");
   const entry = catalogSet(number);
@@ -2737,11 +2744,107 @@ async function catalogOwned(request, response, origin, number) {
   const short = catalogLots(owned.missing) || { pieces: 0, lots: [] };
   const bricklink = wantedList(short);
   const rebrickable = rebrickableCsv(short);
+  // And as LEGO® Pick a Brick's upload takes them (ownedparts), a file of
+  // PICK_A_BRICK_LINES elements each.
+  const pab = pickABrick(short);
   return response.status(200).json({ set: entry.set, pieces: owned.pieces, have: owned.have, collection: true,
     missing: short.lots.length, unknown: pool.unknown.length,
-    wanted: { bricklink: bricklink.text, rebrickable: rebrickable.text },
-    left_out: { bricklink: bricklink.left_out, rebrickable: rebrickable.left_out } });
+    wanted: { bricklink: bricklink.text, rebrickable: rebrickable.text, pickabrick: pab.files },
+    left_out: { bricklink: bricklink.left_out, rebrickable: rebrickable.left_out, pickabrick: pab.missing.length } });
 }
+
+/// What the person signed in is missing of a model's parts list
+/// (ownedparts): its Parts tab's What you're missing, the list
+/// /m/X/parts.json answers less what their collection holds, counted as the
+/// gallery counts their share of it (api/_owned.js heldOf, missingOf), and
+/// the shops' lists of only those lots, in the formats the tab downloads for
+/// the whole model, named for it (name, as its downloads are): {id,
+/// version, newest, name, collection, pieces, have, lots, whole,
+/// missing: [lots as parts.json's, count the number short, need, have],
+/// left: {lots, pieces} nobody owns on their own, unknown (their sets no
+/// inventory has), files: {bricklink, rebrickable, pickabrick: [file]},
+/// left_out, stand_ins, pickabrick}. No collection is {collection: false}
+/// with the list's size. The version as /m/X/parts.json reads it (v=N, the
+/// newest unless one is), and what a visitor may read of it. Never kept by
+/// anything between.
+async function partsMissing(request, response, origin, id) {
+  response.setHeader("Cache-Control", "no-store");
+  const fail = (status, error) => response.status(status).json({ error });
+  if (!ID.test(id)) return fail(400, "id is a model's link, ten letters and digits");
+  const asked = askedVersion(request);
+  let claims;
+  try {
+    claims = await verify(bearer(request), request);
+  } catch (trouble) {
+    return fail(trouble?.status || 401, trouble?.message || "Sign in to see what you are missing.");
+  }
+  const row = await publishedRow(id);
+  if (!row) {
+    const gone = await missing(id);
+    return fail(gone.status, gone.error);
+  }
+  const versions = await versionsOf(id, row);
+  const newest = versions[0].n;
+  const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
+  if (!shown) return fail(404, `There is no version ${asked} of this model: it has ${count(newest, "version")}.`);
+  const parts = await versionParts(id, shown.n, newest);
+  if (parts === undefined) return fail(410, "This model is no longer shared.");
+  if (!parts) return fail(503, "This site cannot list a model's parts just now.");
+  const keys = parts.lots.map((lot) => ownedKey(lot.part, lot.colour));
+  const held = await heldOf(claims.sub, origin, keys.filter(Boolean).map((key) => key.slice(0, key.lastIndexOf("/"))));
+  const said = { id, version: shown.n, newest, name: `${fileName(row.name, id)}${shown.n === newest ? "" : `-v${shown.n}`}` };
+  if (!held) {
+    const none = missingOf(parts, new Map());
+    return response.status(200).json({ ...said, collection: false, pieces: none.pieces, have: 0, lots: none.lots });
+  }
+  return response.status(200).json(missingAnswer(parts, held, said, String(request.query?.lang || "en")));
+}
+
+/// op=parts_missing's answer when they have a collection: model [parts]
+/// (partsOf) less what [held] holds ({held, unknown}: heldOf), [said] its
+/// id, versions and name first; in [lang] as /m/X/parts.json is. Its own
+/// so the documentation's pictures show the very answer
+/// (tools/web/docs_world.mjs).
+export function missingAnswer(parts, held, said, lang = "en") {
+  const short = missingOf(parts, held.held);
+  const lots = { pieces: short.missing.reduce((n, lot) => n + lot.count, 0), lots: short.missing };
+  const bricklink = wantedList(lots);
+  const rebrickable = rebrickableCsv(lots);
+  const pab = pickABrick(lots);
+  const words = SITE_LANGS.includes(lang) ? partNames(lang) : null;
+  const root = storeRoot();
+  return {
+    ...said, ...(words ? { lang } : {}), collection: true, pieces: short.pieces, have: short.have, lots: short.lots,
+    whole: short.whole, left: short.left, unknown: held.unknown,
+    missing: short.missing.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
+      colour_name: lot.colour_name, hex: lot.hex, count: lot.count, need: lot.need, have: lot.have,
+      element: lot.element || null, custom: lot.custom, mesh: (root && lot.mesh) || null, ...namesOf(lot, words) })),
+    files: { bricklink: bricklink.text, rebrickable: rebrickable.text, pickabrick: pab.files },
+    left_out: { bricklink: bricklink.left_out, rebrickable: rebrickable.left_out, pickabrick: pab.missing.length },
+    stand_ins: bricklink.stand_ins,
+    pickabrick: { files: pab.files.length, lines: pab.lines, pieces: pab.pieces,
+      left_out_pieces: pab.missing.reduce((n, lot) => n + lot.count, 0), over: pab.over },
+  };
+}
+
+/// Version [n] of model [id]'s parts list (partsOf), the newest being
+/// [newest]: kept here by version, which is never written again once made
+/// (a new one is a new number), so a person's What you're missing reads the
+/// model's file from storage once an instance, not once an ask (Supabase's
+/// egress cap was reached on 2026-11-12). Undefined when the file is
+/// gone, null when this deployment cannot list it.
+async function versionParts(id, n, newest) {
+  const key = `${id}/${n}`;
+  if (versionsKept.has(key)) return versionsKept.get(key);
+  const stored = versionFile(id, n, newest, "mpd");
+  const file = await getFile(stored);
+  if (!file) return undefined;
+  const parts = partsOf(stored, file);
+  versionsKept.set(key, parts);
+  if (versionsKept.size > PARTS_KEPT) versionsKept.delete(versionsKept.keys().next().value);
+  return parts;
+}
+const versionsKept = new Map();
 
 /// /sitemaps/index.xml: the sitemaps there are, the site's own
 /// (/sitemap.xml), the sets' pages', a few thousand to a file, and the

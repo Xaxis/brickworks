@@ -2397,6 +2397,9 @@ plan with Claude as the client.
   cards, 24 a page by `web/pager.js`.
 - `lists browser flow` (`tools/web/lists_flow.mjs`, preview check
   `[lists]`): below, under "Your sets and lists".
+- `ownedparts browser flow` (`tools/web/ownedparts_flow.mjs`, preview check
+  `[ownedparts]`) and `ownedparts probe` (`tools/web/ownedparts_probe.mjs`):
+  below, under "What you own and lack".
 - `share sheet` (`web/card.js` `shareSheetHtml` and `shareTargets`,
   `web/share-sheet.js`, docs/SOCIAL.md U14 and section 7): Share on a
   model's, a set's, a person's (`/u/`), your own (`/profile` `#share`), a
@@ -6586,8 +6589,8 @@ read as 3/3, 3/3, 1/3, 5/210 with his pool's lots, pieces and one unknown
 set, Parts I own offered him and ordering tower, shed, wall, hall, ready=1
 tower, shed, signed out 401 both ways and no shares without mine=1, You
 can build now tower, shed at 1280 and 390 px (`7_build_now-*.png`,
-`8_build_now_shelf-390.png`), the page by Parts I own with "You have 1 of
-its 3 parts · 33%" (`9_parts_i_own.png`); Ada with no collection asked to
+`8_build_now_shelf-390.png`), the page by Parts I own with Wall's 1/3 and
+Hall's 5/210 drawing no line, under half (ownedparts) (`9_parts_i_own.png`); Ada with no collection asked to
 tell what she owns (`10_no_collection-390.png`); no page errors. 48
 checks, all ok, 2026-10-19, against the held relay with the live project
 (about 4 minutes), with the catalogue beside api/ and without it (a pool
@@ -8056,6 +8059,70 @@ it, with its numbers, a theme filter and a search; a Rebrickable CSV makes
 Galaxy Explorer owned; Download CSV holds both; at 430 px with touch in
 both themes the panel is a sheet at the foot and How many goes to 2 and
 back; nothing sideways and no script errors. 21 pictures, each looked at.
+
+### What you own and lack (a card's share, What you're missing, You own)
+
+ownedparts (2026-11-23). A card says "You have 87%" (`web/card.js`
+`ownedLine`) from half a model's parts up, "✓ You have every part" at all
+of them, nothing under half and nothing signed out, from the share the
+gallery's one query already counts for the page (`op=list&mine=1`). A
+model's Parts tab, signed in, says how much of it you have and offers All ·
+Missing · Have all; Missing lists only the lots short, each with how many
+more and how many you have, and BrickLink XML, Rebrickable CSV and LEGO®
+Pick a Brick CSV of just those (`api/share.js` `op=parts_missing`,
+`api/_owned.js` `missingOf`, `heldOf`). A set's page has You own − n + in
+Parts you own (1 to 99, 0 takes it out: `web/keep.js` `ownCount`, the own
+op refusing past `MOST_OWNED`) and In N lists (`api/_lists.js`
+`setListsOf`, from `set_lists`). The SQL (two read-only functions, no
+table) and the sums, with no network:
+
+```sh
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/owned_quantity.sql \
+  --dry --try=tools/owned_quantity_try.sql --table=collection_pools
+node tools/web/ownedparts_probe.mjs --out=shots/ownedparts_probe
+```
+
+The dry run proves it when Ada's holds are
+`[["3001",1,2],["3001",4,7],["3794",15,5]]`; 3003 alone, nothing asked,
+nobody's pool and over 5,000 parts each `[]`; 6020-1 with tests count 2,
+Shelf then Castles, never Mine, the wishlist or Gone, without tests 0; only
+the service role executing; the plan an index scan on
+`collection_pools_pkey`. Until it is applied, What you're missing reads the
+pool's shards instead (slower, the same answer) and In N lists says
+nothing. `ownedparts_probe` ends "ownedparts_probe: 46 passed, 0 failed":
+three models of real OMR files (6541-1 with 6596-1 inside it, 6596-1 twice,
+6660-1 three times with 6596-1) less real inventories owned, 0 keys wrong
+against a count from the raw rows, the BrickLink XML parsed back item for
+item, every Pick a Brick line a known LEGO® element, a model of 0 parts and
+one of 4,000, the own op's count at its edges (99 kept; 100, -1, x and 2.5
+refused 400; a stale count 409; an import's 120 taken down to 119), the
+card's line at its edges.
+
+Then live, with three throwaway accounts and the raw rows read through the
+database's own connection (read only), against a preview or a local relay
+on a port of your own:
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 11461 &
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/web/ownedparts_flow.mjs --url=http://127.0.0.1:11461 --out=shots/ownedparts
+BW_BYPASS=$VERCEL_BYPASS PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/web/ownedparts_flow.mjs --url=<preview> --out=shots/ownedparts
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/ownedparts_timing.mjs --a=<pre261 preview> --b=<preview> --out=shots/ownedparts
+```
+
+`ownedparts_flow` proves it when it ends "ownedparts: every card's share,
+what is missing of three models, You own and its attacks": each account's
+24 cards 0 wrong against the raw rows and every line as its numbers say;
+Bo's first three every part, 60%, nothing; signed out no shares; three
+models' missing 0 keys wrong, the BrickLink XML parsed, every Pick a Brick
+line an element of a lot short; at 1280 and 390 in both themes the gallery
+with no API ask a card, Missing chosen with only the short lots and their
+lists (`parts-missing-*.png`), the downloaded XML the answer's own; Cy's You
+own 3 (`set-owned-*.png`) and, once the SQL is applied, In N lists with
+Cy's list (`set-lists-*.png`); 100, -1, x and nothing refused in words with
+the field back and the account unchanged; Enter then leaving the field
+sends one change; the other tab's 6 said; taken out in the other tab said;
+signed out mid-page asks to sign in. `ownedparts_timing` passes when b is
+within 50 ms of a at the median of 16 same-moment rounds.
 
 ### The gallery's Builds tab (/builds) and More like on a profile
 

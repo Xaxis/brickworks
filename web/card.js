@@ -318,14 +318,33 @@ function tallyHtml(icon, n, one, many) {
     + `<span class="visually-hidden">${escapeHtml(words.slice(words.indexOf(" ")))}</span></span>`;
 }
 
-/// What the asker's collection holds of a card's model, in a line, or "".
+/// What the asker's collection holds of a card's model ([owned]: {have,
+/// pieces}, by part and colour, the gallery's count), in a line: "You have
+/// 87%" from half its parts up, "✓ You have every part" at all of them, and
+/// "" below half (ownedparts: a builder acts on what they can nearly build;
+/// a row of "You have 3%" says nothing), signed out, or not counted. The
+/// share is rounded down, so 99.9% is never "every part".
 export function ownedLine(owned) {
-  if (!owned || owned.pieces === null || owned.pieces === undefined || !Number(owned.pieces)) return "";
-  const have = Number(owned.have) || 0;
-  const pieces = Number(owned.pieces);
+  const pieces = Number(owned?.pieces);
+  if (!owned || owned.pieces === null || !Number.isFinite(pieces) || pieces < 1) return "";
+  const have = Math.min(Math.max(Number(owned.have) || 0, 0), pieces);
   if (have >= pieces) return `✓ ${say("You have every part")}`;
-  if (have === 0) return say("You have none of its parts");
-  return `${say("You have {have} of its {pieces} parts", { have: number(have), pieces: number(pieces) })} · ${Math.floor((100 * have) / pieces)}%`;
+  if (2 * have < pieces) return "";
+  const share = (Math.floor((100 * have) / pieces) / 100)
+    .toLocaleString(globalThis.brickworksLang?.locale || "en-US", { style: "percent", maximumFractionDigits: 0 });
+  return say("You have {share}", { share });
+}
+
+/// The card's line of [owned] (ownedLine), with the count it is made of on
+/// hover, or "": a gallery card's, and the home feed's build posts', the one
+/// way.
+export function ownedHtml(owned) {
+  const line = ownedLine(owned);
+  if (!line) return "";
+  const pieces = Number(owned.pieces);
+  const have = Math.min(Math.max(Number(owned.have) || 0, 0), pieces);
+  const count = say("You have {have} of its {pieces} parts", { have: number(have), pieces: number(pieces) });
+  return `<small class="${have >= pieces ? "owned all" : "owned"}" title="${escapeHtml(count)}">${escapeHtml(line)}</small>`;
 }
 
 /// A model's motions as a card says them: "open the dome, extend the
@@ -522,11 +541,11 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     say(model.likes, "like");
     lines.push(`<small>${escapeHtml(said.join(" · "))}</small>`);
   }
-  // Signed in with a collection: how much of it is theirs already.
-  const theirs = ownedLine(model.owned);
-  if (theirs) {
-    const all = Number(model.owned.have) >= Number(model.owned.pieces);
-    lines.push(`<small class="${all ? "owned all" : "owned"}">${escapeHtml(theirs)}</small>`);
+  // Signed in with a collection: how much of it is theirs already, from
+  // half up; what was counted is on the card whatever it is.
+  const theirs = ownedHtml(model.owned);
+  if (theirs) lines.push(theirs);
+  if (model.owned && Number(model.owned.pieces) >= 1) {
     data.push(`data-owned="${Number(model.owned.have) || 0}/${Number(model.owned.pieces)}"`);
   }
   // What it won in the monthly challenges (supabase/challenges.sql).

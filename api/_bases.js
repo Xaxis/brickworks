@@ -35,6 +35,7 @@ import { HOWS } from "./_card.js";
 import { namesTrouble } from "./_names.js";
 import { SET_NUMBER, askSets, catalogSet, pictureOf, searchCatalog, setCatalog } from "./_sets.js";
 import { wordsOf } from "./_search.js";
+import { setListsOf } from "./_lists.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const MOST = 3;
@@ -199,11 +200,15 @@ export function setFind(request, response) {
   return response.status(200).json({ q, sets: setsFound(q) });
 }
 
-/// GET ?op=set_based&set=N: {models}, each a gallery card with [based].
+/// GET ?op=set_based&set=N: {models}, each a gallery card with [based], and
+/// the public lists it is in (lists: {count, lists}, api/_lists.js
+/// setListsOf; null when that could not be read), which the set's page
+/// says beside them: one ask for what people did with the set.
 export async function setBased(request, response, origin) {
   const tests = testsAsked(request.query || {});
   const entry = catalogSet(String(request.query?.set || ""));
   if (!entry) throw new Unacceptable("There is no such set in the catalogue.", 404);
+  const lists = setListsOf(entry.set, tests).catch(() => null);
   let rows = [];
   try {
     rows = await db("rpc/set_based", { method: "POST", body: { set_number: entry.set, tests } });
@@ -212,5 +217,6 @@ export async function setBased(request, response, origin) {
   }
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : LIST_CACHE);
   return response.status(200).json({ set: entry.set,
-    models: (Array.isArray(rows) ? rows : []).map((row) => ({ ...cardOf(origin, row), based: HOWS[row.based] ? row.based : null })) });
+    models: (Array.isArray(rows) ? rows : []).map((row) => ({ ...cardOf(origin, row), based: HOWS[row.based] ? row.based : null })),
+    lists: await lists });
 }

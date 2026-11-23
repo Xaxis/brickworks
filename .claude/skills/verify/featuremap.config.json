@@ -2668,7 +2668,7 @@
       "kind": "lib",
       "label": "build with what I own",
       "entry": "api/_owned.js",
-      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool, a kept pool counted again by its rule); the SQL in tools/discovery_try.sql and tools/pool_rule_try.sql; the page in the discovery browser flow, signed in with a collection",
+      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool, a kept pool counted again by its rule); the SQL in tools/discovery_try.sql and tools/pool_rule_try.sql; the page in the discovery browser flow, signed in with a collection; what a model is missing of a collection: node tools/web/ownedparts_probe.mjs (real OMR files less real inventories), tools/owned_quantity_try.sql",
       "area": "web"
     },
     {
@@ -2976,7 +2976,7 @@
       "kind": "ui",
       "label": "model card",
       "entry": "web/card.js",
-      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3; the gallery's sets, builds' photos and collections are the same card (web/card.js cardHtml with a set, buildCardHtml, collectionCardHtml)",
+      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3; the gallery's sets, builds' photos and collections are the same card (web/card.js cardHtml with a set, buildCardHtml, collectionCardHtml); signed in with a collection, a card says You have N% from half its parts up, You have every part at all, nothing under half (ownedLine, ownedparts)",
       "area": "web"
     },
     {
@@ -3032,7 +3032,7 @@
       "kind": "ui",
       "label": "a model's parts and its download",
       "entry": "api/_parts.js",
-      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, LEGO® Pick a Brick CSV /m/<id>/parts-pab.csv (past 400 elements also parts-pab-2.csv and on; what it leaves off under the buttons), the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
+      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, LEGO® Pick a Brick CSV /m/<id>/parts-pab.csv (past 400 elements also parts-pab-2.csv and on; what it leaves off under the buttons), the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd; signed in: how much of it you have and All · Missing · Have all, Missing the lots short with BrickLink XML, Rebrickable CSV and Pick a Brick CSV of only those (api/share.js ?op=parts_missing, ownedparts: tools/web/ownedparts_flow.mjs))",
       "area": "web"
     },
     {
@@ -3879,7 +3879,7 @@
       "kind": "ui",
       "label": "every set's page",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs; signed in, You own − n + in Parts you own (1-99, 0 takes it out, web/keep.js ownCount) and In N lists (?op=set_based lists, supabase/owned_quantity.sql set_lists), ownedparts)",
       "area": "web"
     },
     {

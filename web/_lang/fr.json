@@ -1146,7 +1146,8 @@
   "Ask, show, swap ideas": "Demandez, montrez, échangez des idées",
   "See all of Talk": "Tout le forum",
   "The builders’ forum: show what you made, ask for help with a step, and join the month’s challenge.": "Le forum des constructeurs : montrez ce que vous avez fait, demandez de l’aide pour une étape et participez au défi du mois.",
-  "Start a thread": "Lancer une discussion"
+  "Start a thread": "Lancer une discussion",
+  "The sets and parts you own (Own on a set’s page, My collection in the app) are kept with your account. They are used to tell you, and only you, how much of a model you have: on the gallery’s cards, on a model’s Parts tab and on a set’s page. Nobody else sees them unless you show your sets on your profile.": "Les sets et les pièces que vous possédez (Je l’ai sur la page d’un set, Ma collection dans l’appli) sont gardés avec votre compte. Ils servent à vous dire, à vous seul, combien d’un modèle vous avez : sur les cartes de la galerie, dans l’onglet Pièces d’un modèle et sur la page d’un set. Personne d’autre ne les voit, sauf si vous montrez vos sets sur votre profil."
  },
  "scripts": {
   "Copy": "Copier",
@@ -3300,6 +3301,27 @@
   "replies": "réponses",
   "That thread is not here": "Cette discussion n’est pas ici",
   "The address may be mistyped, or the thread was removed.": "L’adresse est peut-être mal saisie, ou la discussion a été retirée.",
-  "See what people are talking about": "Voir de quoi on parle"
+  "See what people are talking about": "Voir de quoi on parle",
+  "You have {share}": "Vous avez {share}",
+  "You can own up to {most} copies of a set here.": "Vous pouvez avoir ici jusqu'à {most} exemplaires d'un set.",
+  "Type how many you own, a whole number from 1 to {most}, or 0 to take it out.": "Tapez combien vous en avez : un nombre entier de 1 à {most}, ou 0 pour le retirer.",
+  "People put it in {lists}.": "Des gens l'ont mis dans {lists}.",
+  "A list": "Une liste",
+  "public list": "liste publique",
+  "public lists": "listes publiques",
+  "{n} more needed": "encore {n} nécessaires",
+  "you have {have} of {need}": "vous en avez {have} sur {need}",
+  "Sign in again to see what you are missing.": "Reconnectez-vous pour voir ce qui vous manque.",
+  "What you own could not be read just now. Reload the page to ask again.": "Ce que vous possédez n'a pas pu être lu pour l'instant. Rechargez la page pour redemander.",
+  "Mark the sets you own (Own, on a set's page) or add your parts in the app, and this says what you are missing.": "Marquez les sets que vous possédez (Je l’ai, sur la page d’un set) ou ajoutez vos pièces dans l'appli, et ceci dira ce qui vous manque.",
+  "Have all {n} of its parts.": "Vous avez ses {n} pièces.",
+  "You have {have} of its {pieces} parts ({share}): {short} missing, in {lots}.": "Vous avez {have} de ses {pieces} pièces ({share}) : il en manque {short}, en {lots}.",
+  "Counting what you have of it…": "Compte de ce que vous en avez…",
+  "All": "Tout",
+  "Missing": "Manquant",
+  "Have all": "Tout là",
+  "What you're missing": "Ce qui vous manque",
+  "Every lot": "Chaque lot",
+  "Not counted, as nobody owns them on their own (stickers, made parts): {parts}.": "Non comptées, car personne ne les possède seules (autocollants, pièces fabriquées) : {parts}."
  }
 }

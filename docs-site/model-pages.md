@@ -130,6 +130,16 @@ lib:mentions in comments
 
 The **Parts** tab lists every part by **Colour** or by **Kind**. Download it for a shop: **BrickLink XML** (`/m/<id>/parts.xml`), **Rebrickable CSV** (`/m/<id>/parts.csv`) or **LEGO® Pick a Brick CSV**.
 
+### What you're missing {#missing}
+
+Signed in, the tab says how much of the model [your collection](/docs/collection) holds, counted as the gallery's cards count it: *You have 138 of its 187 parts (73%): 49 missing, in 19 lots.* Under it, **All**, **Missing** and **Have all** show every lot, only the lots you are short of (each with how many more you need and how many you have), or the lots you have every one of. With **Missing** chosen, **BrickLink XML**, **Rebrickable CSV** and **LEGO® Pick a Brick CSV** download just the missing parts, to buy them. When you have every part it says *Have all 187 of its parts.*
+
+Parts nobody owns on their own (stickers, parts made for the model) are not counted, and the Pick a Brick list leaves off a part with no LEGO® element number known; the tab says how many of each. The element numbers come from Rebrickable's list of LEGO® elements; whether Pick a Brick has each one in stock today, its own upload tells you.
+
+![A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO® Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.](/docs/img/parts-missing.webp "What you're missing, on a model's Parts tab.")
+
+![What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.](/docs/img/parts-missing-phone.webp "What you're missing, on a phone.")
+
 <!-- covers
 ui:a model's parts and its download
 -->

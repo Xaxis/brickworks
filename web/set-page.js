@@ -12,15 +12,18 @@
 //
 // The page says what it found on <html data-owned>: "have/pieces", "none"
 // for no collection, "broken" when it could not ask (tools/web/sets_flow.mjs
-// reads it); and on <html data-based> how many models are built from it,
-// "broken" when it could not ask (tools/web/based_on_flow.mjs).
+// reads it); on <html data-based> how many models are built from it,
+// "broken" when it could not ask (tools/web/based_on_flow.mjs); and on
+// <html data-lists> how many public lists it is in (ownedparts).
 //
 // Every word in the page's language (web/card.js say: /de/library/set/<n>
 // carries its copy's words), its numbers as the language writes them.
 import { call, signedIn } from "/account.js";
-import { counted, modelCard, number, say } from "/card.js";
+import { counted, langAt, modelCard, number, say } from "/card.js";
 
 const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
+// A list's link (api/_mylists.js): ten letters and digits.
+const ID = /^[A-Za-z0-9]{10}$/;
 const owned = document.getElementById("owned");
 if (owned && SET.test(owned.dataset.set || "") && signedIn()) start(owned);
 const page = document.querySelector("article.set-page");
@@ -34,8 +37,10 @@ async function builtFrom(article) {
   const body = reply && reply.ok ? await reply.json().catch(() => null) : null;
   if (!body || !Array.isArray(body.models)) {
     document.documentElement.dataset.based = "broken";
+    document.documentElement.dataset.lists = "broken";
     return;
   }
+  inLists(article, body.lists);
   const models = body.models.filter((model) => model && typeof model.id === "string");
   if (models.length) {
     const section = document.createElement("section");
@@ -53,42 +58,21 @@ async function builtFrom(article) {
   document.documentElement.dataset.based = String(models.length);
 }
 
+/// Parts you own: how much of the set their collection holds, and what they
+/// are missing as each shop's list; asked again whenever they change how
+/// many of it they own on this page (web/keep.js "brickworks:owned"), so
+/// the count and what it means are said together.
 async function start(section) {
   const set = section.dataset.set;
   const said = document.getElementById("owned-said");
-  const reply = await call(`/api/share?op=catalog_owned&set=${encodeURIComponent(set)}`).catch(() => null);
-  if (!reply || reply.status !== 200 || !reply.body || typeof reply.body !== "object") {
-    document.documentElement.dataset.owned = "broken";
-    return;
-  }
-  const body = reply.body;
-  const pieces = Number(body.pieces) || 0;
-  const have = Math.min(Number(body.have) || 0, pieces);
-  section.hidden = false;
-  if (!body.collection) {
-    said.textContent = say("Your collection is empty. Add the sets and parts you own under My collection in the app, "
-      + "and this says how much of this set you have.");
-    document.documentElement.dataset.owned = "none";
-    return;
-  }
-  said.textContent = have >= pieces ? say("Parts you own: all {n} of them.", { n: number(pieces) })
-    : say("Parts you own: {have} of {pieces}. You are missing {missing} in {lots}.", { have: number(have),
-      pieces: number(pieces), missing: number(pieces - have), lots: counted(Number(body.missing) || 0, "lot") });
-  document.documentElement.dataset.owned = `${have}/${pieces}`;
   const wanted = document.getElementById("owned-wanted");
-  if (have >= pieces || !wanted || !body.wanted) return;
-  wanted.hidden = false;
-  const files = {
-    bricklink: [body.wanted.bricklink, "application/xml", `${set}-missing-bricklink.xml`],
-    rebrickable: [body.wanted.rebrickable, "text/csv", `${set}-missing-rebrickable.csv`],
-  };
-  for (const button of wanted.querySelectorAll("[data-wanted]")) {
-    const [text, type, name] = files[button.dataset.wanted] || [];
-    if (typeof text !== "string") {
-      button.hidden = true;
-      continue;
-    }
-    button.addEventListener("click", () => {
+  // What each download button gives, as the newest answer has it.
+  const files = {};
+  if (wanted) {
+    wanted.addEventListener("click", (event) => {
+      const button = event.target.closest?.("[data-wanted]");
+      const [text, type, name] = files[button?.dataset.wanted] || [];
+      if (typeof text !== "string") return;
       const link = document.createElement("a");
       link.href = URL.createObjectURL(new Blob([text], { type }));
       link.download = name;
@@ -98,4 +82,97 @@ async function start(section) {
       setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     });
   }
+  let asking = 0;
+  const ask = async () => {
+    const mine = ++asking;
+    const reply = await call(`/api/share?op=catalog_owned&set=${encodeURIComponent(set)}`).catch(() => null);
+    if (mine !== asking) return;
+    if (!reply || reply.status !== 200 || !reply.body || typeof reply.body !== "object") {
+      document.documentElement.dataset.owned = "broken";
+      return;
+    }
+    const body = reply.body;
+    const pieces = Number(body.pieces) || 0;
+    const have = Math.min(Number(body.have) || 0, pieces);
+    section.hidden = false;
+    for (const key of Object.keys(files)) delete files[key];
+    if (wanted) wanted.hidden = true;
+    if (!body.collection) {
+      said.textContent = say("Your collection is empty. Add the sets and parts you own under My collection in the app, "
+        + "and this says how much of this set you have.");
+      document.documentElement.dataset.owned = "none";
+      return;
+    }
+    said.textContent = have >= pieces ? say("Parts you own: all {n} of them.", { n: number(pieces) })
+      : say("Parts you own: {have} of {pieces}. You are missing {missing} in {lots}.", { have: number(have),
+        pieces: number(pieces), missing: number(pieces - have), lots: counted(Number(body.missing) || 0, "lot") });
+    document.documentElement.dataset.owned = `${have}/${pieces}`;
+    if (have >= pieces || !wanted || !body.wanted) return;
+    wanted.hidden = false;
+    files.bricklink = [body.wanted.bricklink, "application/xml", `${set}-missing-bricklink.xml`];
+    files.rebrickable = [body.wanted.rebrickable, "text/csv", `${set}-missing-rebrickable.csv`];
+    // LEGO® Pick a Brick's, a file of 400 elements each (ownedparts): a
+    // button a file where there are more.
+    const pab = Array.isArray(body.wanted.pickabrick) ? body.wanted.pickabrick.filter((text) => typeof text === "string") : [];
+    for (const extra of wanted.querySelectorAll('[data-wanted^="pickabrick-"]')) extra.remove();
+    const first = wanted.querySelector('[data-wanted="pickabrick"]');
+    pab.forEach((text, n) => {
+      const button = n === 0 ? first : first.cloneNode(false);
+      if (!button) return;
+      button.dataset.wanted = n === 0 ? "pickabrick" : `pickabrick-${n + 1}`;
+      button.textContent = pab.length > 1 ? say("LEGO® Pick a Brick CSV, {n} of {all}", { n: number(n + 1), all: number(pab.length) })
+        : say("LEGO® Pick a Brick CSV");
+      files[button.dataset.wanted] = [text, "text/csv", `${set}-missing-pickabrick${pab.length > 1 ? `-${n + 1}` : ""}.csv`];
+      if (n > 0) wanted.append(button);
+    });
+    for (const button of wanted.querySelectorAll("[data-wanted]")) button.hidden = typeof files[button.dataset.wanted]?.[0] !== "string";
+  };
+  addEventListener("brickworks:owned", (event) => {
+    if (event.detail?.key === `set:${set.toLowerCase()}`) ask();
+  });
+  await ask();
+}
+
+/// "In N lists" (ownedparts): the public lists the set is in, as the
+/// set_based answer has them (api/_lists.js setListsOf), by name and whose,
+/// after its parts (never among the facts under its name, where a pill
+/// coming late would move the first screen); none while it is in none, or
+/// when they could not be read.
+function inLists(article, lists) {
+  const count = Number(lists?.count) || 0;
+  const shown = (Array.isArray(lists?.lists) ? lists.lists : []).filter((list) => list && ID.test(String(list.id)));
+  document.documentElement.dataset.lists = lists ? String(count) : "broken";
+  if (!count || !shown.length) return;
+  const at = langAt();
+  const section = document.createElement("section");
+  section.className = "words in-lists";
+  section.id = "in-lists";
+  section.setAttribute("aria-labelledby", "in-lists-h");
+  const heading = document.createElement("h2");
+  heading.id = "in-lists-h";
+  heading.textContent = count === 1 ? say("In 1 list") : say("In {n} lists", { n: number(count) });
+  const note = document.createElement("p");
+  note.className = "note";
+  note.textContent = say("People put it in {lists}.", { lists: counted(count, "public list") });
+  const pills = document.createElement("ul");
+  pills.className = "pills";
+  for (const list of shown) {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.className = "pill";
+    link.href = `${at}/c/${list.id}`;
+    link.append(String(list.name || say("A list")));
+    const by = list.by && typeof list.by.name === "string" ? list.by.name : "";
+    if (by) {
+      const whose = document.createElement("small");
+      whose.textContent = ` · ${by}`;
+      link.append(whose);
+    }
+    item.append(link);
+    pills.append(item);
+  }
+  section.append(heading, note, pills);
+  const before = document.getElementById("inside") || document.getElementById("models3d") || document.getElementById("about");
+  if (before) before.before(section);
+  else article.append(section);
 }

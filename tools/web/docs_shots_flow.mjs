@@ -130,6 +130,10 @@ function answerOf(answers, where) {
 const SERVER = [
   [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", (m) => ({ op: "page", id: m[1] })],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", (m) => ({ op: "page", id: m[1], v: m[2] })],
+  // A model's parts list (its Parts tab), from its file in "db"; a set's
+  // page, from this checkout's catalogue (ownedparts).
+  [/^\/m\/([A-Za-z0-9]{10})\/parts\.(json|xml|csv)$/, "share", (m) => ({ op: "parts", id: m[1], as: m[2] })],
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", (m) => ({ op: "catalog_set", set: m[1] })],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", (m) => ({ op: "page", handle: m[1] })],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", (m) => ({ op: "list_page", id: m[1] })],
   [/^\/talk\/?$/, "people", () => ({ op: "talk_page" })],

@@ -97,6 +97,91 @@
    "features": [
     "ui:build it step player"
    ]
+  },
+  {
+   "id": "parts-missing",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=3"
+   ],
+   "pad": 12,
+   "alt": "A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO\u00ae Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.",
+   "caption": "What you're missing, on a model's Parts tab.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
+  },
+  {
+   "id": "parts-missing-phone",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=1"
+   ],
+   "pad": 8,
+   "alt": "What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.",
+   "caption": "What you're missing, on a phone.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
   }
  ]
 }

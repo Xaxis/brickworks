@@ -217,6 +217,23 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* The shops' lists, one group: it wraps as a whole beside Colour and Kind
    or under them, never one shop a row apart from the rest. */
 .parts-shops { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+/* What somebody signed in has of a model's parts (ownedparts,
+   web/model-page.js startMine): the line that says it, then All · Missing ·
+   Have all, each with how many lots; the row is kept from the start, a
+   field's height, so the list under it does not move when it is said. */
+.parts-mine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); min-height: var(--control-h);
+	margin: 0 0 var(--s-3); }
+.parts-mine .parts-have { flex: 1 1 240px; margin: 0; }
+.parts-mine .parts-have.all { font-weight: 600; }
+.parts-mine .segmented .n { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.parts-mine .segmented [aria-pressed="true"] .n { color: var(--ink); }
+/* A set page's You own − n + (ownedparts, api/_sets.js ownCountHtml), in
+   Parts you own once they own it: the number a field four digits wide
+   between − and +, and what it means beside it. */
+.owned-count .keep-count { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); }
+.owned-count label { font-weight: 600; }
+.owned-count input { width: 4.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.owned-count .note { flex: 1 1 14em; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 .lot-list { list-style: none; margin: 0 0 var(--s-3); padding: 0; }
 .lot-list li {
 	display: flex; align-items: center; gap: var(--s-3); height: 60px; min-width: 0;
