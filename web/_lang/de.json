@@ -3300,6 +3300,27 @@
   "replies": "Antworten",
   "That thread is not here": "Dieses Thema gibt es hier nicht",
   "The address may be mistyped, or the thread was removed.": "Die Adresse ist vielleicht falsch geschrieben, oder das Thema wurde entfernt.",
-  "See what people are talking about": "Sieh dir an, worüber gesprochen wird"
+  "See what people are talking about": "Sieh dir an, worüber gesprochen wird",
+  "Change it with your Claude": "Mit deinem Claude ändern",
+  "Or have your own Claude open a copy and change it as you ask": "Oder lass deinen eigenen Claude eine Kopie öffnen und sie so ändern, wie du es sagst",
+  "With your Claude": "Mit deinem Claude",
+  "Your own Claude, with the Brickworks connector, opens a copy in your models and changes it as you ask. Publish the copy, and its page says it was remixed from this one.": "Dein eigener Claude öffnet mit dem Brickworks-Konnektor eine Kopie in deinen Modellen und ändert sie so, wie du es sagst. Veröffentliche die Kopie, und ihre Seite sagt, dass sie ein Remix von diesem Modell ist.",
+  "What should it change?": "Was soll er ändern?",
+  "Make the roof blue, or add a stand with a nameplate": "Mach das Dach blau, oder füge einen Ständer mit Namensschild hinzu",
+  "Copy for Claude": "Für Claude kopieren",
+  "Share to Claude": "An Claude teilen",
+  "No connector yet? {connect}, and your message waits for you there.": "Noch kein Konnektor? {connect}, und deine Nachricht wartet dort auf dich.",
+  "Connect Claude": "Claude verbinden",
+  "Your message for Claude": "Deine Nachricht für Claude",
+  "“{name}” by {by}": "„{name}“ von {by}",
+  "“{name}”": "„{name}“",
+  "Please change a LEGO® model on Brickworks for me: {model}, {url}": "Bitte ändere für mich ein LEGO® Modell auf Brickworks: {model}, {url}",
+  "With the Brickworks connector, call open_model with link={link}: it opens a copy in my models, and the original stays as it is.": "Rufe mit dem Brickworks-Konnektor open_model mit link={link} auf: Das öffnet eine Kopie in meinen Modellen, und das Original bleibt, wie es ist.",
+  "Then change the copy: {ask}": "Ändere dann die Kopie: {ask}",
+  "Then ask me what to change.": "Frag mich dann, was du ändern sollst.",
+  "When it is done, show me how it looks. I will publish the copy, and its page will credit the original.": "Wenn du fertig bist, zeig mir, wie es aussieht. Ich veröffentliche die Kopie, und ihre Seite nennt das Original.",
+  "That is {n} characters: a message for Claude takes {most} at most. Say it shorter, or say the rest to Claude in the chat.": "Das sind {n} Zeichen: Eine Nachricht für Claude hat höchstens {most}. Sag es kürzer, oder sag Claude den Rest im Chat.",
+  "Copied. Paste it into a chat with your Claude, with the Brickworks connector on.": "Kopiert. Füge es in einen Chat mit deinem Claude ein, mit eingeschaltetem Brickworks-Konnektor.",
+  "That did not open just now: use Copy for Claude instead": "Das hat sich gerade nicht geöffnet: Nutze stattdessen „Für Claude kopieren“"
  }
 }

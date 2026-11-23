@@ -107,9 +107,19 @@
 //      (touch-action pan-y until the person takes hold), a swipe across
 //      turns it; Back to the picture puts the picture back. Its costs said: the code's bytes,
 //      the scene's, the geometry's, and the first frame from the click.
+//  19. Change it with your Claude (claudelink), signed out: Open in
+//      Brickworks' second half, named for a screen reader, beside it in one
+//      control on the page's width; Tab from Open in Brickworks reaches it,
+//      Enter opens the panel with the keyboard in What should it change?;
+//      Copy for Claude copies the message (the model's link, open_model
+//      link=<id> and the ask, as one line: Unicode spaces made spaces, the
+//      zero-width gone) and says so; an ask over 500 characters refused in
+//      words, nothing copied; Connect Claude keeps the message for the
+//      connect page; Escape closes it, back on the button. On a phone with
+//      a share sheet, Share to Claude hands it the message.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
-// Save's lists and More open.
+// Save's lists and More open, and With your Claude open (_claude).
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, pickABrick } from "../../api/_parts.js";
@@ -633,6 +643,96 @@ async function threeD(page, label, stem, phone) {
     && JSON.stringify(closed.picture) === JSON.stringify(was.picture));
 }
 
+/// 19. With your Claude, Open in Brickworks' second choice (claudelink): the
+/// control, the keyboard's way through it, the message copied, the refusal of
+/// an ask too long, the message kept for the connect page, and on a phone the
+/// share sheet. The page's clipboard is this flow's (window.__copied).
+async function withYourClaude(page, context, { label, stem, phone, width }) {
+  await page.evaluate(() => { window.scrollTo({ top: 0, behavior: "instant" }); window.__copied = []; });
+  const control = await page.evaluate(() => {
+    const button = document.querySelector("[data-open-claude]");
+    const open = document.querySelector(".open-split > a.cta");
+    const box = (el) => (el ? el.getBoundingClientRect() : null);
+    const [b, o] = [box(button), box(open)];
+    return { shown: Boolean(button && !button.hidden && b.width), name: button?.getAttribute("aria-label") || "",
+      expanded: button?.getAttribute("aria-expanded"), words: (button?.innerText || "").trim(),
+      open: open?.textContent.trim() || "", href: open?.getAttribute("href") || "",
+      oneRow: Boolean(b && o && Math.abs(b.top - o.top) < 2 && Math.abs(b.height - o.height) < 2 && b.left >= o.right - 2),
+      inside: Boolean(b && b.right <= innerWidth + 0.5 && o.left >= -0.5), sideways: document.scrollingElement.scrollWidth > innerWidth + 1 };
+  });
+  check(`${label}: With your Claude beside ${control.open} in one control, "${control.words}", named "${control.name}"`,
+    control.shown && control.name === "Change it with your Claude" && control.expanded === "false" && control.open === "Open in Brickworks"
+      && /^\/app\?copy=/.test(control.href) && control.oneRow && control.inside && !control.sideways
+      && control.words === (width < 600 ? "Claude" : "With your Claude"));
+  // The keyboard: Tab from Open in Brickworks, Enter opens it, in the box.
+  await page.focus(".open-split > a.cta");
+  await page.keyboard.press("Tab");
+  const reached = await page.evaluate(() => document.activeElement?.matches("[data-open-claude]"));
+  await page.keyboard.press("Enter");
+  const opened = await until(page, () => !document.getElementById("claude-panel")?.hidden
+    && document.activeElement?.id === "claude-ask", null, 4000);
+  check(`${label}: Tab reaches it from Open in Brickworks, Enter opens it with the keyboard in What should it change?`, reached && opened);
+  const id = await page.evaluate(() => document.getElementById("claude-panel").dataset.id);
+  const url = await page.evaluate(() => document.getElementById("claude-panel").dataset.url);
+  // Typed with a no-break space and a zero-width one in it, as a paste brings them.
+  await page.fill("#claude-ask", "Make the roof\u00a0dark\u200b blue");
+  await page.press("#claude-ask", "Enter");
+  await until(page, () => window.__copied.length > 0, null, 4000);
+  const copied = await page.evaluate(() => ({ text: window.__copied.at(-1) || "", said: document.querySelector(".claude-said").textContent,
+    claude: document.documentElement.dataset.claude, sideways: document.scrollingElement.scrollWidth > innerWidth + 1 }));
+  if (out) {
+    await page.locator("#claude-panel").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(out, `${stem}_claude.png`) });
+  }
+  check(`${label}: Copy for Claude copies the message with its link, open_model link=${id} and the ask as one line, and says so ("${copied.said}")`,
+    copied.text.includes(url) && copied.text.includes(`call open_model with link=${id}:`) && copied.text.includes("Then change the copy: Make the roof dark blue")
+      && copied.text.includes("its page will credit the original") && /^Copied\./.test(copied.said) && copied.claude === "copied" && !copied.sideways);
+  // An ask too long is refused in words, nothing copied.
+  await page.fill("#claude-ask", "x".repeat(501));
+  await page.evaluate(() => { window.__copied = []; });
+  await page.click("#claude-panel .claude-do > .cta:not(.ghost)");
+  await page.waitForTimeout(200);
+  const refused = await page.evaluate(() => ({ copied: window.__copied.length, said: document.querySelector(".claude-said").textContent,
+    claude: document.documentElement.dataset.claude }));
+  check(`${label}: an ask of 501 characters is refused in words, nothing copied ("${refused.said.slice(0, 60)}")`,
+    refused.copied === 0 && refused.claude === "refused" && /^That is 501 characters/.test(refused.said));
+  // Connect Claude keeps the message for the connect page (web/docs.js).
+  await page.fill("#claude-ask", "Add a flag on top");
+  const kept = await page.evaluate(() => {
+    const link = document.querySelector("[data-claude-connect]");
+    link.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    link.click();
+    return { href: link.getAttribute("href"), kept: JSON.parse(localStorage.getItem("brickworks.claude.ask") || "null") };
+  });
+  check(`${label}: Connect Claude goes to ${kept.href}, the message kept for it`, kept.href === "/docs/connect#with-your-claude"
+    && kept.kept?.id === id && kept.kept?.ask === "Add a flag on top" && kept.kept?.text.includes("Then change the copy: Add a flag on top"));
+  await page.focus("#claude-ask");
+  await page.keyboard.press("Escape");
+  const closed = await page.evaluate(() => ({ hidden: document.getElementById("claude-panel").hidden,
+    back: document.activeElement?.matches("[data-open-claude]"), expanded: document.querySelector("[data-open-claude]").getAttribute("aria-expanded") }));
+  check(`${label}: Escape closes it, back on With your Claude`, closed.hidden && closed.back && closed.expanded === "false");
+  if (!phone) {
+    const share = await page.evaluate(() => document.querySelector("[data-claude-share]").hidden);
+    check(`${label}: no Share to Claude on a computer`, share);
+    return;
+  }
+  // A phone with a share sheet of its own: Share to Claude hands it the message.
+  await context.addInitScript(() => {
+    navigator.share = async (data) => { window.__sheet = data; };
+    navigator.canShare = () => true;
+  });
+  await page.reload({ waitUntil: "load" });
+  await until(page, () => !document.querySelector("[data-open-claude]")?.hidden, null, 8000);
+  await page.click("[data-open-claude]");
+  await page.fill("#claude-ask", "Recolour it red");
+  const offered = await until(page, () => !document.querySelector("[data-claude-share]")?.hidden, null, 4000);
+  if (offered) await page.click("[data-claude-share]");
+  await page.waitForTimeout(200);
+  const sheet = await page.evaluate(() => ({ text: window.__sheet?.text || "", claude: document.documentElement.dataset.claude }));
+  check(`${label}: on a phone with a share sheet, Share to Claude hands it the message`,
+    offered && sheet.text.includes("Then change the copy: Recolour it red") && sheet.claude === "shared");
+}
+
 const browser = await launch({ signedOut: true });
 const errors = [];
 try {
@@ -1020,6 +1120,9 @@ try {
               open: Boolean(document.querySelector("dialog.share-sheet[open]")), url: `${location.origin}${location.pathname}` }));
             check(`${label}: with a share sheet of its own, Share offers it, gives it the link (${sheet.sheet?.url}), copies nothing and closes`,
               offered && sheet.sheet?.url === sheet.url && sheet.copied === 0 && !sheet.open);
+
+            // 19. Change it with your Claude (claudelink), signed out.
+            if (!signedIn) await withYourClaude(page, context, { label, stem, phone, width });
           } catch (trouble) {
             check(`${label}: visited (${String(trouble).split("\n")[0]})`, false);
           } finally {

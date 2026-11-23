@@ -274,6 +274,14 @@ func _played() -> void:
 		said.contains("Built to its last step 3 times."))
 	_check("...and how to open a copy of it, as Open in Brickworks does",
 		said.contains("open_model link=Fake000001"))
+	# Last, the one call that changes it, and that its copy is credited to it
+	# once published (claudelink): a session asked to change a model from its
+	# page reads it first, and the way on is the last thing it reads.
+	_check("...ending on the one call that opens a copy to change, credited when published: %s"
+		% said.get_slice("\n", said.get_slice_count("\n") - 1).left(90),
+		said.get_slice("\n", said.get_slice_count("\n") - 1).begins_with(
+			"To change it, or build your own from it: open_model link=Fake000001 opens a copy")
+		and said.ends_with("its page credits this one as the model it was remixed from."))
 	# Who made it, what people said and built, and what is the person's own
 	# to do: a session asked could say none of it (mcpwalk2, t5).
 	_check("...its comments, newest first, the hidden one left out: %s" % said.get_slice("Comments: ", 1).get_slice("\n", 0),

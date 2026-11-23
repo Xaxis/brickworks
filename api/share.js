@@ -1193,6 +1193,47 @@ function nextRow(key, title, cards, all = "") {
 /// none. web/model-page.js makes them work, asking to sign in first where
 /// one must be; it counts the comments as it lists them. [url] is the
 /// page's own address, an older version's its own.
+/// Open in Brickworks' second choice, With your Claude (claudelink,
+/// docs/MASTERPLAN.md "What only Brickworks can do" 6): the other half of
+/// the one control, which opens claudePanel under the row. Drawn hidden, and
+/// shown by web/model-page.js, which is what makes it work. Not a .cta: a
+/// half with square corners on its start is the control's, not a button of
+/// its own (design_flow compares every .cta's corners).
+function claudeButton() {
+  const name = asText(say("Change it with your Claude"));
+  return `<button type="button" class="open-claude" data-open-claude aria-expanded="false" aria-controls="claude-panel" `
+    + `aria-label="${name}" title="${asText(say("Or have your own Claude open a copy and change it as you ask"))}" hidden>`
+    + `${iconHtml("spark")}<span class="word wide" aria-hidden="true">${asText(say("With your Claude"))}</span>`
+    + `<span class="word narrow" aria-hidden="true">Claude</span>${iconHtml("down")}</button>`;
+}
+
+/// Change it with your Claude: what should it change (optional), and Copy
+/// for Claude, a message naming the model's link and the one call that opens
+/// a copy of it (open_model link=), to paste into the person's own Claude
+/// with the Brickworks connector; on a phone, its share sheet too; and the
+/// way to connect Claude first, the message kept for after. Published, the
+/// copy's page says what it was remixed from (ModelStore.remixed_from), as
+/// Open in Brickworks' copy does. The message is made in the browser
+/// (web/model-page.js startClaude), from what this panel carries.
+function claudePanel(origin, id, model) {
+  // Whom its page credits (designerRow): the profile's name, else the credit typed.
+  const by = model.author ? model.by?.name || model.author : "";
+  return `<div class="claude-panel" id="claude-panel" role="group" aria-labelledby="claude-head" data-id="${id}" `
+    + `data-name="${escapeHtml(model.name)}" data-by="${escapeHtml(by)}" data-url="${escapeHtml(links(origin, id).url)}" hidden>`
+    + `<p class="claude-head" id="claude-head">${asText(say("Change it with your Claude"))}</p>`
+    + `<p class="claude-about">${asText(say("Your own Claude, with the Brickworks connector, opens a copy in your models and changes it as you ask. "
+      + "Publish the copy, and its page says it was remixed from this one."))}</p>`
+    + `<form class="claude-ask" novalidate><label for="claude-ask">${asText(say("What should it change?"))} <small>${asText(say("Optional"))}</small></label>`
+    + `<input id="claude-ask" name="ask" autocomplete="off" enterkeyhint="done" `
+      + `placeholder="${asText(say("Make the roof blue, or add a stand with a nameplate"))}">`
+    + `<div class="claude-do"><button class="cta" type="submit">${asText(say("Copy for Claude"))}</button>`
+    + `<button class="cta ghost" type="button" data-claude-share hidden>${asText(say("Share to Claude"))}</button></div></form>`
+    + `<p class="note claude-connect">${sayHtml("No connector yet? {connect}, and your message waits for you there.",
+      { connect: `<a href="/docs/connect#with-your-claude" data-claude-connect>${asText(say("Connect Claude"))}</a>` })}</p>`
+    + `<textarea class="claude-message" readonly rows="5" aria-label="${asText(say("Your message for Claude"))}" hidden></textarea>`
+    + `<p class="said claude-said" role="status"></p></div>`;
+}
+
 function actionBar(origin, id, model, url = links(origin, id).url) {
   // A set of the LDraw library has no row to like, save, comment on or say
   // was built: Share and More alone.
@@ -1413,9 +1454,10 @@ ${header}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in Brickworks"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
-        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in Brickworks"))}</a>`}
+        <span class="open-split"><a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in Brickworks"))}</a>${claudeButton()}</span>`}
         <a class="cta ghost" href="${fileAt}.mpd" download>${asText(say("Download"))}</a>
       </div>
+      ${set ? "" : claudePanel(origin, id, model)}
       ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
       ${fromLine}

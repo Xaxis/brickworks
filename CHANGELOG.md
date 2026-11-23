@@ -15,6 +15,16 @@ whole cycle.
 
 ### Added
 
+- **Change any model with your own Claude.** Every model's page has **With
+  your Claude** beside **Open in Brickworks**: say what should change (or
+  nothing, and Claude asks), press **Copy for Claude**, and paste the message
+  into a chat with Claude and the Brickworks connector. Claude opens a copy in
+  your models, changes it, and shows you; the shared model stays as it was.
+  Publish the copy and its page says it was remixed from the original. On a
+  phone, **Share to Claude** hands the message to the Claude app; with no
+  connector yet, **Connect Claude** keeps the message for you on the connect
+  page. A chat that starts by opening a model is now told how to change what
+  is built, not how to design something new.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

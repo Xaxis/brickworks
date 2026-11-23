@@ -1096,6 +1096,14 @@
       "tests": []
     },
     {
+      "id": "cli:claudelink bench",
+      "kind": "cli",
+      "entry": "tools/bench/claudelink.py",
+      "reach": "heavy python3 tools/bench/claudelink.py --out=DIR   (3 gallery models x a recolour, a part added and a stand with a nameplate: a Claude Code session given only the page's copied message (tools/web/claude_copy.mjs) through the relay with --instructions none, the tab src/dev/claudelink_tab.gd publishing as the person; remixed_from, the remix's page, the change, 12 calls or fewer, no tool or part there is not; DIR/SUMMARY.txt)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:cloud library browser flow",
       "kind": "cli",
       "entry": "tools/web/cloud_library_flow.mjs",
@@ -5938,6 +5946,14 @@
       "entry": "src/camera/cad_camera.gd",
       "reach": "godot --headless --path . --script src/dev/camera_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:change a model with your Claude",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Open in Brickworks' second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
+      "area": "web",
       "tests": []
     },
     {
