@@ -138,11 +138,12 @@
 /* A question asked from the studio (Ask the builders, api/_asks.js): the
    model in 3D at the asked step, in its picture's place (view3d.css), the
    parts asked about, and each answer's part. */
+/* The posts' column (80ch, as .comment-list and .talk-reply), the step in
+   3D across it and what was asked under it: one edge down the thread. */
 .talk-ask {
-	display: grid; gap: var(--s-4); margin: var(--s-4) 0 var(--s-5); padding: var(--s-4);
+	display: grid; gap: var(--s-4); margin: var(--s-4) 0 var(--s-5); padding: var(--s-4); max-width: 80ch;
 	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
-@media (width >= 760px) { .talk-ask { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }
 .talk-ask.gone { display: block; }
 .talk-ask-frame { position: relative; }
 .talk-ask .picture {
@@ -150,6 +151,10 @@
 	background: var(--picture-ground); aspect-ratio: 1200 / 630; touch-action: pan-y pinch-zoom; color: inherit; text-decoration: none;
 }
 .talk-ask .picture img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* A model's page's shapes, and its 3D's (view3d.css): square on a phone,
+   16:10 from 900 px. */
+@media (width < 600px) { .talk-ask .picture { aspect-ratio: 1 / 1; } }
+@media (width >= 900px) { .talk-ask .picture { aspect-ratio: 16 / 10; } }
 .talk-ask-about p { margin: 0 0 var(--s-3); }
 .talk-ask-where small { display: block; color: var(--ink-soft); font-size: var(--t-small); }
 .talk-ask-where a { font-weight: 600; overflow-wrap: anywhere; }

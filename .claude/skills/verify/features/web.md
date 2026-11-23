@@ -3471,8 +3471,16 @@ plan with Claude as the client.
   lit (`brickworks3d.pins.asked`), **Answer on this part** in the 3D's menu
   (`[data-on-part]` over the reply box, `op=talk_reply {part}`), each answer's
   `.talk-on-part` line; the studio asks `op=talk_asks&model=X` every 20 s
-  while the model has asks and lights each new answer's part.
-  `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`);
+  while the model has asks and lights each new answer's part. Its 3D's
+  first view (`start3d margin: 0.08`, `view.js fitting` with the tools'
+  band as `foot`) holds the whole step about 8% clear of each edge and
+  above the tools: the flow projects all 32 corners (within 0.85 of the
+  frame's half, at the stage's own aspect) and hits each with
+  `elementFromPoint` (the 3D itself, no button or hint over it); the frame
+  is square under 600 px and 16:10 from 900, as a model's page; the ask
+  and the posts share one column on the header's edges.
+  `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`,
+  `--keep` leaves its thread for a look on 127.0.0.1);
   `src/dev/askhelp_probe.gd` at 1280x800 and 390x844 (`--pictures=DIR`).
 - `comments on parts in the studio` (`src/ui/part_pins_panel.gd`,
   `src/ui/part_pins.gd`, `main._look_for_pins`): opening a model you

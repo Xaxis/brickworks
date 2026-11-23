@@ -267,6 +267,16 @@ export function open3d(shell, given) {
     view = new View(stage, data, {
       still, spin: given.spin === true, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
       margin: Number(given.margin) || 0,
+      // Where a margin is asked (a question's step in Talk), the band of the
+      // tools at its foot is kept clear of the model too: measured as drawn,
+      // shown for the measure while they are still hidden.
+      foot: given.margin ? () => {
+        const was = tools.hidden;
+        tools.hidden = false;
+        const band = stage.getBoundingClientRect().bottom - tools.getBoundingClientRect().top;
+        tools.hidden = was;
+        return band > 0 ? band : 0;
+      } : 0,
       mark: (what) => {
         // Timed to the frame drawn, not to when it was asked for: a pixel
         // read back waits for the graphics (SwiftShader draws in seconds
