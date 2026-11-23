@@ -4308,6 +4308,8 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 		out[index].index = index + 1
 	if units == null:
 		_sections_kept(world, out)
+		if world.steps_own and BookletLooks.marks_of(world).is_empty():
+			_sections_held(nodes, out)
 		names_kept(world, out)
 	return out
 
@@ -4446,6 +4448,82 @@ static func _sections_kept(world: BrickWorld, steps: Array[Step]) -> void:
 	var sections: PackedStringArray = BookletLooks.sections_by(steps, marks)
 	for index: int in steps.size():
 		steps[index].section = sections[index]
+
+
+## The booklet's sections of a model opened in the steps its file was saved
+## in (BrickWorld.steps_own), which the file does not say: each step in the
+## region most of its parts are in, the regions cut as the order worked out
+## cuts them (_assign_regions: the sub-models its parts are of, or tiles of
+## the plan, "part n" in the order the steps reach them), among the parts of
+## steps of the model's own, as the order worked out leaves a sub-model built
+## on the side out. Near the banners the order worked out shows, not to the
+## step: where it moved on is not in the file. A step that only puts a
+## sub-model on stays in the section before it, as the order worked out
+## builds one with what it goes on, and a
+## callout's steps are in the section of the step that puts it on
+## (BookletLooks.sections_by). Opened again from its save, the castle showed
+## none of the banners its order worked out had (stepkeep2). The nodes are
+## read, never written: they are kept for the next plan, which may be on a
+## worker meanwhile (the file's write).
+static func _sections_held(nodes: Array[Node2], steps: Array[Step]) -> void:
+	var in_steps: Dictionary = {}
+	for step: Step in steps:
+		if not step.in_callout():
+			for brick_id: int in step.brick_ids:
+				in_steps[brick_id] = true
+	var own: Array[Node2] = []
+	var names: Dictionary = {}
+	for node: Node2 in nodes:
+		if in_steps.has(node.id):
+			own.append(node)
+			if not node.group.is_empty():
+				names[node.group] = true
+	var named: bool = names.size() >= 2
+	var region_of: Dictionary = {}
+	if named:
+		for node: Node2 in own:
+			region_of[node.id] = node.group if not node.group.is_empty() else "the rest"
+	elif own.size() >= TILED_FROM:
+		var bounds: AABB = own[0].box
+		for node: Node2 in own:
+			bounds = bounds.merge(node.box)
+		var across: int = maxi(1, int(ceil(bounds.size.x / REGION)))
+		var deep: int = maxi(1, int(ceil(bounds.size.z / REGION)))
+		if across * deep == 1:
+			return
+		for node: Node2 in own:
+			var centre: Vector3 = node.box.get_center() - bounds.position
+			region_of[node.id] = "%d,%d" % [
+				clampi(int(centre.x / bounds.size.x * across), 0, across - 1),
+				clampi(int(centre.z / bounds.size.z * deep), 0, deep - 1)]
+	if region_of.is_empty():
+		return
+	# The region being built stays while a step builds any of it, as the
+	# order worked out builds a part from next door its region was waiting
+	# for as part of it; a step of none of it moves on to the one most of
+	# its parts are in.
+	var called: Dictionary = {}
+	var current: String = ""
+	var section: String = ""
+	for step: Step in steps:
+		if step.in_callout():
+			continue
+		var here: Array = []
+		for brick_id: int in step.brick_ids:
+			if region_of.has(brick_id):
+				here.append(region_of[brick_id])
+		if not here.is_empty() and not here.has(current):
+			current = _most_common(here)
+			if not called.has(current):
+				called[current] = current if named else "part %d" % (called.size() + 1)
+			section = str(called[current])
+		step.section = section
+	var after: String = ""
+	for index: int in range(steps.size() - 1, -1, -1):
+		if steps[index].in_callout():
+			steps[index].section = after
+		else:
+			after = steps[index].section
 
 
 ## A callout's key as a path: "Window#2" is one; "group:Gandalf" is the one

@@ -32,7 +32,8 @@
 //   "steps"     after the page is up, a person's: {"click": selector},
 //               {"hover": selector}, {"press": "Escape"}, {"wait": selector}
 //               (for up to "within" ms, 30 s unless said), {"scroll": selector},
-//               {"pause": ms}
+//               {"fill": selector, "text": "typed"}, {"pause": ms}; or the
+//               page's own call, {"run": "bootWall.lay(0.55, true)"}
 //   "crop"      a selector, a list of them (the box round them all), or
 //               "viewport"; "pad" round it
 //   "phone"     a phone's browser (touch, mobile), "scale" its pixels a point
@@ -69,6 +70,17 @@ if (!site) {
 // authorization_endpoint), and web/theme.js leaves the beta's bar off it by
 // that path; at /authorize, which no one is sent to, the bar's scripts came in.
 const PAGES = { "/oauth/authorize": "authorize.html" };
+// /app is the app, which a site from tools/site.py has none of: its loading
+// page (src/boot/shell.html) is made here, its placeholders filled as an
+// export fills them, with an engine whose start never ends, so the page
+// stays as a person sees it while the app comes (bootlook, 2026-11-23).
+function loadingPage() {
+  return readFileSync(path.join(here, "../../src/boot/shell.html"), "utf8")
+    .replaceAll("$GODOT_PROJECT_NAME", "Brickworks").replaceAll("$GODOT_HEAD_INCLUDE", "")
+    .replaceAll("$GODOT_CONFIG", '{"executable":"index","fileSizes":{}}').replaceAll("$GODOT_THREADS_ENABLED", "false");
+}
+const NO_ENGINE = "window.Engine = class { static getMissingFeatures() { return []; } "
+  + "constructor(config) { this.config = config; } startGame() { return new Promise(function () {}); } };";
 const bypass = process.env.BW_BYPASS || process.env.VERCEL_BYPASS || "";
 const headers = bypass && !served ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 
@@ -215,6 +227,8 @@ async function act(page, step) {
   else if (step.press) await page.keyboard.press(step.press);
   else if (step.wait) await page.waitForSelector(step.wait, { state: "visible", timeout: Number(step.within || 30000) });
   else if (step.scroll) await page.locator(step.scroll).first().scrollIntoViewIfNeeded();
+  else if (step.fill) await page.locator(step.fill).first().fill(String(step.text ?? ""));
+  else if (step.run) await page.evaluate(String(step.run));
   else if (!("pause" in step)) throw new Error(`a step this flow does not know: ${JSON.stringify(step)}`);
   await page.waitForTimeout(Number(step.pause ?? 300));
 }
@@ -255,6 +269,12 @@ for (const shot of shots) {
         const where = local ? asked.pathname + asked.search : asked.href;
         const answer = answerOf(said.answers, where);
         if (answer) return route.fulfill(fulfilment(answer[1]));
+        if (local && served && asked.pathname === "/app") {
+          return route.fulfill({ status: 200, contentType: "text/html; charset=utf-8", body: loadingPage() });
+        }
+        if (local && served && asked.pathname === "/index.js" && shot.route.startsWith("/app")) {
+          return route.fulfill({ status: 200, contentType: "text/javascript", body: NO_ENGINE });
+        }
         if (local && served && PAGES[asked.pathname]) {
           return route.fulfill({ path: path.join(path.resolve(String(args.root)), PAGES[asked.pathname]) });
         }

@@ -308,14 +308,14 @@ def test_a_link_to_any_page_with_copies_as_english_writes_it_is_caught() -> None
     # languages6: a collection, every collection, this month's challenge,
     # your own profile and your settings have copies too, so a link to one
     # is in the page's language, in any script a copy loads.
-    for link in ('a.href = "/collections";', "a.href = `/c/${id}`;", 'a.href = "/profile?edit=1";',
+    for link in ('a.href = "/gallery-lists";', 'a.href = "/collections";', "a.href = `/c/${id}`;", 'a.href = "/profile?edit=1";',
                  'a.href = "/settings#plan";', 'link.href = `/challenge${tests ? "?tests=1" : ""}`;'):
         assert site_lang.unled(link) != [], link
     # languages7: the account menu's pages, the footer's and the consent page too.
     for link in ('a.href = "/takedown";', 'href="/terms#notices"', 'a.href = "/feed";', 'a.href = "/beta";',
                  '`<a href="/changelog">`', 'location.href = "/oauth/authorize?" + query;'):
         assert site_lang.unled(link) != [], link
-    for link in ("a.href = `${langAt()}/collections`;", "a.href = `${langAt()}/settings#plan`;", 'img.src = "/m/X.png";',
+    for link in ("a.href = `${langAt()}/gallery-lists`;", "a.href = `${langAt()}/settings#plan`;", 'img.src = "/m/X.png";',
                  'a.href = "/docs";', 'call("/api/people?op=profile");', "alternatesOf(origin, `c/${id}`)"):
         assert site_lang.unled(link) == [], link
     loaded = {script for name in site_lang.PAGES for script in site_lang.scripts_of(name)}
@@ -332,8 +332,8 @@ def test_the_pages_languages6_said_have_their_words() -> None:
     # the feedback form, and what the API they call answers in words: each
     # has its entry in each language.
     words = site_lang.script_words()
-    for english, where in (("Collected by {who} · updated {when}", "api/people.js"),
-                           ("Collections — the Brickworks gallery", "web/collections.js"),
+    for english, where in (("Made by {who} · updated {when}", "api/people.js"),
+                           ("Lists — the Brickworks gallery", "web/collections.js"),
                            ("{title} · Brickworks challenge", "api/_challenges.js"),
                            ("{title} · a Brickworks challenge", "web/challenge.js"),
                            ("a link is at most 200 characters", "api/people.js"),
@@ -344,7 +344,7 @@ def test_the_pages_languages6_said_have_their_words() -> None:
     assert any(where == "api/_oc.js" and english.startswith("orangecheck could not delete") for english, where in words.items())
     for code in site_lang.LANGUAGES:
         said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
-        for english in ("Collections — the Brickworks gallery", "{title} · a Brickworks challenge",
+        for english in ("Lists — the Brickworks gallery", "{title} · a Brickworks challenge",
                         "Delete this account and everything in it, for good?"):
             assert said[english] != english, f"{code}: {english}"
 

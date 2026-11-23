@@ -58,6 +58,10 @@ const DEFAULTS: Dictionary = {
 	# then "offered", "skipped" or "done". Offered once on a device, on a
 	# first visit, and never again unasked.
 	"first_build": "",
+	# Who on this device was offered a copy's first acts (FirstActs.offer):
+	# never again for them. Not read back while it was missing here, so a
+	# reload or a second tab offered them again (fmfin, 2026-11-23).
+	"first_acts": [],
 	# partplaces: the booklet's parts boxes say where each part is kept
 	# ("from drawer 3"), from My collection's places. Turned off on Where
 	# it's kept, for a booklet made for somebody else.
@@ -95,6 +99,12 @@ const DEFAULTS: Dictionary = {
 	# "list") was chosen from on the desktop, where the next chooser of
 	# that kind opens (OpenFrom).
 	"open_folders": {},
+	# How many times each control on the strip along the model's foot has been
+	# used in the model's room (ControlsHint.learn): a pill goes once learned.
+	"hints_used": {},
+	# The files whose renumbered parts the strip over the model has offered
+	# (MovedOffer.said_key -> when), each said once.
+	"moved_said": {},
 	# Settings, Interface size: how much bigger or smaller than the window
 	# would draw it the interface is, 0.85 to 1.5 (Main._match_screen_density).
 	"interface_size": 1.0,

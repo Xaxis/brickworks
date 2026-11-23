@@ -462,7 +462,8 @@ func setup() -> void:
 	_link_box.add_child(_unpublish)
 
 	_done = Button.new()
-	_done.text = "Done"
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	_done.text = "Close"
 	_done.custom_minimum_size = Vector2(0, 32)
 	_done.focus_mode = Control.FOCUS_NONE
 	_done.pressed.connect(func() -> void: visible = false)
@@ -664,6 +665,12 @@ func open() -> void:
 		return
 	var title: String = str(named.call())
 	_name.text = "" if title == ModelStore.UNTITLED else title
+	# A model never named that is one sub-assembly or figure is called what
+	# it is: a minifigure named Nova, made and stood on the baseplate, was
+	# shared under an empty name, and Publish said "Give the model a name
+	# first" (ux13's walk, p10).
+	if title == ModelStore.UNTITLED and store != null and store.world != null:
+		_name.text = SharePanel.one_assembly(store.world, store.scenery)
 	if state in ["publishing", "unpublishing"]:
 		return
 	_show_link(store.share_id)
@@ -918,6 +925,21 @@ func _on_account() -> void:
 	if visible and state == "idle" and store.share_id.is_empty() \
 			and _status.text == Account.waiting_words("Publish goes on"):
 		_status.text = _waiting_words()
+
+
+## The name of the one sub-assembly or figure every part of [param world]
+## but the floor ([param scenery]) is in; "" when some part is in none, or
+## they are in more than one.
+static func one_assembly(world: BrickWorld, scenery: Dictionary) -> String:
+	var name: String = ""
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var group: String = Assemblies.group_of(Assemblies.path_of(brick))
+		if group.is_empty() or (not name.is_empty() and group != name):
+			return ""
+		name = group
+	return name
 
 
 ## Publish the model as it stands, at its own link if it has one; [as_wip]

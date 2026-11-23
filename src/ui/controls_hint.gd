@@ -44,6 +44,9 @@ class Binding extends RefCounted:
 	## Beside each key, the action it is the key of (Keymap), which the
 	## keys sheet lets a person set; "" for a gesture or a key nobody sets.
 	var actions: PackedStringArray = []
+	## On the strip, the control it is learned by (ControlsHint.learn): one of
+	## ON_THE_STRIP; "" for one never learned (F1).
+	var learned_by: String = ""
 
 	func _init(pressed: Array, does: String, shows: String = "") -> void:
 		keys = PackedStringArray(pressed)
@@ -146,12 +149,21 @@ static func for_touch() -> Array[Binding]:
 
 
 ## Which controls the strip carries, named by the key they are pressed
-## with so that the verb beside each still comes from the one list below
-## — pick the entries, not the words, and the strip cannot come to say
-## something the handler does not do.
+## with so that each is still one of the list below — pick the entries,
+## and the strip cannot come to name a control the handler does not answer.
 ##
-## Six and a pointer, which fits one row at any width worth supporting.
-const ON_THE_STRIP := ["click", "drag", "shift-drag", "space-drag", "scroll", "mode_place"]
+## Five and a pointer to the rest, said short (STRIP_WORDS): one row. Six with
+## the full list's sentences wrapped to four rows over the model's foot at
+## 1280 x 800 (ux12's walk, all five people); Space-drag is on F1's list.
+const ON_THE_STRIP := ["click", "drag", "shift-drag", "scroll", "mode_place"]
+## What each says on the strip, short: the full list (F1) says it whole.
+const STRIP_WORDS := {"click": "select, put down", "drag": "turn; on a part, move it",
+	"shift-drag": "slide", "scroll": "zoom", "mode_place": "last part again"}
+## How many times a control is used in the model's room before its pill goes
+## (learn): what is learned is not said again, and once all are, the strip
+## and the room it keeps go too. F1 and Help, Keys and controls still list
+## them all.
+const LEARNED_AFTER := 3
 
 
 ## What the strip along the bottom shows: the handful somebody reaches
@@ -168,10 +180,46 @@ static func for_strip() -> Array[Binding]:
 		for binding: Binding in for_keyboard():
 			var at: int = binding.actions.find(wanted)
 			if binding.keys.has(wanted) or (at >= 0 and binding.keys[at] != NO_KEY):
-				short.append(binding)
+				# That key alone, in its short words: the scroll's row in the
+				# list names the pinch and two keys too.
+				var key: String = wanted if at < 0 else binding.keys[at]
+				var made := Binding.new([key], str(STRIP_WORDS.get(wanted, binding.verb)),
+					binding.cursor)
+				made.actions = PackedStringArray([wanted if at >= 0 else ""])
+				made.learned_by = wanted
+				short.append(made)
 				break
 	short.append(Binding.new(["F1"], "all keys"))
 	return short
+
+
+## What the strip shows now: [method for_strip], less what is learned
+## ([method learned]); nothing once every one of them is.
+static func for_strip_now() -> Array[Binding]:
+	var left: Array[Binding] = []
+	for binding: Binding in for_strip():
+		if binding.learned_by.is_empty() or not learned(binding.learned_by):
+			left.append(binding)
+	return left if left.size() > 1 else []
+
+
+## Whether the control [param key] (one of [constant ON_THE_STRIP]) has been
+## used [constant LEARNED_AFTER] times in the model's room on this device.
+static func learned(key: String) -> bool:
+	return int((ShellPrefs.value("hints_used") as Dictionary).get(key, 0)) >= LEARNED_AFTER
+
+
+## The control [param key] used once more: counted on this device, and the
+## strip drawn again without it once learned. Whether it is learned now.
+func learn(key: String) -> bool:
+	if not key in ON_THE_STRIP or learned(key):
+		return learned(key)
+	var used: Dictionary = (ShellPrefs.value("hints_used") as Dictionary).duplicate()
+	used[key] = int(used.get(key, 0)) + 1
+	ShellPrefs.put("hints_used", used)
+	if learned(key):
+		rebuild()
+	return learned(key)
 
 
 ## Every binding there is, for the panel that lists them and for
@@ -488,6 +536,14 @@ static func _chip_style(across: int, down: int) -> StyleBoxFlat:
 ## How tall a key or a picture is on the strip, in interface units.
 const STRIP_TALL := 18.0
 
+## The model's room (Main's), where a click, a drag or the wheel is a use of
+## the strip's control ([method learn]); null counts none.
+var view: Control
+## Where the left button went down in the model's room, and with what held:
+## a click or a drag is told on its release. Null when it is not down there.
+var _pressed_at: Variant = null
+var _pressed_with: String = ""
+
 
 func _ready() -> void:
 	add_theme_constant_override("h_separation", 14)
@@ -519,23 +575,79 @@ func rebuild() -> void:
 		child.queue_free()
 	var by_touch: bool = TouchTools.wanted()
 	var density: float = Icons.density(self)
-	for binding: Binding in bindings():
+	for binding: Binding in (for_touch() if by_touch else for_strip_now()):
 		add_child(_make(binding, density, by_touch))
 	_drop_wide.call_deferred()
 
 
-## A pill wider than the strip's room goes, as the strip wraps rather than
-## run off the edge: one wider than the model's column (a big Interface
-## size, a narrow window) ran off it, half a sentence cut at the window.
+## Whether the strip shows nothing: every control on it learned.
+func is_empty() -> bool:
+	return get_child_count() == 0
+
+
+## One row, never more: the pills that do not fit the strip's room beside the
+## ones before them go, the last first, all but the last (F1, the rest). Four
+## rows of them lay over the model's foot at 1280 x 800 (ux12's walk); one
+## wider than the model's column (a big Interface size, a narrow window) ran
+## off it, half a sentence cut at the window.
 func _drop_wide() -> void:
 	var room: Control = get_parent() as Control
 	if room == null:
 		return
+	var pills: Array[Control] = []
 	for child: Node in get_children():
-		var pill: Control = child as Control
-		var fits: bool = pill.get_combined_minimum_size().x <= room.size.x
+		pills.append(child as Control)
+	if pills.is_empty():
+		return
+	var gap: float = float(get_theme_constant("h_separation"))
+	var last: Control = pills.pop_back()
+	var used: float = last.get_combined_minimum_size().x
+	var fits_last: bool = used <= room.size.x
+	if last.visible != fits_last:
+		last.visible = fits_last
+	for pill: Control in pills:
+		var wide: float = pill.get_combined_minimum_size().x + gap
+		var fits: bool = used + wide <= room.size.x
+		if fits:
+			used += wide
 		if pill.visible != fits:
 			pill.visible = fits
+
+
+## A click, a drag, a slide, the wheel or the key for the last part, in the
+## model's room, counted towards the strip's learning it (learn). Only where
+## what is learned is kept: a probe is always a first visit.
+func _input(event: InputEvent) -> void:
+	if view == null or not ShellPrefs.keeps() or TouchTools.wanted() or is_empty():
+		return
+	var key := event as InputEventKey
+	if key != null:
+		if key.pressed and not key.echo \
+				and Keymap.action_of(Keymap.accel_of(key)) == "mode_place":
+			learn("mode_place")
+		return
+	var button := event as InputEventMouseButton
+	if button == null:
+		return
+	var inside: bool = view.is_visible_in_tree() and view.get_global_rect().has_point(button.position)
+	if button.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		if button.pressed and inside:
+			learn("scroll")
+		return
+	if button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if button.pressed:
+		_pressed_at = button.position if inside else null
+		_pressed_with = "shift-" if button.shift_pressed else ""
+		return
+	if _pressed_at == null:
+		return
+	var moved: float = (button.position - (_pressed_at as Vector2)).length()
+	_pressed_at = null
+	if moved < 6.0:
+		learn("click")
+	else:
+		learn(_pressed_with + "drag")
 
 
 func _make(binding: Binding, density: float, by_touch: bool) -> Control:

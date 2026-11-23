@@ -49,6 +49,10 @@ import { alikeSaid, langAt } from "/card.js";
 import { avatarHtml, iconHtml, number } from "/kit.js";
 import { blockPerson, drawBlockItem } from "/block.js";
 
+// The account menu's newest five, asked once a page (latestAsk below).
+let latestAsked = null;
+let latestKept = null;
+
 // A follow sent and not yet answered, kept for this tab until it is
 // (web295): Follow is drawn at once and the server answers 260-390 ms
 // later, so the next page (Your feed, pressed at once) could be opened
@@ -433,7 +437,116 @@ function accountPart(state, { menu = false } = {}) {
     }).catch(() => null);
   }
   part.append(whoIs, places);
+  // The newest five notifications, with their pictures, asked as the menu
+  // first opens (latestInto); kept across the menu's redraws on this page.
+  if (latestKept) part.append(latestPart(latestKept));
   return part;
+}
+
+// ---------------------------------------------------------------------------
+// The account menu's newest five (inbox, 2026-11-23): the first five groups
+// of /notifications as it is now (op=notifications&most=5, which marks
+// nothing seen), each its picture (or its icon), its name and its newest
+// line, opening its place and reading it there, as the page's own does.
+const LANG_Q = () => (/^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "");
+
+/// What a group's link followed reads (op=notifications_read), as
+/// web/notifications.js sends it.
+function readOf(one) {
+  if (one.achievements) return { achievements: true };
+  if (Number(one.announcement) > 0) return { announcement: Number(one.announcement), clicked: false };
+  if (one.challenge) return { challenge: Number(one.challenge) };
+  if (one.talk) return { talk: Number(one.talk) };
+  return one.model ? { model: one.model } : null;
+}
+
+/// The newest five asked, once a page: {groups, view} (view the drawing's
+/// own helpers, web/notice-view.js), or null.
+async function latestAsk() {
+  latestAsked ||= Promise.all([call(`/api/people?op=notifications&most=5${LANG_Q()}`), import("/notice-view.js")])
+    .catch(() => [null, null]);
+  const [answer, view] = await latestAsked;
+  const groups = answer && answer.status === 200 && Array.isArray(answer.body.groups) ? answer.body.groups : null;
+  if (!groups || !view) {
+    latestAsked = null;
+    return null;
+  }
+  return { groups: groups.slice(0, 5), view };
+}
+
+/// The newest five as the menu shows them, made from [kept] (latestAsk's).
+function latestPart({ groups, view }) {
+  const part = document.createElement("div");
+  part.className = "menu-latest";
+  const head = document.createElement("p");
+  head.className = "menu-latest-h";
+  head.textContent = say("Newest");
+  const list = document.createElement("ul");
+  for (const one of groups) {
+    const row = (one.rows || [])[0] || {};
+    const link = document.createElement("a");
+    link.href = Number(one.announcement) > 0 ? view.outside(row.link || one.link) : view.here(row.link || one.link);
+    link.dataset.latest = String(one.key || one.model || "");
+    if (one.unread) link.classList.add("unread");
+    const pic = document.createElement("span");
+    pic.className = "pic";
+    if (one.picture) {
+      const img = document.createElement("img");
+      img.src = view.here(one.picture);
+      img.alt = "";
+      img.width = 48;
+      img.height = 36;
+      img.decoding = "async";
+      pic.append(img);
+    } else {
+      pic.innerHTML = iconHtml(one.achievements ? "award" : one.challenge ? "build" : Number(one.announcement) > 0 ? "spark" : "comment");
+    }
+    const words = document.createElement("span");
+    words.className = "words";
+    const name = document.createElement("b");
+    name.textContent = String(one.name || "");
+    const what = document.createElement("small");
+    what.textContent = String(row.line || "").replace("{who}", String(row.who || ""));
+    words.append(name, what);
+    link.append(pic, words);
+    const body = readOf(one);
+    if (body) {
+      link.addEventListener("click", () => {
+        call("/api/people?op=notifications_read", { method: "POST", body, keepalive: true }).catch(() => null);
+      });
+    }
+    const item = document.createElement("li");
+    item.append(link);
+    list.append(item);
+  }
+  if (!groups.length) {
+    const none = document.createElement("li");
+    none.className = "none";
+    none.textContent = say("Nothing yet.");
+    list.append(none);
+  }
+  part.append(head, list);
+  return part;
+}
+
+/// The newest five drawn into each account menu on the page.
+async function latestInto() {
+  const kept = await latestAsk().catch(() => null);
+  if (!kept) return;
+  latestKept = kept;
+  for (const part of document.querySelectorAll(".site-head .account-part")) {
+    part.querySelector(".menu-latest")?.remove();
+    part.append(latestPart(kept));
+  }
+}
+
+/// A menu's opening asks for the newest five, once a page.
+function latestOnOpen(menu) {
+  if (menu.dataset.latest === "yes") return;
+  menu.dataset.latest = "yes";
+  menu.addEventListener("toggle", () => {
+    if (menu.open && !latestKept) latestInto();
+  });
 }
 
 /// The owner's console (/admin, docs/ADMIN.md), at the menu's foot above
@@ -520,6 +633,7 @@ function drawSignedIn(state) {
     if (n) summary.append(badge(n));
     const list = menu.querySelector(":scope > .menu-list") || menu.appendChild(document.createElement("div"));
     list.className = "menu-list";
+    latestOnOpen(menu);
     const place = list.contains(document.activeElement) ? document.activeElement : null;
     const again = place && (place.dataset.place || (place.classList.contains("sign-out") ? "sign-out" : ""));
     list.replaceChildren(accountPart(state), ...[themeChoice()].filter(Boolean), ...adminPart(state), signOutButton());
@@ -528,6 +642,7 @@ function drawSignedIn(state) {
   }
   // On a phone: Menu is the avatar, and holds the same.
   for (const menu of document.querySelectorAll(".site-head .menu")) {
+    latestOnOpen(menu);
     const summary = menu.querySelector("summary");
     summary.classList.add("account-btn");
     summary.replaceChildren(avatarOf(state, ""));

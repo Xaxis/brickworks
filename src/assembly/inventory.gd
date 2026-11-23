@@ -406,9 +406,13 @@ func _add(by_key: Dictionary, library: PartLibrary, part_id: String, color_code:
 
 
 ## LDraw pads names into columns — "Brick  2 x  4" — which reads as a
-## typo anywhere the column is not there.
+## typo anywhere the column is not there; and marks its own kinds of file
+## at a name's start, = an alias, ~ a part not used alone, _ one in a fixed
+## colour, which mean nothing to a person: a friend's Studio file listed
+## "=Tile 1 x 2 Chamfered with 2 Top Indentations" (ux13's walk, p6). As
+## the booklet already says them (Instructions).
 static func _tidy(raw: String) -> String:
-	var name: String = raw.strip_edges()
+	var name: String = raw.strip_edges().lstrip("=~_|").strip_edges()
 	while name.contains("  "):
 		name = name.replace("  ", " ")
 	return name

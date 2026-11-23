@@ -24,7 +24,7 @@ def test_each_opens_on_its_tab_with_its_own_head() -> None:
     tabs = re.findall(r'<a href="([^"]+)" data-tab="([a-z]+)"', gallery[gallery.index('id="tabs"'):])
     assert [tab for _, tab in tabs[:6]] == ["top", "new", "following", "builds", "collections", "sets"]
     for name, path, tab in (("library.html", "/library", "sets"), ("builds.html", "/builds", "builds"),
-                            ("collections.html", "/collections", "collections")):
+                            ("gallery-lists.html", "/gallery-lists", "collections")):
         page = (ROOT / "web" / name).read_text(encoding="utf-8")
         assert f'<html lang="en" data-tab="{tab}">' in page, name
         assert f'<link rel="canonical" href="https://brickworks.diy{path}">' in page, name

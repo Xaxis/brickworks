@@ -130,7 +130,8 @@ for (const button of document.querySelectorAll("[data-report]")) {
   button.addEventListener("click", () => {
     const target = {};
     // A photo of a build is reported as itself (supabase/builds.sql).
-    for (const key of ["model", "handle", "collection", "photo"]) {
+    // A list shared by a link names its key too (api/people.js listHtml).
+    for (const key of ["model", "handle", "collection", "link", "photo"]) {
       const value = button.dataset[`report${key[0].toUpperCase()}${key.slice(1)}`];
       if (value) target[key] = value;
     }

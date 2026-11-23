@@ -1,34 +1,34 @@
 <!DOCTYPE html>
 <!--
-  /collections: the gallery (web/gallery.html) on its Collections tab, written by tools/browse_pages.py
+  /gallery-lists: the gallery (web/gallery.html) on its Collections tab, written by tools/browse_pages.py
   from it: change that and run it, never this.
 --><html lang="en" data-tab="collections">
 <head>
 <meta charset="utf-8">
 <script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Collections — the Brickworks gallery</title>
-<meta name="description" content="Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it.">
-<link rel="canonical" href="https://brickworks.diy/collections">
-<link rel="alternate" hreflang="en" href="https://brickworks.diy/collections">
-<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/collections">
-<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/collections">
-<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/collections">
-<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/collections">
+<title>Lists — the Brickworks gallery</title>
+<meta name="description" content="Lists of sets and models made by the people who build them: what to build next, a theme, a shelf. Follow one to see what is put in it.">
+<link rel="canonical" href="https://brickworks.diy/gallery-lists">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/gallery-lists">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/gallery-lists">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/gallery-lists">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/gallery-lists">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/gallery-lists">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
-<meta property="og:title" content="Collections in the Brickworks gallery">
-<meta property="og:description" content="Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it.">
-<meta property="og:url" content="https://brickworks.diy/collections">
+<meta property="og:title" content="Lists in the Brickworks gallery">
+<meta property="og:description" content="Lists of sets and models made by the people who build them: follow one to see what is put in it.">
+<meta property="og:url" content="https://brickworks.diy/gallery-lists">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Brickworks mark, a cube with a corner cut away, and the words: a complete CAD for LEGO® models, beside a render of a grey stone castle in bricks.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Collections in the Brickworks gallery">
-<meta name="twitter:description" content="Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it.">
+<meta name="twitter:title" content="Lists in the Brickworks gallery">
+<meta name="twitter:description" content="Lists of sets and models made by the people who build them: follow one to see what is put in it.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
@@ -47,7 +47,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
 /* What one tab has alone (data-list: models, sets, builds or
    collections), shown while it is the tab (<html data-tab>, gallery.js;
-   the copies at /library, /builds and /collections say theirs from the
+   the copies at /library, /builds and /gallery-lists say theirs from the
    first frame). The models' are Top's, New's and Following's. */
 html[data-tab="sets"] [data-list]:not([data-list~="sets"]),
 html[data-tab="builds"] [data-list]:not([data-list~="builds"]),
@@ -61,9 +61,12 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 .gallery-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
 .gallery-title { min-width: 0; }
 .gallery-head h1 { margin: 0; }
-.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 60ch; color: var(--ink-soft); font-size: var(--t-lede); }
-/* The search (site.css .search) beside them; "/" puts the cursor in it. */
-.search { flex: 1 1 320px; max-width: 440px; }
+.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 54ch; color: var(--ink-soft); font-size: var(--t-lede); }
+/* The search (site.css .search) beside them; "/" puts the cursor in it.
+   Wide enough for the longest of its words, the Sets tab's "Search sets by
+   name, number or theme", beside the "/" (sitepolish: it was cut at
+   "or the" at 1280). */
+.search { flex: 1 1 380px; max-width: 460px; }
 /* Share yours at the head's end, beside the search (web/share-model.html).
    On a phone it stays a word, beside the title, and the search has a row
    of its own, so its words are read whole (byfix: three controls in one
@@ -157,6 +160,14 @@ html[data-tab="builds"] .toolbar { position: static; }
 @media (width < 600px) { #spotlight { padding: var(--s-4); } }
 
 .feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
+/* This month's challenge across the grid: a band of the accent's soft
+   ground, its name the way in, so it reads as the month's event it is, not
+   a line of small print over the cards (sitepolish, 2026-11-23). */
+.feed > #challenge-line:not([hidden]) {
+	padding: 10px 14px; border: 1px solid var(--accent-edge); border-left-width: 4px; border-radius: var(--r-2);
+	background: var(--accent-soft); color: var(--ink); font-size: var(--t-small);
+}
+#challenge-line a { color: var(--ink); font-weight: 650; }
 .listing .state { margin-top: var(--s-2); }
 .state .said { margin: 0 0 var(--s-2); }
 .state .actions { margin-top: var(--s-3); }
@@ -214,7 +225,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 			     The search is the form, and searches the tab it is on; the models'
 			     controls are its controls too (form="finder"), laid out under it
 			     so the bar of filters can stay on screen over the whole list. -->
-			<form class="finder" id="finder" role="search" action="/collections" method="get">
+			<form class="finder" id="finder" role="search" action="/gallery-lists" method="get">
 				<div class="gallery-head">
 					<div class="gallery-title">
 						<h1 id="gallery-h">Gallery</h1>
@@ -222,9 +233,9 @@ html[data-tab="builds"] .toolbar { position: static; }
 					</div>
 					<label class="search">
 						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-						<span class="visually-hidden" id="q-said">Search the collections</span>
+						<span class="visually-hidden" id="q-said">Search the lists</span>
 						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
-							placeholder="Search collections by name or builder" aria-keyshortcuts="/">
+							placeholder="Search lists by name or builder" aria-keyshortcuts="/">
 						<kbd class="hint" aria-hidden="true">/</kbd>
 					</label>
 					<a class="cta share-yours" href="/share-model" aria-label="Share yours"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"></use></svg><span class="word">Share yours</span></a>
@@ -234,14 +245,14 @@ html[data-tab="builds"] .toolbar { position: static; }
 				<!-- What to browse, each tab at its own address and switched in place
 				     (gallery.js): Top (builds, remixes, Tested), New and Following once
 				     signed in, when the list says it can, the models; then photos of
-				     real builds, collections and every real set. -->
+				     real builds, lists and every real set. -->
 				<nav class="tabs" id="tabs" aria-label="The gallery">
 					<a href="/gallery" data-tab="top"
 						title="Built most, remixed most and Tested first. Views count for nothing.">Top</a>
 					<a href="/gallery?sort=newest" data-tab="new">New</a>
 					<a href="/gallery?following=1" data-tab="following" hidden>Following</a>
 					<a href="/builds" data-tab="builds">Builds</a>
-					<a href="/collections" data-tab="collections" aria-current="page">Collections</a>
+					<a href="/gallery-lists" data-tab="collections" aria-current="page">Lists</a>
 					<a href="/library" data-tab="sets">Sets</a>
 				</nav>
 				<label class="top-window" id="window-label" data-list="models" hidden><span class="visually-hidden">Top over</span>
@@ -295,7 +306,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 			<div class="pills scroller inset" id="themes" role="group" aria-label="Theme" data-list="sets">
 				<button type="button" class="pill" data-pick="" aria-pressed="true">All</button>
 			</div>
-			<div class="pills scroller inset" id="orders" role="group" aria-label="Which collections first" data-list="collections">
+			<div class="pills scroller inset" id="orders" role="group" aria-label="Which lists first" data-list="collections">
 				<button type="button" class="pill" data-order="recent" aria-pressed="true">Recently added to</button>
 				<button type="button" class="pill" data-order="followed" aria-pressed="false">Most followed</button>
 			</div>
@@ -388,15 +399,15 @@ html[data-tab="builds"] .toolbar { position: static; }
 			<div class="actions"><a class="cta small" href="/gallery">Find a model to build</a></div>
 		</div>
 		<p class="state" id="collections-empty" data-list="collections" hidden>
-			No public collections yet. Anyone can make one: on a model's page, press Save to put it in a collection,
-			then make the collection public on your profile. It is listed here once a model in it is in the gallery.
+			No public lists yet. Anyone can make one: on any set or model, press the arrow beside Own or Save and make a
+			list, then make it public from Your lists. It is listed here once a model in it is in the gallery.
 		</p>
 		<!-- Nothing matching what was asked, in the tab's words, and the way back. -->
 		<div class="state" id="nothing" hidden>
 			<p class="said" data-list="models">Nothing in the gallery matches that.</p>
 			<p class="said" data-list="sets">No set matches that.</p>
 			<p class="said" data-list="builds">No build matches that.</p>
-			<p class="said" data-list="collections">No collection matches that.</p>
+			<p class="said" data-list="collections">No list matches that.</p>
 			<button type="button" class="link" id="clear">Clear the search and the filters</button>
 		</div>
 		<!-- Following with nothing yet, or Top over a quiet week: what goes
@@ -492,7 +503,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenges</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

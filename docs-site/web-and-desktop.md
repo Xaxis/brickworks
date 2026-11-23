@@ -15,6 +15,14 @@ Brickworks is a web app: open [brickworks.diy/app](/app) and build. Nothing is i
 
 Open [brickworks.diy/app](/app) in a recent browser on a computer, a tablet or a phone: it needs WebGL 2 and WebAssembly threads, and nothing else.
 
+While it loads, a wall builds itself on a baseplate: a brick drops into place for each share of the app that has arrived, and the count under it says how many are laid. Under that, a tip about Brickworks changes every five seconds, a key on a computer or a gesture on a touch screen; point at a tip to keep it, and your next visit starts with the next one. A first visit on a phone also says about how long it has to go.
+
+![The page Brickworks shows while it loads: the mark and Brickworks over a half-built wall of coloured bricks on a grey baseplate seen from a little above, 16 of 27 bricks laid under it, then a card: Tip, Press F1 for every key and click Brickworks answers to.](/docs/img/web-and-desktop-loading.webp "While it loads: the wall builds as the app arrives, with a tip under it.")
+
+<!-- covers
+ui:the loading page
+-->
+
 ![The Brickworks menu open under the mark at the far left of the menu bar: About Brickworks, Send feedback, Find a command with its key Ctrl+/, Brickworks website, Documentation and Account.](/docs/img/web-and-desktop-menu.webp "The Brickworks menu, at the far left of the menu bar.")
 
 The Brickworks mark at the far left of the menu bar opens the app's own menu: **About Brickworks**, **Send feedback…**, **Find a command…** ([[Ctrl+/]]), **Brickworks website**, **Documentation**, **Account…** and **Back to brickworks.diy**; a beta tester's has **Beta hub** too.
@@ -49,7 +57,7 @@ Saved models are kept in your browser and privately with your account, so **File
 
 ## On a tablet or a phone {#phone}
 
-![Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate with a note that it opened, and one row of tools along the foot.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
+![Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate with a note that it opened, and one row of tools along the foot, each with its word under its picture.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
 
 On a touch screen the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, in sheets over it. A browser window as small as a phone gets this layout too, whatever you point with.
 
