@@ -75,7 +75,7 @@ func handle_key(key: InputEventKey) -> bool:
 				return true
 		KEY_D:
 			if held and not key.shift_pressed:
-				duplicate_selection()
+				duplicate_beside()
 				return true
 		KEY_X:
 			if held:
@@ -276,12 +276,17 @@ func press(name: String) -> void:
 		"paste":
 			paste()
 		"duplicate":
-			duplicate_selection()
+			duplicate_beside()
 		"paint":
 			var painted: int = builder.paint_selection(builder.held_color)
 			if painted > 0:
 				edited.call()
 				say.call("painted %s" % _parts(painted))
+			elif not builder.selection.is_empty():
+				# Painted the colour they are already, and nothing said: the
+				# selection stayed as it was with no word why (ux14's walk, p11).
+				say.call(Keymap.filled("the selection is %s already: click another colour in Colour, then {paint|paints it}")
+					% builder.library.color(builder.held_color).name.replace("_", " "))
 		"delete":
 			var job: Working.Job = await _say_first(builder.selection.size(),
 				"Taking off %s parts…")
@@ -840,6 +845,54 @@ func duplicate_selection(again: bool = true) -> int:
 	aim_again.call()
 	say.call(Keymap.filled("holding a copy of %s — each click puts one down, {rotate_held|turns}, Esc or a right click stops"
 		if again else "holding a copy of %s — click to put it down, {rotate_held|turns}, Esc puts away")
+		% _parts(parts.size()))
+	return parts.size()
+
+
+## Edit › Duplicate, Ctrl+D (ux14): a copy put down at once beside the
+## selection, seated on what holds it or let down onto what is under it, and
+## selected to be moved on (Builder.put_copy_beside), as Studio's Duplicate
+## puts its copy beside. Pressed again, another beside that. Where nothing
+## beside has room, the copy is held instead, as a clone's is, and said so.
+func duplicate_beside() -> int:
+	var alive: Array = builder.selection.keys()
+	if alive.is_empty():
+		say.call("select something to duplicate first")
+		return 0
+	var parts: Array = Carry.gather(world, library, alive)
+	if parts.is_empty():
+		return 0
+	var before: Array = []
+	for item: Dictionary in parts:
+		before.append(item["was"] if item.get("was") is Transform3D else Transform3D.IDENTITY)
+	var put: int = builder.put_copy_beside(parts, _level_right(),
+		Assemblies.lines_held(world, parts), Assemblies.frames_held(world, parts),
+		builder.held_carry.call(parts) if builder.held_carry.is_valid() else [])
+	if put == 0:
+		var held: int = duplicate_selection(false)
+		if held > 0:
+			say.call(Keymap.filled("no room beside it for a copy: holding one — click to put it down, {rotate_held|turns}, Esc puts away"))
+		return held
+	edited.call()
+	aim_again.call()
+	# Straight after, "5x" makes it a row of copies a step apart, as after a
+	# clone put down by hand (_note_copy, Pattern).
+	var ids: Array = builder.selection.keys()
+	var now: Array = []
+	for brick_id: int in ids:
+		now.append(world.get_brick(brick_id).transform)
+	var step: Variant = Later.script(&"Pattern").step_between(before, now) \
+		if before.size() == now.size() else null
+	# Along the floor: a copy let down beside its raised original is a step
+	# down as well as across, and a row of that step went into the ground
+	# (ux14's after walk: "copy 1 has no room"). The row runs level from it.
+	if step is Transform3D:
+		var level: Transform3D = step
+		level.origin.y = 0.0
+		step = level
+	_copied = {} if step == null else {"ids": ids, "at": now, "step": step,
+		"depth": builder.history_depth()}
+	say.call(Keymap.filled("a copy of %s put beside it, selected: drag it where it goes; {duplicate|puts another}; {undo|takes it back}")
 		% _parts(parts.size()))
 	return parts.size()
 
@@ -1542,15 +1595,25 @@ func _ready() -> void:
 	typed = TypedEntry.new()
 	# A number while a handle is dragged, or straight after, is the
 	# handles' (Handles); otherwise it moves what is in hand.
+	typed.takes_axis = func() -> bool:
+		return builder.is_carrying() and not _handles_want_typing() and not _handles_typing()
+	# Straight after Duplicate's copy beside, a number is copies even with
+	# the Move tool's handles out: they took "2x" as a move (ux14's after walk).
 	typed.may_open = func() -> bool:
+		if _fresh_copy():
+			return _begin_typing()
 		return handles.begin_typing() if _handles_want_typing() else _begin_typing()
 	typed.opened_as = func() -> String:
+		if _typed_was.has("copies_only"):
+			return "move"
 		return handles.typed_verb() if _handles_want_typing() else str(_armed.get("verb", "move"))
 	typed.going = func() -> Vector3:
 		return handles.typed_way() if _handles_typing() else builder.last_way
 	# Straight after a copy, "5x" and "/5" are copies (Pattern), not a move;
 	# never while a handle has the number.
 	typed.reads = func(text: String) -> Dictionary:
+		if _typed_was.has("copies_only"):
+			return _copies_read(text)
 		return {} if _handles_want_typing() or _handles_typing() else _copies_read(text)
 	typed.preview = func(what: Dictionary) -> String:
 		if _handles_typing():
@@ -1572,6 +1635,8 @@ func _ready() -> void:
 			_pattern.hide_copies()
 		_typed_cancel()
 	typed.still_held = func() -> bool:
+		if _typed_was.has("copies_only"):
+			return not _copied.is_empty() and int(_copied["depth"]) == builder.history_depth()
 		return handles.is_dragging() if _handles_typing() else builder.is_pinned()
 	typed.clear_of = func() -> Rect2:
 		return handles.on_screen() if _handles_typing() else _hand_on_screen()
@@ -1586,6 +1651,20 @@ func _ready() -> void:
 		# A paste into a model with sub-models of its own of the same name.
 		if not builder.pasted_said.is_empty():
 			say.call(builder.pasted_said))
+
+
+## Whether Duplicate's copy beside was the last change, with nothing in
+## hand: a number typed now is copies of it (_begin_typing).
+func _fresh_copy() -> bool:
+	if builder.is_carrying() or _copied.is_empty() \
+			or int(_copied["depth"]) != builder.history_depth():
+		return false
+	# Undone and something else done, the depth is the same again: the copy
+	# is gone.
+	for brick_id: int in _copied["ids"]:
+		if world.get_brick(brick_id) == null:
+			return false
+	return true
 
 
 ## Keep what is in hand before R or T, so a number typed next takes their
@@ -1641,6 +1720,13 @@ func _begin_typing() -> bool:
 	if builder.is_holding_figure() or (measure != null and measure.active) \
 			or (_connect_tool != null and _connect_tool.stage == "point"):
 		return false
+	# Straight after Edit, Duplicate put its copy beside the original, a
+	# number is copies ("5x": a row a step apart), as after a clone put down
+	# by hand (duplicate_beside).
+	if _fresh_copy():
+		# Copies only: nothing is in hand for a move to move (_typed_apply).
+		_typed_was = {"copies_only": true}
+		return true
 	var armed: Dictionary = _armed
 	_armed = {}
 	_typed_was = {}
@@ -1690,6 +1776,9 @@ func _typed_preview(what: Dictionary) -> String:
 
 ## Put it down where the number says: one step to undo, as any placement.
 func _typed_apply(what: Dictionary) -> bool:
+	if _typed_was.has("copies_only"):
+		say.call("straight after Duplicate a number is copies: 5x makes it 5 in a row; drag the copy to move it")
+		return false
 	if not builder.typed_hand(what["move"], float(what["turn"]), float(what["tilt"]),
 			-_level_right()):
 		return false
@@ -1810,7 +1899,9 @@ func _copies_put(what: Dictionary) -> bool:
 	builder.unpin_hand()
 	edited.call()
 	aim_again.call()
-	say.call("%s — Esc puts the copy in hand away" % what["words"])
+	# After Duplicate's copy beside, nothing is in hand to put away.
+	say.call(("%s — Esc puts the copy in hand away" if builder.is_carrying() else "%s")
+		% what["words"])
 	return true
 
 

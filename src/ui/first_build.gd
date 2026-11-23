@@ -447,7 +447,7 @@ func _step_words(step: String, hand: String) -> String:
 			if hand == "placing":
 				return let_go
 			if hand == "selected":
-				return "Press %s to copy the selected part, then click to put the copy down." % copy
+				return "Press %s to put a copy beside the selected part." % copy
 			return "Click a part to select it, then press %s to copy it." % copy
 		"view":
 			return "%s to turn the view%s." % [_turning_drag(), _view_keys()]

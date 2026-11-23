@@ -101,7 +101,7 @@ ui:a pose that holds its own weight
 
 1. Select the part to drive (a crank, a steering wheel, a motor's axle), or none.
 2. **Tools › Simulate mechanism…** ([[Alt+U]]). The train turns from it; click another axle or crank to drive that instead.
-3. **Play**, or drag the slider through the cycle.
+3. **Play**, or drag the slider through the cycle. While nothing in the model turns, the panel says so and what to build instead, and Play, the slider, Program and Record wait until something does.
 
 The panel says how fast each part turns, what locks the train, and whether the model stays standing as it turns. It finds where the motion stops: the first two parts that meet, tinted red, a linkage's range, or where a motor stalls under its load. Play stops there, and **Go to the stop** shows it. Nothing in the model changes. An assistant can find gears for a ratio you need (`search_gear_ratio`).
 

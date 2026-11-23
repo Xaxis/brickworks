@@ -16977,6 +16977,95 @@ msgid "Model name or designer"
 msgstr "Nombre del modelo o diseñador"
 msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
 msgstr "«%s» es un subconjunto de este modelo: selecciónalo, y Editar, Duplicar coloca otro"
+
+# ux14: Duplicate beside, the PDF asked for, the bin's own sub-assembly, versions
+msgid "Put a copy of the selection down beside it, selected to move on"
+msgstr "Poner una copia de la selección al lado, seleccionada para moverla"
+
+msgid "a copy of %s put beside it, selected: drag it where it goes"
+msgstr "una copia de %s puesta al lado, seleccionada: arrástrala adonde va"
+
+msgid "%s puts another"
+msgstr "%s pone otra"
+
+msgid "no room beside it for a copy: holding one"
+msgstr "no hay sitio al lado para una copia: tienes una en la mano"
+
+msgid "Press %s to put a copy beside the selected part."
+msgstr "Pulsa %s para poner una copia junto a la pieza seleccionada."
+
+msgid "Save the instructions as a PDF, or as a web page to read and print in your browser"
+msgstr "Guardar las instrucciones como PDF, o como página web para leer e imprimir en el navegador"
+
+msgid "the instructions are saved as a PDF and open in your PDF reader, %d steps: %s"
+msgstr "las instrucciones están guardadas como PDF y abiertas en tu lector de PDF, %d pasos: %s"
+
+msgid "the instructions are saved as a PDF, %d steps: %s"
+msgstr "las instrucciones están guardadas como PDF, %d pasos: %s"
+
+msgid "could not write the PDF %s"
+msgstr "no se pudo escribir el PDF %s"
+
+msgid "duplicated %s"
+msgstr "%s duplicado(s)"
+
+msgid "Sign in or make an account with your email: a link needs one, a look at it does not"
+msgstr "Inicia sesión o crea una cuenta con tu correo: un enlace la necesita, echarle un vistazo no"
+
+msgid "“%s”, this model's sub-assembly: put another down"
+msgstr "«%s», subconjunto de este modelo: poner otro"
+
+msgid "A copy of “%s” in hand: each click puts one down, Esc stops."
+msgstr "Una copia de «%s» en la mano: cada clic pone una, Esc para."
+
+msgid "Each is a copy of it, and an edit inside one changes them all"
+msgstr "Cada una es una copia, y un cambio dentro de una las cambia todas"
+
+msgid "“%s” is a sub-assembly of this model: the row above puts another down"
+msgstr "«%s» es un subconjunto de este modelo: la fila de arriba pone otro"
+
+msgid "“%s” is not in this model now"
+msgstr "«%s» ya no está en este modelo"
+
+msgid "%d parts, %d more than the save before"
+msgstr "%d piezas, %d más que el guardado anterior"
+
+msgid "%d parts, %d fewer than the save before"
+msgstr "%d piezas, %d menos que el guardado anterior"
+
+msgid "%d parts, as many as the save before"
+msgstr "%d piezas, tantas como el guardado anterior"
+
+msgid "%d part, %d more than the save before"
+msgstr "%d pieza, %d más que el guardado anterior"
+
+msgid "%d part, %d fewer than the save before"
+msgstr "%d pieza, %d menos que el guardado anterior"
+
+msgid "%d part, as many as the save before"
+msgstr "%d pieza, tantas como el guardado anterior"
+
+msgid "Yesterday at %s"
+msgstr "Ayer a las %s"
+
+msgid "yesterday at %s"
+msgstr "ayer a las %s"
+
+msgid "%s at %s, %d days ago"
+msgstr "%s a las %s, hace %d días"
+
+msgid "the selection is %s already: click another colour in Colour, then %s paints it"
+msgstr "la selección ya es %s: haz clic en otro color en Color y %s la pinta"
+
+msgid "straight after Duplicate a number is copies: 5x makes it 5 in a row"
+msgstr "justo después de Duplicar un número son copias: 5x hace 5 en fila"
+
+msgid "drag the copy to move it"
+msgstr "arrastra la copia para moverla"
+
+msgid "Not made now"
+msgstr "Ya no se fabrican"
+
 # Open in Brickworks for a stranger: the model asked for behind the sign-in, and its copy's first acts (firstminute)
 msgid "Sign in to make it yours"
 msgstr "Inicia sesión para hacerlo tuyo"

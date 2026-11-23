@@ -45,7 +45,7 @@ ui:snap and turn step
 
 With a part or a copy in hand, type a number. A small field opens at the pointer and a ghost shows where the number puts the part, red where there is no room. [[Enter]] puts it down; [[Esc]] closes the field.
 
-- **3x** is 3 studs along x, **-2z** 2 studs back, **2py** 2 plates up. **b** is a brick, **l** an LDraw unit and **mm** a millimetre: **-14ly** is 14 LDU down. With no unit, a number is studs.
+- **3x** is 3 studs along x, **-2z** 2 studs back, **2py** 2 plates up. The axis can come first, **x 3**: with something lifted or copied in hand, [[X]], [[Y]] or [[Z]] opens the field too. **b** is a brick, **l** an LDraw unit and **mm** a millimetre: **-14ly** is 14 LDU down. With no unit, a number is studs.
 - A number alone goes the way the ghost last went: **3** after moving it right is 3 studs right.
 - **30r** turns it 30° and **30t** tilts it forwards. Straight after [[R]] or [[T]], a number alone is that turn, on a part in hand or a selection.
 - Several at once: **2x-1py**. Sums work too: **40/2+1lx**.

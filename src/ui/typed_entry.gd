@@ -44,6 +44,11 @@ extends PanelContainer
 ## Whether a key may open the field now: something in hand, or R or T
 ## just pressed. Its owner makes ready to be moved as it says yes.
 var may_open: Callable = func() -> bool: return false
+## Whether an axis letter opens the field too ("x 1": a stud along x), as
+## a number does: with something in hand, whose X, Y and Z keys do nothing
+## else. Typed "x 1" went to the X key's lift, and nothing moved (ux14's
+## walk, p12; Blender's G X 1).
+var takes_axis: Callable = func() -> bool: return false
 ## What a number alone is as the field opens ([member verb]), and the way
 ## a move alone goes ([member way]).
 var opened_as: Callable = func() -> String: return "move"
@@ -145,7 +150,9 @@ func try_open(key: InputEventKey) -> bool:
 		return false
 	var c: String = _character(key)
 	if c.is_empty() or not (c.is_valid_int() or c == "." or c == "-"
-			or (c in ["*", "/"] and not (reads.call(c) as Dictionary).is_empty())):
+			or (c in ["*", "/"] and not (reads.call(c) as Dictionary).is_empty())
+			or (c in ["x", "y", "z"]
+				and not key.shift_pressed and bool(takes_axis.call()))):
 		return false
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	if focused is LineEdit or focused is TextEdit:
