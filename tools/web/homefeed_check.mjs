@@ -34,10 +34,13 @@
 //      moving along them;
 //   8. likes Ann's post (counted at once and by the server) and takes it
 //      back; comments on it in place (its comment there and on the model);
-//      follows Ann from it, and Following then shows Ann's model; New puts
+//      follows Ann from it, and Following at once shows Ann's model (it
+//      waits for the follow's answer); New puts
 //      Ann's newest first;
 //   9. a visitor presses Like on Ann's post, signs in in the dialog that
-//      opens, and is back where they were with the like made.
+//      opens, and is back where they were with the like made, no dialog
+//      over it; their First steps then offered in a snackbar, opening when
+//      pressed (never over the like, which waited behind them till 11-23).
 // Both accounts and Ann's model are deleted at the end.
 //
 // Pictures in --out. It passes when it ends "homefeed: all ok".
@@ -421,15 +424,43 @@ try {
       const code = await mintCode(emails.cy, { welcome: false });
       await vp.fill("dialog.sign-in .code-boxes input:first-child", code);
       await until(vp, () => (!document.querySelector("dialog.sign-in") ? true : null), "the sign-in done", 30);
+      // What the snackbar came with, looked at from the age's answer on, so
+      // a check slower than its 8 s on the screen still sees it came.
+      await vp.evaluate((s) => {
+        window.__offer = null;
+        const look = setInterval(() => {
+          const act = document.querySelector(".toast.shown .toast-act");
+          if (!act) return;
+          clearInterval(look);
+          window.__offer = { said: act.textContent.trim(), liked: document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true",
+            dialogs: [...document.querySelectorAll("dialog[open]")].map((one) => one.className).join(",") };
+        }, 100);
+      }, sel);
       if (await until(vp, () => (document.querySelector("dialog.age[open]") ? true : null), null, 8)) {
         await vp.selectOption("#age-month", { index: 1 });
         await vp.selectOption("#age-year", "1990");
         await vp.click("#age-go");
       }
-      const done = await until(vp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true" ? true : null), null, 30, sel);
+      // The like first, nothing over it: a new person's First steps wait
+      // until it is made, then are offered in a snackbar (web/account.js
+      // offerFirstSteps); they opened over the page and the like waited.
+      const done = await until(vp, (s) => (document.querySelector(`${s} [data-like]`)?.getAttribute("aria-pressed") === "true"
+        ? !document.querySelector("dialog[open]") : null), null, 30, sel);
       const nowY = await vp.evaluate(() => Math.round(scrollY));
-      check(`9. a visitor's Like: signed in in the dialog, the like made (${Boolean(done)}), still at ${nowY} px (was ${atY})`,
-        Boolean(done) && Math.abs(nowY - atY) <= 40);
+      check(`9. a visitor's Like: signed in in the dialog, the like made with no dialog over it (${done}), still at ${nowY} px (was ${atY})`,
+        done === true && Math.abs(nowY - atY) <= 40);
+      // Pressed at once: a picture first takes seconds on a loaded box,
+      // longer than the snackbar stays.
+      const offer = await until(vp, () => window.__offer, null, 30);
+      const shown = await vp.click(".toast.shown .toast-act", { timeout: 2000 }).then(() => true, () => false);
+      const steps = shown && await until(vp, () => (document.querySelector("dialog.first-steps[open]") ? true : null), null, 20);
+      check(`   then First steps offered in a snackbar ("${offer?.said}") after the like (${offer?.liked}), over no dialog (${offer?.dialogs || "none"}), `
+        + `pressed (${shown}), opening (${Boolean(steps)})`, offer?.said === "First steps" && offer.liked && !offer.dialogs && Boolean(steps));
+      await shot(vp, "first-steps-after-like.png");
+      if (steps) {
+        await vp.keyboard.press("Escape");
+        await until(vp, () => (!document.querySelector("dialog[open]") ? true : null), null, 10);
+      }
       await shot(vp, "signed-in-from-like.png");
     } else {
       check("9. Ann's tower is in a visitor's feed", false);

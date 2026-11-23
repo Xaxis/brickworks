@@ -90,6 +90,9 @@ const streamSaid = document.getElementById("stream-said");
 const tabList = document.getElementById("feed-tabs");
 const tabs = tabList ? [...tabList.querySelectorAll('[role="tab"]')] : [];
 const served = stream?.dataset.stream === "served";
+// The stream drawn again for somebody who just signed in, as them: a like
+// they signed in for waits on it (like).
+let signedInDraw = Promise.resolve();
 
 /// What the stream is made of, for [tab], each answer kept by the CDN for
 /// somebody signed out; signed in, the lists and the latest are asked as
@@ -249,6 +252,10 @@ async function draw({ first = false } = {}) {
 /// draw went stale.
 let followBefore = null;
 async function following(mine, before = null) {
+  // A Follow pressed a moment ago is shown pressed at once, its answer
+  // still coming: asked before it, the tab said nobody was followed
+  // (checkdrift, 2026-11-23, Follow then Following at once).
+  if (followModule) await (await followModule).followsSettled().catch(() => null);
   const lang = langAt() ? `&lang=${langAt().slice(1)}` : "";
   const answer = await call(`/api/people?op=feed${lang}${before ? `&before=${encodeURIComponent(before)}` : ""}`).catch(() => null);
   if (mine !== run) return null;
@@ -338,7 +345,7 @@ if (stream) {
   // Signed in or out, here or in another part of the page: drawn for them.
   addEventListener("brickworks:signed-in", () => {
     html.dataset.signed = "in";
-    draw();
+    signedInDraw = draw().catch(() => null);
   });
   addEventListener("brickworks:signed-out", () => {
     delete html.dataset.signed;
@@ -366,7 +373,16 @@ const nameOf = (post) => post?.querySelector(".post-title a")?.textContent || ""
 async function like(button) {
   const id = button.dataset.like;
   if (!MODEL.test(id)) return;
-  if (!signedIn() && !(await askToSignIn("Sign in to like it: we email you a code, no password."))) return;
+  if (!signedIn()) {
+    if (!(await askToSignIn("Sign in to like it: we email you a code, no password."))) return;
+    // Signed in, the stream is drawn again as them: the like goes on the
+    // post as drawn then, or a draw answered before it would take it off
+    // the screen (checkdrift, 2026-11-23, once First steps stopped holding
+    // it back); and liked before, it stays liked, not taken back.
+    await signedInDraw;
+    button = stream.querySelector(`[data-like="${id}"]`) || button;
+    if (button.getAttribute("aria-pressed") === "true") return;
+  }
   const name = nameOf(button.closest(".post"));
   const was = button.getAttribute("aria-pressed") === "true";
   const count = Number(button.querySelector(".n")?.textContent.replace(/\D/g, "")) || 0;

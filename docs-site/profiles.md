@@ -59,6 +59,8 @@ lib:a designer's numbers against last month
 
 After a first sign-in and the age question, **First steps** helps you start: **Make your profile**, **What do you build?**, and **Designers and models to start with**. Each can be skipped; **See your feed** or **Done** ends it.
 
+If you signed in to do something, such as liking a model or following a builder, that is done first. **First steps** is then offered in a note at the foot of the screen; press **First steps** there to open it.
+
 <!-- covers
 ui:first steps after a first sign-in
 -->
