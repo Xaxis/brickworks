@@ -370,13 +370,29 @@ try {
   check("a visitor no longer sees it; Bea sees it hidden", !after.includes(Number(beaPost.id)) && beaSees?.hidden === true);
 
   console.log("8. The month's challenge has its thread");
-  const challenges = await open("/talk/b/challenges?tests=1");
-  const challengeRows = await textOf(challenges, "#talk-list .talk-row");
-  check(`a thread in Challenges, by Brickworks: ${challengeRows[0]?.slice(0, 80)}`, challengeRows.some((one) => /Brickworks started it/.test(one)));
-  const challengePath = await challenges.evaluate(() => document.querySelector("#talk-list .talk-row-title a")?.getAttribute("href"));
-  await challenges.goto(`${site}${challengePath}`);
-  check("its thread leads to the challenge", await challenges.evaluate(() => Boolean(document.querySelector(".talk-challenge a[href*='/challenge'], #talk-posts a[href*='/challenge']"))));
-  await challenges.context().close();
+  // The month's challenge the checks' pool is shown is the real one when the
+  // pool has none of its own (api/_challenges.js challenge_page), and only a
+  // challenge's own pool has its thread (supabase talk_ensure): so the thread
+  // is looked for on that challenge's board, by its title. rel-m320 looked
+  // in the checks' pool for the real month's thread, found no row, and went
+  // to "...undefined/".
+  const month = (await api("/api/people?op=challenge&tests=1")).body?.challenge || null;
+  if (!month) {
+    console.log("  note  no month's challenge is open, so none has a thread to look for");
+  } else {
+    const challenges = await open(`/talk/b/challenges${month.test ? "?tests=1" : ""}`);
+    const rows = await challenges.evaluate(() => [...document.querySelectorAll("#talk-list .talk-row")].map((row) => ({
+      title: row.querySelector(".talk-row-title")?.textContent.replace(/\s+/g, " ").trim() || "",
+      said: row.textContent.replace(/\s+/g, " ").trim(), href: row.querySelector(".talk-row-title a")?.getAttribute("href") || "" })));
+    const its = rows.find((one) => one.title === month.title && /Brickworks started it/.test(one.said));
+    check(`"${month.title}" (${month.test ? "the checks' pool" : "the real one"}) has its thread in Challenges, by Brickworks: `
+      + `${its ? its.href : `not among ${rows.length} threads`}`, Boolean(its?.href));
+    if (its?.href) {
+      await challenges.goto(new URL(its.href, site).href);
+      check("its thread leads to the challenge", await challenges.evaluate(() => Boolean(document.querySelector(".talk-challenge a[href*='/challenge'], #talk-posts a[href*='/challenge']"))));
+    }
+    await challenges.context().close();
+  }
 
   console.log("9. In German, and on a phone");
   const german = await open("/de/talk?tests=1");
