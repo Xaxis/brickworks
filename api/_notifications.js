@@ -386,7 +386,7 @@ const CAME_MOST = 8;
 export async function studioStart(request, response, { origin }) {
   response.setHeader("Cache-Control", "private, no-store");
   const asker = await who(request);
-  if (!asker) throw new Unacceptable("Sign in to see what came back on your models: we email you a code, no password.", 401);
+  if (!asker) throw new Unacceptable("Sign in to see what happened to your models: we email you a code, no password.", 401);
   const tests = testsAsked(request.query || {});
   const [page, week] = await Promise.all([
     call("notification_list", { viewer: asker, mark: false }, () => ({ missing: true })),

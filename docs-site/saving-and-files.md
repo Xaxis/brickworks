@@ -38,12 +38,27 @@ ui:account full offer
 
 ## Pick up where you left off {#start-up}
 
-Each tab keeps its model a few seconds after every change, saved or not. Reload, close the tab or come back tomorrow, and the model is there as you left it. With nothing to come back to, Brickworks opens your last saved model, or the example car.
+Each tab keeps its model a few seconds after every change, saved or not. Reload, close the tab or come back tomorrow, and the model is there as you left it. With nothing to come back to, Brickworks opens your last saved model. Only an account with no models yet starts on the example car.
 
 If that model cannot be opened (none of its parts are in the catalogue), Brickworks says so above the model and keeps it in **File › Open** as it was, never lost.
 
 <!-- covers
 ui:working model that could not open
+-->
+
+### The studio's first screen {#first-screen}
+
+Signed in, the studio opens on a screen of your own, over your model:
+
+- **Continue**: the models you saved last, on this device or any other you sign in on. One tap opens one.
+- **This week's quick build**: its brief and its day. **Start from its template** puts your own copy of the template on the baseplate, ready to publish as your entry.
+- **What came back on your models**: the newest comments, photos of builds and remixes. A comment on a part opens your model with that part selected. A photo or a remix opens its page. Nothing is marked read: the count on your avatar stays until you open Notifications.
+- **Find in the gallery**: the newest models, and a search. A model you press opens as a copy of your own, credited to its designer.
+
+Press **Esc**, click outside the screen or start building, and it goes. Untick **Open the studio on this screen** to start straight on your model. While the studio is open, comments on parts of a shared model are checked every 30 seconds, so a new one shows on its part within a minute.
+
+<!-- covers
+ui:the studio's first screen
 -->
 
 ## Open a model {#open}

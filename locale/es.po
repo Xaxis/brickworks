@@ -16861,3 +16861,115 @@ msgstr "Publicado, no inscrito: %s"
 
 msgid "Brickworks could not enter it just now. Press Enter again in a minute."
 msgstr "Brickworks no pudo inscribirlo ahora. Pulsa Participar de nuevo dentro de un minuto."
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "Welcome back"
+msgstr "Bienvenido de nuevo"
+
+msgid "Pick up where you left off, or see what came back from other builders."
+msgstr "Sigue donde lo dejaste, o mira lo que te han respondido otros constructores."
+
+msgid "New model"
+msgstr "Modelo nuevo"
+
+msgid "Put this away (Esc): the model is behind it"
+msgstr "Ocultar (Esc): el modelo está detrás"
+
+msgid "Continue"
+msgstr "Continuar"
+
+msgid "Nothing saved yet: a model you save is here next time, on any device you sign in on."
+msgstr "Aún no hay nada guardado: un modelo que guardes estará aquí la próxima vez, en cualquier dispositivo en el que inicies sesión."
+
+msgid "What came back on your models"
+msgstr "Lo que han recibido tus modelos"
+
+msgid "Find in the gallery"
+msgstr "Buscar en la galería"
+
+msgid "Search: a tug, a castle, a 6-wide car…"
+msgstr "Buscar: un remolcador, un castillo, un coche de 6 de ancho…"
+
+msgid "Open the studio on this screen"
+msgstr "Abrir el estudio en esta pantalla"
+
+msgid "No quick build this week: the month's challenge is on its page."
+msgstr "No hay construcción rápida esta semana: el reto del mes está en su página."
+
+msgid "Brickworks could not be reached just now."
+msgstr "No se ha podido contactar con Brickworks ahora mismo."
+
+msgid "Publish by %s"
+msgstr "Publica antes del %s"
+
+msgid "1 entry so far"
+msgstr "1 participación hasta ahora"
+
+msgid "%d entries so far"
+msgstr "%d participaciones hasta ahora"
+
+msgid "Start from its template"
+msgstr "Empezar desde su plantilla"
+
+msgid "Your own copy of its template, on the baseplate: publish it to enter"
+msgstr "Tu propia copia de su plantilla, en la placa base: publícala para participar"
+
+msgid "Nothing yet. Share a model, and comments, builds and remixes of it come back here."
+msgstr "Nada todavía. Comparte un modelo y sus comentarios, construcciones y remezclas llegarán aquí."
+
+msgid "on a part: shows it"
+msgstr "en una pieza: la muestra"
+
+msgid "Open the model at this comment's part"
+msgstr "Abrir el modelo en la pieza de este comentario"
+
+msgid "Open the model"
+msgstr "Abrir el modelo"
+
+msgid "See the photo on its page"
+msgstr "Ver la foto en su página"
+
+msgid "See the remix on its page"
+msgstr "Ver la remezcla en su página"
+
+msgid "New in the gallery"
+msgstr "Nuevo en la galería"
+
+msgid "Found for “%s”"
+msgstr "Encontrado para «%s»"
+
+msgid "Looking for “%s”…"
+msgstr "Buscando «%s»…"
+
+msgid "Nothing in the gallery matches. Try fewer words."
+msgstr "Nada en la galería coincide. Prueba con menos palabras."
+
+msgid "The gallery could not be reached just now."
+msgstr "No se ha podido contactar con la galería ahora mismo."
+
+msgid "by %s · %s"
+msgstr "de %s · %s"
+
+msgid "A copy of “%s” of your own, on the baseplate"
+msgstr "Tu propia copia de «%s», en la placa base"
+
+msgid "Open “%s”"
+msgstr "Abrir «%s»"
+
+msgid "%d min ago"
+msgstr "hace %d min"
+
+msgid "%d h ago"
+msgstr "hace %d h"
+
+msgid "yesterday"
+msgstr "ayer"
+
+msgid "%d days ago"
+msgstr "hace %d días"
+
+msgid "%s's comment is on this part: “%s”"
+msgstr "El comentario de %s está en esta pieza: «%s»"
+
+msgid "%s commented: “%s” — reply on its page"
+msgstr "%s comentó: «%s» — responde en su página"

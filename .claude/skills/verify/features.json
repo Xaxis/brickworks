@@ -3556,6 +3556,22 @@
       "tests": []
     },
     {
+      "id": "cli:studio start probe",
+      "kind": "cli",
+      "entry": "src/dev/studio_start_probe.gd",
+      "reach": "tools/probe.sh studio_start_probe -- --pictures=DIR   (windowed, PROBE_SIZE=390x844 too: the first screen opened once signed in, its lists from a stand-in server, the pin pressed lit within 1 s, a pin written meanwhile shown within a minute unasked, Escape, a gallery model as a copy)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:studiostart browser flow",
+      "kind": "cli",
+      "entry": "tools/web/studiostart_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11750 --static=build/web --hold=pins & node tools/web/studiostart_flow.mjs --url=http://127.0.0.1:11750 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>: two throwaway accounts; before and after pictures at 1280 and 390, dark and light; three real things within the studio's open time + 1 s, never the example car; the pin pressed lit within 1 s; a pin written meanwhile shown within 60 s; a gallery model as a copy; summary.json)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:subexport probe",
       "kind": "cli",
       "entry": "src/dev/subexport_probe.gd",
@@ -8393,6 +8409,14 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/test_console3.py"
       ]
+    },
+    {
+      "id": "ui:the studio's first screen",
+      "kind": "ui",
+      "entry": "src/ui/studio_start.gd",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:the talk forum",

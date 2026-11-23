@@ -400,8 +400,9 @@ static func prompt_line(prompt: Dictionary, most: int = -1) -> String:
 ## The studio's first screen (api/people.js ?op=studio_start): what came
 ## back on the person's models and this week's quick build, nothing marked
 ## read: {code, body: {ready, came: [...], prompt}} (StudioStart).
-func studio_start(token: String) -> Dictionary:
-	return await _fetch("/api/people?op=studio_start", HTTPClient.METHOD_GET, token, "")
+## Its lines in [param lang], the interface's language (Language.current).
+func studio_start(token: String, lang: String = "en") -> Dictionary:
+	return await _fetch("/api/people?op=studio_start&lang=" + lang.uri_encode(), HTTPClient.METHOD_GET, token, "")
 
 
 ## A page of the gallery (api/share.js ?op=list), as the library's Community

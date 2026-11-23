@@ -304,7 +304,8 @@ func _ask() -> void:
 		return
 	asked = "asking"
 	var token: String = await account.access_token()
-	var got: Dictionary = await shared.studio_start(token) if not token.is_empty() else {"code": 401}
+	var got: Dictionary = await shared.studio_start(token, Language.current()) if not token.is_empty() \
+		else {"code": 401}
 	var body: Variant = got.get("body")
 	if int(got.get("code", 0)) == 200 and body is Dictionary:
 		answer = body
@@ -713,13 +714,21 @@ func controls_by_name() -> Dictionary:
 func page_state() -> Dictionary:
 	var came: Array = answer.get("came", []) if answer.get("came") is Array else []
 	var pins: int = 0
+	var items: Array = []
 	for one: Variant in came:
-		pins += 1 if one is Dictionary and bool((one as Dictionary).get("pinned", false)) else 0
+		if not one is Dictionary:
+			continue
+		var item: Dictionary = one
+		pins += 1 if bool(item.get("pinned", false)) else 0
+		if items.size() < CAME_MOST:
+			items.append({"kind": str(item.get("kind", "")), "pinned": bool(item.get("pinned", false)),
+				"comment": int(item.get("comment", 0)) if item.get("comment") is float or item.get("comment") is int else 0,
+				"model": str(item.get("model", ""))})
 	var prompt: Variant = answer.get("prompt")
 	return {"shown": visible, "continue": models.size(), "came": mini(came.size(), CAME_MOST), "pins": pins,
 		"prompt": str((prompt as Dictionary).get("title", "")) if prompt is Dictionary else "",
 		"found": found.size(), "found_for": found_for, "real": real_items(), "asked": asked,
-		"shown_ms": shown_ms, "filled_ms": filled_ms, "chosen": chosen,
+		"shown_ms": shown_ms, "filled_ms": filled_ms, "chosen": chosen, "items": items,
 		"names": models.map(func(one: Dictionary) -> String: return str(one["name"]))}
 
 

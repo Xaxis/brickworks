@@ -44,7 +44,7 @@ class FakeShared extends SharedModels:
 	var asked_comments: int = 0
 	var asked_start: int = 0
 
-	func studio_start(_token: String) -> Dictionary:
+	func studio_start(_token: String, _lang: String = "en") -> Dictionary:
 		asked_start += 1
 		await (Engine.get_main_loop() as SceneTree).process_frame
 		return {"code": 200, "body": start.duplicate(true)}
