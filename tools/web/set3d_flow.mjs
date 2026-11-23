@@ -298,12 +298,16 @@ try {
             // A swipe leaves the model turning on to a stop, and in SwiftShader each of those frames of
             // a 450-part set at a phone's pixels takes seconds: a press made then is answered only once
             // they are drawn (6208-1 at 390: 30 s, and the view closed after the click had timed out).
+            // Even still, the Porsche's 2.5 million triangles at a phone's pixels took over 120 s to answer
+            // a press (each of the frames a click waits on is many seconds), so it has five minutes.
             const stillAfter = await still(page);
-            await page.click('.view3d-tools [data-act="close"]', { timeout: 120000 });
+            const pressed = Date.now();
+            await page.click('.view3d-tools [data-act="close"]', { timeout: 300000 });
             await page.waitForTimeout(200);
             const closed = await page.evaluate(frameOf);
             check(`${label}: Back to the picture puts the picture back (${closed.state}; still after `
-              + `${stillAfter < 0 ? "over 120 s" : `${(stillAfter / 1000).toFixed(1)} s`})`, closed.state === "closed" && closed.shell === null
+              + `${stillAfter < 0 ? "over 120 s" : `${(stillAfter / 1000).toFixed(1)} s`}, answered in `
+              + `${((Date.now() - pressed) / 1000).toFixed(1)} s)`, closed.state === "closed" && closed.shell === null
               && JSON.stringify(closed.picture) === JSON.stringify(frame.picture));
           }
           // 5. What a view of it costs, a second time in the same browser.
