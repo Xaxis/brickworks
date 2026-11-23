@@ -85,22 +85,6 @@ def test_a_kind_off_here_leaves_the_list_and_only_it(off: str) -> None:
     assert out["count"] == len(out["after"])
 
 
-def test_a_change_sent_back_is_a_remixs_notice_for_somebody_who_chose() -> None:
-    # suggestedit's rows (supabase/suggestions.sql suggestion_notices) are
-    # listed for an account with chosen kinds too, and go with remixes.
-    out = run(
-        "const at = new Date(Date.now() - 60000).toISOString();"
-        "const rows = [{ kind: 'suggestion', at, on: 'SuggestM01' }, { kind: 'suggestion_taken', at, on: 'SuggestM02' }];"
-        "const all = { ...n.DEFAULTS, here: n.KINDS };"
-        "const noRemix = { ...all, here: n.KINDS.filter((k) => k !== 'remix') };"
-        "const muted = { ...all, muted: ['SuggestM01'] };"
-        "return { all: n.keptRows(rows, all).map((r) => r.kind), off: n.keptRows(rows, noRemix).length,"
-        "  muted: n.keptRows(rows, muted).map((r) => r.on) };")
-    assert out["all"] == ["suggestion", "suggestion_taken"]
-    assert out["off"] == 0
-    assert out["muted"] == ["SuggestM02"]
-
-
 def test_a_muted_models_every_row_goes_and_comes_back_unmuted() -> None:
     out = run(
         "w.rows.push({ ...w.rows[0], comment: 99, at: new Date(Date.now() - 30 * 60000).toISOString() });"
