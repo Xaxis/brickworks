@@ -24,8 +24,10 @@ var _copy: Button
 var _rows: VBoxContainer
 var _end: Button
 var _end_row: HBoxContainer
-## The body that scrolls, and End's row under it.
+## The body that scrolls, and under it what never does: the chat's field
+## and End's row (_foot).
 var _frame: VBoxContainer
+var _foot: VBoxContainer
 var _removes: Array[Button] = []
 var _follows: Array[Button] = []
 var _chat_box: VBoxContainer
@@ -55,6 +57,17 @@ const CHAT_SHOWN := 8
 ## people and lines as these show at once; more scroll.
 const PEOPLE_TALL := 3
 const CHAT_TALL := 4
+## And as few as a short room leaves them (buildfit): a laptop's browser,
+## 1024 x 600, or a tablet held sideways. Set by the room alone, never by
+## what is said, so they still hold still while a session goes on.
+const PEOPLE_LEAST := 1
+const CHAT_LEAST := 2
+## A chat line's height and a person's row's, as _hold_heights last read
+## them, and the room the body had at the last _keep_to.
+var _line_h: float = 0.0
+var _row_h: float = 0.0
+var _gap_h: float = 0.0
+var _body_room: float = INF
 var _people_scroll: ScrollContainer
 var _chat_scroll: ScrollContainer
 var _busy: bool = false
@@ -96,11 +109,14 @@ func _ready() -> void:
 	if Phone.on():
 		_body.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# What scrolls, and under it End's row, which never does (_ready's end).
+	# What scrolls, and under it the chat's field and End's row, which never
+	# do (_ready's end).
 	_frame = VBoxContainer.new()
 	_frame.add_theme_constant_override("separation", 8)
 	add_child(_frame)
 	_frame.add_child(_body)
+	_foot = VBoxContainer.new()
+	_foot.add_theme_constant_override("separation", 8)
 	_body.add_child(column)
 	_note = Label.new()
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -168,7 +184,7 @@ func _ready() -> void:
 	_chat_send.focus_mode = Control.FOCUS_NONE
 	_chat_send.pressed.connect(_on_chat)
 	_chat_row.add_child(_chat_send)
-	_chat_box.add_child(_chat_row)
+	_foot.add_child(_chat_row)
 	_chat_note = Label.new()
 	_chat_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_chat_note.custom_minimum_size = Vector2(WIDTH, 0)
@@ -180,11 +196,12 @@ func _ready() -> void:
 	_end.pressed.connect(_on_end)
 	# End on the left, and the owner's Open or Close to watchers at the
 	# other end of the same row: one place to open and close, apart from
-	# End. The row is under what scrolls, not in it: however tall the
-	# session's words, people, chat and asks grow, and however short the
-	# window (a laptop's browser at 1366 x 768 has about 648 points), End
-	# and Close stay in sight. In the column, the watch row pushed them
-	# out of sight on a tablet held sideways (together_fit, 2026-11-23).
+	# End. The row and the chat's field are under what scrolls, not in it:
+	# however tall the session's words, people, chat and asks grow, and
+	# however short the window (a laptop's browser at 1366 x 768 has about
+	# 648 points), End, the field and Close stay in sight. In the column,
+	# the watch row pushed End out of sight on a tablet held sideways, and
+	# the field went at 1280 x 720 (together_fit, 2026-11-23).
 	_end_row = HBoxContainer.new()
 	_end_row.add_theme_constant_override("separation", 8)
 	_end_row.add_child(_end)
@@ -193,7 +210,8 @@ func _ready() -> void:
 	_end_row.add_child(apart)
 	_end_row.add_child(_watch_open)
 	_end_row.add_child(_watch_close)
-	_frame.add_child(_end_row)
+	_foot.add_child(_end_row)
+	_frame.add_child(_foot)
 	together.changed.connect(func() -> void:
 		if visible:
 			fill())
@@ -202,7 +220,7 @@ func _ready() -> void:
 	# session started or ended, its words grown for a finger) or the window
 	# changes size.
 	_column.minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
-	_end_row.minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
+	_foot.minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
 	get_tree().root.size_changed.connect(_fit, CONNECT_DEFERRED)
 
 
@@ -368,11 +386,14 @@ func fit_to(most: float) -> void:
 
 
 ## The body as tall as the column wants, or as [param most] leaves it
-## beside End's row, Close and the panel's margins, never under four lines;
-## whether that changed it.
+## beside the foot, Close and the panel's margins, never under four lines;
+## whether that changed it. Who is here and the chat are cut to the room
+## first (_cut_lists).
 func _keep_to(most: float) -> bool:
-	var wants: float = _column.get_combined_minimum_size().y
 	var around: float = get_contents_minimum_size().y - _body.get_combined_minimum_size().y
+	_body_room = most - around
+	_cut_lists()
+	var wants: float = _column.get_combined_minimum_size().y
 	var least: float = minf(wants, 4.0 * float(_note.get_line_height()))
 	var tall: float = roundf(clampf(most - around, least, wants))
 	if absf(_body.custom_minimum_size.y - tall) < 0.5:
@@ -401,15 +422,47 @@ func _hold_heights() -> void:
 		+ _chat_lines.get_theme_constant("line_spacing")
 	var row: float = maxf(line, _copy.get_combined_minimum_size().y)
 	var gap: float = float(_rows.get_theme_constant("separation"))
-	var people: float = PEOPLE_TALL * row + (PEOPLE_TALL - 1) * gap
-	if _people_scroll.custom_minimum_size.y != people:
-		_people_scroll.custom_minimum_size.y = people
-	var chat: float = CHAT_TALL * line
-	if _chat_scroll.custom_minimum_size.y != chat:
-		_chat_scroll.custom_minimum_size.y = chat
+	_line_h = line
+	_row_h = row
+	_gap_h = gap
+	_cut_lists()
 	# Deferred, it ran before the layout made room for the line just said,
 	# and the chat stopped a line short of it (together_chat_probe).
 	LaidOut.to_end(_chat_scroll)
+
+
+## Who is in it PEOPLE_TALL rows and the chat CHAT_TALL lines, or, where
+## the body has less room than the session wants, fewer: the chat a line
+## at a time to CHAT_LEAST, then who is here a row at a time to
+## PEOPLE_LEAST. Past that the body scrolls. Its foot holds the field and
+## End in sight either way.
+func _cut_lists() -> void:
+	if _line_h <= 0.0:
+		return
+	var chat_n: int = CHAT_TALL
+	var people_n: int = PEOPLE_TALL
+	var chat_in: bool = _chat_box.visible and _chat_scroll.visible
+	if _people_scroll.visible and is_finite(_body_room):
+		var rest: float = _column.get_combined_minimum_size().y - _people_scroll.custom_minimum_size.y \
+			- (_chat_scroll.custom_minimum_size.y if chat_in else 0.0)
+		var over: float = rest + _people_tall(PEOPLE_TALL) + (CHAT_TALL * _line_h if chat_in else 0.0) - _body_room
+		while chat_in and over > 0.5 and chat_n > CHAT_LEAST:
+			chat_n -= 1
+			over -= _line_h
+		while over > 0.5 and people_n > PEOPLE_LEAST:
+			people_n -= 1
+			over -= _row_h + _gap_h
+	var people: float = _people_tall(people_n)
+	if _people_scroll.custom_minimum_size.y != people:
+		_people_scroll.custom_minimum_size.y = people
+	var chat: float = chat_n * _line_h
+	if _chat_scroll.custom_minimum_size.y != chat:
+		_chat_scroll.custom_minimum_size.y = chat
+		LaidOut.to_end(_chat_scroll)
+
+
+func _people_tall(rows: int) -> float:
+	return rows * _row_h + (rows - 1) * _gap_h
 
 
 ## What it says and shows, for the session as it is now.
@@ -424,6 +477,7 @@ func fill() -> void:
 	_link_row.visible = live
 	_end.visible = live
 	_end_row.visible = live
+	_foot.visible = live
 	_people_scroll.visible = live
 	_chat_box.visible = live
 	_start.disabled = _busy
