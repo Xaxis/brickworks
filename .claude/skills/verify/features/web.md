@@ -1284,7 +1284,15 @@ plan with Claude as the client.
   own sky and ground carried on above and below as the frame's
   background. A photo from the strip is shown whole as before. On the
   live models: the owl and the rocket at x1.9, the rover x1.25, the
-  dragon (86% of the picture's width) x1.08.
+  dragon (86% of the picture's width) x1.08. Since sitepolish
+  (2026-11-23) the frame from 900 px is 4:3 (16:10 from 1600 px), as tall
+  as the column beside it (520 px at 1280, 380 before), the picture drawn
+  into it the same way (`fitPicture` takes any frame's shape, `FITTED`,
+  and fits again when the frame's width changes); `.view3d`, `.room-over`
+  and `.room` take the same shape so 3D and the room open in place. The
+  facts under the column are one line of words, not pills
+  (`.model-page .facts`). Check by eye: `bench/results/sitepolish-2026-11-23/shots.mjs`
+  at 1280 and 390, and `tools/web/model_page_flow.mjs`.
 - `a model's parts and its download` (`api/_parts.js`, `api/share.js`
   `partsSection`, `download`, `web/model-page.js` `startParts`, 2026-10-26,
   site278, docs/SOCIAL.md): on `/m/<id>`, a Parts tab (with the count) and
@@ -1753,6 +1761,14 @@ plan with Claude as the client.
   scrolling, the footer's bottom against the window's, lazy pictures in
   the first screen, every control's transition with and without reduced
   motion, an `:active` rule per kind, Like and Follow's time to draw).
+  Since sitepolish (2026-11-23, docs/DESIGN_SYSTEM.md "Width", "Empty",
+  "Gate", "Own, Want and Save"): every page keeps `--gutter` from the
+  window's edge (16, 24 from 600 px, 32 from 1200 px); `.state` is a quiet
+  panel, centred; Settings and Notifications signed out are a `.gate`
+  panel; a card's Save shows with a mouse only on the card's hover or
+  focus, or while kept (always on touch), and only its icon in a phone's
+  two-up grid; the feed is `--page` wide as Notifications is. Seen by eye:
+  `bench/results/sitepolish-2026-11-23/` (shots.mjs, pair.py, LOOK.md).
 - `model card` (`web/card.js`, 2026-10-22): one renderer, `cardHtml(model,
   {earned})`, a pure string function; `modelCard` parses it in the
   browser (gallery, landing strip, /profile), and the server's pages
@@ -3349,7 +3365,14 @@ plan with Claude as the client.
   guard; `api/_push.js` KINDS, one push a thread, tag `talk-<n>`). A model's page
   links its thread or offers its builder one (`#talk-about`,
   `?op=talk_model`). Deleting an account deletes its Talk photos
-  (`api/_erase.js`, `talk_photos_of`). SQL proof: `PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js
+  (`api/_erase.js`, `talk_photos_of`). Since sitepolish (2026-11-23): a
+  row is the title, two lines of what was said, then its foot (avatar, who
+  started it, when, the replies once there is one, the board's pill); a
+  thread's page has the boards beside it (`.talk-thread-layout`,
+  `boardsListHtml`), its Follow is `button[data-talk-follow]` (the header's
+  `follow.js` owns `button[data-follow]` and is on every Talk page now, so
+  the header's account shows signed in), and Talk is the header's current
+  link. SQL proof: `PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js
   node --env-file=.env tools/apply_sql.mjs supabase/talk.sql --dry
   --try=tools/talk_try.sql --table=talk_threads` (grants, row security,
   anon, another account and a banned one refused; the log is

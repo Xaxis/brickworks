@@ -58,9 +58,12 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 .gallery-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
 .gallery-title { min-width: 0; }
 .gallery-head h1 { margin: 0; }
-.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 60ch; color: var(--ink-soft); font-size: var(--t-lede); }
-/* The search (site.css .search) beside them; "/" puts the cursor in it. */
-.search { flex: 1 1 320px; max-width: 440px; }
+.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 54ch; color: var(--ink-soft); font-size: var(--t-lede); }
+/* The search (site.css .search) beside them; "/" puts the cursor in it.
+   Wide enough for the longest of its words, the Sets tab's "Search sets by
+   name, number or theme", beside the "/" (sitepolish: it was cut at
+   "or the" at 1280). */
+.search { flex: 1 1 380px; max-width: 460px; }
 /* Share yours at the head's end, beside the search (web/share-model.html).
    On a phone it stays a word, beside the title, and the search has a row
    of its own, so its words are read whole (byfix: three controls in one
@@ -154,6 +157,14 @@ html[data-tab="builds"] .toolbar { position: static; }
 @media (width < 600px) { #spotlight { padding: var(--s-4); } }
 
 .feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
+/* This month's challenge across the grid: a band of the accent's soft
+   ground, its name the way in, so it reads as the month's event it is, not
+   a line of small print over the cards (sitepolish, 2026-11-23). */
+.feed > #challenge-line:not([hidden]) {
+	padding: 10px 14px; border: 1px solid var(--accent-edge); border-left-width: 4px; border-radius: var(--r-2);
+	background: var(--accent-soft); color: var(--ink); font-size: var(--t-small);
+}
+#challenge-line a { color: var(--ink); font-weight: 650; }
 .listing .state { margin-top: var(--s-2); }
 .state .said { margin: 0 0 var(--s-2); }
 .state .actions { margin-top: var(--s-3); }
