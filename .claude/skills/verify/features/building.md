@@ -189,10 +189,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   was 55% green, so a green brick's ghost and the colour about to be placed
   could not be told apart.
 - `copy paste and duplicate` (`src/assembly/carry.gd`): `Ctrl-C` copies the
-  selection, `Ctrl-V` holds a copy as one ghost, `Ctrl-D` holds a copy of the
-  selection without touching the clipboard, `Ctrl-X` cuts. A click puts it down
-  as one step and selects it; `R` turns it; `Esc` puts it away. After `Ctrl-D`
-  or a click with the Clone tool another copy stays in hand (`Carry.repeats`,
+  selection, `Ctrl-V` holds a copy as one ghost, `Ctrl-X` cuts. `Ctrl-D`
+  (Edit, Duplicate; `EditVerbs.duplicate_beside`, `Builder.put_copy_beside`,
+  ux14) puts a copy down at once beside the selection, seated where the
+  original stood and selected, one undo, the clipboard untouched; with no room
+  on any side it holds the copy instead (`ux12_walk_probe --only=x14`: 8 car
+  parts, none floating; "2x" then makes a row). A click puts a held copy down
+  as one step and selects it; `R` turns it; `Esc` puts it away. After
+  a click with the Clone tool another copy stays in hand (`Carry.repeats`,
   APP_UX A6), as Studio's Clone does, until `Esc`, a right click or another
   tool; a paste and a `Ctrl`-drag copy go once (`typed_moves_probe -- only=clones`:
   five copies in six actions, one undo each). The group's frame
@@ -1821,7 +1825,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   it — a banner above the model says which, the model staying where it was
   under the pointer, so a second double-click there goes a level deeper
   (view.md's `centred on the model's column`), a click takes one part, a part put
-  down goes into it — and `Esc` steps out a level. `Ctrl-D`/`Ctrl-C` of one is
+  down goes into it — and `Esc` steps out a level. The parts bin searched for a
+  sub-assembly's name lists it first as a row of its own (`PartsBin._own_row`,
+  `own_assembly_chosen`, `Main._hold_own_assembly`; ux14): a click holds a copy
+  of its first copy, each click puts one down (`ux12_walk_probe --only=p7`).
+  `Ctrl-D`/`Ctrl-C` of one is
   another copy of the same definition (`Wing#2`), and after any edit the other
   copies follow it part by part, mirrored where they were mirrored, in the
   same undo step (`Assemblies.after_edit`, each part paired with its twin's by
