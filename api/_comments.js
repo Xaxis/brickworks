@@ -333,7 +333,7 @@ async function withMentions(comments) {
 
 /// The link's versions as comments need them: [{n, steps, first_changed}],
 /// newest first. A link with none is its version 1.
-async function versionsOf(id) {
+export async function versionsOf(id) {
   const rows = await db(`share_versions?model=eq.${id}&select=n,steps,first_changed&order=n.desc&limit=100`);
   return rows.length ? rows.map((one) => ({ n: one.n, steps: one.steps ?? null, first_changed: one.first_changed ?? null }))
     : [{ n: 1, steps: null, first_changed: null }];
@@ -470,7 +470,7 @@ async function versionText(id, n, newest) {
 const placesKept = new Map();
 const PLACES_KEPT = 8;
 
-async function placesFor(id, n, newest) {
+export async function placesFor(id, n, newest) {
   const key = `${id}:${n}:${newest}`;
   if (placesKept.has(key)) return placesKept.get(key);
   const text = await versionText(id, n, newest);

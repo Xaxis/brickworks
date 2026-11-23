@@ -15,6 +15,12 @@ whole cycle.
 
 ### Added
 
+- **Ask the builders, from the studio.** Stuck on a step? **Share** ›
+  **Ask the builders** › **Ask in Talk** starts a Help thread with your
+  model in 3D at that very step and the parts you picked lit, readable by
+  anybody. Builders answer on a part (right-click or touch and hold it in
+  the thread's 3D, **Answer on this part**), and with your model open the
+  studio lights that part within half a minute and says who answered.
 - **Change any model with your own Claude.** Every model's page has **With
   your Claude** beside **Open in Brickworks**: say what should change (or
   nothing, and Claude asks), press **Copy for Claude**, and paste the message

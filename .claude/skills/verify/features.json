@@ -694,6 +694,22 @@
       "tests": []
     },
     {
+      "id": "cli:askhelp browser flow",
+      "kind": "cli",
+      "entry": "tools/web/askhelp_flow.mjs",
+      "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11770 --hold=talk, then node --env-file=$SCRATCH/relay.env tools/web/askhelp_flow.mjs --url=http://127.0.0.1:11770 --out=DIR   (the ask and its refusals, the thread's 3D at step 2 at 1280 and 390, Answer on this part, op=talk_asks within 60 s, blocks and a report)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:askhelp probe",
+      "kind": "cli",
+      "entry": "src/dev/askhelp_probe.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/askhelp_probe.gd -- --pictures=DIR   (and --resolution 390x844: Ask in Talk's request, the answer lit, polling stops with no asks)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:audit connections in real sets",
       "kind": "cli",
       "entry": "tools/connection_audit.py",
@@ -4384,6 +4400,14 @@
       "tests": []
     },
     {
+      "id": "lib:ask the builders in talk",
+      "kind": "lib",
+      "entry": "supabase/talk_asks.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/talk_asks.sql --dry --try=tools/talk_asks_try.sql --table=talk_threads   (after talk.sql and comment_pins.sql; talk_ask and talk_pin_reply over talk_start and talk_reply, talk_asks_of, talk_pins_of, talk_asks_on: the owner's studio, never somebody blocked, hidden or another pool; api/_asks.js, api/_parts.js stepParts for /m/<id>/scene.json?step=N)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:axles and gears on a line",
       "kind": "lib",
       "entry": "src/assembly/joints.gd",
@@ -6193,6 +6217,14 @@
       "entry": "src/ai/selection_scope.gd",
       "reach": "godot --path .  (select parts, right-click one: Ask Claude about this\u2026, or Ctrl+K; over MCP the selection and edit_selection tools)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "ui:ask the builders from the studio",
+      "kind": "ui",
+      "entry": "api/_asks.js",
+      "reach": "https://brickworks.diy/talk/t/<n>: a thread asked from the studio shows the model in 3D at the asked step with the asked parts lit (web/talk.js, web/start3d.js, /m/<id>/scene.json?step=N); Answer on this part from the 3D's menu; POST /api/people?op=talk_ask, ?op=talk_reply {part}; GET ?op=talk_asks&model=X for the studio; in the app Share, Ask the builders, Ask in Talk (src/ui/share_panel.gd), new answers lit in the studio (src/ui/part_pins.gd)",
+      "area": "web",
       "tests": []
     },
     {

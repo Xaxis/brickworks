@@ -78,7 +78,10 @@ const state = window.brickworks3d = window.brickworks3d || { state: "closed", ti
 /// timings (what model-page.js has marked already), how it was asked for
 /// (the pointer's type, or "key"), and closed, called when the person goes
 /// back to the picture. And for comments on a part, each optional: pins()
-/// ([{id, n, pin, resolved, version}]), mayPin(), pinWanted(part),
+/// ([{id, n, pin, resolved, version}]), mayPin(), pinWanted(part), pinWord()
+/// (the menu's words, Comment on this part unless it says), asked() (the
+/// parts lit while none is pressed: a thread's question's, [{part, colour,
+/// at}]),
 /// placed([{id, n, index, moved}], index -1 for on no part here),
 /// pinPressed(id) (words to show) and partName(part, colour).
 export function open3d(shell, given) {
@@ -337,12 +340,19 @@ export function open3d(shell, given) {
   let placedYet = false;
   let waiting = null;
   let lit = -1;
+  let asked = [];
   const pinList = () => (typeof given.pins === "function" ? given.pins() || [] : []);
   function place() {
     if (!data || !view) return;
     const all = bricksOf();
     const list = pinList();
     placedAt = new Map(list.map((one) => [one.id, pinPlace(one.pin, all)]));
+    // The parts a question was asked about (Ask the builders' thread,
+    // given.asked): lit while no other is.
+    asked = (typeof given.asked === "function" ? given.asked() || [] : []).map((one) => pinPlace(one, all))
+      .filter(Boolean).map((where) => where.index);
+    pins.asked = asked;
+    if (lit < 0) light(-1);
     placedYet = true;
     pins.placed = list.map((one) => {
       const where = placedAt.get(one.id);
@@ -409,7 +419,7 @@ export function open3d(shell, given) {
       lit = i;
       pins.lit = i;
     }
-    if (view) view.outline(i >= 0 ? [i] : [], LIT);
+    if (view) view.outline(i >= 0 ? [i] : asked, LIT);
   }
 
   // The camera turned to pin [id]'s part, once its place here is known.
@@ -457,7 +467,7 @@ export function open3d(shell, given) {
     const go = document.createElement("button");
     go.type = "button";
     go.setAttribute("role", "menuitem");
-    go.textContent = say("Comment on this part");
+    go.textContent = given.pinWord?.() || say("Comment on this part");
     go.addEventListener("click", () => {
       // The finger that opened it, lifted on it, is not a choice.
       if (menuHow === "touch" && performance.now() - menuAt < 400) return;

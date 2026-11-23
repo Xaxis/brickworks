@@ -291,7 +291,7 @@ import {
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
-  pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+  pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, stepParts, wantedList } from "./_parts.js";
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
@@ -2251,7 +2251,7 @@ function undeviced(file) {
 /// its parts, of the version asked for (the newest unless one is). Read as a
 /// visitor, signed out: what its page offers anybody. Kept by the CDN as the
 /// page is, so a model taken down goes with its page.
-async function download(response, op, id, asked, as, lang = "en") {
+async function download(response, op, id, asked, as, lang = "en", step = null) {
   const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
   const row = await publishedRow(id);
   if (!row) {
@@ -2274,7 +2274,7 @@ async function download(response, op, id, asked, as, lang = "en") {
     response.setHeader("Content-Disposition", named("mpd"));
     return response.status(200).end(file);
   }
-  if (op === "scene" || op === "room") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`, op);
+  if (op === "scene" || op === "room") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`, op, step);
   return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest }, lang);
 }
 
@@ -2351,14 +2351,20 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
 /// visitor opens the 3D view, and kept by the CDN as the page is. As
 /// [kind] "room" (/m/X/room.json, /library/X/room.json), what the page
 /// writes the GLB Export writes of it from, for In your room (api/_parts.js
-/// roomOf, web/room.js): asked only when a visitor taps it.
-function sceneAnswer(response, name, file, of, kind = "scene") {
+/// roomOf, web/room.js): asked only when a visitor taps it. With [step], the
+/// parts built by that page alone (stepParts), said with {asked,
+/// drawn} as at_step: drawn false where the file cannot say them, the whole
+/// then.
+function sceneAnswer(response, name, file, of, kind = "scene", step = null) {
   const root = storeRoot();
-  const key = `${kind}/${name}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
+  const key = `${kind}/${name}/${step || 0}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
   let scene = scenesKept.get(key);
   if (scene === undefined && root) {
     try {
-      scene = (kind === "room" ? roomOf : sceneOf)(file.toString("utf8"), root, of);
+      const text = file.toString("utf8");
+      const only = kind === "scene" && step ? stepParts(text, step) : null;
+      scene = (kind === "room" ? roomOf : sceneOf)(text, root, of, undefined, undefined, ...(only ? [only] : []));
+      if (scene && step) scene.at_step = { asked: step, drawn: Boolean(only) };
     } catch {
       scene = null;
     }
@@ -2456,7 +2462,10 @@ async function read(request, response) {
   const asked = ["page", "image", "cutout", "file", "parts", "scene", "room", ""].includes(op) ? askedVersion(request) : null;
 
   if (op === "file" || op === "parts" || op === "scene" || op === "room") {
-    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"));
+    // A step of it (Ask the builders' thread, api/_asks.js): the parts built
+    // by that page, where the file's carried steps say so.
+    const step = op === "scene" && /^[1-9][0-9]{0,5}$/.test(String(request.query?.step || "")) ? Number(request.query.step) : null;
+    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"), step);
   }
 
   if (op === "page") {
