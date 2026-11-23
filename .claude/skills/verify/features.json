@@ -503,6 +503,14 @@
       "tests": []
     },
     {
+      "id": "cli:a page's LCP in two checkouts",
+      "kind": "cli",
+      "entry": "tools/web/page_lcp_pairs.mjs",
+      "reach": "node tools/web/page_lcp_pairs.mjs --base=<a tree with the base's web/ and api/> --rounds=8 --out=DIR   (the stand-in's pages in both at the same moments, a browser each; worse only past the noise)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:a release written down live",
       "kind": "cli",
       "entry": "tools/release/release_live.sh",
@@ -2894,6 +2902,22 @@
       "kind": "cli",
       "entry": "tools/web/reload_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/reload_flow.mjs --url=<deployment>/app --out=shots/reload   (with .env sourced; --next-deploy waits for a real second deploy at that address)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:remix backfill",
+      "kind": "cli",
+      "entry": "tools/web/remix_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/remix_backfill.mjs --dry --current=<build>/part_names/part_current.json   (after remix_changes.sql, without --dry: every remix shared before it counted and kept)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:remix browser flow",
+      "kind": "cli",
+      "entry": "tools/web/remix_flow.mjs",
+      "reach": "node tools/web/remix_flow.mjs --out=DIR   (the stand-in's four cottages, tools/web/remix_world.mjs: the line under the credit, What changed off then on, the lit parts and the ghost read from the drawn colours at 390 and 1280, See what changed in 3D, the tree both ways, the counts unchanged)",
       "area": "web",
       "tests": []
     },
@@ -5426,6 +5450,14 @@
       "kind": "lib",
       "entry": "api/_bases.js",
       "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Based on this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:what a remix changed",
+      "kind": "lib",
+      "entry": "api/_remix_changes.js",
+      "reach": "python3 tools/minitest.py tests/test_remix_changes.py   (remixdiff: the 12 pairs of tests/fixtures/remix_pairs counted as expected.json says, which PROBE compare_probe holds the app's Compare to; the line, the runs the 3D view lights, which version it is counted against, the tree both ways; a remix published through api/share.js (tests/fixtures/remix_pairs/publish.mjs) counted once its answer is written; supabase/remix_changes.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/remix_changes.sql --dry --try=tools/remix_changes_try.sql --table=remix_changes)",
       "area": "web",
       "tests": []
     },
@@ -8128,6 +8160,14 @@
       "entry": "src/ui/view_cube.gd",
       "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:what a remix changed and the remix tree",
+      "kind": "ui",
+      "entry": "api/_remix.js",
+      "reach": "https://brickworks.diy/m/<a remix>   (once supabase/remix_changes.sql is applied: under the credit What it changed from version N, See what changed in 3D, What changed on the 3D view's bar lighting what it changed and the taken away as ghosts, /m/<id>/changes.json; /m/<id>#remixes the tree both ways, three levels down); node tools/web/remix_flow.mjs --out=DIR on the stand-in",
+      "area": "web",
       "tests": []
     },
     {

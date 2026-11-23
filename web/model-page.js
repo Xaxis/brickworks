@@ -83,7 +83,19 @@ if (frame) startPicture(frame);
 // on the picture or the first drag across it (web/start3d.js, as the embed
 // has it). Drawn by /viewer3d.js (tools/viewer/inline.js), asked for only
 // then.
-const close3d = frame && frame.dataset.scene ? start3d(frame).close : null;
+const in3d = frame && frame.dataset.scene ? start3d(frame) : null;
+const close3d = in3d ? in3d.close : null;
+// A remix's "See what changed in 3D", under its credit (api/_remix.js): the
+// 3D view, opened with What changed on, and the page brought to it.
+const seeChanges = document.querySelector(".model-page .remix-changes .what-changed");
+if (seeChanges && in3d && frame.dataset.changes) {
+  seeChanges.addEventListener("click", (event) => {
+    frame.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    in3d.open(event.pointerType === "touch" ? "touch" : event.detail === 0 ? "key" : "mouse", true);
+  });
+} else if (seeChanges) {
+  seeChanges.hidden = true;
+}
 // A model too big for a phone said so before the studio opens it (phonetruth).
 guardPhoneOpens();
 // Open in Brickworks' second choice, With your Claude (claudelink).

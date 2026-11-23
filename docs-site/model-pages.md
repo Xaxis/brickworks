@@ -159,6 +159,25 @@ Under its name a page credits what the model came from: a **remix** names the mo
 lib:what a model is based on
 -->
 
+## What a remix changed {#remix-changes}
+
+A remix's page says what it changed from the model it was copied from, under its credit: *What it changed from version 1: 42 parts added, 8 taken away, 3 recoloured, 5 moved*. It is counted once, when the remix is shared, against the version it was copied from, by the same rules as the app's [Compare](/docs/saving-and-files#compare): a part moved or turned counts as moved, one painted where it stands as recoloured, and one both moved and painted as one taken away and one added. The version is a link to that version's page.
+
+![A remix's credit, Remixed from Sports car and its driver, and under it what it changed from version 1, with See what changed in 3D.](/docs/img/remix-line.webp "What a remix changed, under its credit.")
+
+**See what changed in 3D** opens the 3D view with **What changed** on: the parts it added, moved or recoloured in their own colours, every other part faded, and the parts it took away drawn as faint red ghosts where they were; a line over the view counts them. **What changed** on the view's bar turns it off and on again; it is off when the view is opened by **View in 3D**. It works the same on a phone.
+
+### The Remixes tab {#remix-tree}
+
+A model's **Remixes** tab draws where it came from and what was made from it as a tree: up to the first model of the line, then the model itself (marked *This model*), then its remixes, their remixes and theirs, three levels down. Each card says what it is a remix of, and of what that was a remix, and what it changed: *A remix of Harbour by Ann, itself a remix of Lighthouse: 4 parts added, 2 recoloured*. A model shared only by its link is not named, and remixes not in the gallery are counted under the tree.
+
+![A model's Remixes tab as a tree: the model, marked This model, and its remixes under it, each with its picture, name, maker and what it changed.](/docs/img/remix-tree.webp "The Remixes tab, both ways.")
+
+<!-- covers
+lib:what a remix changed
+ui:what a remix changed and the remix tree
+-->
+
 ## More by and similar {#more}
 
 At the foot: **More by** its designer, by Top builds, and **Similar models**, by kind and shared tags.

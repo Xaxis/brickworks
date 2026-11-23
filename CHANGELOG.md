@@ -25,6 +25,18 @@ whole cycle.
   connector yet, **Connect Claude** keeps the message for you on the connect
   page. A chat that starts by opening a model is now told how to change what
   is built, not how to design something new.
+- **What a remix changed, counted and shown.** A remix's page says what
+  it changed from the version it was copied from, under its credit:
+  *What it changed from version 1: 42 parts added, 8 taken away, 3
+  recoloured, 5 moved*, counted by the same rules as Compare in the app,
+  once, when it is shared. **See what changed in 3D** opens the 3D view
+  with **What changed** on: the parts it added, moved or recoloured in
+  their colours, the rest faded, and the parts it took away as faint red
+  ghosts. It is a toggle on the view's bar, off until you press it, on a
+  phone too. A model's **Remixes** tab now draws the line it is part of as
+  a tree: up to the first model, and its remixes three levels down, each
+  card saying what it is a remix of, and of what that was, and what it
+  changed.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

@@ -537,6 +537,8 @@ async function threeD(page, label, stem, phone) {
       tools: [...document.querySelectorAll(".view3d-tools [data-act]")].map((t) => t.getAttribute("aria-label")),
       app: (() => { const a = document.querySelector(".view3d-app"); return a && !a.hidden ? `${a.textContent} ${a.getAttribute("href")}` : ""; })(),
       href: document.querySelector(".model-page .picture").getAttribute("href"),
+      // A remix whose changes are counted has What changed on the bar too (remixdiff).
+      changes: Boolean(document.querySelector(".model-page .picture").dataset.changes),
       said: document.querySelector(".view3d-said")?.textContent || "" };
   });
   const after = await page.evaluate(frameOf);
@@ -553,7 +555,8 @@ async function threeD(page, label, stem, phone) {
     JSON.stringify(after.shell) === JSON.stringify(was.picture) && JSON.stringify(after.picture) === JSON.stringify(was.picture)
       && after.height === was.height && after.y === was.y);
   check(`${label}: its tools named: ${got.tools.join(", ")}; and ${got.app || "no way into the app"}`,
-    JSON.stringify(got.tools) === JSON.stringify(["Zoom out", "Zoom in", "Reset the view", "Full screen", "Back to the picture"])
+    JSON.stringify(got.tools) === JSON.stringify(["Zoom out", "Zoom in", "Reset the view", ...(got.changes ? ["What changed"] : []),
+      "Full screen", "Back to the picture"])
       && got.app === `Open in the app ${got.href}`);
   if (out) await page.screenshot({ path: path.join(out, `${stem}_3d.png`) });
   if (got.state !== "ready") return;
