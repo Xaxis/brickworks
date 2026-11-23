@@ -239,9 +239,13 @@ function read() {
     return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
   };
   const bar = document.getElementById("marks");
-  const buttons = bar ? [...bar.querySelectorAll(":scope > button, :scope > a, :scope > details > summary")] : [];
+  // Save is the card's control (web/card.js keepHtml, lists2a): its main
+  // button, named "Save <the model>", read as Save; its arrow is its own.
+  const buttons = bar ? [...bar.querySelectorAll(":scope > button, :scope > a, :scope > .keep > [data-keep-main], :scope > details > summary")] : [];
   const named = buttons.filter((b) => !b.hidden && b.getClientRects().length).map((b) => ({
-    label: (b.getAttribute("aria-label") || "").replace(/^Saved$/, "Save"), n: b.querySelector(".n")?.textContent || "",
+    label: (b.getAttribute("aria-label") || "").replace(b.matches("[data-keep-main]") ? /^.*$/ : /^Saved$/, "Save"),
+    // (Its count is the keep control's own, which lists2a's flows check.)
+    n: b.matches("[data-keep-main]") ? "" : b.querySelector(".n")?.textContent || "",
     box: box(b), pressed: b.getAttribute("aria-pressed"),
   }));
   const rows = Object.fromEntries(["more-by", "similar", "from-gallery"].map((key) => [key,

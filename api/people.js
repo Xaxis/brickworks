@@ -226,10 +226,10 @@
 // a person-shaped page, the same for everybody it shows, the site's house
 // account too. Their avatar (made from the handle, web/card.js avatarHtml),
 // name, handle, words and links, one row of numbers (each said once there
-// is one), Follow, Share and More; the models they pinned; then tabs, each a
-// page of its own: Models (every one, page by page), Builds (photos of real
-// builds, theirs and of their models) and Collections (each a card with its
-// pictures). Never a list of who follows them. Until profile_shows.sql is
+// is one), Follow, Share and More; then tabs, each a page of its own,
+// under the banner on the first screen (pagekit): Models (the ones they
+// pinned, then every one, page by page), Builds (photos of real builds,
+// theirs and of their models) and Lists (each a card with its pictures). Never a list of who follows them. Until profile_shows.sql is
 // applied it has no links, banner or pins, and is otherwise the same.
 //
 // A profile is by a name its owner chooses, never one made from their
@@ -1617,9 +1617,9 @@ async function challengePage(request, response) {
 
 /// /u/X: a person's page, the same for everybody it shows, the house's
 /// too. Their avatar, name, handle, words, links and numbers, Follow, Share
-/// and More; the models they pinned; then a tab: Models (every one, page by
-/// page, by Top builds), Builds (photos of their real builds, and other
-/// people's of their models) or Collections (their public lists), the first
+/// and More; then a tab: Models (the ones they pinned, then every one, page
+/// by page, by Top builds), Builds (photos of their real builds, and other
+/// people's of their models) or Lists (their public lists), the first
 /// that has something unless one is asked for. Whom they follow, when they
 /// chose to show it; never who follows them. The designer's own numbers are
 /// not in it: web/designs.js asks for them with their sign-in and puts them
@@ -1834,10 +1834,9 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
   ${head}
   <div class="obj-main">
   ${banner}
-  ${pinned}
   <div class="work" id="work">
   ${tabsHtml}
-  <div class="tab-panel" data-panel="${tab}">${panel}</div>
+  <div class="tab-panel" data-panel="${tab}">${tab === "models" ? pinned : ""}${panel}</div>
   </div>
   <!-- Under the work, not over it: drawn for its designer alone once their
        sign-in is read, it moved the whole page down as it came (site273). -->

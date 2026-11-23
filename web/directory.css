@@ -1056,7 +1056,10 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
    them when not, so a page is no taller for them on a laptop. */
 .profile .standing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-4); }
 .profile .standing .numbers, .profile .standing .awards { margin: 0; }
-.profile .pinned { margin-top: var(--s-6); }
+/* Pinned: the first of the Models tab, the tabs under the banner on the
+   first screen of a 16:10 laptop (pagekit; over them it put the tabs at
+   721 px of 800, under the beta's bar). */
+.profile .tab-panel > .pinned { margin: 0 0 var(--s-6); }
 /* Up to three pinned (api/people.js MOST_PINS): on a laptop a third of the
    row each, larger than the cards under them, rather than three of a
    scroller's 300 px and the rest of the row empty (sitepolish). */
@@ -1113,8 +1116,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .person-card .numbers { gap: var(--s-1) var(--s-4); }
 .person-card .numbers b { font-size: var(--t-body); }
 .profile .obj-main > .banner { margin: 0 0 var(--s-5); }
-.profile .obj-main > .pinned:first-child, .profile .obj-main > .work:first-child { margin-top: 0; }
-.profile .obj-main > .banner + .work, .profile .obj-main > .banner + .pinned { margin-top: 0; }
+.profile .obj-main > .work:first-child, .profile .obj-main > .banner + .work { margin-top: 0; }
 .profile .obj-tabs { margin-top: 0; }
 @media (width >= 900px) { .profile .obj-main .models:not(.scroller) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); } }
 @media (width < 900px) {

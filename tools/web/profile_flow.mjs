@@ -17,7 +17,7 @@
 //     and links (https, rel="ugc nofollow"), one row of numbers with no
 //     count of none, Follow, Share and More; at 390 px the avatar, the
 //     name, the numbers and Follow on the first screen;
-//   the models they pinned, in their order, above the tabs; a banner of
+//   the models they pinned, in their order, first in the Models tab; a banner of
 //     one of their models' pictures when they chose one, the one with
 //     nothing behind the model (/m/<id>.cutout.png, the picture itself for
 //     a model published before) on the theme's own ground, as a card's
