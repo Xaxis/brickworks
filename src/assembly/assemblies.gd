@@ -3047,11 +3047,12 @@ func file_frames(figures: Dictionary = {}, held: Array = [], units: Variant = nu
 
 
 func _frames_ctx(contents: Dictionary, all_paths: PackedStringArray, figures: Dictionary,
-		held: Array, units: Variant) -> Dictionary:
+		held: Array, units: Variant, read: Variant = null) -> Dictionary:
 	return {"contents": contents, "holding": held_by_path(held), "figures": figures,
 		"ordered": in_file_order(Array(all_paths)), "own": {},
 		"units": world.unit_steps if units == null else units,
-		"origin": Transform3D(Basis.IDENTITY, lift.call()), "read": _read_frames()}
+		"origin": Transform3D(Basis.IDENTITY, lift.call()),
+		"read": _read_frames() if read == null else read}
 
 
 ## Whether [param ctx]'s pass is the last. A copy laid on another before the
@@ -3109,8 +3110,13 @@ func frames_paced(words: String) -> Dictionary:
 		var found: Dictionary = {}
 		var ctx: Dictionary = {}
 		var settled: bool = false
+		# Where the file framed each copy, a part at a time with the rest.
+		var locals: Dictionary = world.kept_lines.get("locals", {})
+		var votes: Dictionary = {"box": {}, "said": {}}
 		for brick: BrickWorld.Brick in world.bricks():
 			_content_into(contents, brick, found)
+			if not locals.is_empty():
+				_read_vote(votes, brick, locals)
 			if pace.due():
 				job = _say_paced(job, words)
 				await pace.next()
@@ -3119,7 +3125,7 @@ func frames_paced(words: String) -> Dictionary:
 		if _frames_key() == key:
 			var listed := PackedStringArray(found.keys())
 			listed.sort()
-			ctx = _frames_ctx(contents, listed, {}, [], null)
+			ctx = _frames_ctx(contents, listed, {}, [], null, _read_said(votes))
 		while not ctx.is_empty() and not settled and _frames_key() == key:
 			_pass_begin(ctx)
 			for path: String in ctx["ordered"]:
@@ -3606,41 +3612,56 @@ static func _first_frame(ctx: Dictionary, path: String) -> Transform3D:
 ## moved inside it is outvoted. A copy none of whose parts was read (made
 ## here, or put down from elsewhere) has none.
 func _read_frames() -> Dictionary:
-	var out: Dictionary = {}
+	var votes: Dictionary = {"box": {}, "said": {}}
 	var locals: Dictionary = world.kept_lines.get("locals", {})
-	if locals.is_empty():
-		return out
-	var votes: Dictionary = {}       ## path -> {frame's key -> [how many, the frame]}
-	var said: Dictionary = {}        ## path -> how many of its parts said one
-	for brick: BrickWorld.Brick in world.bricks():
-		# Its own line first, the one test most parts stop at: a model's own
-		# part, or one past a section's first few, has none kept.
-		var origin: String = brick.origin
-		if origin.is_empty() or not locals.has(origin.substr(origin.rfind("/") + 1).to_int()) \
-				or scenery.has(brick.id):
-			continue
-		var at: String = path_of(brick)
-		if at.is_empty():
-			continue
-		var chain: PackedStringArray = origin.split("/", false)
-		var local := Transform3D.IDENTITY
-		var n: int = chain.size() - 1
-		while not at.is_empty() and n >= 0 and chain[n].is_valid_int() \
-				and locals.has(chain[n].to_int()):
-			local = (locals[chain[n].to_int()] as Transform3D) * local
-			var frame: Transform3D = brick.transform * local.affine_inverse()
-			var box: Dictionary = votes.get_or_add(at, {})
-			var entry: Array = box.get_or_add(_frame_key(frame), [0, frame])
-			entry[0] = int(entry[0]) + 1
-			said[at] = int(said.get(at, 0)) + 1
-			at = parent_of(at)
-			n -= 1
-	for path: String in votes:
+	if not locals.is_empty():
+		for brick: BrickWorld.Brick in world.bricks():
+			_read_vote(votes, brick, locals)
+	return _read_said(votes)
+
+
+## [param brick]'s say in [method _read_frames], into [param votes] ("box":
+## path -> {frame's key -> [how many, the frame]}, "said": path -> how many
+## of its parts said one): the frame of each copy round it, from where it
+## stands and the lines from that copy's section down to its own.
+func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) -> void:
+	# Its own line first, the one test most parts stop at: a model's own
+	# part, or one past a section's first few, has none kept.
+	var origin: String = brick.origin
+	if origin.is_empty() or not locals.has(origin.substr(origin.rfind("/") + 1).to_int()) \
+			or scenery.has(brick.id):
+		return
+	var at: String = path_of(brick)
+	if at.is_empty():
+		return
+	var chain: PackedStringArray = origin.split("/", false)
+	var local := Transform3D.IDENTITY
+	var n: int = chain.size() - 1
+	var boxes: Dictionary = votes["box"]
+	var said: Dictionary = votes["said"]
+	while not at.is_empty() and n >= 0 and chain[n].is_valid_int() \
+			and locals.has(chain[n].to_int()):
+		local = (locals[chain[n].to_int()] as Transform3D) * local
+		var frame: Transform3D = brick.transform * local.affine_inverse()
+		var box: Dictionary = boxes.get_or_add(at, {})
+		var entry: Array = box.get_or_add(_frame_key(frame), [0, frame])
+		entry[0] = int(entry[0]) + 1
+		said[at] = int(said.get(at, 0)) + 1
+		at = parent_of(at)
+		n -= 1
+
+
+## What [param votes] ([method _read_vote]) say: path -> the frame more than
+## half its parts said, else null.
+static func _read_said(votes: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var boxes: Dictionary = votes["box"]
+	for path: String in boxes:
 		var best: Array = [0, null]
-		for key: String in votes[path]:
-			if int(votes[path][key][0]) > int(best[0]):
-				best = votes[path][key]
-		out[path] = best[1] if int(best[0]) * 2 > int(said[path]) else null
+		for key: String in boxes[path]:
+			if int(boxes[path][key][0]) > int(best[0]):
+				best = boxes[path][key]
+		out[path] = best[1] if int(best[0]) * 2 > int(votes["said"][path]) else null
 	return out
 
 
