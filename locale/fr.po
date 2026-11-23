@@ -16521,3 +16521,93 @@ msgstr "masqué aux autres"
 
 msgid "Brickworks could not take that just now. Try again in a minute."
 msgstr "Brickworks n'a pas pu le prendre pour l'instant. Réessayez dans une minute."
+# Show your build at Build it's last step: a real build's photo posted on the model's page (makes)
+msgid "%d people have built it"
+msgstr "%d personnes l’ont construit"
+
+msgid "1 person has built it"
+msgstr "1 personne l’a construit"
+
+msgid "You built it"
+msgstr "Vous l’avez construit"
+
+msgid "Show your build"
+msgstr "Montrez votre construction"
+
+msgid "A photo of the model you built, posted on its page"
+msgstr "Une photo du modèle que vous avez construit, publiée sur sa page"
+
+msgid "Add a photo of your build"
+msgstr "Ajouter une photo de votre construction"
+
+msgid "A photo of your build of it, among its pictures"
+msgstr "Une photo de votre construction, parmi ses images"
+
+msgid "Say something about it (optional)"
+msgstr "Dites-en un mot (facultatif)"
+
+msgid "What you say about your build"
+msgstr "Ce que vous dites de votre construction"
+
+msgid "Another photo"
+msgstr "Une autre photo"
+
+msgid "Choose another photo instead"
+msgstr "Choisir une autre photo à la place"
+
+msgid "Post"
+msgstr "Publier"
+
+msgid "Post the photo on the model's page"
+msgstr "Publier la photo sur la page du modèle"
+
+msgid "Posted: on the model's page"
+msgstr "Publiée : sur la page du modèle"
+
+msgid "The model's page, where your photo is"
+msgstr "La page du modèle, où se trouve votre photo"
+
+msgid "Look on the model's page first"
+msgstr "Regardez d’abord sur la page du modèle"
+
+msgid "Reading the photo…"
+msgstr "Lecture de la photo…"
+
+msgid "That is not a JPEG, a PNG or a WebP photo."
+msgstr "Ce n’est pas une photo JPEG, PNG ou WebP."
+
+msgid "That photo is %d × %d: too small to show a build"
+msgstr "Cette photo fait %d × %d : trop petite pour montrer une construction"
+
+msgid "At most %d characters about it, please: that is %d"
+msgstr "%d caractères au plus, s’il vous plaît : il y en a %d"
+
+msgid "You have added three photos: the most"
+msgstr "Vous avez ajouté trois photos : c’est le maximum"
+
+msgid "Sending the photo…"
+msgstr "Envoi de la photo…"
+
+msgid "Making it safe to show: taking out where and when it was taken…"
+msgstr "Préparation pour l’affichage : on retire où et quand elle a été prise…"
+
+msgid "The photo did not go: try again in a minute."
+msgstr "La photo n’est pas partie : réessayez dans une minute."
+
+msgid "That did not work just now."
+msgstr "Cela n’a pas fonctionné à l’instant."
+
+msgid "No answer came. Your photo may be on the model's page already: look there before you post it again."
+msgstr "Aucune réponse n’est venue. Votre photo est peut-être déjà sur la page du modèle : regardez-y avant de la publier à nouveau."
+
+msgid "Sign in to post your build"
+msgstr "Connectez-vous pour publier votre construction"
+
+msgid "Back, signed out: what you chose is kept"
+msgstr "Retour, sans connexion : ce que vous avez choisi est conservé"
+
+msgid "Signed in: press Post to post your photo."
+msgstr "Connecté : appuyez sur Publier pour publier votre photo."
+
+msgid "Sign in to add a photo of your build: we email you a code, no password."
+msgstr "Connectez-vous pour ajouter une photo de votre construction : nous vous envoyons un code par e-mail, sans mot de passe."

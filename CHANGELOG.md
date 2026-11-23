@@ -60,6 +60,14 @@ whole cycle.
   Flickr's largest picture. Your browser makes it from what the page has
   published; a phone hands the files to its share sheet, a computer saves
   one zip. Brickworks posts nothing anywhere: you post it yourself.
+- **Show your build, where the build ends.** The last step of Build it
+  says how many people have built the model and offers **Show your
+  build**: the camera on a phone, a photo on a computer, a line about it
+  if you like, and **Post**. It goes on the model's page, first in its
+  Builds, and its designer is told. Not signed in, Post asks you to sign
+  in right there and brings you back to the last step with your photo
+  still chosen. What the camera wrote into the photo is taken out before
+  anyone sees it. The viewer's timeline offers the same at its last step.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

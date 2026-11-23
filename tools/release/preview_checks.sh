@@ -83,6 +83,10 @@ declare -A CMD=(
   [tested]="tools/web/tested_flow.mjs --url=$P --out=$S/${TAG}_tested"
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [builds]="tools/web/builds_flow.mjs --url=$P --out=$S/${TAG}_builds"
+  # Show your build (makes): a photo of the real build posted from the step
+  # player's last step at 390 and 1280, signed out asked in place and kept
+  # through the sign-in; throwaway accounts, deleted after.
+  [makes]="tools/web/makes_flow.mjs --url=$P --out=$S/${TAG}_makes"
   [follows]="tools/web/follows_flow.mjs --url=$P --out=$S/${TAG}_follows"
   # Following a collection (docs/SOCIAL.md U11, supabase/collection_follows.sql):
   # Follow on its page and its count; a model put in it in the follower's

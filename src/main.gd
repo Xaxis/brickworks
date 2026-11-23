@@ -220,6 +220,29 @@ var _part_pins: Control = null
 var _pin_hold: Timer = null
 var _pin_finger: int = -1
 var _pin_finger_at: Vector2 = Vector2.ZERO
+## Show your build (makes, 2026-11-23): a photo of the real build, posted
+## from the step player's last step or the viewer's timeline at its end
+## (MakeCard, one in each), through the build photos' own path. Nobody
+## signed in, Post asks for the sign-in in place: the sign-in screen of the
+## way in, over the viewer for this one act ([member _make_gate]), with the
+## account of [member _comment_account], which keeps the session as the
+## site's pages keep it. A probe hands in an account of its own
+## ([member make_account_for_probe]) to sign in and out at will.
+var make_account_for_probe: Account = null
+var _make_gate: SignInGate
+## The card that asked for the sign-in, put back to once it is done.
+var _make_for: Control
+var _make_posting: bool = false
+## Whether the account's standing on the model is known (its own; photos
+## left), and is being asked.
+var _make_known: bool = false
+var _make_asking: bool = false
+## What was asked and sent, for a check to count.
+var _make_said: Dictionary = {"posts": 0, "sign_in": 0, "let_in": 0, "starts": 0, "sends": 0,
+	"keeps": 0, "refused": ""}
+## Where a tab keeps the photo while the sign-in may take the page away
+## (orangecheck), by link.
+const MAKE_KEPT := "brickworks.make."
 var _share_panel: PanelContainer:
 	get:
 		if _share_panel_made == null and _built:
@@ -1344,8 +1367,10 @@ func _page_controls() -> Dictionary:
 		named["properties_rail"] = (_props_dock if _props_dock != null else _bin_dock).rail()
 	# The way in. While the sign-in screen is up nothing else can be
 	# pressed, so nothing else is said to be there.
-	if _gated():
+	if _gate != null and _gate.visible:
 		named = _gate.controls_by_name()
+	elif _make_gate != null and _make_gate.visible:
+		named = _make_gate.controls_by_name()
 	return named
 
 
@@ -2886,7 +2911,7 @@ func _gate_wanted() -> bool:
 
 ## Whether the sign-in screen is up, so nothing behind it moves.
 func _gated() -> bool:
-	return _gate != null and _gate.visible
+	return (_gate != null and _gate.visible) or (_make_gate != null and _make_gate.visible)
 
 
 ## Somebody signed in, or out. The connector belongs to an account: put
@@ -3070,6 +3095,11 @@ func _enter_view() -> void:
 	_build_mode.set("world", _world)
 	_build_mode.set("library", _library)
 	_build_mode.place_wanted.connect(_build_place)
+	# Show your build (makes): the step player's last step and the viewer's
+	# timeline at its end, a card each, sent from here.
+	for card: Control in _make_cards():
+		card.connect(&"post_wanted", _post_make.bind(card))
+		card.connect(&"page_wanted", func(url: String) -> void: Outside.open_link(url))
 	for view: StepComments in [_share_view.comments, _build_mode.comments]:
 		view.opened.connect(_comments_opened)
 		view.send_wanted.connect(_send_comment.bind(view))
@@ -3104,6 +3134,15 @@ func _enter_view() -> void:
 		_hovered_from = Vector2(-1, -1))
 	# The viewer's timeline stepped onto its last step: built, along it.
 	_steps.stepped_to_end.connect(_count_built)
+	# ...and Show your build's card just above it; moved back off the end,
+	# put away (makes).
+	_steps.stepped_to_end.connect(func() -> void:
+		_share_view.call("show_end", true)
+		_offer_make())
+	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
+		_viewer_left_end())
+	_steps.reveal.connect(func(_ids: Dictionary) -> void: _viewer_left_end())
+	_steps.closed.connect(func() -> void: _share_view.call("show_end", false))
 
 
 ## Whether the viewer's timeline has a step's new parts outlined.
@@ -3428,6 +3467,8 @@ func _view_shared() -> void:
 		_enter_build(wanted)
 	elif bool(kept.get("building", false)):
 		_enter_build(int(kept["page"]))
+	# A photo of the build kept while the sign-in took the page away.
+	_bring_back_make()
 
 
 ## The comments on the link, as anybody reads them, or as the person here
@@ -3503,18 +3544,36 @@ func _session_kept() -> bool:
 func _comment_token() -> String:
 	if not comment_token_for_probe.is_empty():
 		return comment_token_for_probe
-	if _comment_account == null:
-		if not _session_kept():
-			return ""
-		_comment_account = Account.new()
-		_comment_account.deployment = _deployment
-		_comment_account.keeps = true
-		add_child(_comment_account)
-	while _comment_account.state == Account.State.CHECKING:
-		await _comment_account.changed
-	if not _comment_account.signed_in():
+	var account: Account = make_account_for_probe
+	if account == null:
+		if _comment_account == null:
+			if not _session_kept():
+				return ""
+			_make_visitor_account()
+		account = _comment_account
+	while account.state == Account.State.CHECKING:
+		await account.changed
+	if not account.signed_in():
 		return ""
-	return await _comment_account.access_token()
+	return await account.access_token()
+
+
+## The visitor's account, to sign in with in place (Show your build): the
+## comments' own, made now if no session was kept for it; null for a run
+## nobody sits at, which leaves the person's own session alone.
+func _visitor_account() -> Account:
+	if make_account_for_probe != null:
+		return make_account_for_probe
+	if _comment_account == null and _gate_wanted() and not gate_for_probe:
+		_make_visitor_account()
+	return _comment_account
+
+
+func _make_visitor_account() -> void:
+	_comment_account = Account.new()
+	_comment_account.deployment = _deployment
+	_comment_account.keeps = true
+	add_child(_comment_account)
 
 
 ## Send a comment on [param step] (0: the whole model) of the version open,
@@ -3741,6 +3800,10 @@ func _enter_build(page: int = -1) -> void:
 	_hovered = 0
 	_hover_outline.show_selection({})
 	_gizmo.visible = false
+	# A photo chosen at the viewer's end goes on with the step player's card.
+	var viewer_card: Control = _share_view.get("make")
+	if not (viewer_card.get("photo") as PackedByteArray).is_empty() or str(viewer_card.get("state")) == "posted":
+		(_build_mode.get("make") as Control).call("adopt", viewer_card)
 	_build_mode.open()
 	_camera.seen = _build_mode.free_rect
 	if page < 0:
@@ -3887,6 +3950,15 @@ func _build_go(page: int, stepped: bool = false, part: int = 1) -> void:
 	# was framed on: the view as the builder left it.
 	var keep_view: bool = page == from and page == _build_framed and (part > 0 or _build_part > 0)
 	_build_part = part
+	# The build's end: Show your build's card up before the view is framed,
+	# so the finished model is framed below it (makes).
+	var ending: bool = page >= 1 and page >= _build_pages.last() \
+		and (part == 0 or part >= _build_pages.parts(page))
+	if ending != bool(_build_mode.get("ending")):
+		keep_view = false
+		_build_mode.call("show_end", ending)
+		if ending:
+			_offer_make()
 	# The last step reached from the one before it: built. Not a jump on
 	# the progress bar, nor coming back to a place kept on it.
 	if stepped and page >= 1 and page == _build_pages.last() and from == page - 1 and not _party_pages:
@@ -4088,7 +4160,13 @@ static func _lap(took: Dictionary, name: String, since: int) -> int:
 func _leave_build() -> void:
 	if _build_mode == null or not _build_mode.is_open():
 		return
+	# Left at the build's end, Finish or Close: the viewer's own card says
+	# Show your build, with what the step player's held (makes).
+	var ended: bool = bool(_build_mode.get("ending"))
 	_build_mode.close()
+	if ended:
+		(_share_view.get("make") as Control).call("adopt", _build_mode.get("make"))
+		_share_view.call("show_end", true)
 	_ahead_turn += 1
 	if not (_build_pages != null and _world.set_faded_in_order(_build_pages.fading(_build_faded, 0,
 			_build_faded_part, 0))):
@@ -4143,7 +4221,235 @@ func _count_built() -> void:
 			or (body as Dictionary).get("builds") is int):
 		_built_said["builds"] = int((body as Dictionary)["builds"])
 		_share_view.show_builds(int(_built_said["builds"]))
+		_make_count()
 	_share_view.built = _built_said
+
+
+# -- Show your build (makes, 2026-11-23) ----------------------------------------
+#
+# The step player's last step and the viewer's timeline at its end each show a
+# MakeCard (BuildMode.make, ShareView.make): how many have built the model, and
+# Show your build. Its photo goes up as the model's page sends one
+# (web/model-page.js): ?op=photo_start signs an upload URL for it, the photo
+# goes there straight, and ?op=photo keeps a new JPEG made of its pixels alone
+# with its 480 px card copy (api/_builds.js), the designer told by the photo
+# notification. Refused at the start (13 and over, may_act's limit, three on
+# a model), nothing of the photo is sent.
+
+
+## The two cards, the step player's and the viewer's.
+func _make_cards() -> Array[Control]:
+	var cards: Array[Control] = []
+	for card: Variant in [_build_mode.get("make") if _build_mode != null else null,
+			_share_view.get("make") if _share_view != null else null]:
+		if card is Control:
+			cards.append(card)
+	return cards
+
+
+## What the cards say: how many have built it and, the first time a session
+## kept here can say so, whether the model is the account's own (Add a photo
+## of your build) and how many more photos it may add.
+func _offer_make() -> void:
+	_make_count()
+	if _make_known or _make_asking or _viewing.is_empty():
+		return
+	if comment_token_for_probe.is_empty() and make_account_for_probe == null and not _session_kept() \
+			and (_comment_account == null or not _comment_account.signed_in()):
+		return
+	_make_asking = true
+	var token: String = await _comment_token()
+	var answer: Dictionary = {}
+	if not token.is_empty():
+		answer = await _shared.photos(_viewing, token)
+	_make_asking = false
+	var body: Variant = answer.get("body")
+	if int(answer.get("code", 0)) != 200 or not body is Dictionary:
+		return
+	_make_known = true
+	var left: Variant = (body as Dictionary).get("left")
+	for card: Control in _make_cards():
+		card.call("know", (body as Dictionary).get("owner") == true,
+			int(left) if left is float or left is int else -1)
+
+
+## How many have built it, on both cards: the finish's answer, or the count
+## the link came with.
+func _make_count() -> void:
+	var builds: int = int(_built_said.get("builds", -1))
+	if builds < 0 and _share_view != null:
+		builds = _share_view.builds
+	for card: Control in _make_cards():
+		card.set("link", _viewing)
+		card.call("offer", builds)
+
+
+## The viewer's timeline moved: off its end, the card is put away.
+func _viewer_left_end() -> void:
+	if _share_view == null or not bool(_share_view.get("ending")):
+		return
+	var at: Vector2i = _steps.timeline_at()
+	if _steps.is_playing_back() and at.x < at.y:
+		_share_view.call("show_end", false)
+
+
+## Post pressed on [param card]: its photo sent and kept, or the sign-in
+## asked for in place when nobody is signed in.
+func _post_make(card: Control) -> void:
+	if _make_posting:
+		return
+	# Chosen for another link than the one open now: never sent to this one.
+	if str(card.get("link")) != _viewing:
+		card.call("clear")
+		return
+	var token: String = await _comment_token()
+	if token.is_empty():
+		_ask_make_sign_in(card)
+		return
+	_make_posting = true
+	var bytes: PackedByteArray = card.get("photo")
+	var type: String = str(card.get("photo_type"))
+	var words: String = str(card.call("words"))
+	_make_said["posts"] = int(_make_said["posts"]) + 1
+	card.call("sending", "Sending the photo…")
+	var start: Dictionary = await _shared.photo_start(token, {"model": _viewing, "type": type,
+		"size": bytes.size()})
+	var given: Variant = start.get("body")
+	if int(start.get("code", 0)) != 200 or not given is Dictionary \
+			or str((given as Dictionary).get("upload", "")).is_empty() \
+			or str((given as Dictionary).get("ticket", "")).is_empty():
+		_make_posting = false
+		_make_said["refused"] = SharedModels.trouble(start, "That did not work just now.")
+		card.call("refused", _make_said["refused"])
+		return
+	_make_said["starts"] = int(_make_said["starts"]) + 1
+	var ticket: Dictionary = given
+	var sent: Dictionary = await _shared.photo_send(str(ticket["upload"]), str(ticket.get("key", "")),
+		type, bytes)
+	if int(sent.get("code", 0)) < 200 or int(sent.get("code", 0)) >= 300:
+		_make_posting = false
+		_make_said["refused"] = "The photo did not go: try again in a minute."
+		card.call("refused", _make_said["refused"])
+		return
+	_make_said["sends"] = int(_make_said["sends"]) + 1
+	card.call("sending", "Making it safe to show: taking out where and when it was taken…")
+	var kept: Dictionary = await _shared.photo_keep(token, {"model": _viewing,
+		"ticket": str(ticket["ticket"]), "words": words})
+	_make_posting = false
+	var said: Variant = kept.get("body")
+	if int(kept.get("code", 0)) == 0:
+		# Kept or not, nobody here can tell: looked for before it is sent again.
+		_make_said["refused"] = "No answer came. Your photo may be on the model's page already: " \
+			+ "look there before you post it again."
+		card.call("refused", _make_said["refused"], SharedModels.link_for(_viewing) + "#builds")
+		return
+	if int(kept.get("code", 0)) != 201 or not said is Dictionary:
+		_make_said["refused"] = SharedModels.trouble(kept, "That did not work just now.")
+		card.call("refused", _make_said["refused"])
+		return
+	_make_said["keeps"] = int(_make_said["keeps"]) + 1
+	_make_said["refused"] = ""
+	var photo: Dictionary = said
+	var url: String = str(photo.get("page", ""))
+	if url.is_empty():
+		url = SharedModels.link_for(_viewing) + "#photo-" + str(photo.get("id", ""))
+	for one: Control in _make_cards():
+		one.call("posted", url)
+	# One fewer it may add: asked again at the next end.
+	_make_known = false
+	_forget_make()
+
+
+## Nobody signed in: the sign-in in place, over the step player or the
+## viewer, the photo and the words kept on [param card] meanwhile.
+func _ask_make_sign_in(card: Control) -> void:
+	var account: Account = _visitor_account()
+	if account == null or account.state == Account.State.NOT_NEEDED:
+		card.call("refused", "Sign in to add a photo of your build: we email you a code, no password.")
+		return
+	if _make_gate == null:
+		_make_gate = SignInGate.new()
+		_make_gate.purpose = "Sign in to post your build"
+		_make_gate.setup(account)
+		$HUD.add_child(_make_gate)
+		_make_gate.let_in.connect(_make_let_in)
+		_make_gate.dismissed.connect(_make_dismissed)
+	_make_for = card
+	_make_said["sign_in"] = int(_make_said["sign_in"]) + 1
+	_keep_make(card)
+	# Over every panel, the step player's too.
+	_make_gate.move_to_front()
+	_make_gate.ask()
+
+
+## Signed in from the card: back to it as it was, the photo there, ready to
+## Post.
+func _make_let_in() -> void:
+	_make_said["let_in"] = int(_make_said["let_in"]) + 1
+	_forget_make()
+	_make_known = false
+	if is_instance_valid(_make_for):
+		_make_for.call("say", "Signed in: press Post to post your photo.", true)
+	_offer_make()
+
+
+func _make_dismissed() -> void:
+	_forget_make()
+	if is_instance_valid(_make_for):
+		_make_for.call("say", "")
+
+
+## The photo and the words on [param card] kept for this tab while the
+## sign-in is up: orangecheck's goes by the site's own sign-in and comes back
+## to this address (SignInForm._to_orangecheck), and the photo is there again
+## (_bring_back_make). The card's copy at most 1,600 px, handed to the page
+## as an argument, never written into a script for it to parse.
+func _keep_make(card: Control) -> void:
+	if not OS.has_feature("web"):
+		return
+	var storage: JavaScriptObject = JavaScriptBridge.get_interface("sessionStorage")
+	var small: PackedByteArray = card.get("small")
+	if storage == null or small.is_empty():
+		return
+	storage.setItem(MAKE_KEPT + _viewing, JSON.stringify({"link": _viewing, "words": card.call("words"),
+		"where": "build" if _build_mode.is_open() else "view", "photo": Marshalls.raw_to_base64(small)}))
+
+
+func _forget_make() -> void:
+	if not OS.has_feature("web") or _viewing.is_empty():
+		return
+	var storage: JavaScriptObject = JavaScriptBridge.get_interface("sessionStorage")
+	if storage != null:
+		storage.removeItem(MAKE_KEPT + _viewing)
+
+
+## The photo kept for this link while the sign-in took the page away, back
+## on the cards, at the end it was chosen at; the page kept by
+## BuildSteps.remember takes the step player there.
+func _bring_back_make() -> void:
+	if not OS.has_feature("web"):
+		return
+	var storage: JavaScriptObject = JavaScriptBridge.get_interface("sessionStorage")
+	if storage == null:
+		return
+	var text: Variant = storage.getItem(MAKE_KEPT + _viewing)
+	if not text is String or (text as String).is_empty():
+		return
+	storage.removeItem(MAKE_KEPT + _viewing)
+	var reading := JSON.new()
+	if reading.parse(text) != OK or not reading.data is Dictionary:
+		return
+	var kept: Dictionary = reading.data
+	var bytes: PackedByteArray = Marshalls.base64_to_raw(str(kept.get("photo", "")))
+	if str(kept.get("link", "")) != _viewing or bytes.is_empty():
+		return
+	_make_count()
+	for card: Control in _make_cards():
+		card.call("set_words", str(kept.get("words", "")))
+		card.call("take", bytes)
+	if str(kept.get("where", "")) == "view":
+		_share_view.call("show_end", true)
+	_offer_make()
 
 
 ## The step player as a check reads it (tools/web/build_flow.mjs,
@@ -4153,6 +4459,8 @@ func build_state() -> Dictionary:
 		return {}
 	var said: Dictionary = _build_mode.page_state()
 	said["built"] = _built_said.duplicate()
+	said["make_said"] = _make_said.duplicate()
+	said["make_gate"] = _make_gate != null and _make_gate.visible
 	said["party_state"] = _party.call("page_state") if _party != null else {}
 	# The bricks this phone was dealt, for a check across two phones.
 	said["party_share"] = _party_share.keys() if _party_pages else []

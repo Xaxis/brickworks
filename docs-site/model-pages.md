@@ -51,6 +51,22 @@ ui:build it step player
 ui:open a shared model at a step
 -->
 
+### Show your build {#show-your-build}
+
+Built it in real bricks? Show it, right where the build ends.
+
+1. On the last step, a card under the top bar says how many people have built the model, with **Show your build**. The viewer's timeline shows it too when you step onto its last step, and so does the viewer after **Finish**.
+2. Press **Show your build**. On a phone the camera opens; on a computer, choose a photo. It comes back on the card the right way up.
+3. Say something about it if you like, then **Post**. The card says **Posted: on the model's page**, a link to your photo there. It leads the model's **Builds** strip and the gallery's [Builds](/docs/gallery#builds) tab, and the model's designer is told in their [notifications](/docs/profiles#notifications).
+
+Building needs no account; posting does. Not signed in, **Post** asks you to sign in there and then, over the step you are on, and brings you back to it with your photo still chosen, ready to post. **Not now** goes back without signing in. Photos are for accounts of people 13 and over, at most three of yours on a model. What the camera wrote into the photo (where and when it was taken, the phone) is taken out before anyone sees it, as for a photo added on the model's page. On your own model the card says **Add a photo of your build**: it goes with your own pictures of it.
+
+![The last step of Build it: under the top bar, a card saying 14 people have built it, with Show your build beside it, the finished model below, and Finish at the bottom.](/docs/img/show-your-build.webp "Show your build, on the last step.")
+
+<!-- covers
+ui:show your build
+-->
+
 ### Where does this part go? {#where-does-this-go}
 
 Holding a part and can't find its step? Press **Where does this go?** (the camera beside the step's words) and take a photo of it, or choose a picture on a computer.
@@ -96,7 +112,7 @@ ui:model page pictures and tabs
 - **Build it**, **Open in Brickworks** (a copy in your own models, to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`).
 - **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
-- **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first.
+- **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first. Building it with [Build it](#build-it), its last step offers the same photo where you finish ([Show your build](#show-your-build)).
 - **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead.
 - On your own model, **Enter this month's challenge** ([the challenge](/docs/challenges#enter)).
 
