@@ -171,11 +171,12 @@
 //                            without any, put on it with no publish counted
 //                            (the site's Share from a file draws its
 //                            pictures once the server has the model)
-//   POST ?op=card&id=X       {thumb}: the owner's model given a new card
-//                            picture (/m/X.webp), its newest version's, with
-//                            no publish counted and no version made (the
-//                            house's cards drawn again as photographs,
-//                            tools/web/gallery_seed.mjs --cards)
+//   POST ?op=card&id=X       {thumb, kind?}: the owner's model given a new
+//                            card picture (/m/X.webp), its newest version's,
+//                            with no publish counted and no version made: the
+//                            photograph the app draws once a publish has
+//                            answered (kind traced or raster), and the
+//                            house's (tools/web/gallery_seed.mjs --cards)
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns,
@@ -4008,12 +4009,14 @@ async function pictures(request, response) {
   return response.status(200).json({ id, version: newest.n, pictures: true, already: false, ...links(origin, id) });
 }
 
-/// ?op=card&id=X: {thumb}, the card the gallery and the home feed show
-/// (/m/X.webp) put on its owner's model in place of the one it has, its
-/// newest version's (cardlook, 2026-11-23). The house's models were
-/// published with cut-outs in the window's light, and their cards are
-/// drawn again as photographs (CardPhoto, tools/web/gallery_seed.mjs
-/// --cards) without a version each that changed nothing. Only the owner's
+/// ?op=card&id=X: {thumb, kind?}, the card the gallery and the home feed
+/// show (/m/X.webp) put on its owner's model in place of the one it has,
+/// its newest version's (cardlook, 2026-11-23). A publish sends the
+/// cut-out, and the app then draws the card as a photograph and puts it
+/// here (SharePanel._card_after), kind saying how it was drawn
+/// (card_kind.sql); the house's cards were drawn again so
+/// (tools/web/gallery_seed.mjs --cards), without a version each that
+/// changed nothing. Only the owner's
 /// own link, the picture checked as a publish checks it. Nothing more than
 /// a publish of the same model without listing it could do: a barred model
 /// may be republished at its link, pictures and all.
@@ -4025,11 +4028,28 @@ async function cardPut(request, response) {
   const row = await ownRow(id);
   if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
   if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  const kind = CARD_KINDS.includes(request.body?.kind) ? request.body.kind : null;
   await putFile(`${id}.webp`, thumb, "image/webp");
-  if (!row.has_thumb) {
-    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { has_thumb: true } });
+  await keepCard(`shared_models?id=eq.${id}&owner=eq.${owner}`, kind, row.has_thumb);
+  return response.status(200).json({ id, card: true, kind, ...links(originOf(request), id) });
+}
+
+/// How a card was drawn (supabase/card_kind.sql): what op=card and
+/// tools/web/card_sweep.mjs say of the card they put.
+export const CARD_KINDS = ["traced", "raster"];
+
+/// The row at [where] told its card was put just now, and how it was drawn
+/// ([kind], null for one op=card did not say): card_kind and card_at, which
+/// tools/web/card_sweep.mjs reads. Before supabase/card_kind.sql is applied
+/// the database has neither column and refuses the write: the card is put
+/// all the same, and has_thumb kept as it was before that file.
+export async function keepCard(where, kind, hadThumb) {
+  try {
+    await db(where, { method: "PATCH", body: { has_thumb: true, card_kind: kind, card_at: new Date().toISOString() } });
+  } catch (trouble) {
+    if (!/: 400$/.test(trouble.message)) throw trouble;
+    if (!hadThumb) await db(where, { method: "PATCH", body: { has_thumb: true } });
   }
-  return response.status(200).json({ id, card: true, ...links(originOf(request), id) });
 }
 
 async function unpublish(request, response) {

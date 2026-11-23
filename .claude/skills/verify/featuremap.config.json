@@ -7015,7 +7015,7 @@
       "kind": "lib",
       "label": "the gallery's card as a photograph",
       "entry": "src/render/card_photo.gd",
-      "reach": "File › Share… › Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk, frames averaged on the same desk in a browser within 2.5 s (CardPhoto, src/ui/share_panel.gd _pictures); a phone keeps the cut-out",
+      "reach": "File › Share… › Publish: the card goes as the cut-out, then is drawn once the publish has answered (src/ui/share_panel.gd _card_after) and put on the link (api/share.js op=card): path traced on photoreal10's measured desk where rays are traced, frames averaged on the same desk in a browser, within 1.8 s (CardPhoto); a phone keeps the cut-out",
       "area": "web"
     },
     {
@@ -7058,6 +7058,20 @@
       "label": "minifig avatar layers",
       "entry": "tools/web/minifig_layers.mjs",
       "reach": "~/.claude/claude-core/bin/heavy node tools/web/minifig_layers.mjs --deps=DIR [--only=face-3626cp01,...]   (DIR has node_modules/three 0.186.1; writes web/minifig/128 and web/minifig/256)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card after probe",
+      "entry": "src/dev/card_after_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_after_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card sweep",
+      "entry": "tools/web/card_sweep.mjs",
+      "reach": "node --env-file=.env tools/web/card_sweep.mjs [--dry] [--most=N] [--ids=A,B]   (every listed model's card not yet traced, drawn on the box's GPU and put; after supabase/card_kind.sql)",
       "area": "web"
     }
   ]
