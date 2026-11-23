@@ -124,6 +124,16 @@ var seating: float = 0.0
 const SEAT_SHIFT := 0.15
 const SEAT_LIFT := 0.2
 const SEAT_TURN := 0.3
+## That seating as LEGO's own play lets a part sit (photoreal8), set before
+## [method stage]: 0 as photoreal4 drew it, 1 as three_2x2_top's photograph
+## measures it. Seen from above, its three bricks are square to each other
+## to 0.01 degrees (the seating turned them 0.36 apart) and stand 0.13 to
+## 0.17 LDU off line across (the seating 0.05), 0.39 to 0.60 LDU apart.
+## At 1 a part's turn about the vertical is PLAY_TURN of the seating's and
+## its slide across PLAY_SHIFT times it.
+var play: float = 0.0
+const PLAY_TURN := 0.15
+const PLAY_SHIFT := 1.5
 ## How far each stud's logo and top differ from the next (photoreal8), set
 ## before [method stage]: 0 as before, 1 one stud's letters rubbed nearly
 ## flat and the next's full (path_tracer.glsl's stud_logo). It goes to the
@@ -314,6 +324,12 @@ func _seated(place: Transform3D, key: int) -> Transform3D:
 		rng.randf_range(-0.5, 0.5)) * deg_to_rad(SEAT_TURN) * seating
 	var shift := Vector3(rng.randf_range(-1.0, 1.0) * SEAT_SHIFT, rng.randf() * SEAT_LIFT,
 		rng.randf_range(-1.0, 1.0) * SEAT_SHIFT) * seating
+	if play > 0.0:
+		# As LEGO's own tolerance lets a part sit (photoreal8): its studs keep
+		# it square to the next, and it slides a little across.
+		turn.y *= lerpf(1.0, PLAY_TURN, play)
+		shift.x *= lerpf(1.0, PLAY_SHIFT, play)
+		shift.z *= lerpf(1.0, PLAY_SHIFT, play)
 	return Transform3D(Basis.from_euler(turn) * place.basis, place.origin + shift)
 
 

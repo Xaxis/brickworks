@@ -149,13 +149,15 @@ const PRODUCT_JPEG := 0.0
 ## (docs/RENDERING.md 5k).
 const PRODUCT_TONE := 0.5
 const PRODUCT_BALANCE := 1.0
-## No two parts alike (photoreal8, RenderSettings batch, handling and studs):
-## each part's colour batch, how much each has been handled, and each stud's
-## logo, as far apart as the photographed sets' parts are. Judged on the
-## photo bench one at a time and together (docs/RENDERING.md 5l).
+## No two parts alike (photoreal8, RenderSettings batch, handling, studs and
+## play): each part's colour batch, how much each has been handled, each
+## stud's logo, and each part's seat, as far apart as the photographed parts
+## are. Judged on the photo bench one at a time and together
+## (docs/RENDERING.md 5l).
 const PRODUCT_BATCH := 0.0
 const PRODUCT_HANDLING := 0.0
 const PRODUCT_STUDS := 0.0
+const PRODUCT_PLAY := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2614,6 +2616,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.product = settings.look == "product"
 	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
+	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
 	# The product look's picture has the samples' grain taken out
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.

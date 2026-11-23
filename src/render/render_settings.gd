@@ -161,6 +161,11 @@ var seating: float = -1.0
 var batch: float = -1.0
 var handling: float = -1.0
 var studs: float = -1.0
+## That seating as LEGO's own play lets a part sit (photoreal8): its turn
+## about the vertical kept to the stud grid's and its slide across a little
+## wider, as measured from above (0 as photoreal4 drew it, 1 as measured).
+## Below 0, StudioRender's PRODUCT_PLAY.
+var play: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.
