@@ -3673,7 +3673,11 @@ plan with Claude as the client.
   neither button and no row. You own n is
   ownedparts' (the Own button's ×n, You own − n + in Parts you own).
   `cli:sethub browser flow` (`tools/web/sethub_flow.mjs`) drives it;
-  `--publish` proves the minute after the SQL is applied.
+  `--publish` proves the minute after the SQL is applied (7.6 s on the
+  relay, 11-23). `--open-time[=N]` against a deployment times Make your own
+  version's address beside the plain studio's in two browsers at once, and
+  logs where the version's time went (the app's state as it changed, its
+  fetches, the page's frames over 250 ms apart).
 - **Search that finds what a builder means** (search, 2026-10-30):
   `api/_search.js` reads a query word by word (misspelt by edit distance,
   run together or apart, plurals, accents and apostrophes, set numbers and

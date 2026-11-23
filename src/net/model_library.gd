@@ -76,16 +76,34 @@ func models() -> Array:
 		return _models
 	_reading = true
 	var got: Dictionary = await _kept_or_fetched(ROOT + "index.json", MOST_INDEX, true)
-	var json := JSON.new()
-	if int(got["code"]) != 200 or json.parse((got["bytes"] as PackedByteArray).get_string_from_utf8()) != OK \
-			or not json.data is Dictionary or not (json.data as Dictionary).get("models") is Array:
+	var read: Variant = await json_off_frame(got["bytes"]) if int(got["code"]) == 200 else null
+	if not read is Dictionary or not (read as Dictionary).get("models") is Array:
 		trouble = _unreached(got, "its index")
 	else:
 		trouble = ""
-		_models = shelved((json.data as Dictionary)["models"], DesignMemory.held_out())
+		_models = shelved((read as Dictionary)["models"], DesignMemory.held_out())
 	_reading = false
 	_read.emit()
 	return _models
+
+
+## [param bytes] read as JSON on a worker, the frames going on meanwhile:
+## null when they are not JSON. The index is half a megabyte, and read on
+## the main thread it was one frame of 2.4 to 3.2 s in a browser on a busy
+## box. That frame came before a set's page's Make your own version could
+## open the set (sethub, 2026-11-23). Ahead of the pool's background work
+## (high priority): on the web the pool has one thread for the rest.
+static func json_off_frame(bytes: PackedByteArray) -> Variant:
+	var out: Array = [null]
+	var task: int = WorkerTasks.add(func() -> void:
+		var json := JSON.new()
+		if json.parse(bytes.get_string_from_utf8()) == OK:
+			out[0] = json.data, true, "read the library's index")
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	while not WorkerThreadPool.is_task_completed(task):
+		await tree.process_frame
+	WorkerTasks.collect(task)
+	return out[0]
 
 
 ## The index's entries as the shelf keeps them: each checked at the edge

@@ -839,11 +839,14 @@ func open_text_with_progress(text: String, name: String) -> Dictionary:
 
 
 ## [param text] read as LDraw on a worker, the frames going on meanwhile:
-## LdrModel.parse touches nothing but what it makes.
+## LdrModel.parse touches nothing but what it makes. Ahead of the pool's
+## background work (high priority): somebody is waiting for the model, and
+## the web's pool runs the rest on one thread, where an 8 KB set waited
+## seconds behind the parts' reading as the app started (sethub, 2026-11-23).
 static func read_off_frame(text: String, name: String) -> LdrModel:
 	var out: Array = [null]
 	var task: int = WorkerTasks.add(func() -> void: out[0] = LdrModel.parse(text, name),
-		false, "read a model")
+		true, "read a model")
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while not WorkerThreadPool.is_task_completed(task):
 		await tree.process_frame
