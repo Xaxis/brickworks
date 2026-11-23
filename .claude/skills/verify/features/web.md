@@ -5302,12 +5302,14 @@ plan with Claude as the client.
   Leave were under it at 390. What the server said is kept ten minutes
   ("brickworks.beta"): signed in GET ?op=beta, signed out ?op=beta_spots;
   off, theme.js does not ask for the bar again for ten minutes, and nothing
-  is drawn. The homepage's #beta sits under the hero: why to join, three
+  is drawn. The homepage's #beta sits under the first screen, after the
+  community's places (#talk-latest, #community; landing): why to join, three
   points, and the way in for the visitor (signed out Sign up and join,
   signed in Join the beta, a tester Report a bug and What's new), the
   months of Pro left while any are; held from the first frame by
   `<html data-beta="open">` (theme.js, from what was kept), else put in
-  only while its place is under the window, so nothing in view moves.
+  only while its place is out of the window (under it, or scrolled past
+  with the page kept where it was), so nothing in view moves.
   /beta: the line under the title (months left, or a tester thanked since
   their day), the way in, what testers get, how to report, this week's
   releases (`/changelog.json`, `tools/site.py --whats-new`, written beside

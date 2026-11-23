@@ -563,15 +563,19 @@ try {
             said: document.getElementById("beta-said").textContent.trim(),
             terms: document.getElementById("beta-terms")?.checkVisibility() ? document.getElementById("beta-terms").textContent.trim() : "",
             termsTo: document.querySelector("#beta-terms a")?.getAttribute("href") || "",
-            // Under the hero, with only Now on Brickworks (#now: this month's
-            // challenge and This week's pick, challengehonours) between.
-            afterHero: hero !== band && (band.previousElementSibling === hero
-              || (band.previousElementSibling?.id === "now" && band.previousElementSibling.previousElementSibling === hero)),
+            // Under the first screen, with only the community's places
+            // between (#now: this month's challenge and This week's pick,
+            // challengehonours; #talk-latest and #community, landing).
+            afterHero: hero !== band && (() => {
+              let one = band.previousElementSibling;
+              while (one && one !== hero && ["now", "talk-latest", "community"].includes(one.id)) one = one.previousElementSibling;
+              return one === hero;
+            })(),
             heroBottom: Math.round(hero.getBoundingClientRect().bottom + scrollY), top: Math.round(band.getBoundingClientRect().top + scrollY),
             points: band.querySelectorAll(".beta-points li").length };
         });
         const want = WANT[who];
-        check(`${label}: #beta under the first screen's hero, ${said.points} points, ${said.row}: "${said.first}" / "${said.second}"`,
+        check(`${label}: #beta under the first screen, ${said.points} points, ${said.row}: "${said.first}" / "${said.second}"`,
           drawn && said.afterHero && said.top >= said.heroBottom && said.points === 3 && said.row === want.row && want.first.test(said.first));
         check(`${label}: its line: "${said.said}"${said.terms ? `, and "${said.terms}"` : ", no terms line"}`, want.said.test(said.said)
           && (who === "tester" ? !said.terms : /^Joining agrees to the beta’s terms and to emails about the beta\./.test(said.terms) && said.termsTo === "/terms#beta"));
