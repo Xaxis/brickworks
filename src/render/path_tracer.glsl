@@ -181,10 +181,6 @@ layout(set = 0, binding = 10, rgba32f) uniform image2D guide;
 // it, sRGB, its height in alpha.
 layout(set = 0, binding = 11) uniform sampler2D surface_map;
 
-// The stud logo's letters (photoreal7): how high they stand round a stud's
-// middle, 12 LDU across (tools/photoreal/bake_logo.py, from LDraw's logo5.dat).
-layout(set = 0, binding = 12) uniform sampler2D logo_map;
-
 layout(push_constant, std430) uniform Pass {
 	uint first;
 	uint count;
@@ -1523,6 +1519,10 @@ layout(set = 0, binding = 6, std430) readonly buffer Normals {
 layout(set = 0, binding = 7, std430) readonly buffer Indices {
 	uint indices[];
 };
+
+// The stud logo's letters (photoreal7): how high they stand round a stud's
+// middle, 12 LDU across (tools/photoreal/bake_logo.py, from LDraw's logo5.dat).
+layout(set = 0, binding = 12) uniform sampler2D logo_map;
 
 struct Instance {
 	vec4 colour;
