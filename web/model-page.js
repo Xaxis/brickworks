@@ -26,7 +26,7 @@ import { blockPerson } from "/block.js";
 import { avatarHtml } from "/kit.js";
 import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, setPhoto, sharpPhotos, themeSaid,
   told } from "/card.js";
-import { wireShare } from "/share-sheet.js";
+import { copy, wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 import { guardPhoneOpens } from "/phone-warn.js";
 
@@ -86,6 +86,9 @@ if (frame) startPicture(frame);
 const close3d = frame && frame.dataset.scene ? start3d(frame).close : null;
 // A model too big for a phone said so before the studio opens it (phonetruth).
 guardPhoneOpens();
+// Open in Brickworks' second choice, With your Claude (claudelink).
+const claudePanel = document.getElementById("claude-panel");
+if (claudePanel && /^[A-Za-z0-9]{10}$/.test(claudePanel.dataset.id || "")) startClaude(claudePanel);
 // In your room (APP_UX5 #13, arview): where this browser can place a model
 // in a room through the camera (AR Quick Look on an iPhone or iPad, WebXR's
 // immersive AR on an Android phone or a headset), a button on the picture's
@@ -118,6 +121,140 @@ let clipAsked = false;
 const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && frame?.dataset.scene === `/m/${id}/scene.json`;
 if (newestScene && signedIn()) clipOwn();
 else if (newestScene) addEventListener("brickworks:signed-in-done", () => clipOwn(), { once: true });
+
+/// The longest ask a message carries, in characters: a sentence or three.
+/// Longer is refused with words, never cut (self_attack, Text).
+const ASK_MOST = 500;
+/// Where the message waits while the person connects Claude: read by the
+/// connect pages (web/docs.js), and given back to this model's box.
+const ASK_KEPT = "brickworks.claude.ask";
+
+/// What the person typed, as one line: Unicode spaces as spaces, the
+/// zero-width ones gone, runs of space and line breaks one space.
+function askOf(text) {
+  return String(text || "").replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .replace(/[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+/g, " ").trim();
+}
+
+/// The message for the person's own Claude (claudelink): the model by its
+/// name, designer and link, the one call that opens a copy of it in their
+/// models, what to change or to ask them, and that the copy is credited to
+/// it once they publish it. In the page's language; the call as it is
+/// named.
+function claudeMessage(panel, ask) {
+  const { id: link, name, by, url } = panel.dataset;
+  const model = by ? say("“{name}” by {by}", { name, by }) : say("“{name}”", { name });
+  return [say("Please change a LEGO® model on Brickworks for me: {model}, {url}", { model, url }),
+    `${say("With the Brickworks connector, call open_model with link={link}: it opens a copy in my models, and the original stays as it is.", { link })} `
+      + (ask ? say("Then change the copy: {ask}", { ask }) : say("Then ask me what to change.")),
+    say("When it is done, show me how it looks. I will publish the copy, and its page will credit the original.")].join("\n\n");
+}
+
+/// With your Claude: the second half of Open in Brickworks shown and made
+/// to open [panel], whose Copy for Claude copies the message (and, where
+/// the copy is refused, shows it to select), whose Share to Claude hands it
+/// to a phone's share sheet, and whose Connect Claude keeps it for the
+/// connect page. Escape closes the panel, back on the button that opened it.
+/// <html data-claude> says what happened last: open, copied, shared, kept,
+/// refused (too long), failed.
+function startClaude(panel) {
+  const opener = document.querySelector("[data-open-claude]");
+  const form = panel.querySelector(".claude-ask");
+  const field = panel.querySelector("#claude-ask");
+  const said = panel.querySelector(".claude-said");
+  const shown = panel.querySelector(".claude-message");
+  const share = panel.querySelector("[data-claude-share]");
+  if (!opener || !form || !field) return;
+  const mark = (what) => { document.documentElement.dataset.claude = what; };
+  // Its words back when the person comes back from connecting Claude.
+  try {
+    const kept = JSON.parse(localStorage.getItem(ASK_KEPT) || "null");
+    if (kept && kept.id === panel.dataset.id && typeof kept.ask === "string") field.value = kept.ask;
+  } catch {
+    // Nothing kept, or storage refused: an empty box.
+  }
+  const show = (open) => {
+    panel.hidden = !open;
+    opener.setAttribute("aria-expanded", String(open));
+    if (open) {
+      mark("open");
+      field.focus();
+    }
+  };
+  opener.hidden = false;
+  opener.addEventListener("click", () => show(panel.hidden));
+  panel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || panel.hidden) return;
+    event.preventDefault();
+    show(false);
+    opener.focus();
+  });
+  // The message, or null with the reason said: an ask over the most.
+  const message = () => {
+    const ask = askOf(field.value);
+    if (ask.length > ASK_MOST) {
+      said.textContent = say("That is {n} characters: a message for Claude takes {most} at most. Say it shorter, or say the rest to Claude in the chat.",
+        { n: number(ask.length), most: number(ASK_MOST) });
+      mark("refused");
+      field.focus();
+      return null;
+    }
+    return claudeMessage(panel, ask);
+  };
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = message();
+    if (text === null) return;
+    shown.value = text;
+    if (await copy(text)) {
+      shown.hidden = true;
+      said.textContent = say("Copied. Paste it into a chat with your Claude, with the Brickworks connector on.");
+      mark("copied");
+      return;
+    }
+    shown.hidden = false;
+    shown.focus();
+    shown.select();
+    said.textContent = say("It did not copy just now: select it and copy it yourself");
+    mark("failed");
+  });
+  // A phone's own share sheet, where the browser has one: Claude's app is
+  // one of the places it offers.
+  share.hidden = !(typeof navigator.share === "function" && matchMedia("(pointer: coarse)").matches
+    && (!navigator.canShare || navigator.canShare({ text: "Brickworks" })));
+  share.addEventListener("click", async () => {
+    const text = message();
+    if (text === null) return;
+    try {
+      await navigator.share({ text });
+      said.textContent = "";
+      mark("shared");
+    } catch (trouble) {
+      // Closed without sharing: nothing to say.
+      if (trouble && trouble.name !== "AbortError") {
+        said.textContent = say("That did not open just now: use Copy for Claude instead");
+        mark("failed");
+      }
+    }
+  });
+  // Connect Claude first: the message waits on the connect page, and is on
+  // the clipboard too where the browser allows.
+  panel.querySelector("[data-claude-connect]")?.addEventListener("click", (event) => {
+    const text = message();
+    if (text === null) {
+      event.preventDefault();
+      return;
+    }
+    try {
+      localStorage.setItem(ASK_KEPT, JSON.stringify({ id: panel.dataset.id, name: panel.dataset.name, url: location.href,
+        ask: askOf(field.value), text, at: Date.now() }));
+      mark("kept");
+    } catch {
+      // Storage refused: the clipboard still has it.
+    }
+    copy(text);
+  });
+}
 
 /// What this browser remembers of this model's clip for the account
 /// signed in here (localStorage): {mine: false} where it is somebody
