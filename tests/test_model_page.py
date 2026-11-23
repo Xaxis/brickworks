@@ -322,7 +322,8 @@ def test_a_model_s_page_in_each_language_of_the_site() -> None:
         name = words["{name} — a Brickworks model"].replace("{name}", "Riverside Watchtower")
         assert f"<title>{name}</title>" in html
         assert f'<a href="/{code}/gallery">{words["Gallery"]}</a>' in html
-        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Versions", "Made from it"):
+        # (The Remixes tab draws its tree, the page's own "This model" in it: remixdiff.)
+        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Versions", "This model"):
             # (French writes Versions as English does.)
             assert f">{words[key]}<" in html and (words[key] == key or f">{key}<" not in html), key
         assert "A three-storey watchtower on a riverbank" in html

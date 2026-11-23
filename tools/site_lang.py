@@ -203,6 +203,8 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/start3d.js": (), "web/phone-warn.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
             "web/embed.js": (), "tools/viewer/inline.js": (),
+            # What a remix changed, under its credit and in its Remixes tab (remixdiff).
+            "api/_remix.js": ("changedLineHtml", "nodeLine", "nodeHtml", "treeHtml"), "api/_remix_changes.js": ("changeLine",),
             # In your room (APP_UX5 #13, arview).
             "web/room.js": (),
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),

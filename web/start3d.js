@@ -17,8 +17,10 @@ const say = (words, values = {}) => (globalThis.brickworksLang ? globalThis.bric
 /// opens the 3D view in its frame instead; with a key held, a new tab is
 /// still the app's, as a link is. Until three.js and the model come, the
 /// frame says so and how far it has got; nothing moves, since the view is
-/// the picture's own shape over it (web/view3d.css .view3d). {open(how),
-/// close()} for the page.
+/// the picture's own shape over it (web/view3d.css .view3d). {open(how,
+/// changesOn), close()} for the page: a remix's picture names what it
+/// changed (data-changes, api/_remix.js), and the view offers What changed,
+/// on from the start when [changesOn] (its page's "See what changed in 3D").
 export function start3d(big) {
   // The model's name, from the picture's label as its page wrote it.
   const label = big.getAttribute("aria-label") || "";
@@ -33,11 +35,18 @@ export function start3d(big) {
   let shell = null;
   let viewing = null;
   let pointer = "";
-  const open = (how) => {
-    if (shell && !shell.hidden) return;
+  const open = (how, changesOn = false) => {
+    if (shell && !shell.hidden) {
+      if (changesOn && viewing) viewing.then((view) => view && view.changes(true));
+      return;
+    }
     if (viewing) {
       shell.hidden = false;
-      viewing.then((view) => view && view.open());
+      viewing.then((view) => {
+        if (!view) return;
+        view.open();
+        if (changesOn) view.changes(true);
+      });
       return;
     }
     const asked = Math.round(performance.now());
@@ -58,7 +67,8 @@ export function start3d(big) {
     const closed = () => { big.focus({ preventScroll: true }); };
     viewing = import("/viewer3d.js")
       .then((made) => made.open3d(shell, { scene: big.dataset.scene, name, app: big.getAttribute("href"), how,
-        look: big.dataset.scene.startsWith("/library/") ? "corner" : "app", timings: { asked }, closed }))
+        look: big.dataset.scene.startsWith("/library/") ? "corner" : "app", timings: { asked }, closed,
+        changes: big.dataset.changes || "", changesOn }))
       .catch(() => {
         // Not even the code came: said, and asked again on the next try.
         shell.dataset.state = "failed";

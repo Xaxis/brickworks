@@ -107,6 +107,47 @@
    "features": [
     "ui:choose the AI that designs"
    ]
+  },
+  {
+   "id": "connect-with-claude",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "storage": {
+    "brickworks.claude.ask": {
+     "id": "DocsSprt01",
+     "ask": "Make the roof dark blue"
+    }
+   },
+   "wait": "a.picture img",
+   "steps": [
+    {
+     "click": "[data-open-claude]"
+    },
+    {
+     "wait": "#claude-panel"
+    }
+   ],
+   "crop": [
+    ".model-page .side .actions",
+    "#claude-panel"
+   ],
+   "pad": 12,
+   "alt": "A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
+   "caption": "A model's page hands your Claude the model.",
+   "features": [
+    "ui:change a model with your Claude"
+   ]
   }
  ]
 }

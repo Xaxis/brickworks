@@ -16,7 +16,13 @@
 ## bricks in a row with one moved to the end are 1 moved. Inside a
 ## sub-assembly being edited only that is compared, and the panel says so. A
 ## 5,000-part model compares in under a second. A comparison that found
-## nothing fails every count.
+## nothing fails every count. And the twelve remix pairs of
+## tests/fixtures/remix_pairs, an original and a remix each made by one kind
+## of edit or several: the app's counts, of the two files and of the remix
+## opened on the baseplate compared with the original's text as Compare
+## compares, are what the site counts a remix changed (api/_remix_changes.js,
+## expected.json), every one, and the one-colour parts those files use read
+## as the site's table says (part_current.json).
 extends SceneTree
 
 var _main: Node
@@ -65,10 +71,12 @@ func _run() -> void:
 	await _ten_in_a_row()
 	await _inside_a_sub_assembly()
 	await _five_thousand()
+	await _remix_pairs()
 	print("")
 	print("compare: %s" % ("3 added, 2 removed, 2 moved and 1 recoloured, each in its colour, "
 		+ "stepped through and put back; one moved of ten alike; inside a sub-assembly; 5,000 "
-		+ "parts in under a second" if _failures == 0 else "%d FAILED" % _failures))
+		+ "parts in under a second; 12 remix pairs counted as the site counts them"
+		if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures > 0 else 0)
 
 
@@ -414,6 +422,70 @@ func _five_thousand() -> void:
 			ModelDiff.REMOVED: 3, ModelDiff.MOVED: 4, ModelDiff.RECOLOURED: 0})
 	_compare.close()
 	await _frames(4)
+
+
+# -- remix pairs -----------------------------------------------------------------
+
+
+const PAIRS := "res://tests/fixtures/remix_pairs/"
+
+
+func _remix_pairs() -> void:
+	print("12 remix pairs, as the site counts what a remix changed")
+	var expected: Variant = JSON.parse_string(FileAccess.get_file_as_string(PAIRS + "expected.json"))
+	var table: Variant = JSON.parse_string(FileAccess.get_file_as_string(PAIRS + "part_current.json"))
+	_check("the pairs' counts and table are there", expected is Dictionary and table is Dictionary
+		and (expected as Dictionary).size() == 12)
+	if not (expected is Dictionary and table is Dictionary):
+		return
+	# The site's table of parts drawn in one colour is the app's library's.
+	for id: String in (table["parts"] as Dictionary):
+		var said: Array = table["parts"][id]
+		_check("%s is %s in colour %d here as on the site (%s, %d)" % [id, said[0], int(said[1]),
+			_library.current(id), _library.current_colour(id)], _library.current(id) == str(said[0])
+			and _library.current_colour(id) == int(said[1]))
+	var met: int = 0
+	var names: Array = (expected as Dictionary).keys()
+	names.sort()
+	for name: String in names:
+		var want: Dictionary = expected[name]
+		var was_text: String = FileAccess.get_file_as_string(PAIRS + name + ".was.ldr")
+		var now_text: String = FileAccess.get_file_as_string(PAIRS + name + ".now.ldr")
+		var was: Array = ModelDiff.parts_of_text(was_text, _library)
+		var texts: Dictionary = _counted(ModelDiff.between(was, ModelDiff.parts_of_text(now_text, _library)))
+		# The Compare itself: the remix opened on the baseplate, compared with
+		# the original's text as CompareView._compare compares a save.
+		_main.call("clear_model")
+		await _frames(4)
+		var opened: Dictionary = _store.open_text(now_text, "Remix " + name)
+		_shell.bar.opened.emit(int(opened.get("placed", 0)))
+		await _frames(6)
+		var compared: Dictionary = _counted(ModelDiff.between(ModelDiff.parts_of_text(was_text, _library),
+			ModelDiff.parts_of_world(_world, _store.scenery, _store.lift(), _store.awaited_now())))
+		var wanted: Dictionary = {}
+		for key: String in want:
+			wanted[key] = int(want[key])
+		var same: bool = texts == wanted and compared == wanted
+		if same:
+			met += 1
+		_check("%s: the site %s, the app's files %s, the app's Compare %s" % [name, wanted, texts, compared],
+			same)
+	_check("%d of 12 pairs counted exactly as the app's Compare counts them" % met, met == 12)
+	_main.call("clear_model")
+	await _frames(4)
+
+
+## A diff's counts as the site keeps them: each kind, how many of the moved
+## turned, and both sides' parts.
+func _counted(diff: ModelDiff) -> Dictionary:
+	var turned: int = 0
+	for change: ModelDiff.Change in diff.changes:
+		if change.kind == ModelDiff.MOVED and change.turned:
+			turned += 1
+	var counts: Dictionary = diff.counts()
+	return {"added": int(counts[ModelDiff.ADDED]), "removed": int(counts[ModelDiff.REMOVED]),
+		"moved": int(counts[ModelDiff.MOVED]), "recoloured": int(counts[ModelDiff.RECOLOURED]),
+		"turned": turned, "parts_was": diff.parts_was, "parts_now": diff.parts_now}
 
 
 # -- helpers -------------------------------------------------------------------
