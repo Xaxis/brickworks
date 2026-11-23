@@ -240,7 +240,10 @@ class Yard:
             path.write_text(text)
             path.chmod(0o755)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith(("GIT_", "TRAIN_", "STUB_", "SHIP_", "RELEASE_", "LIVE_WAIT", "LIVE_DB", "BOX_"))}
+               # PC_ and BW_ too: ship.sh exports PC_AT_ONCE=6 before its gate, and a yard that kept it ran five
+               # checks at once where the default is three (rel-m325's gate, 2026-11-23).
+               if not k.startswith(("GIT_", "TRAIN_", "STUB_", "SHIP_", "RELEASE_", "LIVE_WAIT", "LIVE_DB", "BOX_",
+                                    "PC_", "BW_"))}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1",
                    GIT_AUTHOR_NAME="Xaxis", GIT_AUTHOR_EMAIL="william.neeley@gmail.com",
                    GIT_COMMITTER_NAME="Xaxis", GIT_COMMITTER_EMAIL="william.neeley@gmail.com",
