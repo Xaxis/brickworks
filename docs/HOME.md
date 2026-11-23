@@ -101,7 +101,8 @@ What a stranger sees, at 390 x 844 and at 1280 x 800:
    panel for their last model) and Share a file beside it, over the tabs
    (homefix, 2026-11-23). The band's foot keeps the page's rhythm: 48 px
    (`--s-7`) from its last line down to its edge and from the edge to
-   the feed's heading, as an inner page's head and body are; from 900 px
+   the feed's heading, as an inner page's head and body are (24, `--s-5`,
+   on a phone, whose first post still starts within 600 px); from 900 px
    the mark is as tall as an 800 px window leaves it (280 to 400 px), so
    the first row of builds still shows.
 2. **The feed**, at once under it (the first post begun in the first

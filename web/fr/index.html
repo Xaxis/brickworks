@@ -185,6 +185,13 @@
    inner page's body is under its head (site.css .page-hero, .page-body). */
 .home-feed { padding: var(--s-7) 0 var(--section); }
 :root[data-signed="in"] .home-feed { padding-top: var(--s-5); border-top: 0; }
+/* A phone's: the same rhythm a step down (--s-5 each side of the line),
+   and the mark from the header's edge (its poster's own top is its room),
+   so its first post still starts within 600 px (homefeed_check.mjs). */
+@media (width < 600px) {
+	.home-band { padding-top: 0; padding-bottom: var(--s-5); }
+	.home-feed { padding-top: var(--s-5); }
+}
 .feed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-4); border-bottom: 1px solid var(--line); }
 .feed-head h2 { margin: 0; padding: 0 0 10px; font-size: var(--t-h2); line-height: 1.25; font-weight: 650; }
 .feed-head .tabs { display: none; margin: 0 0 -1px; border-bottom: 0; min-width: 0; overflow-x: auto; }
