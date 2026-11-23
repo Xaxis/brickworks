@@ -73,7 +73,8 @@ On a touch screen the app is laid out for a finger: one row of tools, and the pa
 - The booklet's **Lay out the page…** gives its buttons, an item's corner, the knob and an arrow's ends a fingertip each. A tap in the words field keeps its words selected to type over.
 - **More** opens on the commands used most, two to a line: Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose and Select all. Each is in its menu too.
 - To select several parts, tap one, then tap **Select** again: each tap now adds a part or takes it out, and a tap beside the model keeps them. Tap **Select** once more when you are done.
-- The timeline's buttons are a fingertip each. On a phone held upright its rows of choices slide sideways, with **Lay out the page…** first.
+- The timeline's buttons are a fingertip each. On a phone held upright it is one row of **Back**, the step's number, **Next**, **Parts** and **More**, and a swipe along it turns the page: see [the timeline on a phone](/docs/instructions#timeline-phone).
+- A shared model's page on a phone puts **Steps**, **Booklet**, **Parts list** and **Edit a copy** on a line of their own under its name, and two fingers turn and pinch the model.
 
 <!-- covers
 ui:two fingers' twist
