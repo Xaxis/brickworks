@@ -156,7 +156,9 @@ func _build() -> void:
 		home = Button.new()
 		home.name = "app_home"
 		home.text = NAME
-		home.focus_mode = Control.FOCUS_NONE
+		# Tab reaches it, as the site's mark is a link Tab reaches; a click
+		# leaves the keys with the model.
+		FocusGuard.by_keyboard(home)
 		home.accessibility_name = NAME
 		home.tooltip_text = "Brickworks: the home page"
 		home.accessibility_description = "The site's home page, in this tab"
