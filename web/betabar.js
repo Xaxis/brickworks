@@ -1,8 +1,9 @@
 // The beta's bar (betahome, 2026-11-09), on every page while the beta is
 // open: Open beta (/beta, the hub), Report a bug, and Join (to the hub's
 // way in, where what joining agrees to is said) or "You’re a tester". It
-// is docked at the window's foot, the page's end clear of it, and moves nothing (docs/DESIGN_SYSTEM.md,
-// Beta bar). Its × hides it in this browser until the person shows it
+// is a strip at the page's top, in a room the page holds for it from its
+// first frame (web/theme.js), so it covers nothing and moves nothing
+// (docs/DESIGN_SYSTEM.md, Beta bar). Its × hides it in this browser until the person shows it
 // again (bugbar, 2026-11-13: before, a day went by with nothing to say
 // where it went): a toast says so, with Undo and the way to Settings,
 // whose Beta row has "Show the beta bar on every page"; Report a bug stays
@@ -119,7 +120,8 @@ async function ask() {
   } catch {
     body = null;
   }
-  // Not heard: nothing is drawn and nothing kept, so the next page asks.
+  // Not heard: nothing kept, so the next page asks; a room held for the bar
+  // keeps it, without Join (drawBar).
   if (!body || !["open", "off"].includes(body.beta)) return { beta: "unknown", tester: null, cap: 100, left: null, who };
   const heard = heardOf(body, who);
   keep(heard);
@@ -220,7 +222,7 @@ export function barShown() {
 export function showBar(on) {
   write(HIDDEN, on ? null : "off");
   dispatchEvent(new CustomEvent("brickworks:betabar", { detail: { shown: Boolean(on) } }));
-  return betaState().then(drawBar);
+  return betaState().then((heard) => drawBar(heard, { act: true }));
 }
 
 /// Hidden from its ×: said in a toast, with Undo and where to show it
@@ -264,14 +266,20 @@ function third(heard) {
   return join;
 }
 
-function drawBar(heard) {
+/// The bar as [heard] says, in the room web/theme.js held for it before the
+/// page was drawn. Hidden here or in another tab, or the beta off, it goes.
+/// No room held, none is made now, which would move the whole page down: the
+/// next page holds it; only the person's own act ([act]: Settings' switch,
+/// Undo) brings it onto this one. Not heard (the server not answering), the
+/// room held keeps its bar, without Join.
+function drawBar(heard, { act = false } = {}) {
   let bar = document.getElementById("beta-bar");
-  if (heard.beta !== "open" || !barShown()) {
+  if (heard.beta === "off" || !barShown()) {
     bar?.remove();
     delete root.dataset.betabar;
-    root.style.removeProperty("--betabar-h");
     return;
   }
+  if (!bar && !root.dataset.betabar && !act) return;
   if (!bar) {
     bar = made("aside", { className: "beta-bar", id: "beta-bar" });
     bar.setAttribute("aria-label", say("The Brickworks beta"));
@@ -291,11 +299,12 @@ function drawBar(heard) {
     hide.addEventListener("click", hideFromBar);
     bar.append(badge, report, made("span", { className: "third" }), hide);
     document.body.append(bar);
+    // In the room web/theme.js held for it, or made now (not heard of before).
     root.dataset.betabar = "shown";
-    // In the frame after: it rises and fades in (site.css), moving nothing.
+    // In the frame after: it fades in (site.css), moving nothing.
     requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add("shown")));
   }
-  bar.querySelector(".third").replaceChildren(third(heard));
+  bar.querySelector(".third").replaceChildren(...(heard.beta === "open" ? [third(heard)] : []));
   fit(bar);
 }
 
@@ -304,8 +313,6 @@ function drawBar(heard) {
 function fit(bar) {
   bar.classList.remove("tight");
   if (bar.scrollWidth > bar.clientWidth + 1) bar.classList.add("tight");
-  // The page's end clears it (site.css, :root[data-betabar] body).
-  root.style.setProperty("--betabar-h", `${Math.ceil(bar.getBoundingClientRect().height)}px`);
 }
 
 async function start() {
@@ -324,7 +331,8 @@ async function start() {
   // Another tab joined, signed in or out, or hid or showed the bar.
   addEventListener("storage", (event) => {
     if (event.key === HIDDEN) dispatchEvent(new CustomEvent("brickworks:betabar", { detail: { shown: barShown() } }));
-    if (event.key === KEY || event.key === HIDDEN) betaState().then(drawBar);
+    // Shown again in another tab is the person's own act: here too.
+    if (event.key === KEY || event.key === HIDDEN) betaState().then((heard) => drawBar(heard, { act: event.key === HIDDEN }));
   });
 }
 

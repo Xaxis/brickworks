@@ -504,7 +504,7 @@ try {
       const wide = await lookPage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       ok(wide <= 0, `${width} ${scheme}: nothing wider than the window (${wide} px over)`);
       await lookPage.goto(`${site}/gallery`, { waitUntil: "load" });
-      const yours = lookPage.locator(".gallery-head .share-yours");
+      const yours = lookPage.locator(".page-head .share-yours");
       const box = await yours.boundingBox().catch(() => null);
       ok(Boolean(box) && box.width >= 44 && box.height >= 44 && box.x + box.width <= width,
         `${width} ${scheme}: the gallery's Share yours is on screen, ${box ? `${Math.round(box.width)}x${Math.round(box.height)}` : "missing"}`);

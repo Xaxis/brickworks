@@ -16,6 +16,12 @@
 ##   times.json        how long each took, milliseconds
 ## Under --rendering-method gl_compatibility (through zink on the GPU) it
 ## draws what a browser's card is: frames averaged (CardPhoto.RASTER).
+##
+## --models=LIST.json --cards=DIR is tools/web/card_sweep.mjs's: LIST is
+## [{id, file}], each file opened and turned to the default view, and its
+## card drawn traced into DIR/<id>.webp as the Share panel makes one
+## (SharePanel._card_bytes), with DIR/swept.json saying each one's id, ms
+## and samples. Nothing is drawn where rays are not traced.
 ## Each check says what it drew. Not --out: the app takes that.
 extends SceneTree
 
@@ -39,9 +45,12 @@ func _arg(name: String, fallback: String = "") -> String:
 func _run() -> void:
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
 	var out: String = _arg("pictures")
-	if out.is_empty():
+	if out.is_empty() and _arg("models").is_empty():
 		push_error("card_probe: --pictures=DIR")
 		quit(2)
+		return
+	if not _arg("models").is_empty():
+		await _sweep()
 		return
 	DirAccess.make_dir_recursive_absolute(out)
 	var only: PackedStringArray = _arg("only").split(",", false)
@@ -122,10 +131,15 @@ func _run() -> void:
 			took[look + "_worst"] = [roundi(card.worst_frame_ms), card.worst_step]
 			took[look + "_frames"] = card.frames
 			took[look + "_samples"] = card.samples
-			_ok(photo != null and photo.get_size() == SharePanel.THUMB * 2,
-				"%d %s: the card as a photograph (%s), %.0f ms in %d frames, %d samples, the longest %.0f ms (%s)"
+			# Frames averaged past CardPhoto.MOST_MS, the card is given up for
+			# the cut-out, as the Share panel then sends: what is meant.
+			var given_up: bool = photo == null and not CardPhoto.traced() \
+				and card.last_ms >= CardPhoto.MOST_MS
+			took[look + "_given_up"] = given_up
+			_ok(given_up or (photo != null and photo.get_size() == SharePanel.THUMB * 2),
+				"%d %s: the card as a photograph (%s), %.0f ms in %d frames, %d samples, the longest %.0f ms (%s)%s"
 				% [n, said["name"], look, card.last_ms, card.frames, card.samples, card.worst_frame_ms,
-				card.worst_step])
+				card.worst_step, ", given up for the cut-out past %d ms" % CardPhoto.MOST_MS if given_up else ""])
 			if photo != null:
 				photo.convert(Image.FORMAT_RGB8)
 				photo.resize(SharePanel.THUMB.x, SharePanel.THUMB.y, Image.INTERPOLATE_LANCZOS)
@@ -135,6 +149,73 @@ func _run() -> void:
 	var kept := FileAccess.open(out.path_join("times.json"), FileAccess.WRITE)
 	kept.store_string(JSON.stringify(times, " "))
 	kept.close()
+	print("")
+	print("%d FAILED" % _failures if _failures else "every card drawn, in %s" % out)
+	quit(1 if _failures else 0)
+
+
+## card_sweep.mjs's cards: see the header.
+func _sweep() -> void:
+	var out: String = _arg("cards")
+	var listed: Variant = JSON.parse_string(FileAccess.get_file_as_string(_arg("models")))
+	if out.is_empty() or not listed is Array:
+		push_error("card_probe: --models=LIST.json (an array of {id, file}) --cards=DIR")
+		quit(2)
+		return
+	DirAccess.make_dir_recursive_absolute(out)
+	var main: Node = load("res://src/main.tscn").instantiate()
+	root.add_child(main)
+	for _n: int in 200:
+		await process_frame
+	var store: ModelStore = main.get("_store")
+	var bar: ModelBar = main.get("_bar")
+	var camera: CadCamera = main.get("_camera")
+	(main.get("_builder") as Builder).hide_preview()
+	if not CardPhoto.traced():
+		_ok(false, "rays are traced here (%s): the sweep draws only traced cards"
+			% RenderingServer.get_video_adapter_name())
+		quit(1)
+		return
+	var card := CardPhoto.new()
+	card.world = main.get("_world")
+	card.library = main.get("_library")
+	card.scenery = store.scenery
+	card.eye = camera
+	card.look = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
+	for light_name: String in ["Sun", "Fill", "Rim"]:
+		card.rig_lights.append(main.get_node(light_name) as DirectionalLight3D)
+	root.add_child(card)
+	var swept: Array = []
+	for one: Variant in listed:
+		var id: String = str((one as Dictionary).get("id", ""))
+		var text: String = FileAccess.get_file_as_string(str((one as Dictionary).get("file", "")))
+		var opened: Dictionary = store.open_text(text, id) if not text.is_empty() \
+			else {"error": "no file", "placed": 0}
+		if not str(opened["error"]).is_empty() or int(opened["placed"]) == 0:
+			_ok(false, "%s: %s" % [id, str(opened["error"]) if not str(opened["error"]).is_empty() else "no parts"])
+			swept.append({"id": id, "ok": false})
+			continue
+		bar.opened.emit(int(opened["placed"]))
+		for _n: int in 3600:
+			await process_frame
+			if store.awaited.is_empty():
+				break
+		camera.set_view("")
+		for _n: int in 30:
+			await process_frame
+		var bytes: PackedByteArray = SharePanel._card_bytes(await card.take(SharePanel.THUMB * 2), true)
+		var ok: bool = not bytes.is_empty()
+		if ok:
+			var kept := FileAccess.open(out.path_join("%s.webp" % id), FileAccess.WRITE)
+			kept.store_buffer(bytes)
+			kept.close()
+		_ok(ok, "%s: %d parts, its card traced in %.0f ms, %d samples, %d KB" % [id,
+			int(opened["placed"]), card.last_ms, card.samples, bytes.size() / 1024])
+		swept.append({"id": id, "ok": ok, "ms": roundi(card.last_ms), "samples": card.samples})
+		store.share_id = ""
+	var said := FileAccess.open(out.path_join("swept.json"), FileAccess.WRITE)
+	said.store_string(JSON.stringify(swept, " "))
+	said.close()
 	print("")
 	print("%d FAILED" % _failures if _failures else "every card drawn, in %s" % out)
 	quit(1 if _failures else 0)

@@ -123,6 +123,14 @@ for handler in api/*.js; do
   # /challenge?id=N is the challenge page with that challenge's own head
   # (api/_challenges.js challengeHead), so a link to one shows it; and
   # /de/challenge?id=N its copy's (tools/site_lang.py).
+  # The minifigure avatars' layers (web/minifig/256, tools/web/minifig_layers.mjs),
+  # which ?op=avatar&handle= lays into one picture (api/_minifig.js).
+  if [ "$route" = people ]; then
+    if [ ! -d web/minifig/256 ]; then
+      echo "deploy FAILED: no web/minifig/256 for /api/people (tools/web/minifig_layers.mjs)"; exit 1
+    fi
+    mkdir -p "$fn/_minifig" && cp web/minifig/256/*.webp "$fn/_minifig/"
+  fi
   if [ "$route" = people ]; then
     cp web/challenge.html "$fn/_challenge.html"
     for copy in web/*/challenge.html; do

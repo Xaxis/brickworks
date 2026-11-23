@@ -20,13 +20,28 @@ Everything below is `tools/release.py`; `--help` lists its commands.
 - **Only from a commit that is on `main`, pushed, and already deployed to the
   web**, so the desktop never ships something the site has not run. The
   build refuses a commit that is not pushed.
-- **The whole suite first.** A web release train runs every headless probe
-  (`tools/release/train.sh`, with no `--probes`; `tools/release/README.md`),
-  never a windowed one. Every train from v0.15.0 to rel-m256 was staged
-  with none, eight probes went red on main unseen, and desktop016's run of
-  the whole suite held 0.16.0 on them (2026-11-04). A web lane train runs
+- **The whole suite first.** A desktop release runs the whole suite. A web
+  release train runs the headless probes its own change reaches
+  (`tools/release/train.sh` with no `--probes`; `--probes all` for every
+  one), and every headless probe and every browser check run each night on
+  pre261 (`tools/release/nightly.sh`; `tools/release/README.md`, "What a
+  release runs"). Every train from v0.15.0 to rel-m256 was staged with no
+  probe and no night run, eight probes went red on main unseen, and
+  desktop016's run of the whole suite held 0.16.0 on them (2026-11-04); the
+  night's run finds such a red the next morning. A web lane train runs
   none, as its app is the one the full train before it probed and exported
   (`tools/release/README.md`, "Which lane").
+- **A web release in minutes, not hours** (fastship, 2026-11-23). rel-m319's
+  24 units took 13 hours over 8 attempts: every check its files named since
+  main (146 of 150), every headless probe (293), a CI gate before each
+  preview, a preview rebuilt for a fix to a check, and the release's jobs
+  sharing the CPU with its own units' at load 100. Now a release runs what
+  its change against the live build reaches less what was proven since,
+  its jobs first on the CPU, the CI gate beside the deploy, nothing built
+  twice, and a read-only look at the live site after the promotion that
+  rolls it back by itself should the release have broken it. Ship units as
+  they prove out: a small release's list is short, and a unit that passed
+  its own checks on its own preview carries them.
 - **New parts once a month**, before that month's release, in the main
   checkout with nothing else building or measuring (every worktree reads
   its library and catalogue): `heavy tools/update_parts.py`. It fetches

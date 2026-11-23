@@ -253,7 +253,7 @@
       "kind": "cli",
       "label": "web build and deploy",
       "entry": "tools/deploy.sh",
-      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py)",
+      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py tests/test_deploy_checks.py tests/test_storage_stamp.py tests/test_brotli_cache.py; --no-fit skips the fit check alone, DEPLOY_TIMES=1 says each step's seconds)",
       "area": "web"
     },
     {
@@ -3919,13 +3919,6 @@
     },
     {
       "kind": "cli",
-      "label": "set3d browser flow",
-      "entry": "tools/web/set3d_flow.mjs",
-      "reach": "node --env-file=.env tools/web/set3d_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--langs=de,fr,es] [--store-log=FILE]   (set3d: ten modelled sets, 30 to 9,092 parts, turned in 3D on their own pages at 1280 and 390 in both themes, no 3D code before View in 3D, the frame, keys or a swipe, full screen, the named stage; two catalogue-only sets saying they have no 3D model; no WebGL keeping the picture; de/fr/es; what each view cost and read from storage)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "set parts probe",
       "entry": "src/dev/set_parts_probe.gd",
       "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
@@ -6529,6 +6522,34 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "ask the builders in talk",
+      "entry": "supabase/talk_asks.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/talk_asks.sql --dry --try=tools/talk_asks_try.sql --table=talk_threads   (after talk.sql and comment_pins.sql; talk_ask and talk_pin_reply over talk_start and talk_reply, talk_asks_of, talk_pins_of, talk_asks_on: the owner's studio, never somebody blocked, hidden or another pool; api/_asks.js, api/_parts.js stepParts for /m/<id>/scene.json?step=N)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "ask the builders from the studio",
+      "entry": "api/_asks.js",
+      "reach": "https://brickworks.diy/talk/t/<n>: a thread asked from the studio shows the model in 3D at the asked step with the asked parts lit (web/talk.js, web/start3d.js, /m/<id>/scene.json?step=N); Answer on this part from the 3D's menu; POST /api/people?op=talk_ask, ?op=talk_reply {part}; GET ?op=talk_asks&model=X for the studio; in the app Share, Ask the builders, Ask in Talk (src/ui/share_panel.gd), new answers lit in the studio (src/ui/part_pins.gd)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "askhelp probe",
+      "entry": "src/dev/askhelp_probe.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/askhelp_probe.gd -- --pictures=DIR   (and --resolution 390x844: Ask in Talk's request, the answer lit, polling stops with no asks)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "askhelp browser flow",
+      "entry": "tools/web/askhelp_flow.mjs",
+      "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11770 --hold=talk, then node --env-file=$SCRATCH/relay.env tools/web/askhelp_flow.mjs --url=http://127.0.0.1:11770 --out=DIR   (the ask and its refusals, the thread's 3D at step 2 at 1280 and 390, Answer on this part, op=talk_asks within 60 s, blocks and a report)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "partpins browser flow",
       "entry": "tools/web/partpins_flow.mjs",
@@ -6844,6 +6865,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "set3d browser flow",
+      "entry": "tools/web/set3d_flow.mjs",
+      "reach": "node --env-file=.env tools/web/set3d_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--langs=de,fr,es] [--store-log=FILE]   (set3d: ten modelled sets, 30 to 9,092 parts, turned in 3D on their own pages at 1280 and 390 in both themes, no 3D code before View in 3D, the frame, keys or a swipe, full screen, the named stage; two catalogue-only sets saying they have no 3D model; no WebGL keeping the picture; de/fr/es; what each view cost and read from storage)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "open in brickworks for a stranger",
       "entry": "src/net/asked_copy.gd",
@@ -7015,7 +7043,7 @@
       "kind": "lib",
       "label": "the gallery's card as a photograph",
       "entry": "src/render/card_photo.gd",
-      "reach": "File › Share… › Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk, frames averaged on the same desk in a browser within 2.5 s (CardPhoto, src/ui/share_panel.gd _pictures); a phone keeps the cut-out",
+      "reach": "File › Share… › Publish: the card goes as the cut-out, then is drawn once the publish has answered (src/ui/share_panel.gd _card_after) and put on the link (api/share.js op=card): path traced on photoreal10's measured desk where rays are traced, frames averaged on the same desk in a browser, within 1.8 s (CardPhoto); a phone keeps the cut-out",
       "area": "web"
     },
     {
@@ -7045,6 +7073,55 @@
       "entry": "web/composer.js",
       "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a minifig of your own as your avatar",
+      "entry": "web/minifig-maker.js",
+      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig   (dialog#minifig-dialog: a face, hair or a hat and its colour, a torso print and colour, legs colour, background, Surprise me, the minifig at its sizes on a light and a dark page; Save sends the PNG and its recipe to POST /api/people?op=avatar {picture, type, minifig}; everybody without a picture is shown the minifig made from their handle, web/card.js minifigOf, and GET /api/people?op=avatar&handle=X draws it as a JPEG)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "minifig avatar layers",
+      "entry": "tools/web/minifig_layers.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/minifig_layers.mjs --deps=DIR [--only=face-3626cp01,...]   (DIR has node_modules/three 0.186.1; writes web/minifig/128 and web/minifig/256)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card after probe",
+      "entry": "src/dev/card_after_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_after_probe.gd",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card sweep",
+      "entry": "tools/web/card_sweep.mjs",
+      "reach": "node --env-file=.env tools/web/card_sweep.mjs [--dry] [--most=N] [--ids=A,B]   (every listed model's card not yet traced, drawn on the box's GPU and put; after supabase/card_kind.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the live smoke and its rollback",
+      "entry": "tools/release/live_smoke.sh",
+      "reach": "tools/release/live_smoke.sh current [DOMAIN] | check ORIGIN | guard DOMAIN PREVIOUS_URL TAG   (ship.sh: current before it promotes, guard once the domain serves the release; a read-only smoke, its browser half tools/web/live_smoke.mjs under heavy; guard rolls the domain back to PREVIOUS_URL when the release fails twice and the build before passes; tests/test_live_smoke.py)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "lean release lists",
+      "entry": "tools/release/lean.py",
+      "reach": "tools/release/lean.py checks|probes --live SHA --head SHA --tree DIR [--named ...] [--smoke ...] [--every] | record checks|probes NAME BUILT AT OUT... [--passed ...]   (train.sh at staging and once merged, reship; what a release's change against live reaches less what was proven since; proof in $RELEASE_OUT/proofs/; tests/test_lean.py)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "nightly checks",
+      "entry": "tools/release/nightly.sh",
+      "reach": "tools/release/nightly.sh run [REF] | plan [REF] | install [HH:MM] | status   (a systemd user timer at 18:00 local: every check and every headless probe on origin/pre261, their passes written as proof for lean.py; $RELEASE_OUT/nightly-YYYYMMDD.summary)",
+      "area": "release"
     }
   ]
 }

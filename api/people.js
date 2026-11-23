@@ -17,13 +17,16 @@
 //                                 show them (supabase/avatars.sql)
 //   GET  ?op=avatar&id=P          picture P, a person's own avatar, while
 //                                 it may be shown
-//   GET  ?op=avatar&handle=X      X's avatar made from their handle, as an
-//                                 SVG: the image their page's structured
-//                                 data names when they have no picture
-//   POST ?op=avatar               (session) {picture: base64, type}: the
-//                                 caller's own picture as their avatar,
-//                                 the square Edit profile cropped, at most
-//                                 2 MB (api/_avatars.js)
+//   GET  ?op=avatar&handle=X      the minifigure made from X's handle, a
+//                                 JPEG (api/_minifig.js): the image their
+//                                 page's structured data names when they
+//                                 have no picture
+//   POST ?op=avatar               (session) {picture: base64, type,
+//                                 minifig?}: the caller's own picture as
+//                                 their avatar, the square Edit profile
+//                                 cropped or the minifigure its maker drew
+//                                 with its recipe, at most 2 MB
+//                                 (api/_avatars.js)
 //   POST ?op=avatar_remove        (session) that picture taken off: the
 //                                 avatar made from the handle again
 //   POST ?op=likes_choice         (session) {shows}: show on my profile the
@@ -178,6 +181,10 @@
 //   GET  ?op=talk_page, talk, talk_thread, talk_latest, talk_rss, talk_model,
 //        talk_photo               Talk, the builders' forum: /talk, a board,
 //                                 a thread, its feeds and photos (api/_talk.js)
+//   GET  ?op=talk_asks          (session) a model's asks and their answers on
+//                                 parts, for its studio (api/_asks.js)
+//   POST ?op=talk_ask           (session) Ask the builders: a Help thread about
+//                                 the open step of a shared model (api/_asks.js)
 //   POST ?op=talk_start, talk_reply, talk_change, talk_follow, talk_read,
 //        talk_photo_start         (session) a thread started, a post written,
 //                                 edited or removed, a thread followed or
@@ -249,6 +256,7 @@ import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { billingMode } from "./_billing.js";
 import { db, dbConfigured, dbCount, orUnknown } from "./_db.js";
+import { betaSaid, sayBeta } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
   SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
@@ -291,14 +299,15 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml, themeSaid } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml, minifigOf, minifigShape, HOUSE_HANDLE } from "./_card.js";
+import { minifigJpeg } from "./_minifig.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, challengeRules, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 import { promptOfAnswer } from "./_prompts.js";
 import {
-  reportPost, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead, talkReply,
-  talkRss, talkStart, talkThread,
+  reportPost, talkAsk, talkAsks, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead,
+  talkReply, talkRss, talkStart, talkThread,
 } from "./_talk.js";
 import { pushChoose, pushSend, pushState } from "./_push.js";
 
@@ -709,19 +718,24 @@ async function saveLikesChoice(request, response) {
 // ---------------------------------------------------------------------------
 // Your own picture as your avatar (api/_avatars.js).
 
-/// POST ?op=avatar {picture, type}: the square Edit profile cropped, kept
-/// as the caller's avatar.
+/// POST ?op=avatar {picture, type, minifig?}: the square Edit profile
+/// cropped, or the minifigure its maker drew with what it was made of
+/// (web/card.js minifigShape), kept as the caller's avatar.
 async function saveAvatar(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const account = await signedIn(request);
   const body = request.body && typeof request.body === "object" ? request.body : {};
+  const recipe = body.minifig === undefined || body.minifig === null ? null : minifigShape(body.minifig);
+  if (body.minifig !== undefined && body.minifig !== null && !recipe) {
+    throw new Refusal("that is not a minifigure the maker makes: a face, hair or a hat, a print and colours from its lists");
+  }
   const kept = await keepAvatar(account, body.picture, String(body.type || ""), async () => {
     const person = (await db(`people?account=eq.${account}&select=handle`))[0];
     if (!person) throw new Refusal("make your profile first: a name and a handle", 409);
     const young = await publicTrouble(account, { profile: true });
     if (young) throw new Refusal(young, 422);
     await counted(account, "avatar");
-  });
+  }, recipe);
   return response.status(200).json(kept);
 }
 
@@ -733,35 +747,28 @@ async function dropOwnAvatar(request, response) {
   return response.status(200).json(await dropAvatar(account));
 }
 
-// The eight avatar tiles' colours and the letter's (web/site.css :root
-// --avatar-1..8, --on-avatar): one set for both themes, as there.
-const TILES = ["#b42318", "#1f5fbf", "#1f7a3d", "#7a3fb0", "#9a4a00", "#0e6f8a", "#a3175a", "#4b5563"];
-const ON_TILE = "#ffffff";
-
-/// The avatar a person without a picture of their own is shown as
-/// (web/card.js avatarHtml), as an SVG: their handle's tile and their
-/// name's first letter. A search engine's image of them (seo2), as another
-/// site's default avatar is.
-function tileSvg({ handle, name }) {
-  const letter = ([...String(name || handle || "?").trim()][0] || "?").toUpperCase();
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">`
-    + `<circle cx="128" cy="128" r="128" fill="${TILES[avatarTone(handle || name) - 1]}"/>`
-    + `<text x="128" y="128" dy="0.35em" text-anchor="middle" fill="${ON_TILE}" font-family="system-ui, sans-serif" `
-    + `font-size="128" font-weight="700">${escapeHtml(letter)}</text></svg>`;
-}
+// The minifigure made from a handle never changes (web/card.js minifigOf),
+// so its picture is kept a day in a browser and a month at the CDN.
+const MINIFIG_CACHE = "public, max-age=86400, s-maxage=2592000";
 
 /// GET ?op=avatar&id=P: a person's own picture, while it may be shown.
-/// &handle=X instead: their tile (tileSvg), while their page may be shown.
+/// &handle=X instead: the minifigure made from their handle, the avatar
+/// everybody without a picture of their own is shown as (api/_minifig.js),
+/// while their page may be shown: a search engine's image of them (seo2),
+/// as another site's default avatar is.
 async function avatarServe(request, response) {
   if (request.query?.handle !== undefined) {
     const person = await personOf(String(request.query.handle).toLowerCase());
     if (!person) return response.status(404).setHeader("Cache-Control", "no-store").end("");
-    response.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    // Brickworks' own account is its mark, never a minifigure (web/card.js avatarHtml).
+    if (person.handle === HOUSE_HANDLE) {
+      return response.status(302).setHeader("Location", "/favicon-512.png").setHeader("Cache-Control", MINIFIG_CACHE).end("");
+    }
+    const jpeg = await minifigJpeg(minifigOf(person.handle));
+    response.setHeader("Content-Type", "image/jpeg");
     response.setHeader("X-Content-Type-Options", "nosniff");
-    // Opened by itself, an SVG is a document: nothing in it runs or loads.
-    response.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
-    response.setHeader("Cache-Control", PICTURE_CACHE);
-    return response.status(200).end(tileSvg(person));
+    response.setHeader("Cache-Control", MINIFIG_CACHE);
+    return response.status(200).end(jpeg);
   }
   const file = await avatarFile(String(request.query?.id || ""), shownPublicly);
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
@@ -1289,6 +1296,7 @@ function pageCsp() {
 }
 
 function html(response, status, body, { tests = false, unlisted = false } = {}) {
+  if (response.betaSaid) body = sayBeta(body, response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -1614,7 +1622,7 @@ async function challengePage(request, response) {
   const origin = originOf(request);
   const tests = testsAsked(request.query);
   const id = /^[1-9][0-9]{0,15}$/.test(String(request.query?.id || "")) ? Number(request.query.id) : null;
-  const body = await challengePageHtml(origin, id, tests, String(request.query?.lang || "en"));
+  const body = sayBeta(await challengePageHtml(origin, id, tests, String(request.query?.lang || "en")), response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : PAGE_CACHE);
   return response.status(200).end(body);
@@ -1766,7 +1774,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
   </div>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="${asText(say("Elsewhere"))}">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }), { row: true })}</div>
   </aside>`;
 
   // Pinned: up to three of their models, in the order they chose.
@@ -2079,6 +2087,8 @@ async function handler(request, response) {
   try {
     // HEAD as GET, its body left off by the server.
     if (request.method === "GET" || request.method === "HEAD") {
+      // A page: what it says of the beta, for its strip (api/_settings.js sayBeta).
+      if (["page", "challenge_page", "list_page", "talk_page"].includes(op)) response.betaSaid = await betaSaid(request);
       if (op === "me") return await me(request, response);
       if (op === "profile") return await profile(request, response);
       if (op === "page") return await profilePage(request, response);
@@ -2126,6 +2136,7 @@ async function handler(request, response) {
       if (op === "talk_rss") return await talkRss(request, response, { origin: originOf(request) });
       if (op === "talk_model") return await talkModel(request, response);
       if (op === "talk_photo") return await talkPhoto(request, response);
+      if (op === "talk_asks") return await talkAsks(request, response);
       // This device's pushes (api/_push.js).
       if (op === "push") return await pushState(request, response);
     } else if (request.method === "POST") {
@@ -2174,6 +2185,7 @@ async function handler(request, response) {
       if (op === "owned_choice") return await ownedChoice(request, response);
       if (op === "talk_start") return await talkStart(request, response, { origin: originOf(request) });
       if (op === "talk_reply") return await talkReply(request, response, { origin: originOf(request) });
+      if (op === "talk_ask") return await talkAsk(request, response, { origin: originOf(request) });
       if (op === "talk_change") return await talkChange(request, response, { origin: originOf(request) });
       if (op === "talk_follow") return await talkFollow(request, response);
       if (op === "talk_read") return await talkRead(request, response);

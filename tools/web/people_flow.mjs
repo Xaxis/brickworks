@@ -167,19 +167,21 @@ try {
     await page.selectOption("#age-year", String(new Date().getUTCFullYear() - 30));
     await page.click("#age-go");
     check(`asked its age once, after signing in (${after} s)`, true);
-    // Then First steps (docs/SOCIAL.md U10): signed in to like, they end
-    // with Done and the like goes on. Skipped here: no profile yet, as step
-    // 3 below expects (tools/web/first_steps_flow.mjs is about them).
-    if (await first("dialog.first-steps", 30000) === "asked") {
+    // Then the like, before First steps (docs/SOCIAL.md U10): signed in to
+    // like, the like is made with nothing over it, and First steps are
+    // offered after it in a snackbar (web/account.js offerFirstSteps), not
+    // pressed here: no profile yet, as step 3 below expects
+    // (tools/web/first_steps_flow.mjs is about them). They opened over the
+    // page and the like waited behind them until 2026-11-23 (checkdrift).
+    const then = await first("dialog.first-steps", 30000);
+    check(`then the like, with no First steps over it (${then || "neither"})`, then === "liked");
+    if (then === "asked") {
       for (const step of ["profile", "kinds"]) {
         await page.waitForFunction((want) => document.querySelector("dialog.first-steps")?.dataset.step === want, step, { timeout: 30000 })
           .catch(() => {});
         if (await page.isVisible("#first-skip")) await page.click("#first-skip");
       }
-      await page.waitForSelector("#first-done", { timeout: 30000 });
-      check("then First steps, ending with Done, not the feed: the like is waiting",
-        !(await page.isVisible("#first-feed")));
-      await page.click("#first-done");
+      await page.click("#first-done").catch(() => {});
     }
   }
   await page.waitForFunction(() => document.querySelector('[data-mark="like"]')?.getAttribute("aria-pressed") === "true",

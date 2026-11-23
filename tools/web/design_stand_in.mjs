@@ -87,7 +87,7 @@ import { cardOf } from "../../api/_photo.js";
 // checked, and said, as the API checks and says it.
 import { basesAsked, basesSaid } from "../../api/_bases.js";
 // Who a comment names (@handle), read as the API reads it.
-import { mentionsIn } from "../../web/card.js";
+import { madeOf as madeSaid, mentionsIn } from "../../web/card.js";
 
 // The site's origin; STAND_IN_ORIGIN=https://design.test for a flow whose
 // page needs a secure one (WebCodecs, which a kit's turn is recorded with:
@@ -253,7 +253,7 @@ for (const [at, [name, kind, parts]] of [["Wizard's Tower", "castle", 9541], ["S
   ["Space Shuttle", "space", 1320], ["Steam Train", "vehicle", 760]].entries()) {
   MODELS.push(model({ id: `HouseMod0${at + 1}`, owner: HOUSE, name, author: "Brickworks", parts, steps: 12 + at, kind,
     tags: ["ai-designed"], test: true, listed_at: `2026-10-1${at}T10:00:00Z`, updated_at: `2026-10-1${at}T10:00:00Z`,
-    description: "Designed with the assistant.",
+    description: "One of the studio's own models.",
     // The second's owner chose to say how it was made (made_with_shown.sql);
     // the rest say nothing of it.
     made_with_shown: at === 1 }));
@@ -431,6 +431,9 @@ export function crowd(n) {
     owner: CROWD_OWNERS[at % CROWD_OWNERS.length], name: `Crowd model ${at + 1}`,
     author: personOf(CROWD_OWNERS[at % CROWD_OWNERS.length]).name, parts: 40 + at * 7, steps: 4,
     kind: CROWD_KINDS[at % CROWD_KINDS.length], tags: at % 5 === 0 ? ["ai-designed"] : [],
+    // Every tenth's owner chose to say it was made with the assistant
+    // (made_with_shown.sql); the other ai-designed half say nothing of it.
+    made_with_shown: at % 10 === 0,
     listed_at: new Date(Date.parse("2026-06-01T12:00:00Z") - at * 3600 * 1000).toISOString(),
     updated_at: "2026-06-01T12:00:00Z" }));
 }
@@ -451,27 +454,26 @@ export function applied(yes) {
 let LIVE = false;
 const LIVE_MODELS = [
   ["o3dLMc5A3Z", "A sports car, and its driver", "vehicle", ["car", "racing", "minifigure"], 187, 5, "2026-10-13T13:37:34Z",
-    "A red sports car with white racing stripes and a black rear wing, and beside it its driver with a trophy and a nameplate. Designed by Claude."],
+    "A red sports car with white racing stripes and a black rear wing, and beside it its driver with a trophy and a nameplate."],
   ["cGHqpHnEFZ", "A small modular corner shop", "town", ["modular", "shop", "street", "minifigures"], 774, 57, "2026-10-13T13:37:37Z",
-    "A corner building with a shop under a striped awning, a flat above and a cornice round the roof. Designed by Claude."],
+    "A corner building with a shop under a striped awning, a flat above and a cornice round the roof."],
   ["B6FhDpMowd", "A three-core heavy-lift rocket", "space", ["rocket", "launch pad", "minifigure"], 350, 9, "2026-10-13T13:37:39Z",
-    "A heavy-lift rocket of three cores side by side on its launch mount, with the strongback tower beside it. Designed by Claude."],
+    "A heavy-lift rocket of three cores side by side on its launch mount, with the strongback tower beside it."],
   ["uoRqCfPWYJ", "A barn owl", "nature", ["owl", "bird", "sculpture"], 1037, 3, "2026-10-13T13:37:41Z",
-    "A barn owl perched on a post, its white face and tan wings shaped in layers of bricks and slopes. Designed by Claude."],
+    "A barn owl perched on a post, its white face and tan wings shaped in layers of bricks and slopes."],
   ["kfpYMjke5U", "A castle, from one sentence", "castle", ["castle", "medieval", "moat"], 2438, 72, "2026-10-13T13:37:44Z",
-    "A stone castle with four corner towers, a gatehouse and a paved courtyard, ringed by a moat. Claude designed it from a single sentence."],
+    "A stone castle with four corner towers, a gatehouse and a paved courtyard, ringed by a moat."],
   ["EzEXhtXE2C", "Wizard's Tower", "castle", ["tower", "wizard", "minifigures", "display"], 9541, 1324, "2026-10-13T13:37:46Z",
-    "A black tower of four clustered piers, banded in grey and crowned with curved horns, with furnished rooms inside. Claude designed it from one paragraph."],
+    "A black tower of four clustered piers, banded in grey and crowned with curved horns, with furnished rooms inside."],
   ["8eb6GRvnSV", "Orrery of the Sun and eight planets", "mechanism", ["orrery", "gears", "planets", "crank"], 494, 27, "2026-10-14T06:27:39Z",
-    "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own. A Claude session built it in Brickworks."],
+    "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own."],
 ].map(([id, name, kind, tags, parts, steps, at, description]) => model({ id, owner: HOUSE, name, author: "Brickworks", parts, steps,
   // house.sql's step 2: ai-designed on the end of each one's tags.
   kind, tags: [...tags, "ai-designed"], listed_at: at, updated_at: at, description }));
 const LIVE_IDS = new Set(LIVE_MODELS.map((one) => one.id));
 // What supabase/house.sql gives the house: its words, the castle across
 // the top, three pinned; and each of the seven tagged ai-designed.
-const HOUSE_SAYS = { bio: "The Brickworks studio's own account. Every model here was designed with the assistant, "
-  + "Claude working in the app, and each one's description says how. Open one to build it step by step, or remix it as your own.",
+const HOUSE_SAYS = { bio: "The Brickworks studio's own account: its own models, and the collection From the LDraw library, real sets as LDraw's builders modelled them, each credited to them. Open one to build it step by step.",
 banner: "kfpYMjke5U", pins: ["EzEXhtXE2C", "8eb6GRvnSV", "cGHqpHnEFZ"] };
 export function liveCommunity(yes) {
   LIVE = Boolean(yes);
@@ -947,6 +949,18 @@ const BASES = [
     title: "A river tower, with its water gate", author: "Mira Holm", licence: "CC BY 4.0" },
 ];
 
+// Talk's threads (supabase/talk.sql talk_threads_of), newest first.
+const TALK_THREADS = [
+  { id: 41, board: "show", title: "Riverside Watchtower, my first castle", said: "Built it over a weekend: the gate opens and the drawbridge folds.",
+    by: { name: "Robin Castell", handle: HANDLE }, at: "2026-11-20T10:00:00Z", replies: 3, last_at: "2026-11-21T09:00:00Z",
+    last_by: { name: "Sam Ortiz", handle: "sam-builds" }, model: { id: MODEL_ID, name: "Riverside Watchtower", has_image: true, has_thumb: true, updated_at: "2026-10-01T00:00:00Z" } },
+  { id: 40, board: "help", title: "How do I hinge a roof at 45 degrees?", said: "Every hinge I try leaves a gap at the ridge.",
+    by: { name: "Sam Ortiz", handle: "sam-builds" }, at: "2026-11-19T10:00:00Z", replies: 1, last_at: "2026-11-19T12:00:00Z",
+    last_by: { name: "Robin Castell", handle: HANDLE } },
+  { id: 39, board: "ideas", title: "A train that runs on the gallery's tracks", said: "",
+    by: { name: "Robin Castell", handle: HANDLE }, at: "2026-11-18T10:00:00Z", replies: 0, last_at: "2026-11-18T10:00:00Z" },
+];
+
 // The functions the handlers call (rpc/<name>), each with what it was sent.
 const RPC = {
   // supabase/model_bases.sql
@@ -1018,6 +1032,12 @@ const RPC = {
   may_list: () => true,
   count_view: () => true,
   gallery_pick: () => ({ pick: null, chosen: false, until: null, week: PICK.week, card: card(modelOf(PICK.model)) }),
+  // supabase/talk.sql: Talk's boards, a page of threads (Show and tell's
+  // about the stand-in's model, with its picture), and what is said under
+  // the models (listkit: Talk's pages drawn here, for layout_audit.mjs).
+  talk_threads_of: ({ p_board }) => ({ more: true, threads: TALK_THREADS.filter((one) => !p_board || one.board === p_board) }),
+  talk_board_counts: () => ({ show: 2, help: 1, ideas: 1, challenges: 0, news: 0 }),
+  talk_talking: () => [],
   // Last month's winner (CHALLENGES_LISTED), on its card and its designer's page.
   challenge_wins: ({ owner, models }) => (owner === ROBIN || (models || []).includes(MODEL_ID)
     ? [{ challenge: 2, title: "Castle September", ends_on: "2026-09-30", way: "hand", model: MODEL_ID,
@@ -1121,21 +1141,6 @@ function rest(where, init) {
     const visitor = !new Headers(init.headers || {}).get("authorization");
     const rows = table().filter((row) => !(visitor && path === "shared_models" && !row.published));
     return reply(200, chosen(rows, where.searchParams));
-  }
-  // Its owner's choice of whether its page says how it was made
-  // (supabase/made_with_shown.sql): kept, so the page and the gallery say it
-  // after (made_shown_flow.mjs).
-  if (method === "PATCH" && path === "shared_models") {
-    let body = {};
-    try {
-      body = JSON.parse(init.body || "{}");
-    } catch {
-      body = {};
-    }
-    const id = /^eq\.(.+)$/.exec(where.searchParams.get("id") || "")?.[1];
-    if (Object.keys(body).join() === "made_with_shown" && id) {
-      for (const row of MODELS.filter((one) => one.id === id)) row.made_with_shown = body.made_with_shown === true;
-    }
   }
   // What a remix changed: kept, by its model, as the table keeps it.
   if (path === "remix_changes" && method === "POST") {
@@ -1252,6 +1257,10 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/room[.]json$/, "share", "room"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  // Talk's lists and the page to start a thread (api/_talk.js), as deploy.sh routes them.
+  [/^\/talk\/?$/, "people", "talk_page"],
+  [/^\/talk\/b\/(show|help|ideas|challenges|news)\/?$/, "people", "talk_board"],
+  [/^\/talk\/new\/?$/, "people", "talk_new"],
   // A challenge's link (/challenge?id=N), its head the challenge's own.
   [/^\/challenge\/?$/, "people", "challenge_page"],
   [/^\/(de|fr|es)\/challenge\/?$/, "people", "challenge_page_lang"],
@@ -1304,6 +1313,9 @@ function routeOf(pathname) {
     if (op === "embed_lang") return { name, query: { op: "embed", id: found[2], lang: found[1] } };
     if (op === "page_lang") return { name, query: { op: "page", handle: found[2], lang: found[1] } };
     if (op === "list_page_lang") return { name, query: { op: "list_page", id: found[2], lang: found[1] } };
+    if (op === "talk_page") return { name, query: { op } };
+    if (op === "talk_board") return { name, query: { op: "talk_page", board: found[1] } };
+    if (op === "talk_new") return { name, query: { op: "talk_page", new: "1" } };
     if (op === "challenge_page") return { name, query: { op } };
     if (op === "challenge_page_lang") return { name, query: { op: "challenge_page", lang: found[1] } };
     if (op === "set_lang") return { name, query: { op: "set", id: found[2], lang: found[1] } };
@@ -1353,6 +1365,10 @@ export async function serverAsk(apiDir, { name, query }) {
   process.env.SUPABASE_URL = DB;
   process.env.SUPABASE_SECRET_KEY = SECRET;
   process.env.SUPABASE_PUBLISHABLE_KEY = PUBLISHABLE;
+  // The beta open, as ?op=beta_spots answers here (a flow that turns it
+  // off sets this first): what a page says of it in its head, for the
+  // strip's room (api/_settings.js betaSaid).
+  process.env.BRICKWORKS_BETA ??= "open";
   standIn();
   const handler = (await handlersOf(apiDir))[name];
   const site = new URL(ORIGIN);
@@ -2077,6 +2093,22 @@ function share(method, params, who, state = {}, body = undefined) {
   const id = params.get("id") || "";
   const mine = asked(params.get("mine"));
   if (mine && !who) return answer(401, { error: SIGN_IN });
+  // Whether its page says how it was made (api/share.js madeShown,
+  // supabase/made_with_shown.sql): its owner's alone; a POST keeps it on
+  // the model, so its page and the gallery say it after.
+  if (op === "made") {
+    if (!who) return answer(401, { error: SIGN_IN });
+    const m = shownModel(id);
+    if (!m) return answer(404, { error: "there is no shared model at that link" });
+    if (m.owner !== who) return answer(403, { error: "that link is somebody else's model" });
+    if (method === "POST") {
+      if (typeof body?.shown !== "boolean") return answer(400, { error: "shown is true or false" });
+      m.made_with_shown = body.shown;
+    }
+    const made = madeSaid(m);
+    return answer(200, { id, made_with: m.made_with ?? null, way: made.way, by: made.by,
+      made_with_shown: m.made_with_shown === true, ready: true });
+  }
   // What a model is based on (api/_bases.js): its page's lines, and its
   // designer's list taken as kept, which nothing here keeps.
   if (op === "bases") {
@@ -2107,7 +2139,10 @@ function share(method, params, who, state = {}, body = undefined) {
       kinds: KINDS, sizes: Object.entries(SIZES).map(([key, one]) => ({ id: key, label: one.label })),
       sorts: Object.entries({ ...SORTS, ...(mine ? MINE_SORTS : {}) }).map(([key, label]) => ({ id: key, label })),
       ...(APPLIED ? { windows: Object.entries(WINDOWS).map(([id, one]) => ({ id, label: one.label })),
-        mades: Object.entries(MADES).map(([id, label]) => ({ id, label })), following: Boolean(mine) } : {}),
+        // With the assistant only while a public model says so (api/share.js madesOffered).
+        mades: Object.entries(MADES).filter(([id]) => id !== "assistant"
+          || listModels({ made: "assistant", tests: query.tests }).length)
+          .map(([id, label]) => ({ id, label })), following: Boolean(mine) } : {}),
       score: SCORE, ...pool });
   }
   if (op === "shelves") {
@@ -2607,7 +2642,34 @@ function answered({ url, method = "GET", body, state = {} }) {
 // ---------------------------------------------------------------------------
 // The site in a browser, as deploy.sh serves it.
 
-const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../web/share.png"));
+// Each model's picture, a model's as the gallery's cards and its page show
+// it: cardlook's house cards (tests/fixtures/stand_in/, 480 x 360 WebP),
+// one per model by its id, picked to fit its name; any other id (the
+// crowd's, a flow's own) one of them by its id. The site's share card is
+// the og card's alone: as every model's picture it read as an advert in
+// every flow picture (askhelp, 2026-11-23).
+const PICTURES = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../tests/fixtures/stand_in");
+const PICTURE_OF = {
+  DesignAbc1: "wizards_tower", DesignGea1: "windmill", DesignFox1: "red_fox", DesignBrg1: "stone_gate",
+  GoneModel1: "castle", DesignPar1: "gatehouse", MikaDraft1: "gatehouse", MikaRobot1: "robot",
+  MikaTram01: "carriage", DesignRmx1: "castle", JoDraft001: "wizards_tower", PriyaDrft1: "wizards_tower",
+  PriyaSpc01: "moon_rover", SamModel01: "tank_engine", SamModel02: "bakery",
+  // A set's own picture (/library/set/<num>.webp): the set where there is one.
+  "6080-1": "kings_castle",
+};
+const PICTURE_FILES = [...new Set(Object.values(PICTURE_OF))].sort();
+const pictureBytes = new Map();
+/// The picture for a model's or a set's [id], as bytes (WebP).
+function pictureOf(id) {
+  let name = PICTURE_OF[id];
+  if (!name) {
+    let sum = 0;
+    for (const letter of String(id)) sum = (sum * 31 + letter.charCodeAt(0)) >>> 0;
+    name = PICTURE_FILES[sum % PICTURE_FILES.length];
+  }
+  if (!pictureBytes.has(name)) pictureBytes.set(name, readFileSync(path.join(PICTURES, `${name}.webp`)));
+  return pictureBytes.get(name);
+}
 
 /// The docs as tools/docs_site.py builds them for a deployment, built
 /// once into a folder of their own, gone when this process ends.
@@ -2721,7 +2783,10 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       const files = photoFilesOf(String(url.searchParams.get("id") || ""));
       return route.fulfill({ status: 200, contentType: "image/jpeg", body: isCard(url) ? files.card : files.whole });
     }
-    if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
+    if (isPicture(url)) {
+      const id = /^\/(?:m|library\/set)\/([A-Za-z0-9][A-Za-z0-9.-]*?)(?:\/v\/\d+)?\.(?:png|webp|jpg)$/.exec(url.pathname)?.[1] || "";
+      return route.fulfill({ status: 200, contentType: "image/webp", body: pictureOf(id) });
+    }
     // A part's geometry, which a model's Parts list draws each lot from
     // (web/part-pictures.js): a deployment's from its own store, here from
     // this checkout's catalogue, as the store serves it.
@@ -2765,6 +2830,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
     if (/^\/(m|u|c|library|(?:de|fr|es)\/(?:library|m|u|c)|sitemaps)\//.test(url.pathname)
       || /^\/oembed\/?$|^\/sitemap[.]xml$/.test(url.pathname)
+      || /^\/talk(?:\/(?:new|b\/[a-z]+))?\/?$/.test(url.pathname)
       || (/^\/((?:de|fr|es)\/)?challenge\/?$/.test(url.pathname) && /^[1-9][0-9]{0,15}$/.test(url.searchParams.get("id") || ""))) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the

@@ -40,9 +40,10 @@
 // (hreflang) and is its own canonical.
 
 import { existsSync, readFileSync } from "node:fs";
-import { SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_directory.js";
-import { counted, iconHtml, say, themeSaid } from "./_card.js";
+import { LDRAW_FROM, SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_directory.js";
+import { avatarHtml, counted, iconHtml, say, themeSaid } from "./_card.js";
 import { SET_SORTS } from "./_library.js";
+import { LOTS_SHOWN, LOT_ROW, listRows } from "./_parts.js";
 import { byKey, search } from "./_search.js";
 import { panelAttrs, tabsHtml } from "./_tabs.js";
 
@@ -147,6 +148,22 @@ export function catalogSet(number, given = setCatalog()) {
 
 /// "Star Wars > Ultimate Collector Series", each in the page's language.
 export const themeWords = (entry) => entry.theme.map(themeSaid).join(" > ");
+
+/// Who modelled [model], LDraw's 3D model of a set, as a model's page heads
+/// it (api/share.js designerRow, sitebold 2026-11-23): their initial for an
+/// avatar, "Modelled by" them for LDraw's library (its page there), and the
+/// model's own page here; with no name, that page alone.
+function modellerHtml(model, at) {
+  const own = sayHtml("LDraw's model of it has {page}: who modelled it, its steps and its file.",
+    { page: `<a href="${at}/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` });
+  const name = typeof model.author === "string" ? model.author.trim() : "";
+  if (!name) return `<p class="from">${own}</p>`;
+  const page = typeof model.page === "string" && model.page.startsWith("https://library.ldraw.org/") ? model.page : "";
+  return `<div class="shared-by credit">${avatarHtml({ name })}<div class="names">`
+    + `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(name)}</b>`,
+      ldraw: page ? `<a href="${escapeHtml(page)}">${asText(say(LDRAW_FROM))}</a>` : asText(say(LDRAW_FROM)) })}</p>`
+    + `<p class="shared-via">${own}</p></div></div>`;
+}
 
 /// LDraw's 3D models of each set (api/_library.js librarySets), by the set's
 /// lower-cased number: {main, more}, main its model of the set itself and
@@ -518,6 +535,11 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
       + `<button type="button" class="cta ghost small" data-wanted="pickabrick" hidden>${asText(say("LEGO® Pick a Brick CSV"))}</button></div></section>`
     : "";
   // The parts are its page's first tab, what you own of them at its top.
+  // Its list's rows, lots and the colours over them, as the page will draw
+  // it (listRows): their space kept, and Show all there from the start
+  // where they are more than it shows. Its lots not read here, Show all is
+  // there hidden for the list to show where it needs it.
+  const rows = lots.length ? listRows(lots) : 0;
   const partsHtml = entry.lots
     ? `<section class="parts" id="parts"${panelAttrs("parts", true)} data-parts="${pageOf(entry)}/parts.json">`
       + `<h2 class="visually-hidden" id="parts-h">${asText(say("Parts"))}</h2>${owned}<p class="note">${asText(say("{parts} in {lots}, its minifigures' and the sets packed in it counted in, spares not",
@@ -527,8 +549,8 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
       + `<button type="button" data-group="kind" aria-pressed="false">${asText(say("Kind"))}</button></div>`
       + `<a class="cta ghost small" href="${pageOf(entry)}/parts.xml" download>BrickLink XML</a>`
       + `<a class="cta ghost small" href="${pageOf(entry)}/parts.csv" download>Rebrickable CSV</a></div>`
-      + `<ul class="lot-list" style="min-height:${Math.min(12, entry.lots) * 60}px"></ul>`
-      + (entry.lots > 12 ? `<button type="button" class="cta ghost small" data-all hidden>${asText(say("Show all {lots}",
+      + `<ul class="lot-list" style="min-height:${Math.min(LOTS_SHOWN, rows || entry.lots) * LOT_ROW}px"></ul>`
+      + (!rows || rows > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all${rows ? "" : " hidden"}>${asText(say("Show all {lots}",
         { lots: counted(entry.lots, "lot") }))}</button>` : "")
       + "</section>"
     : `<section class="parts" id="parts"${panelAttrs("parts", true)}><h2 class="visually-hidden">${asText(say("Parts"))}</h2><p class="obj-empty">`
@@ -585,6 +607,7 @@ ${chrome.header}
       <h1 class="obj-title"${entry.name.length > 48 ? ` title="${escapeHtml(entry.name)}"` : ""}>${escapeHtml(entry.name)}</h1>
       <p class="modelled">${escapeHtml(entry.year ? say("LEGO® set {set}, from {year}", { set: entry.set, year: entry.year })
         : say("LEGO® set {set}", { set: entry.set }))}</p>
+      ${model ? modellerHtml(model, at) : ""}
       ${keepBarHtml(entry)}
       <div class="actions">
         ${model ? `<a class="cta" href="${escapeHtml(libraryLink(model, true))}" data-build3d title="${asText(say("Open LDraw's 3D model of it in Brickworks at its first step, and build it step by step"))}">${asText(say("Build it"))}</a>
@@ -593,8 +616,6 @@ ${chrome.header}
         <a class="cta ghost" href="${escapeHtml(designLink(entry, lots))}" data-design title="${asText(say("Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with"))}">${asText(say("Design with these parts"))}</a>` : ""}
       </div>
       <ul class="facts pills">${facts(entry, model, at)}</ul>
-      ${model ? `<p class="from">${sayHtml("LDraw's model of it has {page}: who modelled it, its steps and its file.",
-        { page: `<a href="${at}/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` })}</p>` : ""}
     </div>
     <div class="rest">
   <div class="obj-panels">

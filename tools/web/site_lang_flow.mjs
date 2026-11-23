@@ -198,9 +198,17 @@ const THEMES = Object.fromEntries(["de", "fr", "es"].map((code) => {
   }
   return [code, said];
 }));
+// What people wrote in the home's feed (web/home-feed.js, homefeed): a
+// model's name (its post's title, its picture's alt), a thread's title and
+// first words, a photo's words, who did it, what was said under it and a
+// model's own names for its motions (lang="", whatever language it is in),
+// and each name where the feed's own words carry it ("Kommentare zu …").
+// rel-m324's /de had 20 of them, read as English left.
+const THEIRS_HOME = ".post.build .post-title, .post.talk .post-title, .post.talk .post-text, .post.photo .post-text, .post .who, "
+  + ".post [lang=''], .post:is(.build, .try) .post-pic img";
 const PAGES = [
   { name: "home", path: "", title: "Brickworks — a CAD for LEGO® models, in your browser",
-    heading: "#hero-h", says: "Build, share and find <em>LEGO® models</em>" },
+    heading: "#hero-h", says: "Build, share and find <em>LEGO® models</em>", theirs: THEIRS_HOME },
   { name: "download", path: "/download", title: "Brickworks for the desktop, coming soon",
     heading: "#get-h", says: "The desktop app is coming soon" },
   { name: "plans", path: "/plans", title: "Plans · Brickworks" },
@@ -442,7 +450,9 @@ async function modelSaid(browser, code, width, at) {
     const wrongDates = chrome.dates.filter(([iso, text]) => !text.startsWith(day.format(new Date(iso))));
     check(chrome.dates.length >= 1 && !wrongDates.length, `${where}: ${chrome.dates.length} dates as ${code} writes them`
       + `${wrongDates.length ? `, ${wrongDates.length} not: "${wrongDates[0][1]}"` : `, "${chrome.dates[0]?.[1]}"`}`);
-    // Its parts list's names as the app says them in the language.
+    // Its parts list's names as the app says them in the language, in its
+    // own tab (pagekit: a hidden panel's list never comes into view).
+    await tab.click('#page-tabs [data-tab="parts"]');
     await lotsSaid(tab, code, where, false);
     // The header's Sign in, once web/follow.js has said who is here.
     await tab.waitForFunction(() => document.querySelector(".site-head a[data-account]")?.textContent.trim(), null, { timeout: 15000 });
@@ -453,10 +463,15 @@ async function modelSaid(browser, code, width, at) {
     if (code !== "en") {
       const names = await tab.evaluate((theirs) => [...document.querySelectorAll(theirs)].map((el) => el.textContent.trim())
         .filter(Boolean).sort((a, b) => b.length - a.length), THEIRS);
-      // Its description cut short for a link's preview (its meta), its
-      // paragraphs run together, is theirs too.
-      const flat = (text) => text.replace(/\s+/g, " ").trim();
-      const cutFrom = (text) => text.endsWith("…") && names.some((name) => flat(name).startsWith(flat(text.slice(0, -1))));
+      // Its description in a link's preview (its meta), its paragraphs run
+      // together, whole or cut short with "…", is theirs too: its
+      // paragraphs on the page are <p>s, so their text has no space
+      // between them where the meta's has one.
+      const tight = (text) => text.replace(/\s+/g, "");
+      const cutFrom = (text) => {
+        const shown = tight(text.endsWith("…") ? text.slice(0, -1) : text);
+        return Boolean(shown) && names.some((name) => (text.endsWith("…") ? tight(name).startsWith(shown) : tight(name) === shown));
+      };
       const left = (await tab.evaluate(readable, THEIRS)).filter((text) => !cutFrom(text))
         .map((text) => names.reduce((rest, name) => rest.split(name).join(" "), text).replace(NAMES, " ")).filter((text) => ENGLISH.test(text));
       check(!left.length, `${where}: no English left${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
@@ -613,9 +628,10 @@ async function onePage(browser, code, one, width) {
       const app = code === "en" ? "/app" : `/app?lang=${code}`;
       check(open.text === page(code, "Open Brickworks") && open.href === app, `${where}: its button says "${open.text}", to ${open.href}`);
     }
-    // No English left but names.
+    // No English left but names, and what people wrote.
     if (code !== "en") {
-      const left = (await tab.evaluate(readable)).map((text) => text.replace(NAMES, " ")).filter((text) => ENGLISH.test(text));
+      const left = one.theirs ? await englishIn(tab, one.theirs)
+        : (await tab.evaluate(readable)).map((text) => text.replace(NAMES, " ")).filter((text) => ENGLISH.test(text));
       check(!left.length, `${where}: no English left${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
     }
     // Nothing cut short that the English page shows whole.
@@ -996,7 +1012,9 @@ async function screens(tab, name, most = 4) {
 /// The English left on [tab]'s page, or in [root] of it, but what [theirs]
 /// picks and the names it says wherever they are said.
 async function englishIn(tab, theirs, root = "") {
-  const names = await tab.evaluate((theirs) => [...document.querySelectorAll(theirs)].map((el) => el.textContent.trim())
+  // A picture of theirs is named by its alt: a model's name.
+  const names = await tab.evaluate((theirs) => [...document.querySelectorAll(theirs)]
+    .map((el) => (el.localName === "img" ? el.alt : el.textContent).trim())
     .filter(Boolean).sort((a, b) => b.length - a.length), theirs);
   // A page's description that is the start of what they wrote (a bio
   // longer than 160, api/people.js) is theirs too.
@@ -1124,7 +1142,8 @@ async function ldrawSaid(browser, code, width, id) {
       === `${script(code, "Gallery")} ${lang}/gallery, ${script(code, "Sets")} ${lang}/library`
       && chrome.sets.length && chrome.sets.every((at) => at.startsWith(`${lang}/library/set/`)),
       `${where}: its crumbs ${chrome.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}; ${chrome.sets.length} links to the set's page`);
-    const tabs = ["About", "Parts"].map((word) => script(code, word));
+    // The object page's tabs (pagekit): Overview first, as a model's.
+    const tabs = ["Overview", "Parts"].map((word) => script(code, word));
     check(tabs.every((word) => chrome.tabs.includes(word)), `${where}: its tabs ${chrome.tabs.join(" / ")}`);
     await copyRead(tab, code, width, where, "ldraw", THEIRS_SET);
   } catch (trouble) {
@@ -1640,7 +1659,7 @@ const SEVENTH = [
   { name: "feed", file: "feed.html", at: "/feed", signedIn: true, drawn: () => document.documentElement.dataset.feed === "ready",
     theirs: ".feed-row .what b, .feed-row .what a, .feed-row q, .feed-photo figcaption, .people-list .name, .people-list .handle" },
   { name: "notifications", file: "notifications.html", at: "/notifications", signedIn: true,
-    drawn: () => document.documentElement.dataset.notifications === "ready", theirs: ".notice h2 a, .notice .what b, .notice q" },
+    drawn: () => document.documentElement.dataset.notifications === "ready", theirs: ".notice .row-title a, .notice .what b, .notice q" },
   { name: "builds", file: "builds.html", at: "/builds", drawn: () => ["ready", "none"].includes(document.documentElement.dataset.builds),
     theirs: "figure.build q, figure.build figcaption a" },
   { name: "feedback", file: "feedback.html", at: "/feedback", signedIn: true, drawn: () => true, theirs: "" },

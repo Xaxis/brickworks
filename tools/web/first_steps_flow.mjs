@@ -21,8 +21,9 @@
 //      chosen puts its models first), the house to follow and six models;
 //      Follow, then See your feed: the house's models as posts.
 //   3. The fewest taps: Skip, Skip, Follow, See your feed, a filled feed.
-//   4. Signed in to do something (Follow on the house's page): First steps
-//      end with Done, not the feed, and the follow goes on after them.
+//   4. Signed in to do something (Follow on the house's page): the follow
+//      goes first, nothing over it; then First steps are offered in a
+//      snackbar and, pressed, end with Done, not the feed.
 //
 // With --url, the same on the live project with throwaway accounts at
 // Resend test addresses, deleted at the end with their model: Ada, a
@@ -43,6 +44,12 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { minifigLayers, minifigOf } from "../../web/card.js";
+
+// The minifigure an avatar made from [handle] shows (web/card.js minifigOf),
+// as faceOf reads one in the page: its hair and face layers.
+const minifigKey = (handle) => minifigLayers(minifigOf(handle)).map((file) => file.match(/(?:face|hair)-[\w-]+/)?.[0])
+  .filter(Boolean).join(" ");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -147,7 +154,8 @@ const stepsDrawn = (page) => page.evaluate(() => {
     kinds: [...dialog.querySelectorAll(".kinds button.pill")].map((pill) => pill.dataset.kind),
     feed: dialog.querySelector("#first-feed")?.getAttribute("href") || "", done: Boolean(dialog.querySelector("#first-done")),
     handle: dialog.querySelector("#first-handle")?.value ?? null,
-    avatar: (dialog.querySelector(".face-row .avatar")?.textContent || "").trim(),
+    avatar: ((el) => (el?.classList.contains("minifig") ? (el.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : el?.textContent.trim() || ""))(
+      dialog.querySelector(".face-row .avatar")),
     address: dialog.querySelector(".face-row p")?.textContent || "",
     tooWide: dialog.scrollWidth > dialog.clientWidth + 1 };
 });
@@ -288,8 +296,8 @@ try {
     await page.fill("#first-name", name);
     drawn = await stepsDrawn(page);
     const handle = standIn ? "sam-okafor" : `bob-${rand}`;
-    check(`...the handle made from the name as it is typed (${drawn.handle}), the avatar from it ("${drawn.avatar}"), `
-      + `its page "${drawn.address}"`, drawn.handle === handle && drawn.avatar === name[0] && drawn.address === `brickworks.diy/u/${handle}`);
+    check(`...the handle made from the name as it is typed (${drawn.handle}), the minifig avatar from it ("${drawn.avatar}"), `
+      + `its page "${drawn.address}"`, drawn.handle === handle && drawn.avatar === minifigKey(handle) && drawn.address === `brickworks.diy/u/${handle}`);
     await page.click("#first-make");
     drawn = await atStep(page, "kinds", label);
     check(`...made, and on: "${drawn.count}", "${drawn.title}", ${drawn.kinds.length} kinds as pills`,
@@ -436,18 +444,27 @@ try {
     await page.click(button);
     await signIn(page, "dee@example.com");
     await answerAge(page);
+    // The follow first, with nothing over it; First steps after it, from a
+    // snackbar (web/account.js offerFirstSteps). They opened over the page
+    // and the follow waited behind them until 2026-11-23 (checkdrift).
+    const followed = await until(page, (at) => (document.querySelector(at)?.getAttribute("aria-pressed") === "true"
+      && !document.querySelector(at).disabled ? !document.querySelector("dialog[open]") : null), "the follow, answered", 20, button);
+    check(`signed in to follow: the follow went first, nothing over it (${followed}): "${await page.textContent(button)}", on ${new URL(page.url()).pathname}`,
+      followed === true && (await page.textContent(button)) === "Following" && new URL(page.url()).pathname === `/u/${HOUSE}` && them.follows.has(HOUSE));
+    const offered = await until(page, () => document.querySelector(".toast.shown .toast-act")?.textContent.trim() || null, "First steps offered", 15);
+    await page.click(".toast.shown .toast-act");
     await atStep(page, "profile", "pending");
     await page.click("#first-skip");
     await atStep(page, "kinds", "pending");
     await page.click("#first-skip");
     const drawn = await atStep(page, "start", "pending");
-    check(`signed in to follow: First steps end with Done (${drawn.done}), not the feed (${drawn.feed || "none"})`, drawn.done && !drawn.feed);
+    check(`...then First steps from the snackbar ("${offered}"), ending with Done (${drawn.done}), not the feed (${drawn.feed || "none"})`,
+      Boolean(offered) && drawn.done && !drawn.feed);
     await shots(page, "4_start_pending-1280", "dark");
     await page.click("#first-done");
-    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true"
-      && !document.querySelector(at).disabled, "the follow, after First steps, answered", 20, button);
-    check(`...closed, and the follow went on: "${await page.textContent(button)}", on ${new URL(page.url()).pathname}`,
-      (await page.textContent(button)) === "Following" && new URL(page.url()).pathname === `/u/${HOUSE}` && them.follows.has(HOUSE));
+    await until(page, () => (!document.querySelector("dialog.first-steps[open]") ? true : null), "First steps closed", 10);
+    check(`...closed, still on ${new URL(page.url()).pathname}, still following`, new URL(page.url()).pathname === `/u/${HOUSE}`
+      && (await page.textContent(button)) === "Following");
     await browserOf.close();
   }
 } catch (trouble) {

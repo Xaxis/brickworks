@@ -42,7 +42,7 @@
 // tools/site_lang.py): the rules said from the rules themselves, each day
 // as the language writes it, and what the server says through told().
 import { askToSignIn, call, signedIn } from "/account.js";
-import { brokenSaid, counted, iconHtml, langAt, modelCard, mosaicHtml, number, rulesSaid, say, told } from "/card.js";
+import { appAt, brokenSaid, counted, iconHtml, langAt, modelCard, mosaicHtml, number, rulesSaid, say, told } from "/card.js";
 import { PAGE_SIZE, pageAsked, pager } from "/pager.js";
 import { openShare, sheetFor } from "/share-sheet.js";
 import { startTabs } from "/tabs.js";
@@ -51,15 +51,22 @@ const $ = (id) => document.getElementById(id);
 
 // Its parts as tabs (pagekit, web/tabs.js): each tab shown once a part of
 // its panel is (the winners and the entries, how it works and what comes
-// next, the past ones), as what follows shows and hides those parts.
+// next, the past ones), as what follows shows and hides those parts. The
+// tabs and their panels come in only with their first tab (the page has
+// them hidden): shown empty while the challenge was asked for, they were
+// pushed down the page as its head came in, 0.25 of the screen moved at
+// 1280 (checkdrift, 2026-11-23).
 const partTabs = startTabs($("page-tabs"));
 const panels = document.querySelector("main .obj-panels");
 function syncTabs() {
+  let any = false;
   for (const tab of document.querySelectorAll('#page-tabs [role="tab"]')) {
     const panel = $(tab.getAttribute("aria-controls"));
     const empty = ![...(panel?.children || [])].some((one) => one.matches("section") && !one.hidden);
     if (tab.hidden !== empty) tab.hidden = empty;
+    any ||= !empty;
   }
+  if (panels && panels.hidden === any) panels.hidden = !any;
   partTabs?.refresh();
 }
 if (panels) new MutationObserver(syncTabs).observe(panels, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
@@ -378,7 +385,7 @@ function enterDialog(c, models) {
   } else if (!models.length) {
     lede.textContent = say("You have no model in the gallery with your name on it yet. Build one in the app, share it with Show it in the gallery ticked, then enter it here.");
     const app = el("a", "cta", say("Open the app"));
-    app.href = "/app";
+    app.href = appAt();
     row.append(app, close);
     dialog.append(title, lede, row);
   } else {
@@ -1104,9 +1111,14 @@ function drawWeek(week) {
   $("week").hidden = !week;
   if (!week) return;
   const page = pageOf(week.id);
+  // Its name and brief as Brickworks wrote them, in English on every copy
+  // (a challenge's words are its maker's, as the home's challenge post says
+  // its own: web/home-feed.js, web/landing.js), and marked so.
   $("week-title").textContent = week.title;
+  $("week-title").lang = "en";
   $("week-title").href = page;
   $("week-brief").textContent = week.brief;
+  $("week-brief").lang = "en";
   $("week-days").textContent = say("Until {day}", { day: SHORT.format(startOf(week.ends_on)) });
   $("week-count").textContent = week.entries ? counted(week.entries, "entry", "entries") : say("Be the first to publish one.");
   $("week-start").hidden = !week.start;
@@ -1122,7 +1134,7 @@ function turning(card, entry) {
   if (!img) return card;
   const picture = document.createElement("a");
   picture.className = "picture";
-  picture.href = `/app?view=${entry.id}`;
+  picture.href = appAt(`view=${entry.id}`);
   picture.dataset.scene = `/m/${entry.id}/scene.json`;
   picture.setAttribute("aria-label", say("View {name} in 3D", { name: entry.name }));
   img.replaceWith(picture);

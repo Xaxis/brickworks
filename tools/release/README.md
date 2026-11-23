@@ -16,9 +16,11 @@ Or all of that in one command, queued behind the release before it:
 
 ```sh
 tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
-  --checks "io gallery" --units "unit1 unit2" --title "…"   # every headless probe
-#   --probes "grab fits" names exactly those; --probes none --why "…" runs none
+  --checks "io gallery" --units "unit1 unit2" --title "…"   # what its change reaches (lean.py)
+#   --probes "grab fits" names exactly those; --probes all every headless one; --probes none --why "…" none
+#   --every-check carries no proof over (every check its change reaches)
 #   no app file changed: the web lane, on the live export, with no probe (--full, --web; --plan says which)
+TRAIN_REHEARSE=1 tools/release/train.sh stage reh1 homefix   # the same path, timed, ending where main would move
 tools/release/train.sh status                  # what is live since when, what is in flight, ETAs
 tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
 tools/release/train.sh reship rel-m219 io      # a stopped one again, from its worktree
@@ -29,8 +31,105 @@ tools/release/train.sh reship rel-m219 --accept progress "why"  # past a check f
 
 | The branch changed | Lane | What runs | About |
 |---|---|---|---|
-| only `web/`, `api/`, `docs/`, `docs-site/`, `tests/`, `supabase/`, `.claude/`, `*.md`, and tools the export does not run | **web** (chosen by itself; `--web` to insist) | merge with no import; no probe; `ci_gate`; a preview of the live export with this tree's pages and API (`deploy.sh --dir`); the checks named, those `flows_for.py` finds, site and frames; promote | 30 min |
-| anything else (`src/`, scenes, `assets/`, `locale/`, `project.godot`, `export_presets.cfg`, `tools/mcp_tools.json`, `tools/export.sh` and the scripts it runs) | **full** (`--full` to insist) | merge and import, every headless probe, export, the same checks and promotion | 3-4 h |
+| only `web/`, `api/`, `docs/`, `docs-site/`, `tests/`, `supabase/`, `.claude/`, `*.md`, and tools the export does not run | **web** (chosen by itself; `--web` to insist) | merge with no import; no probe; `ci_gate` beside the deploy; a preview of the live export with this tree's pages and API (`deploy.sh --dir --no-fit`); the checks named, those its change reaches less those proven since (`lean.py`), and site; promote; the live smoke | 15 min is the aim; 28 measured on a preview at a unit's priority (deploy 4, checks 23, smoke 1), 11-23 |
+| anything else (`src/`, scenes, `assets/`, `locale/`, `project.godot`, `export_presets.cfg`, `tools/mcp_tools.json`, `tools/export.sh` and the scripts it runs) | **full** (`--full` to insist) | merge and import, the headless probes its change reaches (`lean.py`), export once, the same checks with frames, promotion and smoke | 35 min is the aim for a change to one part of the app, not yet measured; a core class reaches most probes |
+
+### What a release runs (lean.py, fastship 2026-11-23)
+
+rel-m319's 24 units named 146 of the 150 checks and all 293 headless probes,
+and its 8 attempts took 13 hours. A release now runs:
+
+1. **What its own change reaches**, against the build brickworks.diy serves
+   (its `/app` names `/b/SHA/`), never since an older base: `flows_for.py`
+   for the checks; for the headless probes, each whose own source names a
+   changed file, a function the change is inside, an underscored word on a
+   changed line, or the class when the change is outside its functions (a
+   word more than a tenth of the probes say picks out none). `featuremap
+   affected` is no choice here: every probe loads `src/main.gd`, so any
+   script reaches all of them (569 for one dialog's script).
+2. **Less what was proven since.** A check that passed on a preview built
+   from commit P, its scripts at commit A, is carried when neither P..H nor
+   A..H reaches it (H the release). Proof is written as it is made, in
+   `$RELEASE_OUT/proofs/{checks,probes}/NAME.EPOCH`: by `ship.sh` after its
+   battery and alone reruns, `unit_preview.sh` after a unit's checks, a
+   train's probes, and the nightly run. A record counts only when P is in
+   the release's history and it is at most `LEAN_MAX_AGE` hours old (36).
+   So a unit that proved its own checks ships with only those that what
+   merged beside it also reaches, and a reship runs the checks that failed
+   and those its fix reaches.
+3. **The smoke**: site always, frames when an app file changed.
+
+The stage works the list out against main with the branch merged (`--plan`
+shows it, with what was carried); the train chooses again once it has
+merged, against the build live then (`TAG_lean.out`). A name the lead adds
+to `TAG.train/checks` after staging, or names with `--checks`, always runs.
+
+**Every check and every headless probe run once a day** on pre261
+(`tools/release/nightly.sh`, a systemd user timer at 18:00 local, the
+box's quietest hours by sar: load 44-47 on 24 cores), never per release, and
+its passes are proof for the next day's releases. `nightly.sh status`
+prints the last summary; `nightly.sh plan` what a run would take on.
+
+**The release's jobs before its units'.** heavy's `BOX_HEAVY_PRIORITY`
+puts a release first in the queue; `ship.sh` and the train also run its jobs
+at `BOX_HEAVY_NICE=0`: brickworks' slice shares its CPU by nice (it hands
+none to the cgroups below it), so a release's thread weighs 1024 to a unit's
+110. Other projects are untouched: between slices the owner's ranks decide.
+Checks run 6 at a time (`PC_AT_ONCE`), probes 6 (`TRAIN_PROBES_AT_ONCE`), and a
+timing check waits at most 180 s for its project to calm
+(`SHIP_SOLO_WAIT`). `ci_gate.sh` runs beside the deploy and the checks;
+main moves only once it passed.
+
+**No check longer than it must be.** A release takes as long as its
+longest check, so the three longest are two checks each, side by side:
+`design` and `design_dark`, `a11y` and `a11y_dark` (light and dark),
+`site_lang` (English and German) and `site_lang_fr_es`. Each visit they make
+is judged alone; on one preview the halves found what the whole did, and
+the longest went from 32 to 23 minutes at a unit's priority (fastship,
+2026-11-23). What still names most checks is a hub file: `api/_talk.js`
+reaches 78, `web/site.css` and `web/follow.js` 73, `api/share.js` 65.
+
+**Nothing waits on what cannot answer.** A train staged `--after` the
+release before makes its live database mark only once that one serves (and
+no hold stops it): rel-m320's mark, made as it began to wait, held
+rel-m319's runs on brickworks.diy behind it while it waited for rel-m319. A
+check that failed on the preview and cannot run on brickworks.diy (`NEVER_LIVE`
+in ship.sh, or a script that refuses it given the check's options: `lean.py
+never-live`) is not sent there: the release holds at once for the lead, who
+ships past it with `reship TAG --accept NAME "why"`. The Python suite's
+failures the lead judged are named at the stage (`--gate-ok "tests/a.py
+..."`, kept in `TAG.train/gate_ok` for its reships, or `SHIP_GATE_OK`):
+failures only in those files ship, logged; any other holds.
+
+**Nothing made twice.** A reship whose fix touched only `tools/web` (but
+the files the build runs: `deploy_reads.sh`), `tools/release` or `tests/`
+reuses the preview. A reship whose fix changed no app file ships on the
+export the release made on its attempt before (`TAG_export.sha`), with no
+import, gates or export. `deploy.sh` keeps a stamp of the part meshes it
+found in storage and a cache of each file's brotli, and runs its three
+checks side by side.
+
+**After the promotion**, `live_smoke.sh guard` looks at brickworks.diy,
+read-only (the home, a model's page, Talk, the app's start). Failing twice
+where the build before passes, it rolls the domain back (`vercel rollback`
+to the deployment `live_smoke.sh current` named before the promotion),
+writes a `TAG-rolled-back` row for `/admin › Site`, sets `$RELEASE_OUT/HOLD`
+(main has the release, live does not: revert or fix, then lift it), and the
+release is not live: the train behind it stops.
+
+**A rehearsal** (`TRAIN_REHEARSE=1` at the stage) runs a release's whole
+path on its preview, the probes and `ci_gate` beside it, and stops where
+main would move: its result says how long from its merge. Main, the domain
+and `/admin` are untouched, and its worktree and branch go. It is a release
+for heavy (first in the queue), so stage one only between releases.
+
+**Vercel's own build** cannot take the build off the box: the web export
+needs Godot, its templates and `assets/generated` (the part meshes and the
+catalogue, untracked, 3.7 GB here), and the Godot export, the pck split and
+the brotli are most of the deploy's time. What a Vercel build could do (put
+the site and the functions together, 42 s) is seconds of it, so a release
+stays `deploy --prebuilt`, made here and uploaded (73 s); the web lane
+makes no export at all.
 
 `tools/release/live_export.sh app FROM TO` is the rule, file by file. The
 export a web lane ships on is the one brickworks.diy serves: ship.sh keeps
@@ -318,6 +417,18 @@ What each one guards against, all learned the hard way on 2026-10-13:
   runs the check on the preview and on brickworks.diy by turns (`AB_LIVE`
   names another), and `timing_judge.py --battery LOG --run P|L EXIT LOG...`
   judges any runs' logs.
+- `live_smoke.sh` looks at the live site the moment a release is live, and
+  puts it back when the release broke it. `current [DOMAIN]` names the
+  deployment the domain points at (asked before the promotion: where to go
+  back to); `check ORIGIN` only reads (GETs, then a signed-out browser that
+  sends nothing else: home, a model page, Talk, `/app` started), about a
+  minute on a calm box; `guard DOMAIN PREVIOUS_URL TAG` checks twice, checks
+  the build before on its own URL, and only when that one passes rolls the
+  domain back (`vercel rollback` for brickworks.diy, `vercel alias set` for
+  any other alias), confirms the domain serves it, checks it there and writes
+  `TAG-rolled-back` for `/admin#site`. Exit 0 passed, 3 rolled back, 1
+  failed, 2 no verdict; the line to copy begins `live_smoke: rolled back`.
+  The next release's `vercel promote` ends the rolled-back state.
 - `ship.sh` runs the merge gates itself, once for every unit merged, under
   the release's priority: the parse gate on every GDScript file changed since
   main, and the tool list against the app. Run per merge without priority,

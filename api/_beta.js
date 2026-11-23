@@ -76,7 +76,7 @@ import { admission, billingMode } from "./_billing.js";
 import { cronNoted, isCron } from "./_cron.js";
 import { db, dbConfigured } from "./_db.js";
 import { EARLY, KNOWN, NEW } from "./_early.js";
-import { setSetting, settingOf } from "./_settings.js";
+import { projectBeta, setSetting, settingOf } from "./_settings.js";
 
 /// "open" or "off" where [request] was made: the owner's switch from the
 /// console there, else the project's (BRICKWORKS_BETA).
@@ -87,7 +87,7 @@ export async function betaMode(request, env = process.env) {
 /// The beta's switch where [request] was made: {mode, source: "console" |
 /// "project", set_by, set_at, project (BRICKWORKS_BETA's own mode)}.
 export async function betaSwitch(request, env = process.env) {
-  const project = String(env.BRICKWORKS_BETA || "").trim().toLowerCase() === "open" ? "open" : "off";
+  const project = projectBeta(env);
   const set = await settingOf("beta", request);
   if (set?.value === "open" || set?.value === "off") {
     return { mode: set.value, source: "console", set_by: set.set_by ?? null, set_at: set.set_at ?? null, project };

@@ -138,6 +138,9 @@
   };
   window.brickworksLang = {
     code: page, chosen, choose, say,
+    // The language a link into the app asks for, as carry() gives the
+    // page's own: web/card.js appAt gives a link drawn later the same.
+    app: carried,
     locale: page === "en" ? "en-US" : page,
     number: (n) => Number(n).toLocaleString(page === "en" ? "en-US" : page),
   };
@@ -165,13 +168,22 @@
   }
 })();
 
-// The beta (betahome): while open, a bar at every page's foot (betabar.js)
+// The beta (betahome): while open, a strip at every page's top (betabar.js)
 // with Report a bug and Join, and the landing page's Open beta. What the
 // site last said of it is kept here ("brickworks.beta"): open in the last
 // day, <html data-beta="open"> is set before anything is drawn, so what is
 // held for it is in place at the first frame; off in the last ten minutes,
-// the bar's script is not asked for. Never on an embed's card or the
-// connector's consent page.
+// the bar's script is not asked for. The bar's own room at the top
+// (<html data-betabar>, site.css) is decided here, before the first frame,
+// and never after but by the person's own act (betabar.js), so the strip
+// moves nothing as it comes (pagebar) and never goes once drawn: unless its
+// × hid it here, a page the server makes holds it as that page says the
+// beta is (<meta name="brickworks-beta">, api/_settings.js sayBeta), unless
+// what was heard here is newer (a page the CDN kept); any other holds it
+// unless the beta was last heard off, so a first visit holds it as for the
+// open beta. A set's page on a phone held it, then let it go half a second
+// in, as the server said off (checkdrift, 2026-11-23). Never on an embed's
+// card or the connector's consent page.
 (() => {
   const root = document.documentElement;
   if (root.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
@@ -181,14 +193,26 @@
   } catch {
     heard = null;
   }
+  const page = document.querySelector('meta[name="brickworks-beta"]');
+  const said = page && (!heard || Number(page.dataset.at || 0) >= Number(heard.at || 0)) ? page.content : "";
   const age = Date.now() - Number(heard?.at || 0);
-  if (heard?.beta === "open" && age < 86400000) root.dataset.beta = "open";
-  if (heard?.beta === "off" && age < 600000) {
+  if (said === "open" || (!said && heard?.beta === "open" && age < 86400000)) root.dataset.beta = "open";
+  if (said === "off" || (!said && heard?.beta === "off" && age < 600000)) {
     // Said for the page's own scripts (web/landing.js), which then ask nothing.
     window.brickworksBeta = "off";
     return;
   }
-  const load = () => import("/betabar.js").catch(() => null);
+  // As web/betabar.js barShown reads it: "off", or a day's hiding not ended.
+  let hidden = null;
+  try {
+    hidden = JSON.parse(localStorage.getItem("brickworks.betabar.hidden") || "null");
+  } catch {
+    hidden = null;
+  }
+  const shown = !(hidden === "off" || (typeof hidden === "number" && hidden > Date.now()));
+  if (shown && (said === "open" || (!said && heard?.beta !== "off"))) root.dataset.betabar = "held";
+  // Not loaded (offline), the room held for it goes.
+  const load = () => import("/betabar.js").catch(() => { delete root.dataset.betabar; });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();
 })();

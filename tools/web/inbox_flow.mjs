@@ -76,16 +76,27 @@ const model = (name) => `0 ${name}\r\n0 Name: inbox.ldr\r\n1 4 0 0 0 1 0 0 0 1 0
 
 const browser = await launch({ signedOut: true });
 
+// Each context a browser of its own, signed in there by itself as a
+// person signs in on a second browser: the first gets the sign-in minted
+// at the start, each after it one of its own. All seeded with the minted
+// one, the list at 1280 light, after Ada's first browser had renewed it
+// twice (her second tab), replayed a refresh token Supabase had seen used:
+// it refused it (400 refresh_token_already_used) and ended every session
+// of that sign-in, hers in her first browser too, and the list never came
+// (checkdrift, 2026-11-23: bench/results/checkdrift-2026-11-23/inboxseed.log).
+const seeded = new WeakSet();
 async function context({ as = null, width = 1280, height = 900, phone = false, theme = "dark" } = {}) {
   const made = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers, colorScheme: theme,
     ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   if (as) {
+    const kept = seeded.has(as) ? (await mintSession(as.kept.email)).kept : as.kept;
+    seeded.add(as);
     await made.addInitScript(([name, value]) => {
       try {
         if (!sessionStorage.getItem("flow.seeded") && !localStorage.getItem(name)) localStorage.setItem(name, value);
         sessionStorage.setItem("flow.seeded", "1");
       } catch {}
-    }, [STORAGE_KEY, JSON.stringify(as.kept)]);
+    }, [STORAGE_KEY, JSON.stringify(kept)]);
   }
   return made;
 }
@@ -149,8 +160,8 @@ const gridDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#
 const on = (grid, channel) => grid.filter((row) => row.boxes.find((box) => box.channel === channel)?.on).map((row) => row.kind);
 
 /// /notifications as drawn: each group's key, model, name and rows' kinds.
-const listDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#groups .notice")].map((li) => ({
-  key: li.dataset.key || "", model: li.dataset.model || "", name: li.querySelector("h2 a, h2")?.textContent.trim() || "",
+const listDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("ol.notices .notice")].map((li) => ({
+  key: li.dataset.key || "", model: li.dataset.model || "", name: li.querySelector(".row-title a, .row-title")?.textContent.trim() || "",
   kinds: [...li.querySelectorAll(".lines li")].map((row) => row.dataset.kind), done: Boolean(li.querySelector("[data-done]")),
   mute: Boolean(li.querySelector("[data-mute]")) })));
 const listReady = (page, what) => until(page, () => document.documentElement.dataset.notifications === "ready", what, 45);

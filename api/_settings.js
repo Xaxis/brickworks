@@ -45,6 +45,34 @@ export async function settingOf(name, request, now = Date.now()) {
   return value;
 }
 
+/// The project's beta when no switch is set where a request was made
+/// (Vercel's BRICKWORKS_BETA): "open" or "off".
+export const projectBeta = (env = process.env) => (String(env.BRICKWORKS_BETA || "").trim().toLowerCase() === "open" ? "open" : "off");
+
+/// The beta where [request] was made, as a page the server makes says it in
+/// its head (sayBeta): the console's switch there, else the project's;
+/// "off" with no database, as ?op=beta_spots answers (api/_beta.js).
+export async function betaSaid(request, env = process.env) {
+  if (!dbConfigured()) return "off";
+  const set = await settingOf("beta", request);
+  return set?.value === "open" || set?.value === "off" ? set.value : projectBeta(env);
+}
+
+/// [body], a page's HTML, with the beta's state in its head, just before
+/// web/theme.js (<meta name="brickworks-beta">), and when it was said
+/// ([at], ms): theme.js holds the beta strip's room from it before the page
+/// is drawn, or holds none, so the strip never comes or goes after
+/// (checkdrift, 2026-11-23: a set's page held 48 px on a phone, then let it
+/// go as the server said the beta was off). A page kept by the CDN says what
+/// was so when it was made (a set's, a day), so what the browser heard
+/// since is taken over it. A page with no theme.js (an embed's card) is as
+/// it was.
+export function sayBeta(body, said, at = Date.now()) {
+  if (said !== "open" && said !== "off") return body;
+  return String(body).replace('<script src="/theme.js"></script>',
+    `<meta name="brickworks-beta" content="${said}" data-at="${Math.round(at)}">\n<script src="/theme.js"></script>`);
+}
+
 /// [name] set to [value] where [request] was made, by [by]: {value, set_by,
 /// set_at, was, scope}. Throws when it cannot be kept.
 export async function setSetting(name, value, request, by) {

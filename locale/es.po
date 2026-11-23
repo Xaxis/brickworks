@@ -4618,6 +4618,18 @@ msgstr "Compartido en este enlace y en la galería. Publica de nuevo para actual
 msgid "Brickworks took it out of the gallery, so it cannot be listed there."
 msgstr "Brickworks lo quitó de la galería, así que no puede mostrarse allí."
 
+msgid "Share progress"
+msgstr "Compartir avance"
+
+msgid "Publish this version as work in progress: listed with your name, in your followers' feeds and in its own Talk thread, kept out of Top and the challenges until you publish it as finished."
+msgstr "Publicar esta versión como trabajo en curso: aparece con tu nombre, en el feed de tus seguidores y en su propio tema del Foro, fuera de Mejores y de los desafíos hasta que la publiques como terminada."
+
+msgid "Work in progress is shared in the gallery and Talk, which are for people 13 and over."
+msgstr "El trabajo en curso se comparte en la galería y en el Foro, que son para mayores de 13 años."
+
+msgid "Brickworks took it out of the gallery, so it cannot be shared there."
+msgstr "Brickworks lo quitó de la galería, así que no puede compartirse allí."
+
 msgid "Signing you in… %s once that is done."
 msgstr "Iniciando sesión… %s cuando termine."
 
@@ -17319,3 +17331,127 @@ msgstr "%s. Compartir progreso guarda hasta dónde llegó como una versión en e
 
 msgid "%s. Sharing its progress as a version in the model's log."
 msgstr "%s. Compartiendo su progreso como una versión en el historial del modelo."
+
+msgid "Less"
+msgstr "Menos"
+
+# Ask the builders (askhelp): the Share panel's question in Talk, and the answers on parts in the studio
+msgid "Ask the builders"
+msgstr "Pregunta a quienes construyen"
+
+msgid "What are you stuck on?"
+msgstr "¿Dónde te has atascado?"
+
+msgid "Ask in Talk"
+msgstr "Preguntar en Talk"
+
+msgid "The question is longer than Talk takes, 4,000 characters. Make it shorter and ask again."
+msgstr "La pregunta es más larga de lo que Talk admite, 4.000 caracteres. Acórtala y vuelve a preguntar."
+
+msgid "Asking"
+msgstr "Preguntando"
+
+msgid "Open the thread"
+msgstr "Abrir el tema"
+
+msgid "Open the question's thread in Talk"
+msgstr "Abrir el tema de la pregunta en Talk"
+
+msgid "Post the question in Talk's Help, with the model in 3D at this step and the parts you picked lit"
+msgstr "Publicar la pregunta en la Ayuda de Talk, con el modelo en 3D en este paso y las piezas elegidas resaltadas"
+
+msgid "Builders answer on the parts, and the answers light them here"
+msgstr "Quienes construyen responden sobre las piezas, y las respuestas las resaltan aquí"
+
+msgid "How should I build step %d?"
+msgstr "¿Cómo construyo el paso %d?"
+
+msgid "How should I build this?"
+msgstr "¿Cómo construyo esto?"
+
+msgid "Asks in Talk's Help about step %d, shown in 3D"
+msgstr "Pregunta en la Ayuda de Talk sobre el paso %d, mostrado en 3D"
+
+msgid "Asks in Talk's Help about the whole model, shown in 3D"
+msgstr "Pregunta en la Ayuda de Talk sobre el modelo entero, mostrado en 3D"
+
+msgid "Pick parts first to have them lit"
+msgstr "Elige primero piezas para que se resalten"
+
+msgid "Asks in Talk's Help about step %d, with %s lit in 3D"
+msgstr "Pregunta en la Ayuda de Talk sobre el paso %d, con %s resaltado en 3D"
+
+msgid "Asks in Talk's Help about the whole model, with %s lit in 3D"
+msgstr "Pregunta en la Ayuda de Talk sobre el modelo entero, con %s resaltado en 3D"
+
+msgid "%d more"
+msgstr "%d más"
+
+msgid "a part"
+msgstr "una pieza"
+
+msgid "Asking in Talk"
+msgstr "Preguntando en Talk"
+
+msgid "Asked in Talk's Help, step %d in 3D"
+msgstr "Preguntado en la Ayuda de Talk, paso %d en 3D"
+
+msgid "Asked in Talk's Help, step %d in 3D with 1 part lit"
+msgstr "Preguntado en la Ayuda de Talk, paso %d en 3D con 1 pieza resaltada"
+
+msgid "Asked in Talk's Help, step %d in 3D with %d parts lit"
+msgstr "Preguntado en la Ayuda de Talk, paso %d en 3D con %d piezas resaltadas"
+
+msgid "Asked in Talk's Help, the model in 3D"
+msgstr "Preguntado en la Ayuda de Talk, el modelo en 3D"
+
+msgid "Asked in Talk's Help, the model in 3D with 1 part lit"
+msgstr "Preguntado en la Ayuda de Talk, el modelo en 3D con 1 pieza resaltada"
+
+msgid "Asked in Talk's Help, the model in 3D with %d parts lit"
+msgstr "Preguntado en la Ayuda de Talk, el modelo en 3D con %d piezas resaltadas"
+
+msgid "Answers on a part light it here as they come"
+msgstr "Las respuestas sobre una pieza la resaltan aquí en cuanto llegan"
+
+msgid "Sign in to Brickworks to ask in Talk"
+msgstr "Inicia sesión en Brickworks para preguntar en Talk"
+
+msgid "Not asked: %s"
+msgstr "No preguntado: %s"
+
+msgid "Not asked: it could not be published just now"
+msgstr "No preguntado: no se pudo publicar ahora"
+
+msgid "Talk could not take the question just now"
+msgstr "Talk no pudo recibir la pregunta ahora"
+
+msgid "Try again in a minute"
+msgstr "Inténtalo de nuevo dentro de un minuto"
+
+msgid "Help with %s"
+msgstr "Ayuda con %s"
+
+msgid "Help with my model"
+msgstr "Ayuda con mi modelo"
+
+msgid "New answer on a part in Talk, from %s"
+msgstr "Nueva respuesta sobre una pieza en Talk, de %s"
+
+msgid "%d new answers on parts in Talk, the newest from %s"
+msgstr "%d respuestas nuevas sobre piezas en Talk, la más reciente de %s"
+
+msgid "a builder"
+msgstr "alguien que construye"
+
+msgid "Select its part and turn the view to it"
+msgstr "Seleccionar su pieza y girar la vista hacia ella"
+
+msgid "in Talk"
+msgstr "en Talk"
+
+msgid "Back on its part, here"
+msgstr "De nuevo en su pieza, aquí"
+
+msgid "Done with it: folded away here, and kept in its thread in Talk"
+msgstr "Hecho: plegado aquí, y guardado en su tema en Talk"

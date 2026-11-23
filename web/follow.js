@@ -66,6 +66,13 @@ const SENT_FOR_MS = 60 * 1000;
 // This page's, on their way: each a promise of the server's answer.
 const sending = new Map();
 
+/// Every follow this page sent and the server has not answered yet,
+/// settled: what is asked for of the people followed after a Follow (the
+/// home's Following tab) waits on them, or it comes without them.
+export function followsSettled() {
+  return Promise.allSettled([...sending.values()]);
+}
+
 const sentKept = () => {
   try {
     const kept = JSON.parse(sessionStorage.getItem(SENT) || "[]");

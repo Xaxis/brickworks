@@ -35,9 +35,9 @@
 // data-challenge, data-sets), which tools/web/landing_check.mjs and
 // tools/web/homefeed_check.mjs wait on.
 import { askToSignIn, call, signedIn } from "/account.js";
-import { counted, escapeHtml, iconButtonHtml, langAt, likeName, number, pictureOf, say, told } from "/card.js";
+import { appAt, counted, escapeHtml, iconButtonHtml, langAt, likeName, number, pictureOf, say, told } from "/card.js";
 import { commentsInCard, replyInCard } from "/composer.js";
-import { FIRST, compose, feedItem, keyOf, postHtml } from "/home-feed.js";
+import { FIRST, compose, feedItem, keyOf, postHtml, postSkeletonHtml } from "/home-feed.js";
 import { ago, toast } from "/kit.js";
 
 const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
@@ -91,6 +91,9 @@ const streamSaid = document.getElementById("stream-said");
 const tabList = document.getElementById("feed-tabs");
 const tabs = tabList ? [...tabList.querySelectorAll('[role="tab"]')] : [];
 const served = stream?.dataset.stream === "served";
+// The stream drawn again for somebody who just signed in, as them: a like
+// they signed in for waits on it (like).
+let signedInDraw = Promise.resolve();
 
 /// What the stream is made of, for [tab], each answer kept by the CDN for
 /// somebody signed out; signed in, the lists and the latest are asked as
@@ -253,6 +256,10 @@ async function draw({ first = false, kept = false } = {}) {
 /// draw went stale.
 let followBefore = null;
 async function following(mine, before = null) {
+  // A Follow pressed a moment ago is shown pressed at once, its answer
+  // still coming: asked before it, the tab said nobody was followed
+  // (checkdrift, 2026-11-23, Follow then Following at once).
+  if (followModule) await (await followModule).followsSettled().catch(() => null);
   const lang = langAt() ? `&lang=${langAt().slice(1)}` : "";
   const answer = await call(`/api/people?op=feed${lang}${before ? `&before=${encodeURIComponent(before)}` : ""}`).catch(() => null);
   if (mine !== run) return null;
@@ -316,9 +323,7 @@ function choose(chosen, { focus = false } = {}) {
   }
   if (focus) chosen.focus();
   tab = chosen.dataset.tab;
-  stream.innerHTML = Array.from({ length: 3 }, () => '<div class="post skeleton" aria-hidden="true"><div class="post-head">'
-    + '<span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words">'
-    + '<span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>').join("");
+  stream.innerHTML = Array.from({ length: 3 }, postSkeletonHtml).join("");
   draw();
 }
 
@@ -343,8 +348,16 @@ if (stream) {
   else again();
   // Signed in or out, here or in another part of the page: drawn for them.
   addEventListener("brickworks:signed-in", () => {
+    // The visitor's band gives way to the search row (318 px to 76 at
+    // 1280): the post somebody signed in from, liked or commented on, kept
+    // where it is on the screen, not 242 px up and off it (checkdrift,
+    // 2026-11-23). With the dialog over the page, the browser's own
+    // anchoring does not hold it.
+    const held = [...stream.querySelectorAll(":scope > .post")].find((post) => post.getBoundingClientRect().bottom > 0);
+    const was = held?.getBoundingClientRect().top;
     html.dataset.signed = "in";
-    draw({ kept: tab === "foryou" });
+    if (held && held.isConnected) scrollBy(0, held.getBoundingClientRect().top - was);
+    signedInDraw = draw({ kept: tab === "foryou" }).catch(() => null);
   });
   addEventListener("brickworks:signed-out", () => {
     delete html.dataset.signed;
@@ -372,7 +385,16 @@ const nameOf = (post) => post?.querySelector(".post-title a")?.textContent || ""
 async function like(button) {
   const id = button.dataset.like;
   if (!MODEL.test(id)) return;
-  if (!signedIn() && !(await askToSignIn("Sign in to like it: we email you a code, no password."))) return;
+  if (!signedIn()) {
+    if (!(await askToSignIn("Sign in to like it: we email you a code, no password."))) return;
+    // Signed in, the stream is drawn again as them: the like goes on the
+    // post as drawn then, or a draw answered before it would take it off
+    // the screen (checkdrift, 2026-11-23, once First steps stopped holding
+    // it back); and liked before, it stays liked, not taken back.
+    await signedInDraw;
+    button = stream.querySelector(`[data-like="${id}"]`) || button;
+    if (button.getAttribute("aria-pressed") === "true") return;
+  }
   const name = nameOf(button.closest(".post"));
   const was = button.getAttribute("aria-pressed") === "true";
   const count = Number(button.querySelector(".n")?.textContent.replace(/\D/g, "")) || 0;
@@ -495,7 +517,7 @@ function turn(post, how) {
   const asked = Math.round(performance.now());
   const id = post.dataset.id;
   const view = import("/viewer3d.js")
-    .then((made) => made.open3d(shell, { scene: link.dataset.scene, name, app: `/app?view=${id}`, how: how === "hover" ? "mouse" : how,
+    .then((made) => made.open3d(shell, { scene: link.dataset.scene, name, app: appAt(`view=${id}`), how: how === "hover" ? "mouse" : how,
       look: "app", spin: true, timings: { asked }, closed: () => { if (turning?.shell === shell) closeTurn(); } }))
     .catch(() => {
       shell.dataset.state = "failed";
@@ -562,7 +584,7 @@ function tryHere(button) {
   said.textContent = say("Opening the studio…");
   const frame = document.createElement("iframe");
   frame.title = say("The Brickworks studio, with {name}", { name: nameOf(post) || say("a model") });
-  frame.src = `/app?view=${id}`;
+  frame.src = appAt(`view=${id}`);
   frame.allow = "fullscreen; clipboard-write";
   frame.setAttribute("allowfullscreen", "");
   // The studio's ways out (Open in Brickworks, the newest version) take the

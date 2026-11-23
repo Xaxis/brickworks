@@ -306,15 +306,29 @@ function page(pathname) {
       : /^\/live\/[A-Za-z0-9]{12}$/.test(rest) ? "live.html"
       : /^\/[a-z0-9_-]+\.[a-z]+$/.test(rest) ? rest.slice(1) : `${rest.slice(1)}.html`;
     if (!/^(?:oauth\/)?[a-z0-9_-]+\.[a-z]+$/.test(copy)) return null;
-    const file = new URL(`${lang[1]}/${copy}`, web);
+    // A site put together as the deploy does it (--static=DIR, tools/site.py
+    // and home_shelf.mjs) serves its own copy, as Vercel does: its home's
+    // first posts written in its language. The checkout's copy has none, so
+    // /de showed the feed's skeletons where the deploy shows German posts
+    // (sitefix325, 2026-11-23).
+    const built = site ? join(site, lang[1], copy) : "";
+    const file = built && existsSync(built) ? built : new URL(`${lang[1]}/${copy}`, web);
     return existsSync(file) ? { body: readFileSync(file), type: TYPES[copy.split(".").pop()] || "application/octet-stream" } : null;
+  }
+  // A minifigure avatar's layer (web/minifig/<side>/, web/card.js MINIFIG).
+  const layer = /^\/(minifig\/[0-9]{2,3}\/[a-z0-9-]+[.]webp)$/.exec(pathname);
+  if (layer) {
+    const file = new URL(layer[1], web);
+    return existsSync(file) ? { body: readFileSync(file), type: "image/webp" } : null;
   }
   const named = PAGES.find(([pattern]) => pattern.test(pathname));
   // Any other page at its bare name, as deploy.sh serves them: /admin,
-  // /takedown, /download.
+  // /takedown, /download. And the home at /, as /de/ is the German one: a
+  // plain relay answered / with nothing, so a check of the home there
+  // waited for a page that never came (checkdrift, 2026-11-23).
   const bare = /^\/([a-z0-9-]+)\/?$/.exec(pathname);
-  const name = named ? named[1] : bare && existsSync(new URL(`${bare[1]}.html`, web)) ? `${bare[1]}.html`
-    : pathname.slice(1);
+  const name = pathname === "/" ? "index.html" : named ? named[1]
+    : bare && existsSync(new URL(`${bare[1]}.html`, web)) ? `${bare[1]}.html` : pathname.slice(1);
   if (!/^[a-z0-9_-]+\.[a-z]+$/.test(name)) return null;
   const file = new URL(name, web);
   if (!existsSync(file)) return null;

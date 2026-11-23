@@ -29,6 +29,7 @@
 // the nearest colour still made, as the app lists it (standIn).
 
 import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { deflateSync } from "node:zlib";
 import { directOf, isDirect } from "./_colours.js";
 // A sub-file's name as LDraw compares it (LdrModel._key).
@@ -815,6 +816,22 @@ function lotMaker(library, given) {
   return { add, done };
 }
 
+/// How many rows a parts list shows before Show all (web/model-page.js
+/// LOTS_SHOWN), and each row's height, which web/directory.css gives every
+/// row: a model's page and a set's keep the space the list will take
+/// before it comes, so nothing under it moves.
+export const LOTS_SHOWN = 12;
+export const LOT_ROW = 60;
+
+/// The rows [lots] make in a parts list as web/model-page.js first draws
+/// it, by colour: a row a colour with its lots under it. Show all is
+/// decided by these, not by the lots: 8 lots in 6 colours are 14 rows, the
+/// last 2 hidden until it is pressed (checkdrift, 2026-11-23: a set's page
+/// left them out, its Show all there only past 12 lots).
+export function listRows(lots) {
+  return lots.length + new Set(lots.map((lot) => lot.colour)).size;
+}
+
 /// A set's parts list from its inventory (tools/collection_data.py's
 /// shards: [[part, colour, qty]], already in LDraw's numbers), in the lots a
 /// model's list has, so a set's page draws and exports it as a model's page
@@ -1106,6 +1123,85 @@ export function placedOf(text, given = partsTable(), table = sceneTable()) {
   }
   return out;
 }
+
+/// The parts of [text] built by its page [step], counted as sceneOf's [only]
+/// counts them (each part it draws, in turn), from the steps the app carried
+/// in it (src/net/shared_pages.gd: each page's "b", the parts it adds, and
+/// "k", its copies', indexes in the app's order): a Set, or null when the
+/// file carries none, they are not of this text, or the app's order is not
+/// the parts this draws in turn (its "order", the parts and colours it
+/// counted in, said again here and compared), so a step is never drawn
+/// with the wrong parts. Ask the builders' thread draws its step so
+/// (api/_asks.js). Pure.
+export function stepParts(text, step, given = partsTable(), table = sceneTable()) {
+  const plain = String(text || "").replace(/^﻿/, "");
+  const at = plain.search(/^0\s+!BRICKWORKS\s+PAGES\s+\{/m);
+  if (at < 0 || !given || !table || !Number.isInteger(step) || step < 1) return null;
+  const lines = plain.slice(at).split("\n");
+  let head;
+  try {
+    head = JSON.parse(lines[0].trim().replace(/^0\s+!BRICKWORKS\s+PAGES\s+/, ""));
+  } catch {
+    return null;
+  }
+  if (!head || head.v !== 1) return null;
+  const library = makeLibrary(given);
+  // The app's order (ModelStore.open_text): each part its library knows,
+  // in turn, named by its Studio number made LDraw's and by the number
+  // LDraw moved it to; the same part's place among those this draws.
+  const names = [[], [], []];
+  const drawnAt = [];
+  // And a part the file carries (a sticker made in the app, its own
+  // section): the app knows it, this draws none of it.
+  const carriedParts = new Set();
+  for (const found of plain.matchAll(/^0\s+FILE\s+(.+?)\s*$/gim)) {
+    const name = found[1].replace(/\\/g, "/").toLowerCase();
+    if (name.endsWith(".dat")) carriedParts.add(name.slice(0, -4));
+  }
+  let k = 0;
+  for (const one of flatten(parse(plain), library)) {
+    const copy = one.part.lastIndexOf(" - ");
+    const carried = library.custom.get(one.part);
+    const studio = carried?.copy_of && library.has(carried.copy_of) ? carried.copy_of
+      : library.has(one.part) ? one.part
+        : one.part.startsWith("bl_") && library.has(one.part.slice(3)) ? one.part.slice(3)
+          : copy > 0 && library.has(one.part.slice(copy + 3).trim()) ? one.part.slice(copy + 3).trim()
+            : carriedParts.has(one.part) ? one.part : null;
+    const drawn = drawnAs(library, one.part, table);
+    if (studio !== null) {
+      names[0].push(`${one.part}:${one.colour}`);
+      names[1].push(`${studio}:${one.colour}`);
+      names[2].push(`${library.has(studio) ? library.resolve(studio) : studio}:${one.colour}`);
+      drawnAt.push(drawn ? k : -1);
+    }
+    if (drawn) k += 1;
+  }
+  const order = String(head.order || "");
+  if (drawnAt.length !== Number(head.parts) || !names.some((list) => sha256Hex(list.join("|")) === order)) return null;
+  const kept = new Set();
+  let page = 0;
+  for (const line of lines) {
+    const found = /^0\s+!BRICKWORKS\s+PAGE\s+(\{.*\})\s*$/.exec(line.trim());
+    if (!found) continue;
+    page += 1;
+    if (page > step) break;
+    let said;
+    try {
+      said = JSON.parse(found[1]);
+    } catch {
+      return null;
+    }
+    const lists = [said?.b, ...(Array.isArray(said?.k) ? said.k : [])];
+    for (const list of lists) {
+      for (const index of Array.isArray(list) ? list : []) {
+        if (Number.isInteger(index) && index >= 0 && index < drawnAt.length && drawnAt[index] >= 0) kept.add(drawnAt[index]);
+      }
+    }
+  }
+  return page >= step || page === Number(head.steps) ? kept : null;
+}
+
+const sha256Hex = (text) => createHash("sha256").update(text, "utf8").digest("hex");
 
 /// What the light viewer draws parts [ids] in colours [codes] with, as
 /// sceneOf's meshes and colours say them, by part and by colour: {meshes:

@@ -314,11 +314,17 @@ export class View {
     // as it does in the app's own pictures.
     const sphere = this.modelBounds.getBoundingSphere(new Sphere());
     const r = Math.max(sphere.radius, 20);
-    const { centre, distance } = this.fitting(sphere.center);
+    const { centre, distance, lift } = this.fitting(sphere.center);
     const fit = Math.max(distance, 20) * 1.05;
     this.camera.position.copy(centre).addScaledVector(this.from, fit);
     this.camera.near = Math.max(0.5, fit / 400);
     this.camera.far = fit * 30;
+    // The picture moved up over the tools' band, in shares of the frame, so
+    // it holds at any size. (setViewOffset sets the camera's aspect to the
+    // whole's: given 1000 by 1000, a 16:10 frame was drawn square and wide.)
+    const wide = this.camera.aspect * 1000;
+    if (lift > 0) this.camera.setViewOffset(wide, 1000, 0, lift * 500, wide, 1000);
+    else if (this.camera.view) this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
     this.home = { eye: this.camera.position.clone(), target: centre.clone() };
     // A view nobody turns (its clip's) has no controls.
@@ -338,8 +344,21 @@ export class View {
   // next, left a round one, the Falcon, two thirds.)
   fitting(from) {
     const points = this.corners;
-    const tanUp = Math.tan((this.camera.fov * Math.PI) / 360);
-    const tanAcross = tanUp * this.camera.aspect;
+    // A margin (this.o.margin, a share of the frame on each side) kept clear
+    // round the model: a question's step in Talk is seen whole, never
+    // touching the edges where the view's buttons are (askhelp).
+    const margin = Math.min(0.3, Math.max(0, Number(this.o.margin) || 0));
+    const room = 1 - 2 * margin;
+    // And the band of the view's tools at its foot (this.o.foot, CSS px)
+    // clear too, the model drawn above it: the buttons over a phone's 3D had
+    // covered the step's bottom part. Shares of the frame's height.
+    const tall = Math.max(1, this.stage.clientHeight);
+    const footPx = Number(typeof this.o.foot === "function" ? this.o.foot() : this.o.foot) || 0;
+    const foot = Math.min(0.4, Math.max(0, footPx) / tall);
+    const below = foot > 0 ? Math.max(margin, foot + margin / 2) : margin;
+    const tan = Math.tan((this.camera.fov * Math.PI) / 360);
+    const tanUp = tan * (1 - margin - below);
+    const tanAcross = tan * this.camera.aspect * room;
     const level = Math.hypot(this.from.x, this.from.z);
     const round = Math.atan2(this.from.x, this.from.z);
     const turns = this.o.spin && !this.o.still ? 16 : 1;
@@ -381,7 +400,9 @@ export class View {
       centre.addScaledVector(right, ((across[0] + across[1]) / 2) * distance)
         .addScaledVector(up, ((high[0] + high[1]) / 2) * distance);
     }
-    return { centre, distance };
+    // How far up the frame the model's middle is drawn, as a share of half
+    // its height (frame() shifts the picture, not the point it turns about).
+    return { centre, distance, lift: below - margin };
   }
 
   // The glide a flick left dropped, before the camera is put somewhere: it

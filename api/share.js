@@ -171,11 +171,12 @@
 //                            without any, put on it with no publish counted
 //                            (the site's Share from a file draws its
 //                            pictures once the server has the model)
-//   POST ?op=card&id=X       {thumb}: the owner's model given a new card
-//                            picture (/m/X.webp), its newest version's, with
-//                            no publish counted and no version made (the
-//                            house's cards drawn again as photographs,
-//                            tools/web/gallery_seed.mjs --cards)
+//   POST ?op=card&id=X       {thumb, kind?}: the owner's model given a new
+//                            card picture (/m/X.webp), its newest version's,
+//                            with no publish counted and no version made: the
+//                            photograph the app draws once a publish has
+//                            answered (kind traced or raster), and the
+//                            house's (tools/web/gallery_seed.mjs --cards)
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns,
@@ -282,7 +283,7 @@ import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { cronNoted, isCron, sweepHeld } from "./_cron.js";
 import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { raise } from "./_notify.js";
-import { scopeOf } from "./_settings.js";
+import { betaSaid, sayBeta, scopeOf } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
   ASSISTANT_TAGS, KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
@@ -302,8 +303,8 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
-  pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+import { LOTS_SHOWN, LOT_ROW, PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, listRows, namesOf, paletteOf,
+  partNames, partsTable, pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, stepParts, wantedList } from "./_parts.js";
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
@@ -1152,16 +1153,33 @@ function testedMark(mark, steps = null) {
 /// it knows who is asking). A credit with no profile behind it is the name
 /// alone, with an avatar made from it; a model shared with no credit, none.
 function designerRow(model) {
+  // Somebody else modelled it (a set from LDraw's library the house shares):
+  // they lead, with an avatar made from their name, the line that credits
+  // them beside it, and who shares it under, with Follow (sitebold,
+  // 2026-11-23: forty such pages were headed "Brickworks"). A version its
+  // sharer changed is theirs: they lead, and the line under them says whose
+  // LDraw model it was changed from (sethub).
+  const modeller = modelledByOf(model.modelled_by);
+  const sharer = model.by ? model.by.name : model.author || "";
+  if (modeller && !modeller.changed && sharer && modeller.name !== sharer) {
+    const via = model.by ? `<a class="who" href="${langAt()}/u/${escapeHtml(model.by.handle)}">${avatarHtml(model.by, { size: "small" })}`
+      + `<span>${escapeHtml(model.by.name)}</span></a>` : `<span class="who">${escapeHtml(sharer)}</span>`;
+    // Follow beside the sharer it follows, not beside the modeller's name.
+    return `<div class="shared-by credit">${avatarHtml({ name: modeller.name })}<div class="names">${modelledLine(model)}`
+      + `<p class="shared-via"><span>${sayHtml("Shared by {name}", { name: via })}</span>`
+      + `${model.by ? `<button type="button" class="cta ghost small follow" data-follow="${escapeHtml(model.by.handle)}" hidden>${asText(say("Follow"))}</button>` : ""}</p></div>`
+      + `<span class="said" role="status"></span></div>`;
+  }
   if (model.by) {
     const handle = escapeHtml(model.by.handle);
     return `<div class="shared-by"><a class="who" href="${langAt()}/u/${handle}">${avatarHtml(model.by)}`
       + `<span class="names"><b>${escapeHtml(model.by.name)}</b><small>@${handle}</small></span></a>`
       + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>${asText(say("Follow"))}</button>`
-      + `<span class="said" role="status"></span></div>`;
+      + `<span class="said" role="status"></span></div>` + modelledLine(model);
   }
-  if (!model.author) return "";
+  if (!model.author) return modelledLine(model);
   return `<div class="shared-by"><span class="who">${avatarHtml({ name: model.author })}`
-    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>`;
+    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>${modelledLine(model)}`;
 }
 
 /// Who shares a model, by name, as its page heads it.
@@ -1206,9 +1224,15 @@ export function altLine(page, kept, at = "") {
 
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
-  return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
-    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}`
-    + `${modeller.changed ? escapeHtml(say(", changed by {name}", { name: sharerOf(model) })) : ""}</p>` : "";
+  if (!modeller) return "";
+  // Changed by whoever shares it (designerRow heads the page with them):
+  // theirs, changed from LDraw's model, its modeller linking LDraw's page.
+  if (modeller.changed) {
+    return `<p class="from modelled-by" data-changed-from>${sayHtml("Changed from LDraw's model by {name}",
+      { name: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(modeller.name)}</a>` })}</p>`;
+  }
+  return `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
+    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}</p>`;
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
@@ -1478,6 +1502,11 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // and lit in its 3D view (/m/X/changes.json).
   const changed = !set && !old && parent?.id ? ownChanges(model.tree, version.n, parent.id) : null;
   const changedLine = changed ? changedLineHtml(changed, at, parent.id, fromVersion) : "";
+  // Where it came from, what it changed and what it is based on, under its
+  // picture (sitebold, 2026-11-23, as Printables says a remix's source under
+  // its pictures); on a phone after the column, so the first screen is the
+  // picture, the name, who made it and the action bar.
+  const lineage = `${fromLine}${changedLine}${basedHtml(model.based || [])}`;
   // What it is, as pills, each said once there is one. Its steps are the
   // ones its step player and booklet number, counted from the file shown;
   // a file that carries none has them worked out as it opens, and they are
@@ -1570,7 +1599,6 @@ ${header}
     <div class="side">
       <h1 class="obj-title"${model.name.length > 48 ? ` title="${escapeHtml(model.name)}"` : ""}>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
-      ${modelledLine(model)}
       ${altHtml(model.alt)}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in the studio"))}</a>`
@@ -1581,11 +1609,9 @@ ${header}
       ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url, `${fileAt}.mpd`)}
       ${set || old ? "" : postFacts(origin, id, shownModel, about)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
-      ${fromLine}
-      ${changedLine}
-      ${basedHtml(model.based || [])}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
+    ${lineage ? `<div class="lineage">${lineage}</div>` : ""}
     <div class="rest">
   <div class="obj-panels">
   ${pageTabs(model, newest, lists?.count, parts, logged(versions))}
@@ -1673,12 +1699,6 @@ function pageTabs(model, newest, inLists = 0, parts = null, log = newest > 1) {
   ], { label: say("About it"), extra: "page-tabs" });
 }
 
-/// How many rows the Parts list shows before Show all, and each row's
-/// height, which web/directory.css gives every row: the space the list will
-/// take is kept for it before it comes, so nothing under it moves.
-export const LOTS_SHOWN = 12;
-export const LOT_ROW = 60;
-
 /// Its parts (site278, docs/SOCIAL.md U4): how many in how many lots, the
 /// three shops' lists to download, and the list itself, which
 /// web/model-page.js asks for (/m/X/parts.json) as the section nears the
@@ -1687,8 +1707,7 @@ export const LOT_ROW = 60;
 /// version.
 function partsSection(at, parts) {
   if (!parts || !parts.lots.length) return "";
-  const colours = new Set(parts.lots.map((lot) => lot.colour)).size;
-  const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
+  const rows = listRows(parts.lots);
   const pab = pickABrick(parts);
   // Lean: every byte here is in the page's first bytes, and the list is not.
   return `<section class="parts" id="parts"${panelAttrs("parts")} data-parts="${at}/parts.json">`
@@ -1702,8 +1721,11 @@ function partsSection(at, parts) {
     + `<div class="parts-shops"><a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
     + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
     + pickABrickNote(pab)
-    + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
-    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
+    + `<ul class="lot-list" style="min-height:${Math.min(LOTS_SHOWN, rows) * LOT_ROW}px"></ul>`
+    // Show all in the page from the start where the list will need it, so
+    // its row is in the space kept too: put in only with the list, it moved
+    // everything under the panel 48 px (checkdrift, 2026-11-23).
+    + (rows > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
 }
@@ -2034,7 +2056,9 @@ async function oembed(request, response, origin) {
 /// for itself; [row] is given it without its maker (embedAnswer).
 function embedCard(origin, id, row, lang = "en", words = null, clip = null, blind = false) {
   const link = links(origin, id);
-  const poster = row.has_image ? `/m/${id}.png` : "/share.png";
+  // Its own picture, or the picture's ground with nothing on it: never the
+  // site's share card, which read as an advert where the model should be.
+  const poster = row.has_image ? `/m/${id}.png` : "";
   const at = lang === "en" ? "" : `/${lang}`;
   const page = at ? `${origin}${at}/m/${id}` : link.url;
   const viewer = at ? `${link.viewer}&lang=${lang}` : link.viewer;
@@ -2076,8 +2100,8 @@ ${scriptWords}${siteChrome().head}
 <div class="media">
 <a class="picture" href="${escapeHtml(viewer)}" rel="noopener" aria-label="${escapeHtml(say("View {name} in 3D", { name: row.name }))}"
   data-scene="/m/${id}/scene.json">${clip
-    ? `<video src="${escapeHtml(clip.path)}" poster="${escapeHtml(poster)}" muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
-    : `<img src="${escapeHtml(poster)}" alt="">`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
+    ? `<video src="${escapeHtml(clip.path)}"${poster ? ` poster="${escapeHtml(poster)}"` : ""} muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
+    : poster ? `<img src="${escapeHtml(poster)}" alt="">` : ""}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
 ${clip ? iconButtonHtml({ icon: "pause", name: say("Pause"), small: true, attrs: 'data-clip-toggle hidden' }) : ""}
 </div>
 ${blind ? "" : `<div class="embed-bar">
@@ -2174,6 +2198,7 @@ function embedCsp() {
 export const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 
 function html(response, status, body, { embed = false, cache = SHARED_CACHE } = {}) {
+  if (!embed && response.betaSaid) body = sayBeta(body, response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", embed ? embedCsp() : pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -2301,7 +2326,7 @@ function undeviced(file) {
 /// its parts, of the version asked for (the newest unless one is). Read as a
 /// visitor, signed out: what its page offers anybody. Kept by the CDN as the
 /// page is, so a model taken down goes with its page.
-async function download(response, op, id, asked, as, lang = "en") {
+async function download(response, op, id, asked, as, lang = "en", step = null) {
   const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
   const row = await publishedRow(id);
   if (!row) {
@@ -2324,7 +2349,7 @@ async function download(response, op, id, asked, as, lang = "en") {
     response.setHeader("Content-Disposition", named("mpd"));
     return response.status(200).end(file);
   }
-  if (op === "scene" || op === "room") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`, op);
+  if (op === "scene" || op === "room") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`, op, step);
   return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest }, lang);
 }
 
@@ -2401,14 +2426,20 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
 /// visitor opens the 3D view, and kept by the CDN as the page is. As
 /// [kind] "room" (/m/X/room.json, /library/X/room.json), what the page
 /// writes the GLB Export writes of it from, for In your room (api/_parts.js
-/// roomOf, web/room.js): asked only when a visitor taps it.
-function sceneAnswer(response, name, file, of, kind = "scene") {
+/// roomOf, web/room.js): asked only when a visitor taps it. With [step], the
+/// parts built by that page alone (stepParts), said with {asked,
+/// drawn} as at_step: drawn false where the file cannot say them, the whole
+/// then.
+function sceneAnswer(response, name, file, of, kind = "scene", step = null) {
   const root = storeRoot();
-  const key = `${kind}/${name}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
+  const key = `${kind}/${name}/${step || 0}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
   let scene = scenesKept.get(key);
   if (scene === undefined && root) {
     try {
-      scene = (kind === "room" ? roomOf : sceneOf)(file.toString("utf8"), root, of);
+      const text = file.toString("utf8");
+      const only = kind === "scene" && step ? stepParts(text, step) : null;
+      scene = (kind === "room" ? roomOf : sceneOf)(text, root, of, undefined, undefined, ...(only ? [only] : []));
+      if (scene && step) scene.at_step = { asked: step, drawn: Boolean(only) };
     } catch {
       scene = null;
     }
@@ -2460,6 +2491,8 @@ async function read(request, response) {
   const op = String(request.query?.op || "");
   const id = String(request.query?.id || "");
   const origin = originOf(request);
+  // A page: what it says of the beta, for its strip (sayBeta).
+  if (op === "page" || op === "catalog_set" || op === "set") response.betaSaid = await betaSaid(request);
 
   if (op === "mine") return mine(request, response, origin);
   if (op === "made") return madeShown(request, response);
@@ -2509,7 +2542,10 @@ async function read(request, response) {
   const asked = ["page", "image", "cutout", "file", "parts", "scene", "room", ""].includes(op) ? askedVersion(request) : null;
 
   if (op === "file" || op === "parts" || op === "scene" || op === "room") {
-    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"));
+    // A step of it (Ask the builders' thread, api/_asks.js): the parts built
+    // by that page, where the file's carried steps say so.
+    const step = op === "scene" && /^[1-9][0-9]{0,5}$/.test(String(request.query?.step || "")) ? Number(request.query.step) : null;
+    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"), step);
   }
 
   if (op === "page") {
@@ -3200,6 +3236,7 @@ async function gallery(request, response, origin) {
   // gallery_models asks itself once supabase/made_with_shown.sql is
   // applied. Before, its rows say nothing shown, and none is listed.
   if (asked.made === "assistant") rows = rows.filter((row) => row.made_with_shown === true);
+  const mades = tabs ? await madesOffered(Boolean(said.tests), asked.made === "assistant" ? rows : null) : null;
   // Signed in: nothing of anybody they blocked (supabase/block.sql). A
   // page may then hold fewer; the next is where it was.
   const models = await withoutTheirBlocked(mine,
@@ -3221,12 +3258,34 @@ async function gallery(request, response, origin) {
     sorts: Object.entries({ ...SORTS, ...(mine?.pool ? MINE_SORTS : {}) }).map(([id, label]) => ({ id, label })),
     ...(tabs ? {
       windows: Object.entries(WINDOWS).map(([id, one]) => ({ id, label: one.label })),
-      mades: Object.entries(MADES).map(([id, label]) => ({ id, label })),
+      mades,
       following: Boolean(mine),
     } : {}),
     score: SCORE,
     ...(mine ? { mine: mine.pool } : {}),
   });
+}
+
+/// The Made filter's ways a visitor may pick: With the assistant only while
+/// at least one public model's owner chose to say so (supabase/
+/// made_with_shown.sql), so it never leads to an empty list; Hand-built
+/// always. Asked of gallery_models as the list is ([listed], the list just
+/// asked with made=assistant, says it at once), and kept a few minutes for
+/// test models and for the rest apart. Never throws: unanswered, it is
+/// offered as before nothing was shown, without With the assistant.
+const MADES_KEPT = new Map();
+const MADES_KEEP_MS = 5 * 60 * 1000;
+async function madesOffered(tests, listed = null) {
+  let any = listed ? listed.length > 0 : null;
+  const kept = MADES_KEPT.get(tests);
+  if (any === null && kept && Date.now() - kept.at < MADES_KEEP_MS) any = kept.any;
+  if (any === null) {
+    const { asked } = listQuery({ made: "assistant", ...(tests ? { tests: "1" } : {}) }, 1, 1);
+    const rows = await db("rpc/gallery_models", { method: "POST", body: { query: asked } }).catch(() => []);
+    any = (rows || []).some((row) => row.made_with_shown === true);
+  }
+  MADES_KEPT.set(tests, { at: Date.now(), any });
+  return Object.entries(MADES).filter(([id]) => id !== "assistant" || any).map(([id, label]) => ({ id, label }));
 }
 
 /// [cards] without the models of anybody [mine] (the person asking, signed
@@ -3991,12 +4050,14 @@ async function pictures(request, response) {
   return response.status(200).json({ id, version: newest.n, pictures: true, already: false, ...links(origin, id) });
 }
 
-/// ?op=card&id=X: {thumb}, the card the gallery and the home feed show
-/// (/m/X.webp) put on its owner's model in place of the one it has, its
-/// newest version's (cardlook, 2026-11-23). The house's models were
-/// published with cut-outs in the window's light, and their cards are
-/// drawn again as photographs (CardPhoto, tools/web/gallery_seed.mjs
-/// --cards) without a version each that changed nothing. Only the owner's
+/// ?op=card&id=X: {thumb, kind?}, the card the gallery and the home feed
+/// show (/m/X.webp) put on its owner's model in place of the one it has,
+/// its newest version's (cardlook, 2026-11-23). A publish sends the
+/// cut-out, and the app then draws the card as a photograph and puts it
+/// here (SharePanel._card_after), kind saying how it was drawn
+/// (card_kind.sql); the house's cards were drawn again so
+/// (tools/web/gallery_seed.mjs --cards), without a version each that
+/// changed nothing. Only the owner's
 /// own link, the picture checked as a publish checks it. Nothing more than
 /// a publish of the same model without listing it could do: a barred model
 /// may be republished at its link, pictures and all.
@@ -4008,11 +4069,28 @@ async function cardPut(request, response) {
   const row = await ownRow(id);
   if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
   if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  const kind = CARD_KINDS.includes(request.body?.kind) ? request.body.kind : null;
   await putFile(`${id}.webp`, thumb, "image/webp");
-  if (!row.has_thumb) {
-    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { has_thumb: true } });
+  await keepCard(`shared_models?id=eq.${id}&owner=eq.${owner}`, kind, row.has_thumb);
+  return response.status(200).json({ id, card: true, kind, ...links(originOf(request), id) });
+}
+
+/// How a card was drawn (supabase/card_kind.sql): what op=card and
+/// tools/web/card_sweep.mjs say of the card they put.
+export const CARD_KINDS = ["traced", "raster"];
+
+/// The row at [where] told its card was put just now, and how it was drawn
+/// ([kind], null for one op=card did not say): card_kind and card_at, which
+/// tools/web/card_sweep.mjs reads. Before supabase/card_kind.sql is applied
+/// the database has neither column and refuses the write: the card is put
+/// all the same, and has_thumb kept as it was before that file.
+export async function keepCard(where, kind, hadThumb) {
+  try {
+    await db(where, { method: "PATCH", body: { has_thumb: true, card_kind: kind, card_at: new Date().toISOString() } });
+  } catch (trouble) {
+    if (!/: 400$/.test(trouble.message)) throw trouble;
+    if (!hadThumb) await db(where, { method: "PATCH", body: { has_thumb: true } });
   }
-  return response.status(200).json({ id, card: true, ...links(originOf(request), id) });
 }
 
 async function unpublish(request, response) {
