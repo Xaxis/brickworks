@@ -2297,6 +2297,69 @@ function commentsSaid(state, setOpen) {
   numbers.textContent = say("How your models are doing");
   menu.prepend(turn, numbers);
   document.documentElement.dataset.modelOwner = "yes";
+  madeChoice(menu);
+}
+
+/// The owner's say in whether this page tells how it was made (api/share.js
+/// ?op=made, supabase/made_with_shown.sql): for a model made with the
+/// assistant or Brickify, one item in More, Say it was made with the
+/// assistant (or Brickify) while nothing says so, and Stop saying it once
+/// something does. Nothing for one built by hand, or before the column is
+/// there to keep it. The fact among the page's own is put in or taken out
+/// at once; everybody else's copy of the page says it within the minute.
+async function madeChoice(menu) {
+  const answer = await call(`/api/share?op=made&id=${id}`);
+  const made = answer.status === 200 ? answer.body : null;
+  if (!made || !made.ready || made.way !== "assistant") return;
+  menu.querySelector("[data-made-choice]")?.remove();
+  const brickify = made.by === "brickify";
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "owner-only";
+  item.dataset.madeChoice = "";
+  let shown = made.made_with_shown === true;
+  const name = () => {
+    item.textContent = shown
+      ? say(brickify ? "Stop saying it was made with Brickify" : "Stop saying it was made with the assistant")
+      : say(brickify ? "Say it was made with Brickify" : "Say it was made with the assistant");
+    item.dataset.madeChoice = shown ? "shown" : "quiet";
+  };
+  name();
+  item.addEventListener("click", async () => {
+    marks.querySelector("#more").open = false;
+    item.disabled = true;
+    const sent = await call(`/api/share?op=made&id=${id}`, { method: "POST", body: { shown: !shown } });
+    item.disabled = false;
+    const said = document.querySelector(".marks-said");
+    if (sent.status !== 200) {
+      if (said) said.textContent = told(sent.body.error, say("That did not work just now."));
+      return;
+    }
+    shown = sent.body.made_with_shown === true;
+    name();
+    madeFact(shown, brickify);
+    if (said) {
+      said.textContent = shown
+        ? say(brickify ? "Its page now says it was made with Brickify." : "Its page now says it was made with the assistant.")
+        : say("Its page no longer says how it was made.");
+    }
+  });
+  menu.prepend(item);
+}
+
+/// The page's fact of how it was made (api/share.js madeFact), put in or
+/// taken out as its owner chooses.
+function madeFact(shown, brickify) {
+  const facts = document.querySelector("ul.facts.pills");
+  if (!facts) return;
+  facts.querySelector("li.pill.made")?.remove();
+  if (!shown) return;
+  const fact = document.createElement("li");
+  fact.className = "pill made";
+  fact.title = say(brickify ? "Made from a 3D model with Brickify, {how}" : "Designed with the assistant, {how}",
+    { how: say("as the app said when it was published") });
+  fact.textContent = brickify ? "Brickify" : say("With the assistant");
+  facts.append(fact);
 }
 
 // ---------------------------------------------------------------------------
