@@ -3508,8 +3508,13 @@ async function mine(request, response, origin) {
   // And whether each is work in progress (supabase/wip.sql): the studio's
   // Share progress then publishes its next version, and Publish finishes it.
   const wipped = await wipReady();
+  // Their own way too, and whether they show it (supabase/made_with_shown.sql),
+  // for Share's Say it was made with the assistant; before that file, the
+  // list as it was.
+  const theirs = (more) => db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred${wipped ? ",wip_at" : ""}${more}`
+    + "&order=updated_at.desc");
   const [rows, profile] = await Promise.all([
-    db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred${wipped ? ",wip_at" : ""}&order=updated_at.desc`),
+    theirs(",made_with,made_with_shown").catch(() => theirs("")),
     db("rpc/feed_who", { method: "POST", body: { account: owner } }).catch(() => null),
   ]);
   const marks = await newestMarks(rows.filter((row) => row.published).map((row) => row.id));
