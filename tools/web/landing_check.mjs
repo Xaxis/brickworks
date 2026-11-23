@@ -19,9 +19,10 @@
 // the beta bar; the pictures drawn; the page moving not at all (CLS 0.01 at
 // most) as the feed's live answers come. And the band's foot in the page's
 // rhythm (homefix, 2026-11-23, the owner on its caption sitting on the line
-// and the heading under it): at least 32 px from the band's last line (the
+// and the heading under it): at least 24 px from the band's last line (the
 // mark's caption, the search's row) down to its edge and from the edge to
-// "What builders are making", the two the same within 8 px.
+// "What builders are making" (48 from 600 px, 24 on a phone), the two the
+// same within 8 px.
 // Signed out there are no tabs, one stream, and Show more puts more posts
 // under it, none twice. The search finding as it is typed (models, builders
 // and sets, then the gallery's and the sets' own search), its arrows and
@@ -214,7 +215,7 @@ async function firstScreen(label, width, height, theme) {
   const moved = seen.shifts.reduce((sum, s) => sum + s.value, 0);
   if (!settled) problems.push(`${where}: the feed never settled (no data-feed-live after 30 s)`);
   if (!seen.search) problems.push(`${where}: the search is not whole in the first screen`);
-  if (!seen.room || seen.room.under < 32 || seen.room.over < 32 || Math.abs(seen.room.under - seen.room.over) > 8) {
+  if (!seen.room || seen.room.under < 24 || seen.room.over < 24 || Math.abs(seen.room.under - seen.room.over) > 8) {
     problems.push(`${where}: the band's foot is out of the page's rhythm: ${seen.room ? `${seen.room.under} px under its last line, ${seen.room.over} px over the feed's heading` : "not measured"}`);
   }
   if (!seen.start) problems.push(`${where}: Start building is not whole in the first screen`);

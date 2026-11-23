@@ -5034,8 +5034,8 @@ plan with Claude as the client.
   Signed in: the band is `.home-acts` alone, the same `#find` with Share
   a build and Share a file from another program (`.mine`) beside it, and
   the tabs. The band's foot: `--s-7` under its last line and over the
-  feed's heading (landing_check's "room", each at least 32 px, the two
-  within 8 px; homefix, 2026-11-23). Then `#beta`, `#why` (the studio, `#sets-models`
+  feed's heading, `--s-5` on a phone (landing_check's "room", each at
+  least 24 px, the two within 8 px; homefix, 2026-11-23). Then `#beta`, `#why` (the studio, `#sets-models`
   four real sets live) and `#start`. `tools/web/landing_check.mjs` checks at
   390 x 844 and 1280 x 800, light and dark: the search and Start building
   whole in the first screen, on a phone the first post's picture begun in it
