@@ -424,6 +424,23 @@ a:focus-visible { border-radius: var(--r-1); }
 .account-part nav a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .account-part nav a[aria-current="page"] { color: var(--ink); background: var(--panel-hi); }
 .menu .account-part { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+/* The newest five notifications (inbox, 2026-11-23), under your places:
+   each its picture (or its icon) on the picture ground, its name, and its
+   newest line a line of small words; not opened yet edged in the accent. */
+.menu-latest { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.menu-latest-h { margin: 0; padding: 4px 12px; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 600; }
+.menu-latest ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.menu-latest a { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; }
+.menu-latest .pic { flex: none; display: grid; place-items: center; width: 48px; aspect-ratio: 4 / 3; overflow: hidden;
+	border-radius: var(--r-1); background: var(--picture-ground); color: var(--ink-soft); }
+.menu-latest .pic img { width: 100%; height: 100%; object-fit: cover; }
+.menu-latest .pic .icon { width: 20px; height: 20px; }
+.menu-latest a.unread .pic { box-shadow: 0 0 0 2px var(--accent-edge); }
+.menu-latest .words { display: grid; min-width: 0; max-width: 220px; }
+.menu-latest .words b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-latest .words small { color: var(--ink-soft); font-size: var(--t-tiny); overflow: hidden; text-overflow: ellipsis;
+	white-space: nowrap; }
+.menu-latest .none { padding: 6px 12px; color: var(--ink-faint); font-size: var(--t-small); }
 /* The console, for the site's owner alone (web/follow.js adminPart): at
    the menu's foot above Sign out, under a line, its gauge before its name. */
 .menu-owner { display: grid; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }

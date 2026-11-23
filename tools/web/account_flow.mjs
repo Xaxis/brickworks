@@ -312,7 +312,27 @@ try {
     return reply.ok ? (await reply.json()).filter((file) => file.id !== null && String(file.name).startsWith(`${id}.`))
       .map((file) => file.name) : [`(storage answered ${reply.status})`];
   };
-  const { access_token: token } = await mintSession(email);
+  const minted = await mintSession(email);
+  const { access_token: token } = minted;
+  // What it hears of (supabase/notification_prefs.sql; inbox, 2026-11-23):
+  // one row an account, which goes with the account. Asked of the database
+  // with the secret key (notification_prefs_of; the table itself is the
+  // server's functions' alone), once the file is applied.
+  const prefsOf = async () => {
+    const reply = await fetch(`${supabase}/rest/v1/rpc/notification_prefs_of`, { method: "POST",
+      headers: { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      body: JSON.stringify({ viewer: minted.kept.user_id }) });
+    return reply.ok ? (await reply.json())?.kept : `(answered ${reply.status})`;
+  };
+  const choosing = await (await asked("/api/people?op=notification_prefs", { token })).json().catch(() => ({}));
+  if (choosing.ready === true) {
+    const chose = await asked("/api/people?op=notification_prefs", { method: "POST", token,
+      body: { kind: "likes", channel: "here", on: false } });
+    const kept = await prefsOf();
+    check(chose.status === 200 && kept === true, `it chooses what it hears of (likes off here): ${chose.status}, its row kept ${kept}`);
+  } else {
+    console.log("  --    supabase/notification_prefs.sql not applied: no row to see go");
+  }
   const model = ["0 FILE main.ldr", "0 Clip test", "0 Name: main.ldr", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
     "1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""].join("\r\n");
   const shared = await asked("/api/share", { method: "POST", token, body: { name: "Clip test", model } });
@@ -351,6 +371,10 @@ try {
   check(listRows === 0 && linkNow === 404, `its link-only list is gone with it: ${listRows} rows left, its link ${linkNow}`);
   const served = await asked(`/m/${id}.webm?fresh=${Date.now()}`);
   check(served.status === 404, `and its address answers 404: ${served.status}`);
+  if (choosing.ready === true) {
+    const left = await prefsOf();
+    check(left === false, `and its notification row with it: kept ${left}`);
+  }
 } catch (trouble) {
   failures += 1;
   console.log(`  FAIL  the clips with the account: ${trouble.message}`);

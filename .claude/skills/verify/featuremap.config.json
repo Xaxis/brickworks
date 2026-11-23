@@ -6877,6 +6877,48 @@
       "entry": "tools/web/bootlook_flow.mjs",
       "reach": "heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>] [--port=11651] [--only=pictures|checks]   (pictures at 1280x800 and 390x844 touch, dark and light, early/mid/late in a 2.5 Mbps load; layout shifts 0; every tip in en/de/fr/es on a computer and a phone on page.clock: fits, new, in the language, heard once; hover waits; the next visit's first; reduced motion; the theme kept; the app up behind it; no new address against --base). A build to flow: python3 tools/web/shell_arm.py BASE OUT, an export's engine and packs behind this checkout's page",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "what you hear of and where",
+      "entry": "supabase/notification_prefs.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/notification_prefs.sql --dry --try=tools/notification_prefs_try.sql --table=notification_prefs   (and --try=tools/notification_prefs_matrix_try.sql: each of the 11 kinds on and off on each channel; tests/test_inbox.py; then the inbox browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what you hear of in settings",
+      "entry": "web/settings.js",
+      "reach": "https://brickworks.diy/settings#kinds-part signed in: a row a kind (11), a box each for Here, Push and Email (44 px), Muted models with Unmute (#muted-part); before supabase/notification_prefs.sql every box but email's not to be ticked, said so",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "mute a model's notifications",
+      "entry": "web/notifications.js",
+      "reach": "https://brickworks.diy/notifications signed in: a model's group, More › Mute this model (Undo in the toast); or the model's page, More › Mute notifications (web/model-page.js muteItem); unmute in Settings › Muted models",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "notifications done",
+      "entry": "web/notifications.html",
+      "reach": "https://brickworks.diy/notifications signed in: each group's Done (check icon) and Mark all done, Undo in the toast; Inbox and Done (?view=done)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the account menu's newest five",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar's menu, as it opens, shows /notifications' first five (op=notifications&most=5, marks nothing seen) with their pictures, each opening its place; at 390 px under Menu",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "inbox browser flow",
+      "entry": "tools/web/inbox_flow.mjs",
+      "reach": "node --env-file=.env tools/web/inbox_flow.mjs --url=<relay or preview> --out=DIR   (BW_BYPASS=$VERCEL_BYPASS for a preview; checks before and after supabase/notification_prefs.sql)",
+      "area": "web"
     }
   ]
 }

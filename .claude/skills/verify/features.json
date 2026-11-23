@@ -1857,6 +1857,14 @@
       "tests": []
     },
     {
+      "id": "cli:inbox browser flow",
+      "kind": "cli",
+      "entry": "tools/web/inbox_flow.mjs",
+      "reach": "node --env-file=.env tools/web/inbox_flow.mjs --url=<relay or preview> --out=DIR   (BW_BYPASS=$VERCEL_BYPASS for a preview; checks before and after supabase/notification_prefs.sql)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:insights browser flow",
       "kind": "cli",
       "entry": "tools/web/insights_flow.mjs",
@@ -4356,7 +4364,8 @@
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --dry --try=tools/achievements_try.sql --table=achievement_marks   (after replies.sql; the promises in tests/test_achievements.py; then the profile and notifications browser flows)",
       "area": "web",
       "tests": [
-        "tests/test_achievements.py"
+        "tests/test_achievements.py",
+        "tests/fixtures/inbox_world.mjs"
       ]
     },
     {
@@ -5166,6 +5175,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/push_world.mjs",
+        "tests/test_inbox.py",
         "tests/test_release.py",
         "tests/test_release_train.py"
       ]
@@ -5418,8 +5428,10 @@
       "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/talk.sql --dry --try=tools/talk_try.sql --table=talk_threads   (not applied yet; api/_talk.js; docs/SOCIAL.md section 10; then tools/web/talk_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_home_shelf.py",
+        "tests/test_inbox.py",
         "tests/test_insights.py"
       ]
     },
@@ -5779,6 +5791,14 @@
       "tests": [
         "tests/test_live_ab.py"
       ]
+    },
+    {
+      "id": "lib:what you hear of and where",
+      "kind": "lib",
+      "entry": "supabase/notification_prefs.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/notification_prefs.sql --dry --try=tools/notification_prefs_try.sql --table=notification_prefs   (and --try=tools/notification_prefs_matrix_try.sql: each of the 11 kinds on and off on each channel; tests/test_inbox.py; then the inbox browser flow)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "lib:where hands leave their marks",
@@ -7164,6 +7184,17 @@
       "tests": []
     },
     {
+      "id": "ui:mute a model's notifications",
+      "kind": "ui",
+      "entry": "web/notifications.js",
+      "reach": "https://brickworks.diy/notifications signed in: a model's group, More \u203a Mute this model (Undo in the toast); or the model's page, More \u203a Mute notifications (web/model-page.js muteItem); unmute in Settings \u203a Muted models",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/inbox_world.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs"
+      ]
+    },
+    {
       "id": "ui:my collection",
       "kind": "ui",
       "entry": "src/ui/collection_dialog.gd",
@@ -7212,12 +7243,24 @@
       "tests": []
     },
     {
+      "id": "ui:notifications done",
+      "kind": "ui",
+      "entry": "web/notifications.html",
+      "reach": "https://brickworks.diy/notifications signed in: each group's Done (check icon) and Mark all done, Undo in the toast; Inbox and Done (?view=done)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/inbox_world.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs"
+      ]
+    },
+    {
       "id": "ui:notifications page",
       "kind": "ui",
       "entry": "web/notifications.html",
       "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
       "area": "web",
       "tests": [
+        "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/owner_notify/api_check.mjs"
       ]
     },
@@ -7972,6 +8015,17 @@
       ]
     },
     {
+      "id": "ui:the account menu's newest five",
+      "kind": "ui",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar's menu, as it opens, shows /notifications' first five (op=notifications&most=5, marks nothing seen) with their pictures, each opening its place; at 390 px under Menu",
+      "area": "web",
+      "tests": [
+        "tests/test_blocks.py",
+        "tests/test_loop.py"
+      ]
+    },
+    {
       "id": "ui:the app menu",
       "kind": "ui",
       "entry": "src/ui/model_bar.gd",
@@ -8208,8 +8262,10 @@
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
         "tests/fixtures/announce/api_check.mjs",
+        "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_home_shelf.py",
+        "tests/test_inbox.py",
         "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -8454,8 +8510,10 @@
       "reach": "https://brickworks.diy/talk (/talk/b/<board>, ?q= search, /talk/new, /de|fr|es/talk; ?tests=1 the checks' pool)   (api/_talk.js talkPage; GET /api/people?op=talk, ?op=talk_latest; RSS /talk.rss, /talk/b/<board>.rss)",
       "area": "web",
       "tests": [
+        "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_home_shelf.py",
+        "tests/test_inbox.py",
         "tests/test_insights.py"
       ]
     },
@@ -8488,8 +8546,10 @@
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
         "tests/fixtures/announce/api_check.mjs",
+        "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_home_shelf.py",
+        "tests/test_inbox.py",
         "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -8519,6 +8579,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/push_world.mjs",
+        "tests/test_inbox.py",
         "tests/test_release.py",
         "tests/test_release_train.py"
       ]
@@ -8544,8 +8605,10 @@
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
         "tests/fixtures/announce/api_check.mjs",
+        "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/test_home_shelf.py",
+        "tests/test_inbox.py",
         "tests/test_insights.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -8690,6 +8753,20 @@
       "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
       "area": "building",
       "tests": []
+    },
+    {
+      "id": "ui:what you hear of in settings",
+      "kind": "ui",
+      "entry": "web/settings.js",
+      "reach": "https://brickworks.diy/settings#kinds-part signed in: a row a kind (11), a box each for Here, Push and Email (44 px), Muted models with Unmute (#muted-part); before supabase/notification_prefs.sql every box but email's not to be ticked, said so",
+      "area": "web",
+      "tests": [
+        "tests/test_adminclaude.py",
+        "tests/test_announce.py",
+        "tests/test_billing_pay.py",
+        "tests/test_console.py",
+        "tests/test_owner_notify.py"
+      ]
     },
     {
       "id": "ui:what's this",

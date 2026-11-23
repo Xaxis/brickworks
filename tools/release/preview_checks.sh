@@ -198,6 +198,16 @@ declare -A CMD=(
   # Achievements tab, read once opened. Throwaway accounts, deleted after;
   # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
+  # What you hear of, and where (inbox): Settings' grid at 390 and 1280 in
+  # both themes (33 boxes, each named and 44 px); the account menu's
+  # newest five against the list's first five, opening the menu marking
+  # nothing seen; once supabase/notification_prefs.sql is applied, a kind off
+  # here, two by email kept across a reload, a model muted from its
+  # notification and its page and unmuted from Settings, the day's email
+  # (dry) saying only what was chosen and nothing of the muted model, Done
+  # in one request with a second tab, a reload, Undo and Mark all done.
+  # Throwaway accounts, deleted after; before the file, the controls absent.
+  [inbox]="tools/web/inbox_flow.mjs --url=$P --out=$S/${TAG}_inbox"
   # The site on a home screen, offline, and this device's notifications
   # (homescreen): two deploys on one address served here, the next load the
   # new one's; installable at 390 and 1280; the offline page with the

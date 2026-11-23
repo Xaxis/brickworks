@@ -1517,6 +1517,245 @@
   "/api/plans?op=feedback": {
    "beta": false,
    "reports": []
+  },
+  "/api/people?op=notifications": {
+   "ready": true,
+   "kept": true,
+   "chosen": true,
+   "view": "inbox",
+   "groups": [
+    {
+     "model": "DocsSprt01",
+     "name": "Sports car and its driver",
+     "picture": "/m/DocsSprt01.webp?v=mvuswn40",
+     "link": "/m/DocsSprt01",
+     "at": "2026-11-20T11:48:00.000Z",
+     "new": true,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "comment",
+       "at": "2026-11-20T11:48:00.000Z",
+       "who": "Mia",
+       "by": {
+        "handle": "mia-builds",
+        "name": "Mia"
+       },
+       "said": "The steering really works. My son built it twice.",
+       "link": "/m/DocsSprt01#comment-41",
+       "line": "{who} commented",
+       "new": true,
+       "unread": true
+      },
+      {
+       "kind": "likes",
+       "at": "2026-11-20T11:20:00.000Z",
+       "who": null,
+       "by": null,
+       "said": "",
+       "link": "/m/DocsSprt01",
+       "line": "4 new likes today",
+       "new": true,
+       "unread": true
+      },
+      {
+       "kind": "photo",
+       "at": "2026-11-20T10:25:00.000Z",
+       "who": "Leo",
+       "by": {
+        "handle": "leo-bricks",
+        "name": "Leo"
+       },
+       "said": "Ours, in blue",
+       "link": "/m/DocsSprt01#photo-DocsPhoto1",
+       "line": "{who} posted a photo of their build",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsSprt01"
+    },
+    {
+     "model": "DocsShop01",
+     "name": "Corner shop",
+     "picture": "/m/DocsShop01.webp?v=mvtdgsg0",
+     "link": "/m/DocsShop01",
+     "at": "2026-11-20T09:30:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "reply",
+       "at": "2026-11-20T09:30:00.000Z",
+       "who": "Sam",
+       "by": {
+        "handle": "sam-makes",
+        "name": "Sam"
+       },
+       "said": "The awning is two slopes, yes.",
+       "link": "/m/DocsShop01#comment-52",
+       "line": "{who} replied to your comment",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsShop01"
+    },
+    {
+     "model": "",
+     "achievements": true,
+     "name": "Your achievements",
+     "picture": null,
+     "link": "/profile?tab=achievements",
+     "at": "2026-11-20T07:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "achievement",
+       "at": "2026-11-20T07:00:00.000Z",
+       "who": "You",
+       "by": null,
+       "said": "",
+       "link": "/profile?tab=achievements",
+       "line": "{who} reached Designer · 10 models, level 3 of 6",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "achievements"
+    },
+    {
+     "model": "DocsOwl001",
+     "name": "Barn owl",
+     "picture": "/m/DocsOwl001.webp?v=mvqil340",
+     "link": "/m/DocsOwl001",
+     "at": "2026-11-20T05:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "remix",
+       "at": "2026-11-20T05:00:00.000Z",
+       "who": "Leo",
+       "by": {
+        "handle": "leo-bricks",
+        "name": "Leo"
+       },
+       "said": "",
+       "link": "/m/DocsOwlRmx",
+       "line": "{who} remixed it as “Owl on a branch”",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsOwl001"
+    },
+    {
+     "model": "",
+     "challenge": 7,
+     "name": "Challenge: Wheels and tracks",
+     "picture": null,
+     "link": "/challenge?id=7",
+     "at": "2026-11-20T02:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "challenge_closing",
+       "at": "2026-11-20T02:00:00.000Z",
+       "who": null,
+       "by": null,
+       "said": "",
+       "link": "/challenge?id=7",
+       "line": "The last two days to enter “Wheels and tracks”: it closes at the end of 30 November",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "challenge-7"
+    },
+    {
+     "model": "DocsFire01",
+     "name": "Fire station",
+     "picture": "/m/DocsFire01.webp?v=mvry0xs0",
+     "link": "/m/DocsFire01",
+     "at": "2026-11-19T21:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "mention",
+       "at": "2026-11-19T21:00:00.000Z",
+       "who": "Mia",
+       "by": {
+        "handle": "mia-builds",
+        "name": "Mia"
+       },
+       "said": "@test-builder how did you hang the ladder?",
+       "link": "/m/DocsFire01#comment-63",
+       "line": "{who} mentioned you in a comment",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsFire01"
+    }
+   ],
+   "unread": 8,
+   "fresh": 2
+  },
+  "/api/people?op=notification_prefs": {
+   "ready": true,
+   "kinds": [
+    "comment",
+    "reply",
+    "mention",
+    "photo",
+    "remix",
+    "likes",
+    "talk",
+    "challenge",
+    "result",
+    "achievement",
+    "news"
+   ],
+   "mailed_as": {
+    "comment": "comments",
+    "photo": "photos",
+    "remix": "remixes",
+    "news": "news"
+   },
+   "here": [
+    "comment",
+    "reply",
+    "mention",
+    "photo",
+    "remix",
+    "likes",
+    "talk",
+    "challenge",
+    "result",
+    "achievement",
+    "news"
+   ],
+   "push": [
+    "reply",
+    "mention",
+    "comment"
+   ],
+   "email": [
+    "reply",
+    "mention"
+   ],
+   "muted": [
+    {
+     "model": "DocsBoat01",
+     "name": "Boat",
+     "link": "/m/DocsBoat01",
+     "picture": "/m/DocsBoat01.webp"
+    }
+   ]
   }
  },
  "storage": {
