@@ -16415,3 +16415,109 @@ msgstr "Auf einer Schreibunterlage aus Leder"
 
 msgid "On terrazzo"
 msgstr "Auf Terrazzo"
+
+# Comments on a part of a shared model (partpins): the viewer's menu on a part and the box's line, a pin's line where it is, and the studio's notice and list (PartPins, PartPinsPanel).
+msgid "Comment on this part"
+msgstr "Dieses Teil kommentieren"
+
+msgid "Say something about this part, for its builder and everyone who looks at it"
+msgstr "Sag etwas zu diesem Teil, für seinen Erbauer und alle, die es sich ansehen"
+
+msgid "Write a comment on the step instead of on this part"
+msgstr "Einen Kommentar zum Bauschritt schreiben statt zu diesem Teil"
+
+msgid "Add your comment on this part"
+msgstr "Deinen Kommentar zu diesem Teil hinzufügen"
+
+msgid "Resolved (%d)"
+msgstr "Erledigt (%d)"
+
+msgid "Hide resolved"
+msgstr "Erledigte ausblenden"
+
+msgid "The comments on parts its builder has dealt with"
+msgstr "Die Kommentare zu Teilen, um die sich sein Erbauer gekümmert hat"
+
+msgid "Turn the view to its part, lit"
+msgstr "Die Ansicht zu seinem Teil drehen, hervorgehoben"
+
+msgid "On the %s, step %d"
+msgstr "Am Teil %s, Schritt %d"
+
+msgid "On the %s"
+msgstr "Am Teil %s"
+
+msgid "On a part, step %d"
+msgstr "An einem Teil, Schritt %d"
+
+msgid "On a part"
+msgstr "An einem Teil"
+
+msgid "On the %s, step %d, moved since"
+msgstr "Am Teil %s, Schritt %d, seitdem verschoben"
+
+msgid "On the %s, moved since"
+msgstr "Am Teil %s, seitdem verschoben"
+
+msgid "On a part, step %d, moved since"
+msgstr "An einem Teil, Schritt %d, seitdem verschoben"
+
+msgid "On a part, moved since"
+msgstr "An einem Teil, seitdem verschoben"
+
+msgid "On version %d"
+msgstr "Auf Version %d"
+
+msgid "1 comment on a part of this model"
+msgstr "1 Kommentar zu einem Teil dieses Modells"
+
+msgid "%d comments on parts of this model"
+msgstr "%d Kommentare zu Teilen dieses Modells"
+
+msgid "List them, and see each one's part"
+msgstr "Sie auflisten und das Teil von jedem sehen"
+
+msgid "Comments on parts"
+msgstr "Kommentare zu Teilen"
+
+msgid "Put the list away: the comments stay on their parts"
+msgstr "Die Liste weglegen: Die Kommentare bleiben an ihren Teilen"
+
+msgid "What people said about parts of this model on brickworks.diy, each numbered as its dot on the model. Press where one is to select its part."
+msgstr "Was andere auf brickworks.diy zu Teilen dieses Modells gesagt haben, jeweils nummeriert wie sein Punkt am Modell. Drück auf die Stelle eines Kommentars, um sein Teil auszuwählen."
+
+msgid "No open comments on parts."
+msgstr "Keine offenen Kommentare zu Teilen."
+
+msgid "No comments on parts of this model yet."
+msgstr "Noch keine Kommentare zu Teilen dieses Modells."
+
+msgid "The comments you have dealt with: still on the site, folded away"
+msgstr "Die Kommentare, um die du dich gekümmert hast: noch auf der Website, eingeklappt"
+
+msgid "Select its part, and turn the view to it"
+msgstr "Sein Teil auswählen und die Ansicht dorthin drehen"
+
+msgid "Not on a part of the model as it is now: its part was changed or taken off since"
+msgstr "An keinem Teil des Modells, wie es jetzt ist: Sein Teil wurde seitdem geändert oder entfernt"
+
+msgid "Reopen"
+msgstr "Wieder öffnen"
+
+msgid "Back on its part, open, on the site too"
+msgstr "Wieder an seinem Teil, offen, auch auf der Website"
+
+msgid "Done with it: folded away as resolved, here and on the site"
+msgstr "Erledigt: als erledigt eingeklappt, hier und auf der Website"
+
+msgid "Sign in again to resolve comments."
+msgstr "Melde dich erneut an, um Kommentare zu erledigen."
+
+msgid "A builder"
+msgstr "Ein Erbauer"
+
+msgid "hidden from others"
+msgstr "für andere ausgeblendet"
+
+msgid "Brickworks could not take that just now. Try again in a minute."
+msgstr "Brickworks konnte das gerade nicht annehmen. Versuch es in einer Minute noch einmal."

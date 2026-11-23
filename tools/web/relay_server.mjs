@@ -85,6 +85,11 @@
 // they are, and the functions the API asks answered over the live ones
 // (tools/web/replies_stand_in.mjs), for tools/web/comments_flow.mjs.
 //
+// --hold=pins holds supabase/comment_pins.sql: each pin's part and when it
+// was resolved kept here, the pins written to the project as the comments
+// they are, and the functions the API asks answered over the live ones
+// (tools/web/pins_stand_in.mjs), for tools/web/partpins_flow.mjs.
+//
 // --hold=feedback holds supabase/feedback.sql and beta.sql in a Postgres of
 // this machine's own, the files themselves answering every beta_* and
 // feedback_* function, and the 'feedback' bucket in memory
@@ -142,6 +147,9 @@ if (heldNotifications) heldNotifications.hold();
 // Outermost of all: it reads the project's comments and notifications.
 const heldReplies = holding.includes("replies") ? await import("./replies_stand_in.mjs") : null;
 if (heldReplies) heldReplies.hold();
+// Over that: it reads the project's comments (and the replies' held list).
+const heldPins = holding.includes("pins") ? await import("./pins_stand_in.mjs") : null;
+if (heldPins) heldPins.hold();
 // Apart from the rest: its functions and bucket are no other stand-in's.
 const heldFeedback = holding.includes("feedback") ? await import("./feedback_stand_in.mjs") : null;
 if (heldFeedback) await heldFeedback.hold();
@@ -318,7 +326,8 @@ http.createServer(async (incoming, outgoing) => {
     if (arrivals.length > 5000) arrivals.splice(0, 1000);
   }
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
-    || heldNotifications || heldReplies || heldFeedback || heldAnnounce || heldTalk) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+    || heldNotifications || heldReplies || heldPins || heldFeedback || heldAnnounce || heldTalk)
+    && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   // A row a check puts in a held table (tools/web/adminclaude_flow.mjs's
   // hostile reply), as the server would write it: through the table's own
   // checks, never the project.
@@ -334,7 +343,7 @@ http.createServer(async (incoming, outgoing) => {
   if (asked) {
     const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? heldFollows?.rowsOf(asked[1])
       ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1])
-      ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1])
+      ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1]) ?? heldPins?.rowsOf(asked[1])
       ?? (heldFeedback ? await heldFeedback.rowsOf(asked[1]) : null)
       ?? (heldAnnounce ? await heldAnnounce.rowsOf(asked[1]) : null)
       ?? (heldTalk ? await heldTalk.rowsOf(asked[1]) : null) ?? null;

@@ -119,3 +119,41 @@ html.view3d-full { overflow: hidden; }
 .model-page .room-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* On a phone the picture is square (directory.css), and so is all of it. */
 @media (width < 600px) { .model-page .room-over { aspect-ratio: 1 / 1; } }
+
+/* Comments on a part (partpins; tools/viewer/inline.js). A part is
+   pressed and held by touch, or right-clicked, for its menu: so the
+   browser's own callout and selection stay off the model. Each open pin is
+   its number on its part, a dot in the accent 22 px across in a 44 px
+   target, under the tools; its menu, Comment on this part, is the site's
+   menu panel (site.css .menu-list), at the pointer. */
+:is(.model-page, .embed, .showcase) .view3d .stage { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+:is(.model-page, .embed, .showcase) .view3d-pins { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+:is(.model-page, .embed, .showcase) .view3d-pins[hidden] { display: none; }
+:is(.model-page, .embed, .showcase) .view3d-pin {
+	position: absolute; left: 0; top: 0; width: 44px; height: 44px; margin: 0; padding: 0; border: 0; background: none;
+	display: grid; place-items: center; isolation: isolate; pointer-events: auto; cursor: pointer;
+	font: inherit; font-size: 12px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--on-accent);
+}
+:is(.model-page, .embed, .showcase) .view3d-pin[hidden] { display: none; }
+:is(.model-page, .embed, .showcase) .view3d-pin::before {
+	content: ""; position: absolute; inset: 11px; z-index: -1; border-radius: 50%;
+	background: var(--accent); box-shadow: 0 0 0 2px var(--panel), 0 2px 6px var(--shade);
+}
+:is(.model-page, .embed, .showcase) .view3d-pin:hover::before { filter: brightness(1.08); }
+:is(.model-page, .embed, .showcase) .view3d-pin:focus { outline: none; }
+:is(.model-page, .embed, .showcase) .view3d-pin:focus-visible::before { outline: 2px solid var(--focus); outline-offset: 2px; }
+:is(.model-page, .embed, .showcase) .view3d-menu {
+	position: absolute; z-index: 6; min-width: 200px; max-width: calc(100% - 16px); margin: 0;
+	display: grid; padding: 6px; border-radius: var(--r-3); pointer-events: auto;
+	background: var(--panel); border: 1px solid var(--line-strong); box-shadow: var(--highlight), var(--shadow);
+}
+:is(.model-page, .embed, .showcase) .view3d-menu[hidden] { display: none; }
+:is(.model-page, .embed, .showcase) .view3d-menu-part {
+	margin: 0; padding: 6px 12px 4px; font-size: var(--t-tiny); color: var(--ink-soft); overflow-wrap: anywhere;
+}
+:is(.model-page, .embed, .showcase) .view3d-menu [role="menuitem"] {
+	min-height: 44px; padding: 10px 12px; border: 0; border-radius: var(--r-1); background: none; text-align: left;
+	font: inherit; font-size: var(--t-small); color: var(--ink); cursor: pointer;
+}
+:is(.model-page, .embed, .showcase) .view3d-menu [role="menuitem"]:hover { background: var(--panel-hi); }
+:is(.model-page, .embed, .showcase) .view3d-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }

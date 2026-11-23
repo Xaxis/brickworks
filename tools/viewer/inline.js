@@ -31,7 +31,19 @@
 // as it was. Its counts in a line over the view while it is on.
 // Its words in the page's language (web/card.js say: a copy of the page
 // in German, French or Spanish carries them, tools/site_lang.py).
-import { counted, iconButtonHtml, number, say } from "../../web/card.js";
+//
+// A comment on a part (partpins, 2026-11-23): where the page allows it
+// (given.mayPin), a right click on a part (a press of the right button that
+// is no drag), a long press on one by touch, or Shift+F10 or the menu key
+// (the lit part, else the one in the middle) offers Comment on this part,
+// which hands the page the part as the version's file has it
+// (given.pinWanted). The page's pins (given.pins, numbered as the comments
+// number them) are each placed on this version by the one rule
+// (web/card.js pinPlace) once the first frame is drawn, the page told
+// where (given.placed); each open one placed is a numbered dot on its
+// part, which lights the part and says its comment (given.pinPressed).
+// Nothing of this runs before the first frame.
+import { counted, iconButtonHtml, number, pinPlace, pinTurnOfQuaternion, say } from "../../web/card.js";
 import { Color, SRGBColorSpace } from "three";
 import { sceneShape, unpack } from "./scene.js";
 import { LOOKS, View, shapes, webglWorks } from "./view.js";
@@ -45,6 +57,12 @@ export const BUDGET = { coarse: 3e6, fine: 9e6 };
 const SHOWN_AT = 0.25;
 const TURN = Math.PI / 12;
 const ZOOM = 0.85;
+// How long a finger is held on a part for its menu, and how far it may
+// wander meanwhile (a drag turns the model instead).
+const HOLD = 500;
+const HOLD_SLACK = 8;
+// The colour a part is lit in: the card's picked part's (card.js PICKED).
+const LIT = 0xffd84d;
 
 const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const coarse = () => matchMedia("(pointer: coarse)").matches;
@@ -54,11 +72,15 @@ const now = () => Math.round(performance.now());
 const state = window.brickworks3d = window.brickworks3d || { state: "closed", timings: {}, errors: [] };
 
 /// The 3D view in [shell] (web/model-page.js's .view3d, over the picture):
-/// {close, open} for the page. [given]: scene (its address), name, app (the
-/// app's address for it, Open in the app), look (where its picture was
-/// taken from: "app" or "corner", LOOKS), timings (what model-page.js
-/// has marked already), how it was asked for (the pointer's type, or
-/// "key"), and closed, called when the person goes back to the picture.
+/// {close, open, pinsChanged, showPin, light} for the page. [given]: scene
+/// (its address), name, app (the app's address for it, Open in the app),
+/// look (where its picture was taken from: "app" or "corner", LOOKS),
+/// timings (what model-page.js has marked already), how it was asked for
+/// (the pointer's type, or "key"), and closed, called when the person goes
+/// back to the picture. And for comments on a part, each optional: pins()
+/// ([{id, n, pin, resolved, version}]), mayPin(), pinWanted(part),
+/// placed([{id, n, index, moved}], index -1 for on no part here),
+/// pinPressed(id) (words to show) and partName(part, colour).
 export function open3d(shell, given) {
   const timings = Object.assign(state.timings, given.timings || {});
   const mark = (what) => { if (!timings[what]) timings[what] = now(); };
@@ -126,6 +148,19 @@ export function open3d(shell, given) {
     clearTimeout(hintTimer);
     hintTimer = setTimeout(() => { hint.hidden = true; }, ms);
   };
+
+  // Comments on a part: what a check reads (tools/web/partpins_flow.mjs),
+  // the dots' layer under the tools, and the menu over everything.
+  const pins = state.pins = { dots: [], menu: "closed", lastPicked: null, placed: [], lit: -1, turnedTo: -1 };
+  const layer = document.createElement("div");
+  layer.className = "view3d-pins";
+  layer.hidden = true;
+  tools.before(layer);
+  const menu = document.createElement("div");
+  menu.className = "view3d-menu";
+  menu.setAttribute("role", "menu");
+  menu.hidden = true;
+  shell.append(menu);
 
   // Where it cannot be drawn, or something on the way fails: why, in the
   // status line over the picture, with Try again.
@@ -228,7 +263,10 @@ export function open3d(shell, given) {
         const gl = view && view.renderer && view.renderer.getContext();
         if (gl) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
         mark(what);
+        // The pins placed once the first frame is drawn, never before it.
+        if (what === "first3d") setTimeout(place, 0);
       },
+      drawn: () => placeDots(),
       lost: () => { shell.classList.remove("shown"); failed(say("the browser took its graphics back")); },
     });
     state.view = view;
@@ -263,7 +301,273 @@ export function open3d(shell, given) {
     shell.classList.add("shown");
     tools.hidden = false;
     inApp.hidden = false;
+    layer.hidden = false;
     view.size();
+  }
+
+  // ---------------------------------------------------------------------
+  // Comments on a part.
+
+  // This version's parts as a pin knows a part (web/card.js pinPlace):
+  // {part, colour, at, turn}, [at] in LDraw's coordinates (the scene's are
+  // its x, -y, -z: api/_parts.js placeOf), [turn] as pinTurn keeps one.
+  // Made once, when first asked.
+  let bricks = null;
+  const bricksOf = () => {
+    if (bricks || !data) return bricks;
+    bricks = new Array(data.n);
+    for (let i = 0; i < data.n; i++) bricks[i] = partOf(i);
+    return bricks;
+  };
+  function partOf(i) {
+    const mesh = data.meshes[data.mesh[i]] || { part: "", name: "" };
+    const colour = data.colours[data.colour[i]] || { code: -1, name: "" };
+    return { part: mesh.part, colour: colour.code,
+      at: [data.position[i * 3] + 0, -data.position[i * 3 + 1] + 0, -data.position[i * 3 + 2] + 0],
+      turn: pinTurnOfQuaternion(Array.from(data.turn.subarray(i * 4, i * 4 + 4))), name: mesh.name, colourName: colour.name };
+  }
+
+  // Where each of the page's pins is here: id -> {index, moved}, or null
+  // for on no part of this version. Until placed, a pin pressed on the page
+  // waits (waiting).
+  let placedAt = new Map();
+  let placedYet = false;
+  let waiting = null;
+  let lit = -1;
+  const pinList = () => (typeof given.pins === "function" ? given.pins() || [] : []);
+  function place() {
+    if (!data || !view) return;
+    const all = bricksOf();
+    const list = pinList();
+    placedAt = new Map(list.map((one) => [one.id, pinPlace(one.pin, all)]));
+    placedYet = true;
+    pins.placed = list.map((one) => {
+      const where = placedAt.get(one.id);
+      return { id: one.id, n: one.n, index: where ? where.index : -1, moved: Boolean(where && where.moved) };
+    });
+    given.placed?.(pins.placed);
+    drawDots();
+    if (waiting !== null) {
+      const id = waiting;
+      waiting = null;
+      showPin(id);
+    }
+  }
+
+  // A numbered dot on each open pin's part.
+  const centres = new Map();
+  function drawDots() {
+    const open = pinList().filter((one) => !one.resolved && placedAt.get(one.id));
+    layer.replaceChildren(...open.map((one) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "view3d-pin";
+      dot.dataset.pin = String(one.id);
+      dot.dataset.n = String(one.n);
+      dot.dataset.index = String(placedAt.get(one.id).index);
+      dot.textContent = number(one.n);
+      dot.setAttribute("aria-label", say("Pin {n}", { n: number(one.n) }));
+      return dot;
+    }));
+    placeDots();
+  }
+  // Each dot where its part's middle is on the stage, after each frame.
+  function placeDots() {
+    if (!view || !layer.childElementCount) {
+      if (pins.dots.length) pins.dots = [];
+      return;
+    }
+    const box = shell.getBoundingClientRect();
+    const rect = view.renderer?.domElement.getBoundingClientRect();
+    const out = [];
+    for (const dot of layer.children) {
+      const i = Number(dot.dataset.index);
+      if (!centres.has(i)) centres.set(i, view.centreOf(i));
+      const at = rect ? view.onPage(centres.get(i), rect) : null;
+      dot.hidden = !at;
+      if (!at) continue;
+      dot.style.transform = `translate(${(at.x - box.left).toFixed(1)}px, ${(at.y - box.top).toFixed(1)}px) translate(-50%, -50%)`;
+      out.push({ n: Number(dot.dataset.n), id: Number(dot.dataset.pin), index: i, x: Math.round(at.x), y: Math.round(at.y) });
+    }
+    pins.dots = out;
+  }
+  layer.addEventListener("click", (event) => {
+    const dot = event.target.closest(".view3d-pin");
+    if (!dot || !view) return;
+    engage(true);
+    light(Number(dot.dataset.index));
+    const words = given.pinPressed?.(Number(dot.dataset.pin));
+    if (words) hintFor(words, 6000);
+  });
+
+  // [i] lit (a pin's part, or the part being commented on), or none (-1).
+  function light(i, keep = true) {
+    if (keep) {
+      lit = i;
+      pins.lit = i;
+    }
+    if (view) view.outline(i >= 0 ? [i] : [], LIT);
+  }
+
+  // The camera turned to pin [id]'s part, once its place here is known.
+  function showPin(id) {
+    if (!placedYet || !view) {
+      waiting = id;
+      return;
+    }
+    const where = placedAt.get(id);
+    const one = pinList().find((pin) => pin.id === id);
+    if (!where) {
+      light(-1);
+      hintFor(say("That part is not in this version: the comment was made on version {version}.",
+        { version: one ? number(one.version) : "?" }), 6000);
+      return;
+    }
+    engage(true);
+    light(where.index);
+    view.frameOn(where.index);
+    pins.turnedTo = where.index;
+    if (where.moved) hintFor(say("The part has moved since the comment was made."), 4000);
+  }
+
+  // The menu for part [index], at [x], [y] on the page, asked for by [how]
+  // (mouse, touch or key).
+  let menuAt = 0;
+  let menuHow = "";
+  function openMenu(index, x, y, how) {
+    if (!view || typeof given.pinWanted !== "function" || !given.mayPin?.()) return;
+    if (index < 0) {
+      if (how === "key") hintFor(say("Turn the model so a part is in the middle, then press again."));
+      return;
+    }
+    const one = partOf(index);
+    pins.lastPicked = { index, part: one.part, colour: one.colour, at: one.at, turn: one.turn };
+    pins.menu = "open";
+    menuAt = performance.now();
+    menuHow = how;
+    light(index, false);
+    const name = given.partName?.(one.part, one.colour) || one.name;
+    const title = document.createElement("p");
+    title.className = "view3d-menu-part";
+    title.setAttribute("aria-hidden", "true");
+    title.textContent = [name, one.colourName].filter(Boolean).join(" · ");
+    const go = document.createElement("button");
+    go.type = "button";
+    go.setAttribute("role", "menuitem");
+    go.textContent = say("Comment on this part");
+    go.addEventListener("click", () => {
+      // The finger that opened it, lifted on it, is not a choice.
+      if (menuHow === "touch" && performance.now() - menuAt < 400) return;
+      const part = { ...pins.lastPicked, name };
+      closeMenu(false);
+      light(index);
+      if (full) toggleFull();
+      given.pinWanted(part);
+    });
+    menu.setAttribute("aria-label", title.textContent || say("This part"));
+    menu.replaceChildren(title, go);
+    menu.hidden = false;
+    // At the pointer, inside the frame; by touch, up and to the left of
+    // the finger, so it is not under it.
+    const box = shell.getBoundingClientRect();
+    const w = menu.offsetWidth;
+    const h = menu.offsetHeight;
+    const left = how === "touch" ? x - box.left - w / 2 : x - box.left;
+    const top = how === "touch" ? y - box.top - h - 28 : y - box.top;
+    menu.style.left = `${Math.max(8, Math.min(box.width - w - 8, left))}px`;
+    menu.style.top = `${Math.max(8, Math.min(box.height - h - 8, top < 8 && how === "touch" ? y - box.top + 28 : top))}px`;
+    go.focus({ preventScroll: true });
+  }
+  function closeMenu(back = true) {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    pins.menu = "closed";
+    if (back) {
+      light(lit, false);
+      stage.focus({ preventScroll: true });
+    }
+  }
+  // The browser's own menu is never over this one (the menu key, let go
+  // on Windows, opens it on what has the focus); a right click on a dot is
+  // one on its part.
+  menu.addEventListener("contextmenu", (event) => event.preventDefault());
+  layer.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    if (event.target.closest(".view3d-pin") && event.button === 2) {
+      openMenu(pickAt(event.clientX, event.clientY), event.clientX, event.clientY, "mouse");
+    }
+  });
+  menu.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" || event.key === "Tab") {
+      event.preventDefault();
+      closeMenu();
+    }
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!menu.hidden && !menu.contains(event.target)) closeMenu(false);
+  }, true);
+  const pickAt = (x, y) => (view ? view.pick(x, y) : -1);
+
+  // A right click: the right button pressed and let go where it was (a
+  // drag with it pans).
+  let right = null;
+  stage.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "touch" && event.button === 2) right = { x: event.clientX, y: event.clientY };
+  }, true);
+  stage.addEventListener("pointerup", (event) => {
+    if (event.pointerType === "touch" || event.button !== 2 || !right) return;
+    const moved = Math.hypot(event.clientX - right.x, event.clientY - right.y);
+    right = null;
+    if (moved <= 4) openMenu(pickAt(event.clientX, event.clientY), event.clientX, event.clientY, "mouse");
+  }, true);
+  // The browser's own menu never: the canvas's is kept from it by
+  // OrbitControls; the stage's, which the menu key opens, is here.
+  stage.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    if (event.target !== stage || !menu.hidden || performance.now() - menuAt < 1000) return;
+    keyMenu();
+  });
+  // A long press by touch: held still, the finger then turns nothing.
+  let press = null;
+  let held = null;
+  const unpress = () => {
+    if (press) clearTimeout(press.timer);
+    press = null;
+  };
+  stage.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "touch") return;
+    unpress();
+    // Another finger down already (this one is counted after): a pinch.
+    if (touches.size > 0) return;
+    const at = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    press = { ...at, timer: setTimeout(() => {
+      press = null;
+      if (!given.mayPin?.()) return;
+      held = at.id;
+      engage(true);
+      openMenu(pickAt(at.x, at.y), at.x, at.y, "touch");
+    }, HOLD) };
+  }, true);
+  stage.addEventListener("pointermove", (event) => {
+    if (held === event.pointerId) {
+      event.stopPropagation();
+      return;
+    }
+    if (press && press.id === event.pointerId && Math.hypot(event.clientX - press.x, event.clientY - press.y) > HOLD_SLACK) unpress();
+  }, true);
+  for (const kind of ["pointerup", "pointercancel"]) {
+    stage.addEventListener(kind, (event) => {
+      if (press && press.id === event.pointerId) unpress();
+      if (held === event.pointerId) held = null;
+    }, true);
+  }
+  // From the keys: the part lit, else the one in the middle.
+  function keyMenu() {
+    if (!view) return;
+    const i = lit >= 0 ? lit : view.pickNearMiddle();
+    const rect = stage.getBoundingClientRect();
+    const at = i >= 0 ? view.onPage(view.centreOf(i)) : null;
+    openMenu(i, at ? at.x : rect.left + rect.width / 2, at ? at.y : rect.top + rect.height / 2, "key");
   }
 
   // Full screen: the browser's own where it has it, else the window's
@@ -386,6 +690,12 @@ export function open3d(shell, given) {
 
   stage.addEventListener("keydown", (event) => {
     if (!view || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+      event.preventDefault();
+      engage(true);
+      keyMenu();
+      return;
+    }
     const keys = { ArrowLeft: () => view.orbitBy(-TURN, 0), ArrowRight: () => view.orbitBy(TURN, 0),
       ArrowUp: () => view.orbitBy(0, -TURN / 1.5), ArrowDown: () => view.orbitBy(0, TURN / 1.5),
       "+": act.in, "=": act.in, "-": act.out, _: act.out, 0: act.reset, Home: act.reset,
@@ -448,6 +758,7 @@ export function open3d(shell, given) {
 
   function close() {
     if (full) toggleFull();
+    closeMenu(false);
     engage(false);
     shell.classList.remove("shown");
     shell.hidden = true;
@@ -478,8 +789,20 @@ export function open3d(shell, given) {
   // What changed as drawn: the lit parts' indexes, how many are faded, the
   // ghosts drawn (View.drawnChanges), and what the site said.
   state.changes = () => (view ? { on: changesOn, ...view.drawnChanges(), said: changes ? changes.said : null } : null);
+  // The brick the viewer's own pick finds at [x], [y] on the page (a
+  // pointer's clientX and clientY), or -1: what a check holds a pin to.
+  state.pickAt = pickAt;
   start();
-  return { open, close, changes: (on) => (state.state === "ready" ? showChanges(on) : (given.changesOn = on)) };
+  return {
+    open,
+    close,
+    changes: (on) => (state.state === "ready" ? showChanges(on) : (given.changesOn = on)),
+    // The page's pins changed (a comment added, resolved or removed):
+    // placed again where this version's parts are in.
+    pinsChanged: () => { if (placedYet) place(); },
+    showPin,
+    light: (i) => light(Number.isInteger(i) ? i : -1),
+  };
 }
 
 /// The indexes runs give ([first, how many] each, api/_remix_changes.js runsOf).

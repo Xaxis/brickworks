@@ -217,6 +217,23 @@ func comment(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/people?op=comment", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 
 
+## Add a comment on a part (partpins, 2026-11-23), as the session's account:
+## {model, version, step (or null), body, part: {part, colour, at}}, the part
+## as the viewer picked it, at in LDraw's coordinates; the server finds it in
+## that version's file and keeps its line. 201 with {comment} and its pin; a
+## refusal says why in {error}.
+func pin(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=pin", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+## The model's owner done with a comment on a part ([param resolved] true),
+## or not: 200 with {comment}, its resolved_at said; a refusal says why in
+## {error}.
+func resolve_pin(token: String, id: int, resolved: bool) -> Dictionary:
+	return await _fetch("/api/people?op=pin_resolve", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"id": id, "resolved": resolved}))
+
+
 ## One request, as Account._fetch makes it (PageFetch).
 func _fetch(path: String, method: int, token: String, body: String) -> Dictionary:
 	var headers := PackedStringArray(["content-type: application/json"])

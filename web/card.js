@@ -902,3 +902,156 @@ export function mentionPieces(text, mentions) {
   if (from < words.length) pieces.push(words.slice(from));
   return pieces;
 }
+
+// ---------------------------------------------------------------------------
+// A comment pinned to a part (partpins, 2026-11-23, api/_comments.js,
+// supabase/comment_pins.sql): which part of a version it is on, and which
+// part of another version it is on there. The one rule the model's page,
+// its 3D view, the server and the app (src/net/pin_place.gd, the same
+// numbers) all keep, held to real models' version pairs by
+// tests/test_partpins.py (tools/pin_pairs.mjs).
+//
+// A pin keeps the part as the file had it on the version it was made on:
+// its number, its colour, where it stood (at, LDraw's coordinates, LDU),
+// how it was turned (turn, pinTurn's), its place in the file (section and
+// line), where the other parts of its number and colour stood within
+// PIN.near of it (near; full false when there were more than PIN.most), and
+// which parts of another number or colour stood where it stood (with: a
+// window's glass in its frame). Shown on a version, it is on:
+//   - the part of its number and colour standing where it stood (within
+//     PIN.slack), turned as it was where others of its kind stood there too
+//     (a ring of curved parts about one point): the same part;
+//   - else, when nothing new stands there and every one of its neighbours
+//     of its kind is still where it was, the one part of its number and
+//     colour within PIN.reach of it that was not one of them: the part
+//     moved since;
+//   - else on no part. Then it is listed as said on its version, never on
+//     a part it was not made on: a part recoloured, swapped, taken off, or
+//     moved beside another of its kind that moved too.
+
+export const PIN = { slack: 2, reach: 20, near: 24, most: 48, turned: 0.05 };
+
+/// A part's number as the rule compares two: lower case, without a folder
+/// or ".dat".
+export function pinPart(id) {
+  return String(id ?? "").trim().toLowerCase().replace(/\\/g, "/").replace(/^.*\//, "").replace(/\.(dat|ldr)$/, "");
+}
+
+const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const kindOf = (one) => `${pinPart(one.part)} ${Number(one.colour)}`;
+
+/// How a part is turned, as a pin keeps it: LDraw's nine numbers (a b c d e
+/// f g h i, a row at a time), each column made a unit, and a mirrored part's
+/// first column turned back (as the 3D view's scene keeps it, api/_parts.js
+/// placeOf), each to four places. Null for nine that are not numbers.
+export function pinTurn(nine) {
+  if (!Array.isArray(nine) || nine.length !== 9 || !nine.every((v) => Number.isFinite(Number(v)))) return null;
+  const r = nine.map(Number);
+  for (let c = 0; c < 3; c += 1) {
+    const n = Math.hypot(r[c], r[3 + c], r[6 + c]) || 1;
+    for (let k = 0; k < 3; k += 1) r[k * 3 + c] /= n;
+  }
+  const det = r[0] * (r[4] * r[8] - r[5] * r[7]) - r[1] * (r[3] * r[8] - r[5] * r[6]) + r[2] * (r[3] * r[7] - r[4] * r[6]);
+  if (det < 0) for (const k of [0, 3, 6]) r[k] = -r[k];
+  return r.map((v) => Math.round(v * 1e4) / 1e4 + 0);
+}
+
+/// pinTurn's of a turn as the 3D view's scene keeps it: a unit quaternion
+/// [x, y, z, w] in the app's axes, LDraw's turned by diag(1, -1, -1).
+export function pinTurnOfQuaternion(q) {
+  const [x, y, z, w] = q.map(Number);
+  const m = [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+    2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+    2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)];
+  const f = [1, -1, -1];
+  return pinTurn(m.map((v, k) => v * f[Math.floor(k / 3)] * f[k % 3]));
+}
+
+const sameTurn = (a, b) => !a || !b || a.every((v, k) => Math.abs(v - b[k]) <= PIN.turned);
+
+/// Where [pin] is among [bricks] ([{part, colour, at, turn}], a version's
+/// parts, at in LDraw's coordinates, turn pinTurn's or none): {index,
+/// moved}, or null for on none.
+export function pinPlace(pin, bricks) {
+  if (!pin || !Array.isArray(pin.at) || pin.at.length !== 3 || !Array.isArray(bricks)) return null;
+  const at = pin.at.map(Number);
+  if (!at.every(Number.isFinite)) return null;
+  const kind = kindOf(pin);
+  const near = (Array.isArray(pin.near) ? pin.near : []).filter((p) => Array.isArray(p) && p.length === 3);
+  // Others of its kind where it stood: then only its turn tells it apart.
+  const twins = near.some((p) => apart(p, at) <= PIN.slack);
+  const turn = Array.isArray(pin.turn) && pin.turn.length === 9 ? pin.turn : null;
+  const beside = new Set((Array.isArray(pin.with) ? pin.with : []).map((one) => kindOf({ part: one?.[0], colour: one?.[1] })));
+  let kept = -1;
+  let keptOff = Infinity;
+  let other = false;
+  const same = [];
+  for (let i = 0; i < bricks.length; i += 1) {
+    const one = bricks[i];
+    if (!one || !Array.isArray(one.at)) continue;
+    const off = apart(one.at, at);
+    const alike = kindOf(one) === kind;
+    if (off <= PIN.slack) {
+      if (!alike) {
+        if (!beside.has(kindOf(one))) other = true;
+      } else if ((!twins || sameTurn(turn, one.turn)) && off < keptOff) {
+        kept = i;
+        keptOff = off;
+      }
+    }
+    if (alike && off <= PIN.near + PIN.slack) same.push(i);
+  }
+  if (kept >= 0) return { index: kept, moved: false };
+  if (other || twins || pin.full === false) return null;
+  for (const p of near) if (!same.some((i) => apart(bricks[i].at, p) <= PIN.slack)) return null;
+  const moved = same.filter((i) => {
+    const off = apart(bricks[i].at, at);
+    return off > PIN.slack && off <= PIN.reach && !near.some((p) => apart(bricks[i].at, p) <= PIN.slack);
+  });
+  return moved.length === 1 ? { index: moved[0], moved: true } : null;
+}
+
+/// The pin for the part [index] of [bricks] (a version's parts, each
+/// {part, colour, at, turn, section, line}): its number, colour, place,
+/// turn and line, where the others of its kind stood near it, and what else
+/// stood where it stood.
+export function pinOf(bricks, index) {
+  const one = bricks[index];
+  const near = [];
+  const beside = new Map();
+  const round = (p) => p.map((v) => Math.round(v * 100) / 100 + 0);
+  for (let i = 0; i < bricks.length; i += 1) {
+    const other = bricks[i];
+    if (i === index || !other) continue;
+    const off = apart(other.at, one.at);
+    if (kindOf(other) === kindOf(one)) {
+      if (off <= PIN.near) near.push(round(other.at));
+    } else if (off <= PIN.slack && beside.size < 16) {
+      beside.set(kindOf(other), [String(other.part), Number(other.colour)]);
+    }
+  }
+  near.sort((a, b) => apart(a, one.at) - apart(b, one.at));
+  return { part: String(one.part), colour: Number(one.colour), at: round(one.at), turn: one.turn || null,
+    section: String(one.section ?? ""), line: Number(one.line) || 0, near: near.slice(0, PIN.most),
+    full: near.length <= PIN.most, with: [...beside.values()] };
+}
+
+/// A part's name said after "the": "2 × 4 brick" for a plain "Brick 2 x 4"
+/// (a kind and its size, as LDraw names the common ones), else its name as
+/// it is, each "x" between two numbers a "×". "" for none.
+export function partSaid(name) {
+  const named = String(name ?? "").trim().replace(/\s+/g, " ").replace(/(\d)\s*x\s*(?=\d)/gi, "$1 × ");
+  const plain = /^(brick|plate|tile|slope|panel|wedge plate|round brick|round plate|round tile)\s+(\d+(?: × \d+){1,2})$/i
+    .exec(named);
+  return plain ? `${plain[2]} ${plain[1].toLowerCase()}` : named;
+}
+
+/// Where a pinned comment is, in words: "on the 2 × 4 brick, step 12",
+/// "on the 2 × 4 brick", "on a part, step 12", with [name] the part's name
+/// (the page's or the app's, partSaid's) or "" while it is not known.
+export function pinSaid(name, step) {
+  const part = partSaid(name);
+  if (part && step) return say("on the {part}, step {step}", { part, step });
+  if (part) return say("on the {part}", { part });
+  return step ? say("on a part, step {step}", { step }) : say("on a part");
+}

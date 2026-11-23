@@ -37,6 +37,18 @@ whole cycle.
   a tree: up to the first model, and its remixes three levels down, each
   card saying what it is a remix of, and of what that was, and what it
   changed.
+- **Comment on a part.** On a shared model's page, in its 3D view, or in
+  the app's viewer, right-click a part (or touch and hold it, or press
+  Shift+F10 with the part in the middle) and choose **Comment on this
+  part**. The comment keeps the part and says where it is, "on the 2 × 4
+  brick, step 12", and a small numbered dot marks the part in 3D; pressing
+  the line turns the view to it. On a newer version the dot stays on the
+  part, follows it if it moved a little ("moved since"), and is never put
+  on a part it was not about. The designer sees how many are open when
+  they open the model in the app, lists them, lights and frames each part,
+  and marks one **Resolve**d, which folds it away on the page. Notifications
+  say it is "on a part".
+
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

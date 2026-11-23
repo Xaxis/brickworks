@@ -135,12 +135,25 @@ Comments are newest first, each with **Reply**. A comment can name a step, and i
 
 Type **@** and the people on the page are offered, its designer first; keep typing to narrow it, and [[Enter]], [[Tab]] or a click puts one in. Any public `@handle` works typed in full. Each person named becomes a link and hears of it in their [notifications](/docs/profiles#notifications): up to three a comment, once each, however often it is edited.
 
+### On a part {#on-a-part}
+
+In the page's 3D view, or in the app's viewer of a shared model, right-click a part, or touch and hold it, and choose **Comment on this part**. With the keyboard, turn the model until the part is in the middle and press [[Shift+F10]] or the menu key. Your comment then starts "On the 2 × 4 brick" (choose **Cancel** to comment on the whole model instead) and keeps the part: its number, its colour, where it stands and its line in the file.
+
+![The Comments of a model's page: Ivy Hart's comment on the 2 × 4 brick, step 12, with its pin's number, then Jon Reyes's on the whole model, and under them Resolved (1), Jon Reyes's comment on the 2 × 2 plate folded away.](/docs/img/comments-on-parts.webp "Comments on parts, on a model's page.")
+
+Each one shows in 3D as a small numbered dot on its part, and its comment says where: "on the 2 × 4 brick, step 12". Press that line to turn the view to the part. On a newer version, the dot stays on the same part. A part that moved up to 20 LDU since is followed, marked *moved since*. A part that was taken off, recoloured or swapped gets no dot, and its comment names the version it was made on ("on version 1"), so a comment is never shown on a part it was not about.
+
+When the model's designer opens it in the app, the notices say how many comments on parts are still open. **Show** lists them, and choosing one lights its part and frames it. **Resolve** marks one done: on the page it folds away under **Resolved**, and **Open it again** brings it back. A comment on a part notifies its designer like any comment, saying it is "on a part".
+
 <!-- covers
 ui:comment threads on a model page
 ui:comments on a step
 lib:comments on a shared model
 lib:replies to a comment
 lib:mentions in comments
+ui:comment on a part in 3D
+lib:comments pinned to parts
+ui:comments on parts in the studio
 -->
 
 ## Parts and download {#parts}

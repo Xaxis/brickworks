@@ -71,6 +71,14 @@ declare -A CMD=(
   # accounts, deleted after; before supabase/replies.sql, that nobody is
   # offered Reply (it reads which from the answer).
   [comments]="tools/web/comments_flow.mjs --url=$P --out=$S/${TAG}_comments"
+  # Comments on a part (partpins, supabase/comment_pins.sql): on five models,
+  # 20 right clicks at 1280 and 20 long presses at 390 by touch, each the
+  # part the viewer's own pick finds there; three pins through the page's
+  # box, their numbered dots and lines turning the view; a new version, the
+  # moved part's pin following it and the recoloured one's on version 1;
+  # Resolve seen by a visitor within 60 s; a blocked commenter's pins gone.
+  # Throwaway accounts, deleted after with their models.
+  [partpins]="tools/web/partpins_flow.mjs --url=$P --out=$S/${TAG}_partpins"
   [tested]="tools/web/tested_flow.mjs --url=$P --out=$S/${TAG}_tested"
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [builds]="tools/web/builds_flow.mjs --url=$P --out=$S/${TAG}_builds"

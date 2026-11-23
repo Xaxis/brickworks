@@ -404,6 +404,8 @@ function watchStudio() {
   let rendering = null;
   let booklet = null;
   let together = null;
+  // Pins resolved in the studio (src/ui/part_pins.gd), counted as they go.
+  let resolves = Number(window.brickworksPins?.resolves) || 0;
   let controls = {};
   const shown = new Set();
 
@@ -484,6 +486,11 @@ function watchStudio() {
     } else if (together && !room?.live) {
       one("run", "together", now - together, true);
       together = null;
+    }
+    const pins = Number(window.brickworksPins?.resolves) || 0;
+    for (; resolves < pins; resolves += 1) {
+      one("run", "pin_resolved", 0, true);
+      acted("run", "pin_resolved");
     }
     // The controls shown, each once a page.
     controls = window.brickworksControls && typeof window.brickworksControls === "object" ? window.brickworksControls : {};

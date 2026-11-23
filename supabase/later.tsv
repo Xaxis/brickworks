@@ -70,3 +70,7 @@ push.sql	push_on_photo	push_2.sql	query_canceled
 push.sql	push_on_remix	push_2.sql	query_canceled
 push.sql	push_on_settled	push_2.sql	query_canceled
 push_2.sql	push_collect	talk.sql	'talk-' || (w.item->>'thread')
+replies.sql	comment_as	comment_pins.sql	'pin', c.pin
+comments.sql	comment_as	comment_pins.sql	'pin', c.pin
+replies.sql	comments_on	comment_pins.sql	'pins', true
+comments.sql	comments_on	comment_pins.sql	'pins', true

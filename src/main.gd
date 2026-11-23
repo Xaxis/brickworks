@@ -212,6 +212,14 @@ var _comments_answer: Dictionary = {}
 var _comment_account: Account
 var _comments_waking: bool = false
 var comment_token_for_probe: String = ""
+## Comments on a part (partpins): where each is, the dots on the parts, the
+## viewer's menu on a part and the studio's notice and list (PartPins, made
+## the first time an answer has them); and a finger held still on the
+## viewer's model, to offer that menu.
+var _part_pins: Control = null
+var _pin_hold: Timer = null
+var _pin_finger: int = -1
+var _pin_finger_at: Vector2 = Vector2.ZERO
 var _share_panel: PanelContainer:
 	get:
 		if _share_panel_made == null and _built:
@@ -1135,6 +1143,9 @@ func _tell_page() -> void:
 		"looping_at": snappedf(_motion_at(), 0.01) if not _motion_loop.is_empty() else -1.0,
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
+		# Comments on parts (PartPins): where each is, the dots, the menu,
+		# the studio's notice and list (tools/web flows, partpins_probe).
+		"pins": _part_pins.page_state() if _part_pins != null else {},
 		"carried": _steps_carried,
 		# What opening the link's model cost, phase by phase, in ms
 		# (ModelStore.open_phases), and the viewer's own steps around it.
@@ -1289,6 +1300,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_pins_dialog.controls_by_name())
 	if _pins_view != null:
 		named.merge(_pins_view.controls_by_name())
+	if _part_pins != null:
+		named.merge(_part_pins.controls_by_name())
 	if _together_made != null and _together_made.stop_button() != null:
 		named["together_stop_following"] = _together_made.stop_button()
 	if _share_view != null:
@@ -2888,6 +2901,7 @@ func _on_account_changed() -> void:
 	# A viewer is nobody's session: no connector, ever.
 	if not _viewing.is_empty():
 		return
+	_look_for_pins()
 	_maybe_copy()
 	_maybe_join_together()
 	_tell_connector_who()
@@ -3061,6 +3075,11 @@ func _enter_view() -> void:
 		view.send_wanted.connect(_send_comment.bind(view))
 		view.page_wanted.connect(func() -> void:
 			Outside.open_link(SharedModels.link_for(_viewing) + "#comments"))
+	# A comment on a part's line turns the viewer to its part, lit until
+	# the timeline moves (the step player's pages show their own).
+	_share_view.comments.pin_pressed.connect(func(one: Dictionary) -> void:
+		if _part_pins != null:
+			_part_pins.show_pin(one))
 	# The viewer's count is for the step the timeline is on.
 	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
 		_share_view.comments.set_step(_timeline_page()))
@@ -3429,6 +3448,9 @@ func _load_comments(token: String = "") -> void:
 
 
 func _show_comments(answer: Dictionary) -> void:
+	# Comments on parts placed first, so each list says where they are.
+	if _part_pins != null or (answer.get("pins") is bool and bool(answer["pins"])):
+		_part_pins_now().set_answer(answer)
 	for view: StepComments in [_share_view.comments, _build_mode.comments]:
 		view.show_answer(answer)
 
@@ -3504,14 +3526,24 @@ func _send_comment(step: int, body: String, view: StepComments) -> void:
 		view.refused(str(you.get("why_not", "")) if not str(you.get("why_not", "")).is_empty()
 			else "Sign in to add a comment: we email you a code, no password.")
 		return
-	var answer: Dictionary = await _shared.comment(token, {"model": _viewing, "version": _view_version,
-		"step": step if step > 0 else null, "body": body})
+	var sending: Dictionary = {"model": _viewing, "version": _view_version,
+		"step": step if step > 0 else null, "body": body}
+	# On a part (partpins): the part as the viewer picked it.
+	var aim: Dictionary = view.aiming
+	var answer: Dictionary = {}
+	if aim.is_empty():
+		answer = await _shared.comment(token, sending)
+	else:
+		sending["part"] = {"part": aim["part"], "colour": aim["colour"], "at": aim["at"], "turn": aim.get("turn")}
+		answer = await _shared.pin(token, sending)
 	var said: Variant = answer.get("body")
 	var code: int = int(answer.get("code", 0))
 	if (code == 200 or code == 201) and said is Dictionary and (said as Dictionary).get("comment") is Dictionary:
 		var made: Dictionary = (said as Dictionary)["comment"]
 		if not made.has("on_step"):
 			made["on_step"] = step if step > 0 else null
+		if not aim.is_empty() and not made.get("pin") is Dictionary:
+			made["pin"] = (sending["part"] as Dictionary).duplicate(true)
 		if not _comments_answer.get("comments") is Array:
 			_comments_answer["comments"] = []
 		(_comments_answer["comments"] as Array).append(made)
@@ -3519,6 +3551,126 @@ func _send_comment(step: int, body: String, view: StepComments) -> void:
 		view.sent()
 		return
 	view.refused(SharedModels.trouble(answer, "Brickworks could not take that just now. Try again in a minute."))
+
+
+# -- comments on a part (partpins) ------------------------------------------------
+
+## PartPins, made the first time: over the model, with what it shows and
+## sends through.
+func _part_pins_now() -> Control:
+	if _part_pins != null:
+		return _part_pins
+	_part_pins = Later.make(&"PartPins")
+	_part_pins.studio = _viewing.is_empty()
+	_part_pins.world = _world
+	_part_pins.store = _store
+	_part_pins.camera = _camera
+	_part_pins.library = _library
+	_part_pins.outline = _build_outline
+	_part_pins.builder = _builder
+	_part_pins.menu_host = $HUD
+	_part_pins.shared = _shared
+	_part_pins.notices = _notices.get_child(0) if _notices != null else null
+	_part_pins.seat = _seat_tool_panel
+	_part_pins.token_for = func() -> String: return await _account.access_token()
+	_part_pins.look_again = _look_for_pins
+	_part_pins.comment_wanted.connect(func(part: Dictionary) -> void:
+		_share_view.comments.aim(part, str(part.get("said", ""))))
+	# A pin's part lit in the viewer, from its line or its dot, is let go
+	# as the timeline moves, as a step's are.
+	_part_pins.shown.connect(func(_brick_id: int) -> void:
+		if not _viewing.is_empty():
+			_step_lit = true)
+	_over_model.add_child(_part_pins)
+	if _share_view != null:
+		for view: StepComments in [_share_view.comments, _build_mode.comments]:
+			view.pin_line = Callable(_part_pins, "line_of")
+	return _part_pins
+
+
+## Comment on this part offered for the part at [param at], in a viewer
+## whose server keeps comments on parts. False for none there.
+func _pin_offer(at: Vector2, by_finger: bool) -> bool:
+	if _part_pins == null or not _part_pins.pins_on() or _share_view == null \
+			or _share_view.state != "ready" or (_build_mode != null and _build_mode.is_open()) \
+			or _over_panel_at(at) or _share_view.covers(at) \
+			or (_steps.is_visible_in_tree() and _steps.get_global_rect().has_point(at)):
+		return false
+	# The viewer's own pick: the part it outlines and names under the pointer.
+	var brick_id: int = _verbs.brick_at(at)
+	var brick: BrickWorld.Brick = _world.get_brick(brick_id) if brick_id != 0 else null
+	if brick == null or brick.hidden or _store.scenery.has(brick_id):
+		return false
+	return _part_pins.offer(brick_id, at, by_finger)
+
+
+## The menu key's: the part in the middle of the model's room, or the
+## nearest one round it.
+func _pin_offer_by_keys() -> bool:
+	var middle: Vector2 = _model_rect().get_center()
+	for ring: float in [0.0, 12.0, 24.0, 48.0, 96.0]:
+		for turn: int in (1 if ring == 0.0 else 8):
+			if _pin_offer(middle + Vector2.from_angle(TAU * turn / 8.0) * ring, false):
+				return true
+	return false
+
+
+## A finger held still on the viewer's model for [constant HOLD_MS] offers
+## the menu, beside it; one that moves, lifts, or is joined by another
+## does not.
+func _pin_touch(event: InputEvent) -> void:
+	if _part_pins == null:
+		return
+	if _pin_hold == null:
+		_pin_hold = Timer.new()
+		_pin_hold.one_shot = true
+		_pin_hold.wait_time = HOLD_MS / 1000.0
+		_pin_hold.timeout.connect(func() -> void:
+			if _pin_finger != -1 and _camera_fingers() <= 1:
+				_pin_finger = -1
+				_pin_offer(_pin_finger_at, true))
+		add_child(_pin_hold)
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	if touch != null:
+		if touch.pressed and _pin_finger == -1 and _camera_fingers() == 0:
+			_pin_finger = touch.index
+			_pin_finger_at = touch.position
+			_pin_hold.start()
+		else:
+			_pin_finger = -1
+			_pin_hold.stop()
+		return
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	if drag != null and drag.index == _pin_finger \
+			and drag.position.distance_to(_pin_finger_at) > CadCamera.TAP_SLOP:
+		_pin_finger = -1
+		_pin_hold.stop()
+
+
+## The comments on parts of the model open, for its builder in the studio:
+## with a link and somebody signed in, asked for as them (the newest
+## version), told with the model's notices and listed (PartPins).
+func _look_for_pins() -> void:
+	if not _viewing.is_empty() or _shared == null or _account == null:
+		return
+	var id: String = _store.share_id
+	if id.is_empty() or not _account.signed_in():
+		if _part_pins != null:
+			_part_pins.forget()
+		return
+	var token: String = await _account.access_token()
+	if token.is_empty() or id != _store.share_id:
+		return
+	var answer: Dictionary = await _shared.comments(id, 0, token)
+	var body: Variant = answer.get("body")
+	if id != _store.share_id or int(answer.get("code", 0)) != 200 or not body is Dictionary:
+		return
+	# Made only for a model somebody has commented on a part of.
+	var any: bool = false
+	for one: Variant in (body as Dictionary).get("comments", []):
+		any = any or (one is Dictionary and (one as Dictionary).get("pin") is Dictionary)
+	if _part_pins != null or any:
+		_part_pins_now().set_answer(body)
 
 
 ## The page's address for what the viewer has open: the link, or an older
@@ -4191,6 +4343,11 @@ func _view_input(event: InputEvent) -> void:
 				_start_left_nav("turn", _press_at)
 		return
 	var button: InputEventMouseButton = event as InputEventMouseButton
+	# A right click on a part, not a turn: Comment on this part (partpins).
+	if button != null and button.button_index == MOUSE_BUTTON_RIGHT and not button.pressed \
+			and not _camera.turned_rather_than_clicked():
+		_pin_offer(button.position, false)
+		return
 	if button == null or button.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if button.pressed:
@@ -5859,6 +6016,9 @@ func _build_ui() -> void:
 	_store.saved.connect(func(_name: String) -> void: _named_for_work = "")
 	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _named_for_work = "")
 	_store.begun.connect(func(_name: String) -> void: _named_for_work = "")
+	# The comments on parts of a model with a link, for its builder.
+	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _look_for_pins())
+	_store.begun.connect(func(_name: String) -> void: _look_for_pins())
 	_builder.placed.connect(func(id: int, _part: String) -> void:
 		_last_put = id
 		_sample_untouched = false
@@ -11346,6 +11506,9 @@ func _input(event: InputEvent) -> void:
 	# model or not, so moving onto the bar lets go of the part.
 	if event is InputEventMouseMotion and not _viewing.is_empty():
 		_view_pointer = (event as InputEventMouseMotion).position
+	# A finger held still on a part, in the viewer: Comment on this part.
+	if not _viewing.is_empty() and (event is InputEventScreenTouch or event is InputEventScreenDrag):
+		_pin_touch(event)
 	# A finger on a part that moves, in the viewer: the play's before the
 	# camera's (CadCamera turns the view with a finger by itself).
 	if not _viewing.is_empty() and (event is InputEventScreenTouch or event is InputEventScreenDrag) \
@@ -11446,6 +11609,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		var alt_gr: bool = key.unicode >= 32 and key.ctrl_pressed and key.alt_pressed
 		if code in EDITING or (prints and (not held or alt_gr)):
 			return
+	# The menu key, or Shift+F10, in the viewer: Comment on this part, on
+	# the part in the middle of the model's room (partpins).
+	if not _viewing.is_empty() and not key.echo \
+			and (key.keycode == KEY_MENU or (key.keycode == KEY_F10 and key.shift_pressed)) \
+			and _pin_offer_by_keys():
+		return
 	# The key as the person's keymap has it (Keymap): the key that does
 	# what it is bound to, a command no key does out of the box, or nothing,
 	# for a key a preset took off what it did. A shared model's viewer has
