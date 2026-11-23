@@ -289,6 +289,17 @@ whole cycle.
   builders' forum has talk, its newest threads. The header on every page
   leads with Gallery, Talk and Challenges, then Docs; Plans and the desktop
   app are in the menu and the footer.
+- **Every window and panel closes with Close.** Library, Collection, the
+  parts list, Keys, Account, Share, Brickify and a reference picture said
+  Done, Close or OK for the same act. A mode you leave for the model, such
+  as Build it, still says Done.
+- **The control hints are one short row along the model's foot,** and each
+  goes after you have used it three times. View › Panels › Key strip brings
+  them back. They were five rows of sentences over the model, for good.
+- **A set from the Library, an example, or a Studio or LDD file opens as it
+  is.** "Parts have new numbers in the LDraw library" is offered only for
+  your own LDraw file, and only once.
+
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say
@@ -341,6 +352,24 @@ whole cycle.
   they really work, with a picture of each.
 
 ### Fixed
+
+- A part in the air, touching nothing, was missed by everything that checks
+  a model: the status bar, Check stability ("Stands"), Stress, and Seat parts
+  ("every part is on its studs"). Each now says it by name and selects it,
+  and a group of parts in the air, such as a copy put down too high, is said
+  as one. The assistant's stability answer says it too.
+- A search for "motor" listed a minifigure jackhammer first. Motors come
+  first now, and the minifigure builder lists parts named for what you typed
+  before parts found only by their keywords ("space" gave a battle droid).
+- While the app worked, its Cancel bar could push the window past the
+  screen's edge. The status bar makes room instead.
+- The parts list named some parts with LDraw's marks, such as
+  "=Tile 1 x 2 Chamfered". The marks are gone.
+- On a phone, the Library's search said its words cut off. It says what fits.
+- Share opened with no name for a model of one minifigure or one
+  sub-assembly. It takes that name.
+- The parts bin, searched for a sub-assembly of your model, says it is
+  yours and that Edit › Duplicate puts another down.
 
 - With the bin, Stress and the assistant open at 1280 × 720, the timeline's
   Done and Instructions, Account and the status bar were past the window's

@@ -1,11 +1,17 @@
-## Five people's first use of the app, pictured step by step (unit ux12,
-## bench/results/ux12-2026-11-23/WALK.md): a first-time visitor who wants a
+## Ten people's first use of the app, pictured step by step. Units ux12
+## (bench/results/ux12-2026-11-23/WALK.md): a first-time visitor who wants a
 ## car, a LEGO® fan rebuilding a set from its number (6080-1), a Technic
 ## builder wiring a motor, a parent printing instructions, and someone
-## remixing a model. Research, not in the suite: it checks nothing and exits
-## 0 once every step is pictured, 1 when the app never came up.
+## remixing a model (p1 to p5). And ux13 (bench/results/ux13-2026-11-23/
+## WALK.md): someone opening a Studio .io a friend sent, a builder making a
+## sub-assembly and using it again, a MOC designer checking stability and
+## fixing what floats, someone making instructions and their PDF, and a
+## teenager on a phone making a minifigure and sharing it (p6 to p10).
+## Research, not in the suite: its "UX12 check" and "UX13 check" lines judge
+## the fixes, and it exits 0 once every step is pictured, 1 when the app
+## never came up.
 ##
-##   godot --path . --resolution 1280x800 --script src/dev/ux12_walk_probe.gd -- [--phone] [--pictures=DIR] [--only=p1,p2]
+##   godot --path . --resolution 1280x800 --script src/dev/ux12_walk_probe.gd -- [--phone] [--pictures=DIR] [--only=p6,p7] [--studio-file=PATH]
 ##
 ## --phone lays the app out for a phone at a browser's scale, by fingers, as
 ## phonepanels_probe holds it (run it in a 390x844 window). Each step prints
@@ -29,6 +35,8 @@ var _phone: Node
 var _on_phone: bool = false
 var _out: String = "user://ux12_walk"
 var _only: PackedStringArray = []
+## The Studio file the friend sent (p6): a fixture unless one is given.
+var _studio_file: String = "res://tests/fixtures/studio/decor_2025.io"
 var _steps: int = 0
 var _failures: int = 0
 
@@ -53,6 +61,8 @@ func _run() -> void:
 			_on_phone = true
 		elif arg.begins_with("--only="):
 			_only = arg.trim_prefix("--only=").split(",")
+		elif arg.begins_with("--studio-file="):
+			_studio_file = arg.trim_prefix("--studio-file=")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	if _on_phone:
 		Phone._on = 1
@@ -107,6 +117,16 @@ func _run() -> void:
 		await _parent()
 	if _runs("p5"):
 		await _remixer()
+	if _runs("p6"):
+		await _studio_friend()
+	if _runs("p7"):
+		await _sub_assembly()
+	if _runs("p8"):
+		await _stability()
+	if _runs("p9"):
+		await _booklet_pdf()
+	if _runs("p10"):
+		await _figure_on_a_phone()
 	await _checks()
 	print("UX12 done: %d steps pictured, %d check(s) failed" % [_steps, _failures])
 	quit(0)
@@ -153,6 +173,125 @@ func _checks() -> void:
 	_check("Open's first row: %s" % first, first.begins_with("From a file ("))
 	saves.hide()
 	await _frames(5)
+	await _checks13()
+
+
+## ux13's fixes of ux12's four left, judged in the app as it runs (WALK.md).
+func _checks13() -> void:
+	print("\nUX13 checks")
+	await _close_all()
+	# 1. "motor" is a motor first, not a jackhammer its inventories call one.
+	await _search_bin("motor", "", "")
+	var first: PackedStringArray = _bin.first_found(3)
+	var library: PartLibrary = _main.get("_library")
+	var names: Array = []
+	for id: String in first:
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		names.append("%s %s" % [id, info.name if info != null else "?"])
+	var head: String = ""
+	if not first.is_empty() and library.parts.has(first[0]):
+		head = (library.parts[first[0]] as PartLibrary.PartInfo).name.to_lower().get_slice(" with ", 0)
+	_check13("the bin's motor is a motor first (%s)" % "; ".join(names),
+		not first.has("30228") and head.contains("motor"))
+	await _search_bin("", "", "")
+	# 2. An official set opens as it is; a person's own file with the same
+	# renumbered parts is offered them, once.
+	await _close_all()
+	_main.set("_from_library", SET)
+	_main.call("_maybe_open_library")
+	await _answer_dont_save()
+	await _until_still(240)
+	var offer: MovedOffer = _shell.get("moved_offer")
+	var renumbered: int = MovedParts.renumbered_count(_store.moved)
+	_check13("an official set opens as it is: %d renumbered, no strip" % renumbered,
+		not offer.visible)
+	var own: String = "user://ux13_own_6080.ldr"
+	var text: String = _store.saved_text()
+	var file: FileAccess = FileAccess.open(own, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	var seen: Array = []
+	for _again: int in 2:
+		var placed: int = await _bar.open_with_progress(own)
+		if placed >= 0:
+			_bar.opened.emit(placed)
+			_bar.offer_moved(true, own)
+		await _frames(10)
+		seen.append(offer.visible)
+		if offer.visible:
+			await _step("ux13_moved_own", "a person's own file with renumbered parts: the strip")
+		offer.dismiss()
+	_check13("a person's own file is offered them once (%s)" % str(seen),
+		renumbered == 0 or seen == [true, false])
+	# 3. The strip of controls: one row, and gone once each is learned.
+	var hint: ControlsHint = _main.get("_hint")
+	if hint != null and not _on_phone:
+		var rows: Dictionary = {}
+		var shown: Array = []
+		for pill: Node in hint.get_children():
+			if (pill as Control).visible:
+				rows[roundi((pill as Control).position.y)] = true
+				var words: Label = (pill as Control).find_children("*", "Label", true, false).back()
+				shown.append(words.text)
+		await _step("ux13_strip", "the strip of controls along the model's foot")
+		_check13("the strip is one row (%s)" % ", ".join(shown), rows.size() == 1)
+		for key: String in ControlsHint.ON_THE_STRIP:
+			for _n: int in ControlsHint.LEARNED_AFTER:
+				hint.learn(key)
+		await _frames(10)
+		var area: Control = hint.get_parent()
+		await _step("ux13_strip_learned", "every control on the strip used three times")
+		_check13("learned, the strip and its room go (%d pills, room %.0f)" % [
+			hint.get_child_count(), area.custom_minimum_size.y],
+			hint.is_empty() and area.custom_minimum_size.y == 0.0)
+		_shell.call("set_key_strip", true, true)
+		await _frames(10)
+		_check13("View, Panels, Key strip brings it back whole (%d pills)" % hint.get_child_count(),
+			hint.get_child_count() == ControlsHint.ON_THE_STRIP.size() + 1)
+	# The bin's word on a sub-assembly, read on the largest model at the first
+	# keystroke after an edit: inside a frame (self_attack, Time).
+	await _open_model("res://models/orthanc.ldr", "Orthanc")
+	_bin.set("_assembly_names_at", -1)
+	var began: int = Time.get_ticks_usec()
+	_bin.call("_own_assembly_named", "tower")
+	var took: float = (Time.get_ticks_usec() - began) / 1000.0
+	_check13("the bin reads Orthanc's %d parts for its sub-assemblies in %.1f ms" % [
+		_world.bricks().size(), took], took < 16.0)
+	# 4. Every window and panel closes with Close.
+	for panel: Array in [["library", "library_dialog", ""], ["collection", "collection", ""],
+			["parts_list", "", "_inventory"], ["keys", "", "_controls"],
+			["account", "", "_account_panel"], ["share", "", "_share_panel"]]:
+		await _close_all()
+		if panel[0] == "library":
+			(_shell.get("library_dialog") as Node).call("open", "sets")
+		elif _shell.can(panel[0]):
+			_shell.run(panel[0])
+		await _frames(30)
+		var node: Variant = _shell.get(panel[1]) if not str(panel[1]).is_empty() \
+			else _main.get(panel[2])
+		var closers: Array = _closers(node) if node is Node else []
+		_check13("%s closes with Close (%s)" % [panel[0], ", ".join(closers)],
+			closers.has("Close") and not closers.has("Done") and not closers.has("OK"))
+	await _close_all()
+
+
+func _check13(what: String, ok: bool) -> void:
+	print("UX13 check %s  %s" % ["ok  " if ok else "FAIL", what])
+	if not ok:
+		_failures += 1
+
+
+## The words of the buttons under [param node] that close something.
+func _closers(node: Node) -> Array:
+	var out: Array = []
+	# Only what a person sees: a confirmation not shown yet still holds
+	# Godot's default "OK" until it is given its own word (collection's Move).
+	for button: Node in node.find_children("*", "Button", true, false):
+		var words: String = (button as Button).text
+		if (button as Button).is_visible_in_tree() \
+				and words in ["Done", "Close", "OK", "×", "Got it"] and not words in out:
+			out.append(words)
+	return out
 
 
 func _check(what: String, ok: bool) -> void:
@@ -266,6 +405,246 @@ func _remixer() -> void:
 	await _close_all()
 	await _run_command("share", "p5_05_share", "File, Share", 60)
 	await _close_all()
+
+
+# -- 6. a Studio file a friend sent ---------------------------------------------------
+
+
+func _studio_friend() -> void:
+	print("\nUX12 p6: a Studio file a friend sent (%s)" % _studio_file.get_file())
+	await _open_menu("p6_01_open_menu", "File, Open")
+	_bar.call("_import")
+	await _frames(20)
+	await _step("p6_02_picker", "From a file: the file dialog")
+	var picker: Variant = _bar.get("_picker")
+	var dialog: Variant = picker.get("_dialog") if picker is Node else null
+	if dialog is FileDialog:
+		(dialog as FileDialog).hide()
+		(dialog as FileDialog).file_selected.emit(ProjectSettings.globalize_path(_studio_file))
+	else:
+		print("UX12 p6: no file dialog to choose in")
+	await _answer_dont_save()
+	await _until_still(240)
+	var store_moved: Dictionary = _store.moved
+	print("UX12 p6 opened: %d parts, %d renumbered, %d not shown" % [_world.bricks().size(),
+		MovedParts.renumbered_count(store_moved), _store.unshown.size()])
+	await _step("p6_03_opened", "the friend's model open")
+	var offer: MovedOffer = _shell.get("moved_offer")
+	_check13("a friend's Studio file opens with no LDraw renumbering strip (%d renumbered)" % (
+		MovedParts.renumbered_count(store_moved)), not offer.visible)
+	await _run_command("parts_list", "p6_04_parts_list", "View, Parts list", 60)
+	var marked: Array = []
+	var inventory: Variant = _main.get("_inventory")
+	if inventory is Node:
+		for label: Node in (inventory as Node).find_children("*", "Label", true, false):
+			var said: String = (label as Label).text
+			if said.begins_with("=") or said.begins_with("~"):
+				marked.append(said)
+	_check13("the parts list names no part by LDraw's marks (%s)" % ", ".join(marked.slice(0, 3)),
+		inventory is Node and marked.is_empty())
+	await _close_all()
+	_shell.run("timeline")
+	var widest: float = 0.0
+	var busy: bool = false
+	for _n: int in 40:
+		await process_frame
+		busy = busy or Working.is_busy()
+		var status: Control = _shell.get("status")
+		widest = maxf(widest, status.get_combined_minimum_size().x)
+	await _step("p6_05_timeline", "Build, Timeline: Studio's steps")
+	var window: float = root.get_visible_rect().size.x
+	_check13("while it works (%s), the status bar stays inside the window (%.0f of %.0f)" % [
+		"seen" if busy else "not seen", widest, window], widest <= window)
+	await _run_command("timeline", "", "", 10)
+	await _run_command("panel_outliner", "p6_06_model_tree", "the model tree: Studio's sub-models", 30)
+	await _run_command("panel_outliner", "", "", 10)
+	SaveTo.native = false
+	_shell.run("export_io")
+	await _frames(30)
+	await _step("p6_07_export_io", "File, Export, Studio .io, to send it back")
+	if SaveTo.showing != null:
+		SaveTo.showing.canceled.emit()
+	await _frames(10)
+	await _close_all()
+
+
+# -- 7. a sub-assembly made and used again ----------------------------------------------
+
+
+func _sub_assembly() -> void:
+	print("\nUX12 p7: a sub-assembly made and used again")
+	await _open_model("res://models/car.ldr", "Car")
+	# The car's front: the parts nearest its nose, as a box drawn round them.
+	var bricks: Array = _world.bricks()
+	bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.z > b.transform.origin.z)
+	_builder.clear_selection()
+	for brick: BrickWorld.Brick in bricks.slice(0, 8):
+		_builder.select_brick(brick.id, true)
+	await _frames(10)
+	await _step("p7_01_selected", "eight parts of the front selected")
+	await _run_command("make_submodel", "p7_02_name_it", "Build, Make a sub-assembly", 20)
+	var verbs: Variant = _shell.get("verbs")
+	var naming: Variant = verbs.get("_naming") if verbs is Node else null
+	if naming is ConfirmationDialog and (naming as ConfirmationDialog).visible:
+		(verbs.get("_name_field") as LineEdit).text = "Bumper"
+		(naming as ConfirmationDialog).hide()
+		verbs.call("_named", "Bumper")
+	await _frames(30)
+	await _step("p7_03_made", "the sub-assembly made")
+	await _run_command("panel_outliner", "p7_04_model_tree", "the model tree", 30)
+	await _search_bin("Bumper", "p7_05_bin_bumper", "the parts bin's search for it, to place another")
+	var bin_said: String = (_bin.get("_status") as Label).text
+	_check13("the bin searched for the sub-assembly says where another comes from (%s)" % (
+		bin_said.get_slice("\n", 0)), bin_said.contains("is a sub-assembly of this model"))
+	await _run_command("duplicate", "p7_06_duplicate", "Edit, Duplicate: a second one in hand", 20)
+	await _put_down(Vector3(0, 0, -160), "p7_07_second_down", "the second one put down")
+	await _run_command("enter_assembly", "p7_08_inside", "Build, Edit inside the sub-assembly", 30)
+	await _run_command("leave_assembly", "p7_09_done_inside", "Done editing the sub-assembly", 30)
+	await _run_command("panel_outliner", "", "", 10)
+	await _close_all()
+
+
+# -- 8. stability checked, and what floats fixed ----------------------------------------
+
+
+func _stability() -> void:
+	print("\nUX12 p8: a MOC's stability checked, and what floats fixed")
+	await _open_model("res://models/house.ldr", "House")
+	# One part lifted off its studs, as a slip of Page Up leaves one.
+	var top: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id) and (top == null
+				or brick.transform.origin.y > top.transform.origin.y):
+			top = brick
+	if top != null:
+		_builder.clear_selection()
+		_builder.select_brick(top.id, true)
+		print("UX12 p8 lifted %s by 40 LDU: %d moved" % [top.part_id,
+			_builder.move_selection_by(Vector3(0, 40, 0))])
+		_builder.clear_selection()
+	await _frames(20)
+	await _step("p8_01_floating", "a part left floating over the roof")
+	await _run_command("stability", "p8_02_check", "Tools, Check stability", 120)
+	var said: String = _bar.status_text()
+	_check13("Check stability says the part in the air and selects it (%s)" % said.left(90),
+		top != null and said.contains("floats in the air") and _builder.selection.has(top.id))
+	await _run_command("stress", "p8_03_stress", "View, Stress", 40)
+	var stress_panel: Variant = (_shell.get("stress") as Node).get("panel") if _shell.get("stress") != null else null
+	var stress_tips: String = ""
+	if stress_panel is Node:
+		for label: Node in (stress_panel as Node).find_children("*", "Label", true, false):
+			if (label as Label).visible and (label as Label).text.begins_with("In the air"):
+				stress_tips = (label as Label).text
+	_check13("View, Stress says it (%s)" % stress_tips.left(90), not stress_tips.is_empty())
+	await _run_command("stress", "", "", 10)
+	await _menu("Tools", "p8_04_tools_menu", "Tools: what fixes a part off its studs")
+	_builder.clear_selection()
+	await _run_command("reseat", "p8_05_reseat", "Tools, Seat parts on their studs", 120)
+	said = _bar.status_text()
+	_check13("Seat parts says the part in the air, not that every part is seated (%s)" % said.left(90),
+		said.contains("floats in the air") and top != null and _builder.selection.has(top.id))
+	await _run_command("stability", "p8_06_check_again", "Check stability again", 120)
+	await _close_all()
+
+
+# -- 9. instructions and their PDF ---------------------------------------------------------
+
+
+func _booklet_pdf() -> void:
+	print("\nUX12 p9: instructions made and saved as a PDF")
+	await _open_model("res://models/car.ldr", "Car")
+	await _run_command("timeline", "p9_01_timeline", "Build, Timeline: the steps", 40)
+	await _run_command("timeline", "", "", 10)
+	await _menu("Build", "p9_02_build_menu", "Build: the booklet's commands")
+	SaveTo.native = false
+	var booklet: Variant = Later.script(&"BookletMaker")
+	booklet.open_when_written = false
+	var out: String = ProjectSettings.globalize_path(_out.path_join("car_instructions.html"))
+	_shell.run("instructions")
+	await _frames(30)
+	await _step("p9_03_save_dialog", "File, Instructions: where to save them")
+	if SaveTo.showing != null:
+		SaveTo.showing.file_selected.emit(out)
+	for _n: int in 240:
+		await create_timer(0.5).timeout
+		if FileAccess.file_exists(out.get_basename() + ".pdf") and not Working.is_busy():
+			break
+	await _frames(30)
+	await _step("p9_04_written", "the instructions written, and their PDF")
+	await _run_command("booklet_page_setup", "p9_05_page_setup", "Build, Booklet page, Page setup", 40)
+	await _close_all()
+
+
+# -- 10. a teenager on a phone: a minifigure, shared -----------------------------------------
+
+
+func _figure_on_a_phone() -> void:
+	print("\nUX12 p10: a minifigure made on a phone and shared")
+	_main.call("clear_model")
+	await _frames(30)
+	await _menu("Make", "p10_01_make", "where a figure is made")
+	await _run_command("minifig", "p10_02_builder", "Make, Minifigure builder", 60)
+	var figures: Variant = _main.get("_figures")
+	if figures is Control:
+		for slot: Array in [["torso", "space", "p10_03_torso"], ["headwear", "helmet", "p10_04_helmet"]]:
+			var button: Variant = (figures.get("_slot_buttons") as Dictionary).get(slot[0])
+			if button is BaseButton:
+				(button as BaseButton).pressed.emit()
+				await _frames(10)
+			var search: LineEdit = figures.get("_search")
+			search.text = slot[1]
+			search.text_changed.emit(slot[1])
+			await create_timer(0.6).timeout
+			await _frames(20)
+			var grid: GridContainer = figures.get("_grid")
+			if grid.get_child_count() > 0:
+				(grid.get_child(0) as BaseButton).pressed.emit()
+				await _frames(20)
+			await _step(slot[2], "the figure's %s: %s" % [slot[0], slot[1]])
+			if slot[0] == "torso":
+				var first: String = str(grid.get_child(0).get_meta("part", "")) \
+					if grid.get_child_count() > 0 else ""
+				var info: PartLibrary.PartInfo = (_main.get("_library") as PartLibrary).parts.get(first)
+				_check13("the torso searched for space is one named so (%s %s)" % [first,
+					info.name if info != null else "?"],
+					info != null and info.name.to_lower().contains("space"))
+		var name: LineEdit = figures.get("_name")
+		name.text = "Nova"
+		name.text_changed.emit("Nova")
+		figures.call("_place")
+		await _frames(30)
+		await _step("p10_05_in_hand", "Place in model: the figure in hand")
+		await _put_down(Vector3(0, 0, 0), "p10_06_stood", "the figure stood on the baseplate")
+	await _run_command("share", "p10_07_share", "Share", 60)
+	var share: Variant = _main.get("_share_panel")
+	if share is Node and (share as Control).visible:
+		var called: String = ((share as Node).get("_name") as LineEdit).text
+		_check13("Share names the model for its one figure (%s)" % called, called == "Nova")
+	await _close_all()
+
+
+func _open_menu(shot: String, what: String) -> void:
+	_bar.call("_on_open")
+	await _frames(10)
+	await _step(shot, what)
+	var saves: Variant = _bar.get("_saves")
+	if saves is PopupMenu:
+		(saves as PopupMenu).hide()
+	await _frames(5)
+
+
+## A question over work not saved, answered Don't save, as a walk opening
+## another model would.
+func _answer_dont_save() -> void:
+	for _n: int in 60:
+		await process_frame
+		var asking: Variant = _bar.get("_confirm_open")
+		if asking is Window and (asking as Window).visible:
+			print("UX12: asked to save what was there first; answered Don't save")
+			(asking as Window).hide()
+			_bar.emit_signal("_replace_answered", "discard")
+			return
 
 
 # -- acts ------------------------------------------------------------------------------

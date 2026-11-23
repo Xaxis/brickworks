@@ -95,6 +95,12 @@ const DEFAULTS: Dictionary = {
 	# "list") was chosen from on the desktop, where the next chooser of
 	# that kind opens (OpenFrom).
 	"open_folders": {},
+	# How many times each control on the strip along the model's foot has been
+	# used in the model's room (ControlsHint.learn): a pill goes once learned.
+	"hints_used": {},
+	# The files whose renumbered parts the strip over the model has offered
+	# (MovedOffer.said_key -> when), each said once.
+	"moved_said": {},
 	# Settings, Interface size: how much bigger or smaller than the window
 	# would draw it the interface is, 0.85 to 1.5 (Main._match_screen_density).
 	"interface_size": 1.0,

@@ -42,6 +42,18 @@ const STRONG_HOVER := Color(0.21, 0.44, 0.88)
 const STRONG_DOWN := Color(0.17, 0.36, 0.75)
 ## What cannot be taken back (Clear it, Forget it all), as the site's
 ## --bad: white words 5.0:1 on it, it 3.4:1 on the face, as STRONG is held.
+## The words a window closes with, one for each kind, as the platform's own
+## apps close theirs (GNOME's and Windows' windows and Studio's panels Close,
+## a finished edit Done, a bar's ×, a message OK): the Library said Done,
+## Render Close and the split view × for the same act (ux12's walk). A window
+## or panel you look at or work in, whose changes are made as you make them:
+## CLOSE. A mode left for the whole model (the timeline, Build it, editing
+## inside a sub-assembly, laying out a page): DONE. A strip or a small bar
+## over the model: × in its corner, "Close" its tooltip. A message with
+## nothing to choose: OK. A question: its answer's verb, and Cancel.
+const CLOSE := "Close"
+const DONE := "Done"
+
 const DANGER := Color(0.80, 0.22, 0.18)
 const DANGER_HOVER := Color(0.83, 0.24, 0.20)
 const DANGER_DOWN := Color(0.76, 0.20, 0.17)

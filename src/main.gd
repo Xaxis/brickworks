@@ -4733,7 +4733,8 @@ func _maybe_open_library() -> void:
 	_bar.opened.emit(placed)
 	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
 		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
-	_bar.offer_moved()
+	# An official set, as it is: only a part with no file is asked about.
+	_bar.offer_moved(false)
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -6345,6 +6346,7 @@ func _build_ui() -> void:
 
 	var hint := ControlsHint.new()
 	_hint = hint
+	hint.view = spacer
 	hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	hint.offset_top = -46.0
 	hint.offset_bottom = 0.0
@@ -6358,6 +6360,10 @@ func _build_ui() -> void:
 	# model's room stayed 26 units short (flex_room at 1400 x 900).
 	var fit_hint := func() -> void:
 		if _phone != null:
+			return
+		# Every control on it learned: the strip, and the room it kept, go.
+		if hint.is_empty():
+			hint_area.custom_minimum_size = Vector2.ZERO
 			return
 		var wants: float = maxf(hint.get_combined_minimum_size().y, 46.0)
 		hint_area.custom_minimum_size = Vector2(0, wants + 4.0)
@@ -9583,7 +9589,7 @@ func _open_given(path: String) -> int:
 		said += " — " + str(made["note"])
 	_bar.say(said)
 	printerr("opened %s: %s" % [path, said.trim_prefix("opened ")])
-	_bar.offer_moved()
+	_bar.offer_moved(true, path)
 	return int(result["placed"])
 
 

@@ -260,7 +260,8 @@ func _build() -> void:
 	var fill := Control.new()
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(fill)
-	var done := _button(header, "Done", close, "library_done")
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	var done := _button(header, "Close", close, "library_done")
 	done.focus_mode = Control.FOCUS_NONE
 
 	# The search and the filters first, the shelf's note after them.
@@ -273,6 +274,7 @@ func _build() -> void:
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.add_theme_font_size_override("font_size", 12)
 	_search.clear_button_enabled = true
+	_search.resized.connect(_fit_search_words)
 	# Edged as the buttons beside it are (Look.OUTLINE), inside the same box.
 	var engine := ThemeDB.get_default_theme().get_stylebox("normal", "LineEdit") as StyleBoxFlat
 	var edged: StyleBoxFlat = engine.duplicate() if engine != null else StyleBoxFlat.new()
@@ -424,6 +426,35 @@ func _button(row: Container, text: String, action: Callable, named: String = "",
 
 # --- the shelves --------------------------------------------------------
 
+## What the search says it takes, longest first: the first that fits the
+## field whole, in the language drawn. ux12's "Set number or name, theme,
+## designer" needed 459 points of a phone's 348 and was cut again (ux13's
+## walk); each shorter one keeps the set number first.
+const SEARCH_WORDS := {
+	"sets": ["Set number or name, theme, designer", "Set number or name", "Set number"],
+	"community": ["Model name, designer or tag", "Model name or designer", "Model name"],
+}
+
+
+## The search's words fitted to its width ([constant SEARCH_WORDS]), as the
+## shelf changes and as the field is laid out.
+func _fit_search_words() -> void:
+	if _search == null:
+		return
+	var choices: Array = SEARCH_WORDS["sets" if _source == "sets" else "community"]
+	var font: Font = _search.get_theme_font("font")
+	var size: int = _search.get_theme_font_size("font_size")
+	var room: float = _search.size.x - _search.get_theme_stylebox("normal").get_minimum_size().x \
+		- (_search.right_icon.get_width() if _search.right_icon != null else 0)
+	var chosen: String = choices.back()
+	for words: String in choices:
+		if font == null or room <= 0.0 or font.get_string_size(_search.tr(words),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= room:
+			chosen = words
+			break
+	if _search.placeholder_text != chosen:
+		_search.placeholder_text = chosen
+
 func _show(source: String) -> void:
 	_source = source
 	for name: String in _tabs:
@@ -437,8 +468,7 @@ func _show(source: String) -> void:
 	# the gallery's directory_words (supabase/directory.sql). Short, the set
 	# number first: a phone's field beside Any theme showed "Search sets by
 	# na", and a fan with a set's number never read that it takes one (ux12).
-	_search.placeholder_text = "Set number or name, theme, designer" if sets \
-		else "Model name, designer or tag"
+	_fit_search_words()
 	_search.accessibility_name = "Search the LDraw sets" if sets else "Search the gallery's models"
 	_note.text = ("Models of real LEGO® sets from LDraw's Official Model Repository, each made by "
 		+ "the LDraw member credited and free to use under its licence. Open puts one in a new %s; "

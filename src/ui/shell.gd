@@ -1602,7 +1602,7 @@ func _define() -> void:
 		inspector.set_open(true)
 		inspector.show_place(), selected,
 		"What it is, its colour by every name, where it stands and what it is joined to")
-	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
+	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown(), true))
 	_ticked("panel_keys", key_strip_shown)
 	# A straight-on view beside the model (SplitView). F8: LDCad's Space,
 	# which swaps its split for one large view, is the app's to slide the
@@ -2144,7 +2144,7 @@ func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	var placed: int = await bar.open_with_progress(_recent[id].path)
 	if placed >= 0:
 		bar.opened.emit(placed)
-		bar.offer_moved()
+		bar.offer_moved(not _recent[id].example, _recent[id].path)
 
 
 func _fill_history(menu: PopupMenu) -> void:
@@ -2235,26 +2235,35 @@ func _check_stability() -> void:
 	# joint, selected" of its lean, with nothing selected (smalls4). A lean
 	# is said as itself, and a tip as the balance says it.
 	var weak: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
-		return not risk.kind in Stability.BALANCE_KINDS)
+		return not risk.kind in Stability.BALANCE_KINDS and risk.kind != Stability.FLOATS)
 	var leans: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
 		return risk.kind in ["leaning", "top-heavy"])
+	# A part in the air, touching nothing: selected and said first, as no
+	# joint (Stability.FLOATS).
+	var floating: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind == Stability.FLOATS)
 	if weak.is_empty() and not leans.is_empty():
 		said = (leans[0] as Stability.Risk).message
-	if not weak.is_empty():
+	if not weak.is_empty() or not floating.is_empty():
 		builder.selection.clear()
-		for risk: Stability.Risk in weak:
+		for risk: Stability.Risk in floating + weak:
 			if not store.scenery.has(risk.brick_id) and world.get_brick(risk.brick_id) != null:
 				builder.selection[risk.brick_id] = true
 		builder.selection_changed.emit(builder.selection.size())
-		said = "%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
-			(weak[0] as Stability.Risk).message]
+		var parts := PackedStringArray()
+		if not floating.is_empty():
+			parts.append(Stability.floating_words(floating) + ", selected")
+		if not weak.is_empty():
+			parts.append("%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
+				(weak[0] as Stability.Risk).message])
+		said = "; ".join(parts)
 	bar.say(said)
 	# With no pose to weigh, the balance as it stands is what the check read
 	# its margins from.
 	var balance: Balance.Report = await weigh_balance(poses, true, true,
 		report.balance if poses.is_empty() else null)
 	if balance != null and not balance.empty:
-		bar.say(balance.words() if weak.is_empty() and leans.is_empty()
+		bar.say(balance.words() if weak.is_empty() and leans.is_empty() and floating.is_empty()
 			else "%s. %s" % [said, balance.words()])
 
 
@@ -2382,8 +2391,27 @@ func _brace() -> void:
 
 func _reseat() -> void:
 	var offer: SeatOffer = app.get("_seat_offer")
-	if offer.check() == 0:
+	if offer.check() != 0:
+		return
+	# Nothing near its studs to seat; a part in the air is not near any, and
+	# "every part is on its studs" was said over a tile floating off its
+	# chimney (ux13's walk, p8): it is said, and selected, to move by hand.
+	var report: Variant = await app.call("weighed_now") if app.has_method("weighed_now") else null
+	var floating: Array = []
+	if report is Stability.Report:
+		for risk: Stability.Risk in (report as Stability.Report).risks:
+			if risk.kind == Stability.FLOATS and world.get_brick(risk.brick_id) != null:
+				floating.append(risk)
+	if floating.is_empty():
 		bar.say("every part is on its studs")
+		return
+	builder.selection.clear()
+	for risk: Stability.Risk in floating:
+		builder.selection[risk.brick_id] = true
+	builder.selection_changed.emit(builder.selection.size())
+	bar.say(("every part near its studs is on them; %s, selected: move it by hand" if floating.size() == 1
+		else "every part near its studs is on them; %s, selected: move them by hand")
+		% Stability.floating_words(floating))
 
 
 func _toggle_full_screen() -> void:
@@ -2801,15 +2829,23 @@ func set_grid(on: bool) -> void:
 	ShellPrefs.put("grid", on)
 
 
+## Whether the key strip shows: on, and not every control on it learned
+## (ControlsHint.learn).
 func key_strip_shown() -> bool:
-	var hint: Control = app.get("_hint")
-	return hint != null and hint.get_parent() != null and (hint.get_parent() as Control).visible
+	var hint: ControlsHint = app.get("_hint")
+	return hint != null and hint.get_parent() != null and (hint.get_parent() as Control).visible \
+		and not hint.is_empty()
 
 
-func set_key_strip(on: bool) -> void:
-	var hint: Control = app.get("_hint")
+## The key strip on or off. Turned on by [param asked] (View, Panels, Key
+## strip), whole again: what it had left as learned comes back.
+func set_key_strip(on: bool, asked: bool = false) -> void:
+	var hint: ControlsHint = app.get("_hint")
 	if hint == null or hint.get_parent() == null:
 		return
+	if on and asked:
+		ShellPrefs.put("hints_used", {})
+		hint.rebuild()
 	(hint.get_parent() as Control).visible = on
 	ShellPrefs.put("key_strip", on)
 
@@ -4185,12 +4221,14 @@ var _moved: Window = null
 var moved_offer: MovedOffer
 
 
-## A person's open found parts its file names by a moved or alias number, or
-## has no file for (ModelBar.moved_found): the moved and alias ones offered
-## in the strip over the model, in nobody's way; a part with no file at all
-## asked about in the list, as an open always asked.
-func _show_moved() -> void:
-	moved_offer.offer()
+## An open found parts its file names by a moved or alias number, or has no
+## file for (ModelBar.moved_found): the moved and alias ones of a person's
+## [param own] file offered in the strip over the model, once for the file
+## [param of] (MovedOffer), in nobody's way; a part with no file at all asked
+## about in the list, as an open always asked.
+func _show_moved(own: bool, of: String) -> void:
+	if own:
+		moved_offer.offer(of)
 	for row: Dictionary in store.moved.values():
 		if str(row["kind"]) == MovedParts.MISSING:
 			_review_moved()

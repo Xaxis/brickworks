@@ -62,7 +62,7 @@ lib:brickify from a collection
 lib:brickify steps
 -->
 
-![The fox brickified on the baseplate in orange, brown, white and black, on a black stand, and the panel saying it is down: 235 parts in 13 steps, with Booklet, BrickLink, Rebrickable and Done.](/docs/img/art-brickified.webp "The fox, brickified at 24 studs.")
+![The fox brickified on the baseplate in orange, brown, white and black, on a black stand, and the panel saying it is down: 235 parts in 13 steps, with Booklet, BrickLink, Rebrickable and Close.](/docs/img/art-brickified.webp "The fox, brickified at 24 studs.")
 
 ### From a link {#brickify-link}
 
