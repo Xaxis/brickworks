@@ -1513,8 +1513,7 @@
   "View {name} in 3D": "Ver {name} en 3D",
   "LEGO® set {set}, from {year}": "Set LEGO® {set}, de {year}",
   "LEGO® set {set}": "Set LEGO® {set}",
-  "Open LDraw's 3D model of it in Brickworks: turn it, step through its build, change it": "Abre su modelo 3D de LDraw en Brickworks: gíralo, recorre su construcción paso a paso, cámbialo",
-  "Build it in 3D": "Constrúyelo en 3D",
+  "Open LDraw's 3D model of it in Brickworks at its first step, and build it step by step": "Abrir el modelo 3D de LDraw en Brickworks en su primer paso y construirlo paso a paso",
   "Open Brickworks with this set's parts in its parts bin": "Abre Brickworks con las piezas de este set en su caja de piezas",
   "Open its parts in Brickworks": "Abrir sus piezas en Brickworks",
   "Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with": "Abre Brickworks con el asistente activado y un encargo que nombra estas piezas, para que tu propia IA diseñe con ellas",
@@ -3485,6 +3484,13 @@
   "Pictures of it": "Imágenes de él",
   "Its largest picture": "Su imagen más grande",
   "Add it to the LEGO® Pool from its page on Flickr": "Añádela al LEGO® Pool desde su página en Flickr",
-  "A kit to post {name} on {place}": "Un kit para publicar {name} en {place}"
+  "A kit to post {name} on {place}": "Un kit para publicar {name} en {place}",
+  "Make your own version": "Haz tu propia versión",
+  "Open a copy of it in Brickworks, credited to whoever modelled it: change it, publish it, and it is listed on this page": "Abrir una copia en Brickworks, con el crédito para quien lo modeló: cámbiala, publícala y aparecerá en esta página",
+  "Versions of this set": "Versiones de este set",
+  "Their own version: changed from LDraw's model": "Su propia versión: cambiada respecto al modelo de LDraw",
+  "LDraw's model, as it is": "El modelo de LDraw, tal cual",
+  "Nobody has published their own version of this set yet.": "Nadie ha publicado todavía su propia versión de este set.",
+  "Make your own version: Brickworks opens a copy of LDraw's model of it, credited to whoever modelled it. Change it, publish it, and it is listed here.": "Haz tu propia versión: Brickworks abre una copia del modelo de LDraw, con el crédito para quien lo modeló. Cámbiala, publícala y aparecerá aquí."
  }
 }

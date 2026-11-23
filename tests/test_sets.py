@@ -268,8 +268,12 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
         assert not re.search(r"Product|offers|price|cdn\.rebrickable|lego\.com", data[0] + page, re.I)
         assert "LEGO® set" in page
     assert '<link rel="canonical" href="https://brickworks.test/library/set/10179-1">' in falcon
-    # Its LDraw model: Build it in 3D in the app, its page, and both models listed.
-    assert 'href="/app?new=1&amp;library=omr-10179-1" data-build3d' in falcon
+    # Its LDraw model: Build it in the app at its first step, Make your own
+    # version (the model opened as a credited copy: sethub), its page, and
+    # both models listed.
+    assert 'href="/app?new=1&amp;library=omr-10179-1&amp;build" data-build3d' in falcon
+    assert '<a class="cta ghost" href="/app?new=1&amp;library=omr-10179-1" data-version' in falcon
+    assert ">Make your own version</a>" in falcon and ">Build it</a>" in falcon
     assert 'href="/library/omr-10179-1">a page of its own' in falcon and "/library/omr-10179-1_B" in falcon
     assert 'src="/library/omr-10179-1.cutout.webp"' in falcon
     # In 3D in the page (set3d): its picture the way into the 3D view a
@@ -287,6 +291,7 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
     assert '<a href="/library?theme=Star%20Wars%20%3E%20Ultimate%20Collector%20Series">Ultimate Collector Series</a>' in falcon
     # No model: its picture drawn from its parts, its parts into the app, and a brief to design with them.
     assert 'src="/library/set/10497-1.jpg"' in explorer and "data-build3d" not in explorer
+    assert "data-version" not in explorer
     assert 'href="/app?new=1&amp;parts=10497-1" data-bin' in explorer
     assert "/app?new=1&amp;assistant=on&amp;parts=10497-1&amp;brief=Design%20something%20new" in explorer
     assert 'data-parts="/library/set/10497-1/parts.json"' in explorer and 'id="owned" data-set="10497-1"' in explorer

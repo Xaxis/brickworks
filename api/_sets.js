@@ -333,6 +333,13 @@ export function starterBrief(entry, lots = []) {
 /// The app opened with the set's parts in its parts bin (Main's --parts),
 /// a tab of its own.
 export const binLink = (entry) => `/app?new=1&parts=${encodeURIComponent(entry.set)}`;
+/// LDraw's model of the set opened in the studio (Main's --library), at its
+/// first step with --build (Build it), or as it is: a copy of it, credited
+/// to its modeller, to change and publish as your own version (Make your
+/// own version). Its publish is counted as the set's own model
+/// (api/_omr_credit.js, api/_alts.js), so it is listed on the set's page
+/// (sethub, supabase/set_versions.sql).
+export const libraryLink = (model, build = false) => `/app?new=1&library=${encodeURIComponent(model.id)}${build ? "&build" : ""}`;
 /// The app opened with the assistant on and its brief drafted (--brief).
 export const designLink = (entry, lots) => `/app?new=1&assistant=on&parts=${encodeURIComponent(entry.set)}`
   + `&brief=${encodeURIComponent(starterBrief(entry, lots))}`;
@@ -474,7 +481,7 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
     ...entry.theme.map((name, n) =>
       `<a href="${at}/library?theme=${encodeURIComponent(entry.theme.slice(0, n + 1).join(" > "))}">${escapeHtml(themeSaid(name))}</a>`)]
     .join(' <span aria-hidden="true">›</span> ');
-  const viewer = model ? `/app?new=1&library=${encodeURIComponent(model.id)}` : "";
+  const viewer = model ? libraryLink(model) : "";
   const alt = model ? say("LDraw's 3D model of {name}", { name: entry.name })
     : photo ? say("{name}, LEGO® set {set}", { name: entry.name, set: entry.set })
     : say("Some of the parts of {name}, drawn by Brickworks", { name: entry.name });
@@ -578,7 +585,8 @@ ${chrome.header}
         : say("LEGO® set {set}", { set: entry.set }))}</p>
       ${keepBarHtml(entry)}
       <div class="actions">
-        ${model ? `<a class="cta" href="${escapeHtml(viewer)}" data-build3d title="${asText(say("Open LDraw's 3D model of it in Brickworks: turn it, step through its build, change it"))}">${asText(say("Build it in 3D"))}</a>` : ""}
+        ${model ? `<a class="cta" href="${escapeHtml(libraryLink(model, true))}" data-build3d title="${asText(say("Open LDraw's 3D model of it in Brickworks at its first step, and build it step by step"))}">${asText(say("Build it"))}</a>
+        <a class="cta ghost" href="${escapeHtml(viewer)}" data-version title="${asText(say("Open a copy of it in Brickworks, credited to whoever modelled it: change it, publish it, and it is listed on this page"))}">${asText(say("Make your own version"))}</a>` : ""}
         ${entry.lots ? `<a class="cta${model ? " ghost" : ""}" href="${escapeHtml(binLink(entry))}" data-bin title="${asText(say("Open Brickworks with this set's parts in its parts bin"))}">${asText(say("Open its parts in Brickworks"))}</a>
         <a class="cta ghost" href="${escapeHtml(designLink(entry, lots))}" data-design title="${asText(say("Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with"))}">${asText(say("Design with these parts"))}</a>` : ""}
       </div>

@@ -3236,6 +3236,14 @@
       "tests": []
     },
     {
+      "id": "cli:sethub browser flow",
+      "kind": "cli",
+      "entry": "tools/web/sethub_flow.mjs",
+      "reach": "node --env-file=.env tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--publish]   (sethub: a modelled set's Build it at its first step and Make your own version under its name, Versions of this set before Built from this set with each card said changed or as it is, or none said with Make your own version, the first screen unmoved; a set with no model offering neither; de/fr/es; --versions=FILE answers the row from a set_versions dry run; --publish, once supabase/set_versions.sql is applied, this run's own account publishes a changed version of 346-2 and it is among its versions through the CDN within 60 s, its card first on the page)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:sets browser flow",
       "kind": "cli",
       "entry": "tools/web/sets_flow.mjs",
@@ -4187,6 +4195,14 @@
       "kind": "lib",
       "entry": "api/_flatlay.js",
       "reach": "https://brickworks.diy/library/set/10497-1.jpg   (its most distinctive parts, tools/set_catalog.py picks, drawn from their own geometry in the store and written as a JPEG; tests/test_sets.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:a set's versions",
+      "kind": "lib",
+      "entry": "supabase/set_versions.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/set_versions.sql --dry --try=tools/set_versions_try.sql --table=model_alt_sets   (sethub: set_versions(set, tests), the gallery's copies of a set's own LDraw model (model_alt_sets role own), changed first, a work in progress and an alternate never; read by api/_bases.js setVersions into ?op=set_based's versions)",
       "area": "web",
       "tests": []
     },

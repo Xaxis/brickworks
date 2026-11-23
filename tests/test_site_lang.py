@@ -208,17 +208,17 @@ def test_first_steps_and_a_set_s_page_say_their_words() -> None:
     assert words["Following"] == words["You follow them: press to stop"] == "web/follow.js"
     assert words["somebody already has that handle: choose another"] == "api/people.js"
     assert words["that handle is kept for Brickworks itself: choose another"] == "api/_names.js"
-    assert {"Build it in 3D", "{name}, LEGO® set {set}: every part — Brickworks", "Parts you own",
+    assert {"Make your own version", "{name}, LEGO® set {set}: every part — Brickworks", "Parts you own",
             "Parts you own: {have} of {pieces}. You are missing {missing} in {lots}.", "element {element}"} <= set(words)
     for code in site_lang.LANGUAGES:
         said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
-        for english in ("Make your profile", "somebody already has that handle: choose another", "Build it in 3D"):
+        for english in ("Make your profile", "somebody already has that handle: choose another", "Make your own version"):
             assert said[english] != english, f"{code}: {english}"
 
 
 def test_an_english_word_back_in_first_steps_or_a_set_s_page_is_caught() -> None:
     for path, names, english in (("web/first-steps.js", (), "Make my profile"),
-                                 ("api/_sets.js", ("setPage",), "Build it in 3D"),
+                                 ("api/_sets.js", ("setPage",), "Make your own version"),
                                  ("web/model-page.js", ("startParts",), "Other")):
         text = (ROOT / path).read_text(encoding="utf-8")
         assert site_lang.unsaid(site_lang.scope(path, names)) == [], path
