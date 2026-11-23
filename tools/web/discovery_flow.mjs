@@ -38,7 +38,8 @@
 //   5. Bob keeps a collection: a real set (10760-1, expanded through its
 //      inventory), a set no inventory has, three red bricks, a blue, a
 //      yellow and a white. Each card says what he has of it (Tower and
-//      Shed every part, Wall 1 of 3, Hall 5 of 210); Parts I own puts
+//      Shed every part; Wall 1 of 3 and Hall 5 of 210, under half, say
+//      nothing, ownedparts); Parts I own puts
 //      Tower and Shed first; the front's You can build now has them; a
 //      visitor and Ada (no collection) are offered none of it.
 //
@@ -434,10 +435,11 @@ try {
       await until(page, () => document.documentElement.dataset.gallery === "ready", "Parts I own on the page");
       await page.waitForTimeout(300);
       drawn = await frontDrawn(page);
-      check(`the page by Parts I own: ${drawn.grid.map((id) => Object.keys(ids).find((key) => ids[key] === id)).join(", ")}; Wall "${(drawn.shares[ids.wall] || "").split(" ").slice(1).join(" ")}", Hall "${(drawn.shares[ids.hall] || "").split(" ").slice(1).join(" ")}"`,
+      // Under half its parts a card says nothing of it (ownedparts): the
+      // count is on the card all the same (data-owned), and the order.
+      check(`the page by Parts I own: ${drawn.grid.map((id) => Object.keys(ids).find((key) => ids[key] === id)).join(", ")}; Wall "${drawn.shares[ids.wall] || ""}", Hall "${drawn.shares[ids.hall] || ""}": under half, no line`,
         drawn.grid.join(",") === [ids.tower, ids.shed, ids.wall, ids.hall].join(",")
-          && /You have 1 of its 3 parts · 33%/.test(drawn.shares[ids.wall] || "")
-          && /You have 5 of its 210 parts · 2%/.test(drawn.shares[ids.hall] || ""));
+          && (drawn.shares[ids.wall] || "").trim() === "1/3" && (drawn.shares[ids.hall] || "").trim() === "5/210");
       await shot(page, "9_parts_i_own.png");
     }
     await made.close();

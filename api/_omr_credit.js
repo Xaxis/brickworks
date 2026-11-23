@@ -157,7 +157,8 @@ function heldTo(text, needs, theirs, needsOf) {
 }
 
 /// Who modelled [text] (its parts counted as [needs]), from the library:
-/// {name, page, licence, changed}, or null. [needsOf] counts a file's parts
+/// {name, page, licence, changed, set, alternate_of (the index's: the set
+/// it is a model of, and the set it is another model of, or null)}, or null. [needsOf] counts a file's parts
 /// as the publish does (share.js checkModel); [index] and [file] read the
 /// store, and a test gives its own. Never throws: anything the store will
 /// not say is nobody's.
@@ -172,8 +173,11 @@ export async function libraryCredit(text, needs, { needsOf, index = storeIndex, 
       if (!theirs) continue;
       const held = heldTo(text, needs, theirs, needsOf);
       if (held) {
+        // Which of the page's models it is, for its count (api/_alts.js
+        // countRows: a set's own model is no alternate of it), never kept.
         return { name: entry.author.trim().slice(0, 80), page: entry.page, licence: SITE_LICENCE[entry.licence],
-          changed: held.changed };
+          changed: held.changed, set: typeof entry.set === "string" ? entry.set : null,
+          alternate_of: typeof entry.alternate_of === "string" ? entry.alternate_of : null };
       }
     }
     return null;

@@ -75,7 +75,9 @@
 //       a set, at the count the person saw, taken out
 //   {"op": "own", "set": "6020-1", "was": 0, "qty": 1}
 //       how many of a set the person owns, every copy from anywhere, from
-//       the count they saw to qty (0: none): the website's Own (lists1).
+//       the count they saw to qty (0: none, at most MOST_OWNED, 99, unless
+//       it comes down): the website's Own (lists1) and a set's page's You
+//       own (ownedparts).
 //       More goes onto their own copy (src "hand"); fewer comes off theirs
 //       first, then off the other sources' copies. Back up to a count an
 //       Own (with an id) took it down from, nothing changed since, puts
@@ -201,6 +203,10 @@ export const MAX_KEEP_BYTES = 4_000_000;
 export const MAX_SETS = 5000;
 export const MAX_LOTS = 20000;
 const MAX_QTY = 100000;
+/// The most copies of a set Own's count takes by hand (ownedparts): 1 to 99,
+/// as a set's page offers it. A file of the person's own can bring more
+/// (MAX_QTY), and a count over this still comes down a copy at a time.
+export const MOST_OWNED = 99;
 
 const SET_NUMBER = /^[a-z0-9][a-z0-9._]{0,24}(-[0-9]{1,3})?$/;
 const PART_NUMBER = /^[a-z0-9][a-z0-9._-]{0,40}$/;
@@ -1150,6 +1156,9 @@ export function applyOp(have, body, books = new Map()) {
     const copiesOf = () => sets.list.filter((s) => s.set === set && !s.fig);
     const now = copiesOf().reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
     if (now !== was) throw new Conflict(`${set} is ${now} now, not the ${was} shown`, have);
+    if (qty > MOST_OWNED && qty > now) {
+      throw new Refusal(400, `${set}: you can own from 1 to ${MOST_OWNED} copies of a set here, not ${qty}`);
+    }
     if (qty === now) return { next: null, done: { owned: now } };
     if (qty > now) {
       // Back to a count an Own took it down from, with nothing changed

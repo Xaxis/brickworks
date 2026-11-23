@@ -14,6 +14,10 @@
 ## same call as before: on the example car a tab opens on, untouched, a look
 ## first is a design's opening (four of the bench's relay sessions of
 ## 2026-10-31 began so), and so is any first call on an empty baseplate.
+## And a chat whose first call opens a model (open_model name=, link=, as a
+## model's page's "With your Claude" message asks: claudelink, 2026-11-23) is
+## changing that model, whatever stood before; a first gallery read or list
+## of the models decides nothing, and the call after it does.
 ##
 ## Through the connector as the relay's calls reach it (_sitting, _begin,
 ## answer_rpc, _taught), in Main. On the code before, a chat changing a model
@@ -98,6 +102,29 @@ func _run() -> void:
 	said = await _call_as("e3", "look_at_model", {})
 	_check(_parts() == 0 and _first(said) == Assistant.METHOD,
 		"a chat that looks first at nothing hears the method: there is nothing to change")
+
+	# claudelink: a model's page hands the person's Claude "open_model
+	# link=..., then change it as asked". The model to change comes with the
+	# call, so the empty baseplate before it says nothing; told the method,
+	# such a chat planned a scale and submitted a silhouette over the copy.
+	print("\n── a chat that opens a model to change it ──")
+	var examples: Array[ModelStore.Entry] = (_main.get("_store") as ModelStore).list_examples()
+	said = await _call_as("o1", "gallery", {"open": "no-such"})
+	_check(_told(said).is_empty() and _text(said).length() > 0,
+		"a chat that reads the gallery first is told nothing yet: %s" % _text(said).left(50))
+	said = await _call_as("o1", "open_model", {"name": examples[0].name, "discard_changes": true})
+	_check(_first(said) == _changing and _told(said).size() == 1 and _text(said).contains("Opened"),
+		"...and opening a model next, on an empty baseplate, it hears how to change it: %s"
+			% _first(said).get_slice("\n", 0))
+	said = await _call_as("o1", "edit_model", {"recolor": [{"bricks": [_first_brick()], "color": 2}]})
+	_check(_told(said).is_empty(), "...and nothing more as it edits")
+	said = await _call_as("o2", "open_model", {})
+	_check(_told(said).is_empty(), "a chat that lists the models first is told nothing yet")
+	said = await _call_as("o2", "plan_scale", {"subject": "a windmill", "longest_metres": 12})
+	_check(_first(said) == Assistant.METHOD, "...and the method at its first design call")
+	await _call_as("o2", "clear_model", {})
+	said = await _call_as("o3", "open_model", {"name": examples[0].name})
+	_check(_first(said) == _changing, "a chat whose first call opens a model hears how to change it")
 
 	print("\n%s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures > 0 else 0)
