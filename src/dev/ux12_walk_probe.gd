@@ -284,9 +284,12 @@ func _check13(what: String, ok: bool) -> void:
 ## The words of the buttons under [param node] that close something.
 func _closers(node: Node) -> Array:
 	var out: Array = []
+	# Only what a person sees: a confirmation not shown yet still holds
+	# Godot's default "OK" until it is given its own word (collection's Move).
 	for button: Node in node.find_children("*", "Button", true, false):
 		var words: String = (button as Button).text
-		if words in ["Done", "Close", "OK", "×", "Got it"] and not words in out:
+		if (button as Button).is_visible_in_tree() \
+				and words in ["Done", "Close", "OK", "×", "Got it"] and not words in out:
 			out.append(words)
 	return out
 
