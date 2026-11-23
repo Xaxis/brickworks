@@ -47,14 +47,15 @@
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR
 //
 // --parts=fresh,install,... runs those alone. A push needs a browser with a
-// profile of its own (Chromium keeps push off in a private context), so the
-// push part opens one in a folder of its own; --headed runs it in a window
-// (under xvfb-run here), where headless Chromium cannot reach a push
-// service. Throwaway accounts at Resend's test addresses, deleted at the
-// end with their models. Pictures and the request log in --out.
+// profile of its own (push is off in a private context), so the push part
+// opens one in a folder of its own: headless Chromium, Chromium in a window
+// (an Xvfb of its own) and Firefox in turn, until one reaches a push service
+// (DEVICES), or --device=headless|window|firefox. Throwaway accounts at
+// Resend's test addresses, deleted at the end with their models. Pictures
+// and the request log in --out.
 import { bypassCookie, instantScroll, launch, quietCounter, SOFTWARE } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { chromium } from "playwright";
+import { chromium, firefox } from "playwright";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -714,30 +715,50 @@ async function push() {
   check(`her model: ${tower.status} /m/${tower.body.id}`, tower.status === 201 && Boolean(tower.body.id));
 
   // The browser's prompt only once it is turned on: a page of Settings,
-  // nothing granted, asks nothing by itself.
+  // nothing granted, asks nothing by itself. Counted where it would ask (the
+  // browser's prompt, its push service): headless Chromium says "denied"
+  // before anything is asked, so the permission alone could not tell
+  // (hsfix's local run).
   const plain = await context({ as: ada, width: 1280, height: 900 });
+  await plain.addInitScript(() => {
+    const said = (what) => {
+      try {
+        sessionStorage.setItem("flow.asked", `${sessionStorage.getItem("flow.asked") || ""} ${what}`.trim());
+      } catch {}
+    };
+    if (typeof Notification === "function") {
+      const ask = Notification.requestPermission.bind(Notification);
+      Notification.requestPermission = (...how) => { said("prompt"); return ask(...how); };
+    }
+    if (typeof PushManager === "function") {
+      const subscribe = PushManager.prototype.subscribe;
+      PushManager.prototype.subscribe = function (...how) { said("subscribe"); return subscribe.apply(this, how); };
+    }
+  });
   const look = await plain.newPage();
   listen(look, "settings, nothing granted");
   await look.goto(`${site}/settings#email-part`, { waitUntil: "load" });
   await until(look, () => document.getElementById("push-said") && (document.getElementById("push-on")?.disabled === false
     || document.getElementById("push-said").textContent), "the device's part drawn", 30);
   await look.waitForTimeout(2000);
-  const asked = await look.evaluate(() => Notification.permission);
+  const { permission, asked } = await look.evaluate(() => ({ permission: Notification.permission,
+    asked: sessionStorage.getItem("flow.asked") || "" }));
   const drawn = await pushPart(look);
-  check(`Settings › Notifications, before anything: the browser not asked (${asked}), the box ${drawn.checked ? "on" : "off"}, `
-    + `${drawn.disabled ? "disabled" : "enabled"} "${drawn.said}"`, asked === "default" && drawn.checked === false);
+  check(`Settings › Notifications, before anything: the browser not asked (${asked || "nothing"}; its permission ${permission}), `
+    + `the box ${drawn.checked ? "on" : "off"}, ${drawn.disabled ? "disabled" : "enabled"} "${drawn.said}"`,
+  !asked && permission !== "granted" && drawn.checked === false);
   await plain.close();
 
-  // Headless first; where its push service cannot be reached, in a window
-  // (a screen of its own, Xvfb), and said which.
+  // Each of DEVICES in turn until one is turned on, and said which, with
+  // what each before it said.
   let opened = null;
-  for (const headed of args.headed ? [true] : [false, true]) {
-    opened = await openDevice(headed).catch((trouble) => ({ on: String(trouble.message || trouble), close: async () => {} }));
+  for (const kind of args.device ? [String(args.device)] : Object.keys(DEVICES)) {
+    opened = await openDevice(kind).catch((trouble) => ({ on: String(trouble.message || trouble), close: async () => {} }));
     if (/On for this device/.test(opened.on)) {
-      note(`her device: ${headed ? "Chromium in a window (Xvfb)" : "headless Chromium"}, its push service reached`);
+      note(`her device: ${DEVICES[kind]}, its push service reached`);
       break;
     }
-    note(`${headed ? "Chromium in a window" : "headless Chromium"} could not be turned on: "${opened.on}"`);
+    note(`${DEVICES[kind]} could not be turned on: "${opened.on}"`);
     await opened.close();
     opened = null;
   }
@@ -805,13 +826,41 @@ async function push() {
       } while (Date.now() < end);
       return said;
     };
-    const onAgain = async (what) => {
+    // What the device asks of the API about itself, said when the account
+    // does not have it: each op=push the page sends, and its answer.
+    const asks = [];
+    page.on("response", (response) => {
+      const url = new URL(response.url());
+      if (url.origin !== new URL(site).origin || url.searchParams.get("op") !== "push") return;
+      const sent = response.request().postData() || "";
+      asks.push(`${response.request().method()} ${/"on":(true|false)/.exec(sent)?.[0] || ""}${/"all":true/.test(sent) ? " all" : ""} `
+        + `${response.status()}`);
+    });
+    // Settings opened afresh, by way of a blank page. A goto to the address
+    // the tab is at (#email-part and all) only moves to the part, and a
+    // reload in Firefox gives the box back as it was, checked and enabled,
+    // before the page has asked the account: either way the box said "on"
+    // with her sign-in ended and the account knowing no device, and was never
+    // pressed (m319home's runs, 2026-11-23).
+    const settingsAfresh = async () => {
+      if (page.url().startsWith(`${site}/settings`)) await page.goto("about:blank");
       await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
+    };
+    const onAgain = async (what) => {
+      asks.length = 0;
+      await settingsAfresh();
       await until(page, () => document.getElementById("push-on")?.disabled === false, `the box enabled (${what})`, 30);
-      if (!(await page.evaluate(() => document.getElementById("push-on").checked))) await page.click("#push-on");
+      const was = await page.evaluate(() => document.getElementById("push-on").checked);
+      if (!was) await page.click("#push-on");
       await until(page, () => /On for this device/.test(document.getElementById("push-said")?.textContent || "")
         || (document.getElementById("push-on").checked && !document.getElementById("push-on").disabled), `on again (${what})`, 60);
-      return devicesOf(1);
+      const said = await devicesOf(1);
+      if (said?.devices !== 1) {
+        const drawn = await pushPart(page);
+        note(`on again (${what}): the box was ${was ? "on" : "off"} and is ${drawn.checked ? "on" : "off"}, "${drawn.said}"; `
+          + `the page asked ${asks.join(", ") || "nothing"}; the account has ${JSON.stringify(said)}`);
+      }
+      return said;
     };
     const signedInAs = (kept) => page.evaluate(([name, value]) => {
       sessionStorage.clear();
@@ -834,7 +883,7 @@ async function push() {
     // Turn off on every device (S2), signed in again here.
     await signedInAs(keptNow);
     now = await onAgain("before Turn off on every device");
-    await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
+    await settingsAfresh();
     const every = await until(page, () => !document.getElementById("push-every-part")?.hidden
       && document.getElementById("push-every").textContent, "Turn off on every device shown", 30).catch(() => "");
     await page.click("#push-every");
@@ -881,15 +930,31 @@ async function push() {
   }
 }
 
-/// Ada's device: Chromium with a profile of its own (push is off in a
+/// The browsers her device can be, tried in this order (--device=KIND for
+/// one). Playwright's Chromium reaches no push service the site can send to:
+/// headless, it refuses ("push service not available"); in a window it
+/// subscribes, at jmt17.google.com, which is not the service any Chrome or
+/// Edge a person runs subscribes at (fcm.googleapis.com: PUSH_HOSTS in
+/// api/_push.js), so the API rightly refuses it. Firefox subscribes at
+/// Mozilla's, as every Firefox does, once the two settings by which
+/// Playwright turns push off are put back (m319home, 2026-11-23: on rel-m319's
+/// preview no push had ever reached a device, nor any device been turned on).
+const DEVICES = { headless: "headless Chromium", window: "Chromium in a window (Xvfb)", firefox: "Firefox (headless)" };
+const FIREFOX_PUSH = { "dom.push.serverURL": "wss://push.services.mozilla.com/", "dom.push.connection.enabled": true };
+
+/// Ada's device: a browser with a profile of its own (push is off in a
 /// private context), Settings opened, Notify me on this device pressed.
 /// {page, on: what Settings then said, close}.
-async function openDevice(headed) {
+async function openDevice(kind) {
+  if (!DEVICES[kind]) throw new Error(`no device "${kind}": ${Object.keys(DEVICES).join(", ")}`);
+  const headed = kind === "window";
   const dir = mkdtempSync(path.join(tmpdir(), "homescreen-device-"));
   const display = headed ? await screen() : null;
-  const device = await chromium.launchPersistentContext(dir, { headless: !headed, args: SOFTWARE,
-    viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, colorScheme: "dark",
-    ...(display ? { env: { ...process.env, DISPLAY: display } } : {}) });
+  const options = { viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, colorScheme: "dark" };
+  const device = kind === "firefox"
+    ? await firefox.launchPersistentContext(dir, { ...options, headless: true, firefoxUserPrefs: FIREFOX_PUSH })
+    : await chromium.launchPersistentContext(dir, { ...options, headless: !headed, args: SOFTWARE,
+      ...(display ? { env: { ...process.env, DISPLAY: display } } : {}) });
   const close = async () => {
     await device.close().catch(() => null);
     rmSync(dir, { recursive: true, force: true });
@@ -902,7 +967,7 @@ async function openDevice(headed) {
     await device.grantPermissions(["notifications"], { origin: site });
     await seed(device, ada);
     const page = device.pages()[0] || await device.newPage();
-    listen(page, `Ada's device${headed ? " (a window)" : ""}`);
+    listen(page, `Ada's device (${DEVICES[kind]})`);
     await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
     await until(page, () => document.getElementById("push-on")?.disabled === false, "the box enabled", 30);
     await page.click("#push-on");
@@ -915,11 +980,11 @@ async function openDevice(headed) {
   }
 }
 
-// A screen of its own for a headed browser, where the run has none: Xvfb
-// on the first free display from :140, its process ended with the part.
+// A screen of its own for a headed browser: Xvfb on the first free display
+// from :140, its process ended with the part. Never the DISPLAY the run was
+// started with, which in an agent's shell is the owner's own desktop.
 let xvfb = null;
 async function screen() {
-  if (process.env.DISPLAY) return process.env.DISPLAY;
   for (let n = 140; n < 180; n += 1) {
     if (existsSync(`/tmp/.X11-unix/X${n}`) || existsSync(`/tmp/.X${n}-lock`)) continue;
     xvfb = spawn("Xvfb", [`:${n}`, "-screen", "0", "1280x1024x24", "-nolisten", "tcp"], { stdio: "ignore" });
