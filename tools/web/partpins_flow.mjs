@@ -185,15 +185,28 @@ async function until(page, test, what, seconds = 30, arg = null) {
   }
 }
 
+/// The model's Comments tab pressed as a person presses it (only the chosen
+/// tab's panel shows since pagekit; a page opens on Overview), then its
+/// comments drawn.
+async function toComments(page, touch = false) {
+  const tab = '#page-tabs [data-tab="comments"]';
+  await until(page, (sel) => document.querySelector(sel)?.checkVisibility() || null, "the Comments tab", 45, tab);
+  if (await page.$eval(tab, (a) => a.getAttribute("aria-selected") !== "true")) {
+    if (touch) await page.tap(tab);
+    else await page.click(tab);
+  }
+  await until(page, () => {
+    const section = document.getElementById("comments");
+    return section && !section.hidden && !document.getElementById("comments-hold");
+  }, "the comments", 45);
+}
+
 /// The model's page with its comments drawn, and its 3D view open and every
 /// part in (window.brickworks3d, tools/viewer/inline.js), [pins] of its pins
 /// placed.
 async function opened(page, id, touch, { v = null, pins = 0 } = {}) {
   await page.goto(`${site}/m/${id}${v ? `/v/${v}` : ""}`, { waitUntil: "load" });
-  await until(page, () => {
-    const section = document.getElementById("comments");
-    return section && !section.hidden && !document.getElementById("comments-hold");
-  }, "the comments", 45);
+  await toComments(page, touch);
   await page.evaluate(() => document.querySelector(".model-page .picture").scrollIntoView({ block: "center" }));
   if (touch) await page.tap(".model-page .picture");
   else await page.click(".model-page .picture");
@@ -402,6 +415,7 @@ try {
     pressedParts[k] && pinPart(one.pin.part) === pinPart(pressedParts[k].part) && one.pin.colour === pressedParts[k].colour
     && apart(one.pin.at, pressedParts[k].at) <= 0.5));
   await page.reload({ waitUntil: "load" });
+  await toComments(page);
   await until(page, () => !document.getElementById("comments")?.hidden && document.querySelectorAll("#comments .comment-pin").length === 3,
     "the three pins' lines", 45);
   await page.evaluate(() => document.querySelector(".model-page .picture").scrollIntoView({ block: "center" }));
@@ -478,6 +492,7 @@ try {
   let seenAfter = null;
   while (Date.now() - began < 60000) {
     await page.goto(`${site}/m/${ids.house}`, { waitUntil: "load" });
+    await toComments(page).catch(() => null);
     const folded = await until(page, (id) => {
       const fold = document.querySelector("#comments .comments-resolved");
       if (document.getElementById("comments")?.hidden || document.getElementById("comments-hold")) return null;
