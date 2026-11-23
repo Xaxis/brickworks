@@ -136,7 +136,9 @@ func _at_width(mark: MenuButton) -> void:
 			continue
 		if first == null:
 			first = control
-		lines[roundi(control.position.y)] = true
+		# By its middle: the header centres each control in its row (appchrome),
+		# so a taller one starts higher on the same line.
+		lines[roundi(control.position.y + control.size.y / 2.0)] = true
 	var with_it: Array = _layout()
 	# Before the mark the row began with the app's name, in words: put back,
 	# in its place, for the bar as it was.
@@ -144,7 +146,9 @@ func _at_width(mark: MenuButton) -> void:
 	name.text = "Brickworks"
 	name.add_theme_font_size_override("font_size", 14)
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name.custom_minimum_size = Vector2(0, 28)
+	# As tall as the mark: the header's height is its own (appchrome), and
+	# what this weighs is the room across the mark takes.
+	name.custom_minimum_size = Vector2(0, mark.size.y)
 	name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mark.visible = false
 	row.add_child(name)
@@ -183,7 +187,8 @@ func _count_moves_nothing(mark: MenuButton) -> void:
 ## The mark's words, and where it, the menus and the model's name are.
 func _bar_places(mark: MenuButton) -> Array:
 	var name: Control = _bar.controls_by_name()["model_name"]
-	return [mark.text, mark.get_global_rect(), _bar.menus.get_global_rect(), name.get_global_rect()]
+	return [mark.text, mark.get_global_rect(), _bar.menus.get_global_rect(), name.get_global_rect(),
+		(_bar.controls_by_name()["account"] as Control).get_global_rect()]
 
 
 ## At the narrowest, with this tab's Claude line showing too, the name
@@ -195,7 +200,7 @@ func _name_gives_way(mark: MenuButton) -> void:
 	var lines: Dictionary = {}
 	for child: Node in mark.get_parent().get_children():
 		if child is Control and (child as Control).visible:
-			lines[roundi((child as Control).position.y)] = true
+			lines[roundi((child as Control).position.y + (child as Control).size.y / 2.0)] = true
 	_check("at %d units with this tab's Claude line, the mark alone (\"%s\"), the bar one line (%d)" % [
 		root.get_visible_rect().size.x, mark.text, lines.size()], mark.text.is_empty() and lines.size() == 1)
 	await _shot("bar_%d_claude_tab" % roundi(root.get_visible_rect().size.x))

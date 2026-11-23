@@ -65,18 +65,19 @@ static func points(control: Control) -> float:
 	return control.get_viewport().get_visible_rect().size.x / across * ShellPrefs.interface_size()
 
 
-## The header's ground: the site's, a line along its foot, and its height
-## made up by the margins round a [param inside] units tall row.
-static func ground(pt: float, inside: float, gutter: float) -> StyleBoxFlat:
+## The header's ground: the site's, a line along its foot, the gutters at
+## the sides. Its height is the header's minimum (TALL and LINE), the row
+## centred in it: margins round the row made it as tall as its tallest
+## control and 16 points more (a phone's 48-point buttons made 64).
+static func ground(pt: float, gutter: float) -> StyleBoxFlat:
 	var face := StyleBoxFlat.new()
 	face.bg_color = GROUND
 	face.border_color = EDGE
 	face.border_width_bottom = maxi(1, roundi(LINE * pt))
 	face.content_margin_left = gutter * pt
 	face.content_margin_right = gutter * pt
-	var room: float = maxf(0.0, TALL * pt - inside)
-	face.content_margin_top = floorf(room / 2.0)
-	face.content_margin_bottom = ceilf(room / 2.0)
+	face.content_margin_top = 0.0
+	face.content_margin_bottom = face.border_width_bottom
 	return face
 
 

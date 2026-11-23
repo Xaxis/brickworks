@@ -244,11 +244,14 @@ func _build() -> void:
 	# Redo, and in a browser Menu.
 	_top = PanelContainer.new()
 	_top.mouse_filter = Control.MOUSE_FILTER_STOP
-	_top.add_theme_stylebox_override("panel", AppHeader.ground(p(1.0), p(Phone.TARGET),
-		AppHeader.GUTTER_NARROW))
+	# Its height the header's, the row centred in it, whatever its tallest
+	# control: a margin round a fingertip's row made it 64 points, the
+	# buttons 48 with their faces, where every other mode's is 61.
+	_top.add_theme_stylebox_override("panel", AppHeader.ground(p(1.0), AppHeader.GUTTER_NARROW))
 	_pin(_top, 0.0, 0.0, 1.0, 0.0, Rect2(0, 0, 0, p(TOP)))
 	add_child(_top)
 	var top_row := HBoxContainer.new()
+	top_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	top_row.add_theme_constant_override("separation", ceili(p(6)))
 	_top.add_child(top_row)
 	# The mark first, as the desktop's bar and the site's header have it. In a

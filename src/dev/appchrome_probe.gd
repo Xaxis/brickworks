@@ -71,8 +71,17 @@ func _run() -> void:
 		return
 	print("appchrome_probe: a %s window" % _size)
 	BuildSteps._kept.clear()
+	# A phone's window: a browser gives it the phone's layout (Phone, which
+	# reads the browser's width and so is never on outside one); the desktop
+	# app is never laid out for a phone, and its menu bar at a phone's 423
+	# units wraps to two lines, as it did before appchrome.
+	var phone_sized: bool = mini(size.x, size.y) < 600
 	for web: bool in [false, true]:
+		if phone_sized and not web:
+			print("\n== the desktop's layout is not a phone's: laid out as a browser has it only ==")
+			continue
 		AppHeader.web_layout = web
+		Phone._on = 1 if web and phone_sized else 0
 		var layout: String = "web" if web else "desktop"
 		print("\n== laid out as %s ==" % ("a browser has it" if web else "the desktop has it"))
 		var told: Dictionary = {}
@@ -93,6 +102,26 @@ func _studio(layout: String, told: Dictionary) -> void:
 		playback.call("stop")
 	await _settle()
 	told["studio"] = await _header(main, layout, "studio")
+	# Account's count, which comes seconds in for someone signed in, moves
+	# nothing in the header: it sits over Account's corner, as the site's
+	# does. In Account's words it widened Account and moved Menu from under
+	# the pointer (appchrome's app_menu_flow, 2026-11-23).
+	var counted: ModelBar = main.get("_bar")
+	var places: Callable = func() -> Array:
+		var out: Array = []
+		for name: String in ["app_home", "app_menu", "account"]:
+			var control: Control = counted.controls_by_name().get(name)
+			out.append(control.get_global_rect() if control != null and control.is_visible_in_tree() else Rect2())
+		return out
+	var before: Array = places.call()
+	counted.show_feed_count(85)
+	await _frames(8)
+	var after: Array = places.call()
+	_ok(before == after and counted.account_words().ends_with("85"),
+		"%s: Account's count (\"%s\") moves nothing in the header: %s" % [layout, counted.account_words(), str(after)])
+	_save("%s_%s_studio_count.png" % [_size, layout])
+	counted.show_feed_count(0)
+	await _frames(4)
 	var shell: Shell = main.get("_shell")
 	var steps: StepsBar = main.get("_steps")
 	if steps.current_step() == null:

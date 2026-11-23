@@ -12,6 +12,9 @@ description: Open Brickworks in a browser on a computer, a tablet or a phone, si
 Brickworks is a web app: open [brickworks.diy/app](/app) and build. Nothing is installed, and the same model opens on any computer, tablet or phone you sign in on.
 
 ## Open it in a browser {#web-app}
+<!-- covers
+ui:one header in every mode
+-->
 
 Open [brickworks.diy/app](/app) in a recent browser on a computer, a tablet or a phone: it needs WebGL 2 and WebAssembly threads, and nothing else.
 

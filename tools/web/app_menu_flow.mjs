@@ -125,7 +125,12 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
   if (markName === "app_home") {
     check(`Menu at the right of the mark (${menu.x}, ${menu.y})`, menu && menu.x > mark.x + 100 && Math.abs(menu.y - mark.y) < 8);
   }
-  await page.mouse.click(menu.x, menu.y);
+  // Where Menu is now: Account's count comes seconds in, signed in (it sits
+  // over Account's corner since appchrome, so nothing should have moved).
+  const now = (await controlsWith(page, ["app_menu"], 30000)).app_menu || menu;
+  check(`...Menu where it was before Account's count came (${menu.x}, ${menu.y}; now ${now.x}, ${now.y})`,
+    Math.abs(now.x - menu.x) < 2 && Math.abs(now.y - menu.y) < 2);
+  await page.mouse.click(now.x, now.y);
   check("a click opens its menu", await until(page, async () => ((await state()).app_menu || []).length > 0, 20));
   const rows = (await state()).app_menu || [];
   check(`...its rows: ${rows.join(", ")}`, JSON.stringify(rows) === JSON.stringify(ROWS));

@@ -136,6 +136,9 @@ func _build() -> void:
 	var row := HFlowContainer.new()
 	row.add_theme_constant_override("h_separation", 4)
 	row.add_theme_constant_override("v_separation", 2)
+	# Centred in the header's height (_fit_header), whatever its tallest
+	# control is.
+	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	add_child(row)
 
 	mark = MenuButton.new()
@@ -241,6 +244,19 @@ func _build() -> void:
 	_account = _button(row, "Account", _account_pressed, "Who is signed in, and Sign out")
 	_account.name = "account"
 	_account.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# What came into the feed: a count over Account's corner, as the site
+	# draws it (web/site.css .site-head .count), never in its words. In
+	# words ("Account · 3") Account grew as the count came, seconds in, and
+	# moved Menu beside it from under the pointer (appchrome's app_menu_flow
+	# clicked where Menu had been).
+	_count = Label.new()
+	_count.name = "account_count"
+	_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_count.visible = false
+	_account.add_child(_count)
+	_account.resized.connect(_place_count)
 
 	_confirm = ConfirmationDialog.new()
 	_confirm.title = "Clear the baseplate?"
@@ -408,16 +424,17 @@ func _fit_header() -> void:
 	# header, and this keeps no height of its own.
 	if not brand.get_parent().visible:
 		return
-	var pt: float = AppHeader.points(self)
-	var density: float = Icons.density(brand)
 	var gutter: float = AppHeader.GUTTER_NARROW if Room.across() < 600.0 else AppHeader.GUTTER
-	add_theme_stylebox_override("panel", AppHeader.ground(pt, AppHeader.TARGET * pt, gutter))
+	var pt: float = minf(AppHeader.points(self), _fitting_pt(gutter))
+	var density: float = Icons.density(brand)
+	add_theme_stylebox_override("panel", AppHeader.ground(pt, gutter))
 	custom_minimum_size.y = (AppHeader.TALL + AppHeader.LINE) * pt
 	AppHeader.dress_mark(brand, pt)
 	brand.accessibility_name = NAME
 	if home != null:
 		AppHeader.dress_button(mark, pt)
 	AppHeader.dress_button(_account, pt)
+	_dress_count(pt)
 	if is_equal_approx(density, _mark_drawn_at) and is_equal_approx(pt, _mark_drawn_pt):
 		return
 	_mark_drawn_at = density
@@ -428,6 +445,37 @@ func _fit_header() -> void:
 
 var _mark_drawn_at: float = 0.0
 var _mark_drawn_pt: float = 0.0
+
+
+## The most points to the header that keep the studio's whole row on one
+## line. The menus and the model's name (at its narrowest) are in the
+## interface's units; the bare mark, Menu, Account and the gutters are in
+## points. A window narrower than the menus' 720 units has more units to
+## the point (1.85 in a browser 390 across), and the header in points put
+## Menu and Account on a second line there. Counted for the studio's row in
+## every mode, the plain ones too, so the header is one size in all of them;
+## the Claude tab, when it shows, takes the mark's name first (_fit_mark).
+func _fitting_pt(gutter: float) -> float:
+	var row: HFlowContainer = brand.get_parent()
+	var gap: float = float(row.get_theme_constant("h_separation"))
+	# The menus, each by its own size (hidden in a plain mode, the box would
+	# count none), the model's name, the 8-unit gap after the mark, and the
+	# gaps between the row's six.
+	var units: float = NAME_NARROW + 8.0 + gap * 6.0
+	for child: Node in menus.get_children():
+		var menu: Control = child as Control
+		if menu != null and menu.visible:
+			units += menu.get_combined_minimum_size().x + float(menus.get_theme_constant("separation"))
+	# Per point: the gutters, the bare mark, and Menu and Account as
+	# dress_button sizes them (15-point words, 14 points either side).
+	var font: Font = _account.get_theme_font("font")
+	var per_pt: float = 2.0 * gutter + AppHeader.TARGET + 28.0 \
+		+ font.get_string_size(_account.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	if home != null:
+		per_pt += 28.0 + font.get_string_size(mark.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	# A few units spare: sizes are rounded to whole units and points.
+	var room: float = get_viewport().get_visible_rect().size.x - units - 6.0
+	return maxf(room / per_pt, 0.5)
 
 
 ## The header plain or whole: plain for a mode that is not the studio's
@@ -470,15 +518,10 @@ func _fit_mark() -> void:
 		var control: Control = child as Control
 		if control != null and control != brand and control.visible and not (mine and control == _name):
 			wide += control.get_combined_minimum_size().x + gap
-	# Account as wide as its count makes it ("Account · 99+"), whether the
-	# count has come or not: it comes seconds in, signed in, and the name
-	# that fitted beside "Account" went, every control of the row moving
-	# twice in two seconds (rel-m223's app_menu_flow found the mark gone).
-	if _account != null and _account.visible:
-		var font: Font = _account.get_theme_font("font")
-		var size: int = _account.get_theme_font_size("font_size")
-		wide += maxf(0.0, font.get_string_size("Account · 99+", HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-			- font.get_string_size(_account.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+	# Account's count comes seconds in, signed in, over its corner
+	# (_count), so Account is as wide with it as without: nothing in the row
+	# moves when it comes (rel-m223's app_menu_flow found the mark gone when
+	# it was in Account's words).
 	var word: float = brand.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
 		-1, brand.get_theme_font_size("font_size")).x + brand.get_theme_constant("h_separation")
 	var bare: float = brand.get_combined_minimum_size().x - (0.0 if brand.text.is_empty() else word)
@@ -551,16 +594,52 @@ var _feed := 0
 func _say_account() -> void:
 	if _account == null:
 		return
-	_account.text = "Account" if _feed == 0 else "Account · %s" % ("99+" if _feed > 98 else str(_feed))
+	_count.text = "99+" if _feed > 98 else str(_feed)
+	_count.visible = _feed > 0
+	_account.accessibility_name = account_words()
+	_place_count.call_deferred()
 	var who: String = ("Signed in as %s. Sign out from here." % _email
 		if not _email.is_empty() else "Who is signed in, and Sign out")
 	_account.tooltip_text = who if _feed == 0 else "%s new in your feed. %s" % [
 		"99+" if _feed > 98 else str(_feed), who]
 
 
-## What Account says now, for the browser flows.
+## What Account says now, its count with it ("Account · 3"), for a screen
+## reader and the browser flows.
 func account_words() -> String:
-	return _account.text if _account != null else ""
+	if _account == null:
+		return ""
+	return _account.text if _feed == 0 else "%s · %s" % [_account.text, _count.text]
+
+
+## The count's look: the site's .count, a pill of its accent 18 points
+## tall, its micro type in bold.
+func _dress_count(pt: float) -> void:
+	var face := StyleBoxFlat.new()
+	face.bg_color = Color(0.949, 0.804, 0.216)
+	face.set_corner_radius_all(roundi(9.0 * pt))
+	face.content_margin_left = 5.0 * pt
+	face.content_margin_right = 5.0 * pt
+	_count.add_theme_stylebox_override("normal", face)
+	_count.add_theme_color_override("font_color", Color(0.090, 0.075, 0.039))
+	_count.add_theme_font_override("font", AppHeader.word_font(_count))
+	_count.add_theme_font_size_override("font_size", roundi(12.0 * pt))
+	_count.custom_minimum_size = Vector2(18.0 * pt, 18.0 * pt)
+	_count_pt = pt
+	_place_count.call_deferred()
+
+
+var _count: Label
+var _count_pt: float = 1.0
+
+
+## Over Account's top right corner, as the site's sits over its Menu's
+## (top -7, right -7): inside the header's 8-point margin above it.
+func _place_count() -> void:
+	if _count == null or _account == null:
+		return
+	_count.reset_size()
+	_count.position = Vector2(_account.size.x - _count.size.x + 7.0 * _count_pt, -7.0 * _count_pt)
 
 
 func model_name() -> String:
