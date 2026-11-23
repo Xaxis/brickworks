@@ -203,14 +203,16 @@ function answered(title, body, buttons, start) {
     }
     dialog.append(row);
     // Beside it, on the scrim: pressed and let go there, not a drag out of
-    // its words.
+    // its words, nor the second press of a double click on the button that
+    // asked, which lands on the scrim the moment the ask is open.
     const beside = (event) => {
       const box = dialog.getBoundingClientRect();
       return event.target === dialog && (event.clientX < box.left || event.clientX > box.right
         || event.clientY < box.top || event.clientY > box.bottom);
     };
+    const opened = performance.now();
     let down = false;
-    dialog.addEventListener("pointerdown", (event) => { down = beside(event); });
+    dialog.addEventListener("pointerdown", (event) => { down = beside(event) && performance.now() - opened > 400; });
     dialog.addEventListener("click", (event) => {
       if (down && beside(event)) dialog.close();
       down = false;

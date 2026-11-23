@@ -6,7 +6,7 @@
 //
 //   node tools/web/ask_flow.mjs [--out=DIR]              this checkout's web/ and api/, served here
 //   node tools/web/ask_flow.mjs --url=<deployment>       a deployment's files, the API answered here
-//   [--themes=light,dark] [--widths=1280,390] [--only=gallery,sheet,site,settings]
+//   [--themes=light,dark] [--widths=1280,390] [--only=gallery,sheet,site,settings,profile,comment,helper]
 //
 // The API is the stand-in's (design_stand_in.mjs: Sam, the site's owner for
 // /admin), so nothing is sent anywhere; each act's POST is counted here.
@@ -14,7 +14,7 @@
 //   1. /admin › Gallery, Take out (a danger ask): the alertdialog named by
 //      its question and described by its line, the focus on Cancel, the
 //      answer in the danger style; Escape, Cancel by Enter, and a press on
-//      the scrim each send nothing and give the focus back to Take out once
+//      the scrim (not a double click's second press) each send nothing and give the focus back to Take out once
 //      it is let go; Tab and Shift+Tab stay in the ask; Enter on Take it out
 //      sends op=unlist once.
 //   2. /admin › an account's sheet, Sign out everywhere: the ask over the
@@ -25,8 +25,16 @@
 //   4. /settings, Delete this account: the address typed, Delete my account
 //      asks; Cancel sends nothing, the focus back on Delete my account; in
 //      German at /de/settings its words are German.
+//   5. /profile, a collection's Delete: Escape sends nothing, the focus back
+//      on Delete.
+//   6. A model's page, Block on a comment's row (web/block.js): Enter on
+//      Cancel sends nothing, the focus back on Block once it is let go;
+//      Shift+Tab to Block in the ask and Enter sends op=block once.
+//   7. tools/web/asks.mjs, as the other flows use it: No sends nothing,
+//      then one Yes sends the delete once, each ask's words heard.
 //   And the browser's own dialog never opens; pictures of the asks at each
 //   width and theme (admin_ask_*, delete_ask_*).
+import { answerAsks } from "./asks.mjs";
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { mkdirSync } from "node:fs";
@@ -174,9 +182,13 @@ const JOURNEYS = {
       await until(page, () => document.activeElement?.textContent === "Take out", null, 3000);
       now = await focused(page);
       check(now.words === "Take out", `${label}: the focus back on Take out (${now.words || "the page"})`);
+      // A double click on Take out: its second press, on the scrim the
+      // moment the ask is open, leaves the ask open.
+      await take.dblclick();
+      await page.waitForTimeout(600);
+      check(await page.evaluate(() => Boolean(document.querySelector("dialog.ask[open]"))),
+        `${label}: a double click on Take out leaves the ask open`);
       // A press beside it, on the scrim.
-      await take.click();
-      await asking(page);
       await page.mouse.click(8, 8);
       check(await gone(page), `${label}: a press on the scrim closes it`);
       check(!posts.some((one) => one.endsWith(" unlist")), `${label}: and none of the three sent anything (${posts.join(", ") || "none"})`);
@@ -243,6 +255,89 @@ const JOURNEYS = {
     await gone(page);
     await page.waitForTimeout(500);
     check(posts.filter((one) => one.endsWith(" run_cron")).length === 1, `${label}: Enter on Run now sends op=run_cron once (${posts.join(", ") || "none"})`);
+    check(natives.length === 0, `${label}: the browser's own dialog never opened`);
+    await context.close();
+  },
+
+  // 5. Your profile: Delete a collection.
+  async profile(browser, { theme, width }) {
+    if (width !== 1280 || theme !== "light") return;
+    const label = `/profile collections ${width} ${theme}`;
+    const { context, page, posts, natives, errors } = await visit(browser, "/profile?tab=saved", { width, theme });
+    const drop = page.locator("#lists button", { hasText: "Delete" }).first();
+    if (!(await drop.waitFor({ timeout: 30000 }).then(() => true, () => false))) {
+      check(false, `${label}: a collection's Delete to press`);
+      await context.close();
+      return;
+    }
+    const name = await page.locator("#lists input:not([type=checkbox])").first().inputValue();
+    await drop.click();
+    await judgeAsk(page, label, { title: `Delete the collection "${name}"?`, body: "The models in it are not touched.", start: "no",
+      style: "danger" });
+    await page.keyboard.press("Escape");
+    check(await gone(page), `${label}: Escape closes it`);
+    const now = await focused(page);
+    check(now.words === "Delete", `${label}: the focus back on Delete (${now.words || "the page"})`);
+    await page.waitForTimeout(300);
+    check(!posts.some((one) => one.endsWith(" uncollection")), `${label}: nothing sent (${posts.join(", ") || "none"})`);
+    check(natives.length === 0, `${label}: the browser's own dialog never opened`);
+    check(errors.length === 0, `${label}: no script error${errors.length ? `: ${errors[0]}` : ""}`);
+    await context.close();
+  },
+
+  // 6. A model's page: Block on a comment's row (web/block.js).
+  async comment(browser, { theme, width }) {
+    if (width !== 1280 || theme !== "light") return;
+    const label = `/m/ comment Block ${width} ${theme}`;
+    const { context, page, posts, natives, errors } = await visit(browser, `/m/${stand.MODEL_ID}#comments`, { width, theme });
+    const block = page.locator("button[data-block-comment]").first();
+    if (!(await block.waitFor({ state: "attached", timeout: 30000 }).then(() => true, () => false))) {
+      check(false, `${label}: a comment's Block to press`);
+      await context.close();
+      return;
+    }
+    await block.scrollIntoViewIfNeeded();
+    const named = (await block.getAttribute("aria-label")).replace(/^Block /, "");
+    await block.click();
+    await judgeAsk(page, label, { title: `Block ${named}?`, body: "Their models leave your gallery and feed", start: "no", style: "danger" });
+    await page.keyboard.press("Enter");
+    check(await gone(page), `${label}: Enter on Cancel closes it`);
+    await until(page, () => document.activeElement?.matches("button[data-block-comment]"), null, 3000);
+    const now = await focused(page);
+    check(now.words === "Block", `${label}: the focus back on Block once it is let go (${now.words || "the page"})`);
+    await page.waitForTimeout(300);
+    check(!posts.some((one) => one.endsWith(" block")), `${label}: nothing sent (${posts.join(", ") || "none"})`);
+    await page.keyboard.press("Enter");
+    check(await asking(page), `${label}: Enter on Block asks again`);
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Enter");
+    await gone(page);
+    await page.waitForTimeout(800);
+    check(posts.filter((one) => one.endsWith(" block")).length === 1, `${label}: Enter on Block in the ask sends op=block once (${posts.join(", ") || "none"})`);
+    check(natives.length === 0, `${label}: the browser's own dialog never opened`);
+    check(errors.length === 0, `${label}: no script error${errors.length ? `: ${errors[0]}` : ""}`);
+    await context.close();
+  },
+
+  // 7. tools/web/asks.mjs, which the other flows answer the ask with.
+  async helper(browser, { theme, width }) {
+    if (width !== 1280 || theme !== "light") return;
+    const label = "asks.mjs on /settings";
+    const { context, page, posts, natives } = await visit(browser, "/settings", { width, theme });
+    const heard = await answerAsks(page, { answer: "no" });
+    const press = async () => {
+      if (!(await page.isVisible("#delete-confirm"))) await page.locator("#delete-part summary").click();
+      await page.fill("#delete-confirm", stand.EMAIL);
+      await page.locator("#delete-go").click();
+      await page.waitForTimeout(800);
+    };
+    await press();
+    check(heard.length === 1 && heard[0] === "Delete this account and everything in it, for good?"
+      && !posts.some((one) => one.startsWith("account ")), `${label}: answer "no" heard "${heard[0] || ""}" and sent nothing`);
+    await answerAsks(page, { answer: "yes", times: 1 });
+    await press();
+    check(heard.length === 2 && posts.filter((one) => one.startsWith("account ")).length === 1,
+      `${label}: then times 1 of "yes" sent the delete once (${posts.join(", ") || "none"})`);
     check(natives.length === 0, `${label}: the browser's own dialog never opened`);
     await context.close();
   },
