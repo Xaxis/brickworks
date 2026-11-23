@@ -15,6 +15,10 @@
 ##      all), and how long after the open that took.
 ##   3. A build asked for with no set (an id the store has not got): nothing
 ##      opened, and no timeline.
+##   4. The library's index read off the frame (ModelLibrary.json_off_frame):
+##      one as big as the real one (half a megabyte) read whole while the
+##      frames go on, its longest frame said beside the same read on the
+##      main thread; bytes that are not JSON read as null.
 extends SceneTree
 
 const PORT := 11763
@@ -98,6 +102,36 @@ func _run() -> void:
 	await _frames(10)
 	_check("said, nothing opened, no timeline: %s" % bar.status_text(),
 		bar.status_text() == "could not open it: The library has no model omr-99999-1." and not steps.is_playing_back())
+
+	print("\nThe library's index read off the frame")
+	var models: Array = []
+	for n: int in 2400:
+		models.append({"id": "omr-%d-1" % n, "set": "%d-1" % n, "name": "%d-1 A set of the library" % n,
+			"theme": "Town", "year": 1980, "parts": 200, "file": "library/omr/%d-1.mpd" % n,
+			"cover": "library/covers/%d-1.webp" % n, "author": "A modeller", "licence": "cc-by-2.0"})
+	var bytes: PackedByteArray = JSON.stringify({"models": models}).to_utf8_buffer()
+	began = Time.get_ticks_usec()
+	var here := JSON.new()
+	here.parse(bytes.get_string_from_utf8())
+	var here_ms: float = (Time.get_ticks_usec() - began) / 1000.0
+	var longest: Array = [0.0]
+	var frame_at: Array = [Time.get_ticks_usec()]
+	var frames: Array = [0]
+	var timing: Callable = func() -> void:
+		var now: int = Time.get_ticks_usec()
+		longest[0] = maxf(longest[0], (now - int(frame_at[0])) / 1000.0)
+		frame_at[0] = now
+		frames[0] += 1
+	process_frame.connect(timing)
+	frame_at[0] = Time.get_ticks_usec()
+	var read: Variant = await ModelLibrary.json_off_frame(bytes)
+	process_frame.disconnect(timing)
+	_check("%d KB read whole off the frame (%d models), %d frames meanwhile, the longest %.1f ms; on the main thread "
+		% [bytes.size() / 1024, (read as Dictionary).get("models", []).size() if read is Dictionary else -1, frames[0],
+		longest[0]] + "it was one frame of %.1f ms" % here_ms,
+		read is Dictionary and (read as Dictionary)["models"].size() == 2400 and frames[0] >= 1)
+	_check("bytes that are not JSON read as null",
+		await ModelLibrary.json_off_frame("<html>not found</html>".to_utf8_buffer()) == null)
 	_done()
 
 

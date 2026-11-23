@@ -4134,7 +4134,9 @@ plan with Claude as the client.
   answer kept 20 s by the CDN and 20 s more stale, so a version is on the
   page within a minute); `web/set-page.js versionsOf` draws
   `section#versions` "Versions of this set" before `#built-from`, each card's
-  `small.version-said[data-changed]`, or none said with Make your own
+  `small.version-said[data-changed]` and a picture of its model (LDraw's as
+  it is by `/library/<id>.webp`; a changed one by its own card, else its
+  `.cutout.png`, else LDraw's; never "No picture"), or none said with Make your own
   version (`[data-version-empty]`), `<html data-versions>` the count or
   "broken". A version's own page says `#alt-build[data-alt=version]` "A
   version of LEGO® set <set>" (`api/share.js altLine` from its `own` row,
@@ -4143,7 +4145,11 @@ plan with Claude as the client.
   neither button and no row. You own n is
   ownedparts' (the Own button's ×n, You own − n + in Parts you own).
   `cli:sethub browser flow` (`tools/web/sethub_flow.mjs`) drives it;
-  `--publish` proves the minute after the SQL is applied.
+  `--publish` proves the minute after the SQL is applied (7.6 s on the
+  relay, 11-23). `--open-time[=N]` against a deployment times Make your own
+  version's address beside the plain studio's in two browsers at once, and
+  logs where the version's time went (the app's state as it changed, its
+  fetches, the page's frames over 250 ms apart).
 - **Search that finds what a builder means** (search, 2026-10-30):
   `api/_search.js` reads a query word by word (misspelt by edit distance,
   run together or apart, plurals, accents and apostrophes, set numbers and
