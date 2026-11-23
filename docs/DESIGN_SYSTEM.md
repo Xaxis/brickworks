@@ -920,11 +920,13 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   with `.moves` arrows in your order, and `dialog.lists-dialog` for New
   list, Edit and Add sets.
 - **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
-  `web/theme.js` on every page while the beta is open): docked at the
-  foot of the window, the whole width, its buttons centred, the page's
-  end given its height (`--betabar-h`) so it is never over what the page
-  says (floating, it covered the home's first post; hero3d, 2026-11-23),
-  moving nothing as it comes: an accent `.badge` to /beta, a
+  `web/theme.js` on every page while the beta is open): a strip of its own
+  at the page's top, over the header, the whole width, its buttons centred,
+  `--betabar-row` tall, in a room the page holds from its first frame
+  (`:root[data-betabar]`, set by `web/theme.js`), so it covers nothing and
+  moves nothing as it comes, and scrolls away with the page (floating, it
+  covered the home's first post; docked at the foot, whatever reached the
+  fold; pagebar, 2026-11-23): an accent `.badge` to /beta, a
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
   hides it in this browser until it is shown again (bugbar, 2026-11-13;

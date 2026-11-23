@@ -157,10 +157,11 @@ async function firstScreen(label, width, height, theme) {
     .then(() => true, () => false);
   await page.waitForTimeout(1000);
   const seen = await page.evaluate(() => {
-    // The window down to the beta bar, docked at its foot (site.css): what
-    // is under the bar is not seen.
+    // The window, down to the beta bar were it at the window's foot (since
+    // pagebar a strip at the page's top, over nothing): what is under it
+    // is not seen.
     const bar = document.querySelector("#beta-bar.shown");
-    const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
+    const foot = bar && bar.getBoundingClientRect().top > innerHeight / 2 ? bar.getBoundingClientRect().top : innerHeight;
     const whole = (el) => {
       if (!el) return false;
       const r = el.getBoundingClientRect();

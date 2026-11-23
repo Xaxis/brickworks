@@ -35,7 +35,7 @@ api:sending feedback
 
 It then says the report's number, and **Your reports** opens [your settings page](/settings#feedback), where it is listed. You need to be signed in: your reports, and our answers, are kept with your account.
 
-While the [beta](/docs/beta) is open, **Report a bug** is one press from more places: beside **Account** on the app's top bar; **Report this** on the app's notice when something goes wrong, which sends the app's log lines up to the error, ticked; and the beta bar at the foot of every page of the site, which opens the same report over the page you are on.
+While the [beta](/docs/beta) is open, **Report a bug** is one press from more places: beside **Account** on the app's top bar; **Report this** on the app's notice when something goes wrong, which sends the app's log lines up to the error, ticked; and the beta bar at the top of every page of the site, which opens the same report over the page you are on.
 
 <!-- covers
 ui:report a bug in the app
@@ -74,7 +74,7 @@ lib:feedback kept and answered
 
 While the beta is open, its page, [/beta](/beta), is its hub, with **Beta hub** in a tester's account menu and the app's Brickworks menu. It shows what is new this week, from the [changelog](/changelog), how to report a bug, and for a [tester](/docs/beta) what is new to try, what we already know is wrong, and the early features on your account.
 
-While the beta is open, a slim bar floats at the foot of every page of the site: **Open beta**, which opens the hub; **Report a bug**; and **Join**, or once you have joined, that you are a tester. Its × hides it for a day.
+While the beta is open, a slim strip sits at the top of every page of the site, over the header and over nothing of the page: **Open beta**, which opens the hub; **Report a bug**; and **Join**, or once you have joined, that you are a tester. Its × hides it for a day.
 
 Early features reach testers before anyone else, in the app and on the site, and turn on when you sign in. When a feature opens to everyone, it simply stays.
 

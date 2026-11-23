@@ -343,7 +343,7 @@ try {
     const { context, page } = await open("/?tests=1", { session: people.bea });
     const shown = await page.evaluate(() => {
       const bar = document.querySelector("#beta-bar.shown");
-      const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
+      const foot = bar && bar.getBoundingClientRect().top > innerHeight / 2 ? bar.getBoundingClientRect().top : innerHeight;
       const box = (el) => (el && el.offsetHeight ? el.getBoundingClientRect() : null);
       const field = box(document.getElementById("find-q"));
       const share = box(document.getElementById("share-build"));
