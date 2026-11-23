@@ -50,7 +50,8 @@ const out = path.resolve(String(args.out || "shots/set3d"));
 mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
-const list = (given, fallback) => String(given || fallback).split(",").map((one) => one.trim()).filter(Boolean);
+// "--langs=none" (or --plain=none) leaves that part out.
+const list = (given, fallback) => String(given || fallback).split(",").map((one) => one.trim()).filter((one) => one && one !== "none");
 /// Sets of every size LDraw has a model of: 30, 101, 451 parts, a Technic
 /// hovercraft (456), a Technic Porsche (1,578), the Saturn V (1,969), the
 /// Boutique Hotel (3,066), the Technic Liebherr (4,106, 6.3 million
@@ -120,10 +121,33 @@ const frameOf = () => {
   };
   const b = window.brickworks3d;
   return { picture: box(document.querySelector(".set-page .picture")), shell: box(document.querySelector(".set-page .view3d")),
-    height: document.documentElement.scrollHeight, y: scrollY, state: b?.state || "", full: Boolean(b?.full),
+    height: document.documentElement.scrollHeight, y: scrollY,
+    // Where the page below the picture begins: the parts list fills in after load and grows the page
+    // downward from there (1499-1 at 1280 grew 362 px under the view), so its top is what must hold.
+    below: (() => { const el = document.querySelector(".set-page #parts"); return el ? Math.round(el.getBoundingClientRect().top + scrollY) : -1; })(), state: b?.state || "", full: Boolean(b?.full),
     engaged: b?.engaged ? b.engaged() : null, touch: b?.touchAction ? b.touchAction() : "", angle: b?.angle ? b.angle() : null,
     viewport: [innerWidth, innerHeight] };
 };
+/// Until the page's height has held for a second (20 s at most): a section that fills in after
+/// load (1499-1 at 1280 dark grew 362 px under the view, 11-23) is not the 3D view moving the page.
+const settled = (page) => page.waitForFunction(() => {
+  const h = document.documentElement.scrollHeight;
+  const was = window.__set3dHeld;
+  if (!was || was.h !== h) { window.__set3dHeld = { h, t: performance.now() }; return false; }
+  return performance.now() - was.t > 1000;
+}, null, { timeout: 20000, polling: 200 }).then(() => true, () => false);
+/// Until the model has stopped turning (its angle the same a second apart), in ms; -1 past 120 s.
+async function still(page) {
+  const began = Date.now();
+  let last = null;
+  while (Date.now() - began < 120000) {
+    const now = await page.evaluate(() => JSON.stringify(window.brickworks3d?.angle ? window.brickworks3d.angle() : null));
+    if (now === last) return Date.now() - began;
+    last = now;
+    await page.waitForTimeout(1000);
+  }
+  return -1;
+}
 const near = (a, b) => a && b && Math.abs(a.round - b.round) < 1e-3 && Math.abs(a.up - b.up) < 1e-3
   && Math.abs(a.distance - b.distance) < b.distance * 1e-3;
 
@@ -200,6 +224,7 @@ try {
           check(`${label}: the picture says ${was.control || "nothing"}, a button named "${was.name}", its scene ${was.scene}`,
             was.control === "View in 3D" && was.role === "button" && was.name === `View ${was.title} in 3D, here`
               && /^\/library\/omr-[^/]+\/scene\.json$/.test(was.scene) && !was.no3d);
+          await settled(page);
           const frame = await page.evaluate(frameOf);
           const { came, asked, got } = await view3d(page, phone);
           const after = await page.evaluate(frameOf);
@@ -212,8 +237,9 @@ try {
           came && got.state === "ready" && got.parts > 0 && got.shown === got.parts && !got.errors.length);
           check(`${label}: a frame with the model in it, whole (${got.sample ? `${(got.sample.drawn * 100).toFixed(1)}%, ${got.sample.colours} colours${got.sample.cut ? ", cut off at an edge" : ""}` : "none"})`,
             Boolean(got.sample && got.sample.drawn > 0.01 && !got.sample.cut));
-          check(`${label}: in the picture's frame (${after.shell} over ${frame.picture}), nothing on the page moved (${frame.height} px tall, then ${after.height})`,
-            JSON.stringify(after.shell) === JSON.stringify(frame.picture) && after.height === frame.height && after.y === frame.y);
+          check(`${label}: in the picture's frame (${after.shell} over ${frame.picture}), nothing on the page moved (what follows it at ${frame.below} px, then ${after.below}; `
+            + `the page ${frame.height} px tall, then ${after.height})`,
+            JSON.stringify(after.shell) === JSON.stringify(frame.picture) && after.below === frame.below && after.y === frame.y);
           check(`${label}: its tools named (${got.tools.join(", ")}), ${got.app || "no way into the app"}, the stage ${got.stageRole} "${got.stage.slice(0, 60)}…"`,
             JSON.stringify(got.tools) === JSON.stringify(["Zoom out", "Zoom in", "Reset the view", "Full screen", "Back to the picture"])
               && got.app === `Open in the app ${got.href}` && got.stageRole === "application" && got.stage.startsWith(`${was.title} in 3D.`));
@@ -267,10 +293,15 @@ try {
             await page.waitForTimeout(300);
           }
           if (got.state === "ready") {
-            await page.click('.view3d-tools [data-act="close"]');
+            // A swipe leaves the model turning on to a stop, and in SwiftShader each of those frames of
+            // a 450-part set at a phone's pixels takes seconds: a press made then is answered only once
+            // they are drawn (6208-1 at 390: 30 s, and the view closed after the click had timed out).
+            const stillAfter = await still(page);
+            await page.click('.view3d-tools [data-act="close"]', { timeout: 120000 });
             await page.waitForTimeout(200);
             const closed = await page.evaluate(frameOf);
-            check(`${label}: Back to the picture puts the picture back (${closed.state})`, closed.state === "closed" && closed.shell === null
+            check(`${label}: Back to the picture puts the picture back (${closed.state}; still after `
+              + `${stillAfter < 0 ? "over 120 s" : `${(stillAfter / 1000).toFixed(1)} s`})`, closed.state === "closed" && closed.shell === null
               && JSON.stringify(closed.picture) === JSON.stringify(frame.picture));
           }
           // 5. What a view of it costs, a second time in the same browser.
@@ -301,7 +332,13 @@ try {
           }
           check(`${label}: no script error (${page.errors.join(" | ") || "none"})`, page.errors.length === 0);
         } catch (trouble) {
-          check(`${label}: ${String(trouble).split("\n")[0]}`, false);
+          // What the view and the page were doing then: a closed view, its errors, a page since reloaded.
+          const then = await page.evaluate(() => ({ state: window.brickworks3d?.state || "", errors: window.brickworks3d?.errors || [],
+            said: document.querySelector(".view3d-said")?.textContent || "", since: Math.round(performance.now()) }))
+            .catch((why) => ({ state: `unreadable: ${String(why).split("\n")[0]}` }));
+          check(`${label}: ${String(trouble).split("\n")[0]} (the view ${then.state || "never opened"}`
+            + `${then.errors?.length ? `, ${then.errors.join(" | ")}` : ""}${then.said ? `, "${then.said}"` : ""}, `
+            + `the page ${then.since ?? "?"} ms old; ${page.errors.join(" | ") || "no script error"})`, false);
           await page.screenshot({ path: path.join(out, `${stem}_failed.png`) }).catch(() => {});
         } finally {
           await context.close();
