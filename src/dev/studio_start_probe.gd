@@ -65,9 +65,10 @@ class FakeShared extends SharedModels:
 		return {"code": 200, "body": {"id": id, "name": "Gallery Tower", "author": "Probe Maker",
 			"licence": "CC-BY-4.0", "parts": 6, "model": model_text, "version": 1}}
 
+	# Read at the edge as SharedModels.prompt_of reads it: no prompt, {}.
 	func prompt_of(_template: String) -> Dictionary:
 		await (Engine.get_main_loop() as SceneTree).process_frame
-		return {"code": 200, "body": {"prompt": null}}
+		return {}
 
 
 ## The pictures, from the fixtures' photos, as the gallery would send them.
