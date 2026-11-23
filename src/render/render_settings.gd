@@ -184,6 +184,12 @@ var rubbed: float = -1.0
 var table: float = -1.0
 var table_light: float = -1.0
 var fill: float = -1.0
+## Moulded edges (photoreal13), path traced in the product look: each edge's
+## rounding straying along it, each part its own way, with a nick here and
+## there, and a slope's face rounded into the part's ends; 0 the same radius
+## everywhere, 1 as the photographs show it. Below 0, StudioRender's
+## PRODUCT_EDGE.
+var edge: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

@@ -174,6 +174,10 @@ const PRODUCT_RUBBED := 0.0
 const PRODUCT_TABLE := 0.0
 const PRODUCT_TABLE_LIGHT := 0.0
 const PRODUCT_FILL := 0.0
+## Moulded edges (photoreal13, RenderSettings.edge; docs/RENDERING.md 5q):
+## judged alone beside the photographs against this tree without it, the
+## solo judge called more renders photographs (16 of 80 against 11), so on.
+const PRODUCT_EDGE := 1.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2633,6 +2637,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
+	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
 	_tracer.marked = _tracer.product and (_own(settings.rubbed, PRODUCT_RUBBED) > 0.0
 		or not _matched(settings).is_empty())
 	# The product look's picture has the samples' grain taken out
