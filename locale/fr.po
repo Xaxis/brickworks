@@ -17331,3 +17331,6 @@ msgstr "%s. Partager l’avancement garde où il en est comme une version dans l
 
 msgid "%s. Sharing its progress as a version in the model's log."
 msgstr "%s. Son avancement est partagé comme une version dans l’historique du modèle."
+
+msgid "Less"
+msgstr "Moins"
