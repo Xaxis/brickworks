@@ -11346,6 +11346,7 @@ func _studio_start_now() -> Control:
 	_studio_start.set("store", _store)
 	_studio_start.set("account", _account)
 	_studio_start.set("pictures", _model_library)
+	_studio_start.set("library", _library)
 	_studio_start.set("open_saved", func(path: String) -> void:
 		if _store.title == path.get_file().get_basename() and not _store.example:
 			return

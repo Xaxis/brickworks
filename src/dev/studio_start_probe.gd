@@ -126,9 +126,17 @@ func _run() -> void:
 	start.call("_fill_came")
 	start.call("_fill_found", true)
 	await _settle()
+	# Continue's three with no stored picture drawn from their files.
+	var drawn_ms: int = Time.get_ticks_msec()
+	for _n: int in 1200:
+		if int(start.call("page_state")["pictured"]) >= 4:
+			break
+		await process_frame
+	drawn_ms = Time.get_ticks_msec() - drawn_ms
 	await _a_while(30)
 	await _picture("studio_start_%d.png" % int(root.get_visible_rect().size.x))
 	await _the_list(start, signed_ms)
+	_the_faces(start, drawn_ms)
 	await _the_pin(start, fake)
 	await _a_new_pin(fake)
 	await _a_copy(start, fake)
@@ -168,14 +176,15 @@ func _fake() -> FakeShared:
 		"page": "/challenge?id=7", "start": "/app?copy=Pr0beTemp1", "entries": 14},
 		"came": [
 			{"kind": "comment", "model": ID, "name": "Pinned Tower", "picture": "/m/%s.webp" % ID,
-				"line": "{who} commented on a part, step 1", "who": "Lia", "said": "This yellow brick wants a slope on top",
+				"line": "{who} commented on a part, step 1", "who": "Lia", "by": {"handle": "lia", "name": "Lia", "picture": "/api/people?op=avatar&id=Av4tarPrb1"},
+				"said": "This yellow brick wants a slope on top",
 				"at": _iso_ago(600), "new": true, "link": "/m/%s#comment-%d" % [ID, COMMENT],
 				"comment": COMMENT, "pinned": true},
 			{"kind": "photo", "model": ID, "name": "Pinned Tower", "picture": "/m/%s.webp" % ID,
-				"line": "{who} posted a photo of their build", "who": "Sam", "said": "Built it with my daughter",
+				"line": "{who} posted a photo of their build", "who": "Sam", "by": {"handle": "sam-builds", "name": "Sam"}, "said": "Built it with my daughter",
 				"at": _iso_ago(7200), "new": true, "link": "/m/%s#photo-abc" % ID, "comment": 0, "pinned": false},
 			{"kind": "remix", "model": ID, "name": "Pinned Tower", "picture": "/m/%s.webp" % ID,
-				"line": "{who} remixed it as “Tall Tower”", "who": "Bo", "said": "", "at": _iso_ago(90000),
+				"line": "{who} remixed it as “Tall Tower”", "who": "Bo", "by": {"handle": "bo", "name": "Bo"}, "said": "", "at": _iso_ago(90000),
 				"new": false, "link": "/m/Pr0beRemx1", "comment": 0, "pinned": false}]}
 	var models: Array = []
 	var names: Array[String] = ["Gallery Tower", "Moon Base", "Steam Train", "Fire Station", "Mini Mech", "Bonsai"]
@@ -225,6 +234,49 @@ func _the_list(start: Control, signed_ms: int) -> void:
 	_check(int(state["real"]) >= 3 and filled >= 0 and filled - signed_ms <= 1000,
 		"(a) %d real things, three of them within %d ms of the sign-in" % [state["real"], filled - signed_ms])
 	_check(bool(_main.get("_start_decided")), "(a) decided once a tab")
+
+
+## (e) Every Continue tile shows its model, every row whoever it was, and
+## the head's buttons are a button's height, × at the top right.
+func _the_faces(start: Control, drawn_ms: int) -> void:
+	var state: Dictionary = start.call("page_state")
+	var kept: int = 0
+	for file: String in DirAccess.get_files_at(start.get("DRAWN_AT")):
+		kept += 1 if file.get_extension() == "png" else 0
+	_check(int(state["pictured"]) == 4 and kept >= 3,
+		"(e) every Continue tile shows its model, the three with none stored drawn from their files in %d ms and kept (%d of 4 shown, %d kept)"
+		% [drawn_ms, state["pictured"], kept])
+	var letters: int = 0
+	for tile: Node in (start.get("_continue") as Node).get_children():
+		for label: Node in tile.find_children("*", "Label", true, false):
+			letters += 1 if (label as Label).text.length() == 1 else 0
+	_check(letters == 0, "(e) no tile is a letter (%d)" % letters)
+	var rows: Array = (start.get("_came_list") as Node).get_children()
+	var faces: Array = rows.map(func(row: Node) -> Node: return row.find_child("Face", true, false))
+	var lia: TextureRect = faces[0].find_child("Picture", true, false) as TextureRect if faces[0] != null else null
+	var sam: Label = faces[1].get_child(0) as Label if faces[1] != null else null
+	var sam_tone: Color = ((faces[1] as Panel).get_theme_stylebox("panel") as StyleBoxFlat).bg_color \
+		if faces[1] != null else Color.BLACK
+	_check(int(state["faces"]) == 3 and lia != null and lia.texture != null and sam != null and sam.text == "S"
+		and sam_tone == start.call("tone_of", "sam-builds"),
+		"(e) each came-back row shows whoever it was: Lia's picture, Sam's initial on Sam's colour (%d faces)"
+		% state["faces"])
+	var row_left: float = (rows[0] as Control).get_global_rect().position.x if not rows.is_empty() else 0.0
+	_check(faces[0] != null and (faces[0] as Control).get_global_rect().position.x - row_left <= 16.0 * float(start.get("text_k")),
+		"(e) the face sits at the row's left, no gap before it")
+	var card: Rect2 = (start.get("_card") as Control).get_global_rect()
+	var close_at: Rect2 = (start.get("_close") as Control).get_global_rect()
+	var new_at: Rect2 = (start.get("_new") as Control).get_global_rect()
+	var least: float = 34.0 * maxf(1.0, float(start.get("text_k")))
+	var titles: Rect2 = (start.get("_titles") as Control).get_global_rect()
+	var phone: bool = float(start.get("text_k")) > 1.0
+	_check(close_at.size.y <= least * 1.5 and new_at.size.y <= least * 1.5
+		and card.end.x - close_at.end.x <= 40.0 and close_at.position.y - card.position.y <= 40.0,
+		"(e) × at the card's top right and New model a button's height (× %d tall, %d from the right; New model %d tall)"
+		% [close_at.size.y, card.end.x - close_at.end.x, new_at.size.y])
+	_check(not phone or (titles.position.y >= close_at.end.y - 1.0 and titles.size.x >= card.size.x - 60.0),
+		"(e) on a phone the title and its line have the card's width under the buttons (%d of %d)"
+		% [titles.size.x, card.size.x])
 
 
 func _the_pin(start: Control, fake: FakeShared) -> void:
