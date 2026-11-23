@@ -440,7 +440,7 @@ var _hidden_colours: PanelContainer:
 ## The HiddenColoursPanel if it has been made, else null (_make_hidden_colours).
 var _hidden_colours_made: PanelContainer = null
 ## Simulate's column, docked beside the model's, and the other panels'
-## that work on the model as it is seen (Motions, Hose, tube or chain…,
+## that work on the model as it is seen (Motions, Cable, hose or chain…,
 ## Colour the hidden parts, Stress's legend): shown while any is open, so
 ## the model's column (and the lens centred on it) is what is left of the
 ## window. Over the model's left edge Simulate's covered half a gear train
@@ -6109,7 +6109,7 @@ func _build_ui() -> void:
 	# The ruler, made as it is first taken out.
 	_verbs.make_measure = _make_measure
 
-	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel in the
+	# Make, Cable, hose or chain…: src/ui/flex_tool.gd, its panel in the
 	# column beside the model's, as Simulate's is.
 	_flex = FlexTool.new()
 	_flex.world = _world
@@ -8646,7 +8646,7 @@ func open_render() -> void:
 	_render.open()
 
 
-## Make, Hose, tube or chain…; Make, Reshape the hose or chain.
+## Make, Cable, hose or chain…; Make, Reshape the hose or chain.
 func open_flex() -> void:
 	if _measure != null:
 		_measure.leave()

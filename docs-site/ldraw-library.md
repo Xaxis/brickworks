@@ -12,7 +12,7 @@ description: Open LDraw's 3D models of real LEGO® sets, find any set's parts li
 
 ## Open a real set {#sets}
 
-**File › Library…** ([[Ctrl+Shift+O]]), or **File › Open…** then *From the library*, holds the LDraw community's models of real sets. Its other shelf, **Community**, has the models people shared in the gallery.
+**File › Library…** ([[Ctrl+Shift+O]]), or **File › Open…** then *From the library*, holds the LDraw community's models of real sets. Its other shelf, **Gallery**, has the models people shared in the gallery at brickworks.diy, the place a remix starts.
 
 1. Type a set's name, number or theme in the search at the top. It asks as you type, and finds the set through a misspelling or words run together. [[Ctrl+F]] comes back to the search; [[Esc]] clears it.
 2. Narrow it by theme, years and size, or choose another order.

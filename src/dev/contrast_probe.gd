@@ -36,7 +36,7 @@ const PANELS: Array = [["library", "Library"], ["render", "Render"], ["collectio
 	["keys", "Keys and controls"], ["account", "Account"], ["share", "Share"],
 	["mosaic", "Mosaic"], ["part_maker", "the part maker"], ["print_part", "Print on a part"],
 	["hidden_colours", "Colour the hidden parts"], ["pose", "Motions"], ["simulate", "Simulate"],
-	["flex", "Hose, tube or chain"]]
+	["flex", "Cable, hose or chain"]]
 
 
 func _initialize() -> void:

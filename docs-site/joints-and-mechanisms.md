@@ -57,9 +57,9 @@ lib:axles and gears on a line
 
 ## Hoses, tubes and chains {#flex}
 
-![The Hose, tube or chain panel: buttons for a pneumatic tube, a ribbed hose, a Flex-system hose, a flexible axle, a string, a Technic chain, a tread, a rubber band and a spring or shock, with the length to use.](/docs/img/joints-flex.webp "Make › Hose, tube or chain… lays a flexible part between two connectors.")
+![The Cable, hose or chain panel: buttons for a pneumatic tube, a ribbed hose, a Flex-system hose, a flexible axle, a string, a Technic chain, a tread, a rubber band and a spring or shock, with the length to use.](/docs/img/joints-flex.webp "Make › Cable, hose or chain… lays a flexible part between two connectors.")
 
-1. **Make › Hose, tube or chain…**, and choose what to lay and its length (or the shortest that fits).
+1. **Make › Cable, hose or chain…**, and choose what to lay and its length (or the shortest that fits).
 2. Click the pin hole or connector it starts on, then the one it ends on. For a chain or a tread, click the sprockets it goes round.
 3. Drag the bend points to shape it; **Add a bend** gives another, **Straighten** takes them out. **Done**.
 

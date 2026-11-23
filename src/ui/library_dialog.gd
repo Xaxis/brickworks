@@ -228,7 +228,9 @@ func _build() -> void:
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(8, 0)
 	header.add_child(gap)
-	for shelf: Array in [["sets", "LDraw sets"], ["community", "Community"]]:
+	# The second shelf is the gallery the site names so (brickworks.diy/gallery),
+	# where a remix begins: called Community here, it was one place by two names (ux12).
+	for shelf: Array in [["sets", "LDraw sets"], ["community", "Gallery"]]:
 		var tab := Button.new()
 		tab.text = shelf[1]
 		tab.toggle_mode = true
@@ -433,11 +435,11 @@ func _show(source: String) -> void:
 	# the gallery's directory_words (supabase/directory.sql).
 	_search.placeholder_text = "Search sets by name, set number, theme or designer" if sets \
 		else "Search models by name, designer or tag"
-	_search.accessibility_name = "Search the LDraw sets" if sets else "Search the community's models"
+	_search.accessibility_name = "Search the LDraw sets" if sets else "Search the gallery's models"
 	_note.text = ("Models of real LEGO® sets from LDraw's Official Model Repository, each made by "
 		+ "the LDraw member credited and free to use under its licence. Open puts one in a new %s; "
 		+ "the model here stays as it is.") % _tab_word() if sets else ("Models people built in "
-		+ "Brickworks and shared. Open copies one into your models in a new %s, as Open in "
+		+ "Brickworks and shared in its gallery. Open copies one into your models in a new %s, as Open in "
 		+ "Brickworks on its page does: credit its designer and keep to its licence.") % _tab_word()
 	_sort.clear()
 	if sets:
@@ -589,7 +591,7 @@ func _say_none(words: String) -> void:
 		_none_hint.text += " Searched only within the filters chosen: %s." % " · ".join(filtering)
 	_let_go.visible = not filtering.is_empty()
 	_let_go.text = "Any theme, year and size" if sets else "Any kind and size"
-	_elsewhere.text = "Search Community for %s" % quoted if sets else "Search LDraw sets for %s" % quoted
+	_elsewhere.text = "Search the gallery for %s" % quoted if sets else "Search LDraw sets for %s" % quoted
 	_say(_none_words.text + ".")
 
 

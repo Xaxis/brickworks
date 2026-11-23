@@ -707,7 +707,7 @@ func _on_open() -> void:
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
 	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
-	_saves.add_item("From the library: real sets and the community's models…", LIBRARY)
+	_saves.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	# With the other commands, above the saves. Under them, forty saves put
 	# it below the window's foot, out of sight until the menu was scrolled,
 	# and no tap on a phone found it (fling272b, 2026-10-26).
@@ -990,7 +990,7 @@ func into_model() -> void:
 	var examples: Array[ModelStore.Entry] = store.list_examples()
 	_into.clear()
 	_into.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
-	_into.add_item("From the library: real sets and the community's models…", LIBRARY)
+	_into.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	_into.add_separator("Put in this model, then click where it goes")
 	for n: int in _into_entries.size():
 		_into.add_item(_into_entries[n].describe(), n)

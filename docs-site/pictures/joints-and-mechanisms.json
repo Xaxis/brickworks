@@ -80,8 +80,8 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The Hose, tube or chain panel: buttons for a pneumatic tube, a ribbed hose, a Flex-system hose, a flexible axle, a string, a Technic chain, a tread, a rubber band and a spring or shock, with the length to use.",
-   "caption": "Make › Hose, tube or chain… lays a flexible part between two connectors.",
+   "alt": "The Cable, hose or chain panel: buttons for a pneumatic tube, a ribbed hose, a Flex-system hose, a flexible axle, a string, a Technic chain, a tread, a rubber band and a spring or shock, with the length to use.",
+   "caption": "Make › Cable, hose or chain… lays a flexible part between two connectors.",
    "features": [
     "ui:hoses and chains by hand"
    ]

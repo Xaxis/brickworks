@@ -1,4 +1,4 @@
-## Make, Hose, tube or chain…: laying a flexible part by hand.
+## Make, Cable, hose or chain…: laying a flexible part by hand.
 ##
 ## BrickLink Studio's flex tools, the way a person uses them: choose what
 ## to lay and how long a part it is, click the connector it starts on and
@@ -1444,7 +1444,7 @@ func _build_panel() -> void:
 	column.add_theme_constant_override("separation", 7)
 	panel.add_child(column)
 	var title := Label.new()
-	title.text = "Hose, tube or chain"
+	title.text = "Cable, hose or chain"
 	title.add_theme_font_size_override("font_size", 14)
 	column.add_child(title)
 	# What to lay, every choice in sight as a button: a list that has to be
