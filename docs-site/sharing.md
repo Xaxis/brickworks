@@ -13,7 +13,7 @@ Sharing gives a model a link anyone can open with no account: the model in 3D, i
 
 ## Share a model {#share}
 
-1. Turn the view to show the model as you want it seen: its picture is taken from where the view is looking.
+1. Turn the view to show the model as you want it seen: its pictures are taken from where the view is looking. Where your graphics card traces rays, its card in the gallery is drawn as a photograph of it on a desk; that adds a second or two to sharing.
 2. **File › Share…**.
 3. Give it a **Name**. **About it (shown on its page)** says what it is, up to 1,000 characters; **Tags** help people find it; **Kind** is guessed from the name, the tags and About, and you can change it.
 4. Choose a **Licence**: **CC BY 4.0** (anyone may share and change it, crediting you), **CC BY-SA 4.0** (and what they make is shared the same way) or **All rights reserved** (people may build it for themselves and ask you before sharing it).

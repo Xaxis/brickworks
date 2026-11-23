@@ -164,6 +164,11 @@
 //                            without any, put on it with no publish counted
 //                            (the site's Share from a file draws its
 //                            pictures once the server has the model)
+//   POST ?op=card&id=X       {thumb}: the owner's model given a new card
+//                            picture (/m/X.webp), its newest version's, with
+//                            no publish counted and no version made (the
+//                            house's cards drawn again as photographs,
+//                            tools/web/gallery_seed.mjs --cards)
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns,
@@ -3885,6 +3890,30 @@ async function pictures(request, response) {
   return response.status(200).json({ id, version: newest.n, pictures: true, already: false, ...links(origin, id) });
 }
 
+/// ?op=card&id=X: {thumb}, the card the gallery and the home feed show
+/// (/m/X.webp) put on its owner's model in place of the one it has, its
+/// newest version's (cardlook, 2026-11-23). The house's models were
+/// published with cut-outs in the window's light, and their cards are
+/// drawn again as photographs (CardPhoto, tools/web/gallery_seed.mjs
+/// --cards) without a version each that changed nothing. Only the owner's
+/// own link, the picture checked as a publish checks it. Nothing more than
+/// a publish of the same model without listing it could do: a barred model
+/// may be republished at its link, pictures and all.
+async function cardPut(request, response) {
+  const owner = await signedIn(request);
+  const id = String(request.query?.id || request.body?.id || "");
+  const thumb = checkThumb(request.body?.thumb);
+  if (!thumb) throw new Refusal("there is no card picture to put on it");
+  const row = await ownRow(id);
+  if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
+  if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  await putFile(`${id}.webp`, thumb, "image/webp");
+  if (!row.has_thumb) {
+    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { has_thumb: true } });
+  }
+  return response.status(200).json({ id, card: true, ...links(originOf(request), id) });
+}
+
 async function unpublish(request, response) {
   const owner = await signedIn(request);
   const id = String(request.query?.id || request.body?.id || "");
@@ -4398,6 +4427,7 @@ async function handler(request, response) {
     if (op === "unpublish") return await unpublish(request, response);
     if (op === "finish") return response.status(200).json(await finishWip(await signedIn(request), request.body?.id, originOf(request)));
     if (op === "pictures") return await pictures(request, response);
+    if (op === "card") return await cardPut(request, response);
     if (op === "seen") return await seen(request, response);
     if (op === "built") return await built(request, response);
     if (op === "bases") return await basesPut(request, response);

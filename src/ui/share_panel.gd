@@ -113,6 +113,11 @@ var moves_of: Callable = Callable()
 ## What the last publish sent of it.
 var moves: PackedStringArray = PackedStringArray()
 var picture: Picture
+## The window's environment and its Sun, Fill and Rim (main's), for the card
+## drawn as a photograph (CardPhoto).
+var look: Environment
+var rig_lights: Array[DirectionalLight3D] = []
+var _card: CardPhoto
 ## The model's name as the bar has it.
 var named: Callable = func() -> String: return "Model"
 
@@ -1145,7 +1150,9 @@ func _fail(words: String) -> void:
 ## own ground in its light theme and its dark one alike, and a WebP four
 ## to three, drawn so, for the cards. {png, cutout, thumb}, each empty when
 ## there is none to be had (a run with nothing to draw with), or when it
-## came out too large to send.
+## came out too large to send. The card is a photograph of the model on a
+## table where the graphics card traces rays (CardPhoto, cardlook), and the
+## cut-out where it does not.
 func _pictures() -> Dictionary:
 	var none := {"png": PackedByteArray(), "cutout": PackedByteArray(), "thumb": PackedByteArray()}
 	if picture == null:
@@ -1158,15 +1165,35 @@ func _pictures() -> Dictionary:
 	var png: PackedByteArray = _png_under(card)
 	var cutout: PackedByteArray = _png_under(shot)
 	var thumb := PackedByteArray()
-	var framed: Image = await picture.take(THUMB * 2)
+	var framed: Image = await _card_photo()
+	var photographed: bool = framed != null and not framed.is_empty()
+	if not photographed:
+		framed = await picture.take(THUMB * 2)
 	if framed != null and not framed.is_empty():
-		framed.convert(Image.FORMAT_RGBA8)
+		framed.convert(Image.FORMAT_RGB8 if photographed else Image.FORMAT_RGBA8)
 		framed.resize(THUMB.x, THUMB.y, Image.INTERPOLATE_LANCZOS)
 		thumb = framed.save_webp_to_buffer(true, 0.8)
 		if thumb.size() > MOST_THUMB:
 			thumb = framed.save_webp_to_buffer(true, 0.55)
 	return {"png": png, "cutout": cutout,
 		"thumb": thumb if thumb.size() <= MOST_THUMB else PackedByteArray()}
+
+
+## The card as a photograph of the model (CardPhoto), at twice the card's
+## size, or null where the graphics card traces no rays.
+func _card_photo() -> Image:
+	if not CardPhoto.possible() or picture == null or picture.world == null:
+		return null
+	if _card == null:
+		_card = CardPhoto.new()
+		add_child(_card)
+	_card.world = picture.world
+	_card.library = picture.world.library
+	_card.scenery = picture.scenery
+	_card.eye = picture.camera
+	_card.look = look
+	_card.rig_lights = rig_lights
+	return await _card.take(THUMB * 2)
 
 
 ## [param image] as a PNG under the server's limit: smaller if it must be,

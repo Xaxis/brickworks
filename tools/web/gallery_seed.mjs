@@ -4,7 +4,7 @@
 //   set -a; . ./.env; set +a
 //   godot --path . --resolution 1400x900 --script src/dev/gallery_seed.gd -- --seed-list=SEEDS.json --seed-out=DIR
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_seed.mjs --url=<deployment> --dir=DIR [--dry]
-//     [--only=A-B] [--collection="NAME" --collection-about="WORDS"]
+//     [--only=A-B] [--collection="NAME" --collection-about="WORDS"] [--cards]
 //
 // DIR holds what the app's Share panel sent for each model (gallery_seed.gd):
 // its LDraw, its picture, its title, its credit, listed. Each is published
@@ -23,6 +23,14 @@
 // each model published in the account's public collection of that name,
 // made (with --collection-about as its words) when it has none: the shelf
 // from the LDraw library is "From the LDraw library" (gallery261).
+//
+// --cards puts only each body's card (its thumb) on the model the account
+// already shares under its title (api/share.js op=card): no publish, no
+// version, nothing listed. The house's cards were drawn again as
+// photographs that way (cardlook, 2026-11-23, src/render/card_photo.gd):
+// gallery_seed.gd run under the GPU's lease, where the card traces rays,
+// writes the bodies. A body no model of the account's has the title of is
+// a FAIL, and nothing is published for it.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { mintSession } from "./session.mjs";
@@ -91,6 +99,29 @@ function testedSaid(tested) {
 }
 
 let failed = 0;
+if (args.cards) {
+  for (const body of bodies) {
+    const id = byName.get(body.name);
+    const kb = Math.round(Buffer.from(body.thumb || "", "base64").length / 1024);
+    if (!id || !body.thumb) {
+      failed += 1;
+      console.log(`  FAIL  ${body.name}: ${id ? "the body has no card" : "the account shares no model of that title"}`);
+      continue;
+    }
+    if (args.dry) {
+      console.log(`  would put a ${kb} KB card on ${id}: ${body.name}`);
+      continue;
+    }
+    const reply = await fetch(`${base}/api/share?op=card&id=${id}`, { method: "POST", headers: auth,
+      body: JSON.stringify({ thumb: body.thumb }) });
+    const said = await reply.json().catch(() => ({}));
+    const ok = reply.status === 200 && said.card === true;
+    if (!ok) failed += 1;
+    console.log(`  ${ok ? "ok  " : "FAIL"}  ${body.name}: ${reply.status} ${ok ? `${kb} KB card on ${said.url}` : said.error || ""}`);
+  }
+  console.log(failed ? `${failed} FAILED` : `${bodies.length} cards ${args.dry ? "to put" : "put"} on ${EMAIL}'s models`);
+  process.exit(failed ? 1 : 0);
+}
 // The last first: the gallery is newest first, so it then shows them in
 // the order given.
 for (const body of [...bodies].reverse()) {

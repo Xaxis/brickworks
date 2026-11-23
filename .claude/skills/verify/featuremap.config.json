@@ -1573,6 +1573,27 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "the gallery's card as a photograph",
+      "entry": "src/render/card_photo.gd",
+      "reach": "File › Share… › Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk (CardPhoto, src/ui/share_panel.gd _pictures); a browser keeps the cut-out",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card probe",
+      "entry": "src/dev/card_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_probe.gd -- --pictures=DIR [--only=1,6] [--looks=LOOKS.json]",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card judge",
+      "entry": "tools/bench/cardlook.py",
+      "reach": "python3 tools/bench/cardlook.py sheet DIR --looks new  |  python3 tools/bench/cardlook.py judge DIR --look new --out OUT",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "seed the gallery",
       "entry": "tools/web/gallery_seed.mjs",
