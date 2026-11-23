@@ -73,8 +73,9 @@ sharpPhotos(document);
 // A page a probe opened with ?tests=1: the people @ offers include test
 // accounts, which nobody else is offered.
 const TESTS = new URLSearchParams(location.search).get("tests") === "1";
-// Where the picture's frame is square (directory.css): a phone's.
-const PHONE = matchMedia("(width < 600px)");
+// Where the picture's frame is not the picture's own shape (directory.css):
+// a phone's square, a laptop's 4:3 (sitepolish, 2026-11-23).
+const FITTED = matchMedia("(width < 600px), (width >= 900px)");
 // Its picture: the frame says it is coming until it is drawn, and one that
 // fails is asked for again, twice, before the frame says there is none.
 const frame = document.querySelector(".model-page .picture");
@@ -294,26 +295,37 @@ function startPicture(big) {
   img.addEventListener("load", drawn);
   img.addEventListener("error", failed);
   if (img.complete) (img.naturalWidth > 0 ? drawn : failed)();
-  PHONE.addEventListener("change", () => fitPicture(big, img));
+  // Drawn again as the frame changes shape: a window made wider or narrower.
+  let width = 0;
+  new ResizeObserver(() => {
+    if (Math.abs(big.clientWidth - width) < 1) return;
+    width = big.clientWidth;
+    if (img.complete && img.naturalWidth > 0) fitPicture(big, img);
+  }).observe(big);
 }
 
 
-/// On a phone the picture's frame is square, and its model is drawn as
-/// large as the model's width lets it: the 1200 x 630 picture cropped
-/// round the model when the model is no wider than the square, else
-/// scaled until all of it is in, on the frame's ground (a picture with
-/// nothing behind the model), or with the ground an older picture carries
-/// (--render-top, --render-foot) carried on above and below it. Never
-/// smaller than the whole picture across the frame, as it
-/// was: 186 px tall at 390, a fifth of the screen (site273). By transform
-/// alone, which moves nothing else, so the page never shifts as it does.
-/// A photo is shown whole (.photo), and on a laptop the frame is the
-/// picture's own shape.
+/// Where the picture's frame is taller than the picture (a phone's square,
+/// a laptop's 4:3), its model is drawn as large as the model's width lets
+/// it: the 1200 x 630 picture cropped round the model when the model is no
+/// wider than the frame, else scaled until all of it is in, on the frame's
+/// ground (a picture with nothing behind the model), or with the ground an
+/// older picture carries (--render-top, --render-foot) carried on above and
+/// below it. Never smaller than the whole picture across the frame, as it
+/// was: 186 px tall at 390, a fifth of the screen (site273), and 380 of a
+/// 1280 window's 800 beside a column 560 tall (sitepolish). By transform
+/// alone (--fit, which a pointer's zoom adds to), which moves nothing
+/// else, so the page never shifts as it does. A photo is shown whole
+/// (.photo); a tablet's frame is the picture's own shape.
 function fitPicture(big, img) {
   img.style.objectFit = "";
-  img.style.transform = "";
+  img.style.removeProperty("--fit");
   big.style.background = "";
-  if (!PHONE.matches || big.classList.contains("photo") || !img.naturalWidth) return;
+  if (!FITTED.matches || big.classList.contains("photo") || !img.naturalWidth || !big.clientHeight) return;
+  // The frame's shape against the picture's: a square is 1, 4:3 is 1.33.
+  const aspect = img.naturalWidth / img.naturalHeight;
+  const frame = big.clientWidth / big.clientHeight;
+  if (frame >= aspect - 0.02) return;
   // The model's columns, read from a small copy: those drawn on, in a
   // picture with nothing behind the model; else those that differ from its
   // ground, a gradient from top to bottom read at the corners.
@@ -346,16 +358,15 @@ function fitPicture(big, img) {
   const last = w - 1 - [...hits].reverse().findIndex((n) => n >= 2);
   if (first < 0) return;
   // The share of the picture's width shown: the model's and a margin, and
-  // no less than the square's, which crops it to the frame's height.
-  const aspect = img.naturalWidth / img.naturalHeight;
-  const shown = Math.min(1, Math.max(1 / aspect, (last - first + 1) / w + 0.06));
+  // no less than the frame's, which crops it to the frame's height.
+  const shown = Math.min(1, Math.max(frame / aspect, (last - first + 1) / w + 0.06));
   const middle = Math.min(1 - shown / 2, Math.max(shown / 2, (first + last + 1) / 2 / w));
   // Drawn whole across the frame (contain), then enlarged round the model.
   img.style.objectFit = "contain";
-  img.style.transform = `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`;
+  img.style.setProperty("--fit", `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`);
   // An older picture's own ground above and below it, where it is shorter
   // than the frame; one with nothing behind the model is on the frame's.
-  const band = Math.max(0, (1 - 1 / (shown * aspect)) / 2) * 100;
+  const band = Math.max(0, (1 - frame / (shown * aspect)) / 2) * 100;
   if (band > 0.5 && !clear) {
     big.style.background = `linear-gradient(180deg, var(--render-top) ${band.toFixed(1)}%, var(--render-foot) ${(100 - band).toFixed(1)}%)`;
   }

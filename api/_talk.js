@@ -341,8 +341,11 @@ const modelPicture = (model) => {
   return model.has_thumb ? `/m/${model.id}.webp?v=${version.toString(36)}` : model.has_image ? `/m/${model.id}.png` : "";
 };
 
-/// One row of a list of threads: its title (a link), its board, pinned and
-/// locked, its first words, who started it, its replies and its last word.
+/// One row of a list of threads: its title (a link), its first words, then
+/// one line of who started it (their avatar, as a forum shows it), when,
+/// its replies once there is one and its last word, and its marks: pinned,
+/// locked, its board, new (sitepolish, 2026-11-23: the board was a pill on a
+/// line of its own in every row, and every row said "0 replies").
 export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   const at = langAt();
   const pills = [
@@ -357,11 +360,12 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   return `<li class="talk-row${thread.pinned ? " pinned" : ""}" data-thread="${Number(thread.id)}">`
     + `${picture ? `<img class="talk-row-picture" src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">` : ""}`
     + `<div class="talk-row-main"><h3 class="talk-row-title"><a href="${at}${threadPath(thread)}">${escapeHtml(thread.title)}</a></h3>`
-    + `${pills ? `<p class="pills">${pills}</p>` : ""}`
     + `${thread.said ? `<p class="talk-row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
-    + `<p class="talk-row-meta">${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}`
-    + ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>`
-    + `${last}${replies ? ` ${timeHtml(thread.last_at, now)}` : ""}</p></div></li>`;
+    + `<div class="talk-row-foot"><p class="talk-row-meta">${thread.by?.handle ? avatarHtml(thread.by, { size: "small" }) : ""}`
+    + `<span>${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}`
+    + `${replies ? ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>` : ""}`
+    + `${last}${replies ? ` ${timeHtml(thread.last_at, now)}` : ""}</span></p>`
+    + `${pills ? `<p class="pills">${pills}</p>` : ""}</div></div></li>`;
 }
 
 /// The cards under a post, for what it links ([embeds], embedsIn), each
@@ -691,7 +695,10 @@ function sendPage(response, status, body, tests) {
 
 /// A page of Talk in [lang]: the site's header and footer, its head, [main].
 function talkShell(origin, { title, about, path, lang, words, robots = "", main, image = "", schema = "", rss = "" }) {
-  const { header, footer, head } = siteChrome(lang);
+  const { footer, head } = siteChrome(lang);
+  // Talk marked in the header's links as the page it is in, as the
+  // gallery's page marks Gallery (sitepolish: on Talk none was).
+  const header = siteChrome(lang).header.replace(/(<a href="(?:\/(?:de|fr|es))?\/talk")>/g, '$1 aria-current="page">');
   const copy = (code) => `${origin}${["en", "x-default"].includes(code) ? "" : `/${code}`}${path}`;
   const url = copy(lang);
   const alternates = ["en", ...SITE_LANGS, "x-default"].map((code) =>
@@ -724,6 +731,7 @@ ${schema ? `<script type="application/ld+json">${schema}</script>\n` : ""}${scri
 <link rel="stylesheet" href="/directory.css">
 <link rel="stylesheet" href="/talk.css">
 <script src="/talk.js" type="module"></script>
+<script src="/follow.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">${asText(say("Skip to content"))}</a>
@@ -777,14 +785,22 @@ ${older}
 <h2 id="talk-on-models">${asText(say("On the models"))}</h2>
 ${talkingHtml(talking, models, now)}
 </section>
-<section aria-labelledby="talk-boards-title">
-<h2 id="talk-boards-title">${asText(say("The boards"))}</h2>
-<dl class="talk-board-list">${BOARDS.map((id) => `<dt><a href="${at}/talk/b/${id}">${asText(boardSaid(id).name)}</a></dt><dd>${asText(boardSaid(id).about)}</dd>`).join("")}</dl>
-<p class="note"><a href="${at}/guidelines">${asText(say("Community guidelines"))}</a> · <a href="/talk${board ? `/b/${board}` : ""}.rss">${asText(say("RSS feed"))}</a></p>
-</section>
+${boardsListHtml(board)}
 </aside>
 </div>
 </div>`;
+}
+
+/// Talk's boards, each with what it is for, then the guidelines and the
+/// feed of [board] (or of all of Talk): beside the threads, and beside a
+/// thread's posts, where the column was empty (sitepolish, 2026-11-23).
+function boardsListHtml(board) {
+  const at = langAt();
+  return `<section aria-labelledby="talk-boards-title">
+<h2 id="talk-boards-title">${asText(say("The boards"))}</h2>
+<dl class="talk-board-list">${BOARDS.map((id) => `<dt><a href="${at}/talk/b/${id}"${id === board ? ' aria-current="page"' : ""}>${asText(boardSaid(id).name)}</a></dt><dd>${asText(boardSaid(id).about)}</dd>`).join("")}</dl>
+<p class="note"><a href="${at}/guidelines">${asText(say("Community guidelines"))}</a> · <a href="/talk${board ? `/b/${board}` : ""}.rss">${asText(say("RSS feed"))}</a></p>
+</section>`;
 }
 
 /// /talk/t/<n>: the thread, its posts, and the box to reply.
@@ -800,17 +816,19 @@ export function threadPageHtml({ page, found, hosts, tests, now = Date.now() }) 
   const model = thread.model?.id ? `<a class="talk-model" href="${at}/m/${encodeURIComponent(thread.model.id)}">`
     + `${modelPicture(thread.model) ? `<img src="${escapeHtml(modelPicture(thread.model))}" alt="" width="160" height="120">` : ""}`
     + `<span><small>${asText(say("The model"))}</small><b>${escapeHtml(thread.model.name || "")}</b></span></a>` : "";
-  const challenge = thread.challenge?.id ? `<p class="talk-challenge"><a class="cta ghost" href="${at}/challenge?id=${Number(thread.challenge.id)}${thread.challenge.test ? "&tests=1" : ""}">`
-    + `${asText(say("See the challenge, enter and vote"))}</a></p>` : "";
+  const challenge = thread.challenge?.id ? `<span class="talk-challenge"><a class="cta" href="${at}/challenge?id=${Number(thread.challenge.id)}${thread.challenge.test ? "&tests=1" : ""}">`
+    + `${asText(say("See the challenge, enter and vote"))}</a></span>` : "";
   return `<div class="wrap talk-page" data-talk="thread" data-thread="${Number(thread.id)}" data-board="${thread.board}"${thread.locked ? " data-locked" : ""}${tests ? " data-tests" : ""}>
 <p class="talk-crumbs"><a href="${at}/talk${tests ? "?tests=1" : ""}">${asText(say("Talk"))}</a> › <a href="${at}/talk/b/${thread.board}${tests ? "?tests=1" : ""}">${asText(said.name)}</a></p>
 <header class="talk-thread-head">
 <h1>${escapeHtml(thread.title)}</h1>
-<p class="talk-row-meta">${pills ? `${pills} ` : ""}${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)} · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span></p>
-${model}${challenge}
-<div class="actions"><button class="cta ghost small" type="button" data-follow aria-pressed="false" hidden>${asText(say("Follow"))}</button>
-<span class="note talk-follow-said" data-follow-said hidden></span></div>
+<p class="talk-row-meta">${pills ? `${pills} ` : ""}${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}${replies ? ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>` : ""}</p>
+${model}
+<div class="actions talk-thread-acts">${challenge}<button class="cta ghost" type="button" data-talk-follow aria-pressed="false" hidden>${asText(say("Follow"))}</button>
+<span class="note talk-follow-said" data-talk-follow-said hidden></span></div>
 </header>
+<div class="talk-layout talk-thread-layout">
+<div class="talk-thread-main">
 <ol class="comment-list talk-posts" id="talk-posts">${postsHtml(page, { found, hosts, now })}</ol>
 <p class="note" data-blocked-some hidden>${asText(say("Some posts here are by people you blocked, so they are not shown."))}</p>
 <section class="talk-reply" id="reply" aria-labelledby="talk-reply-title">
@@ -828,6 +846,11 @@ ${thread.locked ? `<p class="note">${asText(say("This thread is locked: it takes
 <div class="talk-signin" data-signin><p>${asText(say("Sign in to reply: we email you a code, no password. Anyone can read Talk."))}</p>
 <button class="cta" type="button" data-act="sign-in" hidden>${asText(say("Sign in to reply"))}</button></div>`}
 </section>
+</div>
+<aside class="talk-aside">
+${boardsListHtml(thread.board)}
+</aside>
+</div>
 </div>`;
 }
 

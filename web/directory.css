@@ -54,9 +54,11 @@
 	/* A finger up or down it scrolls the page; across it opens the 3D view. */
 	touch-action: pan-y pinch-zoom;
 }
-.model-page .picture img { position: relative; width: 100%; height: 100%; object-fit: cover; transition: transform 320ms var(--ease); }
-@media (hover: hover) { .model-page a.picture:hover img { transform: scale(1.02); } }
-@media (prefers-reduced-motion: reduce) { .model-page .picture img { transition: none; } .model-page a.picture:hover img { transform: none; } }
+.model-page .picture img {
+	position: relative; width: 100%; height: 100%; object-fit: cover; transform: var(--fit, none); transition: transform 320ms var(--ease);
+}
+@media (hover: hover) { .model-page a.picture:hover img { transform: var(--fit,) scale(1.02); } }
+@media (prefers-reduced-motion: reduce) { .model-page .picture img { transition: none; } .model-page a.picture:hover img { transform: var(--fit, none); } }
 /* Until its picture is drawn the frame says it is coming, as a card with
    none says so (site.css .model .frame.none), and the picture lands over
    it: the first view right after publishing was a blank grey frame while
@@ -105,6 +107,14 @@
    and web/model-page.js draws the model as large as its width lets it,
    the picture's own ground carried on above and below a wide one. */
 @media (width < 600px) { .model-page .picture { aspect-ratio: 1 / 1; } }
+/* On a laptop 4:3, as tall as the column beside it (sitepolish, 2026-11-23:
+   at 1280 the picture was 380 px tall beside a column of 560, the model in
+   a strip of it, where a model's page on Printables or MakerWorld leads with
+   a picture as tall as its buying box), and 16:10 from 1600 px, so the
+   whole of it stays on a 900 px tall window's first screen. Drawn the way a
+   phone's square is (web/model-page.js fitPicture). */
+@media (width >= 900px) { .model-page .picture { aspect-ratio: 4 / 3; } }
+@media (width >= 1600px) { .model-page .picture { aspect-ratio: 16 / 10; } }
 
 /* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
    under the header as the page scrolls past its parts. */
@@ -131,11 +141,36 @@ dialog.report.bases-dialog fieldset { border: 1px solid var(--line); border-radi
 dialog.report.bases-dialog fieldset > button { justify-self: start; }
 dialog.bases-dialog form label { margin-bottom: 10px; }
 dialog.bases-dialog .actions { margin-top: 16px; }
-/* The facts are words, not controls: a long one ("Moves: ...") wraps. */
-.model-page .facts { margin: 18px 0 12px; align-items: center; }
+/* The facts are words, not controls: a long one ("Moves: ...") wraps.
+   One quiet line of them, a dot between, those that lead somewhere links
+   (sitepolish, 2026-11-23: they were pills of two sizes, a fact's 24 px
+   beside a link's 32, and a long one a pill two lines tall). */
+/* Each fact after a dot, and the row drawn 16 px to the left with that
+   strip cut off, so the dot that starts a line is never seen: a dot only
+   ever between two facts on one line (the ring of a focused link keeps 3 px). */
+.model-page .facts { margin: 18px 0 12px -16px; align-items: center; gap: 2px 0; clip-path: inset(-8px -8px -8px 13px); }
 .model-page .facts .pill { white-space: normal; max-width: 100%; }
+/* A fact is a block of words, its spaces kept (as a flex box a fact's
+   words and its date were two items, and "since" lost its space); its dot
+   hangs in the strip, so a fact's second line starts under its first. */
+.model-page .facts > li {
+	display: block; min-width: 0; padding-left: 16px; text-indent: -16px;
+	font-size: var(--t-small); line-height: 1.45;
+}
+.model-page .facts > li > *, .model-page .facts > li::before { text-indent: 0; }
+.model-page .facts > li::before { content: "\00B7"; display: inline-block; width: 16px; text-align: center; color: var(--ink-faint); }
+.model-page .facts > li.pill, .model-page .facts > li > a.pill {
+	min-height: 24px; padding: 0; border: 0; border-radius: 0; background: none;
+	font-size: var(--t-small); font-weight: 500; line-height: 1.45;
+}
+.model-page .facts > li.pill { padding-left: 16px; color: var(--ink-soft); }
+.model-page .facts > li > a.pill {
+	color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px;
+}
+.model-page .facts > li > a.pill:hover { background: none; text-decoration-color: currentColor; }
+.model-page .facts > li > a.pill.good { color: var(--green); font-weight: 600; }
 /* The Tested mark, first of them; open, its four results take the row. */
-.model-page .facts .tested-mark { margin: 0; }
+.model-page .facts .tested-mark { display: inline-block; max-width: 100%; vertical-align: middle; margin: 0; }
 .model-page .facts li.tested:has(> .tested-mark[open]) { flex-basis: 100%; }
 .model-page .side .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 12px; }
 /* Build it across the column, Open in Brickworks and Download under it,
@@ -176,6 +211,10 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page section { margin-top: var(--s-7); max-width: 72ch; }
 .model-page .rest > section + section { padding-top: var(--s-6); border-top: 1px solid var(--line); }
 .model-page .rest > section:first-of-type { margin-top: 12px; }
+/* A first part not shown (a set's Owned, signed out) leaves the next one
+   first: no line and no gap of two over it (sitepolish: 80 px and a rule
+   between a set's column and its Parts, on a phone and a laptop). */
+.model-page .rest > section[hidden]:first-of-type + section { margin-top: 12px; padding-top: 0; border-top: 0; }
 .model-page section h2 { margin: 0 0 var(--s-2); }
 .model-page section h3 { margin: var(--s-4) 0 var(--s-2); }
 .model-page .tags { margin: 18px 0 0; }
@@ -214,6 +253,14 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .parts .note { margin: 0 0 var(--s-3); color: var(--ink-soft); }
 .parts-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); }
 .parts-bar .segmented { margin-right: auto; }
+/* On a phone the grouping has a row of its own and the two lists to take
+   away share the next, half each (sitepolish, 2026-11-23: Rebrickable CSV
+   fell alone onto a second row under BrickLink XML). */
+@media (width < 600px) {
+	.parts-bar .segmented { flex: 1 1 100%; margin-right: 0; }
+	.parts-bar .segmented > button { flex: 1; }
+	.parts-bar > .cta { flex: 1 1 0; min-width: 0; }
+}
 /* The shops' lists, one group: it wraps as a whole beside Colour and Kind
    or under them, never one shop a row apart from the rest. */
 .parts-shops { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -588,7 +635,6 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.feed-layout.with-rail .feed-rail { position: sticky; top: 84px; }
 	.feed-layout.with-rail .latest .models { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-@media (width >= 1600px) { .feed-layout.with-rail .latest .models { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 
 /* Notifications (/notifications, web/notifications.js, docs/SOCIAL.md U7):
    one group a model, its picture and name, then each thing that happened
@@ -812,6 +858,10 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .profile .standing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-4); }
 .profile .standing .numbers, .profile .standing .awards { margin: 0; }
 .profile .pinned { margin-top: var(--s-6); }
+/* Up to three pinned (api/people.js MOST_PINS): on a laptop a third of the
+   row each, larger than the cards under them, rather than three of a
+   scroller's 300 px and the rest of the row empty (sitepolish). */
+@media (width >= 900px) { .profile .pinned .models.scroller { grid-auto-columns: calc((100% - 2 * var(--s-5)) / 3); } }
 .profile .pinned h2, .profile .follows h2, .profile .tab-panel h2 { margin: 0 0 var(--s-3); }
 .profile .work { margin-top: var(--s-6); }
 .profile .tab-panel > section:first-child { margin-top: 0; }
