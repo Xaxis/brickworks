@@ -202,7 +202,8 @@ var edge: float = -1.0
 ## [member source_fall] how much darker its edges are than its middle (0
 ## even, 1 dark at the corners), and [member source_key] how much of a
 ## staged table's near key stays with it (0 none, 1 all). Below 0,
-## StudioRender's PRODUCT_SOURCE and SOURCE_*; [member source_rise] below 0
+## StudioRender's PRODUCT_SOURCE (0: off in the app; the photo bench asks
+## SOURCE_LEVEL on a table) and SOURCE_*; [member source_rise] below 0
 ## stands it where a flat top mirrors it, as high as the camera looks down.
 var source: float = -1.0
 var source_rise: float = -1.0

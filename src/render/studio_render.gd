@@ -179,14 +179,15 @@ const PRODUCT_FILL := 0.0
 ## solo judge called more renders photographs (16 of 80 against 11), so on.
 const PRODUCT_EDGE := 1.0
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
-## source and source_*; path_tracer.glsl's source_light), on a table under
-## the studio's light by default: a bright window behind the model with the
-## table's own key nearly gone, as a photograph by a window has it. Judged
-## alone beside the photographs, the bench's close-ups on a table and in the
-## tent with it on every table and a small one in the tent were called
-## photographs 26 times of 80 against 17 without (both draws, both rounds
-## ahead), the grey brick 6 of 8 against 0; in the tent it lost the red
-## slope what it gave the top-down shot, so the seamless has none. Its
+## source and source_*; path_tracer.glsl's source_light): a bright window
+## behind the model with the table's own key nearly gone, as a photograph by
+## a window has it. Off in the app (PRODUCT_SOURCE 0) and asked for only by
+## the photo bench (SOURCE_LEVEL, on a table) until its judge keeps it. With
+## the table mirroring it, it was called a photograph 28 times of 80 against
+## 19; once the table only took its light and kept its own colour
+## (photoreal14b), it led by 0.012 and 0.022 a draw (18 of 80 against 16),
+## under the 0.03 a default needs. In the tent it lost the red slope, so the
+## seamless never has one. Its
 ## light in the sky's units; where its middle stands
 ## (round from straight behind the model as the camera sees it, in degrees;
 ## and up, where a flat top mirrors it: as high as the camera looks down,
@@ -194,7 +195,8 @@ const PRODUCT_EDGE := 1.0
 ## the floor); how big it is seen from the model (degrees), how soft its
 ## edges are (a share of its half size), how much darker its edges are than
 ## its middle, and how much of a staged table's near key stays beside it.
-const PRODUCT_SOURCE := 128.0
+const PRODUCT_SOURCE := 0.0
+const SOURCE_LEVEL := 128.0
 const SOURCE_RISE_LOW := 15.0
 const SOURCE_RISE_HIGH := 65.0
 const SOURCE_TURN := 0.0
@@ -3087,7 +3089,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 
 
 ## How bright the large source (photoreal14) that [param settings] ask for
-## is, in the sky's units: 0 for none. Where nobody asks, PRODUCT_SOURCE on a
+## is, in the sky's units: 0 for none. Where nobody asks, PRODUCT_SOURCE (0) on a
 ## table under the studio's light, and none elsewhere. Only where the
 ## product look is drawn as a camera draws (on a backdrop).
 func _source_level(settings: RenderSettings) -> float:

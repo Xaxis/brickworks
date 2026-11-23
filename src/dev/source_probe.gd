@@ -11,23 +11,25 @@
 ## at the dialog's own size. Each picture and the window as the person sees
 ## it are kept in OUT (default shots/source): render_<stage>.png and
 ## dialog_<stage>.png; and in OUT/pair, <stage>_on.png and <stage>_off.png, the
-## same picture at 640x360 with the source as by default and asked off, one
+## same picture at 640x360 with the source asked for (on a table) and asked off, one
 ## camera and seed, the before and after side by side.
 ##
 ## Checks, on a card that traces rays (Forward+ with Vulkan RT):
 ##   each picture path traced at the dialog's own size, the stage chosen;
-##   on each table the source on by default (StudioRender.PRODUCT_SOURCE),
-##     the tracer's "marks" version, and the picture at least CHANGED L* from
-##     the same picture with the source asked off (both 640x360, 64 samples,
-##     one seed); the seamless without it (none in the tent), and its picture
-##     the same as with it asked off;
-##   on each table its own colour kept: the table where the meter reads its
+##   on each table the source off by default (StudioRender.PRODUCT_SOURCE 0,
+##     a bench lever until its judge keeps it), and asked for at
+##     StudioRender.SOURCE_LEVEL the picture at least CHANGED L* from the same
+##     picture with it asked off (both 640x360, 64 samples, one seed); the
+##     seamless without it (none in the tent), and its picture the same as
+##     with it asked off;
+##   on each table with the source asked for, its own colour kept: where the meter reads its
 ##     white card (between the 55th and 65th hundredths of its lightness, the car's
 ##     place left out) within KEPT (CIEDE2000) of the same with the source off.
 ##     Mirroring the source whole drew it 29 to 39 off on wood, leather and
 ##     terrazzo, nearly white (photoreal14b, StudioRender.SOURCE_SPILL);
-##   the car on each table at Best, 1280x720, 256 samples: the median of
-##     three no slower than CAR_MOST s (the app's own time, ProbeTime).
+##   the car on each table at Best, 1280x720, 256 samples, as the app draws
+##     it: the median of three no slower than CAR_MOST s (the app's own time,
+##     ProbeTime); its time with the source asked for printed beside it.
 ## Elsewhere (Compatibility, the web, a card without ray tracing) Best has no
 ## path tracer and so no source: the probe checks each picture is drawn at
 ## the dialog's size and says so.
@@ -124,7 +126,8 @@ func _run() -> void:
 			_check("%s: no path tracer here, so no source (Best frames averaged as before)" % called, true)
 			continue
 		var level: float = renderer._source_level(dialog.settings)
-		var change: float = await _against_off(dialog, world, called)
+		var change: float = await _against_off(dialog, world, called,
+			-1.0 if stage.is_empty() else StudioRender.SOURCE_LEVEL)
 		if not stage.is_empty() and _pair.size() == 2:
 			var on_colour: Vector3 = _table_colour(_pair[0])
 			var off_colour: Vector3 = _table_colour(_pair[1])
@@ -136,10 +139,10 @@ func _run() -> void:
 			_check("seamless: no source in the tent (level %.0f), the picture as with it asked off (%.2f L*)"
 				% [level, change], level == 0.0 and change < 0.05)
 		else:
-			_check("%s: the source on by default (level %.0f, the table's key at %.2f), the %s version, "
-				% [called, level, StudioRender.SOURCE_KEY, version]
+			_check("%s: no source by default (level %.0f); asked for at %.0f (the table's key at %.2f), "
+				% [called, level, StudioRender.SOURCE_LEVEL, StudioRender.SOURCE_KEY]
 				+ "the picture %.1f L* from it asked off" % change,
-				level == StudioRender.PRODUCT_SOURCE and version == "marks" and change >= CHANGED)
+				level == StudioRender.PRODUCT_SOURCE and level == 0.0 and change >= CHANGED)
 	if traced:
 		await _times(dialog, world)
 	_finish()
@@ -157,10 +160,11 @@ func _pick_stage(dialog: RenderDialog, choice: OptionButton, stage: String) -> b
 	return false
 
 
-## How far the dialog's own picture is from the same picture with the source
-## asked off: mean |dL*| over the whole picture, both drawn at 640x360, 64
-## samples, seed 1. Both are kept in OUT/pair.
-func _against_off(dialog: RenderDialog, world: BrickWorld, called: String) -> float:
+## How far the dialog's picture, with the source at [param asked] (below 0 as
+## by default), is from the same picture with it asked off: mean |dL*| over
+## the whole picture, both drawn at 640x360, 64 samples, seed 1. Both are
+## kept in OUT/pair.
+func _against_off(dialog: RenderDialog, world: BrickWorld, called: String, asked: float) -> float:
 	var pictures: Array[Image] = []
 	for off: bool in [false, true]:
 		var settings: RenderSettings = dialog.settings.copy()
@@ -169,6 +173,8 @@ func _against_off(dialog: RenderDialog, world: BrickWorld, called: String) -> fl
 		settings.seed = 1
 		if off:
 			settings.source = 0.0
+		elif asked >= 0.0:
+			settings.source = asked
 		var picture: Image = await dialog.renderer.render(world, settings)
 		if picture == null:
 			return 0.0
@@ -187,11 +193,11 @@ func _against_off(dialog: RenderDialog, world: BrickWorld, called: String) -> fl
 	return sum / maxf(float(count), 1.0)
 
 
-## The car on each table at Best, as photoreal_probe --car times it, with the
-## source as by default and asked off.
+## The car on each table at Best, as photoreal_probe --car times it, as the
+## app draws it and with the source asked for.
 func _times(dialog: RenderDialog, world: BrickWorld) -> void:
 	for stage: String in TABLES:
-		for off: bool in [false, true]:
+		for asked: bool in [false, true]:
 			var times: Array[float] = []
 			for n: int in 3:
 				var settings: RenderSettings = dialog.settings.copy()
@@ -199,16 +205,16 @@ func _times(dialog: RenderDialog, world: BrickWorld) -> void:
 				settings.size = Vector2i(1280, 720)
 				settings.samples = 256
 				settings.seed = 1 + n
-				if off:
-					settings.source = 0.0
+				if asked:
+					settings.source = StudioRender.SOURCE_LEVEL
 				var span := ProbeTime.Span.new()
 				var picture: Image = await dialog.renderer.render(world, settings)
 				times.append(span.end().own / 1000.0)
 				if picture == null:
 					break
 			times.sort()
-			if off:
-				print("  (the car on %s at Best with the source asked off: %s s)" % [stage,
+			if asked:
+				print("  (the car on %s at Best with the source asked for: %s s)" % [stage,
 					", ".join(times.map(func(t: float) -> String: return "%.2f" % t))])
 				continue
 			_check("the car on %s at Best, 1280x720, 256 samples: %s s, the median at most %.1f" % [stage,

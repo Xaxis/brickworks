@@ -73,15 +73,10 @@ Under **Background**, the model can stand on something real rather than a studio
 
 At Best, in the Product look, a staged picture is lit as a photograph is: by a soft light standing near the model rather than far away, so the side nearer it is lighter and the surface darkens away from it. The wood, the leather and the terrazzo show their own grain, the model's shadow falls on it, and past a table's far edge is the room, out of focus.
 
-![The car rendered at Best in the Product look on a wooden table, path traced and lit from behind as by a window: the black studs on its roof catch white highlights, its shadow falls forward onto the grain, and the wood keeps its own colour.](/docs/img/render-table.webp "On a wooden table at Best: lit from behind, as by a window, so glossy tops shine as a photograph's do.")
-
-On a desk, a table, a leather pad or terrazzo, a large bright light stands behind the model, as a window or a softbox behind a photographed model does. Glossy tops mirror it, so a black brick's top shines nearly white while its sides stay dark, the way they do in a photograph. It rises with the camera, so a top seen from high up still catches it. It lights the table without shining in it, so the wood, the leather and the terrazzo keep their own colour. On the seamless paper the studio's own lights are kept.
-
 In a browser, and wherever Best is not path traced, a staged picture is drawn on the stage's colour alone.
 
 <!-- covers
 lib:staged product photographs
-lib:a large source on a table
 -->
 
 ### Line art and Comic {#line-art}

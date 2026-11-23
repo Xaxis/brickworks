@@ -2296,9 +2296,9 @@ brick's fit on every table did gain, and in every round and draw:
 
 grey_1x3 went from 0.13 to 0.58 and black_2x4 from 0.24 to 0.41. In
 the tent the source lost the red slope (0.53 against 0.75), so the tent
-has none: its pictures are byte for byte as before. The default
-(`StudioRender.PRODUCT_SOURCE` 128, `SOURCE_KEY` 0.05) is a table's, at
-Best in the Product look under the studio's light. The judge preferred
+has none: its pictures are byte for byte as before. That arm (128 on a
+table, `SOURCE_KEY` 0.05) was made the default on a table, then taken off
+again (below). The judge preferred
 it over its measured mismatch on grey (+4.5 stops against +0.95): matching
 the numbers is not what the judge rewards. The thinner logo (strokes
 with gaps between the letters, one gate a part) was read as outlined lettering and taken out.
@@ -2322,11 +2322,25 @@ top still mirrors it: +7.45 stops over its side, +7.42 in the photograph.
 Beside the car on the side its lamp stands, the source-off picture is
 brighter than its own colour, in a pool of the lamp's light; a table lit by
 the source has no pool, so a patch there is darker than off (CIEDE2000 desk
-5.1, wood 16.5, terrazzo 16.7, leather 20.3). The judge's pools above were drawn with the table
-mirroring the source.
+5.1, wood 16.5, terrazzo 16.7, leather 20.3).
 
-The light-and-shadow tell is still named on 92% of verdicts, and 28 of 80
-is short of 32.
+**Judged again, and off in the app.** The pools above were drawn with the
+table mirroring the source, so the fixed tree was judged once more against
+it off, from a locked snapshot (e68902b36), draws 9 and 10 (solo, 2 rounds
+of 2 trials; bench/results/photoreal14-2026-11-23/solo_p14fixpool):
+
+| arm | called a photograph | mean p | draw 9 | draw 10 | close-ups, rounds 1 and 2 |
+|---|---|---|---|---|---|
+| off | 16 of 80 | 0.261 | 0.267 | 0.255 | 0.387, 0.397 |
+| on, the table keeping its colour | 18 of 80 | 0.278 | 0.279 | 0.277 | 0.408, 0.429 |
+
+On led by 0.012 and 0.022 a draw, under the 0.03 a default needs: the
+first pools' gain was mostly the pale, glaring table, which the photographs
+do not have. So `StudioRender.PRODUCT_SOURCE` is 0: off in the app, the
+photo bench asks for it (`SOURCE_LEVEL` 128 on a table) until its judge
+keeps it, and a person's Render on a table draws as it did before
+photoreal14, byte for byte. The light-and-shadow tell is named on 94% of
+the fixed tree's verdicts.
 
 ## 6. Web and desktop
 
