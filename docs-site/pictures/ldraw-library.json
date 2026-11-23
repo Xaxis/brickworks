@@ -206,7 +206,7 @@
     ".set-page .side"
    ],
    "pad": 12,
-   "alt": "The Boutique Hotel's page with LDraw's model of it turning in 3D where its picture was: Zoom out, Zoom in, Reset the view, Full screen and Back to the picture under it, Open in the app beside them, and beside it the set's name, Own, Want, Build it in 3D and its facts.",
+   "alt": "The Boutique Hotel's page with LDraw's model of it turning in 3D where its picture was: Zoom out, Zoom in, Reset the view, Full screen and Back to the picture under it, Open in the app beside them, and beside it the set's name, Own, Want, Build it, Make your own version and its facts.",
    "caption": "A set LDraw has modelled, turned in 3D on its own page.",
    "features": [
     "ui:every set's page",

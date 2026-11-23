@@ -93,6 +93,7 @@ declare -A CMD=(
   # through the sign-in; throwaway accounts, deleted after.
   [makes]="tools/web/makes_flow.mjs --url=$P --out=$S/${TAG}_makes"
   [firstminute]="tools/web/firstminute_flow.mjs --url=$P --out=$S/${TAG}_firstminute"
+  [sethub]="tools/web/sethub_flow.mjs --url=$P --out=$S/${TAG}_sethub"
   # Work in progress (buildlog, supabase/wip.sql): Share progress in the app
   # puts the model in a follower's feed and its Talk thread within 60 s, and
   # publishing it as finished ends it. Two throwaway accounts, deleted after.

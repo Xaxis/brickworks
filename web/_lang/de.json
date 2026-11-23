@@ -1520,8 +1520,6 @@
   "View {name} in 3D": "{name} in 3D ansehen",
   "LEGO® set {set}, from {year}": "LEGO® Set {set}, von {year}",
   "LEGO® set {set}": "LEGO® Set {set}",
-  "Open LDraw's 3D model of it in Brickworks: turn it, step through its build, change it": "Öffne sein 3D-Modell aus LDraw in Brickworks: drehe es, geh Schritt für Schritt durch den Bau, ändere es",
-  "Build it in 3D": "In 3D bauen",
   "Open Brickworks with this set's parts in its parts bin": "Öffne Brickworks mit den Teilen dieses Sets in der Teilekiste",
   "Open its parts in Brickworks": "Seine Teile in Brickworks öffnen",
   "Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with": "Öffne Brickworks mit eingeschaltetem Assistenten und einem Auftrag mit diesen Teilen, damit deine eigene KI damit entwirft",
@@ -3680,6 +3678,15 @@
   "Stop saying it was made with Brickify": "Nicht mehr sagen, dass es mit Brickify gemacht wurde",
   "Its page now says it was made with the assistant.": "Seine Seite sagt jetzt, dass es mit dem Assistenten gemacht wurde.",
   "Its page now says it was made with Brickify.": "Seine Seite sagt jetzt, dass es mit Brickify gemacht wurde.",
-  "Its page no longer says how it was made.": "Seine Seite sagt nicht mehr, wie es gemacht wurde."
+  "Its page no longer says how it was made.": "Seine Seite sagt nicht mehr, wie es gemacht wurde.",
+  "Open LDraw's 3D model of it in Brickworks at its first step, and build it step by step": "Das 3D-Modell von LDraw in Brickworks beim ersten Schritt öffnen und Schritt für Schritt bauen",
+  "Make your own version": "Deine eigene Version bauen",
+  "Open a copy of it in Brickworks, credited to whoever modelled it: change it, publish it, and it is listed on this page": "Eine Kopie in Brickworks öffnen, mit Nennung der Person, die es modelliert hat: ändern, veröffentlichen, und sie erscheint auf dieser Seite",
+  "Versions of this set": "Versionen dieses Sets",
+  "Their own version: changed from LDraw's model": "Eigene Version: gegenüber dem Modell von LDraw geändert",
+  "LDraw's model, as it is": "Das Modell von LDraw, unverändert",
+  "Nobody has published their own version of this set yet.": "Noch niemand hat eine eigene Version dieses Sets veröffentlicht.",
+  "Make your own version: Brickworks opens a copy of LDraw's model of it, credited to whoever modelled it. Change it, publish it, and it is listed here.": "Bau deine eigene Version: Brickworks öffnet eine Kopie des Modells von LDraw, mit Nennung der Person, die es modelliert hat. Ändere sie, veröffentliche sie, und sie erscheint hier.",
+  "A version of LEGO® set {set}": "Eine Version des LEGO® Sets {set}"
  }
 }
