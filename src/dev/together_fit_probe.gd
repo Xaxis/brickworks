@@ -91,13 +91,17 @@ func _run() -> void:
 	_whole(dialog, "before a session")
 	await _shot("before")
 	var together: Together = _main.get("_together")
-	# The session's link as start gives it, as long as a real one: check_alone
-	# makes none, and the pictures showed an empty field beside Copy link.
-	together.link = "https://brickworks.diy/app?together=wv5o99Qwfl4hqfTR8LtPSRVz36un66No"
 	together.check_alone([{"who": "a1b2c3d4", "name": "Ann", "here": true, "owner": false,
 		"at": null, "sel": [], "view": null}])
+	# The session's link as start gives it, as long as a real one: check_alone
+	# makes none (its _reset clears it), and the pictures showed an empty
+	# field beside Copy link.
+	together.link = "https://brickworks.diy/app?together=wv5o99Qwfl4hqfTR8LtPSRVz36un66No"
+	together.changed.emit()
 	await _frames(40)
 	_whole(dialog, "in a session")
+	_check("in a session: its link shown beside Copy link, from its start",
+		str(dialog.get("_link").text).begins_with("https://brickworks.diy/app?together="))
 	_in_sight(dialog, ["together_copy", "together_end", "together_chat_field", "together_chat_send",
 		"together_close"], "in a session")
 	var note: String = str(dialog.page_state().get("note", ""))
