@@ -148,8 +148,13 @@ async function standIn(context) {
 }
 
 async function context(width, theme, { touch = false } = {}) {
+  // On a preview the bypass goes as the context's own header too, so
+  // launch() gives the context Vercel's bypass cookie (browser.mjs
+  // bypassCookie): the site's service worker takes a page's navigations
+  // (its preload and its own fetch), which no route below sees, and on
+  // rel-m319 each one it took after a sign-out was Vercel's login page.
   const made = await browser.newContext({ viewport: { width, height: width < 600 ? 932 : width < 1000 ? 1024 : 800 },
-    colorScheme: theme, ...(touch ? { isMobile: true, hasTouch: true } : {}) });
+    colorScheme: theme, ...(touch ? { isMobile: true, hasTouch: true } : {}), ...(deployed && bypass ? { extraHTTPHeaders: headers } : {}) });
   if (deployed) {
     await made.route(`${site}/**`, (route) => route.continue({ headers: { ...route.request().headers(), ...headers } }));
     // Supabase refuses a wrong code in a fraction of a second, before a
