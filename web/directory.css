@@ -331,6 +331,25 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .remix-changes b { font-weight: 600; }
 .model-page .remix-changes .what-changed { margin-left: 4px; vertical-align: 1px; }
 .model-page .remix-changes .what-changed[hidden] { display: none; }
+/* A change sent back (suggestedit, api/_suggestions.js): whose changes its
+   versions took in, under its credit and in its Log; and for its designer
+   the ones sent to it, for a remix's own builder the way to send theirs. */
+.model-page .suggested-credit { list-style: none; margin: 0 0 10px; padding: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .suggested-credit li { margin: 2px 0; }
+.model-page .suggested-credit a, .model-page .log-credit a { color: var(--ink); }
+.model-page .log-credit { margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .suggest-box { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); }
+.model-page .suggest-box[hidden] { display: none; }
+.model-page .suggest-head { font-size: 1rem; margin: 0 0 8px; }
+.model-page .suggest-open { list-style: none; margin: 0 0 4px; padding: 0; }
+.model-page .suggest-open li { margin: 0 0 10px; overflow-wrap: anywhere; }
+.model-page .suggest-open q { color: var(--ink-soft); }
+.model-page .suggest-open .cta { margin-left: 4px; }
+.model-page .suggest-send { display: grid; gap: 8px; }
+.model-page .suggest-send label { color: var(--ink-soft); }
+.model-page .suggest-send textarea { width: 100%; box-sizing: border-box; font: inherit; resize: vertical; }
+.model-page .suggest-send button { justify-self: start; }
+.model-page .suggest-send .said:empty { display: none; }
 .remix-tree, .remix-tree ol { list-style: none; margin: 0; padding: 0; }
 .remix-tree ol { margin-left: 26px; padding-left: 14px; border-left: 2px solid var(--line-strong); }
 .remix-tree li { margin: 8px 0; }

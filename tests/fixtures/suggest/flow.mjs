@@ -36,8 +36,14 @@ await step("before_bell", () => w.ask("people", { query: { op: "feed_count" }, a
 await step("not_signed_in", () => w.ask("share", { method: "POST", query: { op: "suggest" }, body: { remix: w.REMIX } }));
 await step("not_yours", () => w.ask("share", { method: "POST", query: { op: "suggest" }, as: "dee", body: { remix: w.REMIX } }));
 await step("not_a_remix", () => w.ask("share", { method: "POST", query: { op: "suggest" }, as: "dee", body: { remix: w.MODEL } }));
+// A note over 500 characters refused in words, never cut (briefs/self_attack.md).
+await step("too_long", () => w.ask("share", { method: "POST", query: { op: "suggest" }, as: "ann",
+  body: { remix: w.REMIX, note: "Wider wheels. ".repeat(40) } }));
+await step("too_long_rows", () => w.suggestions.length);
+// Zero-width characters dropped, other spaces one.
 const sent = await step("sent", () => w.ask("share", { method: "POST", query: { op: "suggest" }, as: "ann",
-  body: { remix: w.REMIX, note: "  Wider wheels, and a spoiler  " } }));
+  body: { remix: w.REMIX, note: "  Wider\u200b wheels,\u00a0and a\ufeff spoiler  " } }));
+await step("sent_note", () => w.suggestions[0]?.note);
 await step("sent_again", () => w.ask("share", { method: "POST", query: { op: "suggest" }, as: "ann",
   body: { remix: w.REMIX, note: "Wider wheels, and a spoiler" } }));
 await step("open_rows", () => w.suggestions.filter((s) => s.status === "open").length);

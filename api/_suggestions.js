@@ -47,8 +47,10 @@ async function call(name, body) {
   }
 }
 
-const cleanText = (given, limit) => (typeof given === "string"
-  ? given.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, limit).trim() : "");
+// Zero-width characters dropped, every other space one, never cut: a note
+// over the limit is refused in words (sendSuggestion).
+const cleanText = (given) => (typeof given === "string"
+  ? given.replace(/[\u200b-\u200d\u2060\ufeff]+/g, "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim() : "");
 
 /// Where version [n] of link [id] keeps its model (api/share.js).
 const fileOf = (id, n, newest) => (n === newest ? `${id}.mpd` : `${id}.v${n}.mpd`);
@@ -87,7 +89,10 @@ export async function sendSuggestion(claims, body, { getFile, origin }) {
   const by = claims.sub;
   const remix = String(body?.remix ?? "");
   if (!ID.test(remix)) throw new Unacceptable(REFUSED.asked[0]);
-  const note = cleanText(body?.note, MAX_NOTE) || null;
+  const note = cleanText(body?.note) || null;
+  if (note && [...note].length > MAX_NOTE) {
+    throw new Unacceptable(`What you say of it is ${[...note].length} characters: ${MAX_NOTE} at most`, 422);
+  }
   const said = namesTrouble({ "What you say of it": [note, "words"] });
   if (said) throw new Unacceptable(said, 422);
   const young = await publicTrouble(by, { account: "kept" });

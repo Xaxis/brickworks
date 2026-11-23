@@ -145,6 +145,22 @@ export async function suggestWorld({ mine, theirs, name = "Red car", remixName =
       seenAt.set(viewer, now());
       return page;
     },
+    // A model's page (api/share.js modelPage), as supabase/directory.sql
+    // makes it: its card, the line it came from, its listed remixes.
+    directory_model({ model_id }) {
+      const m = modelOf(model_id);
+      if (!m || !m.published) return null;
+      const card = (one) => ({ id: one.id, name: one.name, author: one.author, parts: one.parts, has_image: one.has_image,
+        has_thumb: one.has_thumb, listed_at: one.listed_at, updated_at: one.updated_at, kind: null, tags: [],
+        licence: one.licence, views: 0, likes: 0, builds: 0,
+        remixes: models.filter((r) => r.remixed_from === one.id).length, by: who(one.owner) });
+      const from = [];
+      for (let up = modelOf(m.remixed_from); up && from.length < 8; up = modelOf(up.remixed_from)) {
+        from.push({ id: up.id, name: up.name, author: who(up.owner)?.name || null });
+      }
+      return { ...card(m), description: null, listed: m.listed, from,
+        remixes_listed: models.filter((r) => r.remixed_from === m.id).map(card) };
+    },
     may_publish: () => true,
     may_list: () => true,
     is_barred: () => false,
@@ -214,17 +230,18 @@ export async function suggestWorld({ mine, theirs, name = "Red car", remixName =
 
   /// One request through api/<route>.js's handler, as Vercel makes it:
   /// {status, body}. [as]: "dee", "ann" or nobody.
-  async function ask(route, { method = "GET", query = {}, body, as } = {}) {
+  async function ask(route, { method = "GET", query = {}, body, as, page = false } = {}) {
     const { default: handle } = await import(`../../../api/${route}.js`);
     const response = { statusCode: 200, headers: {}, body: undefined,
       status(code) { this.statusCode = code; return this; },
       setHeader(named, value) { this.headers[String(named).toLowerCase()] = value; return this; },
       json(value) { this.body = value; return this; },
       send(value) { this.body = value; return this; },
-      end() { return this; } };
-    const headers = { host: "brickworks.diy", ...(as ? { authorization: `Bearer ${tokens[as]}` } : {}) };
+      end(text) { if (text !== undefined) this.body = text; return this; } };
+    const headers = { host: "brickworks.diy", "x-forwarded-proto": "https", ...(page ? { accept: "text/html" } : {}),
+      ...(as ? { authorization: `Bearer ${tokens[as]}` } : {}) };
     await handle({ method, query, headers, body, url: `/api/${route}` }, response);
-    return { status: response.statusCode, body: response.body };
+    return { status: response.statusCode, body: response.body, headers: response.headers };
   }
 
   return { MODEL, REMIX, DEE, ANN, tokens, ask, calls, models, versions, files, suggestions, people };

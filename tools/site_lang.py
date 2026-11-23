@@ -191,7 +191,9 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark", "madeFact",
                              "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
-                             "versionsSection", "noVersionPage", "gonePage", "links", "embedCard", "setPage"),
+                             "versionsSection", "noVersionPage", "gonePage", "links", "embedCard", "setPage",
+                             # A change sent back, credited (suggestedit).
+                             "suggestedWords", "suggestedLine"),
             "api/_versions.js": ("stepsSaid", "saidOf", "changedOf", "lotSaid"), "api/_steps.js": (),
             "api/_lists.js": ("listCardHtml",), "api/_directory.js": ("movesWords",),
             "api/_library.js": ("setModel",), "api/_challenges.js": ("wonSaid", "challengeHead"),

@@ -157,6 +157,8 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
@@ -179,6 +181,9 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
+        "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
@@ -337,6 +342,9 @@
         "tests/fixtures/feedback/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
+        "tests/fixtures/suggest/world.mjs",
         "tests/test_achievements.py",
         "tests/test_alts.py",
         "tests/test_challenge_notices.py",
@@ -3574,6 +3582,14 @@
       "tests": []
     },
     {
+      "id": "cli:suggest browser flow",
+      "kind": "cli",
+      "entry": "tools/web/suggest_flow.mjs",
+      "reach": "node tools/web/suggest_flow.mjs --out=DIR   (no network: tests/fixtures/suggest/world.mjs through the real handlers; at 390 and 1280: Send from the remix's page, nobody else sees the box, the designer's header counts it within 60 s with no reload, the list and its studio link, the credit under the credit and in the Log after a version takes part of it)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:swapfind phone probe",
       "kind": "cli",
       "entry": "src/dev/swapfind_phone_probe.gd",
@@ -4973,6 +4989,9 @@
       "tests": [
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
+        "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
@@ -5934,6 +5953,14 @@
       ]
     },
     {
+      "id": "ui:a change sent back on a model's page",
+      "kind": "ui",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<a remix> as its builder: Send your change, with a note; https://brickworks.diy/m/<id> as its designer: the changes sent to it with Open it in the studio; and once a version took one, With [part of] X's change from their remix R, version N under the credit and in its Log",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:a designer's page",
       "kind": "ui",
       "entry": "api/people.js",
@@ -5945,6 +5972,8 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -6144,6 +6173,8 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -7201,7 +7232,9 @@
       "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
       "area": "web",
       "tests": [
-        "tests/fixtures/owner_notify/api_check.mjs"
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/test_suggest.py"
       ]
     },
     {
@@ -7440,6 +7473,8 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -8385,6 +8420,8 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",

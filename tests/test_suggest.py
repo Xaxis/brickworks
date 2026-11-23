@@ -197,6 +197,10 @@ def test_sent_heard_at_once_taken_in_part_published_and_credited_through_the_rea
     assert got["troubles"] == []
     # Refused where it must be: nobody, the designer sending the remix, a model that is no remix.
     assert [got[k]["status"] for k in ["not_signed_in", "not_yours", "not_a_remix"]] == [401, 403, 422]
+    # A note over the limit refused in words, nothing kept; one with
+    # zero-width characters and a no-break space kept clean.
+    assert got["too_long"]["status"] == 422 and "559 characters: 500 at most" in got["too_long"]["body"]["error"]
+    assert got["too_long_rows"] == 0 and got["sent_note"] == "Wider wheels, and a spoiler"
     # Sent, then sent again: one open, brought up to date.
     assert got["sent"]["status"] == 201 and got["sent"]["body"]["counts"] == {
         "added": 2, "removed": 1, "moved": 1, "recoloured": 1, "swapped": 1, "restepped": 1}

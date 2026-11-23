@@ -6473,6 +6473,20 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "a change sent back on a model's page",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<a remix> as its builder: Send your change, with a note; https://brickworks.diy/m/<id> as its designer: the changes sent to it with Open it in the studio; and once a version took one, With [part of] X's change from their remix R, version N under the credit and in its Log",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "suggest browser flow",
+      "entry": "tools/web/suggest_flow.mjs",
+      "reach": "node tools/web/suggest_flow.mjs --out=DIR   (no network: tests/fixtures/suggest/world.mjs through the real handlers; at 390 and 1280: Send from the remix's page, nobody else sees the box, the designer's header counts it within 60 s with no reload, the list and its studio link, the credit under the credit and in the Log after a version takes part of it)",
+      "area": "web"
+    },
+    {
       "kind": "lib",
       "label": "what a remix changed",
       "entry": "api/_remix_changes.js",
