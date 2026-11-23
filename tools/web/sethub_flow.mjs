@@ -195,7 +195,7 @@ async function published(browser) {
   const cut = new Set(parts.slice(0, Math.floor(parts.length / 10)));
   const began = Date.now();
   const reply = await fetch(`${site}/api/share`, { method: "POST", headers: { ...headers, "content-type": "application/json",
-    authorization: `Bearer ${token}` }, body: JSON.stringify({ name: "Sethub House with Car, my version",
+    authorization: `Bearer ${token}` }, body: JSON.stringify({ name: "Sethub House with Car, my version", listed: true,
     model: lines.filter((_, at) => !cut.has(at)).join("\n"), licence: "cc-by-4.0" }) });
   const body = await reply.json().catch(() => ({}));
   const id = body.id || "";
