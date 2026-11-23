@@ -274,6 +274,17 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
     ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : ""}</span>`;
 }
 
+/// A page's head (site.css .page-hero, listkit 2026-11-23), for a page the
+/// server or a script makes, as the site's own pages write it: [title] and
+/// its one line [lede] at the left, [acts] (markup: a button, a search) at
+/// the right, [tabs] (markup: a nav.tabs) on the band's foot. Text is
+/// escaped here; [acts] and [tabs] are the caller's markup.
+export function pageHeadHtml({ title, lede = "", acts = "", tabs = "" }) {
+  return `<div class="page-hero"><div class="wrap"><div class="page-head"><div class="page-title">`
+    + `<h1>${escapeHtml(title)}</h1>${lede ? `<p class="lede">${escapeHtml(lede)}</p>` : ""}</div>`
+    + `${acts ? `<div class="page-acts">${acts}</div>` : ""}</div>${tabs}</div></div>`;
+}
+
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "gauge", "globe", "library",
@@ -486,6 +497,8 @@ export function motionWords(names, most = 3) {
 /// not: a page of cards is quick on a phone. "" when it has neither. A set
 /// of the LDraw library (api/_library.js) has its cover, drawn by the app.
 export function pictureOf(model) {
+  // One the page chose for it, of this site (a set's versions: web/set-page.js).
+  if (typeof model.picture === "string" && /^\/(library|m)\/[A-Za-z0-9._/-]+$/.test(model.picture)) return model.picture;
   // A set of the whole catalogue (api/_sets.js catalogCard) names its own:
   // its LDraw model's cover, else its own picture, else the one drawn of
   // its parts, or none.

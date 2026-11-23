@@ -615,7 +615,7 @@ try {
         const said = await page.evaluate(() => ({
           visitor: document.documentElement.dataset.betaPage,
           line: document.getElementById("spots").textContent.trim(),
-          eyebrow: [...document.querySelectorAll(".beta-head .eyebrow span")].filter((s) => !s.hidden).map((s) => s.textContent).join(""),
+          eyebrow: [...document.querySelectorAll(".beta-head .beta-state span")].filter((s) => !s.hidden).map((s) => s.textContent).join(""),
           sections: ["get", "report", "new", "testers", "questions"].filter((id) => !document.getElementById(id).hidden),
           news: [...document.querySelectorAll("#news > li.card h3")].map((one) => one.textContent.trim()),
           heads: document.querySelectorAll("#news > li.card li").length,
@@ -667,7 +667,7 @@ try {
       await page.goto(base + "/beta", { waitUntil: "load" });
       await until(page, () => document.documentElement.dataset.betaPage);
       const hub = await page.evaluate(() => ({
-        eyebrow: [...document.querySelectorAll(".beta-head .eyebrow span")].filter((s) => !s.hidden).map((s) => s.textContent).join(""),
+        eyebrow: [...document.querySelectorAll(".beta-head .beta-state span")].filter((s) => !s.hidden).map((s) => s.textContent).join(""),
         line: document.getElementById("spots").textContent.trim(),
         ways: [...document.querySelectorAll("#beta-acts > [data-visitor]")].filter((one) => !one.hidden).length,
         sections: ["report", "new", "testers"].filter((id) => !document.getElementById(id).hidden) }));

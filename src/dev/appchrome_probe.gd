@@ -209,6 +209,8 @@ func _viewer(layout: String, text: String, told: Dictionary) -> void:
 		top.get_global_rect().position.y, head["rect"].end.y])
 	_ok(mode.free_rect().position.y >= float(head["rect"].end.y),
 		"%s: ...and the step is framed below both" % layout)
+	if root.get_visible_rect().size.x / mode.points() < BuildMode.TITLE_ROW_BELOW:
+		await _phone_bar(mode, layout)
 	await _click(mode.controls_by_name()["build_close"])
 	await _frames(20)
 	await _settle()
@@ -363,6 +365,68 @@ func _same(layout: String, told: Dictionary) -> void:
 
 static func _near(a: Rect2, b: Rect2) -> bool:
 	return a.position.distance_to(b.position) < 1.5 and a.size.distance_to(b.size) < 1.5
+
+
+## Build it's bar on a phone's width: an X, the title and a bubble on one
+## row, and the note under that row across the bar, two lines until More.
+## Beside Close and Comment in words the title and note were a column a few
+## words wide, seven lines tall (the lead, 11-23).
+func _phone_bar(mode: BuildMode, layout: String) -> void:
+	var pt: float = mode.points()
+	var named: Dictionary = mode.controls_by_name()
+	var close: Button = named["build_close"]
+	var pill: Button = named.get("build_comments")
+	var caption: Label = mode.get("_caption")
+	var note: Label = mode.get("_note")
+	var top: Rect2 = (named["build_top"] as Control).get_global_rect()
+	_ok(close.text.is_empty() and close.icon != null and close.accessibility_name == "Close"
+		and pill != null and pill.text.is_empty() and pill.icon != null,
+		"%s: on a phone, Close is an X and Comment a bubble (%s, %s)" % [layout, close.text,
+			pill.text if pill != null else "no Comment"])
+	var row: Array[Rect2] = [close.get_global_rect(), caption.get_global_rect()]
+	if pill != null:
+		row.append(pill.get_global_rect())
+	var middle: float = row[1].get_center().y
+	_ok(row.all(func(r: Rect2) -> bool: return r.position.y <= middle and r.end.y >= middle)
+		and row[0].end.x <= row[1].position.x and (pill == null or row[1].end.x <= row[2].position.x),
+		"%s: ...on one row with \"%s\" between them (%s)" % [layout, caption.text, row])
+	var under: float = row.map(func(r: Rect2) -> float: return r.end.y).max()
+	var said: Dictionary = mode.page_state()
+	var across: float = note.get_global_rect().size.x
+	if named.has("build_more"):
+		across += (named["build_more"] as Control).get_global_rect().size.x
+	_ok(note.is_visible_in_tree() and note.get_global_rect().position.y >= under - 0.5
+		and across >= top.size.x - 30.0 * pt and int(said["note_lines"]) <= 2,
+		"%s: ...the note under the row, the bar's width (%.0f of %.0f points), %d lines" % [layout,
+			across / pt, top.size.x / pt, int(said["note_lines"])])
+	_ok(close.get_global_rect().size.x >= 44.0 * pt - 0.5 and close.get_global_rect().size.y >= 44.0 * pt - 0.5
+		and (pill == null or pill.get_global_rect().size.y >= 44.0 * pt - 0.5),
+		"%s: ...each a fingertip (the X %.0f by %.0f points)" % [layout,
+			close.get_global_rect().size.x / pt, close.get_global_rect().size.y / pt])
+	var was: String = note.text
+	mode.call("_say_note", "Put the two long grey plates side by side, the studs up, and press the "
+		+ "red brick on where they meet, so it holds them together; then the second one on the "
+		+ "other end, the same way, and the roof's first row along the back.")
+	await _frames(6)
+	said = mode.page_state()
+	named = mode.controls_by_name()
+	_ok(int(said["note_lines"]) == 2 and said["note_more"] == "More" and named.has("build_more"),
+		"%s: a longer note: two lines, and More (%d lines, %s)" % [layout, int(said["note_lines"]),
+			said["note_more"]])
+	if named.has("build_more"):
+		await _click(named["build_more"])
+		await _frames(4)
+		said = mode.page_state()
+		_ok(int(said["note_lines"]) > 2 and said["note_more"] == "Less",
+			"%s: ...More: all of it (%d lines), and Less" % [layout, int(said["note_lines"])])
+		_save("%s_%s_build_more.png" % [_size, layout])
+		await _click(mode.controls_by_name()["build_more"])
+		await _frames(4)
+		said = mode.page_state()
+		_ok(int(said["note_lines"]) == 2 and said["note_more"] == "More",
+			"%s: ...Less: two lines again" % layout)
+	mode.call("_say_note", was)
+	await _frames(4)
 
 
 func _ok(ok: bool, what: String) -> void:

@@ -18,8 +18,9 @@
 //      guidelines and the keys; Enter is a new line, Ctrl+Enter posts (here,
 //      asks to sign in), what was typed is still there after, and Escape
 //      closes it, the focus back on Add a comment.
-//   5. 3D: the 3D button turns the model in its picture's place (three.js
-//      asked for only then), Escape puts the picture back; on a laptop a
+//   5. 3D: the 3D button turns the model in its picture's place (its scene
+//      asked for only then, and three.js too unless the hero's mark asked
+//      for it first), Escape puts the picture back; on a laptop a
 //      pointer resting on a picture turns it, and leaving puts it back.
 //   6. Try it here: nothing of the studio asked for before the tap; the tap
 //      puts the studio in the post (/app?view=<id>). With --try-start, the
@@ -253,7 +254,17 @@ try {
       Boolean(followAsks) && Math.abs(still - followAt) <= 2);
 
     // --- 5. 3D ----------------------------------------------------------------
-    const before3d = asked.filter((url) => /\/viewer3d\.js|\/scene\.json/.test(url)).length;
+    // Nothing of a post's 3D before its tap: no model's scene and not the
+    // 3D view's stylesheet. three.js (web/viewer3d.js) is the hero's too
+    // (hero3d, 2026-11-23), which asks for it once the page is idle with
+    // the mark on screen: asked before the tap only when the hero says it
+    // went for it (<html data-hero> past "poster").
+    const hero = await page.evaluate(() => document.documentElement.dataset.hero || "");
+    const early = asked.filter((url) => /\/viewer3d\.js|\/scene\.json|\/view3d\.css/.test(new URL(url).pathname));
+    const postsOwn = early.filter((url) => !/\/viewer3d\.js$/.test(new URL(url).pathname));
+    const shared = early.length - postsOwn.length;
+    const before3d = postsOwn.length + (shared && (!hero || hero === "poster") ? shared : 0);
+    const said3d = `${postsOwn.map((url) => new URL(url).pathname).join(" ") || "no scene"}; three.js ${shared ? `asked ${shared}x, by the hero (${hero || "nothing said"})` : "not asked"}`;
     // The picture's 3D button, at its foot (web/home-feed.js, the card's
     // .turn): brought to the middle first, where neither the sticky header
     // nor the beta bar at the window's foot is over it.
@@ -265,7 +276,7 @@ try {
     await shot(page, `turn-${label}.png`);
     await page.keyboard.press("Escape");
     const back = await until(page, () => (!document.querySelector("#stream .view3d") ? true : null), null, 10);
-    check(`5. ${label}: nothing of 3D asked before (${before3d}); 3D turns it in place (${turned}, canvas ${canvas}); Escape puts the picture back (${Boolean(back)})`,
+    check(`5. ${label}: nothing of a post's 3D asked before (${said3d}); 3D turns it in place (${turned}, canvas ${canvas}); Escape puts the picture back (${Boolean(back)})`,
       before3d === 0 && turned === id && canvas && Boolean(back));
     if (width >= 600) {
       const second = await page.evaluate(() => [...document.querySelectorAll("#stream > .post.build")][1]?.dataset.id || "");

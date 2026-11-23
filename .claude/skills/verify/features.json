@@ -57,6 +57,7 @@
         "tests/test_home_shelf.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_model_page.py",
         "tests/test_partpins.py",
         "tests/test_refresh_catalogue.py",
@@ -158,8 +159,6 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
@@ -178,13 +177,11 @@
       "tests": [
         "tests/test_flows_for.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_model_bases.py",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
-        "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
@@ -343,9 +340,6 @@
         "tests/fixtures/feedback/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
-        "tests/fixtures/suggest/world.mjs",
         "tests/test_achievements.py",
         "tests/test_alts.py",
         "tests/test_challenge_notices.py",
@@ -353,6 +347,7 @@
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_packaged_facts.py",
         "tests/test_post_kit.py",
         "tests/test_release.py",
@@ -434,16 +429,6 @@
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
-      ]
-    },
-    {
-      "id": "api:suggested edits",
-      "kind": "api",
-      "entry": "api/_suggestions.js",
-      "reach": "POST /api/share?op=suggest {remix, note}; GET ?op=suggestion&id=N; POST ?op=suggestion_merge {id, n, take}; POST ?op=suggestion_close; GET ?op=suggestions&id=X; a publish's {suggestion}   (supabase/suggestions.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/suggestions.sql --dry --try=tools/suggestions_try.sql --table=model_suggestions: sent, sent again, refused, heard of by the designer at once, listed for them alone, taken as a version, heard of by the remixer)",
-      "area": "web",
-      "tests": [
-        "tests/test_suggest.py"
       ]
     },
     {
@@ -883,6 +868,7 @@
         "tests/fixtures/insights/loop_check.mjs",
         "tests/test_adminclaude.py",
         "tests/test_insights.py",
+        "tests/test_live_smoke.py",
         "tests/test_loop.py"
       ]
     },
@@ -960,7 +946,9 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_deploy_reads.py",
         "tests/test_flows_for.py",
+        "tests/test_lean.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -1067,6 +1055,14 @@
       "tests": []
     },
     {
+      "id": "cli:card after probe",
+      "kind": "cli",
+      "entry": "src/dev/card_after_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_after_probe.gd",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:card check",
       "kind": "cli",
       "entry": "tools/web/card_check.mjs",
@@ -1087,6 +1083,14 @@
       "kind": "cli",
       "entry": "src/dev/card_probe.gd",
       "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_probe.gd -- --pictures=DIR [--only=1,6] [--looks=LOOKS.json]",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:card sweep",
+      "kind": "cli",
+      "entry": "tools/web/card_sweep.mjs",
+      "reach": "node --env-file=.env tools/web/card_sweep.mjs [--dry] [--most=N] [--ids=A,B]   (every listed model's card not yet traced, drawn on the box's GPU and put; after supabase/card_kind.sql)",
       "area": "web",
       "tests": []
     },
@@ -1182,7 +1186,9 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_deploy_reads.py",
         "tests/test_flows_for.py",
+        "tests/test_lean.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -2021,6 +2027,18 @@
       "tests": []
     },
     {
+      "id": "cli:lean release lists",
+      "kind": "cli",
+      "entry": "tools/release/lean.py",
+      "reach": "tools/release/lean.py checks|probes --live SHA --head SHA --tree DIR [--named ...] [--smoke ...] [--every] | record checks|probes NAME BUILT AT OUT... [--passed ...]   (train.sh at staging and once merged, reship; what a release's change against live reaches less what was proven since; proof in $RELEASE_OUT/proofs/; tests/test_lean.py)",
+      "area": "release",
+      "tests": [
+        "tests/test_lean.py",
+        "tests/test_brickbench.py",
+        "tests/test_pairwise.py"
+      ]
+    },
+    {
       "id": "cli:library browser flow",
       "kind": "cli",
       "entry": "tools/web/library_flow.mjs",
@@ -2455,6 +2473,14 @@
       "entry": "src/dev/new_window_probe.gd",
       "reach": "tools/probe.sh new_window_probe   (starts two more headless copies of the app, and stops them)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:nightly checks",
+      "kind": "cli",
+      "entry": "tools/release/nightly.sh",
+      "reach": "tools/release/nightly.sh run [REF] | plan [REF] | install [HH:MM] | status   (a systemd user timer at 18:00 local: every check and every headless probe on origin/pre261, their passes written as proof for lean.py; $RELEASE_OUT/nightly-YYYYMMDD.summary)",
+      "area": "release",
       "tests": []
     },
     {
@@ -3050,7 +3076,9 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_deploy_reads.py",
         "tests/test_flows_for.py",
+        "tests/test_lean.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -3099,6 +3127,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_lean.py",
         "tests/test_loop.py",
         "tests/test_partpins.py",
         "tests/test_release_train.py"
@@ -3559,7 +3588,9 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_deploy_reads.py",
         "tests/test_flows_for.py",
+        "tests/test_lean.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
         "tests/test_timing_judge.py",
@@ -3683,30 +3714,6 @@
       "kind": "cli",
       "entry": "src/dev/subexport_probe.gd",
       "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
-      "area": "model-io",
-      "tests": []
-    },
-    {
-      "id": "cli:suggest browser flow",
-      "kind": "cli",
-      "entry": "tools/web/suggest_flow.mjs",
-      "reach": "node tools/web/suggest_flow.mjs --out=DIR   (no network: tests/fixtures/suggest/world.mjs through the real handlers; at 390 and 1280: Send from the remix's page, nobody else sees the box, the designer's header counts it within 60 s with no reload, the list and its studio link, the credit under the credit and in the Log after a version takes part of it)",
-      "area": "web",
-      "tests": []
-    },
-    {
-      "id": "cli:suggest phone probe",
-      "kind": "cli",
-      "entry": "src/dev/suggest_phone_probe.gd",
-      "reach": "tools/probe.sh suggest_phone_probe -- --pictures=DIR   (suggest_probe at 390 x 844)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
-      "id": "cli:suggest probe",
-      "kind": "cli",
-      "entry": "src/dev/suggest_probe.gd",
-      "reach": "tools/probe.sh suggest_probe -- --pictures=DIR; tools/probe.sh suggest_phone_probe -- --pictures=DIR   (windowed, on the GPU, on tests/fixtures/suggest/serve.mjs: Ann sends, the app's Account count within 60 s, the notification's link opens Compare with 7 rows, the drawing read back by kind, all but the recolour taken by clicks, the model read part by part, Share's credit published and kept as taken with taken_n 2; a second change declined, the model as it was; at 1280 x 800 and 390 x 844)",
       "area": "model-io",
       "tests": []
     },
@@ -3865,6 +3872,14 @@
       "entry": "tools/web/feedback_stand_in.mjs",
       "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql, feedback.sql and beta_join.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:the live smoke and its rollback",
+      "kind": "cli",
+      "entry": "tools/release/live_smoke.sh",
+      "reach": "tools/release/live_smoke.sh current [DOMAIN] | check ORIGIN | guard DOMAIN PREVIOUS_URL TAG   (ship.sh: current before it promotes, guard once the domain serves the release; a read-only smoke, its browser half tools/web/live_smoke.mjs under heavy; guard rolls the domain back to PREVIOUS_URL when the release fails twice and the build before passes; tests/test_live_smoke.py)",
+      "area": "release",
       "tests": []
     },
     {
@@ -4137,7 +4152,9 @@
       "entry": "tools/storage_parts.py",
       "reach": "tools/storage_parts.py --check",
       "area": "pipeline",
-      "tests": []
+      "tests": [
+        "tests/test_storage_stamp.py"
+      ]
     },
     {
       "id": "cli:versions browser flow",
@@ -4201,7 +4218,7 @@
       "id": "cli:web build and deploy",
       "kind": "cli",
       "entry": "tools/deploy.sh",
-      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py)",
+      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py tests/test_deploy_checks.py tests/test_storage_stamp.py tests/test_brotli_cache.py; --no-fit skips the fit check alone, DEPLOY_TIMES=1 says each step's seconds)",
       "area": "web",
       "tests": []
     },
@@ -4349,14 +4366,6 @@
       "kind": "lib",
       "entry": "api/_photo.js",
       "reach": "node -e 'import(\"./api/_photo.js\").then(async ({cleanPhoto}) => console.log(await cleanPhoto(require(\"fs\").readFileSync(\"PHOTO.jpg\"))))'   (markers e0,db,c0,c4,da only; Real builds in features/web.md)",
-      "area": "web",
-      "tests": []
-    },
-    {
-      "id": "lib:a change sent back and taken",
-      "kind": "lib",
-      "entry": "api/_suggest.js",
-      "reach": "python3 tools/minitest.py tests/test_suggest.py   (suggestedit: each class of edit (add, remove, move, recolour, swap, another step, a step of its own, inside a sub-model, a sub-model of its own) made to 16 real sets of vendor/omr (tests/fixtures/suggest/check.mjs), taken whole, every change ticked, each alone and all but each, read again and held to the model it should be part for part and step for step; nothing taken is the designer's file byte for byte; their header, comments, metas and line ends kept; bound metas and brackets; the bell's lines. node tests/fixtures/suggest/check.mjs vendor/omr/files/*.mpd for every set)",
       "area": "web",
       "tests": []
     },
@@ -5127,13 +5136,11 @@
       "tests": [
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
-        "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
@@ -5710,7 +5717,7 @@
       "id": "lib:the gallery's card as a photograph",
       "kind": "lib",
       "entry": "src/render/card_photo.gd",
-      "reach": "File \u203a Share\u2026 \u203a Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk, frames averaged on the same desk in a browser within 2.5 s (CardPhoto, src/ui/share_panel.gd _pictures); a phone keeps the cut-out",
+      "reach": "File \u203a Share\u2026 \u203a Publish: the card goes as the cut-out, then is drawn once the publish has answered (src/ui/share_panel.gd _card_after) and put on the link (api/share.js op=card): path traced on photoreal10's measured desk where rays are traced, frames averaged on the same desk in a browser, within 1.8 s (CardPhoto); a phone keeps the cut-out",
       "area": "web",
       "tests": []
     },
@@ -6054,6 +6061,7 @@
       "reach": "https://brickworks.diy/<anything not there>   (answers 404)",
       "area": "web",
       "tests": [
+        "tests/test_deploy_checks.py",
         "tests/test_release_links.py",
         "tests/test_site_lang.py",
         "tests/test_storage_mirror.py"
@@ -6118,22 +6126,6 @@
       ]
     },
     {
-      "id": "ui:a change sent back in Compare",
-      "kind": "ui",
-      "entry": "src/ui/compare_view.gd",
-      "reach": "https://brickworks.diy/app?suggestion=N as the model's designer, or Open it in the studio on their model's page or the notification   (suggestedit: the designer's model as they last published it, the remix's change drawn on it: taken away red, moved amber with a faint ghost where it goes, recoloured violet, added a green ghost; a row a change, each ticked, a box a kind; a row pressed frames it; Take all, Take the ticked, Decline; nothing taken without a press; taken, the merged model opened unsaved with Share's note and its credit ready)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
-      "id": "ui:a change sent back on a model's page",
-      "kind": "ui",
-      "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<a remix> as its builder: Send your change, with a note; https://brickworks.diy/m/<id> as its designer: the changes sent to it with Open it in the studio; and once a version took one, With [part of] X's change from their remix R, version N under the credit and in its Log",
-      "area": "web",
-      "tests": []
-    },
-    {
       "id": "ui:a copy's first acts",
       "kind": "ui",
       "entry": "src/ui/first_acts.gd",
@@ -6153,8 +6145,6 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -6363,8 +6353,6 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -6873,6 +6861,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_lean.py",
         "tests/test_loop.py",
         "tests/test_partpins.py",
         "tests/test_release_train.py"
@@ -7050,6 +7039,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_insights.py",
+        "tests/test_lean.py",
         "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
@@ -7119,6 +7109,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_lean.py",
         "tests/test_loop.py",
         "tests/test_partpins.py",
         "tests/test_release_train.py"
@@ -7402,9 +7393,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/inbox_world.mjs",
-        "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/test_suggest.py"
+        "tests/fixtures/owner_notify/api_check.mjs"
       ]
     },
     {
@@ -7463,9 +7452,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/inbox_world.mjs",
-        "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/test_suggest.py"
+        "tests/fixtures/owner_notify/api_check.mjs"
       ]
     },
     {
@@ -7476,9 +7463,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/inbox_world.mjs",
-        "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/test_suggest.py"
+        "tests/fixtures/owner_notify/api_check.mjs"
       ]
     },
     {
@@ -7733,8 +7718,6 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -8548,6 +8531,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_insights.py",
+        "tests/test_lean.py",
         "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
@@ -8711,8 +8695,6 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
-        "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",

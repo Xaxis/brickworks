@@ -154,7 +154,7 @@ const feedDrawn = (page) => page.evaluate(() => ({
   rows: [...document.querySelectorAll("#rows .feed-row")].map((li) => ({ kind: li.dataset.kind, isNew: li.classList.contains("new"),
     what: (li.querySelector(".what")?.textContent || "").replace(/\s+/g, " ").trim(),
     go: li.querySelector("a.go")?.getAttribute("href") || "", who: li.querySelector("a.who")?.getAttribute("href") || "",
-    avatar: Boolean(li.querySelector(".post-head .avatar")), said: li.querySelector(":scope > q")?.textContent || "",
+    avatar: Boolean(li.querySelector(".row-face .avatar")), said: li.querySelector(".row-said")?.textContent || "",
     card: li.querySelector("article.model")?.dataset.id || "", photo: li.querySelector(".feed-photo img")?.getAttribute("src") || "",
     picture: li.querySelector("img")?.getAttribute("src") || "" })),
   designers: [...document.querySelectorAll("#people .person-row")].map((li) => li.dataset.handle),
@@ -266,7 +266,7 @@ try {
     "Bob's feed at 1280");
   const rail = await widePage.evaluate(() => {
     const box = document.getElementById("designers").getBoundingClientRect();
-    const main = document.querySelector(".feed-main").getBoundingClientRect();
+    const main = document.querySelector(".list-main").getBoundingClientRect();
     return { beside: box.left > main.right, top: Math.round(box.top) };
   });
   check(`at 1280 the designers beside the feed (${JSON.stringify(rail)}), nothing sideways`, rail.beside && !(await sideways(widePage)));

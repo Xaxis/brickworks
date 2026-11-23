@@ -57,7 +57,7 @@ import { withFaces } from "./_faces.js";
 import { challengeCards } from "./_challenges.js";
 import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } from "./_builds.js";
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
-import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, say } from "./_card.js";
+import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, pageHeadHtml, say } from "./_card.js";
 
 export const BOARDS = ["show", "help", "ideas", "challenges", "news"];
 export const MOST_CHARACTERS = 4000;
@@ -339,10 +339,11 @@ const timeHtml = (iso, now) => {
   return Number.isFinite(at) ? `<time datetime="${new Date(at).toISOString()}">${escapeHtml(whenSaid(iso, now))}</time>` : "";
 };
 
-/// A challenge's row tile while it has no picture: its month over its
-/// year, a calendar's page, in the page's language; the one open now in
+/// A challenge's row tile while it has no picture: its month alone on a
+/// calendar's page, in the page's language; the one open now banded in
 /// red, the ones to come quieter (sitebold, 2026-11-23: the challenges'
-/// board was a column of one icon). "" without a month.
+/// board was a column of one icon). Not its year: "2027 / Oct" read as a
+/// mistake (the lead, 2026-11-23). "" without a month.
 const monthTileHtml = (challenge, now) => {
   const from = Date.parse(`${challenge?.starts_on || ""}T00:00:00Z`);
   if (!Number.isFinite(from)) return "";
@@ -350,8 +351,7 @@ const monthTileHtml = (challenge, now) => {
   const state = now < from ? "soon" : Number.isFinite(to) && now > to ? "ran" : "open";
   const locale = globalThis.brickworksLang?.locale || "en-GB";
   const month = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(from).replace(/\.$/, "");
-  return `<span class="talk-tile talk-month b-challenges ${state}"><b>${escapeHtml(month)}</b>`
-    + `<small>${new Date(from).getUTCFullYear()}</small></span>`;
+  return `<span class="talk-tile talk-month b-challenges ${state}"><b>${escapeHtml(month)}</b></span>`;
 };
 
 /// A person's name, a link to their page when they have one.
@@ -404,6 +404,8 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   const last = replies && thread.last_by ? thread.last_by : null;
   const faces = [thread.by?.handle || thread.by?.name ? avatarHtml(thread.by, { size: "small" }) : "",
     last && (last.handle || last.name) && last.handle !== thread.by?.handle ? avatarHtml(last, { size: "small" }) : ""].join("");
+  // The site's one row (site.css .list-row): its picture or tile, its
+  // title, what it says, who and when, and who replied last at its end.
   // The count carries data-replies, which a reply made in the row (web/composer.js
   // replyInCard, feedinline) counts up; at none it invites the first.
   const lastLine = replies
@@ -414,16 +416,16 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   // the thread's own box without a script, on a thread that takes replies.
   const reply = thread.locked ? "" : ` · <a class="talk-row-reply" href="${href}#reply" data-reply-thread="${Number(thread.id)}"`
     + ` aria-expanded="false" aria-label="${asText(say("Reply to {name}", { name: thread.title }))}">${asText(say("Reply"))}</a>`;
-  return `<li class="talk-row${thread.pinned ? " pinned" : ""}${picture ? "" : " no-picture"}" data-thread="${Number(thread.id)}" data-board="${thread.board}">`
-    + `<a class="talk-row-pic" href="${href}" tabindex="-1" aria-hidden="true">${picture
+  return `<li class="list-row talk-row${thread.pinned ? " pinned" : ""}${picture ? "" : " no-picture"}" data-thread="${Number(thread.id)}" data-board="${thread.board}">`
+    + `<a class="row-pic talk-row-pic" href="${href}" tabindex="-1" aria-hidden="true">${picture
       ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">`
       : monthTileHtml(thread.challenge, now) || `<span class="talk-tile b-${thread.board}">${iconHtml(boardIcon(thread.board))}</span>`}</a>`
-    + `<div class="talk-row-main"><h3 class="talk-row-title"><a href="${href}">${escapeHtml(thread.title)}</a></h3>`
-    + `${thread.said ? `<p class="talk-row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
-    + `<div class="talk-row-foot"><p class="talk-row-meta">`
+    + `<div class="row-body talk-row-main"><h3 class="row-title talk-row-title"><a href="${href}">${escapeHtml(thread.title)}</a></h3>`
+    + `${thread.said ? `<p class="row-said talk-row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
+    + `<div class="talk-row-foot"><p class="row-meta talk-row-meta">`
     + `<span>${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}${reply}</span></p>`
     + `${pills ? `<p class="pills">${pills}</p>` : ""}</div></div>`
-    + `<div class="talk-row-end"><span class="talk-faces">${faces}</span><span class="talk-last">${lastLine}</span></div></li>`;
+    + `<div class="row-act talk-row-end"><span class="talk-faces">${faces}</span><span class="talk-last">${lastLine}</span></div></li>`;
 }
 
 /// The cards under a post, for what it links ([embeds], embedsIn), each
@@ -818,35 +820,31 @@ export function listPageHtml({ board, q, before, listed, counts, talking, models
   const query = tests ? "&tests=1" : "";
   const threads = listed.threads || [];
   const older = listed.more && threads.length
-    ? `<p class="talk-more"><a class="cta ghost" href="${at}/talk${board ? `/b/${board}` : ""}?before=${encodeURIComponent(threads[threads.length - 1].last_at)}`
+    ? `<p class="pager"><a class="cta ghost pager-more" href="${at}/talk${board ? `/b/${board}` : ""}?before=${encodeURIComponent(threads[threads.length - 1].last_at)}`
       + `${q ? `&q=${encodeURIComponent(q)}` : ""}${query}">${asText(say("Older threads"))}</a></p>` : "";
-  const empty = q ? `<p class="talk-empty">${sayHtml("Nothing in Talk says {words}. Try fewer words, or start a thread about it.", { words: `“${escapeHtml(q)}”` })}</p>`
-    : before ? `<p class="talk-empty">${asText(say("No older threads."))}</p>`
-    : `<p class="talk-empty">${asText(say("Nothing here yet. Start the first thread: people who follow this board will see it."))}</p>`;
+  const empty = q ? `<p class="state talk-empty">${sayHtml("Nothing in Talk says {words}. Try fewer words, or start a thread about it.", { words: `“${escapeHtml(q)}”` })}</p>`
+    : before ? `<p class="state talk-empty">${asText(say("No older threads."))}</p>`
+    : `<p class="state talk-empty">${asText(say("Nothing here yet. Start the first thread: people who follow this board will see it."))}</p>`;
   const start = `${at}/talk/new${board && board !== "news" ? `?board=${board}` : ""}`;
-  return `<div class="wrap talk-page" data-talk="list"${board ? ` data-board="${board}"` : ""}>
-<header class="talk-head">
-<p class="talk-crumbs">${board ? `<a href="${at}/talk">${asText(say("Talk"))}</a> ›` : ""}</p>
-<h1>${asText(board ? said.name : say("Talk"))}</h1>
-<p class="lede">${asText(board ? said.about : say("Show what you built, ask for help, share ideas and talk about the month’s challenge with other builders."))}</p>
-<div class="actions talk-tools">
-<a class="cta" href="${start}" data-start>${asText(say("Start a thread"))}</a>
-<form class="talk-search" role="search" action="${at}/talk" method="get">
-<label class="visually-hidden" for="talk-q">${asText(say("Search Talk"))}</label>
-<input id="talk-q" type="search" name="q" maxlength="200" value="${escapeHtml(q || "")}" placeholder="${asText(say("Search Talk"))}">
-${tests ? '<input type="hidden" name="tests" value="1">' : ""}<button class="cta ghost" type="submit">${asText(say("Search"))}</button>
-</form>
-</div>
-</header>
+  const acts = `<form class="talk-search" role="search" action="${at}/talk" method="get">`
+    + `<label class="search">${iconHtml("search")}<span class="visually-hidden">${asText(say("Search Talk"))}</span>`
+    + `<input id="talk-q" type="search" name="q" maxlength="200" value="${escapeHtml(q || "")}" placeholder="${asText(say("Search Talk"))}" enterkeyhint="search"></label>`
+    + `${tests ? '<input type="hidden" name="tests" value="1">' : ""}</form>`
+    + `<a class="cta" href="${start}" data-start>${asText(say("Start a thread"))}</a>`;
+  // The boards are sitebold's tiles, a row of pictures too large for the
+  // head's line of tabs, so they open the page's body, over the threads.
+  return `${pageHeadHtml({ title: board ? said.name : say("Talk"), acts,
+    lede: board ? said.about : say("Show what you built, ask for help, share ideas and talk about the month’s challenge with other builders.") })}
+<div class="wrap page-body talk-page" data-talk="list"${board ? ` data-board="${board}"` : ""}>
 ${boardsHtml(board, counts, tests)}
-<div class="talk-layout">
-<section class="talk-threads" aria-labelledby="talk-threads-title">
+<div class="list-layout">
+<section class="list-main talk-threads" aria-labelledby="talk-threads-title">
 <h2 class="visually-hidden" id="talk-threads-title">${asText(q ? say("Threads that say it") : say("Threads"))}</h2>
 ${q ? `<p class="talk-searched">${sayHtml("Threads that say {words}", { words: `“${escapeHtml(q)}”` })} · <a href="${at}/talk${board ? `/b/${board}` : ""}${tests ? "?tests=1" : ""}">${asText(say("Clear the search"))}</a></p>` : ""}
-${threads.length ? `<ol class="talk-list" id="talk-list">${threads.map((one) => threadRowHtml(one, { now, board })).join("")}</ol>` : empty}
+${threads.length ? `<ol class="list-rows talk-list" id="talk-list">${threads.map((one) => threadRowHtml(one, { now, board })).join("")}</ol>` : empty}
 ${older}
 </section>
-<aside class="talk-aside">
+<aside class="list-aside talk-aside">
 <section aria-labelledby="talk-on-models">
 <h2 id="talk-on-models">${asText(say("On the models"))}</h2>
 ${talkingHtml(talking, models, now)}
@@ -930,9 +928,8 @@ ${boardsListHtml(thread.board)}
 export function newPageHtml({ board, model }) {
   const at = langAt();
   const chosen = BOARDS.includes(board) && board !== "news" ? board : "";
-  return `<div class="wrap talk-page talk-new" data-talk="new">
-<p class="talk-crumbs"><a href="${at}/talk">${asText(say("Talk"))}</a> ›</p>
-<h1>${asText(say("Start a thread"))}</h1>
+  return `${pageHeadHtml({ title: say("Start a thread"), acts: `<a class="cta ghost" href="${at}/talk">${asText(say("Cancel"))}</a>` })}
+<div class="wrap page-body talk-page talk-new" data-talk="new">
 <form class="talk-form talk-start" data-start-form hidden>
 <fieldset class="talk-board-pick"><legend>${asText(say("Board"))}</legend>
 ${BOARDS.filter((id) => id !== "news").map((id) => `<label class="choice"><input type="radio" name="board" value="${id}" required${(model ? id === "show" : id === chosen) ? " checked" : ""}> <b>${asText(boardSaid(id).name)}</b> <small>${asText(boardSaid(id).about)}</small></label>`).join("\n")}
@@ -1136,7 +1133,7 @@ export async function talkLatest(request, response) {
     const lang = langOf(query);
     const now = Date.now();
     const html = inLanguage(lang, lang === "en" ? null : siteWords(lang), () => (threads.length
-      ? `<ol class="talk-list talk-strip-list">${pictured.map((one) => threadRowHtml(one, { now })).join("")}</ol>` : ""));
+      ? `<ol class="list-rows talk-list talk-strip-list">${pictured.map((one) => threadRowHtml(one, { now })).join("")}</ol>` : ""));
     return response.status(200).json({ ready: !listed.missing, count: threads.length, html });
   }
   return response.status(200).json({ ready: !listed.missing, threads });

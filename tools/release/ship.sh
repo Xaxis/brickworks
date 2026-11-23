@@ -26,11 +26,15 @@ mine="$W/tools/release/ship.sh"
 if [ -z "${RELEASE_HERE:-}" ] && [ -x "$mine" ] && [ "$(realpath "$0")" != "$(realpath "$mine")" ]; then
   exec "$mine" "$W" "$TAG" "$@"
 fi
-# Every release runs the site check and the frames check, named or not: a
-# feature that taxed every frame (the grab handles, found twice a second)
-# held a big model's timeline step at 6 s for hours while every check named
-# passed (2026-10-17).
-for always in site frames; do
+# Every release runs the site check, and the frames check when its app is
+# its own, named or not: a feature that taxed every frame (the grab handles,
+# found twice a second) held a big model's timeline step at 6 s for hours
+# while every check named passed (2026-10-17). The web lane's app is the
+# export brickworks.diy serves, byte for byte, so its frames are live's: it
+# ran frames anyway, 11 minutes of a release with nothing to find
+# (fastship, 2026-11-23).
+always="site frames"; [ -z "${SHIP_EXPORT:-}" ] || always="site"
+for always in $always; do
   case " $* " in *" $always "*) ;; *) set -- "$@" "$always";; esac
 done
 # The main checkout (where .env and the shared catalogue live), wherever
@@ -65,7 +69,22 @@ if [ -z "${SHIP_WORK:-}" ]; then
   wait "$work"
   exit
 fi
-export BOX_HEAVY_PRIORITY=1
+export BOX_HEAVY_PRIORITY=1 SHIP_T0=${SHIP_T0:-$EPOCHSECONDS}
+# And the CPU while its jobs run, over the project's own units: heavy's
+# priority puts a release first in the queue only, and in its slot each
+# check had a sixteenth of brickworks' CPU at load 100 beside fifteen units'
+# jobs, 9 to 15 minutes a check (rel-m319, 2026-11-23). brickworks' slice
+# hands the CPU to no cgroup below it (its cgroup.subtree_control is memory
+# and pids), so its jobs share it by nice, which heavy sets to
+# BOX_HEAVY_NICE (10): at 0 a release's thread weighs 1024 to a unit's 110.
+# Other projects are untouched: between slices the owner's ranks decide
+# (heavy --priority).
+export BOX_HEAVY_NICE=${BOX_HEAVY_NICE:-0}
+# More checks at once than a unit's three, and a timing check's wait for a
+# calm project shorter: at load 100 the project never calmed, and oc and
+# frames each waited out the whole 600 s, 20 of rel-m319's last 41-minute
+# battery, then ran beside the same jobs anyway (2026-11-23).
+export PC_AT_ONCE=${PC_AT_ONCE:-6} BOX_HEAVY_SOLO_WAIT=${SHIP_SOLO_WAIT:-180}
 # A train runs the release's probes beside its ship (train.sh) and names in
 # SHIP_PROBES the file it keeps while they run: "running PID: NAMES", then
 # "failed: NAMES", gone once every one has passed. Main never moves while
@@ -98,38 +117,64 @@ set -a; . $R/.env; set +a
 # all of them must pass, as ever.
 URL=""
 [ -n "${SHIP_REUSE:-}" ] && reused_preview "$TAG" "$SHA"
-# The web lane: the app is the live export's, or the ship stops here.
+# The web lane: the app is the live export's, or the ship stops here. Its
+# fit is live's too (deploy.sh --no-fit): 188 s of rel-m319's deploy.
 DEPLOY_DIR=()
 if [ -n "${SHIP_EXPORT:-}" ]; then
   [ -f "$SHIP_EXPORT/index.html" ] && [ -n "${SHIP_EXPORT_FROM:-}" ] \
     || { echo "SHIP: held, no export in SHIP_EXPORT ($SHIP_EXPORT), or SHIP_EXPORT_FROM not said"; exit 1; }
   app=$("$HERE/live_export.sh" app "$SHIP_EXPORT_FROM" HEAD | head -5 | paste -sd' ')
   [ -z "$app" ] || { echo "SHIP: held, app files differ from the export's tree (${SHIP_EXPORT_FROM:0:9}), so it needs an export of its own: $app"; exit 1; }
-  DEPLOY_DIR=("--dir=$SHIP_EXPORT")
+  DEPLOY_DIR=("--dir=$SHIP_EXPORT" --no-fit)
   echo "SHIP: the web lane: the export made from ${SHIP_EXPORT_FROM:0:9}, no import or probe"
 fi
-if [ -z "$URL" ]; then
-  # What CI ran on every push and nobody read: the version, the Python
-  # suite, the shell scripts. First, as it needs no import: two minutes in
-  # its slot at load 40 (2026-10-26).
-  # SHIP_GATE_OK="tests/a.py tests/b.py ...": test files whose failures the
-  # lead judged (known before the merge, the environment, docs pictures yet
-  # to be made) and ships past, each named in the log. Anything else failing,
-  # a shell script or the version, still holds. rel-m321 held 40 minutes on
-  # seven such failures with nothing visitors would see (2026-11-23).
-  gate_out=$("$HERE/ci_gate.sh" "$W" 2>&1); gate=$?
-  echo "$gate_out" | tail -40
-  if [ $gate -ne 0 ]; then
-    failed=$(echo "$gate_out" | sed -n 's/^ *FAIL  \(tests\/[^: ]*\).*/\1/p' | sort -u)
-    other=$(echo "$gate_out" | grep -E 'FAILED|FAIL' | grep -vE '^ *FAIL  tests/|python FAILED' | head -3)
-    unjudged=$(for f in $failed; do case " ${SHIP_GATE_OK:-} " in *" $f "*) ;; *) echo "$f" ;; esac; done)
-    if [ -n "$failed" ] && [ -z "$unjudged" ] && [ -z "$other" ]; then
-      echo "SHIP: ships past the Python suite's judged failures (SHIP_GATE_OK): $(echo $failed)"
-    else
-      echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh)${unjudged:+: not judged: $(echo $unjudged)}"; exit 1
-    fi
-  fi
+# The export this release made on an attempt before, made once and kept:
+# TAG_export.sha names the commit whose export is in build/web, written once
+# its gates passed and its preview deployed. A fix since that changed no app
+# file (web/, api/, the checks) ships on it, with no import, gates or export
+# again; rel-m319's reships exported the same app three times (2026-11-23).
+OWN_EXPORT=""
+if [ -z "$URL" ] && [ ${#DEPLOY_DIR[@]} -eq 0 ] && made=$(cat "$S/${TAG}_export.sha" 2>/dev/null) \
+    && [ -f "$W/build/web/index.html" ] && git merge-base --is-ancestor "$made" HEAD 2>/dev/null \
+    && [ -z "$("$HERE/live_export.sh" app "$made" HEAD | head -1)" ]; then
+  OWN_EXPORT=$made
+  DEPLOY_DIR=("--dir=$W/build/web" --no-fit)
+  echo "SHIP: no app file changed since this release's own export (made from ${made:0:9}): it ships on it"
 fi
+# What CI ran on every push and nobody read: the version, the Python suite,
+# the shell scripts. Beside the deploy and the checks, not before them, in a
+# process group of its own: it ran 206 to 520 s in its slot, and as long
+# again queued, before each of rel-m319's eight attempts made a preview
+# (2026-11-23). Main moves only once it has passed (ci_held, below).
+CI_PID="" CI_LOG=$S/${TAG}_ci_gate.log
+rm -f "$CI_LOG.code"
+if [ -z "$URL" ]; then
+  setsid bash -c '"$1" "$2" > "$3" 2>&1; echo $? > "$3.code"' _ "$HERE/ci_gate.sh" "$W" "$CI_LOG" &
+  CI_PID=$!
+  trap '[ -z "$CI_PID" ] || kill -TERM -- "-$CI_PID" 2>/dev/null' EXIT
+fi
+# Whether the gate has ended and failed: said once, and the ship ends.
+# SHIP_GATE_OK="tests/a.py tests/b.py ...": test files whose failures the
+# lead judged (known before the merge, the environment, docs pictures yet
+# to be made) and ships past, each named in the log. Anything else failing,
+# a shell script or the version, still holds. rel-m321 held 40 minutes on
+# seven such failures with nothing visitors would see (2026-11-23).
+CI_JUDGED=""
+ci_held() {
+  [ -n "$CI_PID" ] && [ -s "$CI_LOG.code" ] || return 1
+  [ "$(cat "$CI_LOG.code")" = 0 ] && return 1
+  local failed other unjudged
+  failed=$(sed -n 's/^ *FAIL  \(tests\/[^: ]*\).*/\1/p' "$CI_LOG" | sort -u)
+  other=$(grep -E 'FAILED|FAIL' "$CI_LOG" | grep -vE '^ *FAIL  tests/|python FAILED' | head -3)
+  unjudged=$(for f in $failed; do case " ${SHIP_GATE_OK:-} " in *" $f "*) ;; *) echo "$f" ;; esac; done)
+  if [ -n "$failed" ] && [ -z "$unjudged" ] && [ -z "$other" ]; then
+    [ -n "$CI_JUDGED" ] || { CI_JUDGED=1; echo "SHIP: ships past the Python suite's judged failures (SHIP_GATE_OK): $(echo $failed)"; }
+    return 1
+  fi
+  tail -40 "$CI_LOG"
+  echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh exit $(cat "$CI_LOG.code"), ${TAG}_ci_gate.log)${unjudged:+: not judged: $(echo $unjudged)}"
+  return 0
+}
 if [ -z "$URL" ] && [ ${#DEPLOY_DIR[@]} -eq 0 ]; then
   import_here || { echo "SHIP: held, the import did not finish (tools/fresh_import.sh)"; exit 1; }
   # The merge gates, here under the release's priority: every GDScript file
@@ -143,9 +188,13 @@ if [ -z "$URL" ] && [ ${#DEPLOY_DIR[@]} -eq 0 ]; then
 fi
 if [ -z "$URL" ]; then
   probes_failed && exit 1
+  ci_held && exit 1
   deploy_preview "$TAG" "$SHA" "${DEPLOY_DIR[@]}" || exit 1
+  # An export of its own, made and deployed: kept for a reship.
+  [ ${#DEPLOY_DIR[@]} -gt 0 ] || echo "$SHA" > "$S/${TAG}_export.sha"
 fi
 probes_failed && exit 1
+ci_held && exit 1
 run_checks "$URL" ${TAG}_pv "$@" || exit 1
 cut -c1-160 $S/${TAG}_pv.out
 probes_failed && exit 1
@@ -180,6 +229,15 @@ for name in "$@"; do
   passed $S/${TAG}_alone_$name.out 1 || still="$still $name"
 done
 [ -n "$again" ] && [ -z "$still" ] && echo "SHIP: every check that failed beside others passed alone"
+# What passed here, as proof: a reship, or the release after this one,
+# runs a check again only where its change since reaches it (lean.py).
+# The build's commit and the commit whose checks ran, which differ on a
+# reused preview.
+mapfile -t ran_alone < <(ls -tr "$S/${TAG}"_alone_*.out 2>/dev/null)
+fresh=()
+for f in "${ran_alone[@]}"; do [ "$f" -nt "$S/${TAG}_pv.out" ] && fresh+=("$f"); done
+python3 "$HERE/lean.py" record checks "$TAG" "${PREVIEW_MADE:-$SHA}" "$SHA" "$S/${TAG}_pv.out" "${fresh[@]}" 2>&1 | sed 's/^/SHIP: /'
+ci_held && exit 1
 # The release is done with the live database until it is live: the train's
 # mark goes, and units take it in their turn again (live_db_lib.sh). Left
 # until each train ended, the marks kept units off it for all but an hour
@@ -325,6 +383,25 @@ if [ -n "${SHIP_PROBES:-}" ]; then
   done
   echo "SHIP: every probe passed"
 fi
+# The CI gate run beside the ship, until it has ended: main moves only once
+# it has passed.
+if [ -n "$CI_PID" ]; then
+  until [ -s "$CI_LOG.code" ]; do
+    if ! kill -0 "$CI_PID" 2>/dev/null; then
+      sleep 1; [ -s "$CI_LOG.code" ] || { echo "SHIP: held, ci_gate.sh ended with no verdict (${TAG}_ci_gate.log)"; exit 1; }
+    fi
+    sleep 5
+  done
+  ci_held && exit 1
+  [ -n "$CI_JUDGED" ] || echo "SHIP: ci_gate.sh passed beside the ship ($(grep -c '^ci gate: .* ok' "$CI_LOG") parts ok)"
+fi
+# A rehearsal (SHIP_REHEARSE, train.sh's TRAIN_REHEARSE) ends here, every
+# gate passed, with how long the ship took: the release path timed on a
+# preview, main and brickworks.diy untouched.
+if [ -n "${SHIP_REHEARSE:-}" ]; then
+  echo "SHIP: rehearsed: every gate passed; a release would move main to $SHA and promote $URL now, $(( EPOCHSECONDS - SHIP_T0 )) s after the ship began"
+  exit 0
+fi
 # A hold set by hand stops a release here, before main moves, even one
 # already under way: $S/HOLD for every release, $S/<tag>.hold for this one.
 # Stopping the waiter that queued it does not stop a ship already started:
@@ -364,6 +441,9 @@ prod_deploy() {
   return "$code"
 }
 deployed=0
+# Where brickworks.diy points now, to go back to should the release break it
+# (live_smoke.sh guard, below).
+PREV=$("$HERE/live_smoke.sh" current 2>/dev/null) || PREV=""
 # What the domain will serve: the preview's own commit, before SHA when only
 # checks changed since (reused_preview), or SHA built afresh.
 LIVE=${PREVIEW_MADE:-$SHA}
@@ -371,8 +451,11 @@ if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
     || ! prod_deploy timeout 900 tools/deploy.sh --promote="$URL"; then
   echo "SHIP: $URL not promoted; deploying production afresh"
   LIVE=$SHA
+  # On the export this ship deployed, not one made again (deploy.sh --dir).
+  PROD_DIR=("${DEPLOY_DIR[@]}")
+  [ ${#PROD_DIR[@]} -gt 0 ] || [ ! -f "$W/build/web/index.html" ] || PROD_DIR=("--dir=$W/build/web")
   # The queue is bounded by heavy's BOX_HEAVY_WAIT, the run by the inner timeout (preview_lib.sh).
-  prod_deploy ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod "${DEPLOY_DIR[@]}"
+  prod_deploy ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod "${PROD_DIR[@]}"
   deployed=$?
 fi
 # A failed deploy is a failed ship. m174's lost one size of its start check
@@ -384,23 +467,45 @@ if [ $deployed -ne 0 ]; then
   echo "SHIP: main is $SHA but production is not (deploy exit $deployed): deploy it again with PROD_BY_HAND=\"$TAG's deploy failed\" tools/deploy.sh --prod${DEPLOY_DIR[*]:+ ${DEPLOY_DIR[*]}}"
   exit 1
 fi
-# The export this ship made, kept as the live one for the web lane, before
-# the line a train behind waits for says it serves: a web lane staged
-# after this release reads it once it does. Never fails a ship.
-if [ ${#DEPLOY_DIR[@]} -eq 0 ]; then
+# The CDN keeps serving the last pages for a minute or so after the promotion.
+sleep "${SHIP_CDN_WAIT:-90}"
+# And the live checks go on only against this build.
+serves() { curl -s --max-time 30 "https://brickworks.diy/app?v=$EPOCHSECONDS" | grep -q "/b/$LIVE/"; }
+serves || { sleep 120; serves; } || {
+  grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
+  echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$LIVE/"; exit 1; }
+# The live site looked at, read-only (the home, a model's page, Talk, the
+# app's start), and put back on the build before should the release have
+# broken it (live_smoke.sh guard, fastship 2026-11-23). Before the line a
+# train behind waits for: a release put back never says it serves, every
+# release waits behind $S/HOLD, and the export it made is not kept for the
+# web lane. Main has it and live does not until the lead reverts or fixes it.
+if [ -n "$PREV" ]; then
+  LIVE_SMOKE_OUT=$S/${TAG}_smoke "$HERE/live_smoke.sh" guard brickworks.diy "$PREV" "$TAG" > "$S/${TAG}_smoke.out" 2>&1
+  smoke=$?
+  grep -E '^live_smoke: ' "$S/${TAG}_smoke.out" | tail -3 | sed 's/^/SHIP: /'
+  case $smoke in
+    0) ;;
+    2) echo "SHIP: the live smoke gave no verdict (${TAG}_smoke.out): nothing was rolled back" ;;
+    *) echo "$TAG rolled back by its live smoke ($(date -u +%FT%H:%MZ)): main has $SHA, brickworks.diy the build before; revert or fix it, then rm this file" > "$S/HOLD"
+       echo "SHIP: held every release ($S/HOLD): main is $SHA and brickworks.diy is not"
+       exit 1 ;;
+  esac
+else
+  echo "SHIP: no deployment named for brickworks.diy before the promotion (live_smoke.sh current), so no live smoke to roll back by"
+fi
+# The export this ship made, or its own one made on an attempt before, kept
+# as the live one for the web lane, before the line a train behind waits for
+# says it serves: a web lane staged after this release reads it once it
+# does. Never fails a ship.
+if [ ${#DEPLOY_DIR[@]} -eq 0 ] || [ -n "$OWN_EXPORT" ]; then
   if [ -f "$W/build/web/index.html" ]; then
-    RELEASE_OUT=$S "$HERE/live_export.sh" keep "$TAG" "$LIVE" "$W/build/web" 2>&1 | sed 's/^/SHIP: /'
+    RELEASE_OUT=$S "$HERE/live_export.sh" keep "$TAG" "${OWN_EXPORT:-$LIVE}" "$W/build/web" 2>&1 | sed 's/^/SHIP: /'
   else
     echo "SHIP: no export in $W/build/web to keep: a web lane waits for a release that makes one"
   fi
 fi
 grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
-# The CDN keeps serving the last pages for a minute or so after the promotion.
-sleep "${SHIP_CDN_WAIT:-90}"
-# And the live checks go on only against this build.
-serves() { curl -s --max-time 30 https://brickworks.diy/app | grep -q "/b/$LIVE/"; }
-serves || { sleep 120; serves; } || {
-  echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$LIVE/"; exit 1; }
 # Written down for the owner's console (/admin#site): which release is live,
 # since now, with its train's title and units. Never fails a ship.
 "$HERE/release_live.sh" "$TAG" "$LIVE" "$S/$TAG.train" 2>&1 | sed 's/^/SHIP: /'

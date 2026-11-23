@@ -35,15 +35,13 @@
 <style>
 /* Only layout here; the plan's card, its ticks, the table and the
    callouts are site.css's (the landing kit). */
-.plans-head { padding: var(--page-top) 0 var(--s-7); text-align: center; }
-.plans-head h1 { max-width: 18ch; margin-inline: auto; }
-.plans-head .lede { margin: 0 auto var(--s-6); max-width: 64ch; }
+/* The site's head, and the whole page's width from the header's left
+   edge like every page (listkit, 2026-11-23: a centred landing head over
+   a 980 px island, its sections at 150 px); words keep their measure. */
+.plans .page-body { padding-bottom: 0; }
 /* Free and Pro side by side from 900 px, their rows shared (a subgrid)
    so names, prices, buttons and lists line up whatever each says; one
    under another below. */
-/* The page as wide as every page (homefix, 2026-11-23), what is in it
-   centred at 980 px. */
-.plans .narrow > * { max-width: 980px; margin-inline: auto; }
 .tiers { display: grid; gap: var(--s-4); }
 @media (width >= 900px) {
 	.tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); row-gap: 0; }
@@ -107,20 +105,25 @@ dialog .done .actions { margin-top: var(--s-4); }
 </header>
 
 <main id="main" class="plans">
-	<section class="plans-head halo" aria-labelledby="plans-h">
+	<div class="page-hero plans-head">
 		<div class="wrap">
-			<p class="eyebrow"><span data-when="soon">Tarife · Pro kommt bald</span><span data-when="sale" hidden>Tarife</span></p>
-			<h1 id="plans-h"><span data-when="soon">Kostenlos bauen. Pro kommt.</span><span data-when="sale" hidden>Kostenlos bauen. Pro zum Aufbewahren und Verkaufen.</span></h1>
-			<p class="lede" data-when="soon">Brickworks ist kostenlos für private Zwecke und für Bildung: die Web-App und die Desktop-App, alle Teile, Physik, Bauanleitungen und Renderings, deine eigene KI ohne Limit, und 25 Modelle, die in deinem Konto aufbewahrt werden. Pro bewahrt jedes Modell auf, das du baust, und bringt eine Lizenz dazu, zu verkaufen, was du baust. Hier wird noch nichts berechnet: Sag, dass du Pro nutzen würdest, und wir schreiben dir einmal, wenn es startet.</p>
-			<p class="lede" data-when="sale" hidden>Brickworks ist kostenlos für private Zwecke und für Bildung: die Web-App und die Desktop-App, alle Teile, Physik, Bauanleitungen und Renderings, deine eigene KI ohne Limit, und 25 Modelle, die in deinem Konto aufbewahrt werden. Pro bewahrt jedes Modell auf, das du baust, und bringt eine Lizenz dazu, zu verkaufen, was du baust.</p>
-			<div class="segmented" role="group" aria-label="Abrechnung">
-				<button type="button" data-billing="month" aria-pressed="false">Monatlich</button>
-				<button type="button" data-billing="year" aria-pressed="true">Jährlich <span class="badge accent">Zwei Monate kostenlos</span></button>
+			<div class="page-head">
+				<div class="page-title">
+					<h1 id="plans-h"><span data-when="soon">Kostenlos bauen. Pro kommt.</span><span data-when="sale" hidden>Kostenlos bauen. Pro zum Aufbewahren und Verkaufen.</span></h1>
+					<p class="lede" data-when="soon">Brickworks ist kostenlos für private Zwecke und für Bildung: die Web-App und die Desktop-App, alle Teile, Physik, Bauanleitungen und Renderings, deine eigene KI ohne Limit, und 25 Modelle, die in deinem Konto aufbewahrt werden. Pro bewahrt jedes Modell auf, das du baust, und bringt eine Lizenz dazu, zu verkaufen, was du baust. Hier wird noch nichts berechnet: Sag, dass du Pro nutzen würdest, und wir schreiben dir einmal, wenn es startet.</p>
+					<p class="lede" data-when="sale" hidden>Brickworks ist kostenlos für private Zwecke und für Bildung: die Web-App und die Desktop-App, alle Teile, Physik, Bauanleitungen und Renderings, deine eigene KI ohne Limit, und 25 Modelle, die in deinem Konto aufbewahrt werden. Pro bewahrt jedes Modell auf, das du baust, und bringt eine Lizenz dazu, zu verkaufen, was du baust.</p>
+				</div>
+				<div class="page-acts">
+					<div class="segmented" role="group" aria-label="Abrechnung">
+						<button type="button" data-billing="month" aria-pressed="false">Monatlich</button>
+						<button type="button" data-billing="year" aria-pressed="true">Jährlich <span class="badge accent">Zwei Monate kostenlos</span></button>
+					</div>
+				</div>
 			</div>
 		</div>
-	</section>
+	</div>
 
-	<div class="wrap narrow">
+	<div class="wrap page-body">
 		<div class="tiers">
 			<article class="tier" id="free" aria-labelledby="free-h">
 				<div class="name"><h2 id="free-h">Kostenlos</h2></div>
@@ -174,7 +177,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 	</div>
 
 	<section class="section" id="compare" aria-labelledby="compare-h">
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head">
 				<div>
 					<h2 class="title" id="compare-h">Jede Zeile, nebeneinander</h2>
@@ -216,7 +219,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 	</section>
 
 	<section class="section" id="promises" aria-labelledby="keep-h">
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="asides">
 				<section class="card" id="had" aria-labelledby="had-h">
 					<h2 id="had-h">Du hast ein Konto? Du behältst alles</h2>
@@ -241,7 +244,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 	</section>
 
 	<section class="section" id="questions" aria-labelledby="ask-h">
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head"><div><h2 class="title" id="ask-h">Fragen</h2></div></div>
 			<details class="qa" id="changed">
 				<summary>Sollte die Desktop-App nicht zu Pro gehören?</summary>
@@ -280,7 +283,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 	</section>
 
 	<section class="section" aria-labelledby="start-h">
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="closing">
 				<h2 class="title" id="start-h">Fang an zu bauen, kostenlos</h2>
 				<p class="lede">Öffne Brickworks in jedem Browser: nichts zu installieren und keine Karte.</p>

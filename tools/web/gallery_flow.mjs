@@ -9,8 +9,8 @@
 //
 //   1. the first screen: at 390 the first card's picture starts within
 //      360 px of the top (the week's pick before the month's challenge),
-//      two cards to a row, four cards' names on the
-//      first two screens; at 1280 the week's pick whole across the first
+//      one card to a row (the owner's, 2026-10-29), three cards' names on
+//      the first two screens; at 1280 the week's pick whole across the first
 //      screen, its picture beside its words, and under it the cards four
 //      to a row (the owner's four on a desktop, 2026-10-29), the first row's pictures begun on that screen (sitebold,
 //      2026-11-23: four whole small cards before it), the cards marked
@@ -239,10 +239,12 @@ try {
         // the search on its own, 56 px lower: rel-m318's first picture at
         // 322 px, rel-m319's at 378. The month's challenge over the pick put
         // it at 425 (sitepolish); the pick comes first on a phone now.
-        check(seen.firstPicture <= 360 && seen.columns === 2 && !seen.sideways,
+        check(seen.firstPicture <= 360 && seen.columns === 1 && !seen.sideways,
           `390 ${theme}: the first card's picture at ${seen.firstPicture} px (360 at most), ${seen.columns} to a row, nothing sideways`);
-        check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
-          `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
+        // One to a row, a card is half a phone's screen: the pick's name and
+        // two cards' (four at two a row before 2026-11-23).
+        check(seen.names.length >= 3 && seen.names[2] <= 2 * 844,
+          `390 ${theme}: three cards' names on the first two screens, the third's ending at ${seen.names[2]} px (${2 * 844} at most)`);
       } else {
         const pick = seen.pickFeature;
         check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin < 900 - 60 && !seen.sideways,

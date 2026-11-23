@@ -949,6 +949,18 @@ const BASES = [
     title: "A river tower, with its water gate", author: "Mira Holm", licence: "CC BY 4.0" },
 ];
 
+// Talk's threads (supabase/talk.sql talk_threads_of), newest first.
+const TALK_THREADS = [
+  { id: 41, board: "show", title: "Riverside Watchtower, my first castle", said: "Built it over a weekend: the gate opens and the drawbridge folds.",
+    by: { name: "Robin Castell", handle: HANDLE }, at: "2026-11-20T10:00:00Z", replies: 3, last_at: "2026-11-21T09:00:00Z",
+    last_by: { name: "Sam Ortiz", handle: "sam-builds" }, model: { id: MODEL_ID, name: "Riverside Watchtower", has_image: true, has_thumb: true, updated_at: "2026-10-01T00:00:00Z" } },
+  { id: 40, board: "help", title: "How do I hinge a roof at 45 degrees?", said: "Every hinge I try leaves a gap at the ridge.",
+    by: { name: "Sam Ortiz", handle: "sam-builds" }, at: "2026-11-19T10:00:00Z", replies: 1, last_at: "2026-11-19T12:00:00Z",
+    last_by: { name: "Robin Castell", handle: HANDLE } },
+  { id: 39, board: "ideas", title: "A train that runs on the gallery's tracks", said: "",
+    by: { name: "Robin Castell", handle: HANDLE }, at: "2026-11-18T10:00:00Z", replies: 0, last_at: "2026-11-18T10:00:00Z" },
+];
+
 // The functions the handlers call (rpc/<name>), each with what it was sent.
 const RPC = {
   // supabase/model_bases.sql
@@ -1020,6 +1032,12 @@ const RPC = {
   may_list: () => true,
   count_view: () => true,
   gallery_pick: () => ({ pick: null, chosen: false, until: null, week: PICK.week, card: card(modelOf(PICK.model)) }),
+  // supabase/talk.sql: Talk's boards, a page of threads (Show and tell's
+  // about the stand-in's model, with its picture), and what is said under
+  // the models (listkit: Talk's pages drawn here, for layout_audit.mjs).
+  talk_threads_of: ({ p_board }) => ({ more: true, threads: TALK_THREADS.filter((one) => !p_board || one.board === p_board) }),
+  talk_board_counts: () => ({ show: 2, help: 1, ideas: 1, challenges: 0, news: 0 }),
+  talk_talking: () => [],
   // Last month's winner (CHALLENGES_LISTED), on its card and its designer's page.
   challenge_wins: ({ owner, models }) => (owner === ROBIN || (models || []).includes(MODEL_ID)
     ? [{ challenge: 2, title: "Castle September", ends_on: "2026-09-30", way: "hand", model: MODEL_ID,
@@ -1239,6 +1257,10 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/room[.]json$/, "share", "room"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  // Talk's lists and the page to start a thread (api/_talk.js), as deploy.sh routes them.
+  [/^\/talk\/?$/, "people", "talk_page"],
+  [/^\/talk\/b\/(show|help|ideas|challenges|news)\/?$/, "people", "talk_board"],
+  [/^\/talk\/new\/?$/, "people", "talk_new"],
   // A challenge's link (/challenge?id=N), its head the challenge's own.
   [/^\/challenge\/?$/, "people", "challenge_page"],
   [/^\/(de|fr|es)\/challenge\/?$/, "people", "challenge_page_lang"],
@@ -1291,6 +1313,9 @@ function routeOf(pathname) {
     if (op === "embed_lang") return { name, query: { op: "embed", id: found[2], lang: found[1] } };
     if (op === "page_lang") return { name, query: { op: "page", handle: found[2], lang: found[1] } };
     if (op === "list_page_lang") return { name, query: { op: "list_page", id: found[2], lang: found[1] } };
+    if (op === "talk_page") return { name, query: { op } };
+    if (op === "talk_board") return { name, query: { op: "talk_page", board: found[1] } };
+    if (op === "talk_new") return { name, query: { op: "talk_page", new: "1" } };
     if (op === "challenge_page") return { name, query: { op } };
     if (op === "challenge_page_lang") return { name, query: { op: "challenge_page", lang: found[1] } };
     if (op === "set_lang") return { name, query: { op: "set", id: found[2], lang: found[1] } };
@@ -2771,6 +2796,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
     if (/^\/(m|u|c|library|(?:de|fr|es)\/(?:library|m|u|c)|sitemaps)\//.test(url.pathname)
       || /^\/oembed\/?$|^\/sitemap[.]xml$/.test(url.pathname)
+      || /^\/talk(?:\/(?:new|b\/[a-z]+))?\/?$/.test(url.pathname)
       || (/^\/((?:de|fr|es)\/)?challenge\/?$/.test(url.pathname) && /^[1-9][0-9]{0,15}$/.test(url.searchParams.get("id") || ""))) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the

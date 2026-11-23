@@ -35,7 +35,7 @@
 // Every word in the page's language (web/card.js say: /de/library/set/<n>
 // carries its copy's words), its numbers as the language writes them.
 import { call, signedIn } from "/account.js";
-import { altCardSaid, counted, langAt, modelCard, number, say } from "/card.js";
+import { altCardSaid, counted, langAt, modelCard, number, pictureOf, say } from "/card.js";
 
 const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 // A list's link (api/_mylists.js): ten letters and digits.
@@ -132,8 +132,21 @@ function versionsOf(article, versions, before) {
     row.className = "models scroller";
     row.setAttribute("role", "group");
     row.setAttribute("aria-labelledby", "versions-h");
+    // Each shows its model: LDraw's as it is by the picture the library
+    // shows of it; a changed one by its card's picture, else the cut-out its
+    // publish made, else (a publish with no picture, or one that does not
+    // come) LDraw's model it was made from. Never "No picture".
+    const ldraw = /^[A-Za-z0-9._-]+$/.test(article.dataset.model || "") ? `/library/${article.dataset.model}.webp` : "";
     row.append(...shown.map((model) => {
-      const card = modelCard(model);
+      const own = model.changed !== true ? "" : model.thumb ? pictureOf(model)
+        : model.image ? `/m/${encodeURIComponent(model.id)}.cutout.png` : "";
+      const card = modelCard({ ...model, picture: own || ldraw || undefined });
+      const picture = card.querySelector(".frame img");
+      if (picture && ldraw) {
+        picture.addEventListener("error", () => {
+          if (!picture.src.endsWith(ldraw)) picture.src = ldraw;
+        });
+      }
       const line = document.createElement("small");
       line.className = "alt-said version-said";
       line.dataset.changed = String(model.changed === true);
