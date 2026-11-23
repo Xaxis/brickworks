@@ -17123,3 +17123,16 @@ msgstr "%s comentó: «%s» — responde en su página"
 # The studio's first screen (studiostart, src/ui/studio_start.gd).
 msgid "Search with fewer words: at most %d letters"
 msgstr "Busca con menos palabras: como mucho %d caracteres"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "See it and its entries"
+msgstr "Verla, con sus participaciones"
+
+msgid "Its page: the brief, what others built, and how to enter"
+msgstr "Su página: la propuesta, lo que otros han construido y cómo participar"
+
+msgid "Bringing “%s” from your account…"
+msgstr "«%s» llega desde tu cuenta…"
+
+msgid "“%s” could not be brought from your account just now: try File › Open in a moment"
+msgstr "«%s» no se ha podido traer desde tu cuenta: prueba en un momento con Archivo › Abrir"

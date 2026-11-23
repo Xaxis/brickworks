@@ -17123,3 +17123,16 @@ msgstr "%s hat kommentiert: „%s“ — antworte auf seiner Seite"
 # The studio's first screen (studiostart, src/ui/studio_start.gd).
 msgid "Search with fewer words: at most %d letters"
 msgstr "Suche mit weniger Wörtern: höchstens %d Zeichen"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "See it and its entries"
+msgstr "Ansehen, mit allen Beiträgen"
+
+msgid "Its page: the brief, what others built, and how to enter"
+msgstr "Ihre Seite: die Aufgabe, was andere gebaut haben, und wie du teilnimmst"
+
+msgid "Bringing “%s” from your account…"
+msgstr "„%s“ kommt aus deinem Konto…"
+
+msgid "“%s” could not be brought from your account just now: try File › Open in a moment"
+msgstr "„%s“ konnte gerade nicht aus deinem Konto geholt werden: Versuche es gleich über Datei › Öffnen"

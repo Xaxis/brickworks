@@ -561,18 +561,24 @@ export async function studioStart(request, response, { origin }) {
   const asker = await who(request);
   if (!asker) throw new Unacceptable("Sign in to see what happened to your models: we email you a code, no password.", 401);
   const tests = testsAsked(request.query || {});
-  const [page, week] = await Promise.all([
+  // Asked side by side, as the studio waits on it: the list, the week's
+  // build and who they blocked at once, then which comments are on a part
+  // and which models of the blocked to leave out at once.
+  const [page, week, handles] = await Promise.all([
     call("notification_list", { viewer: asker, mark: false }, () => ({ missing: true })),
     orUnknown("prompts", promptNow(origin, tests)),
+    blockedHandles(asker),
   ]);
   const listed = page && page.missing ? await listBefore(asker, false) : page;
   const prompt = week || null;
   if (!listed) return response.status(200).json({ ready: false, came: [], prompt });
-  const rows = (listed.rows || []).filter((row) => CAME.has(row?.kind) && ID.test(String(row?.on || "")));
-  const handles = await blockedHandles(asker);
-  const gone = handles.size ? await blockedModels(asker, rows.map((row) => row?.model)) : new Set();
+  const rows = (listed.rows || []).filter((row) => CAME.has(row?.kind) && ID.test(String(row?.on || "")))
+    .slice(0, CAME_MOST * 3);
+  const [gone] = await Promise.all([
+    handles.size ? blockedModels(asker, rows.map((row) => row?.model)) : new Set(),
+    pinnedAmong(rows.filter((row) => PINNABLE.has(row?.kind))),
+  ]);
   const kept = handles.size ? rowsWithout(rows, handles, gone) : rows;
-  await pinnedAmong(kept.filter((row) => PINNABLE.has(row?.kind)));
   const lang = String(request.query?.lang || "en");
   const came = inLanguage(lang, siteWords(lang), () => {
     const groups = noticeGroups({ ...listed, rows: kept.slice(0, CAME_MOST) }, origin).groups;

@@ -100,6 +100,10 @@ signal list_answered
 ## The account's model saved last, as its list said at the last look; ""
 ## when it keeps none. What a returning person opens on (Main._open_theirs).
 var newest: String = ""
+## The account's models as its list last said, newest first: {name, parts,
+## saved_at, ...} (api/models.js), before any is fetched (StudioStart's
+## Continue on a device they have not come to yet).
+var account_list: Array = []
 ## How the last look went: "" not yet, "off", "kept" (in step with the
 ## account), "away" (could not reach it), "not_here" (this deployment keeps
 ## no models: account_models.sql not applied).
@@ -234,9 +238,11 @@ func _sync_once() -> void:
 	var there: Dictionary = {}
 	# Listed the one saved last first (api/models.js).
 	newest = ""
+	account_list = []
 	for one: Variant in (listed["body"] as Dictionary)["models"]:
 		if one is Dictionary and fits(str((one as Dictionary).get("name", ""))):
 			there[str(one["name"])] = one
+			account_list.append(one)
 			if newest.is_empty():
 				newest = str(one["name"])
 	var kept: Variant = (listed["body"] as Dictionary).get("kept")

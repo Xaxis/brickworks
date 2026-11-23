@@ -99,6 +99,17 @@ var _keep: CheckBox
 var _typed: Timer
 var _named: Dictionary = {}
 var _bringing: bool = false
+var _finding: bool = false
+var _found_ok: bool = false
+var _asked_ms: int = -1000000
+var _found_ms: int = -1000000
+## On a phone or a tablet (Main, by TouchSizing.size_panel, which grows its
+## text to points): how much a desktop unit of text has grown, so its tiles
+## and rows keep room for their words. 1 on a desktop.
+var text_k: float = 1.0
+## What was asked before it showed (prepare) is shown as it is when younger
+## than this; older, it is asked again.
+const FRESH_MS := 60000
 
 
 func _ready() -> void:
@@ -159,7 +170,8 @@ func _ready() -> void:
 		if begin_new.is_valid():
 			begin_new.call())
 	head.add_child(_new)
-	_close = _button("✕", false)
+	# The site's own close sign: the web's fonts have no ✕ (a box was drawn).
+	_close = _button("×", false)
 	_close.tooltip_text = "Put this away (Esc): the model is behind it"
 	_close.pressed.connect(func() -> void: close("closed"))
 	head.add_child(_close)
@@ -249,12 +261,64 @@ func open(saved: Array, bringing: bool = false) -> void:
 	shown_ms = Time.get_ticks_msec()
 	filled_ms = -1
 	visible = true
+	# Over whatever was laid out after it (a phone's bars).
+	move_to_front()
 	_bringing = bringing
 	_lay()
 	set_models(saved)
 	_title.text = "Welcome back"
-	_ask()
-	_find("")
+	var now: int = Time.get_ticks_msec()
+	if asked == "ok" and now - _asked_ms < FRESH_MS:
+		_fill_prompt()
+		_fill_came()
+	elif asked != "asking":
+		_ask()
+	if _finding and finding.is_empty():
+		pass
+	elif found_for.is_empty() and _found_ok and now - _found_ms < FRESH_MS:
+		_fill_found(true)
+	else:
+		_find("")
+
+
+## Asked before it shows (Main, as the studio starts): what came back, the
+## week's build and the gallery's first page, beside the model's open, so
+## they are there when it does.
+func prepare() -> void:
+	if asked.is_empty():
+		_ask()
+	if not _finding and found.is_empty():
+		_find("")
+
+
+## Nobody signed in now, or somebody else: what was asked as them goes.
+func forget() -> void:
+	close("signed out")
+	asked = ""
+	answer = {}
+	_asked_ms = -1000000
+
+
+## Continue from the account's list (CloudModels.listed), newest first,
+## while its models are on their way to this device: each opens once it is
+## here (Main's open_saved waits for it).
+func set_listed(listed: Array) -> void:
+	if not models.is_empty():
+		return
+	for one: Variant in listed:
+		if models.size() >= CONTINUE_MOST:
+			break
+		if not one is Dictionary:
+			continue
+		var name: String = str((one as Dictionary).get("name", ""))
+		if name.is_empty():
+			continue
+		var parts: Variant = (one as Dictionary).get("parts")
+		models.append({"name": name, "path": ModelStore.saved_path(name),
+			"bricks": int(parts) if parts is float or parts is int else 0,
+			"modified": int(Time.get_unix_time_from_datetime_string(str((one as Dictionary).get("saved_at", "")).left(19))),
+			"link": "", "coming": true})
+	_fill_continue()
 
 
 ## Continue's models: [param saved] as ModelStore lists them, its first
@@ -313,10 +377,14 @@ func _ask() -> void:
 	var token: String = await account.access_token()
 	var got: Dictionary = await shared.studio_start(token, Language.current()) if not token.is_empty() \
 		else {"code": 401}
+	# Signed out (forget) while it was asked: not theirs to show.
+	if asked != "asking":
+		return
 	var body: Variant = got.get("body")
 	if int(got.get("code", 0)) == 200 and body is Dictionary:
 		answer = body
 		asked = "ok"
+		_asked_ms = Time.get_ticks_msec()
 	else:
 		asked = "away"
 	_fill_prompt()
@@ -335,8 +403,9 @@ func _find_now() -> void:
 
 ## The gallery's models for [param words] (its own first page for none).
 func _find(words: String) -> void:
-	if shared == null or finding == words and finding != "":
+	if shared == null or _finding and finding == words:
 		return
+	_finding = true
 	finding = words
 	_found_title.text = "Looking…" if words.is_empty() else "Looking for “%s”…" % words
 	# Searched as them, so nobody they blocked is in it; the first page as
@@ -346,8 +415,11 @@ func _find(words: String) -> void:
 	var got: Dictionary = await shared.gallery(words, token)
 	if finding != words:
 		return
+	_finding = false
 	finding = ""
 	var body: Variant = got.get("body")
+	_found_ok = int(got.get("code", 0)) == 200
+	_found_ms = Time.get_ticks_msec()
 	found.clear()
 	if int(got.get("code", 0)) == 200 and body is Dictionary and (body as Dictionary).get("models") is Array:
 		for one: Variant in (body as Dictionary)["models"]:
@@ -414,11 +486,20 @@ func _fill_prompt() -> void:
 	inside.add_child(_label(" · ".join(facts), 12, Look.GREYED, true))
 	var start: String = str(week.get("start", "")) if week.get("start") is String else ""
 	var template: String = start.get_slice("copy=", 1).get_slice("&", 0) if start.contains("copy=") else ""
-	var go := _button("Start from its template", true)
+	# A week with no template: its page, with its brief, its entries and how
+	# to enter, never a button that does nothing.
+	var page: String = str(week.get("page", "")) if week.get("page") is String else ""
+	var has_template: bool = SharedModels.is_id(template)
+	var go := _button("Start from its template" if has_template else "See it and its entries", true)
 	go.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	go.disabled = not SharedModels.is_id(template)
-	go.tooltip_text = "Your own copy of its template, on the baseplate: publish it to enter"
+	go.disabled = not has_template and page.is_empty()
+	go.tooltip_text = "Your own copy of its template, on the baseplate: publish it to enter" if has_template \
+		else "Its page: the brief, what others built, and how to enter"
 	go.pressed.connect(func() -> void:
+		if not has_template:
+			_chose({"what": "prompt page", "page": page})
+			Outside.open_link(page if page.begins_with("http") else Deployment.api_base() + page)
+			return
 		_chose({"what": "prompt", "id": template})
 		if copy.is_valid():
 			copy.call(template))
@@ -454,7 +535,7 @@ func _came_row(item: Dictionary, n: int) -> Button:
 	row.focus_mode = Control.FOCUS_NONE
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	row.custom_minimum_size = Vector2(0, 58)
+	row.custom_minimum_size = Vector2(0, 58.0 * text_k)
 	row.clip_contents = true
 	_face_button(row, Color(1, 1, 1, 0.035), Color(1, 1, 1, 0.08))
 	var line := HBoxContainer.new()
@@ -573,15 +654,19 @@ func _lay() -> void:
 	var room: Vector2 = size
 	if room.x <= 0.0:
 		return
-	var narrow: bool = room.x < NARROW
+	# A phone is narrow whatever its units: 720 across a portrait one.
+	var narrow: bool = room.x < NARROW or text_k > 1.0
 	var margin: float = 8.0 if narrow else 28.0
 	var wide: float = minf(WIDEST, room.x - margin * 2.0)
 	var tall: float = room.y - margin * 2.0 if narrow else minf(room.y - margin * 2.0, 760.0)
 	_card.position = Vector2(floorf((room.x - wide) * 0.5), floorf((room.y - tall) * 0.5))
 	_card.size = Vector2(wide, tall)
 	var inner: float = wide - 44.0
-	_continue.columns = clampi(floori((inner + 12.0) / (PICTURE.x + 12.0)), 2, CONTINUE_MOST)
-	_found_grid.columns = clampi(floori((inner + 12.0) / (PICTURE.x * 0.82 + 12.0)), 2, FOUND_MOST)
+	# Columns as wide as a picture, or as wide as its words grown for a finger.
+	_continue.columns = clampi(floori((inner + 12.0) / (PICTURE.x * maxf(1.0, text_k * 0.9) + 12.0)), 2,
+		CONTINUE_MOST)
+	_found_grid.columns = clampi(floori((inner + 12.0) / (PICTURE.x * 0.82 * maxf(1.0, text_k * 0.75) + 12.0)),
+		2, FOUND_MOST)
 	_middle.columns = 1 if narrow else 2
 	for tile: Control in _continue.get_children() + _found_grid.get_children():
 		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -598,7 +683,7 @@ func _tile(title: String, facts: String, picture: String, picture_size: Vector2)
 	# As wide as its column, which the grid shares out (_lay): a phone's two
 	# columns are narrower than a picture's own width.
 	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tile.custom_minimum_size = Vector2(0, picture_size.y + 50.0)
+	tile.custom_minimum_size = Vector2(0, picture_size.y + 50.0 * text_k)
 	_face_button(tile, Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.09))
 	var inside := VBoxContainer.new()
 	inside.mouse_filter = Control.MOUSE_FILTER_IGNORE

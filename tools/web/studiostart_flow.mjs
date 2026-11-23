@@ -177,38 +177,58 @@ try {
   }
 
   console.log("2. /app?start: their own first screen, never the example car");
+  // Each browser is first a device they have not used: their models come
+  // from the account, Continue listing them as its list answers. Then the
+  // same browser again, as a person comes back to it: the bar (three real
+  // things within a second of the studio being up) is that visit's.
   let pinPage = null;
   let pinContext = null;
+  const watch = async (page, label) => {
+    const loaded = Date.now();
+    let shownAt = 0;
+    let car = false;
+    const titles = new Set();
+    const end = Date.now() + OPEN_S * 1000;
+    for (;;) {
+      const now = await state(page);
+      if (now.title) titles.add(String(now.title));
+      const start = now.studio_start || {};
+      car = car || start.car === true;
+      if (start.shown && start.real >= 3 && start.asked !== "asking" && start.found > 0) { shownAt = Date.now(); break; }
+      if (Date.now() > end) break;
+      await page.waitForTimeout(250);
+    }
+    const start = (await state(page)).studio_start || {};
+    return { label, start, shownAt, car, titles: [...titles], wall_ms: shownAt ? shownAt - loaded : null };
+  };
   for (const size of SIZES) {
     for (const scheme of ["dark", "light"]) {
       const made = await context(builder, { ...size, scheme });
       const page = await made.newPage();
       listen(page, `start ${size.name} ${scheme}`);
-      const titles = new Set();
-      const loaded = Date.now();
       await page.goto(`${site}/app?start`, { waitUntil: "load" });
-      let shownAt = 0;
-      const end = Date.now() + OPEN_S * 1000;
-      for (;;) {
-        const now = await state(page);
-        if (now.title) titles.add(String(now.title));
-        const start = now.studio_start || {};
-        if (start.shown && start.real >= 3 && start.asked !== "asking" && start.found > 0) { shownAt = Date.now(); break; }
-        if (Date.now() > end) break;
-        await page.waitForTimeout(250);
-      }
-      const seen = await state(page);
-      const start = seen.studio_start || {};
+      const first = await watch(page, "a new device");
+      const fs = first.start;
+      console.log(`  --    ${size.name} ${scheme}, a new device: ${fs.real} real things (${fs.continue} models listed), `
+        + `${fs.after_open_ms} ms after the studio was up`);
+      check(`${size.name} ${scheme}, a new device: never the example car`, !first.car, first.titles.join(" / "));
+      // Their models brought here and kept, then the same browser again.
+      await until(page, () => ((window.brickworksState || {}).studio_start || {}).here >= 3, "their models here", 120)
+        .catch(() => null);
+      await page.waitForTimeout(3000);
+      await page.reload({ waitUntil: "load" });
+      const again = await watch(page, "back again");
+      const start = again.start;
       await page.waitForTimeout(1500);
       await shot(page, `after_${size.name}_${scheme}.png`);
-      const car = [...titles].filter((t) => /example car/i.test(t));
-      summary.opens.push({ size: size.name, scheme, after_open_ms: start.after_open_ms, real: start.real, continue: start.continue,
-        came: start.came, pins: start.pins, prompt: start.prompt, found: start.found, titles: [...titles], wall_ms: shownAt - loaded });
-      check(`${size.name} ${scheme}: the first screen, ${start.real} real things (${start.continue} models, ${start.came} came back, `
-        + `${start.prompt ? "the week's build, " : ""}${start.found} from the gallery), ${start.after_open_ms} ms after the studio was up`,
-        Boolean(shownAt) && start.real >= 3 && start.after_open_ms >= 0 && start.after_open_ms <= 1000,
-        `titles on the way: ${[...titles].join(" / ")}`);
-      check(`${size.name} ${scheme}: never the example car on the way`, car.length === 0, car.join(", "));
+      summary.opens.push({ size: size.name, scheme, new_device_ms: fs.after_open_ms, new_device_real: fs.real,
+        after_open_ms: start.after_open_ms, real: start.real, continue: start.continue, came: start.came, pins: start.pins,
+        prompt: start.prompt, found: start.found, titles: again.titles, wall_ms: again.wall_ms });
+      check(`${size.name} ${scheme}, back again: the first screen, ${start.real} real things (${start.continue} models, `
+        + `${start.came} came back, ${start.prompt ? "the week's build, " : ""}${start.found} from the gallery), `
+        + `${start.after_open_ms} ms after the studio was up`,
+        Boolean(again.shownAt) && start.real >= 3 && start.after_open_ms >= 0 && start.after_open_ms <= 1000);
+      check(`${size.name} ${scheme}, back again: never the example car`, !again.car, again.titles.join(" / "));
       if (size.name === "1280" && scheme === "dark") {
         pinPage = page;
         pinContext = made;

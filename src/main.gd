@@ -2067,6 +2067,11 @@ func _ready() -> void:
 		# minifigure once, and X lifted the whole figure where the probe
 		# meant to lift a brick. One that cannot be opened is kept, and said
 		# to be, before the sample's autosave can go over it (ModelStore.restore).
+		# The first screen asks what came back, the week's build and the
+		# gallery now, beside the model's open, so they are there when it
+		# shows (StudioStart.prepare).
+		if _start_wanted():
+			_studio_start_now().call("prepare")
 		if not OS.get_cmdline_args().has("--script"):
 			placed = await _store.restore_fetched()
 		# Open in Brickworks (/app?copy=<id>): the model asked for, from the
@@ -3017,6 +3022,9 @@ func _on_account_changed() -> void:
 	_maybe_copy()
 	_maybe_share()
 	_maybe_join_together()
+	# Signed out: what the first screen asked as them goes with it.
+	if _studio_start != null and not _account.signed_in():
+		_studio_start.call("forget")
 	_maybe_start()
 	_tell_connector_who()
 
@@ -7093,7 +7101,10 @@ func _build_ui() -> void:
 	_cloud.looked.connect(_maybe_start)
 	# The account's list is enough to know it keeps a model: the first screen
 	# goes up then, and its Continue is filled once they are all here.
-	_cloud.list_answered.connect(_maybe_start)
+	_cloud.list_answered.connect(func() -> void:
+		_maybe_start()
+		if _studio_start != null and _studio_start.visible:
+			_studio_start.call("set_listed", _cloud.account_list))
 	_cloud.looked.connect(func() -> void:
 		if _studio_start != null and _studio_start.visible:
 			_studio_start.call("set_models", _store.list_saved()))
@@ -11056,6 +11067,8 @@ func _maybe_start() -> void:
 		return
 	_start_decided = true
 	_studio_start_now().call("open", saved, saved.is_empty())
+	if saved.is_empty() and _cloud != null:
+		_studio_start.call("set_listed", _cloud.account_list)
 
 
 ## StudioStart, made the first time: over the model, under the sign-in screen.
@@ -11070,6 +11083,15 @@ func _studio_start_now() -> Control:
 	_studio_start.set("open_saved", func(path: String) -> void:
 		if _store.title == path.get_file().get_basename() and not _store.example:
 			return
+		# Listed by the account and not here yet (StudioStart.set_listed):
+		# opened once the account's look has brought it.
+		if not FileAccess.file_exists(path) and _cloud != null:
+			_bar.say("Bringing “%s” from your account…" % path.get_file().get_basename())
+			await _cloud.looked
+			if not FileAccess.file_exists(path):
+				_bar.say("“%s” could not be brought from your account just now: try File › Open in a moment"
+					% path.get_file().get_basename())
+				return
 		# Over work not saved, asked first as File › Open asks.
 		if not await _bar.ask_to_replace("“%s”" % path.get_file().get_basename()):
 			return
@@ -11083,6 +11105,11 @@ func _studio_start_now() -> Control:
 	$HUD.add_child(_studio_start)
 	if _gate != null:
 		$HUD.move_child(_studio_start, _gate.get_index())
+	# On a phone or a tablet, its words in points and its targets a
+	# fingertip, as every panel over the model (TouchSizing).
+	if _touch != null:
+		_studio_start.set("text_k", Phone.per_point(get_viewport()) * Phone.LEAST_TEXT / TouchSizing.DESKTOP_LEAST)
+		_touch.size_panel(_studio_start)
 	_bar.started_new.connect(func() -> void: _studio_start.call("close", "edited"))
 	_bar.cleared.connect(func() -> void: _studio_start.call("close", "edited"))
 	return _studio_start
@@ -11090,7 +11117,7 @@ func _studio_start_now() -> Control:
 
 func _start_state() -> Dictionary:
 	if _studio_start == null:
-		return {"made": false, "bare": _still_bare(), "decided": _start_decided}
+		return {"made": false, "bare": _still_bare(), "decided": _start_decided, "car": _sample_untouched}
 	var state: Dictionary = _studio_start.call("page_state")
 	state["made"] = true
 	state["bare"] = _still_bare()
@@ -11098,6 +11125,15 @@ func _start_state() -> Dictionary:
 	var filled: int = int(state["filled_ms"])
 	state["after_open_ms"] = filled - _first_open_ms if filled >= 0 and _first_open_ms >= 0 else -1
 	state["lit"] = _part_pins.lit if _part_pins != null else 0
+	# The example car on the baseplate, untouched; and how many models are
+	# saved here, by their files' names alone (a device the account's
+	# models are being brought to).
+	state["car"] = _sample_untouched
+	var here: int = 0
+	if DirAccess.dir_exists_absolute(ModelStore.SAVE_DIR):
+		for file_name: String in DirAccess.get_files_at(ModelStore.SAVE_DIR):
+			here += 1 if file_name.ends_with(".ldr") else 0
+	state["here"] = here
 	return state
 
 
