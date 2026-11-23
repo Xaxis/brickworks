@@ -9,11 +9,13 @@
 // Their name goes on the page as text, never as markup.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { say, told } from "/card.js";
+import { ask } from "/kit.js";
 
-/// What a block does, in the one line it is confirmed with.
-export function blockAsked(name) {
-  return say("Block {name}? Their models leave your gallery and feed, their comments on your models are hidden, "
-    + "and follows between you end. They aren’t told.", { name });
+/// Asked before a block, in the site's own dialog: what it does, in one
+/// line. True when they block.
+function blockAsked(name) {
+  return ask({ title: say("Block {name}?", { name }), body: say("Their models leave your gallery and feed, their comments on "
+    + "your models are hidden, and follows between you end. They aren’t told."), yes: say("Block"), danger: true });
 }
 
 /// The person with [handle] (called [name]) blocked ([on] true) or unblocked:
@@ -23,7 +25,7 @@ export async function blockPerson(handle, name, on) {
   if (!signedIn() && !(await askToSignIn(say("Sign in to block somebody: we email you a code, no password.")))) {
     return { ok: false, blocked: !on, said: "" };
   }
-  if (on && !confirm(blockAsked(name))) return { ok: false, blocked: false, said: "" };
+  if (on && !(await blockAsked(name))) return { ok: false, blocked: false, said: "" };
   const answer = await call("/api/people?op=block", { method: "POST", body: { handle, on } })
     .catch(() => ({ status: 0, body: {} }));
   if (answer.status !== 200) {

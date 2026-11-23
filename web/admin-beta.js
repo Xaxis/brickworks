@@ -8,7 +8,7 @@
 //
 // Every word is put on the page as text, never as markup: the answers are
 // what people typed.
-import { $, TESTS, act, admin, adminJson, cell, day, make, resort, say, segmented, sift, when } from "/admin-kit.js";
+import { $, TESTS, act, admin, adminJson, ask, cell, day, make, resort, say, segmented, sift, when } from "/admin-kit.js";
 
 const AI = { claude: "Claude", chatgpt: "ChatGPT", own_key: "Their own API key", not_sure: "Not sure yet" };
 const BACKGROUND = { new: "New to both", lego: "Builds LEGO® models", cad: "Uses CAD", both: "Both" };
@@ -74,9 +74,10 @@ for (const button of $("beta-switch").querySelectorAll("button")) {
     const mode = button.dataset.beta;
     if (button.getAttribute("aria-pressed") === "true") return;
     const asked = mode === "off"
-      ? "Turn the beta off here? /beta says it is coming soon, and nobody can join until it is open again. Testers stay testers."
-      : "Open the beta here? /beta takes sign-ups again, and new accounts are welcomed to it.";
-    if (!confirm(asked)) return;
+      ? { title: "Turn the beta off here?", body: "/beta says it is coming soon, and nobody can join until it is open again. "
+        + "Testers stay testers.", yes: "Turn the beta off" }
+      : { title: "Open the beta here?", body: "/beta takes sign-ups again, and new accounts are welcomed to it.", yes: "Open the beta" };
+    if (!(await ask(asked))) return;
     for (const one of $("beta-switch").querySelectorAll("button")) one.disabled = true;
     say("beta-switch-note", mode === "off" ? "Turning it off…" : "Opening it…");
     try {

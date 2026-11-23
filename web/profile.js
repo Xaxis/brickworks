@@ -16,7 +16,7 @@
 // and draws what came, so one that cannot be read leaves the others.
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
-import { avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
+import { ask, avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
 import { counted, langAt, number, say, setPhoto, sharpPhotos, told } from "/card.js";
 import { openShare, sheetFor } from "/share-sheet.js";
 
@@ -395,7 +395,8 @@ function listRow(list) {
     if (answer.status === 200) page.hidden = !answer.body.public;
   });
   drop.addEventListener("click", async () => {
-    if (!confirm(say("Delete the list \"{name}\"? The models in it are not touched.", { name: name.value }))) return;
+    if (!(await ask({ title: say("Delete the list \"{name}\"?", { name: name.value }),
+      body: say("The models in it are not touched."), yes: say("Delete"), danger: true }))) return;
     const answer = await call(`/api/people?op=uncollection&id=${list.id}`, { method: "POST", body: {} });
     if (answer.status === 200) row.remove();
     else $("lists-said").textContent = told(answer.body.error, say("That did not work just now."));
@@ -676,7 +677,8 @@ $("avatar-file").addEventListener("change", async () => {
   toast(say("Your picture is your avatar now"));
 });
 $("avatar-remove").addEventListener("click", async () => {
-  if (!confirm(say("Take your picture off? Your avatar is made from your handle again."))) return;
+  if (!(await ask({ title: say("Take your picture off?"), body: say("Your avatar is made from your handle again."),
+    yes: say("Take it off"), danger: true }))) return;
   $("avatar-remove").disabled = true;
   const answer = await call("/api/people?op=avatar_remove", { method: "POST", body: {} }).catch(() => null);
   $("avatar-remove").disabled = false;

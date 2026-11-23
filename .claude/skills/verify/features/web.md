@@ -1890,6 +1890,14 @@ plan with Claude as the client.
   `[keyboard]`): axe and the accessibility tree's names on every page,
   and the site's journeys by keyboard alone; below, "The site for
   everyone" (docs/DESIGN_SYSTEM.md "Accessibility").
+- `ask dialog` (`web/kit.js` `ask` and `tell`, `dialog.ask` in
+  `web/site.css`; dialogkit, 2026-11-23): the site's own question before an
+  act, where the browser's `confirm()` and `alert()` were (32 of them, on
+  /admin, /settings, /profile, a model's page, Talk and Block), with its
+  `ask flow` (`tools/web/ask_flow.mjs`, preview check `[ask]`); flows
+  answer it with `tools/web/asks.mjs` `answerAsks`; `tools/check.sh
+  --lists` names any `confirm(`, `alert(` or `prompt(` that comes back.
+  Below, "The site's own ask" (docs/DESIGN_SYSTEM.md "Ask").
 - `theme choice` (2026-10-22, docs/SOCIAL.md U1): System, Light or Dark,
   a `.segmented` row of three buttons, the chosen one `aria-pressed` and
   edged in `--accent-edge` (the yellow in dark, `#a67c00` in light: the
@@ -9456,6 +9464,30 @@ visit (`studio_start.car` in `window.brickworksState`); the pin
 lit within 1 s of the press; a pin written while the studio is open shown
 within 60 s; a gallery model on the baseplate as a copy. Without the change
 `/app?start` opens on the example car and it fails at step 2.
+### The site's own ask (where confirm() was)
+
+No network and no account: this checkout's pages, the stand-in's API (Sam,
+the site's owner for /admin).
+
+```sh
+heavy node tools/web/ask_flow.mjs --out=shots/ask
+BW_BYPASS=$VERCEL_BYPASS node tools/web/ask_flow.mjs --url=<preview>   # a deployment's pages, the API stood in
+bash tools/check.sh --lists                                          # names any native confirm/alert/prompt by file:line
+```
+
+`ask_flow` drives the ask on /admin › Gallery (Take out, a danger ask: an
+alertdialog named by its question and described by its line, the focus on
+Cancel, the answer `.danger`; Tab and Shift+Tab kept in it; Escape, Enter on
+Cancel and a press on the scrim each send nothing and give the focus back to
+Take out once it is let go; Enter on Take it out sends `op=unlist` once),
+over /admin's account sheet (Escape closes the ask alone, the focus back in
+the sheet on Sign out everywhere), on /admin › Site (Run now, no danger: the
+focus on the yellow answer, Enter sends `op=run_cron` once), and on
+/settings (Delete my account asks, Cancel sends nothing; at /de/settings in
+German), at 1280 and 390 (a sheet from the foot), light and dark, counting
+every native dialog (none). Pictures `admin_ask_*` and `delete_ask_*`. Plant
+`if (!confirm("x")) return;` in a file under web/ and `check.sh --lists`
+fails naming it; on pre261 it named 32.
 
 ## Gotchas
 

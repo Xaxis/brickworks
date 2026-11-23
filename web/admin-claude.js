@@ -18,7 +18,7 @@
 // page as text, never as markup: what came in was written by strangers, and
 // Claude's words are not markup either.
 import { signedIn, token } from "/account.js";
-import { $, TESTS, adminJson, ago, day, link, make, say } from "/admin-kit.js";
+import { $, TESTS, adminJson, ago, ask as askFirst, day, link, make, say } from "/admin-kit.js";
 import { extras, open as openDraft, reread as rereadDesk } from "/admin-social.js";
 
 // Docked beside the page at this width and wider; over it, closed until
@@ -250,8 +250,10 @@ $("claude-check").addEventListener("click", async () => {
 });
 
 $("claude-forget").addEventListener("click", async () => {
-  if (!confirm(`Forget ${claude.key?.shown}? It is deleted from the server, and Claude stops until you paste a key again. `
-    + "The key itself still works at Anthropic until you revoke it at console.anthropic.com.")) return;
+  const forget = await askFirst({ title: `Forget ${claude.key?.shown}?`, yes: "Forget it", danger: true,
+    body: "It is deleted from the server, and Claude stops until you paste a key again. The key itself still works at "
+      + "Anthropic until you revoke it at console.anthropic.com." });
+  if (!forget) return;
   const button = $("claude-forget");
   button.disabled = true;
   try {
@@ -466,14 +468,15 @@ function draftCard({ send, note }) {
   if (note) card.append(make("p", "claude-note", note));
   const button = make("button", "cta ghost small", "Open it in Write");
   button.type = "button";
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
     // Words the owner has in Write are theirs: opening the draft over them
     // asks first, and says how to keep them.
     const form = $("social-form").elements;
     const theirs = [form.title?.value, form.body?.value].map((value) => String(value || "").trim());
     const same = theirs[0] === String(send.title || "").trim() && theirs[1] === String(send.body || "").trim();
     if ((theirs[0] || theirs[1]) && !same
-      && !confirm("Write holds other words. Open Claude's draft in their place? To keep yours, press Keep the draft in Write first.")) return;
+      && !(await askFirst({ title: "Open Claude's draft in place of the words in Write?",
+        body: "Write holds other words. To keep yours, press Keep the draft in Write first.", yes: "Open the draft", danger: true }))) return;
     if (!wide.matches) setOpen(false, { chosen: false });
     openDraft(send);
   });

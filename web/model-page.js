@@ -34,7 +34,7 @@
 import { askToSignIn, call, email, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
-import { avatarHtml } from "/kit.js";
+import { ask, avatarHtml } from "/kit.js";
 import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, pinPart, pinSaid, rulesSaid, say, setPhoto,
   sharpPhotos, themeSaid, told } from "/card.js";
 import { copy, wireShare } from "/share-sheet.js";
@@ -1409,8 +1409,9 @@ function startComments(section) {
       acts.append(button(one.hidden ? say("Show it") : say("Hide it"), () => change(one, one.hidden ? "show" : "hide")));
     }
     if (one.mine) {
-      const ask = reply ? say("Remove your reply?") : replies.length ? say("Remove your comment? Its replies go with it.") : say("Remove your comment?");
-      acts.append(button(say("Remove it"), () => confirm(ask) && change(one, "remove")));
+      const asked = { title: reply ? say("Remove your reply?") : say("Remove your comment?"),
+        body: !reply && replies.length ? say("Its replies go with it.") : "", yes: say("Remove it"), danger: true };
+      acts.append(button(say("Remove it"), async () => (await ask(asked)) && change(one, "remove")));
     }
     if (!one.mine) acts.append(button(say("Report it"), () => openReport({ comment: one.id }, reply ? say("this reply") : say("this comment"))));
     // Block its writer (web/block.js): asked first in one line; their
@@ -2324,7 +2325,8 @@ async function challengeEntry() {
     out.className = "link";
     out.textContent = say("Take it out");
     out.addEventListener("click", async () => {
-      if (!confirm(say("Take it out of the challenge? Its votes go with it."))) return;
+      if (!(await ask({ title: say("Take it out of the challenge?"), body: say("Its votes go with it."), yes: say("Take it out"),
+        danger: true }))) return;
       out.disabled = true;
       const gone = await call("/api/people?op=withdraw", { method: "POST", body: { model: id } });
       if (gone.status !== 200) {

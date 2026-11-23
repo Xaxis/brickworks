@@ -6,7 +6,7 @@
 // audit), and the run it made drawn when it ends.
 //
 // Everything is put on the page as text, never as markup.
-import { $, adminJson, ago, cell, day, emptyRow, make, post, rowAct, say, timeCell, when } from "/admin-kit.js";
+import { $, adminJson, ago, ask, cell, day, emptyRow, make, post, rowAct, say, timeCell, when } from "/admin-kit.js";
 
 export const CRON_STATE = { ok: "Ran", failed: "Failed", late: "Late", running: "Running", never: "Not kept yet", unknown: "Not known" };
 const OUTCOME = { done: "done", unchanged: "nothing to do", locked: "another run held it", failed: "failed" };
@@ -105,10 +105,9 @@ export async function loadSite() {
     // Run now: only what is safe to run twice; never the beta's mail.
     const acts = make("td", "acts");
     if (cron.run_now) {
-      const button = rowAct("Run now", () => (confirm(`Run ${cron.path} now? ${cron.run_now}.`)
-        ? (say("site-note", `Running ${cron.path}: it is waited for, up to four minutes.`), post({ op: "run_cron", job: cron.job }, "site-note", (said) => `${cron.path} ran in ${said.seconds} s: ${said.outcome}.`,
-          { after: () => loadSite() }))
-        : Promise.resolve(false)));
+      const button = rowAct("Run now", async () => (await ask({ title: `Run ${cron.path} now?`, body: `${cron.run_now}.`, yes: "Run now" }))
+        && (say("site-note", `Running ${cron.path}: it is waited for, up to four minutes.`), post({ op: "run_cron", job: cron.job }, "site-note", (said) => `${cron.path} ran in ${said.seconds} s: ${said.outcome}.`,
+          { after: () => loadSite() })));
       button.title = cron.run_now;
       acts.append(button);
     } else if (cron.run_not) {

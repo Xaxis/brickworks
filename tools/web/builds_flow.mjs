@@ -61,6 +61,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -635,7 +636,7 @@ try {
     [STORAGE_KEY, JSON.stringify(master.kept)]);
   const desk3 = await admin.newPage();
   listen(desk3, "admin");
-  desk3.on("dialog", (dialog) => dialog.accept());
+  await answerAsks(desk3);
   await desk3.goto(`${site}/admin#gallery/reported`, { waitUntil: "load" });
   const row = await until(desk3, (one) => {
     const tr = document.querySelector(`#reports tr[data-photo="${one}"]`);

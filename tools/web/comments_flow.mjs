@@ -68,6 +68,7 @@ import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -459,7 +460,7 @@ try {
   const listedRow = page.locator("#comments tr").filter({ hasText: ON_STEP }).filter({ has: ours });
   check("...and the comment is in the admin page's list of comments", (await listedRow.count()) === 1);
   await shot(page, "6_admin_report.png");
-  page.once("dialog", (dialog) => dialog.accept());
+  await answerAsks(page, { times: 1 });
   await reportRow.first().locator("button", { hasText: "Remove the comment" }).click();
   await page.waitForFunction(() => /comment is removed/.test(document.getElementById("reports-note").textContent), null, { timeout: 30000 }).catch(() => {});
   check("Remove the comment: the report leaves the queue",

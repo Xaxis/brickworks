@@ -58,6 +58,7 @@ import { STAND_IN_KEY } from "../../api/_claude_mock.js";
 import { mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -161,15 +162,12 @@ async function open(pathname, { width = 1280, theme = "light", who = null, label
     if (!/\/api\/admin\b/.test(reply.url())) return;
     answers.push(await reply.text().catch(() => ""));
   });
-  page.on("dialog", (dialog) => {
-    dialogs.seen.push(dialog.message().slice(0, 80));
-    return dialogs.answer === "dismiss" ? dialog.dismiss() : dialog.accept();
-  });
+  await answerAsks(page, { heard: dialogs.seen });
   await page.goto(site + pathname, { waitUntil: "load", timeout: 120000 });
   return { page, context };
 }
-// Every confirm the page asks, and how this run answers the next one.
-const dialogs = { answer: "accept", seen: [] };
+// Every ask the page asks (web/kit.js ask), each answered Yes unless said.
+const dialogs = { seen: [] };
 const shown = (page) => until(page, () => document.getElementById("view")?.hidden === false, null, 60000);
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 const go = async (page, hash) => {
@@ -383,12 +381,12 @@ try {
     // asks, and No leaves them as they were.
     const own = "Words of my own, not kept yet.";
     await page.fill("#social-form textarea[name=body]", own);
-    dialogs.answer = "dismiss";
+    await answerAsks(page, { answer: "no" });
     const asked = dialogs.seen.length;
     await page.locator("#claude-log .claude-draft").last().getByRole("button", { name: "Open it in Write" }).click();
     await page.waitForTimeout(500);
     const left = await page.evaluate(() => document.getElementById("social-form").elements.body.value);
-    dialogs.answer = "accept";
+    await answerAsks(page, { answer: "yes" });
     check(`Open it in Write over the owner's own words asks first, and No keeps them: ${dialogs.seen.slice(asked).join(" | ")}`,
       dialogs.seen.length === asked + 1 && /Write holds other words/.test(dialogs.seen.at(-1)) && left === own);
     await page.locator("#claude-log .claude-draft").last().getByRole("button", { name: "Open it in Write" }).click();

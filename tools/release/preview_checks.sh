@@ -339,6 +339,14 @@ declare -A CMD=(
   # keeping it and giving it back. The deployment's pages and scripts, the
   # API and the stand-in's model answered here.
   [keyboard]="tools/web/keyboard_flow.mjs --url=$P --out=$S/${TAG}_keyboard"
+  # The site's own ask where confirm() was (web/kit.js ask, dialogkit): on
+  # /admin and /settings, an alertdialog named by its question, the focus on
+  # Cancel for a danger one, Escape, Cancel and the scrim sending nothing
+  # and giving the focus back to the button that asked (in the sheet, over
+  # /admin's account sheet), Enter on the answer sending its act once; the
+  # German words at /de/settings; never the browser's own dialog. The
+  # deployment's pages and scripts, the API answered here.
+  [ask]="tools/web/ask_flow.mjs --url=$P --out=$S/${TAG}_ask"
   # The gallery as a person uses it (docs/SOCIAL.md U3): at 390 the first
   # card's picture within 330 px, at 1280 four whole cards; Top, New and
   # Following, Top over this week, a kind and Made; a like from a card;
