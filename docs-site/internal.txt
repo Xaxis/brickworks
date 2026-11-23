@@ -87,6 +87,8 @@ lib:the social desk's Reddit adapter  # the social desk's calls to Reddit for Br
 ui:the owner's social desk  # the owner's, on the admin page (/admin › Social)
 lib:the counter's route and its reads  # the counter's server side and the owner's read of it; a person meets the counter and /counting, not it (docs/ANALYTICS.md)
 ui:the owner's Analytics  # the owner's, on the admin page (/admin › Analytics)
+lib:the loop's read  # the owner's loop funnel's server side, read only on the admin page (/admin › Analytics › Funnels, docs/ANALYTICS.md "The loop"); a visitor never meets it
+cli:the loop as JSON  # tools/loop_read.mjs prints the owner's loop funnel for a unit's report, signed in as the checks' test account; a visitor never meets it
 lib:Claude in the console  # the owner's Claude on the admin page, on the owner's own Anthropic key (docs/ADMIN_CLAUDE.md); a visitor never meets it
 lib:Claude's read-only tools  # what the owner's Claude on the admin page may read, and its one write, a social desk draft
 lib:the Claude API client  # the admin page's calls to Anthropic on the owner's own key; a visitor never meets it
