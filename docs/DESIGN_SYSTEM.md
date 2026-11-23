@@ -977,31 +977,31 @@ is on the page, `hidden`, for the script to show.
   is over the beta bar and never taller than the window: past it, it
   scrolls in itself, so Sign out is always in reach (the header is sticky,
   and the page's own scroll never brought it up).
-- **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
-  a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
-  `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did
-  it) or an icon (likes, a challenge's end, a level reached, a challenge
-  opening), `.what` its words, a New `.pill`, a quote and the time. The
-  levels you reached are a card of their own, "Your achievements", the
-  award icon at 40% in its `.pic.award` where a model's picture is; each
-  challenge you heard of is one too, "Challenge: <title>", the brick icon
-  the same way in its `.pic.challenge`. Not opened yet: `.unread`, edged in
-  `--accent-edge` with a `.dot`. The page's head is `.notices-head` (the
-  title and Mark all read); `/notifications` and `/feed` share one `.tabs`
-  row, each tab's count in `.n`, hidden at none.
-- **The feed** (`/feed`, `web/directory.css`, docs/SOCIAL.md U9): a
-  column of posts (`.feed-list`, 600 px at most), each a `.feed-row`: its
-  `.post-head` (the avatar, `.what` the sentence with who and the thing's
-  name as links and a New `.pill`, then the `time`), what they said as a
-  `q`, then the thing: the model's card (`.model`, the one renderer) or
-  `.feed-photo`, the photo of a build in a panel with its model under it.
-  `.feed-rail`, a panel of designers to follow (`.people-list`, each a
+- **Notifications** (`/notifications`): the one head (Mark all read in
+  its `.page-acts`) and list layout, `ol.list-rows.notices` of `.list-row
+  .notice`, one a model: its 4:3 `.row-pic`, its name as the `.row-title`
+  (an `h3`), and `.lines`, each a link with an avatar (who did it) or an
+  icon (likes, a challenge's end, a level reached, a challenge opening),
+  `.what` its words, a New `.pill`, a quote and the time. The levels you
+  reached are a row of their own, "Your achievements", the award icon at
+  40% in its `.pic.award` where a model's picture is; each challenge you
+  heard of is one too, "Challenge: <title>", the brick icon the same way
+  in its `.pic.challenge`. Not opened yet: `.unread`, edged in
+  `--accent-edge` with a `.dot`. `/notifications` and `/feed` share one
+  `.tabs` row on the band's foot, each tab's count in `.n`, hidden at none.
+- **The feed** (`/feed`, docs/SOCIAL.md U9): the one head and list
+  layout, its posts `ol.list-rows.feed-list` of `.list-row.feed-row`: the
+  avatar as `.row-face`, `.what` the sentence with who and the thing's
+  name as links and a New `.pill` (the row `.new`, edged), what they said
+  as `.row-said`, the `time`, then the thing under the words (`.row-card`):
+  the model's card (`.model`, the one renderer) or `.feed-photo`, the
+  photo of a build in a panel with its model under it. The aside
+  (`.list-aside`) is designers to follow (`.people-list`, each a
   `.person-row`: avatar, name and their best models, Follow as
-  `.cta.ghost.small`), beside the posts from 1100 px and under them on a
-  phone; Latest on Brickworks (`.latest`: the gallery's `.models` and a
-  `.build-grid`) after it when the feed has nothing of its own, its empty
-  state a `.state` saying why (signed out, with Sign in; following nobody;
-  nothing in 90 days).
+  `.cta.ghost.small`); Latest on Brickworks (`.latest`: the gallery's
+  `.models` and a `.build-grid`) after the posts when the feed has nothing
+  of its own, its empty state a `.state` saying why (signed out, with Sign
+  in; following nobody; nothing in 90 days); Older is the `.pager`.
 - **A person to follow**: `.person-row` in a `.people-list` (`site.css`,
   so any page's dialog has it): the avatar (`.face`), the name and their
   best models (`.names`), Follow as `.cta.ghost.small`, and what Follow

@@ -1962,7 +1962,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-2) var(--s-4); align-items: start;
 	min-width: 0; padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
-.list-row.unread, .list-row.pinned { border-color: var(--accent-edge); }
+.list-row:is(.unread, .new, .pinned) { border-color: var(--accent-edge); }
 .list-row > .row-pic, .list-row > .row-face { grid-column: 1; grid-row: 1 / span 2; }
 .list-row > .row-pic {
 	display: block; width: 96px; aspect-ratio: 4 / 3; height: auto; overflow: hidden; object-fit: cover;
