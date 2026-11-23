@@ -1164,9 +1164,15 @@ export function altLine(page, kept, at = "") {
 
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
-  return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
-    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}`
-    + `${modeller.changed ? escapeHtml(say(", changed by {name}", { name: sharerOf(model) })) : ""}</p>` : "";
+  if (!modeller) return "";
+  // Changed by whoever shares it (designerRow heads the page with them):
+  // theirs, changed from LDraw's model, its modeller linking LDraw's page.
+  if (modeller.changed) {
+    return `<p class="from modelled-by" data-changed-from>${sayHtml("Changed from LDraw's model by {name}",
+      { name: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(modeller.name)}</a>` })}</p>`;
+  }
+  return `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
+    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}</p>`;
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most

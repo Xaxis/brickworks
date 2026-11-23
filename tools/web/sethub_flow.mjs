@@ -109,15 +109,27 @@ const look = () => {
     versionWords: said(document.querySelector("[data-version]")),
     count: document.documentElement.dataset.versions ?? null,
     heading: said(versions?.querySelector("h2")),
-    cards: [...(versions?.querySelectorAll(".model") || [])].map((card) => ({
-      href: card.querySelector("a")?.getAttribute("href") || "", said: said(card.querySelector(".version-said")),
-      changed: card.querySelector(".version-said")?.dataset.changed || "" })),
+    cards: [...(versions?.querySelectorAll(".model") || [])].map((card) => {
+      const who = card.querySelector(".who");
+      return { href: card.querySelector("a")?.getAttribute("href") || "", said: said(card.querySelector(".version-said")),
+        changed: card.dataset.changed || "", who: said(who?.querySelector("span:not(.avatar)") || who), whoLink: who?.getAttribute("href") || "",
+        avatar: Boolean(who?.querySelector(".avatar")), modelledBy: who?.hasAttribute("data-modelled-by") === true,
+        from: said(card.querySelector("[data-changed-from]")) };
+    }),
     empty: said(versions?.querySelector(".built-empty p")),
     emptyGo: versions?.querySelector("[data-version-empty]")?.getAttribute("href") || null,
     before: Boolean(versions && built && versions.compareDocumentPosition(built) & Node.DOCUMENT_POSITION_FOLLOWING),
     picture: rect ? [Math.round(rect.top), Math.round(rect.height)] : null,
   };
 };
+
+/// Whether a version's card ([look]'s) credits it rightly: LDraw's model as
+/// it is says "Modelled by" whoever modelled it, and that it is as it is; a
+/// changed one names whoever published it (never "Modelled by") and, under
+/// it, "Changed from LDraw's model by" whoever modelled LDraw's.
+const credited = (card) => (card.changed === "true"
+  ? !card.modelledBy && Boolean(card.who) && !card.said && /^Changed from LDraw's model by \S/.test(card.from)
+  : card.modelledBy && /^Modelled by \S/.test(card.who) && card.said === "LDraw's model, as it is" && !card.from);
 
 /// The versions' row scrolled to, its pictures given 30 s to come: each
 /// card's picture, whether it came, and whether its tile said "No picture".
@@ -162,10 +174,10 @@ async function modelled(browser) {
           check(`${label}: Versions of this set, before Built from this set (${seen.count}, "${seen.heading}", before: ${seen.before})`,
             seen.heading === "Versions of this set" && seen.before && seen.count !== "broken" && seen.count !== null);
           if (Number(seen.count) > 0) {
-            check(`${label}: each version's card says whether it was changed (${JSON.stringify(seen.cards)})`,
+            check(`${label}: each version's card credits it rightly: LDraw's as it is by who modelled it, a changed one `
+              + `by who published it, changed from LDraw's model by who modelled that (${JSON.stringify(seen.cards)})`,
               seen.cards.length === Number(seen.count) && seen.cards.every((card) => /^\/m\/[A-Za-z0-9]{10}$/.test(card.href)
-                && (card.changed === "true" ? card.said === "Their own version: changed from LDraw's model"
-                  : card.said === "LDraw's model, as it is")));
+                && credited(card)));
             const tiles = await pictured(page);
             check(`${label}: each version's tile shows its model (${JSON.stringify(tiles)})`, shownWell(tiles, model));
           } else {
@@ -246,13 +258,19 @@ async function languages(browser) {
 async function published(browser) {
   const email = await ownAccount();
   const { access_token: token } = await mintSession(email);
+  // Its publisher, with a profile in public: what its card and page credit.
+  const handle = `sethub-${Date.now().toString(36)}`;
+  const named = "Sethub Builder";
+  const profile = await fetch(`${site}/api/people?op=profile`, { method: "POST", headers: { ...headers,
+    "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ handle, name: named }) });
+  check(`its publisher has a profile in public (@${handle}: ${profile.status})`, profile.status === 200);
   const house = readFileSync(new URL("../../tests/fixtures/omr_credit/346-2.published.ldr", import.meta.url), "utf8");
   const lines = house.split("\n");
   const parts = lines.map((line, at) => (/^1 .*\.dat\s*$/i.test(line) ? at : -1)).filter((at) => at >= 0);
   const cut = new Set(parts.slice(0, Math.floor(parts.length / 10)));
   const began = Date.now();
   const reply = await fetch(`${site}/api/share`, { method: "POST", headers: { ...headers, "content-type": "application/json",
-    authorization: `Bearer ${token}` }, body: JSON.stringify({ name: "Sethub House with Car, my version", listed: true,
+    authorization: `Bearer ${token}` }, body: JSON.stringify({ name: "Sethub House with Car, my version", author: named, listed: true,
     model: lines.filter((_, at) => !cut.has(at)).join("\n"), licence: "cc-by-4.0" }) });
   const body = await reply.json().catch(() => ({}));
   const id = body.id || "";
@@ -279,12 +297,43 @@ async function published(browser) {
     const card = seen.cards.find((one) => one.href === `/m/${id}`);
     check(`the set's page shows its card first, said changed (${JSON.stringify(card)}, first ${seen.cards[0]?.href})`,
       Boolean(card) && card.changed === "true" && seen.cards[0]?.href === `/m/${id}`);
+    check(`its card credits who published it, their picture and name linking their profile, and under it "Changed from `
+      + `LDraw's model by Marc Giraudet", never "Modelled by" (${JSON.stringify(card)})`,
+      Boolean(card) && card.whoLink === `/u/${handle}` && card.avatar && card.who === named && !card.modelledBy
+      && card.from === "Changed from LDraw's model by Marc Giraudet");
+    check(`every version's card credits it rightly (${JSON.stringify(seen.cards)})`, seen.cards.length > 0 && seen.cards.every(credited));
+    const plainVersion = seen.cards.find((one) => one.changed !== "true");
     // Published with no picture of its own: shown by LDraw's model it was made from.
     const tiles = await pictured(page);
     check(`every version's tile shows its model, this one with no picture of its own LDraw's (${JSON.stringify(tiles)})`,
       shownWell(tiles, "omr-346-2") && tiles.find((tile) => tile.id === id)?.src === "/library/omr-346-2.webp");
     await (await page.$("#versions"))?.scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, "published_version.png") });
+    // Its own page: headed by who published it, "Changed from LDraw's model
+    // by" its modeller under them; LDraw's model as it is, "Modelled by".
+    const credit = async (href) => {
+      await page.goto(`${site}${href}`, { waitUntil: "domcontentloaded" });
+      return page.evaluate(() => {
+        const side = document.querySelector(".model-page .side");
+        const who = side?.querySelector(".shared-by .who");
+        const line = side?.querySelector(".modelled-by");
+        return { who: who?.getAttribute("href") || "", handle: who?.querySelector("small")?.textContent || "",
+          avatar: Boolean(who?.querySelector(".avatar")), line: line?.textContent.replace(/\s+/g, " ").trim() || "",
+          from: line?.hasAttribute("data-changed-from") === true, ldraw: line?.querySelector("a")?.getAttribute("href") || "",
+          modelled: /Modelled by/.test(side?.textContent || "") };
+      });
+    };
+    const own = await credit(`/m/${id}`);
+    check(`its own page is headed by who published it (@${handle}, their picture, linking their profile), "Changed from `
+      + `LDraw's model by Marc Giraudet" under it linking LDraw's page, and no "Modelled by" (${JSON.stringify(own)})`,
+      own.who === `/u/${handle}` && own.handle === `@${handle}` && own.avatar && own.from
+      && own.line === "Changed from LDraw's model by Marc Giraudet" && own.ldraw.startsWith("https://library.ldraw.org/") && !own.modelled);
+    await page.screenshot({ path: path.join(out, "version_page.png") });
+    if (plainVersion) {
+      const plain = await credit(plainVersion.href);
+      check(`LDraw's model as it is, on its own page: "Modelled by Marc Giraudet for LDraw's Official Model Repository" `
+        + `(${JSON.stringify(plain)})`, !plain.from && plain.line === "Modelled by Marc Giraudet for LDraw's Official Model Repository");
+    }
   } finally {
     await context.close();
   }

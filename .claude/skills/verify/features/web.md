@@ -3663,8 +3663,14 @@ plan with Claude as the client.
   copies in `?op=set_based`'s `versions` (`api/_bases.js setVersions`, the
   answer kept 20 s by the CDN and 20 s more stale, so a version is on the
   page within a minute); `web/set-page.js versionsOf` draws
-  `section#versions` "Versions of this set" before `#built-from`, each card's
-  `small.version-said[data-changed]` and a picture of its model (LDraw's as
+  `section#versions` "Versions of this set" before `#built-from`, each card
+  `[data-changed]`, credited by `web/card.js cardHtml`: LDraw's model as
+  it is "Modelled by" its modeller (`[data-modelled-by]`) and
+  `small.version-said` "LDraw's model, as it is"; a changed one by who
+  published it (`a.who` to `/u/<handle>`, their avatar), never "Modelled
+  by", with `small[data-changed-from]` "Changed from LDraw's model by
+  <modeller>" under it, as on any card and on its own page
+  (`api/share.js modelledLine`, under `designerRow`); and a picture of its model (LDraw's as
   it is by `/library/<id>.webp`; a changed one by its own card, else its
   `.cutout.png`, else LDraw's; never "No picture"), or none said with Make your own
   version (`[data-version-empty]`), `<html data-versions>` the count or

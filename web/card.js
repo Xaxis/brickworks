@@ -529,14 +529,19 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     marks.push(`<span class="pill good model3d" title="${escapeHtml(say("LDraw has a 3D model of it, to build in Brickworks"))}">3D</span>`);
     data.push('data-model3d="yes"');
   }
-  // Who made it: whoever modelled it, when that is not who shares it (the
-  // app's Library's model it is: supabase/modelled_by.sql), as words that
-  // wrap on a phone's narrow card rather than end in "…"; else their avatar and name, a link to their profile, when they
-  // have one shown in public (supabase directory_card's by); else the name
-  // they credited it to, as words; else nobody.
+  // Who made it: whoever modelled it, when its sharer shares LDraw's model
+  // as it is (the app's Library's model it is: supabase/modelled_by.sql),
+  // as words that wrap on a phone's narrow card rather than end in "…";
+  // else whoever shares it: their avatar and name, a link to their
+  // profile, when they have one shown in public (supabase directory_card's
+  // by); else the name they credited it to, as words; else nobody. A
+  // version its sharer changed is theirs, and says under it whose model it
+  // was changed from: Marc modelled LDraw's model, not their version.
   const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
-  const modeller = model.modelled_by && typeof model.modelled_by === "object" && typeof model.modelled_by.name === "string"
-    ? model.modelled_by.name : "";
+  const modelled = model.modelled_by && typeof model.modelled_by === "object" && typeof model.modelled_by.name === "string"
+    ? model.modelled_by : null;
+  const modeller = modelled && modelled.changed !== true ? modelled.name : "";
+  const changedFrom = modelled && modelled.changed === true ? modelled.name : "";
   const who = modeller
     ? `<span class="who" data-modelled-by>${escapeHtml(say("Modelled by {name}", { name: modeller }))}</span>`
     : by
@@ -545,6 +550,10 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
+  if (changedFrom) {
+    lines.push(`<small class="changed-from" data-changed-from>${escapeHtml(say("Changed from LDraw's model by {name}",
+      { name: changedFrom }))}</small>`);
+  }
   if (set) {
     const said = [set.set, set.theme && themeSaid(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
     if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);

@@ -161,16 +161,23 @@ def test_the_card_says_who_modelled_it_not_who_shares_it() -> None:
         "const base = { id: 'Abcde12345', name: 'LEGO® set 6080 King\\'s Castle', parts: 691, author: 'Brickworks',"
         "  by: { handle: 'brickworks', name: 'Brickworks' }, tags: [] };"
         "console.log(JSON.stringify([c.cardHtml({ ...base, modelled_by: { name: 'Stefan Frenz',"
-        "  page: 'https://library.ldraw.org/omr/sets/1034' } }), c.cardHtml(base)]));")
+        "  page: 'https://library.ldraw.org/omr/sets/1034' } }), c.cardHtml(base),"
+        "  c.cardHtml({ ...base, modelled_by: { name: 'Stefan Frenz', page: 'https://library.ldraw.org/omr/sets/1034',"
+        "  changed: true } })]));")
     if said is None:
         return
-    modelled, shared = said
+    modelled, shared, changed = said
     # Words straight in the who-line, which wrap on a narrow card, not a
     # span that ends in "…" (at 390 px it read "Modelled by Stefan Fr…").
     assert '<span class="who" data-modelled-by>Modelled by Stefan Frenz</span>' in modelled
     assert 'href="/u/brickworks"' not in modelled
     # A model its sharer made: their profile, as before.
     assert 'href="/u/brickworks"' in shared and "Modelled by" not in shared
+    # Changed by its sharer, it is theirs: their profile, and under it whose
+    # model it was changed from. Stefan modelled LDraw's, not this one.
+    assert 'href="/u/brickworks"' in changed and "Modelled by" not in changed
+    assert '<small class="changed-from" data-changed-from>Changed from LDraw&#39;s model by Stefan Frenz</small>' in changed
+    assert "data-changed-from" not in modelled and "data-changed-from" not in shared
 
 
 def page_of(modelled_by: dict) -> dict | None:
@@ -215,8 +222,11 @@ def test_a_changed_one_s_page_says_who_changed_it() -> None:
     if page is None:
         return
     html = page["html"]
-    assert ('<p class="from modelled-by">Modelled by <b>Stefan Frenz</b> for '
-            '<a href="https://library.ldraw.org/omr/sets/1034">LDraw&#39;s Official Model Repository</a>, '
-            'changed by Robin Castell</p>') in html
+    # Headed by whoever published it (designerRow), and under them whose
+    # model it was changed from; never "Modelled by" for their version.
+    assert ('<p class="from modelled-by" data-changed-from>Changed from LDraw\'s model by '
+            '<a href="https://library.ldraw.org/omr/sets/1034">Stefan Frenz</a></p>') in html
+    side = re.search(r'<div class="side">.*?<div class="actions">', html, flags=re.S)[0]
+    assert "Modelled by" not in side and 'class="shared-by"' in side
     licence = re.search(r'<div class="licence">.*?</div>', html, flags=re.S)[0]
     assert "LDraw&#39;s Official Model Repository</a>, and say Robin Castell changed it and link" in licence
