@@ -97,6 +97,42 @@
    "features": [
     "ui:build it step player"
    ]
+  },
+  {
+   "id": "show-your-build",
+   "source": "app",
+   "view": "DocsSprt01",
+   "answers": {
+    "fetch": {
+     "code": 200,
+     "body": {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "parts": 187,
+      "url": "https://brickworks.diy/m/DocsSprt01",
+      "builds": 14
+     },
+     "model_file": "res://models/sports_car.ldr"
+    }
+   },
+   "setup": [
+    {
+     "call": "_enter_build",
+     "after": 60
+    },
+    {
+     "key": "End",
+     "after": 60
+    }
+   ],
+   "crop": "window",
+   "width": 1000,
+   "alt": "The last step of Build it: under the top bar, a card saying 14 people have built it, with Show your build beside it, the finished model below, and Finish at the bottom.",
+   "caption": "Show your build, on the last step.",
+   "features": [
+    "ui:show your build"
+   ]
   }
  ]
 }

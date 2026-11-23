@@ -217,6 +217,47 @@ func comment(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/people?op=comment", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 
 
+## A real build's photos (api/people.js, api/_builds.js), as the step
+## player's last step posts one (MakeCard). The photos of [param id] as the
+## account asking may act on them: {code, body: {owner, left, photos, mine}}
+## ("owner": the model is the account's own; "left": how many more it may
+## add, of three).
+func photos(id: String, token: String) -> Dictionary:
+	return await _fetch("/api/people?op=photos&id=" + id.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
+## Where to send one: {model, type, size} to {code, body: {upload, ticket,
+## key}}, or a refusal in {error} (the age rule, may_act's limit, three on a
+## model) before anything of the photo is sent.
+func photo_start(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=photo_start", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+## The photo's [param bytes], of [param type], to the [param url] photo_start
+## signed for them, with the storage gateway's [param key] beside it, as the
+## model's page sends one (web/model-page.js): {code}. Bytes, which
+## PageFetch's text bodies cannot carry.
+func photo_send(url: String, key: String, type: String, bytes: PackedByteArray) -> Dictionary:
+	var http := HTTPRequest.new()
+	http.timeout = 120.0
+	add_child(http)
+	var headers := PackedStringArray(["content-type: " + type, "x-upsert: false"])
+	if not key.is_empty():
+		headers.append("apikey: " + key)
+	if http.request_raw(url, headers, HTTPClient.METHOD_PUT, bytes) != OK:
+		http.queue_free()
+		return {"code": 0}
+	var done: Array = await http.request_completed
+	http.queue_free()
+	return {"code": int(done[1]) if int(done[0]) == HTTPRequest.RESULT_SUCCESS else 0}
+
+
+## The photo sent, kept: {model, ticket, words?} to 201 {id, page, card, ...}
+## (api/people.js photoSaid), or a refusal in {error}.
+func photo_keep(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=photo", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
 ## One request, as Account._fetch makes it (PageFetch).
 func _fetch(path: String, method: int, token: String, body: String) -> Dictionary:
 	var headers := PackedStringArray(["content-type: application/json"])

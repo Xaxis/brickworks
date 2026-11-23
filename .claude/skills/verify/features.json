@@ -1955,6 +1955,22 @@
       "tests": []
     },
     {
+      "id": "cli:makes browser flow",
+      "kind": "cli",
+      "entry": "tools/web/makes_flow.mjs",
+      "reach": "node --env-file=.env tools/web/makes_flow.mjs --url=http://127.0.0.1:11350 --out=DIR   (against relay_server.mjs --static=build/web --hold=model_builds,build_photos,report_photos --trust-stand-in; a throwaway designer and builder: at 390 touch and 1280, the last step's Show your build, the page's file chooser, a JPEG with GPS and orientation, Post in 3 taps; served back with no Exif, upright, its card copy at most 480 wide; first in the model page's Builds strip and on the designer's notifications within 60 s; 20 more finishes counted once; a non-picture refused; signed out at 390 the sign-in in place, the page reloaded with the photo kept, a code typed, Post; accounts deleted)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:makes probe",
+      "kind": "cli",
+      "entry": "src/dev/makes_probe.gd",
+      "reach": "tools/probe.sh makes_probe; PROBE_SIZE=390x844 tools/probe.sh makes_probe   (windowed, FakeShared for the API: the card only on the last step, under the top bar with the model framed below it, 44-point targets; a JPEG with Exif orientation 6 chosen in the app's own dialog, shown upright, read on a worker (longest frame printed), sent byte for byte through photo_start, the signed URL and ?op=photo with its words, posted in 2 presses; signed out 10 of 10 back on the last step with the photo and words, Not now; under 13, may_act's limit, a non-picture and 141 characters refused in words, nothing sent; the designer's Add a photo of your build; 20 more finishes send nothing; Close at the end hands the card to the viewer, the timeline off its end puts it away; pictures in shots/makes/<WxH>/)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:mcp agree probe",
       "kind": "cli",
       "entry": "src/dev/mcp_agree_probe.gd",
@@ -7259,6 +7275,14 @@
       "kind": "ui",
       "entry": "src/ui/share_view.gd",
       "reach": "https://brickworks.diy/m/<id>  (or /app?view=<id>; godot --path . -- --view=<id> with BRICKWORKS_API set)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:show your build",
+      "kind": "ui",
+      "entry": "src/ui/make_card.gd",
+      "reach": "https://brickworks.diy/m/<id>, Build it, Next to the last step (or the viewer's timeline stepped onto its end, or Finish): a card under the top bar says how many have built it (the finish's own answer) with Show your build (Add a photo of your build on the designer's own model); the camera on a touch screen, a file elsewhere (PickImage, undecoded), the photo read on a worker and shown upright from its Exif, a line about it (140 characters at most, refused in words past it), Post: ?op=photo_start, the bytes PUT to the signed URL, ?op=photo (api/_builds.js, made safe server-side), then \"Posted: on the model's page\" with its link; signed out, Post asks for the sign-in in place (SignInGate with a purpose, Not now) and the photo and words stay on the card (sessionStorage on the web, for orangecheck's round trip); under 13 and may_act's limit said in the server's words, nothing sent; tools/probe.sh makes_probe; tools/web/makes_flow.mjs",
       "area": "web",
       "tests": []
     },
