@@ -8,7 +8,7 @@
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--publish]
-//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--open-time[=N] [--pages]]
+//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--open-time[=N] [--pages] [--trace]]
 //
 //   1. Each modelled set, at each width and theme, signed out: Build it
 //      opens LDraw's model at its first step (&build) and Make your own
@@ -299,7 +299,7 @@ async function published(browser) {
 /// and the set down can be put where it went.
 async function timed(browser, address, ready, most = 240000) {
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, extraHTTPHeaders: headers });
-  await context.addInitScript(() => {
+  await context.addInitScript((trace) => {
     const log = [];
     window.sethubLog = log;
     // The page's frames (requestAnimationFrame, the engine's own pace): each
@@ -314,6 +314,47 @@ async function timed(browser, address, ready, most = 240000) {
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
+    // Every WebGL call timed: their time in all, and each over 50 ms [when,
+    // how long, which]. And each of the page's frames (a requestAnimationFrame
+    // callback: the engine's frame) over 200 ms [when, how long, of it in
+    // WebGL calls]. A gap between frames with no long frame in it is the
+    // browser giving none; a long frame mostly in WebGL is the engine
+    // waiting on a browser drawing in software.
+    const waits = { ms: 0, n: 0, long: [] };
+    window.sethubGl = waits;
+    // Only with --trace: it costs every WebGL call a little.
+    for (const kind of trace ? [window.WebGL2RenderingContext, window.WebGLRenderingContext] : []) {
+      if (!kind) continue;
+      for (const name of Object.getOwnPropertyNames(kind.prototype)) {
+        const held = Object.getOwnPropertyDescriptor(kind.prototype, name);
+        if (!held || typeof held.value !== "function" || name === "constructor") continue;
+        const real = held.value;
+        kind.prototype[name] = function (...given) {
+          const at = performance.now();
+          try {
+            return real.apply(this, given);
+          } finally {
+            const took = performance.now() - at;
+            waits.ms += took;
+            waits.n += 1;
+            if (took > 50 && waits.long.length < 400) waits.long.push([Math.round(at), Math.round(took), name]);
+          }
+        };
+      }
+    }
+    const engineFrames = [];
+    window.sethubFrames = engineFrames;
+    const askFrame = window.requestAnimationFrame.bind(window);
+    if (trace) window.requestAnimationFrame = (callback) => askFrame((at) => {
+      const began = performance.now();
+      const inGl = waits.ms;
+      try {
+        callback(at);
+      } finally {
+        const took = performance.now() - began;
+        if (took > 200 && engineFrames.length < 400) engineFrames.push([Math.round(began), Math.round(took), Math.round(waits.ms - inGl)]);
+      }
+    });
     let last = null;
     setInterval(() => {
       const state = window.brickworksState;
@@ -324,7 +365,7 @@ async function timed(browser, address, ready, most = 240000) {
       const before = log[log.length - 1];
       if (!before || ["working", "said", "bricks", "awaited"].some((key) => before[key] !== row[key])) log.push(row);
     }, 25);
-  });
+  }, Boolean(args.trace));
   const page = await context.newPage();
   page.on("pageerror", (error) => errors.push(`${address}: ${error.message}`));
   try {
@@ -337,7 +378,9 @@ async function timed(browser, address, ready, most = 240000) {
     const at = (test) => log.find(test)?.t ?? null;
     const state = await page.evaluate(() => {
       const one = window.brickworksState || {};
-      return { title: one.title, bricks: one.bricks, awaited: one.awaited, steps: one.steps, phases: one.open_phases };
+      const shared = window.brickworksShare || {};
+      return { title: shared.title, bricks: one.bricks, awaited: one.awaited, steps: shared.steps, phases: one.open_phases,
+        threads: window.brickworksEngine?.threads ?? null };
     }).catch(() => ({}));
     // What it fetched, by the same clock: the library's index and file, the API.
     const fetched = await page.evaluate(() => performance.getEntriesByType("resource")
@@ -346,8 +389,10 @@ async function timed(browser, address, ready, most = 240000) {
       .catch(() => []);
     const slow = await page.evaluate(() => JSON.stringify(window.brickworksState?.slow ?? null)).catch(() => "");
     const gaps = await page.evaluate(() => window.sethubGaps || []).catch(() => []);
+    const gl = await page.evaluate(() => window.sethubGl || null).catch(() => null);
+    const engineFrames = await page.evaluate(() => window.sethubFrames || []).catch(() => []);
     return { ms, first: at(() => true), up: at((row) => row.awaited === 0), placed: at((row) => row.bricks >= 150),
-      whole: at((row) => row.bricks >= 150 && row.awaited === 0), log, fetched, slow, gaps, state, page, context };
+      whole: at((row) => row.bricks >= 150 && row.awaited === 0), log, fetched, slow, gaps, gl, engineFrames, state, page, context };
   } catch (trouble) {
     await context.close();
     return { ms: null, log: [], state: { trouble: String(trouble.message || trouble).slice(0, 200) } };
@@ -358,7 +403,8 @@ async function openTime(rounds) {
   const up = () => Boolean(window.brickworksState) && window.brickworksState.awaited === 0;
   // Its parts all down (an app before brickworksState.title says no name).
   const set = () => window.brickworksState?.bricks >= 150 && window.brickworksState.awaited === 0;
-  const browsers = [await launch(), await launch()];
+  // Signed in as this run's own throwaway account, deleted at the end.
+  const browsers = [await launch({ ownAccount: true }), await launch({ ownAccount: true })];
   const got = [];
   try {
     for (let round = 0; round <= rounds; round += 1) {
@@ -381,15 +427,27 @@ async function openTime(rounds) {
       const stalled = within(version.first);
       console.log(`    the version's page frames over 250 ms apart from its app's first word to the set whole: `
         + `${stalled.length}, ${stalled.reduce((sum, [, ms]) => sum + ms, 0)} ms in all: ${JSON.stringify(stalled)}`);
+      const waited = (version.gl?.long || []).filter(([at]) => at >= (version.first ?? 0) - 1000 && at <= (version.whole ?? Infinity));
+      console.log(`    the version's WebGL waits over 50 ms in that time: ${waited.length}, `
+        + `${waited.reduce((sum, [, ms]) => sum + ms, 0)} ms in all (${Math.round(version.gl?.ms || 0)} ms in ${version.gl?.n || 0} `
+        + `calls over the whole page): ${JSON.stringify(waited.slice(0, 40))}`);
+      const long = (version.engineFrames || []).filter(([at]) => at >= (version.first ?? 0) - 1000 && at <= (version.whole ?? Infinity));
+      console.log(`    the version's engine frames over 200 ms in that time: ${long.length}, `
+        + `${long.reduce((sum, [, ms]) => sum + ms, 0)} ms in all, ${long.reduce((sum, [, , gl]) => sum + gl, 0)} ms of it in WebGL: `
+        + `${JSON.stringify(long.slice(0, 40))}`);
+      const plainWaited = (plainOne.gl?.long || []).filter(([at]) => at <= (plainOne.up ?? Infinity));
+      console.log(`    the plain studio's WebGL waits over 50 ms before it was up: ${plainWaited.length}, `
+        + `${plainWaited.reduce((sum, [, ms]) => sum + ms, 0)} ms in all`);
       if (round) got.push({ plain: plainOne.up, placed: version.placed, version: version.whole, log: version.log });
     }
     // Build it's address: its timeline at step 1, with an app that takes --build.
     const built = await timed(browsers[0], "/app?new=1&library=omr-346-2&build",
-      () => Array.isArray(window.brickworksState?.steps) && window.brickworksState.steps.length === 2, 90000);
+      () => Array.isArray(window.brickworksShare?.steps) && window.brickworksShare.steps.length === 2, 240000);
     await built.page?.screenshot({ path: path.join(out, "build_it_app.png") });
+    const timeline = await built.page?.evaluate(() => window.brickworksShare?.steps || null).catch(() => null);
     await built.context?.close();
-    console.log(`  Build it: ${built.ms === null ? "no timeline (an app without --build)" : `its timeline up in ${built.ms} ms`} `
-      + `(${JSON.stringify(built.state)})`);
+    console.log(`  Build it: ${built.ms === null ? "no timeline in 240 s" : `its timeline up in ${built.ms} ms`} `
+      + `(${JSON.stringify({ ...built.state, phases: undefined })}; at step ${JSON.stringify(timeline)})`);
     writeFileSync(path.join(out, "open_time.json"), `${JSON.stringify({ rounds: got, build: built.ms }, null, 1)}\n`);
   } finally {
     await Promise.all(browsers.map((one) => one.close()));

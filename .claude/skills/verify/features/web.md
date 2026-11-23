@@ -4199,7 +4199,12 @@ plan with Claude as the client.
   relay, 11-23). `--open-time[=N]` against a deployment times Make your own
   version's address beside the plain studio's in two browsers at once, and
   logs where the version's time went (the app's state as it changed, its
-  fetches, the page's frames over 250 ms apart).
+  fetches, the page's frames over 250 ms apart). `--trace` adds every
+  WebGL call and each engine frame over 200 ms, to tell the app's own work
+  from shader compiles and frames the browser never gave. A local export
+  works too: relay --static with each browser signed in as its own
+  throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23;
+  the 2 s bar is not met there).
 - **Search that finds what a builder means** (search, 2026-10-30):
   `api/_search.js` reads a query word by word (misspelt by edit distance,
   run together or apart, plurals, accents and apostrophes, set numbers and
