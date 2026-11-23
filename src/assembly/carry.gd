@@ -362,6 +362,29 @@ func stand_where_lifted(lattice: BrickLattice, builder: Builder) -> void:
 	_stand(lattice, builder)
 
 
+## Whether the group would fit with its frame moved by [param by] (LDU, the
+## frame unturned), on or over the floor and in nothing: asked of the
+## lattice alone, no ghost drawn, so a copy put down beside what it copies
+## can be tried at many places in a frame (Builder.put_copy_beside).
+func fits_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> bool:
+	var covers: Array = _covers_for(builder)
+	var whole: PackedInt32Array = covers[1]
+	var origin: Vector3 = _frame.origin + by
+	var shift := Vector3i(
+		roundi((origin.x - _reference.x) / BrickLattice.CELL),
+		roundi(origin.y / BrickLattice.CELL),
+		roundi((origin.z - _reference.z) / BrickLattice.CELL))
+	return not whole.is_empty() and _lowest(whole) + shift.y >= Builder.GROUND_CELL \
+		and not lattice.collides_moved(whole, covers[3], covers[4], shift)
+
+
+## The frame moved by [param by] and the ghost shown there: where
+## [method placements] then puts it.
+func stand_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> void:
+	_frame.origin += by
+	_stand(lattice, builder)
+
+
 ## Whether the group fits where its frame is now, and its ghost shown there.
 func _stand(lattice: BrickLattice, builder: Builder) -> void:
 	var covers: Array = _covers_for(builder)

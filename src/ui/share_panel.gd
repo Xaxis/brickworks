@@ -79,6 +79,11 @@ const LICENCES: Array = [
 ]
 
 var account: Account
+## Brings up signing in (Main: Account…), for Sign in… while signed out.
+var sign_in: Callable = Callable()
+## Sign in…, shown while nobody is: Share said "Sign in to Brickworks to
+## share a model" and gave nothing to press (ux13's walk, left 5).
+var _sign_in: Button
 var store: ModelStore
 var shared: SharedModels
 ## What moves in the model as it stands (main.gd: Playable's words, from the
@@ -283,6 +288,17 @@ func setup() -> void:
 	_publish.focus_mode = Control.FOCUS_NONE
 	_publish.pressed.connect(publish)
 	column.add_child(_publish)
+	_sign_in = Button.new()
+	_sign_in.text = "Sign in"
+	_sign_in.name = "share_sign_in"
+	_sign_in.custom_minimum_size = Vector2(0, 34)
+	_sign_in.focus_mode = Control.FOCUS_NONE
+	_sign_in.tooltip_text = "Sign in or make an account with your email: a link needs one, a look at it does not"
+	_sign_in.visible = false
+	_sign_in.pressed.connect(func() -> void:
+		if sign_in.is_valid():
+			sign_in.call())
+	column.add_child(_sign_in)
 	# What publishing agrees to, where it is agreed to.
 	# One line, never wrapped: a wrapping label in a row is given no width
 	# and stands one letter to a line down the panel.
@@ -611,6 +627,7 @@ func _fill_opens() -> void:
 ## nothing signed in, that sharing waits while the session kept here is
 ## renewed (Account.renewing), and that it needs a sign-in signed out.
 func _waiting_words() -> String:
+	_sign_in.visible = not account.renewing and not account.signed_in() and sign_in.is_valid()
 	if account.renewing:
 		return Account.waiting_words("Publish goes on")
 	return "" if account.signed_in() else "Sign in to Brickworks to share a model."
@@ -619,7 +636,7 @@ func _waiting_words() -> String:
 ## The account's renewal answered while the panel said it waited on it.
 func _on_account() -> void:
 	if visible and state == "idle" and store.share_id.is_empty() \
-			and _status.text == Account.waiting_words("Publish goes on"):
+			and (_status.text == Account.waiting_words("Publish goes on") or _sign_in.visible):
 		_status.text = _waiting_words()
 
 
@@ -651,6 +668,7 @@ func publish() -> void:
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_fail("Sign in to Brickworks to share a model.")
+		_sign_in.visible = sign_in.is_valid()
 		return
 	state = "publishing"
 	_publish.disabled = true

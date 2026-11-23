@@ -419,10 +419,15 @@ func _fill_find_colours() -> void:
 		if part.is_empty() or _finder.same_part(brick.part_id, part):
 			counts[brick.color_code] = int(counts.get(brick.color_code, 0)) + 1
 	var codes: Array = counts.keys()
+	# Each colour with its swatch, as the palette shows it: a builder giving
+	# a model a new theme's colours picks them by eye, and both lists were
+	# names alone, a hundred and more of them (ux14's walk, p11). The most
+	# used first: what a theme changes is what most of the model is in.
 	codes.sort_custom(func(a: int, b: int) -> bool:
-		return _finder.colour_name(a).naturalnocasecmp_to(_finder.colour_name(b)) < 0)
+		return int(counts[a]) > int(counts[b]) or int(counts[a]) == int(counts[b]) \
+			and _finder.colour_name(a).naturalnocasecmp_to(_finder.colour_name(b)) < 0)
 	for code: int in codes:
-		_find_colour.add_item(_finder.colour_name(code))
+		_find_colour.add_icon_item(_swatch(code), _finder.colour_name(code))
 		_find_colour.set_item_metadata(_find_colour.item_count - 1, code)
 	_choose(_find_colour, keep)
 
@@ -442,8 +447,25 @@ func _fill_into_colours() -> void:
 	codes.sort_custom(func(a: int, b: int) -> bool:
 		return _finder.colour_name(a).naturalnocasecmp_to(_finder.colour_name(b)) < 0)
 	for code: int in codes:
-		_into_colour.add_item(_finder.colour_name(code))
+		_into_colour.add_icon_item(_swatch(code), _finder.colour_name(code))
 		_into_colour.set_item_metadata(_into_colour.item_count - 1, code)
+
+
+## A colour's swatch for its row in the lists, as the palette draws it,
+## made once a colour.
+func _swatch(code: int) -> ImageTexture:
+	if _swatches.has(code):
+		return _swatches[code]
+	var image := Image.create(14, 14, false, Image.FORMAT_RGBA8)
+	image.fill(Color(_finder.library.color(code).shown, 1.0))
+	for n: int in 14:
+		for edge: Vector2i in [Vector2i(n, 0), Vector2i(n, 13), Vector2i(0, n), Vector2i(13, n)]:
+			image.set_pixelv(edge, Color(1, 1, 1, 0.35))
+	_swatches[code] = ImageTexture.create_from_image(image)
+	return _swatches[code]
+
+
+var _swatches: Dictionary = {}
 
 
 ## Where to look, the sub-model's own name in its row; the selection only

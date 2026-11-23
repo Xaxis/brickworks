@@ -378,6 +378,14 @@ func _drag_and_look(which: int, shift: bool, what: String, state: String) -> voi
 
 
 func _wheel_and_keys() -> void:
+	# From the app's own tilt, looking down on the model. The drags before
+	# leave the eye on the floor rule's line (CadCamera.FLOOR_CLEAR, 8 LDU
+	# over the floor) looking 0.6° up, and the slide below then put the
+	# pointer over open sky: no ground under it, so no ghost, and the
+	# pointer rightly says what a drag there does (orbit), as the probe
+	# found from 7bc950bd2 on. Before it the eye went under the floor and
+	# the ghost stood on the ground seen from below, which was the pass.
+	_camera.set_view("default")
 	await _settle()
 	await _move_to(_middle)
 	_press(MOUSE_BUTTON_WHEEL_UP, _middle, true)
@@ -394,6 +402,12 @@ func _wheel_and_keys() -> void:
 	_press(MOUSE_BUTTON_WHEEL_UP, _middle, false, true)
 	await _expect("shift and the wheel", "hand")
 	await _key_down(KEY_SHIFT, false)
+	# What the next two ask stands only over somewhere a click puts it down.
+	var ray_from: Vector3 = _camera.ray_origin(_middle)
+	var ray_way: Vector3 = _camera.ray_normal(_middle)
+	_check("...slid, the pointer is still over the model or the floor",
+		_builder.lattice.raycast(ray_from, ray_way).is_valid()
+		or (ray_from.y > 0.0 and ray_way.y < 0.0))
 	await _expect("...and back", "place")
 
 	await _key_down(KEY_RIGHT, true)

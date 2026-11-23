@@ -75,7 +75,7 @@ func handle_key(key: InputEventKey) -> bool:
 				return true
 		KEY_D:
 			if held and not key.shift_pressed:
-				duplicate_selection()
+				duplicate_beside()
 				return true
 		KEY_X:
 			if held:
@@ -276,7 +276,7 @@ func press(name: String) -> void:
 		"paste":
 			paste()
 		"duplicate":
-			duplicate_selection()
+			duplicate_beside()
 		"paint":
 			var painted: int = builder.paint_selection(builder.held_color)
 			if painted > 0:
@@ -840,6 +840,34 @@ func duplicate_selection(again: bool = true) -> int:
 	aim_again.call()
 	say.call(Keymap.filled("holding a copy of %s — each click puts one down, {rotate_held|turns}, Esc or a right click stops"
 		if again else "holding a copy of %s — click to put it down, {rotate_held|turns}, Esc puts away")
+		% _parts(parts.size()))
+	return parts.size()
+
+
+## Edit › Duplicate, Ctrl+D (ux14): a copy put down at once beside the
+## selection, seated on what holds it or let down onto what is under it, and
+## selected to be moved on (Builder.put_copy_beside), as Studio's Duplicate
+## puts its copy beside. Pressed again, another beside that. Where nothing
+## beside has room, the copy is held instead, as a clone's is, and said so.
+func duplicate_beside() -> int:
+	var alive: Array = builder.selection.keys()
+	if alive.is_empty():
+		say.call("select something to duplicate first")
+		return 0
+	var parts: Array = Carry.gather(world, library, alive)
+	if parts.is_empty():
+		return 0
+	var put: int = builder.put_copy_beside(parts, _level_right(),
+		Assemblies.lines_held(world, parts), Assemblies.frames_held(world, parts),
+		builder.held_carry.call(parts) if builder.held_carry.is_valid() else [])
+	if put == 0:
+		var held: int = duplicate_selection(false)
+		if held > 0:
+			say.call(Keymap.filled("no room beside it for a copy: holding one — click to put it down, {rotate_held|turns}, Esc puts away"))
+		return held
+	edited.call()
+	aim_again.call()
+	say.call(Keymap.filled("a copy of %s put beside it, selected: drag it where it goes; {duplicate|puts another}; {undo|takes it back}")
 		% _parts(parts.size()))
 	return parts.size()
 

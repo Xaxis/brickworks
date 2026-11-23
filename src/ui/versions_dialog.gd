@@ -98,7 +98,8 @@ func fill() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		var words := Label.new()
-		words.text = _shown[n].describe() + ("  (the last save)" if n == 0 else "")
+		words.text = _shown[n].describe(_shown[n + 1] if n + 1 < _shown.size() else null) \
+			+ ("  (the last save)" if n == 0 else "")
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# Wrapped rather than pushing Compare and Open off the row.
 		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

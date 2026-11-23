@@ -40,11 +40,21 @@ class Version extends RefCounted:
 	## Its size as kept, compressed.
 	var bytes: int
 
-	## "Today at 14:05:09 — 120 parts", or "11 Oct at 09:30:00 — …".
-	func describe() -> String:
+	## "Today at 14:05:09 — 120 parts", or "11 Oct at 09:30 — …", and
+	## against [param before], the save before it, how many parts it added
+	## or took away: a person back after a week finds the save they mean by
+	## what it changed, and the rows were times alone (ux14's walk, p14).
+	func describe(before: Version = null) -> String:
 		var said: String = when()
-		return "%s — %d part%s" % [said.left(1).to_upper() + said.substr(1), parts,
+		var head: String = "%s — %d part%s" % [said.left(1).to_upper() + said.substr(1), parts,
 			"" if parts == 1 else "s"]
+		if before == null:
+			return head
+		if parts > before.parts:
+			return "%s, %d more than the save before" % [head, parts - before.parts]
+		if parts < before.parts:
+			return "%s, %d fewer than the save before" % [head, before.parts - parts]
+		return "%s, as many as the save before" % head
 
 	## "today at 14:05:09", or "11 Oct at 09:30:00", or with its year.
 	func when() -> String:
@@ -60,11 +70,24 @@ static func when_saved(unix_s: int) -> String:
 	var now: Dictionary = Time.get_datetime_dict_from_system()
 	var day: String = "today"
 	if then.year != now.year or then.month != now.month or then.day != now.day:
+		# Yesterday as yesterday, and a day before that with the minute
+		# alone: its second told two saves of today apart, and is noise a
+		# week on (ux14's walk, p14).
+		var today: int = Time.get_unix_time_from_datetime_dict({"year": now.year,
+			"month": now.month, "day": now.day, "hour": 0, "minute": 0, "second": 0})
+		var that_day: int = Time.get_unix_time_from_datetime_dict({"year": then.year,
+			"month": then.month, "day": then.day, "hour": 0, "minute": 0, "second": 0})
+		var ago: int = roundi(float(today - that_day) / 86400.0)
+		if ago == 1:
+			return "yesterday at %02d:%02d" % [then.hour, then.minute]
 		var months: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 			"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 		day = "%d %s" % [then.day, months[int(then.month) - 1]]
 		if then.year != now.year:
 			day += " %d" % then.year
+		if ago > 1 and ago < 31:
+			return "%s at %02d:%02d, %d days ago" % [day, then.hour, then.minute, ago]
+		return "%s at %02d:%02d" % [day, then.hour, then.minute]
 	return "%s at %02d:%02d:%02d" % [day, then.hour, then.minute, then.second]
 
 

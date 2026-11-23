@@ -47,7 +47,11 @@ static func asks() -> bool:
 ## Where [param file_name] goes: the path the person chose, or "" when they
 ## cancelled. Into [param into], or Download.folder, without asking when
 ## either is set: a probe's own folder, or where a session's export goes.
-static func ask(file_name: String, into: String = "", title: String = "Export") -> String:
+## [param also]: other kinds the person may choose instead, by extension,
+## listed after the file's own in the dialog's list of types (Instructions:
+## a PDF, or a web page; ux14).
+static func ask(file_name: String, into: String = "", title: String = "Export",
+		also: PackedStringArray = PackedStringArray()) -> String:
 	var name: String = file_name.replace("\\", "/").get_file()
 	var folder: String = into if not into.is_empty() else Download.folder
 	if not folder.is_empty():
@@ -66,6 +70,9 @@ static func ask(file_name: String, into: String = "", title: String = "Export") 
 	var extension: String = name.get_extension().to_lower()
 	if KINDS.has(extension):
 		dialog.add_filter("*." + extension, KINDS[extension])
+	for other: String in also:
+		if KINDS.has(other) and other != extension:
+			dialog.add_filter("*." + other, KINDS[other])
 	dialog.size = Vector2i(760, 520)
 	(Engine.get_main_loop() as SceneTree).root.add_child(dialog)
 	dialog.current_dir = start()

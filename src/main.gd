@@ -5565,6 +5565,7 @@ func _build_ui() -> void:
 		_refresh_preview())
 	_bin.construction_chosen.connect(func(parts: Array, what: String) -> void:
 		_verbs.hold(parts, what))
+	_bin.own_assembly_chosen.connect(_hold_own_assembly)
 	_bin.color_chosen.connect(_on_color_chosen)
 	_bin.swatch_pressed.connect(_on_swatch_pressed)
 	# A part dragged out of the bin: in hand from the start of the drag
@@ -7129,6 +7130,7 @@ func _make_share_panel() -> void:
 	share.moves_of = _moves_now
 	share.picture = _exports.picture
 	share.named = _bar.model_name
+	share.sign_in = func() -> void: _bar.account_wanted.emit()
 	share.setup()
 	_add_to_hud(share)
 	var kind: GDScript = Later.script(&"SharePanel")
@@ -7224,6 +7226,8 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		called: String = "") -> String:
 	var title: String = called if not called.is_empty() else _bar.model_name()
 	var given: bool = not to.is_empty()
+	# Where the PDF the person asked for goes, when it was a PDF ("" for a page).
+	var pdf_to: String = ""
 	if not given and not OS.has_feature("web"):
 		var leave: Dictionary = skip if skip is Dictionary else _store.scenery
 		if not _world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
@@ -7236,11 +7240,27 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_warm_booklet()
 		# What happens next said in the title: a parent who asked for
 		# instructions to print was asked where to put a web page, and could
-		# not tell it opens in their browser with Print there (ux12).
-		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
-			"Save the instructions: they open in your browser, to print or save as a PDF")
+		# not tell it opens in their browser with Print there (ux12). Then
+		# someone who wanted a PDF was still asked for a web page, and the PDF
+		# was a file beside it said only after (ux13's walk, p9). So the
+		# dialog asks for a PDF, with a web page the other kind in its list,
+		# and what is chosen is what is written (ux14). Where no dialog asks
+		# (a probe's or a session's folder), the page and its PDF, as before.
+		if SaveTo.asks():
+			to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.pdf"), "",
+				"Save the instructions as a PDF, or as a web page to read and print in your browser",
+				PackedStringArray(["html"]))
+		else:
+			to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
+				"Save the instructions: they open in your browser, to print or save as a PDF")
 		if to.is_empty():
 			return ""
+		if not to.get_extension().to_lower() in ["html", "htm"]:
+			pdf_to = to if to.get_extension().to_lower() == "pdf" else to + ".pdf"
+			# The page the PDF is read from, kept where the app keeps its own.
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(BOOKLET_PAGES))
+			to = ProjectSettings.globalize_path(BOOKLET_PAGES).path_join(
+				pdf_to.get_file().get_basename() + ".html")
 	# Said in the status bar while it works (Working), and in the tab it is
 	# going to on the web, which is the one in front while it draws. A
 	# session's job (ToolJobs) is the same bar, handed in.
@@ -7269,7 +7289,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_booklet_out.queue_free()
 	_booklet_out = (await Later.script_in_background(&"BookletOut", job)).new()
 	add_child(_booklet_out)
-	var show: bool = not given and Later.script(&"BookletMaker").open_when_written
+	var show: bool = not given and Later.script(&"BookletMaker").open_when_written and pdf_to.is_empty()
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
 	maker.wrote.connect(Callable(_booklet_out, &"take"))
@@ -7306,7 +7326,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 			# (walk256 D9, 2026-10-25). A session's or a command line's
 			# booklet, written where it was told, is the page alone.
 			var pdf: String = ""
-			var beside: String = to.get_basename() + ".pdf"
+			var beside: String = to.get_basename() + ".pdf" if pdf_to.is_empty() else pdf_to
 			if not given and not _booklet_writing and beside != to:
 				job.say("Writing the PDF…")
 				_booklet_writing = true
@@ -7318,6 +7338,8 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 					note += ", and as a PDF in %s%s" % [pdf, _pdf_missed]
 			if show:
 				note = _open_booklet(to, steps, _booklet_out, pdf)
+			elif not pdf_to.is_empty():
+				note = _booklet_pdf_said(pdf, pdf_to, steps)
 	elif _booklet_out.shown:
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
@@ -7333,6 +7355,21 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 
 ## The last booklet drawn, still there to be read (BookletOut).
 var _booklet_out: Node = null
+## Where the page a PDF the person asked for is read from is kept: theirs is
+## the PDF, so the page is not put beside it (ux14).
+const BOOKLET_PAGES := "user://booklets"
+
+
+## What is said once the instructions asked for as a PDF are written: the
+## PDF, opened in the reader the system has for one, or where it is.
+func _booklet_pdf_said(pdf: String, wanted: String, steps: int) -> String:
+	if pdf.is_empty():
+		return "could not write the PDF %s" % wanted
+	var pages: String = "%d step%s" % [steps, "" if steps == 1 else "s"]
+	if Later.script(&"BookletMaker").open_when_written and SaveTo.open(pdf):
+		return "the instructions are saved as a PDF and open in your PDF reader, %s: %s%s" % [pages,
+			pdf, _pdf_missed]
+	return "the instructions are saved as a PDF, %s: %s%s" % [pages, pdf, _pdf_missed]
 
 
 ## BookletMaker.warm, its script compiled on a worker first, the frames
@@ -8928,6 +8965,37 @@ func _on_part_failed(part_id: String, why: String) -> void:
 		_bar.say("%d %s — %d %s could not be loaded, and %s kept in the file"
 			% [down, "brick" if down == 1 else "bricks", lost, "part" if lost == 1 else "parts",
 				"is" if lost == 1 else "are"])
+
+
+## The bin's row for the model's own sub-assembly [param name] (PartsBin,
+## ux14): its first copy selected and another in hand, as Edit, Duplicate's
+## clone does, each click putting one down. A copy, so an edit inside one is
+## in them all.
+func _hold_own_assembly(name: String) -> void:
+	var first: String = ""
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var path: String = Assemblies.path_of(brick)
+		var segments: PackedStringArray = Assemblies.segments(path)
+		var upto: String = ""
+		for segment: String in segments:
+			upto = Assemblies.join(upto, segment)
+			if Assemblies.definition(segment) == name:
+				break
+		if not upto.is_empty() and Assemblies.definition(upto.get_file()) == name:
+			if first.is_empty():
+				first = upto
+			if upto == first:
+				ids.append(brick.id)
+	if ids.is_empty():
+		_bar.say("“%s” is not in this model now" % name)
+		return
+	_builder.clear_selection()
+	for brick_id: int in ids:
+		_builder.select_brick(brick_id, true)
+	_verbs.duplicate_selection(true)
 
 
 func _on_color_chosen(color_code: int) -> void:

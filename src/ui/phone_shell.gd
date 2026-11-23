@@ -1503,6 +1503,17 @@ class Sheet extends PanelContainer:
 			row.add_theme_stylebox_override(state_name, face)
 		row.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.32))
 		row.disabled = not phone.shell.can(command)
+		# A greyed row says why under its name, as Find a command says it
+		# beside one: on a phone signed out, Share sat greyed with no word
+		# of what it waited for, and a finger has no pointer to rest on it
+		# for a tip (ux13's walk, left 5).
+		var why: String = phone.shell.why_not(command) if row.disabled else ""
+		if not why.is_empty():
+			row.text = "%s\n%s" % [tr(words), tr(why)]
+			row.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			row.clip_text = false
+			row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			row.set_meta("why", why)
 		row.pressed.connect(func() -> void:
 			close()
 			phone.shell.run(command))
