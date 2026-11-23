@@ -155,6 +155,8 @@ ui:put a model into this one
 
 A model from Studio, LDCad or LeoCAD keeps its author's own build steps: see [Instructions](/docs/instructions#authors-steps). What Brickworks writes is in [Exports](/docs/exports).
 
+Saved back, an LDraw file keeps what it carried. Opened and saved unchanged, it is written byte for byte as it was. Changed (a part added, moved, swapped, recoloured, grouped, laid or pasted, or its steps planned), each sub-model stays in its own `0 FILE` section, in the place its file gave it, unless its parts are built a few at a time across the model's own steps: then they are written in those steps, so every LDraw program builds them in the same steps as Brickworks. Its comments and the lines Brickworks does not read stay beside the parts they were next to, a picture laid on parts (`TEXMAP`) stays round those parts, and LPub's multi-step blocks stay round their steps. A line that says what the next part is (a `TEXMAP NEXT`, `BFC INVERTNEXT` or LDCad group line) goes when that part is taken off.
+
 <!-- covers
 lib:ldr read and write
 ui:open a studio model

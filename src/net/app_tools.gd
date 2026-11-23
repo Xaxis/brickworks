@@ -469,6 +469,10 @@ func definitions() -> Array:
 				+ "\"later\", \"merge\" (with the next) and \"delete\" act on step=, a number "
 				+ "from the list. A model with no steps of its own is given the worked-out "
 				+ "ones first, in the same undo step."
+				# stepkeep2: saved steps are kept; planned again when asked.
+				+ " A model opens in the steps it was saved in; \"plan\" works them out "
+				+ "afresh from the model as it is, in place of its own, in one undo step "
+				+ "(not someone else's file, whose author's steps are kept)."
 				# stepnames: a step named, in a block of its own.
 				+ " \"name\" gives step= a name= (\"Build the cockpit\"), said beside its "
 				+ "number on the timeline, in Build it and in the booklet; name= \"\" takes it "
@@ -489,7 +493,7 @@ func definitions() -> Array:
 				+ "have in the parts bin."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
-					"later", "merge", "delete", "name"]},
+					"later", "merge", "delete", "name", "plan"]},
 				"name": {"type": "string", "description": "for name: what the step is called, up to 80 characters; \"\" takes it off"},
 				"callout_step": {"type": "integer", "description": "for name: a step inside the callout step= puts on, from 1, as edit_booklet takes it"},
 				"bricks": {"type": "array", "items": {"type": "integer"},
@@ -2205,7 +2209,9 @@ func _edit_steps(input: Dictionary) -> String:
 						else "Step %d's callout has steps 1 to %d." % [named.number, named.callout_steps]
 				named = inside
 			return _sentence(shell.change_look("name", named, {"name": str(input["name"])}))
-	return "op is one of list, to, next, prev, new, earlier, later, merge, delete, name."
+		"plan":
+			return _sentence(shell.change_steps("plan", [], null))
+	return "op is one of list, to, next, prev, new, earlier, later, merge, delete, name, plan."
 
 
 # -- the booklet, by hand --------------------------------------------------------

@@ -14,9 +14,10 @@
 ## out again.
 ##
 ## A copy built in its parent's steps (AuthorSteps.IN_PARENT: the castle's
-## towers, a course of each in turn) has no section of its own. Its file is
-## its lines out of its parent's, in the steps they are built in, one step of
-## its own for each, its own copies inside named from it.
+## towers, a course of each in turn) that has no section of its own: its file
+## is its lines out of its parent's, in the steps they are built in, one step
+## of its own for each, its own copies inside named from it. One that keeps
+## its section (LdrModel.BUILT_META) is that section, as any copy's is.
 ##
 ## One section alone is written as a plain .ldr, without its FILE line; more
 ## than one as an .mpd, as the whole model's export names its file
@@ -165,7 +166,7 @@ static func paths(whole: Whole) -> PackedStringArray:
 static func cut(whole: Whole, path: String) -> Made:
 	if not whole.model.unit_steps.has(path):
 		return null
-	if int(whole.model.unit_steps[path]) == LdrModel.IN_PARENT:
+	if _built_within(whole, path):
 		return _cut_built_within(whole, path)
 	var key: String = _section_of_copy(whole, path)
 	if not whole.sections.has(key) or key == whole.main_key:
@@ -205,7 +206,7 @@ static func each(whole: Whole) -> Array[Made]:
 	var done: Dictionary = {}
 	var names: Dictionary = {}
 	for path: String in paths(whole):
-		var built_within: bool = int(whole.model.unit_steps[path]) == LdrModel.IN_PARENT
+		var built_within: bool = _built_within(whole, path)
 		var which: String = ("in " + Assemblies.definition(Assemblies.leaf(path))) if built_within \
 			else "section " + str(whole.model.unit_sections.get(path, ""))
 		if done.has(which):
@@ -356,6 +357,15 @@ static func _sections_of(whole: Whole, reference: String) -> Array[String]:
 	if not found.is_empty():
 		out.append(found)
 	return out
+
+
+## Whether the copy at [param path] is built in its parent's steps with no
+## section of its own (IN_PARENT, its lines after IN lines in the section
+## building it). One whose line says the steps it is built in (BUILT_META)
+## has its section, and is cut from it.
+static func _built_within(whole: Whole, path: String) -> bool:
+	return int(whole.model.unit_steps.get(path, 0)) == LdrModel.IN_PARENT \
+		and not whole.model.unit_sections.has(path)
 
 
 ## The section the copy at [param path] is built of: its sub-model's, as
@@ -584,7 +594,7 @@ static func _count(made: Made, whole: Whole, path: String) -> void:
 ## gave steps opened with no motion (s2review drive).
 static func _cut_built_within(whole: Whole, path: String) -> Made:
 	var home: String = path
-	while not home.is_empty() and int(whole.model.unit_steps.get(home, 0)) == LdrModel.IN_PARENT:
+	while not home.is_empty() and _built_within(whole, home):
 		home = Assemblies.parent_of(home)
 	var key: String = whole.main_key if home.is_empty() else _section_of_copy(whole, home)
 	if not whole.sections.has(key):
@@ -600,7 +610,7 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 	for unit: String in whole.model.unit_lines:
 		var line: int = int(whole.model.unit_lines[unit])
 		if unit != path and Assemblies.within(unit, path) and line >= int(span[0]) \
-				and line < int(span[1]) and int(whole.model.unit_steps.get(unit, 0)) != LdrModel.IN_PARENT:
+				and line < int(span[1]) and not _built_within(whole, unit):
 			taken[line] = Assemblies.parent_of(unit)
 	# Each copy's kept lines its IN block in this section carries, by the copy
 	# as its own file names it ("" for itself).

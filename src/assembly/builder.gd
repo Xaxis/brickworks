@@ -698,6 +698,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		stepped.step = int(step["step"])
 		return {"undo": "restep", "brick": stepped.id, "step": had}
 
+	# The app's own saved steps made the person's by their first step edit,
+	# or back (BrickWorld.steps_own, AuthorSteps.ensure): its own reverse.
+	if step.get("undo", "") == "stepsown":
+		var was_own: bool = world.steps_own
+		world.steps_own = bool(step["own"])
+		return {"undo": "stepsown", "own": was_own}
+
 	# A part the model holds and does not show put in another step
 	# (AuthorSteps, BrickWorld.held), its own reverse; and the brick it was
 	# put down as, when it came after the edit (ModelStore.place_awaited).
@@ -781,6 +788,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		var named: Dictionary = world.section_files
 		world.section_files = (step["files"] as Dictionary).duplicate()
 		return {"undo": "sectionfiles", "files": named}
+
+	# The lines the model's file carried (BrickWorld.kept_lines), the table
+	# as it was: set once at the open and never changed, so shared, not copied.
+	if step.get("undo", "") == "keptlines":
+		var had: Dictionary = world.kept_lines
+		world.kept_lines = step["lines"]
+		return {"undo": "keptlines", "lines": had}
 
 	# Lights of the model's own (BrickWorld.scene_lights) a step took out or
 	# put in: a sub-model's, taken apart into the model (Assemblies.ungroup).
@@ -2915,7 +2929,15 @@ func _put_carried() -> int:
 		if carrying.lifted:
 			world.get_brick(brick_id).origin = str(item.get("origin", ""))
 		lattice.occupy_boxes(brick_id, item["boxes"])
-		steps.append({"undo": "remove", "brick": brick_id})
+		# Picked up and put down, a part is moved, and a model whose steps
+		# are the app's own follows it as a typed move (ModelStore
+		# ._bricks_edited, AuthorSteps.follow_saved): read as a part put
+		# down with a step, the station's step-2 brick dragged onto a
+		# step-40 top kept step 2 and was shown in the air (sk2review F1).
+		if carrying.lifted:
+			steps.append({"undo": "remove", "brick": brick_id, "moved": true})
+		else:
+			steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)
 	if ids.is_empty():
 		return 0
@@ -3040,6 +3062,13 @@ func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> S
 		steps.append_array(AuthorSteps.one_step(world, besides))
 	elif stepped:
 		steps.append_array(AuthorSteps.adopt_plan(world, library, skip))
+		# Into the app's own saved steps (BrickWorld.steps_own), a model with
+		# its author's makes them the person's, as a step edit does
+		# (AuthorSteps.ensure). Left the app's own, the save wrote no
+		# AUTHORED_STEPS, and the author's steps it brought were read again
+		# as no one's (ic3 clash and menu).
+		if world.steps_own:
+			steps.append(_apply({"undo": "stepsown", "own": false}))
 	var at: int = 0 if flat else _brought_step(skip)
 	var stepped_in: bool = at >= 0 or stepped
 	var whole: String = ""

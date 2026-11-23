@@ -6492,6 +6492,13 @@
       "entry": "tools/web/page_lcp_pairs.mjs",
       "reach": "node tools/web/page_lcp_pairs.mjs --base=<a tree with the base's web/ and api/> --rounds=8 --out=DIR   (the stand-in's pages in both at the same moments, a browser each; worse only past the noise)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wirekeep probe",
+      "entry": "src/dev/wirekeep_probe.gd",
+      "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
+      "area": "model-io"
     }
   ]
 }

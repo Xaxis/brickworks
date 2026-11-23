@@ -2924,18 +2924,26 @@ func edit_steps(op: String) -> void:
 	if read_only:
 		return
 	var steps: StepsBar = app.get("_steps")
-	bar.say(change_steps(op, Array(builder.selection.keys()), steps.current_step()))
+	var said: String = change_steps(op, Array(builder.selection.keys()), steps.current_step(), true)
+	if not said.is_empty():
+		bar.say(said)
 
 
 ## The same edit for [param ids], or the step [param at]: what the
 ## selection and the timeline give, or what a session over MCP names by
-## number (AppTools). Returns what was done, or why nothing was.
-func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
+## number (AppTools). Returns what was done, or why nothing was. With
+## [param ask], the person's own press: Plan steps asks first where it
+## cannot keep every step's look ([method _plan_again]), and says nothing
+## here.
+func change_steps(op: String, ids: Array, at: Instructions.Step, ask: bool = false) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
+	var waits: String = _steps_wait()
+	if not waits.is_empty():
+		return waits
 	if op in ["prev", "next", "new", "to"] and ids.is_empty():
 		return "select the parts first"
-	if not op in ["prev", "next", "new", "close"] and at == null:
+	if not op in ["prev", "next", "new", "close", "plan"] and at == null:
 		return "go to a step on the timeline first"
 	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number if at != null else -1
@@ -2943,6 +2951,8 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	var level: String = assemblies.entered if assemblies != null else ""
 	if op == "close":
 		return _close_step(level, skip)
+	if op == "plan":
+		return _plan_again(skip, ask)
 	# Parts of the sub-model whose step the timeline shows are its parts to
 	# move, as they are once it is entered: a booklet's steps are a
 	# sub-model's steps as often as the model's own.
@@ -3327,6 +3337,9 @@ const HELD_FIELDS: Array[String] = ["turn", "how", "zoom", "size", "page", "part
 func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
+	var waits: String = _steps_wait()
+	if not waits.is_empty():
+		return waits
 	if at == null:
 		return "go to a step on the timeline first"
 	# A name of only what draws nothing is refused, before the model is
@@ -4039,6 +4052,107 @@ func _close_step(level: String, skip: Dictionary) -> String:
 	store.touch()
 	(app.get("_steps") as StepsBar).refresh(-1, 0, planned)
 	return words
+
+
+## Why a step edit, or a step's look, waits: parts in hand. Picked up off the
+## model they are in no step, and put down they take the step they were
+## lifted from, which an edit made meanwhile has numbered again or taken
+## off; and any edit kept while they are held leaves Escape nothing to put
+## back. Plan steps asked over MCP while the person held a part put it down
+## alone in a step, every other part planned after it, and marked the steps
+## as the person's (sk2review F2). The same for the timeline, the keys and
+## every session's tool, as all come here. "" when nothing is held.
+func _steps_wait() -> String:
+	if builder != null and builder.is_carrying():
+		return "the parts in hand are in no step: put them down, or press Escape, first"
+	return ""
+
+
+## The model's steps worked out afresh from the model as it is, its own taken
+## off, as a model nobody gave steps has them: the timeline's Plan steps and
+## edit_steps "plan", one undo (AuthorSteps.cleared). A model opens in the
+## steps its file was saved in, and is planned again only when asked, here
+## (stepkeep2); a save writes the steps worked out then. Not someone else's
+## file, whose author's steps are kept as they made them.
+##
+## A step with a look of its own (a name, notes, a page, a zoom, a turn) keeps
+## it with its parts: the worked-out steps are given to the model in place of
+## its own (AuthorSteps.adopt_plan), still whoever's they were
+## (BrickWorld.steps_own: a step named made them the person's, saved with
+## AUTHORED_STEPS, so another program, an older build and Into this model
+## keep each name on its step), and each look goes to the step most of its
+## parts went to (BookletLooks.carried). Up to sk2fix every one went without a word, and
+## after a save was lost (sk2review F5). Where two such steps' parts come to
+## share one step, one name and page stand: with [param ask] (the person's
+## press) that is asked first, how many said, and else said after.
+func _plan_again(skip: Dictionary, ask: bool = false) -> String:
+	if store._live_source() != null:
+		return "these are the steps of the file's author, kept as they made them"
+	if not AuthorSteps.any(world, skip):
+		return "the steps are worked out already, from the model as it is"
+	var was: Dictionary = world.step_looks.duplicate(true)
+	var whose: bool = world.steps_own
+	var own: int = BookletLooks.own_count(was)
+	# Every step's look, a turn too: nothing where no step has one.
+	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
+	var undo: Array = AuthorSteps.cleared(world, skip)
+	if not looked.is_empty():
+		undo.append_array(AuthorSteps.adopt_plan(world, library, skip))
+		undo.append_array(BookletLooks.carried(world, was, looked, skip))
+		if world.steps_own != whose:
+			undo.append({"undo": "stepsown", "own": world.steps_own})
+			world.steps_own = whose
+		# Applied in the order kept, each part's first entry is its step
+		# before the press (AuthorSteps.squash); and none where the press
+		# changed nothing, as a second press does.
+		undo = AuthorSteps.squash(undo, world).filter(func(entry: Dictionary) -> bool:
+			match str(entry["undo"]):
+				"stepsown":
+					return bool(entry["own"]) != world.steps_own
+				"steplooks":
+					return entry["looks"] != world.step_looks
+			return true)
+	if undo.is_empty():
+		return "the steps are as they were"
+	var shared: int = own - BookletLooks.own_count(world.step_looks)
+	if shared > 0 and ask:
+		_take_back(undo)
+		_ask_plan(shared, own)
+		return ""
+	var words: String = "worked the steps out again from the model as it is"
+	if shared > 0:
+		words = ("worked the steps out again from the model as it is: %d of the %d steps with "
+			+ "a name, notes or a page of their own share a step with another now, where one "
+			+ "name and page stand") % [shared, own]
+	elif own > 0:
+		words = "worked the steps out again from the model as it is, each step's name, notes and page with its parts"
+	builder.record(undo, words)
+	store.adopt()
+	store.touch()
+	(app.get("_steps") as StepsBar).replan()
+	return words
+
+
+var _plan_asked: ConfirmationDialog
+
+
+## Plan steps, pressed where [param shared] of the [param own] steps with a
+## look of their own would share a step with another: asked first, and done
+## only on Plan steps (Cancel changes nothing).
+func _ask_plan(shared: int, own: int) -> void:
+	if _plan_asked == null:
+		_plan_asked = ConfirmationDialog.new()
+		_plan_asked.title = "Plan steps"
+		_plan_asked.ok_button_text = "Plan steps"
+		_plan_asked.dialog_autowrap = true
+		_plan_asked.min_size = Vector2i(420, 0)
+		_plan_asked.confirmed.connect(func() -> void:
+			bar.say(change_steps("plan", [], null)))
+		add_child(_plan_asked)
+	_plan_asked.dialog_text = tr("%d of the %d steps with a name, notes or a page of their own "
+		+ "would share a step with another, where one name and page stand: their notes are "
+		+ "kept. One undo brings them back.") % [shared, own]
+	_plan_asked.popup_centered()
 
 
 ## Where the timeline's step is among the author's: [section, step], or
