@@ -641,33 +641,78 @@ float part_bell(uint which, uint salt) {
 // batch it came from and how it has aged. Measured on the bench's three set
 // photographs, between neighbouring parts of one colour facing one way, the
 // CIEDE2000 is 2 to 4 (yellow 2.1, reds 3.2 and 4.2, whites 2.6 and 4.2),
-// most of it hue and chroma (1.0 to 2.6), a red's hue spread 1 to 3 degrees,
-// a white's b* 3.7 to 10.3. At [param amount] 1 a part's hue turns by a bell
-// of about 1.4 degrees (sd), its chroma by 3.5 percent, its lightness by 2.5
-// and a pale part goes a hair warmer or cooler: two parts then differ by
-// CIEDE2000 1.8 to 2.3 on the bench's colours, no more than the photographs.
+// hue and chroma 1.0 to 2.6 of it. Turned in Oklab, so a stray is as far to
+// the eye in every colour: at [param amount] 1 a part's hue turns by a bell
+// of 2 degrees (sd), its chroma by 4 percent and its light by 6 (a pale
+// part's by 2, a pale part's whites already strayed by its age), and a pale
+// part goes a hair warmer or cooler. A saturated red's hue is lost to the
+// camera's gamut (its green and blue are 0 in the picture), so on a red the
+// light carries it.
+vec3 oklab_of(vec3 c) {
+	vec3 lms = vec3(dot(c, vec3(0.4122214708, 0.5363325363, 0.0514459929)),
+		dot(c, vec3(0.2119034982, 0.6806995451, 0.1073969566)),
+		dot(c, vec3(0.0883024619, 0.2817188376, 0.6299787005)));
+	lms = sign(lms) * pow(abs(lms), vec3(1.0 / 3.0));
+	return vec3(dot(lms, vec3(0.2104542553, 0.7936177850, -0.0040720468)),
+		dot(lms, vec3(1.9779984951, -2.4285922050, 0.4505937099)),
+		dot(lms, vec3(0.0259040371, 0.7827717662, -0.8086757660)));
+}
+
+vec3 linear_of(vec3 o) {
+	vec3 lms = vec3(dot(o, vec3(1.0, 0.3963377774, 0.2158037573)),
+		dot(o, vec3(1.0, -0.1055613458, -0.0638541728)),
+		dot(o, vec3(1.0, -0.0894841775, -1.2914855480)));
+	lms = lms * lms * lms;
+	return vec3(dot(lms, vec3(4.0767416621, -3.3077115913, 0.2309699292)),
+		dot(lms, vec3(-1.2684380046, 2.6097574011, -0.3413193965)),
+		dot(lms, vec3(-0.0041960863, -0.7034186147, 1.7076147010)));
+}
+
 vec3 batch_of(vec3 body, uint which, float amount) {
 	float lum = dot(body, vec3(0.2126, 0.7152, 0.0722));
-	vec3 chroma = body - vec3(lum);
-	float turn = radians(4.2) * part_bell(which, 1u) * amount;
-	const vec3 grey = vec3(0.57735027);
-	chroma = chroma * cos(turn) + cross(grey, chroma) * sin(turn) + grey * dot(grey, chroma) * (1.0 - cos(turn));
-	chroma *= 1.0 + 0.105 * part_bell(which, 2u) * amount;
-	vec3 out_colour = max(vec3(lum) * (1.0 + 0.075 * part_bell(which, 3u) * amount) + chroma, vec3(0.0));
 	float spread = max(max(body.r, body.g), body.b) - min(min(body.r, body.g), body.b);
 	float pale = smoothstep(0.12, 0.55, lum) * (1.0 - smoothstep(0.04, 0.2, spread));
-	float warm = 0.06 * part_bell(which, 4u) * amount * pale;
-	return out_colour * vec3(1.0 + 0.3 * warm, 1.0 + 0.1 * warm, 1.0 - warm);
+	vec3 lab = oklab_of(body);
+	float turn = radians(6.0) * part_bell(which, 1u) * amount;
+	vec2 ab = vec2(lab.y * cos(turn) - lab.z * sin(turn), lab.y * sin(turn) + lab.z * cos(turn));
+	ab *= 1.0 + 0.12 * part_bell(which, 2u) * amount;
+	ab.y += 0.006 * part_bell(which, 4u) * amount * pale;
+	vec3 out_colour = max(linear_of(vec3(lab.x, ab)), vec3(0.0));
+	return out_colour * (1.0 + 0.18 * (1.0 - 0.7 * pale) * part_bell(which, 3u) * amount);
 }
 
 // How much more a part has been handled than its set's age says
 // (photoreal8), 0 to [param amount]: most parts hardly at all, a few a lot
 // (the square of the part's own number), as the bench's set photographs
-// show it: of six white faces side by side on one truck, one rough with
-// scuffs and specks (L* spread 13 across it), the rest nearly clean (1 to 3).
+// show it: of six white faces side by side on one truck, the door's has a
+// dark scuff and specks (L* spread 15 across one), the rest are nearly
+// clean (0.2 to 3.8).
 float handled_of(uint which, float amount) {
 	float u = float(pcg(which * 3266489917u + 668265263u) & 0xffffu) / 65535.0;
 	return amount * u * u;
+}
+
+float part_unit(uint which, uint salt) {
+	return float(pcg(which * 2654435761u + salt * 40503u + 13u) & 0xffffu) / 65535.0;
+}
+
+// A fingertip's print where a hand pressed the part on (photoreal8), 0 to
+// 1 at a point of the part (its own space, [param lo] to [param hi] its
+// box): a patch about 12 by 15 mm (30 by 37 LDU) on one of its sides, its
+// skin's oil in ridges half a millimetre apart, strongest at the middle.
+float print_of(vec3 local, vec3 lo, vec3 hi, uint which) {
+	vec3 at = mix(lo, hi, vec3(part_unit(which, 41u), part_unit(which, 42u), part_unit(which, 43u)));
+	float side = part_unit(which, 44u);
+	if (side < 0.5) {
+		at.z = side < 0.25 ? lo.z : hi.z;
+	} else {
+		at.x = side < 0.75 ? lo.x : hi.x;
+	}
+	vec3 d = local - at;
+	float r = length(d / vec3(15.0, 18.0, 15.0));
+	float pressed = 1.0 - smoothstep(0.45, 1.0, r + 0.25 * gloss_noise(local * 0.15 + vec3(float(which & 255u))));
+	float ridge = 0.5 + 0.5 * sin(length(d * vec3(1.0, 0.8, 1.0)) * 5.0 + 2.5 * gloss_noise(local * 0.25));
+	return pressed * (0.35 + 0.65 * ridge);
 }
 
 // A stud's own number from 0 to 1 (photoreal8): by its place on its part
@@ -757,8 +802,17 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		float rubbed = 0.0;
 		if (scene.variety.y > 0.0) {
 			rubbed = handled_of(which, scene.variety.y) * (1.0 - smoothstep(0.2, 0.7, -ng.y));
-			// Its polish dulled as a whole, some parts glossier than the next.
-			s.coat_roughness += 0.09 * rubbed;
+			// Its polish its own, one part glossier than the next (a bell of
+			// 20 percent, sd), and dulled the more it has been handled.
+			s.coat_roughness = max(0.015, s.coat_roughness
+				* (1.0 + 0.6 * part_bell(which, 5u) * scene.variety.y)) + 0.12 * rubbed;
+			// The most handled third show a fingertip's print in what they
+			// mirror (a judge named "no fingerprints" among our tells).
+			float printed = smoothstep(0.4, 0.9, rubbed);
+			if (printed > 0.0) {
+				float oil = print_of(local, thing.box_min.xyz, thing.box_max.xyz, which) * printed;
+				s.coat_roughness = mix(s.coat_roughness, 0.24, 0.85 * oil);
+			}
 		}
 		if (age > 0.0) {
 			// Played with (photoreal4): a white or grey part yellows as ABS does
