@@ -132,6 +132,19 @@ whole cycle.
   it too. It is recorded while the page is open and shown, without slowing
   the page. Republish, and your next visit records the new version.
   Unpublish or delete your account, and the clip goes with it.
+- **Lists shared by a link, and one Save.** A list can now be shared by
+  its link alone: whoever has the link opens it, and it is on no profile,
+  in no gallery, in no search and in no sitemap. **Stop sharing** turns the
+  link off at once, and sharing again makes a new one. A wishlist you share
+  is shared this way unless you choose **Public**. A model's page has the
+  same **Save** as its card, one panel for Saved and your lists, and
+  Favourites is called **Saved** everywhere. The gallery's Collections are
+  **Lists** now, at brickworks.diy/gallery-lists; every old /collections
+  link still lands there.
+- **See an import before it is made.** **Add sets** on Your lists shows
+  what a Rebrickable, BrickLink or Brickset file (or numbers typed) would
+  add, what is there already and what no set has, before anything is
+  written; **Cancel** leaves everything as it was.
 - **Own, Want and your lists, on the website.** Every set in the library,
   every set's page and every model in the gallery has one control: **Own**
   (a set) or **Save** (a model) at a tap, with **Undo**, and a chevron for

@@ -170,7 +170,7 @@
     "test-account"
    ],
    "wait": "#models article.model img",
-   "alt": "The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Collections and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.",
+   "alt": "The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Lists and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.",
    "caption": "The gallery's front: Top, all time.",
    "features": [
     "ui:gallery page",

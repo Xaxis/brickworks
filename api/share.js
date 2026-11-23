@@ -318,7 +318,8 @@ import { bases, basesOf, basesPut, setBased, setFind } from "./_bases.js";
 import { altRowsOf, altSaid, keepAlts } from "./_alts.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, altHtml, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, altHtml, basedHtml, cardHtml, counted, keepHtml, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say,
+  themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -1238,8 +1239,11 @@ function nextRow(key, title, cards, all = "") {
 /// The action bar: Like, Save, Share, Comment, I built it and More, each an
 /// icon button that says its name and count (web/kit.js), never a count of
 /// none. web/model-page.js makes them work, asking to sign in first where
-/// one must be; it counts the comments as it lists them. [url] is the
-/// page's own address, an older version's its own.
+/// one must be; it counts the comments as it lists them. Save is the one a
+/// card has (web/card.js keepHtml, lists2a): Save at a tap, and its arrow
+/// the panel of your lists (web/keep.js), one panel and one request for a
+/// model wherever it is saved. [url] is the page's own address, an older
+/// version's its own.
 /// Open in Brickworks' second choice, With your Claude (claudelink,
 /// docs/MASTERPLAN.md "What only Brickworks can do" 6): the other half of
 /// the one control, which opens claudePanel under the row. Drawn hidden, and
@@ -1296,8 +1300,7 @@ function actionBar(origin, id, model, url = links(origin, id).url, file = "") {
   return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
     + iconButtonHtml({ icon: "like", name: say("Like"), count: model.likes, one: "like", many: "likes", pressed: false,
       labelled: true, attrs: `data-mark="like" title="${asText(say("Like it"))}"` })
-    + `<button type="button" class="icon-btn" data-mark="save" aria-label="${asText(say("Save"))}" aria-expanded="false" `
-      + `aria-controls="save-panel" title="${asText(say("Save it to your favourites or a collection"))}">${iconHtml("save")}</button>`
+    + keepHtml(`model:${id}`, model.name)
     + iconButtonHtml({ icon: "share", name: say("Share"),
       attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link, and the code to embed it"))}"` })
     + iconButtonHtml({ icon: "comment", name: say("Comment"), attrs: `data-mark="comment" title="${asText(say("Comments on it and its steps"))}"` })
@@ -1311,13 +1314,6 @@ function actionBar(origin, id, model, url = links(origin, id).url, file = "") {
       + `<button type="button" data-report="${asText(say("this model"))}" data-report-model="${id}" hidden>${asText(say("Report it"))}</button>`
       + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
     + `</div>`
-    // Save opens your lists, Favourites first (docs/SOCIAL.md D2), and a
-    // new collection's name; drawn by web/model-page.js once signed in.
-    + `<div class="save-panel" id="save-panel" hidden><p class="save-head">${asText(say("Save it to"))}</p>`
-    + `<div class="collect-list"></div>`
-    + `<form class="collect-new"><label class="visually-hidden" for="new-list">${asText(say("A new collection's name"))}</label>`
-    + `<input id="new-list" maxlength="80" placeholder="${asText(say("A new collection"))}">`
-    + `<button class="cta ghost" type="submit">${asText(say("Make it"))}</button></form></div>`
     + `<p class="said marks-said" role="status"></p>`
     + shareSheet(origin, id, model, url);
 }
@@ -1470,10 +1466,10 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     // Still being built (supabase/wip.sql): its Log has each version.
     isWip(versions) ? `<li><a class="pill wip" href="#versions">${asText(say("Work in progress"))}</a></li>` : "",
     Number(model.remixes) ? `<li><a class="pill" href="#remixes">${counted(model.remixes, "remix", "remixes")}</a></li>` : "",
-    // In the public collections it is in (docs/SOCIAL.md U11), each a card
-    // under Collections.
+    // In the public lists it is in (docs/SOCIAL.md U11), each a card under
+    // Lists.
     Number(lists?.count) ? `<li><a class="pill" href="#collections" data-lists="${Number(lists.count)}">`
-      + `${asText(say("In {collections}", { collections: counted(lists.count, "collection") }))}</a></li>` : "",
+      + `${asText(say("In {lists}", { lists: counted(lists.count, "list") }))}</a></li>` : "",
   ].join("");
   const tags = (model.tags || []).map((tag) =>
     `<li><a class="pill tag" href="${at}/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
@@ -1625,7 +1621,7 @@ function pageTabs(model, newest, inLists = 0, parts = null, log = newest > 1) {
   return `<nav class="tabs page-tabs" id="page-tabs" aria-label="${asText(say("On this page"))}">${tab("about", say("About"))}`
     + `${parts ? tab("parts", say("Parts"), parts.pieces) : ""}`
     + `${model.library ? "" : `${tab("comments", say("Comments"))}${tab("builds", say("Builds"), model.builds)}${tab("remixes", say("Remixes"), model.remixes)}`}`
-    + `${Number(inLists) ? tab("collections", say("Collections"), inLists) : ""}`
+    + `${Number(inLists) ? tab("collections", say("Lists"), inLists) : ""}`
     + `${log ? tab("versions", say("Log"), newest) : ""}</nav>`;
 }
 
@@ -1699,16 +1695,16 @@ function pickABrickNote(made) {
   return said.length ? `<p class="note pab-note">${said.map((one) => escapeHtml(one)).join(" ")}</p>` : "";
 }
 
-/// The public collections it is in (docs/SOCIAL.md U11, [PR-C]), each a card
+/// The public lists it is in (docs/SOCIAL.md U11, [PR-C]), each a card
 /// with its cover and whose it is, the one it was put in last first; only
 /// once it is in one, since a part that says nothing is a dead end.
 function listsSection(lists) {
   if (!lists || !Number(lists.count) || !lists.lists.length) return "";
   const more = Number(lists.count) - lists.lists.length;
-  return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">${asText(say("In collections"))}</h2>`
-    + `<p class="note">${asText(say("People put it in {collections}.", { collections: counted(lists.count, "public collection") }))}</p>`
+  return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">${asText(say("In lists"))}</h2>`
+    + `<p class="note">${asText(say("People put it in {lists}.", { lists: counted(lists.count, "public list") }))}</p>`
     + `<div class="list-cards">${lists.lists.map((list) => listCardHtml(list, lists.covers, { by: true })).join("")}</div>`
-    + (more > 0 ? `<p class="note">${asText(say("And {collections} more.", { collections: counted(more, "collection") }))}</p>` : "")
+    + (more > 0 ? `<p class="note">${asText(say("And {lists} more.", { lists: counted(more, "list") }))}</p>` : "")
     + `</section>`;
 }
 

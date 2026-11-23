@@ -53,7 +53,7 @@ STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # challenge is the header's Challenges (landing, 2026-11-22).
 OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "library.html": "/gallery",
        "challenge.html": "/challenge",
-       "collections.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
+       "gallery-lists.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
        "settings.html": "/profile", "plans.html": "/plans", "share-model.html": "/gallery"}
 
 

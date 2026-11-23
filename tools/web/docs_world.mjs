@@ -198,6 +198,33 @@ S["/api/people?op=profile&handle=test-builder"] = { handle: BY.handle, name: BY.
   levels: levels.map(([track, n, level, of, reached, next]) => ({ track, n, level, of, reached, next })) };
 S["/api/people?op=favourites"] = { page: 1, per_page: 24, more: false, models: [card(byId.DocsShop01), card(byId.DocsOwl001)] };
 S["/api/people?op=following"] = { mine: true, ready: true, following: [] };
+// What keep.js asks of every card and a model's page (api/_mylists.js keeps):
+// Saved, and each list with who sees it, Ideas for later shared by its link
+// (lists2a) so the panel shows all three.
+const LINKED = "DocsList04";
+const seen = (l) => (l.public ? "public" : l.id === LINKED ? "link" : "private");
+const listed = (l) => ({ id: l.id, name: l.name, description: l.description, public: l.public, visibility: seen(l),
+  link: seen(l) === "link" ? `https://brickworks.diy/c/${l.id}?link=DocsLinkKey0000000000a` : null, kind: null,
+  sort: "added", cover: null, down: false, sets: 0, models: l.models.length, count: l.models.length,
+  updated_at: "2026-11-02T10:00:00Z" });
+S["/api/people?op=keeps"] = { signed_in: true, want: null, lists: LISTS.map((l) => listed(l)),
+  sets: {}, models: Object.fromEntries(rows.map((r) => [r.id, { saved: r.id === main.id,
+    lists: LISTS.filter((l) => l.models.includes(r.id)).map((l) => l.id) }])) };
+// Your lists (/lists, api/_mylists.js yourLists): the same lists, and one
+// only you see, Weekend builds, to share (lists2a: Share asks who may open
+// it, Anyone with the link chosen); Small and quick's Add sets answered
+// with what it would add, nothing written (op=import_preview).
+const WEEKEND = { id: "DocsList05", name: "Weekend builds", public: false, models: ["DocsShop01", "DocsHous01", "DocsTree01"],
+  description: null, followers: 0 };
+S["/api/people?op=lists"] = { lists: [...LISTS, WEEKEND].map(listed), owned: { sets: 0, unique: 0, pieces: 0, shown: false },
+  saved: { models: 1 }, profile: { handle: BY.handle } };
+for (const l of [WEEKEND, LISTS[1]]) {
+  S[`/api/people?op=list_items&id=${l.id}`] = { ...listed(l), mine: true, by: { handle: BY.handle, name: BY.name },
+    url: `https://brickworks.diy/c/${l.id}`, total: l.models.length, page: 1, more: false,
+    items: l.models.map((id) => ({ key: `model:${id}`, kind: "model", card: card(byId[id]) })) };
+}
+S["/api/people?op=import_preview"] = { into: LISTS[1].id, matched: ["10497-1", "75192-1", "42115-1"], already: ["6080-1"],
+  missing: ["99999-1"], counts: { matched: 3, already: 1, missing: 1 } };
 S["/api/people?op=alike"] = { handle: BY.handle, name: BY.name, designers: [], yours: true };
 S["/api/people?op=follows&handle=test-builder"] = { handle: BY.handle, ready: true, followers: 6, following: 0, shows: true,
   you_follow: false, mine: true, may: false, why_not: "That is you.", signed_in: true };

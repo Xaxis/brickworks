@@ -32,6 +32,7 @@
 //   "steps"     after the page is up, a person's: {"click": selector},
 //               {"hover": selector}, {"press": "Escape"}, {"wait": selector}
 //               (for up to "within" ms, 30 s unless said), {"scroll": selector},
+//               {"fill": selector, "text": "typed"},
 //               {"pause": ms}
 //   "crop"      a selector, a list of them (the box round them all), or
 //               "viewport"; "pad" round it
@@ -215,6 +216,7 @@ async function act(page, step) {
   else if (step.press) await page.keyboard.press(step.press);
   else if (step.wait) await page.waitForSelector(step.wait, { state: "visible", timeout: Number(step.within || 30000) });
   else if (step.scroll) await page.locator(step.scroll).first().scrollIntoViewIfNeeded();
+  else if (step.fill) await page.locator(step.fill).first().fill(String(step.text ?? ""));
   else if (!("pause" in step)) throw new Error(`a step this flow does not know: ${JSON.stringify(step)}`);
   await page.waitForTimeout(Number(step.pause ?? 300));
 }

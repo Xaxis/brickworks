@@ -103,6 +103,7 @@ ui:a link that opens playing
 ## Pictures and tabs {#tabs}
 
 Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections** once it is in one, and **Log** once it has [more than one version](/docs/sharing#versions) or is [work in progress](/docs/sharing#progress).
+Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Lists** once it is in a public one, and **Versions** once it has [more than one](/docs/sharing#versions).
 
 <!-- covers
 ui:model page pictures and tabs
@@ -124,6 +125,8 @@ ui:a model's log
 
 - **Build it**, **Open in Brickworks** (a copy in your own models, to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`; on a phone it is in **More**).
 - **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
+- **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** (the model as LDraw, `/m/<id>.mpd`).
+- **Like**, **Save** (into Saved at a tap, or by its arrow into any of [your lists](/docs/lists#save-card): the same control a card has), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
 - **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first. Building it with [Build it](#build-it), its last step offers the same photo where you finish ([Show your build](#show-your-build)).
 - **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead.
@@ -253,7 +256,7 @@ lib:more by and similar models
 
 ## Report it {#report}
 
-**Report it** (under **More** on a model, a profile or a collection) tells Brickworks something should not be there; a copyright or trademark claim goes to [takedown requests](/takedown).
+**Report it** (under **More** on a model, a profile or a list) tells Brickworks something should not be there; a copyright or trademark claim goes to [takedown requests](/takedown).
 
 <!-- covers
 ui:report it

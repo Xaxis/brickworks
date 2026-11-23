@@ -47,7 +47,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
 /* What one tab has alone (data-list: models, sets, builds or
    collections), shown while it is the tab (<html data-tab>, gallery.js;
-   the copies at /library, /builds and /collections say theirs from the
+   the copies at /library, /builds and /gallery-lists say theirs from the
    first frame). The models' are Top's, New's and Following's. */
 html[data-tab="sets"] [data-list]:not([data-list~="sets"]),
 html[data-tab="builds"] [data-list]:not([data-list~="builds"]),
@@ -234,14 +234,14 @@ html[data-tab="builds"] .toolbar { position: static; }
 				<!-- What to browse, each tab at its own address and switched in place
 				     (gallery.js): Top (builds, remixes, Tested), New and Following once
 				     signed in, when the list says it can, the models; then photos of
-				     real builds, collections and every real set. -->
+				     real builds, lists and every real set. -->
 				<nav class="tabs" id="tabs" aria-label="The gallery">
 					<a href="/gallery" data-tab="top"
 						title="Built most, remixed most and Tested first. Views count for nothing.">Top</a>
 					<a href="/gallery?sort=newest" data-tab="new">New</a>
 					<a href="/gallery?following=1" data-tab="following" hidden>Following</a>
 					<a href="/builds" data-tab="builds" aria-current="page">Builds</a>
-					<a href="/collections" data-tab="collections">Collections</a>
+					<a href="/gallery-lists" data-tab="collections">Lists</a>
 					<a href="/library" data-tab="sets">Sets</a>
 				</nav>
 				<label class="top-window" id="window-label" data-list="models" hidden><span class="visually-hidden">Top over</span>
@@ -295,7 +295,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 			<div class="pills scroller inset" id="themes" role="group" aria-label="Theme" data-list="sets">
 				<button type="button" class="pill" data-pick="" aria-pressed="true">All</button>
 			</div>
-			<div class="pills scroller inset" id="orders" role="group" aria-label="Which collections first" data-list="collections">
+			<div class="pills scroller inset" id="orders" role="group" aria-label="Which lists first" data-list="collections">
 				<button type="button" class="pill" data-order="recent" aria-pressed="true">Recently added to</button>
 				<button type="button" class="pill" data-order="followed" aria-pressed="false">Most followed</button>
 			</div>
@@ -388,15 +388,15 @@ html[data-tab="builds"] .toolbar { position: static; }
 			<div class="actions"><a class="cta small" href="/gallery">Find a model to build</a></div>
 		</div>
 		<p class="state" id="collections-empty" data-list="collections" hidden>
-			No public collections yet. Anyone can make one: on a model's page, press Save to put it in a collection,
-			then make the collection public on your profile. It is listed here once a model in it is in the gallery.
+			No public lists yet. Anyone can make one: on any set or model, press the arrow beside Own or Save and make a
+			list, then make it public from Your lists. It is listed here once a model in it is in the gallery.
 		</p>
 		<!-- Nothing matching what was asked, in the tab's words, and the way back. -->
 		<div class="state" id="nothing" hidden>
 			<p class="said" data-list="models">Nothing in the gallery matches that.</p>
 			<p class="said" data-list="sets">No set matches that.</p>
 			<p class="said" data-list="builds">No build matches that.</p>
-			<p class="said" data-list="collections">No collection matches that.</p>
+			<p class="said" data-list="collections">No list matches that.</p>
 			<button type="button" class="link" id="clear">Clear the search and the filters</button>
 		</div>
 		<!-- Following with nothing yet, or Top over a quiet week: what goes
@@ -492,7 +492,7 @@ html[data-tab="builds"] .toolbar { position: static; }
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenges</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

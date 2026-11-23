@@ -23,9 +23,11 @@
 // for carries how the visit came, kept for the tab (web/theme.js,
 // src/account/account.gd; onfix, 2026-11-18).
 //
-// Then the throwaway shares a model, gives it a clip and deletes its
-// account as a person does: the clip's file must be gone from storage
-// (unit turntable, api/_erase.js).
+// Then the throwaway shares a model, gives it a clip, shares a list by its
+// link and deletes its account as a person does: the clip's file must be
+// gone from storage (unit turntable, api/_erase.js), and the list with its
+// link, its row gone from the table and its link a 404 (lists2a,
+// supabase/lists_link.sql: model_collections cascades from auth.users).
 //
 // --master also signs in as MASTER_EMAIL (minted the same way: no email is
 // sent) and checks the admin page lists the accounts. It signs the owner's
@@ -324,10 +326,29 @@ try {
   check(sent.status === 200, `...and gives it a clip: ${sent.status}`);
   const before = await clipsOf(id);
   check(before.includes(`${id}.webm`), `its clip is in storage: ${before.join(", ") || "nothing"}`);
+  // A list shared by its link only, the model in it.
+  const made = await (await asked("/api/people?op=collection", { method: "POST", token,
+    body: { name: `Link only ${id}`, public: false } })).json().catch(() => ({}));
+  const listId = String(made.id || "");
+  await asked("/api/people?op=keep", { method: "POST", token, body: { list: listId, items: [`model:${id}`], on: true } });
+  const linked = await (await asked("/api/people?op=list_link", { method: "POST", token, body: { id: listId, on: true } }))
+    .json().catch(() => ({}));
+  const linkPath = linked.link ? new URL(linked.link).pathname + new URL(linked.link).search : "";
+  const opens = linkPath ? (await asked(`${linkPath}&tests=1`)).status : 0;
+  check(/^[A-Za-z0-9]{10}$/.test(listId) && linked.visibility === "link" && opens === 200,
+    `...and a list shared by its link alone: ${listId || "none"}, ${linked.visibility || linked.error || "?"}, its link opens ${opens}`);
+  const rowsOf = async (table, query) => {
+    const reply = await fetch(`${supabase}/rest/v1/${table}?${query}&select=id`, { headers: { apikey: secret,
+      authorization: `Bearer ${secret}` } });
+    return reply.ok ? (await reply.json()).length : -1;
+  };
   const gone = await asked("/api/account?op=delete", { method: "POST", token, body: { confirm: email } });
   check(gone.status === 200, `the account deleted as a person deletes it, its address typed again: ${gone.status}`);
   const after = await clipsOf(id);
   check(after.length === 0, `its model's clip is gone from storage with it: ${after.join(", ") || "nothing left"}`);
+  const listRows = listId ? await rowsOf("model_collections", `id=eq.${listId}`) : -1;
+  const linkNow = linkPath ? (await asked(`${linkPath}&tests=1&fresh=${Date.now()}`)).status : 0;
+  check(listRows === 0 && linkNow === 404, `its link-only list is gone with it: ${listRows} rows left, its link ${linkNow}`);
   const served = await asked(`/m/${id}.webm?fresh=${Date.now()}`);
   check(served.status === 404, `and its address answers 404: ${served.status}`);
 } catch (trouble) {
