@@ -22,15 +22,15 @@ lib:directory
 
 The [home page](/) is a feed of what builders make and say. Signed out, one line over it says what Brickworks is, a search finds models, builders and real sets as you type, and **Start building** opens the app. Then the feed, one post after another:
 
-- **A build**: who made it, with **Follow**; its picture; how it was made (**Designed with the assistant**, **Built by hand**, **Made with Brickify**) and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). The newest comment is under it, with **Add a comment**.
-- **A thread in [Talk](/docs/talk)**, with its latest reply and **Reply**.
+- **A build**: who made it, with **Follow**; its picture; how it was made (**Designed with the assistant**, **Built by hand**, **Made with Brickify**) and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). Its newest two comments are under it, with **Add a comment** and, when it has more, **n more**, which opens the rest in the post.
+- **A thread in [Talk](/docs/talk)**, with its latest reply and **Reply**; its replies count opens the whole thread.
 - **This month's [challenge](/docs/challenges)**, its days left and its entries, with **Enter the challenge**.
 - **Try the studio, right here**: **Try it here** puts the studio itself in the post, a model on it to turn, play with and build step by step. **Open the whole studio** opens a copy of it as yours.
 - **Builders to follow**, and photos of models people [built for real](/docs/model-pages#actions).
 
 ![The home page on a computer: Gallery, Talk, Challenges and Docs across the top; Build, share and find LEGO® models over the search and Start building; then the feed's first row, This week's pick first, each post with who made it, its picture, how it was made, its likes and Open in the studio, Remix, Build it and Parts.](/docs/img/home-first-screen.webp "The home page: one line, then the feed.")
 
-Press **3D** on a picture, or rest the pointer on it, to turn the model in its place; [[Esc]] puts the picture back. Like, a comment and Follow ask you to sign in there and then, and go on once you are in; what you typed is kept. **Show more** at the end adds more posts.
+Press **3D** on a picture, or rest the pointer on it, to turn the model in its place; [[Esc]] puts the picture back. **Add a comment** and **Reply** open the box right in the post: what you post shows there at once, under the latest, and you never leave the feed. Like, a comment and Follow ask you to sign in there and then, and go on once you are in; what you typed is kept and posted from where you were. **Show more** at the end adds more posts.
 
 Signed in, the line gives way to **Share a build**, which opens [the share panel](/docs/sharing) in the app for your last model, and three tabs: **For you**, everything, as you have it; **Following**, what the people you follow made; and **New**, the newest first. The arrow keys move along the tabs. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
 
@@ -39,6 +39,20 @@ Signed in, the line gives way to **Share a build**, which opens [the share panel
 <!-- covers
 ui:the home page's feed
 ui:the home page's search
+-->
+
+### Saying something {#composer}
+
+The box is the same wherever you say something on Brickworks: in a post of the feed, in a row of [Talk](/docs/talk), under a model's [comments](/docs/model-pages#comments) and at the end of a thread.
+
+- [[Enter]] starts a new line; it never posts. [[Ctrl]]+[[Enter]] (on a Mac [[Cmd]]+[[Enter]]) or **Post** posts it, once however often you press.
+- [[Esc]] closes a box opened in a post or a row, and you are back on the button that opened it.
+- Under the box are the [community guidelines](/guidelines), and near the most a post takes, how many characters are left.
+- Signed out, **Post** asks you to sign in with a code by email; once you are in it posts what you wrote, from the same place.
+- If you cannot post there (under 13, comments turned off, a locked thread), the box says why instead.
+
+<!-- covers
+ui:saying something in place
 -->
 
 ## Find a model {#find}

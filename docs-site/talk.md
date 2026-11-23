@@ -46,7 +46,7 @@ ui:a thread in talk
 
 - **Paste a link** to a model, a step of one (open it in the viewer at that step and copy the address), a set or the challenge on Brickworks: it shows as a card with its picture. A part number from Rebrickable or BrickLink shows as a part. A link to any other site stays plain words.
 - **Write `@` and a handle** to tell somebody: they see it on their [Notifications](/docs/profiles#notifications). Up to three a post.
-- **Reply** answers the whole thread; Reply on a post says whom you are answering.
+- **Reply** answers the whole thread; Reply on a post says whom you are answering. Each row of a board has **Reply** too, which opens the box in the row: your reply shows under it and you stay on the board. The box works as [everywhere on Brickworks](/docs/gallery#composer): [[Ctrl]]+[[Enter]] posts, [[Enter]] is a new line, and signed out, **Post** signs you in and then posts what you wrote.
 - **Edit** and **Remove** are on your own posts. Removing the first post removes the whole thread.
 - **Follow** tells you of every new post in the thread, on your [Notifications](/docs/profiles#notifications) and, where you turned it on, as [this device's notification](/docs/profiles#settings). You follow a thread you started or replied in; press **Following** to stop. Mentions and replies to your own thread reach you either way.
 
