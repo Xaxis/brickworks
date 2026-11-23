@@ -244,6 +244,31 @@ func resolve_pin(token: String, id: int, resolved: bool) -> Dictionary:
 		JSON.stringify({"id": id, "resolved": resolved}))
 
 
+## Ask the builders (askhelp, 2026-11-23): a Help thread in Talk about the
+## step open in the studio, as the session's account: {model, version?, step
+## (or null), parts: [{part, colour, at, turn}], title, body}, the model one
+## of theirs with a link. 201 with {thread, post, ask, path, url, every}; a
+## refusal says why in {error} (the age rule, Talk's limits, a part not in
+## that version).
+func talk_ask(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=talk_ask", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+## The asks of [param model], the caller's, and their answers on parts, as
+## they may see them (api/_asks.js asksOn): {code, body: {asks: [{thread,
+## title, path, ask, answers: [{id, body, at, by, handle, pin}]}], open,
+## every}}. 403 for somebody else's model.
+func talk_asks(token: String, model: String) -> Dictionary:
+	if not is_id(model):
+		return {"code": 0, "body": null}
+	return await _fetch("/api/people?op=talk_asks&model=" + model.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
+## Where a Talk thread's [param path] is, on this deployment.
+static func talk_link(path: String) -> String:
+	return Deployment.api_base() + (path if path.begins_with("/") else "/" + path)
+
+
 ## A real build's photos (api/people.js, api/_builds.js), as the step
 ## player's last step posts one (MakeCard). The photos of [param id] as the
 ## account asking may act on them: {code, body: {owner, left, photos, mine}}

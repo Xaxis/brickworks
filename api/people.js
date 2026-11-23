@@ -181,6 +181,10 @@
 //   GET  ?op=talk_page, talk, talk_thread, talk_latest, talk_rss, talk_model,
 //        talk_photo               Talk, the builders' forum: /talk, a board,
 //                                 a thread, its feeds and photos (api/_talk.js)
+//   GET  ?op=talk_asks          (session) a model's asks and their answers on
+//                                 parts, for its studio (api/_asks.js)
+//   POST ?op=talk_ask           (session) Ask the builders: a Help thread about
+//                                 the open step of a shared model (api/_asks.js)
 //   POST ?op=talk_start, talk_reply, talk_change, talk_follow, talk_read,
 //        talk_photo_start         (session) a thread started, a post written,
 //                                 edited or removed, a thread followed or
@@ -301,8 +305,8 @@ import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, challengeRules, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 import { promptOfAnswer } from "./_prompts.js";
 import {
-  reportPost, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead, talkReply,
-  talkRss, talkStart, talkThread,
+  reportPost, talkAsk, talkAsks, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead,
+  talkReply, talkRss, talkStart, talkThread,
 } from "./_talk.js";
 import { pushChoose, pushSend, pushState } from "./_push.js";
 
@@ -2128,6 +2132,7 @@ async function handler(request, response) {
       if (op === "talk_rss") return await talkRss(request, response, { origin: originOf(request) });
       if (op === "talk_model") return await talkModel(request, response);
       if (op === "talk_photo") return await talkPhoto(request, response);
+      if (op === "talk_asks") return await talkAsks(request, response);
       // This device's pushes (api/_push.js).
       if (op === "push") return await pushState(request, response);
     } else if (request.method === "POST") {
@@ -2176,6 +2181,7 @@ async function handler(request, response) {
       if (op === "owned_choice") return await ownedChoice(request, response);
       if (op === "talk_start") return await talkStart(request, response, { origin: originOf(request) });
       if (op === "talk_reply") return await talkReply(request, response, { origin: originOf(request) });
+      if (op === "talk_ask") return await talkAsk(request, response, { origin: originOf(request) });
       if (op === "talk_change") return await talkChange(request, response, { origin: originOf(request) });
       if (op === "talk_follow") return await talkFollow(request, response);
       if (op === "talk_read") return await talkRead(request, response);

@@ -382,6 +382,166 @@
    ]
   },
   {
+   "id": "talk-ask",
+   "source": "site",
+   "route": "/talk/t/15",
+   "viewport": [
+    1280,
+    1180
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "#talk-posts .talk-on-part",
+   "db": {
+    "rest/v1/rpc/talk_thread_page": {
+     "thread": {
+      "id": 15,
+      "board": "help",
+      "title": "How should I build step 3? The doors will not stay shut",
+      "by": {
+       "name": "Test builder",
+       "handle": "test-builder"
+      },
+      "said": "The doors swing open on their own at step 3.",
+      "at": "2026-11-20T10:00:00Z",
+      "last_at": "2026-11-20T16:20:00Z",
+      "last_by": {
+       "name": "Mira Okafor",
+       "handle": "mira-builds"
+      },
+      "replies": 1,
+      "model": null,
+      "photo": null,
+      "hidden": false,
+      "locked": false,
+      "pinned": false,
+      "unread": false,
+      "following": false,
+      "mine": false,
+      "by_house": false,
+      "challenge": null
+     },
+     "posts": [
+      {
+       "id": 51,
+       "by": "Test builder",
+       "handle": "test-builder",
+       "body": "The doors swing open on their own at step 3. How would you hold them shut, but still let them open?",
+       "at": "2026-11-20T10:00:00Z",
+       "first": true,
+       "answers": null,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": true
+      },
+      {
+       "id": 53,
+       "by": "Mira Okafor",
+       "handle": "mira-builds",
+       "body": "Swap this for a 1 x 2 hinge brick one plate lower: the door then rests on the sill and stays where you leave it.",
+       "at": "2026-11-20T16:20:00Z",
+       "first": false,
+       "answers": 51,
+       "photo": null,
+       "mine": false,
+       "hidden": false,
+       "hidden_by": null,
+       "edited_at": null,
+       "by_house": false,
+       "by_starter": false
+      }
+     ],
+     "blocked_some": false,
+     "you": {
+      "trouble": "sign_in",
+      "standing": null,
+      "pool": true,
+      "starter": false
+     }
+    },
+    "rest/v1/shared_models?id=in.(DocsSprt01)": [
+     {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "has_image": true,
+      "has_thumb": false,
+      "updated_at": "2026-10-02T09:00:00Z"
+     }
+    ],
+    "rest/v1/rpc/talk_asks_of": [
+     {
+      "thread": 15,
+      "ask": {
+       "model": "DocsSprt01",
+       "version": 1,
+       "step": 3,
+       "parts": [
+        {
+         "part": "3937",
+         "colour": 71,
+         "at": [
+          -40,
+          -48,
+          20
+         ],
+         "name": "Hinge Brick 1 x 2 Base"
+        },
+        {
+         "part": "3938",
+         "colour": 4,
+         "at": [
+          -40,
+          -72,
+          20
+         ],
+         "name": "Hinge Brick 1 x 2 Top Plate"
+        }
+       ],
+       "name": "Sports car and its driver",
+       "has_image": true,
+       "newest": 1
+      }
+     }
+    ],
+    "rest/v1/rpc/talk_pins_of": [
+     {
+      "post": 53,
+      "pin": {
+       "part": "3937",
+       "colour": 71,
+       "at": [
+        -40,
+        -48,
+        20
+       ],
+       "name": "Hinge Brick 1 x 2 Base"
+      }
+     }
+    ]
+   },
+   "alt": "A question asked from the studio in Help: the sports car's picture with See step 3 in 3D, Asked from the studio, Step 3 of Sports car and its driver, the two parts asked about named with their colours, and a builder's answer that says On the Hinge Brick 1 × 2 Base.",
+   "caption": "Ask the builders: the step in 3D, the parts asked about, an answer on a part.",
+   "features": [
+    "ui:ask the builders from the studio",
+    "ui:a thread in talk"
+   ],
+   "answers": {
+    "/m/DocsSprt01.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    }
+   }
+  },
+  {
    "id": "talk-wip",
    "source": "site",
    "route": "/talk/t/14",

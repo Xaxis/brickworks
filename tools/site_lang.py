@@ -169,7 +169,8 @@ COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})
 TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js", "api/share.js",
         "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js",
         "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js", "api/_beta.js",
-        "api/_notifications.js", "api/oauth.js", "api/_mylists.js", "api/_blocks.js", "api/_push.js", "api/_talk.js")
+        "api/_notifications.js", "api/oauth.js", "api/_mylists.js", "api/_blocks.js", "api/_push.js", "api/_talk.js",
+        "api/_asks.js")
 # And what a profile can be refused with, in First steps, the profile's own
 # page and settings, in the functions that refuse it: every sentence, ended
 # with a full stop or not.
@@ -222,7 +223,10 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "api/_talk.js": ("cleanPost", "cleanTitle", "bodyHtml", "boardSaid", "whenSaid", "threadRowHtml", "embedsHtml",
                              "postHtml", "postsHtml", "talkingHtml", "boardsHtml", "threadSchema", "rssOf", "listPageHtml",
                              "threadPageHtml", "newPageHtml", "talkPage", "mayWrite", "missingHtml", "talkShell"),
-            "web/talk.js": ()}
+            "web/talk.js": (),
+            # Ask the builders (askhelp, 2026-11-23): the ask at the top of
+            # its thread and an answer's part.
+            "api/_asks.js": ("askHtml", "pinLineHtml")}
 # And what the site is put together with says on a page (tools/site.py: the
 # changelog's heads, links and dates), each say("...") of it.
 WRITTEN = ("tools/site.py",)

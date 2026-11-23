@@ -134,3 +134,31 @@
    Post waits once over; the words are never cut. */
 .talk-count { display: block; margin-top: var(--s-1, 4px); min-height: 1.2em; }
 .talk-count.bad { color: var(--bad); }
+
+/* A question asked from the studio (Ask the builders, api/_asks.js): the
+   model in 3D at the asked step, in its picture's place (view3d.css), the
+   parts asked about, and each answer's part. */
+.talk-ask {
+	display: grid; gap: var(--s-4); margin: var(--s-4) 0 var(--s-5); padding: var(--s-4);
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+@media (width >= 760px) { .talk-ask { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; } }
+.talk-ask.gone { display: block; }
+.talk-ask-frame { position: relative; }
+.talk-ask .picture {
+	position: relative; display: block; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
+	background: var(--picture-ground); aspect-ratio: 1200 / 630; touch-action: pan-y pinch-zoom; color: inherit; text-decoration: none;
+}
+.talk-ask .picture img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.talk-ask-about p { margin: 0 0 var(--s-3); }
+.talk-ask-where small { display: block; color: var(--ink-soft); font-size: var(--t-small); }
+.talk-ask-where a { font-weight: 600; overflow-wrap: anywhere; }
+.talk-ask-parts { list-style: none; margin: 0 0 var(--s-3); padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.talk-ask-parts .pill { cursor: pointer; border: 1px solid var(--line); background: var(--panel-hi); color: var(--ink); }
+.talk-on-part { margin: 0 0 4px; font-size: var(--t-small); }
+.talk-on-part .link { display: inline-flex; align-items: center; gap: 6px; }
+.talk-on-part .view3d-pin {
+	display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #e8590c; border: 2px solid #fff;
+	box-shadow: 0 0 0 1px var(--line); position: static; transform: none;
+}
+.talk-on-part-chosen { color: #e8590c; }

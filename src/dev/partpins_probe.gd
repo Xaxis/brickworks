@@ -462,12 +462,15 @@ func _the_studio(text: String) -> void:
 		await _into_view(fold)
 		await _press(fold)
 	var reopen: Control = pins.controls_by_name().get("part_pin_reopen_1")
+	# Pressed, the list is filled again and its buttons freed: a freed one
+	# is null to the check, so whether there was one is kept first.
+	var had_reopen: bool = reopen != null
 	if reopen != null:
 		await _into_view(reopen)
 		await _press(reopen)
 		for _n: int in 30:
 			await process_frame
-	_check(reopen != null and fake.resolved_calls.size() == 2 and fake.resolved_calls[1] == [100, false]
+	_check(had_reopen and fake.resolved_calls.size() == 2 and fake.resolved_calls[1] == [100, false]
 		and int(pins.page_state().get("open", 0)) == 12,
 		"(b) Reopen brings it back, sent (%s)" % [fake.resolved_calls])
 	_main.queue_free()

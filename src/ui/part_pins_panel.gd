@@ -180,6 +180,10 @@ func _row(one: Dictionary, done: bool) -> Control:
 		bits.append(when)
 	if one.get("hidden") is bool and bool(one["hidden"]):
 		bits.append("hidden from others")
+	# An answer to a question in Talk (askhelp), told from a comment.
+	var talk: bool = one.has("talk")
+	if talk:
+		bits.append("in Talk")
 	head.text = " · ".join(bits)
 	head.modulate = Color(1, 1, 1, 0.65)
 	head.add_theme_font_size_override("font_size", 11)
@@ -209,13 +213,15 @@ func _row(one: Dictionary, done: bool) -> Control:
 	where.pressed.connect(func() -> void: show_wanted.emit(one))
 	middle.add_child(where)
 	var settle := Button.new()
-	settle.text = "Reopen" if done else "Resolve"
+	settle.text = ("Back" if done else "Done") if talk else ("Reopen" if done else "Resolve")
 	settle.focus_mode = Control.FOCUS_NONE
 	settle.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	settle.add_theme_font_size_override("font_size", 12)
 	settle.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	settle.tooltip_text = "Back on its part, open, on the site too" if done \
-		else "Done with it: folded away as resolved, here and on the site"
+	settle.tooltip_text = ("Back on its part, here" if done
+		else "Done with it: folded away here, and kept in its thread in Talk") if talk \
+		else ("Back on its part, open, on the site too" if done
+		else "Done with it: folded away as resolved, here and on the site")
 	settle.pressed.connect(func() -> void:
 		settle.disabled = true
 		resolve_wanted.emit(one, not done))
@@ -228,7 +234,7 @@ func _row(one: Dictionary, done: bool) -> Control:
 		if pressable:
 			_shows[number] = where
 	_rows_said.append({"number": number, "by": head.text, "body": body.text, "where": where.text,
-		"resolved": done, "pressable": pressable})
+		"resolved": done, "pressable": pressable, "talk": talk, "settle": settle.text})
 	return row
 
 

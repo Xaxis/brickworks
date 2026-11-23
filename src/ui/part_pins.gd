@@ -6,6 +6,16 @@
 ## model's builder, the count of open ones with the model's other notices,
 ## and their list (PartPinsPanel), each resolved or reopened there.
 ##
+## And the answers on parts to the model's questions in Talk (askhelp,
+## 2026-11-23; SharePanel's Ask the builders, api/_asks.js): main.gd hands
+## them over (set_asks) and, while the model has any question, they are
+## asked for again every few seconds. Each is listed and dotted with the
+## comments, numbered after them, "in Talk"; one not seen this visit lights
+## its part at once (an outline of its own: the builder's selection and the
+## view stay as they are) and is told in a notice of its own, whose Show
+## selects and frames it. Done puts one away here (kept on this device);
+## the answer stays in its thread.
+##
 ## main.gd makes it (Later), over the model (_over_model), the first time
 ## the viewer's answer says the server keeps comments on parts, or the
 ## studio's model with a link has some for its builder. It shows what the
@@ -54,6 +64,18 @@ var look_again: Callable = Callable()
 
 ## The server's answer ({pins, comments, you, ...}), as the comments have it.
 var answer: Dictionary = {}
+## What asks for the questions' answers again (main.gd _look_for_asks).
+var look_asks_again: Callable = Callable()
+## The model's questions in Talk, as op=talk_asks answers: [{thread, title,
+## path, ask, answers: [{id, body, at, by, pin, ...}]}].
+var asks: Array = []
+## The link [member asks] are of: another model's are never shown on this one.
+var asks_of: String = ""
+## How often they are asked for again, in seconds; a probe's own, when set.
+var every: float = 20.0
+var every_for_probe: float = 0.0
+## Where the Talk answers put away (Done) are kept, by post.
+const DONE_AT := "user://talk_answers_done.cfg"
 ## How many Resolve presses the server took, this visit (the page's tally).
 var resolves: int = 0
 ## The part last lit or selected for a pin, for a check.
@@ -77,6 +99,20 @@ var _notice_show: Button
 var _seen: Dictionary = {}
 var _panel: PartPinsPanel
 var _told: String = ""
+var _ask_timer: Timer
+## The last answer set_asks was given, as its words, to tell a new one.
+var _asks_said: String = ""
+## The Talk answers seen this visit, and those lit now, by post.
+var _known_answers: Dictionary = {}
+var _lit_answers: Dictionary = {}
+var _answers_done: Dictionary = {}
+var _done_read: bool = false
+var _answer_notice: RestoreNotice
+var _answer_show: Button
+var _answer_outline: SelectionOutline
+var _answer_lit_key: String = ""
+## The newest answer told of, which the notice's Show shows.
+var _newest_answer: int = 0
 
 
 func _ready() -> void:
@@ -101,8 +137,203 @@ func set_answer(given: Dictionary) -> void:
 func forget() -> void:
 	answer = {}
 	_seen.clear()
+	set_asks([], 0.0)
+
+
+# -- answers in Talk ----------------------------------------------------------------
+
+## The model's questions and their answers on parts, as op=talk_asks says
+## (main.gd): placed, dotted and listed; each answer not seen this visit lit
+## and told; asked for again every [param seconds] while there is a
+## question, never for a model with none.
+func set_asks(given: Array, seconds: float, model: String = "") -> void:
+	if seconds > 0.0:
+		every = seconds
+	# The same answer as last time, as most are: nothing placed or listed
+	# again. Filled again every ask, the list's buttons were freed under a
+	# press on its way (askhelp_probe, 2026-11-23).
+	var said: String = "%s|%s" % [model, JSON.stringify(given)]
+	if said == _asks_said:
+		_poll()
+		return
+	_asks_said = said
+	asks = given.filter(func(one: Variant) -> bool: return one is Dictionary)
+	asks_of = model if not asks.is_empty() else ""
+	_read_done()
+	var fresh: Array = []
+	for one: Dictionary in talk_answers():
+		var post: int = int(one["post"])
+		if _known_answers.has(post):
+			continue
+		_known_answers[post] = true
+		if not StepComments.resolved(one):
+			fresh.append(one)
+			_lit_answers[post] = true
+	# Lit no longer: put away, or gone from its thread (hidden, removed, its
+	# writer blocked).
+	var here: Dictionary = {}
+	for one: Dictionary in talk_answers():
+		if not StepComments.resolved(one):
+			here[int(one["post"])] = true
+	for post: int in _lit_answers.keys():
+		if not here.has(post):
+			_lit_answers.erase(post)
+	if not fresh.is_empty():
+		_newest_answer = int((fresh[fresh.size() - 1] as Dictionary)["post"])
 	_place_all()
 	_after_change()
+	_tell_answers(fresh)
+	_poll()
+
+
+## Asked again every [member every] seconds while the model has a question.
+func _poll() -> void:
+	if asks.is_empty():
+		if _ask_timer != null:
+			_ask_timer.stop()
+		return
+	if _ask_timer == null:
+		_ask_timer = Timer.new()
+		_ask_timer.one_shot = false
+		_ask_timer.timeout.connect(func() -> void:
+			if look_asks_again.is_valid():
+				look_asks_again.call())
+		add_child(_ask_timer)
+	var wait: float = every_for_probe if every_for_probe > 0.0 else maxf(5.0, every)
+	if _ask_timer.is_stopped() or not is_equal_approx(_ask_timer.wait_time, wait):
+		_ask_timer.start(wait)
+
+
+## Whether the questions' answers are being asked for again.
+func polling() -> bool:
+	return _ask_timer != null and not _ask_timer.is_stopped()
+
+
+## The answers on parts to the model's questions, each as a pin is listed:
+## {id (its post's, negative, apart from the comments'), post, pin, body,
+## by, at, talk, thread, path, version, on_step, resolved (put away here)}.
+func talk_answers() -> Array:
+	var out: Array = []
+	for ask: Dictionary in asks:
+		var about: Dictionary = ask.get("ask") if ask.get("ask") is Dictionary else {}
+		var version: Variant = about.get("version")
+		var step: Variant = about.get("step")
+		for given: Variant in ask.get("answers", []) if ask.get("answers") is Array else []:
+			if not given is Dictionary or not (given as Dictionary).get("pin") is Dictionary:
+				continue
+			var one: Dictionary = given
+			var post: int = int(one.get("id", 0))
+			if post <= 0:
+				continue
+			out.append({"id": -post, "post": post, "pin": one["pin"], "body": str(one.get("body", "")),
+				"by": one.get("by") if one.get("by") is String else "", "at": one.get("at", ""),
+				"talk": true, "thread": int(ask.get("thread", 0)), "path": str(ask.get("path", "")),
+				"title": str(ask.get("title", "")),
+				"version": int(version) if version is int or version is float else 1,
+				"on_step": int(step) if step is int or step is float else 0,
+				"resolved": _answers_done.has(post)})
+	return out
+
+
+func _read_done() -> void:
+	if _done_read:
+		return
+	_done_read = true
+	var file := ConfigFile.new()
+	if file.load(DONE_AT) == OK and file.has_section("done"):
+		for key: String in file.get_section_keys("done"):
+			_answers_done[int(key)] = true
+
+
+func _keep_done(post: int, done: bool) -> void:
+	if done:
+		_answers_done[post] = true
+	else:
+		_answers_done.erase(post)
+	var file := ConfigFile.new()
+	file.load(DONE_AT)
+	if done:
+		file.set_value("done", str(post), true)
+	elif file.has_section_key("done", str(post)):
+		file.erase_section_key("done", str(post))
+	file.save(DONE_AT)
+
+
+## The new answers told: "New answer on a part in Talk, from Bea", with Show.
+func _tell_answers(fresh: Array) -> void:
+	if not studio or notices == null:
+		return
+	if _lit_answers.is_empty():
+		if _answer_notice != null:
+			_answer_notice.dismiss()
+		return
+	if fresh.is_empty():
+		return
+	if _answer_notice == null:
+		_answer_notice = RestoreNotice.new()
+		_answer_notice.name = "AnswersNotice"
+		_answer_notice.key = "answers_notice_close"
+		notices.add_child(_answer_notice)
+		_answer_show = ReloadOffer.button("Show", true)
+		_answer_show.tooltip_text = "Select its part and turn the view to it"
+		_answer_show.pressed.connect(func() -> void:
+			for one: Dictionary in talk_answers():
+				if int(one["post"]) == _newest_answer:
+					show_pin(one)
+					return)
+		var row: Control = _answer_notice.get_child(0)
+		row.add_child(_answer_show)
+		row.move_child(_answer_show, row.get_child_count() - 2)
+		# Put away, the parts it lit are let go.
+		_answer_notice.visibility_changed.connect(func() -> void:
+			if not _answer_notice.visible:
+				_lit_answers.clear()
+				_light_answers())
+	var newest: Dictionary = fresh[fresh.size() - 1]
+	var who: String = str(newest.get("by", ""))
+	var from: String = who if not who.is_empty() else "a builder"
+	_answer_notice.tell(("New answer on a part in Talk, from %s" % from) if fresh.size() == 1
+		else "%d new answers on parts in Talk, the newest from %s" % [fresh.size(), from])
+	_answer_notice.visible = true
+
+
+## The parts of the answers lit now outlined, in the pins' colour, apart from
+## the builder's selection; let go of where none is.
+func _light_answers() -> void:
+	var bricks: Dictionary = {}
+	for one: Dictionary in talk_answers():
+		if _lit_answers.has(int(one["post"])):
+			var brick: int = brick_of(one)
+			if brick != 0:
+				bricks[brick] = true
+	var key: String = str(bricks.keys())
+	if key == _answer_lit_key:
+		return
+	_answer_lit_key = key
+	if bricks.is_empty() and _answer_outline == null:
+		return
+	if _answer_outline == null:
+		_answer_outline = SelectionOutline.new()
+		_answer_outline.name = "AnswersOutline"
+		_answer_outline.world = world
+		_answer_outline.library = library if library != null else world.library
+		_answer_outline.colour = TINT
+		_answer_outline.width = 3.0
+		add_child(_answer_outline)
+	_answer_outline.show_selection(bricks)
+	if not bricks.is_empty():
+		lit = int(bricks.keys()[bricks.size() - 1])
+
+
+## The bricks the answers light now.
+func answers_lit() -> Array:
+	var out: Array = []
+	for one: Dictionary in talk_answers():
+		if _lit_answers.has(int(one["post"])):
+			var brick: int = brick_of(one)
+			if brick != 0:
+				out.append(brick)
+	return out
 
 
 static func _yes(v: Variant) -> bool:
@@ -116,7 +347,9 @@ func pins_on() -> bool:
 
 ## Whether whoever asked is the model's builder.
 func is_builder() -> bool:
-	return answer.get("you") is Dictionary and _yes((answer["you"] as Dictionary).get("owner"))
+	# The questions' answers come to their model's owner alone (op=talk_asks).
+	return (answer.get("you") is Dictionary and _yes((answer["you"] as Dictionary).get("owner"))) \
+		or not asks.is_empty()
 
 
 ## The comments on parts, in the answer's order (oldest first).
@@ -127,6 +360,7 @@ func pinned() -> Array:
 		for one: Variant in listed:
 			if one is Dictionary and (one as Dictionary).get("pin") is Dictionary:
 				out.append(one)
+	out.append_array(talk_answers())
 	return out
 
 
@@ -241,6 +475,11 @@ func part_of(brick_id: int) -> Dictionary:
 ## the view framed on it with room round it. False when it is on no part of
 ## the model shown.
 func show_pin(one: Dictionary) -> bool:
+	# A Talk answer shown is lit no longer: the selection is its light now.
+	if one.has("talk") and _lit_answers.erase(int(one.get("post", 0))):
+		_light_answers()
+		if _lit_answers.is_empty() and _answer_notice != null:
+			_answer_notice.dismiss()
 	var brick_id: int = brick_of(one)
 	var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
 	if brick == null:
@@ -433,6 +672,7 @@ func _input(event: InputEvent) -> void:
 func _after_change() -> void:
 	if studio:
 		_notice_now()
+		_light_answers()
 		if _panel != null and _panel.visible:
 			_panel.fill(open_ones(), resolved_ones(), line_of)
 	_tell()
@@ -440,7 +680,9 @@ func _after_change() -> void:
 
 
 func _notice_now() -> void:
-	var open: Array = open_ones() if is_builder() else []
+	# The comments'; the Talk answers have a notice of their own (_tell_answers).
+	var open: Array = open_ones().filter(func(one: Dictionary) -> bool: return not one.has("talk")) \
+		if is_builder() else []
 	var unseen: bool = false
 	for one: Dictionary in open:
 		unseen = unseen or not _seen.has(_id(one))
@@ -463,7 +705,8 @@ func _notice_now() -> void:
 		_notice.visibility_changed.connect(func() -> void:
 			if not _notice.visible:
 				for one: Dictionary in open_ones():
-					_seen[_id(one)] = true)
+					if not one.has("talk"):
+						_seen[_id(one)] = true)
 	_notice.tell("1 comment on a part of this model" if open.size() == 1
 		else "%d comments on parts of this model" % open.size())
 
@@ -496,6 +739,15 @@ func list_open() -> bool:
 ## builder: sent, and the list and the dots as the server answers.
 func resolve(one: Dictionary, done: bool) -> void:
 	var id: int = _id(one)
+	# A Talk answer is put away here, on this device: it stays in its thread.
+	if one.has("talk"):
+		var post: int = int(one.get("post", 0))
+		_keep_done(post, done)
+		_lit_answers.erase(post)
+		_seen[id] = true
+		_said("")
+		_after_change()
+		return
 	var token: String = ""
 	if token_for.is_valid():
 		token = await token_for.call()
@@ -557,7 +809,10 @@ func page_state() -> Dictionary:
 		"offered": {"part": _offered.get("part", ""), "colour": _offered.get("colour", -1),
 			"at": _offered.get("at", [])} if menu_open() else {},
 		"notice": _notice.words() if _notice != null else "",
-		"list": _panel.page_state() if _panel != null else {}}
+		"list": _panel.page_state() if _panel != null else {},
+		"asks": asks.size(), "answers": talk_answers().size(), "answers_lit": answers_lit(),
+		"answer_notice": _answer_notice.words() if _answer_notice != null and _answer_notice.visible else "",
+		"polling": polling(), "every": _ask_timer.wait_time if polling() else 0.0}
 
 
 ## What a check presses: the menu's one row, each dot (pin_dot_N), the
@@ -573,6 +828,9 @@ func controls_by_name() -> Dictionary:
 	if _notice != null and _notice.visible:
 		out.merge(_notice.controls_by_name())
 		out["pins_notice_show"] = _notice_show
+	if _answer_notice != null and _answer_notice.visible:
+		out.merge(_answer_notice.controls_by_name())
+		out["answers_notice_show"] = _answer_show
 	if _panel != null:
 		out.merge(_panel.controls_by_name())
 	return out

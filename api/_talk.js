@@ -52,12 +52,16 @@ import {
   testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
+import { storeRoot } from "./_omr_credit.js";
 import { unnameable } from "./_blocks.js";
 import { withFaces } from "./_faces.js";
 import { challengeCards } from "./_challenges.js";
 import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } from "./_builds.js";
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
 import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, pageHeadHtml, say } from "./_card.js";
+import {
+  ASK_EVERY_S, NOT_YET as ASKS_NOT_YET, askHtml, askOf, askRefused, asksOn, asksReady, pinLineHtml, placesAsked, withAsks,
+} from "./_asks.js";
 
 export const BOARDS = ["show", "help", "ideas", "challenges", "news"];
 export const MOST_CHARACTERS = 4000;
@@ -491,11 +495,12 @@ export function postHtml(post, { posts = new Map(), found = {}, hosts = SITE_HOS
   const hidden = post.hidden ? `<p class="note">${asText(post.hidden_by === "reports"
     ? say("Hidden while the site’s owner looks at what was reported: only you see it.")
     : say("Hidden by the site’s owner: only you see it."))}</p>` : "";
-  return `<li class="comment talk-post${post.by_starter ? " by-owner" : ""}${post.hidden ? " hidden-one" : ""}" id="post-${Number(post.id)}"`
+  return `<li class="comment talk-post${post.by_starter ? " by-owner" : ""}${post.hidden ? " hidden-one" : ""}${post.pin ? " on-part" : ""}" id="post-${Number(post.id)}"`
     + ` data-post="${Number(post.id)}"${post.handle ? ` data-handle="${escapeHtml(post.handle)}"` : ""} data-name="${escapeHtml(name)}"${post.mine ? " data-mine" : ""}>`
     + avatarHtml({ handle: post.handle || "", name, picture: post.picture || "" })
     + `<div class="comment-main"><p class="comment-head">${head.join(" ")}</p>`
     + `${answered ? `<p class="talk-answers"><a href="#post-${Number(answered.id)}">${asText(say("Answering {name}", { name: answered.by || say("a builder") }))}</a></p>` : ""}`
+    + pinLineHtml(post)
     + `<p class="comment-body">${bodyHtml(post.body, post.mentions || [], hosts)}</p>`
     + `${photo ? `<figure class="talk-photo"><a href="/talk/p/${photo.id}.jpg"><img src="/talk/p/${photo.id}.card.jpg" loading="lazy"`
       + `${photo.width && photo.height ? ` width="${Number(photo.width)}" height="${Number(photo.height)}"` : ""}`
@@ -730,6 +735,8 @@ function hostsOf(origin) {
 async function threadFor(id, tests, viewer, origin) {
   const page = await call("talk_thread_page", { p_thread: id, p_tests: tests, viewer }, () => ({ missing: true }));
   if (!page || page.missing) return page;
+  // An ask's (talk_asks.sql): the step asked about, and each answer's part.
+  await withAsks(page);
   await withMentions(page.posts || []);
   const faced = await withFaces(page);
   const hosts = hostsOf(origin);
@@ -746,10 +753,19 @@ function talkCsp() {
   } catch {
     signIn = "";
   }
+  // An ask's 3D view (api/_asks.js) reads each part's geometry from the
+  // parts store, as a model page's does.
+  let store = "";
+  try {
+    store = new URL(storeRoot()).origin;
+  } catch {
+    store = "";
+  }
+  const others = [...new Set([signIn, store].filter(Boolean))].map((one) => ` ${one}`).join("");
   // A search is a form sent here (form-action 'self'); the photo is sent to
   // storage, which the sign-in service's origin is.
   return "default-src 'none'; script-src 'self'; img-src 'self' blob:; style-src 'self' 'unsafe-inline'; "
-    + `connect-src 'self'${signIn ? ` ${signIn}` : ""}; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
+    + `connect-src 'self'${others}; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
 }
 
 function sendPage(response, status, body, tests) {
@@ -798,7 +814,7 @@ ${schema ? `<script type="application/ld+json">${schema}</script>\n` : ""}${scri
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <link rel="stylesheet" href="/talk.css">
-<script src="/talk.js" type="module"></script>
+${main.includes("data-ask") ? '<link rel="stylesheet" href="/view3d.css">\n' : ""}<script src="/talk.js" type="module"></script>
 <script src="/follow.js" type="module"></script>
 </head>
 <body>
@@ -868,6 +884,18 @@ function boardsListHtml(board) {
 }
 
 /// /talk/t/<n>: the thread, its posts, and the box to reply.
+/// An ask's thread's answers on parts, numbered in the thread's order, as
+/// its 3D view numbers them (web/talk.js): [{id, n, pin, version}].
+export function answersOnParts(page) {
+  const version = page?.thread?.ask?.version || 1;
+  return (page?.posts || []).filter((one) => one.pin).map((one, i) => ({ id: Number(one.id), n: i + 1, pin: one.pin, version,
+    said: String(one.body || "").slice(0, 140), by: one.by || "" }));
+}
+
+/// What the thread's 3D view starts from, as JSON inside the page: its ask
+/// and the answers on parts, "<" written so no word closes the script.
+const askData = (page) => JSON.stringify({ ask: page.thread.ask, pins: answersOnParts(page) }).replace(/</g, "\\u003c");
+
 export function threadPageHtml({ page, found, hosts, tests, now = Date.now() }) {
   const at = langAt();
   const thread = page.thread;
@@ -898,12 +926,14 @@ export function threadPageHtml({ page, found, hosts, tests, now = Date.now() }) 
 ${model}
 </aside>
 <div class="obj-main talk-thread-main">
+${askHtml(thread.ask)}${thread.ask?.model ? `<script type="application/json" id="talk-ask-data">${askData(page)}</script>` : ""}
 <ol class="comment-list talk-posts" id="talk-posts">${postsHtml(page, { found, hosts, now })}</ol>
 <p class="note" data-blocked-some hidden>${asText(say("Some posts here are by people you blocked, so they are not shown."))}</p>
 <section class="talk-reply" id="reply" aria-labelledby="talk-reply-title">
 <h2 id="talk-reply-title">${asText(say("Reply"))}</h2>
 ${thread.locked ? `<p class="note">${asText(say("This thread is locked: it takes no new posts."))}</p>` : `<form class="comment-new talk-form" data-reply-form hidden>
 <p class="talk-answering" data-answering hidden><span></span> <button type="button" class="cta ghost small" data-act="unanswer">${asText(say("Not an answer to them"))}</button></p>
+${thread.ask?.model ? `<p class="talk-answering talk-on-part-chosen" data-on-part hidden><span></span> <button type="button" class="cta ghost small" data-act="off-part">${asText(say("Not on a part"))}</button></p>` : ""}
 <label for="talk-reply-words">${asText(say("Your reply"))}</label>
 <textarea id="talk-reply-words" name="body" rows="5" required data-most="4000"></textarea>
 <p class="note">${asText(say("Plain text. A link to a model, a step, a set or a challenge on Brickworks shows as a card; @handle tells somebody."))}</p>
@@ -1084,7 +1114,7 @@ export async function talkThread(request, response, { origin }) {
     // The words of the caller's own posts as they typed them, for Edit.
     const mine = (page.posts || []).filter((one) => one.mine).map((one) => ({ id: one.id, body: one.body }));
     return response.status(200).json({ thread: page.thread, html, count: (page.posts || []).length, blocked_some: page.blocked_some === true,
-      you, mine });
+      you, mine, pins: answersOnParts(page) });
   }
   return response.status(200).json({ thread: page.thread, posts: page.posts || [], blocked_some: page.blocked_some === true, you });
 }
@@ -1311,15 +1341,25 @@ export async function talkReply(request, response, { origin }) {
   const words = cleanPost(body.body);
   if (words.trouble) throw new Unacceptable(words.trouble);
   await mayWrite(who);
+  // On a part of an ask's model (talk_asks.sql): found in the asked
+  // version's file, as a pin's part is, before anything is kept.
+  let pin = null;
+  if (body.part !== undefined && body.part !== null) {
+    if (!(await asksReady())) throw new Unacceptable(ASKS_NOT_YET, 503);
+    const ask = await askOf(thread);
+    if (!ask?.model) throw askRefused("not_ask");
+    [pin] = await placesAsked(ask.model, ask.version, [body.part]);
+  }
   const photo = body.photo ? await keepPhoto(who, String(body.photo)) : null;
-  const made = await call("talk_reply", { account: who, p_thread: thread, p_said: words.text, p_answers: answers, p_photo: photo },
+  const made = await call(pin ? "talk_pin_reply" : "talk_reply", { account: who, p_thread: thread, p_said: words.text,
+    p_answers: answers, p_photo: photo, ...(pin ? { p_pin: pin } : {}) },
     notYet).catch(async (trouble) => {
     if (photo) await dropPhotos([photo.id]);
     throw trouble;
   });
   if (made?.refused) {
     if (photo) await dropPhotos([photo.id]);
-    throw refused(made.refused);
+    throw made.refused in WORDS ? refused(made.refused) : askRefused(made.refused);
   }
   const post = made.post;
   const mentions = await mention(who, post.id, words.text);
@@ -1327,6 +1367,60 @@ export async function talkReply(request, response, { origin }) {
   const hosts = hostsOf(origin);
   const found = await foundFor([post], hosts, true);
   return response.status(201).json({ post, mentions, html: drawn(request, await withFaces(post), null, found, hosts) });
+}
+
+/// POST ?op=talk_ask: a Help thread about the step open in the studio, of
+/// one of the caller's shared models (api/_asks.js).
+export async function talkAsk(request, response, { origin }) {
+  response.setHeader("Cache-Control", "no-store");
+  const who = await account(request);
+  const body = bodyOf(request);
+  const model = String(body.model || "");
+  if (!MODEL.test(model)) throw new Unacceptable("name the model: model, its link's ten characters");
+  const step = body.step === undefined || body.step === null || body.step === "" ? null : Number(body.step);
+  if (step !== null && (!Number.isInteger(step) || step < 1 || step > 200000)) throw askRefused("step");
+  const title = cleanTitle(body.title);
+  if (title.trouble) throw new Unacceptable(title.trouble);
+  const words = cleanPost(body.body);
+  if (words.trouble) throw new Unacceptable(words.trouble);
+  if (!(await asksReady())) throw new Unacceptable(ASKS_NOT_YET, 503);
+  await mayWrite(who);
+  const [own] = await db(`shared_models?id=eq.${model}&select=id,owner,published,barred`);
+  if (!own || own.owner !== who || own.published === false || own.barred === true) throw askRefused("model");
+  const versions = await db(`share_versions?model=eq.${model}&select=n&order=n.desc&limit=1`);
+  const newest = Number(versions?.[0]?.n) || 1;
+  const version = body.version === undefined || body.version === null ? newest : Number(body.version);
+  if (!Number.isInteger(version) || version < 1 || version > newest) throw askRefused("no_version");
+  const parts = await placesAsked(model, version, body.parts);
+  const photo = body.photo ? await keepPhoto(who, String(body.photo)) : null;
+  const made = await call("talk_ask", { account: who, p_model: model, p_version: version, p_step: step,
+    p_parts: parts.length ? parts : null, p_title: title.text, p_said: words.text, p_photo: photo }, notYet)
+    .catch(async (trouble) => {
+      if (photo) await dropPhotos([photo.id]);
+      throw trouble;
+    });
+  if (made?.refused) {
+    if (photo) await dropPhotos([photo.id]);
+    throw made.refused in WORDS ? refused(made.refused) : askRefused(made.refused);
+  }
+  const post = made.post;
+  const mentions = await mention(who, post.id, words.text);
+  if (mentions.length) post.mentions = mentions;
+  const path = threadPath(made.thread);
+  return response.status(201).json({ thread: made.thread, post, ask: made.ask, path, url: `${origin}${path}`, every: ASK_EVERY_S });
+}
+
+/// GET ?op=talk_asks&model=X: the caller's model's asks and their answers
+/// on parts, for the studio (api/_asks.js asksOn), asked every ASK_EVERY_S.
+export async function talkAsks(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
+  const who = await account(request);
+  const model = String(request.query?.model || "");
+  if (!MODEL.test(model)) throw new Unacceptable("name the model: ?model=<its link's ten characters>");
+  if (!(await asksReady())) return response.status(200).json({ asks: [], open: false, every: ASK_EVERY_S });
+  const asks = await asksOn(model, who);
+  if (asks === null) throw askRefused("model");
+  return response.status(200).json({ asks, open: true, every: ASK_EVERY_S });
 }
 
 /// POST ?op=talk_change: its author edits a post or removes it.

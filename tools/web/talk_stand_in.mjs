@@ -86,9 +86,12 @@ async function copyHandles(handles) {
   for (const person of await rest(`people?handle=in.(${wanted.join(",")})&select=account`)) await copyAccount(person.account);
 }
 
-/// Model [id], as the project lists it, with its owner.
+/// Model [id], as the project lists it, with its owner, and its versions
+/// (an ask names one: talk_asks.sql), asked again each time, as a publish
+/// since adds one.
 async function copyModel(id) {
-  if (!MODEL.test(String(id || "")) || models.has(id)) return;
+  if (!MODEL.test(String(id || ""))) return;
+  if (models.has(id)) return copyVersions(id);
   const [model] = await rest(`shared_models?id=eq.${id}&select=id,owner,name,published,barred,listed,test,has_image,has_thumb,updated_at`);
   if (!model) return;
   await copyAccount(model.owner);
@@ -96,6 +99,14 @@ async function copyModel(id) {
     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) on conflict (id) do nothing`,
   [model.id, model.owner, model.name, model.published, model.barred, model.listed, model.test, model.has_image, model.has_thumb, model.updated_at]);
   models.add(id);
+  await copyVersions(id);
+}
+
+async function copyVersions(id) {
+  for (const one of await rest(`share_versions?model=eq.${id}&select=n,at`)) {
+    await db.q(`insert into public.share_versions (model, n, at) select $1, $2, $3
+      where not exists (select 1 from public.share_versions v where v.model = $1 and v.n = $2)`, [id, one.n, one.at]);
+  }
 }
 
 /// The project's challenges (challenge_list, the test pool's too), at most

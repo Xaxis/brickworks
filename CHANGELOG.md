@@ -15,6 +15,12 @@ whole cycle.
 
 ### Added
 
+- **Ask the builders, from the studio.** Stuck on a step? **Share** ›
+  **Ask the builders** › **Ask in Talk** starts a Help thread with your
+  model in 3D at that very step and the parts you picked lit, readable by
+  anybody. Builders answer on a part (right-click or touch and hold it in
+  the thread's 3D, **Answer on this part**), and with your model open the
+  studio lights that part within half a minute and says who answered.
 - **Make your own version of a set.** A set's page whose set LDraw has
   modelled says **Build it**, which opens that model at its first step to
   build step by step, and **Make your own version**, which opens a copy of

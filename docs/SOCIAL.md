@@ -1763,6 +1763,42 @@ of its parts"), collapsing a builder's many uploads into one post
 (Printables), and For you ranked by what a person likes rather than by
 the gallery's own order.
 
+## 12. Ask the builders from the studio (2026-11-23)
+
+docs/PLAN.md row 3. A builder stuck on a step had to leave the studio,
+start a thread, paste a link and describe which part they meant in words;
+an answer came back as words too, and they had to find the part again.
+Eurobricks and Rebrickable's forums take a link and a picture; Discourse
+a onebox; none of them knows the step or the part. Brickworks knows both,
+so the question carries them, and the answer lands on the part (unit
+askhelp; `supabase/talk_asks.sql`, `api/_asks.js`, `web/talk.js`,
+`src/ui/share_panel.gd`, `src/ui/part_pins.gd`, docs-site/talk.md#ask).
+
+- **One action.** Share › Ask the builders › Ask in Talk: a Help thread, by
+  you, with the step you are on and the parts you picked (up to 12),
+  publishing first if the model changed since (the first ask after opening
+  it publishes a version). Two taps at 1280, three on a phone (More ›
+  Share).
+- **The thread.** At its top, the model in 3D at that step
+  (`/m/X/scene.json?step=N`: the parts built by that page, when the steps
+  carried in the file are this file's; else the whole model, and the scene
+  says so), the asked parts lit and named with their colour, and a link
+  that opens the step in the viewer. Signed out, all of it reads.
+- **Answers on a part.** In the thread's 3D, a right click or a long press
+  offers Answer on this part; the reply says *On the 2 × 2 brick* and its
+  dot marks the part (`talk_posts.pin`, the shape comment pins use, checked
+  against that version's file). Only an ask's thread takes them.
+- **Back in the studio.** With the model open, the studio asks for its asks'
+  answers every 20 s (`op=talk_asks`, only while it has asks): a new answer
+  on a part lights and frames that part, with who answered and Show.
+- **The rules hold.** Every post goes through `talk_start` / `talk_reply`:
+  13 and over, limits, bans, reports. `talk_asks_on` shows the studio only
+  what its owner may see: nobody they blocked or who blocked them, no
+  hidden post, nobody of the other pool.
+
+What it does not do yet: show an asked step's earlier steps as ghosts, and
+let a builder ask about somebody else's model (they comment on its page).
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is
