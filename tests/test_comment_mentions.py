@@ -135,11 +135,14 @@ def test_the_api_and_the_page_go_together() -> None:
     # At most 12 asked, and nobody a block bars (api/_blocks.js unnameable).
     assert "mentionsIn(text).slice(0, 12)" in api and "named.filter((handle) => !barred.has(handle))" in api
     assert 'call("comment_mention", { account: who, comment_id: id, handles }' in api
-    assert api.count("await mention(who, comment.id, text)") == 3
+    # A comment, a reply, a change, and a comment on a part (partpins).
+    assert api.count("await mention(who, comment.id, text)") == 4
     assert 'call("comment_mentions_of", { comment_ids: asked }' in api
     assert "await withMentions(commentsShown((on.comments || []).map(" in api
     page = (ROOT / "web/model-page.js").read_text()
-    drawn = page[page.index('words.className = "comment-body";'):page.index("main.append(head, words);")]
+    # (The comment's part said between its head and its words since
+    # 2026-11-23, partpins.)
+    drawn = page[page.index('words.className = "comment-body";'):page.index("main.append(words);")]
     # Words as text nodes and a link's text: never markup.
     assert "mentionPieces(one.body, one.mentions)" in drawn and "innerHTML" not in drawn
     assert "link.textContent = piece.at;" in drawn and "words.append(piece);" in drawn

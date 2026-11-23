@@ -13,6 +13,7 @@ tools/web/browse_flow.mjs the gallery's tabs as one page."""
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -90,7 +91,7 @@ def test_a_search_before_its_function_is_applied_lists_them_all_and_says_so() ->
         return
     assert said["json"]["searched"] is False and len(ids(said)) == 3
     js = (ROOT / "web/collections.js").read_text(encoding="utf-8")
-    assert "searched !== false" in js and 'say("Collections cannot be searched just yet: here are all of them.")' in js
+    assert "searched !== false" in js and 'say("Lists cannot be searched just yet: here are all of them.")' in js
 
 
 def test_a_database_without_the_directory_lists_none() -> None:
@@ -145,14 +146,54 @@ def test_a_card_is_the_gallery_card_with_its_cover_whose_and_follow() -> None:
 
 
 def test_it_is_a_tab_of_the_gallery_and_every_pages_footer_links_to_it() -> None:
+    # Lists since lists2a (docs/LISTS.md section 5 item 2), at /gallery-lists:
+    # /lists is Your lists. The tab's id stays "collections" inside the page.
     gallery = (ROOT / "web/gallery.html").read_text(encoding="utf-8")
-    assert '<a href="/collections" data-tab="collections">Collections</a>' in gallery
-    page = (ROOT / "web/collections.html").read_text(encoding="utf-8")
+    assert '<a href="/gallery-lists" data-tab="collections">Lists</a>' in gallery
+    page = (ROOT / "web/gallery-lists.html").read_text(encoding="utf-8")
     assert '<html lang="en" data-tab="collections">' in page
-    assert '<link rel="canonical" href="https://brickworks.diy/collections">' in page
-    assert '<a href="/collections" data-tab="collections" aria-current="page">Collections</a>' in page
-    assert '<a href="/collections">Collections</a>' in (ROOT / "web/_shell.html").read_text(encoding="utf-8")
+    assert '<link rel="canonical" href="https://brickworks.diy/gallery-lists">' in page
+    assert '<a href="/gallery-lists" data-tab="collections" aria-current="page">Lists</a>' in page
+    assert '<a href="/gallery-lists">Lists</a>' in (ROOT / "web/_shell.html").read_text(encoding="utf-8")
+    assert not (ROOT / "web/collections.html").exists()
+    # No page links to the old address: each one goes straight to Lists.
+    for one in sorted((ROOT / "web").rglob("*.html")):
+        assert 'href="/collections' not in one.read_text(encoding="utf-8"), one
     # No server page any more: a static file of the gallery, which the
-    # deployment serves at /collections as it does /builds.
+    # deployment serves at /gallery-lists as it does /builds.
     assert "collections_page" not in (ROOT / "tools/deploy.sh").read_text(encoding="utf-8")
     assert "collections_page" not in (ROOT / "api/people.js").read_text(encoding="utf-8")
+
+
+def test_the_old_address_answers_301_to_lists_keeping_its_query() -> None:
+    # Every /collections link people kept, with its search, lands on Lists:
+    # the route sends it to op=moved, which answers a 301 with the query.
+    deploy = (ROOT / "tools/deploy.sh").read_text(encoding="utf-8")
+    assert '{ "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" }' in deploy
+    assert '"dest": "/api/people?op=moved&to=gallery-lists&lang=\\$1" }' in deploy
+    script = """
+      import handler from "./api/people.js";
+      const said = [];
+      for (const query of [{ op: "moved", to: "gallery-lists", q: "castle", sort: "followed", tests: "1" },
+                           { op: "moved", to: "gallery-lists", lang: "de" },
+                           { op: "moved", to: "gallery-lists", q: "a b" },
+                           { op: "moved", to: "gallery-lists", lang: "xx" },
+                           { op: "moved", to: "../evil" }]) {
+        const response = { statusCode: 0, headers: {}, setHeader(k, v) { this.headers[k.toLowerCase()] = v; },
+          status(code) { this.statusCode = code; return this; }, json(b) { this.body = b; return this; },
+          send(b) { this.body = b; return this; }, end(b) { this.body = b; return this; } };
+        await handler({ method: "GET", query, headers: {} }, response);
+        said.push({ status: response.statusCode, location: response.headers.location || "", cache: response.headers["cache-control"] || "" });
+      }
+      console.log(JSON.stringify(said));
+    """
+    out = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True,
+                         timeout=60, env={**os.environ, "SUPABASE_URL": "", "SUPABASE_SECRET_KEY": ""})
+    assert out.returncode == 0, out.stderr
+    said = json.loads(out.stdout.strip().splitlines()[-1])
+    assert said[0] == {"status": 301, "location": "/gallery-lists?q=castle&sort=followed&tests=1",
+                       "cache": "public, max-age=3600, s-maxage=86400"}, said[0]
+    assert said[1]["status"] == 301 and said[1]["location"] == "/de/gallery-lists", said[1]
+    assert said[2]["status"] == 301 and said[2]["location"] == "/gallery-lists?q=a+b", said[2]
+    for refused in said[3:]:
+        assert refused["status"] == 404 and not refused["location"], refused

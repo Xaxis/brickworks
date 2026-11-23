@@ -14,6 +14,12 @@
 ## Each language's is part_names_<code>.json in DIR, {format, lang, parts:
 ## {id: name}, colours: {code: name}, categories: {name: name}}. Never into
 ## the shared assets/generated, which every worktree reads.
+##
+## And part_current.json, {format, parts: {id: [part, colour]}}: each part
+## LDraw draws in one colour only, kept for old files, as the app places it
+## (PartLibrary.current, current_colour: 303923 is 3039 in blue), which is
+## how a compare reads it (ModelDiff.parts_of_text). What the site counts a
+## remix changed reads a file the same way (api/_parts.js comparedParts).
 extends SceneTree
 
 
@@ -45,7 +51,27 @@ func _initialize() -> void:
 		print("part_names: %s %d of %d parts, %d of %d colours, %d categories" % [
 			code, named.parts.size(), library.parts.size(), named.colours.size(), library.colors.size(),
 			named.categories.size()])
+	var current: Dictionary = currents(library)
+	var kept: FileAccess = FileAccess.open(out.path_join("part_current.json"), FileAccess.WRITE)
+	if kept == null:
+		printerr("part_names: cannot write %s" % out.path_join("part_current.json"))
+		quit(1)
+		return
+	kept.store_string(JSON.stringify({"format": 1, "parts": current}))
+	kept.close()
+	print("part_names: %d parts drawn in one colour, each as the part it draws" % current.size())
 	quit(0)
+
+
+## Every part [param library] places as another in one colour
+## (PartLibrary.current_colour): {id: [part, colour]}.
+static func currents(library: PartLibrary) -> Dictionary:
+	var out: Dictionary = {}
+	for id: String in library.parts:
+		var colour: int = library.current_colour(id)
+		if colour >= 0:
+			out[id] = [library.current(id), colour]
+	return out
 
 
 ## [param library]'s names in [param code]: {parts: {id: name}, colours:

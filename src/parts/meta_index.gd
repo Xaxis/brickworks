@@ -69,7 +69,7 @@ const READ_WORDS: Array[String] = [
 	"TITLE", "FROM_SET", "SHARE", "REMIX", "REMIX_VERSION", "CREDIT", "MADE", # ModelStore
 	"FLOOR", "VIEW", "LIGHT", "CUT_AWAY", "HIDDEN_COLOURS", "PIN", "BIN", # each its own class
 	"REFERENCE", "REFERENCE_PICTURE", # ReferenceImage
-	"AUTHORED_STEPS", "WORKED_STEPS", "COPY", "IN", # LdrModel
+	"AUTHORED_STEPS", "WORKED_STEPS", "COPY", "IN", "BUILT", # LdrModel
 	"PAGES", "PAGE", # SharedPages
 	"PROGRAM", # HubProgram
 	"LOCK", # Motions (a joint locked)

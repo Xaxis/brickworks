@@ -6,8 +6,8 @@
 
 0 !BRICKWORKS COPY 1
 1 16 0 0 0 1 0 0 0 1 0 0 0 1 pot_and_soil.ldr
-1 288 20 -128 -40 1 0 0 0 1 0 0 0 1 3020.dat
 0 STEP
+1 288 20 -128 -40 1 0 0 0 1 0 0 0 1 3020.dat
 0 !BRICKWORKS COPY 1
 1 16 0 0 0 1 0 0 0 1 0 0 0 1 cactus.ldr
 0

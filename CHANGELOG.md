@@ -15,6 +15,115 @@ whole cycle.
 
 ### Added
 
+- **Choose what you hear of, and where.** Settings › Notifications has a
+  row for each kind of notification, from comments on your models to news
+  from Brickworks, and a box for each place it can reach you: here (the
+  bell and your Notifications), by push on each device you turned on, and
+  in the one daily email. Push starts with replies and mentions; email is
+  off until you tick it. **Mute** a model, from its notification or its
+  page's More menu, and nothing about it reaches you until you unmute it;
+  Settings lists what you muted. **Done** takes a notification out of your
+  count and into a Done view, **Mark all done** all of them, each with
+  Undo, and anything new comes back. The account menu shows your five
+  newest, with their pictures.
+- **Change any model with your own Claude.** Every model's page has **With
+  your Claude** beside **Open in Brickworks**: say what should change (or
+  nothing, and Claude asks), press **Copy for Claude**, and paste the message
+  into a chat with Claude and the Brickworks connector. Claude opens a copy in
+  your models, changes it, and shows you; the shared model stays as it was.
+  Publish the copy and its page says it was remixed from the original. On a
+  phone, **Share to Claude** hands the message to the Claude app; with no
+  connector yet, **Connect Claude** keeps the message for you on the connect
+  page. A chat that starts by opening a model is now told how to change what
+  is built, not how to design something new.
+- **What a remix changed, counted and shown.** A remix's page says what
+  it changed from the version it was copied from, under its credit:
+  *What it changed from version 1: 42 parts added, 8 taken away, 3
+  recoloured, 5 moved*, counted by the same rules as Compare in the app,
+  once, when it is shared. **See what changed in 3D** opens the 3D view
+  with **What changed** on: the parts it added, moved or recoloured in
+  their colours, the rest faded, and the parts it took away as faint red
+  ghosts. It is a toggle on the view's bar, off until you press it, on a
+  phone too. A model's **Remixes** tab now draws the line it is part of as
+  a tree: up to the first model, and its remixes three levels down, each
+  card saying what it is a remix of, and of what that was, and what it
+  changed.
+- **Comment on a part.** On a shared model's page, in its 3D view, or in
+  the app's viewer, right-click a part (or touch and hold it, or press
+  Shift+F10 with the part in the middle) and choose **Comment on this
+  part**. The comment keeps the part and says where it is, "on the 2 × 4
+  brick, step 12", and a small numbered dot marks the part in 3D; pressing
+  the line turns the view to it. On a newer version the dot stays on the
+  part, follows it if it moved a little ("moved since"), and is never put
+  on a part it was not about. The designer sees how many are open when
+  they open the model in the app, lists them, lights and frames each part,
+  and marks one **Resolve**d, which folds it away on the page. Notifications
+  say it is "on a part".
+
+- **Post it elsewhere.** On your shared model's page, **Share** offers a
+  kit for r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable and
+  Flickr, each in that place's own form and checked against its rules,
+  every one with your model's link: Reddit's title with its flair (SEC and
+  the designer's credit for somebody else's design) and the words to
+  paste; Instagram's 1080 × 1350 cover, a 1080 × 1920 turn and a caption of
+  five hashtags at most; LEGO® Ideas' pieces, pictures and a main picture
+  with no text checked, saying what fails; Rebrickable's parts CSV; and
+  Flickr's largest picture. Your browser makes it from what the page has
+  published; a phone hands the files to its share sheet, a computer saves
+  one zip. Brickworks posts nothing anywhere: you post it yourself.
+- **Show your build, where the build ends.** The last step of Build it
+  says how many people have built the model and offers **Show your
+  build**: the camera on a phone, a photo on a computer, a line about it
+  if you like, and **Post**. It goes on the model's page, first in its
+  Builds, and its designer is told. Not signed in, Post asks you to sign
+  in right there and brings you back to the last step with your photo
+  still chosen. What the camera wrote into the photo is taken out before
+  anyone sees it. The viewer's timeline offers the same at its last step.
+- **What a model is built from.** When you publish a model, Brickworks
+  counts it against every LEGO® set and says under its name what it found:
+  *An alternate build of 31009 Small Cottage: every part from the set*, *of
+  42115 and 42054* when a few sets together hold it, or *97% from 31009*.
+  Each set's page lists what people built from it under **Built from this
+  set**, with how much of each came from the set, beside the models their
+  designers said were based on it. A set nobody has built anything else
+  from yet says so, with **Build something from it**. Say a model is an
+  alternate build of a set that lacks some of its parts, and your own page
+  tells you how many.
+- **The month's challenge in the studio.** While a challenge is open, one
+  small line over the model names it and its days left; press it and its
+  rules are ticked on the model as you build (*112 of 150 parts*, *only
+  parts from set 31009*, *Tested*), each one it breaks saying what to
+  change. They are the rules the site checks, ticked the same way. When the
+  model keeps them, Share says **Enter** under Publish, with how you built
+  it: one press publishes it in the gallery with your name and enters it.
+  **×** hides the line for that challenge.
+- **The fan vote two at a time.** On the challenge's page, **Compare them
+  two at a time, in 3D** shows two entries side by side, one above the
+  other on a phone, each turning, with nobody's name and no counts. Keep
+  the one you like more and the next comes beside it, until one is left
+  to vote for.
+- **A quick build every week.** Beside the month's challenge, each week
+  has a short brief and a template to start from, an 8×8 plate. **Start**,
+  on its page or in its notice, opens the studio on a copy of the template
+  with the brief said above the model. Publish it in the gallery that week
+  and it is entered: the publish dialog says so, and one tap keeps it out.
+  There is no vote. Its page shows every entry, the newest first, each
+  turning in 3D on a tap, and when the week ends Brickworks stacks them all
+  into one model, each entry its own sub-model credited to its maker, to
+  turn, open or build. Weeks entered in a row are a **Streak** on your
+  profile. The owner sets them in the console's Challenges.
+- **Share your model while you build it.** The Share panel has **Share
+  progress** beside Publish: one press shares this version as work in
+  progress, with what changed. Your followers see each version in their
+  feed, and the model gets one Show and tell thread in Talk that gains a
+  post a version, with its picture, your note and what changed. While it is
+  work in progress it is in the gallery's Newest, marked, and kept out of
+  Top, This week's pick and the challenges. **Publish as finished**, or
+  **Mark it finished** on its page, ends it, and it ranks as any model.
+- **A model's Log.** A shared model's Versions tab is now its **Log**:
+  every version, the newest first, each with its picture, the day, what
+  changed and its note, and a link to that version.
+
 - **brickworks.diy opens on our mark, built in LEGO® bricks, in 3D.** 189
   real parts, a course at a time: on your first visit the bricks fly up and
   drop back into place, then the model turns slowly. Drag it to turn it, or use the arrow
@@ -32,6 +141,15 @@ whole cycle.
   itself in the feed. Signed in, the feed has tabs (**For you**,
   **Following**, **New**) and **Share a build** opens the share panel for
   your last model.
+- **Open in Brickworks leads to the model you chose.** Pressed on a model's
+  page, it opens the studio with that model on the baseplate, never the
+  example car. Signed out, it waits behind the sign-in, which says it opens
+  as your own copy; sign in by email, with orangecheck or in another tab,
+  even as a new account, and the copy is saved in your models, credited and
+  framed. The first time, **Recolour a part**, **Add a part** and **Build it**
+  are offered along the top of the model, gone at your first change or
+  Escape. A reload or a second tab on the same link opens the copy you made,
+  never a second one.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,
@@ -40,6 +158,19 @@ whole cycle.
   it too. It is recorded while the page is open and shown, without slowing
   the page. Republish, and your next visit records the new version.
   Unpublish or delete your account, and the clip goes with it.
+- **Lists shared by a link, and one Save.** A list can now be shared by
+  its link alone: whoever has the link opens it, and it is on no profile,
+  in no gallery, in no search and in no sitemap. **Stop sharing** turns the
+  link off at once, and sharing again makes a new one. A wishlist you share
+  is shared this way unless you choose **Public**. A model's page has the
+  same **Save** as its card, one panel for Saved and your lists, and
+  Favourites is called **Saved** everywhere. The gallery's Collections are
+  **Lists** now, at brickworks.diy/gallery-lists; every old /collections
+  link still lands there.
+- **See an import before it is made.** **Add sets** on Your lists shows
+  what a Rebrickable, BrickLink or Brickset file (or numbers typed) would
+  add, what is there already and what no set has, before anything is
+  written; **Cancel** leaves everything as it was.
 - **Own, Want and your lists, on the website.** Every set in the library,
   every set's page and every model in the gallery has one control: **Own**
   (a set) or **Save** (a model) at a tap, with **Undo**, and a chevron for
@@ -179,6 +310,11 @@ whole cycle.
   take them back. Tell it what a set is missing and it marks one count a
   part for all your copies, says each change as it was and as it is, and
   makes a big set whole again in one call.
+- **The site's owner sees whether people go round the loop.** The owner's
+  console counts, a day at a time, how many people discovered something,
+  opened a model, changed one, shared, heard back from somebody and came
+  back, each against the days just before. It reads only what the site
+  counts already: nothing more is kept about anybody.
 
 ### Changed
 
@@ -192,6 +328,25 @@ whole cycle.
   builders' forum has talk, its newest threads. The header on every page
   leads with Gallery, Talk and Challenges, then Docs; Plans and the desktop
   app are in the menu and the footer.
+- **Every window and panel closes with Close.** Library, Collection, the
+  parts list, Keys, Account, Share, Brickify and a reference picture said
+  Done, Close or OK for the same act. A mode you leave for the model, such
+  as Build it, still says Done.
+- **The control hints are one short row along the model's foot,** and each
+  goes after you have used it three times. View › Panels › Key strip brings
+  them back. They were five rows of sentences over the model, for good.
+- **A set from the Library, an example, or a Studio or LDD file opens as it
+  is.** "Parts have new numbers in the LDraw library" is offered only for
+  your own LDraw file, and only once.
+
+- **The loading page builds its wall in 3D, with a tip under it.** While
+  the app loads in a browser, real-looking bricks drop onto a baseplate and
+  seat, course by course, as the app arrives, and the wall turns slowly
+  under one light, in the site's own colours, dark or light. Under it a tip
+  about Brickworks changes every five seconds: a key on a computer, a
+  gesture on a phone, and the menus' best commands, in your language; point
+  at one to keep it, and the next visit starts with new ones. With reduced
+  motion it stands still.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say
@@ -245,6 +400,23 @@ whole cycle.
 
 ### Fixed
 
+- A part in the air, touching nothing, was missed by everything that checks
+  a model: the status bar, Check stability ("Stands"), Stress, and Seat parts
+  ("every part is on its studs"). Each now says it by name and selects it,
+  and a group of parts in the air, such as a copy put down too high, is said
+  as one. The assistant's stability answer says it too.
+- A search for "motor" listed a minifigure jackhammer first. Motors come
+  first now, and the minifigure builder lists parts named for what you typed
+  before parts found only by their keywords ("space" gave a battle droid).
+- While the app worked, its Cancel bar could push the window past the
+  screen's edge. The status bar makes room instead.
+- The parts list named some parts with LDraw's marks, such as
+  "=Tile 1 x 2 Chamfered". The marks are gone.
+- On a phone, the Library's search said its words cut off. It says what fits.
+- Share opened with no name for a model of one minifigure or one
+  sub-assembly. It takes that name.
+- The parts bin, searched for a sub-assembly of your model, says it is
+  yours and that Edit › Duplicate puts another down.
 - **The beta bar no longer covers the page.** It sits along the bottom of the
   window, and every page leaves room for it at its end. The home page's top
   is shorter too, so the first row of builds shows whole on a laptop, and its

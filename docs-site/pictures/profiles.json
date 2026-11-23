@@ -25,12 +25,61 @@
    ]
   },
   {
+   "id": "notifications-page",
+   "source": "site",
+   "route": "/notifications",
+   "viewport": [
+    1280,
+    1000
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": "#groups .notice .acts",
+   "alt": "Notifications: Inbox and Done, Mark all read and Mark all done, then a group a model with its picture, newest first: the sports car's comment, likes and a photo of a build, a reply on the corner shop, your achievements, a remix, a challenge's last days and a mention, each with Done and More.",
+   "caption": "brickworks.diy/notifications.",
+   "features": [
+    "ui:notifications page",
+    "ui:notifications done",
+    "ui:mute a model's notifications"
+   ]
+  },
+  {
+   "id": "notifications-phone",
+   "source": "site",
+   "route": "/notifications",
+   "viewport": [
+    390,
+    844
+   ],
+   "phone": true,
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": "#groups .notice .acts",
+   "alt": "Notifications on a phone: the same groups, each with its picture, its name, Done and More, and its rows under it.",
+   "caption": "On a phone, at 390 px.",
+   "features": [
+    "ui:notifications page"
+   ]
+  },
+  {
    "id": "profile-menu",
    "source": "site",
    "route": "/profile",
    "viewport": [
     1280,
-    860
+    1100
    ],
    "themes": [
     "dark",
@@ -51,10 +100,11 @@
    ],
    "crop": ".site-head .account-menu .menu-list",
    "pad": 12,
-   "alt": "The account menu open under the avatar: your name and handle, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback, the theme as System, Light and Dark, and Sign out.",
+   "alt": "The account menu open under the avatar: your name and handle, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback, the newest five notifications with their pictures, the theme as System, Light and Dark, and Sign out.",
    "caption": "The account menu.",
    "features": [
-    "ui:the account menu"
+    "ui:the account menu",
+    "ui:the account menu's newest five"
    ]
   },
   {
@@ -74,11 +124,72 @@
     "signed-in"
    ],
    "wait": "#email-part",
-   "alt": "Settings: the contents list down the side, and Profile, Appearance with System, Light and Dark, and Email with its boxes for the daily email.",
+   "alt": "Settings: the contents list down the side, and Profile, Appearance with System, Light and Dark, and Notifications with this device's and the grid of what you hear of, and where.",
    "caption": "brickworks.diy/settings.",
    "features": [
     "ui:your settings page",
     "ui:theme choice"
+   ]
+  },
+  {
+   "id": "settings-kinds",
+   "source": "site",
+   "route": "/settings",
+   "viewport": [
+    1280,
+    1100
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": "#kinds input[data-channel=\"here\"]:not([disabled])",
+   "steps": [
+    {
+     "scroll": "#email-part"
+    }
+   ],
+   "crop": "#email-part",
+   "pad": 12,
+   "alt": "Settings › Notifications: On this device with Notify me on this device, then What you hear of, and where: a row for each of the eleven kinds, from comments on your models to news from Brickworks, each with a box for Here, Push and Email, then Your feed by email and Muted models with the boat and its Unmute.",
+   "caption": "Settings › Notifications: each kind here, by push, by email, or not at all.",
+   "features": [
+    "ui:what you hear of in settings",
+    "lib:what you hear of and where"
+   ]
+  },
+  {
+   "id": "settings-kinds-phone",
+   "source": "site",
+   "route": "/settings",
+   "viewport": [
+    390,
+    844
+   ],
+   "phone": true,
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": "#kinds input[data-channel=\"here\"]:not([disabled])",
+   "steps": [
+    {
+     "scroll": "#kinds"
+    }
+   ],
+   "crop": "viewport",
+   "alt": "The same grid on a phone: each kind's words, and its three boxes, each a finger's size.",
+   "caption": "On a phone, at 390 px.",
+   "features": [
+    "ui:what you hear of in settings"
    ]
   }
  ]

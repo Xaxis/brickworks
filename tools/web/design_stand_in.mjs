@@ -89,7 +89,10 @@ import { basesAsked, basesSaid } from "../../api/_bases.js";
 // Who a comment names (@handle), read as the API reads it.
 import { mentionsIn } from "../../web/card.js";
 
-export const ORIGIN = "http://design.test";
+// The site's origin; STAND_IN_ORIGIN=https://design.test for a flow whose
+// page needs a secure one (WebCodecs, which a kit's turn is recorded with:
+// tools/web/postkit_flow.mjs). Read when this is first imported.
+export const ORIGIN = process.env.STAND_IN_ORIGIN || "http://design.test";
 export const DB = "https://stub.supabase.test";
 export const MODEL_ID = "DesignAbc1";
 export const HANDLE = "design-tester";
@@ -596,9 +599,11 @@ const ADMIN = {
 // ---------------------------------------------------------------------------
 // Reading the world, as the database's functions read it.
 
-// supabase/achievements.sql's ladders, in its order.
+// supabase/achievements.sql's ladders, in its order, and the weekly quick
+// build's streak (supabase/challenge_prompts.sql).
 const LADDERS = [["designer", [1, 3, 10, 25, 50, 100]], ["built", [1, 10, 50, 100, 500, 1000]],
-  ["builder", [1, 5, 10, 25, 50]], ["remixed", [1, 5, 25, 100]], ["tested", [1, 5, 10, 25]], ["challenger", [1, 3, 6, 12]]];
+  ["builder", [1, 5, 10, 25, 50]], ["remixed", [1, 5, 25, 100]], ["tested", [1, 5, 10, 25]], ["challenger", [1, 3, 6, 12]],
+  ["streak", [2, 4, 8, 13, 26, 52]]];
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const personOf = (account) => PEOPLE.find((one) => one.account === account) || null;
@@ -665,6 +670,61 @@ function modelPage(id) {
   const remixes = remixesOf(id).filter((one) => one.listed && !one.barred).sort(byTime("listed_at"));
   return { ...card(m), description: m.description, listed: m.listed, from, remixes_listed: remixes.map(card) };
 }
+
+// What each remix changed from the version it was copied from
+// (supabase/remix_changes.sql), as api/_remix.js keeps it: the watchtower at
+// dusk against the watchtower's version 1. A row a publish or a flow
+// writes is kept until the stand-in stops, as the table keeps it.
+const REMIX_CHANGES = [
+  { model: "DesignRmx1", n: 1, against: MODEL_ID, against_n: 1, inferred: false, added: 36, removed: 4, moved: 2,
+    recoloured: 120, turned: 1, parts_was: 398, parts_now: 430, shown: null, at: "2026-10-10T19:00:05Z" },
+];
+const remixCounts = (id) => {
+  const r = REMIX_CHANGES.find((one) => one.model === id);
+  return r ? { added: r.added, removed: r.removed, moved: r.moved, recoloured: r.recoloured, turned: r.turned,
+    parts_was: r.parts_was, parts_now: r.parts_now, n: r.n, against: r.against, against_n: r.against_n, inferred: r.inferred,
+    drawn: r.shown !== null && r.shown !== undefined } : null;
+};
+
+/// remix_tree: what a model came from and what was remixed from it, three
+/// levels down, each with its changes (supabase/remix_changes.sql).
+function remixTree(id) {
+  const m = modelOf(id);
+  if (!m || !m.published) return null;
+  const up = [];
+  for (let at = m, depth = 1; at && at.published && at.remixed_from && depth <= 8; depth += 1) {
+    const p = modelOf(at.remixed_from);
+    if (!p || !p.published) break;
+    const g = modelOf(p.remixed_from);
+    up.push(p.listed && !p.barred ? { id: p.id, name: p.name, author: p.author, depth, has_image: p.has_image,
+      has_thumb: p.has_thumb, updated_at: p.updated_at, changes: remixCounts(p.id),
+      from: g ? (g.published && g.listed && !g.barred ? { id: g.id, name: g.name, author: g.author } : { id: null, by_link: true }) : null }
+      : { id: null, by_link: true, depth });
+    at = p;
+  }
+  const shown = (c) => c.published && c.listed && !c.barred && (!c.test || m.test) && c.id !== m.id;
+  const down = [];
+  let level = remixesOf(id).filter(shown).sort(byTime("listed_at")).slice(0, 24).map((c) => ({ c, parent: id }));
+  for (let depth = 1; depth <= 3 && level.length; depth += 1) {
+    for (const { c, parent } of level) down.push({ ...card(c), parent, depth, changes: remixCounts(c.id) });
+    level = level.flatMap(({ c }) => remixesOf(c.id).filter(shown).sort(byTime("listed_at")).slice(0, 12).map((k) => ({ c: k, parent: c.id })));
+  }
+  return { changes: remixCounts(id), up, down };
+}
+
+/// Who a flow's own models are by (addModel).
+export const OWNERS = { ROBIN, SAM, JO, MIKA, PRIYA };
+
+/// A model a flow adds for itself (tools/web/remix_flow.mjs), as the
+/// fixtures' are; and the file it shares (useFileOf).
+export function addModel(row) {
+  const made = model(row);
+  MODELS.push(made);
+  return made;
+}
+
+/// What a remix changed, as kept here (a flow reads it back).
+export const remixChangesOf = (id) => REMIX_CHANGES.find((one) => one.model === id) || null;
 
 /// What a search's words find: each word the start of one of the model's.
 function wordsMatch(m, words) {
@@ -755,7 +815,8 @@ function achievementLevels(account, tests = false) {
   const entered = new Set([...CHALLENGE.entries.filter(([model]) => modelOf(model)?.owner === account).map(() => CHALLENGE.id),
     ...PAST.filter((one) => one.winners.some(([model]) => modelOf(model)?.owner === account)).map((one) => one.id)]);
   const numbers = { designer: earned.models, built: earned.builds, remixed: earned.remixes, tested: earned.tested,
-    builder: photosWhere((one) => one.account === account && shownModel(one.model)?.listed).length, challenger: entered.size };
+    builder: photosWhere((one) => one.account === account && shownModel(one.model)?.listed).length, challenger: entered.size,
+    streak: 0 };
   return LADDERS.map(([track, steps]) => {
     const n = numbers[track];
     const level = steps.filter((step) => step <= n).length;
@@ -873,6 +934,7 @@ const TABLES = {
   profile_shows: () => SHOWS,
   profile_avatars: () => AVATARS.map(({ bytes: file, colours, ...row }) => ({ ...row, bytes: file.length })),
   profile_choices: () => CHOICES,
+  remix_changes: () => REMIX_CHANGES,
 };
 
 // What the watchtower is based on (supabase/model_bases.sql): a set built
@@ -893,6 +955,8 @@ const RPC = {
     === String(set_number).toLowerCase()).map((row) => row.model))].map((id) => ({ ...card(modelOf(id)),
     based: BASES.find((row) => row.model === id).how })),
   directory_model: ({ model_id }) => modelPage(model_id),
+  // supabase/remix_changes.sql
+  remix_tree: ({ model_id }) => remixTree(model_id),
   // supabase sitemap_pages: every listed model's page (people and
   // collections have none here).
   sitemap_pages: () => ({ models: MODELS.filter((m) => m.published && m.listed && !m.barred && !m.test)
@@ -1073,6 +1137,19 @@ function rest(where, init) {
       for (const row of MODELS.filter((one) => one.id === id)) row.made_with_shown = body.made_with_shown === true;
     }
   }
+  // What a remix changed: kept, by its model, as the table keeps it.
+  if (path === "remix_changes" && method === "POST") {
+    const row = JSON.parse(init.body || "{}");
+    const at = REMIX_CHANGES.findIndex((one) => one.model === row.model);
+    if (at >= 0) REMIX_CHANGES[at] = { ...REMIX_CHANGES[at], ...row };
+    else REMIX_CHANGES.push(row);
+    return reply(201, undefined);
+  }
+  if (path === "remix_changes" && method === "DELETE") {
+    const gone = chosen(REMIX_CHANGES, where.searchParams);
+    for (const row of gone) REMIX_CHANGES.splice(REMIX_CHANGES.indexOf(row), 1);
+    return new Response(null, { status: 204 });
+  }
   // A write: taken as done, and kept nowhere.
   const asked = String(new Headers(init.headers || {}).get("prefer") || "");
   if (method === "POST") return reply(201, asked.includes("return=representation") ? [JSON.parse(init.body || "{}")] : undefined);
@@ -1091,6 +1168,13 @@ export const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0
 let modelText = BRICKS;
 export function useModelFile(text) {
   modelText = String(text || BRICKS);
+}
+// A file of a model's own, by its link (or "<link>.v<n>" for an older
+// version), where a flow gives one (tools/web/remix_flow.mjs): a remix and
+// its original are two files.
+const FILES = new Map();
+export function useFileOf(name, text) {
+  FILES.set(name, String(text));
 }
 
 // The LDraw library's shelf as the store keeps it (api/_omr_credit.js
@@ -1116,12 +1200,13 @@ function storage(where, init) {
     return method === "GET" && one ? new Response(one.bytes, { status: 200, headers: { "content-type": "image/jpeg" } })
       : reply(400, { error: "not_found", message: "Object not found" });
   }
-  const found = /^\/storage\/v1\/object\/([a-z-]+)\/([A-Za-z0-9]{10})(?:\.v\d+)?\.(png|webp|mpd)$/.exec(where.pathname);
+  const found = /^\/storage\/v1\/object\/([a-z-]+)\/([A-Za-z0-9]{10})(\.v\d+)?\.(png|webp|mpd)$/.exec(where.pathname);
   if (method !== "GET" || !found || !modelOf(found[2])?.published) return reply(400, { error: "not_found", message: "Object not found" });
-  const [, , id, kind] = found;
+  const [, , id, older, kind] = found;
   const m = modelOf(id);
   if ((kind === "png" && !m.has_image) || (kind === "webp" && !m.has_thumb)) return reply(400, { error: "not_found" });
-  const bytes = kind === "mpd" ? Buffer.from(modelText) : Buffer.from(kind === "png" ? PIXEL_PNG : PIXEL_WEBP, "base64");
+  const own = FILES.get(`${id}${older || ""}`) ?? FILES.get(id);
+  const bytes = kind === "mpd" ? Buffer.from(own ?? modelText) : Buffer.from(kind === "png" ? PIXEL_PNG : PIXEL_WEBP, "base64");
   return new Response(bytes, { status: 200, headers: { "content-type": { png: "image/png", webp: "image/webp", mpd: "text/plain" }[kind] } });
 }
 
@@ -1162,6 +1247,8 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/room[.]json$/, "share", "room"],
+  // What a remix changed, for its 3D view (api/_remix.js).
+  [/^\/m\/([A-Za-z0-9]{10})\/changes[.]json$/, "share", "changes"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/room[.]json$/, "share", "room"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
@@ -1658,8 +1745,8 @@ function people(method, params, body, who, state) {
     // what they saved.
     if (op === "lists" || op === "keeps") {
       const mine = LISTS.filter((list) => list.owner === ME).sort(byTime("updated_at")).map(({ models, owner, ...list }) =>
-        ({ ...list, description: list.description || null, kind: null, sort: "added", cover: null, down: false, sets: 0,
-          models: models.length, count: models.length }));
+        ({ ...list, description: list.description || null, visibility: list.public ? "public" : "private", link: null, kind: null,
+          sort: "added", cover: null, down: false, sets: 0, models: models.length, count: models.length }));
       if (op === "lists") {
         return answer(200, { lists: mine, owned: { sets: 0, unique: 0, pieces: 0, shown: false },
           saved: { models: FAVOURITES.filter(([account]) => account === ME).length }, profile: { handle: personOf(ME).handle } });

@@ -217,8 +217,10 @@ export function daysOf(from, to) {
 /// ?op=challenge's with its entries): its name and brief as its maker wrote
 /// them (English), its days, up to four entries' pictures, and the way in.
 /// Its badges and line keep their ids, which web/landing.js says again with
-/// the days left once it has asked.
-export function challengePostHtml(c, entries = []) {
+/// the days left once it has asked. [week], this week's quick build (the
+/// answers' prompt_now), a line under its days: its name, to its page,
+/// where Start is; a test one never.
+export function challengePostHtml(c, entries = [], week = null) {
   if (!c || !c.title) return "";
   const at = langAt();
   const shown = entries.filter((one) => one && MODEL.test(String(one.id)) && pictureOf(one)).slice(0, 4);
@@ -233,9 +235,17 @@ export function challengePostHtml(c, entries = []) {
     + `<p class="eyebrow">${escapeHtml(say("The month’s challenge"))}</p>`
     + `<h3 class="post-title" id="challenge-h" lang="en">${escapeHtml(String(c.title))}</h3>`
     + `${c.brief ? `<p id="challenge-brief" lang="en">${escapeHtml(String(c.brief))}</p>` : `<p id="challenge-brief"></p>`}`
-    + `<p class="note" id="challenge-days">${escapeHtml(span)}</p>${strip}`
+    + `<p class="note" id="challenge-days">${escapeHtml(span)}</p>${weekLineHtml(week)}${strip}`
     + `<p class="go-on"><a class="cta small" href="${at}/challenge" id="challenge-go">${escapeHtml(say("Enter the challenge"))}</a>`
     + `<a class="cta ghost small" href="${at}/challenge#entries">${escapeHtml(say("See the entries"))}</a></p></div></article>`;
+}
+
+/// This week's quick build's line in the challenge's post, or nothing.
+function weekLineHtml(w) {
+  if (!w || w.test || !/^[1-9][0-9]{0,15}$/.test(String(w.id)) || !w.title) return "";
+  const [before, after = ""] = say("This week’s quick build: {title}").split("{title}");
+  return `<p class="note week-line" id="challenge-week">${escapeHtml(before)}<a id="challenge-week-go" lang="en" `
+    + `href="${langAt()}/challenge?id=${w.id}">${escapeHtml(String(w.title))}</a>${escapeHtml(after)}</p>`;
 }
 
 /// The studio itself in the stream: [model] on it, opened in the card on a
@@ -292,7 +302,7 @@ export function photoPostHtml(photo) {
 export function postHtml(item, { eager = false } = {}) {
   if (item.kind === "build") return buildPostHtml(item.model, { eager, said: item.said, line: item.line, pick: item.pick });
   if (item.kind === "talk") return talkPostHtml(item.thread);
-  if (item.kind === "challenge") return challengePostHtml(item.challenge, item.entries);
+  if (item.kind === "challenge") return challengePostHtml(item.challenge, item.entries, item.week);
   if (item.kind === "try") return tryPostHtml(item.model);
   if (item.kind === "people") return peoplePostHtml(item.designers);
   if (item.kind === "photo") return photoPostHtml(item.photo);
@@ -352,7 +362,9 @@ export function compose(given, { tab = "foryou", skip = new Set() } = {}) {
   const c = given.challenge?.challenge || given.shelves?.challenge || null;
   const live = c && !c.test && ["open", "upcoming"].includes(c.state) && c.title ? c : null;
   const entries = live && Array.isArray(live.groups) ? live.groups.flatMap((group) => group.entries || []) : [];
-  const challenge = live ? [{ kind: "challenge", challenge: live, entries }] : [];
+  // This week's quick build, a line in the month's post (prompts: api/_prompts.js promptNow).
+  const week = given.challenge?.prompt_now || given.shelves?.prompt_now || null;
+  const challenge = live ? [{ kind: "challenge", challenge: live, entries, week }] : [];
   const movers = [...top, ...newest].filter((m) => (m.motions || []).length || (m.moves || []).length);
   const tryModel = movers[0] || top[0] || newest[0] || pick;
   const trying = tryModel && tab === "foryou" ? [{ kind: "try", model: tryModel }] : [];

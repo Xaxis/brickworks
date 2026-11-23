@@ -7,7 +7,7 @@
 
 The landing page, the download page and the pages a visitor goes on to
 from them (the plans, the FAQ, the comparison, the gallery and its tabs'
-own addresses, the sets, the builds and the collections (tools/browse_pages.py),
+own addresses, the sets, the builds and the lists (tools/browse_pages.py),
 this month's challenge, your own profile and your settings; the
 account menu's feed, notifications, builds, feedback and beta pages; the
 footer's terms, privacy, guidelines, takedown and changelog; the page not
@@ -64,7 +64,7 @@ A word of those scripts (SAID_ALL, or the functions of one named there)
 with a capital in it that is not said through say() fails the check, so
 none comes back in English; so does an answer's error or why_not shown as
 the server wrote it, not through told() or say() (untold); and a link to a
-page with copies written as English's (/u/..., /c/..., /collections,
+page with copies written as English's (/u/..., /c/..., /gallery-lists,
 /profile, /settings, /challenge and the rest of PAGES), in those or in
 any other script a copy loads, which leaves the visitor's language for
 English (unled: ${at}/u/ or ${langAt()}/profile).
@@ -102,7 +102,7 @@ SITE = "https://brickworks.diy"
 LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 # The pages, by their file, and where each is: / and /download in English.
 PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
-         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "collections.html": "collections",
+         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "gallery-lists.html": "gallery-lists",
          "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
          "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds", "lists.html": "lists",
          "feedback.html": "feedback", "share-model.html": "share-model", "beta.html": "beta", "terms.html": "terms",
@@ -187,7 +187,7 @@ SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
 # say(), is English left on the page. Those no copy loads are read for
 # their words too: a set's page, which the server makes, and its scripts.
 SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js": (), "web/set-page.js": (),
-            "web/model-page.js": (), "api/_sets.js": ("setPage", "facts", "structured", "keepBarHtml"),
+            "web/model-page.js": (), "web/post-kit.js": (), "web/post-rules.js": (), "api/_sets.js": ("setPage", "facts", "structured", "keepBarHtml"),
             "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark", "madeFact",
                              "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
@@ -203,6 +203,8 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/start3d.js": (), "web/phone-warn.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
             "web/embed.js": (), "tools/viewer/inline.js": (),
+            # What a remix changed, under its credit and in its Remixes tab (remixdiff).
+            "api/_remix.js": ("changedLineHtml", "nodeLine", "nodeHtml", "treeHtml"), "api/_remix_changes.js": ("changeLine",),
             # In your room (APP_UX5 #13, arview).
             "web/room.js": (),
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
@@ -222,7 +224,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
 WRITTEN = ("tools/site.py",)
 # Capitalized words of those that are no English to say: code, and names.
 CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Claude", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook",
-              "Edge", "Opera", "Safari"}
+              "Edge", "Opera", "Safari", "Instagram", "Flickr"}
 # And the keys a script listens for, each a literal of its own.
 KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
 # Runs that are names, the same in every language: and each AI app's, as
@@ -564,8 +566,9 @@ def untold(script: str) -> list[str]:
 
 
 # A link to a page with copies, written as English's: a literal that starts
-# /u/ or /c/ (a profile, a collection), or is one of the pages (/collections,
-# /challenge, /profile?edit=1).
+# /u/ or /c/ (a profile, a list), or is one of the pages (/gallery-lists,
+# /challenge, /profile?edit=1), or the address the gallery's lists had
+# (/collections, which redirects).
 LED = re.compile(r"(?<![\w}])[`\"'](?:/[uc]/|/(?:collections|" + "|".join(where for where in PAGES.values() if where)
                  + r")(?=[`\"'?#$]))")
 

@@ -16,7 +16,7 @@ api:GET/POST /api/share
 lib:directory
 -->
 
-![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Collections and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
+![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Lists and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
 
 ## On the home page {#home}
 
@@ -52,6 +52,8 @@ On Top, **All time** beside the tabs changes to **This week** or **This month**:
 
 The address keeps the tab, the search and the filters (`/gallery?q=castle&kind=space&sort=newest`), so Back returns to them and a search can be sent to someone.
 
+The gallery's list can also be asked for the models built from a set, as its page lists them: `/api/share?op=list&alt=31009-1` gives those with every part from 31009-1 or built from it with a few other sets, and `&from_one_set=1` only those with every part from a single set ([built from a set](/docs/model-pages#built-from-a-set)).
+
 ## Filters {#filters}
 
 **Filters** opens a sheet. A number on the button says how many are on.
@@ -72,7 +74,7 @@ lib:Top builds and this week's pick
 
 ## The tabs {#tabs}
 
-The tabs are **Top**, **New**, **Following** (signed in: what the people you follow made), **Builds** ([photos of real builds](#builds)), **Collections** (the [directory of collections](/docs/collections#directory)) and **Sets** (every [real LEGO® set](/docs/ldraw-library#website)). A tab keeps the search's words, and has an address of its own (`/builds`, `/collections`, `/library`) to reload or send.
+The tabs are **Top**, **New**, **Following** (signed in: what the people you follow made), **Builds** ([photos of real builds](#builds)), **Lists** (the [directory of public lists](/docs/lists#directory)) and **Sets** (every [real LEGO® set](/docs/ldraw-library#website)). A tab keeps the search's words, and has an address of its own (`/builds`, `/gallery-lists`, `/library`) to reload or send.
 
 ## More than 24 {#pages}
 
@@ -103,6 +105,12 @@ lib:the gallery's daily choice
 
 Every model is a card, the same everywhere on the site: its picture, its name, its designer (press to open [their page](#designer)), its part count, and how many liked, built and commented on it once there are any. The heart on the picture likes it. **✓ Tested** says it passed [Brickworks' four tests](/docs/sharing#tested). A card says *Moves: steering, boom* when something on it moves, which anybody can move on its page, and *Won* with a challenge's name when it won one.
 
+Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/lists#own)). Only you see it, and the gallery counts it for the whole page at once.
+
+![Four gallery cards seen signed in with a collection: the sports car says You have 73%, the corner shop You have every part with a check, the barn owl You have 64%, and the fire station, under half, says nothing of it.](/docs/img/gallery-owned.webp "What you have of each model, on its card.")
+
+![Two gallery cards on a phone, signed in with a collection: the sports car says You have 73% and the corner shop You have every part.](/docs/img/gallery-owned-phone.webp "The same on a phone.")
+
 <!-- covers
 ui:model card
 lib:what moves on a gallery card
@@ -110,7 +118,7 @@ lib:what moves on a gallery card
 
 ## Builds {#builds}
 
-[brickworks.diy/builds](/builds), the **Builds** tab, is everybody's photos of gallery models built in real bricks, newest first: the photo, the model (press it to see the photo on the model's page), who built it and when, and what they said. To add yours, open the model's page and press **Built**. A photo stays off the tab once the model's designer hides it, or while a report of it is looked at.
+[brickworks.diy/builds](/builds), the **Builds** tab, is everybody's photos of gallery models built in real bricks, newest first: the photo, the model (press it to see the photo on the model's page), who built it and when, and what they said. To add yours, press **Show your build** on the last step of [Build it](/docs/model-pages#show-your-build), or open the model's page and press **Built**. A photo stays off the tab once the model's designer hides it, or while a report of it is looked at.
 
 <!-- covers
 ui:the gallery's builds tab
@@ -119,7 +127,7 @@ lib:builds in the gallery
 
 ## A designer's page {#designer}
 
-`/u/<handle>` is a designer's page: their models in Top builds order, **Start with their most built** with **Build it**, their numbers (builds finished, remixes, models, likes, followers) and what their models won, and the tabs **Models**, **Builds**, **Collections** and, if they chose to show them, **Likes**. **Follow** puts what they make in [your feed](/docs/profiles#feed). Brickworks' own page, [brickworks.diy/u/brickworks](/u/brickworks), shares the house's models.
+`/u/<handle>` is a designer's page: their models in Top builds order, **Start with their most built** with **Build it**, their numbers (builds finished, remixes, models, likes, followers) and what their models won, and the tabs **Models**, **Builds**, **Lists** and, if they chose to show them, **Likes**. **Follow** puts what they make in [your feed](/docs/profiles#feed). Brickworks' own page, [brickworks.diy/u/brickworks](/u/brickworks), shares the house's models.
 
 <!-- covers
 ui:a designer's page

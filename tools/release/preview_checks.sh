@@ -48,6 +48,9 @@ declare -A CMD=(
   # on the same page with no reload; a signed-out /profile opens it by
   # itself. A throwaway at a Resend test address, its code minted.
   [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
+  # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
+  # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
+  # local only: bootlook_flow.mjs. It serves a web export (--dir) itself and holds its load to a slow network, so a deployment cannot stand in (bootlook).
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and
   # bin_keys_phone_probe hold the bar in the suite (bintiles, 2026-11-06).
@@ -70,9 +73,26 @@ declare -A CMD=(
   # accounts, deleted after; before supabase/replies.sql, that nobody is
   # offered Reply (it reads which from the answer).
   [comments]="tools/web/comments_flow.mjs --url=$P --out=$S/${TAG}_comments"
+  # Comments on a part (partpins, supabase/comment_pins.sql): on five models,
+  # 20 right clicks at 1280 and 20 long presses at 390 by touch, each the
+  # part the viewer's own pick finds there; three pins through the page's
+  # box, their numbered dots and lines turning the view; a new version, the
+  # moved part's pin following it and the recoloured one's on version 1;
+  # Resolve seen by a visitor within 60 s; a blocked commenter's pins gone.
+  # Throwaway accounts, deleted after with their models.
+  [partpins]="tools/web/partpins_flow.mjs --url=$P --out=$S/${TAG}_partpins"
   [tested]="tools/web/tested_flow.mjs --url=$P --out=$S/${TAG}_tested"
   [digest]="tools/web/digest_flow.mjs --url=$P --out=$S/${TAG}_digest"
   [builds]="tools/web/builds_flow.mjs --url=$P --out=$S/${TAG}_builds"
+  # Show your build (makes): a photo of the real build posted from the step
+  # player's last step at 390 and 1280, signed out asked in place and kept
+  # through the sign-in; throwaway accounts, deleted after.
+  [makes]="tools/web/makes_flow.mjs --url=$P --out=$S/${TAG}_makes"
+  [firstminute]="tools/web/firstminute_flow.mjs --url=$P --out=$S/${TAG}_firstminute"
+  # Work in progress (buildlog, supabase/wip.sql): Share progress in the app
+  # puts the model in a follower's feed and its Talk thread within 60 s, and
+  # publishing it as finished ends it. Two throwaway accounts, deleted after.
+  [wip]="tools/web/wip_flow.mjs --url=$P --out=$S/${TAG}_wip"
   [follows]="tools/web/follows_flow.mjs --url=$P --out=$S/${TAG}_follows"
   # Following a collection (docs/SOCIAL.md U11, supabase/collection_follows.sql):
   # Follow on its page and its count; a model put in it in the follower's
@@ -133,11 +153,14 @@ declare -A CMD=(
   # never yourself or whom you follow, and Follow in place. Throwaway
   # accounts, deleted after with their models.
   [alike]="tools/web/alike_flow.mjs --url=$P --out=$S/${TAG}_alike"
-  # The collections directory (W12, supabase/collection_directory.sql):
-  # /collections lists a throwaway designer's public collection as a card
-  # with its cover, name, owner, model count and Follow; her private one
-  # never; Follow from the card at 390 px dark; most followed; 390 and 1280
-  # px in both themes; made private, gone. Throwaway accounts, deleted after.
+  # The gallery's Lists (W12, supabase/collection_directory.sql; Collections
+  # until lists2a): /gallery-lists lists a throwaway designer's public list
+  # as a card with its cover, name, owner, model count and Follow; her
+  # private one never; Follow from the card at 390 px dark; most followed;
+  # 390 and 1280 px in both themes; made private, gone; every /collections
+  # address (its forms, languages and query) a 301 to Lists, and every link
+  # to one crawled from the site and the docs landing there. Throwaway
+  # accounts, deleted after.
   [collections]="tools/web/collections_flow.mjs --url=$P --out=$S/${TAG}_collections"
   # Your sets and lists (docs/LISTS.md, supabase/lists.sql): signed out,
   # Own asks to sign in; Own from a set's card (Undo, the server agreeing,
@@ -147,9 +170,24 @@ declare -A CMD=(
   # its social card) then private (404 to both, out of the directory); the
   # profile's Sets tab once chosen, a theme and a search; a Rebrickable CSV
   # in, the CSV out; at 430 px with touch the panel as a sheet and How
-  # many; 1280 and 430 in both themes, nothing sideways. Throwaway
+  # many; 1280 and 430 in both themes, nothing sideways. And lists2a: the
+  # model page's Save the card's (one panel, op=keep alone); a list shared
+  # by its link (supabase/lists_link.sql), opened by Bob and a visitor, no
+  # cache and noindex, 404 without its key, absent from her profile, the
+  # directory, its search and the sitemap, Stop sharing a 404 on the next
+  # request; Add sets' preview counted as the flow reckons it, Cancel
+  # writing nothing, into the sets she owns and into a list. Throwaway
   # accounts, deleted after with everything of theirs.
   [lists]="tools/web/lists_flow.mjs --url=$P --out=$S/${TAG}_lists"
+  # What you own and lack (ownedparts): three throwaway collections (sets
+  # owned more than once, loose parts), each one's gallery page of 24 cards
+  # against a count from the raw rows (read only), the line each card
+  # draws; What you're missing on three models' Parts tabs against the
+  # list less the raw rows, its BrickLink XML and Pick a Brick list read
+  # back; You own on a set's page and its attacks (100, -1, x, two tabs,
+  # taken out elsewhere, signed out); 1280 and 390 in both themes, no API
+  # ask a card. Deleted after with everything of theirs.
+  [ownedparts]="tools/web/ownedparts_flow.mjs --url=$P --out=$S/${TAG}_ownedparts"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with
@@ -160,6 +198,16 @@ declare -A CMD=(
   # Achievements tab, read once opened. Throwaway accounts, deleted after;
   # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
+  # What you hear of, and where (inbox): Settings' grid at 390 and 1280 in
+  # both themes (33 boxes, each named and 44 px); the account menu's
+  # newest five against the list's first five, opening the menu marking
+  # nothing seen; once supabase/notification_prefs.sql is applied, a kind off
+  # here, two by email kept across a reload, a model muted from its
+  # notification and its page and unmuted from Settings, the day's email
+  # (dry) saying only what was chosen and nothing of the muted model, Done
+  # in one request with a second tab, a reload, Undo and Mark all done.
+  # Throwaway accounts, deleted after; before the file, the controls absent.
+  [inbox]="tools/web/inbox_flow.mjs --url=$P --out=$S/${TAG}_inbox"
   # The site on a home screen, offline, and this device's notifications
   # (homescreen): two deploys on one address served here, the next load the
   # new one's; installable at 390 and 1280; the offline page with the
@@ -207,6 +255,8 @@ declare -A CMD=(
   # Notifications, and its link's own head: API routes only, with the bypass
   # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
+  # local only: prompts_flow.mjs. The weekly quick build needs supabase/challenge_prompts.sql,
+  # which no preview has until the lead applies it; before it the flow stops (exit 2). Name it here once it is.
   # The challenge on the home page with its days left and This week's pick,
   # both within the first two screens at 390 and 1280; /challenge moving no
   # more than 0.1 as it loads at 390, 768 and 1280; its own picture
@@ -316,8 +366,8 @@ declare -A CMD=(
   # picture, name, designer and action bar on a phone's first screen, the
   # column beside the picture on a laptop as the page scrolls; Like, Save,
   # Share, Comment, I built it and More named with their counts, never 0;
-  # Share's link and toast, and the share sheet where there is one; Save's
-  # lists, Favourites first; More's embed code; More by and Similar only
+  # Share's link and toast, and the share sheet where there is one; Save the
+  # card's, its panel Saved first (lists2a); More's embed code; More by and Similar only
   # with three cards. Signed in, the API answered by the stand-in.
   [model_page]="tools/web/model_page_flow.mjs --url=$P --out=$S/${TAG}_model_page"
   # The embed in 3D (docs/SOCIAL.md section 7, item 4): /m/<id>/embed in a
@@ -350,12 +400,12 @@ declare -A CMD=(
   # index and files: no account, no database.
   [library_site]="tools/web/library_site_flow.mjs --url=$P --out=$S/${TAG}_library_site"
   # The gallery one page to browse (browse, 2026-11-02): Top, New, Builds,
-  # Collections and Sets each switched in place, no new document, the
+  # Lists and Sets each switched in place, no new document, the
   # address and the marked tab its own, the same header, search and grid,
   # and each tab's first cards the API's; Back to the tab and where it was
   # scrolled, Forward again; the search kept from tab to tab; each tab's
-  # address reloaded; /library (?theme=Town), /builds, /collections and
-  # /de/library each 200 with canonical and hreflang on the right tab; the
+  # address reloaded; /library (?theme=Town), /builds, /gallery-lists (and
+  # /collections by its 301) and /de/library each 200 with canonical and hreflang on the right tab; the
   # tab row whole at 390 and 1280, en and de.
   [browse]="tools/web/browse_flow.mjs --url=$P --out=$S/${TAG}_browse"
   # The site's one pager (web/pager.js, site357) on the LDraw library and a
@@ -668,7 +718,9 @@ declare -A CMD=(
   [cloud_library]="tools/web/cloud_library_flow.mjs --url=$P/app $B --out=$S/${TAG}_cloud_library"
   # Signing in as a person does: a first visit's sign-in screen, an emailed
   # code typed (minted, sent nowhere), a reload still signed in, Account
-  # saying who, the admin page refused, and Sign out; a throwaway account.
+  # saying who, the admin page refused, and Sign out; a throwaway account,
+  # deleted as a person deletes it: its model's clip gone from storage, and
+  # its list shared by a link gone, the link a 404 (lists2a).
   [account]="tools/web/account_flow.mjs --url=$P/app --out=$S/${TAG}_account"
   [decor]="tools/web/decor_flow.mjs --url=$P/app --out=$S/${TAG}_decor"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app --out=$S/${TAG}_model_view"

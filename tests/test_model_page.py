@@ -102,8 +102,16 @@ def test_the_action_bar_says_each_name_and_count_and_never_a_count_of_none() -> 
     if said is None:
         return
     tower, fox = (one["html"] for one in said)
-    assert labels(tower) == ["Like, 96 likes", "Save", "Share", "Comment", "I built it, 37 builds", "More"]
-    assert labels(fox) == ["Like, 33 likes", "Save", "Share", "Comment", "I built it, 14 builds", "More"]
+    # Save is a card's (web/keep.js, lists2a): Saved at a tap, and its arrow
+    # for your lists, one panel on the card and the page.
+    assert labels(tower) == ["Like, 96 likes", "Save Riverside Watchtower", "Add Riverside Watchtower to a list", "Share",
+                             "Comment", "I built it, 37 builds", "More"]
+    fox_said = labels(fox)
+    assert fox_said[0] == "Like, 33 likes" and fox_said[3:] == ["Share", "Comment", "I built it, 14 builds", "More"], fox_said
+    assert fox_said[1].startswith("Save ") and fox_said[2].startswith("Add ") and fox_said[2].endswith(" to a list"), fox_said
+    for html in (tower, fox):
+        bar = re.search(r'<div class="action-bar" id="marks"[\s\S]*?</details></div>', html).group(0)
+        assert bar.count('<div class="keep" data-keep="model:') == 1 and 'id="save-panel"' not in html and 'data-mark="save"' not in bar
     for html in (tower, fox):
         assert not re.search(r'class="n"[^>]*>0<', html)
         assert not re.search(r">0 (views|likes|remixes|built)<", html)
@@ -123,7 +131,8 @@ def test_the_action_bar_says_each_name_and_count_and_never_a_count_of_none() -> 
 
 
 def test_the_page_is_drawn_without_what_comes_next_when_the_database_will_not_say() -> None:
-    said = pages("/m/DesignAbc1", failing="rpc/directory_models")
+    # (More by and Like this are asked of gallery_models: rankedRows.)
+    said = pages("/m/DesignAbc1", failing="rpc/gallery_models")
     if said is None:
         return
     page = said[0]
@@ -180,7 +189,7 @@ def test_the_tabs_say_each_part_and_its_count_never_one_of_none() -> None:
     # Comments are counted as they are listed, in the page (model-page.js).
     # Parts, counted from the file as the app counts it (api/_parts.js): the
     # stand-in's file is three bricks.
-    assert tabs(tower) == ["About", "Parts 3", "Comments", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"]
+    assert tabs(tower) == ["About", "Parts 3", "Comments", "Builds 37", "Remixes 3", "Lists 2", "Log 2"]
     assert tabs(bakery) == ["About", "Parts 3", "Comments", "Builds", "Remixes"]
     for html in (tower, bakery):
         for key in ("about", "comments", "builds", "remixes"):
@@ -191,14 +200,16 @@ def test_the_tabs_say_each_part_and_its_count_never_one_of_none() -> None:
 
 
 def test_a_model_says_how_many_collections_it_is_in_and_links_them() -> None:
-    """docs/SOCIAL.md U11: "In 2 collections", a pill linked to its part of
-    the page, where each public collection it is in is a card with its
-    cover and whose it is; a private one is neither counted nor shown."""
+    """docs/SOCIAL.md U11: "In 2 lists" (collections until lists2a), a pill
+    linked to its part of the page, where each public list it is in is a
+    card with its cover and whose it is; a private one is neither counted
+    nor shown."""
     said = pages("/m/DesignAbc1", "/m/PriyaSpc01")
     if said is None:
         return
     tower, rover = (one["html"] for one in said)
-    assert '<a class="pill" href="#collections" data-lists="2">In 2 collections</a>' in tower
+    assert '<a class="pill" href="#collections" data-lists="2">In 2 lists</a>' in tower
+    assert '<h2 id="lists-h">In lists</h2>' in tower and "People put it in 2 public lists." in tower
     part = re.search(r'<section class="in-lists" id="collections"[\s\S]*?</section>', tower).group(0)
     cards = re.findall(r'<a class="list-card" href="/c/([A-Za-z0-9]{10})"', part)
     # Sam's was put in last (updated last), then Robin's.
@@ -220,7 +231,7 @@ def test_a_collection_page_leads_with_its_cover_follow_and_share() -> None:
     castles, small = (one["html"] for one in said)
     head = re.search(r'<header class="list-head">[\s\S]*?</header>', castles).group(0)
     assert '<div class="cover"><div class="mosaic n3">' in head
-    assert "<h1>Castles worth a weekend</h1>" in head and 'Collected by <a href="/u/design-tester">Robin Castell</a>' in head
+    assert "<h1>Castles worth a weekend</h1>" in head and 'Made by <a href="/u/design-tester">Robin Castell</a>' in head
     assert '<li data-stat="models"><b>3</b> <span>models</span></li>' in head
     assert '<li data-stat="followers" data-list-followers="ListAbcde1"><b>3</b> <span>followers</span></li>' in head
     assert 'data-follow-list="ListAbcde1" hidden>Follow</button>' in head
@@ -322,8 +333,9 @@ def test_a_model_s_page_in_each_language_of_the_site() -> None:
         name = words["{name} — a Brickworks model"].replace("{name}", "Riverside Watchtower")
         assert f"<title>{name}</title>" in html
         assert f'<a href="/{code}/gallery">{words["Gallery"]}</a>' in html
-        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Versions", "Made from it"):
-            # (French writes Versions as English does.)
+        # (The Remixes tab draws its tree, the page's own "This model" in it: remixdiff.)
+        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Log", "This model"):
+            # (French writes some as English does.)
             assert f">{words[key]}<" in html and (words[key] == key or f">{key}<" not in html), key
         assert "A three-storey watchtower on a riverbank" in html
         assert day[code] in html and "28 September 2026" not in html

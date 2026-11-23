@@ -469,6 +469,10 @@ func definitions() -> Array:
 				+ "\"later\", \"merge\" (with the next) and \"delete\" act on step=, a number "
 				+ "from the list. A model with no steps of its own is given the worked-out "
 				+ "ones first, in the same undo step."
+				# stepkeep2: saved steps are kept; planned again when asked.
+				+ " A model opens in the steps it was saved in; \"plan\" works them out "
+				+ "afresh from the model as it is, in place of its own, in one undo step "
+				+ "(not someone else's file, whose author's steps are kept)."
 				# stepnames: a step named, in a block of its own.
 				+ " \"name\" gives step= a name= (\"Build the cockpit\"), said beside its "
 				+ "number on the timeline, in Build it and in the booklet; name= \"\" takes it "
@@ -489,7 +493,7 @@ func definitions() -> Array:
 				+ "have in the parts bin."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
-					"later", "merge", "delete", "name"]},
+					"later", "merge", "delete", "name", "plan"]},
 				"name": {"type": "string", "description": "for name: what the step is called, up to 80 characters; \"\" takes it off"},
 				"callout_step": {"type": "integer", "description": "for name: a step inside the callout step= puts on, from 1, as edit_booklet takes it"},
 				"bricks": {"type": "array", "items": {"type": "integer"},
@@ -674,7 +678,7 @@ func definitions() -> Array:
 		},
 		{
 			"name": "lay_flex",
-			"description": ("Lay a hose, tube, string or chain, as Make, Hose, tube or chain "
+			"description": ("Lay a hose, tube, string or chain, as Make, Cable, hose or chain "
 				+ "does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two "
 				+ "parts' pin holes, axles or pins; string between two studs; chain or tread "
 				+ "round sprockets= (two or more gears in one plane). The real length that "
@@ -2205,7 +2209,9 @@ func _edit_steps(input: Dictionary) -> String:
 						else "Step %d's callout has steps 1 to %d." % [named.number, named.callout_steps]
 				named = inside
 			return _sentence(shell.change_look("name", named, {"name": str(input["name"])}))
-	return "op is one of list, to, next, prev, new, earlier, later, merge, delete, name."
+		"plan":
+			return _sentence(shell.change_steps("plan", [], null))
+	return "op is one of list, to, next, prev, new, earlier, later, merge, delete, name, plan."
 
 
 # -- the booklet, by hand --------------------------------------------------------
@@ -5286,11 +5292,16 @@ func _open_link(link: String, discard: bool) -> String:
 		% [author if not author.is_empty() else "its builder", url]]) \
 		if licence is String and GalleryTool.LICENCES.has(licence) \
 		else "none chosen: the person may build it; do not share what is made from it as theirs"
+	# Whom the copy credits when it is published (SharePanel.publish sends
+	# remixed_from and its version, api/share.js names them on its page).
+	var version: String = (", version %d" % store.remixed_from_version) if store.remixed_from_version > 0 \
+		else ""
 	return ("Opened a copy of %s (%s)%s: %s, saved in the person's models as %s, theirs to "
-		+ "change; the shared one stays as it was, and sharing this one says it was remixed from "
-		+ "it. Licence %s. look_at_model to see it.") % [name, url,
+		+ "change; the shared one stays as it was. When the person publishes the copy (File › "
+		+ "Share…), its page credits the original: \"Remixed from %s%s\", with a link to it. "
+		+ "Licence %s. look_at_model to see it.") % [name, url,
 		", by %s" % author if not author.is_empty() else "",
-		await _parts_against_box(store, ""), kept, terms] \
+		await _parts_against_box(store, ""), kept, name, version, terms] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
 
 

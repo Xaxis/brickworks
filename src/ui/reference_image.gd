@@ -595,7 +595,8 @@ static func _studs_words(ldu: float) -> String:
 func _make_dialog() -> void:
 	_dialog = AcceptDialog.new()
 	_dialog.title = "Reference picture"
-	_dialog.ok_button_text = "Done"
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	_dialog.ok_button_text = "Close"
 	# The model stays to hand while it is open: its corners dragged, the
 	# view turned.
 	_dialog.exclusive = false

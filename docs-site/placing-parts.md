@@ -59,7 +59,7 @@ ui:type a number while moving
 - Aim at the underside of an overhang and the part goes beneath it.
 - Tip a plate with [[T]] and aim at a side stud, on a headlight brick or a bracket, and it goes on sideways, studs out. Parts with studs on their sides are read at their real width.
 - A 4740 dish, or a small part with one tube under it, goes onto a single stud, as its sets have it. A cone put on a stud sits at the stud's stop.
-- A model opened from a file with parts a fraction off their studs can have them squared up with **Tools › Seat parts on their studs**.
+- A model opened from a file with parts a fraction off their studs can have them squared up with **Tools › Seat parts on their studs**. A part too far from any stud to seat, floating in the air, is selected and said, to move by hand.
 
 <!-- covers
 ui:place under a part and on side studs

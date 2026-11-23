@@ -14,6 +14,21 @@
 //                                Talk's, read up to now; {announcement,
 //                                clicked?}: that announcement's, its link followed or
 //                                not; {all: true}: Mark all read
+//   GET  ?op=notifications&view=done  (session) what was marked done, grouped
+//                                the same way, the count untouched
+//   GET  ?op=notifications&most=5     (session) the newest groups, each with
+//                                its newest row, for the account menu; nothing
+//                                marked seen
+//   POST ?op=notifications_done  (session) {group, at} or {all: true, at}: done
+//                                up to [at] (the newest row the page showed);
+//                                {..., undo: true, at: before} puts it back
+//   POST ?op=notification_mute   (session) {model, on}: that model's
+//                                notifications stop (or start again)
+//   GET  ?op=notification_prefs  (session) {ready, here, push, email, muted}:
+//                                each kind on or off for each place, the
+//                                models muted with their names
+//   POST ?op=notification_prefs  (session) {kind, channel, on}: one choice
+//                                (supabase/notification_prefs.sql)
 //   GET  ?op=feed_count          (session) {count, notifications, feed, me}:
 //                                what is new for the avatar (the two
 //                                together, as the app's Account says it),
@@ -44,6 +59,13 @@
 // Nothing by somebody you blocked (supabase/block.sql): their rows leave
 // the list and the count on your avatar (api/_blocks.js).
 //
+// Since notification_prefs.sql (inbox, 2026-11-23), each of the eleven
+// kinds (KINDS) is here, pushed and emailed as its account chose, a model
+// can be muted, and a group (or all) marked done: what was done by then
+// leaves the count and the list for the Done view (?view=done), and what
+// comes after is back in the list. Before the file, everything is here and
+// nothing is done or muted, as before.
+//
 // Until notifications.sql is applied its functions are not there (404),
 // and what the feed tells of your models is read from the feed of before
 // (feed_of), likes from model_likes, and the feed's marks are the only
@@ -51,12 +73,17 @@
 // A challenge's end needs the file.
 
 import { bearer, isMaster, verify } from "./_auth.js";
-import { db, dbAll } from "./_db.js";
+import { db, dbAll, orUnknown } from "./_db.js";
+import { promptsById } from "./_prompts.js";
 import { withFaces } from "./_faces.js";
 import { scopeOf } from "./_settings.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
 import { blockCounts, blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
+import { pinnedAmong } from "./_comments.js";
+
+/// The kinds a pin is told by: a comment on your model, and a mention.
+export const PINNABLE = new Set(["comment", "mention"]);
 
 const NOT_THERE = /: 404$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -82,6 +109,54 @@ const quoted = (text, most) => {
   const line = String(text ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
   return line.length > most ? `${line.slice(0, most - 1)}…` : line;
 };
+
+// ---------------------------------------------------------------------------
+// Pure: the kinds a person chooses (supabase/notification_prefs.sql).
+
+/// The eleven kinds, in the order Settings shows them.
+export const KINDS = ["comment", "reply", "mention", "photo", "remix", "likes", "talk", "challenge", "result",
+  "achievement", "news"];
+/// The kinds whose email is chosen where it was before: the day's email's
+/// own choice (api/_comments.js MAIL_KINDS), and the news choice.
+export const MAILED_AS = { comment: "comments", photo: "photos", remix: "remixes", news: "news" };
+/// What an account that never chose has: everything here, replies and
+/// mentions pushed to a device turned on, nothing more by email.
+export const DEFAULTS = Object.freeze({ here: KINDS, push: ["reply", "mention"], email: [], muted: [], done: {},
+  done_all: null });
+
+const AS_KIND = { talk_mention: "mention", talk_reply: "talk", challenge_open: "challenge", challenge_closing: "challenge",
+  challenge_won: "result", announcement: "news" };
+/// A row's kind as the kind a person chooses (notification_kind).
+export const kindOf = (raw) => AS_KIND[raw] || String(raw || "");
+
+/// The group of the page [row] is in, as noticeGroups and
+/// notification_group key it: its model, or "achievements",
+/// "challenge-N", "announcement-N", "talk-N"; "" for none.
+export function groupKey(row) {
+  if (row?.kind === "achievement") return "achievements";
+  if (CHALLENGE.has(row?.kind)) return `challenge-${Number(row.challenge) || 0}`;
+  if (row?.kind === "announcement") return `announcement-${Number(row.announcement) || 0}`;
+  if (row?.kind === "talk_reply" || row?.kind === "talk_mention") return `talk-${Number(row.thread) || 0}`;
+  return String(row?.on || "");
+}
+const GROUP = /^(?:[A-Za-z0-9]{10}|achievements|(?:challenge|announcement|talk)-[0-9]{1,12})$/;
+
+/// [rows] as [prefs] (notification_prefs_of's) leave them for [view]: the
+/// list ("inbox") keeps what is shown here, of no model muted, not done;
+/// "done" what was marked done of the same. Null prefs: all in the list.
+export function keptRows(rows, prefs, view = "inbox") {
+  const all = Array.isArray(rows) ? rows : [];
+  if (!prefs) return view === "done" ? [] : all;
+  const here = new Set(Array.isArray(prefs.here) ? prefs.here : KINDS);
+  const muted = new Set(Array.isArray(prefs.muted) ? prefs.muted : []);
+  const marks = prefs.done && typeof prefs.done === "object" ? prefs.done : {};
+  const allDone = Date.parse(prefs.done_all || "") || -Infinity;
+  return all.filter((row) => {
+    if (!here.has(kindOf(row?.kind)) || muted.has(String(row?.on || ""))) return false;
+    const done = Date.parse(row.at) <= Math.max(allDone, Date.parse(marks[groupKey(row)] || "") || -Infinity);
+    return view === "done" ? done : !done;
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Pure: what a notification says, and how they are grouped.
@@ -147,11 +222,13 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
   // One of two sentences, on a step or not, its step said.
   const stepped = (on, off) => (step ? on.replace("{step}", String(step)) : off);
   if (row.kind === "comment") {
-    // A reply to somebody else's comment on your model is a comment on it.
+    // A reply to somebody else's comment on your model is a comment on it;
+    // a pin (supabase/comment_pins.sql) is one on a part of it.
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
       link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
       line: row.parent ? stepped(say("{who} replied to a comment on step {step}"), say("{who} replied to a comment"))
-        : stepped(say("{who} commented on step {step}"), say("{who} commented")) };
+        : row.pinned ? stepped(say("{who} commented on a part, step {step}"), say("{who} commented on a part"))
+          : stepped(say("{who} commented on step {step}"), say("{who} commented")) };
   }
   if (row.kind === "reply") {
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
@@ -165,7 +242,9 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
       link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
       line: row.parent ? stepped(say("{who} mentioned you in a reply on step {step}"), say("{who} mentioned you in a reply"))
-        : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
+        : row.pinned ? stepped(say("{who} mentioned you in a comment on a part, step {step}"),
+          say("{who} mentioned you in a comment on a part"))
+          : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
   }
   if (row.kind === "talk_reply" || row.kind === "talk_mention") {
     // In Talk (supabase/talk.sql): a post in a thread followed, or naming you.
@@ -198,6 +277,14 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
         of: Number(row.of) || level }) };
   }
   const title = quote(quoted(row.title || say("the challenge"), 80));
+  if (CHALLENGE.has(row.kind) && row.prompt) {
+    // A weekly quick build (api/_prompts.js): Start, not enter.
+    const day = dateWords(row.ends_on);
+    const line = row.kind === "challenge_closing"
+      ? say("The last two days of this week's quick build, {title}: publish yours by the end of {day}", { title, day })
+      : say("This week's quick build is {title}: start from its template, and publish by the end of {day}", { title, day });
+    return { ...base, link: challengeLink(row, origin), line };
+  }
   if (CHALLENGE.has(row.kind)) {
     const day = dateWords(row.ends_on);
     const line = row.kind === "challenge_open" ? say("{title} is open: enter by the end of {day}", { title, day })
@@ -239,8 +326,7 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
     const challenge = CHALLENGE.has(row.kind) ? Number(row.challenge) || 0 : 0;
     const told = row.kind === "announcement";
     const talk = row.kind === "talk_reply" || row.kind === "talk_mention" ? Number(row.thread) || 0 : 0;
-    const on = levelled ? "achievements" : challenge ? `challenge-${challenge}` : told ? `announcement-${Number(row.announcement) || 0}`
-      : talk ? `talk-${talk}` : String(row.on || "");
+    const on = challenge || !CHALLENGE.has(row.kind) ? groupKey(row) : String(row.on || "");
     if (!levelled && !challenge && !told && !talk && !ID.test(on)) continue;
     const at = Date.parse(row.at);
     const readTo = levelled || challenge || told || talk ? (row.read === true ? Infinity : allRead)
@@ -253,8 +339,12 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
         link: `${origin}/profile?tab=achievements`, at: row.at, new: false, unread: false, rows: [] });
     }
     if (challenge && !groups.has(on)) {
-      groups.set(on, { model: "", challenge, name: say("Challenge: {title}", { title: quoted(row.title || say("a challenge"), 80) }), picture: null,
-        link: challengeLink(row, origin), at: row.at, new: false, unread: false, rows: [] });
+      // A weekly quick build's group starts the studio on its template.
+      const template = row.prompt && ID.test(String(row.prompt.template || "")) ? row.prompt.template : "";
+      groups.set(on, { model: "", challenge, name: say(row.prompt ? "Quick build: {title}" : "Challenge: {title}",
+        { title: quoted(row.title || say("a challenge"), 80) }), picture: null,
+        link: challengeLink(row, origin), ...(template ? { start: `${origin}/app?copy=${template}` } : {}),
+        at: row.at, new: false, unread: false, rows: [] });
     }
     if (talk && !groups.has(on)) {
       groups.set(on, { model: "", talk, name: say("Talk: {title}", { title: quoted(row.title || say("a thread"), 100) }), picture: null,
@@ -273,6 +363,8 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
         link: `${origin}/m/${on}`, at: row.at, new: false, unread: false, rows: [] });
     }
     const group = groups.get(on);
+    // Its key, for Done (notification_done), and the model a mute is of.
+    group.key ??= on;
     group.rows.push(said);
     group.new ||= said.new;
     group.unread ||= said.unread;
@@ -316,24 +408,135 @@ export async function listBefore(viewer, mark) {
 // ---------------------------------------------------------------------------
 // The requests.
 
+/// What [viewer] chose (notification_prefs_of), or null before the file.
+export const prefsOf = (viewer) => call("notification_prefs_of", { viewer }, () => null);
+
 export async function notifications(request, response, { origin }) {
   response.setHeader("Cache-Control", "private, no-store");
   const asker = await who(request);
   if (!asker) throw new Unacceptable("Sign in to see what happened to your models: we email you a code, no password.", 401);
+  // The Done view, and the account menu's newest few, leave the count as it is.
+  const view = request.query?.view === "done" ? "done" : "inbox";
+  const most = request.query?.most === undefined ? 0 : Number(request.query.most);
+  if (most && (!Number.isInteger(most) || most < 1 || most > 20)) throw new Unacceptable("most is a number from 1 to 20");
+  const mark = view === "inbox" && !most;
   // Opened: what was counted is seen now, with any level reached since.
   await marked(asker);
-  const page = await call("notification_list", { viewer: asker, mark: true }, () => ({ missing: true }));
-  const listed = page && page.missing ? await listBefore(asker, true) : page;
-  if (!listed) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
+  const [page, prefs] = await Promise.all([call("notification_list", { viewer: asker, mark }, () => ({ missing: true })),
+    prefsOf(asker)]);
+  const listed = page && page.missing ? await listBefore(asker, mark) : page;
+  if (!listed) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false, chosen: false });
   // Nothing by anybody they blocked, nor about a model of theirs: a remix
   // of yours whose maker is unnamed, a reply on their model.
   const handles = await blockedHandles(asker);
   const gone = handles.size ? await blockedModels(asker, (listed.rows || []).map((row) => row?.model)) : new Set();
-  const read = handles.size ? { ...listed, rows: rowsWithout(listed.rows, handles, gone) } : listed;
+  const shown = handles.size ? rowsWithout(listed.rows, handles, gone) : listed.rows;
+  // As they chose (supabase/notification_prefs.sql): the kinds shown here, no
+  // model muted, and the list or what was marked done.
+  const read = { ...listed, rows: keptRows(shown, prefs, view) };
+  // A comment on a part says so (api/_comments.js pinnedAmong).
+  await pinnedAmong((read.rows || []).filter((row) => PINNABLE.has(row?.kind)));
+  // Which challenges told of are weekly quick builds, and their templates.
+  const prompts = (read.rows || []).some((row) => CHALLENGE.has(row?.kind))
+    ? await orUnknown("prompts", promptsById(true)) : null;
+  if (prompts && prompts.size) {
+    read.rows = read.rows.map((row) => (CHALLENGE.has(row?.kind) && prompts.has(Number(row.challenge))
+      ? { ...row, prompt: prompts.get(Number(row.challenge)) } : row));
+  }
   // Each line in the language the page asks in (?lang=).
   const lang = String(request.query?.lang || "en");
+  const grouped = inLanguage(lang, siteWords(lang), () => noticeGroups(read, origin));
+  // The account menu's: the newest groups, each with its newest line.
+  if (most) grouped.groups = grouped.groups.slice(0, most).map((one) => ({ ...one, rows: one.rows.slice(0, 1) }));
   return response.status(200).json(await withFaces({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,
-    ...inLanguage(lang, siteWords(lang), () => noticeGroups(read, origin)) }));
+    chosen: Boolean(prefs), view, ...grouped }));
+}
+
+/// POST ?op=notifications_done {group, at} or {all: true, at}: done up to
+/// [at]; {undo: true, at} sets the mark back to [at] (null: none), as Undo.
+export async function notificationsDone(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const asker = await who(request);
+  if (!asker) throw new Unacceptable("Sign in first: we email you a code, no password.", 401);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const all = body.all === true;
+  const group = all ? null : String(body.group ?? "");
+  if (!all && !GROUP.test(group)) throw new Unacceptable("say which: group (a model, achievements, or challenge-, announcement- or talk- and its number) or all: true");
+  if (body.undo !== undefined && typeof body.undo !== "boolean") throw new Unacceptable("undo is true or false");
+  const undo = body.undo === true;
+  const at = body.at === null || body.at === undefined ? null : Date.parse(String(body.at));
+  if (body.at !== null && body.at !== undefined && !Number.isFinite(at)) throw new Unacceptable("at is a time, as the list gave it");
+  if (at === null && !undo) throw new Unacceptable("say up to when: at, the newest row's time");
+  const said = await call("notification_done", { viewer: asker, p_group: group, p_at: at === null ? null : new Date(at).toISOString(),
+    p_undo: undo }, () => ({ missing: true }));
+  if (said?.missing) throw new Unacceptable("Done is not open on Brickworks yet.", 503);
+  if (said?.refused) throw new Unacceptable("That was a lot at once. Try again in a minute.", 429);
+  return response.status(200).json({ group: said.group ?? null, at: said.at ?? null, before: said.before ?? null });
+}
+
+const MODEL = /^[A-Za-z0-9]{10}$/;
+
+/// POST ?op=notification_mute {model, on}: that model muted, or not.
+export async function notificationMute(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const asker = await who(request);
+  if (!asker) throw new Unacceptable("Sign in first: we email you a code, no password.", 401);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const model = String(body.model ?? "");
+  if (!MODEL.test(model)) throw new Unacceptable("say which model: model, its link's ten characters");
+  if (typeof body.on !== "boolean") throw new Unacceptable("say on: true to mute it, or on: false");
+  const said = await call("notification_mute", { viewer: asker, p_model: model, p_on: body.on }, () => ({ missing: true }));
+  if (said?.missing) throw new Unacceptable("Muting is not open on Brickworks yet.", 503);
+  if (said?.refused === "no_model") throw new Unacceptable("There is no such model.", 404);
+  if (said?.refused === "most") throw new Unacceptable("You have muted 500 models: unmute one in Settings first.", 409);
+  if (said?.refused) throw new Unacceptable("That was a lot at once. Try again in a minute.", 429);
+  return response.status(200).json({ model, muted: said.muted === true, count: Number(said.count) || 0 });
+}
+
+/// GET ?op=notification_prefs: {ready, here, push, email, muted: [{model,
+/// name, picture, link}]}; before the file, ready false and the defaults.
+export async function notificationPrefs(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
+  const asker = await who(request);
+  if (!asker) throw new Unacceptable("Sign in first: we email you a code, no password.", 401);
+  const prefs = await prefsOf(asker);
+  const chosen = prefs || DEFAULTS;
+  const ids = (Array.isArray(chosen.muted) ? chosen.muted : []).filter((id) => MODEL.test(String(id)));
+  const cards = ids.length ? await db(`shared_models?id=in.(${ids.join(",")})&select=id,name,has_image,has_thumb,updated_at`) : [];
+  const byId = Object.fromEntries(cards.map((one) => [one.id, one]));
+  return response.status(200).json({ ready: Boolean(prefs), kinds: KINDS, mailed_as: MAILED_AS,
+    here: chosen.here, push: chosen.push, email: chosen.email,
+    // Newest muted first; a model since deleted named as such.
+    muted: ids.reverse().map((id) => {
+      const card = byId[id];
+      const version = Date.parse(card?.updated_at || "") || 0;
+      return { model: id, name: card ? quoted(card.name, 80) : say("A model since deleted"), link: `/m/${id}`,
+        picture: card ? pictureOf({ id, image: card.has_image === true,
+          thumb: card.has_thumb === true ? `/m/${id}.webp?v=${version.toString(36)}` : null }) : null };
+    }) });
+}
+
+/// POST ?op=notification_prefs {kind, channel, on}: one choice. The email
+/// of comment, photo, remix and news is chosen with op=mail and op=news.
+export async function chooseNotification(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const asker = await who(request);
+  if (!asker) throw new Unacceptable("Sign in first: we email you a code, no password.", 401);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const kind = String(body.kind ?? "");
+  const channel = String(body.channel ?? "");
+  if (!KINDS.includes(kind)) throw new Unacceptable(`say a kind: ${KINDS.join(", ")}`);
+  if (!["here", "push", "email"].includes(channel)) throw new Unacceptable("say a channel: here, push or email");
+  if (typeof body.on !== "boolean") throw new Unacceptable("say on: true or on: false");
+  if (channel === "email" && MAILED_AS[kind]) {
+    throw new Unacceptable(kind === "news" ? "Brickworks news by email is chosen with op=news" : `its email is chosen with op=mail (${MAILED_AS[kind]})`);
+  }
+  const said = await call("notification_choose", { viewer: asker, p_kind: kind, p_channel: channel, p_on: body.on },
+    () => ({ missing: true }));
+  if (said?.missing) throw new Unacceptable("Choosing what you hear of is not open on Brickworks yet.", 503);
+  if (said?.refused) throw new Unacceptable("That was a lot at once. Try again in a minute.", 429);
+  return response.status(200).json({ kind, channel, on: (said[channel] || []).includes(kind), here: said.here, push: said.push,
+    email: said.email });
 }
 
 export async function notificationsRead(request, response) {
@@ -386,15 +589,23 @@ export async function notificationsRead(request, response) {
 /// before until that file is applied. A level reached is written down
 /// first, so it is in the count at once.
 export async function newCounts(asker) {
-  const [both, since, barred] = await Promise.all([
-    marked(asker).then(() => call("notification_counts", { viewer: asker }, () => ({ missing: true }))),
+  // Levels reached written down once, before either count reads them.
+  const levels = marked(asker);
+  const [both, since, barred, kept] = await Promise.all([
+    levels.then(() => call("notification_counts", { viewer: asker }, () => ({ missing: true }))),
     call("feed_new_count", { viewer: asker }, () => null),
     // Counted again without what their blocks leave out of the lists
     // (supabase/block.sql), for somebody who blocked anybody.
     blockCounts(asker),
+    // And as they chose (notification_prefs.sql): the kinds shown here, no
+    // model muted, nothing done, their blocks too; null if they never chose.
+    levels.then(() => call("notification_count_kept", { viewer: asker }, () => null)).catch((problem) => {
+      console.error(`notifications: kept count: ${String(problem?.message || problem).slice(0, 160)}`);
+      return null;
+    }),
   ]);
   if (both && !both.missing) {
-    const notices = barred ? barred.notifications : Number(both.notifications) || 0;
+    const notices = Number.isInteger(kept) ? kept : barred ? barred.notifications : Number(both.notifications) || 0;
     const feed = barred ? barred.feed : since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0;
     return { count: Math.min(notices + feed, 99), notifications: notices, feed, ready: true };
   }

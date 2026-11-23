@@ -23,6 +23,11 @@ import { INHERIT, parseLbm } from "../../web/lbm.js";
 import { SCENERY } from "./scene.js";
 
 export const CLAY = new Color(0xc9ced6);
+// A part a remix took away, drawn where it stood (addGhosts): the app's
+// Compare draws them red (CompareView.REMOVED_GHOST).
+const GHOST = new Color(0xe5484d);
+// A surface moulded in a colour the scene does not name.
+const UNKNOWN = new Color().setHex(0x9a9a9a);
 // Where the camera starts, unless told (from): the app's front-right corner
 // (ModelShot "corner").
 const CORNER = [0.72, 0.52, 0.72];
@@ -114,7 +119,7 @@ export class View {
     this.stage = stage;
     this.d = d;
     this.o = { still: false, spin: true, fov: 35, from: CORNER, errors: [], mark: () => {}, touchAction: () => "pan-y", lost: () => {},
-      shapeOf: () => Promise.resolve(null), ...given };
+      shapeOf: () => Promise.resolve(null), drawn: () => {}, ...given };
     this.from = new Vector3(...this.o.from).normalize();
     this.marked = new Set();
     this.scene = new Scene();
@@ -465,6 +470,8 @@ export class View {
   }
   draw() {
     this.renderer.render(this.scene, this.camera);
+    // What is drawn over it follows it (inline.js, a pin's dot).
+    this.o.drawn();
     if (this.loaded > 0) this.once("first3d");
     if (this.loaded >= this.meshesWanted && this.meshesWanted > 0) this.once("complete3d");
   }
@@ -568,7 +575,7 @@ export class View {
         g.setMatrixAt(k, matrix);
         if (look && look.colour) c.copy(look.colour);
         else if (fixed >= 0) c.copy(this.colours[fixed]);
-        else if (fixed === -2) c.setHex(0x9a9a9a);
+        else if (fixed === -2) c.copy(UNKNOWN);
         else c.copy(this.colours[d.colour[i]] || CLAY);
         g.setColorAt(k, c);
       }
@@ -592,6 +599,79 @@ export class View {
       if (i !== undefined && !(this.d.flags[i] & SCENERY)) return i;
     }
     return -1;
+  }
+
+  // The brick nearest the middle of the stage, for the keys (a part
+  // commented on from them): the one there, else the first found on rings
+  // round it, or -1.
+  pickNearMiddle() {
+    if (!this.renderer) return -1;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const most = Math.min(rect.width, rect.height) / 2;
+    for (const ring of [0, 0.06, 0.12, 0.2, 0.3, 0.42]) {
+      for (let k = 0; k < (ring ? 12 : 1); k++) {
+        const i = this.pick(x + Math.cos((k * Math.PI) / 6) * ring * most, y + Math.sin((k * Math.PI) / 6) * ring * most);
+        if (i >= 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  // The middle of brick [i]'s part, in the scene: its box's middle, turned
+  // and put where the brick is.
+  centreOf(i) {
+    const d = this.d;
+    const b = d.meshes[d.mesh[i]]?.bounds;
+    const centre = b && b.length === 6 && b.every(Number.isFinite)
+      ? new Vector3((b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2) : new Vector3();
+    centre.applyQuaternion(new Quaternion(d.turn[i * 4], d.turn[i * 4 + 1], d.turn[i * 4 + 2], d.turn[i * 4 + 3]));
+    return centre.add(new Vector3(d.position[i * 3], d.position[i * 3 + 1], d.position[i * 3 + 2]));
+  }
+
+  // Where [point] of the scene is on the page, {x, y} in its pixels (as a
+  // pointer's clientX and clientY), or null where it is behind the camera
+  // or off the stage. [rect] the canvas's, where the caller has it.
+  onPage(point, rect = this.renderer?.domElement.getBoundingClientRect()) {
+    if (!this.renderer || !rect) return null;
+    const v = point.clone().project(this.camera);
+    if (!(v.z > -1 && v.z < 1) || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return null;
+    return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
+  }
+
+  // The camera turned to brick [i] (a pin's part): it in the middle, near
+  // enough to see it among the parts round it, looked at from where the
+  // camera was looking; a short glide there, none for a person who asks
+  // for less motion.
+  frameOn(i) {
+    if (!this.controls) return;
+    const d = this.d;
+    const b = d.meshes[d.mesh[i]]?.bounds;
+    const size = b && b.length === 6 && b.every(Number.isFinite) ? Math.hypot(b[3] - b[0], b[4] - b[1], b[5] - b[2]) / 2 : 20;
+    const centre = this.centreOf(i);
+    const back = this.camera.position.clone().sub(this.controls.target).normalize();
+    const was = this.camera.position.distanceTo(this.controls.target);
+    const distance = Math.min(this.controls.maxDistance, Math.max(this.controls.minDistance, size * 9, 90));
+    const from = this.controls.target.clone();
+    this.halt();
+    this.interacted = true;
+    this.controls.autoRotate = false;
+    const put = (share) => {
+      this.controls.target.lerpVectors(from, centre, share);
+      this.camera.position.copy(this.controls.target).addScaledVector(back, was + (distance - was) * share);
+      this.controls.update();
+      this.render();
+    };
+    if (this.o.still) { put(1); return; }
+    const began = performance.now();
+    const glide = () => {
+      if (!this.controls) return;
+      const t = Math.min(1, (performance.now() - began) / 450);
+      put(1 - (1 - t) ** 3);
+      if (t < 1) requestAnimationFrame(glide);
+    };
+    requestAnimationFrame(glide);
   }
 
   // Lines round each of [which]'s parts: the picked part, or what a step adds.
@@ -620,6 +700,93 @@ export class View {
   }
 
   themed() { this.render(); }
+
+  // The parts a remix took away, drawn as ghosts where they stood, over
+  // the model (inline.js What changed; api/_remix.js): [g] an unpacked
+  // scene of them (scene.js unpack), their geometry from the same store.
+  // Drawn once, then shown or hidden; never picked, never counted as shown.
+  async addGhosts(g) {
+    if (this.ghosts) {
+      this.ghosts.visible = true;
+      this.render();
+      return;
+    }
+    const group = this.ghosts = new Group();
+    group.renderOrder = 3;
+    this.scene.add(group);
+    const material = new MeshStandardMaterial({ color: GHOST, roughness: 0.6, metalness: 0.0, transparent: true,
+      opacity: 0.32, depthWrite: false, side: DoubleSide });
+    const by = new Map();
+    for (let i = 0; i < g.n; i++) {
+      if (!by.has(g.mesh[i])) by.set(g.mesh[i], []);
+      by.get(g.mesh[i]).push(i);
+    }
+    const order = [...by.entries()];
+    const matrix = new Matrix4();
+    const p = new Vector3();
+    const q = new Quaternion();
+    const one = new Vector3(1, 1, 1);
+    let next = 0;
+    const work = async () => {
+      while (next < order.length) {
+        const [m, bricks] = order[next++];
+        const mesh = g.meshes[m] || { part: "?", hash: "", bounds: [] };
+        const shape = (await this.o.shapeOf(mesh)) || boxOf(mesh.bounds);
+        for (const surface of shape.surfaces) {
+          const instanced = new InstancedMesh(geometryOf(surface), material, bricks.length);
+          instanced.userData = { ghosts: Int32Array.from(bricks) };
+          instanced.renderOrder = 3;
+          instanced.frustumCulled = false;
+          bricks.forEach((i, k) => {
+            p.set(g.position[i * 3], g.position[i * 3 + 1], g.position[i * 3 + 2]);
+            q.set(g.turn[i * 4], g.turn[i * 4 + 1], g.turn[i * 4 + 2], g.turn[i * 4 + 3]);
+            matrix.compose(p, q, one);
+            instanced.setMatrixAt(k, matrix);
+          });
+          instanced.instanceMatrix.needsUpdate = true;
+          group.add(instanced);
+        }
+        this.render();
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(FETCHING, order.length) }, work));
+  }
+
+  hideGhosts() {
+    if (!this.ghosts) return;
+    this.ghosts.visible = false;
+    this.render();
+  }
+
+  // What a check reads of What changed, from what is drawn: each brick's
+  // index that is drawn in its own colour (not faded) and each ghost drawn,
+  // by the instances' own colours and the ghosts' group (inline.js state).
+  drawnChanges() {
+    const own = new Set();
+    const faded = new Set();
+    const c = new Color();
+    for (const g of this.groups) {
+      const { bricks, fixed } = g.userData;
+      if (!g.instanceColor) continue;
+      for (let k = 0; k < bricks.length; k++) {
+        const i = bricks[k];
+        if (this.d.flags[i] & SCENERY) continue;
+        g.getColorAt(k, c);
+        const mine = fixed >= 0 ? this.colours[fixed] : fixed === -2 ? UNKNOWN : this.colours[this.d.colour[i]] || CLAY;
+        if (Math.abs(c.r - mine.r) + Math.abs(c.g - mine.g) + Math.abs(c.b - mine.b) < 1e-3) own.add(i);
+        else faded.add(i);
+      }
+    }
+    // A part faded on any of its surfaces is not lit.
+    for (const i of faded) own.delete(i);
+    let ghosts = 0;
+    if (this.ghosts && this.ghosts.visible) {
+      const seen = new Set();
+      for (const mesh of this.ghosts.children) for (const i of mesh.userData.ghosts) seen.add(i);
+      ghosts = seen.size;
+    }
+    return { lit: [...own].sort((a, b) => a - b), faded: faded.size, ghosts };
+  }
 
   // What a check can read of the stage: whether the model is drawn, by the
   // share of pixels that are not the background, read the moment after a

@@ -30,8 +30,9 @@
 //      Escape closes it, back on Share. Where the browser has a share
 //      sheet of its own (navigator.share), the sheet offers it too, given
 //      the link, and nothing copied.
-//   4. Save, signed out, asks to sign in; signed in, it opens the lists,
-//      Favourites first and ticked when it is a favourite.
+//   4. Save, signed out, asks to sign in; signed in, its arrow opens the
+//      card's panel (web/keep.js, lists2a: one Save on the card and the
+//      page), Saved first and ticked when it is saved.
 //   5. More holds Report it and Takedown requests (the embed code is in
 //      Share's sheet).
 //   6. More by and Similar models show only with three cards or more, six
@@ -40,7 +41,7 @@
 //      and a shared tag) and no More by (Jo has no other model).
 //   7. The paragraph that explained the buttons is gone.
 //   8. Tabs under it, About, Comments, Builds, Remixes and (with two or
-//      more) Versions, each with its count once there is one; a tab chosen
+//      more versions, or one shared as work in progress) Log, each with its count once there is one; a tab chosen
 //      brings its part to just under the tabs, which stay on screen under
 //      the header, marked as the one being read.
 //   9. A strip of its pictures under the picture: the published one first
@@ -60,9 +61,9 @@
 //      viewer); the box shown to everybody, and Reply on each comment
 //      opening a box under its thread; signed out, sending asks to sign
 //      in and keeps what was typed; signed in, the reply goes.
-//  14. In N collections (docs/SOCIAL.md U11): a pill among its facts, and a
-//      tab, both going to its Collections part, a card for each public
-//      collection it is in; none when it is in none. The watchtower is in
+//  14. In N lists (docs/SOCIAL.md U11; collections until lists2a): a pill
+//      among its facts, and a tab, both going to its Lists part, a card for
+//      each public list it is in; none when it is in none. The watchtower is in
 //      two (Robin's and Sam's public ones), the dusk in one.
 //  15. The embed (/m/<id>/embed) in the theme its viewer chose: light
 //      chosen on a dark computer is light, dark chosen on a light one dark,
@@ -107,9 +108,19 @@
 //      (touch-action pan-y until the person takes hold), a swipe across
 //      turns it; Back to the picture puts the picture back. Its costs said: the code's bytes,
 //      the scene's, the geometry's, and the first frame from the click.
+//  19. Change it with your Claude (claudelink), signed out: Open in
+//      Brickworks' second half, named for a screen reader, beside it in one
+//      control on the page's width; Tab from Open in Brickworks reaches it,
+//      Enter opens the panel with the keyboard in What should it change?;
+//      Copy for Claude copies the message (the model's link, open_model
+//      link=<id> and the ask, as one line: Unicode spaces made spaces, the
+//      zero-width gone) and says so; an ask over 500 characters refused in
+//      words, nothing copied; Connect Claude keeps the message for the
+//      connect page; Escape closes it, back on the button. On a phone with
+//      a share sheet, Share to Claude hands it the message.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
-// Save's lists and More open.
+// Save's lists and More open, and With your Claude open (_claude).
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, pickABrick } from "../../api/_parts.js";
@@ -156,9 +167,9 @@ const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { 
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
   { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
-    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"], thumbs: 3, threads: true, lists: 2 },
+    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Lists 2", "Log 2"], thumbs: 3, threads: true, lists: 2 },
   { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
-    tabs: ["About", "Parts 3", "Comments 1", "Builds 3", "Remixes", "Collections 1"], thumbs: 0, lists: 1 },
+    tabs: ["About", "Parts 3", "Comments 1", "Builds 3", "Remixes", "Lists 1"], thumbs: 0, lists: 1 },
   // Signed in, Sam's own: More has the owner's own in place of Report it.
   { name: "bakery", path: "/m/SamModel02", by: 0, like: 0, gallery: true, favourite: false, designer: null,
     tabs: ["About", "Parts 3", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true, lists: 0 },
@@ -352,12 +363,13 @@ async function partsChecks(page, label, seen, one) {
   check(`${label}: ${after.shown} rows shown, a colour's row first, no picture loaded from anywhere (${after.pictures})`,
     after.shown > 0 && after.shown <= 12 && after.firstGroup && after.pictures === 0);
   // Each lot's picture, drawn on the page (site304): only images from the
-  // site itself, and a fetch only to it, its own Supabase project and what
-  // the page made itself (blob:, the GLB In your room writes, arview).
+  // site itself and what the page made (blob:, a kit's pictures, postkit),
+  // and a fetch only to it, its own Supabase project and what the page made
+  // itself (blob:, the GLB In your room writes, arview).
   const sources = (name) => (new RegExp(`(?:^|;)\\s*${name}\\s+([^;]*)`).exec(seen.policy || "") || [])[1]?.trim().split(/\s+/) || [];
   const project = remote ? remoteDb : stand.DB;
-  check(`${label}: its policy lets in pictures from itself alone (img-src ${sources("img-src").join(" ")}) and talks to itself, its project and what it made (connect-src ${sources("connect-src").join(" ")})`,
-    JSON.stringify(sources("img-src")) === JSON.stringify(["'self'"])
+  check(`${label}: its policy lets in pictures from itself and what it made alone (img-src ${sources("img-src").join(" ")}) and talks to itself, its project and what it made (connect-src ${sources("connect-src").join(" ")})`,
+    JSON.stringify(sources("img-src")) === JSON.stringify(["'self'", "blob:"])
       && sources("connect-src").every((one) => one === "'self'" || one === project || one === "blob:") && sources("connect-src").includes("'self'"));
   await lotPictures(page, label, "drawn from its geometry");
   if (after.all) await page.click("#parts [data-all]");
@@ -527,6 +539,8 @@ async function threeD(page, label, stem, phone) {
       tools: [...document.querySelectorAll(".view3d-tools [data-act]")].map((t) => t.getAttribute("aria-label")),
       app: (() => { const a = document.querySelector(".view3d-app"); return a && !a.hidden ? `${a.textContent} ${a.getAttribute("href")}` : ""; })(),
       href: document.querySelector(".model-page .picture").getAttribute("href"),
+      // A remix whose changes are counted has What changed on the bar too (remixdiff).
+      changes: Boolean(document.querySelector(".model-page .picture").dataset.changes),
       said: document.querySelector(".view3d-said")?.textContent || "" };
   });
   const after = await page.evaluate(frameOf);
@@ -543,7 +557,8 @@ async function threeD(page, label, stem, phone) {
     JSON.stringify(after.shell) === JSON.stringify(was.picture) && JSON.stringify(after.picture) === JSON.stringify(was.picture)
       && after.height === was.height && after.y === was.y);
   check(`${label}: its tools named: ${got.tools.join(", ")}; and ${got.app || "no way into the app"}`,
-    JSON.stringify(got.tools) === JSON.stringify(["Zoom out", "Zoom in", "Reset the view", "Full screen", "Back to the picture"])
+    JSON.stringify(got.tools) === JSON.stringify(["Zoom out", "Zoom in", "Reset the view", ...(got.changes ? ["What changed"] : []),
+      "Full screen", "Back to the picture"])
       && got.app === `Open in the app ${got.href}`);
   if (out) await page.screenshot({ path: path.join(out, `${stem}_3d.png`) });
   if (got.state !== "ready") return;
@@ -631,6 +646,96 @@ async function threeD(page, label, stem, phone) {
   const closed = await page.evaluate(frameOf);
   check(`${label}: Back to the picture puts the picture back (${closed.state})`, closed.state === "closed" && closed.shell === null
     && JSON.stringify(closed.picture) === JSON.stringify(was.picture));
+}
+
+/// 19. With your Claude, Open in Brickworks' second choice (claudelink): the
+/// control, the keyboard's way through it, the message copied, the refusal of
+/// an ask too long, the message kept for the connect page, and on a phone the
+/// share sheet. The page's clipboard is this flow's (window.__copied).
+async function withYourClaude(page, context, { label, stem, phone, width }) {
+  await page.evaluate(() => { window.scrollTo({ top: 0, behavior: "instant" }); window.__copied = []; });
+  const control = await page.evaluate(() => {
+    const button = document.querySelector("[data-open-claude]");
+    const open = document.querySelector(".open-split > a.cta");
+    const box = (el) => (el ? el.getBoundingClientRect() : null);
+    const [b, o] = [box(button), box(open)];
+    return { shown: Boolean(button && !button.hidden && b.width), name: button?.getAttribute("aria-label") || "",
+      expanded: button?.getAttribute("aria-expanded"), words: (button?.innerText || "").trim(),
+      open: open?.textContent.trim() || "", href: open?.getAttribute("href") || "",
+      oneRow: Boolean(b && o && Math.abs(b.top - o.top) < 2 && Math.abs(b.height - o.height) < 2 && b.left >= o.right - 2),
+      inside: Boolean(b && b.right <= innerWidth + 0.5 && o.left >= -0.5), sideways: document.scrollingElement.scrollWidth > innerWidth + 1 };
+  });
+  check(`${label}: With your Claude beside ${control.open} in one control, "${control.words}", named "${control.name}"`,
+    control.shown && control.name === "Change it with your Claude" && control.expanded === "false" && control.open === "Open in Brickworks"
+      && /^\/app\?copy=/.test(control.href) && control.oneRow && control.inside && !control.sideways
+      && control.words === (width < 600 ? "Claude" : "With your Claude"));
+  // The keyboard: Tab from Open in Brickworks, Enter opens it, in the box.
+  await page.focus(".open-split > a.cta");
+  await page.keyboard.press("Tab");
+  const reached = await page.evaluate(() => document.activeElement?.matches("[data-open-claude]"));
+  await page.keyboard.press("Enter");
+  const opened = await until(page, () => !document.getElementById("claude-panel")?.hidden
+    && document.activeElement?.id === "claude-ask", null, 4000);
+  check(`${label}: Tab reaches it from Open in Brickworks, Enter opens it with the keyboard in What should it change?`, reached && opened);
+  const id = await page.evaluate(() => document.getElementById("claude-panel").dataset.id);
+  const url = await page.evaluate(() => document.getElementById("claude-panel").dataset.url);
+  // Typed with a no-break space and a zero-width one in it, as a paste brings them.
+  await page.fill("#claude-ask", "Make the roof\u00a0dark\u200b blue");
+  await page.press("#claude-ask", "Enter");
+  await until(page, () => window.__copied.length > 0, null, 4000);
+  const copied = await page.evaluate(() => ({ text: window.__copied.at(-1) || "", said: document.querySelector(".claude-said").textContent,
+    claude: document.documentElement.dataset.claude, sideways: document.scrollingElement.scrollWidth > innerWidth + 1 }));
+  if (out) {
+    await page.locator("#claude-panel").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(out, `${stem}_claude.png`) });
+  }
+  check(`${label}: Copy for Claude copies the message with its link, open_model link=${id} and the ask as one line, and says so ("${copied.said}")`,
+    copied.text.includes(url) && copied.text.includes(`call open_model with link=${id}:`) && copied.text.includes("Then change the copy: Make the roof dark blue")
+      && copied.text.includes("its page will credit the original") && /^Copied\./.test(copied.said) && copied.claude === "copied" && !copied.sideways);
+  // An ask too long is refused in words, nothing copied.
+  await page.fill("#claude-ask", "x".repeat(501));
+  await page.evaluate(() => { window.__copied = []; });
+  await page.click("#claude-panel .claude-do > .cta:not(.ghost)");
+  await page.waitForTimeout(200);
+  const refused = await page.evaluate(() => ({ copied: window.__copied.length, said: document.querySelector(".claude-said").textContent,
+    claude: document.documentElement.dataset.claude }));
+  check(`${label}: an ask of 501 characters is refused in words, nothing copied ("${refused.said.slice(0, 60)}")`,
+    refused.copied === 0 && refused.claude === "refused" && /^That is 501 characters/.test(refused.said));
+  // Connect Claude keeps the message for the connect page (web/docs.js).
+  await page.fill("#claude-ask", "Add a flag on top");
+  const kept = await page.evaluate(() => {
+    const link = document.querySelector("[data-claude-connect]");
+    link.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    link.click();
+    return { href: link.getAttribute("href"), kept: JSON.parse(localStorage.getItem("brickworks.claude.ask") || "null") };
+  });
+  check(`${label}: Connect Claude goes to ${kept.href}, the message kept for it`, kept.href === "/docs/connect#with-your-claude"
+    && kept.kept?.id === id && kept.kept?.ask === "Add a flag on top" && kept.kept?.text.includes("Then change the copy: Add a flag on top"));
+  await page.focus("#claude-ask");
+  await page.keyboard.press("Escape");
+  const closed = await page.evaluate(() => ({ hidden: document.getElementById("claude-panel").hidden,
+    back: document.activeElement?.matches("[data-open-claude]"), expanded: document.querySelector("[data-open-claude]").getAttribute("aria-expanded") }));
+  check(`${label}: Escape closes it, back on With your Claude`, closed.hidden && closed.back && closed.expanded === "false");
+  if (!phone) {
+    const share = await page.evaluate(() => document.querySelector("[data-claude-share]").hidden);
+    check(`${label}: no Share to Claude on a computer`, share);
+    return;
+  }
+  // A phone with a share sheet of its own: Share to Claude hands it the message.
+  await context.addInitScript(() => {
+    navigator.share = async (data) => { window.__sheet = data; };
+    navigator.canShare = () => true;
+  });
+  await page.reload({ waitUntil: "load" });
+  await until(page, () => !document.querySelector("[data-open-claude]")?.hidden, null, 8000);
+  await page.click("[data-open-claude]");
+  await page.fill("#claude-ask", "Recolour it red");
+  const offered = await until(page, () => !document.querySelector("[data-claude-share]")?.hidden, null, 4000);
+  if (offered) await page.click("[data-claude-share]");
+  await page.waitForTimeout(200);
+  const sheet = await page.evaluate(() => ({ text: window.__sheet?.text || "", claude: document.documentElement.dataset.claude }));
+  check(`${label}: on a phone with a share sheet, Share to Claude hands it the message`,
+    offered && sheet.text.includes("Then change the copy: Recolour it red") && sheet.claude === "shared");
 }
 
 const browser = await launch({ signedOut: true });
@@ -759,9 +864,9 @@ try {
             const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
             // On a deployment its own model's: in this order, each there or
             // not as the model has it (Comments where they are open,
-            // Collections once it is in one, Versions with two), and About,
+            // Lists once it is in one, Log with two versions), and About,
             // Parts, Builds and Remixes always.
-            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Collections", "Versions"];
+            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Lists", "Log"];
             const ordered = tabNames.every((n, k) => ORDER.includes(n) && (k === 0 || ORDER.indexOf(tabNames[k - 1]) < ORDER.indexOf(n)));
             check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
               : ordered && ["About", "Parts", "Builds", "Remixes"].every((n) => tabNames.includes(n)));
@@ -965,26 +1070,31 @@ try {
             if (out) await page.screenshot({ path: path.join(out, `${stem}_more.png`) });
             await page.keyboard.press("Escape");
 
-            // 14. In N collections: the pill and the tab, to a card each.
+            // 14. In N lists: the pill and the tab, to a card each.
             const lists = await page.evaluate(() => ({
               pill: document.querySelector('.facts a[href="#collections"]')?.textContent || "",
               tab: (document.querySelector('#page-tabs a[data-tab="collections"]')?.textContent || "").replace(/\s+/g, " ").trim(),
               cards: [...document.querySelectorAll("#collections .list-card")].map((card) => card.getAttribute("href")) }));
-            const n = one.lists ?? Number((/^In (\d+) collections?$/.exec(lists.pill) || [])[1] || 0);
-            check(`${label}: "${lists.pill || "no collections"}", ${lists.cards.length} cards (${lists.cards.join(" ")})`,
-              n ? lists.pill === `In ${n} collection${n === 1 ? "" : "s"}` && lists.tab === `Collections ${n}`
+            const n = one.lists ?? Number((/^In (\d+) lists?$/.exec(lists.pill) || [])[1] || 0);
+            check(`${label}: "${lists.pill || "in no list"}", ${lists.cards.length} cards (${lists.cards.join(" ")})`,
+              n ? lists.pill === `In ${n} list${n === 1 ? "" : "s"}` && lists.tab === `Lists ${n}`
                 && lists.cards.length === Math.min(n, 12) && lists.cards.every((href) => /^\/c\/[A-Za-z0-9]{10}$/.test(href))
                 : !lists.pill && !lists.tab && lists.cards.length === 0);
             if (n) {
               await page.click('.facts a[href="#collections"]');
               await settled(page);
               const at = await page.evaluate(() => Math.round(document.getElementById("collections").getBoundingClientRect().top));
-              check(`${label}: the pill brings its collections into view (${at} px down)`, at >= 0 && at < 300);
+              check(`${label}: the pill brings its lists into view (${at} px down)`, at >= 0 && at < 300);
               await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
             }
 
-            // 4. Save.
-            await page.click('#marks [data-mark="save"]');
+            // 4. Save: the card's control (web/keep.js), Saved at a tap and
+            // its arrow for the panel.
+            const keepAt = `#marks .keep[data-keep="model:${(/\/m\/([A-Za-z0-9]{10})/.exec(new URL(page.url()).pathname) || [])[1]}"]`;
+            check(`${label}: one Save in its bar, the card's, and no panel of its own`, await page.evaluate((at) =>
+              document.querySelectorAll("#marks .keep").length === 1 && Boolean(document.querySelector(at))
+              && !document.getElementById("save-panel") && !document.querySelector('#marks [data-mark="save"]'), keepAt));
+            await page.click(`${keepAt} ${signedIn ? "[data-keep-more]" : "[data-keep-main]"}`);
             if (!signedIn) {
               const asked = await until(page, () => document.querySelector("dialog.sign-in[open]"), null, 6000);
               check(`${label}: Save asks to sign in`, asked);
@@ -993,15 +1103,16 @@ try {
               check(`${label}: Like asks to sign in`, await until(page, () => document.querySelector("dialog.sign-in[open]"), null, 6000));
               await page.keyboard.press("Escape");
             } else {
-              const opened = await until(page, () => !document.getElementById("save-panel")?.hidden
-                && document.querySelectorAll("#save-panel .collect-list label").length > 1, null, 6000);
-              const lists = await page.evaluate(() => [...document.querySelectorAll("#save-panel .collect-list label")]
-                .map((row) => ({ name: row.querySelector("span").textContent, on: row.querySelector("input").checked })));
-              const save = await page.evaluate(() => document.querySelector('#marks [data-mark="save"]').getAttribute("aria-expanded"));
-              check(`${label}: Save opens the lists, Favourites first${one.favourite === null ? "" : `, ${one.favourite ? "ticked" : "not ticked"}`}: `
+              const opened = await until(page, () => document.querySelector("dialog.keep-panel[open]")
+                && document.querySelectorAll("dialog.keep-panel .keep-row").length > 1, null, 6000);
+              const lists = await page.evaluate(() => [...document.querySelectorAll("dialog.keep-panel .keep-row")]
+                .map((row) => ({ name: row.querySelector(".keep-name")?.textContent || "", on: Boolean(row.querySelector("input")?.checked) })));
+              const save = await page.evaluate((at) => document.querySelector(`${at} [data-keep-more]`)?.getAttribute("aria-expanded"), keepAt);
+              check(`${label}: Save's arrow opens your lists, Saved first${one.favourite === null ? "" : `, ${one.favourite ? "ticked" : "not ticked"}`}: `
                 + lists.map((l) => `${l.name}${l.on ? " ✓" : ""}`).join(", "),
-              opened && save === "true" && lists[0]?.name === "Favourites" && (one.favourite === null || lists[0].on === one.favourite));
+              opened && save === "true" && lists[0]?.name === "Saved" && (one.favourite === null || lists[0].on === one.favourite));
               if (out) await page.screenshot({ path: path.join(out, `${stem}_save.png`) });
+              await page.keyboard.press("Escape");
             }
 
             // 3b. A browser with a share sheet of its own, a phone's: the
@@ -1020,6 +1131,9 @@ try {
               open: Boolean(document.querySelector("dialog.share-sheet[open]")), url: `${location.origin}${location.pathname}` }));
             check(`${label}: with a share sheet of its own, Share offers it, gives it the link (${sheet.sheet?.url}), copies nothing and closes`,
               offered && sheet.sheet?.url === sheet.url && sheet.copied === 0 && !sheet.open);
+
+            // 19. Change it with your Claude (claudelink), signed out.
+            if (!signedIn) await withYourClaude(page, context, { label, stem, phone, width });
           } catch (trouble) {
             check(`${label}: visited (${String(trouble).split("\n")[0]})`, false);
           } finally {

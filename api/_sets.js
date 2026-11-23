@@ -425,6 +425,23 @@ export function keepBarHtml(entry) {
     + `<span class="word">${asText(say("Add to a list"))}</span>${iconHtml("down")}</button></div>`;
 }
 
+/// How many of the set they own, to change in place (ownedparts): You own
+/// − n +, the number typed (1 to 99, 0 takes it out) or stepped, shown by
+/// web/keep.js once they own it. In Parts you own, which only somebody
+/// signed in sees and which comes with what they own of it, so nothing on
+/// the page moves for it.
+export function ownCountHtml(entry) {
+  const key = `set:${String(entry.set).toLowerCase()}`;
+  return `<div class="owned-count" data-keep="${escapeHtml(key)}" data-name="${escapeHtml(entry.name)}">`
+    + `<span class="keep-count" data-keep-count hidden><label for="keep-count-n">${asText(say("You own"))}</label>`
+    + `<button type="button" class="icon-btn small" data-keep-step="-1" aria-label="${asText(say("One fewer"))}">−</button>`
+    + `<input id="keep-count-n" type="number" inputmode="numeric" min="0" max="99" step="1" value="1" autocomplete="off" `
+    + `aria-describedby="keep-count-note">`
+    + `<button type="button" class="icon-btn small" data-keep-step="1" aria-label="${asText(say("One more"))}">${iconHtml("plus")}</button>`
+    + `<span class="note" id="keep-count-note">${asText(say("copies of this set: its parts count as yours that many times"))}</span>`
+    + `</span></div>`;
+}
+
 /// [next] cards (catalogCard) of its theme, drawn with [cardHtml]; [lots]
 /// its parts list's lots, for the assistant's brief; [origin] the site.
 /// In [lang] (/de/library/set/X: made inside api/_directory.js inLanguage,
@@ -495,10 +512,11 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
       + `${asText(say("Rebrickable lists no parts for it: a book, gear or something else that is not built."))}</p></section>`;
   const owned = entry.lots
     ? `<section class="owned" id="owned" data-set="${escapeHtml(entry.set)}" aria-live="polite" hidden>`
-      + `<h2 id="owned-h">${asText(say("Parts you own"))}</h2><p class="owned-said" id="owned-said"></p>`
+      + `<h2 id="owned-h">${asText(say("Parts you own"))}</h2>${ownCountHtml(entry)}<p class="owned-said" id="owned-said"></p>`
       + `<div class="actions" id="owned-wanted" hidden><span class="note">${asText(say("What you are missing, as a wanted list:"))}</span>`
       + `<button type="button" class="cta ghost small" data-wanted="bricklink">BrickLink XML</button>`
-      + `<button type="button" class="cta ghost small" data-wanted="rebrickable">Rebrickable CSV</button></div></section>`
+      + `<button type="button" class="cta ghost small" data-wanted="rebrickable">Rebrickable CSV</button>`
+      + `<button type="button" class="cta ghost small" data-wanted="pickabrick" hidden>${asText(say("LEGO® Pick a Brick CSV"))}</button></div></section>`
     : "";
   const last = entry.theme[entry.theme.length - 1];
   const nextHtml = next.length

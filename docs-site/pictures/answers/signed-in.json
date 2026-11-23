@@ -794,6 +794,577 @@
    "ready": true,
    "following": []
   },
+  "/api/people?op=keeps": {
+   "signed_in": true,
+   "want": null,
+   "lists": [
+    {
+     "id": "DocsList01",
+     "name": "Cars to build",
+     "description": "Things with wheels, and a boat.",
+     "public": true,
+     "visibility": "public",
+     "link": null,
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 4,
+     "count": 4,
+     "updated_at": "2026-11-02T10:00:00Z"
+    },
+    {
+     "id": "DocsList02",
+     "name": "Small and quick",
+     "description": "Under 100 parts each.",
+     "public": true,
+     "visibility": "public",
+     "link": null,
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 4,
+     "count": 4,
+     "updated_at": "2026-11-02T10:00:00Z"
+    },
+    {
+     "id": "DocsList03",
+     "name": "Town",
+     "description": null,
+     "public": true,
+     "visibility": "public",
+     "link": null,
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 3,
+     "count": 3,
+     "updated_at": "2026-11-02T10:00:00Z"
+    },
+    {
+     "id": "DocsList04",
+     "name": "Ideas for later",
+     "description": null,
+     "public": false,
+     "visibility": "link",
+     "link": "https://brickworks.diy/c/DocsList04?link=DocsLinkKey0000000000a",
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 1,
+     "count": 1,
+     "updated_at": "2026-11-02T10:00:00Z"
+    }
+   ],
+   "sets": {},
+   "models": {
+    "DocsSprt01": {
+     "saved": true,
+     "lists": [
+      "DocsList01"
+     ]
+    },
+    "DocsShop01": {
+     "saved": false,
+     "lists": [
+      "DocsList03"
+     ]
+    },
+    "DocsFire01": {
+     "saved": false,
+     "lists": [
+      "DocsList03"
+     ]
+    },
+    "DocsOwl001": {
+     "saved": false,
+     "lists": [
+      "DocsList04"
+     ]
+    },
+    "DocsRckt01": {
+     "saved": false,
+     "lists": [
+      "DocsList01"
+     ]
+    },
+    "DocsOrry01": {
+     "saved": false,
+     "lists": []
+    },
+    "DocsKart01": {
+     "saved": false,
+     "lists": [
+      "DocsList01"
+     ]
+    },
+    "DocsLite01": {
+     "saved": false,
+     "lists": [
+      "DocsList02"
+     ]
+    },
+    "DocsHous01": {
+     "saved": false,
+     "lists": [
+      "DocsList02",
+      "DocsList03"
+     ]
+    },
+    "DocsTree01": {
+     "saved": false,
+     "lists": [
+      "DocsList02"
+     ]
+    },
+    "DocsRock01": {
+     "saved": false,
+     "lists": [
+      "DocsList02"
+     ]
+    },
+    "DocsBoat01": {
+     "saved": false,
+     "lists": [
+      "DocsList01"
+     ]
+    }
+   }
+  },
+  "/api/people?op=lists": {
+   "lists": [
+    {
+     "id": "DocsList01",
+     "name": "Cars to build",
+     "description": "Things with wheels, and a boat.",
+     "public": true,
+     "visibility": "public",
+     "link": null,
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 4,
+     "count": 4,
+     "updated_at": "2026-11-02T10:00:00Z"
+    },
+    {
+     "id": "DocsList02",
+     "name": "Small and quick",
+     "description": "Under 100 parts each.",
+     "public": true,
+     "visibility": "public",
+     "link": null,
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 4,
+     "count": 4,
+     "updated_at": "2026-11-02T10:00:00Z"
+    },
+    {
+     "id": "DocsList03",
+     "name": "Town",
+     "description": null,
+     "public": true,
+     "visibility": "public",
+     "link": null,
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 3,
+     "count": 3,
+     "updated_at": "2026-11-02T10:00:00Z"
+    },
+    {
+     "id": "DocsList04",
+     "name": "Ideas for later",
+     "description": null,
+     "public": false,
+     "visibility": "link",
+     "link": "https://brickworks.diy/c/DocsList04?link=DocsLinkKey0000000000a",
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 1,
+     "count": 1,
+     "updated_at": "2026-11-02T10:00:00Z"
+    },
+    {
+     "id": "DocsList05",
+     "name": "Weekend builds",
+     "description": null,
+     "public": false,
+     "visibility": "private",
+     "link": null,
+     "kind": null,
+     "sort": "added",
+     "cover": null,
+     "down": false,
+     "sets": 0,
+     "models": 3,
+     "count": 3,
+     "updated_at": "2026-11-02T10:00:00Z"
+    }
+   ],
+   "owned": {
+    "sets": 0,
+    "unique": 0,
+    "pieces": 0,
+    "shown": false
+   },
+   "saved": {
+    "models": 1
+   },
+   "profile": {
+    "handle": "test-builder"
+   }
+  },
+  "/api/people?op=list_items&id=DocsList05": {
+   "id": "DocsList05",
+   "name": "Weekend builds",
+   "description": null,
+   "public": false,
+   "visibility": "private",
+   "link": null,
+   "kind": null,
+   "sort": "added",
+   "cover": null,
+   "down": false,
+   "sets": 0,
+   "models": 3,
+   "count": 3,
+   "updated_at": "2026-11-02T10:00:00Z",
+   "mine": true,
+   "by": {
+    "handle": "test-builder",
+    "name": "Test builder"
+   },
+   "url": "https://brickworks.diy/c/DocsList05",
+   "total": 3,
+   "page": 1,
+   "more": false,
+   "items": [
+    {
+     "key": "model:DocsShop01",
+     "kind": "model",
+     "card": {
+      "id": "DocsShop01",
+      "name": "Corner shop",
+      "author": "Test builder",
+      "parts": 797,
+      "listed_at": "2026-10-29T10:00:00Z",
+      "kind": "town",
+      "tags": [
+       "modular",
+       "shop",
+       "town"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 104,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 31,
+      "remixes": 1,
+      "builds": 11,
+      "comments": 4,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsShop01",
+      "image": "/m/DocsShop01.png",
+      "thumb": "/m/DocsShop01.webp?v=mvtdgsg0"
+     }
+    },
+    {
+     "key": "model:DocsHous01",
+     "kind": "model",
+     "card": {
+      "id": "DocsHous01",
+      "name": "Little house",
+      "author": "Test builder",
+      "parts": 71,
+      "listed_at": "2026-10-22T10:00:00Z",
+      "kind": "town",
+      "tags": [
+       "house",
+       "town"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 10,
+      "own_steps": true,
+      "technic": false,
+      "tested": false,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 6,
+      "remixes": 0,
+      "builds": 5,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsHous01",
+      "image": "/m/DocsHous01.png",
+      "thumb": "/m/DocsHous01.webp?v=mvjddts0"
+     }
+    },
+    {
+     "key": "model:DocsTree01",
+     "kind": "model",
+     "card": {
+      "id": "DocsTree01",
+      "name": "Tree",
+      "author": "Test builder",
+      "parts": 69,
+      "listed_at": "2026-10-21T10:00:00Z",
+      "kind": "nature",
+      "tags": [
+       "tree"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 9,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 5,
+      "remixes": 0,
+      "builds": 4,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsTree01",
+      "image": "/m/DocsTree01.png",
+      "thumb": "/m/DocsTree01.webp?v=mvhxxz40"
+     }
+    }
+   ]
+  },
+  "/api/people?op=list_items&id=DocsList02": {
+   "id": "DocsList02",
+   "name": "Small and quick",
+   "description": "Under 100 parts each.",
+   "public": true,
+   "visibility": "public",
+   "link": null,
+   "kind": null,
+   "sort": "added",
+   "cover": null,
+   "down": false,
+   "sets": 0,
+   "models": 4,
+   "count": 4,
+   "updated_at": "2026-11-02T10:00:00Z",
+   "mine": true,
+   "by": {
+    "handle": "test-builder",
+    "name": "Test builder"
+   },
+   "url": "https://brickworks.diy/c/DocsList02",
+   "total": 4,
+   "page": 1,
+   "more": false,
+   "items": [
+    {
+     "key": "model:DocsLite01",
+     "kind": "model",
+     "card": {
+      "id": "DocsLite01",
+      "name": "Lighthouse",
+      "author": "Test builder",
+      "parts": 84,
+      "listed_at": "2026-10-23T10:00:00Z",
+      "kind": "architecture",
+      "tags": [
+       "lighthouse",
+       "coast"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 12,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 8,
+      "remixes": 0,
+      "builds": 6,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsLite01",
+      "image": "/m/DocsLite01.png",
+      "thumb": "/m/DocsLite01.webp?v=mvkstog0"
+     }
+    },
+    {
+     "key": "model:DocsHous01",
+     "kind": "model",
+     "card": {
+      "id": "DocsHous01",
+      "name": "Little house",
+      "author": "Test builder",
+      "parts": 71,
+      "listed_at": "2026-10-22T10:00:00Z",
+      "kind": "town",
+      "tags": [
+       "house",
+       "town"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 10,
+      "own_steps": true,
+      "technic": false,
+      "tested": false,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 6,
+      "remixes": 0,
+      "builds": 5,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsHous01",
+      "image": "/m/DocsHous01.png",
+      "thumb": "/m/DocsHous01.webp?v=mvjddts0"
+     }
+    },
+    {
+     "key": "model:DocsTree01",
+     "kind": "model",
+     "card": {
+      "id": "DocsTree01",
+      "name": "Tree",
+      "author": "Test builder",
+      "parts": 69,
+      "listed_at": "2026-10-21T10:00:00Z",
+      "kind": "nature",
+      "tags": [
+       "tree"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 9,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 5,
+      "remixes": 0,
+      "builds": 4,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsTree01",
+      "image": "/m/DocsTree01.png",
+      "thumb": "/m/DocsTree01.webp?v=mvhxxz40"
+     }
+    },
+    {
+     "key": "model:DocsRock01",
+     "kind": "model",
+     "card": {
+      "id": "DocsRock01",
+      "name": "Rocket",
+      "author": "Test builder",
+      "parts": 68,
+      "listed_at": "2026-10-20T10:00:00Z",
+      "kind": "space",
+      "tags": [
+       "rocket",
+       "space"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 10,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 4,
+      "remixes": 0,
+      "builds": 3,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsRock01",
+      "image": "/m/DocsRock01.png",
+      "thumb": "/m/DocsRock01.webp?v=mvgii4g0"
+     }
+    }
+   ]
+  },
+  "/api/people?op=import_preview": {
+   "into": "DocsList02",
+   "matched": [
+    "10497-1",
+    "75192-1",
+    "42115-1"
+   ],
+   "already": [
+    "6080-1"
+   ],
+   "missing": [
+    "99999-1"
+   ],
+   "counts": {
+    "matched": 3,
+    "already": 1,
+    "missing": 1
+   }
+  },
   "/api/people?op=alike": {
    "handle": "test-builder",
    "name": "Test builder",
@@ -946,6 +1517,245 @@
   "/api/plans?op=feedback": {
    "beta": false,
    "reports": []
+  },
+  "/api/people?op=notifications": {
+   "ready": true,
+   "kept": true,
+   "chosen": true,
+   "view": "inbox",
+   "groups": [
+    {
+     "model": "DocsSprt01",
+     "name": "Sports car and its driver",
+     "picture": "/m/DocsSprt01.webp?v=mvuswn40",
+     "link": "/m/DocsSprt01",
+     "at": "2026-11-20T11:48:00.000Z",
+     "new": true,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "comment",
+       "at": "2026-11-20T11:48:00.000Z",
+       "who": "Mia",
+       "by": {
+        "handle": "mia-builds",
+        "name": "Mia"
+       },
+       "said": "The steering really works. My son built it twice.",
+       "link": "/m/DocsSprt01#comment-41",
+       "line": "{who} commented",
+       "new": true,
+       "unread": true
+      },
+      {
+       "kind": "likes",
+       "at": "2026-11-20T11:20:00.000Z",
+       "who": null,
+       "by": null,
+       "said": "",
+       "link": "/m/DocsSprt01",
+       "line": "4 new likes today",
+       "new": true,
+       "unread": true
+      },
+      {
+       "kind": "photo",
+       "at": "2026-11-20T10:25:00.000Z",
+       "who": "Leo",
+       "by": {
+        "handle": "leo-bricks",
+        "name": "Leo"
+       },
+       "said": "Ours, in blue",
+       "link": "/m/DocsSprt01#photo-DocsPhoto1",
+       "line": "{who} posted a photo of their build",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsSprt01"
+    },
+    {
+     "model": "DocsShop01",
+     "name": "Corner shop",
+     "picture": "/m/DocsShop01.webp?v=mvtdgsg0",
+     "link": "/m/DocsShop01",
+     "at": "2026-11-20T09:30:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "reply",
+       "at": "2026-11-20T09:30:00.000Z",
+       "who": "Sam",
+       "by": {
+        "handle": "sam-makes",
+        "name": "Sam"
+       },
+       "said": "The awning is two slopes, yes.",
+       "link": "/m/DocsShop01#comment-52",
+       "line": "{who} replied to your comment",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsShop01"
+    },
+    {
+     "model": "",
+     "achievements": true,
+     "name": "Your achievements",
+     "picture": null,
+     "link": "/profile?tab=achievements",
+     "at": "2026-11-20T07:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "achievement",
+       "at": "2026-11-20T07:00:00.000Z",
+       "who": "You",
+       "by": null,
+       "said": "",
+       "link": "/profile?tab=achievements",
+       "line": "{who} reached Designer · 10 models, level 3 of 6",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "achievements"
+    },
+    {
+     "model": "DocsOwl001",
+     "name": "Barn owl",
+     "picture": "/m/DocsOwl001.webp?v=mvqil340",
+     "link": "/m/DocsOwl001",
+     "at": "2026-11-20T05:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "remix",
+       "at": "2026-11-20T05:00:00.000Z",
+       "who": "Leo",
+       "by": {
+        "handle": "leo-bricks",
+        "name": "Leo"
+       },
+       "said": "",
+       "link": "/m/DocsOwlRmx",
+       "line": "{who} remixed it as “Owl on a branch”",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsOwl001"
+    },
+    {
+     "model": "",
+     "challenge": 7,
+     "name": "Challenge: Wheels and tracks",
+     "picture": null,
+     "link": "/challenge?id=7",
+     "at": "2026-11-20T02:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "challenge_closing",
+       "at": "2026-11-20T02:00:00.000Z",
+       "who": null,
+       "by": null,
+       "said": "",
+       "link": "/challenge?id=7",
+       "line": "The last two days to enter “Wheels and tracks”: it closes at the end of 30 November",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "challenge-7"
+    },
+    {
+     "model": "DocsFire01",
+     "name": "Fire station",
+     "picture": "/m/DocsFire01.webp?v=mvry0xs0",
+     "link": "/m/DocsFire01",
+     "at": "2026-11-19T21:00:00.000Z",
+     "new": false,
+     "unread": true,
+     "rows": [
+      {
+       "kind": "mention",
+       "at": "2026-11-19T21:00:00.000Z",
+       "who": "Mia",
+       "by": {
+        "handle": "mia-builds",
+        "name": "Mia"
+       },
+       "said": "@test-builder how did you hang the ladder?",
+       "link": "/m/DocsFire01#comment-63",
+       "line": "{who} mentioned you in a comment",
+       "new": false,
+       "unread": true
+      }
+     ],
+     "key": "DocsFire01"
+    }
+   ],
+   "unread": 8,
+   "fresh": 2
+  },
+  "/api/people?op=notification_prefs": {
+   "ready": true,
+   "kinds": [
+    "comment",
+    "reply",
+    "mention",
+    "photo",
+    "remix",
+    "likes",
+    "talk",
+    "challenge",
+    "result",
+    "achievement",
+    "news"
+   ],
+   "mailed_as": {
+    "comment": "comments",
+    "photo": "photos",
+    "remix": "remixes",
+    "news": "news"
+   },
+   "here": [
+    "comment",
+    "reply",
+    "mention",
+    "photo",
+    "remix",
+    "likes",
+    "talk",
+    "challenge",
+    "result",
+    "achievement",
+    "news"
+   ],
+   "push": [
+    "reply",
+    "mention",
+    "comment"
+   ],
+   "email": [
+    "reply",
+    "mention"
+   ],
+   "muted": [
+    {
+     "model": "DocsBoat01",
+     "name": "Boat",
+     "link": "/m/DocsBoat01",
+     "picture": "/m/DocsBoat01.webp"
+    }
+   ]
   }
  },
  "storage": {
