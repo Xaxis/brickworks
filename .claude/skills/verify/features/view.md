@@ -3323,12 +3323,17 @@ picture the assistant is shown.
   none in the tent. A way towards it passes the sweep (path_tracer.glsl
   `lit_mask`), as a softbox stands in front of the paper. Judged alone beside
   the photographs: 28 of 80 called a photograph against 19 with it off, the
-  close-ups 0.515 against 0.394, both draws and both rounds ahead. Check:
+  close-ups 0.515 against 0.394, both draws and both rounds ahead. A table
+  is lit by it but does not mirror it (`SOURCE_SPILL` 0, `source_spill`;
+  path_tracer.glsl `on_table`): mirrored, its glare drew wood and terrazzo
+  nearly white. Check:
   `tools/probe.sh source_probe` opens the car, File, Render…, Best, Product,
   each table and the seamless, Picture at the dialog's size: on each table
-  the source on and the picture changed from it asked off, none on the
-  seamless, the car on each table at Best within 2.9 s; under Compatibility
-  it says Best has no path tracer and so no source.
+  the source on and the picture changed from it asked off, the table's own
+  colour where the meter reads its card within CIEDE2000 8 of the source off
+  (the paling was 29 to 39), none on the seamless, the car on each table at
+  Best within 2.9 s; under Compatibility it says Best has no path tracer and
+  so no source.
   `tools/probe.sh photoreal_probe -- --tag=T --without=source` draws the
   parent commit's pictures byte for byte; `tools/photoreal/reflect_measure.py
   LABEL=DIR` measures each close-up's top against its side and its edges'

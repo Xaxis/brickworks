@@ -2303,15 +2303,30 @@ it over its measured mismatch on grey (+4.5 stops against +0.95): matching
 the numbers is not what the judge rewards. The thinner logo (strokes
 with gaps between the letters, one gate a part) was read as outlined lettering and taken out.
 
-**What is left.** A table drawn this way pales towards the source, most on
-the whole car at the app's camera (bench/results/photoreal14-2026-11-23/
-probes/source_pair). Likely, not yet proven by a run: the white card
-is metered round the model, in its shade when lit from behind, so the
-picture is exposed up and the table, drawn at its own colour, goes
-towards white. The photographs keep their
-tables at their own level. The light-and-shadow tell is still named on
-92% of verdicts and 28 of 80 is short of 32: the next lever is the
-metering with the source on (`StudioRender._meter_card`).
+**The table kept its colour** (photoreal14b). Drawn first, the tables paled
+towards the source, most on the whole car at the app's camera: wood and
+terrazzo nearly white. Proved by the app's own renderer, the car on each
+table at 1280x720 and 256 samples, five ways (bench/results/
+photoreal14-2026-11-23/spill/): not the white balance (off, nothing moved:
+within 0.3), not the meter (its exposure and card colour the same whether
+the table mirrors the source or not), but the table's own gloss. The white
+card the exposure is metered on is matte, so a table mirroring a 90 by 50
+degree source was brighter than the card says white is: its glare as bright
+again as its own colour. Schlick's glance term kept it even with the
+table's specular at 0, so the table now takes only the source's diffuse
+light, and the bounce leaves the source to the light's pick for it
+(`on_table`, `SOURCE_SPILL` 0). At the meter's own level, the table's
+colour is within CIEDE2000 4.6, 6.7, 3.5 and 3.9 of the source off (desk,
+wood, leather, terrazzo; 7.4, 29, 39 and 30 mirrored), and a black brick's
+top still mirrors it: +7.45 stops over its side, +7.42 in the photograph.
+Beside the car on the side its lamp stands, the source-off picture is
+brighter than its own colour, in a pool of the lamp's light; a table lit by
+the source has no pool, so a patch there is darker than off (CIEDE2000 desk
+5.1, wood 16.5, terrazzo 16.7, leather 20.3). The judge's pools above were drawn with the table
+mirroring the source.
+
+The light-and-shadow tell is still named on 92% of verdicts, and 28 of 80
+is short of 32.
 
 ## 6. Web and desktop
 
