@@ -207,8 +207,8 @@ def test_the_page_credits_who_modelled_it_with_its_ldraw_page_and_licence() -> N
     # They head the page, by their initial; who shares it is said under, with Follow.
     head = re.search(r'<div class="shared-by credit">.*?<span class="said"', html, flags=re.S)[0]
     assert head.startswith('<div class="shared-by credit"><span class="avatar ') and '>S</span><div class="names"><p class="from modelled-by">' in head
-    assert re.search(r'<p class="shared-via">Shared by <a class="who" href="/u/[a-z0-9-]+"><span class="avatar small[^"]*"[^>]*>.*?</span>'
-                     r'<span>Robin Castell</span></a></p></div><button type="button" class="cta ghost small follow" data-follow="[a-z0-9-]+" hidden>', head)
+    assert re.search(r'<p class="shared-via"><span>Shared by <a class="who" href="/u/[a-z0-9-]+"><span class="avatar small[^"]*"[^>]*>.*?</span>'
+                     r'<span>Robin Castell</span></a></span><button type="button" class="cta ghost small follow" data-follow="[a-z0-9-]+" hidden>', head)
     licence = re.search(r'<div class="licence">.*?</div>', html, flags=re.S)[0]
     assert "<b>CC BY 2.0.</b>" in licence
     assert ("credit Stefan Frenz, who modelled it for <a href=\"https://library.ldraw.org/omr/sets/1034\">"

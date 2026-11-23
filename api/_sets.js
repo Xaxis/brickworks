@@ -568,6 +568,7 @@ ${chrome.header}
       <h1>${escapeHtml(entry.name)}</h1>
       <p class="modelled">${escapeHtml(entry.year ? say("LEGO® set {set}, from {year}", { set: entry.set, year: entry.year })
         : say("LEGO® set {set}", { set: entry.set }))}</p>
+      ${model ? modellerHtml(model, at) : ""}
       ${keepBarHtml(entry)}
       <div class="actions">
         ${model ? `<a class="cta" href="${escapeHtml(viewer)}" data-build3d title="${asText(say("Open LDraw's 3D model of it in Brickworks: turn it, step through its build, change it"))}">${asText(say("Build it in 3D"))}</a>` : ""}
@@ -575,7 +576,6 @@ ${chrome.header}
         <a class="cta ghost" href="${escapeHtml(designLink(entry, lots))}" data-design title="${asText(say("Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with"))}">${asText(say("Design with these parts"))}</a>` : ""}
       </div>
       <ul class="facts pills">${facts(entry, model, at)}</ul>
-      ${model ? modellerHtml(model, at) : ""}
     </div>
     <div class="rest">
   ${owned}

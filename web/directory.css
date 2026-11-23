@@ -246,7 +246,7 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .shared-by.credit .names { flex: 1; gap: 2px; line-height: 1.4; }
 .model-page .shared-by.credit .modelled-by { margin: 0; color: var(--ink-soft); }
 .model-page .shared-by.credit .modelled-by b { color: var(--ink); font-size: var(--t-body); }
-.model-page .shared-via { margin: 0; color: var(--ink-faint); font-size: var(--t-small); }
+.model-page .shared-via { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s-3); color: var(--ink-faint); font-size: var(--t-small); }
 .model-page .shared-via .who { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
 .model-page .shared-via a.who:hover span { color: var(--ink); text-decoration: underline; }
 .model-page .shared-by .said:empty { display: none; }

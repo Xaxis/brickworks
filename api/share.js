@@ -1112,9 +1112,10 @@ function designerRow(model) {
   if (modeller && sharer && modeller.name !== sharer) {
     const via = model.by ? `<a class="who" href="${langAt()}/u/${escapeHtml(model.by.handle)}">${avatarHtml(model.by, { size: "small" })}`
       + `<span>${escapeHtml(model.by.name)}</span></a>` : `<span class="who">${escapeHtml(sharer)}</span>`;
+    // Follow beside the sharer it follows, not beside the modeller's name.
     return `<div class="shared-by credit">${avatarHtml({ name: modeller.name })}<div class="names">${modelledLine(model)}`
-      + `<p class="shared-via">${sayHtml("Shared by {name}", { name: via })}</p></div>`
-      + `${model.by ? `<button type="button" class="cta ghost small follow" data-follow="${escapeHtml(model.by.handle)}" hidden>${asText(say("Follow"))}</button>` : ""}`
+      + `<p class="shared-via"><span>${sayHtml("Shared by {name}", { name: via })}</span>`
+      + `${model.by ? `<button type="button" class="cta ghost small follow" data-follow="${escapeHtml(model.by.handle)}" hidden>${asText(say("Follow"))}</button>` : ""}</p></div>`
       + `<span class="said" role="status"></span></div>`;
   }
   if (model.by) {
