@@ -178,6 +178,7 @@ func _ready() -> void:
 	_chat_field.max_length = 280
 	_chat_field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_chat_field.text_submitted.connect(func(_text: String) -> void: _on_chat())
+	_chat_field.focus_entered.connect(func() -> void: LaidOut.into_view(_body, _chat_box))
 	_chat_row.add_child(_chat_field)
 	_chat_send = Button.new()
 	_chat_send.text = "Send"
@@ -399,6 +400,10 @@ func _keep_to(most: float) -> bool:
 	if absf(_body.custom_minimum_size.y - tall) < 0.5:
 		return false
 	_body.custom_minimum_size.y = tall
+	# Typing (a finger's keyboard up, the body short): what was said in
+	# sight above the field, which is in the foot, not the body.
+	if _chat_field.has_focus():
+		LaidOut.into_view(_body, _chat_box)
 	return true
 
 

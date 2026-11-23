@@ -131,6 +131,12 @@ func _run() -> void:
 		var room: Rect2 = touch.room(dialog)
 		_whole(dialog, "the keyboard up, %d points" % touch.keyboard, room)
 		_in_sight(dialog, ["together_chat_field"], "the keyboard up", room)
+		# The field is in the foot: what was said is scrolled into the
+		# body's view above it (buildfit).
+		var said: Control = dialog.get("_chat_scroll")
+		var body: Control = dialog.get("_body")
+		_check("the keyboard up: what was said in sight above the field",
+			said != null and body != null and body.get_global_rect().grow(0.5).encloses(said.get_global_rect()))
 		await _shot("keyboard")
 		touch.keyboard = 0.0
 		field.release_focus()
