@@ -1128,7 +1128,10 @@ type a minted code (`mintCode`) and so still drive the real `/auth/v1/verify`.
   `api/_owned.js` `keyed`/`spelled`, on a worker over 120 KB. A copy of
   this week's quick build names the quick build instead, once its brief is
   read. Proven equal to the site's `challenge_check` by
-  `challenge_rules_probe` on `tools/challenge_rules_check.mjs`'s fixtures.
+  `challenge_rules_probe` on `tools/challenge_rules_check.mjs`'s fixtures
+  (the port, on the same stored files), then by `challenge_rules_check
+  --studio` (the site's check of the very texts and findings the studio
+  would publish, in a rolled-back transaction).
   `page_state()` and `controls_by_name()` (`challenge_line`,
   `challenge_hide`, `challenge_test`, `challenge_publish`, `challenge_page`).
 - `Enter from Share` (`src/ui/share_panel.gd`): `share_enter` ("Enter

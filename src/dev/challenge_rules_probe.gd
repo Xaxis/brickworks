@@ -1,10 +1,28 @@
 ## The studio's ticks of a challenge's rules against the site's check, on 30
 ## published models under three rules (challengestudio, 2026-11-23): 90 of 90
-## the same, answer for answer.
+## the same, answer for answer, on the same text.
 ##
 ##   set -a; . ./.env; set +a
 ##   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/challenge_rules_check.mjs --out=DIR
-##   ~/.claude/claude-core/bin/heavy godot --headless --path . --script src/dev/challenge_rules_probe.gd -- --fixtures=DIR
+##   tools/probe.sh challenge_rules_probe --fixtures=DIR
+##   PG_MODULE=... node tools/challenge_rules_check.mjs --out=DIR --studio=DIR/studio
+##
+## Two equalities, each on one text read by both:
+##
+##   the port   ChallengeRules on each file as it is stored, against the
+##              site's check of that same file counted as a publish counts it
+##              (checkModel, keyed, challenge_check): 90 of 90 here, or this
+##              fails.
+##   the studio each file opened, its text written as the line writes it and
+##              ticked as the line ticks it, its Tested the four tests a
+##              publish runs: written to DIR/studio (studio.json, written/),
+##              and the site's check run on those very texts and findings by
+##              the third command, which says how many of 90 are the same
+##              and fails short of 90. A text the studio writes can need
+##              other lots than the file it opened (an older build wrote the
+##              file), and a model Tested at an older publish can fail
+##              today's tests: what a publish from the studio sends is
+##              what the site then checks, so that is what is compared.
 ##
 ## tools/challenge_rules_check.mjs wrote the site's answers: supabase/
 ## challenges.sql challenge_check itself, run on the live project in a
@@ -79,6 +97,11 @@ func _run() -> void:
 	var stored_same: int = 0
 	var checks: int = 0
 	var slowest_ms: int = 0
+	var out_dir: String = dir.path_join("studio")
+	DirAccess.make_dir_recursive_absolute(out_dir.path_join("written"))
+	var studio: Dictionary = {}
+	var texts_differ: PackedStringArray = PackedStringArray()
+	var tested_moved: PackedStringArray = PackedStringArray()
 	for model: Dictionary in site["models"]:
 		var id: String = model["id"]
 		var text: String = FileAccess.get_file_as_string(dir.path_join("models/%s.mpd" % id))
@@ -93,8 +116,26 @@ func _run() -> void:
 		slowest_ms = maxi(slowest_ms, Time.get_ticks_msec() - began)
 		var title: String = id
 		var for_test: String = await _store.text_for_file(title, "")
-		var found: Dictionary = (await SharedPages.attach_tested(for_test, _library, _store))["tested"]
+		# What a publish sends: the text with its steps, and the finding of it.
+		var attached: Dictionary = await SharedPages.attach_tested(for_test, _library, _store)
+		var found: Dictionary = attached["tested"]
 		var passed: bool = Tested.passed(found)
+		# The text a publish sends counts as the line's text does.
+		var published_facts: Dictionary = ChallengeRules.facts_of(for_test, _library)
+		if JSON.stringify(published_facts, "", true) != JSON.stringify(facts, "", true):
+			texts_differ.append(id)
+		if passed != bool(model["tested"]):
+			tested_moved.append("%s (%s here: %s)" % [id, "Tested" if passed else "not Tested", Tested.words(found)])
+		var f := FileAccess.open(out_dir.path_join("written/%s.mpd" % id), FileAccess.WRITE)
+		f.store_string(str(attached["text"]))
+		f.close()
+		var tests_kept: Dictionary = {}
+		for test: String in ["stands", "steps", "parts", "whole"]:
+			var one: Variant = (found.get("tests", {}) as Dictionary).get(test)
+			tests_kept[test] = {"ok": one is Dictionary and bool((one as Dictionary).get("ok", false)),
+				"why": str((one as Dictionary).get("why", "")).left(200) if one is Dictionary else "not run"}
+		studio[id] = {"parts": int(facts.get("parts", 0)), "lots": (facts.get("needs", {}) as Dictionary).size(),
+			"tested": passed, "tests": tests_kept, "finding": found, "checks": {}}
 		print("%s: %d parts (stored %d), %d lots; opened %d placed; studio %s parts, %d lots; Tested here %s, site %s"
 			% [id, int(model["parts"]), int(model["stored_parts"]), int(model["lots"]), int(opened.get("placed", 0)),
 				str(facts.get("parts", facts.get("error", "?"))), (facts.get("needs", {}) as Dictionary).size(),
@@ -103,6 +144,7 @@ func _run() -> void:
 			checks += 1
 			var site_said: Dictionary = (site["published"][id] as Dictionary)[kind]
 			var mine: Dictionary = _same_numbers(ChallengeRules.check(rules[kind], facts, passed))
+			(studio[id]["checks"] as Dictionary)[kind] = mine
 			var port_said: Dictionary = _same_numbers(ChallengeRules.check(rules[kind], port,
 				bool(model["tested"])))
 			if _equal(mine, site_said):
@@ -115,12 +157,19 @@ func _run() -> void:
 				print("  port differs %s %s\n    port %s\n    site %s" % [id, kind, _short(port_said), _short(site_said)])
 			if _equal(port_said, (site["stored"][id] as Dictionary)[kind]):
 				stored_same += 1
-	print("\nthe studio's ticks, the site's check: %d of %d the same" % [same, checks])
-	print("the port alone on each stored file: %d of %d the same" % [port_same, checks])
+	var kept := FileAccess.open(out_dir.path_join("studio.json"), FileAccess.WRITE)
+	kept.store_string(JSON.stringify({"models": studio, "rules": site["challenges"]}, " ", true) + "\n")
+	kept.close()
+	print("\nthe port on each stored file, the site's check of that file: %d of %d the same" % [port_same, checks])
+	print("the studio's ticks on what it would publish, the site's on the stored file: %d of %d the same" % [same, checks])
 	print("against the stored counts (an older publish's): %d of %d the same" % [stored_same, checks])
+	print("Tested today against the stored mark, different for %d: %s" % [tested_moved.size(), "; ".join(tested_moved)])
 	print("the slowest model's text written and read for the rules: %d ms" % slowest_ms)
-	_ok(same == checks and checks == 90, "the studio's ticks are the site's check on 30 models x 3 rules, %d of %d"
-		% [same, checks])
+	print("the studio's texts and findings in %s, for the site's check on them (--studio)" % out_dir)
+	_ok(port_same == checks and checks == 90, "the port is the site's check, on the same 30 files x 3 rules, %d of %d"
+		% [port_same, checks])
+	_ok(texts_differ.is_empty(), "the line's text counts as the publish's text does (%s)" % (
+		"all 30" if texts_differ.is_empty() else "not for " + ", ".join(texts_differ)))
 	print("%d FAILED" % _failures if _failures else "the studio ticks every rule as the site checks it")
 	quit(1 if _failures else 0)
 

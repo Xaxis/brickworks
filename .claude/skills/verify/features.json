@@ -1052,7 +1052,7 @@
       "id": "cli:challenge rules check",
       "kind": "cli",
       "entry": "tools/challenge_rules_check.mjs",
-      "reach": "node tools/challenge_rules_check.mjs --out=DIR   (the site's challenge_check on 30 published models under 3 test challenges, in a rolled-back transaction: the rules probe's fixtures)",
+      "reach": "node tools/challenge_rules_check.mjs --out=DIR   (the site's challenge_check on 30 published models under 3 test challenges, in a rolled-back transaction: the rules probe's fixtures); --studio=DIR/studio after the probe: the studio's texts and findings published in a rolled-back transaction, its 90 ticks against challenge_check's answers to them",
       "area": "web",
       "tests": []
     },
@@ -1060,7 +1060,7 @@
       "id": "cli:challenge rules probe",
       "kind": "cli",
       "entry": "src/dev/challenge_rules_probe.gd",
-      "reach": "tools/probe.sh challenge_rules_probe --fixtures=DIR   (the studio's ticks against challenge_check's answers, 30 models x 3 rules, from tools/challenge_rules_check.mjs)",
+      "reach": "tools/probe.sh challenge_rules_probe --fixtures=DIR   (the port against challenge_check on the same 30 stored files x 3 rules, 90 of 90; writes DIR/studio, the texts and findings the studio would publish, for challenge_rules_check --studio)",
       "area": "account",
       "tests": []
     },

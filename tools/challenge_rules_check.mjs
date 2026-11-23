@@ -6,7 +6,18 @@
 //
 //   set -a; . ./.env; set +a
 //   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/challenge_rules_check.mjs --out=DIR
-//   ~/.claude/claude-core/bin/heavy godot --headless --path . --script src/dev/challenge_rules_probe.gd -- --fixtures=DIR
+//   tools/probe.sh challenge_rules_probe --fixtures=DIR
+//   PG_MODULE=... node tools/challenge_rules_check.mjs --out=DIR --studio=DIR/studio
+//
+// With --studio, the probe's own: each model's text as the studio would
+// publish it and the Tested finding sent with it (DIR/studio/written/,
+// studio.json), published in a rolled-back transaction as a publish keeps
+// them (checkModel, keyed, owned_keep_needs; checkTested, its row in
+// share_tests on the newest version, none when refused), and the site's
+// challenge_check then asked under the same three rules: the studio's tick
+// against the site's answer to that very publish, all 90 the same or this
+// exits 1. A tick that promises "this passes" is a promise about what
+// Enter publishes, not about an older version on the site.
 //
 // The site's answer is supabase/challenges.sql challenge_check itself, run on
 // the live project inside a transaction that is rolled back: three test
@@ -35,10 +46,13 @@
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { checkModel } from "../api/share.js";
 import { keyed, ownedFacts } from "../api/_owned.js";
+import { checkTested } from "../api/_tested.js";
 
 const out = (process.argv.find((a) => a.startsWith("--out=")) || "").slice(6);
+const studioAt = (process.argv.find((a) => a.startsWith("--studio=")) || "").slice(9);
 if (!out) {
   console.error("challenge_rules_check: say where: --out=DIR");
   process.exit(2);
@@ -68,6 +82,83 @@ async function file(id) {
 const facts = ownedFacts();
 console.log(`the catalogue's facts: ${facts.known ? facts.known.size : 0} parts known, ${facts.moved.size} moved, `
   + `${facts.plain.size} plain colours`);
+
+/// [said] as text with its keys in order, so two answers compare whole.
+const canon = (said) => JSON.stringify(said, (key, value) => (value && typeof value === "object" && !Array.isArray(value)
+  ? Object.fromEntries(Object.keys(value).sort().map((k) => [k, value[k]])) : value));
+
+// The three test challenges, made inside the transaction.
+const made = async (title, rules) => (await q(`insert into public.challenges (title, brief, starts_on, ends_on,
+    most_parts, set_number, set_name, tested, test)
+  values ($1, 'The studio check', current_date - 1, current_date + 5, $2, $3, $4, $5, true) returning id`,
+[title, rules.most_parts ?? null, rules.set_number ?? null, rules.set_name ?? null, rules.tested === true]))[0].id;
+
+if (studioAt) {
+  const site = JSON.parse(readFileSync(join(out, "site.json"), "utf8"));
+  const studio = JSON.parse(readFileSync(join(studioAt, "studio.json"), "utf8"));
+  let code = 0;
+  await client.query("begin");
+  try {
+    await q("update public.challenges set ended_at = now() where test and ended_at is null and kind = 'month'");
+    const rulesOf = (kind) => site.challenges.find((c) => c.kind === kind).rules;
+    const ids = {
+      parts: await made("Studio check: parts", { most_parts: rulesOf("parts").most_parts }),
+      set: await made("Studio check: a set", { set_number: rulesOf("set").set.number, set_name: rulesOf("set").set.name }),
+      tested: await made("Studio check: Tested", { tested: true }),
+    };
+    for (const [part, colour, qty] of rulesOf("set").set.lots) {
+      await q("insert into public.challenge_set_parts (challenge, part, colour, qty) values ($1, $2, $3, $4)",
+        [ids.set, part, colour, qty]);
+    }
+    let same = 0;
+    let checks = 0;
+    const refused = [];
+    for (const one of site.models) {
+      const mine = studio.models[one.id];
+      if (!mine) throw new Error(`${one.id}: the studio wrote nothing of it`);
+      const text = readFileSync(join(studioAt, "written", `${one.id}.mpd`), "utf8");
+      // As a publish keeps it: its parts and needs counted from the text...
+      const counted = checkModel(text);
+      await q("select public.owned_keep_needs($1, $2::jsonb)", [one.id, JSON.stringify(keyed(counted.needs))]);
+      await q("update public.shared_models set parts = $2 where id = $1", [one.id, counted.parts]);
+      // ...and its finding checked and kept on the newest version, or none.
+      const n = (await q("select max(n) as n from public.share_versions where model = $1", [one.id]))[0].n;
+      const finding = checkTested(mine.finding && Object.keys(mine.finding).length ? mine.finding : null, text);
+      if (n !== null) {
+        await q("delete from public.share_tests where model = $1 and n = $2", [one.id, n]);
+        if (finding?.row) {
+          const r = finding.row;
+          await q(`insert into public.share_tests (model, n, by, app, file_hash, parts, steps, tests, passed)
+            values ($1, $2, 'app', $3, $4, $5, $6, $7::jsonb, $8)`,
+          [one.id, n, r.app, r.file_hash, r.parts, r.steps, JSON.stringify(r.tests), r.passed]);
+        } else {
+          refused.push(`${one.id} (${finding?.refused || "no finding"})`);
+        }
+      }
+      for (const kind of ["parts", "set", "tested"]) {
+        checks += 1;
+        const said = (await q("select public.challenge_check($1, $2) as c", [ids[kind], one.id]))[0].c;
+        if (canon(said) === canon(mine.checks[kind])) {
+          same += 1;
+        } else {
+          console.log(`  DIFFERENT ${one.id} ${kind}\n    studio ${canon(mine.checks[kind]).slice(0, 600)}\n`
+            + `    site   ${canon(said).slice(0, 600)}`);
+        }
+      }
+    }
+    console.log(`findings the site would not keep: ${refused.length}${refused.length ? `: ${refused.join("; ")}` : ""}`);
+    console.log(`the studio's tick against the site's check of what it publishes: ${same} of ${checks} the same`);
+    if (same !== checks || checks !== 90) code = 1;
+  } catch (trouble) {
+    console.error(`challenge_rules_check: ${trouble.stack || trouble}`);
+    code = 1;
+  } finally {
+    await client.query("rollback");
+    await client.end();
+  }
+  console.log("rolled back: nothing kept");
+  process.exit(code);
+}
 
 let code = 0;
 await client.query("begin");
@@ -108,10 +199,6 @@ try {
   const setLots = [...lots.values()];
   // Any test challenge a flow left open is ended first: nothing here is kept.
   await q("update public.challenges set ended_at = now() where test and ended_at is null and kind = 'month'");
-  const made = async (title, rules) => (await q(`insert into public.challenges (title, brief, starts_on, ends_on,
-      most_parts, set_number, set_name, tested, test)
-    values ($1, 'The studio check', current_date - 1, current_date + 5, $2, $3, $4, $5, true) returning id`,
-  [title, rules.most_parts ?? null, rules.set_number ?? null, rules.set_name ?? null, rules.tested === true]))[0].id;
   const challenges = [
     { kind: "parts", id: await made("Studio check: parts", { most_parts: most }),
       rules: { most_parts: most, set: null, tested: false } },
