@@ -2085,22 +2085,53 @@ file are never changed. Each is 0 unless asked
   photograph's does. This is the shot's own camera, set in the bench's shots
   file with the table.
 
-**Measured, photograph : before : after** (`--frame-fix`):
+**Measured, photograph : before : after** (`--frame-fix`; after is the
+judged draws, both seeds, the tables from tables_dN and the shade from
+all_dN):
 
 | measure | photograph | before | after |
 |---|---|---|---|
-| leather spread (black_2x4) | 12.0 | 9.0 | 9.4 |
-| leather grain far / near | 0.91 / 3.46 | 0.21 / 0.19 | 0.85 / 3.54 |
-| desk spread (grey_1x3) | 11.7 | 2.4 | 9.5 |
-| desk fall, right less left | -6.4 | +0.2 | -7.0 |
-| stone spread (green_plate_macro) | 17.6 | 3.0 | 15.8 |
-| 6532 shade b* | -4.2 | -0.1 | -4.8 |
-| 6660 shade b* | -3.2 | +1.4 | -3.2 |
+| leather spread (black_2x4) | 12.0 | 9.0 | 9.4, 9.4 |
+| leather grain far / near | 0.91 / 3.46 | 0.21 / 0.19 | 0.86 / 3.45, 0.86 / 3.35 |
+| desk spread (grey_1x3) | 11.7 | 2.4 | 9.5, 9.5 |
+| desk fall, right less left | -6.4 | +0.2 | -7.0, -7.0 |
+| stone spread (green_plate_macro) | 17.6 | 3.0 | 15.9, 15.6 |
+| 6532 shade b* (fill 0.75) | -4.2 | -0.1 | -4.8, -4.9 |
+| 6660 shade b* (fill 0.75) | -3.2 | +1.4 | -3.2, -3.0 |
 
-The leather's spread is the one measure short: 22% under, 2 points outside
+The leather's spread is the one measure short: 22% under, 0.2 outside
 the band. Deeper relief, darker creases, more tone per cell and a broader
 tone all left it at 9.3 to 9.4. The spread is taken over the lit part, at a
 quarter of the picture's size, where the cells are a pixel or two across.
+
+**Judged.** One solo pool with the photographs, each tree drawn twice in a
+snapshot, beside photoreal9's kept draws (the mean chance the judge gave a
+photograph, per round; bench/results/photoreal10-2026-11-23):
+
+| tree | close-ups | sets | called a photograph |
+|---|---|---|---|
+| photoreal9 | 0.370 0.389 | 0.157 0.167 | 17 of 80 |
+| tables | 0.490 0.484 | 0.192 0.210 | 31 of 80 |
+| fill | 0.404 0.421 | 0.150 0.152 | 20 of 80 |
+| both | 0.521 0.554 | 0.150 0.147 | 30 of 80 |
+
+The tables tree's sets are photoreal9's pictures byte for byte, so their
+rise of 0.035 to 0.04 is the judge's noise. The tables lifted the black 2x4
+from 0.27 to 0.65 and the grey 1x3 from 0.32 to 0.65; the green plate stayed
+at 0.68 to 0.71. **Kept: the tables**, in the bench's shots
+(tools/photoreal/shots.json). A table is the photograph's own, so the
+product look's default stays without one. **The fill is not kept**: alone it
+moved the close-ups by 0.03, at the noise, and the sets it was built for by
+-0.01. With the tables it added 0.03 and 0.07 (the grey 1x3 to 0.84), which
+it did not do alone. It stays a lever, 0 unless asked.
+
+What the judge still names, of 80 verdicts on the tables tree: the backdrop
+71 (photoreal9 75) and the light 63 (69). Leather and stone were tried once
+before as a colour with no relief, and the judge called both procedural
+(photoreal5). Now their relief is drawn, and they gained. The paired judge
+on the kept tree found the photograph 18 times in 20, sure 0.827, the same as
+photoreal9's 18 and 0.823. The tent's four main faces stay within ΔE2000 5
+(1.3, 3.7, 1.6, 2.7). The car at Best took 2.05, 2.14 and 2.88 s.
 
 **Tried and taken out, never judged.** A lever that could not reach its
 number was not judged.

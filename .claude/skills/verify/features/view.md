@@ -3240,10 +3240,13 @@ picture the assistant is shown.
   daylight's fill by as much of the light as the model keeps from it
   (`fill`; `shadow_marked`), so the open floor stays the backdrop's colour.
   Each 0 unless asked; drawn by the shader's "marks" version, so a picture
-  without them is drawn by "plain", photoreal9's code. Check:
-  `tools/probe.sh photoreal_probe -- --tag=T` draws photoreal9's pictures
-  byte for byte (10 of 10 against fea8a984b's), and `--shots=FILE` with
-  `table`, `table_light`, `surface` or `fill` per shot draws them; the
+  without them is drawn by "plain", photoreal9's code. The bench's shots
+  (tools/photoreal/shots.json) keep the tables on black_2x4, grey_1x3 and
+  green_plate_macro (judged: the close-ups 0.38 to 0.49). Check:
+  `tools/probe.sh photoreal_probe -- --tag=T --shots=FILE` with photoreal9's
+  shots file (`git show fea8a984b:tools/photoreal/shots.json`) draws
+  photoreal9's pictures byte for byte (10 of 10), the bench's own shots
+  draw the three tables, and `fill` per shot tints the shade; the
   photographs' measures (`python3 tools/photoreal/stage_measure.py
   shots/photoreal/T --frame-fix`) put each table's spread and the desk's
   fall within 20% of the photograph's, and the white sets' shade within
