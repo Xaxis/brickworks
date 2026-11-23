@@ -160,8 +160,10 @@
 
 		<!-- Its parts as tabs (pagekit, web/tabs.js): the entries (the winners
 		     first once it ends), how it works and what comes next, the past
-		     challenges; a tab shown once its part has something (challenge.js). -->
-		<div class="obj-panels">
+		     challenges; a tab shown once its part has something, and the
+		     tabs with their panels hidden until then, so nothing empty is
+		     pushed down as the challenge comes in (challenge.js). -->
+		<div class="obj-panels" hidden>
 		<div class="tabs obj-tabs" id="page-tabs" role="tablist" aria-label="El desafío">
 			<a href="#entries-part" role="tab" id="tab-entries-part" aria-controls="entries-part" data-tab="entries-part" data-also="entries winners" aria-selected="true" hidden>Participaciones</a>
 			<a href="#how-part" role="tab" id="tab-how-part" aria-controls="how-part" data-tab="how-part" data-also="how next" aria-selected="false" hidden>Cómo funciona</a>

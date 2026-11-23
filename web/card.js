@@ -497,6 +497,8 @@ export function motionWords(names, most = 3) {
 /// not: a page of cards is quick on a phone. "" when it has neither. A set
 /// of the LDraw library (api/_library.js) has its cover, drawn by the app.
 export function pictureOf(model) {
+  // One the page chose for it, of this site (a set's versions: web/set-page.js).
+  if (typeof model.picture === "string" && /^\/(library|m)\/[A-Za-z0-9._/-]+$/.test(model.picture)) return model.picture;
   // A set of the whole catalogue (api/_sets.js catalogCard) names its own:
   // its LDraw model's cover, else its own picture, else the one drawn of
   // its parts, or none.

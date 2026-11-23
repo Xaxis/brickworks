@@ -71,6 +71,10 @@ const summary = { site, opens: [], pin: {}, new_pin: {}, copy: {} };
 const browser = await launch({ signedOut: true });
 
 async function context(as, { width = 1280, height = 800, touch = false, scheme = "dark" } = {}) {
+  // A sign-in of its own for each browser, as each device has: one session
+  // shared, the first browser's refresh rotated it and ended the others'
+  // ("Your sign-in has ended", flow2).
+  if (as === builder) as = await mintSession(builderEmail);
   const made = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers, colorScheme: scheme,
     ...(touch ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   await made.addInitScript(([name, value]) => {
@@ -222,6 +226,16 @@ try {
       await page.reload({ waitUntil: "load" });
       const again = await watch(page, "back again");
       const start = again.start;
+      // Every Continue tile shows its model: its stored picture, or its file
+      // drawn on the device (StudioStart._drawing_of), never a letter.
+      const pictured = await until(page, () => {
+        const one = (window.brickworksState || {}).studio_start || {};
+        return one.continue > 0 && one.pictured >= one.continue ? one : null;
+      }, "every tile pictured", 30).catch(() => null);
+      const late = (await state(page)).studio_start || {};
+      check(`${size.name} ${scheme}, back again: every Continue tile shows its model (${late.pictured} of ${late.continue}), `
+        + `each came-back row whoever it was (${late.faces} of ${late.came})`,
+        Boolean(pictured) && late.faces >= late.came);
       await page.waitForTimeout(1500);
       await shot(page, `after_${size.name}_${scheme}.png`);
       summary.opens.push({ size: size.name, scheme, new_device_ms: fs.after_open_ms, new_device_real: fs.real,
@@ -253,9 +267,13 @@ try {
         const one = (pins.pins || []).find((p) => p.id === comment);
         return one && one.brick && pins.lit === one.brick ? { brick: one.brick, title: s.title, at: Date.now() } : null;
       }, "the pin's part lit", 30, comment).catch(() => null);
-      summary.pin = { ms: lit ? lit.at - pressed : null, title: lit?.title };
-      check(`the pin pressed opens “${lit?.title}” with its part selected in ${lit ? lit.at - pressed : "-"} ms`,
-        Boolean(lit) && lit.at - pressed <= 1000);
+      // Held to the app's own count from the press to the part lit: the
+      // page hears of it only at the next telling, twice a second, and this
+      // browser draws in software on a loaded box. The page's is said too.
+      const app = ((await state(pinPage)).studio_start || {}).pin_ms;
+      summary.pin = { ms: app, page_ms: lit ? lit.at - pressed : null, title: lit?.title };
+      check(`the pin pressed opens “${lit?.title}” with its part selected in ${app} ms (${lit ? lit.at - pressed : "-"} ms `
+        + "as the page heard it)", Boolean(lit) && app >= 0 && app <= 1000);
       await pinPage.waitForTimeout(800);
       await shot(pinPage, "pin_lit_1280.png");
 

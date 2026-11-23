@@ -171,11 +171,12 @@
 //                            without any, put on it with no publish counted
 //                            (the site's Share from a file draws its
 //                            pictures once the server has the model)
-//   POST ?op=card&id=X       {thumb}: the owner's model given a new card
-//                            picture (/m/X.webp), its newest version's, with
-//                            no publish counted and no version made (the
-//                            house's cards drawn again as photographs,
-//                            tools/web/gallery_seed.mjs --cards)
+//   POST ?op=card&id=X       {thumb, kind?}: the owner's model given a new
+//                            card picture (/m/X.webp), its newest version's,
+//                            with no publish counted and no version made: the
+//                            photograph the app draws once a publish has
+//                            answered (kind traced or raster), and the
+//                            house's (tools/web/gallery_seed.mjs --cards)
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns,
@@ -312,8 +313,6 @@ import { changedLineHtml, changesAnswer, countAfter, ownChanges, treeHtml, treeO
 import { NOT_YET as WIP_NOT_YET, SHOWN as WIP_SHOWN, finish as finishWip, isWip, postVersion, wipReady } from "./_wip.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
-import { checkSuggestion, closeAnswer, listOf as suggestionsOf, markTaken, mergeAnswer, sendSuggestion,
-  suggestionAnswer } from "./_suggestions.js";
 import { freshPool, heldOf, keyed, missingOf, ownedKey, poolOf, readShard, shardOf } from "./_owned.js";
 // Every set in the catalogue, a page each (sets364), and the picture drawn
 // of one LDraw has no model of.
@@ -1602,8 +1601,6 @@ ${header}
       ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url, `${fileAt}.mpd`)}
       ${set || old ? "" : postFacts(origin, id, shownModel, about)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
-      ${set ? "" : suggestedLine(id, model.suggested, at)}
-      ${set || old ? "" : `<div class="suggest-box" id="suggest-box" data-model="${id}"${parent?.id ? ` data-remix-of="${parent.id}"` : ""} hidden></div>`}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     ${lineage ? `<div class="lineage">${lineage}</div>` : ""}
@@ -1724,7 +1721,10 @@ function partsSection(at, parts) {
     + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
     + pickABrickNote(pab)
     + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
-    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
+    // Show all in the page from the start where the list will need it, so
+    // its row is in the space kept too: put in only with the list, it moved
+    // everything under the panel 48 px (checkdrift, 2026-11-23).
+    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
 }
@@ -1878,29 +1878,6 @@ const logged = (versions) => (versions[0]?.n ?? 1) > 1 || versions.some((one) =>
 /// then every version, newest first, each with its small picture (the one
 /// kept with it, /m/X/v/N.webp), its date, what changed and its note, work
 /// in progress and the finished one marked, each opening its own page.
-/// A change a remixer sent back that version [taken.n] took in
-/// (api/_suggestions.js listOf's taken), as its Log and its credit say it:
-/// "With Ann’s change from their remix “Red car, wider”", or "With part of".
-function suggestedWords(taken, at = "") {
-  const handle = /^[a-z0-9-]{3,24}$/.test(String(taken.by?.handle || "")) ? taken.by.handle : null;
-  const name = String(taken.by?.name || taken.by?.handle || say("a remixer"));
-  const who = handle ? `<a href="${at}/u/${handle}">${escapeHtml(name)}</a>` : escapeHtml(name);
-  const remix = /^[A-Za-z0-9]{10}$/.test(String(taken.remix || ""))
-    ? `<a href="${at}/m/${taken.remix}">“${escapeHtml(String(taken.name || ""))}”</a>` : `“${escapeHtml(String(taken.name || ""))}”`;
-  return sayHtml(taken.whole ? "With {who}’s change from their remix {remix}" : "With part of {who}’s change from their remix {remix}",
-    { who, remix });
-}
-
-/// Under the model's credit: the changes its versions took in from
-/// remixes, newest first, three at most and the rest counted; none, nothing.
-function suggestedLine(id, taken = [], at = "") {
-  if (!Array.isArray(taken) || taken.length === 0) return "";
-  const shown = taken.slice(0, 3).map((one) => `<li>${suggestedWords(one, at)}, `
-    + `<a href="${at}/m/${id}/v/${Number(one.n)}">${asText(say("version {n}", { n: Number(one.n) }))}</a></li>`);
-  const more = taken.length > 3 ? `<li>${asText(say("and {n} more in its Log", { n: taken.length - 3 }))}</li>` : "";
-  return `<ul class="suggested-credit" aria-label="${asText(say("Changes taken in from remixes"))}">${shown.join("")}${more}</ul>`;
-}
-
 function versionsSection(id, versions, shown, at = "", model = {}) {
   const newest = versions[0]?.n ?? 1;
   if (!logged(versions) || !shown) return "";
@@ -1939,9 +1916,7 @@ function versionsSection(id, versions, shown, at = "", model = {}) {
       + ` <span class="when">${when(one.at)}</span>${marks ? ` ${marks}` : ""}</p>`
       + `${words ? `<p class="log-changed">${escapeHtml(words)}</p>`
         : one.n === 1 ? `<p class="log-changed">${asText(say("The first version."))}</p>` : ""}`
-      + `${one.note ? `<p class="log-note"><q>${escapeHtml(one.note)}</q></p>` : ""}`
-      + `${(model.suggested || []).filter((taken) => Number(taken.n) === one.n)
-        .map((taken) => `<p class="log-credit">${suggestedWords(taken, at)}</p>`).join("")}</div></li>`;
+      + `${one.note ? `<p class="log-note"><q>${escapeHtml(one.note)}</q></p>` : ""}</div></li>`;
   }).join("");
   return `<section class="versions" id="versions"${panelAttrs("versions")}><h2 class="visually-hidden" id="versions-h">${asText(say("Log"))}</h2>
     ${building}
@@ -2509,17 +2484,6 @@ async function read(request, response) {
 
   if (op === "mine") return mine(request, response, origin);
   if (op === "made") return madeShown(request, response);
-  // A change a remixer sent back (api/_suggestions.js): one, for its
-  // designer or its sender; and a model's, open ones for its designer alone.
-  if (op === "suggestion") {
-    response.setHeader("Cache-Control", "private, no-store");
-    return response.status(200).json(await suggestionAnswer(await verify(bearer(request), request), request.query, { getFile }));
-  }
-  if (op === "suggestions") {
-    response.setHeader("Cache-Control", "private, no-store");
-    const viewer = bearer(request) ? (await verify(bearer(request), request)).sub : null;
-    return response.status(200).json(await suggestionsOf(id, viewer));
-  }
   if (op === "tested") return testedOwn(request, response);
   if (op === "clip_need") return clipNeed(request, response);
   if (op === "sweep") return sweep(request, response);
@@ -2595,7 +2559,7 @@ async function read(request, response) {
     // Its clip (unit turntable): the model turning in its link's preview,
     // named only on the newest version's page and while it is of that
     // version; none read is none, and the picture card it always had.
-    const [mark, photos, next, { counted, parts }, lists, based, clip, tree, alts, suggested] = await Promise.all([
+    const [mark, photos, next, { counted, parts }, lists, based, clip, tree, alts] = await Promise.all([
       orUnknown("share", markOf(db, id, shown.n)),
       orUnknown("share", photosWhere(`model=eq.${id}`, shownPublicly)), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
@@ -2607,13 +2571,9 @@ async function read(request, response) {
       // changed (supabase/remix_changes.sql): null before that, and the
       // page is as it was.
       page.library ? null : orUnknown("share", treeOf(id)),
-      orUnknown("share", altRowsOf([id])),
-      // The changes remixers sent back that its versions took in
-      // (supabase/suggestions.sql): credited under its credit and in its Log.
-      page.library ? null : orUnknown("share", suggestionsOf(id))]);
+      orUnknown("share", altRowsOf([id]))]);
     // What it is based on, under its remix line and in its structured data.
     page.based = based || [];
-    page.suggested = Array.isArray(suggested?.taken) ? suggested.taken : [];
     page.tree = tree;
     // And the real set (or the few) its parts all come from, counted when
     // it was published (api/_alts.js): a line under its credit, or the
@@ -3261,6 +3221,7 @@ async function gallery(request, response, origin) {
   // gallery_models asks itself once supabase/made_with_shown.sql is
   // applied. Before, its rows say nothing shown, and none is listed.
   if (asked.made === "assistant") rows = rows.filter((row) => row.made_with_shown === true);
+  const mades = tabs ? await madesOffered(Boolean(said.tests), asked.made === "assistant" ? rows : null) : null;
   // Signed in: nothing of anybody they blocked (supabase/block.sql). A
   // page may then hold fewer; the next is where it was.
   const models = await withoutTheirBlocked(mine,
@@ -3282,12 +3243,34 @@ async function gallery(request, response, origin) {
     sorts: Object.entries({ ...SORTS, ...(mine?.pool ? MINE_SORTS : {}) }).map(([id, label]) => ({ id, label })),
     ...(tabs ? {
       windows: Object.entries(WINDOWS).map(([id, one]) => ({ id, label: one.label })),
-      mades: Object.entries(MADES).map(([id, label]) => ({ id, label })),
+      mades,
       following: Boolean(mine),
     } : {}),
     score: SCORE,
     ...(mine ? { mine: mine.pool } : {}),
   });
+}
+
+/// The Made filter's ways a visitor may pick: With the assistant only while
+/// at least one public model's owner chose to say so (supabase/
+/// made_with_shown.sql), so it never leads to an empty list; Hand-built
+/// always. Asked of gallery_models as the list is ([listed], the list just
+/// asked with made=assistant, says it at once), and kept a few minutes for
+/// test models and for the rest apart. Never throws: unanswered, it is
+/// offered as before nothing was shown, without With the assistant.
+const MADES_KEPT = new Map();
+const MADES_KEEP_MS = 5 * 60 * 1000;
+async function madesOffered(tests, listed = null) {
+  let any = listed ? listed.length > 0 : null;
+  const kept = MADES_KEPT.get(tests);
+  if (any === null && kept && Date.now() - kept.at < MADES_KEEP_MS) any = kept.any;
+  if (any === null) {
+    const { asked } = listQuery({ made: "assistant", ...(tests ? { tests: "1" } : {}) }, 1, 1);
+    const rows = await db("rpc/gallery_models", { method: "POST", body: { query: asked } }).catch(() => []);
+    any = (rows || []).some((row) => row.made_with_shown === true);
+  }
+  MADES_KEPT.set(tests, { at: Date.now(), any });
+  return Object.entries(MADES).filter(([id]) => id !== "assistant" || any).map(([id, label]) => ({ id, label }));
 }
 
 /// [cards] without the models of anybody [mine] (the person asking, signed
@@ -3718,8 +3701,6 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // motions' names, from the text itself (supabase/motions.sql).
   const moves = checkMoves(body.moves);
   const motions = motionsIn(model);
-  // A change a remixer sent back that this version takes (api/_suggestions.js).
-  const suggestion = checkSuggestion(body.suggestion);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   // A credit is the person's profile, by its name, when they have one shown
@@ -3955,9 +3936,6 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // counted from those needs against every set's inventory: after the
   // answer, so the publish never waits on it.
   if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
-  // The change it takes, marked taken by this version: its sender is
-  // named in its Versions and hears of it. Never stops the publish.
-  const suggested = suggestion && existing ? await markTaken(owner, id, n, suggestion) : null;
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const shownKept = await keepMadeShown(id, owner, shownAsked);
@@ -4006,8 +3984,7 @@ export async function publishModel(claims, body, request, { test = isTestAccount
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    made_with: madeKept, made_with_shown: shownKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}),
-    ...(suggested ? { suggestion: suggested } : {}), ...links(origin, id),
+    made_with: madeKept, made_with_shown: shownKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}), ...links(origin, id),
   } };
 }
 
@@ -4058,12 +4035,14 @@ async function pictures(request, response) {
   return response.status(200).json({ id, version: newest.n, pictures: true, already: false, ...links(origin, id) });
 }
 
-/// ?op=card&id=X: {thumb}, the card the gallery and the home feed show
-/// (/m/X.webp) put on its owner's model in place of the one it has, its
-/// newest version's (cardlook, 2026-11-23). The house's models were
-/// published with cut-outs in the window's light, and their cards are
-/// drawn again as photographs (CardPhoto, tools/web/gallery_seed.mjs
-/// --cards) without a version each that changed nothing. Only the owner's
+/// ?op=card&id=X: {thumb, kind?}, the card the gallery and the home feed
+/// show (/m/X.webp) put on its owner's model in place of the one it has,
+/// its newest version's (cardlook, 2026-11-23). A publish sends the
+/// cut-out, and the app then draws the card as a photograph and puts it
+/// here (SharePanel._card_after), kind saying how it was drawn
+/// (card_kind.sql); the house's cards were drawn again so
+/// (tools/web/gallery_seed.mjs --cards), without a version each that
+/// changed nothing. Only the owner's
 /// own link, the picture checked as a publish checks it. Nothing more than
 /// a publish of the same model without listing it could do: a barred model
 /// may be republished at its link, pictures and all.
@@ -4075,11 +4054,28 @@ async function cardPut(request, response) {
   const row = await ownRow(id);
   if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
   if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+  const kind = CARD_KINDS.includes(request.body?.kind) ? request.body.kind : null;
   await putFile(`${id}.webp`, thumb, "image/webp");
-  if (!row.has_thumb) {
-    await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: { has_thumb: true } });
+  await keepCard(`shared_models?id=eq.${id}&owner=eq.${owner}`, kind, row.has_thumb);
+  return response.status(200).json({ id, card: true, kind, ...links(originOf(request), id) });
+}
+
+/// How a card was drawn (supabase/card_kind.sql): what op=card and
+/// tools/web/card_sweep.mjs say of the card they put.
+export const CARD_KINDS = ["traced", "raster"];
+
+/// The row at [where] told its card was put just now, and how it was drawn
+/// ([kind], null for one op=card did not say): card_kind and card_at, which
+/// tools/web/card_sweep.mjs reads. Before supabase/card_kind.sql is applied
+/// the database has neither column and refuses the write: the card is put
+/// all the same, and has_thumb kept as it was before that file.
+export async function keepCard(where, kind, hadThumb) {
+  try {
+    await db(where, { method: "PATCH", body: { has_thumb: true, card_kind: kind, card_at: new Date().toISOString() } });
+  } catch (trouble) {
+    if (!/: 400$/.test(trouble.message)) throw trouble;
+    if (!hadThumb) await db(where, { method: "PATCH", body: { has_thumb: true } });
   }
-  return response.status(200).json({ id, card: true, ...links(originOf(request), id) });
 }
 
 async function unpublish(request, response) {
@@ -4601,15 +4597,6 @@ async function handler(request, response) {
     if (op === "bases") return await basesPut(request, response);
     if (op === "clip") return await clipPut(request, response);
     if (op === "made") return await madeShown(request, response);
-    if (op === "suggest") {
-      const { status, answer } = await sendSuggestion(await verify(bearer(request), request), request.body, { getFile,
-        origin: originOf(request) });
-      return response.status(status).json(answer);
-    }
-    if (op === "suggestion_merge") {
-      return response.status(200).json(await mergeAnswer(await verify(bearer(request), request), request.body, { getFile }));
-    }
-    if (op === "suggestion_close") return response.status(200).json(await closeAnswer(await verify(bearer(request), request), request.body));
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {

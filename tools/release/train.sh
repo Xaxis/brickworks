@@ -1,8 +1,9 @@
 #!/bin/bash
 # train.sh : a release staged in one command, which ships when its turn comes.
 #
-#   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..." | --probes none --why "..."]
-#                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]... [--web | --full] [--plan]
+#   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..." | --probes all | --probes none --why "..."]
+#                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]... [--web | --full]
+#                             [--every-check] [--gate-ok "tests/a.py ..."] [--plan]
 #   train.sh status [TAG...]
 #   train.sh hold TAG [REASON]          train.sh release TAG
 #   train.sh reship TAG [--probes "..."] [--accept CHECK "REASON"]... [CHECK...]
@@ -89,7 +90,7 @@ LIVE=${TRAIN_LIVE:-https://brickworks.diy/app}
 SITE=${TRAIN_SITE:-https://brickworks.diy}
 POLL=${TRAIN_POLL:-15}
 
-usage() { sed -n '4,8p' "$HERE/train.sh"; exit 2; }
+usage() { sed -n '4,9p' "$HERE/train.sh"; exit 2; }
 
 # TAG's train if it is running, by the pid it wrote, and only while that pid
 # still runs this train: a pid is reused once its process ends.
@@ -129,8 +130,8 @@ suite_names() { sed -E 's/(^|[[:space:]])#.*//' | awk 'NF { split($1, p, ":"); p
 
 stage() {
   [ $# -ge 2 ] || usage
-  local tag=$1 branch=$2 after="" checks="" probes="" named_probes="" said="" units="" title="" accepts="" pid
-  local lane="" plan=""
+  local tag=$1 branch=$2 after="" checks="" probes="" named_probes="" said="" units="" title="" accepts="" pid gate_ok=""
+  local lane="" plan="" every=""
   shift 2
   case "$tag" in ""|*[!A-Za-z0-9._-]*) echo "train: '$tag' is not a tag"; exit 2 ;; esac
   while [ $# -gt 0 ]; do
@@ -138,11 +139,12 @@ stage() {
       --web|--full) [ -z "$lane" ] || [ "$lane" = "${1#--}" ] || { echo "train: --web or --full, not both"; exit 2; }
         lane=${1#--}; shift; continue ;;
       --plan) plan=1; shift; continue ;;
+      --every-check) every=1; shift; continue ;;
     esac
     [ $# -ge 2 ] || { echo "train: $1 wants a value"; exit 2; }
     case "$1" in
       --after) after=$2 ;; --checks) checks=$2 ;; --probes) probes=$2; named_probes=1 ;;
-      --why) said=${2//[$'\t\n']/ } ;; --units) units=$2 ;; --title) title=$2 ;;
+      --why) said=${2//[$'\t\n']/ } ;; --units) units=$2 ;; --title) title=$2 ;; --gate-ok) gate_ok=$2 ;;
       --accept) [ $# -ge 3 ] && [ -n "$3" ] || { echo "train: --accept wants a check and the reason"; exit 2; }
         accepts+="$2"$'\t'"${3//[$'\t\n']/ }"$'\n'; shift ;;
       *) echo "train: no option $1"; exit 2 ;;
@@ -154,6 +156,8 @@ stage() {
   if [ -n "$named_probes" ] && [ -z "${probes//[[:space:]]/}" ]; then
     echo "train: --probes \"\" names no probe: leave --probes out for every headless one $branch lists, or say --probes none --why \"the reason\""; exit 2
   fi
+  local all_probes=""
+  [ "$probes" = all ] && { all_probes=1; named_probes=""; probes=""; }
   if [ "$probes" = none ]; then
     [ -n "${said//[[:space:]]/}" ] || { echo "train: --probes none wants --why \"the reason\", which its log says"; exit 2; }
     probes=""; said="none: $said"
@@ -188,33 +192,50 @@ stage() {
     done
   fi
   [ -z "$unknown" ] || { echo "train: $branch has no${unknown%,}"; exit 2; }
-  # And every check whose flow reaches what the branch changed (flows_for.py,
-  # the branch's own, on its own tree), since where it left main, or the
-  # merge of it PREV ships when that is later: PREV checks its own. The
-  # lead's list was the only one, and rel-m237 changed the words a session
-  # hears first without model_view, which pinned them (mcpview, 2026-11-02).
-  local base mb tree out code flows="" added="" told="flows_for.py"
+  # The checks its own change reaches against the build brickworks.diy
+  # serves, less those proven since on a preview from which nothing reaches
+  # them, and the probes the same way (lean.py, the train's own, deciding by
+  # the branch's own flows_for.py and feature map). Every check every file
+  # named since an older base, and every headless probe, ran 146 checks and
+  # 293 probes for rel-m319's 24 units and took 13 hours over 8 attempts
+  # (2026-11-23). The lead's list was the only one before flows_for, and
+  # rel-m237 changed the words a session hears first without model_view,
+  # which pinned them (mcpview, 2026-11-02). Worked out here against main
+  # with BRANCH merged, for the plan and the log, and again once it is merged
+  # (lean_now), against the build live then.
+  local base mb tree out code flows="" added="" told="lean.py" live_sha head_tree lean_probes="" carried_n=0 reached_n=0 probes_by_lean=""
   base=$(git -C "$R" merge-base "$branch" main) || { echo "train: $branch shares nothing with main"; exit 2; }
   if [ -n "$after" ] && mb=$(git -C "$R" merge-base "$branch" "$after" 2>/dev/null) \
       && git -C "$R" merge-base --is-ancestor "$base" "$mb"; then base=$mb; fi
+  live_sha=$(serving); live_sha=${live_sha#/b/}; live_sha=${live_sha%/}
+  git -C "$R" rev-parse -q --verify "$live_sha^{commit}" >/dev/null 2>&1 || live_sha=$(git -C "$R" rev-parse main)
+  live_sha=$(git -C "$R" rev-parse --short "$live_sha")
+  head_tree=$(git -C "$R" merge-tree --write-tree main "$branch" 2>/dev/null | head -1)
   local -a files=()
-  mapfile -t files < <(git -C "$R" diff --name-only "$base...$branch")
+  if [ -n "$head_tree" ]; then
+    mapfile -t files < <(git -C "$R" diff --name-only "$live_sha" "$head_tree")
+  else
+    told="lean.py (main and $branch do not merge cleanly, so the files since $(git -C "$R" rev-parse --short "$base")):"
+    head_tree=$branch
+    mapfile -t files < <(git -C "$R" diff --name-only "$base...$branch")
+  fi
   git -C "$R" cat-file -e "$branch:tools/release/flows_for.py" 2>/dev/null || told="$branch has no flows_for.py:"
-  if [ ${#files[@]} -gt 0 ] && [ "$told" = flows_for.py ]; then
+  if [ ${#files[@]} -gt 0 ] && [ "${told:0:7}" = lean.py ]; then
     tree=$(mktemp -d) || exit 1
-    # shellcheck disable=SC2046  # the paths flows_for reads that the branch has
-    git -C "$R" archive "$branch" $(git -C "$R" ls-tree --name-only "$branch" -- web api src tools/web tools/release tools/deploy.sh) \
+    # shellcheck disable=SC2046  # the paths flows_for and the feature map read that the release has
+    git -C "$R" archive "$head_tree" $(git -C "$R" ls-tree --name-only "$head_tree" -- web api src tools/web tools/release tools/deploy.sh tools/suite .claude/skills/verify) \
       | tar -x -C "$tree"
-    # The lines changed, for the shared files it names by the part that
-    # changed (flows_for.py's SPLIT), where the branch's own takes them.
-    local diffed=()
-    if grep -q -- '"--diff"' "$tree/tools/release/flows_for.py"; then
-      git -C "$R" diff -U0 "$base...$branch" -- web > "$tree/.flows.diff" && diffed=(--diff .flows.diff)
-    fi
-    out=$(cd "$tree" && python3 tools/release/flows_for.py "${diffed[@]}" "${files[@]}" 2>&1); code=$?
-    rm -rf "$tree"
-    [ "$code" = 0 ] || { echo "train: flows_for.py failed on $branch:"; echo "$out" | tail -3; exit 2; }
+    out=$(python3 "$HERE/lean.py" checks --live "$live_sha" --head "$head_tree" --parents "$(git -C "$R" rev-parse main "$branch" | paste -sd' ')" \
+      --tree "$tree" --named "$checks" ${every:+--every} 2>&1); code=$?
+    [ "$code" = 0 ] || { rm -rf "$tree"; echo "train: lean.py failed on $branch:"; echo "$out" | tail -3; exit 2; }
     flows=$(sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p' <<< "$out")
+    reached_n=$(sed -n 's/^reached (\([0-9]*\)).*/\1/p' <<< "$out")
+    carried_n=$(grep -c '^carried ' <<< "$out")
+    if [ -z "$named_probes" ] && [ -z "$all_probes" ] && git -C "$R" cat-file -e "$branch:tools/suite/headless.txt" 2>/dev/null; then
+      lean_probes=$(python3 "$HERE/lean.py" probes --live "$live_sha" --head "$head_tree" --parents "$(git -C "$R" rev-parse main "$branch" | paste -sd' ')" \
+        --tree "$tree" 2>&1) || { rm -rf "$tree"; echo "train: lean.py could not choose the probes:"; echo "$lean_probes" | tail -3; exit 2; }
+    fi
+    rm -rf "$tree"
   fi
   # The lane: web when nothing the export is made from changed, and an
   # export brickworks.diy serves is kept to ship on (live_export.sh).
@@ -243,10 +264,25 @@ stage() {
     [ -z "$after" ] || why_lane+=", checked again once $after serves"
     probes=""; named_probes=1; said="none: the web lane, its app the live export's"
   fi
-  # With no --probes, every headless probe the branch lists, as check.sh
-  # reads the list: picked by what featuremap affected reaches, three of the
-  # six that went red would have run, and all 209 take about 20 minutes
+  # With no --probes, the headless probes the branch lists that its change
+  # reaches (each whose own source names what it changed, lean.py), less
+  # those proven since; every one each night on pre261 (nightly.sh).
+  # featuremap affected reaches every probe from any script (each loads
+  # src/main.gd, which loads everything), so it is no choice. --probes all is
+  # every headless one, as check.sh reads the list: picked by what
+  # featuremap affected reached on 11-04, three of the six that went red
+  # would have run, as its graph missed a class used by its name (it follows
+  # them since claude-core e6df180), and all 209 took about 20 minutes
   # beside a battery of two hours (2026-11-04).
+  if [ -z "$named_probes" ] && [ -z "$all_probes" ] && [ -n "$lean_probes" ]; then
+    local nheadless
+    probes_by_lean=1
+    probes=$(sed -n 's/^probes: //p' <<< "$lean_probes")
+    nheadless=$(git -C "$R" show "$branch:tools/suite/headless.txt" | suite_names | wc -l)
+    said="lean: $(wc -w <<< "$probes") of $nheadless headless reach its change (lean.py), $(grep -c '^carried ' <<< "$lean_probes") carried; every one nightly"
+    [ -n "${probes// /}" ] || { probes=""; said="none: its change reaches no headless probe (lean.py); every one nightly"; }
+    named_probes=1
+  fi
   if [ -z "$named_probes" ]; then
     local list n windowed
     list=$(git -C "$R" show "$branch:tools/suite/headless.txt" 2>/dev/null) \
@@ -254,9 +290,10 @@ stage() {
     probes=$(suite_names <<< "$list" | paste -sd' ')
     n=$(wc -w <<< "$probes")
     windowed=$(git -C "$R" show "$branch:tools/suite/windowed.txt" 2>/dev/null | suite_names | wc -l)
-    said="all $n headless"
+    said="all $n headless${all_probes:+ (--probes all)}"
     [ "$windowed" = 0 ] || said+=" ($windowed windowed left to the suite)"
   fi
+  local named_checks=$checks
   for name in $flows; do case " $checks " in *" $name "*) ;; *) added+=" $name" ;; esac; done
   local -a named=()
   read -r -a named <<< "$checks$added"
@@ -265,7 +302,8 @@ stage() {
     echo "train: $tag, planned (--plan): nothing staged or run"
     echo "  lane: $why_lane"
     echo "  merges $branch at $(git -C "$R" rev-parse --short "$branch")${after:+ once $after serves}"
-    echo "  $told since $(git -C "$R" rev-parse --short "$base"): ${#files[@]} files changed, adds${added:- no check} to those named"
+    echo "  $told against the build brickworks.diy serves ($live_sha): ${#files[@]} files differ; reaches ${reached_n:-0} checks, ${carried_n:-0} carried by proof since${every:+ (--every-check: none carried)}; adds${added:- no check} to those named"
+    [ -z "$after" ] || echo "  (worked out against main with $branch merged; chosen again once $after serves and $branch is merged)"
     echo "  checks: ${checks:-none named} (and site, frames)"
     echo "  probes: ${said}${probes:+: $(wc -w <<< "$probes") ($(cut -d' ' -f1-8 <<< "$probes")...)}"
     [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
@@ -280,6 +318,12 @@ stage() {
   rm -f "$SPEC"/{pid,step,result,sha,tip,shipped,reship,probes.staged} "$RO/$tag.probes"
   echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
   echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
+  # What the lead named, kept through lean_now's choice once it is merged,
+  # and whether it carries proof over (every: --every-check), and whether
+  # the probes were named (lean_now leaves those as they are).
+  echo "$gate_ok" > "$SPEC/gate_ok"
+  echo "$named_checks" > "$SPEC/named"; echo "${every:+every}" > "$SPEC/lean"; echo "$checks" > "$SPEC/checks.planned"
+  if [ -n "$probes_by_lean" ] && [ "${said:0:20}" != "none: the web lane, " ]; then echo lean > "$SPEC/probes.lean"; else echo named > "$SPEC/probes.lean"; fi
   echo "$said" > "$SPEC/probes.why"
   echo "$why_lane" > "$SPEC/lane"
   echo "${title:-$branch}" > "$SPEC/title"
@@ -289,7 +333,8 @@ stage() {
   # the release staged after it that this one had ended (m178 held on
   # m177's, 2026-10-26). So would what it shipped past and how its failures
   # fared on brickworks.diy.
-  rm -f "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/${tag}_accepted" "$RO/${tag}"_stale.{out,asked,build,changed,failing} "$RO/${tag}_ab.asked"
+  rm -f "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/${tag}_accepted" "$RO/${tag}"_stale.{out,asked,build,changed,failing,never} "$RO/${tag}_ab.asked" \
+    "$RO/${tag}_export.sha"
   for log in lead train; do
     [ -e "$RO/${tag}_$log.out" ] && mv -f "$RO/${tag}_$log.out" "$RO/${tag}_$log.prev.out"
   done
@@ -302,7 +347,7 @@ stage() {
   # Each said alone: ${x:-...} is x itself once x is set, which put the
   # checks added after the line that added them (2026-11-04).
   if [ -n "$added" ]; then added="adds$added to the checks named"; else added="adds no check to those named"; fi
-  echo "  $told since $(git -C "$R" rev-parse --short "$base"), $added"
+  echo "  $told against the build brickworks.diy serves ($live_sha): ${#files[@]} files differ, ${reached_n:-0} checks reached, ${carried_n:-0} carried; $added"
   echo "  lane: $why_lane"
   if [ -n "$named_probes" ] && [ -n "$probes" ]; then echo "  probes: $said: $probes"; else echo "  probes: $said"; fi
   [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
@@ -348,7 +393,7 @@ release() {
 
 reship() {
   [ $# -ge 1 ] || usage
-  local tag=$1 probes="" asked="" checks=() named=() pid res f n code fails accepts="" why
+  local tag=$1 probes="" asked="" checks=() named=() pid res f n code fails accepts="" why there
   shift
   local SPEC=$RO/$tag.train
   while [ $# -gt 0 ]; do
@@ -377,6 +422,9 @@ reship() {
     [ -n "$n" ] || continue
     passed_here "$tag" "$n" && { echo "train: $n passed on $tag's preview: there is nothing to ship past"; exit 1; }
     fails_there "$tag" "$n" && continue
+    # One that cannot run there (ship.sh's TAG_stale.never) is the lead's
+    # judgement alone.
+    grep -qx "$n" "$RO/${tag}_stale.never" 2>/dev/null && continue
     f=$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" 2>/dev/null | cut -c1-140)
     case "$f" in
       *" exit=0 "*) echo "train: $n passes on $SITE ($f): its failure is $tag's, not one to ship past" ;;
@@ -395,8 +443,10 @@ reship() {
       grep -v "^$n"$'\t' "$SPEC/accept" > "$SPEC/accept.$$" 2>/dev/null; mv -f "$SPEC/accept.$$" "$SPEC/accept"
       printf '%s\t%s\n' "$n" "$why" >> "$SPEC/accept"
       grep -q "^$n: " "$RO/${tag}_accepted" 2>/dev/null && continue
+      there=$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" 2>/dev/null | cut -c1-200)
+      grep -qx "$n" "$RO/${tag}_stale.never" 2>/dev/null && there="never run (the lead judged it)"
       printf '%s: %s\n  here: %s\n  there: %s\n' "$n" "$why" "$(failed_here "$tag" "$n" | cut -c1-200)" \
-        "$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" | cut -c1-200)" >> "$RO/${tag}_accepted"
+        "$there" >> "$RO/${tag}_accepted"
     done <<< "$accepts"
     remerge || { echo "train: could not write $W's merge message again"; exit 1; }
     echo "train: $tag's merge now says: $(git -C "$W" log -1 --format=%B "$(merge_of)" | sed -n '3,$p' | paste -sd' ')"
@@ -406,7 +456,25 @@ reship() {
   # alone after it, and none it ships past. Named none, rel-m242's reship
   # ran site and frames alone, and would have shipped past the check that
   # held it (2026-11-01).
-  if [ ${#checks[@]} -eq 0 ]; then
+  # With proof of the attempt before (ship.sh writes it, lean.py reads it),
+  # what the fix since reaches is run again too, and what it does not and
+  # passed is not: the lead named flows_for on each fix by hand
+  # (reship-only-what-changed, 2026-11-16).
+  local lean_out="" live
+  if [ ${#checks[@]} -eq 0 ] && ls "$RO/proofs/checks/$tag".* >/dev/null 2>&1; then
+    live=$(serving); live=${live#/b/}; live=${live%/}
+    git -C "$R" rev-parse -q --verify "$live^{commit}" >/dev/null 2>&1 || live=$(git -C "$R" rev-parse origin/main)
+    words named named
+    local left=()
+    for n in "${named[@]}"; do passed_here "$tag" "$n" || left+=("$n"); done
+    lean_out=$(python3 "$HERE/lean.py" checks --live "$live" --head "$(git -C "$WT/$tag" rev-parse HEAD)" --tree "$WT/$tag" \
+      --named "${left[*]}" 2>&1) || { echo "$lean_out" | tail -3; echo "train: lean.py could not choose the checks"; exit 1; }
+    for n in $(sed -n 's/^checks: //p' <<< "$lean_out"); do
+      grep -q "^$n: " "$RO/${tag}_accepted" 2>/dev/null || checks+=("$n")
+    done
+    echo "train: lean.py: $(sed -n 's/^reached (\([0-9]*\)).*/\1/p' <<< "$lean_out") reached, $(grep -c '^carried ' <<< "$lean_out") carried by what passed before"
+  fi
+  if [ ${#checks[@]} -eq 0 ] && [ -z "$lean_out" ]; then
     f=checks; [ -s "$SPEC/reship" ] && f=reship
     words named "$f"
     for n in "${named[@]}"; do
@@ -633,15 +701,18 @@ answer() { echo "$1" > "$RO/$TAG.probes.$$" && mv -f "$RO/$TAG.probes.$$" "$RO/$
 # checks (2026-10-30) the GPU's two slots were busy 23 of 119 minutes, every
 # agent's probes held back; through its ordinary probes before, 98 of 100,
 # and those probes spent 113 of their 148 minutes waiting for the GPU behind
-# other agents'. TRAIN_PROBES_AT_ONCE at a time (4): the windowed ones share
+# other agents'. TRAIN_PROBES_AT_ONCE at a time (6): the windowed ones share
 # the GPU's two slots, and with both theirs, rel-m226's 35 (30 GPU minutes)
-# are modelled at 19.2 minutes 2 at a time, 17.4 at 3 and 16.8 at 4 or more.
+# are modelled at 19.2 minutes 2 at a time, 17.4 at 3 and 16.8 at 4 or more;
+# the headless ones, all a train runs, share only the CPU, which at nice 0
+# (ship.sh's BOX_HEAVY_NICE) is the release's before its units' (rel-m319's
+# 200 ran 141 minutes 4 at a time at nice 10, 2026-11-23).
 probes() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
-  local probe code fails at_once bad="" why
-  export BOX_HEAVY_PRIORITY=1
+  local probe code fails at_once bad="" why ok=()
+  export BOX_HEAVY_PRIORITY=1 BOX_HEAVY_NICE=${BOX_HEAVY_NICE:-0}
   words probes probes
-  at_once=${TRAIN_PROBES_AT_ONCE:-4}
+  at_once=${TRAIN_PROBES_AT_ONCE:-6}
   why=$(cat "$SPEC/probes.why" 2>/dev/null)
   if [ ${#probes[@]} -eq 0 ]; then
     say "runs no probe: ${why:-none named}"; rm -f "$RO/$TAG.probes"; return
@@ -661,8 +732,12 @@ probes() {
       read -r code fails < "$RO/${TAG}_probe_$probe.exit"
     fi
     say "probe $probe exit=$code FAIL=$fails"
-    probe_ok "$code" "$fails" || bad="$bad $probe"
+    if probe_ok "$code" "$fails"; then ok+=("$probe"); else bad="$bad $probe"; fi
   done
+  # What passed, as proof for the release after (lean.py): its commit is
+  # the release's, which the probes ran in.
+  [ ${#ok[@]} -eq 0 ] || say "$(python3 "$HERE/lean.py" record probes "$TAG" "$(git -C "$W" rev-parse HEAD)" \
+    "$(git -C "$W" rev-parse HEAD)" --passed "${ok[*]}" 2>&1)"
   [ -z "$bad" ] || { answer "failed:$bad"; exit 1; }
   rm -f "$RO/$TAG.probes"
   say "every probe passed"
@@ -675,16 +750,8 @@ run() {
   # one not running, and stop.
   echo $$ > "$SPEC/pid.$$" && mv -f "$SPEC/pid.$$" "$SPEC/pid"
   rm -f "$SPEC/probes.pid"
-  # Until its battery on the preview is done no unit's battery begins a
-  # check on the live database (preview_checks.sh): a unit's together run,
-  # taken while the release merged and probed, held rel-m233's oauth 33
-  # minutes, and a lock cannot be taken back from a run already in it
-  # (2026-10-31). A file named for its pid says so, which ship.sh takes
-  # away once that battery is done (SHIP_LIVE_MARK); once the pid is gone,
-  # or names another process (the start time it holds, live_db_lib.sh), the
-  # file says nothing.
   LIVE_REL="$(git -C "$R" rev-parse --path-format=absolute --git-common-dir)/live-db.release"
-  mkdir -p "$LIVE_REL" && awk '{ sub(/.*\) /, ""); print $20 }' "/proc/$$/stat" > "$LIVE_REL/$$"
+  TRAIN_PID=$$
   # Killed (kill -- -PID ends its work too), it says so and stops the
   # probes, which run in a group of their own: no result would leave the
   # release staged after it waiting until its deadline. nohup has HUP
@@ -700,6 +767,22 @@ run() {
   wait "$WORK"
 }
 
+# Until its battery on the preview is done no unit's battery begins a
+# check on the live database (preview_checks.sh): a unit's together run,
+# taken while the release merged and probed, held rel-m233's oauth 33
+# minutes, and a lock cannot be taken back from a run already in it
+# (2026-10-31). A file named for the train's pid says so, which ship.sh
+# takes away once that battery is done (SHIP_LIVE_MARK); once the pid is
+# gone, or names another process (the start time it holds,
+# live_db_lib.sh), the file says nothing. Made once the release before has
+# served and no hold stops it, never while waiting: rel-m320's mark, made as it began to
+# wait, kept rel-m319's runs on brickworks.diy (a unit's place in line)
+# behind it while rel-m320 waited for rel-m319 to serve, until the lead
+# moved it aside (2026-11-23).
+mark_live_db() {
+  mkdir -p "$LIVE_REL" && awk '{ sub(/.*\) /, ""); print $20 }' "/proc/$TRAIN_PID/stat" > "$LIVE_REL/$TRAIN_PID"
+}
+
 # Stopped by hand: its work ended first, so nothing of it writes after this.
 killed() {
   local p
@@ -708,21 +791,60 @@ killed() {
   stop "killed"
 }
 
+# The checks and probes the release as merged must run (lean.py): what its
+# change against the build brickworks.diy serves now reaches, less what was
+# proven since, and the lead's named (TAG.train/named) whatever. The plan at
+# staging was worked out against main with BRANCH merged; main may have
+# moved since, a release before it gone live, and units merged into BRANCH.
+lean_now() {
+  local live out head every="" n
+  # The lead's, and any a unit merged meanwhile added by an edit of
+  # TAG.train/checks: a name there the plan did not have.
+  local -a named=() planned=() edited=()
+  words named named; words edited checks
+  [ -e "$SPEC/checks.planned" ] && words planned checks.planned
+  for n in "${edited[@]}"; do
+    case " ${planned[*]} ${named[*]} " in *" $n "*) ;; *) named+=("$n") ;; esac
+  done
+  live=$(serving); live=${live#/b/}; live=${live%/}
+  git -C "$R" rev-parse -q --verify "$live^{commit}" >/dev/null 2>&1 || live=$(git -C "$R" rev-parse origin/main)
+  head=$(git -C "$W" rev-parse HEAD)
+  [ "$(cat "$SPEC/lean" 2>/dev/null)" = every ] && every=1
+  # site, and frames when the app is its own, ship.sh adds whatever is named.
+  out=$(python3 "$HERE/lean.py" checks --live "$live" --head "$head" --tree "$W" --named "${named[*]}" \
+    ${every:+--every} 2>&1) || { echo "$out" | tail -3; stop "lean.py could not choose the checks"; }
+  echo "$out" > "$RO/${TAG}_lean.out"
+  sed -n 's/^checks: //p' <<< "$out" > "$SPEC/checks"
+  say "checks, for what it changes against ${live:0:9} (lean.py, ${TAG}_lean.out): $(sed -n 's/^reached (\([0-9]*\)).*/\1/p' <<< "$out") reached, $(grep -c '^carried ' <<< "$out") carried: $(cat "$SPEC/checks")"
+  web_lane && return
+  [ "$(cat "$SPEC/probes.lean" 2>/dev/null)" = lean ] || return 0
+  out=$(python3 "$HERE/lean.py" probes --live "$live" --head "$head" --tree "$W" 2>&1) \
+    || { echo "$out" | tail -3; stop "lean.py could not choose the probes"; }
+  echo "$out" >> "$RO/${TAG}_lean.out"
+  sed -n 's/^probes: //p' <<< "$out" > "$SPEC/probes"
+  echo "lean: $(wc -w < "$SPEC/probes") reach its change (lean.py), $(grep -c '^carried ' <<< "$out") carried; every one nightly" > "$SPEC/probes.why"
+}
+
 work() {
   local code out ship ended="" bad="" reshipping="" served made head
   # The merge's import and gates at the release's priority, as its probes
   # and ship.sh are: rel-m231's merge waited behind an agent's solo checks
-  # (2026-10-31).
-  export BOX_HEAVY_PRIORITY=1
+  # (2026-10-31). And its CPU before its units' (ship.sh, BOX_HEAVY_NICE).
+  export BOX_HEAVY_PRIORITY=1 BOX_HEAVY_NICE=${BOX_HEAVY_NICE:-0}
 
+  # Timed from its merge (merged sets it) or its reship, for a rehearsal
+  # (TRAIN_REHEARSE) and ship.sh's own line.
+  TRAIN_T0=$EPOCHSECONDS
   if [ -e "$SPEC/reship" ]; then
     # Its merge is made and the release before it served (reship).
     reshipping=1
+    mark_live_db
     BRANCH=$(cat "$SPEC/branch"); TIP=$(cat "$SPEC/tip")
     step "reships $W at $(git -C "$W" rev-parse --short HEAD)"
     tree_ok
   else
     merged
+    lean_now
   fi
 
   # The web lane ships on the export brickworks.diy serves, as it is now:
@@ -757,7 +879,9 @@ work() {
   PROBES=$!
   echo "$PROBES" > "$SPEC/probes.pid"
   step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames), its probes beside it"
-  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" SHIP_LIVE_MARK="$LIVE_REL/$$" \
+  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" SHIP_LIVE_MARK="$LIVE_REL/$TRAIN_PID" \
+    ${TRAIN_REHEARSE:+SHIP_REHEARSE=1} SHIP_T0="$TRAIN_T0" \
+    SHIP_GATE_OK="${SHIP_GATE_OK:-} $(cat "$SPEC/gate_ok" 2>/dev/null)" \
     SHIP_STALE=1 SHIP_ACCEPT="$SPEC/accept" ${reshipping:+SHIP_REUSE=1} "${ship_export[@]}" \
     bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" > "$RO/${TAG}_lead.out" 2>&1 &
   ship=$!
@@ -774,6 +898,13 @@ work() {
   fi
   rm -f "$SPEC/probes.pid"
   tail -n 4 "$RO/${TAG}_lead.out"
+  # A rehearsal: timed from its merge to where main would move, then gone.
+  if [ -n "${TRAIN_REHEARSE:-}" ]; then
+    local said; said=$(grep '^SHIP: rehearsed' "$RO/${TAG}_lead.out" | tail -1)
+    cd "$R" && bash "$HERE/retire_wt.sh" "$TAG" 2>&1 | tail -1; git -C "$R" branch -q -D "$TAG" 2>/dev/null
+    [ -n "$said" ] || finish "rehearsal ended exit $code: $(grep '^SHIP:' "$RO/${TAG}_lead.out" | tail -1 | cut -c1-160)"
+    finish "rehearsed: ${said#SHIP: rehearsed: }; $(( EPOCHSECONDS - TRAIN_T0 )) s from its merge"
+  fi
   # The build it serves: this commit's, or, reshipped on the preview made
   # before a check's fix, that preview's commit (ship.sh reused it).
   served=$(cat "$SPEC/sha")
@@ -817,6 +948,7 @@ merged() {
   done
 
   unheld "the merge"
+  mark_live_db
   base=${TRAIN_BASE:-origin/main}
   timeout 300 git -C "$R" fetch -q origin 2>&1 | tail -1
   [ -e "$W" ] && stop "$W exists"
@@ -834,6 +966,7 @@ merged() {
   # merged stopped it (2026-10-30).
   TIP=$(git -C "$R" rev-parse -q --verify "$BRANCH^{commit}") || stop "no branch $BRANCH"
   echo "$TIP" > "$SPEC/tip"
+  TRAIN_T0=$EPOCHSECONDS
   step "merges $BRANCH at ${TIP:0:8}"
   # The web lane's merge has no import: its app is the live export's.
   local only=""; web_lane && only=1

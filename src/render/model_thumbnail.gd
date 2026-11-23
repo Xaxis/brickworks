@@ -218,10 +218,21 @@ class Shape extends RefCounted:
 		var part: Lbm.PartMesh = Lbm.parse(bytes, path, false)
 		if part == null:
 			return null
+		return of_part(part)
+
+	## A part the app has loaded already (PartLibrary.mesh_for): from its
+	## arrays when it was read without meshes, else from its meshes' own.
+	## Built on the main thread, which owns the meshes; drawn anywhere.
+	static func of_part(part: Lbm.PartMesh) -> Shape:
 		var shape := Shape.new()
 		shape.bounds = part.bounds
-		for s: int in part.arrays.size():
-			var arrays: Array = part.arrays[s]
+		var count: int = part.arrays.size() if not part.arrays.is_empty() else part.surfaces.size()
+		for s: int in count:
+			var arrays: Array = part.arrays[s] if not part.arrays.is_empty() \
+				else part.surfaces[s].surface_get_arrays(0)
+			if arrays.size() <= Mesh.ARRAY_INDEX or arrays[Mesh.ARRAY_INDEX] == null \
+					or arrays[Mesh.ARRAY_NORMAL] == null:
+				continue
 			var corners: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 			var given: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
 			var order: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
@@ -240,8 +251,8 @@ class Shape extends RefCounted:
 			shape.positions.append(corners)
 			shape.triangles.append(order)
 			shape.normals.append(faces)
-			shape.codes.append(part.surface_colors[s])
-			shape.two_sided.append(part.surface_two_sided[s])
+			shape.codes.append(part.surface_colors[s] if s < part.surface_colors.size() else Lbm.COLOR_INHERIT)
+			shape.two_sided.append(part.surface_two_sided[s] if s < part.surface_two_sided.size() else 0)
 		return shape
 
 
@@ -252,6 +263,9 @@ class Drawer extends RefCounted:
 	var colours: Dictionary = {}
 	## Parts drawn in the last [method draw].
 	var drawn: int = 0
+	## Every band on the thread that draws: for a picture drawn on a worker
+	## of its own (StudioStart's Continue), which waits on no other.
+	var alone: bool = false
 
 	var _wide: int = 0
 	var _rows: int = 0
@@ -347,7 +361,10 @@ class Drawer extends RefCounted:
 		# The first on this thread: a GDScript function's first run on two
 		# threads at once can take the engine down (WorkerTasks.first_here).
 		_band(0)
-		if bands > 1:
+		if alone:
+			for index: int in range(1, bands):
+				_band(index)
+		elif bands > 1:
 			var rest := func(index: int) -> void: _band(index + 1)
 			var group: int = WorkerThreadPool.add_group_task(rest, bands - 1, -1, true,
 				"thumbnail bands")

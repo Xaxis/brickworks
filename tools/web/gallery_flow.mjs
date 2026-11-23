@@ -9,8 +9,8 @@
 //
 //   1. the first screen: at 390 the first card's picture starts within
 //      360 px of the top (the week's pick before the month's challenge),
-//      two cards to a row, four cards' names on the
-//      first two screens; at 1280 the week's pick whole across the first
+//      one card to a row (the owner's, 2026-10-29), three cards' names on
+//      the first two screens; at 1280 the week's pick whole across the first
 //      screen, its picture beside its words, and under it the cards four
 //      to a row (the owner's four on a desktop, 2026-10-29), the first row's pictures begun on that screen (sitebold,
 //      2026-11-23: four whole small cards before it), the cards marked
@@ -239,10 +239,12 @@ try {
         // the search on its own, 56 px lower: rel-m318's first picture at
         // 322 px, rel-m319's at 378. The month's challenge over the pick put
         // it at 425 (sitepolish); the pick comes first on a phone now.
-        check(seen.firstPicture <= 360 && seen.columns === 2 && !seen.sideways,
+        check(seen.firstPicture <= 360 && seen.columns === 1 && !seen.sideways,
           `390 ${theme}: the first card's picture at ${seen.firstPicture} px (360 at most), ${seen.columns} to a row, nothing sideways`);
-        check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
-          `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
+        // One to a row, a card is half a phone's screen: the pick's name and
+        // two cards' (four at two a row before 2026-11-23).
+        check(seen.names.length >= 3 && seen.names[2] <= 2 * 844,
+          `390 ${theme}: three cards' names on the first two screens, the third's ending at ${seen.names[2]} px (${2 * 844} at most)`);
       } else {
         const pick = seen.pickFeature;
         check(pick && pick.top >= 0 && pick.bottom <= 900 && pick.beside && seen.columns === 4 && seen.cardsBegin < 900 - 60 && !seen.sideways,
@@ -298,16 +300,25 @@ try {
     await page.click('#kinds [data-kind=""]');
     await until(page, () => !location.search.includes("kind=") && document.documentElement.dataset.gallery === "ready");
     await page.click("#filters summary");
+    // Offered only while a public model's owner chose to say so (api/share.js
+    // madesOffered): here the stand-in crowd's every tenth, seeded shown.
+    const offered = await page.evaluate(() => [...document.querySelectorAll("#made option")].map((one) => one.value).join(","));
+    check(offered === ",hand,assistant", `Made offers "${offered}": With the assistant, as a shown model is public`);
     await page.selectOption("#made", "assistant");
     await until(page, () => location.search.includes("made=assistant") && document.documentElement.dataset.gallery === "ready");
     const made = await page.evaluate(() => {
       const cards = [...document.querySelectorAll("#models .model")];
       // The list is the filter's; no card says how it was made (its own page does).
       return { n: cards.length, saying: cards.filter((el) => el.dataset.made || el.querySelector(".marks .pill.made")).length,
-        said: document.getElementById("filters-said").textContent };
+        said: document.getElementById("filters-said").textContent,
+        ids: cards.map((el) => el.dataset.id || el.querySelector("a[href^='/m/']")?.getAttribute("href")?.slice(3) || "") };
     });
-    check(made.n > 0 && made.saying === 0 && made.said === "1",
-      `Made: with the assistant: ${made.n} cards, ${made.saying} saying how it was made on the card; Filters says ${made.said} on`);
+    // Only the shown ones: Crowd00001, Crowd00011, ... (every tenth), never
+    // the ai-designed ones in between whose owners said nothing.
+    const quiet = made.ids.filter((id) => /^Crowd\d{5}$/.test(id) && (Number(id.slice(5)) - 1) % 10 !== 0);
+    check(made.n > 0 && made.saying === 0 && made.said === "1" && !quiet.length,
+      `Made: with the assistant: ${made.n} cards, ${made.saying} saying how it was made on the card, ${quiet.length} not shown `
+      + `(${quiet.slice(0, 3).join(", ") || "none"}); Filters says ${made.said} on`);
     await shot(page, "2_made_assistant_1280.png");
     await context.close();
   }

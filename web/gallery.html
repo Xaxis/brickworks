@@ -136,8 +136,11 @@ html[data-tab="builds"] .toolbar { position: static; }
    two, three or four to a row. The list's cards are #models' own, laid out in
    this grid. */
 .feed #models { display: contents; }
-/* Three to a row from 900 px, four from 1200 px: the owner's four a row
-   on a desktop (2026-10-29), each picture its card's hero. */
+/* The owner's four a row on a desktop (2026-10-29): one on a phone, two
+   from 600 px, three from 900 and four from 1200, each picture its card's
+   hero. */
+.feed { grid-template-columns: minmax(0, 1fr); }
+@media (width >= 600px) { .feed { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (width >= 900px) { .feed { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (width >= 1200px) { .feed { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 /* The week's pick across the grid's width: from 900 px its picture large on

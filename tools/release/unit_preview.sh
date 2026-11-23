@@ -113,6 +113,9 @@ if [ "${UNIT_RETRY_75:-1}" = 1 ]; then
       && mv "$S/${TAG}_pv.out.new" "$S/${TAG}_pv.out"
   done
 fi
+# What passed, as proof a release reads (lean.py): its check is run again
+# only where what merged beside this unit since reaches it.
+python3 "$HERE/lean.py" record checks "$TAG" "${PREVIEW_MADE:-$SHA}" "$SHA" "$S/${TAG}_pv.out" 2>&1 | sed 's/^/UNIT: /'
 for name in "$@"; do
   line=$(grep -m1 "^$name exit=" "$S/${TAG}_pv.out")
   case "$line" in

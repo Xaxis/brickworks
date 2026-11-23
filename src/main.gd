@@ -167,6 +167,10 @@ var _start_bare: bool = false
 ## When the studio was first up to use, in ticks: what the first screen's
 ## time is counted from.
 var _first_open_ms: int = -1
+## A row of what came back pressed (_open_came): when, and how long until its
+## part was lit, in ms of the app's own clock (-1 while it is not).
+var _came_pressed_ms: int = -1
+var _came_lit_ms: int = -1
 ## The comments on parts of the model open asked again this often while the
 ## studio is open, so one written meanwhile shows within a minute (partpins'
 ## gap, docs/PLAN.md row 1).
@@ -202,12 +206,6 @@ var _view_version: int = 1
 var _view_newest: int = 1
 var _view_versions: Array = []
 var _copy_started: bool = false
-## A change a remixer sent back to this designer (/app?suggestion=<n>, as
-## --suggestion=<n>, their notification's link; suggestedit): opened once
-## they are signed in and whatever was on the baseplate is back
-## (_maybe_suggestion), 0 for none.
-var _suggesting: int = 0
-var _suggest_started: bool = false
 ## Share a build, from the home page's feed (/app?share; homefeed,
 ## 2026-11-23): the share panel opens for the model the app comes back
 ## with, their last, once it is back and somebody is signed in
@@ -2009,8 +2007,6 @@ func _ready() -> void:
 		_viewing = _argument("--view")
 	if _copying.is_empty() and SharedModels.is_id(_argument("--copy")):
 		_copying = _argument("--copy")
-	if _suggesting == 0 and RegEx.create_from_string("^[1-9][0-9]{0,11}$").search(_argument("--suggestion")) != null:
-		_suggesting = _argument("--suggestion").to_int()
 	if _from_library.is_empty() and ModelLibrary.is_id(_argument("--library")):
 		_from_library = _argument("--library")
 		_from_library_build = _has_argument("--build")
@@ -2145,7 +2141,6 @@ func _ready() -> void:
 	if _updater != null:
 		_updater.begin()
 	_maybe_copy()
-	_maybe_suggestion()
 	_maybe_share()
 	_maybe_open_library()
 	_maybe_fill_bin()
@@ -3034,7 +3029,6 @@ func _on_account_changed() -> void:
 		return
 	_look_for_pins()
 	_maybe_copy()
-	_maybe_suggestion()
 	_maybe_share()
 	_maybe_join_together()
 	# Signed out: what the first screen asked as them goes with it.
@@ -4913,121 +4907,6 @@ func _first_build_it() -> void:
 		await _toggle_steps()
 	if _steps.is_playing_back():
 		_steps.to_start()
-
-
-## A change sent back (/app?suggestion=<n>): once they are signed in and
-## whatever was on the baseplate is back, as a link's copy waits.
-func _maybe_suggestion() -> void:
-	if _suggesting == 0 or _suggest_started or not _first_open_done \
-			or _account == null or not _account.lets_in():
-		return
-	_suggest_started = true
-	_set_address("")
-	await open_suggestion(_suggesting)
-
-
-## A change a remixer sent back from their remix (suggestedit; api/
-## _suggestions.js), opened for its designer: their model as they last
-## published it, opened in this tab, with the change drawn on it in Compare
-## to take all of, some of, or none (CompareView's Suggest mode). What was
-## on the baseplate is kept first if it was not saved, so following the
-## notification never loses work. "" once it is open, else what went wrong,
-## said in the status bar too.
-func open_suggestion(id: int) -> String:
-	_bar.say("opening the change sent to you…")
-	var token: String = await _account.access_token()
-	if token.is_empty():
-		return _suggestion_trouble("sign in to Brickworks to see the change sent to you")
-	var answer: Dictionary = await _shared.suggestion(token, id)
-	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
-		return _suggestion_trouble("could not open the change: " + SharedModels.trouble(answer,
-			"Brickworks did not answer"))
-	var got: Dictionary = answer["body"]
-	var remix: Dictionary = got.get("remix") if got.get("remix") is Dictionary else {}
-	if str(got.get("you", "")) != "designer" or not got.get("mine") is String:
-		return _suggestion_trouble("your change from “%s” waits for its designer to look at it"
-			% str(remix.get("name", "")))
-	if str(got.get("status", "")) != "open":
-		return _suggestion_trouble("that change was taken already" if str(got.get("status", "")) == "taken"
-			else "that change was declined already")
-	var model: Dictionary = got.get("model") if got.get("model") is Dictionary else {}
-	var name: String = str(model.get("name", "Shared model"))
-	if not await _open_designers(str(got["mine"]), name, str(model.get("id", "")), true):
-		return "could not open your model"
-	_shell.compare.open_suggestion(got, _take_suggestion.bind(got), _decline_suggestion.bind(got))
-	return ""
-
-
-func _suggestion_trouble(said: String) -> String:
-	_bar.say(said)
-	return said
-
-
-## [param text], the designer's model (as published, or with a change taken
-## in), opened in this tab as theirs, at its link [param link]; with [param
-## keep_first] what was on the baseplate kept first if it was not saved.
-## False, said, when it cannot be opened.
-func _open_designers(text: String, name: String, link: String, keep_first: bool = false) -> bool:
-	if keep_first and not _sample_untouched and _store.has_unsaved_work():
-		_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
-			else "Untitled"))
-	var result: Dictionary = await _store.open_text_fetched(text, name)
-	if not str(result["error"]).is_empty():
-		_bar.say("could not open “%s”: %s" % [name, result["error"]])
-		return false
-	_store.share_id = link
-	_bar.opened.emit(int(result["placed"]))
-	var since: int = Time.get_ticks_msec()
-	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
-		_bar.say("opening “%s” — %d parts on their way…" % [name, _store.awaited.size()])
-		await get_tree().create_timer(0.3).timeout
-	return true
-
-
-## Take [param take] ("all", or the ids ticked) of the change [param got]:
-## the designer's version with it taken in, as the server merges it, opened
-## in place of the one compared, and Share opened to publish it as their
-## next version, which credits the remixer (ModelStore.suggestion). "" once
-## it is open, else what went wrong.
-func _take_suggestion(take: Variant, got: Dictionary) -> String:
-	var token: String = await _account.access_token()
-	if token.is_empty():
-		return "Sign in to Brickworks to take it."
-	var model: Dictionary = got.get("model") if got.get("model") is Dictionary else {}
-	var answer: Dictionary = await _shared.take_suggestion(token, int(got["id"]), int(model.get("n", 0)), take)
-	if int(answer["code"]) != 200 or not answer["body"] is Dictionary \
-			or not (answer["body"] as Dictionary).get("text") is String:
-		return SharedModels.trouble(answer, "Brickworks could not take it just now.")
-	var merged: Dictionary = answer["body"]
-	var name: String = str(model.get("name", "Shared model"))
-	# An edit made while comparing is the designer's: kept under its own name
-	# before the version with the change is opened over it.
-	if _store.world.revision != _shell.compare.get("_revision") and _store.has_unsaved_work():
-		_store.save_as(_store.unused_name(name))
-	if not await _open_designers(str(merged["text"]), name, str(model.get("id", ""))):
-		return "Could not open your model with it taken in."
-	var by: Dictionary = got.get("by") if got.get("by") is Dictionary else {}
-	_store.suggestion = {"id": int(got["id"]), "taken": merged.get("taken", {}),
-		"whole": bool(merged.get("whole", false)), "by": by, "remix": got.get("remix", {}),
-		"model": str(model.get("id", "")), "n": int(merged.get("n", 0))}
-	_bar.say("%s is in “%s” now: publish it from Share as version %d, and its page credits them" % [
-		SharedModels.taken_words(_store.suggestion), name, int(merged.get("n", 0)) + 1])
-	if _share_panel_made == null or not _share_panel_made.visible:
-		_share_wanted()
-	return ""
-
-
-## Say no to the change [param got]: closed, and gone from the designer's
-## notifications. "" once it is, else what went wrong.
-func _decline_suggestion(got: Dictionary) -> String:
-	var token: String = await _account.access_token()
-	if token.is_empty():
-		return "Sign in to Brickworks to say no to it."
-	var answer: Dictionary = await _shared.decline_suggestion(token, int(got["id"]))
-	if int(answer["code"]) != 200:
-		return SharedModels.trouble(answer, "Brickworks could not say no to it just now.")
-	_bar.say("declined %s; your model is as it was" % SharedModels.suggestion_heading(got))
-	return ""
 
 
 ## This week's quick build, when [param template] is the model it starts
@@ -11342,6 +11221,7 @@ func _studio_start_now() -> Control:
 	_studio_start.set("store", _store)
 	_studio_start.set("account", _account)
 	_studio_start.set("pictures", _model_library)
+	_studio_start.set("library", _library)
 	_studio_start.set("open_saved", func(path: String) -> void:
 		if _store.title == path.get_file().get_basename() and not _store.example:
 			return
@@ -11387,6 +11267,9 @@ func _start_state() -> Dictionary:
 	var filled: int = int(state["filled_ms"])
 	state["after_open_ms"] = filled - _first_open_ms if filled >= 0 and _first_open_ms >= 0 else -1
 	state["lit"] = _part_pins.lit if _part_pins != null else 0
+	# A pinned row pressed: how long until its part was lit, as the app
+	# counts it (the page hears of it only at its next telling).
+	state["pin_ms"] = _came_lit_ms
 	# The example car on the baseplate, untouched; and how many models are
 	# saved here, by their files' names alone (a device the account's
 	# models are being brought to).
@@ -11415,6 +11298,8 @@ func _start_copy(id: String) -> void:
 ## that part (_light_comment); a photo of a build or a remix is on the
 ## model's page, in a new tab.
 func _open_came(item: Dictionary) -> void:
+	_came_pressed_ms = Time.get_ticks_msec()
+	_came_lit_ms = -1
 	var link: String = str(item.get("link", ""))
 	var address: String = link if link.begins_with("http") else Deployment.api_base() + link
 	var id: String = str(item.get("model", ""))
@@ -11434,6 +11319,7 @@ func _open_came(item: Dictionary) -> void:
 		_bar.opened.emit(placed)
 	var who: String = str(item.get("who", "")) if item.get("who") is String else ""
 	if bool(item.get("pinned", false)) and await _light_comment(int(item.get("comment", 0))):
+		_came_lit_ms = Time.get_ticks_msec() - _came_pressed_ms
 		_bar.say("%s's comment is on this part: “%s”" % [who if not who.is_empty() else "A builder",
 			str(item.get("said", ""))])
 		return

@@ -775,6 +775,7 @@ function startParts(section) {
       .then((body) => {
         if (!body || !Array.isArray(body.lots)) {
           list.removeAttribute("aria-busy");
+          if (all) all.hidden = true;
           const item = document.createElement("li");
           item.className = "group";
           item.textContent = say("The list did not come. Reload the page to ask for it again.");
@@ -818,7 +819,9 @@ function startParts(section) {
   if (all) {
     all.addEventListener("click", () => {
       open = true;
+      // In the page before the list comes: pressed then, the list comes whole.
       if (lots) draw();
+      else load();
       // The next row in reach of the keyboard, where Show all was.
       list.querySelectorAll("li")[LOTS_SHOWN]?.setAttribute("tabindex", "-1");
       list.querySelectorAll("li")[LOTS_SHOWN]?.focus({ preventScroll: true });
@@ -2953,106 +2956,3 @@ function muteItem() {
 }
 const ID_OK = /^[A-Za-z0-9]{10}$/;
 muteItem();
-
-// A change sent back (suggestedit, 2026-11-23; api/_suggestions.js): on a
-// remix's page, its own builder may send what their remix changed to the
-// designer of the model it came from, with a word about it; on any model's
-// page, its designer sees the changes sent to it, each to open in the
-// studio (/app?suggestion=N) and take all of or part. Nobody else sees
-// either: the answer's open list is null for anybody but the designer.
-const SUGGEST_KINDS = ["added", "removed", "moved", "recoloured", "swapped", "restepped"];
-/// "2 added, 1 taken away, 1 moved", as the bell says it.
-function suggestionCounts(counts) {
-  const words = { added: "{n} added", removed: "{n} taken away", moved: "{n} moved", recoloured: "{n} recoloured",
-    swapped: "{n} swapped", restepped: "{n} to another step" };
-  return SUGGEST_KINDS.filter((kind) => Number(counts?.[kind]) > 0)
-    .map((kind) => say(words[kind], { n: number(Number(counts[kind])) })).join(", ");
-}
-
-async function suggestBox(box) {
-  if (!signedIn()) return;
-  const model = box.dataset.model;
-  const answer = await call(`/api/share?op=suggestions&id=${model}`).catch(() => null);
-  if (!answer || answer.status !== 200 || !Array.isArray(answer.body?.open)) return;
-  // Theirs: the list of changes sent to it is an array for its designer alone.
-  const open = answer.body.open;
-  box.replaceChildren();
-  if (open.length) {
-    const head = document.createElement("h2");
-    head.className = "suggest-head";
-    head.textContent = open.length === 1 ? say("A change sent to you") : say("{n} changes sent to you", { n: number(open.length) });
-    const list = document.createElement("ul");
-    list.className = "suggest-open";
-    for (const one of open) {
-      const item = document.createElement("li");
-      const who = document.createElement("b");
-      who.textContent = one.by?.name || (one.by?.handle ? `@${one.by.handle}` : say("A remixer"));
-      const remix = document.createElement("a");
-      remix.href = `${langAt()}/m/${one.remix}`;
-      remix.textContent = `“${one.name || ""}”`;
-      const words = document.createElement("span");
-      words.textContent = `: ${suggestionCounts(one.counts)}.`;
-      item.append(who, " ", say("sent a change from their remix"), " ", remix, words);
-      if (one.note) {
-        const note = document.createElement("q");
-        note.textContent = one.note;
-        item.append(" ", note);
-      }
-      const go = document.createElement("a");
-      go.className = "cta small";
-      go.href = `/app?suggestion=${Number(one.id)}`;
-      go.textContent = say("Open it in the studio");
-      go.title = say("Your model with the change drawn on it, to take all of it, some of it, or none");
-      item.append(" ", go);
-      list.append(item);
-    }
-    box.append(head, list);
-  }
-  if (box.dataset.remixOf) {
-    const form = document.createElement("form");
-    form.className = "suggest-send";
-    const label = document.createElement("label");
-    label.htmlFor = "suggest-note";
-    label.textContent = say("Send your change back to its designer: they see it in their studio, and take all of it or part.");
-    const note = document.createElement("textarea");
-    note.id = "suggest-note";
-    note.rows = 2;
-    note.placeholder = say("What you changed, and why (if you like)");
-    const send = document.createElement("button");
-    send.type = "submit";
-    send.className = "cta ghost small";
-    send.textContent = say("Send your change");
-    const said = document.createElement("p");
-    said.className = "said";
-    said.setAttribute("role", "status");
-    form.append(label, note, send, said);
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      // Over the limit refused here in words, never cut (the server says the same).
-      const length = [...note.value.trim()].length;
-      if (length > 500) {
-        said.textContent = say("What you say of it is {n} characters: 500 at most.", { n: number(length) });
-        return;
-      }
-      send.disabled = true;
-      said.textContent = say("Sending it…");
-      const sent = await call("/api/share?op=suggest", { method: "POST", body: { remix: model, note: note.value } })
-        .catch(() => null);
-      send.disabled = false;
-      if (!sent || (sent.status !== 200 && sent.status !== 201)) {
-        said.textContent = told(sent?.body?.error, say("It could not be sent just now. Try again in a minute."));
-        return;
-      }
-      const to = sent.body.to?.name || "";
-      said.textContent = sent.body.again
-        ? say("Sent again: “{model}” has your change as it is now ({changes}).", { model: to, changes: suggestionCounts(sent.body.counts) })
-        : say("Sent to the designer of “{model}”, who hears of it now: {changes}.", { model: to, changes: suggestionCounts(sent.body.counts) });
-    });
-    box.append(form);
-  }
-  box.hidden = box.childElementCount === 0;
-}
-for (const box of document.querySelectorAll("#suggest-box[data-model]")) suggestBox(box).catch(() => null);
-addEventListener("brickworks:signed-in-done", () => {
-  for (const box of document.querySelectorAll("#suggest-box[data-model]")) suggestBox(box).catch(() => null);
-});

@@ -74,6 +74,15 @@ var pin_line: Callable = Callable()
 
 ## The count, to put on the step: the host adds it where it belongs.
 var pill: Button
+## The pill as a speech bubble and the count alone, for a phone's width
+## where "3 comments" took the step's title room (BuildMode). Its words stay
+## its name for a screen reader and in page_state.
+var compact: bool = false:
+	set(yes):
+		compact = yes
+		_redraw()
+var _pill_words: String = ""
+const BUBBLE := "res://assets/ui/tools/comment.svg"
 var _panel: PanelContainer
 var _title: Label
 var _scroll: ScrollContainer
@@ -283,7 +292,10 @@ func count() -> int:
 
 func _redraw() -> void:
 	var n: int = count()
-	pill.text = "Comment" if n == 0 else ("1 comment" if n == 1 else "%d comments" % n)
+	_pill_words = "Comment" if n == 0 else ("1 comment" if n == 1 else "%d comments" % n)
+	pill.text = _pill_words if not compact else ("" if n == 0 else str(n))
+	pill.icon = Icons.icon_for(BUBBLE, 20.0 * _pt, Icons.density(pill)) if compact else null
+	pill.accessibility_name = _pill_words
 	pill.tooltip_text = ("The comments on the whole model" if step == 0
 		else "The comments on step %d" % step)
 	pill.visible = known and (n > 0 or taking)
@@ -624,7 +636,7 @@ func page_state() -> Dictionary:
 	return {"comments": count() if known else 0, "comments_open": _panel.visible,
 		"comments_shown": bodies, "comments_where": where, "comment_why_not": _why.text if _panel.visible and _why.visible else "",
 		"comment_can_write": _panel.visible and _write.visible,
-		"comment_said": _said.text if _panel.visible else "", "comment_pill": pill.text if pill.visible else "",
+		"comment_said": _said.text if _panel.visible else "", "comment_pill": _pill_words if pill.visible else "",
 		# Comments on a part (partpins): where each listed is, the part one
 		# being written goes on, and the resolved ones folded away.
 		"comments_pins": on_parts, "comment_pins_on": pins,
