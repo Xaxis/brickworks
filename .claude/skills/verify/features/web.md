@@ -971,7 +971,11 @@ plan with Claude as the client.
   it was made with the assistant** (Brickify's: **with Brickify**), or
   **Stop saying it...** once shown, from `?op=made` (none for a hand-built
   model, or before the column); pressed, it POSTs `{shown}` and puts the
-  page's `li.pill.made` fact in or takes it out at once. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
+  page's `li.pill.made` fact in or takes it out at once. On the real
+  functions and database: `node tools/web/made_shown_relay.mjs
+  --url=<a local relay_server.mjs>` (a run's own throwaway publishes as the
+  app does for Claude's model, a stranger reads its page and JSON, its owner
+  shows it and takes it back; 7 ok on 11-23 once the SQL was applied). Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) whose links each open a tab — the threaded engine
