@@ -267,7 +267,7 @@ import { raise } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
-  KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
+  ASSISTANT_TAGS, KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByOf, motionsIn, movesWords, partFacts,
   inLanguage, SITE_LANGS, asText, sayHtml, siteChrome, siteWords, summary, testsAsked, visitorKey,
@@ -1168,7 +1168,10 @@ async function nextOf(origin, id, model, own) {
   if (!own) return none;
   const ask = (query) => orUnknown("share", db("rpc/directory_models", { method: "POST",
     body: { query: { sort: "top", tests: own.test === true, ...query } } }));
-  const tags = model.tags || [];
+  // What it is of, not how it was made (api/_alike.js subjectsOf): two
+  // models made with the assistant are not alike for it, and a model whose
+  // owner did not say so is never ranked by it.
+  const tags = (model.tags || []).filter((tag) => !ASSISTANT_TAGS.includes(tag));
   const [theirs, kin, ...tagged] = await Promise.all([
     model.by ? ask({ owner: own.owner, size: NEXT_MOST + 1 }) : [],
     model.kind ? ask({ kind: model.kind, size: 24 }) : [],
@@ -3275,7 +3278,7 @@ async function publish(request, response) {
   const cutout = checkImage(body.cutout, "the picture for its page");
   const thumb = checkThumb(body.thumb);
   const madeWith = checkMadeWith(body.made_with);
-  const madeShown = checkMadeShown(body.made_with_shown);
+  const shownAsked = checkMadeShown(body.made_with_shown);
   // What the app found, checked against this very file as the app sent it
   // (api/_tested.js), which it hashed before anything was left out.
   const finding = checkTested(body.tested, body.model);
@@ -3488,7 +3491,7 @@ async function publish(request, response) {
   await keepNeeds(id, needs);
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
-  const shownKept = await keepMadeShown(id, owner, madeShown);
+  const shownKept = await keepMadeShown(id, owner, shownAsked);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));
   // A person's first model told to the owner (api/_notify.js): no other
   // link of theirs made before this one wrote its row (one row at most, by
