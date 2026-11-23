@@ -210,6 +210,14 @@ func _run() -> void:
 	back = await _main.call("_open_asked", 7)
 	_ok(back == 7 and not bool(_main.get("_asked_open")),
 		"...but not work of the person's own that says the same link, unopened here")
+	# A stranger back for a second look: the example car, untouched, came
+	# back from the first visit's autosave. The model asked for goes in its
+	# place, never the car behind the sign-in screen.
+	_main.set("_copying", "Pr0beFirst")
+	var car: int = _main.call("_open", "res://models/car.ldr")
+	back = await _main.call("_open_asked", car)
+	_ok(car > 0 and back > 0 and store.title == NAME and bool(_main.get("_asked_open")),
+		"the example car brought back untouched gives way to the model asked for (%s)" % store.title)
 	_main.set("_copying", "")
 	_finish()
 

@@ -192,6 +192,8 @@ var _asked_open: bool = false
 var _copy_made: String = ""
 ## Three first things to do with a copy just made (src/ui/first_acts.gd).
 var _first_acts: FirstActs
+## How long a copy another tab made is waited for, its file on its way here.
+const MADE_ELSEWHERE_S := 6.0
 var _first_open_done: bool = false
 var _shared: SharedModels
 ## LDraw's models of real sets (src/net/model_library.gd): the library File,
@@ -4153,7 +4155,15 @@ func _maybe_copy() -> void:
 ## keeps it.
 func _open_made(person: String) -> bool:
 	var made: String = AskedCopy.made(_copying, person)
-	if made.is_empty() or not FileAccess.file_exists(ModelStore.saved_path(made)):
+	if made.is_empty():
+		return false
+	# Made in another tab, its file reaches this tab's user:// a moment after
+	# that tab stored it (src/boot/shell.html copies other tabs' writes in).
+	var waited: float = 0.0
+	while not FileAccess.file_exists(ModelStore.saved_path(made)) and waited < MADE_ELSEWHERE_S:
+		await get_tree().create_timer(0.25).timeout
+		waited += 0.25
+	if not FileAccess.file_exists(ModelStore.saved_path(made)):
 		return false
 	_set_address("")
 	_copy_made = made
@@ -4206,7 +4216,10 @@ func _open_asked(placed: int) -> int:
 		_asked_open = AskedCopy.shown_here(_copying) and _store.remixed_from == _copying
 		if _asked_open and _gate != null:
 			_gate.asked = _store.title
-		return placed
+		# The example car as it shipped, back from a first visit's autosave,
+		# is nobody's work: the model asked for goes in its place.
+		if _asked_open or not _store.example or _store.has_unsaved_work():
+			return placed
 	if _account != null and _account.lets_in():
 		var made: String = AskedCopy.made(_copying, _person())
 		if not made.is_empty() and FileAccess.file_exists(ModelStore.saved_path(made)):
