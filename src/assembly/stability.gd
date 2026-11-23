@@ -87,7 +87,7 @@ const SLICED_FROM := 8
 class Risk extends RefCounted:
 	var brick_id: int
 	## "levered" (a joint past its studs' working load), "rests on a touch",
-	## "leaning", "top-heavy" or "tips"
+	## "leaning", "top-heavy", "tips", or "floats" (FLOATS)
 	var kind: String
 	var margin: float       ## < 1 is failing; 2 means twice the strength needed
 	var carrying_grams: float
@@ -143,12 +143,19 @@ class Report extends RefCounted:
 			return "stands up"
 		var whole: Risk = null
 		var joints: Array[Risk] = []
+		var floating: int = 0
 		for risk: Risk in risks:
-			if not risk.kind in BALANCE_KINDS:
+			if risk.kind == FLOATS:
+				floating += 1
+			elif not risk.kind in BALANCE_KINDS:
 				joints.append(risk)
 			elif whole == null or BALANCE_KINDS.find(risk.kind) < BALANCE_KINDS.find(whole.kind):
 				whole = risk
 		var said := PackedStringArray()
+		# A part in the air first: no joint, and nothing to weigh, but the
+		# first thing a builder fixes (FLOATS).
+		if floating > 0:
+			said.append("1 part floats" if floating == 1 else "%d parts float" % floating)
 		if whole != null:
 			match whole.kind:
 				"tips":
@@ -167,6 +174,30 @@ class Report extends RefCounted:
 ## The risks that are the balance of the whole, or of all above a level, and
 ## not a joint: the worst first, as the verdict names one of them.
 const BALANCE_KINDS: Array[String] = ["tips", "leaning", "top-heavy"]
+
+## A part that touches nothing: no part within a cell of it, and not on the
+## ground. The weighing reaches it from nothing, as it does a part held by a
+## joint it does not read (Balance.Report.adrift), so it was in no risk: a
+## tile lifted off a chimney read "stands up", Check stability said
+## "Stands" and Seat parts on their studs "every part is on its studs"
+## (ux13's walk, p8). Studio's stability check marks a floating part.
+const FLOATS := "floats"
+## What [param floating], the FLOATS risks of a report, say together: the
+## piece's own words when they are one piece, else how many parts; "" for
+## none.
+static func floating_words(floating: Array) -> String:
+	if floating.is_empty():
+		return ""
+	var first: String = (floating[0] as Risk).message
+	if floating.all(func(risk: Risk) -> bool: return risk.message == first):
+		return first
+	return "%d parts touch nothing and float in the air" % floating.size()
+
+
+## The most parts reached from nothing that are each asked whether they
+## touch anything: a model whose joints the weighing cannot read at all has
+## them by the thousand, and none of them is said to float.
+const MOST_ADRIFT_ASKED := 64
 
 
 var library: PartLibrary
@@ -335,6 +366,78 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 	report.held = weighed.held
 	report.tipping = weighed.tipping
 	report.balance = weighed
+	_find_floating(bricks, graph["boxes"], weighed, report)
+
+
+## The parts the weighing reaches from nothing (held "nothing") that touch
+## nothing but each other: each piece of them whose bounds, a cell wider each
+## way, meet no part outside it is in the air (FLOATS), one risk a part, so
+## Check stability selects them all. A piece that touches anything else, a
+## figure's accessory in its hand, is held by what the weighing does not
+## read, and is not said. A sub-assembly's copy put down in the air is a
+## piece of eight (ux13's walk, p7).
+func _find_floating(bricks: Array, boxes_of: Dictionary, weighed: Balance.Report,
+		report: Report) -> void:
+	if weighed.adrift == 0 or weighed.adrift > MOST_ADRIFT_ASKED or lattice == null:
+		return
+	var named: Dictionary = {}      ## id -> its part
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		if str(weighed.held.get(brick.id, "")) == "nothing" and not floor_ids.has(brick.id):
+			named[brick.id] = brick.part_id
+	# Each one's piece (the lowest id in it) and whether it touches a part
+	# outside the adrift ones.
+	var piece: Dictionary = {}
+	var touches: Dictionary = {}
+	var near: Dictionary = {}
+	for id: int in named:
+		piece[id] = id
+		var mine: PackedInt32Array = boxes_of.get(id, PackedInt32Array())
+		if mine.is_empty():
+			touches[id] = true
+			continue
+		var bound: PackedInt32Array = BrickLattice._bound_of(mine)
+		near[id] = lattice.near_bounds(PackedInt32Array([bound[0] - 1, bound[1] - 1,
+			bound[2] - 1, bound[3] + 1, bound[4] + 1, bound[5] + 1]), id)
+	var find: Callable = func(id: int) -> int:
+		var at: int = id
+		while int(piece[at]) != at:
+			at = piece[at]
+		return at
+	for id: int in near:
+		for other: int in near[id]:
+			if not named.has(other):
+				touches[id] = true
+			else:
+				var a: int = find.call(id)
+				var b: int = find.call(other)
+				if a != b:
+					piece[maxi(a, b)] = mini(a, b)
+	var members: Dictionary = {}    ## a piece -> its ids
+	var held: Dictionary = {}       ## a piece that touches something -> true
+	for id: int in named:
+		var root: int = find.call(id)
+		if not members.has(root):
+			members[root] = []
+		(members[root] as Array).append(id)
+		if touches.has(id):
+			held[root] = true
+	for root: int in members:
+		if held.has(root):
+			continue
+		var ids: Array = members[root]
+		var info: PartLibrary.PartInfo = library.parts.get(named[ids[0]]) if library != null else null
+		var name: String = Inventory._tidy(info.name) if info != null else str(named[ids[0]])
+		var message: String = "%s touches nothing: it floats in the air" % name if ids.size() == 1 \
+			else "%s and the %s with it touch nothing else: they float in the air" % [
+				name, "part" if ids.size() == 2 else "%d parts" % (ids.size() - 1)]
+		for id: int in ids:
+			var risk := Risk.new()
+			risk.brick_id = id
+			risk.kind = FLOATS
+			risk.margin = 0.0
+			risk.message = message
+			report.risks.append(risk)
 
 
 ## Whether the whole tips over on what it stands on: its centre of mass

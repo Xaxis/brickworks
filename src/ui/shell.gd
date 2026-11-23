@@ -2235,26 +2235,35 @@ func _check_stability() -> void:
 	# joint, selected" of its lean, with nothing selected (smalls4). A lean
 	# is said as itself, and a tip as the balance says it.
 	var weak: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
-		return not risk.kind in Stability.BALANCE_KINDS)
+		return not risk.kind in Stability.BALANCE_KINDS and risk.kind != Stability.FLOATS)
 	var leans: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
 		return risk.kind in ["leaning", "top-heavy"])
+	# A part in the air, touching nothing: selected and said first, as no
+	# joint (Stability.FLOATS).
+	var floating: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+		return risk.kind == Stability.FLOATS)
 	if weak.is_empty() and not leans.is_empty():
 		said = (leans[0] as Stability.Risk).message
-	if not weak.is_empty():
+	if not weak.is_empty() or not floating.is_empty():
 		builder.selection.clear()
-		for risk: Stability.Risk in weak:
+		for risk: Stability.Risk in floating + weak:
 			if not store.scenery.has(risk.brick_id) and world.get_brick(risk.brick_id) != null:
 				builder.selection[risk.brick_id] = true
 		builder.selection_changed.emit(builder.selection.size())
-		said = "%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
-			(weak[0] as Stability.Risk).message]
+		var parts := PackedStringArray()
+		if not floating.is_empty():
+			parts.append(Stability.floating_words(floating) + ", selected")
+		if not weak.is_empty():
+			parts.append("%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
+				(weak[0] as Stability.Risk).message])
+		said = "; ".join(parts)
 	bar.say(said)
 	# With no pose to weigh, the balance as it stands is what the check read
 	# its margins from.
 	var balance: Balance.Report = await weigh_balance(poses, true, true,
 		report.balance if poses.is_empty() else null)
 	if balance != null and not balance.empty:
-		bar.say(balance.words() if weak.is_empty() and leans.is_empty()
+		bar.say(balance.words() if weak.is_empty() and leans.is_empty() and floating.is_empty()
 			else "%s. %s" % [said, balance.words()])
 
 
@@ -2382,8 +2391,27 @@ func _brace() -> void:
 
 func _reseat() -> void:
 	var offer: SeatOffer = app.get("_seat_offer")
-	if offer.check() == 0:
+	if offer.check() != 0:
+		return
+	# Nothing near its studs to seat; a part in the air is not near any, and
+	# "every part is on its studs" was said over a tile floating off its
+	# chimney (ux13's walk, p8): it is said, and selected, to move by hand.
+	var report: Variant = await app.call("weighed_now") if app.has_method("weighed_now") else null
+	var floating: Array = []
+	if report is Stability.Report:
+		for risk: Stability.Risk in (report as Stability.Report).risks:
+			if risk.kind == Stability.FLOATS and world.get_brick(risk.brick_id) != null:
+				floating.append(risk)
+	if floating.is_empty():
 		bar.say("every part is on its studs")
+		return
+	builder.selection.clear()
+	for risk: Stability.Risk in floating:
+		builder.selection[risk.brick_id] = true
+	builder.selection_changed.emit(builder.selection.size())
+	bar.say("every part near its studs is on them; %s, selected: move %s onto what holds %s" % [
+		Stability.floating_words(floating), "it" if floating.size() == 1 else "them",
+		"it" if floating.size() == 1 else "them"])
 
 
 func _toggle_full_screen() -> void:
