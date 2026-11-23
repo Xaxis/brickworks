@@ -4,7 +4,7 @@
 ##
 ##   ~/.claude/claude-core/bin/gpu xvfb-run -a -s "-screen 0 1600x900x24" \
 ##       godot --path . --resolution 1400x900 --script src/dev/card_probe.gd -- \
-##       --pictures=DIR [--only=1,5,20] [--looks=LOOKS.json] [--old=0] [--raster]
+##       --pictures=DIR [--only=1,5,20] [--looks=LOOKS.json] [--old=0]
 ##
 ## Models are numbered through tools/web/gallery_seeds/seeds.json and then
 ## ldraw_library.json, 1 to 49. For each, into DIR:
@@ -14,8 +14,8 @@
 ##                     {name: {RenderSettings field: value}}; "new" is
 ##                     CardPhoto.LOOK as it stands)
 ##   times.json        how long each took, milliseconds
-## --raster draws CardPhoto's where no rays are traced too (frames averaged),
-## for a run under Compatibility: what a browser's card would be.
+## Under --rendering-method gl_compatibility (through zink on the GPU) it
+## draws what a browser's card is: frames averaged (CardPhoto.RASTER).
 ## Each check says what it drew. Not --out: the app takes that.
 extends SceneTree
 
@@ -75,7 +75,6 @@ func _run() -> void:
 	card.look = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
 	for light_name: String in ["Sun", "Fill", "Rim"]:
 		card.rig_lights.append(main.get_node(light_name) as DirectionalLight3D)
-	card.raster = OS.get_cmdline_user_args().has("--raster")
 	root.add_child(card)
 
 	var times: Dictionary = {}

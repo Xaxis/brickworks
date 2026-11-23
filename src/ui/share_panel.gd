@@ -1151,8 +1151,9 @@ func _fail(words: String) -> void:
 ## to three, drawn so, for the cards. {png, cutout, thumb}, each empty when
 ## there is none to be had (a run with nothing to draw with), or when it
 ## came out too large to send. The card is a photograph of the model on a
-## table where the graphics card traces rays (CardPhoto, cardlook), and the
-## cut-out where it does not.
+## desk (CardPhoto, cardlook): path traced where the graphics card traces
+## rays, frames averaged in a browser, and the cut-out on a phone or where
+## the frames take too long.
 func _pictures() -> Dictionary:
 	var none := {"png": PackedByteArray(), "cutout": PackedByteArray(), "thumb": PackedByteArray()}
 	if picture == null:
@@ -1180,7 +1181,8 @@ func _pictures() -> Dictionary:
 
 
 ## The card as a photograph of the model (CardPhoto), at twice the card's
-## size, or null where the graphics card traces no rays.
+## size, or null where it cannot be drawn (CardPhoto.possible) or took too
+## long.
 func _card_photo() -> Image:
 	if not CardPhoto.possible() or picture == null or picture.world == null:
 		return null

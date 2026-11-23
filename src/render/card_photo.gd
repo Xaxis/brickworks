@@ -10,12 +10,15 @@
 ## table, the light falling off across it, through the camera's tone and
 ## white balance, its edges sharpened and saved as a camera saves.
 ##
-## Path traced where the card traces rays (PathTracer). Elsewhere (a
-## browser) the same set is frames averaged, which draws no table of its
-## own, so there the card stays the cut-out it was ([method possible]).
-## The link's picture and the page's cut-out are not this: they are drawn
-## by Picture as before, so a model's page keeps its ground in both
-## themes.
+## Path traced where the graphics card traces rays (PathTracer). Elsewhere
+## (a browser) the same desk is frames averaged under the studio's lights
+## ([constant RASTER]): no table's relief, but a desk's colour, soft light
+## and a shadow, which the blind judge also chose over the cut-out every
+## time. Not on a phone, whose memory a second copy of a big model may not
+## have, and never longer than [constant RASTER_MOST_MS]: past it the card
+## is the cut-out it was. The link's picture and the page's cut-out are
+## not this: they are drawn by Picture as before, so a model's page keeps
+## its ground in both themes.
 class_name CardPhoto
 extends Node
 
@@ -38,6 +41,18 @@ const LOOK: Dictionary = {
 	"sharpen": 0.6,
 	"jpeg": 90.0,
 }
+## The same desk frames averaged, where no rays are traced: the studio's
+## lights, not the daylight, whose sky turned the desk blue-grey without
+## the tracer's white balance (cardlook's raster round). Fewer frames than
+## Best's 32: the card is made smaller, which smooths what they leave.
+const RASTER: Dictionary = {
+	"lighting": "studio",
+	"samples": 16,
+}
+## The longest a frames-averaged card may take, in milliseconds, before it
+## is given up for the cut-out: a browser drawing in software (a test's)
+## would hold the publish for many seconds.
+const RASTER_MOST_MS := 2500
 ## Samples a pixel: the card is drawn at twice its size and made smaller,
 ## which takes out three quarters of what is left of the noise. 64 and 96
 ## could not be told apart on the house's models at the card's size, and
@@ -58,20 +73,22 @@ var asked: Dictionary = {}
 ## its steps began (milliseconds in, then the render's words), for the bench.
 var last_ms: float = 0.0
 var steps: PackedStringArray = PackedStringArray()
-## Draw it where no rays are traced too, frames averaged: for the bench to
-## judge what a browser's card would be (card_probe --raster).
-var raster: bool = false
 
 
-## Whether a card can be drawn as a photograph here: a card that traces
-## rays, and a window to draw in.
+## Whether a card can be drawn as a photograph here: a window to draw in,
+## and not a phone ([constant RASTER]).
 static func possible() -> bool:
-	return StudioRender.possible() and PathTracer.available()
+	return StudioRender.possible() and (PathTracer.available() or not Phone.on())
+
+
+## Whether it is path traced here, or frames averaged.
+static func traced() -> bool:
+	return PathTracer.available()
 
 
 ## What the card is drawn with, at [param size].
 func settings(size: Vector2i) -> RenderSettings:
-	var chosen: Dictionary = LOOK.merged(asked, true)
+	var chosen: Dictionary = LOOK.merged(asked if traced() else RASTER.merged(asked, true), true)
 	var out := RenderSettings.new()
 	out.quality = RenderSettings.Quality.BEST
 	out.look = "product"
@@ -125,8 +142,7 @@ func _corners() -> PackedVector3Array:
 ## to draw. A renderer of its own, let go after: a card is drawn once a
 ## publish, and the copy of the model it stages is the model's size again.
 func take(size: Vector2i) -> Image:
-	if not (possible() or (raster and StudioRender.possible())) or world == null \
-			or world.brick_count() == 0:
+	if not possible() or world == null or world.brick_count() == 0:
 		return null
 	var began: int = Time.get_ticks_usec()
 	var render := StudioRender.new()
@@ -140,6 +156,10 @@ func take(size: Vector2i) -> Image:
 	render.progress.connect(func(_fraction: float, words: String) -> void:
 		if steps.is_empty() or not steps[-1].ends_with(" " + words):
 			steps.append("%d %s" % [(Time.get_ticks_usec() - began) / 1000, words]))
+	if not traced():
+		get_tree().create_timer(RASTER_MOST_MS / 1000.0).timeout.connect(func() -> void:
+			if is_instance_valid(render):
+				render.cancel())
 	var image: Image = await render.render(world, settings(size))
 	render.queue_free()
 	last_ms = float(Time.get_ticks_usec() - began) / 1000.0
