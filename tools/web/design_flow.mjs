@@ -6,7 +6,7 @@
 //   node tools/web/design_flow.mjs [--out=shots/design]              # this checkout's web/ and api/
 //   node tools/web/design_flow.mjs --root=DIR [--out=...]            # another checkout's (an old one, to see it fail)
 //   node tools/web/design_flow.mjs --url=<deployment> [--out=...]    # a deployment's pages, the API answered here
-//   [--only=gallery,model] [--widths=390,1280] [--themes=light,dark]
+//   [--only=gallery,model] [--widths=390,1280] [--themes=light,dark] [--no-layout]
 //
 // The owner found the age question's month was the browser's bare
 // dropdown, small and unstyled beside a full-size year box: each unit had
@@ -50,6 +50,9 @@
 //   a heading off the type scale: an h2 not at --t-h2 (a landing page's
 //     h2.title at --t-section) or an h3 not at --t-h3, as drawn. There were three sizes of h2 and four of h3 (site273,
 //     2026-10-26): a model's About it at 18 px under More by at 30;
+//   a page off the site's one layout: its container, its h1 or its tabs
+//     not where the pattern puts them (tools/web/layout_audit.mjs, run
+//     here after the rest, listkit 2026-11-23; --no-layout leaves it out);
 //   and, in any stylesheet or page style the page has, a font size, a
 //     corner or a colour off the token scale (site.css :root): a size not
 //     var(--t-*), a corner not var(--r-*) (or 0, or 50%), a colour written
@@ -66,6 +69,7 @@
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { onDeployment, sitePages, visit } from "./site_pages.mjs";
+import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -529,6 +533,19 @@ try {
   await browser.close();
 }
 for (const error of errors) fail("script", error);
+// And every page laid out as one site (tools/web/layout_audit.mjs, listkit):
+// the release's [design] runs both. Its own pages, at this run's widths,
+// in the first theme (a layout is the same in both).
+if (!args["no-layout"]) {
+  const layoutArgs = [path.join(here, "layout_audit.mjs"), `--root=${root}`, `--widths=${widths.join(",")}`, `--themes=${themes[0]}`,
+    ...(remote ? [`--url=${remote}`] : []), ...(only ? [`--only=${only.join(",")}`] : []), ...(out ? [`--out=${path.join(out, "layout")}`] : [])];
+  console.log("\nlayout audit (tools/web/layout_audit.mjs):");
+  const ran = spawnSync(process.execPath, layoutArgs, { stdio: ["ignore", "pipe", "inherit"], encoding: "utf8", maxBuffer: 64 << 20 });
+  const lines = String(ran.stdout || "").split("\n");
+  for (const line of lines) if (line) console.log(`  ${line}`);
+  if (ran.status === 0) passed += 1;
+  else fail("layout", `layout_audit.mjs failed (${lines.filter((line) => /^\s*FAIL/.test(line)).length} pages off the pattern)`);
+}
 // Off the scale: one failure a rule, named with its stylesheet.
 for (const [key, where] of offScaleSeen) fail("style", `${key}: off the token scale (first on ${where})`);
 if (!offScaleSeen.size && states) console.log("  ok    style: every font size, corner and colour on the token scale");

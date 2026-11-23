@@ -1865,6 +1865,21 @@ plan with Claude as the client.
   `main .wrap` at the header's left and right edges within a pixel (one
   page width, site.css `.wrap`), named page by page; Talk's server-made
   pages, which it does not visit, held by tests/test_page_width.py.
+- `one page layout` (listkit, 2026-11-23; `tools/web/layout_audit.mjs`,
+  run at the end of `design_flow`, so by `[design]`; `--no-layout` leaves
+  it out): every list, signed-in and words page on the one head
+  (`.page-hero` > `.page-head`: h1 and one lede left, `.page-acts` right,
+  `.tabs` on the band's foot), list pages on `.list-layout` (760 px list,
+  320 px aside at the right edge) with `.list-row` rows, `.state` empty
+  and `.pager` more: /feed, /notifications, /talk, /talk/b/<board>,
+  /talk/new, /lists, the gallery's five addresses and its search,
+  /settings, /faq, the legal pages, /takedown, /changelog, /compare,
+  /share-model; object and landing pages held to the width only. Run
+  alone: `node tools/web/layout_audit.mjs [--out=DIR] [--root=OLD]
+  [--url=<preview>]` ("layout audit: all ok"); on today's live (630700306)
+  it fails every page on its h1's place. Talk's lists and its new thread
+  are drawn here by `design_stand_in.mjs` (three threads, the boards'
+  counts).
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
   `[a11y]`) and `keyboard browser flow` (`tools/web/keyboard_flow.mjs`,
   `[keyboard]`): axe and the accessibility tree's names on every page,
