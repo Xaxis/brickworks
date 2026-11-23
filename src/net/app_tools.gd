@@ -1157,7 +1157,10 @@ func definitions() -> Array:
 				+ "model's middle, as a lens at f/4 does, and is drawn at best. light studio "
 				+ "(the window's three lights, the default), softbox, window or daylight "
 				+ "(photographed places), or dark: the studio put out, the model's own lights "
-				+ "(light_model) and the plastics that glow all that lights it. Saved where "
+				+ "(light_model) and the plastics that glow all that lights it. stage stands the "
+				+ "model on white, paper, a desk, wood, leather or terrazzo, at best in the "
+				+ "product look, as a photograph is (the backdrop its colour unless backdrop is "
+				+ "given), none on the seamless backdrop. Saved where "
 				+ "Render saves, never over a file: one of the name already there is kept and "
 				+ "the new one takes the next free name (pods_render_2.png), which the answer "
 				+ "gives. It is a job: the answer is a job number at once, and job "
@@ -1176,6 +1179,7 @@ func definitions() -> Array:
 				# lights (APP_UX5 #7).
 				"light": {"type": "string", "enum": ["studio", "softbox", "window", "daylight",
 					"dark"]},
+				"stage": {"type": "string", "enum": ["none"] + StudioRender.STAGES.keys(), "description": "what the model stands on at best in the product look, lit by a light near it as in a photograph; none the seamless backdrop. As Render last had it when omitted"},
 				# video2 (APP_UX6 #11).
 				"format": {"type": "string", "enum": ["webp", "gif"], "description": "a turntable's or a build's file: webp, or gif for where a WebP is not taken (chats, forums, mail): 256 colours, at most 640 pixels across, made to fit 8 MB. As Render's Kept as has it when omitted"},
 			}},
@@ -1187,7 +1191,7 @@ func definitions() -> Array:
 				+ "model and the view as they are now (view current, the window's, unless "
 				+ "another is given: view= may name a view saved with the model, drawn from "
 				+ "exactly there), with Render's settings changed by quality, size, "
-				+ "samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field and light as "
+				+ "samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field, light and stage as "
 				+ "render_model takes them; drawing begins at once unless paused, and each is "
 				+ "saved where Render saves under a name of its own. list (the default) says "
 				+ "what is waiting, being drawn and done, with where each was saved, and "
@@ -1212,6 +1216,7 @@ func definitions() -> Array:
 				# lights (APP_UX5 #7).
 				"light": {"type": "string", "enum": ["studio", "softbox", "window", "daylight",
 					"dark"]},
+				"stage": {"type": "string", "enum": ["none"] + StudioRender.STAGES.keys(), "description": "what the model stands on at best in the product look, lit by a light near it as in a photograph; none the seamless backdrop. As Render last had it when omitted"},
 			}},
 		},
 		# lights (APP_UX5 #7): the lights kept with the model (SceneLights).
@@ -7006,6 +7011,11 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.f_stop = 4.0
 		chosen.focus = 0.4
 		chosen.quality = RenderSettings.Quality.BEST
+	# photoreal7: what the model stands on.
+	if input.has("stage"):
+		var stage_wrong: String = chosen.use_stage(str(input["stage"]), not input.has("backdrop"))
+		if not stage_wrong.is_empty():
+			return stage_wrong
 	if kind == "build":
 		var seconds: int = int(input.get("seconds", 20))
 		if seconds < BuildRender.SHORTEST or seconds > BuildRender.LONGEST:

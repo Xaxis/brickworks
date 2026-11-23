@@ -35,6 +35,24 @@ const PASS_MS := 28.0
 ## those let no light through, clear or not.
 const SOLID_FINISHES: Array[int] = [6, 7, 11]
 
+## The product look's plastic, fitted to photographs (photoreal3): a solid
+## colour's sRGB as the colour table gives it (0-255, "r,g,b") -> the linear
+## albedo a camera's picture of the real part needs, through the camera's
+## curve and PHOTO_LINEAR_SATURATION (StudioRender). Red, green and blue from
+## the tent close-ups' faces (tools/bench/photoreal.py colour; red is the
+## mean of the slope and the 2x2's, which want 0.46 and 0.78); black from the
+## black 2x4's shaded side, L* 2 in its photograph, which the table's
+## blue-grey black drew at 25. Colours not here keep the table's own. Fitting
+## each colour's albedo keeps a face's light and shade, where the camera's
+## saturation of 1.6 that photoreal2 fitted drew a lit red face one flat red
+## and swallowed every highlight a red face took under its clipped channels.
+const PRODUCT_ALBEDO: Dictionary = {
+	"180,0,0": Color(0.60, 0.003, 0.003),
+	"0,133,43": Color(0.004, 0.235, 0.031),
+	"30,90,168": Color(0.019, 0.146, 0.564),
+	"27,42,52": Color(0.009, 0.010, 0.012),
+}
+
 const KIND_PLASTIC := 0
 const KIND_GLASS := 1
 const KIND_SWEEP := 2
@@ -72,7 +90,15 @@ var _indices: RID
 var _place_texture: RID
 var _place_table: RID
 var _place_for: StudioPanorama = null
+## What a staged model stands on (photoreal7): a photographed tile of it,
+## and the sampler that repeats it both ways.
+var _surface_texture: RID
+var _surface_for: Image = null
+var _tile_sampler: RID
 var _accum: RID
+## What the eye's first hit is, summed over the samples (photoreal3): its
+## normal and its albedo's lightness, for the product look's denoise.
+var _guide: RID
 var _picture: RID
 var _trace_set: RID
 var _resolve_set: RID
@@ -88,6 +114,19 @@ var scene := PackedFloat32Array()
 ## logo raised on every stud, faces never quite flat), the window's as the
 ## window draws it.
 var product: bool = false
+## How far each of the product look's parts sits from exactly in place
+## (photoreal4), set before [method stage]: at 1, up to SEAT_SHIFT off and
+## SEAT_LIFT up, and SEAT_TURN degrees turned, each its own way, as a built
+## set's parts never sit quite square. 0 for exactly. Each part's own way is
+## from its place ([method _part_key]), so the surfaces a part is drawn in
+## (its body, a print, a window) move together.
+var seating: float = 0.0
+const SEAT_SHIFT := 0.15
+const SEAT_LIFT := 0.2
+const SEAT_TURN := 0.3
+## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
+## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
+var _fitted: Dictionary = {}
 ## Samples in the running sum so far.
 var samples: int = 0
 ## Instances in the last picture staged, and distinct shapes.
@@ -173,6 +212,12 @@ func _make() -> bool:
 	sampler.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
 	sampler.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
 	_sampler = _rd.sampler_create(sampler)
+	var tile := RDSamplerState.new()
+	tile.mag_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	tile.min_filter = RenderingDevice.SAMPLER_FILTER_LINEAR
+	tile.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
+	tile.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
+	_tile_sampler = _rd.sampler_create(tile)
 	_holders += 1
 	return true
 
@@ -243,6 +288,29 @@ func shape_of(mesh: Mesh) -> Array:
 
 ## Put the set on the card: every brick of [param batches] (the copy of the
 ## model's MultiMeshInstance3Ds), and [param sweep] when there is one.
+## A part's place a hair off exact (seating), its own way by its [param number]:
+## turned about its own origin, shifted across and lifted up.
+## A placed part's own number, the same for every batch it is drawn in: a
+## part with a print or a window is several batches, one per surface, each
+## with its own instance, and all at the one place.
+static func _part_key(place: Transform3D) -> int:
+	var grid := Vector3.ONE * 0.0001
+	return hash([place.origin.snapped(Vector3.ONE * 0.01), place.basis.x.snapped(grid),
+		place.basis.y.snapped(grid), place.basis.z.snapped(grid)]) & 0x7fffffff
+
+
+func _seated(place: Transform3D, key: int) -> Transform3D:
+	if seating <= 0.0 or not product:
+		return place
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2654435761 * (key + 1) + 97
+	var turn := Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(-1.0, 1.0),
+		rng.randf_range(-0.5, 0.5)) * deg_to_rad(SEAT_TURN) * seating
+	var shift := Vector3(rng.randf_range(-1.0, 1.0) * SEAT_SHIFT, rng.randf() * SEAT_LIFT,
+		rng.randf_range(-1.0, 1.0) * SEAT_SHIFT) * seating
+	return Transform3D(Basis.from_euler(turn) * place.basis, place.origin + shift)
+
+
 ## False when there is nothing to trace or no card to trace it on.
 func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	if not _make():
@@ -306,15 +374,18 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 				else KIND_PLASTIC
 			_has_glass = _has_glass or kind == KIND_GLASS
 			var lin: Color = colour.srgb_to_linear()
+			if product and kind == KIND_PLASTIC:
+				lin = _fitted_albedo(colour, lin)
 			var fleck: Color = Color(custom.r, custom.g, custom.b).srgb_to_linear()
 			records.append_array([lin.r, lin.g, lin.b, colour.a,
 				fleck.r, fleck.g, fleck.b, custom.a,
 				box_min.x, box_min.y, box_min.z, body_top,
 				box_max.x, box_max.y, box_max.z, moulded])
-			kinds.append_array([mesh_number, kind, 0, 0])
+			var key: int = _part_key(whole * at)
+			kinds.append_array([mesh_number, kind, key, 0])
 			var instance := RDAccelerationStructureInstance.new()
 			instance.blas = shape[0]
-			instance.transform = whole * at
+			instance.transform = _seated(whole * at, key)
 			instance.id = placed.size()
 			instance.mask = MASK_GLASS if kind == KIND_GLASS else MASK_SOLID
 			instance.hit_sbt_range = _range
@@ -440,6 +511,34 @@ func light_with(place: StudioPanorama) -> void:
 	_place_table = _storage(table.to_byte_array())
 
 
+## What a staged model stands on (photoreal7): [param image], a tile of a
+## photographed surface, or null for none (a 2 x 2 white, unread).
+func surface_with(image: Image) -> void:
+	if image == _surface_for and _surface_texture.is_valid():
+		return
+	_free(_surface_texture)
+	_surface_texture = RID()
+	_surface_for = image
+	var tile: Image = image
+	if tile == null:
+		tile = Image.create(2, 2, false, Image.FORMAT_RGBA8)
+		tile.fill(Color(1, 1, 1))
+	elif tile.is_compressed() or tile.get_format() != Image.FORMAT_RGBA8:
+		# StudioRender's tiles come RGBA8 already (read on a worker); any
+		# other is made so here.
+		tile = image.duplicate() as Image
+		if tile.is_compressed():
+			tile.decompress()
+		tile.convert(Image.FORMAT_RGBA8)
+	var format := RDTextureFormat.new()
+	format.width = tile.get_width()
+	format.height = tile.get_height()
+	format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
+	_surface_texture = _rd.texture_create(format, RDTextureView.new(), [tile.get_data()])
+
+
 ## The running sum and the picture, at [param size]: started again.
 func begin(size: Vector2i) -> bool:
 	if not _make() or not _tlas.is_valid():
@@ -451,6 +550,7 @@ func begin(size: Vector2i) -> bool:
 	_free(_trace_set)
 	_free(_resolve_set)
 	_free(_accum)
+	_free(_guide)
 	_free(_picture)
 	_trace_set = RID()
 	_resolve_set = RID()
@@ -459,8 +559,10 @@ func begin(size: Vector2i) -> bool:
 	sums.width = size.x
 	sums.height = size.y
 	sums.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
-	sums.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
+	sums.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
+		| RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	_accum = _rd.texture_create(sums, RDTextureView.new())
+	_guide = _rd.texture_create(sums, RDTextureView.new())
 	var out := RDTextureFormat.new()
 	out.width = size.x
 	out.height = size.y
@@ -468,7 +570,7 @@ func begin(size: Vector2i) -> bool:
 	out.usage_bits = RenderingDevice.TEXTURE_USAGE_STORAGE_BIT \
 		| RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
 	_picture = _rd.texture_create(out, RDTextureView.new())
-	if not _accum.is_valid() or not _picture.is_valid():
+	if not _accum.is_valid() or not _guide.is_valid() or not _picture.is_valid():
 		return false
 	_bind()
 	return true
@@ -480,6 +582,8 @@ func _bind() -> void:
 	_free(_scene_buffer)
 	if not _place_texture.is_valid():
 		light_with(null)
+	if not _surface_texture.is_valid():
+		surface_with(null)
 	var bytes: PackedByteArray = scene.to_byte_array()
 	_scene_buffer = _storage(bytes)
 	var uniforms: Array[RDUniform] = []
@@ -494,10 +598,14 @@ func _bind() -> void:
 	uniforms.append(_uniform(8, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
 		[_sampler, _place_texture]))
 	uniforms.append(_uniform(9, RenderingDevice.UNIFORM_TYPE_STORAGE_BUFFER, [_place_table]))
+	uniforms.append(_uniform(10, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide]))
+	uniforms.append(_uniform(11, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
+		[_tile_sampler, _surface_texture]))
 	_trace_set = _rd.uniform_set_create(uniforms, _shader, 0)
 	var resolving: Array[RDUniform] = [
 		_uniform(0, RenderingDevice.UNIFORM_TYPE_IMAGE, [_accum]),
-		_uniform(1, RenderingDevice.UNIFORM_TYPE_IMAGE, [_picture])]
+		_uniform(1, RenderingDevice.UNIFORM_TYPE_IMAGE, [_picture]),
+		_uniform(2, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide])]
 	_resolve_set = _rd.uniform_set_create(resolving, _resolve_shader, 0)
 
 
@@ -566,16 +674,24 @@ func sample_ms() -> float:
 
 
 ## The picture so far, exposed by [param exposure] and tone-mapped
-## ([param tonemapper]: 2 Filmic, 3 ACES, at [param white]), with the
-## product look's [param contrast] and [param saturation] after.
+## ([param tonemapper]: 2 Filmic, 3 ACES, 4 a camera's, at [param white]), with the
+## product look's [param contrast] and [param saturation] after; the camera's
+## response saturates by [param linear_saturation] in linear light first.
+## [param camera] is the product look's camera on a backdrop (photoreal4): its
+## sensor's noise in 8-bit levels, the light its lens loses at a corner, its
+## colour fringes in pixels at a corner, and how soft it draws an edge
+## (RenderSettings.grain, vignette, aberration, softness); zero for none.
+## [param sharpen] is its processing's sharpening (RenderSettings.sharpen,
+## photoreal6): the share of an edge's step added back after the curve.
 func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1.0,
 		saturation: float = 1.0, transparent: bool = false, dither: bool = true,
-		denoise: float = 0.0) -> Image:
+		denoise: float = 0.0, linear_saturation: float = 1.0,
+		camera: Vector4 = Vector4.ZERO, sharpen: float = 0.0, tone: float = 0.0) -> Image:
 	if not _resolve_set.is_valid() or samples <= 0:
 		return null
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
 		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
-		denoise, 0.0, 0.0, 0.0])
+		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, sharpen, tone])
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)
@@ -587,6 +703,38 @@ func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1
 	if data.size() != _size.x * _size.y * 4:
 		return null
 	return Image.create_from_data(_size.x, _size.y, false, Image.FORMAT_RGBA8, data)
+
+
+## The running sum's mean, the light each pixel saw before any exposure or
+## tone curve (RGBAF, alpha the coverage), for the photo bench's colour
+## measure (photoreal_probe --raw). Null when there is none.
+func mean_image() -> Image:
+	if not _accum.is_valid() or samples <= 0:
+		return null
+	var data: PackedByteArray = _rd.texture_get_data(_accum, 0)
+	if data.size() != _size.x * _size.y * 16:
+		return null
+	var floats: PackedFloat32Array = data.to_float32_array()
+	var share: float = 1.0 / float(samples)
+	for n: int in floats.size():
+		floats[n] *= share
+	return Image.create_from_data(_size.x, _size.y, false, Image.FORMAT_RGBAF,
+		floats.to_byte_array())
+
+
+## The product look's albedo for a solid colour drawn [param colour]: the
+## photographs' fit where PRODUCT_ALBEDO has one, else [param own].
+func _fitted_albedo(colour: Color, own: Color) -> Color:
+	if _fitted.is_empty():
+		for key: String in PRODUCT_ALBEDO:
+			var rgb: PackedStringArray = key.split(",")
+			var shown: Color = PartLibrary.shown_for(Color8(int(rgb[0]), int(rgb[1]), int(rgb[2])))
+			_fitted[_byte_key(shown)] = PRODUCT_ALBEDO[key]
+	return _fitted.get(_byte_key(colour), own)
+
+
+static func _byte_key(colour: Color) -> String:
+	return "%d,%d,%d" % [roundi(colour.r * 255.0), roundi(colour.g * 255.0), roundi(colour.b * 255.0)]
 
 
 # -- freeing -------------------------------------------------------------------
@@ -621,7 +769,7 @@ func release() -> void:
 	_free(_resolve_set)
 	_free(_scene_buffer)
 	_free_picture_set()
-	for rid: RID in [_accum, _picture, _place_texture, _place_table]:
+	for rid: RID in [_accum, _guide, _picture, _place_texture, _place_table, _surface_texture]:
 		_free(rid)
 	if _pipeline.is_valid():
 		_holders -= 1
@@ -632,7 +780,8 @@ func release() -> void:
 				for rid: RID in [shape[0], shape[1]]:
 					_free(rid)
 		_shapes.clear()
-	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler]:
+	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler,
+			_tile_sampler]:
 		_free(rid)
 	_pipeline = RID()
 	_rd = null

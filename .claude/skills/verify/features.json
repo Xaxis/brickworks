@@ -2552,10 +2552,23 @@
       "tests": []
     },
     {
+      "id": "cli:photoreal cycles",
+      "kind": "cli",
+      "entry": "tools/photoreal/cycles/render.py",
+      "reach": "heavy tools/photoreal/cycles/tree.sh SCENES PNG_DIR EXR_DIR DRAW [--samples 1024 --sss 0 --studs Normal --resolution Normal --gap 0]   (photoreal6, docs/RENDERING.md 5j; a bench tool on this box, never the app's: Blender 5.2.4 in ~/.local/opt with ldr_tools_blender 0.5.3 draws each shot's scene from photoreal_probe --cycles in Cycles on the CPU, the tent or place, key, sweep as a shadow catcher and the white card's exposure as our tracer drew them; finish.py gives it our camera's finish into PNG_DIR/<shot>.png; camera_pipeline.py FROM TO puts a tree through sharpening and the photographs' JPEG; decide.py SOLO_JSON tables a solo run's trees over their draws)",
+      "area": "view",
+      "tests": [
+        "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/frame_check.mjs",
+        "tests/test_docs_site.py",
+        "tests/test_photoreal_bench.py"
+      ]
+    },
+    {
       "id": "cli:photoreal judge",
       "kind": "cli",
       "entry": "tools/bench/photoreal.py",
-      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons)",
+      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; colour NAME --out DIR; gloss NAME; camera NAME; masks; tally FILE...; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR; solo A=DIR B=DIR --name N --trials 2 --rounds 3 --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons; solo shows every photograph and render ALONE, shuffled, and writes solo_N.json with the share called a photograph and the mean probability, photographs and each label's renders apart, per round; tally groups the tells; camera measures sensor noise; masks writes the set photographs' outlines; colour writes each close-up face's CIEDE2000 from its photograph's)",
       "area": "view",
       "tests": []
     },
@@ -2563,7 +2576,7 @@
       "id": "cli:photoreal probe",
       "kind": "cli",
       "entry": "src/dev/photoreal_probe.gd",
-      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --draw=N --car --turns=0,90 --lighting=window,daylight --raw --cycles --fit --without=dust,age --shots=PATH]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car; --turns and --lighting sweep the light; --raw writes each picture's light before its curve as .exr; --fit fits each set's camera to its photograph's outline from shots/photoreal/masks/ (photoreal.py masks), writing NAME_fit.json and the two outlines over each other; --without zeroes a shot's camera and wear settings to measure each; --draw=N another draw (the tracer's seed); --cycles also writes each shot's scene for Cycles, NAME/<shot>.cycles.ldr and .cycles.json)",
       "area": "view",
       "tests": []
     },
@@ -5005,6 +5018,14 @@
       "entry": "src/assembly/stability.gd",
       "reach": "godot --headless --path . --script src/dev/stability_probe.gd",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:staged product photographs",
+      "kind": "lib",
+      "entry": "src/render/studio_render.gd",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --stage=wood  (photoreal7, docs/RENDERING.md 5k: Render's Background choice StudioRender.STAGES at Best, Product; a near key (scene.near, falling off with distance), the surface lit with its grain or Poly Haven tile (binding 11, assets/surfaces/), the room past a table; the white card's colour as the white balance and a camera tone curve where asked; no stage draws pixel-identical to before)",
+      "area": "view",
       "tests": []
     },
     {

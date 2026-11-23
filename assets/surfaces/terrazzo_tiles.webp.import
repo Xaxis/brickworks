@@ -1,0 +1,14 @@
+[remap]
+
+importer="image"
+type="Image"
+uid="uid://dhv80rflrsdnj"
+path="res://.godot/imported/terrazzo_tiles.webp-6dcec57f08127745494acbc8f3e04022.image"
+
+[deps]
+
+source_file="res://assets/surfaces/terrazzo_tiles.webp"
+dest_files=["res://.godot/imported/terrazzo_tiles.webp-6dcec57f08127745494acbc8f3e04022.image"]
+
+[params]
+

@@ -1,5 +1,5 @@
 {
- "about": "Each real photograph and where its camera stood, for src/dev/photoreal_probe.gd and tools/bench/photoreal.py. yaw: degrees round from the model's front (+z) towards +x; pitch: degrees up; zoom: nearer than the fit; shift: where the model's middle sits, fractions of the half frame right and up; crop: the part of the photograph used, fractions [left, top, right, bottom]. Photographs and their licences: tools/photoreal/photos/sources.json and docs/ATTRIBUTION.md.",
+ "about": "Each real photograph and where its camera stood, for src/dev/photoreal_probe.gd and tools/bench/photoreal.py. yaw: degrees round from the model's front (+z) towards +x; pitch: degrees up; zoom: nearer than the fit; shift: where the model's middle sits, fractions of the half frame right and up; crop: the part of the photograph used, fractions [left, top, right, bottom]. backdrop: the photograph's own backdrop, measured (photoreal2); lighting: studio is a light tent on a light backdrop (Best), window a room's daylight where the photograph was taken in a room; faces: flat lit faces of the part, fractions [left, top, right, bottom] of the photograph and of the render, for tools/bench/photoreal.py colour. Photographs and their licences: tools/photoreal/photos/sources.json and docs/ATTRIBUTION.md. gloss: boxes on a part's top faces and studs, wholly on the part in both pictures, for tools/bench/photoreal.py gloss (photoreal3). f_stop: the photograph's depth of field, matched (photoreal3): the close-ups sharp from front to back in their photographs are drawn at the f-number that keeps them so at their framing (a small sensor's depth at the same picture). photo_is_render: the set's picture is itself a computer render, not a photograph (6512's: flawless logos, no grain, an ambient-occlusion shadow; the solo judge gave it 0.05, photoreal4); the solo judge counts it apart from the photographs. mask: tools/bench/photoreal.py masks' thresholds for the photograph's outline. fit_overlap: how well the outline of the model, drawn from the camera here, overlaps the photograph's (photoreal_probe.gd --fit, photoreal4). grain, vignette, aberration: the photograph's camera (photoreal4): its sensor noise in 8-bit levels (tools/bench/photoreal.py camera measures it), the light its lens loses at a corner, its colour fringes in pixels at a corner. age, dust: the photographed parts' wear, 0 to 1 (whites yellowed as the photograph's are, dust on tops); paper: the backdrop's grain and uneven light, 0 for a cut-out. sharpen, jpeg: the photograph's camera's processing (photoreal6): its sharpening (the share of an edge's step added back) and the JPEG it was saved at, the photograph's own quantisation (90, the close-ups' Wikimedia copies). Kept only where the judge moved: the close-ups rose 0.29 to 0.36, the sets (Rebrickable's pictures, JPEG 75) fell 0.135 to 0.105, so they have none (docs/RENDERING.md 5j). 6512's picture is a render: none of them.",
  "shots": [
   {
    "name": "black_2x4",
@@ -10,19 +10,73 @@
     1024,
     860
    ],
-   "yaw": -35,
-   "pitch": 58,
-   "zoom": 1.55,
+   "yaw": 135.9,
+   "pitch": 40.3,
+   "zoom": 1.211,
    "shift": [
-    0.0,
-    0.0
+    0.035,
+    0.11
    ],
-   "focal_mm": 60,
-   "backdrop": "#3c3a38",
-   "lighting": "studio",
-   "roll": -10,
-   "f_stop": 16,
-   "focus": 0.45
+   "focal_mm": 119.6,
+   "backdrop": "#9c9585",
+   "lighting": "window",
+   "roll": 6.6,
+   "f_stop": 64,
+   "focus": 0.45,
+   "faces": [
+    {
+     "name": "top",
+     "main": true,
+     "photo": [
+      0.42,
+      0.29,
+      0.48,
+      0.34
+     ],
+     "render": [
+      0.42,
+      0.29,
+      0.48,
+      0.34
+     ]
+    },
+    {
+     "name": "long side",
+     "photo": [
+      0.6,
+      0.52,
+      0.7,
+      0.65
+     ],
+     "render": [
+      0.6,
+      0.52,
+      0.7,
+      0.65
+     ]
+    }
+   ],
+   "gloss": [
+    {
+     "name": "studs and top",
+     "box": [
+      0.3,
+      0.22,
+      0.56,
+      0.4
+     ]
+    }
+   ],
+   "grain": 1.4,
+   "vignette": 0.12,
+   "aberration": 0.5,
+   "age": 0.3,
+   "dust": 0.6,
+   "paper": 1.0,
+   "softness": 0.6,
+   "seating": 1.0,
+   "sharpen": 0.6,
+   "jpeg": 90
   },
   {
    "name": "red_slope_2x4",
@@ -33,18 +87,82 @@
     1024,
     572
    ],
-   "yaw": -20,
-   "pitch": 25,
-   "zoom": 1.12,
+   "yaw": -36.7,
+   "pitch": 13.2,
+   "zoom": 1.048,
    "shift": [
-    0.0,
-    0.0
+    0.007,
+    -0.022
    ],
-   "focal_mm": 85,
+   "focal_mm": 223.8,
    "backdrop": "#ffffff",
    "lighting": "studio",
-   "f_stop": 16,
-   "focus": 0.45
+   "f_stop": 64,
+   "focus": 0.45,
+   "roll": -1.3,
+   "faces": [
+    {
+     "name": "slope",
+     "main": true,
+     "photo": [
+      0.45,
+      0.45,
+      0.65,
+      0.6
+     ],
+     "render": [
+      0.45,
+      0.45,
+      0.65,
+      0.6
+     ]
+    },
+    {
+     "name": "end",
+     "photo": [
+      0.1,
+      0.45,
+      0.16,
+      0.7
+     ],
+     "render": [
+      0.1,
+      0.45,
+      0.16,
+      0.7
+     ]
+    }
+   ],
+   "gloss": [
+    {
+     "name": "stud wall",
+     "box": [
+      0.32,
+      0.285,
+      0.4,
+      0.32
+     ]
+    },
+    {
+     "name": "slope",
+     "box": [
+      0.3,
+      0.36,
+      0.8,
+      0.6
+     ]
+    }
+   ],
+   "grain": 0.0,
+   "vignette": 0.08,
+   "aberration": 0.5,
+   "age": 0.3,
+   "dust": 0.5,
+   "paper": 0.5,
+   "softness": 0.6,
+   "seating": 1.0,
+   "sharpen": 0.6,
+   "jpeg": 90
   },
   {
    "name": "grey_1x3",
@@ -56,17 +174,58 @@
     768
    ],
    "yaw": -25,
-   "pitch": 32,
-   "zoom": 0.6,
+   "pitch": 45,
+   "zoom": 0.55,
    "shift": [
-    -0.15,
-    0.15
+    -0.17,
+    0.2
    ],
    "focal_mm": 28,
-   "backdrop": "#bdbdbd",
-   "lighting": "studio",
-   "f_stop": 16,
-   "focus": 0.5
+   "backdrop": "#c4bcae",
+   "lighting": "daylight",
+   "f_stop": 32,
+   "focus": 0.5,
+   "faces": [
+    {
+     "name": "long side",
+     "main": true,
+     "photo": [
+      0.33,
+      0.42,
+      0.5,
+      0.5
+     ],
+     "render": [
+      0.33,
+      0.42,
+      0.5,
+      0.5
+     ]
+    }
+   ],
+   "light_turn": 270.0,
+   "gloss": [
+    {
+     "name": "stud and top",
+     "box": [
+      0.36,
+      0.27,
+      0.46,
+      0.33
+     ]
+    }
+   ],
+   "grain": 1.1,
+   "vignette": 0.12,
+   "aberration": 0.5,
+   "age": 0.5,
+   "dust": 0.6,
+   "paper": 1.0,
+   "softness": 0.6,
+   "seating": 1.0,
+   "surface": 1,
+   "sharpen": 0.6,
+   "jpeg": 90
   },
   {
    "name": "trans_round_1x1",
@@ -78,8 +237,8 @@
     527
    ],
    "yaw": 0,
-   "pitch": 10,
-   "zoom": 1.0,
+   "pitch": 15,
+   "zoom": 0.95,
    "shift": [
     0.0,
     -0.08
@@ -87,8 +246,36 @@
    "focal_mm": 85,
    "backdrop": "#ffffff",
    "lighting": "studio",
-   "f_stop": 11,
-   "focus": 0.4
+   "f_stop": 32,
+   "focus": 0.4,
+   "faces": [
+    {
+     "name": "body",
+     "main": true,
+     "photo": [
+      0.35,
+      0.45,
+      0.6,
+      0.7
+     ],
+     "render": [
+      0.35,
+      0.45,
+      0.6,
+      0.7
+     ]
+    }
+   ],
+   "grain": 0.0,
+   "vignette": 0.0,
+   "aberration": 0.5,
+   "age": 0.3,
+   "dust": 0.4,
+   "paper": 0.0,
+   "softness": 0.6,
+   "seating": 1.0,
+   "sharpen": 0.6,
+   "jpeg": 90
   },
   {
    "name": "three_2x2_top",
@@ -101,14 +288,103 @@
    ],
    "yaw": 0,
    "pitch": 89,
-   "zoom": 0.92,
+   "zoom": 0.9,
    "shift": [
     0.0,
     0.0
    ],
    "focal_mm": 85,
-   "backdrop": "#ececec",
-   "lighting": "studio"
+   "backdrop": "#ebebe9",
+   "lighting": "studio",
+   "faces": [
+    {
+     "name": "green top",
+     "main": true,
+     "photo": [
+      0.16,
+      0.495,
+      0.36,
+      0.525
+     ],
+     "render": [
+      0.16,
+      0.495,
+      0.36,
+      0.525
+     ]
+    },
+    {
+     "name": "red top",
+     "main": true,
+     "photo": [
+      0.41,
+      0.495,
+      0.6,
+      0.525
+     ],
+     "render": [
+      0.41,
+      0.495,
+      0.6,
+      0.525
+     ]
+    },
+    {
+     "name": "blue top",
+     "main": true,
+     "photo": [
+      0.655,
+      0.495,
+      0.85,
+      0.525
+     ],
+     "render": [
+      0.655,
+      0.495,
+      0.85,
+      0.525
+     ]
+    }
+   ],
+   "gloss": [
+    {
+     "name": "green",
+     "box": [
+      0.15,
+      0.31,
+      0.36,
+      0.69
+     ]
+    },
+    {
+     "name": "red",
+     "box": [
+      0.39,
+      0.31,
+      0.6,
+      0.69
+     ]
+    },
+    {
+     "name": "blue",
+     "box": [
+      0.63,
+      0.31,
+      0.84,
+      0.69
+     ]
+    }
+   ],
+   "grain": 0.0,
+   "vignette": 0.08,
+   "aberration": 0.5,
+   "age": 0.3,
+   "dust": 0.5,
+   "paper": 0.5,
+   "softness": 0.6,
+   "seating": 1.0,
+   "sharpen": 0.6,
+   "jpeg": 90
   },
   {
    "name": "green_plate_macro",
@@ -119,107 +395,191 @@
     1024,
     683
    ],
-   "yaw": 35,
-   "pitch": 42,
-   "zoom": 1.8,
+   "yaw": 29.9,
+   "pitch": 40.9,
+   "zoom": 1.804,
    "shift": [
-    -0.5,
-    0.35
+    -0.431,
+    0.7
    ],
-   "focal_mm": 100,
+   "focal_mm": 176.2,
    "f_stop": 11,
    "focus": 0.12,
-   "backdrop": "#8c8070",
-   "lighting": "studio"
+   "backdrop": "#b4a98e",
+   "lighting": "window",
+   "roll": 1.7,
+   "faces": [
+    {
+     "name": "top",
+     "main": true,
+     "photo": [
+      0.36,
+      0.43,
+      0.41,
+      0.48
+     ],
+     "render": [
+      0.36,
+      0.43,
+      0.41,
+      0.48
+     ]
+    }
+   ],
+   "gloss": [
+    {
+     "name": "studs",
+     "box": [
+      0.25,
+      0.45,
+      0.55,
+      0.7
+     ]
+    }
+   ],
+   "grain": 0.0,
+   "vignette": 0.12,
+   "aberration": 0.5,
+   "age": 0.3,
+   "dust": 0.6,
+   "paper": 1.0,
+   "softness": 0.6,
+   "seating": 1.0,
+   "sharpen": 0.6,
+   "jpeg": 90
   },
   {
    "name": "set_6512",
    "kind": "set",
-   "model": "res://vendor/omr/files/6512-1.mpd",
+   "model": "res://tools/photoreal/models/set_6512.mpd",
    "photo": "vendor/rebrickable/set_pictures/6512-1.jpg",
    "size": [
     1024,
     768
    ],
-   "yaw": 135,
-   "pitch": 26,
-   "zoom": 1.45,
+   "yaw": 133.0,
+   "pitch": 33.5,
+   "zoom": 1.63,
    "shift": [
-    0.0,
-    0.0
+    -0.085,
+    -0.28
    ],
-   "focal_mm": 70,
+   "focal_mm": 87.7,
    "backdrop": "#ffffff",
    "lighting": "studio",
    "f_stop": 22,
-   "focus": 0.45
+   "focus": 0.45,
+   "mask": {
+    "far": 130
+   },
+   "roll": -0.5,
+   "fit_overlap": 0.849,
+   "photo_is_render": true,
+   "grain": 0.0,
+   "vignette": 0.0,
+   "aberration": 0.0,
+   "age": 0.0,
+   "dust": 0.0,
+   "paper": 0.0,
+   "softness": 0.0,
+   "seating": 0.0
   },
   {
    "name": "set_6532",
    "kind": "set",
-   "model": "res://vendor/omr/files/6532-1.mpd",
+   "model": "res://tools/photoreal/models/set_6532.mpd",
    "photo": "vendor/rebrickable/set_pictures/6532-1.jpg",
    "size": [
     1024,
     1024
    ],
-   "yaw": 50,
-   "pitch": 25,
-   "zoom": 1.3,
+   "yaw": 55.0,
+   "pitch": 29.4,
+   "zoom": 1.538,
    "shift": [
-    0.0,
-    0.0
+    -0.06,
+    -0.007
    ],
-   "focal_mm": 70,
+   "focal_mm": 87.7,
    "backdrop": "#ffffff",
    "lighting": "studio",
-   "f_stop": 22,
-   "focus": 0.45
+   "f_stop": 11,
+   "focus": 0.45,
+   "roll": 5.0,
+   "fit_overlap": 0.868,
+   "grain": 0.0,
+   "vignette": 0.0,
+   "aberration": 0.5,
+   "age": 1.0,
+   "dust": 0.4,
+   "paper": 0.0,
+   "softness": 0.6,
+   "seating": 2.5
   },
   {
    "name": "set_6657",
    "kind": "set",
-   "model": "res://vendor/omr/files/6657-1.mpd",
+   "model": "res://tools/photoreal/models/set_6657.mpd",
    "photo": "vendor/rebrickable/set_pictures/6657-1.jpg",
    "size": [
     1024,
     768
    ],
-   "yaw": 18,
-   "pitch": 8,
-   "zoom": 1.3,
+   "yaw": 24.0,
+   "pitch": 3.0,
+   "zoom": 1.181,
    "shift": [
-    0.0,
+    -0.068,
     0.0
    ],
-   "focal_mm": 70,
-   "backdrop": "#e4e4e2",
-   "gradient": true,
-   "lighting": "studio",
+   "focal_mm": 35.0,
+   "backdrop": "#d4cdc0",
+   "gradient": false,
+   "lighting": "daylight",
    "f_stop": 22,
-   "focus": 0.45
+   "focus": 0.45,
+   "roll": 0.2,
+   "fit_overlap": 0.894,
+   "grain": 0.4,
+   "vignette": 0.12,
+   "aberration": 0.5,
+   "age": 0.8,
+   "dust": 0.4,
+   "paper": 1.0,
+   "softness": 0.6,
+   "seating": 2.5
   },
   {
    "name": "set_6660",
    "kind": "set",
-   "model": "res://vendor/omr/files/6660-1.mpd",
+   "model": "res://tools/photoreal/models/set_6660.mpd",
    "photo": "vendor/rebrickable/set_pictures/6660-1.jpg",
    "size": [
     1024,
     1024
    ],
-   "yaw": -50,
-   "pitch": 22,
-   "zoom": 1.45,
+   "yaw": -63.0,
+   "pitch": 22.0,
+   "zoom": 1.312,
    "shift": [
-    0.12,
-    0.0
+    -0.03,
+    0.09
    ],
-   "focal_mm": 70,
+   "focal_mm": 101.8,
    "backdrop": "#ffffff",
    "lighting": "studio",
-   "f_stop": 22,
-   "focus": 0.45
+   "f_stop": 11,
+   "focus": 0.45,
+   "roll": 1.0,
+   "fit_overlap": 0.821,
+   "grain": 0.0,
+   "vignette": 0.0,
+   "aberration": 0.5,
+   "age": 1.0,
+   "dust": 0.4,
+   "paper": 0.0,
+   "softness": 0.6,
+   "seating": 2.5
   }
  ]
 }

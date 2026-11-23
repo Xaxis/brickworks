@@ -15,6 +15,22 @@
    "features": ["ui:photo-real render"]
   },
   {
+   "id": "render-stage",
+   "source": "app",
+   "setup": [
+    {"run": "render", "after": 30},
+    {"call": "_render._stage.select", "args": [4]},
+    {"call": "_render._stage.emit_signal", "args": ["item_selected", 4], "after": 20},
+    {"frames": 90}
+   ],
+   "settle": 60,
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Render dialog with On a wooden table chosen under Background: the draft shows the car on the table's colour; at Best in the Product look the wood's own grain is drawn and a light stands near the model.",
+   "caption": "Background › On a wooden table: at Best, in the Product look, the model stands on real wood.",
+   "features": ["lib:staged product photographs"]
+  },
+  {
    "id": "render-line-art",
    "source": "app",
    "setup": [

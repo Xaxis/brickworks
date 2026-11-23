@@ -5318,6 +5318,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "at": {
+          "description": "seconds into the model's program: its picture and each motor's angle at that moment, nothing set",
+          "type": "number"
+        },
         "driver": {
           "description": "a part's number from look_at_model, or a sub-assembly's name",
           "type": "string"
@@ -5354,10 +5358,6 @@
         },
         "turns": {
           "description": "turns of the reference (or the driver) a recording covers; 1 when omitted",
-          "type": "number"
-        },
-        "at": {
-          "description": "seconds into the model's program: its picture and each motor's angle at that moment, nothing set",
           "type": "number"
         }
       },
@@ -5691,7 +5691,7 @@
       "readOnlyHint": false,
       "title": "Render a picture"
     },
-    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). look lineart is the model inked: black lines round it, where each part meets the next and where a part turns a corner, on white, the shade in halftone dots; comic the same lines and dots over each part's own flat colour; with backdrop none on nothing. backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. Saved where Render saves, never over a file: one of the name already there is kept and the new one takes the next free name (pods_render_2.png), which the answer gives. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). look lineart is the model inked: black lines round it, where each part meets the next and where a part turns a corner, on white, the shade in halftone dots; comic the same lines and dots over each part's own flat colour; with backdrop none on nothing. backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. stage stands the model on white, paper, a desk, wood, leather or terrazzo, at best in the product look, as a photograph is (the backdrop its colour unless backdrop is given), none on the seamless backdrop. Saved where Render saves, never over a file: one of the name already there is kept and the new one takes the next free name (pods_render_2.png), which the answer gives. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5764,6 +5764,19 @@
           ],
           "type": "string"
         },
+        "stage": {
+          "description": "what the model stands on at best in the product look, lit by a light near it as in a photograph; none the seamless backdrop. As Render last had it when omitted",
+          "enum": [
+            "none",
+            "white",
+            "paper",
+            "desk",
+            "wood",
+            "leather",
+            "terrazzo"
+          ],
+          "type": "string"
+        },
         "view": {
           "description": "hero, front, side, back, low or top, or a view saved with the model, by its name",
           "type": "string"
@@ -5781,7 +5794,7 @@
       "readOnlyHint": false,
       "title": "Queue renders"
     },
-    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field and light as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
+    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field, light and stage as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5851,6 +5864,19 @@
             "1080p",
             "4k",
             "square"
+          ],
+          "type": "string"
+        },
+        "stage": {
+          "description": "what the model stands on at best in the product look, lit by a light near it as in a photograph; none the seamless backdrop. As Render last had it when omitted",
+          "enum": [
+            "none",
+            "white",
+            "paper",
+            "desk",
+            "wood",
+            "leather",
+            "terrazzo"
           ],
           "type": "string"
         },
