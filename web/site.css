@@ -2077,6 +2077,11 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .talk-row-meta { margin: 6px 0 0; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
 .talk-row-meta a { color: var(--ink); }
 .talk-row :is(.talk-row-meta, .pills) a { position: relative; z-index: 1; }
+/* A reply made in the row (web/composer.js replyInCard, feedinline): its
+   room and composer on lines of their own under the row's line, over the
+   row's link. */
+.talk-row-foot > :is(.said-room, .composer) { flex: 1 0 100%; order: 1; }
+.talk-row :is(.said-room, .composer) { position: relative; z-index: 1; }
 /* Its end: who is in it, then how many replied and when the last did. */
 .talk-row-end { display: grid; justify-items: end; gap: 6px; min-width: 120px; text-align: end; }
 .talk-faces { display: flex; }
@@ -2085,7 +2090,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .talk-last { display: grid; gap: 2px; font-size: var(--t-small); color: var(--ink-soft); }
 .talk-last .talk-replies { color: var(--ink); font-weight: 650; }
 .talk-last small { color: var(--ink-faint); font-size: var(--t-tiny); }
-.talk-last .talk-first { color: var(--ink-faint); font-size: var(--t-tiny); }
+.talk-last .talk-first[data-replies="0"] { color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 400; }
 .talk-empty, .talk-searched { color: var(--ink-soft); }
 @media (width < 600px) {
 	.talk-row { grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 8px 12px; padding: 12px; }

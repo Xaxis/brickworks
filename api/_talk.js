@@ -386,8 +386,9 @@ const withChallengeCards = (threads, cards) => (threads || []).map((one) => (car
 /// challenge's month (monthTileHtml) or its board's icon on a tile; its title (a link) and first words; who
 /// started it and when; then, at the row's end, the starter's avatar with
 /// the last replier's over it, how many replied and when the last did, or
-/// an invitation to be the first; and its marks: pinned, locked, its
-/// board, new. Never "0 replies" (sitepolish).
+/// an invitation to be the first; its marks: pinned, locked, its board,
+/// new; and Reply, the composer in the row (feedinline). Never "0 replies"
+/// (sitepolish).
 export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   const at = langAt();
   const pills = [
@@ -403,10 +404,16 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   const last = replies && thread.last_by ? thread.last_by : null;
   const faces = [thread.by?.handle || thread.by?.name ? avatarHtml(thread.by, { size: "small" }) : "",
     last && (last.handle || last.name) && last.handle !== thread.by?.handle ? avatarHtml(last, { size: "small" }) : ""].join("");
+  // The count carries data-replies, which a reply made in the row (web/composer.js
+  // replyInCard, feedinline) counts up; at none it invites the first.
   const lastLine = replies
-    ? `<span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>`
+    ? `<span class="talk-replies" data-replies="${replies}">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>`
       + `<small>${last ? `${sayHtml("last from {who}", { who: escapeHtml(last.name || "") })} ` : ""}${timeHtml(thread.last_at, now)}</small>`
-    : `<span class="talk-first">${asText(say("Be the first to reply"))}</span>`;
+    : `<span class="talk-replies talk-first" data-replies="0">${asText(say("Be the first to reply"))}</span>`;
+  // Reply, which opens the composer in the row (web/talk.js, feedinline);
+  // the thread's own box without a script, on a thread that takes replies.
+  const reply = thread.locked ? "" : ` · <a class="talk-row-reply" href="${href}#reply" data-reply-thread="${Number(thread.id)}"`
+    + ` aria-expanded="false" aria-label="${asText(say("Reply to {name}", { name: thread.title }))}">${asText(say("Reply"))}</a>`;
   return `<li class="talk-row${thread.pinned ? " pinned" : ""}${picture ? "" : " no-picture"}" data-thread="${Number(thread.id)}" data-board="${thread.board}">`
     + `<a class="talk-row-pic" href="${href}" tabindex="-1" aria-hidden="true">${picture
       ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">`
@@ -414,7 +421,7 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
     + `<div class="talk-row-main"><h3 class="talk-row-title"><a href="${href}">${escapeHtml(thread.title)}</a></h3>`
     + `${thread.said ? `<p class="talk-row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
     + `<div class="talk-row-foot"><p class="talk-row-meta">`
-    + `<span>${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}</span></p>`
+    + `<span>${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}${reply}</span></p>`
     + `${pills ? `<p class="pills">${pills}</p>` : ""}</div></div>`
     + `<div class="talk-row-end"><span class="talk-faces">${faces}</span><span class="talk-last">${lastLine}</span></div></li>`;
 }
