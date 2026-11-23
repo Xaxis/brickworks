@@ -1748,6 +1748,27 @@ twice the tent's key (`STAGE_KEY_RISE`, `STAGE_KEY_FAR`,
 `STAGE_KEY_SHARE`). The turn is the rig's, as before: where a photograph's
 key stood depends on the shot, not on a rule.
 
+**Against the brief's bars** (the kept tree is E: photoreal6's staging
+with the product look's own tone and white balance):
+
+| bar | photoreal7 (kept) | met |
+|---|---|---|
+| close-ups' lowest round above photoreal6's highest | 0.344 over 0.340 (run 2), 0.360 over 0.343 (run 3) | yes, in both runs |
+| sets' lowest round above photoreal6's highest | 0.136 under 0.144, 0.140 under 0.145 (the means 0.006 and 0.009 above) | no |
+| at least 15 of 60 called a photograph | 15 and 16 of 80 (of 72 with a photograph) | no |
+| logo tell under 5 of 60 | 39 and 40 of 80; LDraw's letters 44 | no |
+| paired judge at most 16 of 20, or sure at most 0.80 | 18 of 20, 0.837 (p7e_d1; photoreal6's 19, 0.836) | no |
+| tent faces within ΔE2000 5 | green 2.7, red 1.6, blue 2.6, slope 2.1 | yes |
+| the car at Best no slower than 2.9 s | 2.32 and 2.56 s, against the unit's base 2.35 and 2.75 at the same moments (in turn, load 50 to 62) | yes |
+| the model unchanged | a render reads the model and writes nothing to it | yes |
+| unprocessed pictures of the old staging pixel-identical when no stage is chosen | 10 of 10 byte for byte against photoreal6's draw 1, with tone and balance 0, at the final code | yes |
+
+The judge's tells for the kept tree, in 80 verdicts: wear 80 ("perfectly
+clean, uniform plastic with no yellowing or scuffs"), backdrop 76, light
+70, edges 56, speckle 51, logos 40. The next lever is wear: a set's parts
+yellowed and scuffed unevenly, part by part, and a stud's logo that
+differs from the next.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
