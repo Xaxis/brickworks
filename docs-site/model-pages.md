@@ -1,7 +1,6 @@
 ---
 panels: ShareView#viewer, BuildMode#build-it
-ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, versions and its parts list to download; and With your Claude, beside Open in Brickworks, a message for the person's own Claude that opens a copy (open_model link=) and changes it as asked, credited to the model when the copy is published.
-ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, its Log of versions (work in progress marked) and its parts list to download.
+ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, its Log of versions (work in progress marked) and its parts list to download; and With your Claude, beside Open in Brickworks, a message for the person's own Claude that opens a copy (open_model link=) and changes it as asked, credited to the model when the copy is published.
 rules:
   - Anyone can open a model's page with no account.
   - Its parts download as a BrickLink XML, a Rebrickable CSV or a LEGO® Pick a Brick CSV, and the model as LDraw (.mpd).
@@ -102,7 +101,7 @@ ui:a link that opens playing
 
 ## Pictures and tabs {#tabs}
 
-Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections** once it is in one, and **Log** once it has [more than one version](/docs/sharing#versions) or is [work in progress](/docs/sharing#progress).
+Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Lists** once it is in a public one, and **Log** once it has [more than one version](/docs/sharing#versions) or is [work in progress](/docs/sharing#progress).
 
 <!-- covers
 ui:model page pictures and tabs
@@ -122,8 +121,8 @@ ui:a model's log
 
 ## The buttons {#actions}
 
-- **Build it**, **Open in Brickworks** (a copy in your own models, to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`).
-- **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
+- **Build it**, **Open in Brickworks** ([a copy in your own models](#open), to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`; on a phone it is in **More**).
+- **Like**, **Save** (into Saved at a tap, or by its arrow into any of [your lists](/docs/lists#save-card): the same control a card has), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
 - **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first. Building it with [Build it](#build-it), its last step offers the same photo where you finish ([Show your build](#show-your-build)).
 - **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead.
@@ -154,6 +153,19 @@ No connector yet? **Connect Claude** goes to [Connect your AI](/docs/connect#wit
 
 <!-- covers
 ui:change a model with your Claude
+-->
+
+## Open in Brickworks: a copy to change {#open}
+
+**Open in Brickworks** opens the studio with this model on the baseplate, never the example car. Signed out, it is there behind the studio's sign-in, which says it opens as your own copy: sign in with your email's code or with orangecheck (a new account answers the age question first) and you come back to it. Signed in, the copy is saved in your models under the model's name, credited to this page (its page says *Remixed from* once you [share it](/docs/sharing#remix)), and framed whole. The page you came from stays as it was.
+
+The first time, three things to do with it are offered along the top of the model: **Recolour a part** takes the Paint tool, so a colour and then a part paints it; **Add a part** opens the parts with their search ready; **Build it** plays the timeline from the first step. Your first change, [[Esc]] or **×** puts that line away, and it is not offered again.
+
+Pressed again a moment later, in the same tab after a reload or in a second tab, Open in Brickworks opens the copy you made rather than making another. Signed in to the site in another tab while the studio waits at its sign-in, the studio carries on by itself.
+
+<!-- covers
+ui:open in brickworks for a stranger
+ui:a copy's first acts
 -->
 
 ## Comments {#comments}
@@ -221,6 +233,7 @@ Each set's name opens its page, where the model is listed under **Built from thi
 
 <!-- covers
 lib:what a model is based on
+lib:alternate builds counted
 -->
 
 ## What a remix changed {#remix-changes}
@@ -252,7 +265,7 @@ lib:more by and similar models
 
 ## Report it {#report}
 
-**Report it** (under **More** on a model, a profile or a collection) tells Brickworks something should not be there; a copyright or trademark claim goes to [takedown requests](/takedown).
+**Report it** (under **More** on a model, a profile or a list) tells Brickworks something should not be there; a copyright or trademark claim goes to [takedown requests](/takedown).
 
 <!-- covers
 ui:report it

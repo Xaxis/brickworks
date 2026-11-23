@@ -107,11 +107,16 @@
 	--radius: var(--r-3);
 	/* A page's width: a page of words keeps --page; a page of cards and
 	   pictures (.wrap.wide: the gallery, a person, a collection, a model,
-	   the feed, the landing page's row of models) and the header and
+	   the landing page's row of models) and the header and
 	   footer on every page use the window up to --page-wide. Nothing was
 	   wider than 1,140 px, 59% of a 1920 window (site273). */
 	--page: 1140px;
 	--page-wide: 1600px;
+	/* The room between a page and the window's edge: a phone's 16 px, and
+	   more as the window grows, so a page of cards on a laptop does not run
+	   to its edge (sitepolish, 2026-11-23: the gallery, a model, a person
+	   and a set sat 16 px from a 1280 window's edge, as no other site's do). */
+	--gutter: 16px;
 	/* One type scale for every page (docs/DESIGN_SYSTEM.md): the landing
 	   page's one line, a page's title, a section's, a card's; the lede;
 	   then the words, small print, the smallest, and a count's. Each page
@@ -302,8 +307,10 @@ code.cmd {
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 a:focus-visible { border-radius: var(--r-1); }
 
-.wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
-.wrap.wide, .site-head > .wrap, .site-foot > .wrap { width: min(100% - 32px, var(--page-wide)); }
+@media (width >= 600px) { :root { --gutter: 24px; } }
+@media (width >= 1200px) { :root { --gutter: 32px; } }
+.wrap { width: min(100% - 2 * var(--gutter), var(--page)); margin-inline: auto; }
+.wrap.wide, .site-head > .wrap, .site-foot > .wrap { width: min(100% - 2 * var(--gutter), var(--page-wide)); }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);
@@ -417,6 +424,23 @@ a:focus-visible { border-radius: var(--r-1); }
 .account-part nav a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .account-part nav a[aria-current="page"] { color: var(--ink); background: var(--panel-hi); }
 .menu .account-part { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+/* The newest five notifications (inbox, 2026-11-23), under your places:
+   each its picture (or its icon) on the picture ground, its name, and its
+   newest line a line of small words; not opened yet edged in the accent. */
+.menu-latest { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.menu-latest-h { margin: 0; padding: 4px 12px; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 600; }
+.menu-latest ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.menu-latest a { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; }
+.menu-latest .pic { flex: none; display: grid; place-items: center; width: 48px; aspect-ratio: 4 / 3; overflow: hidden;
+	border-radius: var(--r-1); background: var(--picture-ground); color: var(--ink-soft); }
+.menu-latest .pic img { width: 100%; height: 100%; object-fit: cover; }
+.menu-latest .pic .icon { width: 20px; height: 20px; }
+.menu-latest a.unread .pic { box-shadow: 0 0 0 2px var(--accent-edge); }
+.menu-latest .words { display: grid; min-width: 0; max-width: 220px; }
+.menu-latest .words b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-latest .words small { color: var(--ink-soft); font-size: var(--t-tiny); overflow: hidden; text-overflow: ellipsis;
+	white-space: nowrap; }
+.menu-latest .none { padding: 6px 12px; color: var(--ink-faint); font-size: var(--t-small); }
 /* The console, for the site's owner alone (web/follow.js adminPart): at
    the menu's foot above Sign out, under a line, its gauge before its name. */
 .menu-owner { display: grid; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
@@ -846,9 +870,29 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .prose p { color: var(--ink-soft); margin: 0 0 var(--s-3); }
 .prose p b { color: var(--ink); font-weight: 620; }
 
-/* Something that has nothing to show yet, or is on its way. */
-.state { margin: 0; padding: 22px; border: 1px dashed var(--line); border-radius: var(--radius); color: var(--ink-soft); }
+/* Something that has nothing to show yet, or is on its way: a quiet panel
+   of its own, its words and its way on in the middle (sitepolish,
+   2026-11-23: a faint dashed line round words left in its corner, on the
+   page's own ground, read as a placeholder nobody had finished). A state
+   laid out as a row of its own (.feed-ask, .share-drop) keeps its start. */
+.state {
+	margin: 0; padding: var(--s-6) var(--s-5); border: 1px dashed var(--line-strong); border-radius: var(--radius);
+	background: var(--bg-soft); color: var(--ink-soft); text-align: center; text-wrap: pretty;
+}
+.state:not(.feed-ask, .share-drop) > * { max-width: 62ch; margin-inline: auto; }
+.state :is(.actions, .pills) { justify-content: center; }
+.state:is(.feed-ask, .share-drop) { text-align: start; }
 .state .link { color: var(--ink); }
+/* A page that is yours alone, signed out (settings, notifications): what
+   signing in gives and the way in, a panel where the page's own would be,
+   not a line of words in the open (sitepolish). */
+.gate {
+	max-width: 720px; padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--r-4);
+	background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+}
+.gate > .lede { margin: 0 0 var(--s-5); color: var(--ink); }
+.gate > .actions { margin: 0; }
+@media (width < 600px) { .gate { padding: var(--s-5); } }
 
 /* A skeleton: what a script draws, in its place and at its size before
    its data comes, so nothing moves when it does. A card's (.model.skeleton,
@@ -1028,6 +1072,16 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px var(--shade);
 }
 .model .frame > .keep { position: absolute; right: var(--s-2); bottom: var(--s-2); z-index: 1; }
+/* With a mouse, Save comes over a card's picture as the pointer or the
+   keyboard reaches the card, and stays while it is saved or its lists are
+   open: a grid of pictures, not of buttons over them (sitepolish,
+   2026-11-23). A finger has no hover: on a touch screen it is always there. */
+@media (hover: hover) and (pointer: fine) {
+	.model .frame > .keep { opacity: 0; transition: opacity var(--motion) var(--ease); }
+	.model:is(:hover, :focus-within) .frame > .keep,
+	.model .frame > .keep:is(:has([aria-pressed="true"], [aria-expanded="true"], [data-in])) { opacity: 1; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: reduce) { .model .frame > .keep { transition: none; } }
 .keep > button {
 	position: relative; display: inline-flex; align-items: center; gap: var(--s-1); min-height: 36px; margin: 0; padding: 0 10px;
 	border: 0; border-radius: 0; background: transparent; color: inherit; box-shadow: none;
@@ -1051,6 +1105,14 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .keep-bar [data-keep-more][data-in] .word::after { margin: 0 0 1px 6px; vertical-align: middle; }
 /* A small card's pill: the state's word only from a card's width up. */
 .models.compact .keep .word { display: none; }
+/* A phone's two to a row: the picture is the card's point, so Save is its
+   icon alone there, as the like is, and the model shows past it
+   (sitepolish, 2026-11-23: the word's pill covered two thirds of a 170 px
+   picture's foot, a cactus or a fox behind it). Its name is its label. */
+@media (width < 600px) {
+	.models:not(.scroller) .keep .word { display: none; }
+	.models:not(.scroller) .keep > .keep-main { padding-inline: 9px 7px; }
+}
 /* On a set's page, under its name: Own, Want and its lists, a row. */
 .keep-bar { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 12px; }
 .keep-bar > .cta { flex: 1 1 auto; gap: 6px; }
@@ -1406,23 +1468,24 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 
 /* The beta's bar (web/betabar.js), on every page while the beta is open:
    Open beta, Report a bug and Join (or You're a tester), and its × that
-   hides it for a day. It floats at the window's foot, at its left and on a
-   phone in the middle, over the page and moving none of it: a strip over
-   the header that came with the server's answer pushed every page down
-   (Steady loads). Its corners round its buttons' at its padding's
-   distance, and it rises and fades in as a dialog does. */
+   hides it. Docked at the window's foot, the whole width, and the page
+   given its height at its end (--betabar-h, web/betabar.js), so it is the
+   window's edge and never over what the page says: floating over the page
+   it covered the home's first post (hero3d, 2026-11-23). Arriving with the
+   server's answer it moves nothing: a strip over the header that came so
+   pushed every page down (Steady loads). It rises and fades in. */
 .beta-bar {
-	position: fixed; z-index: 50; left: var(--s-4); bottom: calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
-	display: flex; align-items: center; gap: var(--s-1); max-width: calc(100vw - 32px);
-	padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--r-3);
-	background: color-mix(in srgb, var(--panel) 88%, transparent);
-	backdrop-filter: saturate(1.6) blur(16px); -webkit-backdrop-filter: saturate(1.6) blur(16px);
-	box-shadow: var(--highlight), var(--shadow);
+	position: fixed; z-index: 50; left: 0; right: 0; bottom: 0;
+	display: flex; align-items: center; justify-content: center; gap: var(--s-1);
+	padding: 5px max(var(--s-3), env(safe-area-inset-right, 0px)) calc(5px + env(safe-area-inset-bottom, 0px)) max(var(--s-3), env(safe-area-inset-left, 0px));
+	border-top: 1px solid var(--line-strong);
+	background: var(--panel);
+	box-shadow: 0 -6px 18px -12px rgba(0, 0, 0, 0.35);
 	opacity: 0; transform: translateY(8px);
 	transition: opacity var(--motion-open) var(--ease), transform var(--motion-open) var(--ease);
 }
 .beta-bar.shown { opacity: 1; transform: none; }
-@media (width < 600px) { .beta-bar { right: 0; left: 0; width: max-content; margin-inline: auto; } }
+:root[data-betabar] body { padding-bottom: var(--betabar-h, 0px); }
 .beta-bar > * { flex: none; }
 .beta-bar > .badge { margin: 0 var(--s-1) 0 var(--s-1); }
 .beta-bar .short { display: none; }
@@ -1932,21 +1995,38 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 /* A thread of Talk as a row (api/_talk.js threadRowHtml): Talk's lists and
    the homepage's latest from it (#talk-latest, web/landing.js), so it
    is here and not in talk.css, which only Talk's pages load. */
+/* A row is a card as a model's is: its title the one link, stretched over
+   all of it, the starter's name and the board links of their own over it;
+   its first words two lines at most; under them one line, the starter's
+   avatar, who and when, and its marks at the line's end (sitepolish,
+   2026-11-23: the board was a pill on a line of its own in every row, each
+   row a wall of four lines, "0 replies" on every one). */
 .talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .talk-row {
-	display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start;
-	border: 1px solid var(--line); border-radius: var(--r-2); padding: 12px 14px; background: var(--panel);
+	position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start;
+	border: 1px solid var(--line); border-radius: var(--r-3); padding: 14px 16px; background: var(--panel);
+	box-shadow: var(--highlight), var(--shadow-1); transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
 }
+.talk-row:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 .talk-row:has(.talk-row-picture) { grid-template-columns: 96px minmax(0, 1fr); }
 .talk-row.pinned { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
 .talk-row-picture { width: 96px; height: 72px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
-.talk-row-title { margin: 0; font-size: var(--t-body); line-height: 1.35; overflow-wrap: anywhere; }
+.talk-row-title { margin: 0; font-size: var(--t-h3); font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
 .talk-row-title a { color: var(--ink); text-decoration: none; }
-.talk-row-title a:hover { text-decoration: underline; }
-.talk-row .pills { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.talk-row-said { margin: 6px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.talk-row-title a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.talk-row-title a:focus-visible { outline: none; }
+.talk-row-title a:focus-visible::after { outline: 2px solid var(--focus); outline-offset: -2px; border-radius: var(--r-3); }
+.talk-row:hover .talk-row-title a { text-decoration: underline; text-decoration-thickness: 1px; }
+.talk-row-said {
+	margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere;
+	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.talk-row-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 10px 0 0; }
+.talk-row-foot .talk-row-meta { margin: 0; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.talk-row .pills { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .talk-row-meta { margin: 6px 0 0; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
 .talk-row-meta a { color: var(--ink); }
+.talk-row :is(.talk-row-meta, .pills) a { position: relative; z-index: 1; }
 .talk-empty, .talk-searched { color: var(--ink-soft); }
 @media (width < 600px) {
 	.talk-row:has(.talk-row-picture) { grid-template-columns: 72px minmax(0, 1fr); }

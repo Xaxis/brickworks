@@ -155,8 +155,10 @@ for handler in api/*.js; do
   # a few seconds, and only rewritten when it would change. And for
   # people's lists (api/_mylists.js, lists1): the sets a person owns and
   # keeps in lists, on their profile and their lists' pages, are the
-  # catalogue's.
-  if [ "$route" = share ] || [ "$route" = people ]; then
+  # catalogue's. And an import the website shows before it is made
+  # (api/collection.js asShown, lists2a) says which of a file's sets the
+  # catalogue has.
+  if [ "$route" = share ] || [ "$route" = people ] || [ "$route" = collection ]; then
     if [ -z "${catalogue_made:-}" ]; then
       if ! python3 tools/set_catalog.py | sed 's/^/deploy: /' || [ ! -f assets/generated/set_catalog.json ]; then
         echo "deploy FAILED: no set catalogue for /api/$route (tools/set_catalog.py)"; exit 1

@@ -84,14 +84,19 @@ export function line(one) {
   return item;
 }
 
-/// [one] group drawn; [i] its place, the first screen's pictures asked at once.
-export function group(one, i = 0) {
+/// [one] group drawn; [i] its place, the first screen's pictures asked at once;
+/// [acts] (the Notifications page's: Done, and More with Mute) what goes
+/// beside its name, made for it.
+export function group(one, i = 0, { acts = null } = {}) {
   const item = document.createElement("li");
   item.className = `notice${one.unread ? " unread" : ""}`;
   item.dataset.model = String(one.model || "");
   if (one.achievements) item.dataset.achievements = "";
   if (one.challenge) item.dataset.challenge = String(Number(one.challenge) || "");
   if (one.talk) item.dataset.talk = String(Number(one.talk) || "");
+  // Its key for Done, and its newest row's time, up to which it is done.
+  if (one.key) item.dataset.key = String(one.key);
+  if (one.at) item.dataset.at = String(one.at);
   const told = Number(one.announcement) > 0 || one.announcement === 0;
   const to = told ? outside(one.link) : here(one.link);
   if (told) {
@@ -140,7 +145,15 @@ export function group(one, i = 0) {
   const lines = document.createElement("ul");
   lines.className = "lines";
   for (const row of one.rows || []) lines.append(line(row));
-  body.append(title, lines);
+  const made = acts ? acts(one, item) : null;
+  if (made) {
+    const top = document.createElement("div");
+    top.className = "notice-top";
+    top.append(title, made);
+    body.append(top, lines);
+  } else {
+    body.append(title, lines);
+  }
   // A weekly quick build's notice opens the studio on its template.
   if (one.start) {
     const start = document.createElement("a");

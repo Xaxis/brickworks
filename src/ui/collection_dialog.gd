@@ -312,7 +312,8 @@ func _build() -> void:
 	var fill := Control.new()
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(fill)
-	var done := _button(header, "Done", close, "collection_done")
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	var done := _button(header, "Close", close, "collection_done")
 	done.focus_mode = Control.FOCUS_NONE
 
 	_status = Label.new()
@@ -354,6 +355,8 @@ func _build() -> void:
 	_confirm_clear.ok_button_text = "Forget it all"
 	_confirm_clear.confirmed.connect(_on_clear)
 	add_child(_confirm_clear)
+	# It cannot be undone: in red, not Save's blue (Look.danger).
+	Look.danger(_confirm_clear.get_ok_button())
 
 
 func _own_page() -> Control:

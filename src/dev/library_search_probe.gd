@@ -120,7 +120,7 @@ func _run() -> void:
 		_field.accessibility_name == "Search the LDraw sets"
 		and _field.accessibility_description.contains("Escape clears it"))
 	_check("...and says what it searches: \"%s\"" % _field.placeholder_text,
-		_field.placeholder_text == "Search sets by name, set number, theme or designer")
+		_field.placeholder_text == "Set number or name, theme, designer")
 	await _until(func() -> bool: return _covers() == 8, 20.0)
 	await _shot("library_search_%sopen" % tag)
 
@@ -155,7 +155,7 @@ func _run() -> void:
 		% [_dialog.last["ask"]["q"], str(_dialog.last["shown"])],
 		_dialog.last["ask"]["q"] == "house" and _dialog.last["shown"] == ["LibStubLgt"])
 	_check("...the field named for the shelf: \"%s\"" % _field.accessibility_name,
-		_field.accessibility_name == "Search the community's models")
+		_field.accessibility_name == "Search the gallery's models")
 	await _until(func() -> bool: return _covers() == 1, 20.0)
 	await _shot("library_search_%scommunity" % tag)
 	await _shelf("sets")
@@ -196,7 +196,7 @@ func _run() -> void:
 	_check("...how to find more: \"%s\"" % hint.text,
 		hint.text.begins_with("Try fewer words or another spelling, or a set number"))
 	_check("...\"%s\" and \"%s\" offered, not the filters (none chosen)" % [clear.text, elsewhere.text],
-		clear.is_visible_in_tree() and elsewhere.text == "Search Community for “zzqx”"
+		clear.is_visible_in_tree() and elsewhere.text == "Search the gallery for “zzqx”"
 		and not let_go.visible)
 	await _shot("library_search_%snone" % tag)
 	await _press(elsewhere)

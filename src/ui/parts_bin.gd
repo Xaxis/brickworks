@@ -3535,6 +3535,46 @@ func _update_status() -> void:
 	var named: PartLibrary.PartInfo = library.parts.get(typed) if library != null else null
 	if named != null and not named.reachable:
 		_status.text = "%s is not in this build of the app\n%s" % [typed, _status.text]
+	# A sub-assembly of the model asked for by its name: the bin holds parts,
+	# and "Bumper", just made, found 39 parts called bumper and not it, where
+	# Studio's palette lists a model's own sub-models (ux13's walk, p7). Said
+	# first, with where another copy of it comes from.
+	var own: String = _own_assembly_named(typed)
+	if not own.is_empty():
+		_status.text = ("“%s” is a sub-assembly of this model: select it, and Edit, Duplicate "
+			+ "puts another down\n%s") % [own, _status.text]
+
+
+## The model's sub-assembly called [param typed] (any case), as it is
+## written; "" for none. Read from the parts' paths once a revision, each
+## path once: a keystroke after an edit reads every part's two fields and
+## no more (timed on Orthanc by ux12_walk_probe's UX13 checks).
+func _own_assembly_named(typed: String) -> String:
+	var world: BrickWorld = builder.world if builder != null else null
+	if typed.is_empty() or world == null:
+		return ""
+	if _assembly_names_at != world.revision or _assembly_names_of != world.get_instance_id():
+		_assembly_names_at = world.revision
+		_assembly_names_of = world.get_instance_id()
+		_assembly_names = {}
+		var seen: Dictionary = {}
+		for brick: BrickWorld.Brick in world.bricks():
+			var path: String = brick.unit if not brick.unit.is_empty() else brick.group
+			if path.is_empty() or seen.has(path):
+				continue
+			seen[path] = true
+			for segment: String in Assemblies.segments(path):
+				var def: String = Assemblies.definition(segment)
+				if not def.is_empty():
+					_assembly_names[def.to_lower()] = def
+	return str(_assembly_names.get(typed, ""))
+
+
+## The model's sub-assemblies by name, lowercase -> as written, and the
+## world and revision they were read at (_own_assembly_named).
+var _assembly_names: Dictionary = {}
+var _assembly_names_at: int = -1
+var _assembly_names_of: int = 0
 
 
 ## A tile for [param info]; for a set's, in its own colour and counting

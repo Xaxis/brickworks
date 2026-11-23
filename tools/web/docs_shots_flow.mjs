@@ -32,8 +32,8 @@
 //   "steps"     after the page is up, a person's: {"click": selector},
 //               {"hover": selector}, {"press": "Escape"}, {"wait": selector}
 //               (for up to "within" ms, 30 s unless said), {"scroll": selector},
-//               {"pause": ms}; or the page's own call,
-//               {"run": "bootWall.lay(0.55, true)"}
+//               {"fill": selector, "text": "typed"}, {"pause": ms}; or the
+//               page's own call, {"run": "bootWall.lay(0.55, true)"}
 //   "crop"      a selector, a list of them (the box round them all), or
 //               "viewport"; "pad" round it
 //   "phone"     a phone's browser (touch, mobile), "scale" its pixels a point
@@ -227,6 +227,7 @@ async function act(page, step) {
   else if (step.press) await page.keyboard.press(step.press);
   else if (step.wait) await page.waitForSelector(step.wait, { state: "visible", timeout: Number(step.within || 30000) });
   else if (step.scroll) await page.locator(step.scroll).first().scrollIntoViewIfNeeded();
+  else if (step.fill) await page.locator(step.fill).first().fill(String(step.text ?? ""));
   else if (step.run) await page.evaluate(String(step.run));
   else if (!("pause" in step)) throw new Error(`a step this flow does not know: ${JSON.stringify(step)}`);
   await page.waitForTimeout(Number(step.pause ?? 300));

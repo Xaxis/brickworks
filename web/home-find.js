@@ -100,6 +100,10 @@ export function findAsYouType(form, field) {
   if (!list) return;
   let question = 0;
   let timer = 0;
+  // The last answer shown, so the rows say what is typed now while the
+  // next is asked: its last two rows search for the whole text, never a
+  // word half typed (homefeed's preview: "castle" sent q=ca).
+  let shown = null;
   const options = () => [...list.querySelectorAll('[role="option"]')];
   const close = () => {
     list.hidden = true;
@@ -123,6 +127,7 @@ export function findAsYouType(form, field) {
     }
     const got = await found(q);
     if (mine !== question) return;
+    shown = got;
     list.innerHTML = rowsHtml(q, got);
     list.hidden = false;
     field.setAttribute("aria-expanded", "true");
@@ -130,6 +135,13 @@ export function findAsYouType(form, field) {
   };
   field.addEventListener("input", () => {
     clearTimeout(timer);
+    // An answer still on its way is for what was typed before: never shown.
+    question += 1;
+    const q = asked(field.value);
+    if (shown && !list.hidden && q.length >= 2) {
+      list.innerHTML = rowsHtml(q, shown);
+      field.removeAttribute("aria-activedescendant");
+    }
     timer = setTimeout(show, WAIT_MS);
   });
   field.addEventListener("keydown", (event) => {

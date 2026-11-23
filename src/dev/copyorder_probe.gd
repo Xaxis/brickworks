@@ -333,7 +333,10 @@ func _case_crlf() -> void:
 ## A file written before a COPY line said the copies inside its copy (live's,
 ## cf3check's O1 save1 of pre261): opened, its copies as live reads them; saved,
 ## opened and saved again, each by that name. And ours read as live reads it
-## (the COPY line's own number alone): every part where it was.
+## (the COPY line's own number alone): every part where it was. O1's 0 STEP
+## lines are its steps (stepkeep2): its second step puts on the four wings and
+## cars, which ours lists in the file's order, so the cars' wings read as 2 and
+## 3; in the order worked out afresh at each open, they were 5 and 2.
 func _case_older() -> void:
 	await _o1_opened()
 	var ours: String = await _saved()
@@ -348,7 +351,7 @@ func _case_older() -> void:
 	await _open(text)
 	var names: Array = _names()
 	_check("older: opened, every part where it was, its copies as the file numbers them (%s)"
-		% ", ".join(names), _looks(false) == parts and names.has("Car#1/Wing#5") and names.has("Car#2/Wing#2"))
+		% ", ".join(names), _looks(false) == parts and names.has("Car#1/Wing#2") and names.has("Car#2/Wing#3"))
 	await _rounds("older")
 
 

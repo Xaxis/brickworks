@@ -146,6 +146,13 @@ func show_weak(weak: Array) -> void:
 			if risk.kind == "tips":
 				_tips.text = "The whole model tips over: %s." % risk.message
 				_tips.visible = true
+		# A part in the air is no joint to list, and was not said here at all
+		# (ux13's walk, p8): said first, as the status bar says it.
+		var floating: String = Stability.floating_words(view.report.risks.filter(
+			func(risk: Stability.Risk) -> bool: return risk.kind == Stability.FLOATS))
+		if not floating.is_empty():
+			_tips.text = "In the air: %s." % floating + ("\n" + _tips.text if _tips.visible else "")
+			_tips.visible = true
 	var joints: int = StressView.joints_in(view.report, view.world, view.scenery) if weighed else 0
 	_of.visible = weighed
 	_of.text = "Weakest first, of %d joint%s that each alone hold what is past them." % [joints,

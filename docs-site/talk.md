@@ -44,10 +44,6 @@ Everybody can reply in between, as in any thread. Whoever follows the thread is 
 
 ![A Show and tell thread kept by a work in progress: the model's card, the first post with version 1's card, a builder's question, then a post a version with its note, what changed and that version's card.](/docs/img/talk-wip.webp "A model shared as work in progress: one thread, one post a version.")
 
-<!-- covers
-ui:work in progress shared by version
--->
-
 ## A thread {#thread}
 
 ![A Show and tell thread: its title, the model's card, the first post with the step it names as a card of its own and @mira-builds as a link, Mira's answer and the builder's reply, each with Reply and Report, and under them Sign in to reply.](/docs/img/talk-thread.webp "A thread, with a model and a step pasted as links.")
