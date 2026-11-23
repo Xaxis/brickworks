@@ -463,10 +463,15 @@ async function modelSaid(browser, code, width, at) {
     if (code !== "en") {
       const names = await tab.evaluate((theirs) => [...document.querySelectorAll(theirs)].map((el) => el.textContent.trim())
         .filter(Boolean).sort((a, b) => b.length - a.length), THEIRS);
-      // Its description cut short for a link's preview (its meta), its
-      // paragraphs run together, is theirs too.
-      const flat = (text) => text.replace(/\s+/g, " ").trim();
-      const cutFrom = (text) => text.endsWith("…") && names.some((name) => flat(name).startsWith(flat(text.slice(0, -1))));
+      // Its description in a link's preview (its meta), its paragraphs run
+      // together, whole or cut short with "…", is theirs too: its
+      // paragraphs on the page are <p>s, so their text has no space
+      // between them where the meta's has one.
+      const tight = (text) => text.replace(/\s+/g, "");
+      const cutFrom = (text) => {
+        const shown = tight(text.endsWith("…") ? text.slice(0, -1) : text);
+        return Boolean(shown) && names.some((name) => (text.endsWith("…") ? tight(name).startsWith(shown) : tight(name) === shown));
+      };
       const left = (await tab.evaluate(readable, THEIRS)).filter((text) => !cutFrom(text))
         .map((text) => names.reduce((rest, name) => rest.split(name).join(" "), text).replace(NAMES, " ")).filter((text) => ENGLISH.test(text));
       check(!left.length, `${where}: no English left${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);

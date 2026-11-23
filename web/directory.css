@@ -69,10 +69,11 @@
 	touch-action: pan-y pinch-zoom;
 }
 .model-page .picture img {
-	position: relative; width: 100%; height: 100%; object-fit: cover; transform: var(--fit, none); transition: transform 320ms var(--ease);
+	position: relative; width: 100%; height: 100%; object-fit: cover;
+	transition: transform 320ms var(--ease), scale 320ms var(--ease), translate 320ms var(--ease);
 }
-@media (hover: hover) { .model-page a.picture:hover img { transform: var(--fit,) scale(1.02); } }
-@media (prefers-reduced-motion: reduce) { .model-page .picture img { transition: none; } .model-page a.picture:hover img { transform: var(--fit, none); } }
+@media (hover: hover) { .model-page a.picture:hover img { transform: scale(1.02); } }
+@media (prefers-reduced-motion: reduce) { .model-page .picture img { transition: none; } .model-page a.picture:hover img { transform: none; } }
 /* Until its picture is drawn the frame says it is coming, as a card with
    none says so (site.css .model .frame.none), and the picture lands over
    it: the first view right after publishing was a blank grey frame while
