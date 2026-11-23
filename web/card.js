@@ -948,6 +948,8 @@ export function altHtml(said) {
   const fill = (words, html) => escapeHtml(words).split(mark).join(html);
   let line;
   if (said.how === "whole") line = fill(say("An alternate build of {set}: every part from the set", { set: mark }), link(said.sets[0]));
+  // A version of the set itself (sethub): its own LDraw model, published.
+  else if (said.how === "version") line = fill(say("A version of LEGO® set {set}", { set: mark }), link(said.sets[0]));
   else if (said.how === "group") {
     const names = said.sets.map((_, at) => `${mark}${at}${mark}`);
     line = escapeHtml(say("An alternate build of {sets}", { sets: andSaid(names) }))

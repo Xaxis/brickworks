@@ -1132,11 +1132,21 @@ const sharerOf = (model) => (model.by && model.by.name) || model.author || say("
 /// said on it (altbuilds): page.alt, the line under its credit (altSaid,
 /// each set named from the catalogue and linking its page under [at]); or,
 /// where its designer says it is an alternate build of that same set, its
-/// share on that line instead, so the page says it once.
+/// share on that line instead, so the page says it once. A version of a set
+/// (its own LDraw model, published: sethub) says which set, linking the
+/// set's page, where its Versions of this set lists it.
 export function altLine(page, kept, at = "") {
   page.alt = null;
   const said = kept ? altSaid(kept.sets, kept.pieces) : null;
-  if (!said) return page;
+  if (!said) {
+    const own = Array.isArray(kept?.sets) ? kept.sets.find((row) => row.role === "own") : null;
+    const entry = own ? catalogSet(own.set) : null;
+    if (entry && kept.pieces > 0) {
+      page.alt = { how: "version", pieces: kept.pieces, sets: [{ set: entry.set, name: entry.name, have: own.have,
+        href: `${at}/library/set/${encodeURIComponent(entry.set)}#versions` }] };
+    }
+    return page;
+  }
   const sets = said.sets.map((one) => {
     const entry = catalogSet(one.set);
     return entry ? { ...one, set: entry.set, name: entry.name, href: `${at}/library/set/${encodeURIComponent(entry.set)}` } : null;

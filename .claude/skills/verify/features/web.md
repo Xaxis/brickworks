@@ -3665,7 +3665,11 @@ plan with Claude as the client.
   `section#versions` "Versions of this set" before `#built-from`, each card's
   `small.version-said[data-changed]`, or none said with Make your own
   version (`[data-version-empty]`), `<html data-versions>` the count or
-  "broken". A set with no model has neither button and no row. You own n is
+  "broken". A version's own page says `#alt-build[data-alt=version]` "A
+  version of LEGO® set <set>" (`api/share.js altLine` from its `own` row,
+  `web/card.js altHtml`), linking `/library/set/<n>#versions`, which the
+  set's page scrolls to once the row is drawn. A set with no model has
+  neither button and no row. You own n is
   ownedparts' (the Own button's ×n, You own − n + in Parts you own).
   `cli:sethub browser flow` (`tools/web/sethub_flow.mjs`) drives it;
   `--publish` proves the minute after the SQL is applied.

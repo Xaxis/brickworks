@@ -3491,6 +3491,7 @@
   "Their own version: changed from LDraw's model": "Su propia versión: cambiada respecto al modelo de LDraw",
   "LDraw's model, as it is": "El modelo de LDraw, tal cual",
   "Nobody has published their own version of this set yet.": "Nadie ha publicado todavía su propia versión de este set.",
-  "Make your own version: Brickworks opens a copy of LDraw's model of it, credited to whoever modelled it. Change it, publish it, and it is listed here.": "Haz tu propia versión: Brickworks abre una copia del modelo de LDraw, con el crédito para quien lo modeló. Cámbiala, publícala y aparecerá aquí."
+  "Make your own version: Brickworks opens a copy of LDraw's model of it, credited to whoever modelled it. Change it, publish it, and it is listed here.": "Haz tu propia versión: Brickworks abre una copia del modelo de LDraw, con el crédito para quien lo modeló. Cámbiala, publícala y aparecerá aquí.",
+  "A version of LEGO® set {set}": "Una versión del set LEGO® {set}"
  }
 }

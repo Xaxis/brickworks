@@ -202,7 +202,7 @@ When a model is published, Brickworks counts it against every set Rebrickable li
 - no one set does, but a few together do (the fewest, up to five): *An alternate build of 42115 and 42054*;
 - one set holds 80% or more of it: *97% from 31009*.
 
-Each set's name opens its page, where the model is listed under **Built from this set**. A model of the set itself (LDraw's model of 6080 King's Castle, say) is that set's own model, not another build of it, and says nothing here. When its designer said it is an alternate build of a set and the set lacks some of its parts, the designer's own page says so after it, *(uses 6 parts not in the set)*; nobody else is shown that.
+Each set's name opens its page, where the model is listed under **Built from this set**. A model of the set itself (LDraw's model of 6080 King's Castle, say, opened from the set's page with [Make your own version](/docs/ldraw-library#every-set)) is that set's own model, not another build of it: it says *A version of LEGO® set 6080 King's Castle*, and the set's page lists it under **Versions of this set**. When its designer said it is an alternate build of a set and the set lacks some of its parts, the designer's own page says so after it, *(uses 6 parts not in the set)*; nobody else is shown that.
 
 ![Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.](/docs/img/model-alt-build.webp "Built from three sets, as counted when it was published.")
 

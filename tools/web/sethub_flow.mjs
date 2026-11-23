@@ -142,6 +142,31 @@ async function modelled(browser) {
           }
           check(`${label}: nothing on the first screen moved for them (picture ${JSON.stringify(first.picture)} then `
             + `${JSON.stringify(seen.picture)})`, JSON.stringify(first.picture) === JSON.stringify(seen.picture));
+          if (Number(seen.count) > 0 && width === WIDTHS[0] && theme === THEMES[0]) {
+            // The version's own page says which set it is a version of, and links back to the row.
+            const card = seen.cards[0].href;
+            const back = await page.context().newPage();
+            back.on("pageerror", (error) => errors.push(`${card}: ${error.message}`));
+            await back.goto(`${site}${card}`, { waitUntil: "load", timeout: 120000 });
+            const line = await back.evaluate(() => {
+              const one = document.querySelector('#alt-build[data-alt="version"]');
+              return { said: one?.textContent.replace(/\s+/g, " ").trim() || "", href: one?.querySelector("a")?.getAttribute("href") || "" };
+            });
+            check(`${label}: its version's page says so and links back ("${line.said}", ${line.href})`,
+              line.said.startsWith("A version of LEGO® set ") && line.href === `/library/set/${set}#versions`);
+            await back.screenshot({ path: path.join(out, `${set}_version_page.png`) });
+            await back.click('#alt-build[data-alt="version"] a');
+            await back.waitForFunction(() => document.documentElement.dataset.versions !== undefined, null, { timeout: 60000 })
+              .catch(() => null);
+            await back.waitForTimeout(400);
+            const there = await back.evaluate(() => {
+              const row = document.getElementById("versions")?.getBoundingClientRect();
+              return row ? Math.round(row.top) : null;
+            });
+            check(`${label}: and the link lands on Versions of this set (its top at ${there} px)`,
+              there !== null && there >= 0 && there < 200);
+            await back.close();
+          }
           const name = `${set}_${width}_${theme}`;
           await page.screenshot({ path: path.join(out, `${name}.png`) });
           const row = await page.$("#versions");

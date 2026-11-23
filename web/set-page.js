@@ -165,6 +165,8 @@ function versionsOf(article, versions, before) {
   }
   before.before(section);
   document.documentElement.dataset.versions = String(shown.length);
+  // From a version's own page ("A version of LEGO® set …"): the row it is in.
+  if (location.hash === "#versions") section.scrollIntoView({ block: "start" });
 }
 
 /// Parts you own: how much of the set their collection holds, and what they
