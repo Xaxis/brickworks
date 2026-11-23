@@ -102,12 +102,17 @@ func _run() -> void:
 		_finish()
 		return
 
+	var named: LineEdit = panel.get("_name")
+	if named.text.strip_edges().is_empty():
+		named.text = "Probe Card After"
+
 	print("\n1. the publish goes with the cut-out; the photograph follows it")
 	var pressed: int = Time.get_ticks_msec()
 	await panel.call("publish")
 	var answered: int = Time.get_ticks_msec()
 	_ok(str(panel.get("state")) == "published" and fake.published.size() == 1,
-		"published (%s), in %d ms from the press" % [panel.get("state"), answered - pressed])
+		"published (%s), in %d ms from the press: %s" % [panel.get("state"), answered - pressed,
+		(panel.call("page_state") as Dictionary).get("status", "")])
 	var sent: Dictionary = fake.published[0] if not fake.published.is_empty() else {}
 	var cut := _webp(str(sent.get("thumb", "")))
 	_ok(cut != null and cut.get_size() == Vector2i(480, 360) and cut.detect_alpha() != Image.ALPHA_NONE,
