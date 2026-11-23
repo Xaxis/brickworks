@@ -476,18 +476,19 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   `load(n)` answering `{ items, more, pages, total }`, and `start()`; a
   card put in later fires `pager:drawn` on the list (`web/follow.js` wires
   a collection's Follow on it). Not for shelves (`.models.scroller`).
-- **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
-  (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
-  person, a collection and a model's page (the landing page's
-  two strips keep `--page` since site356, in line with its other
-  sections, and scroll inside it; the feed keeps it since sitepolish, as
-  Notifications, the tab beside it, does, so the title does not jump
-  between them); and for the header and the footer on every page, so the
-  mark and the account sit where they do on the gallery. Nothing was wider
-  than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
-  page keeps `--gutter` from the window's edge: 16 px on a phone, 24 from
-  600 px, 32 from 1200 px (sitepolish, 2026-11-23: the gallery, a model, a
-  person and a set ran to 16 px of a laptop's edge). A
+- **Width**: one for every page, `.wrap`: the window less its
+  gutters (`--gutter`: 16 px on a phone, 24 from 600 px, 32 from 1200 px;
+  sitepolish), up to `--page-wide` (1,600 px), the header's and the footer's
+  too, so every page's edges are the gallery's and the header's (homefix,
+  2026-11-23, the owner: Talk "does not have the same page width as the
+  other pages"; a page of words had kept a narrower `--page`, 1,140 px,
+  its edges 54 px inside the header's at 1280). A page of words keeps its
+  lines to a measure inside it (`.prose` 760 px, `.lede` 60ch, a
+  setting's 70ch); a page whose content is centred (plans, beta) centres
+  it inside the width (`.narrow > *` at 980 px). `.wrap.wide` is the same
+  width (the class stays as a name). design_flow fails a page whose first
+  `main .wrap` is not at the header's edges; tests/test_page_width.py
+  fails any page width set but `.wrap`'s, and Talk's pages off `.wrap`. A
   model's page: from 1200 px its column is 480 px, room for its action
   bar in one row inside the panel it is from 900 px (site357), and its
   picture the rest; on a phone (under 600 px) its picture is square, and
