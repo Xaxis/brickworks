@@ -173,7 +173,11 @@ async function context({ as = null, width = 1280, height = 900, dark = false } =
     ...(phone ? { deviceScaleFactor: 2 } : {}) });
   if (as) {
     await made.addInitScript(([name, value]) => {
-      try { if (!localStorage.getItem(name)) localStorage.setItem(name, value); } catch {}
+      // Once a tab: a reload after signing out stays signed out.
+      try {
+        if (!localStorage.getItem(name) && !sessionStorage.getItem("ownedparts.seeded")) localStorage.setItem(name, value);
+        sessionStorage.setItem("ownedparts.seeded", "1");
+      } catch {}
     }, [STORAGE_KEY, JSON.stringify(as.kept)]);
   }
   return made;
@@ -335,7 +339,7 @@ try {
       await page.goto(`${site}/gallery`, { waitUntil: "load" });
       await until(page, () => document.documentElement.dataset.gallery === "ready", `the gallery, ${width} px`);
       await page.waitForTimeout(1500);
-      const cards = await page.evaluate(() => [...document.querySelectorAll("#feed .model[data-id]")].map((card) => ({
+      const cards = await page.evaluate(() => [...document.querySelectorAll("#models .model[data-id]")].map((card) => ({
         id: card.dataset.id, owned: card.dataset.owned || "", line: card.querySelector("small.owned")?.textContent || "" })));
       const expected = new Map(findings.cards.filter((one) => one.who === "bo").map((one) => [one.id, one.line]));
       const drawnWrong = cards.filter((card) => expected.has(card.id) && card.line !== expected.get(card.id));
@@ -417,8 +421,12 @@ try {
   await until(tab, () => !document.querySelector("[data-keep-count]")?.hidden, "You own, for the attacks");
   const field = tab.locator("[data-keep-count] input");
   const ownedNow = async () => (await api(`/api/people?op=keeps&sets=${CY_SET}&models=`, { token: who.cy.access_token })).body.sets?.[CY_SET]?.own;
-  const toastSaid = () => tab.evaluate(() => [...document.querySelectorAll(".toast, [role=status]")].map((t) => t.textContent).join(" | "));
+  // The toast's one region (web/toast.js), emptied before each try so
+  // what it says after is that try's.
+  const toastSaid = () => tab.evaluate(() => document.querySelector("body > .toast")?.textContent || "");
+  const toastClear = () => tab.evaluate(() => document.querySelector("body > .toast")?.replaceChildren());
   for (const typedIn of ["100", "-1", "x", ""]) {
+    await toastClear();
     await field.click();
     await field.press("Control+A");
     if (typedIn) await tab.keyboard.type(typedIn);
@@ -453,6 +461,7 @@ try {
   await other.keyboard.type("6");
   await otherField.press("Enter");
   await other.waitForTimeout(1200);
+  await toastClear();
   await tab.click('[data-keep-count] [data-keep-step="1"]');
   await tab.waitForTimeout(1500);
   let words = await toastSaid();
@@ -463,22 +472,31 @@ try {
   await until(other, () => document.querySelector(".keep-bar [data-keep-main]")?.getAttribute("aria-pressed") === "true", "the other tab, owned");
   await other.click(".keep-bar [data-keep-main]");
   await other.waitForTimeout(1500);
+  await toastClear();
   await tab.click('[data-keep-count] [data-keep-step="1"]');
   await tab.waitForTimeout(1500);
   words = await toastSaid();
   const hidden = await tab.evaluate(() => document.querySelector("[data-keep-count]").hidden);
   check(`taken out in the other tab: + here says "${words.slice(-80)}", You own goes (${hidden}); the account ${await ownedNow()}`,
     /you own none now/.test(words) && hidden && !(await ownedNow()));
-  // Owned again, then signed out in the middle of the page.
+  // Owned again, then signed out in the other tab while this page is
+  // open: this one hears it (web/account.js) and is drawn again signed
+  // out, the count gone, and Own asks to sign in; nothing is changed.
   await own(who.cy, CY_SET, 2);
   await tab.reload({ waitUntil: "load" });
   await until(tab, () => !document.querySelector("[data-keep-count]")?.hidden, "You own, again");
-  await tab.evaluate((name) => localStorage.removeItem(name), STORAGE_KEY);
-  await tab.click('[data-keep-count] [data-keep-step="1"]');
-  await tab.waitForTimeout(1500);
-  words = await toastSaid();
-  check(`signed out mid-page: + says "${words.slice(-80)}"; the account still ${await ownedNow()}`,
-    /Sign in/.test(words) && (await ownedNow()) === 2);
+  const reloaded = tab.waitForEvent("load", { timeout: 30000 }).catch(() => null);
+  await other.evaluate((name) => localStorage.removeItem(name), STORAGE_KEY);
+  await reloaded;
+  await until(tab, () => document.readyState === "complete" && document.querySelector(".keep-bar [data-keep-main]"), "the page signed out");
+  await tab.waitForTimeout(800);
+  const out = await tab.evaluate(() => ({ count: document.querySelector("[data-keep-count]")?.hidden !== false,
+    own: document.querySelector(".keep-bar [data-keep-main]")?.getAttribute("aria-pressed") }));
+  await tab.click(".keep-bar [data-keep-main]");
+  const asked = await tab.waitForSelector("dialog[open]", { timeout: 15000 }).then((d) => d.textContent()).catch(() => "");
+  check(`signed out in the other tab mid-page: this one drawn again with no count (${out.count}), Own not pressed (${out.own}); `
+    + `Own asks "${asked.replace(/\s+/g, " ").trim().slice(0, 70)}"; the account still ${await ownedNow()}`,
+  out.count && out.own !== "true" && /Sign in/.test(asked) && (await ownedNow()) === 2);
   await made.close();
 } catch (trouble) {
   failed += 1;
