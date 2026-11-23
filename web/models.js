@@ -581,7 +581,7 @@ export function modelsList(page) {
       const made = document.createElement("template");
       const name = button.closest(".model")?.querySelector("a.open")?.textContent || "";
       made.innerHTML = iconButtonHtml({ icon: "like", name: likeName(name), count: likes, one: "like", pressed: liked,
-        small: true, attrs: `data-like="${id}"` });
+        small: true, zero: true, attrs: `data-like="${id}"` });
       const fresh = made.content.firstElementChild;
       button.setAttribute("aria-pressed", fresh.getAttribute("aria-pressed"));
       button.setAttribute("aria-label", fresh.getAttribute("aria-label"));

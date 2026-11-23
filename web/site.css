@@ -1213,6 +1213,8 @@ dialog.keep-panel.at-foot::backdrop { background: var(--scrim); }
 .model .social .icon-btn[aria-pressed="true"] { border-color: transparent; color: var(--ink); }
 .model .social .icon-btn[aria-pressed="true"] .icon { color: var(--red); }
 .model .social .n { font-size: var(--t-small); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* None yet: a quiet 0, so a row of counts never reads as counts missing. */
+.model .social .n.zero { color: var(--ink-faint); font-weight: 400; }
 .model .social .tally { margin-left: var(--s-2); }
 /* Who shares a model somebody else modelled, under that person's name. */
 .model small.via { color: var(--ink-faint); }
@@ -2034,7 +2036,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 }
 .talk-row:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 .talk-row.pinned { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
-.talk-row-pic { align-self: start; display: block; width: 96px; height: 72px; border-radius: var(--r-2); overflow: hidden; background: var(--picture-ground); }
+.talk-row-pic { align-self: start; display: block; width: 96px; height: 72px; border-radius: var(--r-2); overflow: hidden; background: var(--picture-ground); text-decoration: none; }
 .talk-row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* A board's icon on its own tint (Talk's tiles, a row with no picture). */
 .talk-tile {
@@ -2048,6 +2050,17 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 :is(.talk-tile.b-ideas, .b-ideas > .talk-tile) { background: color-mix(in srgb, var(--yellow) 16%, var(--panel)); color: color-mix(in srgb, var(--yellow) 70%, var(--ink)); }
 :is(.talk-tile.b-challenges, .b-challenges > .talk-tile) { background: color-mix(in srgb, var(--red) 16%, var(--panel)); color: color-mix(in srgb, var(--red) 70%, var(--ink)); }
 :is(.talk-tile.b-news, .b-news > .talk-tile) { background: color-mix(in srgb, var(--ink-soft) 16%, var(--panel)); color: color-mix(in srgb, var(--ink-soft) 70%, var(--ink)); }
+/* A challenge's month while it has no picture (api/_talk.js monthTileHtml):
+   a calendar's page, its year on the band and its month under it; the band
+   red for the one open now, its tint for the ones to come or that ran. */
+.talk-tile.talk-month { display: flex; flex-direction: column; place-items: stretch; border: 1px solid color-mix(in srgb, var(--red) 30%, var(--line)); }
+.talk-month small {
+	display: block; padding: 2px 0; text-align: center; font-size: var(--t-tiny); font-weight: 700; letter-spacing: 0.08em;
+	font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--red) 26%, var(--panel)); color: var(--ink);
+}
+.talk-month.open small { background: var(--avatar-1); color: var(--on-avatar); }
+.talk-month b { display: grid; flex: 1; place-items: center; order: 1; font-size: var(--t-h2); font-weight: 700; line-height: 1; color: var(--ink); }
+.talk-month.ran b { color: var(--ink-soft); }
 .talk-row-title { margin: 0; font-size: var(--t-h3); font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
 .talk-row-title a { color: var(--ink); text-decoration: none; }
 .talk-row-title a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }

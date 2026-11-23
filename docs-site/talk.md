@@ -28,7 +28,7 @@ ui:the latest in talk on the home page
 - **Challenges**: each month's [challenge](/docs/challenges) has its own thread, started by Brickworks.
 - **News**: what is new on Brickworks. Only Brickworks starts a thread here; anybody can reply.
 
-Each thread's row shows the picture of the model it is about, or its board's icon, the faces of who started it and who replied last, and how many replies it has and when the last came. Beside the threads, **On the models** shows the newest comments under the gallery's models, each with the model's picture. The [home page](/docs/gallery#home) shows the newest threads too, under its row of models, once there are three. **Talk** is in the header beside Gallery and Challenges, in a phone's Menu and in the footer's Community.
+Each thread's row shows the picture of the model it is about, or its challenge's (its cover or its top entry), else the challenge's month, or its board's icon, the faces of who started it and who replied last, and how many replies it has and when the last came. Beside the threads, **On the models** shows the newest comments under the gallery's models, each with the model's picture. The [home page](/docs/gallery#home) shows the newest threads too, under its row of models, once there are three. **Talk** is in the header beside Gallery and Challenges, in a phone's Menu and in the footer's Community.
 
 ## Start a thread {#start}
 

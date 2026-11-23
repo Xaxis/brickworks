@@ -1794,8 +1794,8 @@ plan with Claude as the client.
   made them), before the page is drawn, and site.css
   hides it. The gallery's cards (`like: true`) end in `.social` since
   sitebold (2026-11-23): Like (`button[data-like]`), Comments
-  (`/m/<id>#comments`) and Remix (`/app?copy=<id>`), icons with a count
-  once there is one, then builds; elsewhere likes, builds and comments are
+  (`/m/<id>#comments`) and Remix (`/app?copy=<id>`), icons with a count,
+  0 as a quiet `.n.zero`, then builds; elsewhere likes, builds and comments are
   `.tally`s in `small.acts` on the designer's `.by` line. Titles 16 px at every width. `.models` is 2/3/4/5/6 a row at
   0/600/900/1200/1600 px; card pages are `.wrap.wide` (`--page-wide`
   1600 px, as the header and footer on every page). On the live gallery
@@ -3493,8 +3493,11 @@ plan with Claude as the client.
   `follow.js` owns `button[data-follow]` and is on every Talk page now, so
   the header's account shows signed in), and Talk is the header's current
   link. Since sitebold (2026-11-23): a row leads with the picture of the
-  model it is about (`a.talk-row-pic`), else its board's icon on the
-  board's colour (`.talk-tile.b-<board>`, `BOARD_ICONS`), and ends in
+  model it is about (`a.talk-row-pic`), or its challenge's
+  (`challengeCards` in api/_challenges.js: the open one's cover, winner,
+  shortlist or newest entry; one that ran by its winner), else a
+  challenge's month (`.talk-tile.talk-month.open|soon|ran`: year band,
+  month), else its board's icon on the board's colour (`.talk-tile.b-<board>`, `BOARD_ICONS`), and ends in
   `.talk-row-end`: the starter's and the last replier's avatars
   (`.talk-faces`), then the replies and when the last came, or "Be the
   first to reply"; the boards are a row of tiles (`a.talk-board-tile`, an

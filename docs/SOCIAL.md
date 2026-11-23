@@ -1577,7 +1577,8 @@ made-up members.
   News, as a row of tiles over one list, each its icon on its own colour,
   its name and its count (sitebold, 2026-11-23; tabs before), "Latest"
   being every board. A thread's row leads with the picture of the model it
-  is about, else its board's icon, and ends in the faces of who started it
+  is about, or its challenge's (its cover or top entry), else a
+  challenge's month as a calendar's page, else its board's icon, and ends in the faces of who started it
   and who replied last, the replies and when. News is the house's alone to start; anybody may reply.
 - **Threads and replies are the comments' own.** The same post markup
   (`.comment`), mentions (@handle, three a post, told only to people of

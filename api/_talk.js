@@ -54,6 +54,7 @@ import {
 import { namesTrouble } from "./_names.js";
 import { unnameable } from "./_blocks.js";
 import { withFaces } from "./_faces.js";
+import { challengeCards } from "./_challenges.js";
 import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } from "./_builds.js";
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
 import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, say } from "./_card.js";
@@ -338,6 +339,21 @@ const timeHtml = (iso, now) => {
   return Number.isFinite(at) ? `<time datetime="${new Date(at).toISOString()}">${escapeHtml(whenSaid(iso, now))}</time>` : "";
 };
 
+/// A challenge's row tile while it has no picture: its month over its
+/// year, a calendar's page, in the page's language; the one open now in
+/// red, the ones to come quieter (sitebold, 2026-11-23: the challenges'
+/// board was a column of one icon). "" without a month.
+const monthTileHtml = (challenge, now) => {
+  const from = Date.parse(`${challenge?.starts_on || ""}T00:00:00Z`);
+  if (!Number.isFinite(from)) return "";
+  const to = Date.parse(`${challenge.ends_on || ""}T23:59:59Z`);
+  const state = now < from ? "soon" : Number.isFinite(to) && now > to ? "ran" : "open";
+  const locale = globalThis.brickworksLang?.locale || "en-GB";
+  const month = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(from).replace(/\.$/, "");
+  return `<span class="talk-tile talk-month b-challenges ${state}"><b>${escapeHtml(month)}</b>`
+    + `<small>${new Date(from).getUTCFullYear()}</small></span>`;
+};
+
 /// A person's name, a link to their page when they have one.
 const whoHtml = (who) => (who && who.handle
   ? `<a href="${langAt()}/u/${encodeURIComponent(who.handle)}">${escapeHtml(who.name || who.handle)}</a>`
@@ -350,9 +366,24 @@ const modelPicture = (model) => {
   return model.has_thumb ? `/m/${model.id}.webp?v=${version.toString(36)}` : model.has_image ? `/m/${model.id}.png` : "";
 };
 
+/// The pictures of the challenges [threads] are about, as their rows show
+/// them (api/_challenges.js challengeCards): looked up once for the list,
+/// and only when it holds a challenge's thread. Put on the threads with
+/// withChallengeCards.
+const challengeCardsIn = (threads, tests) => {
+  const ids = [...new Set((threads || []).map((one) => Number(one?.challenge?.id) || 0).filter(Boolean))];
+  return ids.length ? challengeCards(ids, tests).catch(() => new Map()) : Promise.resolve(new Map());
+};
+
+/// [threads], each challenge's with its picture from [cards] as
+/// thread.challenge.card. Pure.
+const withChallengeCards = (threads, cards) => (threads || []).map((one) => (cards.has(Number(one?.challenge?.id))
+  ? { ...one, challenge: { ...one.challenge, card: cards.get(Number(one.challenge.id)) } } : one));
+
 /// One row of a list of threads, as a forum lays one out (sitebold,
-/// 2026-11-23): the picture of the model it is about (or its photo), else
-/// its board's icon on a tile; its title (a link) and first words; who
+/// 2026-11-23): the picture of the model it is about, its challenge's
+/// (thread.challenge.card, withChallengeCards) or its photo, else a
+/// challenge's month (monthTileHtml) or its board's icon on a tile; its title (a link) and first words; who
 /// started it and when; then, at the row's end, the starter's avatar with
 /// the last replier's over it, how many replied and when the last did, or
 /// an invitation to be the first; and its marks: pinned, locked, its
@@ -365,7 +396,8 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
     board ? "" : `<a class="pill" href="${at}/talk/b/${thread.board}">${asText(boardSaid(thread.board).name)}</a>`,
     thread.unread ? `<span class="pill new">${asText(say("New"))}</span>` : "",
   ].filter(Boolean).join(" ");
-  const picture = modelPicture(thread.model) || (thread.photo && PHOTO.test(thread.photo.id || "") ? `/talk/p/${thread.photo.id}.card.jpg` : "");
+  const picture = modelPicture(thread.model) || modelPicture(thread.challenge?.card)
+    || (thread.photo && PHOTO.test(thread.photo.id || "") ? `/talk/p/${thread.photo.id}.card.jpg` : "");
   const replies = Number(thread.replies) || 0;
   const href = `${at}${threadPath(thread)}`;
   const last = replies && thread.last_by ? thread.last_by : null;
@@ -378,7 +410,7 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   return `<li class="talk-row${thread.pinned ? " pinned" : ""}${picture ? "" : " no-picture"}" data-thread="${Number(thread.id)}" data-board="${thread.board}">`
     + `<a class="talk-row-pic" href="${href}" tabindex="-1" aria-hidden="true">${picture
       ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">`
-      : `<span class="talk-tile b-${thread.board}">${iconHtml(boardIcon(thread.board))}</span>`}</a>`
+      : monthTileHtml(thread.challenge, now) || `<span class="talk-tile b-${thread.board}">${iconHtml(boardIcon(thread.board))}</span>`}</a>`
     + `<div class="talk-row-main"><h3 class="talk-row-title"><a href="${href}">${escapeHtml(thread.title)}</a></h3>`
     + `${thread.said ? `<p class="talk-row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
     + `<div class="talk-row-foot"><p class="talk-row-meta">`
@@ -987,7 +1019,8 @@ export async function talkPage(request, response, { origin }) {
     return sendPage(response, 503, draw(() => talkShell(origin, { title: say("Talk · Brickworks"), about: NOT_YET, path: "/talk", lang, words,
       robots: "noindex", main: `<div class="wrap gone"><h1>${asText(say(NOT_YET))}</h1></div>` })), tests);
   }
-  const faced = await withFaces({ listed, talking });
+  const [faced, cards] = await Promise.all([withFaces({ listed, talking }), challengeCardsIn(listed.threads, tests)]);
+  faced.listed = { ...faced.listed, threads: withChallengeCards(faced.listed.threads, cards) };
   const said = boardSaid(board);
   const path = board ? `/talk/b/${board}` : "/talk";
   return sendPage(response, 200, draw(() => talkShell(origin, {
@@ -1087,10 +1120,11 @@ export async function talkLatest(request, response) {
   }
   const threads = (await withFaces({ threads: listed.threads || [] })).threads;
   if (String(query.html || "") === "1") {
+    const pictured = withChallengeCards(threads, await challengeCardsIn(threads, tests));
     const lang = langOf(query);
     const now = Date.now();
     const html = inLanguage(lang, lang === "en" ? null : siteWords(lang), () => (threads.length
-      ? `<ol class="talk-list talk-strip-list">${threads.map((one) => threadRowHtml(one, { now })).join("")}</ol>` : ""));
+      ? `<ol class="talk-list talk-strip-list">${pictured.map((one) => threadRowHtml(one, { now })).join("")}</ol>` : ""));
     return response.status(200).json({ ready: !listed.missing, count: threads.length, html });
   }
   return response.status(200).json({ ready: !listed.missing, threads });

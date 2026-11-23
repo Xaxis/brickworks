@@ -187,16 +187,21 @@ export function iconHtml(name) {
 /// its name and count its label ("Like, 12 likes"; "Like" at none). A
 /// toggle ([pressed] true or false) is aria-pressed. [labelled] shows a
 /// word for it between the two, [word] (its name unless said), which is
-/// in its label.
+/// in its label. [zero] shows a quiet 0 at none, where a row of them
+/// (the gallery card's) would read as counts missing.
 export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pressed = null, small = false, labelled = false,
-  word = name, attrs = "" }) {
+  word = name, attrs = "", zero = false }) {
   const n = Number(count) || 0;
   const said = n ? `${name}, ${counted(n, one, many)}` : name;
   return `<button type="button" class="icon-btn${small ? " small" : ""}${labelled ? " labelled" : ""}" aria-label="${escapeHtml(said)}"`
     + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
-    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}`
-    + `${n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>` : ""}</button>`;
+    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}${countHtml(n, zero)}</button>`;
 }
+
+/// An icon button's count: its number, a quiet 0 at none when [zero], else
+/// nothing. Its label says it (aria-hidden).
+const countHtml = (n, zero) => (n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>`
+  : zero ? `<span class="n zero" aria-hidden="true">${escapeHtml(number(0))}</span>` : "");
 
 /// What a person earned, as the row of pills under their numbers on their
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
@@ -623,19 +628,19 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
   // Where the page makes the like a button (the gallery's), the card ends in
   // a row of what people do with a model, as a social site's post does
   // (sitebold, 2026-11-23): Like, its comments and Remix into the studio,
-  // each with its count once there is one, then its builds; the picture
-  // carries only its marks.
+  // each with its count, a quiet 0 at none (a row of bare icons read as
+  // counts missing), then its builds; the picture carries only its marks.
   const social = like && !earned && !set && MODEL_ID.test(id);
   const tallies = earned || social ? "" : (like ? "" : tallyHtml("like", model.likes, "like"))
     + tallyHtml("build", model.builds, "built", "built") + tallyHtml("comment", model.comments, "comment");
   // The like, named with the model: twenty cards' "Like" in a row say which
   // they like.
   const liked = social ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
-    pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
+    pressed: model.liked === true, small: true, zero: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
   const doing = social ? `<div class="social">${liked}${iconLinkHtml({ icon: "comment", href: `${langAt()}/m/${id}#comments`,
-    name: say("Comments on {name}", { name: model.name }), count: model.comments, one: "comment" })}`
+    name: say("Comments on {name}", { name: model.name }), count: model.comments, one: "comment", zero: true })}`
     + `${iconLinkHtml({ icon: "remix", href: appAt(`copy=${id}`), name: say("Remix {name} in the studio", { name: model.name }),
-      count: model.remixes, one: "remix", many: "remixes", attrs: `title="${escapeHtml(say("Remix it: a copy of your own to change, in the studio"))}"` })}`
+      count: model.remixes, one: "remix", many: "remixes", zero: true, attrs: `title="${escapeHtml(say("Remix it: a copy of your own to change, in the studio"))}"` })}`
     + `${tallyHtml("build", model.builds, "built", "built")}</div>` : "";
   // Own (a set) or Save (a model) and your lists, over the picture's foot.
   const owned = catalogueSet(model);
@@ -662,10 +667,10 @@ export const modellerOf = (model) => (model && model.modelled_by && typeof model
 
 /// An icon link, an icon button's look (iconButtonHtml): its icon, then its
 /// count once there is one; its name and count its label.
-function iconLinkHtml({ icon, href, name, count = 0, one = "", many = "", attrs = "" }) {
+function iconLinkHtml({ icon, href, name, count = 0, one = "", many = "", attrs = "", zero = false }) {
   const n = Number(count) || 0;
   return `<a class="icon-btn small" href="${escapeHtml(href)}" aria-label="${escapeHtml(n ? `${name}, ${counted(n, one, many)}` : name)}"`
-    + `${attrs ? ` ${attrs}` : ""}>${iconHtml(icon)}${n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>` : ""}</a>`;
+    + `${attrs ? ` ${attrs}` : ""}>${iconHtml(icon)}${countHtml(n, zero)}</a>`;
 }
 
 // When a build was posted, as a card says it: "30 Oct 2026", as the page's

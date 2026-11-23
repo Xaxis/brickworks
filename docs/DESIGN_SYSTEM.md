@@ -199,7 +199,11 @@ a token, in `site.css`, `directory.css`, a page's own `<style>` and a
 adds a token to `:root`, and only `:root` makes one. And **a count is
 said once there is one**: never "0 likes" or "following 0" (a card, a
 model's page, a profile, your account); a count that a press can make one
-is on the page, `hidden`, for the script to show.
+is on the page, `hidden`, for the script to show. One exception: the
+gallery card's row of Like, Comments and Remix shows a quiet `0`
+(`.n.zero`, `iconButtonHtml({ zero: true })`), since three bare icons in a
+row read as counts missing (the lead, 2026-11-23); the label still says no
+0.
 
 ## Components
 
@@ -377,7 +381,8 @@ is on the page, `hidden`, for the script to show.
   as a post on a social site does (sitebold): Like (`.icon-btn.small`,
   `aria-pressed`, named with the model), Comments (to its page's
   comments) and Remix (`/app?copy=`, into the studio), each its icon and
-  its count once there is one, then its builds; the picture carries only
+  its count, 0 as a quiet 0 (`.n.zero`, faint and regular), then its
+  builds; the picture carries only
   its marks and Save. It replaced a like over the picture's corner and a
   row that held only an empty heart, a fifth of the card. In
   `.models` (a grid: two to a row on a phone, three from 600 px and four
@@ -599,7 +604,8 @@ is on the page, `hidden`, for the script to show.
   `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
-  icon once there is one. `.labelled` (`iconButtonHtml({ labelled: true })`)
+  icon once there is one (`zero: true`: a quiet 0 before, the gallery
+  card's). `.labelled` (`iconButtonHtml({ labelled: true })`)
   says a word for it too, between the icon and the count (`word`, its
   name unless said, and in its label): a model's Like and I built it
   ("Built"), which nobody reads from a glyph alone; on a phone (600 px and
