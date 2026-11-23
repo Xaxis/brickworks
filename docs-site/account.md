@@ -45,13 +45,13 @@ api:POST /api/account?op=age
 
 **Account** on the top bar opens it; a number beside the word (*Account · 3*) is what came into your feed since you last looked.
 
-![The Account panel: Signed in as you@example.com, signed in on this device until you sign out, where your models are kept, then Your AI: not connected, with Connect Claude, and Sign out and Done at its foot.](/docs/img/account-panel.webp "Account, from the top bar, with the assistant on.")
+![The Account panel: Signed in as you@example.com, signed in on this device until you sign out, where your models are kept, then Your AI: not connected, with Connect Claude, and Sign out and Close at its foot.](/docs/img/account-panel.webp "Account, from the top bar, with the assistant on.")
 
 - who is signed in, and where your models are kept: on this device and with your account, and whether the browser has agreed not to clear them;
 - with the assistant on (**Tools › Settings…**, *Assistant (AI)*), **Your AI**: the AI apps connected to your account, since when and when last used, with **Connect** (**Open in Claude** once Claude is connected) and **Disconnect**; once connected, this tab's name to say to your AI, its chats, and **New chat for this tab** ([the connector](/docs/connector#tabs)). With the assistant off, nothing here speaks of AI;
 - what is new in your feed, and **Open your feed**;
 - while the [beta](/docs/beta) is open, **Beta**: join or leave in one press;
-- **Sign out**, which signs this device out and keeps your models on it, and **Done**.
+- **Sign out**, which signs this device out and keeps your models on it, and **Close**.
 
 <!-- covers
 ui:account panel
@@ -78,7 +78,7 @@ ui:what is counted page
 
 Signed in with orangecheck, it first emails a code to the account's address: type it and press **Delete my account** again. An account made with orangecheck alone has **Sign in with orangecheck to delete** instead.
 
-It cannot be undone. Your models come out of the gallery and their links stop working; your profile, favourites, collections, comments, follows, photos, the sets you own and every AI app's connection are deleted with the account.
+It cannot be undone. Your models come out of the gallery and their links stop working; your profile, saved models, lists (public, shared by a link or private), comments, follows, photos, the sets you own and every AI app's connection are deleted with the account.
 
 <!-- covers
 lib:an account's deletion

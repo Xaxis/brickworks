@@ -228,8 +228,8 @@ try {
     return { words: link?.textContent || "", overview: Boolean(document.querySelector("#overview #collections")),
       tab: Boolean(document.querySelector('#page-tabs a[data-tab="collections"]')) };
   });
-  check(`its facts say "${pill.words}", its collections in its Overview (${pill.overview}), no tab of their own (${!pill.tab})`,
-    pill.words === "In 1 collection" && pill.overview && !pill.tab);
+  check(`its facts say "${pill.words}", its lists in its Overview (${pill.overview}), no tab of their own (${!pill.tab})`,
+    pill.words === "In 1 list" && pill.overview && !pill.tab);
   await bobPage.click('.facts a[href="#collections"]');
   await until(bobPage, () => location.hash === "#collections", "the part");
   // Until the page stops scrolling (the site scrolls smoothly to a part).

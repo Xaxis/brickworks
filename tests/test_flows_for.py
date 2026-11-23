@@ -187,7 +187,9 @@ def test_a_changed_page_names_the_flow_that_crawls_every_page() -> None:
     API route does not (2026-11-07)."""
     for path in ("web/plans.html", "web/download.html", "web/beta.js", "docs-site/plans.md"):
         assert "coming_soon" in _checks(_run(path)), (path, _run(path))
-    assert "coming_soon" not in _checks(_run("api/_parts.js"))
+    # (api/_parts.js reaches /challenge through api/people.js's pins since
+    # 2026-11-23, partpins: the 3D view's packer is one no page reaches.)
+    assert "coming_soon" not in _checks(_run("api/_lbm.js"))
     flows_for = _flows_for()
     assert flows_for.a_page("/plans") and flows_for.a_page("/") and flows_for.a_page("/docs")
     assert not flows_for.a_page("/m/") and not flows_for.a_page("/api/share") and not flows_for.a_page("/no-such-page")

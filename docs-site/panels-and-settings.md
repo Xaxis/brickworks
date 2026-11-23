@@ -1,6 +1,6 @@
 ---
 panels: ControlsDialog#settings
-ai: The window's parts (the menus with Account at the far right, the toolbar, the parts bin and its colours down the left, the model tree and properties down the right with the assistant as a tab beside them, the key strip over the model, the status bar), Properties, the keys sheet, your own keys, and every setting. Exact positions and hinge angles are typed in Properties; in_view reads the model's size and weight as the status bar says them.
+ai: The window's parts (the menus with Account at the far right, the toolbar, the parts bin and its colours down the left, the model tree and properties down the right with the assistant as a tab beside them, the key strip along the model's foot, the status bar), Properties, the keys sheet, your own keys, and every setting. Exact positions and hinge angles are typed in Properties; in_view reads the model's size and weight as the status bar says them.
 rules:
   - Settings (,) and the keys sheet (F1, Help › Keys and controls) are two dialogs; the keys sheet keeps the rows that say what is typed into its box.
   - Properties take X, Y and Z to the hundredth of an LDraw unit.
@@ -20,7 +20,7 @@ This page is a map of the window, what Properties holds, and every setting. Sett
 3. **Parts bin**, with **Make a part…**, **Print…** and **Stickers…** at its top.
 4. **Colours**, under the bin.
 5. **View cube** ([The view](/docs/the-view#view-cube)).
-6. **Key strip**: the commonest keys and mouse moves, over the model. **View › Panels › Key strip** hides it.
+6. **Key strip**: the commonest keys and mouse moves, in one row along the model's foot. Each goes once you have used it three times, and the strip with the last; **View › Panels › Key strip** hides it, or brings them all back.
 7. **Properties** and the model tree, down the right. With the assistant on, it has a tab of its own on the same strip, and one shows at a time.
 8. **Status bar**: what just happened, what a click would do now, and the model's size.
 

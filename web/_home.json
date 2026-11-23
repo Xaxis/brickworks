@@ -1,0 +1,1095 @@
+{
+ "at": "2026-11-23",
+ "answers": {
+  "/api/share?op=list&page=1&sort=top": {
+   "models": [
+    {
+     "id": "r2UCzQ7Pz3",
+     "name": "A treehouse in an old oak",
+     "author": "Brickworks",
+     "parts": 633,
+     "listed_at": "2026-10-24T09:42:06.376+00:00",
+     "kind": "town",
+     "tags": [
+      "treehouse",
+      "tree",
+      "rope bridge",
+      "minifigures",
+      "display",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 114,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 2,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/r2UCzQ7Pz3",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/r2UCzQ7Pz3.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/r2UCzQ7Pz3.webp?v=mvm7mip4"
+    },
+    {
+     "id": "57f5AAf5ax",
+     "name": "A vintage tractor and hay trailer",
+     "author": "Brickworks",
+     "parts": 182,
+     "listed_at": "2026-10-24T09:42:03.81+00:00",
+     "kind": "vehicle",
+     "tags": [
+      "tractor",
+      "farm",
+      "trailer",
+      "minifigure",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 20,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/57f5AAf5ax",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/57f5AAf5ax.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/57f5AAf5ax.webp?v=mvm7mgpu"
+    },
+    {
+     "id": "j7WaRpWsuL",
+     "name": "A red fox on a mossy log",
+     "author": "Brickworks",
+     "parts": 679,
+     "listed_at": "2026-10-24T09:42:00.549+00:00",
+     "kind": "nature",
+     "tags": [
+      "fox",
+      "animal",
+      "woodland",
+      "sculpture",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 84,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 3,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/j7WaRpWsuL",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/j7WaRpWsuL.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/j7WaRpWsuL.webp?v=mvm7me79"
+    },
+    {
+     "id": "JaU2WdrqFV",
+     "name": "A moon rover and its crew",
+     "author": "Brickworks",
+     "parts": 431,
+     "listed_at": "2026-10-24T09:41:57.972+00:00",
+     "kind": "space",
+     "tags": [
+      "rover",
+      "moon",
+      "astronaut",
+      "minifigures",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 112,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 1,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "boom",
+      "doors"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/JaU2WdrqFV",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/JaU2WdrqFV.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/JaU2WdrqFV.webp?v=mvm7mc7o"
+    },
+    {
+     "id": "ruNnGL5CWX",
+     "name": "A working windmill",
+     "author": "Brickworks",
+     "parts": 245,
+     "listed_at": "2026-10-24T09:41:55.364+00:00",
+     "kind": "mechanism",
+     "tags": [
+      "windmill",
+      "gears",
+      "crank",
+      "minifigure",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 46,
+     "own_steps": true,
+     "technic": true,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "boom",
+      "doors",
+      "gears"
+     ],
+     "motions": [
+      "Turn the crank"
+     ],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ruNnGL5CWX",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ruNnGL5CWX.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ruNnGL5CWX.webp?v=mvm7ma78"
+    },
+    {
+     "id": "3TbLHphFky",
+     "name": "A village bakery",
+     "author": "Brickworks",
+     "parts": 416,
+     "listed_at": "2026-10-24T09:41:52.956+00:00",
+     "kind": "town",
+     "tags": [
+      "bakery",
+      "shop",
+      "village",
+      "minifigures",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 118,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 1,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/3TbLHphFky",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/3TbLHphFky.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/3TbLHphFky.webp?v=mvm7m8cc"
+    },
+    {
+     "id": "rtqf6Xtpb4",
+     "name": "A friendly maintenance robot",
+     "author": "Brickworks",
+     "parts": 151,
+     "listed_at": "2026-10-24T08:41:14.674+00:00",
+     "kind": "robot",
+     "tags": [
+      "robot",
+      "tracks",
+      "poseable",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 27,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "turntable"
+     ],
+     "motions": [
+      "Look around"
+     ],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rtqf6Xtpb4",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rtqf6Xtpb4.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rtqf6Xtpb4.webp?v=mvm5g90y"
+    },
+    {
+     "id": "5gTFrkEYSd",
+     "name": "A narrow-gauge tank engine and coach",
+     "author": "Brickworks",
+     "parts": 268,
+     "listed_at": "2026-10-24T08:41:12.219+00:00",
+     "kind": "vehicle",
+     "tags": [
+      "train",
+      "steam",
+      "railway",
+      "minifigures",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 48,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/5gTFrkEYSd",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/5gTFrkEYSd.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/5gTFrkEYSd.webp?v=mvm5g74r"
+    },
+    {
+     "id": "AiBS96ET2M",
+     "name": "A pagoda in a garden",
+     "author": "Brickworks",
+     "parts": 286,
+     "listed_at": "2026-10-24T08:41:09.363+00:00",
+     "kind": "architecture",
+     "tags": [
+      "pagoda",
+      "garden",
+      "cherry blossom",
+      "architecture",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 57,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/AiBS96ET2M",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/AiBS96ET2M.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/AiBS96ET2M.webp?v=mvm5g4xf"
+    },
+    {
+     "id": "rEBYGwnXdu",
+     "name": "A little dragon asleep on its hoard",
+     "author": "Brickworks",
+     "parts": 285,
+     "listed_at": "2026-10-24T08:41:05.723+00:00",
+     "kind": "castle",
+     "tags": [
+      "dragon",
+      "treasure",
+      "fantasy",
+      "sculpture",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 51,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 2,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rEBYGwnXdu",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rEBYGwnXdu.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/rEBYGwnXdu.webp?v=mvm5g24b"
+    }
+   ]
+  },
+  "/api/share?op=list&page=1&sort=newest": {
+   "models": [
+    {
+     "id": "KNBYeCvR8K",
+     "name": "Cape Hatteras Lighthouse",
+     "author": "BrickManBill",
+     "parts": 1320,
+     "listed_at": "2026-11-23T02:51:46.746+00:00",
+     "kind": null,
+     "tags": [],
+     "licence": "cc-by-4.0",
+     "steps": 263,
+     "own_steps": false,
+     "technic": false,
+     "tested": false,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "turntable"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "brickmanbill",
+      "name": "BrickManBill"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/KNBYeCvR8K",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/KNBYeCvR8K.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/KNBYeCvR8K.webp?v=mwso6qw9"
+    },
+    {
+     "id": "XqW6brmPQs",
+     "name": "6080 King's Castle",
+     "author": "Brickworks",
+     "parts": 741,
+     "listed_at": "2026-10-27T18:16:19.818+00:00",
+     "kind": "castle",
+     "tags": [
+      "ldraw library",
+      "castle",
+      "knights",
+      "minifigures",
+      "1980s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 97,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Stefan Frenz",
+      "page": "https://library.ldraw.org/omr/sets/1034"
+     },
+     "views": 4,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/XqW6brmPQs",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/XqW6brmPQs.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/XqW6brmPQs.webp?v=mvr0bdd6"
+    },
+    {
+     "id": "CQGKA45Wdy",
+     "name": "928 Galaxy Explorer",
+     "author": "Brickworks",
+     "parts": 367,
+     "listed_at": "2026-10-27T18:16:15.004+00:00",
+     "kind": "space",
+     "tags": [
+      "ldraw library",
+      "spaceship",
+      "base",
+      "classic space",
+      "1970s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 70,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Willy Tschager",
+      "page": "https://library.ldraw.org/omr/sets/715"
+     },
+     "views": 2,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 1,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/CQGKA45Wdy",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/CQGKA45Wdy.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/CQGKA45Wdy.webp?v=mvr0b9ng"
+    },
+    {
+     "id": "RGcHLSCnQj",
+     "name": "10183 Hobby Train",
+     "author": "Brickworks",
+     "parts": 558,
+     "listed_at": "2026-10-27T18:16:10.237+00:00",
+     "kind": "vehicle",
+     "tags": [
+      "ldraw library",
+      "train",
+      "locomotive",
+      "railway",
+      "2000s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 173,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Bert Van Raemdonck",
+      "page": "https://library.ldraw.org/omr/sets/866"
+     },
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/RGcHLSCnQj",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/RGcHLSCnQj.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/RGcHLSCnQj.webp?v=mvr0b5z1"
+    },
+    {
+     "id": "4b8TcCfUFu",
+     "name": "5891 Apple Tree House",
+     "author": "Brickworks",
+     "parts": 539,
+     "listed_at": "2026-10-27T18:16:05.424+00:00",
+     "kind": "town",
+     "tags": [
+      "ldraw library",
+      "house",
+      "tree",
+      "garden",
+      "2010s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 107,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Marc Giraudet",
+      "page": "https://library.ldraw.org/omr/sets/1130"
+     },
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4b8TcCfUFu",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4b8TcCfUFu.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4b8TcCfUFu.webp?v=mvr0b29c"
+    },
+    {
+     "id": "2idJtvhBUo",
+     "name": "8862 Backhoe Grader",
+     "author": "Brickworks",
+     "parts": 656,
+     "listed_at": "2026-10-27T17:10:29.031+00:00",
+     "kind": "vehicle",
+     "tags": [
+      "ldraw library",
+      "technic",
+      "backhoe",
+      "construction",
+      "1980s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 117,
+     "own_steps": true,
+     "technic": true,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Takeshi Takahashi",
+      "page": "https://library.ldraw.org/omr/sets/1465"
+     },
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "steering",
+      "turntable",
+      "boom",
+      "gears",
+      "pneumatics"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/2idJtvhBUo",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/2idJtvhBUo.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/2idJtvhBUo.webp?v=mvqxyox3"
+    },
+    {
+     "id": "ZpvBGwuKRu",
+     "name": "21011 Brandenburg Gate",
+     "author": "Brickworks",
+     "parts": 362,
+     "listed_at": "2026-10-27T17:10:24.592+00:00",
+     "kind": "architecture",
+     "tags": [
+      "ldraw library",
+      "landmark",
+      "gate",
+      "berlin",
+      "2010s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 47,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Orion Pobursky",
+      "page": "https://library.ldraw.org/omr/sets/16"
+     },
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ZpvBGwuKRu",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ZpvBGwuKRu.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ZpvBGwuKRu.webp?v=mvqxylhs"
+    },
+    {
+     "id": "yupUhhaiTB",
+     "name": "6973 Deep Freeze Defender",
+     "author": "Brickworks",
+     "parts": 438,
+     "listed_at": "2026-10-27T17:10:20.169+00:00",
+     "kind": "space",
+     "tags": [
+      "ldraw library",
+      "ice planet",
+      "spaceship",
+      "rover",
+      "1990s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 106,
+     "own_steps": false,
+     "technic": false,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Damien Roux",
+      "page": "https://library.ldraw.org/omr/sets/271"
+     },
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "doors"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/yupUhhaiTB",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/yupUhhaiTB.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/yupUhhaiTB.webp?v=mvqxyi2x"
+    },
+    {
+     "id": "ErWZwJDho3",
+     "name": "6066 Camouflaged Outpost",
+     "author": "Brickworks",
+     "parts": 262,
+     "listed_at": "2026-10-27T17:10:15.272+00:00",
+     "kind": "castle",
+     "tags": [
+      "ldraw library",
+      "forest",
+      "hideout",
+      "minifigures",
+      "1980s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 59,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Takeshi Takahashi",
+      "page": "https://library.ldraw.org/omr/sets/1461"
+     },
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ErWZwJDho3",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ErWZwJDho3.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/ErWZwJDho3.webp?v=mvqxyeaw"
+    },
+    {
+     "id": "Y4MbnPEky9",
+     "name": "10124 Wright Flyer",
+     "author": "Brickworks",
+     "parts": 689,
+     "listed_at": "2026-10-27T17:10:10.605+00:00",
+     "kind": "vehicle",
+     "tags": [
+      "ldraw library",
+      "aeroplane",
+      "biplane",
+      "history",
+      "2000s"
+     ],
+     "licence": "cc-by-2.0",
+     "steps": 121,
+     "own_steps": true,
+     "technic": true,
+     "tested": false,
+     "made_with": null,
+     "modelled_by": {
+      "name": "Marc Giraudet",
+      "page": "https://library.ldraw.org/omr/sets/1145"
+     },
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [
+      "gears"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/Y4MbnPEky9",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/Y4MbnPEky9.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/Y4MbnPEky9.webp?v=mvqxyap9"
+    }
+   ]
+  },
+  "/api/share?op=shelves": {
+   "pick": {
+    "chosen": false,
+    "until": null,
+    "week": {
+     "builds": 0,
+     "remixes": 0,
+     "tested": true,
+     "score": 5
+    },
+    "model": {
+     "id": "4PX3GV47LW",
+     "name": "A little potted cactus",
+     "author": "Brickworks",
+     "parts": 37,
+     "listed_at": "2026-10-24T08:41:00.3+00:00",
+     "kind": "nature",
+     "tags": [
+      "cactus",
+      "plant",
+      "beginner",
+      "small build",
+      "ai-designed"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 11,
+     "own_steps": false,
+     "technic": false,
+     "tested": true,
+     "made_with": null,
+     "modelled_by": null,
+     "views": 0,
+     "likes": 0,
+     "remixes": 0,
+     "builds": 0,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "brickworks",
+      "name": "Brickworks"
+     },
+     "url": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4PX3GV47LW",
+     "image": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4PX3GV47LW.png",
+     "thumb": "https://brickworks-175qsca58-xaxis-projects.vercel.app/m/4PX3GV47LW.webp?v=mvm5fxxo"
+    },
+    "kept": "2026-11-23"
+   },
+   "challenge": {
+    "id": 108,
+    "title": "Microscale",
+    "brief": "A city, a castle on its hill, a harbour full of ships: something big, built small, where a round 1×1 plate is a tree and a tile is a road. The fewer parts it takes to read, the better.",
+    "state": "open",
+    "starts_on": "2026-11-01",
+    "ends_on": "2026-11-30",
+    "days_said": "1 November 2026 to 30 November 2026",
+    "test": false
+   }
+  },
+  "/api/people?op=challenge": {
+   "ready": true,
+   "challenge": {
+    "id": 108,
+    "title": "Microscale",
+    "brief": "A city, a castle on its hill, a harbour full of ships: something big, built small, where a round 1×1 plate is a tree and a tile is a road. The fewer parts it takes to read, the better.",
+    "starts_on": "2026-11-01",
+    "ends_on": "2026-11-30",
+    "state": "open",
+    "test": false,
+    "settled": false,
+    "rules": {
+     "most_parts": null,
+     "set": null,
+     "tested": false
+    },
+    "rules_said": [],
+    "days_said": "1 November 2026 to 30 November 2026",
+    "groups": [
+     {
+      "way": "hand",
+      "label": "Built by hand",
+      "entries": []
+     },
+     {
+      "way": "assistant",
+      "label": "Built with the assistant",
+      "entries": []
+     }
+    ],
+    "winners": [],
+    "rounds": false,
+    "entries_until": null,
+    "votes_from": null,
+    "round": null,
+    "shortlisted": false,
+    "judge": null
+   }
+  },
+  "/api/people?op=latest": {
+   "models": [],
+   "photos": [],
+   "designers": [
+    {
+     "handle": "brickworks",
+     "name": "Brickworks",
+     "score": 98,
+     "builds": 1,
+     "models": [
+      {
+       "id": "r2UCzQ7Pz3",
+       "name": "A treehouse in an old oak"
+      },
+      {
+       "id": "57f5AAf5ax",
+       "name": "A vintage tractor and hay trailer"
+      },
+      {
+       "id": "j7WaRpWsuL",
+       "name": "A red fox on a mossy log"
+      },
+      {
+       "id": "JaU2WdrqFV",
+       "name": "A moon rover and its crew"
+      },
+      {
+       "id": "ruNnGL5CWX",
+       "name": "A working windmill"
+      },
+      {
+       "id": "3TbLHphFky",
+       "name": "A village bakery"
+      },
+      {
+       "id": "rtqf6Xtpb4",
+       "name": "A friendly maintenance robot"
+      },
+      {
+       "id": "5gTFrkEYSd",
+       "name": "A narrow-gauge tank engine and coach"
+      },
+      {
+       "id": "AiBS96ET2M",
+       "name": "A pagoda in a garden"
+      },
+      {
+       "id": "rEBYGwnXdu",
+       "name": "A little dragon asleep on its hoard"
+      },
+      {
+       "id": "mQ4mK2Yfhc",
+       "name": "A lakeside campsite"
+      },
+      {
+       "id": "4PX3GV47LW",
+       "name": "A little potted cactus"
+      },
+      {
+       "id": "8eb6GRvnSV",
+       "name": "Orrery of the Sun and eight planets"
+      },
+      {
+       "id": "EzEXhtXE2C",
+       "name": "Wizard's Tower"
+      },
+      {
+       "id": "kfpYMjke5U",
+       "name": "A castle, from one sentence"
+      },
+      {
+       "id": "uoRqCfPWYJ",
+       "name": "A barn owl"
+      },
+      {
+       "id": "B6FhDpMowd",
+       "name": "A three-core heavy-lift rocket"
+      },
+      {
+       "id": "cGHqpHnEFZ",
+       "name": "A small modular corner shop"
+      },
+      {
+       "id": "o3dLMc5A3Z",
+       "name": "A sports car, and its driver"
+      },
+      {
+       "id": "CQGKA45Wdy",
+       "name": "928 Galaxy Explorer"
+      },
+      {
+       "id": "XqW6brmPQs",
+       "name": "6080 King's Castle"
+      },
+      {
+       "id": "RGcHLSCnQj",
+       "name": "10183 Hobby Train"
+      },
+      {
+       "id": "4b8TcCfUFu",
+       "name": "5891 Apple Tree House"
+      },
+      {
+       "id": "2idJtvhBUo",
+       "name": "8862 Backhoe Grader"
+      },
+      {
+       "id": "ZpvBGwuKRu",
+       "name": "21011 Brandenburg Gate"
+      },
+      {
+       "id": "yupUhhaiTB",
+       "name": "6973 Deep Freeze Defender"
+      },
+      {
+       "id": "ErWZwJDho3",
+       "name": "6066 Camouflaged Outpost"
+      },
+      {
+       "id": "Y4MbnPEky9",
+       "name": "10124 Wright Flyer"
+      },
+      {
+       "id": "4QwJMBny6o",
+       "name": "6396 International Jetport"
+      },
+      {
+       "id": "FhDqq9m72s",
+       "name": "42022 Hot Rod"
+      },
+      {
+       "id": "pzdSVhhSgW",
+       "name": "40138 Christmas Train"
+      },
+      {
+       "id": "9PyDfjvaPV",
+       "name": "6954 Renegade"
+      },
+      {
+       "id": "v3GPBRFSeU",
+       "name": "31025 Mountain Hut"
+      },
+      {
+       "id": "dJikpZoSLM",
+       "name": "6085 Black Monarch's Castle"
+      },
+      {
+       "id": "PNvC7cxJNC",
+       "name": "5521 Sea Jet"
+      },
+      {
+       "id": "RFCFXmTgLU",
+       "name": "7641 City Corner"
+      },
+      {
+       "id": "Soa3ZyivrY",
+       "name": "21016 Sungnyemun"
+      },
+      {
+       "id": "LhJWA2rFhK",
+       "name": "851 Tractor"
+      },
+      {
+       "id": "L4opmXZWHs",
+       "name": "358 Rocket Base"
+      },
+      {
+       "id": "eVP5rgkAxs",
+       "name": "346-2 House with Car"
+      },
+      {
+       "id": "KDmWrRWxCh",
+       "name": "6043 Dragon Defender"
+      },
+      {
+       "id": "Pi3bMbZdHc",
+       "name": "7815 Passenger Carriage / Sleeper"
+      },
+      {
+       "id": "TW4JVKYmPH",
+       "name": "6951 Robot Command Center"
+      },
+      {
+       "id": "gbcKbTRLUq",
+       "name": "6416 Poolside Paradise"
+      },
+      {
+       "id": "grTzeyH8px",
+       "name": "5984 Lunar Limo"
+      },
+      {
+       "id": "APossaNY7g",
+       "name": "6361 Mobile Crane"
+      },
+      {
+       "id": "pNS4DGTfCh",
+       "name": "5935 Island Hopper"
+      },
+      {
+       "id": "syu2kbZDUm",
+       "name": "6365 Summer Cottage"
+      }
+     ]
+    },
+    {
+     "handle": "brickmanbill",
+     "name": "BrickManBill",
+     "score": 0,
+     "builds": 0,
+     "models": [
+      {
+       "id": "KNBYeCvR8K",
+       "name": "Cape Hatteras Lighthouse"
+      }
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -33,6 +33,7 @@ import { deflateSync } from "node:zlib";
 import { directOf, isDirect } from "./_colours.js";
 // A sub-file's name as LDraw compares it (LdrModel._key).
 import { afterFields, keyOf, sectionKey, stemOf } from "./_subfiles.js";
+import { pinTurn } from "./_card.js";
 
 let table = null;
 
@@ -362,7 +363,13 @@ function parse(text) {
   let copyNext = 0;
   let copiesNext = new Map();
   let within = "";
+  // Where each part's line is (placesOf): its section's name as the FILE
+  // line gives it ("" for a file with none) and its line in that section,
+  // the FILE line being 0.
+  let sectionName = "";
+  let lineIn = 0;
   for (const raw of text.split("\n")) {
+    lineIn += 1;
     const line = raw.trim();
     if (inData) {
       if (line.startsWith("0 !:")) continue;
@@ -384,6 +391,8 @@ function parse(text) {
       if (keyword === "NOFILE") section = "";
       if (keyword === "FILE") {
         const name = afterFields(raw, 2);
+        sectionName = name;
+        lineIn = 0;
         currentKey = sectionKey(name, blocks);
         section = currentKey;
         sections.set(section, []);
@@ -423,7 +432,7 @@ function parse(text) {
     let part = fileOf(named.replace(/\\/g, "/").toLowerCase());
     if (part.endsWith(".dat") || part.endsWith(".ldr")) part = part.slice(0, -4);
     current.placements.push({ part, ref: keyOf(named), colour, m: numbers, copy: copyNext, copiesIn: copiesNext,
-      within });
+      within, section: sectionName, line: lineIn });
     copyNext = 0;
     copiesNext = new Map();
   }
@@ -613,7 +622,8 @@ function flatten(model, library) {
       }
       // In a frame that reflects (LdrModel._inline's mirrored): a mirrored
       // copy's part, which the app builds as its other hand.
-      out.push({ part: one.part, colour: placedIn, m: compose(at, one.m), unit, mirrored: det(at) < 0 });
+      out.push({ part: one.part, colour: placedIn, m: compose(at, one.m), unit, mirrored: det(at) < 0,
+        section: one.section ?? "", line: one.line ?? 0 });
     }
   };
   if (model.main) inline(model.main, IDENTITY, 0, new Set(), 0, "");
@@ -623,6 +633,17 @@ function flatten(model, library) {
 /// The determinant of LDraw's twelve numbers' turn.
 const det = (m) => m[3] * (m[7] * m[11] - m[8] * m[10]) - m[4] * (m[6] * m[11] - m[8] * m[9])
   + m[5] * (m[6] * m[10] - m[7] * m[9]);
+
+/// Every part [text] places, through its sub-models, as a pin knows a part
+/// (web/card.js pinOf, api/_comments.js): {part, colour, at, turn,
+/// section, line}, [at] where it stands in LDraw's coordinates (LDU), [turn]
+/// how it is turned (pinTurn), [section] and [line] the line that places it. Read without the catalogue: a
+/// sub-model is the file's own FILE of the name.
+export function placesOf(text) {
+  const model = parse(String(text).replace(/^\uFEFF/, ""));
+  return flatten(model, null).map((one) => ({ part: one.part, colour: one.colour,
+    at: [one.m[0], one.m[1], one.m[2]], turn: pinTurn(one.m.slice(3, 12)), section: one.section, line: one.line }));
+}
 
 /// The flexible items a Brickworks file lays (Flex.items_among): each copy
 /// of a sub-model whose parts are all one kind's pieces. unit -> {kind, bricks}.
@@ -1067,6 +1088,25 @@ function drawnAs(library, id, table = null) {
 /// draws is in it, through the sub-models; a part the file carries, or one
 /// nobody knows, is left out, having no geometry in the store. [of] says
 /// what it is of. Null where there is no table to pack with.
+/// Every part of the model in [text] the catalogue draws, through the
+/// sub-models, as the 3D view places it (sceneOf): {mesh, colour, hex, m},
+/// [m] its LDraw matrix (x y z, then the rows), turned as its stub turns it.
+/// What api/_flatlay.js drawModel draws a published model's picture from.
+export function placedOf(text, given = partsTable(), table = sceneTable()) {
+  if (!given || !table) return [];
+  const library = makeLibrary(given);
+  const out = [];
+  for (const one of flatten(parse(String(text).replace(/^﻿/, "")), library)) {
+    const drawn = drawnAs(library, one.part, table);
+    if (!drawn) continue;
+    const direct = isDirect(one.colour) ? directOf(one.colour) : null;
+    out.push({ mesh: drawn.info.mesh, colour: one.colour, part: drawn.part,
+      hex: direct ? direct.hex : given.colours[one.colour]?.[1] || "a0a5a9",
+      m: drawn.by ? compose(one.m, drawn.by) : one.m });
+  }
+  return out;
+}
+
 export function sceneOf(text, root, of = "", given = partsTable(), table = sceneTable(), only = null) {
   if (!given || !table) return null;
   const model = parse(String(text).replace(/^﻿/, ""));

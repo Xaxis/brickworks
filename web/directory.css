@@ -133,6 +133,12 @@
    thing, at most three. */
 .model-page ul.based-on { list-style: none; padding: 0; }
 .model-page ul.based-on li + li { margin-top: 2px; }
+/* Built from a real set, counted (altbuilds): the designer alone hears
+   what a set they named does not hold; a set's page's empty row asks for
+   the first build, its button the page's own. */
+.model-page .alt-short { color: var(--ink-soft); }
+.set-page .built-empty p { margin: 0 0 10px; }
+.set-page .built-empty p.note { color: var(--ink-soft); }
 dialog.bases-dialog { width: min(480px, calc(100vw - 32px)); }
 dialog.bases-dialog .bases-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 12px; }
 /* Each row boxed, over the report dialog's bare fieldsets (below); its
@@ -227,16 +233,16 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .shared-by .said:empty { display: none; }
 
 /* The action bar (web/model-page.js): the kit's icon buttons in a row,
-   More at its end; Save's lists open under it and push the page down. */
+   More at its end. Save is a card's split control (web/card.js keepHtml,
+   web/keep.js, lists2a): drawn here as the bar's own buttons are, on no
+   ground, with the bar's edge and height; its lists open in keep.js's
+   panel, as from any card. */
 .action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); margin: 0; }
 .action-bar .more-menu { margin-left: auto; }
 /* On a phone, one row across the column, More at its end. */
 @media (width < 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
-.save-panel {
-	margin-top: 10px; max-width: 420px; padding: 12px; border-radius: var(--r-3);
-	border: 1px solid var(--line); background: var(--panel); display: grid; gap: 8px;
-}
-.save-panel .save-head { margin: 0; font-size: var(--t-small); font-weight: 600; color: var(--ink-soft); }
+.action-bar > .keep { border-color: var(--line); background: transparent; box-shadow: none; }
+.action-bar > .keep > button { min-height: calc(var(--control-h) - 2px); }
 .marks-said { margin: 6px 0 0; }
 .marks-said:empty { display: none; }
 
@@ -291,6 +297,28 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .earlier { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
 .model-page .earlier a { color: var(--ink); }
+/* The Log (api/share.js versionsSection): every version newest first, its
+   small picture beside its date, what changed and its note; the one shown
+   edged. A picture holds its 4:3 place before it comes, so nothing moves. */
+.model-page .versions h3 { margin: 18px 0 8px; font-size: var(--t-body); }
+.model-page .earlier.log { list-style: none; padding: 0; display: grid; gap: 10px; }
+.model-page .log-entry {
+	display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; margin: 0;
+	padding: 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+.model-page .log-entry[aria-current="true"] { border-color: var(--line-strong); }
+.model-page .log-picture { display: block; aspect-ratio: 4 / 3; border-radius: var(--r-1); background: var(--panel-hi); overflow: hidden; }
+.model-page .log-picture img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.model-page .log-main p { margin: 0 0 4px; }
+.model-page .log-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink-soft); }
+.model-page .log-head > a { font-weight: 600; }
+.model-page .log-head .when { margin-left: 0; }
+.model-page .log-changed { color: var(--ink-soft); }
+.model-page .log-note q { color: var(--ink); white-space: pre-line; }
+.model-page .wip-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--ink-soft); }
+@media (max-width: 520px) {
+	.model-page .log-entry { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+}
 /* Its parts (api/share.js partsSection, web/model-page.js startParts): how
    many in how many lots, Colour or Kind and the shops' lists (a model's
    three: what LEGO® Pick a Brick leaves off said under them), then a
@@ -312,6 +340,23 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* The shops' lists, one group: it wraps as a whole beside Colour and Kind
    or under them, never one shop a row apart from the rest. */
 .parts-shops { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+/* What somebody signed in has of a model's parts (ownedparts,
+   web/model-page.js startMine): the line that says it, then All · Missing ·
+   Have all, each with how many lots; the row is kept from the start, a
+   field's height, so the list under it does not move when it is said. */
+.parts-mine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); min-height: var(--control-h);
+	margin: 0 0 var(--s-3); }
+.parts-mine .parts-have { flex: 1 1 240px; margin: 0; }
+.parts-mine .parts-have.all { font-weight: 600; }
+.parts-mine .segmented .n { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.parts-mine .segmented [aria-pressed="true"] .n { color: var(--ink); }
+/* A set page's You own − n + (ownedparts, api/_sets.js ownCountHtml), in
+   Parts you own once they own it: the number a field four digits wide
+   between − and +, and what it means beside it. */
+.owned-count .keep-count { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); }
+.owned-count label { font-weight: 600; }
+.owned-count input { width: 4.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.owned-count .note { flex: 1 1 14em; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 .lot-list { list-style: none; margin: 0 0 var(--s-3); padding: 0; }
 .lot-list li {
 	display: flex; align-items: center; gap: var(--s-3); height: 60px; min-width: 0;
@@ -370,12 +415,7 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 
 .gone { padding: clamp(56px, 10vw, 110px) 0; }
 
-/* Save's lists (model-page.js): Favourites first, then each collection,
-   and a new one's name. */
-.collect-list { display: grid; gap: 4px; max-height: 240px; overflow: auto; }
-.collect-list label { display: flex; gap: 8px; align-items: center; font-size: var(--t-small); min-height: 34px; cursor: pointer; }
-.collect-list label span { flex: 1; overflow-wrap: anywhere; }
-.collect-list small { color: var(--ink-faint); }
+/* A new list's name on your account (web/profile.js). */
 .collect-new { display: flex; gap: 6px; }
 /* A name box beside its buttons: room for ten letters, then whatever is left;
    it never pushes its row past a phone's edge. */
@@ -470,6 +510,29 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .vote-said .icon { flex: none; width: 18px; height: 18px; color: var(--green); }
 .vote-said .said { min-width: 0; overflow-wrap: anywhere; }
 #groups .why-not { margin: 0 0 var(--s-4); }
+#groups[hidden] { display: none; }
+/* Two at a time: the way to it over the cards; the pair side by side,
+   each its blind embed turning in a frame of the card's shape, its name
+   and This one under it; one above the other on a phone. */
+.pair-go { margin: 0 0 var(--s-4); }
+.pair-go[hidden], .pair[hidden] { display: none; }
+.pair-go .icon { width: 18px; height: 18px; }
+.pair-said { margin: 0 0 var(--s-4); color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+.pair-said:focus { outline: none; }
+.pair-said b { color: var(--ink); }
+.pair-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.pair-two[data-state="chosen"], .pair-two[data-state="voted"] { grid-template-columns: minmax(0, 560px); justify-content: center; }
+.pair-one { margin: 0; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line);
+	border-radius: var(--radius); overflow: hidden; background: var(--panel); }
+.pair-frame { aspect-ratio: 4 / 3; background: var(--picture-ground); }
+.pair-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.pair-words { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--s-4); }
+.pair-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pair-keep { flex: none; }
+.pair-acts { margin-top: var(--s-4); }
+@media (max-width: 640px) {
+	.pair-two { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+}
 #groups .state p { margin: 0 0 var(--s-3); }
 #groups .state p:last-child { margin: 0; }
 /* What a card says of its entry, at its foot, level across a row: the
@@ -487,11 +550,26 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* How it works: three steps, and what only some need folded under them. */
 #how .steps { margin-bottom: var(--s-5); }
 /* The next one told: a panel lit as the month's tile on the home is. */
-.next-one {
+/* This week's quick build on the hub: the next one's panel, the act in it. */
+.next-one, .week-card {
 	max-width: 760px; padding: var(--s-5) var(--s-6); border: 1px solid var(--accent-edge); border-radius: var(--r-4);
 	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
 	box-shadow: var(--highlight), var(--shadow-1);
 }
+.week-card h2 { margin: 0 0 var(--s-1); }
+.week-card h2 a { color: inherit; }
+.week-card p { margin: 0; color: var(--ink-soft); }
+.week-card .challenge-status { margin-bottom: var(--s-3); }
+.week-card .note { margin-top: var(--s-2); }
+.week-card .actions { margin-top: var(--s-4); }
+/* A quick build's cards: a tap on the picture turns the model in 3D in
+   its place (web/start3d.js), above the card's own link. */
+.turns .model .frame { position: relative; }
+.turns .model .frame > a.picture { position: relative; z-index: 2; display: block; cursor: grab; }
+.turns .model .frame > a.picture img { display: block; width: 100%; height: auto; }
+#stack .turns { max-width: 760px; grid-template-columns: 1fr; }
+#prompt-empty { display: grid; gap: var(--s-3); justify-items: start; }
+#prompt-empty[hidden] { display: none; }
 .next-one h3 { margin: 0 0 var(--s-1); }
 .next-one p { margin: 0; color: var(--ink-soft); }
 .next-one .challenge-status { margin-bottom: var(--s-3); }
@@ -666,6 +744,25 @@ dialog.bases-dialog .set-chosen[hidden] { display: none; }
 :is(.model-page, .talk-page) .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 :is(.model-page, .talk-page) .comment-new .note, .model-page .comment-why .note { margin: 0; }
 :is(.model-page, .talk-page) .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+/* A comment on a part (partpins, web/model-page.js): its number, as its
+   dot in 3D has it, and the part and step it is on, a link that turns the
+   3D view there; words alone on a part not in this version. The box on a
+   part says which over it, a pill with Cancel. Pins resolved fold away
+   under the list, a pill to open them. */
+.model-page .comment-pin { margin: 0 0 4px; display: flex; align-items: baseline; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
+.model-page .comment-pin .pin-n {
+	flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+	align-self: center;
+}
+.model-page .comment-pin.gone .pin-n { background: var(--line-strong); color: var(--ink); }
+.model-page .comment-pin .pin-go { color: var(--ink); text-align: left; }
+.model-page .comment-part { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.model-page .comment-part[hidden] { display: none; }
+.model-page .comment-part .pill.pin { color: var(--ink); border-color: var(--accent-edge); white-space: normal; }
+.model-page .comments-resolved { margin-top: 12px; }
+.model-page .comments-resolved[hidden] { display: none; }
+.model-page .comments-resolved > .comment-list { opacity: 0.85; }
 @media (width < 600px) {
 	:is(.model-page, .talk-page) .comment { gap: 10px; padding: 10px 12px; }
 	.model-page .replies { padding-left: 10px; }
@@ -765,6 +862,16 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .pic.award, .notice .pic.challenge, .notice .pic.announce, .notice .pic.talk { display: grid; place-items: center; color: var(--ink-soft); }
 .notice .pic.award .icon, .notice .pic.challenge .icon, .notice .pic.announce .icon, .notice .pic.talk .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
 .notice .what .words { display: block; margin-top: 2px; white-space: pre-line; }
+/* A group's Done and More (inbox, 2026-11-23): beside its name, at its end;
+   a finger's 44 px on a touch screen. Inbox and Done above the list. */
+.notice .notice-top { display: flex; align-items: flex-start; gap: var(--s-2); }
+.notice .notice-top h2 { flex: 1 1 auto; min-width: 0; }
+.notice .acts { display: flex; flex: none; align-items: center; gap: var(--s-1); margin: -4px -4px 0 0; }
+.notices-view { margin: 0 0 var(--s-3); }
+.notices-head .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; }
+@media (pointer: coarse) {
+	.notice .acts .icon-btn.small { min-width: 44px; min-height: 44px; }
+}
 @media (width < 600px) {
 	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
 }
@@ -1117,6 +1224,35 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .share-sheet .actions { margin-top: var(--s-4); }
 .share-sheet .share-to { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
 .share-sheet .share-to p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+/* Post it elsewhere, its designer's (web/post-kit.js): the places as the
+   networks are, and the kit for one in a dialog of its own over the sheet,
+   its pictures in a row of thumbnails, its words to copy, its rules ticked
+   (or crossed, or a dot for one the person keeps), then how to take it. */
+.share-sheet .post-kits { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.share-sheet .post-kits p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.share-sheet .post-kits p small { display: block; color: var(--ink-faint); }
+dialog.post-kit { width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.post-kit h2:focus { outline: none; }
+.post-kit h3 { margin: var(--s-4) 0 var(--s-2); font-size: var(--t-body); }
+.post-kit .kit-pictures { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: 72px; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.post-kit .kit-pictures img, .post-kit .kit-pictures video {
+	width: 100%; height: 100%; object-fit: contain; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel-hi);
+}
+.post-kit .kit-pictures video { grid-column: span 2; grid-row: span 2; }
+.post-kit .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-3); }
+.post-kit .copy-row label { flex: 1 1 16em; margin: 0; }
+.post-kit .kit-words > p { margin: 0 0 var(--s-3); color: var(--ink); }
+.post-kit .kit-rules b { font-weight: 560; }
+.post-kit .kit-rules li[data-how="fails"]::before {
+	left: 4px; top: 0.2em; width: 12px; height: 12px; border: 0; transform: none;
+	background: linear-gradient(45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%),
+		linear-gradient(-45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%);
+}
+.post-kit .kit-rules li[data-how="fails"] b { color: var(--bad); }
+.post-kit .kit-rules li[data-how="yours"]::before {
+	left: 7px; top: 0.55em; width: 6px; height: 6px; border: 0; border-radius: 50%; transform: none; background: var(--ink-faint);
+}
+.post-kit .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
 
 /* The directory of collections as wide as the gallery it is a tab of, its
    title and a line about it over the tabs. */

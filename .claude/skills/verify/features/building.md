@@ -491,7 +491,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   meant for a part landed on them. The sub-assembly banner and the offer to
   seat old parts are in a strip above the model (`Main._notices`), not over
   it. The panels that work on the model as it is seen (Build, Motions…; Tools,
-  Simulate mechanism…; Make, Hose, tube or chain…; Tools, Colour the hidden
+  Simulate mechanism…; Make, Cable, hose or chain…; Tools, Colour the hidden
   parts…; View, Stress's legend) are in one more column, beside the model's on
   its left (`Main._tool_column`), shown while any is open: opening one folds
   the parts bin and closing the last puts it back, and where nothing folds
@@ -1909,9 +1909,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   sub-model renamed to a gone one's name drops that one's looks
   (`BookletLooks.renamed`). A model nobody gave steps (an app's own file:
   `0 Author: Brickworks`, no `AUTHORED_STEPS`) is planned again after every
-  edit of what holds what, and again on open, from parts numbered in the
-  order the file's lines come: a nested drop saved and opened again showed
-  4 of its 8 parts in other steps (tdcheck; open, treerows). Probe:
+  edit of what holds what; up to stepkeep2 it was planned again on open too,
+  from parts numbered in the order the file's lines come: a nested drop saved
+  and opened again showed 4 of its 8 parts in other steps (tdcheck; open,
+  treerows). Since, an open keeps the steps the file was saved in (see
+  [view](view.md) `the author's steps`), so the counts it notes are 0. Probe:
   `unit_steps_probe` (headless; `UNIT_STEPS_ONLY=castle`, `copies`, `7140`,
   `siblings` or `own` for one; own drives a drag in the tree, Ungroup,
   Ctrl-G, Make unique, Rename, parts taken out, a paste and a delete on
@@ -3560,7 +3562,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (a brick with studs on its side) goes onto those studs: a socket on the stud
   nearest the pointer, flat on the face (`Builder._onto_side_studs`).
 - `hoses and chains by hand` (`src/ui/flex_tool.gd`, the laying itself in
-  `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel in a column
+  `src/assembly/flex.gd`): Make, Cable, hose or chain… opens a panel in a column
   beside the model's (main's `_tool_column`, Simulate's too), never over it:
   over the model's left edge it covered the left one of two gears a chain was
   to go round at 1400 x 900 (keys3). Opening it keeps the parts column beside
@@ -3599,7 +3601,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `src/ui/flex_tool.gd`, LDCad's path and spring the reference): a rubber belt
   (85543, 85545, 85546, u151) or a shock absorber picked in the bin opens the
   flexible part tool on it instead of putting it down (`Main._on_part_chosen`,
-  `FlexTool.lays_part`); a bare spring is Build, Hose, tube or chain…, Spring
+  `FlexTool.lays_part`); a bare spring is Build, Cable, hose or chain…, Spring
   or shock. A band: click the pulleys, wheels, bushes or axles it goes round in
   order (pointing lights one yellow; a groove before an axle). Each click lays
   it again: tangent runs and arcs (`Bands.loop`), each round wrapped on the

@@ -48,7 +48,7 @@ ui:working model that could not open
 
 ## Open a model {#open}
 
-![File › Open… as a menu: From a file on this computer, From the library, and Rename or delete saved models at the top; then three saved models, newest first, each with its count of bricks and when it was saved; then the examples.](/docs/img/saving-open.webp "File › Open… (Ctrl+O): your saved models, newest first, then the examples.")
+![File › Open… as a menu: From a file, From the library, and Rename or delete saved models at the top; then three saved models, newest first, each with its count of bricks and when it was saved; then the examples.](/docs/img/saving-open.webp "File › Open… (Ctrl+O): your saved models, newest first, then the examples.")
 
 **File › Open…** ([[Ctrl+O]]) lists your saved models, newest first, each with how many bricks it has and when it was saved, then the examples. Choose one to open it. **File › Open recent** has your last eight.
 
@@ -60,7 +60,7 @@ ui:open over unsaved work
 
 ## Missing and moved parts {#moved}
 
-Over the years LDraw has given some parts new numbers (3023 is now 3023b), kept others only as another part's alias, and some files name parts it has no file for at all. Moved and alias parts are drawn as the part they point to already, so such a file opens as it always did, and a bar over the model says how many: **12 parts have new numbers in the LDraw library**.
+Over the years LDraw has given some parts new numbers (3023 is now 3023b), kept others only as another part's alias, and some files name parts it has no file for at all. Moved and alias parts are drawn as the part they point to already, so such a file opens as it always did, and when it is a file of your own a bar over the model says how many, once for that file: **12 parts have new numbers in the LDraw library**. A set opened from the **Library**, the examples, and a Studio or LDD file open as they are, with no bar.
 
 **Update all** writes the new numbers into the file, in the model and in every sub-model at once, as one change: **Edit › Undo** puts the file back just as it was, and what you did before it stays undoable below it. A part whose new number sits it differently keeps its place, its line's position and turn worked out for it, and one the library now gives a fixed colour is written in that colour. A sub-model or a part the file carries itself keeps its name, even when it has a moved part's number. **Keep as is** closes the bar and leaves the file alone.
 
@@ -120,7 +120,7 @@ lib:model diff
 
 ## Keep a copy of everything {#backup}
 
-**File › Export › All my models (.zip)** downloads every model saved here as LDraw files in one .zip: a copy of your own to keep anywhere. Versions and unsaved work are not in it. To bring a model back, unzip it and open its .ldr with **File › Open… › From a file on this computer**.
+**File › Export › All my models (.zip)** downloads every model saved here as LDraw files in one .zip: a copy of your own to keep anywhere. Versions and unsaved work are not in it. To bring a model back, unzip it and open its .ldr with **File › Open… › From a file**.
 
 ## The library {#library}
 
@@ -132,7 +132,7 @@ ui:library
 
 ## Put one model into another {#into}
 
-**File › Import › Into this model…** lists your saved models and the examples, with **From a file on this computer…** and **From the library…** at the top. Choose one and it comes into your hand whole, as one sub-assembly; click where it goes. In the library, a card's **Put in this model** does the same with a real set or a model someone shared, when its licence lets it be built on.
+**File › Import › Into this model…** lists your saved models and the examples, with **From a file…** and **From the library…** at the top. Choose one and it comes into your hand whole, as one sub-assembly; click where it goes. In the library, a card's **Put in this model** does the same with a real set or a model someone shared, when its licence lets it be built on.
 
 Everything in it comes with it: its sub-assemblies, its author's build steps, parts Brickworks cannot draw (kept in the file, in their sub-assembly and step), its lights and saved views as its sub-assembly's own, and its maker, written in its sub-assembly's header. Its motions are kept in its sub-assembly as its file had them, and the bar says they play only where it is the model itself, not inside yours. A sub-assembly or file named like one of yours is given a name of its own ("Roof 2"), and the bar says so. One **Undo** takes all of it out. Your model keeps every line of its own file; when it is someone else's file with no build steps, its parts stay in its one step and the model you put in keeps its own steps inside its sub-assembly, and once you take the last model you put in back out, the file is just as it was.
 
@@ -144,7 +144,7 @@ ui:put a model into this one
 
 ## Bring in a file from another program {#formats}
 
-**File › Import** reads these, and **File › Open… › From a file on this computer** reads the first three:
+**File › Import** reads these, and **File › Open… › From a file** reads the first three:
 
 | File | Choose |
 |---|---|
@@ -154,6 +154,8 @@ ui:put a model into this one
 | 3D models: OBJ, STL, PLY, 3MF, VOX, FBX, glTF, GLB | **3D model to brickify**, which builds it in bricks: see [Brickify](/docs/art-and-brickify#brickify). |
 
 A model from Studio, LDCad or LeoCAD keeps its author's own build steps: see [Instructions](/docs/instructions#authors-steps). What Brickworks writes is in [Exports](/docs/exports).
+
+Saved back, an LDraw file keeps what it carried. Opened and saved unchanged, it is written byte for byte as it was. Changed (a part added, moved, swapped, recoloured, grouped, laid or pasted, or its steps planned), each sub-model stays in its own `0 FILE` section, in the place its file gave it, unless its parts are built a few at a time across the model's own steps: then they are written in those steps, so every LDraw program builds them in the same steps as Brickworks. A sub-model the file itself placed so (`0 !BRICKWORKS BUILT`) stays in its section as the file had it. Its comments and the lines Brickworks does not read stay beside the parts they were next to, a picture laid on parts (`TEXMAP`) stays round those parts, every picture the file carries (`0 !DATA`) stays in it, and LPub's multi-step blocks stay round their steps. A line that says what the next part is (a `TEXMAP NEXT`, `BFC INVERTNEXT` or LDCad group line) goes when that part is taken off.
 
 <!-- covers
 lib:ldr read and write

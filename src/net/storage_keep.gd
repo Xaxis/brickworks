@@ -132,8 +132,15 @@ static func words() -> String:
 
 ## The warning, once (StorageOffer): what to say, or "" when there is
 ## nothing to warn of.
+##
+## Not while the account is still being asked ("looking"): that is the first
+## seconds after signing in, and the warning said "Your account has not been
+## reached yet" over a set just opened from the library, twice the height of
+## the strip beside it on a phone, when a moment later the account had every
+## model (ux12, the fan's walk). Seen once, it is never shown again, so the
+## warning waits for the account's answer and is said only if it still holds.
 static func warning() -> String:
-	if not at_risk():
+	if not at_risk() or _account() == "looking":
 		return ""
 	var why: String = ("Safari deletes a site's data after seven days without a visit"
 		if bool(state()["safari"])
@@ -152,7 +159,7 @@ static func warning() -> String:
 		"offline":
 			return ("You are offline, so a model saved now is kept only in this browser until you "
 				+ "are back online, and %s. %s." % [why, mine])
-		"looking", "away":
+		"away":
 			return ("Your account has not been reached yet, so a model it does not have is kept "
 				+ "only in this browser until it is, and %s. %s." % [why, mine])
 	return ("Your models are kept in this browser, and %s. Your account keeps no copy of a "

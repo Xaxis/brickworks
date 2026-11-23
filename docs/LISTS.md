@@ -217,17 +217,42 @@ Proof: `tools/web/lists_flow.mjs` (preview check `[lists]`).
 1. **Model pages' Save uses the panel**: the model page's own Save panel
    (`web/model-page.js` `#save-panel`) becomes `keep.js`'s, Favourites
    named Saved everywhere (the tested model page markup moves with it).
+   *Done in lists2a (2026-11-23):* the action bar draws `web/card.js`
+   `keepHtml` for the model, one `.keep` with Save and its arrow, so a
+   model page and a card open one `dialog.keep-panel` by one request path
+   (`op=keeps`, `POST op=keep`); `#save-panel` and its own code are gone.
 2. **Rename Collections to Lists** on the site (`/collections`, the
    gallery tab, the profile tab, docs), with `/collections` redirecting.
+   *Done in lists2a:* the gallery's tab is `/gallery-lists` (`/lists` is
+   Your lists); `/collections` in each form and language is a 301 to it
+   with its query (`api/people.js` op=moved), `?tab=collections` on a
+   profile opens Lists, `/docs/collections` is a 308 to `/docs/lists`.
+   `collections_flow` crawls the site's and the docs' links for any left.
+   The tables and the API's names (`model_collections`, `op=collections`,
+   `/c/<id>`) keep theirs.
 3. **Link-only lists**: a third visibility, shared by a link that can be
    revoked, never on the profile or in the directory (Steam 2026); the
    wishlist's default when shared.
+   *Done in lists2a:* `supabase/lists_link.sql` (additive: a `link` key
+   and `link_at` on `model_collections`, a guard trigger that clears the
+   key on a public or taken-down list; applied by the lead). Who sees it:
+   Only you, Anyone with the link, Public, chosen in Edit or in Share's
+   question; `/c/<id>?link=<key>` opens it, `no-store` and `noindex`;
+   Stop sharing (or a new key) makes the old link a 404 on the next
+   request. Every reader that lists lists treats it as private.
 4. **I've built it**, with a build photo, as a state of a model (the
    model's page then counts real builds).
 5. **"In N lists"** on a set's page, and public lists with a set on it,
    as a model's page has.
 6. **Import preview**: matched, not found and already there before
    anything is written.
+   *Done in lists2a:* Add sets reads the file or the numbers, then shows
+   to add, already there and not found (for the sets you own, sets gone
+   from the catalogue, loose part lots and wanted parts too), from
+   `op=import_preview` or `/api/collection` `preview: true`, nothing
+   written; Add brings in only what it showed; Cancel and Back write
+   nothing. `tests/test_lists_import.py` holds the counts to three real
+   files.
 7. **Lists in the feed**: a set put in a followed list, as models are.
 8. **Owned quantity and "can I build it" on profile and gallery cards**,
    from the parts the owned sets hold (`build with what I own`).

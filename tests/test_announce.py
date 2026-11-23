@@ -172,8 +172,10 @@ def test_the_console_never_cuts_and_never_sends_twice() -> None:
 def test_settings_offers_news_off_by_default() -> None:
     html = (ROOT / "web/settings.html").read_text()
     js = (ROOT / "web/settings.js").read_text()
-    assert '<input type="checkbox" id="mail-news">' in html and 'id="news-choice" hidden' in html
-    assert '$("news-choice").hidden = !(news && news.ready);' in js
+    # In Settings › Notifications' grid, the news row's email box (inbox,
+    # 2026-11-23): off and not to be ticked until the account says it is open.
+    assert re.search(r'<input type="checkbox" data-channel="email" id="mail-news" [^>]*disabled>', html)
+    assert '$("mail-news").disabled = ocOnly || !(news && news.ready);' in js
     assert 'call("/api/people?op=news"' in js and "op=news_unsubscribe" in js
 
 

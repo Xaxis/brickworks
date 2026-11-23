@@ -1,7 +1,9 @@
 // Own, want, save and your lists, one tap from anywhere a set or a model is
 // shown (lists1, 2026-11-13, docs/LISTS.md): every [data-keep] on the page,
-// a card's split button (web/card.js keepHtml) or a set page's bar
-// (api/_sets.js), whatever draws it and whenever (a page of cards drawn
+// a card's split button (web/card.js keepHtml), a model page's Save (the
+// same button in its action bar, api/share.js actionBar: one panel and one
+// request path for a model wherever it is saved, lists2a) or a set page's
+// bar (api/_sets.js), whatever draws it and whenever (a page of cards drawn
 // later is seen as it arrives).
 //
 //   [data-keep-main]  Own a set (one copy; again: none) or Save a model,
@@ -11,6 +13,9 @@
 //   [data-keep-more]  the lists: a panel of boxes, I own (and how many),
 //                     I want, Saved, each list of yours, and a new one
 //                     made there; each box saved as it is ticked
+//   [data-keep-count] a set page's You own − n + (ownedparts), shown once
+//                     they own it: how many, 1 to 99, typed or stepped,
+//                     0 taking it out, each with a toast that can undo it
 //
 // Every page draws them the same for everybody (a CDN keeps the pages), so
 // what the person has is asked here, a page's worth at once
@@ -23,7 +28,7 @@
 // typed goes on the page as text, never markup.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { told } from "/card.js";
-import { iconHtml, say, toast } from "/kit.js";
+import { iconHtml, number, say, toast } from "/kit.js";
 
 // What the person has of each item asked: "set:10497-1" -> {own, sure,
 // wanted, saved, lists: Set of list ids}. own is what is shown, sure what
@@ -47,6 +52,8 @@ const asking = new Map();
 const chains = new Map();
 
 const KEY = /^(set:[a-z0-9][a-z0-9._]{0,24}-[0-9]{1,3}|model:[A-Za-z0-9]{10})$/;
+// The most copies of a set kept by hand (api/collection.js MOST_OWNED).
+const MOST_OWNED = 99;
 const isSet = (key) => key.startsWith("set:");
 const blank = () => ({ own: 0, sure: 0, wanted: false, saved: false, lists: new Set() });
 
@@ -166,6 +173,21 @@ function paint(holder) {
       n.textContent = set && one.own > 1 ? `×${one.own}` : "";
     }
   }
+  // How many they own, to change in place, while they own one; a number
+  // being typed is left as it is.
+  const count = holder.querySelector("[data-keep-count]");
+  if (count && set) {
+    count.hidden = !(one.own > 0);
+    const field = count.querySelector("input");
+    if (field && document.activeElement !== field) {
+      field.value = String(one.own);
+      field.removeAttribute("aria-invalid");
+    }
+    const fewer = count.querySelector('[data-keep-step="-1"]');
+    const more = count.querySelector('[data-keep-step="1"]');
+    if (more) more.disabled = one.own >= MOST_OWNED;
+    if (fewer) fewer.disabled = one.own < 1;
+  }
   const want = holder.querySelector("[data-keep-want]");
   if (want) want.setAttribute("aria-pressed", String(one.wanted));
   const more = holder.querySelector("[data-keep-more]");
@@ -220,6 +242,8 @@ function own(key, qty) {
       // A later tap still on its way keeps what it shows.
       if (one.own === qty) one.own = one.sure;
       paintAll(key);
+      // For what the page says of it (a set page's Parts you own).
+      dispatchEvent(new CustomEvent("brickworks:owned", { detail: { key, owned: one.sure } }));
       return true;
     }
     if (answer.status === 409 && Number.isInteger(answer.body?.owned)) {
@@ -362,6 +386,66 @@ async function pressWant(holder) {
   toast(on ? say("On your wishlist.") : say("Off your wishlist."), undoing(() => keepIn(key, "want", !on)));
 }
 
+/// A set page's You own: how many, [qty], once it is a whole number from
+/// 0 to MOST_OWNED; anything else refused in words and the count put back.
+/// 0 takes it out of the sets they own. Said in a toast with Undo, which
+/// puts back the count it was.
+async function ownCount(holder, qty) {
+  const key = holder.dataset.keep;
+  const field = holder.querySelector("[data-keep-count] input");
+  // Known whenever the count is shown: read at once, so a second event for
+  // the same number (Enter, then leaving the field) finds it so already.
+  const one = known.get(key) || (await knownOf(key)) || blank();
+  if (!Number.isInteger(qty) || qty < 0 || qty > MOST_OWNED) {
+    if (field) {
+      field.value = String(one.own);
+      field.setAttribute("aria-invalid", "true");
+    }
+    toast(Number.isInteger(qty) && qty > MOST_OWNED
+      ? say("You can own up to {most} copies of a set here.", { most: MOST_OWNED })
+      : say("Type how many you own, a whole number from 1 to {most}, or 0 to take it out.", { most: MOST_OWNED }));
+    return;
+  }
+  field?.removeAttribute("aria-invalid");
+  if (qty === one.own) return;
+  const was = one.own;
+  const name = nameOf(holder);
+  const inside = holder.querySelector("[data-keep-count]")?.contains(document.activeElement);
+  const done = await own(key, qty);
+  // What it is now, in the field too while the keyboard is in it (refused,
+  // or changed on another device).
+  if (field) field.value = String(one.own);
+  if (!done) return;
+  // Taken out, the count goes: the keyboard goes to Own.
+  if (!qty && inside) holder.querySelector("[data-keep-main]")?.focus();
+  toast(qty ? say("You own {n}.", { n: number(qty) })
+    : (name ? say("{name} is out of the sets you own.", { name }) : say("It is out of the sets you own.")),
+  undoing(() => own(key, was)));
+}
+
+/// What is typed in You own, as a number: NaN for anything that is not
+/// digits alone (a sign, a point, a letter, nothing).
+function typed(field) {
+  const text = String(field.value || "").trim();
+  return field.validity?.badInput || !/^[0-9]{1,6}$/.test(text) ? NaN : Number(text);
+}
+
+document.addEventListener("keydown", (event) => {
+  const field = event.target.closest?.("[data-keep-count] input");
+  const holder = field?.closest("[data-keep]");
+  if (!holder || event.key !== "Enter") return;
+  event.preventDefault();
+  ownCount(holder, typed(field));
+});
+// Left with another number in it (Tab, a click away, a phone's Done), or a
+// browser's own arrows: the same, and never twice for one number (ownCount
+// leaves a count that is already so).
+document.addEventListener("change", (event) => {
+  const field = event.target.closest?.("[data-keep-count] input");
+  const holder = field?.closest("[data-keep]");
+  if (holder) ownCount(holder, typed(field));
+});
+
 // ---------------------------------------------------------------------------
 // The panel of lists: a dialog over the page, beside the button on a wide
 // screen and a sheet from the foot on a phone.
@@ -418,7 +502,7 @@ function panel(holder, button) {
   const shown = make("label", "choice");
   const publicBox = make("input");
   publicBox.type = "checkbox";
-  shown.append(publicBox, make("span", "", say("Public: on your profile and in the gallery's lists")));
+  shown.append(publicBox, make("span", "", say("Public: on your profile and in the gallery’s Lists")));
   const makeIt = make("button", "cta small", say("Make it"));
   makeIt.type = "submit";
   const cancel = make("button", "cta ghost small", say("Cancel"));
@@ -483,7 +567,8 @@ function panel(holder, button) {
     }
     mine.replaceChildren();
     for (const list of lists) {
-      const note = list.down ? say("taken down") : list.public ? say("public") : say("only you");
+      const note = list.down ? say("taken down") : list.public ? say("public") : list.visibility === "link" ? say("by its link")
+        : say("only you");
       mine.append(row(list.name, note, one.lists.has(list.id), (box) => {
         keepIn(key, list.id, box.checked).then((done) => {
           if (done) tell(box.checked ? say("In {list}.", { list: list.name }) : say("Out of {list}.", { list: list.name }));
@@ -519,7 +604,11 @@ function panel(holder, button) {
     });
     more.addEventListener("click", (event) => {
       event.preventDefault();
-      own(key, Math.min(999, one.own + 1)).then((done) => { if (done) tell(say("You own {n}.", { n: one.own })); });
+      if (one.own >= MOST_OWNED) {
+        tell(say("You can own up to {most} copies of a set here.", { most: MOST_OWNED }));
+        return;
+      }
+      own(key, one.own + 1).then((done) => { if (done) tell(say("You own {n}.", { n: one.own })); });
     });
     box.append(fewer, n, more);
     return box;
@@ -635,14 +724,17 @@ function langPrefix() {
 // ---------------------------------------------------------------------------
 
 document.addEventListener("click", (event) => {
-  const button = event.target.closest?.("[data-keep-main], [data-keep-want], [data-keep-more]");
+  const button = event.target.closest?.("[data-keep-main], [data-keep-want], [data-keep-more], [data-keep-step]");
   const holder = button?.closest("[data-keep]");
   if (!holder || !KEY.test(holder.dataset.keep || "")) return;
   event.preventDefault();
   event.stopPropagation();
   if (button.matches("[data-keep-main]")) pressMain(holder);
   else if (button.matches("[data-keep-want]")) pressWant(holder);
-  else pressMore(holder, button);
+  else if (button.matches("[data-keep-step]")) {
+    const one = known.get(holder.dataset.keep);
+    if (one) ownCount(holder, one.own + Number(button.dataset.keepStep));
+  } else pressMore(holder, button);
 });
 
 see();

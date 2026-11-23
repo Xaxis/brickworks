@@ -441,9 +441,72 @@ $("challenge-form").addEventListener("change", previewSet);
 $("year-form").addEventListener("input", previewYear);
 $("year-form").addEventListener("change", previewYear);
 
+/// The weekly quick builds (supabase/challenge_prompts.sql), under the
+/// month's in the same list, each with its entries, its template and its
+/// stack, and End it now on one not ended.
+function drawPrompts(list) {
+  const rows = $("challenges");
+  for (const old of rows.querySelectorAll("tr[data-prompt]")) old.remove();
+  for (const one of list || []) {
+    const row = make("tr");
+    row.dataset.prompt = String(one.id);
+    row.dataset.state = one.state;
+    const title = make("td", "about");
+    title.append(toPage(`/challenge?id=${one.id}${one.test ? "&tests=1" : ""}`, one.title), " (a quick build",
+      one.test ? ", a test's)" : ")");
+    row.append(title);
+    cell(row, `${dayOf(one.starts_on)} to ${dayOf(one.ends_on)}`);
+    const made = make("td", "about");
+    made.append(one.template ? toPage(`/m/${encodeURIComponent(one.template)}`, "template") : "template within the hour");
+    if (one.stack) made.append(", ", toPage(`/m/${encodeURIComponent(one.stack)}`, "the stack"));
+    row.append(made);
+    cell(row, one.state === "open" ? "open" : one.state === "upcoming" ? "to come" : "ended");
+    const entries = Number(one.entries) || 0;
+    cell(row, entries ? `${entries} in, by ${Number(one.makers) || 0}` : "—", entries ? "n" : "n faint");
+    cell(row, "no vote", "faint");
+    cell(row, "—", "faint");
+    const acts = make("td", "acts");
+    if (one.state !== "ended") {
+      const end = make("button", "cta ghost small", "End it now");
+      end.type = "button";
+      end.addEventListener("click", async () => {
+        end.disabled = true;
+        try {
+          await adminJson({ op: "end_challenge" }, { method: "POST", body: { challenge: one.id } });
+          await again();
+        } catch (problem) {
+          say("challenges-note", problem.message, true);
+          end.disabled = false;
+        }
+      });
+      acts.append(end);
+    }
+    row.append(acts);
+    rows.append(row);
+  }
+  siftChallenges();
+}
+
+/// The form as its kind asks: a quick build has a template and no rules.
+function kindShown() {
+  const form = $("challenge-form");
+  const prompt = form.elements.kind?.value === "prompt";
+  form.querySelector("fieldset.rules").hidden = prompt;
+  for (const one of form.querySelectorAll(".prompt-only")) one.hidden = !prompt;
+  form.querySelector('button[type="submit"]').textContent = prompt ? "Set the quick build" : "Set it";
+  if (prompt) {
+    const first = dateOf(form, "starts_on");
+    if (first) setDate(form, "ends_on", new Date(Date.parse(`${first}T00:00:00Z`) + 6 * 86400000));
+  }
+}
+$("challenge-form").addEventListener("change", (event) => {
+  if (event.target.name === "kind" || (event.target.name || "").startsWith("starts_on")) kindShown();
+});
+
 onReport((data) => {
   drawNow(data.challenges);
   drawChallenges(data.challenges);
+  drawPrompts(data.prompts);
   drawYear(data.challenges, data.year === true);
   previewSet();
   previewYear();
@@ -619,17 +682,23 @@ $("challenge-form").addEventListener("submit", async (event) => {
     const most = new Date(Date.UTC(Number(form.elements[`${missing}_year`].value), month, 0)).getUTCDate();
     return say("challenge-note", `The ${words} is not on the calendar: ${MONTHS[month - 1]} has ${most} days.`, true);
   }
-  const body = { title: form.elements.title.value, brief: form.elements.brief.value, ...days, tested: form.tested.checked };
-  if (form.has_most.checked) body.most_parts = Number(form.most_parts.value);
-  if (form.has_set.checked) body.set_number = form.set_number.value;
+  const prompt = form.elements.kind?.value === "prompt";
+  const body = prompt
+    ? { kind: "prompt", title: form.elements.title.value, brief: form.elements.brief.value, ...days,
+      template: form.elements.template.value.trim() || null }
+    : { title: form.elements.title.value, brief: form.elements.brief.value, ...days, tested: form.tested.checked };
+  if (!prompt && form.has_most.checked) body.most_parts = Number(form.most_parts.value);
+  if (!prompt && form.has_set.checked) body.set_number = form.set_number.value;
   send.disabled = true;
   try {
     const said = await adminJson({ op: "challenge" }, { method: "POST", body });
     form.reset();
     datesFirst();
+    kindShown();
     await again();
     say("challenge-note", `Set, from ${dayOf(said.starts_on)} to ${dayOf(said.ends_on)}${said.set
-      ? `, with set ${said.set.number} (${said.set.name}, ${said.set.lots} lots)` : ""}.`);
+      ? `, with set ${said.set.number} (${said.set.name}, ${said.set.lots} lots)` : ""}${said.kind === "prompt"
+      ? `: a quick build, ${said.template ? "its template that model" : "the house's plate its template within the hour"}` : ""}.`);
   } catch (problem) {
     say("challenge-note", problem.message, true);
   } finally {

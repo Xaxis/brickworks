@@ -104,10 +104,13 @@ export function bypassCookie(context, headers) {
     }
     return asked.get(origin);
   };
-  context.on("page", (page) => {
+  const wrap = (page) => {
     const goto = page.goto.bind(page);
     page.goto = async (url, options) => { await ask(url); return goto(url, options); };
-  });
+  };
+  // A persistent context opens with its first page already there.
+  for (const page of context.pages()) wrap(page);
+  context.on("page", wrap);
   return context;
 }
 

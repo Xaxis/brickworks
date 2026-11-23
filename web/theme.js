@@ -51,14 +51,14 @@
   });
 })();
 
-// The language a person reads the site in (2026-11-01): English, German,
+// The language a person reads the site in: English, German,
 // French or Spanish, the app's four (src/ui/language.gd). The one they
 // chose (the footer's Language, or the app's Settings, which keeps it here
 // too), else the first of their browser's languages the site has (as its
 // Accept-Language says them), else English. An English page with a copy
-// in that language (tools/site_lang.py: the landing page and the download
-// page, at /de, /de/download...) gives way to it before it is drawn; a copy
-// reached by its own address stays itself unless another was chosen. Every
+// in that language (tools/site_lang.py, at /de/...) gives way to it before
+// it is drawn; a copy reached by its own address stays itself unless
+// another was chosen. Every
 // link into the app carries the language (/app?lang=de), so a German
 // visitor opens a German app. And a page's scripts say their words in the
 // page's language: window.brickworksLang.say, from the words
@@ -153,15 +153,25 @@
   });
 })();
 
-// The beta (betahome, 2026-11-09): while it is open, a bar at the foot of
-// every page (web/betabar.js) with Report a bug and Join, and the landing
-// page's Open beta. What the site last heard of it is kept in this browser
-// ("brickworks.beta", betabar.js writes it): open in the last day,
-// <html data-beta="open"> is set here, before anything is drawn, so a part
-// held for it is in its place at the first frame; off in the last ten
-// minutes, the bar's script is not even asked for. Never on an embed's
-// card (someone else's page) or the connector's consent page, which
-// Claude opens.
+// Signed in here (homefeed): a kept sign-in ("brickworks.session") marks
+// <html data-signed="in"> before the first frame, so the home's feed drawn
+// for them moves nothing. Who, and whether it holds, are account.js's.
+(() => {
+  try {
+    const kept = JSON.parse(localStorage.getItem("brickworks.session") || "null");
+    if (kept && kept.refresh_token) document.documentElement.dataset.signed = "in";
+  } catch {
+    // Nothing kept, or storage refused: signed out.
+  }
+})();
+
+// The beta (betahome): while open, a bar at every page's foot (betabar.js)
+// with Report a bug and Join, and the landing page's Open beta. What the
+// site last said of it is kept here ("brickworks.beta"): open in the last
+// day, <html data-beta="open"> is set before anything is drawn, so what is
+// held for it is in place at the first frame; off in the last ten minutes,
+// the bar's script is not asked for. Never on an embed's card or the
+// connector's consent page.
 (() => {
   const root = document.documentElement;
   if (root.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;

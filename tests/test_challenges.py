@@ -75,7 +75,7 @@ def test_it_replaces_only_the_feed_which_keeps_every_row_it_had() -> None:
     others = {
         name
         for path in (ROOT / "supabase").glob("*.sql")
-        if path.name not in ("challenges.sql", "challenge_year.sql", "challenge_list_order.sql")
+        if path.name not in ("challenges.sql", "challenge_year.sql", "challenge_list_order.sql", "challenge_prompts.sql")
         for name in defined(path.read_text())
     }
     mine = defined(SQL)
@@ -166,7 +166,8 @@ def test_the_stand_in_answers_what_the_api_asks() -> None:
     assert asked <= held | unheld, asked - held - unheld
     rounds = set(defined((ROOT / "supabase/challenge_rounds.sql").read_text()))
     assert unheld <= rounds and not unheld & held, (unheld - rounds, unheld & held)
-    both = set(defined(SQL)) | set(defined((ROOT / "supabase/challenge_year.sql").read_text())) | rounds
+    both = set(defined(SQL)) | set(defined((ROOT / "supabase/challenge_year.sql").read_text())) | rounds \
+        | set(defined((ROOT / "supabase/challenge_studio.sql").read_text()))
     assert asked <= both, asked - both
 
 

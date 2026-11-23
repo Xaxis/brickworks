@@ -22,7 +22,7 @@
 //     nothing behind the model (/m/<id>.cutout.png, the picture itself for
 //     a model published before) on the theme's own ground, as a card's
 //     picture is: no light box in the dark;
-//   the tabs, Models · Collections · Builds, one shown, each with its count
+//   the tabs, Models · Lists · Builds, one shown, each with its count
 //     once there is one, and what goes there said when it has nothing;
 //   every model reached: a person with 60 has three pages, Show more
 //     brings each (web/pager.js), and with no script each is a page of its
@@ -182,7 +182,7 @@ function headHolds(said, label, { name, handle, phone, pictured = false, likes =
     zeros.length === 0);
   check(`${label}: tabs ${said.tabs.map((one) => `${one.tab}${one.n ? ` ${one.n}` : ""}${one.current ? "*" : ""}`).join(" · ")}`,
     // Likes too where they chose to show them (Robin, here: supabase/avatars.sql).
-    said.tabs.map((one) => one.tab).join(",") === `models,collections,builds${likes ? ",likes" : ""}`
+    said.tabs.map((one) => one.tab).join(",") === `models,lists,builds${likes ? ",likes" : ""}`
     && said.tabs.filter((one) => one.current).length === 1
       && said.tabs.every((one) => one.n !== "0"));
   check(`${label}: every link https and ugc nofollow`, said.links.every((one) => /^https:\/\//.test(one.href)
@@ -320,13 +320,13 @@ async function local() {
         && said.tabs.find((one) => one.current)?.tab === "builds" && said.builds === Number(said.tabs.find((one) => one.tab === "builds")?.n) && said.builds > 0 && loaded);
       check(`builds ${width} ${theme}: nothing sideways`, !said.sideways);
       await shot(page, `robin-builds_${width}_${theme}.png`);
-      await page.click('.profile .tabs a[data-tab="collections"]');
+      await page.click('.profile .tabs a[data-tab="lists"]');
       await page.waitForLoadState("load");
       said = await drawn(page);
-      check(`collections ${width} ${theme}: ${said.lists.map((one) => `"${one.name}" (${one.pictures} pictures)`).join(", ")}`,
-        said.panel === "collections" && said.lists.length === 2 && said.lists[0].pictures === 3 && said.lists[1].pictures === 2);
-      check(`collections ${width} ${theme}: nothing sideways`, !said.sideways);
-      await shot(page, `robin-collections_${width}_${theme}.png`);
+      check(`lists ${width} ${theme}: ${said.lists.map((one) => `"${one.name}" (${one.pictures} pictures)`).join(", ")}`,
+        said.panel === "lists" && said.lists.length === 2 && said.lists[0].pictures === 3 && said.lists[1].pictures === 2);
+      check(`lists ${width} ${theme}: nothing sideways`, !said.sideways);
+      await shot(page, `robin-lists_${width}_${theme}.png`);
       await context.close();
     }
   }
@@ -353,10 +353,10 @@ async function local() {
       check(`new ${width} ${theme}: no numbers, no achievements, Models says what goes there: "${said.empty.slice(0, 50)}…"`,
         said.numbers.every((one) => !one.shown) && said.awards.length === 0 && /^Nothing in the gallery yet\./.test(said.empty));
       await shot(alex.page, `new_${width}_${theme}.png`);
-      await alex.page.click('.profile .tabs a[data-tab="collections"]');
+      await alex.page.click('.profile .tabs a[data-tab="lists"]');
       await alex.page.waitForLoadState("load");
       said = await drawn(alex.page);
-      check(`new ${width} ${theme}: Collections says what goes there`, /^No collections yet\./.test(said.empty));
+      check(`new ${width} ${theme}: Lists says what goes there`, /^No lists yet\./.test(said.empty));
       await alex.context.close();
     }
   }
@@ -434,7 +434,7 @@ async function local() {
     const challenger = tiles.find((one) => one.track === "challenger") || { lines: [] };
     check(`your page ${width} ${theme}: Achievements (${tab.address}), a tile a track in order: ${tiles.map((one) => `${one.name}:${one.level}`).join(" · ")}`,
       tab.current === "achievements" && tab.address === "?tab=achievements"
-      && tiles.map((one) => one.track).join(",") === "designer,built,builder,remixed,tested,challenger"
+      && tiles.map((one) => one.track).join(",") === "designer,built,builder,remixed,tested,challenger,streak"
       && tiles.every((one) => one.icon) && shownToAll.every((id) => levels[id] > 0));
     check(`your page ${width} ${theme}: Built says where it is and what is next: ${built.lines.join(" / ")} (${built.bar})`,
       built.name === "Built · once" && built.lines.join("|") === "Level 1 of 6|9 builds finished to the last step.|1 more to reach Built · 10 times.|Each build of one of your models that somebody finishes counts."

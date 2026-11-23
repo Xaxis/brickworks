@@ -25,6 +25,17 @@
 // days are listed under the countdown (#rounds), Enter is there only while
 // entries come in, and a shortlisted card says so and leads its group.
 //
+// Two at a time (?pair=hand, ?pair=assistant; challengestudio, 2026-11-23):
+// while votes may be cast, a group of two or more entries one may vote for
+// is also shown as a pair side by side (one above the other on a phone),
+// each turning in its own blind embed (/m/<id>/embed?blind=1&autoplay=1,
+// api/share.js), with its name alone: no maker, no counts, no cards, on the
+// whole page, so the choice is the models'. "This one" keeps the one liked
+// more and brings the next beside it, until every entry has been seen;
+// then Vote for it, asked once more as every vote is. A link over the
+// cards opens it ("Compare them two at a time, in 3D"); See every entry
+// goes back.
+//
 // Names and credits were typed by strangers, so every one goes on the page
 // as text, never as markup; a link is built from a model's id alone. Its
 // words are the page's language's (web/de/challenge.html and the others,
@@ -87,6 +98,30 @@ let state = null;
 // The tab shown and the order, from the address until a press changes them.
 let group = WAYS.includes(params.get("group")) ? params.get("group") : null;
 let sort = ["newest", "oldest", "votes"].includes(params.get("sort")) ? params.get("sort") : null;
+// The group shown two at a time, while it may be (pairable), from the address.
+let pairWay = WAYS.includes(params.get("pair")) ? params.get("pair") : null;
+// Each group's pair as it stands, by its way: the order the entries come
+// in (orderSalt), the one kept, the one beside it, and how many have been seen.
+const pairs = new Map();
+// This browser's own order of the entries two at a time: each id hashed
+// with a word kept here, made once, so no entry is always first for
+// everybody and a reload shows the same pair. Start again makes a new one.
+const ORDER_KEY = "brickworks.pair_order";
+function orderSalt(fresh = false) {
+  let kept = "";
+  try { kept = fresh ? "" : localStorage.getItem(ORDER_KEY) || ""; } catch { /* storage refused: one a load */ }
+  if (!kept) {
+    kept = Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem(ORDER_KEY, kept); } catch { /* as above */ }
+  }
+  return kept;
+}
+/// FNV-1a of [text]: an order that is the same for the same words.
+const hashOf = (text) => {
+  let hash = 2166136261;
+  for (const ch of text) hash = Math.imul(hash ^ ch.codePointAt(0), 16777619);
+  return hash >>> 0;
+};
 // Each group's pager, by its way: stopped and made again as the groups are
 // drawn again (after a vote), showing the pages it showed.
 const pagers = new Map();
@@ -488,11 +523,11 @@ async function castVote(c, entry) {
   if (!(await confirmVote(entry))) return;
   const you = state.you;
   you.voted = { ...(you.voted || {}), [entry.way]: entry.id };
-  drawEntries(c, entry.id);
+  drawVotes(c, entry.id);
   const answer = await call("/api/people?op=vote", { method: "POST", body: { challenge: c.id, model: entry.id } });
   if (answer.status !== 200) {
     you.voted = { ...you.voted, [entry.way]: answer.body?.model && answer.body.refused === "voted" ? answer.body.model : null };
-    drawEntries(c);
+    drawVotes(c);
     return tell(told(answer.body.error, say("That vote did not go just now. Try again in a minute.")));
   }
   tell(say(entry.way === "assistant" ? "Your vote is for “{name}”, built with the assistant." : "Your vote is for “{name}”, built by hand.",
@@ -616,6 +651,189 @@ function voteSaid(c, way) {
   }
   if (!entry) line.classList.remove("done");
   line.hidden = !line.textContent;
+  // Two at a time, where the group has two to compare and no vote yet.
+  const go = $("pair-go");
+  go.hidden = !pairable(c, way) || Boolean(voted);
+  $("pair-link").href = `${location.pathname}?${pairAddress(way)}`;
+  $("pair-link").dataset.way = way;
+}
+
+// ---------------------------------------------------------------------------
+// Two at a time.
+
+/// The entries of group [way] one may vote for now, never one's own: the
+/// ones a pair is made of.
+function pairEntries(c, way) {
+  const mine = state.you?.entries || [];
+  return ((c.groups || []).find((one) => one.way === way)?.entries || [])
+    .filter((entry) => ID.test(String(entry.id)) && entry.keeps && votable(c, entry) && !mine.includes(entry.id));
+}
+
+/// Whether group [way] of [c] may be shown two at a time: while votes are
+/// cast, with two to compare.
+const pairable = (c, way) => voting(c) && pairEntries(c, way).length >= 2;
+
+/// The address of group [way] two at a time: this page's, with ?pair=.
+function pairAddress(way) {
+  const at = new URLSearchParams(location.search);
+  for (const name of ["pair", "group", "sort", "hand-page", "assistant-page"]) at.delete(name);
+  at.set("pair", way);
+  return at.toString();
+}
+
+/// Group [way]'s pair as it stands, made when first asked: its entries in
+/// this browser's order (orderSalt).
+function pairOf(c, way) {
+  const entries = pairEntries(c, way);
+  let pair = pairs.get(way);
+  const ids = entries.map((entry) => entry.id);
+  if (!pair || pair.order.some((id) => !ids.includes(id)) || ids.some((id) => !pair.order.includes(id))) {
+    const salt = orderSalt();
+    const order = [...ids].sort((a, b) => hashOf(salt + a) - hashOf(salt + b) || (a < b ? -1 : 1));
+    pair = { order, two: [order[0], order[1]], seen: 2, chosen: null };
+    pairs.set(way, pair);
+  }
+  return { pair, byId: new Map(entries.map((entry) => [entry.id, entry])) };
+}
+
+/// One side of the pair: [entry] turning in its blind embed, its name, and
+/// This one. [side] 0 or 1, the left (the top on a phone) or the right.
+function pairSide(c, way, entry, side, done) {
+  const box = el("figure", "pair-one");
+  box.dataset.entry = entry.id;
+  box.dataset.side = String(side);
+  const frame = el("div", "pair-frame");
+  const embed = el("iframe");
+  embed.src = `${langAt()}/m/${entry.id}/embed?blind=1&autoplay=1`;
+  embed.title = say("{name}, turning in 3D", { name: entry.name });
+  embed.loading = "lazy";
+  embed.setAttribute("allow", "fullscreen");
+  frame.append(embed);
+  const words = el("figcaption", "pair-words");
+  words.append(el("b", "pair-name", entry.name));
+  if (!done) {
+    const keep = el("button", "cta small pair-keep", say("This one"));
+    keep.type = "button";
+    keep.setAttribute("aria-label", say("I like “{name}” more", { name: entry.name }));
+    keep.addEventListener("click", () => keepOne(c, way, side));
+    words.append(keep);
+  }
+  box.append(frame, words);
+  return box;
+}
+
+/// [side] liked more: it stays, and the next entry not yet seen comes
+/// beside it; with none left, it is the one chosen, to vote for.
+function keepOne(c, way, side) {
+  const { pair } = pairOf(c, way);
+  const kept = pair.two[side];
+  if (pair.seen < pair.order.length) {
+    const next = pair.order[pair.seen];
+    pair.seen += 1;
+    pair.two = side === 0 ? [kept, next] : [next, kept];
+    drawPair(c, side === 0 ? 1 : 0);
+  } else {
+    pair.chosen = kept;
+    drawPair(c, -1);
+  }
+}
+
+/// Group [pairWay] two at a time, in #pair over the tabs, in place of the
+/// cards: nothing on the page names a maker or counts anything. [fresh]
+/// the side just brought in (its This one takes the keyboard), -1 for the
+/// one chosen (its Vote does).
+function drawPair(c, fresh = null) {
+  const way = pairWay;
+  $("entries").hidden = false;
+  $("sort").hidden = true;
+  $("groups").replaceChildren();
+  $("groups").hidden = true;
+  $("vote-said").hidden = true;
+  $("pair-go").hidden = true;
+  for (const one of pagers.values()) one.stop();
+  pagers.clear();
+  const tabs = $("group-tabs");
+  const both = (c.groups || []).filter((one) => pairable(c, one.way));
+  tabs.replaceChildren(...both.map((one) => {
+    const tab = el("button");
+    Object.assign(tab, { type: "button", id: `tab-${one.way}` });
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-selected", String(one.way === way));
+    tab.setAttribute("aria-controls", "pair");
+    tab.tabIndex = one.way === way ? 0 : -1;
+    tab.dataset.way = one.way;
+    tab.append(wayName(one.way));
+    tab.addEventListener("click", () => choose(c, one.way));
+    return tab;
+  }));
+  tabs.hidden = both.length < 2;
+  $("pair").setAttribute("aria-labelledby", `tab-${way}`);
+  $("pair").hidden = false;
+  $("pair-back").href = `${location.pathname}?${(() => {
+    const at = new URLSearchParams(location.search);
+    at.delete("pair");
+    if (way !== "hand") at.set("group", way);
+    return at.toString();
+  })()}`.replace(/\?$/, "");
+  const { pair, byId } = pairOf(c, way);
+  const voted = state.you?.voted?.[way];
+  const said = $("pair-said");
+  const two = $("pair-two");
+  if (voted) {
+    // A vote cast here, or before: said, and nothing more to choose.
+    const entry = all(c).find((one) => one.id === voted);
+    said.replaceChildren();
+    sayInto(said, say("Your vote in this group is for “{name}”. Votes stay hidden until it ends."),
+      { name: el("b", "", entry ? entry.name : "") });
+    two.replaceChildren(...(byId.get(voted) ? [pairSide(c, way, byId.get(voted), 0, true)] : []));
+    two.dataset.state = "voted";
+    $("pair-vote").hidden = true;
+    return;
+  }
+  if (pair.chosen) {
+    const entry = byId.get(pair.chosen);
+    said.replaceChildren();
+    sayInto(said, say("Of all {n} you like “{name}” most."), { n: number(pair.order.length), name: el("b", "", entry.name) });
+    two.replaceChildren(pairSide(c, way, entry, 0, true));
+    two.dataset.state = "chosen";
+    const vote = $("pair-vote");
+    vote.hidden = false;
+    vote.textContent = say("Vote for “{name}”", { name: entry.name });
+    vote.onclick = () => (state.you ? (state.you.may_vote ? castVote(c, { ...entry, way }) : tell(told(state.you.why_not,
+      say("You cannot vote in this challenge.")))) : signInToVote());
+    $("pair-again").hidden = false;
+    if (fresh === -1) vote.focus({ preventScroll: true });
+    return;
+  }
+  said.textContent = say("{seen} of {n}: press This one under the one you like more. It stays, and the next comes beside it.",
+    { seen: number(pair.seen), n: number(pair.order.length) });
+  two.dataset.state = "choosing";
+  $("pair-vote").hidden = true;
+  $("pair-again").hidden = pair.seen <= 2;
+  // The side that stays is left in the page as it is, turning where it
+  // was (a frame taken out and put back would load again); only the new
+  // one is drawn.
+  const now = [...two.querySelectorAll(".pair-one")];
+  if (fresh !== null && fresh >= 0 && now.length === 2 && now[1 - fresh].dataset.entry === pair.two[1 - fresh]) {
+    const made = pairSide(c, way, byId.get(pair.two[fresh]), fresh, false);
+    now[fresh].replaceWith(made);
+    made.querySelector(".pair-keep")?.focus({ preventScroll: true });
+  } else {
+    two.replaceChildren(...pair.two.map((id, side) => pairSide(c, way, byId.get(id), side, false)));
+  }
+}
+
+/// Group [way]'s pair from the start, in a new order.
+function pairAgain(c) {
+  orderSalt(true);
+  pairs.delete(pairWay);
+  drawPair(c);
+}
+
+/// The entries drawn again after a vote: two at a time, or as cards.
+function drawVotes(c, focus = "") {
+  if (pairWay) drawPair(c);
+  else drawEntries(c, focus);
 }
 
 /// The tabs, the sort, the line over the cards and both groups, each with
@@ -628,6 +846,9 @@ function drawEntries(c, focus = "") {
   for (const one of pagers.values()) one.stop();
   pagers.clear();
   $("entries").hidden = false;
+  $("pair").hidden = true;
+  $("groups").hidden = false;
+  $("group-tabs").hidden = false;
 
   // The two groups as tabs, each with its count (none said at nought).
   const tabs = $("group-tabs");
@@ -722,6 +943,14 @@ function drawEntries(c, focus = "") {
 
 /// Shows group [way]: its tab chosen and its panel, both already drawn.
 function choose(c, way) {
+  if (pairWay) {
+    group = way;
+    pairWay = way;
+    address({ pair: way, group: way === "hand" ? null : way });
+    drawPair(c);
+    $(`tab-${way}`)?.focus();
+    return;
+  }
   group = way;
   address({ group: way === "hand" ? null : way });
   for (const tab of $("group-tabs").querySelectorAll('[role="tab"]')) {
@@ -864,11 +1093,135 @@ function drawEmpty(kind) {
   $("again").hidden = kind !== "broken";
 }
 
+// ---------------------------------------------------------------------------
+// A weekly quick build (api/_prompts.js): a brief, a template that Start
+// opens in the studio, every entry newest first, and once it ends the stack
+// of them all. No rules, no vote.
+
+/// The hub's panel for this week's quick build ([week], the answer's
+/// prompt_now), or none.
+function drawWeek(week) {
+  $("week").hidden = !week;
+  if (!week) return;
+  const page = pageOf(week.id);
+  $("week-title").textContent = week.title;
+  $("week-title").href = page;
+  $("week-brief").textContent = week.brief;
+  $("week-days").textContent = say("Until {day}", { day: SHORT.format(startOf(week.ends_on)) });
+  $("week-count").textContent = week.entries ? counted(week.entries, "entry", "entries") : say("Be the first to publish one.");
+  $("week-start").hidden = !week.start;
+  if (week.start) $("week-start").href = week.start;
+  $("week-see").href = page;
+}
+
+/// [card] (modelCard's) with its picture a way into the model in 3D, in its
+/// place, on a tap (web/start3d.js, as the embed's): the 3D code and looks
+/// asked for only then.
+function turning(card, entry) {
+  const img = card.querySelector(".frame > img");
+  if (!img) return card;
+  const picture = document.createElement("a");
+  picture.className = "picture";
+  picture.href = `/app?view=${entry.id}`;
+  picture.dataset.scene = `/m/${entry.id}/scene.json`;
+  picture.setAttribute("aria-label", say("View {name} in 3D", { name: entry.name }));
+  img.replaceWith(picture);
+  picture.append(img);
+  const go = (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    for (const kind of ["click", "pointerdown"]) picture.removeEventListener(kind, go);
+    if (!document.querySelector('link[href="/view3d.css"]')) {
+      document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet", href: "/view3d.css" }));
+    }
+    import("/start3d.js").then(({ start3d }) => start3d(picture).open("tap")).catch(() => { location.href = picture.href; });
+  };
+  picture.addEventListener("click", go);
+  return card;
+}
+
+/// A quick build's page ([p], the answer's prompt).
+function drawPrompt(p) {
+  clearInterval(ticking);
+  const open = p.state === "open";
+  const coming = p.state === "upcoming";
+  root.dataset.year = "no";
+  for (const id of ["winners", "entries", "how", "next", "past", "week", "rules-part", "enter", "enter-note", "again"]) $(id).hidden = true;
+  $("crumbs").hidden = false;
+  $("crumb").textContent = p.title;
+  const status = $("status");
+  status.hidden = false;
+  status.className = `badge ${open ? "good" : coming ? "accent" : ""}`.trim();
+  status.textContent = open ? say("Open") : coming ? say("Opens soon") : say("Ended");
+  $("eyebrow").textContent = open ? say("This week’s quick build") : coming ? say("The next quick build") : say("A past quick build");
+  $("title").textContent = p.title;
+  document.title = say("{title} · a Brickworks quick build", { title: p.title });
+  $("brief").textContent = p.brief;
+  // The way in: the template, a copy of it in the studio.
+  $("start").hidden = !open || !p.start;
+  if (p.start) $("start").href = p.start;
+  $("start").textContent = say("Start");
+  $("to-hub").hidden = false;
+  $("to-hub").href = `${langAt()}/challenge${tests ? "?tests=1" : ""}`;
+  $("share").hidden = false;
+  const at = { from: dayOf(p.starts_on), to: dayOf(p.ends_on) };
+  $("share").onclick = () => openShare(sheetFor({ url: `${location.origin}${pageOf(p.id)}`, name: p.title,
+    text: say("{title}: Brickworks' quick build of the week, {from} to {to}", { title: p.title, ...at }),
+    about: say("Its link opens this quick build: its brief, its template to start from, and every entry.") }));
+  // Where it stands: a countdown to its end, or the days it ran.
+  $("clock").hidden = false;
+  $("countdown").hidden = true;
+  $("rounds").hidden = true;
+  $("numbers").hidden = true;
+  $("clock-h").textContent = open ? say("Ends in") : coming ? say("Opens in") : say("Ran");
+  const days = daysOf(p.starts_on, p.ends_on);
+  $("reach").hidden = !open;
+  if (open) {
+    const total = Math.round((endOf(p.ends_on) - startOf(p.starts_on)) / 86400000);
+    const today = Math.min(total, Math.floor((Date.now() - startOf(p.starts_on)) / 86400000) + 1);
+    $("days").textContent = say("{days} · day {day} of {total}", { days, day: number(today), total: number(total) });
+    $("reach").firstElementChild.style.width = `${Math.max(2, Math.min(100, (today / total) * 100)).toFixed(1)}%`;
+    countdown(endOf(p.ends_on), (time) => say("Ends in {time}", { time }));
+  } else if (coming) {
+    $("days").textContent = days;
+    countdown(startOf(p.starts_on), (time) => say("Opens in {time}", { time }));
+  } else {
+    $("days").textContent = say("Ran {days}", { days });
+  }
+  // The stack, once made.
+  $("stack").hidden = !p.stack;
+  $("stack-card").replaceChildren(...(p.stack ? [turning(modelCard(p.stack, { eager: true }), p.stack)] : []));
+  // Every entry, newest first; never empty: the template's Start.
+  const entries = Array.isArray(p.entries) ? p.entries : [];
+  $("prompt-entries").hidden = coming;
+  $("prompt-count").textContent = entries.length
+    ? say("{entries} by {makers}", { entries: counted(entries.length, "entry", "entries"), makers: counted(p.makers || 1, "builder") })
+    : "";
+  $("prompt-cards").replaceChildren(...entries.map((entry, i) => turning(modelCard(entry, { eager: i < 4 }), entry)));
+  $("prompt-empty").hidden = entries.length > 0 || !open || !p.start;
+  if (p.start) $("prompt-empty-start").href = p.start;
+  $("prompt-how").hidden = !open && !coming;
+  root.dataset.challenge = `prompt-${p.state}`;
+  root.dataset.clock = open ? "counting" : "ended";
+}
+
 function draw() {
+  if (state.prompt) return drawPrompt(state.prompt);
+  for (const id of ["stack", "prompt-entries", "prompt-how"]) $(id).hidden = true;
   const c = state.challenge;
+  // Two at a time while it may be; asked for when it may not (the vote
+  // ended, one entry left), the cards, and the address says so.
+  if (pairWay && !(c && pairable(c, pairWay))) {
+    pairWay = null;
+    address({ pair: null });
+  }
+  // Two at a time, nothing drawn that names a maker or counts: the week's
+  // quick build, the next and the ones that ran are not drawn.
+  const blind = Boolean(pairWay);
+  drawWeek(asked || blind ? null : state.prompt_now || null);
   root.dataset.year = state.year ? "yes" : "no";
-  drawNext(asked ? null : state.next || null);
-  drawPast(asked ? [] : state.past || []);
+  drawNext(asked || blind ? null : state.next || null);
+  drawPast(asked || blind ? [] : state.past || []);
   $("again").hidden = true;
   if (!c) {
     for (const id of ["winners", "entries", "how"]) $(id).hidden = true;
@@ -878,6 +1231,19 @@ function draw() {
   }
   $("clock").hidden = false;
   drawHead(c);
+  if (pairWay) {
+    // Nor the cards, the winners or the numbers.
+    for (const id of ["winners", "how", "numbers"]) $(id).hidden = true;
+    $("numbers").replaceChildren();
+    $("winner-cards").replaceChildren();
+    $("week-count").textContent = "";
+    drawPair(c);
+    root.dataset.challenge = c.state;
+    root.dataset.clock = "counting";
+    root.dataset.pair = pairWay;
+    return;
+  }
+  delete root.dataset.pair;
   drawWinners(c);
   drawEntries(c);
   $("how").hidden = c.state === "ended";
@@ -899,7 +1265,7 @@ async function load() {
       answer = { status: reply.status, body: await reply.json().catch(() => ({})) };
     }
     if (answer.status === 404 && asked) {
-      for (const id of ["winners", "entries", "how", "next", "past"]) $(id).hidden = true;
+      for (const id of ["winners", "entries", "how", "next", "past", "week", "stack", "prompt-entries", "prompt-how"]) $(id).hidden = true;
       drawEmpty("gone");
       root.dataset.challenge = "gone";
       return;
@@ -908,14 +1274,38 @@ async function load() {
     state = answer.body;
     draw();
   } catch {
-    if (state?.challenge) return tell(say("The challenge did not load just now. Try again in a minute."));
-    for (const id of ["winners", "entries", "how", "next", "past"]) $(id).hidden = true;
+    if (state?.challenge || state?.prompt) return tell(say("The challenge did not load just now. Try again in a minute."));
+    for (const id of ["winners", "entries", "how", "next", "past", "week", "stack", "prompt-entries", "prompt-how"]) $(id).hidden = true;
     drawEmpty("broken");
     root.dataset.challenge = "broken";
   }
 }
 
 $("enter").addEventListener("click", enter);
+$("pair-again").addEventListener("click", () => state?.challenge && pairAgain(state.challenge));
+$("pair-link").addEventListener("click", (event) => {
+  if (!state?.challenge || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+  event.preventDefault();
+  pairWay = $("pair-link").dataset.way || groupOf(state.challenge);
+  history.pushState(history.state, "", `${location.pathname}?${pairAddress(pairWay)}`);
+  draw();
+  $("entries").scrollIntoView({ block: "start" });
+  $("pair-said").focus({ preventScroll: true });
+});
+$("pair-back").addEventListener("click", (event) => {
+  if (!state?.challenge || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+  event.preventDefault();
+  pairWay = null;
+  history.pushState(history.state, "", $("pair-back").getAttribute("href"));
+  draw();
+  $("entries").scrollIntoView({ block: "start" });
+});
+// Back and Forward between the cards and two at a time.
+addEventListener("popstate", () => {
+  const now = new URLSearchParams(location.search).get("pair");
+  pairWay = WAYS.includes(now) ? now : null;
+  if (state?.challenge) draw();
+});
 // The head is held unseen until it is drawn (challenge.html): an answer that
 // is slow to come shows it as it stands after five seconds.
 setTimeout(() => { if (!root.dataset.challenge) root.dataset.challenge = "loading"; }, 5000);
