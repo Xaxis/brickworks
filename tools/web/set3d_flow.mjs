@@ -66,7 +66,7 @@ const storeLog = args["store-log"] ? path.resolve(String(args["store-log"])) : "
 const t0 = Date.now();
 const said = [];
 let failed = 0;
-const check = (passed, line) => {
+const check = (line, passed) => {
   const text = `  ${passed ? "ok  " : "FAIL"}  ${line}  [${Math.round((Date.now() - t0) / 1000)}s]`;
   said.push(text);
   console.log(text);
