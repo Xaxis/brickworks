@@ -730,10 +730,22 @@ func _shipped() -> void:
 			var faults: Array = await _air(text)
 			_check("shipped %s: its saved steps put no part in the air (%d in the air, %d hidden)"
 				% [path, faults[0], faults[1]], int(faults[0]) == 0)
-			await _reopen(path)
-			var saved: String = _store.to_text(_store.title, true)
-			_check("shipped %s: opened, its steps its own (%s); saved unedited, byte for byte"
-				% [path, _own_steps()], _own_steps() and saved == text)
+			# Opened from the app's own folder and saved there, as Save saves
+			# it: an unedited save writes the file as read (kbkeep3). Opened
+			# from elsewhere, Save works the model out again whole (wholekeep).
+			var called: String = ModelStore._title_of(LdrModel.parse(text, file_name), file_name)
+			_forget(called)
+			var own: FileAccess = FileAccess.open(ModelStore.saved_path(called), FileAccess.WRITE)
+			own.store_string(text)
+			own.close()
+			await _reopen(ModelStore.saved_path(called))
+			_store.save_as(_store.title)
+			var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(_store.title))
+			_check("shipped %s: opened, its steps its own (%s); saved unedited as %s, byte for byte"
+				% [path, _own_steps(), _store.title], _own_steps() and saved == text)
+			if saved != text:
+				_first_diff(text, saved)
+			_forget(called)
 	_check("shipped: %d of the models it ships hold their saved steps" % seen, seen > 0)
 
 

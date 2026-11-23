@@ -38,6 +38,8 @@ extends SceneTree
 const FILES: Array = ["res://models/castle.ldr", "res://tools/web/gallery_seeds/potted_cactus.ldr",
 	"res://tools/web/gallery_seeds/sports_car.ldr"]
 const COPY_META := "0 !BRICKWORKS COPY"
+## The most passes: each part moves only later, so it settles well before.
+const PASSES := 60
 
 var _failures: int = 0
 var _main: Node
@@ -100,7 +102,7 @@ func _restep(path: String, into: String) -> void:
 	var now: Dictionary = first
 	var left: Dictionary = {}           # line -> why it stays where it was
 	var passes: int = 0
-	while passes < 60:
+	while passes < PASSES:
 		var moving: Dictionary = {}
 		for float_at: Array in now["floats"]:
 			var found: Array = _line_of(now, int(float_at[0]), int(float_at[1]), file)
@@ -148,18 +150,27 @@ func _restep(path: String, into: String) -> void:
 	for line: int in file.moved():
 		print("    line %d (%s) from step %d of %s to %d" % [line + 1, file.lines[line].strip_edges().get_slice(" ", 14),
 			file.was[line] + 1, file.section_name(line), int(file.block[line]) + 1])
-	# Left: those still in the air at the end that nothing later holds, in
-	# their own file or by placing it later.
-	var still: int = 0
+	# Left once nothing more moves: each still in the air is held by nothing
+	# later in its own file (else it would have moved there), and placing its
+	# sub-model after what holds it held it no better: only building it in
+	# another section's steps (a flattening) could. Each is said with what
+	# holds it.
+	var own_later: int = 0
 	for float_at: Array in now["floats"]:
 		var found: Array = _line_of(now, int(float_at[0]), int(float_at[1]), file)
-		if int(found[1]) == -2:
-			still += 1
-			print("    in the air, held only by another section's part: line %d (%s, %s)" % [
-				int(found[0]) + 1, file.lines[int(found[0])].strip_edges(), file.section_name(int(found[0]))])
-	_check("%s: in the air %d (was %d; %d only a flattening could hold); hidden %d (was %d)"
-		% [path, now["floats"].size(), first["floats"].size(), still, now["hidden"].size(),
-		first["hidden"].size()], now["floats"].size() == still)
+		var at: int = int(found[0])
+		var thing: PackedInt64Array = _thing_of(now, int(float_at[0]), int(float_at[1]))
+		var depth: int = _depth_of(now, int(float_at[0]), int(float_at[1]))
+		var part_line: int = _at_depth(now, int(float_at[1]), depth, file)
+		if part_line >= 0 and file.block.has(part_line) and _joined_after(now, thing, depth, part_line, file) >= 0:
+			own_later += 1
+		print("    in the air: step %d, %s; held by %s" % [int(float_at[0]),
+			("line %d (%s, %s)" % [part_line + 1, file.lines[part_line].strip_edges(), file.section_name(part_line)])
+			if part_line >= 0 else "its line not read back", _held_by(now, thing, file)])
+	_check("%s: in the air %d (was %d), each held by nothing later in its own file (%d are), so only a flattening could hold it (%d passes of %d); hidden %d (was %d)"
+		% [path, now["floats"].size(), first["floats"].size(), own_later, passes, PASSES, now["hidden"].size(),
+		first["hidden"].size()], passes < PASSES and own_later == 0
+		and now["floats"].size() <= first["floats"].size() and now["hidden"].size() <= first["hidden"].size())
 	var others: Array = Restepped.other_changes(text, made)
 	_check("%s: every other line the file's, in its section (%d changed: %s)" % [path, others.size(),
 		others.slice(0, 3)], others.is_empty())
@@ -175,7 +186,14 @@ func _restep(path: String, into: String) -> void:
 func _reopened(path: String, into: String, made: String, measured: Dictionary) -> void:
 	_main.call("clear_model")
 	await _frames(4)
-	var placed: int = await _bar.open_with_progress(into)
+	# Opened from the app's own folder, as a model saved there opens: an
+	# unedited Save writes its own file there as it was read (kbkeep3).
+	var called: String = ModelStore._title_of(LdrModel.parse(made, into.get_file()), into.get_file())
+	_forget(called)
+	var own: FileAccess = FileAccess.open(ModelStore.saved_path(called), FileAccess.WRITE)
+	own.store_string(made)
+	own.close()
+	var placed: int = await _bar.open_with_progress(ModelStore.saved_path(called))
 	_bar.opened.emit(placed)
 	await _frames(10)
 	var opened: Array = []
@@ -192,10 +210,8 @@ func _reopened(path: String, into: String, made: String, measured: Dictionary) -
 	var shared: Array = await _shared_count(made)
 	_check("%s: the share's steps test, %d in the air, %d hidden" % [path, shared[0], shared[1]],
 		shared[0] == (measured["floats"] as Array).size())
-	# Saved as Save saves it, under its own name: under another, its name
-	# lines are that name's.
-	var called: String = _store.title
-	_forget(called)
+	# Saved as Save saves it, to its own file.
+	called = _store.title
 	_store.save_as(called)
 	var again: String = FileAccess.get_file_as_string(ModelStore.saved_path(called))
 	var a: PackedStringArray = made.split("\n")
@@ -331,6 +347,46 @@ func _line_of(measured: Dictionary, number: int, id: int, file: Restepped) -> Ar
 					return [unit, after]
 		return [line, -2]
 	return [-1, -1]
+
+
+## What step [param number] put down that holds [param id] (a thing).
+static func _thing_of(measured: Dictionary, number: int, id: int) -> PackedInt64Array:
+	for entry: Array in measured["took"].get(number, []):
+		if (entry[1] as PackedInt64Array).has(id):
+			return entry[1]
+	return PackedInt64Array([id])
+
+
+## How deep the section is whose steps put [param id] down at [param number].
+static func _depth_of(measured: Dictionary, number: int, id: int) -> int:
+	for entry: Array in measured["took"].get(number, []):
+		if (entry[1] as PackedInt64Array).has(id):
+			var section: String = entry[0]
+			return 0 if section.is_empty() else section.split("/").size()
+	return 0
+
+
+## What [param thing] is joined to (Tested's near), by the line placing each
+## in the model's own steps and the line in its own file: "line 71
+## (east_curtain_wall.ldr, step 37) line 2719 (3010.dat, west_curtain_wall.ldr
+## step 5)".
+static func _held_by(measured: Dictionary, thing: PackedInt64Array, file: Restepped) -> String:
+	var said: PackedStringArray = PackedStringArray()
+	for part: int in thing:
+		for other: Variant in (measured["near"] as Dictionary).get(part, {}):
+			if thing.has(int(other)):
+				continue
+			var lines: PackedStringArray = str(measured["origin"].get(int(other), "")).split("/")
+			var where: PackedStringArray = PackedStringArray()
+			for depth: int in lines.size():
+				var at: int = _at_depth(measured, int(other), depth, file)
+				if at >= 0:
+					where.append("line %d (%s, %s step %d)" % [at + 1, file.lines[at].strip_edges().get_slice(" ", 14),
+						file.section_name(at), int(file.block.get(at, -1)) + 1])
+			var one: String = " / ".join(where)
+			if not said.has(one):
+				said.append(one)
+	return "nothing" if said.is_empty() else "; ".join(said)
 
 
 ## The first step after [param line]'s, in its own section, that puts down a
