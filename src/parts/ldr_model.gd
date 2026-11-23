@@ -2620,21 +2620,23 @@ const READ_LOCALS_EACH := 16
 ## numbers, the app's space): every line of a sub-model's section placing
 ## another sub-model, and its first [constant READ_LOCALS_EACH] parts. From
 ## these a copy's parts, read from the file, say the frame the file gave the
-## copy (Assemblies._read_frames). None of the model's own section, whose
-## frame is the file's.
+## copy (Assemblies._read_frames). Of the model's own section, whose frame
+## is the file's, only the lines placing copies.
 func _read_locals() -> Dictionary:
 	var out: Dictionary = {}
 	for key: Variant in submodels:
 		var sub: SubModel = submodels[key]
-		if sub == main or sub.library_file:
+		if sub.library_file:
 			continue
 		var parts: int = 0
 		for placement: Placement in sub.placements:
 			if placement.line < 0:
 				continue
+			# The model's own section: only the lines placing its copies, the
+			# frame each is in where it has not moved (Assemblies._read_said).
 			if sub_model_of(placement) != null:
 				out[placement.line] = placement.transform
-			elif parts < READ_LOCALS_EACH:
+			elif sub != main and parts < READ_LOCALS_EACH:
 				out[placement.line] = placement.transform
 				parts += 1
 	return out

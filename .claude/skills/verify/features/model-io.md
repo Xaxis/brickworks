@@ -28,7 +28,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   sub-model is written in a frame that does not move with that lift
   (`Assemblies._first_frame`): one the file had, in the frame the file gave
   it, as its parts read from the file say (`Assemblies._read_frames`, from
-  `LdrModel._read_locals`); one the app made, at the file's origin. At the
+  `LdrModel._read_locals`), and exactly the frame its placing line gives
+  where its parts say that one (`Assemblies._read_said`: worked back from a
+  turned part, the robot's right arm went `1 0 0.00000001 0 1.0000001` at
+  each save, keepfix, stepkeep's robot); one the app made, at the file's origin. At the
   window's origin, a cable laid on a battery box set into the ground went
   `1 16 0 0 0` at its first save and `1 16 0 70 0` at every save after
   (wirekeep), and the castle's eleven sub-models, which its file places at

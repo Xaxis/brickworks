@@ -351,13 +351,12 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 			func(line: String) -> String: return line.left(120))))
 	_summary.append([what, written, str(lost.size()), _kinds(lost)])
 	if edit == "none":
-		# Unedited: every line the file had, in its section, in the file's
-		# order, the app's own lines aside (the title the probe names, the
-		# floor it pins). A comment over a BUILT line went under it, and a
-		# BUILT section was written after IN lines, at every whole save
-		# (keepfix: wholekeep's built, on wkfix).
+		# Unedited: each line the file says over a part or copy over it still,
+		# in its section (_out_of_order). A comment over a BUILT line went
+		# under it, and a BUILT section was written after IN lines, at every
+		# whole save (keepfix: wholekeep's built, on wkfix).
 		var off: Array = _out_of_order(text, saved)
-		_check("%s: unedited, every line of the file in its section in its order%s" % [what,
+		_check("%s: unedited, each line over a part or copy over it still, in its section%s" % [what,
 			"" if off.is_empty() else ": " + str(off.slice(0, 4))], off.is_empty())
 		await _saved_as_opened(what, text)
 	await _open(saved)
@@ -1165,28 +1164,53 @@ func _back_to(depth: int) -> void:
 		_builder.undo()
 
 
-## The lines of [param text] not in [param saved]'s same section in the same
-## order (each section's lines a subsequence of the saved one's), but the
-## app's own a whole write writes itself: the model's title (the probe's
-## "model"), its Name and Author, the floor it pins. "section: line" each.
+## The lines of [param text] said over a line of its section (comments and
+## other programs' meta lines over the part or copy after them) that a whole
+## write [param saved] has elsewhere: each such run of lines and the line it
+## is over, as the file has it, together in the saved section, the lines the
+## app writes itself aside (STEP lines, its COPY lines, the floor it pins).
+## The order of parts and copies within a step is the writer's, and a file
+## whose steps the app works out is written in its own: only what each line
+## is over is the file's. A comment over a BUILT line went under it at every
+## whole save (keepfix: wholekeep's built, on wkfix). "section: line" each.
 static func _out_of_order(text: String, saved: String) -> Array:
 	var had: Dictionary = _section_lines(text)
 	var now: Dictionary = _section_lines(saved)
 	var out: Array = []
 	for section: String in had:
-		var mine: Array = had[section]
-		var theirs: Array = now.get(section, [])
-		var at: int = 0
-		for n: int in mine.size():
-			var line: String = mine[n]
-			if section == had.keys()[0] and n == 0 or line.begins_with("0 !BRICKWORKS FLOOR") \
-					or line.begins_with("0 Name:") or line.begins_with("0 Author:"):
+		var mine: Array = _over_lines(had[section], true)
+		var theirs: Array = _over_lines(now.get(section, []), false)
+		var run: Array = []
+		for line: String in mine:
+			# A TEXMAP block's end is after its last part, over nothing.
+			if line.to_upper().begins_with("0 !TEXMAP END"):
+				run = []
 				continue
-			var found: int = theirs.find(line, at)
-			if found < 0:
-				out.append("%s: %s" % [section, line])
-			else:
-				at = found + 1
+			run.append(line)
+			if not line.begins_with("1 "):
+				continue
+			var at: int = theirs.find(run[0])
+			if run.size() > 1 and (at < 0 or theirs.slice(at, at + run.size()) != run):
+				out.append("%s: %s" % [section, " / ".join(run)])
+			run = []
+	return out
+
+
+## [param lines] (a section's, [method _section_lines]) without those the
+## app writes for itself: STEP lines, COPY lines, the floor, Name and Author;
+## with [param head], the file's, also the lines before its first part,
+## which a whole write writes as its head (the saved head is kept: a comment
+## over the first copy is in it).
+static func _over_lines(lines: Array, head: bool) -> Array:
+	var out: Array = []
+	var begun: bool = not head
+	for line: String in lines:
+		begun = begun or line.begins_with("1 ")
+		if not begun or line == "0 STEP" or line.begins_with("0 !BRICKWORKS COPY ") \
+				or line.begins_with("0 !BRICKWORKS FLOOR") or line.begins_with("0 Name:") \
+				or line.begins_with("0 Author:"):
+			continue
+		out.append(line)
 	return out
 
 

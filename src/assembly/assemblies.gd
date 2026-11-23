@@ -3112,7 +3112,7 @@ func frames_paced(words: String) -> Dictionary:
 		var settled: bool = false
 		# Where the file framed each copy, a part at a time with the rest.
 		var locals: Dictionary = world.kept_lines.get("locals", {})
-		var votes: Dictionary = {"box": {}, "said": {}}
+		var votes: Dictionary = _votes(locals)
 		for brick: BrickWorld.Brick in world.bricks():
 			_content_into(contents, brick, found)
 			if not locals.is_empty():
@@ -3612,8 +3612,8 @@ static func _first_frame(ctx: Dictionary, path: String) -> Transform3D:
 ## moved inside it is outvoted. A copy none of whose parts was read (made
 ## here, or put down from elsewhere) has none.
 func _read_frames() -> Dictionary:
-	var votes: Dictionary = {"box": {}, "said": {}}
 	var locals: Dictionary = world.kept_lines.get("locals", {})
+	var votes: Dictionary = _votes(locals)
 	if not locals.is_empty():
 		for brick: BrickWorld.Brick in world.bricks():
 			_read_vote(votes, brick, locals)
@@ -3643,7 +3643,10 @@ func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) 
 	var local := Transform3D.IDENTITY
 	var boxes: Dictionary = votes["box"]
 	var said: Dictionary = votes["said"]
-	for level: Array in LdrModel.read_levels(origin, at, world.kept_lines, world.section_files):
+	var levels: Array = LdrModel.read_levels(origin, at, world.kept_lines, world.section_files)
+	var placed: Dictionary = votes["placed"]
+	for n: int in levels.size():
+		var level: Array = levels[n]
 		var inner: int = int(level[1])
 		if not locals.has(inner):
 			return
@@ -3654,10 +3657,35 @@ func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) 
 		var entry: Array = box.get_or_add(_frame_key(frame), [0, frame])
 		entry[0] = int(entry[0]) + 1
 		said[copy] = int(said.get(copy, 0)) + 1
+		# The line placing the copy, and the copy whose section has it: the
+		# next level's, or the model's own ("") for a copy of the model's
+		# section. Read where it is placed in a copy made round it since, or
+		# a section the file had otherwise, it has none.
+		if placed.has(copy):
+			continue
+		var outer: int = int(level[2])
+		if n + 1 < levels.size():
+			placed[copy] = [outer, str(levels[n + 1][0])]
+		elif not copy.contains("/") and LdrModel.section_at(world.kept_lines, outer) \
+				== str(world.kept_lines.get("main", "\n")):
+			placed[copy] = [outer, ""]
+
+
+## The votes of [method _read_vote], none yet, over [param locals] ([member
+## BrickWorld.kept_lines]' "locals").
+func _votes(locals: Dictionary) -> Dictionary:
+	return {"box": {}, "said": {}, "placed": {}, "locals": locals,
+		"origin": Transform3D(Basis.IDENTITY, lift.call())}
 
 
 ## What [param votes] ([method _read_vote]) say: path -> the frame more than
-## half its parts said, else null.
+## half its parts said, else null. One that is where the file's lines put it
+## (the frame of the copy its section is, the file's origin for the model's
+## own, by the line placing it) is that frame exactly. Worked back from a
+## part, a frame is a hair off it wherever the part is turned other than
+## square: the robot's right arm, "1 16 0 0 0 1 0 0 0 1 0 0 0 1" in the file,
+## was written "1 0 0.00000001 0 1.0000001 ...", then otherwise again at each
+## save after a reopen (keepfix: stepkeep's robot, on wholekeep).
 static func _read_said(votes: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	var boxes: Dictionary = votes["box"]
@@ -3667,7 +3695,34 @@ static func _read_said(votes: Dictionary) -> Dictionary:
 			if int(boxes[path][key][0]) > int(best[0]):
 				best = boxes[path][key]
 		out[path] = best[1] if int(best[0]) * 2 > int(votes["said"][path]) else null
+	var placed: Dictionary = votes.get("placed", {})
+	var locals: Dictionary = votes.get("locals", {})
+	var paths: Array = out.keys()
+	paths.sort_custom(func(a: String, b: String) -> bool: return a.count("/") < b.count("/"))
+	for path: String in paths:
+		if not (out[path] is Transform3D) or not placed.has(path) \
+				or not locals.has(int(placed[path][0])):
+			continue
+		var parent: String = placed[path][1]
+		var above: Variant = votes["origin"] if parent.is_empty() else out.get(parent)
+		if not (above is Transform3D):
+			continue
+		var filed: Transform3D = (above as Transform3D) * (locals[int(placed[path][0])] as Transform3D)
+		if _frames_near(filed, out[path]):
+			out[path] = filed
 	return out
+
+
+## Whether [param a] and [param b] are one frame but for a hair: their places
+## within a hundredth of an LDU, their turns within a thousandth, as [method
+## _frame_key] keys them.
+static func _frames_near(a: Transform3D, b: Transform3D) -> bool:
+	if a.origin.distance_to(b.origin) > 0.01:
+		return false
+	for axis: int in 3:
+		if (a.basis[axis] - b.basis[axis]).length() > 0.001:
+			return false
+	return true
 
 
 ## [param frame] as a key two frames a hair apart share: its place to a

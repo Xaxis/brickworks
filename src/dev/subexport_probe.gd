@@ -1503,14 +1503,17 @@ func _alone(tag: String, file: String, text: String, parsed: LdrModel, held: Arr
 	var tree_got: PackedStringArray = _numbered_alone(_shell.assemblies.paths())
 	tree_got.sort()
 	var authored: bool = AuthorSteps.any(_world, _store.scenery)
+	# The file's steps: an author's, or the app's own saved ones, which an
+	# open keeps as the file has them since stepkeep2 (LdrModel.steps_are_kept):
+	# the castle's sub-models, cut from the app's own castle, open in its steps.
 	var marked: bool = text.contains(LdrModel.AUTHORED_META) or (not text.contains(LdrModel.WORKED_META)
-		and LdrModel.parse(text, file).steps_are_authored())
+		and LdrModel.parse(text, file).steps_are_kept())
 	var steps_ok: bool = authored == marked
 	var steps_said: String = ""
 	if marked and authored:
 		var again: String = _store.to_text(file.get_basename(), true)
 		steps_ok = _steps_of(again) == _steps_of(text)
-		steps_said = ", its %d steps the author's, written again step for step" % _steps_of(text).size()
+		steps_said = ", its %d steps the file's, written again step for step" % _steps_of(text).size()
 	var ok: bool = unmatched == 0 and colour_off == 0 and got.size() == wanted.size() \
 		and tree_got == tree_wanted and steps_ok
 	if true:
