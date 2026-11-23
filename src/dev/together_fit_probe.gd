@@ -18,7 +18,11 @@
 ##   on a finger, it says to hold a part to point it out, not a key or a
 ##   right-click; on a desktop, the key;
 ##   opened to watchers (buildlive), it is whole, with Copy watch link,
-##   Close to watchers, End and Close in sight;
+##   Close to watchers, End and Close in sight; the chat's field and End's
+##   row are under what scrolls, and who is here and the chat give up rows
+##   to a short room, so all of it stays in sight in any window from
+##   1024 x 600 up (buildfit: PROBE_SIZE=1152x648, 1280x720, 1024x600,
+##   and --desktop);
 ##   with the keyboard up for the chat (a finger's), the panel is above it,
 ##   and the field being typed in is in sight; the keyboard down, it is
 ##   whole again.
@@ -127,6 +131,12 @@ func _run() -> void:
 		var room: Rect2 = touch.room(dialog)
 		_whole(dialog, "the keyboard up, %d points" % touch.keyboard, room)
 		_in_sight(dialog, ["together_chat_field"], "the keyboard up", room)
+		# The field is in the foot: what was said is scrolled into the
+		# body's view above it (buildfit).
+		var said: Control = dialog.get("_chat_scroll")
+		var body: Control = dialog.get("_body")
+		_check("the keyboard up: what was said in sight above the field",
+			said != null and body != null and body.get_global_rect().grow(0.5).encloses(said.get_global_rect()))
 		await _shot("keyboard")
 		touch.keyboard = 0.0
 		field.release_focus()
@@ -165,6 +175,9 @@ func _in_sight(dialog: TogetherDialog, names: Array, when: String, room: Rect2 =
 	var controls: Dictionary = dialog.controls_by_name()
 	var body: ScrollContainer = dialog.get("_body")
 	var shown: Rect2 = body.get_global_rect() if body != null else Rect2()
+	# The chat's field and End's row are under the body, never scrolled (buildfit).
+	var foot: Control = dialog.get("_foot")
+	var kept: Rect2 = foot.get_global_rect() if foot != null and foot.is_visible_in_tree() else Rect2()
 	var at := Vector2(dialog.position)
 	var out := PackedStringArray()
 	for name: String in names:
@@ -173,7 +186,8 @@ func _in_sight(dialog: TogetherDialog, names: Array, when: String, room: Rect2 =
 			out.append("%s not shown" % name)
 			continue
 		var box: Rect2 = control.get_global_rect()
-		var inside_body: bool = name == "together_close" or shown.grow(0.5).encloses(box)
+		var inside_body: bool = name == "together_close" or shown.grow(0.5).encloses(box) \
+			or (kept.has_area() and kept.grow(0.5).encloses(box))
 		if not inside_body or not room.grow(0.5).encloses(Rect2(at + box.position, box.size)):
 			out.append("%s at %s" % [name, _rect(Rect2(at + box.position, box.size))])
 	_check("%s: %s in sight%s" % [when, ", ".join(PackedStringArray(names)),
