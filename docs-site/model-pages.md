@@ -221,6 +221,7 @@ Each set's name opens its page, where the model is listed under **Built from thi
 
 <!-- covers
 lib:what a model is based on
+lib:alternate builds counted
 -->
 
 ## What a remix changed {#remix-changes}
