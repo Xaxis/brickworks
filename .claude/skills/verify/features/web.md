@@ -4293,39 +4293,48 @@ plan with Claude as the client.
   given. The question, the time to wait and the console's "Kept" are each
   checked inside the screen. Passes on
   "phonewarn: N passed, 0 failed".
-- `the loading page` (`src/boot/shell.html` `#boot`, bootlook 2026-11-23):
-  the mark beside the wordmark; the wall in CSS 3D (`bootWall`, built as the
-  page is read): 27 bricks of four faces each in the mark's colours and
-  LDConfig's, lit from one side, on a 20 x 8 baseplate in perspective with
-  the site's faint dots, turning slowly (CSS animation `turn`, run by the
-  compositor, so it moves through the engine's compile); each brick drops
-  and seats with a bounce as the engine's files come (`#laid` of `#total`,
-  one every 70 ms at most), the last laid only when the app is up; no studs
-  on a brick (docs/TRADEMARKS.md Decision 1). Under it a tip (`bootTips`,
+- `the loading page` (`src/boot/shell.html` `#boot`, bootlook and bootlook2
+  2026-11-23): our mark, the cube with one corner cut away (web/icon.svg),
+  built in CSS 3D (`bootWall`, made as the page is read) of 40 bricks two
+  studs deep in six courses, each course across the last, the cut the top
+  three courses' front quarter; each brick's three faces a camera above the
+  cut corner sees are the mark's colours by where they face (yellow up, red
+  and blue the sides, the cut's floor and walls a shade darker), as one
+  light falls, the joints dark; about two fifths of the window's height
+  (`--u`, a stud, 14 to the stage's width), turning slowly from side to
+  side about the cut corner (CSS animation `turn`, run by the compositor,
+  so it moves through the engine's compile). Each brick flies in from above
+  and towards the camera, turning a little, and is pressed home as the
+  engine's files come (`#laid` of `#total`, the bottom course first and
+  each from the back, one every 70 ms at most), the last laid only when the
+  app is up; no studs on a brick (docs/TRADEMARKS.md Decision 1). Under it
+  the name, Brickworks, in the site's type. Under that a tip (`bootTips`,
   `#tip`, `window.brickworksTips`): 41 tips, a computer's 28 (its keys and
   menus) and a touch screen's 14 (its gestures, the menus through More), every 5 s with a fade in a card of one
   height, each in en/de/fr/es through `loaderSays`, keys drawn as keys (Cmd
   for Ctrl on a Mac); waits under the pointer; a screen reader hears each
   once (aria-live polite, off for the first and for one come round again);
   the next visit starts at the next (`localStorage brickworks.tip`); when
-  the start fails or the model is in another tab, the tip goes and the wall
+  the start fails or the model is in another tab, the tip goes and the mark
   stops (`bootWall.hold`). The
   site's tokens, dark or light by the system or the site's kept choice
-  (`brickworks.theme`); reduced motion: no turn, no drop, no fade. Proven by
-  the loading page browser flow.
+  (`brickworks.theme`); reduced motion: the mark stands finished at its own
+  angle, no turn, no flight, no fade. Proven by the loading page browser
+  flow.
 - `loading page browser flow` (`tools/web/bootlook_flow.mjs`, local, under
   heavy): `--dir=<build> [--base=<build>] --out=DIR [--port=11651]`, each
   served by serve.py `--compressed --cached`. Pictures at 1280x800 and
   390x844 (3x, touch) in dark and light, early, mid and late in a load held
   to 2.5 Mbps (`--kbps`), each the window (DIR/pictures/); in each load the
   layout shifts' sum is 0 and a tip came every ~5 s with its card and the
-  wall where they were. Then every tip in each language on a computer and a
+  mark where they were. Then every tip in each language on a computer and a
   phone stepped through on `page.clock` with the engine's script held: in
   its card (on a 320 x 568 phone too), new each time, in the language, keys
   as keys, aria-live as above; under the pointer it waits; the next visit's
-  first; reduced motion; the theme kept; the app up behind it and nothing
-  moving after; its tab opened by link in another tab says so, its tip put
-  away and its wall stopped; without WebGL 2 the trouble said, the same;
+  first; reduced motion (every brick shown, nothing moving); the theme kept;
+  the app up behind it with every brick laid and nothing moving after; its
+  tab opened by link in another tab says so, its tip put away and its mark
+  stopped; without WebGL 2 the trouble said, the same;
   with `--base`, no address the base did not ask. Its build need not be an
   export of its own: `python3 tools/web/shell_arm.py BASE OUT` puts this
   checkout's loading page in front of an export's engine and packs, filled

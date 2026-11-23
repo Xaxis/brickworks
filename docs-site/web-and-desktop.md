@@ -15,9 +15,9 @@ Brickworks is a web app: open [brickworks.diy/app](/app) and build. Nothing is i
 
 Open [brickworks.diy/app](/app) in a recent browser on a computer, a tablet or a phone: it needs WebGL 2 and WebAssembly threads, and nothing else.
 
-While it loads, a wall builds itself on a baseplate: a brick drops into place for each share of the app that has arrived, and the count under it says how many are laid. Under that, a tip about Brickworks changes every five seconds, a key on a computer or a gesture on a touch screen; point at a tip to keep it, and your next visit starts with the next one. A first visit on a phone also says about how long it has to go.
+While it loads, bricks fly in and build the Brickworks mark, the cube with one corner cut away: a brick for each share of the app that has arrived, so the mark complete is the app ready, and the count under the name says how many are laid. Under that, a tip about Brickworks changes every five seconds, a key on a computer or a gesture on a touch screen; point at a tip to keep it, and your next visit starts with the next one. A first visit on a phone also says about how long it has to go. With reduced motion the mark stands finished and still.
 
-![The page Brickworks shows while it loads: the mark and Brickworks over a half-built wall of coloured bricks on a grey baseplate seen from a little above, 16 of 27 bricks laid under it, then a card: Tip, Press F1 for every key and click Brickworks answers to.](/docs/img/web-and-desktop-loading.webp "While it loads: the wall builds as the app arrives, with a tip under it.")
+![The page Brickworks shows while it loads: the Brickworks mark built of bricks, a cube with one corner cut away, yellow on top, red and blue sides and the cut a shade darker, seen from above its cut corner; under it Brickworks, 36 of 40 bricks, then a card: Tip, Press F1 for every key and click Brickworks answers to.](/docs/img/web-and-desktop-loading.webp "While it loads: our mark builds itself in bricks as the app arrives, with a tip under it.")
 
 <!-- covers
 ui:the loading page

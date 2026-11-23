@@ -289,14 +289,16 @@ whole cycle.
   builders' forum has talk, its newest threads. The header on every page
   leads with Gallery, Talk and Challenges, then Docs; Plans and the desktop
   app are in the menu and the footer.
-- **The loading page builds its wall in 3D, with a tip under it.** While
-  the app loads in a browser, real-looking bricks drop onto a baseplate and
-  seat, course by course, as the app arrives, and the wall turns slowly
-  under one light, in the site's own colours, dark or light. Under it a tip
-  about Brickworks changes every five seconds: a key on a computer, a
+- **The loading page builds our mark in 3D bricks, with a tip under it.**
+  While the app loads in a browser, bricks fly in and build the Brickworks
+  mark, the cube with one corner cut away, course by course as the app
+  arrives: yellow on top, red and blue down the sides, the cut a shade
+  darker, as big as the window allows and turning slowly under one light.
+  The mark complete is the app ready. Under it the name, and under that a
+  tip about Brickworks changes every five seconds: a key on a computer, a
   gesture on a phone, and the menus' best commands, in your language; point
   at one to keep it, and the next visit starts with new ones. With reduced
-  motion it stands still.
+  motion the mark stands finished and still.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say

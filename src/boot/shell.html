@@ -4,24 +4,26 @@
 
   Godot's default shell shows a spinner and the engine's name, which is
   the wrong thing to look at for the ten to thirty seconds a 10 MB
-  WebAssembly build takes to arrive. So the wait shows the thing the app
-  is for: a wall lays itself, course by course, and the number of bricks
-  standing *is* the progress bar. Nothing is faked — each brick drops in
-  when the download crosses its share.
+  WebAssembly build takes to arrive. So the wait shows what the app is
+  for, building, and who it is: our mark, the cube with one corner cut
+  away (web/icon.svg), builds itself in bricks, course by course, as the
+  app arrives, and the mark complete *is* the progress bar. Nothing is
+  faked: each brick flies in when the download crosses its share.
 
   It has to work before any of the engine exists, so it is one file with
-  no dependencies, no fonts to fetch and no images. The wall is built in
-  CSS 3D (bootlook, 2026-11-23; the owner: "make it look 3D and even
-  cooler and better aligned with our ui/ux"): each brick a box of four
-  faces in real LEGO® colours, lit from one side, on a baseplate seen in
-  perspective, the whole turning slowly. Its turn and each brick's drop
-  are CSS animations, which the browser's compositor runs off the page's
-  thread, so they keep moving while the engine compiles there. Still no
-  studs on a brick: our own pictures draw no brick and knob
-  (docs/TRADEMARKS.md, Decisions, 2026-10-13); the plate's faint dots are
-  the site's own (web/site.css --studs). Its colours, type and corners are
-  web/site.css's, dark or light as the site is. Under the wall a tip
-  about the app, a new one every five seconds (bootTips, below).
+  no dependencies, no fonts to fetch and no images. The mark is built in
+  CSS 3D (bootlook2, 2026-11-23; the owner: "the loading screen needs to
+  be drastically improved with 3D bricks and somehow incorporate the
+  brickworks logo"): each brick a box whose faces are the mark's own,
+  yellow on top, red and blue the sides, the cut a shade darker, as one
+  light falls on it, the cube seen from above its cut corner and turning
+  slowly from side to side. Its turn and each brick's flight are CSS
+  animations, which the browser's compositor runs off the page's thread,
+  so they keep moving while the engine compiles there. No studs on a
+  brick: our own pictures draw no brick and knob (docs/TRADEMARKS.md,
+  Decisions, 2026-10-13). Its colours, type and corners are web/site.css's,
+  dark or light as the site is. Under the mark its name, and under that a
+  tip about the app, a new one every five seconds (bootTips, below).
 
   The placeholders Godot substitutes at export time are the contract: the
   names GODOT_PROJECT_NAME, GODOT_HEAD_INCLUDE, GODOT_CONFIG and
@@ -141,10 +143,11 @@ html, body {
 #canvas:focus { outline: none; }
 
 #boot {
-	/* A stud's width, which every length of the wall is counted in: the
-	   wall is 23 of them wide with its plate, so it fits the window's
-	   width and a third of its height. A course is a brick's height. */
-	--u: min(24px, calc((100vw - 32px) / 23), 2.9vh);
+	/* A stud's width, which every length of the mark is counted in: the
+	   cube is 8 of them a side, and its stage 14 wide and 12.6 high, so it
+	   fills about two fifths of the window's height and never its width.
+	   A course is a brick's height. */
+	--u: min(27px, calc((100vw - 32px) / 14), 3.2vh);
 	--h: calc(var(--u) * 1.2);
 	position: fixed;
 	inset: 0;
@@ -153,6 +156,8 @@ html, body {
 	justify-items: center;
 	padding: 24px 16px;
 	gap: 20px;
+	/* A brick on its way in may pass the window's side: never a scrollbar. */
+	overflow-x: hidden;
 	overflow-y: auto;
 	background: var(--glow), var(--bg);
 	transition: opacity 520ms ease 140ms, visibility 0s linear 660ms;
@@ -160,185 +165,159 @@ html, body {
 }
 #boot.done { opacity: 0; visibility: hidden; pointer-events: none; }
 
-.brand { align-self: end; }
-.lockup { display: flex; align-items: center; gap: 0.34em; font-size: clamp(30px, 7vw, 42px); }
-.mark { width: 1.06em; height: 1.06em; flex: none; }
+/* -- the mark --------------------------------------------------------- */
+
+/* One width whatever the status says, so a long word of trouble never
+   widens it and moves what it holds. */
+.build { grid-row: 2; display: grid; justify-items: center; width: min(100%, 440px); }
 .wordmark {
-	margin: 0;
-	font-size: 1em;
+	margin: 6px 0 10px;
+	font-size: clamp(26px, calc(var(--u) * 1.5), 42px);
 	line-height: 1.06;
 	font-weight: 740;
 	letter-spacing: -0.035em;
 }
 
-/* -- the wall ------------------------------------------------------- */
-
-.build { display: grid; justify-items: center; gap: 10px; }
-
-/* The window onto the wall: a camera a little above it. The plate lies
-   in it, the wall stands on the plate, and the two turn together. */
+/* The window onto the mark: a camera a little above its cut corner, the
+   cube turning slowly from one side to the other. */
 .stage {
 	position: relative;
-	width: calc(var(--u) * 23);
-	height: calc(var(--u) * 12.5);
-	perspective: calc(var(--u) * 46);
-	perspective-origin: 50% 25%;
+	width: calc(var(--u) * 14);
+	height: calc(var(--u) * 12.6);
+	perspective: calc(var(--u) * 42);
+	perspective-origin: 50% 45%;
 }
-/* The plate's shadow on the ground, flat on the page. */
+/* Its shadow on the ground, flat on the page. */
 .stage::before {
 	content: "";
 	position: absolute;
-	left: 8%;
-	right: 8%;
-	bottom: 0;
-	height: 34%;
+	left: 14%;
+	right: 14%;
+	bottom: -3%;
+	height: 26%;
 	background: radial-gradient(closest-side, var(--under), transparent);
 }
+/* The cube's middle at the stage's: every brick is placed from it. */
 .scene {
 	position: absolute;
 	left: 50%;
-	top: 66%;
+	top: 50%;
 	transform-style: preserve-3d;
-	transform: rotateX(-24deg) rotateY(-20deg);
-	animation: turn 15s ease-in-out infinite alternate;
+	transform: rotateX(-30deg) rotateY(-45deg);
+	animation: turn 13s ease-in-out infinite alternate;
 }
 @keyframes turn {
-	from { transform: rotateX(-24deg) rotateY(-24deg); }
-	to { transform: rotateX(-24deg) rotateY(24deg); }
+	from { transform: rotateX(-27deg) rotateY(-66deg); }
+	to { transform: rotateX(-32deg) rotateY(-24deg); }
 }
-/* Every piece of it a box at the scene's middle (0 by 0, its centre where
-   it stands), and its faces placed round that centre. A face turned away
-   is not drawn, so the faces a box hides cost nothing. */
-.plate, .bricks, .brick { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
-.f { position: absolute; backface-visibility: hidden; }
-
-/* The baseplate: 20 studs by 8, half a stud thick, its top at the scene's
-   middle. */
-.plate .tp {
-	width: calc(var(--u) * 20);
-	height: calc(var(--u) * 8);
-	left: calc(var(--u) * -10);
-	top: calc(var(--u) * -4);
-	transform: rotateX(90deg);
-	background:
-		radial-gradient(circle, var(--plate-dots) 0 16%, transparent 19%) 0 0 / var(--u) var(--u),
-		var(--plate-top);
-	box-shadow: inset 0 -1px 0 var(--plate-edge);
-}
-.plate .fr {
-	width: calc(var(--u) * 20);
-	height: calc(var(--u) * 0.5);
-	left: calc(var(--u) * -10);
-	top: 0;
-	transform: translateZ(calc(var(--u) * 4));
-	background: var(--plate-front);
-}
-.plate .lt, .plate .rt {
-	width: calc(var(--u) * 8);
-	height: calc(var(--u) * 0.5);
-	left: calc(var(--u) * -4);
-	top: 0;
-	background: var(--plate-side);
-}
-.plate .lt { transform: rotateY(-90deg) translateZ(calc(var(--u) * 10)); }
-.plate .rt { transform: rotateY(90deg) translateZ(calc(var(--u) * 10)); }
-/* Where the wall stands on it, a little darker. */
-.plate .sh {
-	width: calc(var(--u) * 19);
-	height: calc(var(--u) * 5);
-	left: calc(var(--u) * -9.5);
-	top: calc(var(--u) * -2.5);
-	transform: rotateX(90deg) translateZ(1px);
-	background: radial-gradient(closest-side, rgba(0, 0, 0, 0.42), transparent);
-}
-
-/* A brick: --w studs long, 2 deep, a course high, centred at (--x, --y)
-   studs from the plate's middle, in --c. Lit from above and the left:
-   its top brightest, its front its own colour, its ends darker. */
+/* A brick: --w studs along, --d deep and a course high, its middle at
+   (--x, --y, --z) studs from the cube's. Only the three faces a camera
+   above the cut corner can see are drawn: its top and the two sides
+   towards it, each in the mark's colour for where it faces (yellow up,
+   red and blue the sides), as the mark is lit by one light; a face of
+   the cut is a shade darker. The faces' edges are the joints between
+   bricks. */
 .brick {
-	left: calc(var(--x) * var(--u));
-	top: calc(var(--y) * var(--u));
+	position: absolute;
+	left: 0;
+	top: 0;
+	transform-style: preserve-3d;
+	--at: translate3d(calc(var(--x) * var(--u)), calc(var(--y) * var(--u)), calc(var(--z) * var(--u)));
+	transform: var(--at);
 	visibility: hidden;
 }
-.brick .fr, .brick .tp { width: calc(var(--w) * var(--u)); left: calc(var(--w) * var(--u) / -2); }
-.brick .fr {
-	height: var(--h);
-	top: calc(var(--h) / -2);
-	transform: translateZ(var(--u));
-	background:
-		linear-gradient(104deg, rgba(255, 255, 255, 0.13), transparent 42%),
-		linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.12)),
-		var(--c);
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.3),
-		inset 1px 0 0 rgba(255, 255, 255, 0.1),
-		inset -1px 0 0 rgba(0, 0, 0, 0.24),
-		inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+.f {
+	position: absolute;
+	backface-visibility: hidden;
+	/* A dark edge, so the joints between bricks read dark, whatever face
+	   stands behind them, and a light one along its top. */
+	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.34), inset 0 2px 0 rgba(255, 255, 255, 0.2);
 }
-.brick .tp {
-	height: calc(var(--u) * 2);
-	top: calc(var(--u) * -1);
+.tp {
+	width: calc(var(--w) * var(--u));
+	height: calc(var(--d) * var(--u));
+	left: calc(var(--w) * var(--u) / -2);
+	top: calc(var(--d) * var(--u) / -2);
 	transform: rotateX(90deg) translateZ(calc(var(--h) / 2));
-	background: linear-gradient(rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.3)), var(--c);
+	background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 70%), #f2cd37;
 }
-.brick .lt, .brick .rt {
-	width: calc(var(--u) * 2);
-	height: var(--h);
-	left: calc(var(--u) * -1);
-	top: calc(var(--h) / -2);
-	box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14);
+/* A side reaches a pixel below its course, over the joint, so the top of
+   the course under it never shows through there. */
+.fz, .fx { height: calc(var(--h) + 1px); top: calc(var(--h) / -2); }
+.fz {
+	width: calc(var(--w) * var(--u));
+	left: calc(var(--w) * var(--u) / -2);
+	transform: translateZ(calc(var(--d) * var(--u) / 2));
+	background: linear-gradient(rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.1)), #d0332f;
 }
-.brick .lt {
-	transform: rotateY(-90deg) translateZ(calc(var(--w) * var(--u) / 2));
-	background: linear-gradient(rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.16)), var(--c);
-}
-.brick .rt {
+.fx {
+	width: calc(var(--d) * var(--u));
+	left: calc(var(--d) * var(--u) / -2);
 	transform: rotateY(90deg) translateZ(calc(var(--w) * var(--u) / 2));
-	background: linear-gradient(rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.36)), var(--c);
+	background: linear-gradient(rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.14)), #2a6fc4;
 }
-/* Laid: it drops the last few studs into place and seats with a small
-   bounce, as a brick pressed home does. */
-.brick.laid { visibility: visible; animation: seat 560ms both; }
-.brick.laid .f { animation: appear 120ms linear both; }
-@keyframes seat {
-	0% { transform: translateY(calc(var(--u) * -4.5)); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.55); }
-	56% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1); }
-	74% { transform: translateY(calc(var(--u) * -0.34)); animation-timing-function: cubic-bezier(0.55, 0, 1, 0.45); }
-	88% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0.55, 0.45, 1); }
-	94% { transform: translateY(calc(var(--u) * -0.06)); animation-timing-function: ease-in; }
-	100% { transform: translateY(0); }
+.dt .tp { background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.06)), #c29d22; }
+.dz .fz { background: linear-gradient(rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.12)), #94211e; }
+.dx .fx { background: linear-gradient(rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.14)), #1c4b88; }
+/* Laid: it flies in from above and towards the camera, turning a little,
+   and is pressed home with a small dip. */
+.brick.laid { visibility: visible; animation: fly 760ms var(--late, 0ms) both; }
+.brick.laid .f { animation: appear 200ms linear var(--late, 0ms) both; }
+@keyframes fly {
+	0% {
+		transform: var(--at) translate3d(calc(var(--fx) * var(--u)), calc(var(--fy) * var(--u)), calc(var(--fz) * var(--u)))
+			rotateX(var(--rx)) rotateY(var(--ry));
+		animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1);
+	}
+	82% { transform: var(--at) translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg); animation-timing-function: ease-in-out; }
+	91% { transform: var(--at) translate3d(0, calc(var(--u) * 0.1), 0) rotateX(0deg) rotateY(0deg); animation-timing-function: ease-in-out; }
+	100% { transform: var(--at) translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg); }
 }
 @keyframes appear { from { opacity: 0; } to { opacity: 1; } }
-/* Gone: nothing left moving behind the app. */
+/* The app up: the mark complete at once, held where it turned to as the
+   page fades, so nothing goes on moving behind the app whenever the
+   page's own timer comes; gone, nothing left moving at all. */
+#boot.done .scene { animation-play-state: paused; }
+#boot.done .brick { visibility: visible; animation: none; }
+#boot.done .f { animation: none; }
 .stage.still .scene, .stage.still .brick, .stage.still .f { animation: none; }
-/* Stopped where it stood when the start failed: nothing more is coming. */
+/* Stopped where it stood when the start failed or the model is in
+   another tab: nothing more is coming, so the mark stands whole and still,
+   and no count of bricks goes on saying a share. */
 .stage.held .scene { animation-play-state: paused; }
+.stage.held .brick { visibility: visible; animation: none; }
+.stage.held .f { animation: none; }
+.stage.held ~ .status .count { visibility: hidden; }
 
 /* -- status --------------------------------------------------------- */
 
-/* Its height kept whatever it says, so nothing on the page moves: room
-   for the count and a line of note, and on a phone the first visit's
-   time to go under them. */
+/* Its box kept whatever it says, so nothing on the page moves: one width,
+   each line across all of it, and one height, room for the count and a
+   line of note, and on a phone the first visit's time to go under them.
+   What went wrong can say more: it runs on over the tip, which is put
+   away then. */
 .status {
 	display: grid;
 	align-content: start;
-	justify-items: center;
 	gap: 4px;
-	min-height: 48px;
+	width: 100%;
+	height: 48px;
 	text-align: center;
 }
 @media (hover: none) and (pointer: coarse) and (max-width: 599px) {
-	.status { min-height: 90px; }
+	.status { height: 90px; }
 }
 .count {
 	font-variant-numeric: tabular-nums;
 	font-size: 14px;
 	color: var(--ink-soft);
 }
-.count strong { display: inline-block; min-width: 2ch; text-align: right; font-weight: 650; color: var(--ink); }
-.note { font-size: 13px; color: var(--ink-faint); max-width: 46ch; }
-.note.bad { color: var(--bad); max-width: 60ch; }
-.eta { font-size: 13px; color: var(--ink-soft); max-width: 46ch; }
+/* The number in a box of one width, so its line never grows as it counts
+   and the words beside it never move. */
+.count strong { display: inline-block; width: 2.5ch; text-align: right; font-weight: 650; color: var(--ink); }
+.note { font-size: 13px; color: var(--ink-faint); }
+.note.bad { color: var(--bad); }
+.eta { font-size: 13px; color: var(--ink-soft); }
 
 /* -- the tip -------------------------------------------------------- */
 
@@ -346,6 +325,7 @@ html, body {
    label as an eyebrow. Its height is kept for the longest tip, so the
    next one never moves the page. */
 .tip {
+	grid-row: 3;
 	width: min(560px, 100%);
 	padding: 12px 18px 14px;
 	border: 1px solid var(--line);
@@ -401,6 +381,7 @@ html, body {
 .tip .keys { white-space: nowrap; }
 
 .legal {
+	grid-row: 4;
 	align-self: end;
 	margin: 0;
 	font-size: 11.5px;
@@ -411,18 +392,29 @@ html, body {
 }
 .legal a { color: inherit; }
 
+/* A phone's short window: the mark a little smaller, so the tip and the
+   licences still fit under it. */
+@media (max-width: 599px) and (max-height: 760px) {
+	#boot { --u: min(27px, calc((100vw - 32px) / 14), 2.7vh); gap: 14px; }
+}
+@media (max-width: 599px) and (max-height: 620px) {
+	#boot { --u: min(27px, calc((100vw - 32px) / 14), 2.2vh); }
+}
 /* A short window (a phone on its side, the studio in a frame on the
-   home page): the wall and its count, tighter, and no tip. */
+   home page): the mark and its count, tighter, and no tip. */
 @media (max-height: 560px) {
-	#boot { gap: 10px; padding-block: 12px; }
-	.lockup { font-size: 26px; }
+	#boot { --u: min(27px, calc((100vw - 32px) / 14), 3.5vh); gap: 10px; padding-block: 12px; }
+	.wordmark { margin-block: 2px 6px; }
 	.tip { display: none; }
+	/* No tip to run on over: what went wrong takes its own room. */
+	.status { height: auto; min-height: 48px; }
 }
 
-/* Without motion: the wall stands still at a three-quarter turn, each
-   brick is simply there, and a tip changes without fading. */
+/* Without motion: the mark stands finished and still at its own angle,
+   the cut corner towards you, and a tip changes without fading. */
 @media (prefers-reduced-motion: reduce) {
 	.scene { animation: none; }
+	.brick { visibility: visible; }
 	.brick.laid, .brick.laid .f { animation: none; }
 	.tip-text { transition: none; }
 	#boot { transition: opacity 200ms linear, visibility 0s linear 200ms; }
@@ -535,30 +527,15 @@ $GODOT_HEAD_INCLUDE
 </canvas>
 
 <div id="boot">
-	<div class="brand">
-		<div class="lockup">
-			<!-- The mark, as web/icon.svg draws it. -->
-			<svg class="mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-				<path d="M32 4L56.25 18L44.125 25L32 18L19.875 25L7.75 18Z" fill="#f2cd37"/>
-				<path d="M7.75 18L19.875 25V39L32 46V60L7.75 46Z" fill="#d0332f"/>
-				<path d="M56.25 18L44.125 25V39L32 46V60L56.25 46Z" fill="#2a6fc4"/>
-				<path d="M32 46L44.125 39L32 32L19.875 39Z" fill="#c29d22"/>
-				<path d="M44.125 25L32 18V32L44.125 39Z" fill="#94211e"/>
-				<path d="M19.875 25L32 18V32L19.875 39Z" fill="#1c4b88"/>
-			</svg>
-			<h1 class="wordmark">Brickworks</h1>
-		</div>
-	</div>
-
 	<div class="build">
-		<div id="wall" class="stage" role="img" aria-label="A wall being built as the app loads">
-			<div class="scene">
-				<div class="plate"><div class="f tp"></div><div class="f fr"></div><div class="f lt"></div><div class="f rt"></div><div class="f sh"></div></div>
-				<div class="bricks" id="bricks"></div>
-			</div>
+		<!-- The mark, as web/icon.svg draws it, built of bricks as the app
+		     arrives (bootWall, below). -->
+		<div id="wall" class="stage" role="img" aria-label="The Brickworks mark, built in bricks as the app loads">
+			<div class="scene" id="bricks"></div>
 		</div>
+		<h1 class="wordmark">Brickworks</h1>
 		<div class="status">
-			<div class="count"><strong id="laid">0</strong> <span id="count-of">of</span> <span id="total">0</span> <span id="count-bricks">bricks</span></div>
+			<div class="count"><strong id="laid">0</strong> <span id="count-of">of</span> <span id="total">40</span> <span id="count-bricks">bricks</span></div>
 			<div class="note" id="note">Fetching parts…</div>
 			<div class="eta" id="eta" role="status" hidden></div>
 		</div>
@@ -590,7 +567,7 @@ const loaderSays = (function () {
 		de: {
 			"of": "von",
 			"bricks": "Steinen",
-			"A wall being built as the app loads": "Eine Mauer, die gebaut wird, während die App lädt",
+			"The Brickworks mark, built in bricks as the app loads": "Das Brickworks-Logo, aus Steinen gebaut, während die App lädt",
 			"Your browser does not support the canvas element.": "Dein Browser unterstützt das Canvas-Element nicht.",
 			"legal": "Teilegeometrie aus der LDraw™ Teilebibliothek, lizenziert unter {by2} und {by4}. LEGO® ist eine Marke der LEGO Unternehmensgruppe, die diese Website weder sponsert noch autorisiert oder unterstützt.",
 			"Fetching parts…": "Teile werden geladen…",
@@ -652,7 +629,7 @@ const loaderSays = (function () {
 		fr: {
 			"of": "sur",
 			"bricks": "briques",
-			"A wall being built as the app loads": "Un mur qui se construit pendant que l’app se charge",
+			"The Brickworks mark, built in bricks as the app loads": "Le logo de Brickworks, construit en briques pendant que l’app se charge",
 			"Your browser does not support the canvas element.": "Votre navigateur ne prend pas en charge l’élément canvas.",
 			"legal": "Géométrie des pièces issue de la bibliothèque de pièces LDraw™, sous licence {by2} et {by4}. LEGO® est une marque du groupe de sociétés LEGO, qui ne parraine, n’autorise ni n’approuve ce site.",
 			"Fetching parts…": "Chargement des pièces…",
@@ -714,7 +691,7 @@ const loaderSays = (function () {
 		es: {
 			"of": "de",
 			"bricks": "ladrillos",
-			"A wall being built as the app loads": "Un muro que se construye mientras carga la aplicación",
+			"The Brickworks mark, built in bricks as the app loads": "El logotipo de Brickworks, construido con ladrillos mientras carga la aplicación",
 			"Your browser does not support the canvas element.": "Tu navegador no admite el elemento canvas.",
 			"legal": "Geometría de las piezas de la biblioteca de piezas LDraw™, con licencia {by2} y {by4}. LEGO® es una marca del grupo de empresas LEGO, que no patrocina, autoriza ni respalda este sitio.",
 			"Fetching parts…": "Cargando piezas…",
@@ -792,7 +769,7 @@ const loaderSays = (function () {
 		put("count-of", "of");
 		put("count-bricks", "bricks");
 		put("tip-label", "Tip");
-		document.getElementById("wall").setAttribute("aria-label", says("A wall being built as the app loads"));
+		document.getElementById("wall").setAttribute("aria-label", says("The Brickworks mark, built in bricks as the app loads"));
 		document.getElementById("canvas").textContent = says("Your browser does not support the canvas element.");
 		// The licences' links, as they are in the English.
 		const legal = document.getElementById("legal");
@@ -805,65 +782,96 @@ const loaderSays = (function () {
 	return says;
 })();
 
-// The wall, built as the page is read, before any of the engine has come:
-// its baseplate turns from the first frame and its bricks wait above it.
-// bootWall.lay(fraction) lays bricks up to that share of the wall, the
-// bottom course first, no sooner than one every SPACING ms, so a share
-// that jumps (the engine's files from the cache) still lands brick by
-// brick; lay(1, true) lays the rest at once, as the app comes up.
+// The mark, built as the page is read, before any of the engine has come:
+// the cube with one corner cut away (web/icon.svg), turning from the first
+// frame, in bricks laid as the app arrives, so the mark is the progress
+// bar. bootWall.lay(fraction) lays bricks up to that share of it, the
+// bottom course first and each course from the back, no sooner than one
+// every SPACING ms, so a share that jumps (the engine's files from the
+// cache) still lands brick by brick; lay(1, true) lays the rest at once,
+// as the app comes up.
 const bootWall = (function () {
 	"use strict";
-	// Real LEGO® colours, straight from LDConfig: the mark's red, yellow and
-	// blue twice as often as green, white, orange and light bluish grey.
-	const PALETTE = [
-		"#b40000", "#f2cd37", "#1e5aa8", "#b40000", "#f2cd37", "#1e5aa8",
-		"#00852b", "#f4f4f4", "#fe8a18", "#a0a5a9",
-	];
-	const COURSES = 6;
-	const COURSE_STUDS = 16;  // studs along the wall
-	const HEIGHT = 1.2;       // a brick's height, in studs (9.6 mm to 8)
+	const COURSES = 6;    // a cube 8 studs a side, the cut its top three
+	const HEIGHT = 1.2;   // a course, in studs (9.6 mm to 8)
 	const SPACING = 70;
-
-	// A bonded wall: alternate courses are offset by one brick's
-	// half-length, so the joints stagger the way a real wall's do. Widths
-	// vary a little so it does not read as a grid, and no brick is the
-	// colour of the one beside it.
+	// Bricks two studs deep, along the cube in even courses and across it
+	// in odd ones, so every joint is crossed by the course above. The two
+	// bottom courses' rows, back to front, by their bricks' lengths, no
+	// joint beside the next row's.
+	const ROWS = [[8], [4, 4], [2, 6], [6, 2]];
 	const bricks = [];
-	const WIDTHS = [4, 2, 4, 6, 2, 4];
-	let seed = 7;
-	const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-	for (let course = 0; course < COURSES; course++) {
-		let stud = course % 2 === 0 ? 0 : -2;
-		let index = 0;
-		let before = "";
-		while (stud < COURSE_STUDS) {
-			let width = WIDTHS[(course * 3 + index) % WIDTHS.length];
-			if (stud + width > COURSE_STUDS) width = COURSE_STUDS - stud;
-			if (width >= 2) {
-				let color = PALETTE[Math.floor(rand() * PALETTE.length)];
-				while (color === before) color = PALETTE[Math.floor(rand() * PALETTE.length)];
-				before = color;
-				const from = Math.max(0, stud);
-				const long = stud < 0 ? width + stud : width;
-				bricks.push({ course, x: from + long / 2 - COURSE_STUDS / 2, width: long, color });
-			}
-			stud += width;
-			index++;
-		}
+	function brick(course, band, from, to) {
+		const along = course % 2 === 0;
+		bricks.push({ course: course, x: along ? [from, to] : [band, band + 2], z: along ? [band, band + 2] : [from, to] });
 	}
+	for (let course = 0; course < COURSES; course++) {
+		if (course < 2) {
+			ROWS.forEach(function (lengths, row) {
+				let from = -4;
+				lengths.forEach(function (length) { brick(course, row * 2 - 4, from, from += length); });
+			});
+			continue;
+		}
+		// From the third course up each quarter is its own, so no brick
+		// crosses the cut's edges; above the third the cut's is left out.
+		[-4, 0].forEach(function (a) {
+			[-4, 0].forEach(function (b) {
+				if (course > 2 && a === 0 && b === 0) return;
+				brick(course, b, a, a + 4);
+				brick(course, b + 2, a, a + 4);
+			});
+		});
+	}
+	const middle = function (b) { return b.x[0] + b.x[1] + b.z[0] + b.z[1]; };
+	bricks.sort(function (p, q) { return p.course - q.course || middle(p) - middle(q) || p.x[0] - q.x[0]; });
 
+	// Each flies in from its own place above and towards the camera.
+	let seed = 11;
+	const rand = function () { return (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; };
 	const holder = document.getElementById("bricks");
-	const elements = bricks.map(function (brick) {
+	const elements = bricks.map(function (b) {
 		const el = document.createElement("div");
-		el.className = "brick";
-		el.style.cssText = "--x:" + brick.x + ";--y:" + (-(brick.course + 0.5) * HEIGHT).toFixed(2)
-			+ ";--w:" + brick.width + ";--c:" + brick.color;
-		el.innerHTML = '<div class="f tp"></div><div class="f lt"></div><div class="f rt"></div><div class="f fr"></div>';
+		const cut = b.course > 2;
+		// The cut's faces: its floor the third course's tops in its quarter,
+		// its walls the sides above that face into it.
+		el.className = "brick" + (b.course === 2 && b.x[0] >= 0 && b.z[0] >= 0 ? " dt" : "")
+			+ (cut && b.z[1] === 0 && b.x[0] >= 0 ? " dz" : "") + (cut && b.x[1] === 0 && b.z[0] >= 0 ? " dx" : "");
+		const out = 2 + 3 * rand();
+		const side = 6 * (rand() - 0.5);
+		el.style.cssText = "--x:" + (b.x[0] + b.x[1]) / 2 + ";--z:" + (b.z[0] + b.z[1]) / 2
+			+ ";--y:" + ((COURSES / 2 - b.course - 0.5) * HEIGHT).toFixed(1)
+			+ ";--w:" + (b.x[1] - b.x[0]) + ";--d:" + (b.z[1] - b.z[0])
+			+ ";--fx:" + (out + side).toFixed(2) + ";--fz:" + (out - side).toFixed(2) + ";--fy:" + (-5 - 4 * rand()).toFixed(2)
+			+ ";--rx:" + Math.round(50 * (rand() - 0.5)) + "deg;--ry:" + Math.round(60 * (rand() - 0.5)) + "deg";
+		el.innerHTML = '<i class="f tp"></i><i class="f fz"></i><i class="f fx"></i>';
 		holder.appendChild(el);
 		return el;
 	});
 	const label = document.getElementById("laid");
 	document.getElementById("total").textContent = String(bricks.length);
+
+	// A face that other bricks cover for good is put away once the last of
+	// them is home, so the browser draws only what can be seen: about a
+	// third of the faces when the mark is whole. Each face waits on the
+	// bricks over it or in front of it (none if any of its room is open).
+	const cell = {};
+	bricks.forEach(function (b, i) {
+		for (let x = b.x[0]; x < b.x[1]; x++) for (let z = b.z[0]; z < b.z[1]; z++) cell[[b.course, x, z]] = i;
+	});
+	const covers = bricks.map(function () { return []; });
+	bricks.forEach(function (b, i) {
+		[[0, b.course + 1, b.x, b.z], [1, b.course, b.x, [b.z[1], b.z[1] + 1]], [2, b.course, [b.x[1], b.x[1] + 1], b.z]].forEach(function (face) {
+			const by = new Set();
+			for (let x = face[2][0]; x < face[2][1]; x++) for (let z = face[3][0]; z < face[3][1]; z++) {
+				if (!([face[1], x, z] in cell)) return;
+				by.add(cell[[face[1], x, z]]);
+			}
+			const wait = { face: elements[i].children[face[0]], left: by.size, home: 0 };
+			by.forEach(function (k) { covers[k].push(wait); });
+		});
+	});
+	const FLIGHT = 760;
 
 	let shown = 0;
 	let aim = 0;
@@ -874,13 +882,21 @@ const bootWall = (function () {
 		aim = Math.max(aim, Math.round(Math.max(0, Math.min(1, fraction)) * bricks.length));
 		const now = performance.now();
 		let late = 0;
+		const before = shown;
 		while (shown < aim && (all || now - last >= SPACING)) {
-			if (all) elements[shown].style.animationDelay = (late++ * 40) + "ms";
+			const delay = all ? late++ * 40 : 0;
+			if (all) elements[shown].style.setProperty("--late", delay + "ms");
 			elements[shown].classList.add("laid");
+			covers[shown].forEach(function (wait) {
+				wait.home = Math.max(wait.home, delay + FLIGHT);
+				if (--wait.left === 0) setTimeout(function () { wait.face.style.display = "none"; }, wait.home + 100);
+			});
 			shown++;
 			last = now;
 		}
-		label.textContent = String(shown);
+		// Only when it changes: a write each frame made the page lay out
+		// and paint every frame of the download.
+		if (shown !== before) label.textContent = String(shown);
 		return shown;
 	}
 	// Once the page is gone, nothing behind the app goes on moving.
@@ -893,7 +909,7 @@ const bootWall = (function () {
 	return { count: bricks.length, lay: lay, still: still, hold: hold };
 })();
 
-// A tip about the app under the wall, a new one every EVERY ms, faded in
+// A tip about the app under the mark, a new one every EVERY ms, faded in
 // where the last one was (its card keeps one height, so nothing on the
 // page moves), each said in the page's language. A computer is told its
 // keys and its menus; a touch screen, with no mouse or pad, its gestures,
@@ -1079,7 +1095,7 @@ brickworksEngine.ready.then(function (chosen) {
 
 	// The engine reports the wasm and pack download; the rest of the bar is
 	// the engine starting and the catalogue parsing, which report nothing.
-	// Through them the wall goes on rising, ever slower, short of its last
+	// Through them the mark goes on rising, ever slower, short of its last
 	// brick, which only the app up lays: it keeps moving instead of stalling
 	// at a number, and it can never claim to be finished.
 	const DOWNLOAD_SHARE = 0.86;
@@ -1099,7 +1115,7 @@ brickworksEngine.ready.then(function (chosen) {
 	})();
 
 	// What went wrong stays said: the files still coming, the start's other
-	// steps and the wall never write over it.
+	// steps and the mark never write over it.
 	let failed = false;
 	function say(text, bad) {
 		if (failed && !bad) return;

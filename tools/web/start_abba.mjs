@@ -167,7 +167,10 @@ async function serve(arm, port) {
   let said = "";
   child.stderr.on("data", (d) => { said = (said + d).slice(-2000); });
   for (let i = 0; i < 60; i++) {
-    const up = await fetch(`http://127.0.0.1:${port}/index.html`).then((r) => r.ok).catch(() => false);
+    // Read to its end: the page left unread, then closed by serve.py, threw
+    // inside node 24's fetch and ended the whole run (bootlook2, 2026-11-23).
+    const up = await fetch(`http://127.0.0.1:${port}/index.html`).then(async (r) => { await r.arrayBuffer(); return r.ok; })
+      .catch(() => false);
     if (up) return child;
     if (child.exitCode !== null) break;
     await new Promise((r) => setTimeout(r, 500));
