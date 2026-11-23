@@ -623,6 +623,14 @@ declare -A CMD=(
   # /admin; she takes another off herself; deleting her account deletes its
   # file. 390 and 1280 px, light and dark; the accounts deleted after.
   [avatar]="tools/web/avatar_flow.mjs --url=$P --out=$S/${TAG}_avatar"
+  # A minifig of your own as your avatar (avatarkit, 2026-11-23): throwaway
+  # Ada's profile and comment show the minifig made from her handle, and
+  # ?op=avatar&handle= the same as a JPEG; Make a minifig opens on it, her
+  # picks, Surprise me, a hat hiding the hair colour, Save keeping a PNG
+  # with its recipe; her profile, a reload and her comment show it; a
+  # picture of her own instead, removed: her handle's minifig again. 1280
+  # dark, the maker at 390 light; the account deleted after.
+  [minifig]="tools/web/minifig_flow.mjs --url=$P --out=$S/${TAG}_minifig"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   # The owner's console (/admin, console1, docs/ADMIN.md): every op it
   # added refused signed out (401) and to anybody else (404); as the owner

@@ -309,6 +309,12 @@ function page(pathname) {
     const file = new URL(`${lang[1]}/${copy}`, web);
     return existsSync(file) ? { body: readFileSync(file), type: TYPES[copy.split(".").pop()] || "application/octet-stream" } : null;
   }
+  // A minifigure avatar's layer (web/minifig/<side>/, web/card.js MINIFIG).
+  const layer = /^\/(minifig\/[0-9]{2,3}\/[a-z0-9-]+[.]webp)$/.exec(pathname);
+  if (layer) {
+    const file = new URL(layer[1], web);
+    return existsSync(file) ? { body: readFileSync(file), type: "image/webp" } : null;
+  }
   const named = PAGES.find(([pattern]) => pattern.test(pathname));
   // Any other page at its bare name, as deploy.sh serves them: /admin,
   // /takedown, /download.
