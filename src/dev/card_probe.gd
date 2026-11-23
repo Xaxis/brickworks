@@ -119,8 +119,10 @@ func _run() -> void:
 			var photo: Image = await card.take(SharePanel.THUMB * 2)
 			took[look] = card.last_ms
 			took[look + "_steps"] = card.steps
+			took[look + "_worst"] = [roundi(card.worst_frame_ms), card.worst_step]
 			_ok(photo != null and photo.get_size() == SharePanel.THUMB * 2,
-				"%d %s: the card as a photograph (%s), %.0f ms" % [n, said["name"], look, card.last_ms])
+				"%d %s: the card as a photograph (%s), %.0f ms, its longest frame %.0f ms (%s)"
+				% [n, said["name"], look, card.last_ms, card.worst_frame_ms, card.worst_step])
 			if photo != null:
 				photo.convert(Image.FORMAT_RGB8)
 				photo.resize(SharePanel.THUMB.x, SharePanel.THUMB.y, Image.INTERPOLATE_LANCZOS)

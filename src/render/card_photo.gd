@@ -73,6 +73,9 @@ var asked: Dictionary = {}
 ## its steps began (milliseconds in, then the render's words), for the bench.
 var last_ms: float = 0.0
 var steps: PackedStringArray = PackedStringArray()
+## The longest frame of the last card's and what it was doing (StudioRender's).
+var worst_frame_ms: float = 0.0
+var worst_step: String = ""
 
 
 ## Whether a card can be drawn as a photograph here: a window to draw in,
@@ -161,6 +164,8 @@ func take(size: Vector2i) -> Image:
 			if is_instance_valid(render):
 				render.cancel())
 	var image: Image = await render.render(world, settings(size))
+	worst_frame_ms = render.worst_frame_ms
+	worst_step = render.worst_step
 	render.queue_free()
 	last_ms = float(Time.get_ticks_usec() - began) / 1000.0
 	return image
