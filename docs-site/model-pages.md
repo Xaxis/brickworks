@@ -258,20 +258,6 @@ lib:what a remix changed
 ui:what a remix changed and the remix tree
 -->
 
-## Send your change back {#send-back}
-
-A pull request for LEGO® models. On your own remix's page, signed in, **Send your change back to its designer** takes a note (what you changed, and why) and **Send your change**: the designer's bell lights within a minute, and their model's page lists it with what it changes (*2 added, 1 taken away, 1 moved*), your note and **Open it in the studio**. Send it again after changing your remix and the one waiting is brought up to date; nobody else sees it.
-
-In the studio the designer sees their model as they last published it with your change drawn on it: parts you took away in red, parts you moved in amber with a faint ghost where they go, parts you recoloured in violet, and a green ghost for each part you added. Each change is a row they can press to see it framed in the view and tick or untick, and each kind (added, taken away, moved, recoloured, swapped, to another step) has a box of its own. **Take all**, **Take the ticked** or **Decline**: nothing is taken until they press one. What they take opens as their model, not yet saved, with **Share** ready to publish it as its next version, and that version credits you on the model's page and in its Log: *With part of Priya's change from their remix "Sports car with a roof rack"*. You hear of it in your notifications.
-
-![A model's page under its facts: With part of Priya Example’s change from their remix “Sports car with a roof rack”, version 4, and With Jon Reyes’s change from their remix “Sports car in blue”, version 3, each name, remix and version a link.](/docs/img/suggest-credit.webp "The changes a model took in from its remixes, credited on its page.")
-
-<!-- covers
-ui:a change sent back on a model's page
-api:suggested edits
-lib:a change sent back and taken
--->
-
 ## More by and similar {#more}
 
 At the foot: **More by** its designer, by Top builds, and **Similar models**, by kind and shared tags.
