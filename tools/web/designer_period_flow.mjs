@@ -518,14 +518,17 @@ try {
       await until(page, () => ["ready", "trouble", "empty", "not-yet"].includes(document.documentElement.dataset.designs), "her Insights");
       const seen = await drawn(page, "designs");
       const name = `${width}_${dark ? "dark" : "light"}`;
+      // This page's own answer, read in the else below and again by the
+      // choices after it, so it lives beside both.
+      let its, itsModels;
       if (before) {
         check(`${name}: drawn as before the file (${seen.state}, period ${seen.period}), ${seen.rows.length} rows`,
           seen.state === "ready" && seen.period === "none" && seen.rows.length === MODELS && !(await sideways(page)));
       } else {
         // This page's own answer: its days, its totals.
         const answer = await given;
-        const its = answer?.period || mine.body.period;
-        const itsModels = answer?.models || mine.body.models;
+        its = answer?.period || mine.body.period;
+        itsModels = answer?.models || mine.body.models;
         const totals = its.totals;
         const tilesRight = KINDS.every((kind) => seen.tiles[kind]?.now === totals[kind].now && seen.tiles[kind]?.before === totals[kind].before
           && seen.tiles[kind]?.ever === totals[kind].ever && seen.tiles[kind]?.change === (totals[kind].now_days >= WHOLE
