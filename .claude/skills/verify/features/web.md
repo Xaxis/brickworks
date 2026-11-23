@@ -3478,7 +3478,11 @@ plan with Claude as the client.
   frame's half, at the stage's own aspect) and hits each with
   `elementFromPoint` (the 3D itself, no button or hint over it); the frame
   is square under 600 px and 16:10 from 900, as a model's page; the ask
-  and the posts share one column on the header's edges.
+  and the posts share one column on the header's edges. Its poster and the
+  thread's link preview are the model's own picture (`askPicture`, the
+  asked version's), a model with none a plain frame (and its embed's,
+  `embedCard`): never `/share.png`, which had stood in as an advert; the
+  flow publishes `tests/fixtures/talk/ask_windmill.png` and compares bytes.
   `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`,
   `--keep` leaves its thread for a look on 127.0.0.1);
   `src/dev/askhelp_probe.gd` at 1280x800 and 390x844 (`--pictures=DIR`).

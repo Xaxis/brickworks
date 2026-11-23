@@ -74,7 +74,12 @@ const check = (what, ok) => {
   return ok;
 };
 const errors = [];
-const picture = readFileSync(path.join(root, "web/share.png")).toString("base64");
+// The windmill as the site's own 3D draws it, published with it as the app
+// publishes its render (tests/fixtures/talk/ask_windmill.png). It was the
+// site's share card, which then stood in as the ask's poster.
+const pictureBytes = readFileSync(path.join(root, "tests/fixtures/talk/ask_windmill.png"));
+const picture = pictureBytes.toString("base64");
+const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
 // Three steps of two bricks, with the steps the app carries (SharedPages):
 // its head names this very text and the parts in the order they go down.
@@ -160,6 +165,7 @@ const people = {};
 let modelId = "";
 let threadId = 0;
 let threadPath = "";
+let plainId = "";
 try {
   console.log("1. Ann shares a three-step model and asks about step 2");
   for (const who of WHO) {
@@ -189,6 +195,24 @@ try {
     + `${asked.body.ask?.parts?.length} parts named "${asked.body.ask?.parts?.map((one) => one.name).join(", ")}"`,
   asked.status === 201 && threadId > 0 && asked.body.thread?.board === "help" && asked.body.ask?.step === 2
     && asked.body.ask?.parts?.length === 2 && asked.body.ask.parts.every((one) => /Brick\s+2\s*x\s*2/i.test(one.name || "")));
+  // Its poster is the model's own picture, and so is the thread's link
+  // preview; a model with none gets a plain frame, never the site's share
+  // card (2026-11-23: the share card stood in where the model should be).
+  const own = await fetch(`${site}/m/${modelId}.png`, { headers });
+  const ownBytes = own.ok ? Buffer.from(await own.arrayBuffer()) : Buffer.alloc(0);
+  const og = (await api(`${threadPath}?tests=1`)).text.match(/<meta property="og:image" content="([^"]+)"/)?.[1] || "";
+  check(`its picture is the model's own (${ownBytes.length} bytes), and its link preview's: ${og.replace(site, "")}`,
+    sha(ownBytes) === sha(pictureBytes) && og.includes(`/m/${modelId}`));
+  const plain = await api("/api/share", { method: "POST", token: people.ann.access_token,
+    body: { name: `Ask plain ${rand}`, author: names.ann, model: ldraw, listed: false } });
+  plainId = plain.body.id || "";
+  const plainAsk = await api("/api/people?op=talk_ask&tests=1", { method: "POST", token: people.ann.access_token,
+    body: { model: plainId, step: 1, title: "A model with no picture", body: `Asked about a model with no picture (askhelp flow ${rand})` } });
+  const frame = (await api(`${plainAsk.body.path}?tests=1`)).text.match(/<div class="talk-ask-frame">([\s\S]*?)<\/a>/)?.[1] || "";
+  const embed = (await api(`/m/${plainId}/embed`)).text.match(/<a class="picture"[\s\S]*?<\/a>/)?.[0] || "";
+  check(`a model with no picture: a plain frame on its ask and its embed, nothing drawn in them and never the site's card `
+    + `(${plain.status}, ${plainAsk.status})`, plainAsk.status === 201 && frame.includes('class="picture"') && !/<img|share\.png/.test(frame)
+    && embed.includes("data-scene") && !/<img|share\.png/.test(embed));
   const notThere = await api("/api/people?op=talk_ask&tests=1", { method: "POST", token: people.ann.access_token,
     body: { model: modelId, step: 2, parts: [{ part: "3001", colour: 4, at: [500, 0, 0] }], title: "Not there", body: "A part nowhere" } });
   check(`a part not in the model is refused: ${notThere.status} "${notThere.body.error}"`, notThere.status === 409 && /not in that version/.test(notThere.body.error || ""));
@@ -215,6 +239,11 @@ try {
       return img && img.complete && img.naturalWidth > 0;
     }, "its picture", 20).catch(() => false);
     check(`${size}: its picture shows before the 3D`, still);
+    const poster = await visitor.evaluate(() => {
+      const img = document.querySelector(".talk-ask .picture img");
+      return img ? new URL(img.currentSrc || img.src).pathname : "";
+    });
+    check(`${size}: its poster is the model's own picture, ${poster}`, poster === `/m/${modelId}.png`);
     await visitor.evaluate(() => scrollTo(0, 0));
     await shot(visitor, `thread_${size}.png`);
     const view = await open3d(visitor, phone);
@@ -371,7 +400,10 @@ try {
   // --keep leaves the people, the model and the thread for a look (on the
   // local relay only: never on a preview, whose accounts are real).
   if (args.keep && /^http:\/\/127\.0\.0\.1:/.test(args.url)) console.log(`  kept: ${threadPath}?tests=1`);
-  else if (modelId && people.ann) await api(`/api/share?op=unpublish&id=${modelId}`, { method: "POST", token: people.ann.access_token }).catch(() => {});
+  else if (modelId && people.ann) {
+    if (plainId) await api(`/api/share?op=unpublish&id=${plainId}`, { method: "POST", token: people.ann.access_token }).catch(() => {});
+    await api(`/api/share?op=unpublish&id=${modelId}`, { method: "POST", token: people.ann.access_token }).catch(() => {});
+  }
   if (!(args.keep && /^http:\/\/127\.0\.0\.1:/.test(args.url))) for (const email of Object.values(emails)) await deleteAccount(email).catch(() => {});
 }
 for (const error of errors) console.log(`  page: ${error}`);
