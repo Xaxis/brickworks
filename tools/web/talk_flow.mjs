@@ -233,7 +233,8 @@ try {
   const rowBox = await until(visitor, () => (document.activeElement?.matches("#talk-list .talk-row form.composer textarea") ? true : null), null, 10);
   await visitor.keyboard.type("A row's reply");
   await visitor.keyboard.press("Enter");
-  const rowEnter = await until(visitor, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 2);
+  // No dialog within 2 s is the answer wanted: until() throws on a quiet wait.
+  const rowEnter = await until(visitor, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 2).catch(() => null);
   await visitor.keyboard.press("Control+Enter");
   const rowAsked = await until(visitor, () => (document.querySelector("dialog.sign-in[open]") ? true : null), null, 10);
   await visitor.keyboard.press("Escape");

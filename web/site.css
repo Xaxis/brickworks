@@ -1973,7 +1973,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .row-body { grid-column: 2; min-width: 0; }
 .list-row:not(:has(> .row-pic, > .row-face)) > .row-body { grid-column: 1 / 3; }
 .row-act { grid-column: 3; grid-row: 1; display: flex; align-items: center; gap: var(--s-2); }
-.row-card { grid-column: 2 / -1; min-width: 0; }
+.row-card { grid-column: 2 / -1; min-width: 0; max-width: 560px; }
 .list-row:not(:has(> .row-pic, > .row-face)) > .row-card { grid-column: 1 / -1; }
 .row-title { margin: 0; line-height: 1.35; overflow-wrap: anywhere; }
 .row-title a { color: var(--ink); text-decoration: none; }
@@ -1986,6 +1986,8 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 @media (width < 600px) {
 	.list-row { padding: var(--s-3); column-gap: var(--s-3); }
 	.list-row > .row-pic { width: 72px; }
+	/* A post's card the row's whole width on a phone, as it was. */
+	.list-row > .row-card { grid-column: 1 / -1; }
 }
 
 /* .page-grid: what is on the page (.page-toc) down the left from 900 px,

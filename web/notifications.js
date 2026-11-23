@@ -120,7 +120,7 @@ $("all-read").addEventListener("click", async () => {
   }
   // The button goes with what it did: said, and the keyboard's focus on
   // the page's title rather than lost with it.
-  const title = document.querySelector(".notices-head h1");
+  const title = document.querySelector(".page-head h1");
   if (title && focused) {
     title.tabIndex = -1;
     title.focus();
