@@ -209,6 +209,13 @@ const SOURCE_KEY := 0.05
 ## source_spill): none. It is lit by it as the white card is, so it keeps its
 ## own colour; mirrored whole, its glare drew wood and terrazzo nearly white.
 const SOURCE_SPILL := 0.0
+## Moulded ABS's own unevenness (photoreal15, RenderSettings peel, sink,
+## polish and scuff; path_tracer.glsl's peeled, sunk, polish_split and
+## sparse_scuffs): each 0 unless asked until the photo bench's judge keeps it.
+const PRODUCT_PEEL := 0.0
+const PRODUCT_SINK := 0.0
+const PRODUCT_POLISH := 0.0
+const PRODUCT_SCUFF := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2669,6 +2676,9 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
 	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
+	var breakup: Array = _breakup(settings)
+	_tracer.peel = float(breakup[2])
+	_tracer.sink = float(breakup[3])
 	_tracer.marked = _tracer.product and (_own(settings.rubbed, PRODUCT_RUBBED) > 0.0
 		or not _matched(settings).is_empty())
 	# The product look's picture has the samples' grain taken out
@@ -3085,6 +3095,11 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([key_way.x, key_way.y, key_way.z, 0.0])
 	# The large source (photoreal14), read only by the shader's marks version.
 	data.append_array(_source_rows(settings, shot))
+	# Moulded ABS's own unevenness (photoreal15): the polish split and the
+	# scuffs, read only by the marks version (the peel and the sink go with
+	# each part's record).
+	var breakup: Array = _breakup(settings) if worn else [0.0, 0.0, 0.0, 0.0]
+	data.append_array([float(breakup[0]), float(breakup[1]), float(breakup[2]), float(breakup[3])])
 	return data
 
 
@@ -3157,7 +3172,22 @@ func _matched(settings: RenderSettings) -> Dictionary:
 	# The large source (photoreal14) is drawn by the same version.
 	if _source_level(settings) > 0.0:
 		out["source"] = _source_level(settings)
+	# So is moulded ABS's own unevenness (photoreal15).
+	var breakup: Array = _breakup(settings)
+	for i: int in 4:
+		if float(breakup[i]) > 0.0:
+			out[["polish", "scuff", "peel", "sink"][i]] = breakup[i]
 	return out
+
+
+## Moulded ABS's own unevenness (photoreal15) that [param settings] ask for,
+## as the shader's breakup row reads it: the polish split, the scuffs, the
+## peel and the sink, each 0 for none. Only in the product look.
+func _breakup(settings: RenderSettings) -> Array:
+	if settings.look != "product":
+		return [0.0, 0.0, 0.0, 0.0]
+	return [maxf(_own(settings.polish, PRODUCT_POLISH), 0.0), maxf(_own(settings.scuff, PRODUCT_SCUFF), 0.0),
+		maxf(_own(settings.peel, PRODUCT_PEEL), 0.0), maxf(_own(settings.sink, PRODUCT_SINK), 0.0)]
 
 
 ## Which way the staged key stands from the model (_stage_key's), for the

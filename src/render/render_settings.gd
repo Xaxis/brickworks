@@ -216,6 +216,19 @@ var source_key: float = -1.0
 ## 1: 0 lit by it but no glare from it, so the table keeps its own colour.
 ## Below 0, StudioRender's SOURCE_SPILL.
 var source_spill: float = -1.0
+## Moulded ABS is never a perfect mirror (photoreal15), path traced in the
+## product look: [member peel] its skin's orange-peel waviness, so every
+## reflection in it wobbles; [member sink] how far it dips round each stud's
+## foot and over each tube, where the plastic is thickest; [member polish]
+## how much sharper the mould's polished tops mirror than its satin sides,
+## with faint polishing lines across a top; and [member scuff] a few short
+## hairline scratches and pits on each part. Each 0 none, 1 as measured on
+## the photo bench's close-ups. Below 0, StudioRender's PRODUCT_PEEL,
+## PRODUCT_SINK, PRODUCT_POLISH and PRODUCT_SCUFF.
+var peel: float = -1.0
+var sink: float = -1.0
+var polish: float = -1.0
+var scuff: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.
