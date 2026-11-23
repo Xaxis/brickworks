@@ -1463,14 +1463,41 @@ class Sheet extends PanelContainer:
 		grid.add_theme_constant_override("h_separation", ceili(phone.p(6)))
 		grid.add_theme_constant_override("v_separation", ceili(phone.p(6)))
 		grid.mouse_filter = Control.MOUSE_FILTER_PASS
+		# A reason most greyed tiles share is said once, over them: on an
+		# empty model nine tiles each said "Put a part on the baseplate
+		# first" under their names (ux14's after walk).
+		var reasons: Dictionary = {}
+		for item: String in commands:
+			var why: String = phone.shell.why_not(item) if not phone.shell.can(item) else ""
+			if not why.is_empty():
+				reasons[why] = int(reasons.get(why, 0)) + 1
+		var shared: String = ""
+		for why: String in reasons:
+			if int(reasons[why]) >= 2 and (shared.is_empty() or int(reasons[why]) > int(reasons[shared])):
+				shared = why
+		if not shared.is_empty():
+			var said := Label.new()
+			said.name = "tiles_why"
+			said.text = shared
+			said.add_theme_font_size_override("font_size", ceili(phone.p(14)))
+			said.add_theme_color_override("font_color", Color(1, 1, 1, 0.62))
+			said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			said.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			said.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_list.add_child(said)
 		for item: String in commands:
 			var tile: Button = _row(phone.shell.command(item).words, item)
 			tile.name = "quick_" + item
 			# Its words without the menu's "…", in the window's language: a
 			# tile is a button, and four to a line the "…" wrapped onto a
-			# line of its own ("Instructions" over "…").
+			# line of its own ("Instructions" over "…"). Its reason under
+			# them only where it is not the one said over the tiles.
 			tile.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-			tile.text = String(TranslationServer.translate(tile.text)).trim_suffix("…").strip_edges()
+			var own: String = str(tile.get_meta("why", ""))
+			tile.text = String(TranslationServer.translate(phone.shell.command(item).words)) \
+				.trim_suffix("…").strip_edges()
+			if not own.is_empty() and own != shared:
+				tile.text += "\n" + String(TranslationServer.translate(own))
 			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			tile.clip_text = false
 			tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

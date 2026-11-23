@@ -994,13 +994,20 @@ func _leftovers() -> void:
 		if more is Control:
 			await _tap((more as Control).get_global_rect().get_center())
 			await _frames(30)
-		var row: Variant = null
-		for found: Node in _phone.find_children("row_share", "Button", true, false):
-			row = found
-		await _step("x14_d_more_greyed", "More, on an empty model: Share greyed, and why")
-		_check14("More's greyed Share says why (%s)" % ((row as Button).text.replace("\n", " / ")
-			if row is Button else "no row"), row is Button and (row as Button).disabled
-			and (row as Button).text.contains("\n"))
+		# Share is under File there; More's first tiles are greyed on an
+		# empty model, the reason they share said once over them.
+		var said: Variant = null
+		for found: Node in _phone.find_children("tiles_why", "Label", true, false):
+			said = found
+		var greyed: int = 0
+		for found: Node in _phone.find_children("quick_*", "Button", true, false):
+			if (found as Button).disabled:
+				greyed += 1
+		await _step("x14_d_more_greyed", "More, on an empty model: its greyed tiles, and why")
+		_check14("More's greyed tiles say why, once (%d greyed; %s)" % [greyed,
+			(said as Label).text if said is Label else "nothing said"],
+			greyed > 0 and said is Label and (said as Label).is_visible_in_tree()
+			and not (said as Label).text.is_empty())
 		await _close_all()
 
 
