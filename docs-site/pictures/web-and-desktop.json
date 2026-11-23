@@ -1,6 +1,37 @@
 {
  "shots": [
   {
+   "id": "web-and-desktop-loading",
+   "source": "site",
+   "route": "/app",
+   "viewport": [
+    1280,
+    800
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "steps": [
+    {
+     "run": "bootWall.lay(0.6, true)"
+    },
+    {
+     "hover": "#tip"
+    }
+   ],
+   "crop": [
+    ".lockup",
+    ".tip"
+   ],
+   "pad": 40,
+   "alt": "The page Brickworks shows while it loads: the mark and Brickworks over a half-built wall of coloured bricks on a grey baseplate seen from a little above, 16 of 27 bricks laid under it, then a card: Tip, Press F1 for every key and click Brickworks answers to.",
+   "caption": "While it loads: the wall builds as the app arrives, with a tip under it.",
+   "features": [
+    "ui:the loading page"
+   ]
+  },
+  {
    "id": "web-and-desktop-menu",
    "source": "app",
    "setup": [

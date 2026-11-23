@@ -907,17 +907,22 @@ async function signingIn(browser, code, width, where) {
   }
 }
 
-// The app's loading page, before the engine has started.
+// The app's loading page, before the engine has started: its tip's label,
+// and a first visit's first tip on a computer (src/boot/shell.html bootTips).
 const LOADER = {
-  en: { tagline: "Every brick, at the size it really is.", of: "of", legal: "LEGO® is a trademark of the LEGO Group of companies" },
-  de: { tagline: "Jeder Stein, in seiner wahren Größe.", of: "von", legal: "LEGO® ist eine Marke der LEGO Unternehmensgruppe" },
-  fr: { tagline: "Chaque brique, à sa vraie taille.", of: "sur", legal: "LEGO® est une marque du groupe de sociétés LEGO" },
-  es: { tagline: "Cada ladrillo, a su tamaño real.", of: "de", legal: "LEGO® es una marca del grupo de empresas LEGO" },
+  en: { tagline: "Tip: Press F1 for every key and click Brickworks answers to, with a box to search them.", of: "of",
+    legal: "LEGO® is a trademark of the LEGO Group of companies" },
+  de: { tagline: "Tipp: Drücke F1 für jede Taste und jeden Klick, die Brickworks versteht, mit einem Suchfeld dazu.", of: "von",
+    legal: "LEGO® ist eine Marke der LEGO Unternehmensgruppe" },
+  fr: { tagline: "Astuce: Appuyez sur F1 pour voir chaque touche et chaque clic que Brickworks comprend, avec un champ pour les chercher.",
+    of: "sur", legal: "LEGO® est une marque du groupe de sociétés LEGO" },
+  es: { tagline: "Consejo: Pulsa F1 para ver cada tecla y cada clic que entiende Brickworks, con un cuadro para buscarlos.", of: "de",
+    legal: "LEGO® es una marca del grupo de empresas LEGO" },
 };
 async function loader(browser) {
   const read = async (tab) => tab.evaluate(() => ({
     lang: document.documentElement.lang,
-    tagline: document.querySelector("#boot .tagline")?.textContent.trim(),
+    tagline: `${document.getElementById("tip-label")?.textContent.trim()}: ${document.getElementById("tip-text")?.textContent.trim()}`,
     of: document.getElementById("count-of")?.textContent.trim(),
     legal: document.getElementById("legal")?.textContent.replace(/\s+/g, " ").trim(),
     links: document.querySelectorAll("#legal a").length,
@@ -928,7 +933,7 @@ async function loader(browser) {
       const tab = await context.newPage();
       try {
         await tab.goto(`${app}${code === "en" ? "" : `?lang=${code}`}`, { waitUntil: "domcontentloaded" });
-        await tab.waitForSelector("#boot .tagline", { state: "attached" });
+        await tab.waitForSelector("#tip-text", { state: "attached" });
         const said = await read(tab);
         const want = LOADER[code];
         check(said.tagline === want.tagline && said.of === want.of && said.legal.includes(want.legal) && said.links === 2,
@@ -947,7 +952,7 @@ async function loader(browser) {
   const tab = await context.newPage();
   try {
     await tab.goto(app, { waitUntil: "domcontentloaded" });
-    await tab.waitForSelector("#boot .tagline", { state: "attached" });
+    await tab.waitForSelector("#tip-text", { state: "attached" });
     const said = await read(tab);
     check(said.lang === "es" && said.tagline === LOADER.es.tagline, `the loading page with Spanish kept says "${said.tagline}"`);
   } catch (trouble) {

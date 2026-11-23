@@ -50,6 +50,7 @@ declare -A CMD=(
   [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
   # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
+  # local only: bootlook_flow.mjs. It serves a web export (--dir) itself and holds its load to a slow network, so a deployment cannot stand in (bootlook).
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and
   # bin_keys_phone_probe hold the bar in the suite (bintiles, 2026-11-06).
