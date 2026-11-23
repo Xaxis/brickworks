@@ -402,13 +402,14 @@ func _edit(edit: String) -> Dictionary:
 			await _frames(6)
 			return {"sections": {"tower.ldr": true}, "placed": {"tower.ldr": -1}}
 		"swap":
-			# The first round brick of the model's own a 2 x 2 one fits where
-			# it stands (built's stands beside a tile, which a 2 x 2 runs into).
+			# The model's own round brick made a 2 x 2 one, else a square 1 x 1
+			# (built's stands beside a tile, which a 2 x 2 runs into).
 			var swapped := Vector2i.ZERO
-			for brick: BrickWorld.Brick in main_parts:
-				if brick.part_id == "3062b" and swapped.x == 0:
-					_select_only([brick.id])
-					swapped = _builder.replace_selection("6143", true)
+			for into: String in ["6143", "3005"]:
+				for brick: BrickWorld.Brick in main_parts:
+					if brick.part_id == "3062b" and swapped.x == 0:
+						_select_only([brick.id])
+						swapped = _builder.replace_selection(into, true)
 			await _frames(4)
 			return {"swapped": true} if swapped.x > 0 else {"refused": "nothing swapped (%s)" % swapped}
 		"paste":
@@ -420,16 +421,16 @@ func _edit(edit: String) -> Dictionary:
 			# cannot be written as one section: it is written from the new one,
 			# and the two built in the model's steps after IN lines, each with
 			# its engine (LdrModel.built_sections), their lines with them.
-			var had: Dictionary = _world.unit_steps.duplicate()
+			var source_built: bool = int(_world.unit_steps.get(wing, -1)) == AuthorSteps.IN_PARENT
+			var had: Dictionary = _top_copies()
 			var put: int = await _put_down(false)
 			_shell.assemblies.leave_to("")
 			if put <= 0:
 				return {"refused": "nothing put down"}
 			var mixed: bool = false
-			for path: Variant in _world.unit_steps:
-				if not had.has(path) and not str(path).contains("/") \
-						and int(_world.unit_steps[path]) != AuthorSteps.IN_PARENT \
-						and int(had.get(wing, -1)) == AuthorSteps.IN_PARENT:
+			for top: String in _top_copies():
+				if source_built and not had.has(top) \
+						and int(_world.unit_steps.get(top, -1)) != AuthorSteps.IN_PARENT:
 					mixed = true
 			return {"placed": {"wing.ldr": 1}, "flat": {"wing.ldr": 2}, "in": 4} \
 				if mixed else {"placed": {"wing.ldr": 1}}
@@ -861,6 +862,16 @@ func _put_down(up: bool = false) -> int:
 			return put
 	_builder.cancel_carry()
 	return 0
+
+
+## The copies the model's own section places, by their paths.
+func _top_copies() -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		var path: String = Assemblies.path_of(brick)
+		if not path.is_empty():
+			out[str(Assemblies.segments(path)[0])] = true
+	return out
 
 
 func _select_assembly(path: String) -> void:
