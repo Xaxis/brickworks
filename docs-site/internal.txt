@@ -14,6 +14,7 @@ entry:tools/bench/*  # the design benches: the project's measures of Claude's de
 entry:tools/photoreal/cycles/*  # the photo bench's Cycles ceiling and factor swaps: a measure on this box, never the app's (docs/RENDERING.md 5j)
 lib:where hands leave their marks  # the path tracer's handled wear, off in the app (StudioRender.PRODUCT_RUBBED 0) and asked for only by the photo bench until its judge says it helps (docs/RENDERING.md 5m)
 lib:the stage matched to the photographs  # the path tracer's tables matched to the bench's photographs, off in the app (StudioRender.PRODUCT_TABLE, _TABLE_LIGHT and _FILL 0) and asked for only by the photo bench (docs/RENDERING.md 5n)
+lib:a large source on a table  # the path tracer's window behind the model that glossy tops mirror, off in the app (StudioRender.PRODUCT_SOURCE 0) and asked for only by the photo bench (SOURCE_LEVEL) until its judge keeps it (docs/RENDERING.md 5r)
 entry:tools/release/*  # how a release is made, checked and published
 entry:tools/release.py  # building, smoking and publishing the desktop packages
 entry:tools/update_check.py  # how the desktop updater is proven with real packages
