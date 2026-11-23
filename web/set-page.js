@@ -35,7 +35,7 @@
 // Every word in the page's language (web/card.js say: /de/library/set/<n>
 // carries its copy's words), its numbers as the language writes them.
 import { call, signedIn } from "/account.js";
-import { altCardSaid, counted, langAt, modelCard, number, pictureOf, say } from "/card.js";
+import { altCardSaid, appAt, counted, langAt, modelCard, number, pictureOf, say } from "/card.js";
 
 const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 // A list's link (api/_mylists.js): ten letters and digits.
@@ -97,7 +97,7 @@ async function builtFrom(article) {
       + "once you publish it, it is listed here.");
     const go = document.createElement("a");
     go.className = "cta";
-    go.href = `/app?new=1&parts=${encodeURIComponent(article.dataset.set)}`;
+    go.href = appAt(`new=1&parts=${encodeURIComponent(article.dataset.set)}`);
     go.dataset.buildFrom = "";
     go.textContent = say("Build something from it");
     empty.append(note, how, go);

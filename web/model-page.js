@@ -529,13 +529,16 @@ function startPicture(big) {
 /// older picture carries (--render-top, --render-foot) carried on above and
 /// below it. Never smaller than the whole picture across the frame, as it
 /// was: 186 px tall at 390, a fifth of the screen (site273), and 380 of a
-/// 1280 window's 800 beside a column 560 tall (sitepolish). By transform
-/// alone (--fit, which a pointer's zoom adds to), which moves nothing
-/// else, so the page never shifts as it does. A photo is shown whole
+/// 1280 window's 800 beside a column 560 tall (sitepolish). By its own
+/// scale and translate alone (a pointer's zoom is its transform, applied
+/// after them), which move nothing else, so the page never shifts as it
+/// does; never a custom property made in the page (the design system's
+/// tokens are :root's). A photo is shown whole
 /// (.photo); a tablet's frame is the picture's own shape.
 function fitPicture(big, img) {
   img.style.objectFit = "";
-  img.style.removeProperty("--fit");
+  img.style.removeProperty("scale");
+  img.style.removeProperty("translate");
   big.style.background = "";
   if (!FITTED.matches || big.classList.contains("photo") || !img.naturalWidth || !big.clientHeight) return;
   // The frame's shape against the picture's: a square is 1, 4:3 is 1.33.
@@ -579,7 +582,9 @@ function fitPicture(big, img) {
   const middle = Math.min(1 - shown / 2, Math.max(shown / 2, (first + last + 1) / 2 / w));
   // Drawn whole across the frame (contain), then enlarged round the model.
   img.style.objectFit = "contain";
-  img.style.setProperty("--fit", `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`);
+  // scale(1 / shown) translateX(t) is translate(t / shown) then the scale.
+  img.style.scale = (1 / shown).toFixed(4);
+  img.style.translate = `${(((0.5 - middle) * 100) / shown).toFixed(2)}% 0`;
   // An older picture's own ground above and below it, where it is shorter
   // than the frame; one with nothing behind the model is on the frame's.
   const band = Math.max(0, (1 - frame / (shown * aspect)) / 2) * 100;

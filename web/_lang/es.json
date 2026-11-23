@@ -2806,6 +2806,8 @@
   "One more": "Uno más",
   "How many you own": "Cuántos tienes",
   "You own {n}.": "Tienes {n}.",
+  "You own": "Tienes",
+  "copies of this set: its parts count as yours that many times": "ejemplares de este set: sus piezas cuentan como tuyas tantas veces",
   "That list was not made: try again in a moment.": "La lista no se creó: inténtalo de nuevo en un momento.",
   "Made {list}, with it in.": "{list} creada, con él dentro.",
   "Undo": "Deshacer",

@@ -69,10 +69,11 @@
 	touch-action: pan-y pinch-zoom;
 }
 .model-page .picture img {
-	position: relative; width: 100%; height: 100%; object-fit: cover; transform: var(--fit, none); transition: transform 320ms var(--ease);
+	position: relative; width: 100%; height: 100%; object-fit: cover;
+	transition: transform 320ms var(--ease), scale 320ms var(--ease), translate 320ms var(--ease);
 }
-@media (hover: hover) { .model-page a.picture:hover img { transform: var(--fit,) scale(1.02); } }
-@media (prefers-reduced-motion: reduce) { .model-page .picture img { transition: none; } .model-page a.picture:hover img { transform: var(--fit, none); } }
+@media (hover: hover) { .model-page a.picture:hover img { transform: scale(1.02); } }
+@media (prefers-reduced-motion: reduce) { .model-page .picture img { transition: none; } .model-page a.picture:hover img { transform: none; } }
 /* Until its picture is drawn the frame says it is coming, as a card with
    none says so (site.css .model .frame.none), and the picture lands over
    it: the first view right after publishing was a blank grey frame while
@@ -338,7 +339,7 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* The Log (api/share.js versionsSection): every version newest first, its
    small picture beside its date, what changed and its note; the one shown
    edged. A picture holds its 4:3 place before it comes, so nothing moves. */
-.model-page .versions h3 { margin: 18px 0 8px; font-size: var(--t-body); }
+.model-page .versions h3 { margin: 18px 0 8px; }
 .model-page .earlier.log { list-style: none; padding: 0; display: grid; gap: 10px; }
 .model-page .log-entry {
 	display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; margin: 0;
@@ -438,7 +439,7 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .remix-tree a.node-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .remix-tree .node-card.self { border-color: var(--accent-edge); box-shadow: inset 0 0 0 1px var(--accent-edge); }
 .remix-tree .node-card img, .remix-tree .no-picture {
-	flex: none; width: 64px; height: 48px; border-radius: calc(var(--radius) - 2px); background: var(--picture-ground); object-fit: contain;
+	flex: none; width: 64px; height: 48px; border-radius: var(--r-2); background: var(--picture-ground); object-fit: contain;
 }
 .remix-tree .words { display: grid; min-width: 0; line-height: 1.35; }
 .remix-tree .name { font-weight: 600; overflow-wrap: anywhere; }
@@ -790,7 +791,7 @@ dialog.bases-dialog .set-chosen[hidden] { display: none; }
 .model-page .comment-pin { margin: 0 0 4px; display: flex; align-items: baseline; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
 .model-page .comment-pin .pin-n {
 	flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: var(--r-pill);
-	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+	background: var(--accent); color: var(--on-accent); font-size: var(--t-micro); font-weight: 700; font-variant-numeric: tabular-nums;
 	align-self: center;
 }
 .model-page .comment-pin.gone .pin-n { background: var(--line-strong); color: var(--ink); }
@@ -1151,12 +1152,12 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.person-card .person-id { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; }
 	.person-card .person-id .avatar.huge { width: 72px; height: 72px; font-size: var(--t-h2); }
 	.person-card .standing { border-top: 0; padding-top: 0; }
-	/* Its badges one row that scrolls on its own, not a third of a
-	   phone's first screen. */
-	.person-card .pills.awards { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-	.person-card .pills.awards::-webkit-scrollbar { display: none; }
-	.person-card .pills.awards > li { flex: 0 0 auto; }
 }
+/* Its badges one row that scrolls on its own on a phone, not a third of
+   its first screen: the kit's row (.pills.scroller.inset, web/card.js
+   awardsHtml), which the keyboard reaches while it overflows; beside the
+   page, where the aside has the room, they wrap. */
+@media (width >= 900px) { .person-card .pills.awards { flex-wrap: wrap; } }
 
 /* A collection's page as an object's page: its cover, name, whose, words,
    numbers and actions in the aside, what is in it beside them. */

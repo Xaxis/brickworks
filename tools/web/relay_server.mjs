@@ -306,7 +306,13 @@ function page(pathname) {
       : /^\/live\/[A-Za-z0-9]{12}$/.test(rest) ? "live.html"
       : /^\/[a-z0-9_-]+\.[a-z]+$/.test(rest) ? rest.slice(1) : `${rest.slice(1)}.html`;
     if (!/^(?:oauth\/)?[a-z0-9_-]+\.[a-z]+$/.test(copy)) return null;
-    const file = new URL(`${lang[1]}/${copy}`, web);
+    // A site put together as the deploy does it (--static=DIR, tools/site.py
+    // and home_shelf.mjs) serves its own copy, as Vercel does: its home's
+    // first posts written in its language. The checkout's copy has none, so
+    // /de showed the feed's skeletons where the deploy shows German posts
+    // (sitefix325, 2026-11-23).
+    const built = site ? join(site, lang[1], copy) : "";
+    const file = built && existsSync(built) ? built : new URL(`${lang[1]}/${copy}`, web);
     return existsSync(file) ? { body: readFileSync(file), type: TYPES[copy.split(".").pop()] || "application/octet-stream" } : null;
   }
   // A minifigure avatar's layer (web/minifig/<side>/, web/card.js MINIFIG).

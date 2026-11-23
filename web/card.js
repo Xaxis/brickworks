@@ -320,11 +320,13 @@ const countHtml = (n, zero) => (n ? `<span class="n" aria-hidden="true">${escape
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
 /// name, what it means on hover; a challenge won is a link to the model that
 /// won it. [awards] as api/people.js achievementsOf makes them: [{id, name,
-/// said, model?, level?}]. "" when there is none.
-export function awardsHtml(awards, { id = "" } = {}) {
+/// said, model?, level?}]. "" when there is none. [row]: the kit's row that
+/// scrolls where it has no room (a profile's head on a phone: web/scroller.js
+/// gives it the keyboard while it overflows, its fade and its bar).
+export function awardsHtml(awards, { id = "", row = false } = {}) {
   const shown = (awards || []).filter((one) => one && one.name);
   if (!shown.length) return "";
-  return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="${escapeHtml(say("Achievements"))}">${shown.map((one) => {
+  return `<ul class="pills awards${row ? " scroller inset" : ""}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="${escapeHtml(say("Achievements"))}">${shown.map((one) => {
     const inside = `${iconHtml("award")}${escapeHtml(one.name)}`;
     const said = one.said ? ` title="${escapeHtml(one.said)}"` : "";
     const level = Number(one.level) > 0 ? ` data-level="${Number(one.level)}"` : "";
@@ -533,12 +535,15 @@ export const langAt = () => {
   return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
 
-/// A link into the app with [query], in the page's language as theme.js
-/// carries it into the links a page is served with: a link drawn later,
-/// a card's or the pick's, is not among those (sitebold, 2026-11-23).
-export const appAt = (query) => {
-  const code = langAt().slice(1);
-  return `/app?${query}${code ? `&lang=${code}` : ""}`;
+/// A link into the app with [query], in the language web/theme.js
+/// carries into the links a page is served with (brickworksLang.app: the
+/// one chosen, else the page's, else the browser's where not English): a
+/// link drawn later, a card's, the pick's or the feed's, is not among
+/// those (sitebold, 2026-11-23). On a page the server makes, the page's.
+export const appAt = (query = "") => {
+  const code = globalThis.brickworksLang?.app?.() || langAt().slice(1);
+  const asked = [query, code ? `lang=${code}` : ""].filter(Boolean).join("&");
+  return `/app${asked ? `?${asked}` : ""}`;
 };
 
 /// The tags that say a model was made with the assistant or Brickify, as

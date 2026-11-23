@@ -138,6 +138,9 @@
   };
   window.brickworksLang = {
     code: page, chosen, choose, say,
+    // The language a link into the app asks for, as carry() gives the
+    // page's own: web/card.js appAt gives a link drawn later the same.
+    app: carried,
     locale: page === "en" ? "en-US" : page,
     number: (n) => Number(n).toLocaleString(page === "en" ? "en-US" : page),
   };

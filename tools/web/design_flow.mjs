@@ -169,8 +169,11 @@ function audit(scope) {
       // Underlined words take the size of the words around them.
       if (el.classList.contains("link")) continue;
       // A .cta of one size is one button, primary or not; any other button
-      // is like the others in the same place.
-      const size = el.closest(".nav") ? "nav" : ["small", "big"].find((one) => el.classList.contains(one)) || "regular";
+      // is like the others in the same place. The header's nav and the
+      // beta's strip (32 px from 600 px wide, d2ed4ae41) are chrome of their
+      // own size, judged each with its own.
+      const size = el.closest(".nav") ? "nav" : el.closest(".beta-bar") ? "beta bar"
+        : ["small", "big"].find((one) => el.classList.contains(one)) || "regular";
       const holder = el.parentElement?.closest("[class]");
       const key = el.classList.contains("cta") ? `the other ${size} buttons`
         : `the other buttons in .${holder ? holder.classList[0] : "page"}`;

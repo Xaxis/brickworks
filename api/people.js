@@ -1774,7 +1774,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
   </div>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="${asText(say("Elsewhere"))}">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }), { row: true })}</div>
   </aside>`;
 
   // Pinned: up to three of their models, in the order they chose.
