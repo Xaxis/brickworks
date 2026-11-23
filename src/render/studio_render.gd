@@ -2656,10 +2656,11 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 			saturation)
 		if scale <= 0.0:
 			return null
-		if staged:
-			# The camera's white balance (photoreal7): the white card where the
-			# model stands drawn white, as much as the balance asks.
-			var amount: float = clampf(_own(settings.balance, STAGE_BALANCE), 0.0, 1.0)
+		# The camera's white balance (photoreal7): the white card where the
+		# model stands drawn white, as much as the balance asks (a stage's own
+		# by default, none without one).
+		var amount: float = clampf(_own(settings.balance, STAGE_BALANCE if staged else 0.0), 0.0, 1.0)
+		if amount > 0.0:
 			var gain := Color(lerpf(1.0, 1.0 / _card_colour.r, amount),
 				lerpf(1.0, 1.0 / _card_colour.g, amount), lerpf(1.0, 1.0 / _card_colour.b, amount))
 			var kept: float = 0.2126 * _card_colour.r * gain.r + 0.7152 * _card_colour.g * gain.g \
@@ -2725,8 +2726,9 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# the finished picture.
 	var sharpen: float = _own(settings.sharpen, PRODUCT_SHARPEN) if photo else 0.0
 	var jpeg: float = _own(settings.jpeg, PRODUCT_JPEG) if photo else 0.0
-	# A staged photograph's camera draws its own tone curve (photoreal7).
-	var tone: float = _own(settings.tone, STAGE_TONE) if staged else 0.0
+	# A photograph's camera draws its own tone curve (photoreal7): a stage's
+	# by default, none without one unless asked.
+	var tone: float = _own(settings.tone, STAGE_TONE if staged else 0.0) if photo else 0.0
 	if not _tracer.begin(picture):
 		return null
 	var wanted: int = maxi(plan.samples, 1)
@@ -3174,8 +3176,7 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 		# A staged key falls off across the card (photoreal7): it is read
 		# round the model, not where the light is nearest.
 		var card: float = _open_floor(seen, 0.9 if _stage_of(settings).is_empty() else 0.6)
-		if not _stage_of(settings).is_empty():
-			_card_colour = _floor_colour(seen, card)
+		_card_colour = _floor_colour(seen, card)
 		if card <= 0.0005:
 			break
 		var light: float = _untoned(card, tonemapper, white, contrast) / (exposure * scale * DIM)
