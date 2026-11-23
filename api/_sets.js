@@ -43,6 +43,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { LDRAW_FROM, SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_directory.js";
 import { avatarHtml, counted, iconHtml, say, themeSaid } from "./_card.js";
 import { SET_SORTS } from "./_library.js";
+import { LOTS_SHOWN, LOT_ROW, listRows } from "./_parts.js";
 import { byKey, search } from "./_search.js";
 import { panelAttrs, tabsHtml } from "./_tabs.js";
 
@@ -534,6 +535,11 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
       + `<button type="button" class="cta ghost small" data-wanted="pickabrick" hidden>${asText(say("LEGO® Pick a Brick CSV"))}</button></div></section>`
     : "";
   // The parts are its page's first tab, what you own of them at its top.
+  // Its list's rows, lots and the colours over them, as the page will draw
+  // it (listRows): their space kept, and Show all there from the start
+  // where they are more than it shows. Its lots not read here, Show all is
+  // there hidden for the list to show where it needs it.
+  const rows = lots.length ? listRows(lots) : 0;
   const partsHtml = entry.lots
     ? `<section class="parts" id="parts"${panelAttrs("parts", true)} data-parts="${pageOf(entry)}/parts.json">`
       + `<h2 class="visually-hidden" id="parts-h">${asText(say("Parts"))}</h2>${owned}<p class="note">${asText(say("{parts} in {lots}, its minifigures' and the sets packed in it counted in, spares not",
@@ -543,8 +549,8 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
       + `<button type="button" data-group="kind" aria-pressed="false">${asText(say("Kind"))}</button></div>`
       + `<a class="cta ghost small" href="${pageOf(entry)}/parts.xml" download>BrickLink XML</a>`
       + `<a class="cta ghost small" href="${pageOf(entry)}/parts.csv" download>Rebrickable CSV</a></div>`
-      + `<ul class="lot-list" style="min-height:${Math.min(12, entry.lots) * 60}px"></ul>`
-      + (entry.lots > 12 ? `<button type="button" class="cta ghost small" data-all hidden>${asText(say("Show all {lots}",
+      + `<ul class="lot-list" style="min-height:${Math.min(LOTS_SHOWN, rows || entry.lots) * LOT_ROW}px"></ul>`
+      + (!rows || rows > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all${rows ? "" : " hidden"}>${asText(say("Show all {lots}",
         { lots: counted(entry.lots, "lot") }))}</button>` : "")
       + "</section>"
     : `<section class="parts" id="parts"${panelAttrs("parts", true)}><h2 class="visually-hidden">${asText(say("Parts"))}</h2><p class="obj-empty">`

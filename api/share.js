@@ -303,8 +303,8 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
-  pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, stepParts, wantedList } from "./_parts.js";
+import { LOTS_SHOWN, LOT_ROW, PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, listRows, namesOf, paletteOf,
+  partNames, partsTable, pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, stepParts, wantedList } from "./_parts.js";
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
@@ -1691,12 +1691,6 @@ function pageTabs(model, newest, inLists = 0, parts = null, log = newest > 1) {
   ], { label: say("About it"), extra: "page-tabs" });
 }
 
-/// How many rows the Parts list shows before Show all, and each row's
-/// height, which web/directory.css gives every row: the space the list will
-/// take is kept for it before it comes, so nothing under it moves.
-export const LOTS_SHOWN = 12;
-export const LOT_ROW = 60;
-
 /// Its parts (site278, docs/SOCIAL.md U4): how many in how many lots, the
 /// three shops' lists to download, and the list itself, which
 /// web/model-page.js asks for (/m/X/parts.json) as the section nears the
@@ -1705,8 +1699,7 @@ export const LOT_ROW = 60;
 /// version.
 function partsSection(at, parts) {
   if (!parts || !parts.lots.length) return "";
-  const colours = new Set(parts.lots.map((lot) => lot.colour)).size;
-  const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
+  const rows = listRows(parts.lots);
   const pab = pickABrick(parts);
   // Lean: every byte here is in the page's first bytes, and the list is not.
   return `<section class="parts" id="parts"${panelAttrs("parts")} data-parts="${at}/parts.json">`
@@ -1720,11 +1713,11 @@ function partsSection(at, parts) {
     + `<div class="parts-shops"><a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
     + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
     + pickABrickNote(pab)
-    + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
+    + `<ul class="lot-list" style="min-height:${Math.min(LOTS_SHOWN, rows) * LOT_ROW}px"></ul>`
     // Show all in the page from the start where the list will need it, so
     // its row is in the space kept too: put in only with the list, it moved
     // everything under the panel 48 px (checkdrift, 2026-11-23).
-    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
+    + (rows > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
 }

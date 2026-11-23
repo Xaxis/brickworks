@@ -1364,7 +1364,11 @@ plan with Claude as the client.
   screen or its tab is chosen, drawn into a `min-height` kept for its first
   12 rows of 60 px, `li.group` (a colour's or kind's swatch, name and
   count) over `li.lot` (picture, name, part and element number, colour,
-  `× n`), Show all (`[data-all]`) for the rest; `<html data-parts="drawn">`
+  `× n`), Show all (`[data-all]`) for the rest, in the page from the start
+  where the rows are more than 12, counted as lots plus their colours
+  (`api/_parts.js` `listRows`, a model's page and a set's: a set of 12
+  lots or fewer can have more rows, 30476-1's 12 lots in 7 colours are 19;
+  checkdrift 2026-11-23); `<html data-parts="drawn">`
   once drawn. The list is the app's Inventory.of, ported (`inventoryOf`:
   sub-models expanded, a sticker counted, a Brickworks-laid hose once as
   the straight part nearest its length, an LDCad hose one flexible part,
@@ -3195,9 +3199,12 @@ plan with Claude as the client.
   each ask a visitor to sign in on the spot (`account.js` `askToSignIn`)
   and go on after, a new person's First steps offered only once it is
   done (a snackbar), the like put on the stream as drawn again for them
-  (`signedInDraw`); the Following tab waits on a Follow still being sent
+  (`signedInDraw`), and the post they pressed held where it was on the
+  screen as the visitor's band gives way to the search row (318 px to 76
+  at 1280); the Following tab waits on a Follow still being sent
   (`follow.js` `followsSettled`; checkdrift 2026-11-23, homefeed_check
-  steps 8 and 9); Share (`navigator.share`, else the link copied); 3D
+  steps 8 to 10, which measure the post on the screen, not scrollY);
+  Share (`navigator.share`, else the link copied); 3D
   (`data-feed-turn`, `web/viewer3d.js` `open3d({spin: true})` in the
   picture's place on a 0.7 s hover with a fine pointer or a tap); Open in
   the studio `/app?view=<id>`, Remix `/app?copy=<id>`, Build it

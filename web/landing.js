@@ -348,7 +348,15 @@ if (stream) {
   else again();
   // Signed in or out, here or in another part of the page: drawn for them.
   addEventListener("brickworks:signed-in", () => {
+    // The visitor's band gives way to the search row (318 px to 76 at
+    // 1280): the post somebody signed in from, liked or commented on, kept
+    // where it is on the screen, not 242 px up and off it (checkdrift,
+    // 2026-11-23). With the dialog over the page, the browser's own
+    // anchoring does not hold it.
+    const held = [...stream.querySelectorAll(":scope > .post")].find((post) => post.getBoundingClientRect().bottom > 0);
+    const was = held?.getBoundingClientRect().top;
     html.dataset.signed = "in";
+    if (held && held.isConnected) scrollBy(0, held.getBoundingClientRect().top - was);
     signedInDraw = draw({ kept: tab === "foryou" }).catch(() => null);
   });
   addEventListener("brickworks:signed-out", () => {
