@@ -154,22 +154,116 @@ export function avatarTone(handle) {
 // never an address from anywhere else.
 const PICTURE = /^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/;
 
+// A minifigure for an avatar (avatarkit, 2026-11-23; the owner: "a brickworks
+// avatar generator that is obviously lego minifig themed"). Built of real
+// parts of the LDraw library (CC BY), each drawn once by the site's own 3D
+// (tools/web/minifig_layers.mjs) from the same camera into a layer of its
+// own, its hidden parts cut away by the parts in front of it: the legs, the
+// torso in its colour with its arms and yellow hands, its print, the head
+// with its face, the hair or hat. A browser lays them over each other as the
+// avatar's backgrounds (no script, no request of the API, every layer a file
+// the CDN keeps for good), on one of the eight avatar colours. Each choice is
+// named by its part's LDraw number and colours by their LDraw codes, so a
+// layer's file says what it is, and a choice appended to a list never moves
+// another's.
+//
+// A person makes their own in Edit profile (web/minifig-maker.js), kept as
+// their picture with its recipe (api/_avatars.js); everybody else is shown
+// one made from their handle (minifigOf), the same everywhere and every time.
+// The site's parts, credited as every part is; never our own mark or mascot
+// (docs/TRADEMARKS.md, Decision 3).
+export const MINIFIG = {
+  // Faces, on the classic yellow head (3626c).
+  faces: ["3626cp01", "3626cp7g", "3626cp8c", "3626cp71", "3626cp87", "3626cp88", "3626cp84", "3626cp8b", "3626cp7c",
+    "3626cp73"],
+  // Hair in a hair colour, or a hat in its own colour; "" for none.
+  hair: ["3901", "40251", "6093a", "62711", "53981", "21778", "23186", "36806", "41334", "3833", "61506", "3878", "3624",
+    "2514", ""],
+  hats: { 41334: 4, 3833: 14, 61506: 70, 3878: 0, 3624: 0, 2514: 72 },
+  hairColours: [0, 308, 70, 19, 484, 71],
+  // A torso's print over its colour ("" for plain): the print's own colours,
+  // the rest the torso's.
+  prints: ["", "973p13", "973p18", "973p9c", "973p1a", "973pcf", "973p0b", "973pd7f"],
+  // The torso's colours and the legs'.
+  colours: [4, 1, 2, 14, 0, 15, 72, 25, 272, 320, 322, 30],
+  // The avatar colours (site.css --avatar-1..8), one set for both themes.
+  backgrounds: ["#b42318", "#1f5fbf", "#1f7a3d", "#7a3fb0", "#9a4a00", "#0e6f8a", "#a3175a", "#4b5563"],
+  // The two sizes each layer is drawn at, CSS px times what a sharp screen
+  // needs: 128 for every avatar up to the header's 36 px, 256 above it and
+  // for a picture made of one.
+  sizes: [128, 256],
+};
+
+const hashOf = (text, salt) => {
+  let hash = 0x811c9dc5 ^ salt;
+  for (const c of String(text || "").toLowerCase()) {
+    hash ^= c.codePointAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  hash ^= hash >>> 15;
+  hash = Math.imul(hash, 0x2c1b3c6d) >>> 0;
+  return (hash ^ (hash >>> 12)) >>> 0;
+};
+
+/// The minifigure made from [handle]: the same every time and on every
+/// page, its background the handle's avatar colour (avatarTone).
+export function minifigOf(handle) {
+  const pick = (list, salt) => list[hashOf(handle, salt) % list.length];
+  const hair = pick(MINIFIG.hair.filter(Boolean), 2);
+  return { v: 1, face: pick(MINIFIG.faces, 1), hair, hairColour: pick(MINIFIG.hairColours, 3),
+    print: pick(MINIFIG.prints, 4), torso: pick(MINIFIG.colours, 5), legs: pick(MINIFIG.colours, 6),
+    background: avatarTone(handle) };
+}
+
+/// [recipe] as the maker makes one, or null for anything else: what a
+/// request's body may say is held to the lists, never passed on as it came.
+export function minifigShape(recipe) {
+  if (!recipe || typeof recipe !== "object" || Array.isArray(recipe)) return null;
+  const { face, hair, hairColour, print, torso, legs, background } = recipe;
+  const ok = MINIFIG.faces.includes(face) && MINIFIG.hair.includes(hair) && MINIFIG.hairColours.includes(hairColour)
+    && MINIFIG.prints.includes(print) && MINIFIG.colours.includes(torso) && MINIFIG.colours.includes(legs)
+    && Number.isInteger(background) && background >= 1 && background <= MINIFIG.backgrounds.length;
+  return ok ? { v: 1, face, hair, hairColour, print, torso, legs, background } : null;
+}
+
+/// The files [recipe]'s layers are, at [side] (MINIFIG.sizes), top first:
+/// hair or hat, head, print, torso, legs.
+export function minifigLayers(recipe, side = 128) {
+  const at = `/minifig/${side}/`;
+  const hat = MINIFIG.hats[recipe.hair];
+  return [
+    recipe.hair ? `${at}hair-${recipe.hair}-${hat ?? recipe.hairColour}.webp` : "",
+    `${at}face-${recipe.face}.webp`,
+    recipe.print ? `${at}print-${recipe.print}.webp` : "",
+    `${at}torso-${recipe.torso}.webp`,
+    `${at}legs-${recipe.legs}.webp`,
+  ].filter(Boolean);
+}
+
+/// A minifigure's avatar as HTML: its layers as the backgrounds of the
+/// avatar's circle, in its background colour.
+export function minifigHtml(recipe, { size = "", id = "" } = {}) {
+  const side = size === "big" || size === "huge" ? 256 : 128;
+  const layers = minifigLayers(recipe, side).map((file) => `url(${file})`).join(",");
+  return `<span class="${["avatar", size, `c${recipe.background}`, "minifig"].filter(Boolean).join(" ")}"`
+    + `${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true" style="background-image:${layers}"></span>`;
+}
+
 /// A person's avatar: their picture when they have one (supabase/avatars.sql),
-/// else a tile in their handle's colour with the first letter of their
-/// name. Never a figure's likeness (docs/TRADEMARKS.md, docs/SOCIAL.md D11).
-/// Given none of the three, somebody not known yet (your own in the header
-/// before the server has said who you are, or an orangecheck account's with
-/// no profile): the circle blank, no letter or colour that might not be
-/// theirs. [size] is "small", "", "big" or "huge"; it is decoration beside
-/// their name, so hidden from a screen reader.
+/// which may be a minifigure they made; else the minifigure made from their
+/// handle (minifigOf). Given none of the three, somebody not known yet (your
+/// own in the header before the server has said who you are, or an
+/// orangecheck account's with no profile): the circle blank, nothing that
+/// might not be theirs. [size] is "small", "", "big" or "huge"; it is
+/// decoration beside their name, so hidden from a screen reader.
 export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size = "", id = "" } = {}) {
   const pictured = PICTURE.test(String(picture || ""));
   const known = Boolean(handle || name || pictured);
-  const letter = known ? [...String(name || handle || "?").trim()][0] || "?" : "";
+  if (known && !pictured) return minifigHtml(minifigOf(handle || name), { size, id });
   const classes = ["avatar", size, known ? `c${avatarTone(handle || name)}` : "unknown", pictured ? "pictured" : ""]
     .filter(Boolean).join(" ");
   return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${pictured
-    ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
+    ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : ""}</span>`;
 }
 
 /// The icons there are (web/icons.svg).

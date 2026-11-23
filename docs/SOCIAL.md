@@ -789,8 +789,11 @@ Each decided here, with its reason (`brickworks-decide-dont-wait`).
   Notifications with its count, Your feed, Saved, Settings, the theme,
   Sign out), as GitHub's and YouTube's do.
 - **D11. Avatars: a generated one for everybody, a picture for who wants
-  one.** Generated from the handle (a coloured tile and the initial, no
-  figure likeness: the Minifigure is a mark, `docs/TRADEMARKS.md`). An
+  one.** Generated from the handle: since 2026-11-23 (avatarkit, the
+  owner's ask) a minifigure of real LDraw parts picked by the handle, on
+  the handle's colour, which a person may remake in Edit profile's Make a
+  minifig (a person's own figure, never our mark: `docs/TRADEMARKS.md`
+  Decision 3); before it, a coloured tile and the initial. An
   uploaded picture goes through the build-photo pipeline (metadata
   stripped, at most 8 MB, reportable, removable by the owner on /admin),
   13+ as every public thing. A banner is one of their own models'

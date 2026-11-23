@@ -16,13 +16,16 @@
 //                                 show them (supabase/avatars.sql)
 //   GET  ?op=avatar&id=P          picture P, a person's own avatar, while
 //                                 it may be shown
-//   GET  ?op=avatar&handle=X      X's avatar made from their handle, as an
-//                                 SVG: the image their page's structured
-//                                 data names when they have no picture
-//   POST ?op=avatar               (session) {picture: base64, type}: the
-//                                 caller's own picture as their avatar,
-//                                 the square Edit profile cropped, at most
-//                                 2 MB (api/_avatars.js)
+//   GET  ?op=avatar&handle=X      the minifigure made from X's handle, a
+//                                 JPEG (api/_minifig.js): the image their
+//                                 page's structured data names when they
+//                                 have no picture
+//   POST ?op=avatar               (session) {picture: base64, type,
+//                                 minifig?}: the caller's own picture as
+//                                 their avatar, the square Edit profile
+//                                 cropped or the minifigure its maker drew
+//                                 with its recipe, at most 2 MB
+//                                 (api/_avatars.js)
 //   POST ?op=avatar_remove        (session) that picture taken off: the
 //                                 avatar made from the handle again
 //   POST ?op=likes_choice         (session) {shows}: show on my profile the
@@ -267,7 +270,8 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml, themeSaid } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml, minifigOf, minifigShape } from "./_card.js";
+import { minifigJpeg } from "./_minifig.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
@@ -684,19 +688,24 @@ async function saveLikesChoice(request, response) {
 // ---------------------------------------------------------------------------
 // Your own picture as your avatar (api/_avatars.js).
 
-/// POST ?op=avatar {picture, type}: the square Edit profile cropped, kept
-/// as the caller's avatar.
+/// POST ?op=avatar {picture, type, minifig?}: the square Edit profile
+/// cropped, or the minifigure its maker drew with what it was made of
+/// (web/card.js minifigShape), kept as the caller's avatar.
 async function saveAvatar(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const account = await signedIn(request);
   const body = request.body && typeof request.body === "object" ? request.body : {};
+  const recipe = body.minifig === undefined || body.minifig === null ? null : minifigShape(body.minifig);
+  if (body.minifig !== undefined && body.minifig !== null && !recipe) {
+    throw new Refusal("that is not a minifigure the maker makes: a face, hair or a hat, a print and colours from its lists");
+  }
   const kept = await keepAvatar(account, body.picture, String(body.type || ""), async () => {
     const person = (await db(`people?account=eq.${account}&select=handle`))[0];
     if (!person) throw new Refusal("make your profile first: a name and a handle", 409);
     const young = await publicTrouble(account, { profile: true });
     if (young) throw new Refusal(young, 422);
     await counted(account, "avatar");
-  });
+  }, recipe);
   return response.status(200).json(kept);
 }
 
@@ -708,35 +717,24 @@ async function dropOwnAvatar(request, response) {
   return response.status(200).json(await dropAvatar(account));
 }
 
-// The eight avatar tiles' colours and the letter's (web/site.css :root
-// --avatar-1..8, --on-avatar): one set for both themes, as there.
-const TILES = ["#b42318", "#1f5fbf", "#1f7a3d", "#7a3fb0", "#9a4a00", "#0e6f8a", "#a3175a", "#4b5563"];
-const ON_TILE = "#ffffff";
-
-/// The avatar a person without a picture of their own is shown as
-/// (web/card.js avatarHtml), as an SVG: their handle's tile and their
-/// name's first letter. A search engine's image of them (seo2), as another
-/// site's default avatar is.
-function tileSvg({ handle, name }) {
-  const letter = ([...String(name || handle || "?").trim()][0] || "?").toUpperCase();
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">`
-    + `<circle cx="128" cy="128" r="128" fill="${TILES[avatarTone(handle || name) - 1]}"/>`
-    + `<text x="128" y="128" dy="0.35em" text-anchor="middle" fill="${ON_TILE}" font-family="system-ui, sans-serif" `
-    + `font-size="128" font-weight="700">${escapeHtml(letter)}</text></svg>`;
-}
+// The minifigure made from a handle never changes (web/card.js minifigOf),
+// so its picture is kept a day in a browser and a month at the CDN.
+const MINIFIG_CACHE = "public, max-age=86400, s-maxage=2592000";
 
 /// GET ?op=avatar&id=P: a person's own picture, while it may be shown.
-/// &handle=X instead: their tile (tileSvg), while their page may be shown.
+/// &handle=X instead: the minifigure made from their handle, the avatar
+/// everybody without a picture of their own is shown as (api/_minifig.js),
+/// while their page may be shown: a search engine's image of them (seo2),
+/// as another site's default avatar is.
 async function avatarServe(request, response) {
   if (request.query?.handle !== undefined) {
     const person = await personOf(String(request.query.handle).toLowerCase());
     if (!person) return response.status(404).setHeader("Cache-Control", "no-store").end("");
-    response.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+    const jpeg = await minifigJpeg(minifigOf(person.handle));
+    response.setHeader("Content-Type", "image/jpeg");
     response.setHeader("X-Content-Type-Options", "nosniff");
-    // Opened by itself, an SVG is a document: nothing in it runs or loads.
-    response.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
-    response.setHeader("Cache-Control", PICTURE_CACHE);
-    return response.status(200).end(tileSvg(person));
+    response.setHeader("Cache-Control", MINIFIG_CACHE);
+    return response.status(200).end(jpeg);
   }
   const file = await avatarFile(String(request.query?.id || ""), shownPublicly);
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
