@@ -13,9 +13,10 @@
 //              picture (a 3D turn on hover or tap, web/landing.js), its name,
 //              how it was made (each a link to that feature's docs page), its
 //              like, comments and share, the studio's own verbs (Open in the
-//              studio, Remix, Build it, Parts), and the newest thing said of it
+//              studio, Remix, Build it, Parts), and the newest two things
+//              said of it, with a comment made in the card (web/composer.js)
 //   talk       a thread of Talk: who started it, on which board, its first
-//              words and its latest reply
+//              words and its latest reply, with a reply made in the card
 //   challenge  the month's challenge, its days left and its entries
 //   try        the studio itself, a model on it, opened in the card on a tap
 //   people     builders to follow
@@ -106,17 +107,38 @@ export function madeHtml(model) {
   return `<p class="post-made">${pills.join("")}</p>`;
 }
 
-/// The newest thing said of a model ([said], talk_talking's), or the
-/// prompt to say the first; its room held either way, so the card is one
-/// height whatever comes.
-function saidHtml(id, said) {
-  const who = personOf(said?.by);
-  const words = said && typeof said.said === "string" ? said.said.trim() : "";
-  const line = who && words
-    ? `<a class="who" href="${langAt()}/u/${escapeHtml(who.handle)}">${escapeHtml(who.name)}</a> <span lang="">${escapeHtml(words)}</span>`
-    : `<span class="first">${escapeHtml(say("Nothing said yet. Say the first thing."))}</span>`;
-  return `<div class="post-talk"><p class="post-said">${line}</p>`
-    + `<button type="button" class="post-say" data-say="${escapeHtml(id)}" aria-expanded="false">${escapeHtml(say("Add a comment"))}</button></div>`;
+/// One thing somebody said, as a card or a row shows it (web/composer.js
+/// puts in what is posted there the same way): their face and name, a
+/// link to them, and their words, one line in the card's room. [one]
+/// {by, name, said, id}: [by] {handle, name, picture} when they have a
+/// page, else [name]. [pending] posted here, not yet answered; [reply] a
+/// reply under a comment.
+export function saidLineHtml(one, { pending = false, reply = false } = {}) {
+  const words = typeof one?.said === "string" ? one.said.trim() : "";
+  if (!words) return "";
+  const who = personOf(one.by);
+  const name = who ? `<a class="who" href="${langAt()}/u/${escapeHtml(who.handle)}">${escapeHtml(who.name)}</a>`
+    : `<b class="who">${escapeHtml(String(one.name || say("A builder")))}</b>`;
+  const id = Number.isSafeInteger(Number(one.id)) && Number(one.id) > 0 ? ` data-line="${Number(one.id)}"` : "";
+  return `<li class="said-line${pending ? " pending" : ""}${reply ? " reply" : ""}"${id}>${avatarHtml(who || { name: String(one.name || "?") }, { size: "small" })}`
+    + `<p>${name} <span lang="">${escapeHtml(words)}</span>${pending ? ` <small class="said-wait">${escapeHtml(say("Posting…"))}</small>` : ""}</p></li>`;
+}
+
+/// What was said of a model ([said], talk_talking's, newest first): its
+/// newest two, oldest of them first, its room held for two whatever comes,
+/// "n more" of its [count] comments (opened in the card, web/composer.js),
+/// and the way to say something there.
+function saidHtml(id, said, count) {
+  const lines = (Array.isArray(said) ? said : said ? [said] : []).filter((one) => personOf(one?.by) && typeof one.said === "string"
+    && one.said.trim()).slice(0, 2).reverse();
+  const rest = Math.max(0, (Number(count) || 0) - lines.length);
+  const room = lines.length
+    ? `<ol class="said-lines" aria-label="${escapeHtml(say("Comments"))}">${lines.map((one) => saidLineHtml({ ...one, id: one.comment })).join("")}</ol>`
+    : `<ol class="said-lines" aria-label="${escapeHtml(say("Comments"))}" hidden></ol><p class="said-none">${escapeHtml(say("Nothing said yet. Say the first thing."))}</p>`;
+  return `<div class="post-talk"><div class="said-room">${room}</div><p class="said-acts">`
+    + `<button type="button" class="post-say" data-say="${escapeHtml(id)}" aria-expanded="false">${escapeHtml(say("Add a comment"))}</button>`
+    + `<button type="button" class="said-more" data-more="${escapeHtml(id)}" aria-expanded="false"${rest ? "" : " hidden"}>`
+    + `${escapeHtml(say("{n} more", { n: number(rest) }))}</button></p></div>`;
 }
 
 /// A model of the gallery as a post. [eager] its picture asked for at once;
@@ -168,7 +190,7 @@ export function buildPostHtml(model, { eager = false, said = null, line = "", pi
     + `<span class="word" aria-hidden="true">3D</span></button></div>`
     + `<div class="post-words"><h3 class="post-title" id="post-${id}"><a href="${page}">${escapeHtml(name)}</a></h3>`
     + madeHtml(model)
-    + `<div class="post-acts">${acts}${parts}</div>${verbs}${saidHtml(id, said)}</div></article>`;
+    + `<div class="post-acts">${acts}${parts}</div>${verbs}${saidHtml(id, said, model.comments)}</div></article>`;
 }
 
 /// A thread of Talk as a post (talk_latest's, with &reply=1): who started
@@ -182,18 +204,20 @@ export function talkPostHtml(thread) {
   const line = `${escapeHtml(say("started a thread in"))} ${board}${thread.at ? ` · ${timeHtml(thread.at)}` : ""}`;
   const replies = Number(thread.replies) || 0;
   const reply = thread.reply && typeof thread.reply.said === "string" ? thread.reply : null;
-  const replier = personOf(reply?.by);
-  const latest = reply
-    ? `<div class="post-reply">${replier ? avatarHtml(replier, { size: "small" }) : ""}<p><b>${escapeHtml(replier ? replier.name : say("A builder"))}</b> `
-      + `<span>${escapeHtml(reply.said)}</span></p></div>`
-    : `<div class="post-reply none"><p>${escapeHtml(say("No replies yet. Be the first to answer."))}</p></div>`;
+  const latest = reply && saidLineHtml(reply)
+    ? `<ol class="said-lines" aria-label="${escapeHtml(say("Replies"))}">${saidLineHtml(reply)}</ol>`
+    : `<ol class="said-lines" aria-label="${escapeHtml(say("Replies"))}" hidden></ol><p class="said-none">${escapeHtml(say("No replies yet. Be the first to answer."))}</p>`;
+  const link = `${at}${escapeHtml(path)}`;
+  // Reply opens the composer in the post (web/composer.js replyInCard); its
+  // address, the thread's own box, is where it goes without a script. The
+  // count is the way to the whole thread.
   return `<article class="post talk" data-kind="talk" data-thread="${n}" aria-labelledby="thread-${n}">`
     + headHtml(thread.by, line)
-    + `<div class="post-words"><h3 class="post-title" id="thread-${n}"><a href="${at}${escapeHtml(path)}">${escapeHtml(String(thread.title || ""))}</a></h3>`
-    + `${thread.said ? `<p class="post-text">${escapeHtml(String(thread.said))}</p>` : ""}${latest}`
-    + `<div class="post-acts"><span class="tally">${iconHtml("comment")}<span>${escapeHtml(replies === 1 ? say("1 reply")
-      : say("{n} replies", { n: number(replies) }))}</span></span>`
-    + `<a class="cta ghost small" href="${at}${escapeHtml(path)}#reply">${escapeHtml(say("Reply"))}</a></div></div></article>`;
+    + `<div class="post-words"><h3 class="post-title" id="thread-${n}"><a href="${link}">${escapeHtml(String(thread.title || ""))}</a></h3>`
+    + `${thread.said ? `<p class="post-text">${escapeHtml(String(thread.said))}</p>` : ""}<div class="said-room">${latest}</div>`
+    + `<div class="post-acts"><a class="tally" href="${link}" data-replies="${replies}">${iconHtml("comment")}<span>${escapeHtml(replies === 1 ? say("1 reply")
+      : say("{n} replies", { n: number(replies) }))}</span></a>`
+    + `<a class="cta ghost small" href="${link}#reply" data-reply-thread="${n}" aria-expanded="false">${escapeHtml(say("Reply"))}</a></div></div></article>`;
 }
 
 /// "1–30 November" in the page's language.
@@ -319,10 +343,12 @@ const FOR_YOU = ["build", "build", "challenge", "build", "talk", "try", "build",
 export function compose(given, { tab = "foryou", skip = new Set() } = {}) {
   const pickModel = given.shelves?.pick?.model;
   const pick = pickModel && MODEL.test(String(pickModel.id)) && pictureOf(pickModel) ? pickModel : null;
-  // What was said under each model, newest first: the first is its newest.
+  // What was said under each model, newest first: its newest two comments.
   const said = new Map();
   for (const one of Array.isArray(given.talk?.talking) ? given.talk.talking : []) {
-    if (one && MODEL.test(String(one.model)) && !said.has(one.model) && !one.parent) said.set(one.model, one);
+    if (!one || !MODEL.test(String(one.model)) || one.parent) continue;
+    const of = said.get(one.model) || [];
+    if (of.length < 2) said.set(one.model, [...of, one]);
   }
   const seen = new Set(skip);
   const take = (item) => {

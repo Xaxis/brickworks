@@ -340,7 +340,7 @@ async function talk(label, width, height) {
   const seen = await page.evaluate(() => [...document.querySelectorAll("#stream > .post.talk")].map((post) => ({
     href: post.querySelector(".post-title a")?.getAttribute("href") || "",
     title: post.querySelector(".post-title")?.textContent.trim() || "",
-    reply: post.querySelector(".post-reply")?.textContent.trim() || "",
+    reply: post.querySelector(".said-room")?.textContent.trim() || "",
   })));
   const answer = await asked(page, "/api/people?op=talk_latest&n=6&reply=1");
   const has = Array.isArray(answer?.threads) ? answer.threads.length : 0;
