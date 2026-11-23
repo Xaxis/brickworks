@@ -122,10 +122,15 @@ func _run() -> void:
 			took[look + "_worst"] = [roundi(card.worst_frame_ms), card.worst_step]
 			took[look + "_frames"] = card.frames
 			took[look + "_samples"] = card.samples
-			_ok(photo != null and photo.get_size() == SharePanel.THUMB * 2,
-				"%d %s: the card as a photograph (%s), %.0f ms in %d frames, %d samples, the longest %.0f ms (%s)"
+			# Frames averaged past CardPhoto.MOST_MS, the card is given up for
+			# the cut-out, as the Share panel then sends: what is meant.
+			var given_up: bool = photo == null and not CardPhoto.traced() \
+				and card.last_ms >= CardPhoto.MOST_MS
+			took[look + "_given_up"] = given_up
+			_ok(given_up or (photo != null and photo.get_size() == SharePanel.THUMB * 2),
+				"%d %s: the card as a photograph (%s), %.0f ms in %d frames, %d samples, the longest %.0f ms (%s)%s"
 				% [n, said["name"], look, card.last_ms, card.frames, card.samples, card.worst_frame_ms,
-				card.worst_step])
+				card.worst_step, ", given up for the cut-out past %d ms" % CardPhoto.MOST_MS if given_up else ""])
 			if photo != null:
 				photo.convert(Image.FORMAT_RGB8)
 				photo.resize(SharePanel.THUMB.x, SharePanel.THUMB.y, Image.INTERPOLATE_LANCZOS)
