@@ -1927,8 +1927,9 @@ plan with Claude as the client.
   (`.page-hero` > `.page-head`: h1 and one lede left, `.page-acts` right,
   `.tabs` on the band's foot), list pages on `.list-layout` (the list
   from the left edge, a 320 px aside on every list page, its column kept
-  while empty, so the list is the feed's width on every list page: it
-  fails two tabs of one area that differ) with `.list-row` rows, `.state` empty
+  while empty, so the list is the feed's width on every list page; and
+  pages sharing a tab bar, the head's tabs or Talk's boards, with their
+  main column at one x and width, within a pixel) with `.list-row` rows, `.state` empty
   and `.pager` more: /feed, /notifications, /talk, /talk/b/<board>,
   /talk/new, /lists, the gallery's five addresses and its search,
   /settings, /faq, the legal pages, /takedown, /changelog, /compare,
