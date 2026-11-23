@@ -338,7 +338,7 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* The Log (api/share.js versionsSection): every version newest first, its
    small picture beside its date, what changed and its note; the one shown
    edged. A picture holds its 4:3 place before it comes, so nothing moves. */
-.model-page .versions h3 { margin: 18px 0 8px; font-size: var(--t-body); }
+.model-page .versions h3 { margin: 18px 0 8px; }
 .model-page .earlier.log { list-style: none; padding: 0; display: grid; gap: 10px; }
 .model-page .log-entry {
 	display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; margin: 0;
@@ -438,7 +438,7 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .remix-tree a.node-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .remix-tree .node-card.self { border-color: var(--accent-edge); box-shadow: inset 0 0 0 1px var(--accent-edge); }
 .remix-tree .node-card img, .remix-tree .no-picture {
-	flex: none; width: 64px; height: 48px; border-radius: calc(var(--radius) - 2px); background: var(--picture-ground); object-fit: contain;
+	flex: none; width: 64px; height: 48px; border-radius: var(--r-2); background: var(--picture-ground); object-fit: contain;
 }
 .remix-tree .words { display: grid; min-width: 0; line-height: 1.35; }
 .remix-tree .name { font-weight: 600; overflow-wrap: anywhere; }
@@ -790,7 +790,7 @@ dialog.bases-dialog .set-chosen[hidden] { display: none; }
 .model-page .comment-pin { margin: 0 0 4px; display: flex; align-items: baseline; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
 .model-page .comment-pin .pin-n {
 	flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: var(--r-pill);
-	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+	background: var(--accent); color: var(--on-accent); font-size: var(--t-micro); font-weight: 700; font-variant-numeric: tabular-nums;
 	align-self: center;
 }
 .model-page .comment-pin.gone .pin-n { background: var(--line-strong); color: var(--ink); }
