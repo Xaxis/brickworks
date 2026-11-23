@@ -305,6 +305,49 @@ def choose(candidates: set[str], proofs: list[dict], heads: list[str],
     return left, carried
 
 
+# --- checks that cannot run on brickworks.diy ---
+# A flow that refuses brickworks.diy says so as it starts and exits 2
+# ("designer_period_flow: never on brickworks.diy; give a preview"), some
+# only given an option ("homefeed_check: --signed-in never on
+# brickworks.diy"). ship.sh ran rel-m319's designer_period there anyway, to
+# learn whether it failed there too: 45 minutes queued for a run that
+# could never say (2026-11-23).
+REFUSAL = re.compile(r"""console\.error\(\s*["'`][^"'`]*never (?:on|against|runs (?:on|against)) brickworks\.diy""")
+OPTION = re.compile(r"""args\[\s*["']([\w-]+)["']\s*\]|args\.(\w+)""")
+
+
+def check_commands(tree: Path) -> dict[str, str]:
+    """Each check of preview_checks.sh: its command line, as its map says."""
+    text = (tree / "tools" / "release" / "preview_checks.sh").read_text(errors="ignore")
+    return dict(re.findall(r'^\s*\[([a-z_0-9]+)\]="([^"]*)"', text, re.M))
+
+
+def never_live(tree: Path, names: list[str]) -> list[str]:
+    """Those of NAMES whose script, given that check's options, refuses
+    brickworks.diy: a refusal whose test names no option refuses always;
+    one that names options refuses when the check passes every one."""
+    commands = check_commands(tree)
+    found = []
+    for name in names:
+        words = commands.get(name, "").split()
+        if not words or not words[0].endswith(".mjs"):
+            continue
+        script = tree / words[0]
+        if not script.is_file():
+            continue
+        lines = script.read_text(errors="ignore").splitlines()
+        given = {w[2:].split("=", 1)[0] for w in words[1:] if w.startswith("--")}
+        for i, line in enumerate(lines):
+            if not REFUSAL.search(line):
+                continue
+            test = next((lines[k] for k in range(i, max(i - 4, -1), -1) if re.match(r"\s*(}\s*else\s+)?if\s*\(", lines[k])), "")
+            options = {a or b for a, b in OPTION.findall(test)} - {"url"}
+            if options <= given:
+                found.append(name)
+                break
+    return found
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -319,6 +362,9 @@ def main() -> int:
         s.add_argument("--every", action="store_true", help="carry nothing over (the full list)")
         if kind == "probes":
             s.add_argument("--list", default="tools/suite/headless.txt")
+    n = sub.add_parser("never-live", help="those of the checks named whose script refuses brickworks.diy")
+    n.add_argument("--tree", required=True)
+    n.add_argument("names", nargs="*")
     r = sub.add_parser("record")
     r.add_argument("kind", choices=("checks", "probes"))
     r.add_argument("name")
@@ -327,6 +373,10 @@ def main() -> int:
     r.add_argument("outs", nargs="*", help="a battery's TAG_pv.out, then its TAG_alone_*.out, oldest first")
     r.add_argument("--passed", default="", help="the names that passed, said outright (a train's probes)")
     a = p.parse_args()
+
+    if a.cmd == "never-live":
+        print(" ".join(never_live(Path(a.tree).resolve(), a.names)))
+        return 0
 
     if a.cmd == "record":
         passed = a.passed.split() + passed_in([Path(o) for o in a.outs])

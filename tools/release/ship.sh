@@ -288,12 +288,28 @@ if [ -n "$still" ] && [ -n "${SHIP_STALE:-}" ]; then
     # that part there now; console3's Run now runs the real crons there (the
     # gallery's front, api/_console_data.js) and writes the owner's audit
     # log; discovery chooses the week's pick that every visitor sees.
+    # And those whose own script refuses brickworks.diy, given the check's
+    # options (lean.py never-live): rel-m319's designer_period queued 45
+    # minutes for a run there that could only exit 2 (2026-11-23). Either
+    # kind is the lead's to judge: one named in SHIP_ACCEPT ships past, as
+    # the lead said why; any other holds the release at once, with no run
+    # there of the rest, as nothing they say could ship it.
     NEVER_LIVE=" console console3 discovery "
-    ran=""; never=""
+    refused=" $(python3 "$HERE/lean.py" never-live --tree "$W" $other 2>/dev/null) "
+    ran=""; never=""; unjudged=""
     for name in $other; do
-      case "$NEVER_LIVE" in *" $name "*) never="$never $name" ;; *) ran="$ran $name" ;; esac
+      case "$NEVER_LIVE$refused" in *" $name "*) never="$never $name" ;; *) ran="$ran $name" ;; esac
     done
-    [ -z "$never" ] || echo "SHIP: never run on brickworks.diy, as each changes what is live there:$never"
+    echo "${never# }" | tr ' ' '\n' | sed '/^$/d' > $S/${TAG}_stale.never
+    [ -z "$never" ] || echo "SHIP: never run on brickworks.diy, as each changes what is live there or its script refuses it:$never"
+    for name in $never; do
+      why=$(awk -F'\t' -v n="$name" '$1 == n {print $2; exit}' "${SHIP_ACCEPT:-/dev/null}" 2>/dev/null)
+      [ -n "$why" ] || unjudged="$unjudged $name"
+    done
+    if [ -n "$unjudged" ]; then
+      echo "SHIP: held, failed on the preview:$unjudged, which cannot run on brickworks.diy: the lead judges it (train.sh reship $TAG --accept NAME \"why\")"
+      exit 1
+    fi
     if [ -n "$ran" ]; then
       env -u BOX_HEAVY_PRIORITY "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_stale $ran >/dev/null 2>&1
     else
@@ -307,7 +323,11 @@ if [ -n "$still" ] && [ -n "${SHIP_STALE:-}" ]; then
     done > $S/${TAG}_stale.failing
     for name in $other; do
       why=$(awk -F'\t' -v n="$name" '$1 == n {print $2; exit}' "${SHIP_ACCEPT:-/dev/null}" 2>/dev/null)
-      if [ -n "$why" ] && grep -qx "$name" $S/${TAG}_stale.failing; then
+      if [ -n "$why" ] && grep -qx "$name" $S/${TAG}_stale.never; then
+        here=$(grep -m1 "^$name exit=" $S/${TAG}_alone_$name.out 2>/dev/null || grep -m1 "^$name exit=" $S/${TAG}_pv.out)
+        printf '%s: %s\n  here: %s\n  there: never run (the lead judged it)\n' "$name" "$why" "$(cut -c1-200 <<< "$here")" >> $S/${TAG}_accepted
+        echo "SHIP: ships past $name, which cannot run on brickworks.diy, as the lead judged: $why"
+      elif [ -n "$why" ] && grep -qx "$name" $S/${TAG}_stale.failing; then
         here=$(grep -m1 "^$name exit=" $S/${TAG}_alone_$name.out 2>/dev/null || grep -m1 "^$name exit=" $S/${TAG}_pv.out)
         printf '%s: %s\n  here: %s\n  there: %s\n' "$name" "$why" "$(cut -c1-200 <<< "$here")" \
           "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out | cut -c1-200)" >> $S/${TAG}_accepted
