@@ -50,8 +50,8 @@ ui:working model that could not open
 
 Signed in, the studio opens on a screen of your own, over your model:
 
-- **Continue**: the models you saved last, on this device or any other you sign in on. One tap opens one.
-- **This week's quick build**: its brief and its day. **Start from its template** puts your own copy of the template on the baseplate, ready to publish as your entry.
+- **Continue**: the models you saved last, on this device or any other you sign in on. One tap opens one. On a device you have not used before, they are listed at once and each opens as soon as it has come from your account.
+- **This week's quick build**: its brief and its day. **Start from its template** puts your own copy of the template on the baseplate, ready to publish as your entry. A week with no template has **See it and its entries**, its page.
 - **What came back on your models**: the newest comments, photos of builds and remixes. A comment on a part opens your model with that part selected. A photo or a remix opens its page. Nothing is marked read: the count on your avatar stays until you open Notifications.
 - **Find in the gallery**: the newest models, and a search. A model you press opens as a copy of your own, credited to its designer.
 

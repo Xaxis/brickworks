@@ -9352,8 +9352,11 @@ node tools/web/studiostart_flow.mjs --url=http://127.0.0.1:11750 --out=shots/stu
 ```
 
 It passes with "the studio's first screen: every check passed": before and
-after pictures at 1280 x 800 and 390 x 844, dark and light; three real things
-within the studio's open time + 1 s, and no example car on the way; the pin
+after pictures at 1280 x 800 and 390 x 844, dark and light. Each browser is
+first a new device (its models listed from the account, the time printed, no
+bar), then the same browser reloaded as a person comes back: three real
+things within the studio's open time + 1 s, and no example car on either
+visit (`studio_start.car` in `window.brickworksState`); the pin
 lit within 1 s of the press; a pin written while the studio is open shown
 within 60 s; a gallery model on the baseplate as a copy. Without the change
 `/app?start` opens on the example car and it fails at step 2.
