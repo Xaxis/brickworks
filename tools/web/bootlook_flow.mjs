@@ -212,7 +212,12 @@ async function tips(browser, url) {
       // The engine kept away (its script never answered), so the page stays.
       await context.route(/\/index\.js$/, () => {});
       try {
-        await page.clock.install();
+        // Only runFor moves the page's clock: an installed clock also runs in
+        // real time, and on a loaded box the seconds before or between two
+        // looks brought a tip more (the first gone, a tip heard twice).
+        const start = Date.now();
+        await page.clock.install({ time: start });
+        await page.clock.pauseAt(start + 1);
         await page.goto(`${url}${code === "en" ? "" : `?lang=${code}`}`, { waitUntil: "domcontentloaded", timeout: 60000 });
         await page.waitForSelector("#tip-text", { timeout: 30000 });
         const count = await page.evaluate(() => window.brickworksTips.count);
