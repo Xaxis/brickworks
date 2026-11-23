@@ -325,7 +325,7 @@ try {
       const { drawn, seen } = await headerSeen(page, () => (visit === "a reload" ? page.reload({ waitUntil: "load" })
         : page.goto(where, { waitUntil: "load", timeout: 60000 })), letter);
       const shown = seen?.avatars || [];
-      tone ||= (shown.find((face) => face.startsWith(`${letter} `)) || "").split(" ")[1];
+      tone ||= (shown.find((face) => face.startsWith(`${letter} `)) || "").slice(letter.length + 1);
       const named = shown.filter((face) => face !== " unknown");
       const who = seen?.who || [];
       check(`${visit}: the header's avatar showed ${shown.map((face) => `"${face}"`).join(", ")}: `

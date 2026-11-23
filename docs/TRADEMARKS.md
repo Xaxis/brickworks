@@ -104,7 +104,8 @@ brickworks avatar generator that is obviously lego minifig themed"). Each
 is a person's own, made of real LDraw parts (CC BY, credited in the maker
 and the footer) as a figure built in the app is: drawn from the library's
 geometry by our own 3D, never a copy of the LEGO Group's artwork, and never
-ours: no page, badge or mark of Brickworks is a minifigure. Somebody who
+ours: no page, badge or mark of Brickworks is a minifigure, and Brickworks'
+own account is shown as our mark (web/card.js HOUSE_HANDLE). Somebody who
 makes none is shown one picked from the parts by their handle; anybody may
 upload a picture instead.
 

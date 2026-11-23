@@ -281,7 +281,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml, themeSaid } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml, minifigOf, minifigShape } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml, minifigOf, minifigShape, HOUSE_HANDLE } from "./_card.js";
 import { minifigJpeg } from "./_minifig.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
@@ -742,6 +742,10 @@ async function avatarServe(request, response) {
   if (request.query?.handle !== undefined) {
     const person = await personOf(String(request.query.handle).toLowerCase());
     if (!person) return response.status(404).setHeader("Cache-Control", "no-store").end("");
+    // Brickworks' own account is its mark, never a minifigure (web/card.js avatarHtml).
+    if (person.handle === HOUSE_HANDLE) {
+      return response.status(302).setHeader("Location", "/favicon-512.png").setHeader("Cache-Control", MINIFIG_CACHE).end("");
+    }
     const jpeg = await minifigJpeg(minifigOf(person.handle));
     response.setHeader("Content-Type", "image/jpeg");
     response.setHeader("X-Content-Type-Options", "nosniff");
@@ -1307,7 +1311,7 @@ function profileData(origin, { url, person, earned, about, follows, links }) {
     mainEntity: {
       "@type": "Person", name: person.name, alternateName: `@${person.handle}`, identifier: person.handle,
       url: `${origin}/u/${person.handle}`, description: person.bio || undefined,
-      image: `${origin}${person.picture || `/api/people?op=avatar&handle=${person.handle}`}`,
+      image: `${origin}${person.picture || (person.handle === HOUSE_HANDLE ? "/favicon-512.png" : `/api/people?op=avatar&handle=${person.handle}`)}`,
       sameAs: links.length ? links.map((link) => link.href) : undefined,
       interactionStatistic: ready ? [counter("FollowAction", follows.followers)] : undefined,
       agentInteractionStatistic: did.length ? did : undefined,

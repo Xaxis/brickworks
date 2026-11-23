@@ -172,6 +172,9 @@ const PICTURE = /^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/;
 // one made from their handle (minifigOf), the same everywhere and every time.
 // The site's parts, credited as every part is; never our own mark or mascot
 // (docs/TRADEMARKS.md, Decision 3).
+/// Brickworks' own account (api/_prompts.js talk_house): shown as the mark.
+export const HOUSE_HANDLE = "brickworks";
+
 export const MINIFIG = {
   // Faces, on the classic yellow head (3626c).
   faces: ["3626cp01", "3626cp7g", "3626cp8c", "3626cp71", "3626cp87", "3626cp88", "3626cp84", "3626cp8b", "3626cp7c",
@@ -259,6 +262,11 @@ export function minifigHtml(recipe, { size = "", id = "" } = {}) {
 export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size = "", id = "" } = {}) {
   const pictured = PICTURE.test(String(picture || ""));
   const known = Boolean(handle || name || pictured);
+  // Brickworks' own account is shown as its mark: a minifigure is never
+  // ours (docs/TRADEMARKS.md Decision 3).
+  if (handle === HOUSE_HANDLE && !pictured) {
+    return `<span class="${["avatar", size, "house"].filter(Boolean).join(" ")}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true"></span>`;
+  }
   if (known && !pictured) return minifigHtml(minifigOf(handle || name), { size, id });
   const classes = ["avatar", size, known ? `c${avatarTone(handle || name)}` : "unknown", pictured ? "pictured" : ""]
     .filter(Boolean).join(" ");
