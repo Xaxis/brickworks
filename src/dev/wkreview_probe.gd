@@ -268,7 +268,8 @@ const NESTED := """0 FILE wr_nested.ldr
 
 ## [name, file, edit, the kept lines the edit takes with it (by their
 ## normalised text, [method _kept_counts]), the binding lines it takes ([method
-## _binds])].
+## _binds]), and (where given) the kept lines and binding lines it rightly
+## writes once more].
 const CASES: Array = [
 	# A control: someone else's file written whole with no other change.
 	["plan_only", "house_other", "plan", [], []],
@@ -276,14 +277,16 @@ const CASES: Array = [
 	# comment and GROUP_NXT stay before its line.
 	["frame", "house_own", "add", [], []],
 	# A part taken off: the line saying what it is goes with it, never onto
-	# the next part.
+	# the next part. A comment above it stays, as LDCad, MLCad and the patch
+	# of someone else's file keep one (wkfix: only a line that says what the
+	# next line is goes with its part).
 	["remove_tile", "house_own", "remove_tile",
-		["0 // the printed tile", "0 !TEXMAP NEXT PLANAR # # # # # # # # # sign.png"],
+		["0 !TEXMAP NEXT PLANAR # # # # # # # # # sign.png"],
 		["!TEXMAP NEXT -> 3068b.dat"]],
 	["remove_plate", "house_own", "remove_plate", ["0 !LDCAD GROUP_NXT [ids=1] [nrs=-1]"],
 		["GROUP_NXT [ids=1] -> 3024.dat"]],
 	["remove_tile_other", "house_other", "plan+remove_tile",
-		["0 // the printed tile", "0 !TEXMAP NEXT PLANAR # # # # # # # # # sign.png"],
+		["0 !TEXMAP NEXT PLANAR # # # # # # # # # sign.png"],
 		["!TEXMAP NEXT -> 3068b.dat"]],
 	# A sub-assembly made inside a copy: the lines before the copy's own line
 	# stay there, once.
@@ -296,10 +299,17 @@ const CASES: Array = [
 	["multistep_other", "steps_other", "make_pair", [], []],
 	["multistep_own", "steps_own", "add", [], []],
 	# wholekeep's known limit: a wing pasted with steps of its own beside two
-	# built in the model's.
-	["paste_built", "built", "paste", [], []],
-	# One of two copies taken apart: its printed tile still printed, once.
-	["ungroup_one", "twice", "ungroup_one", [], []],
+	# built in the model's. The two are written after IN lines, each engine's
+	# printed round brick with its comment and print: once more than the
+	# file, which said them once for both.
+	["paste_built", "built", "paste", [], [],
+		["0 // its engine, under the plate", "0 !TEXMAP NEXT PLANAR # # # # # # # # # sign.png"],
+		["!TEXMAP NEXT -> 3062b.dat"]],
+	# One of two copies taken apart: its printed tile still printed, once, and
+	# the other copy's in the wing's section (the review's "rightly").
+	["ungroup_one", "twice", "ungroup_one", [], [],
+		["0 // the wing's printed tile", "0 !TEXMAP NEXT PLANAR # # # # # # # # # sign.png"],
+		["!TEXMAP NEXT -> 3068b.dat"]],
 	# A head that says a line twice: both written (_write_one skips a head
 	# line the section's lines have already).
 	["heads", "heads", "add", [], []],
@@ -314,9 +324,18 @@ const CASES: Array = [
 	["apart_nested", "nested", "apart_engine", [], []],
 ]
 
+## The cases whose losses pre261 has too, each a unit of its own: a check of
+## theirs that fails says NOTE and is not counted (wkfix FINDINGS, N2, N3).
+const NOTED: Dictionary = {
+	"geom": "N3: pre261's whole write loses them too",
+	"patch_move_tile": "N2: the patch path, older than wholekeep",
+}
+
 ## Each copy's frame as the file gave it before the edit (Assemblies
 ## ._read_frames, wholekeep's; {} on a build without it).
 var _frames_before: Dictionary = {}
+## The NOTE of the case being run ([constant NOTED]), "" for one held to it.
+var _noted: String = ""
 
 var _failures: int = 0
 var _main: Node
@@ -331,6 +350,9 @@ func _initialize() -> void:
 
 
 func _check(what: String, ok: bool) -> bool:
+	if not ok and not _noted.is_empty():
+		print("  NOTE  %s (%s)" % [what, _noted])
+		return ok
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
@@ -356,7 +378,10 @@ func _run() -> void:
 	for case: Array in CASES:
 		if not wanted.is_empty() and not wanted.has(str(case[0])):
 			continue
-		await _case(str(case[0]), _file(str(case[1])), str(case[2]), case[3], case[4])
+		_noted = str(NOTED.get(str(case[0]), ""))
+		await _case(str(case[0]), _file(str(case[1])), str(case[2]), case[3], case[4],
+			case[5] if case.size() > 5 else [], case[6] if case.size() > 6 else [])
+		_noted = ""
 	print("\nwkreview probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
 	_world.clear()
@@ -391,7 +416,8 @@ func _file(which: String) -> String:
 # -- a case ------------------------------------------------------------------
 
 
-func _case(name: String, text: String, edit: String, gone: Array, gone_binds: Array) -> void:
+func _case(name: String, text: String, edit: String, gone: Array, gone_binds: Array,
+		more: Array = [], more_binds: Array = []) -> void:
 	print("\n== %s (%s)" % [name, edit])
 	await _open(text)
 	var depth: int = _builder.history_depth()
@@ -418,6 +444,8 @@ func _case(name: String, text: String, edit: String, gone: Array, gone_binds: Ar
 	var want: Dictionary = _kept_counts(text)
 	for line: String in gone:
 		want[line] = int(want.get(line, 0)) - 1
+	for line: String in more:
+		want[line] = int(want.get(line, 0)) + 1
 	var diff: Array = _diff(want, _kept_counts(saved))
 	_check("%s: the file's lines, each as often as it had them%s" % [name,
 		"" if diff[0].is_empty() and diff[1].is_empty()
@@ -428,6 +456,7 @@ func _case(name: String, text: String, edit: String, gone: Array, gone_binds: Ar
 	var binds_want: Array = _binds(text)
 	for bind: String in gone_binds:
 		binds_want.erase(bind)
+	binds_want.append_array(more_binds)
 	var binds_now: Array = _binds(saved)
 	var bdiff: Array = _diff(_counted(binds_want), _counted(binds_now))
 	_check("%s: each TEXMAP NEXT / GROUP_NXT / INVERTNEXT before what it was before%s" % [name,

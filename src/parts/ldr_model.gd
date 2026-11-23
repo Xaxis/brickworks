@@ -732,10 +732,18 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			before[int(order[0])] = (before[int(order[0])] as Array).filter(
 				func(item: Array) -> bool: return not _header_kept(str(item[0])))
 	keep.out["main"] = model.main_key
+	# And which section each placing line is in, by the lines each section
+	# places from and to: a part read through a line of another section than
+	# its copy's now says nothing of that copy (read_levels).
+	keep.out["spans"] = _spans_of(keep.out["order"])
 	# And where each line a kept TEXMAP or its geometry is beside stands in
 	# its section: a write that moves the part, or frames its section anew,
-	# moves its picture with it (_kept_moved).
-	keep.out["at"] = _kept_at(keep.out, model)
+	# moves its picture with it (_kept_moved); and the colour and part a line
+	# with a TEXMAP block's own geometry beside it gave, so a swap or a paint
+	# writes that geometry as the part is now (_moved_line).
+	var said: Dictionary = {}
+	keep.out["at"] = _kept_at(keep.out, model, said)
+	keep.out["said"] = said
 	# And where the parts and copies of each sub-model's section stand in it,
 	# by their lines: a whole write writes a sub-model the file had in the
 	# frame the file gave it (Assemblies.file_frames).
@@ -1588,7 +1596,7 @@ static func write_ldr(
 		var written_at: Dictionary = {}
 		for item: Variant in placements:
 			var placement: Placement = item
-			written_at[kept_line(placement.origin)] = "%s|%d" % [placement.group, placement.step]
+			written_at[kept_line(placement.origin)] = [placement.group, placement.step]
 		_split_blocks(kept_out, written_at)
 	if groups.is_empty() and embedded.is_empty():
 		return _write_one(placements, title, author_name, [], "", [], [], [], steps.get("", []),
@@ -1700,7 +1708,7 @@ static func write_tree(
 	# The lines the file carried that the model does not read, each beside its
 	# line again ([method kept_for]): a part's by its origin, a copy's by the
 	# line placing it, a section's head and end in the section the file had.
-	var copy_lines: Dictionary = _copy_lines(placements)
+	var copy_lines: Dictionary = _copy_lines(placements, carried, files)
 	var placed: Dictionary = {}
 	for section: String in children:
 		for child: String in children[section]:
@@ -1747,8 +1755,17 @@ static func write_tree(
 			var placement: Placement = item
 			var home: String = _home_in(placement.unit, unit_steps)
 			if home.is_empty() or def_at.has(home):
-				written_at[kept_line(placement.origin)] = "%s|%s|%d" % [str(def_at.get(home, "")),
-					_within_of(placement.unit, home), placement.step]
+				written_at[kept_line(placement.origin)] = ["%s|%s" % [str(def_at.get(home, "")),
+					_within_of(placement.unit, home)], placement.step]
+		# And each copy's line, where its reference is written: a block round
+		# a sub-model's line is split or kept as one round parts is.
+		for section: String in children:
+			if not section.is_empty() and not def_at.has(section):
+				continue
+			for child: String in children[section]:
+				if copy_lines.has(child):
+					written_at[int(copy_lines[child])] = ["%s|%s" % [str(def_at.get(section, "")),
+						str(placed_within.get(child, ""))], int(unit_steps.get(child, 0))]
 		_split_blocks(kept_out, written_at)
 	var ref_anchors := func(parent: String) -> Array:
 		return children.get(parent, []).map(func(child: String) -> int:
@@ -1938,7 +1955,14 @@ static func _built_in(placements: Array, instances: Dictionary, unit_steps: Dict
 			else:
 				span[int(unit_steps.get(ref, 0))] = true
 		spans[path] = span
-		if span.is_empty():
+		# Built in two or more of the model's steps, it is written in them after
+		# IN lines: every other LDraw reader (LDCad, LDView, LPub, Studio) builds
+		# a sub-model whole in the step its line is in, so as its section the
+		# castle's towers, a course of each in turn, went up whole at their
+		# first courses, 2,166 of its 2,497 parts in another step and 328 steps
+		# with nothing in them (wkreview F3). Its section is kept where its
+		# parts all go on in one step, which every reader builds alike.
+		if span.size() != 1:
 			refused[str((instances[path] as Dictionary)["def"])] = true
 	if not refused.is_empty():
 		return {"refused": refused}
@@ -2388,9 +2412,16 @@ static func _write_one(placements: Array, title: String, author_name: String,
 		lines.append("0 Author: " + author_name)
 	lines.append_array(after)
 	# The lines of the head of the section the file had ([method kept_for]),
-	# each once: a line the head says already (whose it is) is not said again.
+	# each as often as the file had it: but as often as the lines above say it
+	# already (whose it is, a sub-model's own notes), each of those once. A
+	# note ruled off above and below lost its lower rule (wkreview F6).
+	var said_above: Dictionary = {}
+	for line: String in lines:
+		said_above[line] = int(said_above.get(line, 0)) + 1
 	for line: String in (carried.get("head", {}) as Dictionary).get(key, []):
-		if not lines.has(line):
+		if int(said_above.get(line, 0)) > 0:
+			said_above[line] = int(said_above[line]) - 1
+		else:
 			lines.append(line)
 	lines.append("")
 
@@ -2478,16 +2509,34 @@ static func _write_one(placements: Array, title: String, author_name: String,
 			if not named:
 				lines.append(IN_META + ("" if inside.is_empty() else " " + inside))
 		# Beside the lines the file had it beside ([method kept_for]), a
-		# picture's moved as its part is.
-		lines.append_array(_kept_moved(above, was, item[6]))
+		# picture's moved as its part is, and its block's own geometry the
+		# part and colour it is now. The app's own lines of a reference (which
+		# copy it is, the steps it is built in) above them all: between a
+		# GROUP_NXT and its line, the group was said of a line of the app's,
+		# and a comment no longer stood over its line (wkreview frame); a
+		# block opened again, above them too, so they are inside it as the
+		# file had them.
+		var text: String = str(item[3])
+		var split_at: int = text.rfind("\n")
+		if split_at >= 0:
+			lines.append(text.substr(0, split_at))
+			text = text.substr(split_at + 1)
+		var swap: Array = []
+		if int(item[1]) == 1 and (carried.get("said", {}) as Dictionary).has(anchor):
+			var placement: Placement = placements[int(item[2])]
+			var had: Array = carried["said"][anchor]
+			if int(had[0]) != placement.color_code or str(had[1]) != placement.part_id:
+				swap = [int(had[0]), str(had[1]), colour_said(placement.color_code),
+					placement.part_id + ".dat"]
 		if (carried.get("open_before", {}) as Dictionary).has(anchor):
 			lines.append_array(_kept_moved([carried["open_before"][anchor]], was, item[6]))
-		lines.append(str(item[3]))
+		lines.append_array(_kept_moved(above, was, item[6], swap))
+		lines.append(text)
 		if anchor >= 0 and carried.has("after"):
 			var below: Array = (carried["after"] as Dictionary).get(anchor, [])
 			if (carried.get("mute_end", {}) as Dictionary).has(anchor):
 				below = below.filter(func(line: String) -> bool: return not _ends_block(line))
-			lines.append_array(_kept_moved(below, was, item[6]))
+			lines.append_array(_kept_moved(below, was, item[6], swap))
 			if (carried.get("close_after", {}) as Dictionary).has(anchor):
 				lines.append(str(carried["close_after"][anchor]))
 
@@ -2530,16 +2579,23 @@ func _read_locals() -> Dictionary:
 ## Where each line of [param kept] ([member kept_lines]) that a TEXMAP line,
 ## or a TEXMAP block's own geometry ("0 !: 1 ..."), is beside stands in its
 ## section, as [param model]'s lines place it: line -> Transform3D. Only
-## those: a file of 200,000 lines keeps no place for each.
-static func _kept_at(kept: Dictionary, model: LdrModel) -> Dictionary:
+## those: a file of 200,000 lines keeps no place for each. And into [param
+## said], each such line a block's own geometry of a part is beside ("0 !: 1
+## ...", the part a TEXMAP FALLBACK shows without the picture) -> [the colour
+## and the part it gave]: a swap or a paint writes that geometry as the part
+## is now ([method _moved_line]), or LDView, LDCad and Studio draw the old
+## part with the picture over the new one (wkreview F7).
+static func _kept_at(kept: Dictionary, model: LdrModel, said: Dictionary = {}) -> Dictionary:
 	var wanted: Dictionary = {}
+	var shaped: Dictionary = {}
 	for table: String in ["before", "after"]:
 		for line: Variant in kept[table]:
 			for item: Array in kept[table][line]:
-				var said: String = str(item[0]).strip_edges().to_upper()
-				if said.begins_with("0 !TEXMAP") or said.begins_with("0 !:"):
+				var upper: String = str(item[0]).strip_edges().to_upper()
+				if upper.begins_with("0 !TEXMAP") or upper.begins_with("0 !:"):
 					wanted[int(line)] = true
-					break
+				if upper.begins_with("0 !:"):
+					shaped[int(line)] = true
 	var out: Dictionary = {}
 	if wanted.is_empty():
 		return out
@@ -2547,6 +2603,8 @@ static func _kept_at(kept: Dictionary, model: LdrModel) -> Dictionary:
 		for placement: Placement in (model.submodels[key] as SubModel).placements:
 			if wanted.has(placement.line):
 				out[placement.line] = placement.transform
+			if shaped.has(placement.line):
+				said[placement.line] = [placement.color_code, placement.part_id]
 	return out
 
 
@@ -2554,27 +2612,36 @@ static func _kept_at(kept: Dictionary, model: LdrModel) -> Dictionary:
 ## section, [method _kept_at]) as they are written beside it now it stands
 ## at [param now]: a TEXMAP's points and its block's own geometry moved as
 ## the part moved, so the picture is still on it. As they are where it did
-## not move, or where either is not known (null): byte for byte.
-static func _kept_moved(lines: Array, was: Variant, now: Variant) -> PackedStringArray:
+## not move, or where either is not known (null): byte for byte. [param
+## swap], where the part a block's own geometry stands for is now another or
+## in another colour: [the colour and part the file's line gave ([method
+## _kept_at]'s said), the colour and part written now]; [] for none.
+static func _kept_moved(lines: Array, was: Variant, now: Variant,
+		swap: Array = []) -> PackedStringArray:
 	var out := PackedStringArray()
 	var by := Transform3D.IDENTITY
 	if was is Transform3D and now is Transform3D:
 		by = (now as Transform3D) * (was as Transform3D).affine_inverse()
-	var still: bool = by.is_equal_approx(Transform3D.IDENTITY)
+	var still: bool = by.is_equal_approx(Transform3D.IDENTITY) and swap.is_empty()
 	for line: Variant in lines:
-		out.append(str(line) if still else _moved_line(str(line), by))
+		out.append(str(line) if still else _moved_line(str(line), by, swap))
 	return out
 
 
 ## [param line], a TEXMAP START or NEXT, or a "0 !:" line of a block's own
 ## geometry, with its points carried by [param by] (in the app's space,
-## [constant FLIP] of the file's). Any other line as it is.
-static func _moved_line(line: String, by: Transform3D) -> String:
+## [constant FLIP] of the file's); a "0 !: 1" line of the part [param swap]
+## names ([method _kept_moved]) in the colour and as the part it is now.
+## Any other line as it is.
+static func _moved_line(line: String, by: Transform3D, swap: Array = []) -> String:
 	var words: PackedStringArray = _fields(line.strip_edges())
 	if words.size() < 3 or words[0] != "0":
 		return line
 	var key: String = words[1].to_upper()
+	var still: bool = by.is_equal_approx(Transform3D.IDENTITY)
 	if key == "!TEXMAP" and words.size() >= 13 and words[2].to_upper() in ["START", "NEXT"]:
+		if still:
+			return line
 		var moved: Variant = _moved_points(words, 4, 3, by)
 		return line if moved == null else " ".join(moved)
 	if key == "!:":
@@ -2587,11 +2654,23 @@ static func _moved_line(line: String, by: Transform3D) -> String:
 				if not inner[n].is_valid_float():
 					return line
 				numbers.append(inner[n].to_float())
-			var placed: PackedStringArray = numbers_text(from_transform(
-				by * to_transform(numbers))).split(" ")
-			for n: int in 12:
-				inner[n + 2] = placed[n]
+			var named: String = " ".join(inner.slice(14))
+			var swapped: bool = swap.size() == 4 and _colour(inner[1]) == int(swap[0]) \
+				and stem(named) == str(swap[1])
+			if still and not swapped:
+				return line
+			if not still:
+				var placed: PackedStringArray = numbers_text(from_transform(
+					by * to_transform(numbers))).split(" ")
+				for n: int in 12:
+					inner[n + 2] = placed[n]
+			if swapped:
+				inner = inner.slice(0, 14)
+				inner[1] = str(swap[2])
+				inner.append(str(swap[3]))
 			moved = inner
+		elif still:
+			return line
 		elif kind in ["2", "3", "4", "5"]:
 			moved = _moved_points(inner, 2, {"2": 2, "3": 3, "4": 4, "5": 4}[kind], by)
 		return line if moved == null else "0 !: " + " ".join(moved)
@@ -2619,14 +2698,18 @@ static func _moved_points(words: PackedStringArray, from: int, count: int,
 
 
 ## A block [param kept] ([method kept_for]) has round lines now written in
-## two or more places ([param written_at]: line -> its section, copy and
-## step, as one word): an edit put one of its parts in another sub-model or
+## two or more places ([param written_at]: line -> [its section and copy as
+## one word, its step]): an edit put one of its parts in another sub-model or
 ## step. It stays round the parts written with its first, its END after the
 ## last of them, never a START with no END in a section nor one round a STEP
 ## or another sub-model's parts. A picture round its parts alone (a TEXMAP
 ## with no geometry of its own, "0 !:", nor FALLBACK) opens again round each
 ## other place's parts, so it is on every part it was on; any other block's
-## parts elsewhere are written as they are, without it.
+## parts elsewhere are written as they are, without it. But a block the file
+## had round STEP lines (LPub's MULTI_STEP, kept "stepped") whose lines are
+## still in one section and copy, in steps in the file's order, stays round
+## them whole: split at its first step, every whole write cut a MULTI_STEP
+## down to one step (wkreview F2).
 static func _split_blocks(kept: Dictionary, written_at: Dictionary) -> void:
 	var lines_of: Dictionary = {}    ## block -> its lines written
 	for line: int in kept["block_of"]:
@@ -2634,13 +2717,21 @@ static func _split_blocks(kept: Dictionary, written_at: Dictionary) -> void:
 	var close_after: Dictionary = {}
 	var open_before: Dictionary = {}
 	var mute_end: Dictionary = {}
+	var stepped: Dictionary = kept.get("stepped", {})
 	for block: int in lines_of:
 		var lines: Array = lines_of[block]
 		lines.sort()
-		var runs: Dictionary = {}    ## where -> its lines, in the file's order
+		var runs: Dictionary = {}    ## where and step -> its lines, in the file's order
+		var places: Dictionary = {}  ## where -> true
+		var in_order: bool = true
+		var step_was: int = -1
 		for line: int in lines:
-			(runs.get_or_add(str(written_at.get(line, "")), []) as Array).append(line)
-		if runs.size() < 2:
+			var at: Array = written_at.get(line, ["", -1])
+			(runs.get_or_add("%s|%d" % [str(at[0]), int(at[1])], []) as Array).append(line)
+			places[str(at[0])] = true
+			in_order = in_order and int(at[1]) >= step_was
+			step_was = int(at[1])
+		if runs.size() < 2 or stepped.has(block) and places.size() == 1 and in_order:
 			continue
 		var end: String = ""
 		var opening: String = ""
@@ -2660,7 +2751,8 @@ static func _split_blocks(kept: Dictionary, written_at: Dictionary) -> void:
 		if end.is_empty():
 			continue
 		plain = plain and opening.strip_edges().to_upper().begins_with("0 !TEXMAP START")
-		var first: String = str(written_at.get(int(lines[0]), ""))
+		var at_first: Array = written_at.get(int(lines[0]), ["", -1])
+		var first: String = "%s|%d" % [str(at_first[0]), int(at_first[1])]
 		var last: int = int((runs[first] as Array).max())
 		for line: int in lines:
 			if line != last:
@@ -2839,7 +2931,11 @@ static func _number_text(value: float, most: int) -> String:
 ## "head" and "end": a section's key -> the lines of its head (above its first
 ##   placing line or STEP, to its first blank line) and those after its last;
 ## "order": a section's key -> its placing lines, in the file's order;
-## "covers": a block -> the placing lines inside it.
+## "covers": a block -> the placing lines inside it;
+## "stepped": a block round a STEP line (LPub's MULTI_STEP) -> true;
+## "spans": which section each placing line is in ([method section_at]);
+## "said": a part's line with a TEXMAP block's own geometry above it -> [the
+##   colour and part the file gave] ([method _kept_at]).
 ## A placing line is a part's or a copy's: a part's place in the file is its
 ## origin's last line (Placement.origin), a copy's its reference's.
 var kept_lines: Dictionary = {}
@@ -2848,7 +2944,7 @@ var kept_lines: Dictionary = {}
 ## What [method parse] keeps as it reads ([member kept_lines]).
 class _Keeper extends RefCounted:
 	var out: Dictionary = {"before": {}, "after": {}, "head": {}, "end": {}, "order": {},
-		"covers": {}}
+		"covers": {}, "stepped": {}}
 	var key: String = "\n"
 	var pending: Array = []
 	## Whether no placing line or STEP has been read in the section yet, and
@@ -2914,7 +3010,11 @@ class _Keeper extends RefCounted:
 			(out["covers"] as Dictionary).get_or_add(block, []).append(index)
 
 	## A STEP or ROTSTEP line: what waits ends the step, after its last line.
+	## Each block open round it is round steps ("stepped": LPub's MULTI_STEP),
+	## which a whole write keeps round them (_split_blocks).
 	func step() -> void:
+		for block: int in blocks:
+			(out["stepped"] as Dictionary)[block] = true
 		if head_open:
 			if not pending.is_empty():
 				_join(out["head"], key, pending)
@@ -3009,12 +3109,16 @@ static func _header_kept(line: String) -> bool:
 ## one before; a section not written gives its head to its first line still
 ## written and its end to its last; a block round only lines not written goes
 ## with them (a TEXMAP block round a part taken off textured nothing); a
-## section none of whose lines is written takes its lines with it. Returns
-## the same tables, "before", "after", "head" and "end", of the lines alone.
+## section none of whose lines is written takes its lines with it. A line
+## not written takes with it the lines right above it that say what it is
+## (TEXMAP NEXT, BFC INVERTNEXT, LDCad's GROUP_NXT, [method _binds_next]):
+## given to the next part, a printed tile taken off put its print on the
+## next part, and a grouped plate its group (wkreview F1). Returns the same
+## tables, "before", "after", "head" and "end", of the lines alone.
 static func kept_for(kept: Dictionary, present: Dictionary, written: Dictionary,
 		elsewhere: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"before": {}, "after": {}, "head": {}, "end": {}, "block_of": {},
-		"at": kept.get("at", {})}
+		"at": kept.get("at", {}), "said": kept.get("said", {}), "stepped": kept.get("stepped", {})}
 	if kept.is_empty():
 		return out
 	var before: Dictionary = kept["before"]
@@ -3053,7 +3157,7 @@ static func kept_for(kept: Dictionary, present: Dictionary, written: Dictionary,
 					(out["after"] as Dictionary)[line] = below
 				last = line
 				continue
-			waiting.append_array(above)
+			waiting.append_array(_unbound(above))
 			if last >= 0:
 				(out["after"] as Dictionary).get_or_add(last, []).append_array(below)
 			else:
@@ -3067,6 +3171,15 @@ static func kept_for(kept: Dictionary, present: Dictionary, written: Dictionary,
 		elif last >= 0:
 			(out["after"] as Dictionary).get_or_add(last, []).append_array(tail)
 	return out
+
+
+## [param lines] (kept above a placing line) but the run of lines at their
+## end that say what that line is ([method _binds_next]).
+static func _unbound(lines: Array) -> Array:
+	var cut: int = lines.size()
+	while cut > 0 and _binds_next(_fields(str(lines[cut - 1]).strip_edges())):
+		cut -= 1
+	return lines if cut == lines.size() else lines.slice(0, cut)
 
 
 ## Of [param data] (a file's !DATA pictures, by lower-case file name), those
@@ -3104,16 +3217,6 @@ static func kept_line(origin: String) -> int:
 	return last.to_int() if last.is_valid_int() else -1
 
 
-## The line placing the copy a part of it with [param origin] is directly
-## in: the one before its own in the origin ("12/40" -> 12), -1 for none.
-static func kept_copy_line(origin: String) -> int:
-	var parts: PackedStringArray = origin.split("/", false)
-	if parts.size() < 2:
-		return -1
-	var said: String = parts[parts.size() - 2]
-	return said.to_int() if said.is_valid_int() else -1
-
-
 ## The line of the file each of [param placements] stands for ([method
 ## kept_line]), in their order: what [method _write_one] writes its kept
 ## lines beside.
@@ -3122,28 +3225,120 @@ static func _kept_anchors(placements: Array) -> Array:
 
 
 ## The line placing each copy in [param placements], by its path: the one
-## most of the parts directly in it say ([method kept_copy_line]); a part
-## brought into it from another copy says that one's.
-static func _copy_lines(placements: Array) -> Dictionary:
-	var votes: Dictionary = {}       ## path -> {line: how many}
+## most of the parts read in it say, those directly in it and those in the
+## copies inside it ([method read_levels], by [param kept], the file's kept
+## lines, and [param files], each definition's section as BrickWorld
+## .section_files has it), so a copy with no part of its own (a frame that
+## holds only a wing) is placed by its line too. A part read in another copy
+## than the one it is in now says nothing of it: one taken out of a nested
+## copy, or put in a sub-assembly made inside one, gave that one's line to
+## its new copy, whose reference was written after the old one's comment and
+## GROUP_NXT a second time (wkreview, make_in_roof). Each line is one copy's
+## of those in one copy, the one most of its parts say it of: a line in a
+## sub-model's section placing a copy inside it is every copy of that
+## sub-model's (each wing's engine, by the one line of the wing's section).
+static func _copy_lines(placements: Array, kept: Dictionary = {},
+		files: Dictionary = {}) -> Dictionary:
+	var votes: Dictionary = {}       ## "path\nline" -> how many
 	for item: Variant in placements:
 		var placement: Placement = item
 		if placement.unit.is_empty():
 			continue
-		var line: int = kept_copy_line(placement.origin)
-		if line >= 0:
-			var said: Dictionary = votes.get_or_add(placement.unit, {})
-			said[line] = int(said.get(line, 0)) + 1
+		for level: Array in read_levels(placement.origin, placement.unit, kept, files):
+			var key: String = "%s\n%d" % [str(level[0]), int(level[2])]
+			votes[key] = int(votes.get(key, 0)) + 1
+	var ranked: Array = votes.keys()
+	ranked.sort_custom(func(a: String, b: String) -> bool:
+		if int(votes[a]) != int(votes[b]):
+			return int(votes[a]) > int(votes[b])
+		return a < b)
 	var out: Dictionary = {}
-	for path: String in votes:
-		var best: int = -1
-		var most: int = 0
-		for line: int in votes[path]:
-			if int(votes[path][line]) > most:
-				most = int(votes[path][line])
-				best = line
-		out[path] = best
+	var taken: Dictionary = {}       ## "the copy they are in\nline" -> true
+	for key: String in ranked:
+		var path: String = key.get_slice("\n", 0)
+		var line: int = key.get_slice("\n", 1).to_int()
+		var among: String = "%s\n%d" % [path.substr(0, maxi(path.rfind("/"), 0)), line]
+		if out.has(path) or taken.has(among):
+			continue
+		out[path] = line
+		taken[among] = true
 	return out
+
+
+## The copies round a part read from the file, from the one it is in now
+## ([param path]) out, as far as its [param origin] (Placement.origin, Brick
+## .origin: the file's lines placing each copy round it and its own) says it
+## was read in each: [[the copy's path, the line of the copy's section it is
+## read through (its own, or the one placing the copy inside), the line
+## placing the copy], ...]. A copy is one it was read in where that line is
+## in the copy's section ([method section_at] of [param kept], the file's
+## kept lines; the copy's definition's section by [param files], BrickWorld
+## .section_files), or, for a definition the file had no section of (made
+## here, or renamed), where the part's lines and the copies round it are as
+## many as when it was read. One of those that are not is a sub-assembly made
+## round it since, passed over: the part says what it says of the copy it
+## was read in, round that one. It stops at the first that is none of these:
+## a part taken out of a nested copy (its line is in the engine's section,
+## the copy it is in a wing) or moved into another copy says nothing of the
+## copies it is in now (wkreview F4).
+static func read_levels(origin: String, path: String, kept: Dictionary,
+		files: Dictionary) -> Array:
+	var out: Array = []
+	if origin.is_empty() or path.is_empty():
+		return out
+	var chain: PackedStringArray = origin.split("/", false)
+	var segments: PackedStringArray = path.split("/", false)
+	var n: int = chain.size() - 1
+	var depth: int = segments.size()
+	var at: String = path
+	while depth > 0 and n >= 1:
+		if not chain[n].is_valid_int() or not chain[n - 1].is_valid_int():
+			break
+		var inner: int = chain[n].to_int()
+		var file: String = str(files.get(segments[depth - 1].get_slice("#", 0), ""))
+		if file.is_empty() and n != depth:
+			# Made round it since it was read: the copy it was read in is out.
+			depth -= 1
+			at = at.substr(0, at.rfind("/")) if depth > 0 else ""
+			continue
+		if not file.is_empty() and section_at(kept, inner) != _key(file):
+			break
+		out.append([at, inner, chain[n - 1].to_int()])
+		depth -= 1
+		n -= 1
+		at = at.substr(0, at.rfind("/")) if depth > 0 else ""
+	return out
+
+
+## The key of the section of the file whose placing lines run round line
+## [param line] ([member kept_lines]' "spans"), "" for none.
+static func section_at(kept: Dictionary, line: int) -> String:
+	var spans: Dictionary = kept.get("spans", {})
+	var starts: PackedInt32Array = spans.get("from", PackedInt32Array())
+	var at: int = starts.bsearch(line, false) - 1
+	if at < 0 or line > int((spans["to"] as PackedInt32Array)[at]):
+		return ""
+	return str((spans["key"] as Array)[at])
+
+
+## Each section's first and last placing line, from [param order] (key ->
+## its placing lines in the file's order), in the file's order: {"from":
+## the first lines, "to": the last, "key": the sections'}.
+static func _spans_of(order: Dictionary) -> Dictionary:
+	var rows: Array = []
+	for key: Variant in order:
+		var lines: Array = order[key]
+		if not lines.is_empty():
+			rows.append([int(lines[0]), int(lines[lines.size() - 1]), str(key)])
+	rows.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
+	var from := PackedInt32Array()
+	var to := PackedInt32Array()
+	var keys: Array = []
+	for row: Array in rows:
+		from.append(int(row[0]))
+		to.append(int(row[1]))
+		keys.append(str(row[2]))
+	return {"from": from, "to": to, "key": keys}
 
 
 ## The lines a write writes ([method kept_for]'s present): each part's, and

@@ -3622,8 +3622,14 @@ func _read_frames() -> Dictionary:
 
 ## [param brick]'s say in [method _read_frames], into [param votes] ("box":
 ## path -> {frame's key -> [how many, the frame]}, "said": path -> how many
-## of its parts said one): the frame of each copy round it, from where it
-## stands and the lines from that copy's section down to its own.
+## of its parts said one): the frame of each copy round it it was read in
+## (LdrModel.read_levels), from where it stands and the lines from that
+## copy's section down to its own. A part taken out of a nested copy, put
+## in a sub-assembly made in its copy or moved into another says nothing of
+## the copies it is in now: the wing's engine taken apart voted the engine's
+## frame for the wing, three of its parts to the wing's two, and the wing
+## was written in it, every line of it changed (wkreview F4); a 3003 taken
+## out of Car#1's wing split Car#1's votes, and Car#2 became Car's section.
 func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) -> void:
 	# Its own line first, the one test most parts stop at: a model's own
 	# part, or one past a section's first few, has none kept.
@@ -3634,21 +3640,20 @@ func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) 
 	var at: String = path_of(brick)
 	if at.is_empty():
 		return
-	var chain: PackedStringArray = origin.split("/", false)
 	var local := Transform3D.IDENTITY
-	var n: int = chain.size() - 1
 	var boxes: Dictionary = votes["box"]
 	var said: Dictionary = votes["said"]
-	while not at.is_empty() and n >= 0 and chain[n].is_valid_int() \
-			and locals.has(chain[n].to_int()):
-		local = (locals[chain[n].to_int()] as Transform3D) * local
+	for level: Array in LdrModel.read_levels(origin, at, world.kept_lines, world.section_files):
+		var inner: int = int(level[1])
+		if not locals.has(inner):
+			return
+		local = (locals[inner] as Transform3D) * local
 		var frame: Transform3D = brick.transform * local.affine_inverse()
-		var box: Dictionary = boxes.get_or_add(at, {})
+		var copy: String = str(level[0])
+		var box: Dictionary = boxes.get_or_add(copy, {})
 		var entry: Array = box.get_or_add(_frame_key(frame), [0, frame])
 		entry[0] = int(entry[0]) + 1
-		said[at] = int(said.get(at, 0)) + 1
-		at = parent_of(at)
-		n -= 1
+		said[copy] = int(said.get(copy, 0)) + 1
 
 
 ## What [param votes] ([method _read_vote]) say: path -> the frame more than

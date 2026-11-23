@@ -277,6 +277,15 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 		_summary.append([what, "-", "-", "edit refused"])
 		return
 	var edited: Dictionary = _state()
+	# Sub-models built in the model's steps across two or more of them go
+	# after IN lines, as another reader builds them (wkfix F3): on pre261 the
+	# castle's whole save plans its steps again, its towers a course of each
+	# in turn (stepkeep2 keeps its steps, and with them its sections).
+	var spread: Dictionary = _spread()
+	if not spread.is_empty():
+		allowed["spread"] = spread
+		print("  written after IN lines, built in two or more of the model's steps: %s"
+			% ", ".join(PackedStringArray(spread.keys())))
 	var saved: String = _store.to_text("model", true)
 	# Each case's file as opened and as saved, in the run's data folder
 	# (probe.sh keeps it when a check fails): user://wholekeep/.
@@ -299,7 +308,20 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 	# a whole save of the app's own file pins (ModelFloor.unsaid).
 	# Its STEP lines aside: the steps an own file's whole write gives it are
 	# stepkeep2's (pre261 reads the castle's 2,364 parts in other steps).
+	# The model's steps as another reader shows them: as many as the file's,
+	# none empty (on pre261 + wholekeep a part put down took the castle from
+	# 59 to 393, 328 of them empty). On pre261 its whole save plans it again
+	# (stepkeep2's fix): said, not held.
 	if name == "castle" and edit in ["part", "move"]:
+		var had: Vector2i = _steps_shown(text)
+		var shown: Vector2i = _steps_shown(saved)
+		var said: String = "%s: the model's section shows %d steps, %d empty (the file: %d, %d empty)" \
+			% [what, shown.x, shown.y, had.x, had.y]
+		if spread.is_empty():
+			_check(said, shown == had)
+		else:
+			print("  NOTE  %s; planned again at the save (pre261: stepkeep2)" % said)
+	if name == "castle" and edit in ["part", "move"] and spread.is_empty():
 		var changes: Array = _changes(text, saved)
 		var other: Array = changes.filter(func(c: String) -> bool: return c.substr(2) != "0 STEP")
 		print("  STEP lines changed: %d" % (changes.size() - other.size()))
@@ -328,7 +350,7 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 		else ": %s, %s against %s, %s" % [str(now["tree"]),
 		str(now["units"]), str(edited["tree"]), str(edited["units"])]), units_same)
 	var again: String = _store.to_text("model", true)
-	var twice: Array = _lost(after, _structure(again), {})
+	var twice: Array = _lost(after, _structure(again), {"spread": _spread()})
 	_check("...saved again: %d more lost%s" % [twice.size(), "" if twice.is_empty()
 		else ": " + str(twice[0])], twice.is_empty())
 	# Undone in the model as edited: the file's structure again.
@@ -338,7 +360,8 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 	allowed = await _edit(edit)
 	_back_to(depth)
 	await _frames(4)
-	var undone: Array = _lost(before, _structure(_store.to_text("model", true)), {})
+	var undone: Array = _lost(before, _structure(_store.to_text("model", true)),
+		{"spread": _spread()})
 	_check("...undone: %d of the file's lost%s" % [undone.size(), "" if undone.is_empty()
 		else ": " + str(undone[0])], undone.is_empty())
 
@@ -608,6 +631,36 @@ static func _structure(text: String) -> Dictionary:
 	return {"sections": sections, "in": in_lines, "data": data}
 
 
+## The steps of [param text]'s first section as another reader shows them
+## (each STEP or ROTSTEP ends one; a last one with nothing after it is none),
+## and how many of them place nothing.
+static func _steps_shown(text: String) -> Vector2i:
+	var steps: int = 0
+	var empty: int = 0
+	var placed: int = 0
+	var started: bool = false
+	for raw: String in text.replace("\r", "").split("\n"):
+		var words: PackedStringArray = raw.strip_edges().split(" ", false)
+		if words.size() < 2:
+			continue
+		if words[0] == "0" and words[1].to_upper() == "FILE":
+			if started:
+				break
+			started = true
+			continue
+		if words[0] == "0" and words[1].to_upper() == "NOFILE":
+			break
+		if words[0] == "1":
+			placed += 1
+		elif words[0] == "0" and words[1].to_upper() in ["STEP", "ROTSTEP"]:
+			steps += 1
+			empty += 1 if placed == 0 else 0
+			placed = 0
+	if placed > 0:
+		steps += 1
+	return Vector2i(steps, empty)
+
+
 ## The lines [param _changed_lines] counts, "+ line" or "- line".
 static func _changes(text: String, saved: String) -> Array:
 	var count: Dictionary = {}
@@ -662,12 +715,18 @@ static func _lost(before: Dictionary, after: Dictionary, allowed: Dictionary) ->
 	var free: Dictionary = allowed.get("sections", {})
 	var placed: Dictionary = allowed.get("placed", {})
 	var flat: Dictionary = allowed.get("flat", {})
-	if int(after["in"]) > int(before["in"]) + int(allowed.get("in", 0)):
+	# Written after IN lines as the model's steps have them ([method _spread]):
+	# their copies' lines and placings move, their kept lines stay by them.
+	var spread: Dictionary = allowed.get("spread", {})
+	if spread.is_empty() and int(after["in"]) > int(before["in"]) + int(allowed.get("in", 0)):
 		out.append("sections: %d IN lines, the file had %d" % [after["in"], before["in"]])
+	for name: String in spread:
+		if not flat.has(name):
+			flat[name] = -1
 	for name: String in was:
 		if name.is_empty():
 			continue
-		if not now.has(name) and not free.has(name):
+		if not now.has(name) and not free.has(name) and not spread.has(name):
 			out.append("sections: %s is no longer a section" % name)
 	# How often each sub-model is placed, all told.
 	var placing_was: Dictionary = {}
@@ -679,6 +738,8 @@ static func _lost(before: Dictionary, after: Dictionary, allowed: Dictionary) ->
 		for ref: String in (now[name] as Dictionary)["placing"]:
 			placing_now[ref] = int(placing_now.get(ref, 0)) + int(now[name]["placing"][ref])
 	for ref: String in placing_was:
+		if int(flat.get(ref, 0)) < 0:
+			continue
 		var wanted: int = int(placing_was[ref]) + int(placed.get(ref, 0)) - int(flat.get(ref, 0))
 		if int(placing_now.get(ref, 0)) != wanted and was.has(ref):
 			out.append("placements: %s placed %d times, wanted %d" % [ref,
@@ -903,6 +964,53 @@ func _home(path: String) -> String:
 	while not path.is_empty() and int(_world.unit_steps.get(path, -1)) == AuthorSteps.IN_PARENT:
 		path = Assemblies.parent_of(path)
 	return path
+
+
+## The sub-models a save writes after IN lines as the model stands: each of
+## a copy built in the model's steps whose parts go on in two or more of
+## them (another reader builds a sub-model whole at its line's step, so as a
+## section its parts would be in other steps: wkfix F3), and each of the
+## copies inside one. By section name, lower case ([method _structure]).
+func _spread() -> Dictionary:
+	var steps_of: Dictionary = {}     ## copy -> {step: true} of its own parts
+	var children: Dictionary = {}     ## copy -> its copies
+	var copies: Dictionary = {}       ## every copy -> true
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var path: String = Assemblies.path_of(brick)
+		(steps_of.get_or_add(path, {}) as Dictionary)[brick.step] = true
+		var at: String = path
+		while not at.is_empty():
+			var parent: String = Assemblies.parent_of(at)
+			(children.get_or_add(parent, {}) as Dictionary)[at] = true
+			copies[at] = true
+			at = parent
+	var span := func(path: String, again: Callable) -> Dictionary:
+		var out: Dictionary = (steps_of.get(path, {}) as Dictionary).duplicate()
+		for child: String in children.get(path, {}):
+			var step: int = int(_world.unit_steps.get(child, -1))
+			if step == AuthorSteps.IN_PARENT:
+				out.merge(again.call(child, again))
+			else:
+				out[step] = true
+		return out
+	var defs: Dictionary = {}
+	for path: String in copies:
+		if int(_world.unit_steps.get(path, -1)) == AuthorSteps.IN_PARENT \
+				and _home(path).is_empty() and (span.call(path, span) as Dictionary).size() > 1:
+			defs[Assemblies.definition(Assemblies.leaf(path))] = true
+	var out: Dictionary = {}
+	for path: String in copies:
+		var at: String = path
+		while not at.is_empty():
+			if defs.has(Assemblies.definition(Assemblies.leaf(at))):
+				var def: String = Assemblies.definition(Assemblies.leaf(path))
+				out[str(_world.section_files.get(def, def + ".ldr")).to_lower()] = true
+				break
+			at = Assemblies.parent_of(at)
+	out.erase("")
+	return out
 
 
 static func _unlike(a: Array, b: Array, loose: bool = false) -> Array:

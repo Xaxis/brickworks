@@ -500,7 +500,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   pictures they name; and
   each sub-model its file had a section, one built in the model's steps
   placed by its line after `0 !BRICKWORKS BUILT`, which says the step each
-  of its section's steps is built in), `copyfaults` (a copy renamed,
+  of its section's steps is built in, where all its parts go on in one of
+  them; one built across two or more is written after IN lines, as every
+  other reader builds a sub-model whole at its line's step: `steps_kept`),
+  `wkreview` (wholekeep's review repros, wkfix: a part taken off takes its
+  TEXMAP NEXT, INVERTNEXT and GROUP_NXT with it; LPub's MULTI_STEP stays
+  round its steps; a head line said twice is written twice; a FALLBACK
+  part swapped or painted has its `0 !:` line say the part it is; a part
+  taken out of a nested copy votes no frame for its new one; geom and
+  patch_move_tile are NOTEs pre261 shares), `copyfaults` (a copy renamed,
   duplicated, swapped over MCP or given a step edit leaves its twin as it
   was, or both alike, and one moved or painted moves or paints only the
   twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown;
