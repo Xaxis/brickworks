@@ -513,6 +513,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				if open != null:
 					open.span.y = index + 1
 					open = null
+				# The writer's own, after each section: never kept, or each
+				# whole write wrote one more (wirekeep's files, swapfind's car).
+				continue
 			if keyword == "FILE":
 				# Its name as the file has it, and keyed as a reference to it
 				# is looked up (_key): "Gate .ldr" is not "Gate.ldr", nor
@@ -733,6 +736,10 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	# its section: a write that moves the part, or frames its section anew,
 	# moves its picture with it (_kept_moved).
 	keep.out["at"] = _kept_at(keep.out, model)
+	# And where the parts and copies of each sub-model's section stand in it,
+	# by their lines: a whole write writes a sub-model the file had in the
+	# frame the file gave it (Assemblies.file_frames).
+	keep.out["locals"] = model._read_locals()
 	# And the file's pictures its TEXMAP lines kept name: a whole write
 	# carries each one nothing else of it writes (ModelStore._text_into).
 	keep.out["data"] = _pictures_named(keep.out, model.embedded_data)
@@ -2487,6 +2494,37 @@ static func _write_one(placements: Array, title: String, author_name: String,
 	lines.append_array(PackedStringArray((carried.get("end", {}) as Dictionary).get(key, [])))
 	lines.append("0")
 	return "\n".join(lines) + "\n"
+
+
+## How many of a sub-model's parts [method _read_locals] keeps the place of:
+## enough that most of them still say where its copy's frame is after the
+## edits that move a few, and few enough that a file of 200,000 lines keeps
+## no place for each.
+const READ_LOCALS_EACH := 16
+
+
+## Line -> where it stands in its section, as the file says it (its own
+## numbers, the app's space): every line of a sub-model's section placing
+## another sub-model, and its first [constant READ_LOCALS_EACH] parts. From
+## these a copy's parts, read from the file, say the frame the file gave the
+## copy (Assemblies._read_frames). None of the model's own section, whose
+## frame is the file's.
+func _read_locals() -> Dictionary:
+	var out: Dictionary = {}
+	for key: Variant in submodels:
+		var sub: SubModel = submodels[key]
+		if sub == main or sub.library_file:
+			continue
+		var parts: int = 0
+		for placement: Placement in sub.placements:
+			if placement.line < 0:
+				continue
+			if sub_model_of(placement) != null:
+				out[placement.line] = placement.transform
+			elif parts < READ_LOCALS_EACH:
+				out[placement.line] = placement.transform
+				parts += 1
+	return out
 
 
 ## Where each line of [param kept] ([member kept_lines]) that a TEXMAP line,

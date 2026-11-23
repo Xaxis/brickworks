@@ -239,6 +239,7 @@ func _run() -> void:
 				var castle: String = FileAccess.get_file_as_string(CASTLE)
 				await _case("castle", castle, "plan", false)
 				await _case("castle", castle, "move", false)
+				await _case("castle", castle, "part", false)
 				await _case("castle (someone else's)", castle.replace("0 Author: Brickworks",
 					"0 Author: A. Builder [abuilder]"), "plan", false)
 			_:
@@ -260,6 +261,10 @@ func _run() -> void:
 ## [param planned]), saved, held to the file, opened again and undone.
 func _case(name: String, text: String, edit: String, planned: bool) -> void:
 	var what: String = "%s, %s%s" % [name, "Plan steps then " if planned else "", edit]
+	# WHOLEKEEP_ONLY=castle runs the cases of the files so named alone.
+	var only: String = OS.get_environment("WHOLEKEEP_ONLY")
+	if not only.is_empty() and not name.begins_with(only):
+		return
 	print("\n== %s" % what)
 	await _open(text)
 	var depth: int = _builder.history_depth()
@@ -273,6 +278,14 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 		return
 	var edited: Dictionary = _state()
 	var saved: String = _store.to_text("model", true)
+	# Each case's file as opened and as saved, in the run's data folder
+	# (probe.sh keeps it when a check fails): user://wholekeep/.
+	DirAccess.make_dir_recursive_absolute("user://wholekeep")
+	var stem: String = "user://wholekeep/" + what.validate_filename().replace(" ", "_")
+	for pair: Array in [[".opened.ldr", text], [".saved.ldr", saved]]:
+		var file := FileAccess.open(stem + str(pair[0]), FileAccess.WRITE)
+		if file != null:
+			file.store_string(str(pair[1]))
 	var whole: String = str(_store.last_whole)
 	var own_file: bool = _store.call("_live_source") == null
 	var written: String = "whole" if own_file or not whole.is_empty() else "patch"
@@ -280,6 +293,19 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 		print("  (written whole: %s)" % whole)
 	var after: Dictionary = _structure(saved)
 	var lost: Array = _lost(before, after, allowed)
+	var changed: int = _changed_lines(text, saved)
+	print("  lines changed: %d of %d" % [changed, text.split("\n").size()])
+	# One part put down or moved in the castle: its line, and the floor line
+	# a whole save of the app's own file pins (ModelFloor.unsaid).
+	# Its STEP lines aside: the steps an own file's whole write gives it are
+	# stepkeep2's (pre261 reads the castle's 2,364 parts in other steps).
+	if name == "castle" and edit in ["part", "move"]:
+		var changes: Array = _changes(text, saved)
+		var other: Array = changes.filter(func(c: String) -> bool: return c.substr(2) != "0 STEP")
+		print("  STEP lines changed: %d" % (changes.size() - other.size()))
+		if not _check("%s: the part's lines changed and the floor's, no more but STEP lines (%d)"
+				% [what, other.size()], other.size() <= 3):
+			print("      " + "\n      ".join(other.slice(0, 24)))
 	if not _check("%s: the file's structure kept: %d lost%s" % [what, lost.size(),
 			"" if lost.is_empty() else "\n      " + "\n      ".join(lost.slice(0, 14))],
 			lost.is_empty()):
@@ -364,6 +390,16 @@ func _edit(edit: String) -> Dictionary:
 			var moved: int = _builder.move_selection(Vector3i(0, 200, 0))
 			await _frames(4)
 			return {} if moved > 0 else {"refused": "nothing moved"}
+		"part":
+			# One part put down on the model's own, as a person adds one
+			# (stepkeep2's flatq: on pre261 the castle's save changed 4,431
+			# lines for it).
+			if main_parts.is_empty():
+				return {"refused": "no part of the model's own"}
+			_select_only([(main_parts[0] as BrickWorld.Brick).id])
+			(_main.get("_verbs") as EditVerbs).duplicate_selection(false)
+			var placed_one: int = await _put_down(true)
+			return {} if placed_one > 0 else {"refused": "nothing put down"}
 		"lift":
 			_select_only([by_part.call("3068b")])
 			var lifted: int = _builder.move_selection(Vector3i(0, 200, 0))
@@ -432,7 +468,7 @@ func _edit(edit: String) -> Dictionary:
 				if source_built and not had.has(top) \
 						and int(_world.unit_steps.get(top, -1)) != AuthorSteps.IN_PARENT:
 					mixed = true
-			return {"placed": {"wing.ldr": 1}, "flat": {"wing.ldr": 2}, "in": 4} \
+			return {"placed": {"wing.ldr": 1}, "flat": {"wing.ldr": 2, "engine.ldr": 0}, "in": 4} \
 				if mixed else {"placed": {"wing.ldr": 1}}
 		"lay":
 			# Edit > Finish the surfaces..., its Lay: tiles and slopes put on
@@ -451,7 +487,7 @@ func _edit(edit: String) -> Dictionary:
 			await _frames(2)
 			print("  lay: %d parts in %d places" % [int(laid.get("parts", 0)),
 				int(laid.get("laid", 0))])
-			return {"swapped": true} if int(laid.get("parts", 0)) > 0 \
+			return {"swapped": true, "laid": true} if int(laid.get("parts", 0)) > 0 \
 				else {"refused": "nothing laid (%s)" % str(bar.counts())}
 		"plan_only":
 			return {}
@@ -490,6 +526,7 @@ static func _structure(text: String) -> Dictionary:
 		var at: Dictionary = sections.get(section, {"placing": {}, "kept": [], "maps": []})
 		sections[section] = at
 		if words[0] == "1" and words.size() >= 15:
+			(at.get_or_add("lines", []) as Array).append(" ".join(words))
 			var named: String = " ".join(words.slice(14)).to_lower()
 			if not block.is_empty():
 				(block[1] as Array).append(named.get_file())
@@ -571,6 +608,51 @@ static func _structure(text: String) -> Dictionary:
 	return {"sections": sections, "in": in_lines, "data": data}
 
 
+## The lines [param _changed_lines] counts, "+ line" or "- line".
+static func _changes(text: String, saved: String) -> Array:
+	var count: Dictionary = {}
+	for line: String in text.replace("\r", "").split("\n"):
+		var said: String = " ".join(line.strip_edges().split(" ", false))
+		if not said.is_empty():
+			count[said] = int(count.get(said, 0)) + 1
+	var out: Array = []
+	for line: String in saved.replace("\r", "").split("\n"):
+		var said: String = " ".join(line.strip_edges().split(" ", false))
+		if said.is_empty():
+			continue
+		if int(count.get(said, 0)) > 0:
+			count[said] = int(count[said]) - 1
+		else:
+			out.append("+ " + said.left(90))
+	for said: String in count:
+		for _n: int in int(count[said]):
+			out.append("- " + said.left(90))
+	return out
+
+
+## How many lines [param saved] has that [param text] has not, and the other
+## way round, each line by its words.
+static func _changed_lines(text: String, saved: String) -> int:
+	var count: Dictionary = {}
+	for line: String in text.replace("\r", "").split("\n"):
+		var said: String = " ".join(line.strip_edges().split(" ", false))
+		if not said.is_empty():
+			count[said] = int(count.get(said, 0)) + 1
+	var added: int = 0
+	for line: String in saved.replace("\r", "").split("\n"):
+		var said: String = " ".join(line.strip_edges().split(" ", false))
+		if said.is_empty():
+			continue
+		if int(count.get(said, 0)) > 0:
+			count[said] = int(count[said]) - 1
+		else:
+			added += 1
+	var removed: int = 0
+	for said: String in count:
+		removed += int(count[said])
+	return added + removed
+
+
 ## What of [param before]'s structure [param after] has not got, but what
 ## [param allowed] lets the edit change ([method _edit]).
 static func _lost(before: Dictionary, after: Dictionary, allowed: Dictionary) -> Array:
@@ -601,6 +683,33 @@ static func _lost(before: Dictionary, after: Dictionary, allowed: Dictionary) ->
 		if int(placing_now.get(ref, 0)) != wanted and was.has(ref):
 			out.append("placements: %s placed %d times, wanted %d" % [ref,
 				int(placing_now.get(ref, 0)), wanted])
+	# Each sub-model in the frame its file gave it: every line of its section
+	# still in it as the file had it, and every line placing one, but what
+	# the edit changes (a section taken apart, one written after IN lines, a
+	# Lay, which may swap a part inside one).
+	if not bool(allowed.get("laid", false)):
+		var main_name: String = ""
+		for name: String in was:
+			if main_name.is_empty() and not name.is_empty():
+				main_name = name
+		for name: String in was:
+			if name.is_empty() or free.has(name) or flat.has(name):
+				continue
+			var here_lines: Dictionary = {}
+			for line: String in (now.get(name, {}) as Dictionary).get("lines", []):
+				here_lines[line] = true
+			var moved: Array = []
+			for line: String in (was[name] as Dictionary).get("lines", []):
+				var ref: String = line.get_slice(" ", line.count(" ")).to_lower()
+				var placing: bool = ref.ends_with(".ldr") or ref.ends_with(".mpd")
+				if name == main_name and not placing or free.has(ref) or flat.has(ref):
+					continue
+				if not here_lines.has(line):
+					moved.append(line)
+			for line: String in moved.slice(0, 3):
+				out.append("frame: %s's line not as the file had it: %s" % [_said(name), line.left(64)])
+			if moved.size() > 3:
+				out.append("frame: and %d more of %s's" % [moved.size() - 3, _said(name)])
 	# Each line kept: still in the file; in its section, before the same part.
 	var everywhere: Dictionary = {}
 	for name: String in now:

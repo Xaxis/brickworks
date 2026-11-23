@@ -924,6 +924,9 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	copy.unit_steps = unit_steps.duplicate()
 	copy.step_looks = step_looks.duplicate(true)
 	copy.motions = motions
+	# Read, never changed: the lines the file carried, and where its
+	# sub-models' parts stood in them (Assemblies._read_frames).
+	copy.kept_lines = kept_lines
 	for brick_id: int in _bricks:
 		if _ghosts.has(brick_id):
 			continue

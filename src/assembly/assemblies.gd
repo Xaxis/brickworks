@@ -2975,8 +2975,10 @@ static func in_file_order(found: Array) -> Array:
 
 
 ## Every assembly's frame and definition, for LdrModel.write_tree: the first
-## copy of each definition is written as it stands (or, for a minifigure,
-## in the frame [param figures] gives it), and each other copy is placed by
+## copy of each definition is written in its frame ([method _first_frame]:
+## a sub-model the file had in the frame the file gave it, one the app made
+## at the file's origin, a minifigure in the frame [param figures] gives
+## it), and each other copy is placed by
 ## how it lies on that one — mirrored, by a reflecting matrix. A copy that
 ## no longer lies exactly on the first is written as a definition of its
 ## own rather than lose what makes it different, and a copy that lies on
@@ -3048,7 +3050,8 @@ func _frames_ctx(contents: Dictionary, all_paths: PackedStringArray, figures: Di
 		held: Array, units: Variant) -> Dictionary:
 	return {"contents": contents, "holding": held_by_path(held), "figures": figures,
 		"ordered": in_file_order(Array(all_paths)), "own": {},
-		"units": world.unit_steps if units == null else units}
+		"units": world.unit_steps if units == null else units,
+		"origin": Transform3D(Basis.IDENTITY, lift.call()), "read": _read_frames()}
 
 
 ## Whether [param ctx]'s pass is the last. A copy laid on another before the
@@ -3202,7 +3205,7 @@ var _frames_kept: Array = []
 
 
 func _frames_key() -> Array:
-	return _model() + [world.unit_steps.hash()]
+	return _model() + [world.unit_steps.hash(), lift.call()]
 
 
 ## One pass of [method file_frames] over [param ctx]'s copies, each but
@@ -3229,12 +3232,23 @@ func _pass_begin(ctx: Dictionary) -> void:
 	## A copy laid on another -> [how it lies on its colours (_copy_fit's
 	## "swap"), each copy inside the other its section places -> this one's].
 	ctx["laid"] = {}
+	# Each definition's first copy the file framed, where its first is none
+	# (made here, or one the file had built in another's steps and written
+	# after IN lines): its others laid on that one, the file's frame is kept.
+	# Laid on the first, a copy pasted beside two written after IN lines,
+	# whose section was the file's, was written in the file's origin's frame.
+	var read: Dictionary = ctx.get("read", {})
+	var framed: Dictionary = {}      ## def -> its first copy the file framed
+	for path: String in ctx["ordered"]:
+		var def: String = definition(leaf(path))
+		if not framed.has(def) and read.get(path) is Transform3D:
+			framed[def] = path
 	for path: String in ctx["ordered"]:
 		var def: String = definition(leaf(path))
 		taken[def] = true
-		if not masters.has(def):
+		if not masters.has(def) and str(framed.get(def, path)) == path:
 			masters[def] = [path]
-			out[path] = {"frame": _figure_frame(ctx["figures"], path), "def": def}
+			out[path] = {"frame": _first_frame(ctx, path), "def": def}
 
 
 func _pass_end(ctx: Dictionary) -> void:
@@ -3287,7 +3301,7 @@ func _written_as(path: String, ctx: Dictionary) -> void:
 		own += "+"
 	taken[own] = true
 	(masters[def] as Array).append(path)
-	out[path] = {"frame": _figure_frame(ctx["figures"], path), "def": own}
+	out[path] = {"frame": _first_frame(ctx, path), "def": own}
 
 
 ## Whether the copy at [param path] lies on [param master], a copy written
@@ -3557,6 +3571,91 @@ static func held_by_path(held: Array) -> Dictionary:
 				out[path] = {}
 			(out[path] as Dictionary)[key] = int((out[path] as Dictionary).get(key, 0)) + 1
 	return out
+
+
+## The frame the copy at [param path] is written in where it is written as
+## a definition ([method file_frames]), in the window's coordinates: a
+## minifigure's as [param ctx]'s figures give it; a copy of a sub-model the
+## file had, the frame the file gave it, as its parts read from the file say
+## ([method _read_frames]); one the app made, the file's origin ([member
+## lift] up from the window's), so a reopened model saves what it saved.
+## Written at the window's origin, a model that opened below the ground, so
+## stood up on it, wrote a sub-model the app made anew at every save after
+## (a cable laid on a battery box set into the ground went "1 16 0 0 0",
+## then "1 16 0 70 0"), and every sub-model of a file that framed it
+## elsewhere: the castle's eleven, placed at "0 -8 0", 4,400 lines changed
+## for one part put down (wirekeep, stepkeep2's flatq). And one whose parts
+## were read but say no one frame (most of them moved apart) at the window's,
+## as before.
+static func _first_frame(ctx: Dictionary, path: String) -> Transform3D:
+	var figures: Dictionary = ctx["figures"]
+	if figures.has(path) or not path.contains("/") and figures.has(definition(path)):
+		return _figure_frame(figures, path)
+	var read: Dictionary = ctx.get("read", {})
+	if not read.has(path):
+		return ctx.get("origin", Transform3D.IDENTITY)
+	return read[path] if read[path] is Transform3D else Transform3D.IDENTITY
+
+
+## Where each copy whose parts were read from the file stands as the file
+## framed it, in the window's coordinates: path -> the frame most of them
+## say, each by where it stands now and where its line put it in its
+## section, and the lines placing the copies between ([member BrickWorld
+## .kept_lines]' "locals", LdrModel._read_locals); null where no one frame
+## is said by more than half. A copy moved whole moves its frame; a part
+## moved inside it is outvoted. A copy none of whose parts was read (made
+## here, or put down from elsewhere) has none.
+func _read_frames() -> Dictionary:
+	var out: Dictionary = {}
+	var locals: Dictionary = world.kept_lines.get("locals", {})
+	if locals.is_empty():
+		return out
+	var votes: Dictionary = {}       ## path -> {frame's key -> [how many, the frame]}
+	var said: Dictionary = {}        ## path -> how many of its parts said one
+	for brick: BrickWorld.Brick in world.bricks():
+		# Its own line first, the one test most parts stop at: a model's own
+		# part, or one past a section's first few, has none kept.
+		var origin: String = brick.origin
+		if origin.is_empty() or not locals.has(origin.substr(origin.rfind("/") + 1).to_int()) \
+				or scenery.has(brick.id):
+			continue
+		var at: String = path_of(brick)
+		if at.is_empty():
+			continue
+		var chain: PackedStringArray = origin.split("/", false)
+		var local := Transform3D.IDENTITY
+		var n: int = chain.size() - 1
+		while not at.is_empty() and n >= 0 and chain[n].is_valid_int() \
+				and locals.has(chain[n].to_int()):
+			local = (locals[chain[n].to_int()] as Transform3D) * local
+			var frame: Transform3D = brick.transform * local.affine_inverse()
+			var box: Dictionary = votes.get_or_add(at, {})
+			var entry: Array = box.get_or_add(_frame_key(frame), [0, frame])
+			entry[0] = int(entry[0]) + 1
+			said[at] = int(said.get(at, 0)) + 1
+			at = parent_of(at)
+			n -= 1
+	for path: String in votes:
+		var best: Array = [0, null]
+		for key: String in votes[path]:
+			if int(votes[path][key][0]) > int(best[0]):
+				best = votes[path][key]
+		out[path] = best[1] if int(best[0]) * 2 > int(said[path]) else null
+	return out
+
+
+## [param frame] as a key two frames a hair apart share: its place to a
+## hundredth of an LDU, its turn to a thousandth.
+static func _frame_key(frame: Transform3D) -> String:
+	var b: Basis = frame.basis
+	var words := PackedStringArray()
+	for v: Vector3 in [frame.origin]:
+		for x: float in [v.x, v.y, v.z]:
+			words.append(str(snappedf(x, 0.01) + 0.0))
+	for v: Vector3 in [b.x, b.y, b.z]:
+		for x: float in [v.x, v.y, v.z]:
+			words.append(str(snappedf(x, 0.001) + 0.0))
+	return " ".join(words)
 
 
 ## The frame a minifigure stands in (ModelStore.figure_frames, by group),
