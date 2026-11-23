@@ -184,6 +184,20 @@ var rubbed: float = -1.0
 var table: float = -1.0
 var table_light: float = -1.0
 var fill: float = -1.0
+## Real plastic (photoreal13), path traced in the product look, each 0 for
+## none and 1 as the photographs show it: each stud's logo as the mould
+## raises it (bold drafted letters, not two hairlines a stroke); each edge's
+## rounding as a worn tool and knocks leave it (its radius straying along it,
+## a nick here and there); dust settled as specks and a fibre of lint, in
+## patches and at each stud's foot; the marks moulding leaves (one gate a
+## part, stress-whitened, and the sink over each tube); and each part's gloss
+## its own, its colour drifting a hair across it. Below 0, StudioRender's
+## PRODUCT_LOGO, _EDGE, _LINT, _MOULD and _SHEEN.
+var logo: float = -1.0
+var edge: float = -1.0
+var lint: float = -1.0
+var mould: float = -1.0
+var sheen: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

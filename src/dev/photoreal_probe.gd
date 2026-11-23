@@ -37,7 +37,8 @@
 ##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
 ##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, the parts'
-##                      batch, handling, studs and play (photoreal8), and the
+##                      batch, handling, studs and play (photoreal8), its plastic's
+##                      logo, edge, lint, mould and sheen (photoreal13), and the
 ##                      camera's tone and balance) at 0, and its
 ##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
 ##   -- --draw=N        the tracer's seed (default 1): another draw of the same
@@ -471,7 +472,7 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	var without: PackedStringArray = _arg("without", "").split(",", false)
 	for key: String in ["grain", "vignette", "aberration", "softness", "sharpen", "jpeg", "age",
 			"dust", "paper", "seating", "tone", "balance", "batch", "handling", "studs", "play",
-			"rubbed", "table", "table_light", "fill"]:
+			"rubbed", "table", "table_light", "fill", "logo", "edge", "lint", "mould", "sheen"]:
 		if key in without:
 			settings.set(key, 0.0)
 		elif shot.has(key):

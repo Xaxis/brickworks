@@ -174,6 +174,15 @@ const PRODUCT_RUBBED := 0.0
 const PRODUCT_TABLE := 0.0
 const PRODUCT_TABLE_LIGHT := 0.0
 const PRODUCT_FILL := 0.0
+## Real plastic (photoreal13, RenderSettings logo, edge, lint, mould and
+## sheen; docs/RENDERING.md 5q): each judged alone beside the photographs
+## against this tree with all five at 0, and kept only where the solo judge
+## called more of the renders photographs.
+const PRODUCT_LOGO := 0.0
+const PRODUCT_EDGE := 0.0
+const PRODUCT_LINT := 0.0
+const PRODUCT_MOULD := 0.0
+const PRODUCT_SHEEN := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2633,6 +2642,9 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
+	_tracer.logo = _own(settings.logo, PRODUCT_LOGO) if _tracer.product else 0.0
+	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
+	_tracer.mould = _own(settings.mould, PRODUCT_MOULD) if _tracer.product else 0.0
 	_tracer.marked = _tracer.product and (_own(settings.rubbed, PRODUCT_RUBBED) > 0.0
 		or not _matched(settings).is_empty())
 	# The product look's picture has the samples' grain taken out
@@ -3035,11 +3047,15 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([float(_stage_of(settings)[7]) if lit_stage else 0.0, 0.0, 0.0, 0.0])
 	# No two parts alike (photoreal8): each part's batch, its handling, each
 	# stud's logo (the closest hit reads that one from each part's record).
+	# Each part's gloss its own (photoreal13).
 	data.append_array([_own(settings.batch, PRODUCT_BATCH) if worn else 0.0,
 		_own(settings.handling, PRODUCT_HANDLING) if worn else 0.0,
-		_own(settings.studs, PRODUCT_STUDS) if worn else 0.0, 0.0])
-	# The wear hands leave (photoreal9).
-	data.append_array([_own(settings.rubbed, PRODUCT_RUBBED) if worn else 0.0, 0.0, 0.0, 0.0])
+		_own(settings.studs, PRODUCT_STUDS) if worn else 0.0,
+		_own(settings.sheen, PRODUCT_SHEEN) if worn else 0.0])
+	# The wear hands leave (photoreal9), and dust settled as specks and lint
+	# (photoreal13).
+	data.append_array([_own(settings.rubbed, PRODUCT_RUBBED) if worn else 0.0,
+		_own(settings.lint, PRODUCT_LINT) if worn else 0.0, 0.0, 0.0])
 	# The stage matched to the photographs (photoreal10), read only by the
 	# shader's marks version.
 	var matched: Dictionary = _matched(settings) if worn else {}
