@@ -32,7 +32,7 @@
 //      and words are as they were (op=me, read back).
 //   5. Saved, Sets and Insights: her favourite and collection, what she
 //      owns, how her models are doing.
-//   6. /settings: every row (Profile, Appearance, Email, orangecheck where
+//   6. /settings: every row (Profile, Appearance, Notifications, orangecheck where
 //      the deployment signs in with it, Privacy, Assistants, Feedback, Sign out,
 //      Delete account), her choices read back as she made them;
 //      an email choice and the theme changed and changed back; Sign out.
@@ -518,8 +518,8 @@ try {
         return heard.beta === "open";
       });
       check(`${label}: ${rows.join(" · ")}${betaOpen ? " (the beta open)" : ""}`,
-        rows.join(",").replace("Email,orangecheck,", "Email,")
-        === `Profile,${betaOpen ? "Beta," : ""}Appearance,Email,Privacy,Blocked people,Assistants,Your reports,Sign out,Delete this account…`);
+        rows.join(",").replace("Notifications,orangecheck,", "Notifications,")
+        === `Profile,${betaOpen ? "Beta," : ""}Appearance,Notifications,Privacy,Blocked people,Assistants,Your reports,Sign out,Delete this account…`);
       check(`${label}: her choices as she made them (comments ${choices.comments}, ${choices.kinds}, follows shown ${choices.follows})`,
         (!mailReady || (choices.comments && /models:true/.test(choices.kinds) && /remixes:false/.test(choices.kinds)))
         && (!followsReady || choices.follows) && choices.who.includes(adaEmail) && choices.edit === "/profile?edit=1");
