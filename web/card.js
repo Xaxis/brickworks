@@ -685,13 +685,17 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     marks.push(`<span class="pill good model3d" title="${escapeHtml(say("LDraw has a 3D model of it, to build in Brickworks"))}">3D</span>`);
     data.push('data-model3d="yes"');
   }
-  // Who made it: whoever modelled it, when that is not who shares it (the
-  // app's Library's model it is: supabase/modelled_by.sql), as words that
-  // wrap on a phone's narrow card rather than end in "…"; else their avatar and name, a link to their profile, when they
-  // have one shown in public (supabase directory_card's by); else the name
-  // they credited it to, as words; else nobody.
+  // Who made it: whoever modelled it, when its sharer shares LDraw's model
+  // as it is (the app's Library's model it is: supabase/modelled_by.sql),
+  // as words that wrap on a phone's narrow card rather than end in "…";
+  // else whoever shares it: their avatar and name, a link to their
+  // profile, when they have one shown in public (supabase directory_card's
+  // by); else the name they credited it to, as words; else nobody. A
+  // version its sharer changed is theirs, and says under it whose model it
+  // was changed from: Marc modelled LDraw's model, not their version.
   const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
   const modeller = modellerOf(model);
+  const changedFrom = changedFromOf(model);
   const sharer = by ? by.name || by.handle : model.author || "";
   // A model somebody shares that a person modelled (a set from LDraw's
   // library, shared by the house): that person leads, as a sharer would,
@@ -710,6 +714,10 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
   if (modeller && sharer && sharer !== modeller) lines.push(`<small class="via">${escapeHtml(say("Shared by {name}", { name: sharer }))}</small>`);
+  if (changedFrom) {
+    lines.push(`<small class="changed-from" data-changed-from>${escapeHtml(say("Changed from LDraw's model by {name}",
+      { name: changedFrom }))}</small>`);
+  }
   if (set) {
     const said = [set.set, set.theme && themeSaid(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
     if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);
@@ -791,9 +799,19 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
 const MODEL_ID = /^[A-Za-z0-9]{10}$/;
 
 /// Whoever modelled [model] when that is not who shares it (the app's
-/// Library's model it is: supabase/modelled_by.sql), by name; "" for none.
-export const modellerOf = (model) => (model && model.modelled_by && typeof model.modelled_by === "object"
-  && typeof model.modelled_by.name === "string" ? model.modelled_by.name.trim() : "");
+/// Library's model it is: supabase/modelled_by.sql), by name; "" for none,
+/// and for a version its sharer changed, which is theirs (sethub).
+const modelledOf = (model) => (model && model.modelled_by && typeof model.modelled_by === "object"
+  && typeof model.modelled_by.name === "string" ? model.modelled_by : null);
+export const modellerOf = (model) => {
+  const modelled = modelledOf(model);
+  return modelled && modelled.changed !== true ? modelled.name.trim() : "";
+};
+/// Whose LDraw model a changed version was changed from; "" for any other.
+export const changedFromOf = (model) => {
+  const modelled = modelledOf(model);
+  return modelled && modelled.changed === true ? modelled.name.trim() : "";
+};
 
 /// An icon link, an icon button's look (iconButtonHtml): its icon, then its
 /// count once there is one; its name and count its label.

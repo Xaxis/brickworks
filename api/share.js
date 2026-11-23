@@ -1154,12 +1154,14 @@ function testedMark(mark, steps = null) {
 /// alone, with an avatar made from it; a model shared with no credit, none.
 function designerRow(model) {
   // Somebody else modelled it (a set from LDraw's library the house shares):
-  // they lead, their initial for an avatar, the line that credits them
-  // beside it, and who shares it under, with Follow (sitebold, 2026-11-23:
-  // forty such pages were headed "Brickworks").
+  // they lead, with an avatar made from their name, the line that credits
+  // them beside it, and who shares it under, with Follow (sitebold,
+  // 2026-11-23: forty such pages were headed "Brickworks"). A version its
+  // sharer changed is theirs: they lead, and the line under them says whose
+  // LDraw model it was changed from (sethub).
   const modeller = modelledByOf(model.modelled_by);
   const sharer = model.by ? model.by.name : model.author || "";
-  if (modeller && sharer && modeller.name !== sharer) {
+  if (modeller && !modeller.changed && sharer && modeller.name !== sharer) {
     const via = model.by ? `<a class="who" href="${langAt()}/u/${escapeHtml(model.by.handle)}">${avatarHtml(model.by, { size: "small" })}`
       + `<span>${escapeHtml(model.by.name)}</span></a>` : `<span class="who">${escapeHtml(sharer)}</span>`;
     // Follow beside the sharer it follows, not beside the modeller's name.
@@ -1222,9 +1224,15 @@ export function altLine(page, kept, at = "") {
 
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
-  return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
-    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}`
-    + `${modeller.changed ? escapeHtml(say(", changed by {name}", { name: sharerOf(model) })) : ""}</p>` : "";
+  if (!modeller) return "";
+  // Changed by whoever shares it (designerRow heads the page with them):
+  // theirs, changed from LDraw's model, its modeller linking LDraw's page.
+  if (modeller.changed) {
+    return `<p class="from modelled-by" data-changed-from>${sayHtml("Changed from LDraw's model by {name}",
+      { name: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(modeller.name)}</a>` })}</p>`;
+  }
+  return `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
+    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}</p>`;
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most

@@ -8,7 +8,7 @@
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--publish]
-//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--open-time[=N] [--pages]]
+//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--open-time[=N] [--pages] [--trace]]
 //
 //   1. Each modelled set, at each width and theme, signed out: Build it
 //      opens LDraw's model at its first step (&build) and Make your own
@@ -109,15 +109,27 @@ const look = () => {
     versionWords: said(document.querySelector("[data-version]")),
     count: document.documentElement.dataset.versions ?? null,
     heading: said(versions?.querySelector("h2")),
-    cards: [...(versions?.querySelectorAll(".model") || [])].map((card) => ({
-      href: card.querySelector("a")?.getAttribute("href") || "", said: said(card.querySelector(".version-said")),
-      changed: card.querySelector(".version-said")?.dataset.changed || "" })),
+    cards: [...(versions?.querySelectorAll(".model") || [])].map((card) => {
+      const who = card.querySelector(".who");
+      return { href: card.querySelector("a")?.getAttribute("href") || "", said: said(card.querySelector(".version-said")),
+        changed: card.dataset.changed || "", who: said(who?.querySelector("span:not(.avatar)") || who), whoLink: who?.getAttribute("href") || "",
+        avatar: Boolean(who?.querySelector(".avatar")), modelledBy: who?.hasAttribute("data-modelled-by") === true,
+        from: said(card.querySelector("[data-changed-from]")) };
+    }),
     empty: said(versions?.querySelector(".built-empty p")),
     emptyGo: versions?.querySelector("[data-version-empty]")?.getAttribute("href") || null,
     before: Boolean(versions && built && versions.compareDocumentPosition(built) & Node.DOCUMENT_POSITION_FOLLOWING),
     picture: rect ? [Math.round(rect.top), Math.round(rect.height)] : null,
   };
 };
+
+/// Whether a version's card ([look]'s) credits it rightly: LDraw's model as
+/// it is says "Modelled by" whoever modelled it, and that it is as it is; a
+/// changed one names whoever published it (never "Modelled by") and, under
+/// it, "Changed from LDraw's model by" whoever modelled LDraw's.
+const credited = (card) => (card.changed === "true"
+  ? !card.modelledBy && Boolean(card.who) && !card.said && /^Changed from LDraw's model by \S/.test(card.from)
+  : card.modelledBy && /^Modelled by \S/.test(card.who) && card.said === "LDraw's model, as it is" && !card.from);
 
 /// The versions' row scrolled to, its pictures given 30 s to come: each
 /// card's picture, whether it came, and whether its tile said "No picture".
@@ -162,10 +174,10 @@ async function modelled(browser) {
           check(`${label}: Versions of this set, before Built from this set (${seen.count}, "${seen.heading}", before: ${seen.before})`,
             seen.heading === "Versions of this set" && seen.before && seen.count !== "broken" && seen.count !== null);
           if (Number(seen.count) > 0) {
-            check(`${label}: each version's card says whether it was changed (${JSON.stringify(seen.cards)})`,
+            check(`${label}: each version's card credits it rightly: LDraw's as it is by who modelled it, a changed one `
+              + `by who published it, changed from LDraw's model by who modelled that (${JSON.stringify(seen.cards)})`,
               seen.cards.length === Number(seen.count) && seen.cards.every((card) => /^\/m\/[A-Za-z0-9]{10}$/.test(card.href)
-                && (card.changed === "true" ? card.said === "Their own version: changed from LDraw's model"
-                  : card.said === "LDraw's model, as it is")));
+                && credited(card)));
             const tiles = await pictured(page);
             check(`${label}: each version's tile shows its model (${JSON.stringify(tiles)})`, shownWell(tiles, model));
           } else {
@@ -246,13 +258,19 @@ async function languages(browser) {
 async function published(browser) {
   const email = await ownAccount();
   const { access_token: token } = await mintSession(email);
+  // Its publisher, with a profile in public: what its card and page credit.
+  const handle = `sethub-${Date.now().toString(36)}`;
+  const named = "Sethub Builder";
+  const profile = await fetch(`${site}/api/people?op=profile`, { method: "POST", headers: { ...headers,
+    "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ handle, name: named }) });
+  check(`its publisher has a profile in public (@${handle}: ${profile.status})`, profile.status === 200);
   const house = readFileSync(new URL("../../tests/fixtures/omr_credit/346-2.published.ldr", import.meta.url), "utf8");
   const lines = house.split("\n");
   const parts = lines.map((line, at) => (/^1 .*\.dat\s*$/i.test(line) ? at : -1)).filter((at) => at >= 0);
   const cut = new Set(parts.slice(0, Math.floor(parts.length / 10)));
   const began = Date.now();
   const reply = await fetch(`${site}/api/share`, { method: "POST", headers: { ...headers, "content-type": "application/json",
-    authorization: `Bearer ${token}` }, body: JSON.stringify({ name: "Sethub House with Car, my version", listed: true,
+    authorization: `Bearer ${token}` }, body: JSON.stringify({ name: "Sethub House with Car, my version", author: named, listed: true,
     model: lines.filter((_, at) => !cut.has(at)).join("\n"), licence: "cc-by-4.0" }) });
   const body = await reply.json().catch(() => ({}));
   const id = body.id || "";
@@ -279,12 +297,43 @@ async function published(browser) {
     const card = seen.cards.find((one) => one.href === `/m/${id}`);
     check(`the set's page shows its card first, said changed (${JSON.stringify(card)}, first ${seen.cards[0]?.href})`,
       Boolean(card) && card.changed === "true" && seen.cards[0]?.href === `/m/${id}`);
+    check(`its card credits who published it, their picture and name linking their profile, and under it "Changed from `
+      + `LDraw's model by Marc Giraudet", never "Modelled by" (${JSON.stringify(card)})`,
+      Boolean(card) && card.whoLink === `/u/${handle}` && card.avatar && card.who === named && !card.modelledBy
+      && card.from === "Changed from LDraw's model by Marc Giraudet");
+    check(`every version's card credits it rightly (${JSON.stringify(seen.cards)})`, seen.cards.length > 0 && seen.cards.every(credited));
+    const plainVersion = seen.cards.find((one) => one.changed !== "true");
     // Published with no picture of its own: shown by LDraw's model it was made from.
     const tiles = await pictured(page);
     check(`every version's tile shows its model, this one with no picture of its own LDraw's (${JSON.stringify(tiles)})`,
       shownWell(tiles, "omr-346-2") && tiles.find((tile) => tile.id === id)?.src === "/library/omr-346-2.webp");
     await (await page.$("#versions"))?.scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, "published_version.png") });
+    // Its own page: headed by who published it, "Changed from LDraw's model
+    // by" its modeller under them; LDraw's model as it is, "Modelled by".
+    const credit = async (href) => {
+      await page.goto(`${site}${href}`, { waitUntil: "domcontentloaded" });
+      return page.evaluate(() => {
+        const side = document.querySelector(".model-page .side");
+        const who = side?.querySelector(".shared-by .who");
+        const line = side?.querySelector(".modelled-by");
+        return { who: who?.getAttribute("href") || "", handle: who?.querySelector("small")?.textContent || "",
+          avatar: Boolean(who?.querySelector(".avatar")), line: line?.textContent.replace(/\s+/g, " ").trim() || "",
+          from: line?.hasAttribute("data-changed-from") === true, ldraw: line?.querySelector("a")?.getAttribute("href") || "",
+          modelled: /Modelled by/.test(side?.textContent || "") };
+      });
+    };
+    const own = await credit(`/m/${id}`);
+    check(`its own page is headed by who published it (@${handle}, their picture, linking their profile), "Changed from `
+      + `LDraw's model by Marc Giraudet" under it linking LDraw's page, and no "Modelled by" (${JSON.stringify(own)})`,
+      own.who === `/u/${handle}` && own.handle === `@${handle}` && own.avatar && own.from
+      && own.line === "Changed from LDraw's model by Marc Giraudet" && own.ldraw.startsWith("https://library.ldraw.org/") && !own.modelled);
+    await page.screenshot({ path: path.join(out, "version_page.png") });
+    if (plainVersion) {
+      const plain = await credit(plainVersion.href);
+      check(`LDraw's model as it is, on its own page: "Modelled by Marc Giraudet for LDraw's Official Model Repository" `
+        + `(${JSON.stringify(plain)})`, !plain.from && plain.line === "Modelled by Marc Giraudet for LDraw's Official Model Repository");
+    }
   } finally {
     await context.close();
   }
@@ -299,7 +348,7 @@ async function published(browser) {
 /// and the set down can be put where it went.
 async function timed(browser, address, ready, most = 240000) {
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, extraHTTPHeaders: headers });
-  await context.addInitScript(() => {
+  await context.addInitScript((trace) => {
     const log = [];
     window.sethubLog = log;
     // The page's frames (requestAnimationFrame, the engine's own pace): each
@@ -314,6 +363,47 @@ async function timed(browser, address, ready, most = 240000) {
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
+    // Every WebGL call timed: their time in all, and each over 50 ms [when,
+    // how long, which]. And each of the page's frames (a requestAnimationFrame
+    // callback: the engine's frame) over 200 ms [when, how long, of it in
+    // WebGL calls]. A gap between frames with no long frame in it is the
+    // browser giving none; a long frame mostly in WebGL is the engine
+    // waiting on a browser drawing in software.
+    const waits = { ms: 0, n: 0, long: [] };
+    window.sethubGl = waits;
+    // Only with --trace: it costs every WebGL call a little.
+    for (const kind of trace ? [window.WebGL2RenderingContext, window.WebGLRenderingContext] : []) {
+      if (!kind) continue;
+      for (const name of Object.getOwnPropertyNames(kind.prototype)) {
+        const held = Object.getOwnPropertyDescriptor(kind.prototype, name);
+        if (!held || typeof held.value !== "function" || name === "constructor") continue;
+        const real = held.value;
+        kind.prototype[name] = function (...given) {
+          const at = performance.now();
+          try {
+            return real.apply(this, given);
+          } finally {
+            const took = performance.now() - at;
+            waits.ms += took;
+            waits.n += 1;
+            if (took > 50 && waits.long.length < 400) waits.long.push([Math.round(at), Math.round(took), name]);
+          }
+        };
+      }
+    }
+    const engineFrames = [];
+    window.sethubFrames = engineFrames;
+    const askFrame = window.requestAnimationFrame.bind(window);
+    if (trace) window.requestAnimationFrame = (callback) => askFrame((at) => {
+      const began = performance.now();
+      const inGl = waits.ms;
+      try {
+        callback(at);
+      } finally {
+        const took = performance.now() - began;
+        if (took > 200 && engineFrames.length < 400) engineFrames.push([Math.round(began), Math.round(took), Math.round(waits.ms - inGl)]);
+      }
+    });
     let last = null;
     setInterval(() => {
       const state = window.brickworksState;
@@ -324,7 +414,7 @@ async function timed(browser, address, ready, most = 240000) {
       const before = log[log.length - 1];
       if (!before || ["working", "said", "bricks", "awaited"].some((key) => before[key] !== row[key])) log.push(row);
     }, 25);
-  });
+  }, Boolean(args.trace));
   const page = await context.newPage();
   page.on("pageerror", (error) => errors.push(`${address}: ${error.message}`));
   try {
@@ -337,7 +427,9 @@ async function timed(browser, address, ready, most = 240000) {
     const at = (test) => log.find(test)?.t ?? null;
     const state = await page.evaluate(() => {
       const one = window.brickworksState || {};
-      return { title: one.title, bricks: one.bricks, awaited: one.awaited, steps: one.steps, phases: one.open_phases };
+      const shared = window.brickworksShare || {};
+      return { title: shared.title, bricks: one.bricks, awaited: one.awaited, steps: shared.steps, phases: one.open_phases,
+        threads: window.brickworksEngine?.threads ?? null };
     }).catch(() => ({}));
     // What it fetched, by the same clock: the library's index and file, the API.
     const fetched = await page.evaluate(() => performance.getEntriesByType("resource")
@@ -346,8 +438,10 @@ async function timed(browser, address, ready, most = 240000) {
       .catch(() => []);
     const slow = await page.evaluate(() => JSON.stringify(window.brickworksState?.slow ?? null)).catch(() => "");
     const gaps = await page.evaluate(() => window.sethubGaps || []).catch(() => []);
+    const gl = await page.evaluate(() => window.sethubGl || null).catch(() => null);
+    const engineFrames = await page.evaluate(() => window.sethubFrames || []).catch(() => []);
     return { ms, first: at(() => true), up: at((row) => row.awaited === 0), placed: at((row) => row.bricks >= 150),
-      whole: at((row) => row.bricks >= 150 && row.awaited === 0), log, fetched, slow, gaps, state, page, context };
+      whole: at((row) => row.bricks >= 150 && row.awaited === 0), log, fetched, slow, gaps, gl, engineFrames, state, page, context };
   } catch (trouble) {
     await context.close();
     return { ms: null, log: [], state: { trouble: String(trouble.message || trouble).slice(0, 200) } };
@@ -358,7 +452,8 @@ async function openTime(rounds) {
   const up = () => Boolean(window.brickworksState) && window.brickworksState.awaited === 0;
   // Its parts all down (an app before brickworksState.title says no name).
   const set = () => window.brickworksState?.bricks >= 150 && window.brickworksState.awaited === 0;
-  const browsers = [await launch(), await launch()];
+  // Signed in as this run's own throwaway account, deleted at the end.
+  const browsers = [await launch({ ownAccount: true }), await launch({ ownAccount: true })];
   const got = [];
   try {
     for (let round = 0; round <= rounds; round += 1) {
@@ -381,15 +476,27 @@ async function openTime(rounds) {
       const stalled = within(version.first);
       console.log(`    the version's page frames over 250 ms apart from its app's first word to the set whole: `
         + `${stalled.length}, ${stalled.reduce((sum, [, ms]) => sum + ms, 0)} ms in all: ${JSON.stringify(stalled)}`);
+      const waited = (version.gl?.long || []).filter(([at]) => at >= (version.first ?? 0) - 1000 && at <= (version.whole ?? Infinity));
+      console.log(`    the version's WebGL waits over 50 ms in that time: ${waited.length}, `
+        + `${waited.reduce((sum, [, ms]) => sum + ms, 0)} ms in all (${Math.round(version.gl?.ms || 0)} ms in ${version.gl?.n || 0} `
+        + `calls over the whole page): ${JSON.stringify(waited.slice(0, 40))}`);
+      const long = (version.engineFrames || []).filter(([at]) => at >= (version.first ?? 0) - 1000 && at <= (version.whole ?? Infinity));
+      console.log(`    the version's engine frames over 200 ms in that time: ${long.length}, `
+        + `${long.reduce((sum, [, ms]) => sum + ms, 0)} ms in all, ${long.reduce((sum, [, , gl]) => sum + gl, 0)} ms of it in WebGL: `
+        + `${JSON.stringify(long.slice(0, 40))}`);
+      const plainWaited = (plainOne.gl?.long || []).filter(([at]) => at <= (plainOne.up ?? Infinity));
+      console.log(`    the plain studio's WebGL waits over 50 ms before it was up: ${plainWaited.length}, `
+        + `${plainWaited.reduce((sum, [, ms]) => sum + ms, 0)} ms in all`);
       if (round) got.push({ plain: plainOne.up, placed: version.placed, version: version.whole, log: version.log });
     }
     // Build it's address: its timeline at step 1, with an app that takes --build.
     const built = await timed(browsers[0], "/app?new=1&library=omr-346-2&build",
-      () => Array.isArray(window.brickworksState?.steps) && window.brickworksState.steps.length === 2, 90000);
+      () => Array.isArray(window.brickworksShare?.steps) && window.brickworksShare.steps.length === 2, 240000);
     await built.page?.screenshot({ path: path.join(out, "build_it_app.png") });
+    const timeline = await built.page?.evaluate(() => window.brickworksShare?.steps || null).catch(() => null);
     await built.context?.close();
-    console.log(`  Build it: ${built.ms === null ? "no timeline (an app without --build)" : `its timeline up in ${built.ms} ms`} `
-      + `(${JSON.stringify(built.state)})`);
+    console.log(`  Build it: ${built.ms === null ? "no timeline in 240 s" : `its timeline up in ${built.ms} ms`} `
+      + `(${JSON.stringify({ ...built.state, phases: undefined })}; at step ${JSON.stringify(timeline)})`);
     writeFileSync(path.join(out, "open_time.json"), `${JSON.stringify({ rounds: got, build: built.ms }, null, 1)}\n`);
   } finally {
     await Promise.all(browsers.map((one) => one.close()));
