@@ -176,6 +176,96 @@ const TWICE := """0 FILE wr_twice.ldr
 0 !: %s
 """ % PIXEL
 
+## The app's own file whose sections' heads say a line twice (a note ruled
+## off above and below): each written as often as the file had it.
+const HEADS := """0 FILE wr_heads.ldr
+0 Heads
+0 Name: wr_heads.ldr
+0 Author: Brickworks
+0 // ----------
+0 // the model
+0 // ----------
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 box.ldr
+1 7 -40 0 -100 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE
+0 FILE box.ldr
+0 Box
+0 Name: box.ldr
+0 Author: Brickworks
+0 // ==========
+0 // a box
+0 // ==========
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 // a note
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3010.dat
+0 // a note
+1 2 40 -24 0 1 0 0 0 1 0 0 0 1 3010.dat
+0 NOFILE
+"""
+
+## The app's own file with lines of geometry in a sub-model's section (an
+## edge and a quad drawn over a tile) and a sub-model with nothing in it.
+const GEOM := """0 FILE wr_geom.ldr
+0 Geom
+0 Name: wr_geom.ldr
+0 Author: Brickworks
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 sticker.ldr
+1 16 100 -24 0 1 0 0 0 1 0 0 0 1 empty.ldr
+1 7 -40 0 -100 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE
+0 FILE sticker.ldr
+0 Sticker
+0 Name: sticker.ldr
+0 Author: Brickworks
+
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3068b.dat
+2 24 -20 -8 -20 20 -8 -20
+4 4 -10 -8.1 -10 10 -8.1 -10 10 -8.1 10 -10 -8.1 10
+0 NOFILE
+0 FILE empty.ldr
+0 Empty
+0 Name: empty.ldr
+0 Author: Brickworks
+0 // nothing here yet
+0 NOFILE
+"""
+
+## The app's own file with a wing placed twice (the second turned), each
+## with an engine of three round bricks nested in it: more of the engine's
+## parts than the wing's own, so they outvote them where they are counted
+## for the wing.
+const NESTED := """0 FILE wr_nested.ldr
+0 Nested twice
+0 Name: wr_nested.ldr
+0 Author: Brickworks
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 -100 -24 0 1 0 0 0 1 0 0 0 1 wing.ldr
+1 16 180 -24 0 0 0 1 0 1 0 -1 0 0 wing.ldr
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+0 Author: Brickworks
+
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 2 40 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+1 16 -20 -24 0 1 0 0 0 1 0 0 0 1 engine.ldr
+0 NOFILE
+0 FILE engine.ldr
+0 Engine
+0 Name: engine.ldr
+0 Author: Brickworks
+
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 71 0 -48 0 1 0 0 0 1 0 0 0 1 3062b.dat
+0 NOFILE
+"""
+
 ## [name, file, edit, the kept lines the edit takes with it (by their
 ## normalised text, [method _kept_counts]), the binding lines it takes ([method
 ## _binds])].
@@ -210,7 +300,23 @@ const CASES: Array = [
 	["paste_built", "built", "paste", [], []],
 	# One of two copies taken apart: its printed tile still printed, once.
 	["ungroup_one", "twice", "ungroup_one", [], []],
+	# A head that says a line twice: both written (_write_one skips a head
+	# line the section's lines have already).
+	["heads", "heads", "add", [], []],
+	# Geometry in a sub-model's section and an empty sub-model: kept by
+	# neither build's whole write (a NOTE where pre261 loses them too).
+	["geom", "geom", "add", [], []],
+	# The save that patches someone else's file: the tile moved, its TEXMAP
+	# NEXT's points where they stood from it (wholekeep: left behind).
+	["patch_move_tile", "house_other", "move_tile", [], []],
+	# The engine taken apart in one wing: each wing's frame as the file gave
+	# it (Assemblies._read_frames), the edited wing's line where it was.
+	["apart_nested", "nested", "apart_engine", [], []],
 ]
+
+## Each copy's frame as the file gave it before the edit (Assemblies
+## ._read_frames, wholekeep's; {} on a build without it).
+var _frames_before: Dictionary = {}
 
 var _failures: int = 0
 var _main: Node
@@ -273,6 +379,12 @@ func _file(which: String) -> String:
 			return BUILT
 		"twice":
 			return TWICE
+		"heads":
+			return HEADS
+		"geom":
+			return GEOM
+		"nested":
+			return NESTED
 	return ""
 
 
@@ -294,7 +406,13 @@ func _case(name: String, text: String, edit: String, gone: Array, gone_binds: Ar
 	var edited: Array = _parts()
 	var saved: String = _store.to_text("model", true)
 	_keep(name, text, saved)
-	print("  saved: %d lines (the file %d)" % [saved.split("\n").size(), text.split("\n").size()])
+	print("  saved: %d lines (the file %d), %s" % [saved.split("\n").size(),
+		text.split("\n").size(), "written whole" if not str(_store.get("last_whole")).is_empty()
+		or _store.call("_live_source") == null else "a patch"])
+	# Saved twice in a row, nothing between: the same text.
+	var twice: String = _store.to_text("model", true)
+	if not _check("%s: saved twice in a row, the same text" % name, twice == saved):
+		_keep(name + ".twice", saved, twice)
 
 	# Every kept line as often as the file had it, but those the edit took.
 	var want: Dictionary = _kept_counts(text)
@@ -380,6 +498,45 @@ func _case_facts(name: String, saved: String) -> void:
 				return l.to_lower().ends_with("3003.dat")).size()
 			_check("%s: MULTI_STEP still round its three steps (%d STEP lines and %d of its 3003s "
 				% [name, steps, bricks] + "inside: %s)" % str(inside), steps == 2 and bricks == 3)
+		"geom":
+			# The section's geometry and the empty sub-model, as the file had them.
+			var lines: PackedStringArray = saved.replace("\r", "").split("\n")
+			var edge: int = 0
+			var quad: int = 0
+			var empty: int = 0
+			for line: String in lines:
+				var said: String = line.strip_edges()
+				edge += 1 if said.begins_with("2 24 ") else 0
+				quad += 1 if said.begins_with("4 4 ") else 0
+				empty += 1 if said.to_lower().ends_with(" empty.ldr") and said.begins_with("1 ") else 0
+			_check("geom: the sticker's edge and quad lines kept (%d of 1, %d of 1)" % [edge, quad],
+				edge == 1 and quad == 1)
+			_check("geom: the empty sub-model still placed (%d of 1)" % empty, empty == 1)
+		"patch_move_tile", "remove_plate", "plan_only":
+			# The tile's TEXMAP NEXT where it stands from the tile: its first
+			# point (-20, -8, -10) from the tile's place in the file.
+			var from: String = _texmap_from_part(saved)
+			_check("%s: the tile's TEXMAP NEXT where it stands from the tile (%s, the file's -20 -8 -10)"
+				% [name, from], from == "-20 -8 -10")
+		"apart_nested":
+			var now: Dictionary = _read_frames_now()
+			if _frames_before.is_empty():
+				print("  (no Assemblies._read_frames on this build)")
+			for path: String in _frames_before:
+				var was: Variant = _frames_before[path]
+				var is_now: Variant = now.get(path)
+				var same: bool = was is Transform3D and is_now is Transform3D \
+					and (was as Transform3D).is_equal_approx(is_now as Transform3D)
+				_check("apart_nested: %s's frame as the file gave it, after the engine was taken apart"
+					% path + "\n      before %s\n      after  %s" % [str(was), str(is_now)],
+					same or Assemblies.parent_of(path) != "")
+			# The edited wing (a definition of its own now) where the file placed it.
+			var placed: int = 0
+			for line: String in saved.replace("\r", "").split("\n"):
+				if line.strip_edges().begins_with("1 16 -100 -24 0 1 0 0 0 1 0 0 0 1 "):
+					placed += 1
+			_check("apart_nested: a copy still placed where the file placed the first wing "
+				+ "(1 16 -100 -24 0 ...: %d)" % placed, placed == 1)
 		"paste_built", "ungroup_one", "make_in_roof":
 			for needle: String in ["0 // its engine, under the plate", "0 // a wing: a plate and its engine",
 					"0 // the first wing", "0 // the second wing", "0 // the wing's printed tile",
@@ -485,7 +642,37 @@ func _edit(edit: String) -> String:
 			_shell.run("leave_submodel")
 			await _frames(6)
 			return ""
+		"move_tile":
+			_select_only([by_part.call("3068b")])
+			var moved: int = _builder.move_selection(Vector3i(0, 200, 0))
+			await _frames(4)
+			return "" if moved > 0 else "nothing moved"
+		"apart_engine":
+			var wing: String = _first_path("Wing")
+			var engine: String = ""
+			for path: String in _shell.assemblies.paths():
+				if Assemblies.parent_of(path) == wing \
+						and Assemblies.definition(Assemblies.leaf(path)) == "Engine":
+					engine = path
+			if engine.is_empty():
+				return "no engine in %s (%s)" % [wing, str(_shell.assemblies.paths())]
+			_frames_before = _read_frames_now()
+			_select_assembly(engine)
+			_shell.run("leave_submodel")
+			await _frames(6)
+			_shell.assemblies.leave_to("")
+			print("  %s taken apart: paths now %s" % [engine, str(_shell.assemblies.paths())])
+			return ""
 	return "no such edit"
+
+
+## Each copy's frame as the file gave it (Assemblies._read_frames), {} on a
+## build without it (pre261).
+func _read_frames_now() -> Dictionary:
+	var assemblies: Assemblies = _shell.assemblies
+	if not assemblies.has_method("_read_frames"):
+		return {}
+	return assemblies.call("_read_frames")
 
 
 # -- reading a text --------------------------------------------------------------
@@ -590,6 +777,26 @@ static func _next_line(text: String, needle: String) -> String:
 		if lines[n].strip_edges() == needle:
 			return lines[n + 1].strip_edges()
 	return "(not in the file)"
+
+
+## Where the first TEXMAP NEXT's first point stands from the part line after
+## it, in the file's numbers ("dx dy dz"), or why not.
+static func _texmap_from_part(text: String) -> String:
+	var lines: PackedStringArray = text.replace("\r", "").split("\n")
+	for n: int in lines.size():
+		var words: PackedStringArray = lines[n].strip_edges().split(" ", false)
+		if words.size() < 13 or words[0] != "0" or words[1] != "!TEXMAP" or words[2] != "NEXT":
+			continue
+		for m: int in range(n + 1, lines.size()):
+			var part: PackedStringArray = lines[m].strip_edges().split(" ", false)
+			if part.size() >= 15 and part[0] == "1":
+				var out := PackedStringArray()
+				for k: int in 3:
+					out.append(str(snappedf(words[4 + k].to_float() - part[2 + k].to_float(), 0.01)
+						+ 0.0).trim_suffix(".0"))
+				return " ".join(out)
+		return "(no part after it)"
+	return "(no TEXMAP NEXT)"
 
 
 ## The first placing line after a line beginning [param needle].
