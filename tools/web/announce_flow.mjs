@@ -273,25 +273,26 @@ try {
     const { page, context } = await open("/settings", { who: ann, label: "settings before" });
     await until(page, () => document.getElementById("who")?.textContent, null, 30000);
     await page.waitForTimeout(800);
-    check("Settings' news choice hidden until the file", await page.evaluate(() => document.getElementById("news-choice")?.hidden === true));
+    // The news row's email box, in Settings › Notifications' grid (inbox, 2026-11-23).
+    check("Settings' news choice not to be ticked until the file", await page.evaluate(() => document.getElementById("mail-news")?.disabled === true));
     await context.close();
   } else {
     // --- 3. Ann asks for news; Bea does not --------------------------------------
     console.log("3. Settings › Email › Brickworks news");
     {
       const { page, context } = await open("/settings#email-part", { who: ann, label: "settings ann" });
-      const offered = await until(page, () => document.getElementById("news-choice")?.hidden === false, null, 30000);
+      const offered = await until(page, () => document.getElementById("mail-news")?.disabled === false, null, 30000);
       const before = await page.evaluate(() => document.getElementById("mail-news").checked);
       check(`offered, and off until chosen: shown ${offered}, on ${before}`, offered && before === false);
       await page.click("#mail-news");
       const said = await until(page, () => /^On:/.test(document.getElementById("mail-said")?.textContent || ""), null, 15000);
       await page.reload({ waitUntil: "load" });
-      await until(page, () => document.getElementById("news-choice")?.hidden === false, null, 30000);
+      await until(page, () => document.getElementById("mail-news")?.disabled === false, null, 30000);
       check(`turned on, said so (${said}) and kept across a reload`, said && await page.evaluate(() => document.getElementById("mail-news").checked));
       await context.close();
       const theirs = await open("/settings", { size: "phone", theme: "dark", who: bea, label: "settings bea" });
-      await until(theirs.page, () => document.getElementById("news-choice")?.hidden === false, null, 30000);
-      await theirs.page.locator("#news-choice").scrollIntoViewIfNeeded().catch(() => {});
+      await until(theirs.page, () => document.getElementById("mail-news")?.disabled === false, null, 30000);
+      await theirs.page.locator("#mail-news").scrollIntoViewIfNeeded().catch(() => {});
       check("Bea's is off, at 390 in dark, nothing sideways", !(await theirs.page.evaluate(() => document.getElementById("mail-news").checked))
         && !(await sideways(theirs.page)));
       await shot(theirs.page, "settings_news_390_dark.png");

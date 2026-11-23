@@ -239,7 +239,8 @@ func _build() -> void:
 	page.add_child(ai)
 
 	var done := Button.new()
-	done.text = "Done"
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	done.text = "Close"
 	# Or the next press of a letter runs whatever this button is,
 	# because a focused button takes the space bar and the return key.
 	done.focus_mode = Control.FOCUS_NONE

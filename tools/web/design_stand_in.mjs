@@ -1723,8 +1723,8 @@ function people(method, params, body, who, state) {
     // what they saved.
     if (op === "lists" || op === "keeps") {
       const mine = LISTS.filter((list) => list.owner === ME).sort(byTime("updated_at")).map(({ models, owner, ...list }) =>
-        ({ ...list, description: list.description || null, kind: null, sort: "added", cover: null, down: false, sets: 0,
-          models: models.length, count: models.length }));
+        ({ ...list, description: list.description || null, visibility: list.public ? "public" : "private", link: null, kind: null,
+          sort: "added", cover: null, down: false, sets: 0, models: models.length, count: models.length }));
       if (op === "lists") {
         return answer(200, { lists: mine, owned: { sets: 0, unique: 0, pieces: 0, shown: false },
           saved: { models: FAVOURITES.filter(([account]) => account === ME).length }, profile: { handle: personOf(ME).handle } });

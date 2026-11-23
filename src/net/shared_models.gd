@@ -10,6 +10,7 @@ extends Node
 ## A link's id, as the server makes them. Anything else in a page's
 ## address is refused before it reaches a request.
 const ID := "^[A-Za-z0-9]{10}$"
+const PhotoUpload := preload("res://src/net/photo_upload.gd")
 
 
 static func is_id(text: String) -> bool:
@@ -253,20 +254,9 @@ func photo_start(token: String, body: Dictionary) -> Dictionary:
 ## The photo's [param bytes], of [param type], to the [param url] photo_start
 ## signed for them, with the storage gateway's [param key] beside it, as the
 ## model's page sends one (web/model-page.js): {code}. Bytes, which
-## PageFetch's text bodies cannot carry.
+## PageFetch's text bodies cannot carry, so src/net/photo_upload.gd sends them.
 func photo_send(url: String, key: String, type: String, bytes: PackedByteArray) -> Dictionary:
-	var http := HTTPRequest.new()
-	http.timeout = 120.0
-	add_child(http)
-	var headers := PackedStringArray(["content-type: " + type, "x-upsert: false"])
-	if not key.is_empty():
-		headers.append("apikey: " + key)
-	if http.request_raw(url, headers, HTTPClient.METHOD_PUT, bytes) != OK:
-		http.queue_free()
-		return {"code": 0}
-	var done: Array = await http.request_completed
-	http.queue_free()
-	return {"code": int(done[1]) if int(done[0]) == HTTPRequest.RESULT_SUCCESS else 0}
+	return await PhotoUpload.send(self, url, key, type, bytes)
 
 
 ## The photo sent, kept: {model, ticket, words?} to 201 {id, page, card, ...}

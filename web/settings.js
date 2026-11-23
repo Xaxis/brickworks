@@ -1,7 +1,9 @@
 // Your settings, /settings (settings.html): the beta while it is open (join
 // its testers in one press, or leave in one: api/_beta.js; and whether its
 // bar is shown on every page, signed out too: web/betabar.js), the theme, this
-// device's notifications (web/push.js, api/_push.js) and what Brickworks
+// device's notifications (web/push.js, api/_push.js), each kind of
+// notification here, by push and by email, and the models you muted
+// (supabase/notification_prefs.sql; inbox, 2026-11-23), what Brickworks
 // emails you, orangecheck linked or not (api/orangecheck.js), your age
 // answer, whom your profile shows you follow and whether it shows the
 // models you liked (supabase/avatars.sql), the AI apps that may work
@@ -139,6 +141,93 @@ async function claude() {
 
 /// Whom you blocked, newest first, each with Unblock (GET /api/people?op=blocks).
 /// Unblocking brings back their models and comments, not the follows.
+// ---------------------------------------------------------------------------
+// What you hear of, and where (inbox, 2026-11-23): a box a kind a place. The
+// email of comments, photos, remixes and news is the day's email's own
+// choice and the news choice (op=mail, op=news, below); every other box is
+// one choice of op=notification_prefs, sent as it is ticked.
+const WHERE = { here: () => say("here"), push: () => say("by push"), email: () => say("by email") };
+const KEPT_ELSEWHERE = new Set(["comment", "photo", "remix", "news"]);
+/// Each box of the kinds' grid with its kind and its place.
+const kindBoxes = () => [...$("kinds").querySelectorAll("tr[data-notice] input[data-channel]")].map((box) => ({ box,
+  kind: box.closest("tr").dataset.notice, channel: box.dataset.channel }));
+
+async function kinds(ocOnly) {
+  const answer = await call("/api/people?op=notification_prefs").catch(() => null);
+  const ready = Boolean(answer && answer.status === 200 && answer.body.ready === true);
+  const prefs = answer && answer.status === 200 ? answer.body : {};
+  for (const { box, kind, channel } of kindBoxes()) {
+    if (channel === "email" && KEPT_ELSEWHERE.has(kind)) continue;
+    box.checked = Array.isArray(prefs[channel]) ? prefs[channel].includes(kind)
+      : channel === "here" || (channel === "push" && ["reply", "mention"].includes(kind));
+    box.disabled = !ready || (channel === "email" && ocOnly);
+  }
+  $("mail-said").textContent = ready ? ""
+    : answer && answer.status === 200 ? say("Choosing these is not open on Brickworks yet: for now you hear of everything here.")
+      : say("What you chose could not be read just now.");
+  drawMuted(Array.isArray(prefs.muted) ? prefs.muted : [], ready);
+}
+
+/// The muted models, newest first, each with Unmute.
+function drawMuted(muted, ready) {
+  $("muted-part").hidden = !ready && muted.length === 0;
+  $("muted-none").hidden = muted.length > 0;
+  $("muted").replaceChildren(...muted.map((one) => {
+    const name = String(one.name || one.model);
+    const link = make("a", "who");
+    link.href = `${langAt()}/m/${encodeURIComponent(one.model)}`;
+    if (one.picture) {
+      const img = make("img", "muted-pic");
+      img.src = one.picture;
+      img.alt = "";
+      img.width = 48;
+      img.height = 36;
+      img.loading = "lazy";
+      link.append(img);
+    }
+    link.append(make("span", "", make("b", "", name)));
+    const end = make("button", "cta ghost small", say("Unmute"));
+    end.type = "button";
+    end.setAttribute("aria-label", say("Unmute {name}", { name }));
+    end.addEventListener("click", async () => {
+      end.disabled = true;
+      const done = await call("/api/people?op=notification_mute", { method: "POST", body: { model: one.model, on: false } })
+        .catch(() => null);
+      if (!done || done.status !== 200) {
+        end.disabled = false;
+        $("muted-said").textContent = told(done?.body?.error, say("That did not work just now."));
+        return;
+      }
+      $("muted-said").textContent = say("Unmuted: you hear of {name} again.", { name });
+      const item = end.closest("li");
+      const next = item.nextElementSibling?.querySelector("button") || item.previousElementSibling?.querySelector("button");
+      item.remove();
+      $("muted-none").hidden = $("muted").children.length > 0;
+      (next || $("muted-said")).focus?.();
+    });
+    return make("li", "", link, end);
+  }));
+}
+
+for (const { box, kind, channel } of kindBoxes()) {
+  if (channel === "email" && KEPT_ELSEWHERE.has(kind)) continue;
+  box.addEventListener("change", async () => {
+    const what = box.closest("tr").querySelector("th")?.textContent.trim() || kind;
+    box.disabled = true;
+    const answer = await call("/api/people?op=notification_prefs", { method: "POST", body: { kind, channel, on: box.checked } })
+      .catch(() => null);
+    box.disabled = false;
+    if (!answer || answer.status !== 200) {
+      box.checked = !box.checked;
+      $("mail-said").textContent = told(answer?.body?.error, say("That did not work just now."));
+      return;
+    }
+    box.checked = answer.body.on === true;
+    $("mail-said").textContent = box.checked ? say("On: {what} {where}.", { what, where: WHERE[channel]() })
+      : say("Off: {what} {where}.", { what, where: WHERE[channel]() });
+  });
+}
+
 async function blocked() {
   const answer = await call("/api/people?op=blocks").catch(() => null);
   const list = $("blocked");
@@ -441,15 +530,22 @@ async function load() {
   // once a day, off until chosen. Not there before comments.sql. And the
   // feed's kinds, one choice each, since follows.sql.
   const mail = answer.body.mail;
-  $("mail").hidden = ocOnly || !(mail && mail.ready !== false);
+  const mailed = !ocOnly && Boolean(mail && mail.ready !== false);
+  $("mail").hidden = !mailed || !(mail && mail.kinds === true);
   $("mail-comments").checked = Boolean(mail && mail.comments);
+  $("mail-comments").disabled = !mailed;
   $("mail-kinds").hidden = !(mail && mail.kinds === true);
-  for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) box.checked = Boolean(mail && mail[box.dataset.kind]);
-  // This device's notifications, drawn on their own (web/push.js).
+  for (const box of $("email-part").querySelectorAll("input[data-kind]")) {
+    box.checked = Boolean(mail && mail[box.dataset.kind]);
+    box.disabled = !mailed || !(mail && mail.kinds === true);
+  }
+  // This device's notifications, drawn on their own (web/push.js); and each
+  // kind here, by push and by email, and the models muted.
   drawPush().catch(() => null);
+  const chosen = kinds(ocOnly).catch(() => null);
   // Brickworks' news by email (api/_announce.js), off until chosen.
   const news = answer.body.news;
-  $("news-choice").hidden = !(news && news.ready);
+  $("mail-news").disabled = ocOnly || !(news && news.ready);
   $("mail-news").checked = Boolean(news && news.news);
   // Whether their profile shows whom they follow (supabase/follows.sql).
   const shows = answer.body.follows;
@@ -474,6 +570,7 @@ async function load() {
   drawAge(known, handle);
   await parts;
   await plan;
+  await chosen;
   $("loading").hidden = true;
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
@@ -662,7 +759,7 @@ const KIND_WORDS = {
   photos: [() => say("On: photos of builds in the day's one email."), () => say("Off: no emails about photos of builds.")],
   remixes: [() => say("On: remixes of your models in the day's one email."), () => say("Off: no emails about remixes of your models.")],
 };
-for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) {
+for (const box of $("email-part").querySelectorAll("input[data-kind]")) {
   box.addEventListener("change", async () => {
     const kind = box.dataset.kind;
     box.disabled = true;

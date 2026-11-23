@@ -1165,7 +1165,7 @@ person's language. A click with Select on a source's part in the view works its 
 inside a sub-assembly or a cable path as anywhere; a selection made any other way flips
 nothing. Play on a motor whose cable reaches a source that is off switches it on and runs
 (`Wiring.switch_on_for`). Switches are Simulate's, never written, and forgotten when another
-model opens (`BrickWorld.generation`). Make, Hose, tube or chain lays a Power Functions cable
+model opens (`BrickWorld.generation`). Make, Cable, hose or chain lays a Power Functions cable
 (a motor's own, 20 cm; extension wires 8886 20 cm and 8871 50 cm, contacts to contacts), a
 Powered Up cable (25 cm, outlet only) or a 9 V wire (5306bc lengths, contacts to contacts),
 the lengths offered by its ends, two outlets refused; "Turn the plug" for PF and 9 V. A laid

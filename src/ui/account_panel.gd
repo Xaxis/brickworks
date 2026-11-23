@@ -211,7 +211,8 @@ func setup(with_account: Account) -> void:
 		sign_out_wanted.emit())
 	row.add_child(_sign_out)
 	_done = Button.new()
-	_done.text = "Done"
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	_done.text = "Close"
 	_done.custom_minimum_size = Vector2(0, 34)
 	_done.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_done.focus_mode = Control.FOCUS_NONE

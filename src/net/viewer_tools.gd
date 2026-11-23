@@ -110,9 +110,20 @@ func _check(busy: bool) -> Dictionary:
 					or world.get_brick(risk.brick_id) == null:
 				continue
 			weak.append({"id": risk.brick_id, "message": risk.message})
-		if not weak.is_empty():
-			said = "%d weak joint%s: %s" % [weak.size(), "" if weak.size() == 1 else "s",
-				str(weak[0]["message"])]
+		# A part in the air is no joint: said as itself (Stability.FLOATS).
+		var floating: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
+			return risk.kind == Stability.FLOATS)
+		var joints: Array = weak.filter(func(one: Dictionary) -> bool:
+			return not floating.any(func(risk: Stability.Risk) -> bool:
+				return risk.brick_id == int(one["id"])))
+		var parts := PackedStringArray()
+		if not floating.is_empty():
+			parts.append(Stability.floating_words(floating))
+		if not joints.is_empty():
+			parts.append("%d weak joint%s: %s" % [joints.size(), "" if joints.size() == 1 else "s",
+				str(joints[0]["message"])])
+		if not parts.is_empty():
+			said = "; ".join(parts)
 	var stress: Array = []
 	var shell: Shell = app.get("_shell") as Shell if app != null else null
 	var balance: Balance.Report = null

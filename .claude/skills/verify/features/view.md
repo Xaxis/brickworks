@@ -1753,9 +1753,59 @@ picture the assistant is shown.
   `ModelStore.to_text` writes them, the autosave too, and the
   `0 !BRICKWORKS AUTHORED_STEPS` line under the model's header. A file
   Brickworks wrote with its own worked-out steps (`0 Author: Brickworks` and no
-  such line: every shipped model, every save before this) is not the author's,
-  and is worked out again (`LdrModel.steps_are_authored`), or a model saved
-  yesterday would put a new tower in its last step. `Instructions.plan(...,
+  such line: every shipped model, every save before this) is not the author's
+  (`LdrModel.steps_are_authored`). Up to stepkeep2 (2026-11-22) it was worked
+  out again at every open, and the castle saved and opened again had 2,363 of
+  its 2,496 parts in another step (fpjudge). Now its `0 STEP` lines are its
+  steps on opening it, read as an author's are and still no one's
+  (`LdrModel.steps_are_saved`, `steps_are_kept`; `BrickWorld.steps_own`): the
+  timeline opens in them, a share's pages show them (`SharedPages.pages_for`),
+  and a save writes them with no `AUTHORED_STEPS` line, so nothing is added to
+  the file. Worked out only for a file with no `0 STEP` line (an older build's
+  autosave) or when asked: **Plan steps** in the timeline's row and
+  edit_steps `plan` take every step off (`AuthorSteps.cleared`, one undo; not
+  on someone else's file). A step with a look of its own (name, notes, page,
+  zoom: `BookletLooks.own_count`) keeps it: the plan's numbers are given to
+  the model (`AuthorSteps.adopt_plan`, `steps_own` as it was, so a named
+  model stays the person's) and each look goes to
+  the step most of its parts went to (`BookletLooks.carried`); where two come
+  to share a step the press asks first, with the count (`Shell._ask_plan`),
+  and edit_steps says it after (sk2fix; sk2review F5). Every step edit and
+  step look waits while parts are in hand (`Shell._steps_wait`; sk2review
+  F2). After an edit of such a model
+  (`ModelStore.looks_follow_edit` -> `_steps_follow_saved`,
+  `AuthorSteps.follow_saved`, in the edit's undo): a part put down goes in
+  the step of what it rests on (its boxes one cell lower in the builder's
+  lattice; a copy built on the side by the step that puts it on), the latest
+  of several, or a new last step of its section, or past a full step of
+  parts put down since the open (`AuthorSteps._step_on`, the plan's
+  `_per_step`; sk2review F4); a part moved, by any means (a drag's put-down
+  is marked `"moved"` by `Builder._put_carried`; sk2review F1), keeps its
+  step unless all it rests on comes later; several followed from the bottom
+  up by what holds what (`AuthorSteps._bottom_up`; F3); a part taken off
+  leaves its step, an emptied step gone. **Check:** `tools/probe.sh
+  sk2review_probe` (headless; `SK2R_ONLY=drag,pair,stack,hand,looks`, the
+  review's repros: each FAIL is a finding back; drag, pair and redo move
+  the yard's bricks, `YARD`, and say how many were tried, since the
+  station's search found none, keepfix). A person's step edit makes them theirs
+  (`AuthorSteps.ensure`, undo `stepsown`): saved with `AUTHORED_STEPS`, as a
+  worked-out model's first step edit always has; so does a model put in with
+  its author's steps (`Builder._bring_steps`; ic3 clash, menu), and a
+  session's clear keeps the flag for its undo (`Main._clear_undone`;
+  copyfaults clear_lit). **Check:** `tools/probe.sh
+  stepkeep_probe` (headless; `SK_ONLY=castle`, `station`, `robot`, `10179`,
+  `edits`, `callouts`, `nosteps`, `time` or `shipped`: every model in
+  models/ and tools/web/gallery_seeds/ that opens in its saved steps puts no
+  part in the air but those only a flattening could hold, `SHIPPED_ALOFT`,
+  and saves unedited byte for byte). `tools/probe.sh restep_probe`
+  (headless, ~10 min; `RESTEP_OUT=DIR`, `RESTEP_FILES=res://a.ldr,...`)
+  moves a shipped model's part lines among its own section's STEP lines,
+  and a sub-model's placing line, until no move holds more: every other
+  line kept, the same FILE sections; what is left is held in its own file
+  only by parts in the air with it, and they by another sub-model's (the
+  sports car's 23). A part hidden behind what its section built before it
+  goes earlier, to the latest step where it is in sight and held (`_unhide`,
+  by halves; the castle's two floor plates, so it is Tested, keepfix). `Instructions.plan(...,
   authored=true)` groups by those steps (`_authored_plan`; on Timeline and a
   share, `plan_paced`, what holds what is read a slice at a time, as for a
   worked-out plan: in one go the Wizard's Tower's own steps held a frame for

@@ -34,6 +34,15 @@
 ## 2780, Technic Pin with Friction and Slots, a pin with something on it and
 ## in more sets than 3673, Technic Pin.
 ##
+## And what a part is before what it has: a part whose name's head (what it
+## is, before "with" or "for") says the words asked is the thing asked for,
+## and comes before a part that only has them on it, in its inventory
+## words or its keywords. "motor" listed Minifig Jackhammer first, in 94
+## sets, which its set inventories call a hammer motor tool, and Plate 6 x
+## 16 with Motor Cutout before a motor (ux12, a Technic builder's walk);
+## a Tyre for Train Wheel for Electric Train Motor is a tyre. Only the words
+## of the query's own head count: "window with glass" asks for a window.
+##
 ## And in the names builders use, which are BrickLink's and Rebrickable's
 ## more than LDraw's (names248, 2026-10-24): "liftarm 5" missed 32316, LDraw's
 ## Technic Beam 5 and BrickLink's Liftarm Thick 1 x 5. A word of theirs for
@@ -235,6 +244,9 @@ var _by_letter: Dictionary = {}
 ## whole from one that names some of it.
 var _heads := PackedStringArray()
 var _named_whole: Dictionary = {}
+## A word of a plain part's head (_head_of) -> the parts whose head has it:
+## what a part is, for a query's own head (_heading).
+var _headed: Dictionary = {}
 ## Every part's number in lower case, in order, and the part each is.
 var _numbers := PackedStringArray()
 var _number_at := PackedInt32Array()
@@ -339,7 +351,7 @@ func let_go_for(budget_usec: int) -> bool:
 		_going_began = true
 		_going = [_ids, _number_lines, _lead, _numbers, _also_words, _keyed_words, _named_words,
 			_sorting, _infos, _at, _by_letter, _by_height, _tall, _sized, _also, _keyed, _named,
-			_heads, _named_whole]
+			_heads, _named_whole, _headed]
 		_parts = {}
 		_ids = PackedStringArray()
 		_number_lines = PackedStringArray()
@@ -350,6 +362,7 @@ func let_go_for(budget_usec: int) -> bool:
 		_named_words = PackedStringArray()
 		_heads = PackedStringArray()
 		_named_whole = {}
+		_headed = {}
 		_sorting = []
 		_infos = []
 		_at = {}
@@ -520,6 +533,7 @@ func _index_part(info: PartLibrary.PartInfo) -> void:
 	_heads.append(_head_of(info.name) if plain else "")
 	if plain:
 		_named_whole[_signature(name_words)] = true
+		_index(_headed, _heads[at].split(" ", false), at)
 
 
 ## The parts with a word of their names begun by [param word]'s first letter,
@@ -1160,7 +1174,9 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	# where a part is named as asked, the part of that kind sets use most
 	# (words6); then a
 	# part filed under a word asked, the thing itself, or for a size alone
-	# the brick of that size and nothing more. Then, among the
+	# the brick of that size and nothing more; then a part whose name's head
+	# says what the query's head asks, what it is and not what it has
+	# (_heading): a motor for "motor", before a jackhammer. Then, among the
 	# parts that answer as well, how much real sets use it: 60596,
 	# the door frame in 850 sets, before 80400a, in 24. Then the plainer name,
 	# what its words are worth, and the catalogue's order. Sorted as numbers.
@@ -1192,6 +1208,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	var meant: int = -1
 	if size_alone == 0 and _names_a_part(terms):
 		meant = _meant(touched, matched, terms.size(), _asked_forms(terms))
+	var heading: PackedByteArray = _heading(asked, terms, count_of)
 	var keys := PackedInt64Array()
 	var needed: int = 0
 	for term: Dictionary in terms:
@@ -1226,6 +1243,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 		key = key * 4 + tier
 		key = key * 2 + (1 if at == meant else 0)
 		key = key * 2 + named_for
+		key = key * 2 + heading[at]
 		key = key * 4096 + _usage[at]
 		key = key * 16 + _plainness[at]
 		key = key * 1024 + worth
@@ -1264,8 +1282,66 @@ const OTHER_LINES: Array[String] = ["duplo", "modulex", "primo", "quatro", "fabu
 
 ## Where a name's head ends and what the part has on it begins: "Technic Pin
 ## with Friction and Slots", "Wing 2 x 4 Left without Chamfer", "Tile 1 x 1
-## with Clip (Thick C-Clip)", "Window 1 x 2 x 2 w/ Trans-Clear Glass".
-const HEAD_ENDS: Array[String] = [" with ", " without ", " w/ ", "(", "[", ","]
+## with Clip (Thick C-Clip)", "Window 1 x 2 x 2 w/ Trans-Clear Glass"; and
+## what it is for: "Tyre for Train Wheel" is a tyre, "Glass for Window" glass.
+const HEAD_ENDS: Array[String] = [" with ", " without ", " w/ ", " for ", "(", "[", ","]
+## And where a query's head ends in the languages it is read in (PartWords):
+## "plaque avec clip" asks for a plate.
+const SPOKEN_HEAD_ENDS: Array[String] = [" avec ", " sans ", " pour ", " mit ", " ohne ", " für ",
+	" con ", " sin ", " para "]
+
+
+## Per part of the index, 1 where its name's head (_head_of) says every word
+## the query's own head asks ([param asked], its [param terms]): each such
+## term, in one of its options, every word of it in one of its forms. A size,
+## a word a version is told by (optional) and what the query puts after
+## "with" ask nothing of a part's head. All 0 when the head asks nothing.
+func _heading(asked: String, terms: Array[Dictionary], count_of: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(count_of)
+	var text: String = " %s " % asked.to_lower()
+	for end: String in SPOKEN_HEAD_ENDS:
+		var at: int = text.find(end)
+		if at >= 0:
+			text = text.left(at + 1)
+	var head: PackedStringArray = _head_of(text).split(" ", false)
+	var asking: Array[Dictionary] = []
+	for term: Dictionary in terms:
+		if term.has("sizes") or term.get("optional", false):
+			continue
+		var said: PackedStringArray = str(term["said"]).split(" ", false)
+		if not said.is_empty() and Array(said).all(func(word: String) -> bool:
+				return head.has(word)):
+			asking.append(term)
+	if asking.is_empty():
+		return out
+	var every: Dictionary = {}
+	for k: int in asking.size():
+		var term: Dictionary = asking[k]
+		var got: Dictionary = {}
+		for option: PackedStringArray in term["options"]:
+			var having: Dictionary = {}
+			for n: int in option.size():
+				var with_word: Dictionary = {}
+				for form: String in _forms(option[n]):
+					for at: int in _headed.get(form, []):
+						if n == 0 or having.has(at):
+							with_word[at] = true
+				having = with_word
+				if having.is_empty():
+					break
+			got.merge(having)
+		if k == 0:
+			every = got
+		else:
+			for at: int in every.keys():
+				if not got.has(at):
+					every.erase(at)
+		if every.is_empty():
+			break
+	for at: int in every:
+		out[at] = 1
+	return out
 
 
 ## What [param name] says the part is, as words: its head, before what it has

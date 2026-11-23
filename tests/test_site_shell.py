@@ -52,7 +52,7 @@ def test_each_page_marks_only_itself() -> None:
     for name, own in {"gallery.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
                       "plans.html": "/plans",
                       # The gallery's tabs at their own addresses (tools/browse_pages.py).
-                      "library.html": "/gallery", "builds.html": "/gallery", "collections.html": "/gallery"}.items():
+                      "library.html": "/gallery", "builds.html": "/gallery", "gallery-lists.html": "/gallery"}.items():
         header = re.search(r'<header class="site-head">.*?</header>',
                            (ROOT / "web" / name).read_text(encoding="utf-8"), re.S).group(0)
         current = re.findall(r'<a [^>]*href="([^"]+)"[^>]*aria-current="page"', header)

@@ -501,7 +501,8 @@ try {
         .filter((one) => !one.closest("[hidden]")).map((one) => one.querySelector("h2, summary")?.textContent.trim()));
       const choices = await page.evaluate(() => ({
         comments: document.getElementById("mail-comments").checked,
-        kinds: [...document.querySelectorAll("#mail-kinds input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`).join(" "),
+        // The feed's two, and the email column of photos and remixes in the grid (inbox, 2026-11-23).
+        kinds: [...document.querySelectorAll("#email-part input[data-kind]")].map((box) => `${box.dataset.kind}:${box.checked}`).join(" "),
         follows: document.getElementById("shows-follows").checked,
         who: document.getElementById("who").textContent, edit: document.getElementById("edit-profile").getAttribute("href") }));
       // orangecheck's row is there where the deployment signs in with it

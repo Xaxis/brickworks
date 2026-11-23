@@ -139,7 +139,7 @@ async function load() {
   mine = new Map((got.body.mine || []).map((one) => [Number(one.id), String(one.body)]));
   $("[data-blocked-some]").hidden = got.body.blocked_some !== true;
   wireActs();
-  const follow = $("[data-follow]");
+  const follow = $("[data-talk-follow]");
   if (follow) {
     follow.hidden = false;
     follow.setAttribute("aria-pressed", String(got.body.thread?.following === true));
@@ -307,13 +307,13 @@ function threadPage() {
       }
     });
   }
-  const follow = $("[data-follow]");
+  const follow = $("[data-talk-follow]");
   follow?.addEventListener("click", async () => {
     const on = follow.getAttribute("aria-pressed") !== "true";
     follow.disabled = true;
     const done = await call(asked("op=talk_follow"), { method: "POST", body: { thread, on } });
     follow.disabled = false;
-    const said = $("[data-follow-said]");
+    const said = $("[data-talk-follow-said]");
     if (done.status !== 200) {
       said.hidden = false;
       said.textContent = told(done.body?.error, say("That did not work just now. Try again in a minute."));

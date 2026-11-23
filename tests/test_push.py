@@ -185,15 +185,17 @@ def test_what_is_due_goes_to_each_device_in_its_language_and_a_gone_one_is_delet
     assert out["knock"] == {"status": 204, "json": None}
     phone = [one for one in out["opened"] if one["endpoint"] == FCM]
     laptop = [one for one in out["opened"] if one["endpoint"] == MOZ]
-    # The comment and the photo, one model's two rows: one push, the newest's
-    # words and how many more; not the like, not the hour-old comment.
+    # The comment, the photo and the like, one model's three rows: one push,
+    # the newest's words and how many more; not the hour-old comment. Which
+    # kinds come at all is push_collect's (supabase/notification_prefs.sql:
+    # those the account chose), so a like handed over is pushed.
     assert len(phone) == 1
     said = phone[0]["said"]
     assert said["title"] == "Red castle"
     assert ("Love the towers" in said["body"] and "Bob" in said["body"]) or ("Built it!" in said["body"] and "Cy" in said["body"])
     # In German: the page's own sentences, not the English.
     assert not said["body"].startswith(("Bob commented", "Cy posted")), said
-    assert said["body"].endswith("1 weitere auf seiner Seite"), said
+    assert said["body"].endswith("2 weitere auf seiner Seite"), said
     assert said["tag"] == "model-AbCdEfGhIj"
     assert said["url"].startswith("https://brickworks.diy/m/AbCdEfGhIj#")
     headers = phone[0]["headers"]

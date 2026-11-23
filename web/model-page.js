@@ -1,11 +1,11 @@
 // A shared model's page, /m/<id> (the directory, 2026-10-13): its action
-// bar (2026-10-22, docs/SOCIAL.md U4): Like, Save (your favourites and your
-// collections, in one list), Share, Comment, I built it and More, Like and
-// Save asking to sign in first when this browser is not (web/account.js),
-// each a call to /api/people. What the page shows without it — the
-// counts, the way into the viewer — needs none of this.
+// bar (2026-10-22, docs/SOCIAL.md U4): Like, Save (Saved and your lists:
+// web/keep.js's, the card's, lists2a), Share, Comment, I built it and More,
+// Like and Save asking to sign in first when this browser is not
+// (web/account.js), each a call to /api/people. What the page shows
+// without it — the counts, the way into the viewer — needs none of this.
 //
-// Every name shown here (a collection's) is put on the page as text.
+// Every name shown here (a list's, a person's) is put on the page as text.
 //
 // And its comments (2026-10-18, api/_comments.js), as threads (2026-10-22,
 // docs/SOCIAL.md U8): the newest comment first and its replies under it,
@@ -38,6 +38,8 @@ import { ask, avatarHtml } from "/kit.js";
 import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, pinPart, pinSaid, rulesSaid, say, setPhoto,
   sharpPhotos, themeSaid, told } from "/card.js";
 import { copy, wireShare } from "/share-sheet.js";
+// Save and your lists, as on every card (api/share.js actionBar, lists2a).
+import "/keep.js";
 import { start3d } from "/start3d.js";
 import { guardPhoneOpens } from "/phone-warn.js";
 
@@ -125,8 +127,9 @@ sharpPhotos(document);
 // A page a probe opened with ?tests=1: the people @ offers include test
 // accounts, which nobody else is offered.
 const TESTS = new URLSearchParams(location.search).get("tests") === "1";
-// Where the picture's frame is square (directory.css): a phone's.
-const PHONE = matchMedia("(width < 600px)");
+// Where the picture's frame is not the picture's own shape (directory.css):
+// a phone's square, a laptop's 4:3 (sitepolish, 2026-11-23).
+const FITTED = matchMedia("(width < 600px), (width >= 900px)");
 // Its picture: the frame says it is coming until it is drawn, and one that
 // fails is asked for again, twice, before the frame says there is none.
 const frame = document.querySelector(".model-page .picture");
@@ -499,26 +502,37 @@ function startPicture(big) {
   img.addEventListener("load", drawn);
   img.addEventListener("error", failed);
   if (img.complete) (img.naturalWidth > 0 ? drawn : failed)();
-  PHONE.addEventListener("change", () => fitPicture(big, img));
+  // Drawn again as the frame changes shape: a window made wider or narrower.
+  let width = 0;
+  new ResizeObserver(() => {
+    if (Math.abs(big.clientWidth - width) < 1) return;
+    width = big.clientWidth;
+    if (img.complete && img.naturalWidth > 0) fitPicture(big, img);
+  }).observe(big);
 }
 
 
-/// On a phone the picture's frame is square, and its model is drawn as
-/// large as the model's width lets it: the 1200 x 630 picture cropped
-/// round the model when the model is no wider than the square, else
-/// scaled until all of it is in, on the frame's ground (a picture with
-/// nothing behind the model), or with the ground an older picture carries
-/// (--render-top, --render-foot) carried on above and below it. Never
-/// smaller than the whole picture across the frame, as it
-/// was: 186 px tall at 390, a fifth of the screen (site273). By transform
-/// alone, which moves nothing else, so the page never shifts as it does.
-/// A photo is shown whole (.photo), and on a laptop the frame is the
-/// picture's own shape.
+/// Where the picture's frame is taller than the picture (a phone's square,
+/// a laptop's 4:3), its model is drawn as large as the model's width lets
+/// it: the 1200 x 630 picture cropped round the model when the model is no
+/// wider than the frame, else scaled until all of it is in, on the frame's
+/// ground (a picture with nothing behind the model), or with the ground an
+/// older picture carries (--render-top, --render-foot) carried on above and
+/// below it. Never smaller than the whole picture across the frame, as it
+/// was: 186 px tall at 390, a fifth of the screen (site273), and 380 of a
+/// 1280 window's 800 beside a column 560 tall (sitepolish). By transform
+/// alone (--fit, which a pointer's zoom adds to), which moves nothing
+/// else, so the page never shifts as it does. A photo is shown whole
+/// (.photo); a tablet's frame is the picture's own shape.
 function fitPicture(big, img) {
   img.style.objectFit = "";
-  img.style.transform = "";
+  img.style.removeProperty("--fit");
   big.style.background = "";
-  if (!PHONE.matches || big.classList.contains("photo") || !img.naturalWidth) return;
+  if (!FITTED.matches || big.classList.contains("photo") || !img.naturalWidth || !big.clientHeight) return;
+  // The frame's shape against the picture's: a square is 1, 4:3 is 1.33.
+  const aspect = img.naturalWidth / img.naturalHeight;
+  const frame = big.clientWidth / big.clientHeight;
+  if (frame >= aspect - 0.02) return;
   // The model's columns, read from a small copy: those drawn on, in a
   // picture with nothing behind the model; else those that differ from its
   // ground, a gradient from top to bottom read at the corners.
@@ -551,16 +565,15 @@ function fitPicture(big, img) {
   const last = w - 1 - [...hits].reverse().findIndex((n) => n >= 2);
   if (first < 0) return;
   // The share of the picture's width shown: the model's and a margin, and
-  // no less than the square's, which crops it to the frame's height.
-  const aspect = img.naturalWidth / img.naturalHeight;
-  const shown = Math.min(1, Math.max(1 / aspect, (last - first + 1) / w + 0.06));
+  // no less than the frame's, which crops it to the frame's height.
+  const shown = Math.min(1, Math.max(frame / aspect, (last - first + 1) / w + 0.06));
   const middle = Math.min(1 - shown / 2, Math.max(shown / 2, (first + last + 1) / 2 / w));
   // Drawn whole across the frame (contain), then enlarged round the model.
   img.style.objectFit = "contain";
-  img.style.transform = `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`;
+  img.style.setProperty("--fit", `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`);
   // An older picture's own ground above and below it, where it is shorter
   // than the frame; one with nothing behind the model is on the frame's.
-  const band = Math.max(0, (1 - 1 / (shown * aspect)) / 2) * 100;
+  const band = Math.max(0, (1 - frame / (shown * aspect)) / 2) * 100;
   if (band > 0.5 && !clear) {
     big.style.background = `linear-gradient(180deg, var(--render-top) ${band.toFixed(1)}%, var(--render-foot) ${(100 - band).toFixed(1)}%)`;
   }
@@ -2157,62 +2170,27 @@ function tabCount(tab, n) {
   shown.textContent = number(value);
 }
 
-/// The action bar (api/share.js actionBar): Like; Save, which opens your
-/// lists, Favourites first (docs/SOCIAL.md D2); Share, which opens its sheet
+/// The action bar (api/share.js actionBar): Like; Save and its lists,
+/// which are a card's (web/keep.js: Save at a tap, the arrow beside it the
+/// panel of your lists, lists2a); Share, which opens its sheet
 /// (web/share-sheet.js); Comment and I built it, which go to their sections; and
-/// More: Report it, Takedown requests, and the owner's own. Like and Save
-/// ask to sign in first when this browser is not.
+/// More: Report it, Takedown requests, and the owner's own. Like asks to
+/// sign in first when this browser is not, as Save does.
 function start() {
   const like = marks.querySelector('[data-mark="like"]');
-  const save = marks.querySelector('[data-mark="save"]');
   const share = marks.querySelector("[data-share]");
   const comment = marks.querySelector('[data-mark="comment"]');
   const built = marks.querySelector('[data-mark="built"]');
-  const panel = document.getElementById("save-panel");
-  const lists = panel.querySelector(".collect-list");
-  const make = panel.querySelector("form.collect-new");
   const said = document.querySelector(".marks-said");
   let state = null;
 
   const tell = (text) => { said.textContent = text; };
 
-  /// One of Save's lists: a box to tick, its name, and who sees it.
-  function listRow(name, where, has, change, key) {
-    const row = document.createElement("label");
-    row.dataset.list = key;
-    const box = document.createElement("input");
-    box.type = "checkbox";
-    box.checked = Boolean(has);
-    // The lists are drawn again once it is kept: the same list's box keeps
-    // the keyboard's focus.
-    box.addEventListener("change", async () => {
-      const focused = document.activeElement === box;
-      await change(box);
-      if (focused) [...lists.querySelectorAll("label[data-list]")].find((one) => one.dataset.list === key)?.querySelector("input")?.focus();
-    });
-    const words = document.createElement("span");
-    words.textContent = String(name);
-    const who = document.createElement("small");
-    who.textContent = where;
-    row.append(box, words, who);
-    return row;
-  }
-
   function draw() {
     like.setAttribute("aria-pressed", String(Boolean(state && state.liked)));
-    const saved = Boolean(state && (state.favourite || (state.collections || []).some((list) => list.has)));
-    save.toggleAttribute("data-on", saved);
-    save.setAttribute("aria-label", saved ? say("Saved") : say("Save"));
-    lists.replaceChildren();
-    if (!state) return;
-    lists.append(listRow(say("Favourites"), say("only you"), state.favourite, keep, "favourites"));
-    for (const list of state.collections || []) {
-      lists.append(listRow(list.name, list.public ? say("public") : say("only you"), list.has, (box) => put(list, box), list.id));
-    }
   }
 
-  // Each read of how it stands, and each change made here (a like, a
-  // list), counted: a read asked before the latest of them answers what
+  // Each read of how it stands, and each like made here, counted: a read asked before the latest of them answers what
   // was, and is dropped (sifix, 2026-11-15: a read still out when Like was
   // pressed drew it unpressed after it went through).
   let asked = 0;
@@ -2259,64 +2237,6 @@ function start() {
     state.liked = answer.body.liked;
     setCount(like, answer.body.likes, say("Like"), "like");
     draw();
-  });
-
-  save.addEventListener("click", async () => {
-    if (!(await ready("Sign in to save it: we email you a code, no password."))) return;
-    panel.hidden = !panel.hidden;
-    save.setAttribute("aria-expanded", String(!panel.hidden));
-    if (!panel.hidden) lists.querySelector("input")?.focus();
-  });
-  // Escape closes your lists, back on Save, as a menu closes.
-  panel.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || panel.hidden) return;
-    event.preventDefault();
-    panel.hidden = true;
-    save.setAttribute("aria-expanded", "false");
-    save.focus();
-  });
-
-  async function keep(box) {
-    asked += 1;
-    box.disabled = true;
-    const answer = await call(`/api/people?op=favourite&id=${id}`, { method: "POST", body: { on: box.checked } });
-    box.disabled = false;
-    if (answer.status !== 200) {
-      box.checked = !box.checked;
-      return tell(told(answer.body.error, say("That did not work just now.")));
-    }
-    state.favourite = answer.body.favourite;
-    tell(state.favourite ? say("Saved to your favourites, on your account page.") : say("Out of your favourites."));
-    draw();
-  }
-
-  async function put(list, box) {
-    asked += 1;
-    box.disabled = true;
-    const answer = await call("/api/people?op=collect", { method: "POST",
-      body: { collection: list.id, model: id, on: box.checked } });
-    box.disabled = false;
-    if (answer.status !== 200) {
-      box.checked = !box.checked;
-      return tell(told(answer.body.error, say("That did not work just now.")));
-    }
-    list.has = box.checked;
-    tell(box.checked ? say("Saved to {name}.", { name: list.name }) : say("Out of {name}.", { name: list.name }));
-    draw();
-  }
-
-  make.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const field = make.querySelector("input");
-    const name = field.value.trim();
-    if (!name || !(await ready("Sign in to make a collection: we email you a code."))) return;
-    const made = await call("/api/people?op=collection", { method: "POST", body: { name, public: false } });
-    if (made.status !== 200) return tell(told(made.body.error, say("That did not work just now.")));
-    const list = { id: made.body.id, name: made.body.name, public: made.body.public, has: false };
-    const box = { checked: true, disabled: false };
-    await put(list, box);
-    field.value = "";
-    await load();
   });
 
   const sheet = document.getElementById("share-sheet");
@@ -2383,7 +2303,7 @@ function commentsSaid(state, setOpen) {
 // ---------------------------------------------------------------------------
 // This month's challenge (api/_challenges.js): asked only with the sign-in,
 // and answered only to the model's own designer, so nobody else is shown
-// anything here. A line under Like and Favourite: Enter this month's
+// anything here. A line under Like and Save: Enter this month's
 // challenge, which opens a dialog with its rules and a choice of how it was
 // built; or that it is in, with Take it out.
 async function challengeEntry() {
@@ -3002,3 +2922,66 @@ function pickMentions(field, people) {
     event.stopPropagation();
   });
 }
+
+// ---------------------------------------------------------------------------
+// Mute this model (inbox, 2026-11-23; supabase/notification_prefs.sql): in
+// More, signed in, for anybody's model: its comments, replies and mentions
+// on it, photos, remixes, likes and challenge results stop being counted,
+// listed, pushed or emailed, until Unmute (here, or in Settings ›
+// Notifications). What it says is asked the first time More opens.
+function muteItem() {
+  const more = marks && marks.querySelector("#more");
+  const menu = more && more.querySelector(".menu-list");
+  if (!menu || !ID_OK.test(String(id || ""))) return;
+  let asked = null;
+  const drawn = async () => {
+    if (!signedIn()) {
+      menu.querySelector("[data-mute]")?.remove();
+      return;
+    }
+    asked ||= call("/api/people?op=notification_prefs").catch(() => null);
+    const answer = await asked;
+    if (!answer || answer.status !== 200 || answer.body.ready !== true) return;
+    let button = menu.querySelector("[data-mute]");
+    if (!button) {
+      button = document.createElement("button");
+      button.type = "button";
+      button.dataset.mute = "";
+      // Before Takedown requests, the menu's last.
+      const last = menu.querySelector('a[href*="takedown"]');
+      if (last) last.before(button);
+      else menu.append(button);
+      button.addEventListener("click", async () => {
+        const on = button.dataset.mute !== "on";
+        button.disabled = true;
+        const done = await call("/api/people?op=notification_mute", { method: "POST", body: { model: id, on } }).catch(() => null);
+        button.disabled = false;
+        more.open = false;
+        const said = document.querySelector(".marks-said");
+        if (!done || done.status !== 200) {
+          if (said) said.textContent = told(done?.body?.error, say("That did not work just now."));
+          return;
+        }
+        button.dataset.mute = done.body.muted ? "on" : "";
+        button.textContent = done.body.muted ? say("Unmute notifications") : say("Mute notifications");
+        if (said) {
+          said.textContent = done.body.muted
+            ? say("Muted: nothing about this model reaches you until you unmute it, here or in Settings.")
+            : say("Unmuted: you hear of this model again.");
+        }
+        asked = null;
+      });
+    }
+    const muted = (answer.body.muted || []).some((one) => one.model === id);
+    button.dataset.mute = muted ? "on" : "";
+    button.textContent = muted ? say("Unmute notifications") : say("Mute notifications");
+  };
+  more.addEventListener("toggle", () => {
+    if (more.open) drawn().catch(() => null);
+  });
+  addEventListener("brickworks:signed-in-done", () => {
+    asked = null;
+  });
+}
+const ID_OK = /^[A-Za-z0-9]{10}$/;
+muteItem();

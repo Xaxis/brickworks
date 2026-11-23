@@ -711,18 +711,18 @@ func _the_way_back() -> void:
 	_check("Escape closes the controls", not controls.visible)
 	await _expect("...and with the pointer not moved, it places again", "place")
 
-	# Done, which puts a pointing hand under the pointer and then takes
+	# Close, which puts a pointing hand under the pointer and then takes
 	# the whole panel away.
 	await _key_tap(KEY_COMMA)
-	var done: Button = _button_called(controls, "Done")
+	var done: Button = _button_called(controls, "Close")
 	if done != null:
 		await _move_to(_centre(done))
-		await _expect_shape("over Done", DisplayServer.CURSOR_POINTING_HAND)
+		await _expect_shape("over Close", DisplayServer.CURSOR_POINTING_HAND)
 		_press(MOUSE_BUTTON_LEFT, _centre(done), true)
 		await _frames(1)
 		_press(MOUSE_BUTTON_LEFT, _centre(done), false)
 		await _frames(4)
-		_check("Done closes the controls", not controls.visible)
+		_check("Close closes the controls", not controls.visible)
 		# Not "place" necessarily: Done sits over the model, and the
 		# pointer is wherever Done was. Whatever is there, it is not the
 		# hand of a button that has gone.

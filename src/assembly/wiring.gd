@@ -831,7 +831,7 @@ func _unwired(motor: int) -> Array:
 			return [_t("its own cable's plug is in nothing, so it turns by hand; put the plug on a box "
 				+ "or lay a cable from it to run it by the box"), false]
 		return [_t("no cable of it is drawn in the model, so it turns by hand; lay one from it to a box "
-			+ "(Make › Hose, tube or chain…, a cable) to run it by the box"), false]
+			+ "(Make › Cable, hose or chain…, a cable) to run it by the box"), false]
 	return [_t("its cable reaches no battery box, receiver or hub"), true]
 
 

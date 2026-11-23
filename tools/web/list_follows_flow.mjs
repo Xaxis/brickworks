@@ -225,8 +225,8 @@ try {
     const link = document.querySelector('.facts a[href="#collections"]');
     return { words: link?.textContent || "", tab: document.querySelector('#page-tabs a[data-tab="collections"]')?.textContent || "" };
   });
-  check(`its facts say "${pill.words}", its tabs "${pill.tab.replace(/\s+/g, " ")}"`, pill.words === "In 1 collection"
-    && /^Collections\s*1$/.test(pill.tab.trim()));
+  check(`its facts say "${pill.words}", its tabs "${pill.tab.replace(/\s+/g, " ")}"`, pill.words === "In 1 list"
+    && /^Lists\s*1$/.test(pill.tab.trim()));
   await bobPage.click('.facts a[href="#collections"]');
   await until(bobPage, () => location.hash === "#collections", "the part");
   // Until the page stops scrolling (the site scrolls smoothly to a part).

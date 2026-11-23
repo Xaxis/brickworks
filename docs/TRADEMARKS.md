@@ -36,7 +36,12 @@ download carries `favicon-512.png`), and the desktop app's boot splash,
 `web/site.css`, and the sign-in page's own copy), the share card
 (`tools/web/make_share.mjs`) and Help, About show it. The 404 page's wall
 and the web app's loading wall (`src/boot/shell.html`) lost their studs for
-the same reason: our own pictures draw no brick and knob.
+the same reason: our own pictures draw no brick and knob. The home page's
+hero is not the badge but a model built in Brickworks, the mark's shape in
+189 real parts, credited "Built in Brickworks · 189 pieces" and opening in
+the studio: content, as any build in the gallery is, and never called our
+logo (hero3d, 2026-11-23). The header's mark, the favicons and the share
+card stay the geometric cube.
 
 **2. The name stays: Brickworks.** A quick search on 2026-10-13 found no
 live registration of BRICKWORKS for software or toys:

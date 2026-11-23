@@ -23,9 +23,11 @@
 // for carries how the visit came, kept for the tab (web/theme.js,
 // src/account/account.gd; onfix, 2026-11-18).
 //
-// Then the throwaway shares a model, gives it a clip and deletes its
-// account as a person does: the clip's file must be gone from storage
-// (unit turntable, api/_erase.js).
+// Then the throwaway shares a model, gives it a clip, shares a list by its
+// link and deletes its account as a person does: the clip's file must be
+// gone from storage (unit turntable, api/_erase.js), and the list with its
+// link, its row gone from the table and its link a 404 (lists2a,
+// supabase/lists_link.sql: model_collections cascades from auth.users).
 //
 // --master also signs in as MASTER_EMAIL (minted the same way: no email is
 // sent) and checks the admin page lists the accounts. It signs the owner's
@@ -310,7 +312,27 @@ try {
     return reply.ok ? (await reply.json()).filter((file) => file.id !== null && String(file.name).startsWith(`${id}.`))
       .map((file) => file.name) : [`(storage answered ${reply.status})`];
   };
-  const { access_token: token } = await mintSession(email);
+  const minted = await mintSession(email);
+  const { access_token: token } = minted;
+  // What it hears of (supabase/notification_prefs.sql; inbox, 2026-11-23):
+  // one row an account, which goes with the account. Asked of the database
+  // with the secret key (notification_prefs_of; the table itself is the
+  // server's functions' alone), once the file is applied.
+  const prefsOf = async () => {
+    const reply = await fetch(`${supabase}/rest/v1/rpc/notification_prefs_of`, { method: "POST",
+      headers: { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" },
+      body: JSON.stringify({ viewer: minted.kept.user_id }) });
+    return reply.ok ? (await reply.json())?.kept : `(answered ${reply.status})`;
+  };
+  const choosing = await (await asked("/api/people?op=notification_prefs", { token })).json().catch(() => ({}));
+  if (choosing.ready === true) {
+    const chose = await asked("/api/people?op=notification_prefs", { method: "POST", token,
+      body: { kind: "likes", channel: "here", on: false } });
+    const kept = await prefsOf();
+    check(chose.status === 200 && kept === true, `it chooses what it hears of (likes off here): ${chose.status}, its row kept ${kept}`);
+  } else {
+    console.log("  --    supabase/notification_prefs.sql not applied: no row to see go");
+  }
   const model = ["0 FILE main.ldr", "0 Clip test", "0 Name: main.ldr", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
     "1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""].join("\r\n");
   const shared = await asked("/api/share", { method: "POST", token, body: { name: "Clip test", model } });
@@ -324,12 +346,35 @@ try {
   check(sent.status === 200, `...and gives it a clip: ${sent.status}`);
   const before = await clipsOf(id);
   check(before.includes(`${id}.webm`), `its clip is in storage: ${before.join(", ") || "nothing"}`);
+  // A list shared by its link only, the model in it.
+  const made = await (await asked("/api/people?op=collection", { method: "POST", token,
+    body: { name: `Link only ${id}`, public: false } })).json().catch(() => ({}));
+  const listId = String(made.id || "");
+  await asked("/api/people?op=keep", { method: "POST", token, body: { list: listId, items: [`model:${id}`], on: true } });
+  const linked = await (await asked("/api/people?op=list_link", { method: "POST", token, body: { id: listId, on: true } }))
+    .json().catch(() => ({}));
+  const linkPath = linked.link ? new URL(linked.link).pathname + new URL(linked.link).search : "";
+  const opens = linkPath ? (await asked(`${linkPath}&tests=1`)).status : 0;
+  check(/^[A-Za-z0-9]{10}$/.test(listId) && linked.visibility === "link" && opens === 200,
+    `...and a list shared by its link alone: ${listId || "none"}, ${linked.visibility || linked.error || "?"}, its link opens ${opens}`);
+  const rowsOf = async (table, query) => {
+    const reply = await fetch(`${supabase}/rest/v1/${table}?${query}&select=id`, { headers: { apikey: secret,
+      authorization: `Bearer ${secret}` } });
+    return reply.ok ? (await reply.json()).length : -1;
+  };
   const gone = await asked("/api/account?op=delete", { method: "POST", token, body: { confirm: email } });
   check(gone.status === 200, `the account deleted as a person deletes it, its address typed again: ${gone.status}`);
   const after = await clipsOf(id);
   check(after.length === 0, `its model's clip is gone from storage with it: ${after.join(", ") || "nothing left"}`);
+  const listRows = listId ? await rowsOf("model_collections", `id=eq.${listId}`) : -1;
+  const linkNow = linkPath ? (await asked(`${linkPath}&tests=1&fresh=${Date.now()}`)).status : 0;
+  check(listRows === 0 && linkNow === 404, `its link-only list is gone with it: ${listRows} rows left, its link ${linkNow}`);
   const served = await asked(`/m/${id}.webm?fresh=${Date.now()}`);
   check(served.status === 404, `and its address answers 404: ${served.status}`);
+  if (choosing.ready === true) {
+    const left = await prefsOf();
+    check(left === false, `and its notification row with it: kept ${left}`);
+  }
 } catch (trouble) {
   failures += 1;
   console.log(`  FAIL  the clips with the account: ${trouble.message}`);

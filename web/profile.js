@@ -341,7 +341,7 @@ function listRow(list) {
   const name = document.createElement("input");
   name.value = String(list.name);
   name.maxLength = 80;
-  name.setAttribute("aria-label", say("The collection's name"));
+  name.setAttribute("aria-label", say("The list's name"));
   const open = document.createElement("label");
   open.className = "tick";
   const box = document.createElement("input");
@@ -395,7 +395,7 @@ function listRow(list) {
     if (answer.status === 200) page.hidden = !answer.body.public;
   });
   drop.addEventListener("click", async () => {
-    if (!(await ask({ title: say("Delete the collection \"{name}\"?", { name: name.value }),
+    if (!(await ask({ title: say("Delete the list \"{name}\"?", { name: name.value }),
       body: say("The models in it are not touched."), yes: say("Delete"), danger: true }))) return;
     const answer = await call(`/api/people?op=uncollection&id=${list.id}`, { method: "POST", body: {} });
     if (answer.status === 200) row.remove();
@@ -876,7 +876,7 @@ for (const button of document.querySelectorAll("[data-share-page]")) button.addE
   const banner = $("banner-shown").querySelector("img")?.getAttribute("src")?.match(/^\/m\/([A-Za-z0-9]{10})\./)?.[1];
   const name = mine?.profile?.name || handleOf();
   openShare(sheetFor({ url: `${location.origin}${langAt()}/u/${handleOf()}`, name, text: say("{name} on Brickworks", { name }),
-    about: say("Its link opens your page, as everybody sees it: your models, your builds and your collections."),
+    about: say("Its link opens your page, as everybody sees it: your models, your builds and your lists."),
     image: banner ? `${location.origin}/m/${banner}.png` : "" }));
 });
 $("sign-in").addEventListener("click", () => askToSignIn());

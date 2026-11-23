@@ -62,5 +62,9 @@
    "tags": ["camping", "lake", "campfire", "minifigures", "ai-designed"], "kind": "figure", "licence": "cc-by-4.0", "turn": [-30, 30]},
   {"file": "tools/web/gallery_seeds/potted_cactus.ldr", "name": "A little potted cactus", "author": "Brickworks",
    "about": "A first build of 37 pieces in 11 steps: a round green cactus with two arms, banded in dark green, a pink flower on top and white tufts, in a reddish brown pot on a dark orange saucer. Designed with the assistant (Claude, in Brickworks) and finished by hand.",
-   "tags": ["cactus", "plant", "beginner", "small build", "ai-designed"], "kind": "nature", "licence": "cc-by-4.0", "turn": [-30, 20]}
+   "tags": ["cactus", "plant", "beginner", "small build", "ai-designed"], "kind": "nature", "licence": "cc-by-4.0", "turn": [-30, 20]},
+  {"file": "models/brickworks_mark.ldr", "name": "The Brickworks mark", "author": "Brickworks",
+   "about": "The Brickworks mark's shape, built in real LEGO® bricks: a cube of red, blue and yellow with one corner cut away, the cut's walls a shade darker and its floor smooth tiles. 189 pieces in 14 steps, a course at a time, as the home page builds it.",
+   "tags": ["logo", "cube", "mosaic", "brickworks"], "kind": "art", "licence": "cc-by-4.0",
+   "note": "Bonded as a wall is, each course across the one under it, so it holds together as one piece."}
 ]
