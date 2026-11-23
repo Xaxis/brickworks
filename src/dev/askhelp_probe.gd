@@ -439,7 +439,7 @@ func _the_studio() -> void:
 	# Words typed about one model are never asked about another: a new one
 	# begun puts the box back to its first question (self_attack,
 	# hubprogram F1).
-	var share_box: LineEdit = panel.controls_by_name().get("share_question")
+	var share_box: LineEdit = question
 	share_box.text = "Why does the tower lean?"
 	store.begin("Another model")
 	await _settle()
