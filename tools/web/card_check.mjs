@@ -142,11 +142,25 @@ try {
   // The pages' card skeletons are skeletonHtml's: each page holds its own
   // copy in its HTML, and site275's stood for the card before site277's.
   const { skeletonHtml } = await import(pathToFileURL(path.join(api, "_card.js")).href);
-  for (const name of ["gallery", "index", "profile", "feed"]) {
+  for (const name of ["gallery", "profile", "feed"]) {
     const copies = readFileSync(path.join(web, `${name}.html`), "utf8").match(/<div class="skeleton-card[^\n]*?<\/span><\/div><\/div>/g) || [];
     const off = copies.filter((copy) => copy !== skeletonHtml());
     check(copies.length > 0 && !off.length, `${name}.html: ${copies.length} card skeletons, ${off.length} not skeletonHtml's`
       + (off.length ? `\n        page:    ${off[0]}\n        card.js: ${skeletonHtml()}` : ""));
+  }
+  // The home's stream holds posts, not cards, since it became the feed
+  // (homefeed, 2026-11-23): its skeletons are a post's, in the page and in
+  // each language's copy, the one web/landing.js puts back on a tab's change
+  // (web/home-feed.js postSkeletonHtml), and no card's.
+  const { postSkeletonHtml } = await import(pathToFileURL(path.join(web, "home-feed.js")).href);
+  for (const name of ["index", "de/index", "fr/index", "es/index"]) {
+    const html = readFileSync(path.join(web, `${name}.html`), "utf8");
+    const stream = /<div class="stream" id="stream"[^>]*>([\s\S]*?)<\/div>\s*<p class="stream-said"/.exec(html)?.[1] || "";
+    const copies = stream.match(/<div class="post skeleton[^\n]*?<\/span><\/div><\/div>/g) || [];
+    const off = copies.filter((copy) => copy !== postSkeletonHtml());
+    const cards = (html.match(/class="skeleton-card/g) || []).length;
+    check(copies.length > 0 && !off.length && !cards, `${name}.html: ${copies.length} post skeletons in the stream, ${off.length} not postSkeletonHtml's, ${cards} card skeletons`
+      + (off.length ? `\n        page:         ${off[0]}\n        home-feed.js: ${postSkeletonHtml()}` : ""));
   }
   // Words stay words: a name's markup is text on the card.
   const [risky] = await drawn([SAMPLES[0][0]], {});

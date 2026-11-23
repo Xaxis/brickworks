@@ -298,6 +298,15 @@ export function photoPostHtml(photo) {
     + `<p class="post-verbs"><a class="cta small" href="/app?view=${escapeHtml(String(photo.model))}&amp;build">${escapeHtml(say("Build it too"))}</a></p></div></article>`;
 }
 
+/// A post's skeleton: the home holds three in its page (web/index.html)
+/// until the stream is drawn, and puts them back while a tab's posts come
+/// (web/landing.js); tools/web/card_check.mjs keeps the page's copies this.
+export function postSkeletonHtml() {
+  return '<div class="post skeleton" aria-hidden="true"><div class="post-head"><span class="bone round"></span>'
+    + '<span class="bone short"></span></div><div class="post-pic"></div><div class="post-words"><span class="bone wide"></span>'
+    + '<span class="bone"></span><span class="bone short"></span></div></div>';
+}
+
 /// One item of the stream as HTML.
 export function postHtml(item, { eager = false } = {}) {
   if (item.kind === "build") return buildPostHtml(item.model, { eager, said: item.said, line: item.line, pick: item.pick });

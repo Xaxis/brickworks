@@ -36,7 +36,7 @@
 // tools/web/homefeed_check.mjs wait on.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { counted, escapeHtml, iconButtonHtml, langAt, likeName, number, pictureOf, say, told } from "/card.js";
-import { FIRST, compose, feedItem, keyOf, postHtml } from "/home-feed.js";
+import { FIRST, compose, feedItem, keyOf, postHtml, postSkeletonHtml } from "/home-feed.js";
 import { ago, toast } from "/kit.js";
 
 const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
@@ -312,9 +312,7 @@ function choose(chosen, { focus = false } = {}) {
   }
   if (focus) chosen.focus();
   tab = chosen.dataset.tab;
-  stream.innerHTML = Array.from({ length: 3 }, () => '<div class="post skeleton" aria-hidden="true"><div class="post-head">'
-    + '<span class="bone round"></span><span class="bone short"></span></div><div class="post-pic"></div><div class="post-words">'
-    + '<span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></div></div>').join("");
+  stream.innerHTML = Array.from({ length: 3 }, postSkeletonHtml).join("");
   draw();
 }
 
