@@ -171,9 +171,10 @@ whole cycle.
   with its days left, and a row of the gallery's models with their
   pictures, in tabs: Top, its first card this week's pick, New, and real
   sets in 3D. The models are in the page as it arrives, so they show at
-  once and nothing moves when the newest arrive. The header on every page
-  leads with Gallery and Challenges, then Docs; Plans and the desktop app
-  are in the menu and the footer.
+  once and nothing moves when the newest arrive. Under them, once the
+  builders' forum has talk, its newest threads. The header on every page
+  leads with Gallery, Talk and Challenges, then Docs; Plans and the desktop
+  app are in the menu and the footer.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say
