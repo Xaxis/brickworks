@@ -282,6 +282,8 @@ import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, na
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
+// What a remix changed from the model it was copied from (supabase/remix_changes.sql).
+import { changedLineHtml, changesAnswer, countAfter, ownChanges, treeHtml, treeOf, treeWithout } from "./_remix.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
@@ -1193,6 +1195,47 @@ function nextRow(key, title, cards, all = "") {
 /// none. web/model-page.js makes them work, asking to sign in first where
 /// one must be; it counts the comments as it lists them. [url] is the
 /// page's own address, an older version's its own.
+/// Open in Brickworks' second choice, With your Claude (claudelink,
+/// docs/MASTERPLAN.md "What only Brickworks can do" 6): the other half of
+/// the one control, which opens claudePanel under the row. Drawn hidden, and
+/// shown by web/model-page.js, which is what makes it work. Not a .cta: a
+/// half with square corners on its start is the control's, not a button of
+/// its own (design_flow compares every .cta's corners).
+function claudeButton() {
+  const name = asText(say("Change it with your Claude"));
+  return `<button type="button" class="open-claude" data-open-claude aria-expanded="false" aria-controls="claude-panel" `
+    + `aria-label="${name}" title="${asText(say("Or have your own Claude open a copy and change it as you ask"))}" hidden>`
+    + `${iconHtml("spark")}<span class="word wide" aria-hidden="true">${asText(say("With your Claude"))}</span>`
+    + `<span class="word narrow" aria-hidden="true">Claude</span>${iconHtml("down")}</button>`;
+}
+
+/// Change it with your Claude: what should it change (optional), and Copy
+/// for Claude, a message naming the model's link and the one call that opens
+/// a copy of it (open_model link=), to paste into the person's own Claude
+/// with the Brickworks connector; on a phone, its share sheet too; and the
+/// way to connect Claude first, the message kept for after. Published, the
+/// copy's page says what it was remixed from (ModelStore.remixed_from), as
+/// Open in Brickworks' copy does. The message is made in the browser
+/// (web/model-page.js startClaude), from what this panel carries.
+function claudePanel(origin, id, model) {
+  // Whom its page credits (designerRow): the profile's name, else the credit typed.
+  const by = model.author ? model.by?.name || model.author : "";
+  return `<div class="claude-panel" id="claude-panel" role="group" aria-labelledby="claude-head" data-id="${id}" `
+    + `data-name="${escapeHtml(model.name)}" data-by="${escapeHtml(by)}" data-url="${escapeHtml(links(origin, id).url)}" hidden>`
+    + `<p class="claude-head" id="claude-head">${asText(say("Change it with your Claude"))}</p>`
+    + `<p class="claude-about">${asText(say("Your own Claude, with the Brickworks connector, opens a copy in your models and changes it as you ask. "
+      + "Publish the copy, and its page says it was remixed from this one."))}</p>`
+    + `<form class="claude-ask" novalidate><label for="claude-ask">${asText(say("What should it change?"))} <small>${asText(say("Optional"))}</small></label>`
+    + `<input id="claude-ask" name="ask" autocomplete="off" enterkeyhint="done" `
+      + `placeholder="${asText(say("Make the roof blue, or add a stand with a nameplate"))}">`
+    + `<div class="claude-do"><button class="cta" type="submit">${asText(say("Copy for Claude"))}</button>`
+    + `<button class="cta ghost" type="button" data-claude-share hidden>${asText(say("Share to Claude"))}</button></div></form>`
+    + `<p class="note claude-connect">${sayHtml("No connector yet? {connect}, and your message waits for you there.",
+      { connect: `<a href="/docs/connect#with-your-claude" data-claude-connect>${asText(say("Connect Claude"))}</a>` })}</p>`
+    + `<textarea class="claude-message" readonly rows="5" aria-label="${asText(say("Your message for Claude"))}" hidden></textarea>`
+    + `<p class="said claude-said" role="status"></p></div>`;
+}
+
 function actionBar(origin, id, model, url = links(origin, id).url) {
   // A set of the LDraw library has no row to like, save, comment on or say
   // was built: Share and More alone.
@@ -1324,6 +1367,11 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
       + `${fromVersion ? `, <a class="from-version" href="${at}/m/${parent.id}/v/${fromVersion}">${asText(say("version {n}", { n: fromVersion }))}</a>` : ""}`
       + `${parent.author ? escapeHtml(say(", by {name}", { name: parent.author })) : ""}</p>`
     : `<p class="from">${asText(say("Remixed from a model shared by link"))}</p>`;
+  // What it changed from that version, counted as it was published
+  // (api/_remix.js): said under the credit on the newest version's page,
+  // and lit in its 3D view (/m/X/changes.json).
+  const changed = !set && !old && parent?.id ? ownChanges(model.tree, version.n, parent.id) : null;
+  const changedLine = changed ? changedLineHtml(changed, at, parent.id, fromVersion) : "";
   // What it is, as pills, each said once there is one. Its steps are the
   // ones its step player and booklet number, counted from the file shown;
   // a file that carries none has them worked out as it opens, and they are
@@ -1359,6 +1407,11 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     : `<li>${asText(say("a model shared by link"))}</li>`).join("");
   const listedRemixes = model.remixes_listed || [];
   const unlisted = Math.max(0, (Number(model.remixes) || 0) - listedRemixes.length);
+  // The tree both ways, each with what it changed (api/_remix.js treeHtml):
+  // where remix_tree answered and there is a model either way; else the
+  // line and the cards, as before it.
+  const drawnTree = set ? "" : treeHtml(origin, at, model.tree, { id, name: model.name, author: creditName(model) || model.author,
+    has_image: model.has_image, has_thumb: model.has_thumb, updated_at: model.updated_at });
   // The marks nearly every card on the page carries, left off (web/card.js).
   const quiet = quietMarks([...listedRemixes.map((row) => cardOf(origin, row)), ...(model.by ? next.by : []), ...next.like,
     ...(next.gallery || [])].map(marksOf));
@@ -1400,8 +1453,8 @@ ${header}
     + "version {newest}", { newest }))}</a></p>` : ""}
   <div class="top">
     <div class="media">
-    <a class="picture" href="${escapeHtml(viewer)}" aria-label="${escapeHtml(say("View {name} in 3D", { name: model.name }))}"
-      data-scene="${fileAt}/scene.json" data-parts="${Number(shownModel.parts) || 0}">${picture
+    <a class="picture" id="model-picture" href="${escapeHtml(viewer)}" aria-label="${escapeHtml(say("View {name} in 3D", { name: model.name }))}"
+      data-scene="${fileAt}/scene.json"${changed?.drawn ? ` data-changes="/m/${id}/changes.json?n=${changed.n}"` : ""} data-parts="${Number(shownModel.parts) || 0}">${picture
       ? `<span class="waiting" aria-hidden="true">${asText(say("Loading its picture…"))}</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">${asText(say("No picture"))}</span>`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
     ${mediaStrip(model, picture, photos, small)}
@@ -1413,12 +1466,14 @@ ${header}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in Brickworks"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
-        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in Brickworks"))}</a>`}
+        <span class="open-split"><a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in Brickworks"))}</a>${claudeButton()}</span>`}
         <a class="cta ghost" href="${fileAt}.mpd" download>${asText(say("Download"))}</a>
       </div>
+      ${set ? "" : claudePanel(origin, id, model)}
       ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
       ${fromLine}
+      ${changedLine}
       ${basedHtml(model.based || [])}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
@@ -1432,14 +1487,16 @@ ${header}
   ${set ? "" : `${commentsSection(id, version.n, newest, stepsCounted ? stepsCounted.pages : null)}
   ${buildsSection(id, model, photos)}
   <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">${asText(say("Remixes"))}</h2>
-    ${line ? `<h3>${asText(say("It came from"))}</h3><ol class="line">${line}</ol>` : ""}
+    ${drawnTree ? `${drawnTree}${unlisted ? `<p class="note">${asText(say(listedRemixes.length
+      ? "And {remixes} shared by link, not in the gallery." : "{remixes} shared by link, not in the gallery.",
+    { remixes: counted(unlisted, "remix", "remixes") }))}</p>` : ""}` : `${line ? `<h3>${asText(say("It came from"))}</h3><ol class="line">${line}</ol>` : ""}
     ${listedRemixes.length || unlisted
       ? `<h3>${asText(say("Made from it"))}</h3>${listedRemixes.length
         ? `<div class="models compact">${listedRemixes.map((row) => cardHtml(cardOf(origin, row))).join("")}</div>` : ""}`
         + (unlisted ? `<p class="note">${asText(say(listedRemixes.length ? "And {remixes} shared by link, not in the gallery."
           : "{remixes} shared by link, not in the gallery.", { remixes: counted(unlisted, "remix", "remixes") }))}</p>` : "")
       : `<p class="note none">${sayHtml("Nobody has remixed it yet. {open} to make a copy of your own to change; share that, "
-        + "and it shows here.", { open: `<a href="${escapeHtml(copyLink)}">${asText(say("Open it in Brickworks"))}</a>` })}</p>`}
+        + "and it shows here.", { open: `<a href="${escapeHtml(copyLink)}">${asText(say("Open it in Brickworks"))}</a>` })}</p>`}`}
   </section>`}
   ${listsSection(lists)}
   ${versionsSection(id, versions, version, at)}
@@ -2208,11 +2265,13 @@ async function leaveOffBlocked(own, page, next, lists) {
   if (!handles?.size) return;
   const remixes = page.remixes_listed || [];
   const beside = [...next.like, ...next.gallery];
-  const gone = await orUnknown("share", blockedModels(own.owner, [...remixes, ...beside].map((one) => one?.id)))
+  const tree = page.tree?.down || [];
+  const gone = await orUnknown("share", blockedModels(own.owner, [...remixes, ...beside, ...tree].map((one) => one?.id)))
     || new Set();
   const kept = withoutBlocked(remixes, gone, handles);
   page.remixes = Math.max(0, (Number(page.remixes) || 0) - (remixes.length - kept.length));
   page.remixes_listed = kept;
+  page.tree = treeWithout(page.tree, gone, handles);
   for (const key of ["like", "gallery"]) next[key] = withoutBlocked(next[key], gone, handles);
   if (lists) {
     const shown = lists.lists.filter((list) => !handles.has(String(list?.by?.handle || "")));
@@ -2308,16 +2367,21 @@ async function read(request, response) {
     // Its clip (unit turntable): the model turning in its link's preview,
     // named only on the newest version's page and while it is of that
     // version; none read is none, and the picture card it always had.
-    const [mark, photos, next, { counted, parts }, lists, based, clip] = await Promise.all([
+    const [mark, photos, next, { counted, parts }, lists, based, clip, tree] = await Promise.all([
       orUnknown("share", markOf(db, id, shown.n)),
       orUnknown("share", photosWhere(`model=eq.${id}`, shownPublicly)), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
       listsOf(id, tests).then(async (found) => found && ({ ...found,
         covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() })),
       orUnknown("share", basesOf(id)),
-      shown.n === versions[0].n && !page.library ? orUnknown("share", clipOf(id)) : null]);
+      shown.n === versions[0].n && !page.library ? orUnknown("share", clipOf(id)) : null,
+      // Where it came from and what was remixed from it, with what each
+      // changed (supabase/remix_changes.sql): null before that, and the
+      // page is as it was.
+      page.library ? null : orUnknown("share", treeOf(id))]);
     // What it is based on, under its remix line and in its structured data.
     page.based = based || [];
+    page.tree = tree;
     await leaveOffBlocked(own, page, next, lists);
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
@@ -2332,6 +2396,8 @@ async function read(request, response) {
   const row = await publishedRow(id);
 
   if (op === "clip") return clipAnswer(request, response, row, id);
+  // What a remix's 3D view lights and draws as ghosts (api/_remix.js).
+  if (op === "changes") return changesAnswer(response, row, storeRoot(), SHARED_CACHE);
 
   if (op === "embed") {
     // In the language of the page its code was taken from (/de/m/X/embed).
@@ -3430,6 +3496,13 @@ async function publish(request, response) {
     }, "share: first model");
   }
 
+  // What a remix changed from the version of the model it was copied from,
+  // counted once and kept with it (api/_remix.js): begun only once the
+  // answer below is written (afterAnswer runs it after this code), so the
+  // publish waits on neither the original's file nor the count.
+  if (remixedFrom) {
+    countAfter({ id, n, text: model, from: remixedFrom, said: remixedFromVersion, since: existing ? null : now, getFile });
+  }
   const origin = originOf(request);
   return response.status(existing ? 200 : 201).json({
     id, name, author, parts, bytes, published: true, updated: Boolean(existing),

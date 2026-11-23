@@ -263,6 +263,7 @@ import { socialConnect, socialConnected, socialDisconnect, socialDraft, socialDr
   socialRead, socialRules, socialSend, socialSync, socialUnschedule } from "./_social.js";
 import { SocialRefusal } from "./_social_reddit.js";
 import { analyticsRead } from "./_analytics.js";
+import { loopRead } from "./_loop.js";
 import { CLAUDE_ACTS, claudeChat, claudeModels, claudeRead } from "./_claude.js";
 import { withClaudeMarks } from "./_claude_social.js";
 import { notifyAddress, notifyConfirm, notifyFlush, notifyRead, notifySet, notifyTest } from "./_notify.js";
@@ -388,6 +389,8 @@ async function handler(request, response) {
     social_rules: () => socialRules(request),
     // How the site and the studio are used (insights, api/_analytics.js).
     analytics: () => analyticsRead(request, tests),
+    // The loop, step by step, this range against the one before (api/_loop.js).
+    loop: () => loopRead(request, tests),
     notify: () => notifyRead(request, tests),
     announce: () => announceRead(request),
     announce_preview: () => announcePreview(request),

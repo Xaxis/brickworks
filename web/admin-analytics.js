@@ -52,6 +52,14 @@ export const TERMS = {
   call: ["Claude's tools", "Each tool a person's Claude called through the connector: how often, by how many people, how many failed (an error, or an answer marked as one) and how long the round trip took."],
   p50: ["p50, p75, p95", "Percentiles: half of the times were at most p50, three in four at most p75, nineteen in twenty at most p95. Over many days, each day's percentile weighted by its count."],
   test: ["The checks' own", "With ?tests=1 the console shows only what the site's own checks sent, kept apart from people's."],
+  loop: ["The loop", "Discover, open, change, share, hear back, come back: each step's people in the range against the same number of days just before, with the change. People are person-days, as everywhere here (a signed-in account once a day, a signed-out visit once). Each step counts the person-days that did it, whatever else they did; Stopped here places each person-day once, at the furthest step it reached. Read from what is counted already: nothing more is kept about anybody. The steps' names are api/_loop.js's table."],
+  loop_discovered: ["Discovered", "A view of the home, the gallery, the library or a set's page, a model's page, Talk, a profile, a collection, the builds, the feed or the challenge."],
+  loop_opened: ["Opened", "A model's page, or the studio opened: a model's viewer and Build it open in it, as does designing. The step player counts too."],
+  loop_changed: ["Changed", "A part put down in the studio."],
+  loop_shared: ["Shared", "Publish pressed in the studio, a model shared from a file on the site, a comment or a reply, a build photo, a Talk thread or post, a challenge entry; and, from the social tables, a model published, a build photo, a comment, a Talk post or a challenge entry on that day (what the page never sees, such as a model published from the studio). Only on a day the person was counted, and never what the site's owner took down."],
+  loop_heard_back: ["Heard back", "A signed-in person-day whose account heard from somebody else that day or in the 7 days after: a like, a comment or a build photo on a model of theirs, a reply to a comment or Talk post of theirs or in their thread, a follow, or their model built to its last step. Never from the checks' accounts, nor from themselves."],
+  loop_came_back: ["Came back", "A signed-in person-day whose account was active again on a later day within 7 days: in the studio, on the site signed in, or through Claude. Within 30 days is beside it. A day near the range's end has had less time to come back."],
+  loop_built: ["Built", "Models followed to their last step in the step player, once a device (?op=built), of models by people's accounts. A build has no account, so it is a number of its own, not a step of anybody's person-day, and no filter narrows it."],
 };
 
 const LOOK = `
@@ -103,6 +111,21 @@ const LOOK = `
 .insights .pill.ok { color: var(--green, #0ca30c); border-color: currentColor; }
 .insights .pill.mid { color: var(--ink); border-color: var(--accent-edge); }
 .insights .pill.bad { color: var(--bad); border-color: var(--bad); }
+/* The loop: a dumbbell a step, the range before in a quieter shade of the
+   series' blue (validated as an ordinal pair against each theme's panel). */
+.insights { --viz-before: var(--viz-seq-2); }
+:root[data-theme="light"] .insights { --viz-before: var(--viz-seq-3); }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) .insights { --viz-before: var(--viz-seq-3); } }
+.insights .loop { margin-top: var(--s-6); }
+.insights .loop .legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: 0 0 var(--s-2); padding: 0; list-style: none;
+  font-size: var(--t-tiny); color: var(--ink-soft); }
+.insights .loop .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; }
+.insights .loop .plot .now { fill: var(--viz-1); stroke: var(--panel); stroke-width: 2; }
+.insights .loop .plot .was { fill: var(--viz-before); stroke: var(--panel); stroke-width: 2; }
+.insights .loop .plot .span { stroke: var(--viz-axis); stroke-width: 2; }
+.insights .loop .plot .step { fill: var(--ink-soft); font-size: var(--t-tiny); }
+.insights .loop .plot .value { fill: var(--ink); font-size: var(--t-tiny); }
+.insights .loop .stats { margin: 0 0 var(--s-4); }
 `;
 
 // ---------------------------------------------------------------------------
@@ -284,7 +307,11 @@ async function read() {
   part.classList.add("reading");
   say("an-said", "Reading…");
   try {
-    data = await adminJson(query);
+    // The loop (api/_loop.js) beside the rest: its own op, so a loop that
+    // cannot be read leaves every other tab as it is.
+    const [main, loop] = await Promise.all([adminJson(query),
+      adminJson({ ...query, op: "loop" }).catch((problem) => ({ failed: String(problem?.message || problem) }))]);
+    data = { ...main, loop };
   } finally {
     part.classList.remove("reading");
   }
@@ -559,7 +586,181 @@ function drawFunnels() {
     funnel("Sign-up funnel", "funnel_accounts", [["Signed up", f.signups || 0], ["Put down a part", f.first_part || 0],
       ["Saved a model", f.first_save || 0], ["Published", f.published || 0]]),
     funnel("Visit funnel", "funnel_visits", [["Visited", reach.visit || 0], ["Opened the studio", reach.studio || 0],
-      ["Put down a part", reach.part || 0], ["Saved a model", reach.save || 0], ["Signed in", reach.signed_in || 0]])));
+      ["Put down a part", reach.part || 0], ["Saved a model", reach.save || 0], ["Signed in", reach.signed_in || 0]])),
+  ...loopCard(data.loop));
+}
+
+// The loop's steps, in order, as ?op=loop names them.
+const LOOP_STEPS = [["discovered", "Discovered"], ["opened", "Opened"], ["changed", "Changed"], ["shared", "Shared"],
+  ["heard_back", "Heard back"], ["came_back", "Came back"]];
+const signed = (n) => (n > 0 ? `+${count(n)}` : n < 0 ? `−${count(-n)}` : "0");
+/// [now] against [was]: the change, and as a share of [was] when there was one.
+const change = (now, was) => (was > 0 ? `${signed(now - was)} (${signed(Math.round((100 * (now - was)) / was))}%)` : signed(now - was));
+
+/// The loop's third card: each step this range against the one before, as a
+/// dumbbell a step (one Tab stop, the arrow keys from step to step), its
+/// table and Built beside; and under it, what each step counts.
+function loopCard(loop) {
+  const card = make("div", "part loop");
+  card.dataset.card = "loop";
+  card.append(make("div", "lead", make("h3", "", term("loop", "The loop"))));
+  if (!loop || loop.failed) {
+    card.append(make("p", "note bad", `The loop could not be read: ${loop?.failed || "no answer"}.`));
+    return [card];
+  }
+  if (loop.ready === false) {
+    card.append(make("p", "note", "Not measured on this database yet: supabase/loop_funnel.sql is not applied here."));
+    return [card];
+  }
+  const now = loop.this || {};
+  const was = loop.before || {};
+  const at = (iso) => day(`${iso}T12:00:00Z`);
+  card.append(make("p", "note", `${at(now.from)} to ${at(now.to)} against the ${count(was.days || 0)} days before (${at(was.from)} to `
+    + `${at(was.to)}), in person-days: ${count(now.people || 0)} in this range, ${count(was.people || 0)} before.`));
+  const short = [now, was].filter((r) => (r.kept_days ?? r.days) < r.days);
+  if (short.length) {
+    card.append(make("p", "note", `Each visit's rows are kept 30 days, from ${at(loop.range?.kept_from)}: `
+      + `${short.map((r) => `${count(r.days - r.kept_days)} of the ${count(r.days)} days ${r === now ? "of this range" : "before"}`).join(" and ")} `
+      + "come before it and count nobody. Compare ranges inside the last 30 days."));
+  }
+  if (loop.hashed === false) {
+    card.append(make("p", "note bad", "This deployment has no VIEW_SECRET: accounts are not told apart, so Heard back, what the "
+      + "social tables keep and Claude's days read 0, and the owner is not left out."));
+  }
+  const steps = now.steps || {};
+  const before = was.steps || {};
+  const people = now.people || 0;
+
+  // Built, beside: no account, so no step of anybody's day.
+  const stats = make("div", "stats");
+  const built = make("div", "stat");
+  built.dataset.stat = "loop_built";
+  built.append(make("b", "", term("loop_built", compact(now.built || 0))), make("span", "", term("loop_built", "built to the last step")),
+    make("small", "", `${count(was.built || 0)} before, ${change(now.built || 0, was.built || 0)}`));
+  const back = make("div", "stat");
+  back.dataset.stat = "loop_came_back_30";
+  back.append(make("b", "", term("loop_came_back", compact(steps.came_back_30 || 0))),
+    make("span", "", term("loop_came_back", "came back within 30 days")),
+    make("small", "", `${count(before.came_back_30 || 0)} before, ${change(steps.came_back_30 || 0, before.came_back_30 || 0)}`));
+  stats.append(built, back);
+  card.append(stats);
+
+  // The dumbbells.
+  const figure = make("figure");
+  figure.append(make("figcaption", "", make("span", "", "Each step, this range against the one before"),
+    make("small", "", `${count(people)} person-days`)));
+  const legend = make("ul", "legend");
+  legend.setAttribute("aria-hidden", "true");
+  const swatch = (colour) => {
+    const i = make("i");
+    i.style.background = colour;
+    return i;
+  };
+  legend.append(make("li", "", swatch("var(--viz-1)"), "This range"), make("li", "", swatch("var(--viz-before)"), "The range before"));
+  figure.append(legend);
+  const plot = make("div", "plot");
+  figure.append(plot);
+  let lit = 0;
+  const drawn = () => {
+    const w = Math.max(280, plot.clientWidth - 24);
+    const label = w < 480 ? 78 : 104;
+    const right = w < 480 ? 64 : 120;
+    const row = 34;
+    const top = 6;
+    const h = top + row * LOOP_STEPS.length;
+    const most = Math.max(1, ...LOOP_STEPS.flatMap(([key]) => [steps[key] || 0, before[key] || 0]));
+    const ticks = ticksOf(most);
+    const span = ticks.at(-1) || 1;
+    const x = (v) => label + (v / span) * (w - label - right);
+    const shape = svg("svg", { viewBox: `0 0 ${w} ${h + 20}`, role: "group",
+      "aria-label": "The loop: each step's people this range and before; the arrow keys go from step to step" });
+    for (const t of ticks) {
+      shape.append(svg("line", { x1: x(t), x2: x(t), y1: top - 4, y2: h, class: t === 0 ? "base" : "grid" }));
+      const tick = svg("text", { x: x(t), y: h + 15, "text-anchor": "middle" });
+      tick.textContent = compact(t);
+      shape.append(tick);
+    }
+    const hits = [];
+    LOOP_STEPS.forEach(([key, words], n) => {
+      const y = top + row * n + row / 2;
+      const a = before[key] || 0;
+      const b = steps[key] || 0;
+      const name = svg("text", { x: 0, y: y + 4, class: "step" });
+      name.textContent = words;
+      shape.append(name);
+      const said = `${words}: ${count(b)} this range (${share(b, people)} of the people), ${count(a)} before, ${change(b, a)}`;
+      const hit = svg("rect", { x: 0, y: y - row / 2, width: w, height: row, class: "hit", tabindex: n === lit ? 0 : -1, role: "img",
+        "aria-label": said });
+      hits.push(hit);
+      hit.addEventListener("keydown", (event) => {
+        const to = { ArrowUp: n - 1, ArrowLeft: n - 1, ArrowDown: n + 1, ArrowRight: n + 1, Home: 0, End: LOOP_STEPS.length - 1 }[event.key];
+        if (to === undefined) return;
+        event.preventDefault();
+        lit = Math.max(0, Math.min(LOOP_STEPS.length - 1, to));
+        hits.forEach((one, m) => one.setAttribute("tabindex", m === lit ? "0" : "-1"));
+        hits[lit].focus();
+      });
+      const show = (event) => tipAt(event, `${count(a)} before, ${change(b, a)}`, `${words}: ${count(b)}`);
+      hit.addEventListener("pointerenter", show);
+      hit.addEventListener("focus", show);
+      hit.addEventListener("pointerleave", tipGone);
+      hit.addEventListener("blur", tipGone);
+      shape.append(svg("line", { x1: x(a), x2: x(b), y1: y, y2: y, class: "span" }));
+      shape.append(svg("circle", { cx: x(a), cy: y, r: 5, class: "was" }));
+      shape.append(svg("circle", { cx: x(b), cy: y, r: 5, class: "now" }));
+      const value = svg("text", { x: w, y: y + 4, "text-anchor": "end", class: "value" });
+      value.textContent = w < 480 ? `${count(b)} · ${count(a)}` : `${count(b)} · was ${count(a)}`;
+      shape.append(value);
+      // Over the marks, so the whole row answers the pointer.
+      shape.append(hit);
+    });
+    plot.replaceChildren(shape);
+  };
+  requestAnimationFrame(drawn);
+  const watch = new ResizeObserver(() => drawn());
+  watch.observe(plot);
+  watching.push(watch);
+  const stopped = now.stopped || {};
+  figure.append(asTable(["Step", "This range", "Of the people", "The range before", "Change", "Stopped here"],
+    [...LOOP_STEPS.map(([key, words]) => [words, count(steps[key] || 0), share(steps[key] || 0, people), count(before[key] || 0),
+      change(steps[key] || 0, before[key] || 0), count(stopped[key] || 0)]),
+    ["Came back within 30 days", count(steps.came_back_30 || 0), share(steps.came_back_30 || 0, people), count(before.came_back_30 || 0),
+      change(steps.came_back_30 || 0, before.came_back_30 || 0), "—"],
+    ["Short of the loop", "—", "—", "—", "—", count(stopped.none || 0)],
+    ["Built (devices)", count(now.built || 0), "—", count(was.built || 0), change(now.built || 0, was.built || 0), "—"]]));
+  card.append(figure);
+
+  // What each step counts: its names, with the person-days that did each.
+  const wasOf = (list, one) => (list || []).find((x) => x.step === one.step && x.name === one.name && (x.kind || "") === (one.kind || ""));
+  const rows = [];
+  for (const [key, words] of LOOP_STEPS) {
+    for (const one of (now.acts || []).filter((a) => a.step === key)) {
+      rows.push({ step: words, what: `${one.surface} ${one.kind} ${one.name}`, now: one.people, was: wasOf(was.acts, one)?.people || 0 });
+    }
+    if (key === "shared") {
+      for (const one of now.kept || []) {
+        rows.push({ step: words, what: `kept ${one.name}`, now: one.people, was: wasOf(was.kept, one)?.people || 0 });
+      }
+    }
+    if (key === "heard_back") {
+      for (const [kind, n] of Object.entries(now.heard || {})) {
+        rows.push({ step: words, what: `a ${kind}`, now: n, was: (was.heard || {})[kind] || 0 });
+      }
+    }
+    if (key === "came_back") {
+      rows.push({ step: words, what: "within 7 days", now: steps.came_back || 0, was: before.came_back || 0 });
+      rows.push({ step: words, what: "within 30 days", now: steps.came_back_30 || 0, was: before.came_back_30 || 0 });
+    }
+  }
+  const acts = ranked("What each step counts", "loop", [
+    { head: "Step", value: (r) => r.step },
+    { head: "What", name: true, value: (r) => r.what },
+    { head: "This range", key: "people", value: (r) => r.now, bar: true },
+    { head: "Before", n: true, value: (r) => r.was },
+    { head: "Change", n: true, value: (r) => change(r.now, r.was) },
+  ], rows);
+  acts.dataset.card = "loop_acts";
+  return [card, acts];
 }
 
 /// A cell's ink on [fill]: near-black on a light step, white on a dark one.

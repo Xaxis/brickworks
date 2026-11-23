@@ -24,9 +24,15 @@
 // for each, named. No turn on arrival for a person who asks for less
 // motion. A model past what the device can turn smoothly (BUDGET) asks
 // first; anything that fails says why and leaves the picture.
+// A remix's page (given.changes, api/_remix.js) has What changed beside
+// the view's buttons, off until pressed: the parts the remix added,
+// recoloured or moved drawn as they are, the parts it took away as faint
+// red ghosts where they stood, and the rest faded; pressed again, the model
+// as it was. Its counts in a line over the view while it is on.
 // Its words in the page's language (web/card.js say: a copy of the page
 // in German, French or Spanish carries them, tools/site_lang.py).
 import { counted, iconButtonHtml, number, say } from "../../web/card.js";
+import { Color, SRGBColorSpace } from "three";
 import { sceneShape, unpack } from "./scene.js";
 import { LOOKS, View, shapes, webglWorks } from "./view.js";
 
@@ -88,6 +94,8 @@ export function open3d(shell, given) {
     iconButtonHtml({ icon: "zoom-out", name: say("Zoom out"), small: true, attrs: 'data-act="out"' }),
     iconButtonHtml({ icon: "zoom-in", name: say("Zoom in"), small: true, attrs: 'data-act="in"' }),
     iconButtonHtml({ icon: "reset", name: say("Reset the view"), small: true, attrs: 'data-act="reset"' }),
+    given.changes ? iconButtonHtml({ icon: "eye", name: say("What changed"), small: true, pressed: false, labelled: true,
+      attrs: 'data-act="changes"' }) : "",
     iconButtonHtml({ icon: "expand", name: say("Full screen"), small: true, pressed: false, attrs: 'data-act="full"' }),
     iconButtonHtml({ icon: "close", name: say("Back to the picture"), small: true, attrs: 'data-act="close"' }),
   ].join("");
@@ -105,6 +113,12 @@ export function open3d(shell, given) {
   hint.className = "view3d-hint";
   hint.hidden = true;
   shell.append(hint);
+  // What changed's counts, over the view while it is on.
+  const legend = document.createElement("p");
+  legend.className = "view3d-legend";
+  legend.setAttribute("role", "status");
+  legend.hidden = true;
+  shell.append(legend);
   let hintTimer = 0;
   const hintFor = (words, ms = 4000) => {
     hint.textContent = words;
@@ -239,6 +253,8 @@ export function open3d(shell, given) {
     tell("");
     view.render();
     hintFor(coarse() ? say("Drag across to turn it · pinch to zoom") : say("Drag to turn it · scroll to zoom · right-drag to move"), 5000);
+    // Asked for from the page's line ("See what changed in 3D").
+    if (given.changesOn && !changesOn) showChanges(true);
   }
 
   // The model in the picture's place.
@@ -289,7 +305,72 @@ export function open3d(shell, given) {
   document.addEventListener("fullscreenchange", leftFull);
   document.addEventListener("webkitfullscreenchange", leftFull);
 
+  // What changed: asked of the site once, the first time it is pressed.
+  let changes = null;
+  let changing = null;
+  let changesOn = false;
+  const FADED = new Color(0xb8bcc2);
+  const fade = (hex) => new Color().setHex(parseInt(hex, 16), SRGBColorSpace).lerp(FADED, 0.78);
+  async function whatChanged() {
+    if (changes) return changes;
+    if (!changing) {
+      changing = (async () => {
+        const answer = await fetch(given.changes, { credentials: "omit" });
+        if (!answer.ok) throw new Error(answer.status === 404 ? say("what it changed is not counted yet") : say("the site said {status}", { status: answer.status }));
+        const said = await answer.json();
+        // Counted against the packing this page drew: one of another count
+        // was packed by another catalogue, and would light the wrong parts.
+        if (said.count !== data.n) throw new Error(say("it was counted for another version of its parts"));
+        const lit = new Set([...runs(said.added), ...runs(said.recoloured), ...runs(said.moved)]);
+        const ghost = said.ghost ? await unpack(sceneShape(said.ghost) || said.ghost) : null;
+        changes = { said, lit, ghost };
+        return changes;
+      })().catch((trouble) => { changing = null; throw trouble; });
+    }
+    return changing;
+  }
+  async function showChanges(on) {
+    const b = button("changes");
+    if (!b || !view) return;
+    changesOn = on;
+    b.setAttribute("aria-pressed", String(on));
+    state.changesOn = on;
+    if (!on) {
+      view.look = null;
+      view.paint();
+      view.hideGhosts();
+      legend.hidden = true;
+      return;
+    }
+    legend.hidden = false;
+    legend.textContent = say("Getting what changed…");
+    let got;
+    try {
+      got = await whatChanged();
+    } catch (trouble) {
+      legend.textContent = say("What changed could not load: {why}.", { why: trouble.message });
+      changesOn = false;
+      b.setAttribute("aria-pressed", "false");
+      state.changesOn = false;
+      return;
+    }
+    if (!changesOn) return;
+    const faded = data.colours.map((c) => fade(c.hex));
+    view.look = (i) => (got.lit.has(i) ? null : { colour: faded[data.colour[i]] });
+    view.paint();
+    const counts = got.said.counts || {};
+    const lit = (counts.added || 0) + (counts.recoloured || 0) + (counts.moved || 0);
+    legend.textContent = [lit ? say("In colour: {changed}", { changed: [counts.added ? say("{n} added", { n: number(counts.added) }) : "",
+      counts.recoloured ? say("{n} recoloured", { n: number(counts.recoloured) }) : "",
+      counts.moved ? say("{n} moved", { n: number(counts.moved) }) : ""].filter(Boolean).join(", ") }) : "",
+    counts.removed ? (got.ghost ? say("faint red: {n} taken away", { n: number(counts.removed) })
+      : say("{n} taken away, too many to draw", { n: number(counts.removed) })) : "",
+    !lit && !counts.removed ? say("No parts changed") : ""].filter(Boolean).join(" · ");
+    if (got.ghost) await view.addGhosts(got.ghost);
+  }
+
   const act = {
+    changes: () => showChanges(!changesOn),
     out: () => view && view.zoomBy(1 / ZOOM),
     in: () => view && view.zoomBy(ZOOM),
     reset: () => view && view.reset(),
@@ -394,6 +475,19 @@ export function open3d(shell, given) {
   state.engaged = () => engaged;
   state.touchAction = () => (view && view.renderer ? view.renderer.domElement.style.touchAction : "");
   state.bytes = () => bytes;
+  // What changed as drawn: the lit parts' indexes, how many are faded, the
+  // ghosts drawn (View.drawnChanges), and what the site said.
+  state.changes = () => (view ? { on: changesOn, ...view.drawnChanges(), said: changes ? changes.said : null } : null);
   start();
-  return { open, close };
+  return { open, close, changes: (on) => (state.state === "ready" ? showChanges(on) : (given.changesOn = on)) };
+}
+
+/// The indexes runs give ([first, how many] each, api/_remix_changes.js runsOf).
+function runs(list) {
+  const out = [];
+  for (const run of Array.isArray(list) ? list : []) {
+    if (!Array.isArray(run) || !Number.isInteger(run[0]) || !Number.isInteger(run[1])) continue;
+    for (let k = 0; k < run[1] && k < 1e6; k++) out.push(run[0] + k);
+  }
+  return out;
 }

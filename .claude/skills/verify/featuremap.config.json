@@ -5615,7 +5615,7 @@
       "kind": "ui",
       "label": "the owner's Analytics",
       "entry": "web/admin-analytics.js",
-      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, the loop (each step this range against the one before as a dumbbell and a table, Built beside, each step's names; ?op=loop), retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
       "area": "web"
     },
     {
@@ -6463,6 +6463,76 @@
       "label": "the talk stand-in",
       "entry": "tools/web/talk_stand_in.mjs",
       "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "change a model with your Claude",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Open in Brickworks' second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "claudelink bench",
+      "entry": "tools/bench/claudelink.py",
+      "reach": "heavy python3 tools/bench/claudelink.py --out=DIR   (3 gallery models x a recolour, a part added and a stand with a nameplate: a Claude Code session given only the page's copied message (tools/web/claude_copy.mjs) through the relay with --instructions none, the tab src/dev/claudelink_tab.gd publishing as the person; remixed_from, the remix's page, the change, 12 calls or fewer, no tool or part there is not; DIR/SUMMARY.txt)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the loop's read",
+      "entry": "api/_loop.js",
+      "reach": "python3 tools/minitest.py tests/test_loop.py   (GET /api/admin?op=loop 401 signed out, 404 to anybody else, the same from, to, plan, device, lang, signed and tests as op=analytics; before supabase/loop_funnel.sql {ready: false}; its accounts hashed as the counter's, the checks' and the test pool's only on ?tests=1; tests/fixtures/insights/loop_check.mjs: 12 people stopped at known steps, two back, the owner, the checks' account and the test pool beside them, each step, Stopped here, Built, the kept shares, the heard-back kinds and every LOOP name equal to the hand count, the filters, a sampled visit at its weight, no VIEW_SECRET, a made-up name no step, 400 days at most, nothing left behind, --load=500 timed under 1 s over 90 days; LOOP's names all kept (python3 tools/insights_names.py --check); dry run tools/loop_funnel_try.sql; docs/ANALYTICS.md The loop)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the loop as JSON",
+      "entry": "tools/loop_read.mjs",
+      "reach": "node tools/loop_read.mjs [--days=30 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--plan=all] [--tests] [--port=11390] [--out=FILE]   (the console's ?op=loop run by a local tools/web/relay_server.mjs against the live database, MASTER_EMAIL the checks' shared account (never the owner's), given only SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_PUBLISHABLE_KEY; says what a read without VIEW_SECRET cannot know; {ready: false} before supabase/loop_funnel.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the loop's card check",
+      "entry": "tools/web/loop_card_check.mjs",
+      "reach": "node tests/fixtures/insights/loop_check.mjs --card=OUT/card_loop.json, then heavy node tools/web/loop_card_check.mjs --card=OUT/card_loop.json --out=OUT [--port=11391]   (locally, the console and api/admin.js on a relay against the live database, MASTER_EMAIL the checks' shared account: the live ?op=loop says not measured before supabase/loop_funnel.sql; the fixture's read at 1280 and 390, light and dark, six steps, a legend of two, the table's numbers the read's, Built and within 30 beside, each step's names; Tab reaches the chart in one stop, arrows, Home and End; Definitions' rules; pictures in OUT; ends loop_card: all ok)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "what a remix changed",
+      "entry": "api/_remix_changes.js",
+      "reach": "python3 tools/minitest.py tests/test_remix_changes.py   (remixdiff: the 12 pairs of tests/fixtures/remix_pairs counted as expected.json says, which PROBE compare_probe holds the app's Compare to; the line, the runs the 3D view lights, which version it is counted against, the tree both ways; a remix published through api/share.js (tests/fixtures/remix_pairs/publish.mjs) counted once its answer is written; supabase/remix_changes.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/remix_changes.sql --dry --try=tools/remix_changes_try.sql --table=remix_changes)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what a remix changed and the remix tree",
+      "entry": "api/_remix.js",
+      "reach": "https://brickworks.diy/m/<a remix>   (once supabase/remix_changes.sql is applied: under the credit What it changed from version N, See what changed in 3D, What changed on the 3D view's bar lighting what it changed and the taken away as ghosts, /m/<id>/changes.json; /m/<id>#remixes the tree both ways, three levels down); node tools/web/remix_flow.mjs --out=DIR on the stand-in",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "remix browser flow",
+      "entry": "tools/web/remix_flow.mjs",
+      "reach": "node tools/web/remix_flow.mjs --out=DIR   (the stand-in's four cottages, tools/web/remix_world.mjs: the line under the credit, What changed off then on, the lit parts and the ghost read from the drawn colours at 390 and 1280, See what changed in 3D, the tree both ways, the counts unchanged)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "remix backfill",
+      "entry": "tools/web/remix_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/remix_backfill.mjs --dry --current=<build>/part_names/part_current.json   (after remix_changes.sql, without --dry: every remix shared before it counted and kept)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a page's LCP in two checkouts",
+      "entry": "tools/web/page_lcp_pairs.mjs",
+      "reach": "node tools/web/page_lcp_pairs.mjs --base=<a tree with the base's web/ and api/> --rounds=8 --out=DIR   (the stand-in's pages in both at the same moments, a browser each; worse only past the noise)",
       "area": "web"
     }
   ]
