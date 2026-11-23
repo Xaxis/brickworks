@@ -423,7 +423,42 @@ A gap in the numbers is read back by `op=watch_ops {w, after, viewer}`. The
 same call every 20 s is the page's heartbeat, which counts it as a watcher
 (`together_watchers`, one row per page, a random id kept in the tab) and
 keeps the peak. The parts' geometry comes from the parts bucket, as every
-model page's does.
+model page's does. A page whose channel is down or reconnecting reads back
+every 1.5 s until it is heard again. A message from before what a page has
+(anybody may send an old signed one again on the public channel) ends
+nothing.
+
+**Measured** (`tools/web/live_flow.mjs`, flow5, 2026-11-23, a local relay of
+this tree against the project's tables, load 133). Ten pages watched while
+the designer put down 20 parts, and ten watchers' sockets on the same channel
+checked each message's signature as a page does:
+
+- A part reaches all ten watchers in p50 356 ms, p95 478 ms (200 of 200),
+  from the moment its send is asked. The send's answer takes the same time,
+  so a watcher hears a part as soon as the designer's own call returns.
+  The ten pages took every part from the channel (0 of 200 read back). Here
+  they took it in p95 14 s, but that is the box: ten pages drawing in
+  software at load 133. In flow4, CDP's frame times matched the pages' own
+  to the millisecond, so a browser's own timing on this box measures the box.
+- A build is listed 1.4 s after it is opened (the bar is 10 s).
+- Every way a watcher could edit was refused at the relay: `send {w}` 403,
+  the watch name as a secret 404, a line carrying a change 403, and join by
+  the watch name 404. A message sent with the publishable key was dropped
+  by all ten pages.
+- Egress per watcher-minute while the designer built (about one part every
+  1.5 s): 12.0 KB of Realtime frames. Over a page's whole open time it was
+  3.9 KB. Everything the relay read from the database for the run, divided by
+  every watcher-minute, came to 9.9 KB. That figure also holds the
+  designer's poll, the listings and the pictures, so it is an upper bound.
+  Opening a page costs 11.5 KB from the database (`op=watching`, more on a
+  bigger model), plus the parts' geometry from the bucket (17 KB here; it is
+  CDN-cached, and each shape is fetched once).
+
+  At 22 KB per watcher-minute, the 275 GB quota is about 200,000
+  watcher-hours a month. Before the counting moved into the database
+  (751876cce), every heartbeat read every watcher's row. That cost grew as
+  the square of the audience: 958 KB of `watch_ops` reads in flow1 for ten
+  pages.
 
 ## Proof
 

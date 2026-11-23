@@ -60,6 +60,10 @@ Comments are kept in the model's file, so saving, opening and sharing by link ke
 
 **Open to watchers**, under the link, gives the session a page anyone can watch, at `/live/<name>`. **Copy** its address to send it. While you build it is listed first on the home page, under *Building now*, and on your profile. The panel says how many are watching.
 
+![A build being watched at /live/<name>: Building now over its title and its designer, how many watch with Ask to build and Copy link, the model in 3D as it stands, and the chat beside it with who is building.](/docs/img/live-watch.webp "Watching a build: each part lands as it is put down.")
+
+![Building now, first in the home page's feed: a card for each build open to watchers, with Live on it, its title, who is building it and how many watch.](/docs/img/live-listing.webp "Building now, on the home page.")
+
 - Watchers see each part land in 3D as you put it down, and the chat beside it. Signed in, anyone 13 or over can chat with you there; you read their lines in the panel's chat as you read your builders'.
 - **Ask to build** on the watch page asks you for a seat. The panel shows *Wren asks to build* with **Give a seat**. Once you give one, their page offers **Build with them now**, which opens the session in their studio. **Remove** takes them out again.
 - Nothing a watcher does changes the model. Their page has no way to, and the server refuses it.
