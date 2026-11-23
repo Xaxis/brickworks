@@ -15,9 +15,13 @@
 ## that puts down a part it is joined to (Tested's studs and joints), or
 ## one step later where none is, until none is in the air:
 ## the model's placements as units, each sub-model's parts in its own file,
-## as an LDraw booklet builds them. One that is in the air even after the
-## last of its section's parts is left where it was: only building it in
-## another section's steps (a flattening) could hold it, and that is said.
+## as an LDraw booklet builds them. A sub-model's part held by nothing later
+## in its own file but by what another placement of the model puts down
+## moves its sub-model's placing line instead, to the step after that one,
+## so its steps come after what holds it (a tower built on the wall under
+## it). One nothing later holds is left where it was: only building it in
+## another section's steps (a flattening) could hold it, and how many is
+## said. Placing lines moved for nothing are put back.
 ##
 ## The steps test is the share's (SharedPages.pages_for, then Tested.check's
 ## steps), read here part by part. For each file: the parts in the air and
@@ -106,8 +110,8 @@ func _restep(path: String, into: String) -> void:
 				continue
 			if left.has(line):
 				continue
-			if file.past_last(line):
-				left[line] = "in the air after every part of its section"
+			if int(found[1]) == -2 or file.past_last(line):
+				left[line] = true
 				continue
 			moving[line] = maxi(int(moving.get(line, 0)), int(found[1]))
 		if moving.is_empty():
@@ -118,26 +122,39 @@ func _restep(path: String, into: String) -> void:
 		now = await _measure(file.text())
 		print("  pass %d: %d lines moved, now %d in the air, %d hidden" % [passes, moving.size(),
 			now["floats"].size(), now["hidden"].size()])
-	# What only a flattening could hold, back where the file had it.
+	# What only a flattening could hold, back where the file had it; and
+	# each placing line moved for nothing back too, one at a time, kept back
+	# where no more parts go in the air.
 	for line: int in left:
 		file.back(line)
+	now = await _measure(file.text())
+	for line: int in file.moved():
+		if not file.places(line):
+			continue
+		var to: int = int(file.block[line])
+		file.back(line)
+		var without: Dictionary = await _measure(file.text())
+		if without["floats"].size() <= now["floats"].size() and without["hidden"].size() <= now["hidden"].size():
+			now = without
+			print("  back: line %d (%s), moved for nothing" % [line + 1, file.lines[line].strip_edges()])
+		else:
+			file.block[line] = to
 	var made: String = file.text()
-	if not left.is_empty():
-		now = await _measure(made)
+	now = await _measure(made)
 	print("  %d passes; %d lines moved, %d STEP lines before, %d after" % [passes,
 		file.moved().size(), text.count("\n0 STEP"), made.count("\n0 STEP")])
 	for line: int in file.moved():
 		print("    line %d (%s) from step %d of %s to %d" % [line + 1, file.lines[line].strip_edges().get_slice(" ", 14),
 			file.was[line] + 1, file.section_name(line), int(file.block[line]) + 1])
-	for line: int in left:
-		print("    once in the air past every part of its section: line %d (%s)" % [line + 1,
-			file.lines[line].strip_edges()])
-	# Left: those still in the air at the end, which no later step of their
-	# own section holds.
+	# Left: those still in the air at the end that nothing later holds, in
+	# their own file or by placing it later.
 	var still: int = 0
 	for float_at: Array in now["floats"]:
-		if left.has(int(_line_of(now, int(float_at[0]), int(float_at[1]), file)[0])):
+		var found: Array = _line_of(now, int(float_at[0]), int(float_at[1]), file)
+		if int(found[1]) == -2 or (file.block.has(int(found[0])) and file.past_last(int(found[0]))):
 			still += 1
+			print("    in the air, held only by another section's part: line %d (%s, %s)" % [
+				int(found[0]) + 1, file.lines[int(found[0])].strip_edges(), file.section_name(int(found[0]))])
 	_check("%s: in the air %d (was %d; %d only a flattening could hold); hidden %d (was %d)"
 		% [path, now["floats"].size(), first["floats"].size(), still, now["hidden"].size(),
 		first["hidden"].size()], now["floats"].size() == still)
@@ -173,8 +190,13 @@ func _reopened(path: String, into: String, made: String, measured: Dictionary) -
 	var shared: Array = await _shared_count(made)
 	_check("%s: the share's steps test, %d in the air, %d hidden" % [path, shared[0], shared[1]],
 		shared[0] == (measured["floats"] as Array).size())
-	var again: String = _store.to_text(_store.title, true)
+	# Saved as Save saves it, under a name of the probe's own.
+	var called: String = "Restep " + path.get_file().get_basename()
+	_forget(called)
+	_store.save_as(called)
+	var again: String = FileAccess.get_file_as_string(ModelStore.saved_path(called))
 	_check("%s: saved unedited, byte for byte (%d bytes)" % [path, made.length()], again == made)
+	_forget(called)
 	_main.call("clear_model")
 	await _frames(4)
 
@@ -274,21 +296,48 @@ func _line_of(measured: Dictionary, number: int, id: int, file: Restepped) -> Ar
 		var line: int = _at_depth(measured, id, depth, file)
 		if line < 0 or not file.block.has(line):
 			return [-1, -1]
-		var now: int = int(file.block[line])
-		var to: int = -1
-		for part: int in thing:
-			for other: Variant in (measured["near"] as Dictionary).get(part, {}):
-				if thing.has(int(other)):
-					continue
-				var held_by: int = _at_depth(measured, int(other), depth, file)
-				if held_by < 0 or not file.block.has(held_by) \
-						or file.section_of[held_by] != file.section_of[line]:
-					continue
-				var step: int = int(file.block[held_by])
-				if step > now and (to < 0 or step < to):
-					to = step
-		return [line, to if to > now else now + 1]
+		var to: int = _joined_after(measured, thing, depth, line, file)
+		if to >= 0:
+			return [line, to]
+		# Held by nothing later in its own file: where what holds it is put
+		# down by another of the model's placements, its sub-model is placed
+		# a step after that one, its own steps after what holds it.
+		if depth >= 1:
+			var unit: int = _at_depth(measured, id, 0, file)
+			if unit >= 0 and file.block.has(unit):
+				var after: int = -1
+				for part: int in thing:
+					for other: Variant in (measured["near"] as Dictionary).get(part, {}):
+						var by: int = _at_depth(measured, int(other), 0, file)
+						if thing.has(int(other)) or by < 0 or by == unit or not file.block.has(by):
+							continue
+						var step: int = int(file.block[by]) + 1
+						if step > int(file.block[unit]) and (after < 0 or step < after):
+							after = step
+				if after >= 0:
+					return [unit, after]
+		return [line, -2]
 	return [-1, -1]
+
+
+## The first step after [param line]'s, in its own section, that puts down a
+## part [param thing] is joined to (Tested's near), or -1 for none.
+static func _joined_after(measured: Dictionary, thing: PackedInt64Array, depth: int, line: int,
+		file: Restepped) -> int:
+	var now: int = int(file.block[line])
+	var to: int = -1
+	for part: int in thing:
+		for other: Variant in (measured["near"] as Dictionary).get(part, {}):
+			if thing.has(int(other)):
+				continue
+			var held_by: int = _at_depth(measured, int(other), depth, file)
+			if held_by < 0 or not file.block.has(held_by) \
+					or file.section_of[held_by] != file.section_of[line]:
+				continue
+			var step: int = int(file.block[held_by])
+			if step > now and (to < 0 or step < to):
+				to = step
+	return to
 
 
 ## The line of [param id]'s placing at [param depth] (0 the model's own),
@@ -323,6 +372,15 @@ func _shared_count(text: String) -> Array:
 	var said: Array = Tested.said_all.get("steps", [])
 	var air: int = said.filter(func(line: Variant) -> bool: return str(line).ends_with("in the air")).size()
 	return [air, said.size() - air]
+
+
+func _forget(name: String) -> void:
+	DirAccess.remove_absolute(ModelStore.saved_path(name))
+	var folder: String = ModelVersions.folder(ModelStore._safe_name(name))
+	if DirAccess.dir_exists_absolute(folder):
+		for file: String in DirAccess.get_files_at(folder):
+			DirAccess.remove_absolute(folder + file)
+		DirAccess.remove_absolute(folder)
 
 
 func _frames(count: int) -> void:
@@ -400,6 +458,14 @@ class Restepped extends RefCounted:
 
 	func back(line: int) -> void:
 		block[line] = was[line]
+
+	## Whether [param line] places a sub-model of the file (a unit).
+	func places(line: int) -> bool:
+		var name: String = lines[line].strip_edges().get_slice(" ", 14).to_lower()
+		for section: String in names:
+			if section.to_lower() == name:
+				return true
+		return false
 
 	func moved() -> Array:
 		var out: Array = []
