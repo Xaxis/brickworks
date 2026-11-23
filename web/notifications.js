@@ -23,7 +23,7 @@
 // escapes its own.
 import { askToSignIn, call, signOut, signedIn, token } from "/account.js";
 import { showFeedCount, showTabCounts } from "/follow.js";
-import { say, told } from "/card.js";
+import { langAt, say, told } from "/card.js";
 import { group } from "/notice-view.js";
 import { iconButtonHtml, iconHtml, toast } from "/kit.js";
 
@@ -155,7 +155,7 @@ function actsOf(one, item) {
       } } });
     });
     const manage = document.createElement("a");
-    manage.href = "/settings#muted-part";
+    manage.href = `${langAt()}/settings#muted-part`;
     manage.textContent = say("What you hear of, and where");
     list.append(mute, manage);
     more.append(summary, list);

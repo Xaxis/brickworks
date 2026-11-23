@@ -15,6 +15,17 @@ whole cycle.
 
 ### Added
 
+- **Choose what you hear of, and where.** Settings › Notifications has a
+  row for each kind of notification, from comments on your models to news
+  from Brickworks, and a box for each place it can reach you: here (the
+  bell and your Notifications), by push on each device you turned on, and
+  in the one daily email. Push starts with replies and mentions; email is
+  off until you tick it. **Mute** a model, from its notification or its
+  page's More menu, and nothing about it reaches you until you unmute it;
+  Settings lists what you muted. **Done** takes a notification out of your
+  count and into a Done view, **Mark all done** all of them, each with
+  Undo, and anything new comes back. The account menu shows your five
+  newest, with their pictures.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

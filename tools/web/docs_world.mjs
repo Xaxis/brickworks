@@ -17,6 +17,7 @@ const outDir = path.join(wt, "docs-site/pictures/answers");
 const dir = await import(pathToFileURL(path.join(wt, "api/_directory.js")).href);
 const cards = await import(pathToFileURL(path.join(wt, "web/card.js")).href);
 const tested = await import(pathToFileURL(path.join(wt, "api/_tested.js")).href);
+const notices = await import(pathToFileURL(path.join(wt, "api/_notifications.js")).href);
 const fs = await import("node:fs");
 const TB = "d0c5d0c5-d0c5-4d0c-8d0c-d0c5d0c5d0c5";
 const BY = { handle: "test-builder", name: "Test builder" };
@@ -195,6 +196,34 @@ S[`/api/people?op=photos&id=${main.id}`] = { model: main.id, owner: true, photos
 S["/api/orangecheck?op=status"] = { ready: true, did: false, only: false, fresh: false };
 S["/api/oauth?op=connections"] = { connections: [], before: false };
 S["/api/plans?op=feedback"] = { beta: false, reports: [] };
+// Notifications (and the account menu's newest five, its first five), as
+// api/_notifications.js draws them from what the database hands it, on a
+// day of its own (NOW), so a picture never says the day's "2 hours ago";
+// and what the account chose (Settings' grid, Muted models).
+const NOW = Date.parse("2026-11-20T12:00:00Z");
+const ago = (minutes) => new Date(NOW - minutes * 60000).toISOString();
+const MIA = { handle: "mia-builds", name: "Mia" };
+const LEO = { handle: "leo-bricks", name: "Leo" };
+const SAM = { handle: "sam-makes", name: "Sam" };
+const noticeRows = [
+  { kind: "comment", at: ago(12), on: "DocsSprt01", model: "DocsSprt01", comment: 41, by: MIA,
+    said: "The steering really works. My son built it twice." },
+  { kind: "likes", at: ago(40), on: "DocsSprt01", model: "DocsSprt01", likes: 4, day: "2026-11-20" },
+  { kind: "photo", at: ago(95), on: "DocsSprt01", model: "DocsSprt01", photo: "DocsPhoto1", words: "Ours, in blue", yours: true, by: LEO },
+  { kind: "reply", at: ago(150), on: "DocsShop01", model: "DocsShop01", comment: 52, parent: 50, by: SAM,
+    said: "The awning is two slopes, yes." },
+  { kind: "achievement", at: ago(300), track: "designer", level: 3, of: 6, reached: 10 },
+  { kind: "remix", at: ago(420), on: "DocsOwl001", model: "DocsOwlRmx", of: "DocsOwl001", name: "Owl on a branch", of_name: "Barn owl", by: LEO },
+  { kind: "challenge_closing", at: ago(600), challenge: CHALLENGE.id, title: CHALLENGE.title, ends_on: CHALLENGE.ends_on },
+  { kind: "mention", at: ago(900), on: "DocsFire01", model: "DocsFire01", comment: 63, by: MIA, said: "@test-builder how did you hang the ladder?" },
+];
+const noticeModels = Object.fromEntries(["DocsSprt01", "DocsShop01", "DocsOwl001", "DocsFire01"].map((id) => [id,
+  { name: byId[id].name, has_image: true, has_thumb: true, updated_at: byId[id].updated_at }]));
+const drawnNotices = notices.noticeGroups({ rows: noticeRows, models: noticeModels, seen_at: ago(60), read_at: null, reads: {} }, "", NOW);
+S["/api/people?op=notifications"] = { ready: true, kept: true, chosen: true, view: "inbox", ...drawnNotices };
+S["/api/people?op=notification_prefs"] = { ready: true, kinds: notices.KINDS, mailed_as: notices.MAILED_AS,
+  here: notices.KINDS, push: ["reply", "mention", "comment"], email: ["reply", "mention"],
+  muted: [{ model: "DocsBoat01", name: byId.DocsBoat01.name, link: "/m/DocsBoat01", picture: "/m/DocsBoat01.webp" }] };
 const signed = { "$comment": "Signed in as the shared test account (you@example.com), over test-account.json. "
   + "Written by tools/web/docs_world.mjs: change it there.",
   answers: S, storage: { "brickworks.session": { refresh_token: "docs", email: EMAIL, user_id: TB,

@@ -2396,7 +2396,7 @@ function muteItem() {
       button.type = "button";
       button.dataset.mute = "";
       // Before Takedown requests, the menu's last.
-      const last = menu.querySelector("a[href$='/takedown']");
+      const last = menu.querySelector('a[href*="takedown"]');
       if (last) last.before(button);
       else menu.append(button);
       button.addEventListener("click", async () => {

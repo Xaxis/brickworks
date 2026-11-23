@@ -19,6 +19,8 @@ insert into public.shared_models (id, owner, name, author, parts, bytes, listed,
 insert into public.share_versions (model, n, at, parts, bytes, steps) values ('InboxTry01', 1, now() - interval '3 days', 12, 100, 6), ('InboxTry02', 1, now() - interval '2 days', 8, 100, 4);
 insert into auth.sessions (id, user_id) values ('00000000-0000-4000-8000-0000000017e1', '00000000-0000-4000-8000-0000000017a1');
 insert into public.push_subscriptions (endpoint, account, p256dh, auth, origin, lang, made_at, session) values ('https://updates.push.services.mozilla.com/wpush/v2/inbox-try', '00000000-0000-4000-8000-0000000017a1', 'BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAA', 'https://brickworks.diy', 'en', now() - interval '10 minutes', '00000000-0000-4000-8000-0000000017e1');
+-- Each account with a device turned on before the file kept what it was pushed then: a row each, those seven kinds.
+select (select count(distinct s.account) from public.push_subscriptions s join auth.users u on u.id = s.account where s.endpoint <> 'https://updates.push.services.mozilla.com/wpush/v2/inbox-try') as "accounts with a device before", (select count(*) from public.notification_prefs p where p.push = array['comment', 'reply', 'mention', 'photo', 'remix', 'result', 'talk'] and p.here is null and p.email is null) as "rows kept for them (the same)";
 -- Before any choice: no row, the defaults; and the count as before (null).
 select public.notification_prefs_of('00000000-0000-4000-8000-0000000017a1') as "Ada, never chose", public.notification_count_kept('00000000-0000-4000-8000-0000000017a1') as "her count kept (null: as before)";
 -- Bob comments on the tower, likes the tower and the shed.
@@ -35,6 +37,13 @@ select public.notification_choose('00000000-0000-4000-8000-0000000017a1', 'likes
 select public.notification_choose('00000000-0000-4000-8000-0000000017a1', 'likes', 'here', false)->'here' as "here: likes off";
 select public.notification_choose('00000000-0000-4000-8000-0000000017a1', 'likes', 'email', true)->'email' as "email: likes on";
 select (select count(*) from public.notification_prefs where account = '00000000-0000-4000-8000-0000000017a1') as "her rows (one)", (select email_since is not null from public.notification_prefs where account = '00000000-0000-4000-8000-0000000017a1') as "email since set";
+-- Bob had a device turned on before the file (as if): keeping devices makes his row, those seven kinds; Ada's choices stay hers.
+insert into auth.sessions (id, user_id) values ('00000000-0000-4000-8000-0000000017e3', '00000000-0000-4000-8000-0000000017b2');
+insert into public.push_subscriptions (endpoint, account, p256dh, auth, origin, lang, made_at, session) values ('https://updates.push.services.mozilla.com/wpush/v2/inbox-try-bob', '00000000-0000-4000-8000-0000000017b2', 'BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAA', 'https://brickworks.diy', 'en', now() - interval '30 days', '00000000-0000-4000-8000-0000000017e3');
+select public.notification_prefs_keep_devices() as "kept (Ada and Bob have devices: Bob's alone made, 1)";
+select public.notification_prefs_of('00000000-0000-4000-8000-0000000017b2')->'push' as "Bob pushed", public.notification_prefs_of('00000000-0000-4000-8000-0000000017a1')->'push' as "Ada pushed (her own choice)";
+select public.notification_prefs_keep_devices() as "again: 0";
+delete from public.push_subscriptions where endpoint = 'https://updates.push.services.mozilla.com/wpush/v2/inbox-try-bob';
 -- Counted here: the comment, not the likes.
 select public.notification_count_kept('00000000-0000-4000-8000-0000000017a1') as "count: the comment alone (1)";
 -- The shed muted: its like goes from the push too. Refusals: a model nobody has, a made-up id.

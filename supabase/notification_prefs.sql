@@ -13,7 +13,8 @@
 -- follow), challenge (one opening, its last two days), result (who won one
 -- you entered or voted in), achievement and news (the site's owner's
 -- announcements). Until an account chooses, each is here, pushed only for
--- reply and mention (to a device turned on in Settings), and emailed as
+-- reply and mention (to a device turned on in Settings; one turned on
+-- before this file keeps the kinds it was pushed then, below), and emailed as
 -- before: comments, photos and remixes as mail_choices says (follows.sql),
 -- news as the news choice says (announce.sql), the other seven not at all.
 -- The email of those four is kept where it was; the other seven's here.
@@ -575,6 +576,31 @@ grant execute on function public.notification_done(uuid, text, timestamptz, bool
 revoke all on function public.notification_count_kept(uuid) from public, anon, authenticated;
 grant execute on function public.notification_count_kept(uuid) to service_role;
 revoke all on function public.push_mark_chosen() from public, anon, authenticated, service_role;
+
+-- A device turned on before this file was pushed comments, replies,
+-- mentions (in comments and in Talk), photos, remixes, results and Talk
+-- posts (api/_push.js's kinds then), which its owner chose by turning it
+-- on: each such account keeps those, as its first row. Only a device turned
+-- on from now starts at replies and mentions. Once: a row already there,
+-- a choice made, is left as it is.
+-- (A function, so its dry run can try it on a device made there.)
+create or replace function public.notification_prefs_keep_devices()
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+    with kept as (
+        insert into public.notification_prefs (account, push)
+        select distinct s.account, array['comment', 'reply', 'mention', 'photo', 'remix', 'result', 'talk']
+          from public.push_subscriptions s
+          join auth.users u on u.id = s.account
+        on conflict (account) do nothing
+        returning 1)
+    select count(*)::integer from kept
+$$;
+revoke all on function public.notification_prefs_keep_devices() from public, anon, authenticated, service_role;
+select public.notification_prefs_keep_devices() as "accounts with a device kept as they were pushed";
 
 -- Every five minutes: due, whoever chose a kind no trigger marks.
 do $chosen$
