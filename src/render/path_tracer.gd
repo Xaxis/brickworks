@@ -95,6 +95,10 @@ var _place_for: StudioPanorama = null
 var _surface_texture: RID
 var _surface_for: Image = null
 var _tile_sampler: RID
+## The stud logo's letters (photoreal7): how high they stand, baked from
+## LDraw's logo5.dat by tools/photoreal/bake_logo.py.
+const LOGO := "res://assets/render/stud_logo.png"
+var _logo_texture: RID
 var _accum: RID
 ## What the eye's first hit is, summed over the samples (photoreal3): its
 ## normal and its albedo's lightness, for the product look's denoise.
@@ -539,6 +543,26 @@ func surface_with(image: Image) -> void:
 	_surface_texture = _rd.texture_create(format, RDTextureView.new(), [tile.get_data()])
 
 
+## The stud logo's height map as a texture: a 2 x 2 flat one when it cannot
+## be read, so a stud draws without letters rather than not at all.
+func _logo() -> RID:
+	var image: Image = ResourceLoader.load(LOGO, "Image") as Image
+	if image == null:
+		push_warning("PathTracer: no stud logo at %s" % LOGO)
+		image = Image.create(2, 2, false, Image.FORMAT_L8)
+	else:
+		image = image.duplicate() as Image
+		if image.is_compressed():
+			image.decompress()
+		image.convert(Image.FORMAT_L8)
+	var format := RDTextureFormat.new()
+	format.width = image.get_width()
+	format.height = image.get_height()
+	format.format = RenderingDevice.DATA_FORMAT_R8_UNORM
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT
+	return _rd.texture_create(format, RDTextureView.new(), [image.get_data()])
+
+
 ## The running sum and the picture, at [param size]: started again.
 func begin(size: Vector2i) -> bool:
 	if not _make() or not _tlas.is_valid():
@@ -584,6 +608,8 @@ func _bind() -> void:
 		light_with(null)
 	if not _surface_texture.is_valid():
 		surface_with(null)
+	if not _logo_texture.is_valid():
+		_logo_texture = _logo()
 	var bytes: PackedByteArray = scene.to_byte_array()
 	_scene_buffer = _storage(bytes)
 	var uniforms: Array[RDUniform] = []
@@ -601,6 +627,8 @@ func _bind() -> void:
 	uniforms.append(_uniform(10, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide]))
 	uniforms.append(_uniform(11, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
 		[_tile_sampler, _surface_texture]))
+	uniforms.append(_uniform(12, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
+		[_tile_sampler, _logo_texture]))
 	_trace_set = _rd.uniform_set_create(uniforms, _shader, 0)
 	var resolving: Array[RDUniform] = [
 		_uniform(0, RenderingDevice.UNIFORM_TYPE_IMAGE, [_accum]),
@@ -769,7 +797,8 @@ func release() -> void:
 	_free(_resolve_set)
 	_free(_scene_buffer)
 	_free_picture_set()
-	for rid: RID in [_accum, _guide, _picture, _place_texture, _place_table, _surface_texture]:
+	for rid: RID in [_accum, _guide, _picture, _place_texture, _place_table, _surface_texture,
+			_logo_texture]:
 		_free(rid)
 	if _pipeline.is_valid():
 		_holders -= 1

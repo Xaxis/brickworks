@@ -58,6 +58,12 @@ All part geometry derives from the LDraw Parts Library.
   parts in a model file are drawn from them (`CustomParts.begin_skins`), and
   so are most of the parts a model file carries. The notice above covers
   them.
+- The stud logo a Best render raises on every stud
+  (`assets/render/stud_logo.png`, the path tracer's `logo_map`) is a height
+  map drawn from the library's `p/logo5.dat`, "LEGO Logo for Studs - 3D
+  Flattened", by Magnus Forsberg, CC BY 4.0, by
+  `tools/photoreal/bake_logo.py`: its letters' outlines from above, each
+  edge rounded over. A derivative work; the notice above covers it.
 
 ## BrickNet's connector labels and colliders
 
