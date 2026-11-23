@@ -2,14 +2,20 @@
 // no publish counted and no version made (cardlook, 2026-11-23).
 //
 //   node --env-file=.env tools/web/relay_server.mjs 11781 &
-//   node --env-file=.env tools/web/cardput_check.mjs --url=http://127.0.0.1:11781
+//   node --env-file=.env tools/web/cardput_check.mjs --url=http://127.0.0.1:11781 [--dir=CARDS]
 //
 // The run's own throwaway account publishes a one-brick model, unlisted,
 // with a card; then puts another card on it (op=card), and the model's
 // /m/X.webp is the new card's bytes while the model's time of its last
 // publish stays as it was. A second throwaway account's op=card on it is refused
 // 403, a picture that is not a WebP 415, a link nobody has 404, and no
-// sign-in 401. Both accounts are deleted at the end, with the model.
+// sign-in 401. With --dir (tools/bench/cardlook.py cards), gallery_seed.mjs
+// --cards, run as this account on unlisted models of its own under the
+// cards' titles, puts each card on its model. Both accounts are deleted at
+// the end, with the models.
+import { spawnSync } from "node:child_process";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { deleteAccount, endOwnAccount, mintSession, ownAccount, runAddress } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -83,6 +89,27 @@ try {
   const nobody = await ask(`/api/share?op=card&id=${id}`, "", { thumb: second.toString("base64") });
   check(nobody.status === 401, `no sign-in refused: ${nobody.status} ${nobody.said.error || ""}`);
   await ask(`/api/share?op=unpublish&id=${id}`, token, {});
+
+  // --dir=CARDS (tools/bench/cardlook.py cards): gallery_seed.mjs --cards
+  // run as this account, on unlisted models of its own under the bodies'
+  // titles, puts each body's card on its model and nothing else.
+  if (args.dir) {
+    const bodies = readdirSync(String(args.dir)).filter((f) => /^\d+\.json$/.test(f))
+      .map((f) => JSON.parse(readFileSync(join(String(args.dir), f), "utf8")));
+    const ids = new Map();
+    for (const body of bodies) {
+      const made = await ask("/api/share", token, { name: body.name, model: MODEL, listed: false, thumb: first.toString("base64") });
+      ids.set(body.name, made.said.id);
+    }
+    const ran = spawnSync(process.execPath, ["tools/web/gallery_seed.mjs", `--url=${base}`, `--dir=${args.dir}`, "--cards"],
+      { env: { ...process.env, GALLERY_EMAIL: mine }, encoding: "utf8" });
+    check(ran.status === 0, `gallery_seed.mjs --cards: exit ${ran.status}: ${ran.stdout.trim().split("\n").pop()}`);
+    for (const body of bodies) {
+      const got = await ask(`/m/${ids.get(body.name)}.webp?v=c${Date.now().toString(36)}`, "");
+      check(got.bytes.equals(Buffer.from(body.thumb, "base64")), `${body.name}: its card is the body's (${got.bytes.length} bytes)`);
+      await ask(`/api/share?op=unpublish&id=${ids.get(body.name)}`, token, {});
+    }
+  }
 } catch (trouble) {
   check(false, `the check stopped: ${trouble.message}`);
 } finally {

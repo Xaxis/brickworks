@@ -12,6 +12,10 @@ judged and shown on that ground, the light theme's unless said.
         the blind judge (tools/bench/judge.py, on the subscription), both orders of each
         pair: which looks more like a photograph of the real model. A model is won when
         the new card is chosen in both orders. OUT/judge_<look>.json and a summary.
+    tools/bench/cardlook.py cards BODIES OUT
+        each body src/dev/gallery_seed.gd wrote (<n>.json) cut to its title and its card,
+        for tools/web/gallery_seed.mjs --dir=OUT --cards: the house's cards without their
+        files, a few KB each; and OUT/<n>.png, each card to look at
 """
 
 from __future__ import annotations
@@ -177,10 +181,30 @@ def judge_look(folder: Path, look: str, out: Path, model: str, jobs: int, only: 
     return 0
 
 
+def cards(bodies: Path, out: Path) -> int:
+    import base64
+    import io
+    out.mkdir(parents=True, exist_ok=True)
+    made = 0
+    for path in sorted(bodies.glob("*.json"), key=lambda p: int(p.stem) if p.stem.isdigit() else 0):
+        if not path.stem.isdigit():
+            continue
+        body = json.loads(path.read_text())
+        if not body.get("thumb"):
+            print(f"  {path.name}: {body.get('name')}: no card")
+            continue
+        (out / path.name).write_text(json.dumps({"name": body["name"], "thumb": body["thumb"]}))
+        Image.open(io.BytesIO(base64.b64decode(body["thumb"]))).save(out / f"{path.stem}.png")
+        made += 1
+    print(f"{out}: {made} cards")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("what", choices=["sheet", "judge"])
+    parser.add_argument("what", choices=["sheet", "judge", "cards"])
     parser.add_argument("dir", type=Path)
+    parser.add_argument("to", type=Path, nargs="?")
     parser.add_argument("--looks", default="new")
     parser.add_argument("--look", default="new")
     parser.add_argument("--out", type=Path)
@@ -190,6 +214,8 @@ def main() -> int:
     parser.add_argument("--theme", default="light", choices=list(GROUNDS))
     given = parser.parse_args()
     only = [int(n) for n in given.only.split(",") if n] or None
+    if given.what == "cards":
+        return cards(given.dir, given.to)
     if given.what == "sheet":
         return sheet(given.dir, given.looks.split(","), given.out or given.dir / "sheet.jpg", only)
     return judge_look(given.dir, given.look, given.out or given.dir / "judge", given.model, given.jobs,
