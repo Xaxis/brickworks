@@ -236,6 +236,9 @@ export const TRACKS = {
     how: "A model is marked Tested when it stands at every step as it is shared.", href: "/docs/sharing#tested" },
   challenger: { name: "Challenger", unit: ["challenge", "challenges"], first: "first challenge",
     what: ["challenge entered", "challenges entered"], how: "Enter this month's building challenge.", href: "/challenge" },
+  // Weeks in a row with an entry in the weekly quick build (supabase/challenge_prompts.sql).
+  streak: { name: "Streak", unit: ["week", "weeks"], first: "first week", what: ["week in a row with a quick build", "weeks in a row with a quick build"],
+    how: "Publish an entry to the weekly quick build, week after week.", href: "/challenge" },
 };
 
 /// A level as its pill says it: "Designer · 10 models", "Designer · first
@@ -277,13 +280,28 @@ export function shareTargets({ url, text, image = "" }) {
   ].filter(Boolean);
 }
 
+/// The places a model's designer can take a kit to post it (unit postkit,
+/// web/post-kit.js): each its key and its name, in the page's language.
+/// Brickworks posts nothing to any of them; the kit is made in the
+/// designer's browser.
+export const postPlaces = () => [["legomoc", "r/legomoc"], ["lego", "r/lego"], ["instagram", "Instagram"],
+  ["ideas", say("LEGO® Ideas")], ["rebrickable", "Rebrickable"], ["flickr", "Flickr"]];
+
 /// Share's sheet, every page's (docs/SOCIAL.md U14 and section 7): the
 /// site's dialog with the page's link and Copy, the networks to post it to
 /// (shareTargets), the code that embeds it where it has one ([embed]), and
 /// a way to the phone's own share sheet, which web/share-sheet.js shows
 /// where the browser has one. [name] heads it, [about] says what the link
 /// opens, [text] is what a post says. Closed, and inert with no script.
-export function shareSheetHtml({ url, name, about = "", text = name, image = "", embed = "" }) {
+/// With [post], a model's: Post it elsewhere (postPlaces), hidden until
+/// its page knows the person looking is its designer (web/model-page.js).
+export function shareSheetHtml({ url, name, about = "", text = name, image = "", embed = "", post = false }) {
+  const places = post ? `<div class="post-kits" id="post-kits" role="group" aria-labelledby="post-kits-h" hidden>`
+    + `<p id="post-kits-h">${escapeHtml(say("Post it elsewhere"))} <small>${escapeHtml(say("A kit for each place, in its own "
+      + "form and rules, with this link: its pictures, its words and its files. You post it, from your own account."))}</small></p>`
+    + postPlaces().map(([key, label]) => `<button type="button" class="cta ghost small" data-kit="${key}" `
+      + `aria-haspopup="dialog">${escapeHtml(label)}</button>`).join("")
+    + `</div>` : "";
   const to = shareTargets({ url, text, image }).map(([key, label, href]) => `<a class="cta ghost small" data-to="${key}" `
     + `href="${escapeHtml(href)}"${key === "email" ? "" : ' target="_blank" rel="noopener noreferrer"'}>${escapeHtml(label)}`
     + `${key === "email" ? "" : `<span class="visually-hidden"> ${escapeHtml(say("(opens in a new tab)"))}</span>`}</a>`).join("");
@@ -294,6 +312,7 @@ export function shareSheetHtml({ url, name, about = "", text = name, image = "",
     + `<div class="copy-row"><label>${escapeHtml(say("Its link"))}<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
     + `<button type="button" class="cta" data-copy="share-link">${escapeHtml(say("Copy link"))}</button></div>`
     + `<div class="share-to" role="group" aria-labelledby="share-to-h"><p id="share-to-h">${escapeHtml(say("Post it to"))}</p>${to}</div>`
+    + places
     + (embed ? `<div class="copy-row"><label>${escapeHtml(say("Embed it in a page"))} <small>${escapeHtml(say("Its picture and name, "
       + "opening it here, light or dark to suit whoever looks at it"))}</small>`
       + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(embed)}</textarea></label>`
@@ -318,14 +337,33 @@ function tallyHtml(icon, n, one, many) {
     + `<span class="visually-hidden">${escapeHtml(words.slice(words.indexOf(" ")))}</span></span>`;
 }
 
-/// What the asker's collection holds of a card's model, in a line, or "".
+/// What the asker's collection holds of a card's model ([owned]: {have,
+/// pieces}, by part and colour, the gallery's count), in a line: "You have
+/// 87%" from half its parts up, "✓ You have every part" at all of them, and
+/// "" below half (ownedparts: a builder acts on what they can nearly build;
+/// a row of "You have 3%" says nothing), signed out, or not counted. The
+/// share is rounded down, so 99.9% is never "every part".
 export function ownedLine(owned) {
-  if (!owned || owned.pieces === null || owned.pieces === undefined || !Number(owned.pieces)) return "";
-  const have = Number(owned.have) || 0;
-  const pieces = Number(owned.pieces);
+  const pieces = Number(owned?.pieces);
+  if (!owned || owned.pieces === null || !Number.isFinite(pieces) || pieces < 1) return "";
+  const have = Math.min(Math.max(Number(owned.have) || 0, 0), pieces);
   if (have >= pieces) return `✓ ${say("You have every part")}`;
-  if (have === 0) return say("You have none of its parts");
-  return `${say("You have {have} of its {pieces} parts", { have: number(have), pieces: number(pieces) })} · ${Math.floor((100 * have) / pieces)}%`;
+  if (2 * have < pieces) return "";
+  const share = (Math.floor((100 * have) / pieces) / 100)
+    .toLocaleString(globalThis.brickworksLang?.locale || "en-US", { style: "percent", maximumFractionDigits: 0 });
+  return say("You have {share}", { share });
+}
+
+/// The card's line of [owned] (ownedLine), with the count it is made of on
+/// hover, or "": a gallery card's, and the home feed's build posts', the one
+/// way.
+export function ownedHtml(owned) {
+  const line = ownedLine(owned);
+  if (!line) return "";
+  const pieces = Number(owned.pieces);
+  const have = Math.min(Math.max(Number(owned.have) || 0, 0), pieces);
+  const count = say("You have {have} of its {pieces} parts", { have: number(have), pieces: number(pieces) });
+  return `<small class="${have >= pieces ? "owned all" : "owned"}" title="${escapeHtml(count)}">${escapeHtml(line)}</small>`;
 }
 
 /// A model's motions as a card says them: "open the dome, extend the
@@ -399,6 +437,20 @@ export function madeOf(model) {
   const brickify = tags.includes("brickify") && !tags.includes("ai-designed");
   return { way: tags.some((tag) => ASSISTANT_TAGS.includes(tag)) ? "assistant" : "hand",
     by: brickify ? "brickify" : tags.includes("ai-designed") ? "assistant" : "hand", said: "tags" };
+}
+
+/// [model] as anybody may be told of it. How it was made is its owner's to
+/// say (the owner, 2026-11-23: not "unless a user wants to share it that
+/// way"): until they chose to show it (made_with_shown,
+/// supabase/made_with_shown.sql) its made_with is not said and the tags
+/// that say it are left off, so madeOf finds it built by hand, as it does
+/// any model that never said. Before that file is applied no model says it
+/// is shown, and none is. made_with is still kept, for its owner.
+export function madePublic(model) {
+  if (!model || typeof model !== "object") return model;
+  if (model.made_with_shown === true) return model;
+  return { ...model, made_with: null, made_with_shown: false,
+    tags: Array.isArray(model.tags) ? model.tags.filter((tag) => !ASSISTANT_TAGS.includes(tag)) : model.tags };
 }
 
 /// The marks a card for [model] carries over its picture that a page may
@@ -490,6 +542,12 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     marks.push(`<span class="pill good tested" title="${escapeHtml(say(TESTED_SAYS))}">✓ ${escapeHtml(say("Tested"))}</span>`);
     data.push('data-tested="yes"');
   }
+  // Still being built (supabase/wip.sql): said on its picture, so Newest
+  // never passes one off as finished.
+  if (model.wip === true) {
+    marks.push(`<span class="pill wip" title="${escapeHtml(say("Its designer is still building it, and shares each version"))}">${escapeHtml(say("Work in progress"))}</span>`);
+    data.push('data-wip="yes"');
+  }
   // A set of the LDraw library: its number, its theme and its year, each
   // where the index knows it.
   const set = isSet(model) ? model.library : null;
@@ -528,11 +586,11 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     say(model.likes, "like");
     lines.push(`<small>${escapeHtml(said.join(" · "))}</small>`);
   }
-  // Signed in with a collection: how much of it is theirs already.
-  const theirs = ownedLine(model.owned);
-  if (theirs) {
-    const all = Number(model.owned.have) >= Number(model.owned.pieces);
-    lines.push(`<small class="${all ? "owned all" : "owned"}">${escapeHtml(theirs)}</small>`);
+  // Signed in with a collection: how much of it is theirs already, from
+  // half up; what was counted is on the card whatever it is.
+  const theirs = ownedHtml(model.owned);
+  if (theirs) lines.push(theirs);
+  if (model.owned && Number(model.owned.pieces) >= 1) {
     data.push(`data-owned="${Number(model.owned.have) || 0}/${Number(model.owned.pieces)}"`);
   }
   // What it won in the monthly challenges (supabase/challenges.sql).
@@ -858,16 +916,94 @@ const HOW_MODEL = { alternate: "An alternate build of {model}", changed: "Change
 
 /// A model's lines under its remix line, one a thing it is based on: "An
 /// alternate build of set 6080-1 King's Castle", "Changed from “A castle”
-/// by Someone (CC BY 4.0)". "" for none. Every word escaped.
+/// by Someone (CC BY 4.0)". "" for none. Every word escaped. An alternate
+/// build of a set says what the count found (altbuilds, api/_alts.js): with
+/// [share] ({have, pieces}) ": every part from the set" or ": 97% from the
+/// set"; with [short] (its designer's own answer alone) how many of its
+/// parts the set does not hold.
 export function basedHtml(said) {
   if (!said.length) return "";
   const filled = (english, name, html) => escapeHtml(say(english)).replace(`{${name}}`, html);
+  const counted_ = (one) => {
+    if (one.how !== "alternate" || !one.set) return "";
+    if (Number(one.short) > 0) {
+      return ` <span class="alt-short" data-short="${Number(one.short)}">${escapeHtml(say("(uses {parts} not in the set)",
+        { parts: counted(Number(one.short), "part") }))}</span>`;
+    }
+    const share = one.share;
+    if (!share || !(share.pieces > 0)) return "";
+    return escapeHtml(share.have >= share.pieces ? say(": every part from the set")
+      : say(": {n}% from the set", { n: percentOf(share.have, share.pieces) }));
+  };
   const line = (one) => (one.set
     ? filled(HOW_SET[one.how], "set", `<a href="${escapeHtml(one.href)}">${escapeHtml(say("set {set}", { set: one.name ? `${one.set} ${one.name}` : one.set }))}</a>`)
+      + counted_(one)
     : filled(HOW_MODEL[one.how], "model", `<a href="${escapeHtml(one.href)}" rel="nofollow ugc noopener">“${escapeHtml(one.name)}”</a>`)
       + `${one.author ? ` ${escapeHtml(say("by {name}", { name: one.author }))}` : ""}${one.licence ? ` (${escapeHtml(one.licence)})` : ""}`);
   return `<ul class="from based-on" id="based-on" aria-label="${escapeHtml(say("What it is based on"))}">`
     + `${said.map((one) => `<li data-how="${one.how}">${line(one)}</li>`).join("")}</ul>`;
+}
+
+// ---------------------------------------------------------------------------
+// Built from a real set, counted (altbuilds, api/_alts.js).
+
+/// A share as a page says it: whole percent, never 100 short of every piece
+/// (199 of 200 is 99%). api/_alts.js percentOf is this one.
+export function percentOf(have, pieces) {
+  if (!(pieces > 0)) return 0;
+  if (have >= pieces) return 100;
+  return Math.min(99, Math.floor((100 * have) / pieces));
+}
+
+/// A set as an alternate build's line names it: its number without the
+/// "-1" every first version has, and its name ("31009 Small Cottage").
+export const setTitle = (set, name) => `${String(set).replace(/-1$/, "")}${name ? ` ${name}` : ""}`;
+
+/// Sets one after another in words: "A and B", "A, B and C".
+function andSaid(parts) {
+  if (parts.length < 2) return parts[0] || "";
+  return say("{first} and {last}", { first: parts.slice(0, -1).join(", "), last: parts[parts.length - 1] });
+}
+
+/// A model's line under its credit, from what was counted ([said]:
+/// api/_alts.js altSaid, each set with {set, name, href}): "An alternate
+/// build of 31009 Small Cottage: every part from the set", "An alternate
+/// build of 42115 and 42054", "97% from 31009 Small Cottage"; each set
+/// linking its page. "" for none.
+export function altHtml(said) {
+  if (!said || !Array.isArray(said.sets) || !said.sets.length || !(said.pieces > 0)) return "";
+  const link = (one) => `<a href="${escapeHtml(one.href)}">${escapeHtml(setTitle(one.set, one.name))}</a>`;
+  const mark = "\u0000";
+  const fill = (words, html) => escapeHtml(words).split(mark).join(html);
+  let line;
+  if (said.how === "whole") line = fill(say("An alternate build of {set}: every part from the set", { set: mark }), link(said.sets[0]));
+  else if (said.how === "group") {
+    const names = said.sets.map((_, at) => `${mark}${at}${mark}`);
+    line = escapeHtml(say("An alternate build of {sets}", { sets: andSaid(names) }))
+      .replace(new RegExp(`${mark}(\\d)${mark}`, "g"), (_, at) => link(said.sets[Number(at)]));
+  } else {
+    line = fill(say("{n}% from {set}", { n: percentOf(said.sets[0].have, said.pieces), set: mark }), link(said.sets[0]));
+  }
+  return `<p class="from alt-build" id="alt-build" data-alt="${escapeHtml(said.how)}">${line}</p>`;
+}
+
+/// How a card on a set's page is built from the set (api/_bases.js altCard),
+/// in a few words under it: "Every part from this set", "With 6111 and
+/// 8186", "97% of its parts from this set", or how its designer says it is
+/// based on it. "" for none.
+export function altCardSaid(alt, based) {
+  if (alt && alt.pieces > 0) {
+    if (alt.role === "group" && Array.isArray(alt.with) && alt.with.length) {
+      return say("{n}% from this set, the rest from {sets}", { n: percentOf(alt.have, alt.pieces),
+        sets: andSaid(alt.with.map((one) => setTitle(one.set))) });
+    }
+    if (alt.have >= alt.pieces) return say("Every part from this set");
+    return say("{n}% of its parts from this set", { n: percentOf(alt.have, alt.pieces) });
+  }
+  if (based === "alternate") return say("An alternate build of it");
+  if (based === "changed") return say("Changed from it");
+  if (based === "inspired") return say("Inspired by it");
+  return "";
 }
 
 // ---------------------------------------------------------------------------
@@ -907,4 +1043,157 @@ export function mentionPieces(text, mentions) {
   }
   if (from < words.length) pieces.push(words.slice(from));
   return pieces;
+}
+
+// ---------------------------------------------------------------------------
+// A comment pinned to a part (partpins, 2026-11-23, api/_comments.js,
+// supabase/comment_pins.sql): which part of a version it is on, and which
+// part of another version it is on there. The one rule the model's page,
+// its 3D view, the server and the app (src/net/pin_place.gd, the same
+// numbers) all keep, held to real models' version pairs by
+// tests/test_partpins.py (tools/pin_pairs.mjs).
+//
+// A pin keeps the part as the file had it on the version it was made on:
+// its number, its colour, where it stood (at, LDraw's coordinates, LDU),
+// how it was turned (turn, pinTurn's), its place in the file (section and
+// line), where the other parts of its number and colour stood within
+// PIN.near of it (near; full false when there were more than PIN.most), and
+// which parts of another number or colour stood where it stood (with: a
+// window's glass in its frame). Shown on a version, it is on:
+//   - the part of its number and colour standing where it stood (within
+//     PIN.slack), turned as it was where others of its kind stood there too
+//     (a ring of curved parts about one point): the same part;
+//   - else, when nothing new stands there and every one of its neighbours
+//     of its kind is still where it was, the one part of its number and
+//     colour within PIN.reach of it that was not one of them: the part
+//     moved since;
+//   - else on no part. Then it is listed as said on its version, never on
+//     a part it was not made on: a part recoloured, swapped, taken off, or
+//     moved beside another of its kind that moved too.
+
+export const PIN = { slack: 2, reach: 20, near: 24, most: 48, turned: 0.05 };
+
+/// A part's number as the rule compares two: lower case, without a folder
+/// or ".dat".
+export function pinPart(id) {
+  return String(id ?? "").trim().toLowerCase().replace(/\\/g, "/").replace(/^.*\//, "").replace(/\.(dat|ldr)$/, "");
+}
+
+const apart = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const kindOf = (one) => `${pinPart(one.part)} ${Number(one.colour)}`;
+
+/// How a part is turned, as a pin keeps it: LDraw's nine numbers (a b c d e
+/// f g h i, a row at a time), each column made a unit, and a mirrored part's
+/// first column turned back (as the 3D view's scene keeps it, api/_parts.js
+/// placeOf), each to four places. Null for nine that are not numbers.
+export function pinTurn(nine) {
+  if (!Array.isArray(nine) || nine.length !== 9 || !nine.every((v) => Number.isFinite(Number(v)))) return null;
+  const r = nine.map(Number);
+  for (let c = 0; c < 3; c += 1) {
+    const n = Math.hypot(r[c], r[3 + c], r[6 + c]) || 1;
+    for (let k = 0; k < 3; k += 1) r[k * 3 + c] /= n;
+  }
+  const det = r[0] * (r[4] * r[8] - r[5] * r[7]) - r[1] * (r[3] * r[8] - r[5] * r[6]) + r[2] * (r[3] * r[7] - r[4] * r[6]);
+  if (det < 0) for (const k of [0, 3, 6]) r[k] = -r[k];
+  return r.map((v) => Math.round(v * 1e4) / 1e4 + 0);
+}
+
+/// pinTurn's of a turn as the 3D view's scene keeps it: a unit quaternion
+/// [x, y, z, w] in the app's axes, LDraw's turned by diag(1, -1, -1).
+export function pinTurnOfQuaternion(q) {
+  const [x, y, z, w] = q.map(Number);
+  const m = [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w),
+    2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w),
+    2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)];
+  const f = [1, -1, -1];
+  return pinTurn(m.map((v, k) => v * f[Math.floor(k / 3)] * f[k % 3]));
+}
+
+const sameTurn = (a, b) => !a || !b || a.every((v, k) => Math.abs(v - b[k]) <= PIN.turned);
+
+/// Where [pin] is among [bricks] ([{part, colour, at, turn}], a version's
+/// parts, at in LDraw's coordinates, turn pinTurn's or none): {index,
+/// moved}, or null for on none.
+export function pinPlace(pin, bricks) {
+  if (!pin || !Array.isArray(pin.at) || pin.at.length !== 3 || !Array.isArray(bricks)) return null;
+  const at = pin.at.map(Number);
+  if (!at.every(Number.isFinite)) return null;
+  const kind = kindOf(pin);
+  const near = (Array.isArray(pin.near) ? pin.near : []).filter((p) => Array.isArray(p) && p.length === 3);
+  // Others of its kind where it stood: then only its turn tells it apart.
+  const twins = near.some((p) => apart(p, at) <= PIN.slack);
+  const turn = Array.isArray(pin.turn) && pin.turn.length === 9 ? pin.turn : null;
+  const beside = new Set((Array.isArray(pin.with) ? pin.with : []).map((one) => kindOf({ part: one?.[0], colour: one?.[1] })));
+  let kept = -1;
+  let keptOff = Infinity;
+  let other = false;
+  const same = [];
+  for (let i = 0; i < bricks.length; i += 1) {
+    const one = bricks[i];
+    if (!one || !Array.isArray(one.at)) continue;
+    const off = apart(one.at, at);
+    const alike = kindOf(one) === kind;
+    if (off <= PIN.slack) {
+      if (!alike) {
+        if (!beside.has(kindOf(one))) other = true;
+      } else if ((!twins || sameTurn(turn, one.turn)) && off < keptOff) {
+        kept = i;
+        keptOff = off;
+      }
+    }
+    if (alike && off <= PIN.near + PIN.slack) same.push(i);
+  }
+  if (kept >= 0) return { index: kept, moved: false };
+  if (other || twins || pin.full === false) return null;
+  for (const p of near) if (!same.some((i) => apart(bricks[i].at, p) <= PIN.slack)) return null;
+  const moved = same.filter((i) => {
+    const off = apart(bricks[i].at, at);
+    return off > PIN.slack && off <= PIN.reach && !near.some((p) => apart(bricks[i].at, p) <= PIN.slack);
+  });
+  return moved.length === 1 ? { index: moved[0], moved: true } : null;
+}
+
+/// The pin for the part [index] of [bricks] (a version's parts, each
+/// {part, colour, at, turn, section, line}): its number, colour, place,
+/// turn and line, where the others of its kind stood near it, and what else
+/// stood where it stood.
+export function pinOf(bricks, index) {
+  const one = bricks[index];
+  const near = [];
+  const beside = new Map();
+  const round = (p) => p.map((v) => Math.round(v * 100) / 100 + 0);
+  for (let i = 0; i < bricks.length; i += 1) {
+    const other = bricks[i];
+    if (i === index || !other) continue;
+    const off = apart(other.at, one.at);
+    if (kindOf(other) === kindOf(one)) {
+      if (off <= PIN.near) near.push(round(other.at));
+    } else if (off <= PIN.slack && beside.size < 16) {
+      beside.set(kindOf(other), [String(other.part), Number(other.colour)]);
+    }
+  }
+  near.sort((a, b) => apart(a, one.at) - apart(b, one.at));
+  return { part: String(one.part), colour: Number(one.colour), at: round(one.at), turn: one.turn || null,
+    section: String(one.section ?? ""), line: Number(one.line) || 0, near: near.slice(0, PIN.most),
+    full: near.length <= PIN.most, with: [...beside.values()] };
+}
+
+/// A part's name said after "the": "2 × 4 brick" for a plain "Brick 2 x 4"
+/// (a kind and its size, as LDraw names the common ones), else its name as
+/// it is, each "x" between two numbers a "×". "" for none.
+export function partSaid(name) {
+  const named = String(name ?? "").trim().replace(/\s+/g, " ").replace(/(\d)\s*x\s*(?=\d)/gi, "$1 × ");
+  const plain = /^(brick|plate|tile|slope|panel|wedge plate|round brick|round plate|round tile)\s+(\d+(?: × \d+){1,2})$/i
+    .exec(named);
+  return plain ? `${plain[2]} ${plain[1].toLowerCase()}` : named;
+}
+
+/// Where a pinned comment is, in words: "on the 2 × 4 brick, step 12",
+/// "on the 2 × 4 brick", "on a part, step 12", with [name] the part's name
+/// (the page's or the app's, partSaid's) or "" while it is not known.
+export function pinSaid(name, step) {
+  const part = partSaid(name);
+  if (part && step) return say("on the {part}, step {step}", { part, step });
+  if (part) return say("on the {part}", { part });
+  return step ? say("on a part, step {step}", { step }) : say("on a part");
 }

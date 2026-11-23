@@ -424,10 +424,15 @@ func _open(id: String, with_picture: bool) -> Variant:
 	if not motions.is_empty():
 		lines.append("%s Its link plays each by a button; open_model link=%s opens a copy, and play_motion "
 			% [motions, id] + "name= plays one there.")
-	lines.append(("Read-only: nothing on the baseplate changed. Build your own; to start from this "
-		+ "one instead, open_model link=%s opens a copy in the person's models, as Open in "
-		+ "Brickworks on its page does. Liking it, commenting and following its designer are the "
-		+ "person's own, on its page, signed in.") % id)
+	lines.append("Read-only: nothing on the baseplate changed. Liking it, commenting and following "
+		+ "its designer are the person's own, on its page, signed in.")
+	# Last, the one call that changes it: a session asked to change a model
+	# from its page (claudelink) reads it first, and the way on is the last
+	# thing it reads.
+	lines.append(("To change it, or build your own from it: open_model link=%s opens a copy "
+		+ "in the person's models, as Open in Brickworks on its page does; the shared one stays as "
+		+ "it was, and once the person publishes the copy, its page credits this one as the model "
+		+ "it was remixed from.") % id)
 	var text: String = "\n".join(lines)
 	if not with_picture:
 		return text

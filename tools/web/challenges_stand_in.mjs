@@ -27,7 +27,8 @@ const SECRET = process.env.SUPABASE_SECRET_KEY || "";
 const REST = `${SUPABASE}/rest/v1/`;
 const NAMES = ["challenge_set", "challenge_end", "challenge_list", "challenge_shown", "challenge_enter",
   "challenge_withdraw", "challenge_for_model", "challenge_vote", "challenge_settle", "challenge_page",
-  "challenge_mine", "challenge_wins", "challenge_next", "challenge_past", "challenge_page_at", "challenge_plan"];
+  "challenge_mine", "challenge_wins", "challenge_next", "challenge_past", "challenge_page_at", "challenge_plan",
+  "challenge_open", "challenge_set_lots"];
 // supabase/challenge_rounds.sql's: answered as a database without that file
 // answers them (404), so the API asks challenges.sql's own, held here, and
 // never the real tables for a challenge kept in this process.
@@ -211,6 +212,20 @@ const FUNCTIONS = {
   async challenge_shown({ tests = false }) {
     const c = shownFor(tests);
     return c ? { ...c } : { id: null };
+  },
+
+  // The studio's (?op=challenge_rules, challengestudio): the one open now,
+  // and supabase/challenge_studio.sql's set's lots as kept, while it is open.
+  async challenge_open({ tests = false }) {
+    const c = openFor(tests);
+    return c ? { ...c } : { id: null };
+  },
+
+  async challenge_set_lots({ challenge_id }) {
+    const c = challenges.find((one) => one.id === Number(challenge_id));
+    if (!c || stateOf(c) !== "open") return null;
+    return [...(setParts.get(c.id) || new Map()).values()].map((one) => ({ part: one.part, colour: one.colour, qty: one.qty }))
+      .sort((a, b) => (a.part < b.part ? -1 : a.part > b.part ? 1 : a.colour - b.colour));
   },
 
   async challenge_enter({ account, model_id, way }) {

@@ -663,6 +663,26 @@ const CHANGING_CALLS := ["look_at_model", "view_model", "in_view", "measure", "s
 	"pattern_parts",
 	# mcpsee3: a view of the model standing kept with it.
 	"save_view"]
+## The calls that only read what other people built, or list the person's
+## models, and so say nothing of what the sitting is: a chat that opens on
+## one is told nothing yet, and its next call decides ([method _opens]).
+const READING_CALLS := ["gallery", "open_model"]
+
+
+## Whether a call opens a model to change (open_model name=, link= or
+## library=, or into= one): the model to change arrives with the call, so the
+## baseplate before it says nothing. A chat handed a model's page's message
+## ("open_model link=..., then make the roof blue", claudelink) opens so; told
+## the method there, it planned a scale and submitted a silhouette over the
+## copy. open_model with none of them lists, and with versions=true it lists a
+## model's saves or compares one, opening nothing.
+static func _opens(tool: String, arguments: Dictionary) -> bool:
+	if tool != "open_model" or (arguments.get("versions") is bool and arguments["versions"]):
+		return false
+	for key: String in ["name", "link", "library"]:
+		if not str(arguments.get(key, "")).strip_edges().is_empty():
+			return true
+	return false
 
 
 func _sitting(request: Dictionary) -> Dictionary:
@@ -689,8 +709,13 @@ func _sitting(request: Dictionary) -> Dictionary:
 ## ([member has_work]), is changing it, and is told how to change it in place
 ## of the method ([method _taught]). Said as the call arrives, before it
 ## changes anything: a first edit_model on the example car leaves it touched.
+## So is one that opens a model to change ([method _opens]); one that only
+## reads the gallery or lists the models ([constant READING_CALLS]) decides
+## nothing, and the next call does.
 func _begin(sitting: Dictionary, tool: String, arguments: Dictionary) -> void:
-	if not sitting.has("changing"):
+	if not sitting.has("changing") and rpc != null and rpc.assistant != null and _opens(tool, arguments):
+		sitting["changing"] = "owed"
+	elif not sitting.has("changing") and not tool in READING_CALLS:
 		sitting["changing"] = "owed" if tool in CHANGING_CALLS and rpc != null \
 			and rpc.assistant != null and bool(has_work.call()) else ""
 	if not tool in SUBJECT_CALLS or bool(sitting["begun"]) or rpc == null or rpc.assistant == null:
@@ -717,6 +742,9 @@ func _taught(sitting: Dictionary, tool: String, answer: Variant) -> Variant:
 	if tool.is_empty() or bool(sitting["told"]) or not answer is Dictionary \
 			or not (answer as Dictionary).get("result") is Dictionary \
 			or not ((answer as Dictionary)["result"] as Dictionary).get("content") is Array:
+		return answer
+	# A first look at the gallery or the list, which decided nothing yet.
+	if not sitting.has("changing") and not tool in SUBJECT_CALLS:
 		return answer
 	var words: String = Later.script(&"Assistant").METHOD
 	match "" if tool in SUBJECT_CALLS else str(sitting.get("changing", "")):

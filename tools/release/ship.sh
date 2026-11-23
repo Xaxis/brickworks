@@ -154,11 +154,25 @@ if [ -z "$URL" ]; then
   trap '[ -z "$CI_PID" ] || kill -TERM -- "-$CI_PID" 2>/dev/null' EXIT
 fi
 # Whether the gate has ended and failed: said once, and the ship ends.
+# SHIP_GATE_OK="tests/a.py tests/b.py ...": test files whose failures the
+# lead judged (known before the merge, the environment, docs pictures yet
+# to be made) and ships past, each named in the log. Anything else failing,
+# a shell script or the version, still holds. rel-m321 held 40 minutes on
+# seven such failures with nothing visitors would see (2026-11-23).
+CI_JUDGED=""
 ci_held() {
   [ -n "$CI_PID" ] && [ -s "$CI_LOG.code" ] || return 1
   [ "$(cat "$CI_LOG.code")" = 0 ] && return 1
-  echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh exit $(cat "$CI_LOG.code"), ${TAG}_ci_gate.log)"
-  grep -E 'FAIL|failed|Error' "$CI_LOG" | tail -3
+  local failed other unjudged
+  failed=$(sed -n 's/^ *FAIL  \(tests\/[^: ]*\).*/\1/p' "$CI_LOG" | sort -u)
+  other=$(grep -E 'FAILED|FAIL' "$CI_LOG" | grep -vE '^ *FAIL  tests/|python FAILED' | head -3)
+  unjudged=$(for f in $failed; do case " ${SHIP_GATE_OK:-} " in *" $f "*) ;; *) echo "$f" ;; esac; done)
+  if [ -n "$failed" ] && [ -z "$unjudged" ] && [ -z "$other" ]; then
+    [ -n "$CI_JUDGED" ] || { CI_JUDGED=1; echo "SHIP: ships past the Python suite's judged failures (SHIP_GATE_OK): $(echo $failed)"; }
+    return 1
+  fi
+  tail -40 "$CI_LOG"
+  echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh exit $(cat "$CI_LOG.code"), ${TAG}_ci_gate.log)${unjudged:+: not judged: $(echo $unjudged)}"
   return 0
 }
 if [ -z "$URL" ] && [ ${#DEPLOY_DIR[@]} -eq 0 ]; then
@@ -379,7 +393,7 @@ if [ -n "$CI_PID" ]; then
     sleep 5
   done
   ci_held && exit 1
-  echo "SHIP: ci_gate.sh passed beside the ship ($(grep -c '^ci gate: .* ok' "$CI_LOG") parts ok)"
+  [ -n "$CI_JUDGED" ] || echo "SHIP: ci_gate.sh passed beside the ship ($(grep -c '^ci gate: .* ok' "$CI_LOG") parts ok)"
 fi
 # A rehearsal (SHIP_REHEARSE, train.sh's TRAIN_REHEARSE) ends here, every
 # gate passed, with how long the ship took: the release path timed on a

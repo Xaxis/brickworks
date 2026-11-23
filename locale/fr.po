@@ -16415,3 +16415,449 @@ msgstr "Sur un sous-main en cuir"
 
 msgid "On terrazzo"
 msgstr "Sur du terrazzo"
+
+# Comments on a part of a shared model (partpins): the viewer's menu on a part and the box's line, a pin's line where it is, and the studio's notice and list (PartPins, PartPinsPanel).
+msgid "Comment on this part"
+msgstr "Commenter cette pièce"
+
+msgid "Say something about this part, for its builder and everyone who looks at it"
+msgstr "Dites quelque chose sur cette pièce, pour son constructeur et tous ceux qui la regardent"
+
+msgid "Write a comment on the step instead of on this part"
+msgstr "Écrire un commentaire sur l'étape plutôt que sur cette pièce"
+
+msgid "Add your comment on this part"
+msgstr "Ajouter votre commentaire sur cette pièce"
+
+msgid "Resolved (%d)"
+msgstr "Résolus (%d)"
+
+msgid "Hide resolved"
+msgstr "Masquer les résolus"
+
+msgid "The comments on parts its builder has dealt with"
+msgstr "Les commentaires sur des pièces dont son constructeur s'est occupé"
+
+msgid "Turn the view to its part, lit"
+msgstr "Tourner la vue vers sa pièce, mise en évidence"
+
+msgid "On the %s, step %d"
+msgstr "Sur la pièce %s, étape %d"
+
+msgid "On the %s"
+msgstr "Sur la pièce %s"
+
+msgid "On a part, step %d"
+msgstr "Sur une pièce, étape %d"
+
+msgid "On a part"
+msgstr "Sur une pièce"
+
+msgid "On the %s, step %d, moved since"
+msgstr "Sur la pièce %s, étape %d, déplacée depuis"
+
+msgid "On the %s, moved since"
+msgstr "Sur la pièce %s, déplacée depuis"
+
+msgid "On a part, step %d, moved since"
+msgstr "Sur une pièce, étape %d, déplacée depuis"
+
+msgid "On a part, moved since"
+msgstr "Sur une pièce, déplacée depuis"
+
+msgid "On version %d"
+msgstr "Sur la version %d"
+
+msgid "1 comment on a part of this model"
+msgstr "1 commentaire sur une pièce de ce modèle"
+
+msgid "%d comments on parts of this model"
+msgstr "%d commentaires sur des pièces de ce modèle"
+
+msgid "List them, and see each one's part"
+msgstr "Les lister, et voir la pièce de chacun"
+
+msgid "Comments on parts"
+msgstr "Commentaires sur des pièces"
+
+msgid "Put the list away: the comments stay on their parts"
+msgstr "Ranger la liste : les commentaires restent sur leurs pièces"
+
+msgid "What people said about parts of this model on brickworks.diy, each numbered as its dot on the model. Press where one is to select its part."
+msgstr "Ce que d'autres ont dit sur des pièces de ce modèle sur brickworks.diy, chacun numéroté comme son point sur le modèle. Appuyez sur l'endroit d'un commentaire pour sélectionner sa pièce."
+
+msgid "No open comments on parts."
+msgstr "Aucun commentaire ouvert sur des pièces."
+
+msgid "No comments on parts of this model yet."
+msgstr "Pas encore de commentaires sur des pièces de ce modèle."
+
+msgid "The comments you have dealt with: still on the site, folded away"
+msgstr "Les commentaires dont vous vous êtes occupé : toujours sur le site, repliés"
+
+msgid "Select its part, and turn the view to it"
+msgstr "Sélectionner sa pièce, et tourner la vue vers elle"
+
+msgid "Not on a part of the model as it is now: its part was changed or taken off since"
+msgstr "Sur aucune pièce du modèle tel qu'il est : sa pièce a été changée ou retirée depuis"
+
+msgid "Reopen"
+msgstr "Rouvrir"
+
+msgid "Back on its part, open, on the site too"
+msgstr "De retour sur sa pièce, ouvert, sur le site aussi"
+
+msgid "Done with it: folded away as resolved, here and on the site"
+msgstr "Terminé : replié comme résolu, ici et sur le site"
+
+msgid "Sign in again to resolve comments."
+msgstr "Reconnectez-vous pour résoudre des commentaires."
+
+msgid "A builder"
+msgstr "Un constructeur"
+
+msgid "hidden from others"
+msgstr "masqué aux autres"
+
+msgid "Brickworks could not take that just now. Try again in a minute."
+msgstr "Brickworks n'a pas pu le prendre pour l'instant. Réessayez dans une minute."
+# Show your build at Build it's last step: a real build's photo posted on the model's page (makes)
+msgid "%d people have built it"
+msgstr "%d personnes l’ont construit"
+
+msgid "1 person has built it"
+msgstr "1 personne l’a construit"
+
+msgid "You built it"
+msgstr "Vous l’avez construit"
+
+msgid "Show your build"
+msgstr "Montrez votre construction"
+
+msgid "A photo of the model you built, posted on its page"
+msgstr "Une photo du modèle que vous avez construit, publiée sur sa page"
+
+msgid "Add a photo of your build"
+msgstr "Ajouter une photo de votre construction"
+
+msgid "A photo of your build of it, among its pictures"
+msgstr "Une photo de votre construction, parmi ses images"
+
+msgid "Say something about it (optional)"
+msgstr "Dites-en un mot (facultatif)"
+
+msgid "What you say about your build"
+msgstr "Ce que vous dites de votre construction"
+
+msgid "Another photo"
+msgstr "Une autre photo"
+
+msgid "Choose another photo instead"
+msgstr "Choisir une autre photo à la place"
+
+msgid "Post"
+msgstr "Publier"
+
+msgid "Post the photo on the model's page"
+msgstr "Publier la photo sur la page du modèle"
+
+msgid "Posted: on the model's page"
+msgstr "Publiée : sur la page du modèle"
+
+msgid "The model's page, where your photo is"
+msgstr "La page du modèle, où se trouve votre photo"
+
+msgid "Look on the model's page first"
+msgstr "Regardez d’abord sur la page du modèle"
+
+msgid "Reading the photo…"
+msgstr "Lecture de la photo…"
+
+msgid "That is not a JPEG, a PNG or a WebP photo."
+msgstr "Ce n’est pas une photo JPEG, PNG ou WebP."
+
+msgid "That photo is %d × %d: too small to show a build"
+msgstr "Cette photo fait %d × %d : trop petite pour montrer une construction"
+
+msgid "At most %d characters about it, please: that is %d"
+msgstr "%d caractères au plus, s’il vous plaît : il y en a %d"
+
+msgid "You have added three photos: the most"
+msgstr "Vous avez ajouté trois photos : c’est le maximum"
+
+msgid "Sending the photo…"
+msgstr "Envoi de la photo…"
+
+msgid "Making it safe to show: taking out where and when it was taken…"
+msgstr "Préparation pour l’affichage : on retire où et quand elle a été prise…"
+
+msgid "The photo did not go: try again in a minute."
+msgstr "La photo n’est pas partie : réessayez dans une minute."
+
+msgid "That did not work just now."
+msgstr "Cela n’a pas fonctionné à l’instant."
+
+msgid "No answer came. Your photo may be on the model's page already: look there before you post it again."
+msgstr "Aucune réponse n’est venue. Votre photo est peut-être déjà sur la page du modèle : regardez-y avant de la publier à nouveau."
+
+msgid "Sign in to post your build"
+msgstr "Connectez-vous pour publier votre construction"
+
+msgid "Back, signed out: what you chose is kept"
+msgstr "Retour, sans connexion : ce que vous avez choisi est conservé"
+
+msgid "Signed in: press Post to post your photo."
+msgstr "Connecté : appuyez sur Publier pour publier votre photo."
+
+msgid "Sign in to add a photo of your build: we email you a code, no password."
+msgstr "Connectez-vous pour ajouter une photo de votre construction : nous vous envoyons un code par e-mail, sans mot de passe."
+# This week's quick build: the studio's line above a copy of its template, the
+# day to publish it by, and Share's box and its status line (prompts). "%d May" is
+# the comments' own, above.
+
+msgid "This week's quick build: %s"
+msgstr "Construction express de la semaine : %s"
+
+msgid "Publish it by %s to enter."
+msgstr "Publiez-le au plus tard le %s pour participer."
+
+msgid "This week's quick build, %s: “%s” Publish it by %s to enter."
+msgstr "Construction express de la semaine, %s : « %s » Publiez-le au plus tard le %s pour participer."
+
+msgid "%d January"
+msgstr "%d janvier"
+
+msgid "%d February"
+msgstr "%d février"
+
+msgid "%d March"
+msgstr "%d mars"
+
+msgid "%d April"
+msgstr "%d avril"
+
+msgid "%d June"
+msgstr "%d juin"
+
+msgid "%d July"
+msgstr "%d juillet"
+
+msgid "%d August"
+msgstr "%d août"
+
+msgid "%d September"
+msgstr "%d septembre"
+
+msgid "%d October"
+msgstr "%d octobre"
+
+msgid "%d November"
+msgstr "%d novembre"
+
+msgid "%d December"
+msgstr "%d décembre"
+
+msgid "Got it"
+msgstr "Compris"
+
+msgid "Enters this week's quick build: %s"
+msgstr "Participe à la construction express de la semaine : %s"
+
+msgid "Shown in the gallery, it enters this week's quick build"
+msgstr "Publié dans la galerie, il participe à la construction express de la semaine"
+
+msgid "Entered in this week's quick build: %s"
+msgstr "Inscrit à la construction express de la semaine : %s"
+
+msgid "Entered in this week's quick build: %s."
+msgstr "Inscrit à la construction express de la semaine : %s."
+
+msgid "Every entry is at %s."
+msgstr "Toutes les participations sont sur %s."
+
+# The month's challenge in the studio: its line, its rules ticked, Share's Enter (challengestudio)
+msgid "last day"
+msgstr "dernier jour"
+
+msgid "%d days left"
+msgstr "encore %d jours"
+
+msgid "Quick build: %s"
+msgstr "Construction rapide : %s"
+
+msgid "Its rules, ticked on this model"
+msgstr "Ses règles, cochées sur ce modèle"
+
+msgid "This week's quick build"
+msgstr "La construction rapide de la semaine"
+
+msgid "This week's quick build, %s"
+msgstr "La construction rapide de la semaine, %s"
+
+msgid "This month's challenge, %s"
+msgstr "Le défi du mois, %s"
+
+msgid "ends today"
+msgstr "se termine aujourd’hui"
+
+msgid "Show its rules"
+msgstr "Afficher ses règles"
+
+msgid "Hide its rules"
+msgstr "Masquer ses règles"
+
+msgid "Show its brief"
+msgstr "Afficher le thème"
+
+msgid "Hide its brief"
+msgstr "Masquer le thème"
+
+msgid "Hide this line for %s"
+msgstr "Masquer cette ligne pour %s"
+
+msgid "Hide the line for %s"
+msgstr "Masquer la ligne pour %s"
+
+msgid "rule kept"
+msgstr "règle respectée"
+
+msgid "rule not kept yet"
+msgstr "règle pas encore respectée"
+
+msgid "%d of %d rules kept"
+msgstr "%d règles respectées sur %d"
+
+msgid "No rules: publish this copy in the gallery by %s and it is entered."
+msgstr "Aucune règle : publiez cette copie dans la galerie d’ici le %s et elle participe."
+
+msgid "No rules but its theme: publish it in the gallery with your name on it, then Enter in Share."
+msgstr "Pas d’autre règle que le thème : publiez-le dans la galerie avec votre nom, puis Participer dans Partager."
+
+msgid "Test it"
+msgstr "Le tester"
+
+msgid "Run the four tests a publish runs: it stands at every step, every step reachable, every part made in its colour, nothing loose"
+msgstr "Lancer les quatre tests d’une publication : il tient à chaque étape, chaque étape accessible, chaque pièce fabriquée dans sa couleur, rien de lâche"
+
+msgid "Publish to enter"
+msgstr "Publier pour participer"
+
+msgid "Open Share: Enter there publishes and enters it in one press"
+msgstr "Ouvrir Partager : Participer y publie et inscrit le modèle d’une seule pression"
+
+msgid "See the challenge"
+msgstr "Voir le défi"
+
+msgid "Writing “%s” to test it…"
+msgstr "Écriture de « %s » pour le tester…"
+
+msgid "Testing “%s” as a publish would…"
+msgstr "Test de « %s » comme le ferait une publication…"
+
+msgid "At most %s parts"
+msgstr "%s pièces au plus"
+
+msgid "%s of %s parts"
+msgstr "%s pièces sur %s"
+
+msgid "Take %s away: it has %s, and the most is %s."
+msgstr "Retirez %s : il en a %s, et le maximum est %s."
+
+msgid "Only parts from set %s, %s"
+msgstr "Seulement des pièces du set %s, %s"
+
+msgid "Only parts from set %s"
+msgstr "Seulement des pièces du set %s"
+
+msgid "Tested: stands at every step, nothing loose"
+msgstr "Testé : tient à chaque étape, rien de lâche"
+
+msgid "Not tested yet: a publish tests it, or test it now."
+msgstr "Pas encore testé : une publication le teste, ou testez-le maintenant."
+
+msgid "Not shown to stand at every step"
+msgstr "Rien ne montre qu’il tient à chaque étape"
+
+msgid "Not every step shown reachable"
+msgstr "Toutes les étapes ne sont pas montrées accessibles"
+
+msgid "A part is not made in its colour"
+msgstr "Une pièce n’est pas fabriquée dans sa couleur"
+
+msgid "It does not go together"
+msgstr "Il ne s’assemble pas"
+
+msgid "Swap or take away %s."
+msgstr "Remplacez ou retirez %s."
+
+msgid "Swap or take away %s, and 1 lot more."
+msgstr "Remplacez ou retirez %s, et un lot de plus."
+
+msgid "Swap or take away %s, and %d lots more."
+msgstr "Remplacez ou retirez %s, et %d lots de plus."
+
+msgid "%d more %s than the set has"
+msgstr "%d %s de plus que le set n’en a"
+
+msgid "%d %s, which the set has none of"
+msgstr "%d %s, que le set n’a pas du tout"
+
+msgid "colour %d"
+msgstr "couleur %d"
+
+msgid "Lists it in the gallery with your name on it, publishes it and enters it"
+msgstr "Le met dans la galerie avec votre nom, le publie et l’inscrit"
+
+msgid "Built by hand"
+msgstr "Construit à la main"
+
+msgid "Built with the assistant"
+msgstr "Construit avec l’assistant"
+
+msgid "built by hand"
+msgstr "construit à la main"
+
+msgid "built with the assistant"
+msgstr "construit avec l’assistant"
+
+msgid "How it was built: the challenge judges the two apart"
+msgstr "Comment il a été construit : le défi juge les deux à part"
+
+msgid "In %s, %s. Publishing again keeps it in."
+msgstr "Dans %s, %s. Le publier à nouveau le garde inscrit."
+
+msgid "Entering…"
+msgstr "Inscription…"
+
+msgid "Enter %s"
+msgstr "Participer à %s"
+
+msgid "Not yet: %s"
+msgstr "Pas encore : %s"
+
+msgid "Ticking %s's rules on the model…"
+msgstr "Vérification des règles de %s sur le modèle…"
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it."
+msgstr "Participer le met dans la galerie avec votre nom, le publie et l’inscrit."
+
+msgid "Enter lists it in the gallery with your name on it, publishes it and enters it. A publish tests it, as the rules ask."
+msgstr "Participer le met dans la galerie avec votre nom, le publie et l’inscrit. La publication le teste, comme les règles le demandent."
+
+msgid "Say the name to credit under Show who made it: an entry has its designer's name on it."
+msgstr "Indiquez le nom à créditer sous « Montrer qui l’a fait » : une participation porte le nom de son créateur."
+
+msgid "Entered in %s, %s. It is on the challenge's page: %s."
+msgstr "Inscrit à %s, %s. Il est sur la page du défi : %s."
+
+msgid "Entered in %s, %s. It is on the challenge's page."
+msgstr "Inscrit à %s, %s. Il est sur la page du défi."
+
+msgid "It is in %s already."
+msgstr "Il est déjà inscrit à %s."
+
+msgid "Published, not entered: %s"
+msgstr "Publié, non inscrit : %s"
+
+msgid "Brickworks could not enter it just now. Press Enter again in a minute."
+msgstr "Brickworks n’a pas pu l’inscrire pour l’instant. Appuyez à nouveau sur Participer dans une minute."

@@ -1,6 +1,7 @@
 ---
 panels: ShareView#viewer, BuildMode#build-it
-ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, versions and its parts list to download.
+ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, versions and its parts list to download; and With your Claude, beside Open in Brickworks, a message for the person's own Claude that opens a copy (open_model link=) and changes it as asked, credited to the model when the copy is published.
+ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, its Log of versions (work in progress marked) and its parts list to download.
 rules:
   - Anyone can open a model's page with no account.
   - Its parts download as a BrickLink XML, a Rebrickable CSV or a LEGO® Pick a Brick CSV, and the model as LDraw (.mpd).
@@ -51,6 +52,22 @@ ui:build it step player
 ui:open a shared model at a step
 -->
 
+### Show your build {#show-your-build}
+
+Built it in real bricks? Show it, right where the build ends.
+
+1. On the last step, a card under the top bar says how many people have built the model, with **Show your build**. The viewer's timeline shows it too when you step onto its last step, and so does the viewer after **Finish**.
+2. Press **Show your build**. On a phone the camera opens; on a computer, choose a photo. It comes back on the card the right way up.
+3. Say something about it if you like, then **Post**. The card says **Posted: on the model's page**, a link to your photo there. It leads the model's **Builds** strip and the gallery's [Builds](/docs/gallery#builds) tab, and the model's designer is told in their [notifications](/docs/profiles#notifications).
+
+Building needs no account; posting does. Not signed in, **Post** asks you to sign in there and then, over the step you are on, and brings you back to it with your photo still chosen, ready to post. **Not now** goes back without signing in. Photos are for accounts of people 13 and over, at most three of yours on a model. What the camera wrote into the photo (where and when it was taken, the phone) is taken out before anyone sees it, as for a photo added on the model's page. On your own model the card says **Add a photo of your build**: it goes with your own pictures of it.
+
+![The last step of Build it: under the top bar, a card saying 14 people have built it, with Show your build beside it, the finished model below, and Finish at the bottom.](/docs/img/show-your-build.webp "Show your build, on the last step.")
+
+<!-- covers
+ui:show your build
+-->
+
 ### Where does this part go? {#where-does-this-go}
 
 Holding a part and can't find its step? Press **Where does this go?** (the camera beside the step's words) and take a photo of it, or choose a picture on a computer.
@@ -85,19 +102,31 @@ ui:a link that opens playing
 
 ## Pictures and tabs {#tabs}
 
-Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections** once it is in one, and **Versions** once it has [more than one](/docs/sharing#versions).
+Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections** once it is in one, and **Log** once it has [more than one version](/docs/sharing#versions) or is [work in progress](/docs/sharing#progress).
 
 <!-- covers
 ui:model page pictures and tabs
 -->
 
+## The Log {#log}
+
+The **Log** is every version its designer published, the newest first. Each has its picture, the day it was published, what changed from the one before (*8 parts added in step 21*) and what its designer wrote with it, and opens that version at its own address, `/m/<id>/v/<n>`. Above them is what changed in the version you are looking at, part by part.
+
+A model still being built is marked **Work in progress** at the top of its page and in its Log, each version shared so marked too. Its designer sees **Mark it finished** there: the newest version becomes the finished one, marked **Finished**, said in its Talk thread and to their followers, and the model then ranks in the gallery as any other ([Share progress](/docs/sharing#progress)).
+
+![A model's Log while it is being built: the Work in progress mark and what it means, what changed in version 3 and its note, then every version newest first, each with its picture, its date, what changed and its note, versions marked Work in progress.](/docs/img/model-log.webp "The Log of a model shared as work in progress.")
+
+<!-- covers
+ui:a model's log
+-->
+
 ## The buttons {#actions}
 
-- **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** (the model as LDraw, `/m/<id>.mpd`).
+- **Build it**, **Open in Brickworks** (a copy in your own models, to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`).
 - **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
-- **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first.
-- **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead.
+- **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first. Building it with [Build it](#build-it), its last step offers the same photo where you finish ([Show your build](#show-your-build)).
+- **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead, and, for a model made with the assistant or Brickify, **Say it was made with the assistant** (or **with Brickify**): nothing on the site says how a model was made until you choose to, and **Stop saying it was made with the assistant** takes it back. Its page then says **With the assistant** among its facts, and the gallery's **Made: With the assistant** lists it.
 - On your own model, **Enter this month's challenge** ([the challenge](/docs/challenges#enter)).
 
 ![The Share sheet of a model's page: its link with Copy link, Post it to Reddit, Bluesky, Pinterest, X, Facebook and Email, and Embed it in a page with Copy code.](/docs/img/model-share.webp "Share, on a model's page.")
@@ -110,6 +139,23 @@ lib:a build photo made safe
 ui:enter this month's challenge
 -->
 
+## Change it with your Claude {#with-your-claude}
+
+Your own Claude can open a copy of any model here and change it as you ask, through the [Brickworks connector](/docs/connector).
+
+1. Press **With your Claude**, the second half of **Open in Brickworks** (on a phone it says **Claude**).
+2. Under **What should it change?** say what you want, or leave it empty and Claude asks you: *make the roof dark blue*, *add a flag on top*, *put it on a stand with a nameplate*. It takes 500 characters.
+3. Press **Copy for Claude** and paste the message into a new chat with your Claude. On a phone, **Share to Claude** hands it to the Claude app. The message names the model's link and the one call that opens it, `open_model link=<id>`.
+4. Claude opens a copy in your models, changes it and shows you; the shared model stays as it was. Publish the copy (**File › Share…**) and its page says **Remixed from** this model, and which version it was copied from.
+
+No connector yet? **Connect Claude** goes to [Connect your AI](/docs/connect#with-your-claude), and your message waits at the top of that page, to copy once Claude is connected.
+
+![A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.](/docs/img/model-claude.webp "With your Claude, on a model's page.")
+
+<!-- covers
+ui:change a model with your Claude
+-->
+
 ## Comments {#comments}
 
 Comments are newest first, each with **Reply**. A comment can name a step, and its pill opens Build it there. People 13 and over can comment; a model's designer can turn comments off.
@@ -118,17 +164,40 @@ Comments are newest first, each with **Reply**. A comment can name a step, and i
 
 Type **@** and the people on the page are offered, its designer first; keep typing to narrow it, and [[Enter]], [[Tab]] or a click puts one in. Any public `@handle` works typed in full. Each person named becomes a link and hears of it in their [notifications](/docs/profiles#notifications): up to three a comment, once each, however often it is edited.
 
+### On a part {#on-a-part}
+
+In the page's 3D view, or in the app's viewer of a shared model, right-click a part, or touch and hold it, and choose **Comment on this part**. With the keyboard, turn the model until the part is in the middle and press [[Shift+F10]] or the menu key. Your comment then starts "On the 2 × 4 brick" (choose **Cancel** to comment on the whole model instead) and keeps the part: its number, its colour, where it stands and its line in the file.
+
+![The Comments of a model's page: Ivy Hart's comment on the 2 × 4 brick, step 12, with its pin's number, then Jon Reyes's on the whole model, and under them Resolved (1), Jon Reyes's comment on the 2 × 2 plate folded away.](/docs/img/comments-on-parts.webp "Comments on parts, on a model's page.")
+
+Each one shows in 3D as a small numbered dot on its part, and its comment says where: "on the 2 × 4 brick, step 12". Press that line to turn the view to the part. On a newer version, the dot stays on the same part. A part that moved up to 20 LDU since is followed, marked *moved since*. A part that was taken off, recoloured or swapped gets no dot, and its comment names the version it was made on ("on version 1"), so a comment is never shown on a part it was not about.
+
+When the model's designer opens it in the app, the notices say how many comments on parts are still open. **Show** lists them, and choosing one lights its part and frames it. **Resolve** marks one done: on the page it folds away under **Resolved**, and **Open it again** brings it back. A comment on a part notifies its designer like any comment, saying it is "on a part".
+
 <!-- covers
 ui:comment threads on a model page
 ui:comments on a step
 lib:comments on a shared model
 lib:replies to a comment
 lib:mentions in comments
+ui:comment on a part in 3D
+lib:comments pinned to parts
+ui:comments on parts in the studio
 -->
 
 ## Parts and download {#parts}
 
 The **Parts** tab lists every part by **Colour** or by **Kind**. Download it for a shop: **BrickLink XML** (`/m/<id>/parts.xml`), **Rebrickable CSV** (`/m/<id>/parts.csv`) or **LEGO® Pick a Brick CSV**.
+
+### What you're missing {#missing}
+
+Signed in, the tab says how much of the model [your collection](/docs/collection) holds, counted as the gallery's cards count it: *You have 138 of its 187 parts (73%): 49 missing, in 19 lots.* Under it, **All**, **Missing** and **Have all** show every lot, only the lots you are short of (each with how many more you need and how many you have), or the lots you have every one of. With **Missing** chosen, **BrickLink XML**, **Rebrickable CSV** and **LEGO® Pick a Brick CSV** download just the missing parts, to buy them. When you have every part it says *Have all 187 of its parts.*
+
+Parts nobody owns on their own (stickers, parts made for the model) are not counted, and the Pick a Brick list leaves off a part with no LEGO® element number known; the tab says how many of each. The element numbers come from Rebrickable's list of LEGO® elements; whether Pick a Brick has each one in stock today, its own upload tells you.
+
+![A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO® Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.](/docs/img/parts-missing.webp "What you're missing, on a model's Parts tab.")
+
+![What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.](/docs/img/parts-missing-phone.webp "What you're missing, on a phone.")
 
 <!-- covers
 ui:a model's parts and its download
@@ -138,8 +207,39 @@ ui:a model's parts and its download
 
 Under its name a page credits what the model came from: a **remix** names the model it was copied from. On your own model's page, **Say what it is based on** adds up to three: **An alternate build of a set** (by its number, such as `6080-1`), **Changed from** or **Inspired by** a set or work elsewhere (its `https://` address and title, and its author and licence if known). Each set's page lists the models based on it. **Change what it is based on** changes or removes them.
 
+### Built from a set {#built-from-a-set}
+
+When a model is published, Brickworks counts it against every set Rebrickable lists, by the rules [your collection](/docs/collection) is counted by: another mould of a part counts as the part, colours are matched as the shops name them, and stickers and parts made for one model are left out. Under its name its page then says what it found:
+
+- one set holds every part: *An alternate build of 31009 Small Cottage: every part from the set*;
+- no one set does, but a few together do (the fewest, up to five): *An alternate build of 42115 and 42054*;
+- one set holds 80% or more of it: *97% from 31009*.
+
+Each set's name opens its page, where the model is listed under **Built from this set**. A model of the set itself (LDraw's model of 6080 King's Castle, say) is that set's own model, not another build of it, and says nothing here. When its designer said it is an alternate build of a set and the set lacks some of its parts, the designer's own page says so after it, *(uses 6 parts not in the set)*; nobody else is shown that.
+
+![Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.](/docs/img/model-alt-build.webp "Built from three sets, as counted when it was published.")
+
 <!-- covers
 lib:what a model is based on
+-->
+
+## What a remix changed {#remix-changes}
+
+A remix's page says what it changed from the model it was copied from, under its credit: *What it changed from version 1: 42 parts added, 8 taken away, 3 recoloured, 5 moved*. It is counted once, when the remix is shared, against the version it was copied from, by the same rules as the app's [Compare](/docs/saving-and-files#compare): a part moved or turned counts as moved, one painted where it stands as recoloured, and one both moved and painted as one taken away and one added. The version is a link to that version's page.
+
+![A remix's credit, Remixed from Sports car and its driver, and under it what it changed from version 1, with See what changed in 3D.](/docs/img/remix-line.webp "What a remix changed, under its credit.")
+
+**See what changed in 3D** opens the 3D view with **What changed** on: the parts it added, moved or recoloured in their own colours, every other part faded, and the parts it took away drawn as faint red ghosts where they were; a line over the view counts them. **What changed** on the view's bar turns it off and on again; it is off when the view is opened by **View in 3D**. It works the same on a phone.
+
+### The Remixes tab {#remix-tree}
+
+A model's **Remixes** tab draws where it came from and what was made from it as a tree: up to the first model of the line, then the model itself (marked *This model*), then its remixes, their remixes and theirs, three levels down. Each card says what it is a remix of, and of what that was a remix, and what it changed: *A remix of Harbour by Ann, itself a remix of Lighthouse: 4 parts added, 2 recoloured*. A model shared only by its link is not named, and remixes not in the gallery are counted under the tree.
+
+![A model's Remixes tab as a tree: the model, marked This model, and its remixes under it, each with its picture, name, maker and what it changed.](/docs/img/remix-tree.webp "The Remixes tab, both ways.")
+
+<!-- covers
+lib:what a remix changed
+ui:what a remix changed and the remix tree
 -->
 
 ## More by and similar {#more}

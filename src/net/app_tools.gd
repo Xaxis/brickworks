@@ -5286,11 +5286,16 @@ func _open_link(link: String, discard: bool) -> String:
 		% [author if not author.is_empty() else "its builder", url]]) \
 		if licence is String and GalleryTool.LICENCES.has(licence) \
 		else "none chosen: the person may build it; do not share what is made from it as theirs"
+	# Whom the copy credits when it is published (SharePanel.publish sends
+	# remixed_from and its version, api/share.js names them on its page).
+	var version: String = (", version %d" % store.remixed_from_version) if store.remixed_from_version > 0 \
+		else ""
 	return ("Opened a copy of %s (%s)%s: %s, saved in the person's models as %s, theirs to "
-		+ "change; the shared one stays as it was, and sharing this one says it was remixed from "
-		+ "it. Licence %s. look_at_model to see it.") % [name, url,
+		+ "change; the shared one stays as it was. When the person publishes the copy (File › "
+		+ "Share…), its page credits the original: \"Remixed from %s%s\", with a link to it. "
+		+ "Licence %s. look_at_model to see it.") % [name, url,
 		", by %s" % author if not author.is_empty() else "",
-		await _parts_against_box(store, ""), kept, terms] \
+		await _parts_against_box(store, ""), kept, name, version, terms] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
 
 

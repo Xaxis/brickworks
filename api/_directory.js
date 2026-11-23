@@ -9,7 +9,7 @@
 
 import { createHash, createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { ASSISTANT_TAGS, MADE_WITH, say } from "./_card.js";
+import { ASSISTANT_TAGS, MADE_WITH, madePublic, say } from "./_card.js";
 import { SMALL, fold, readQuery, stem } from "./_search.js";
 
 /// The kinds of model the gallery filters by. The same ids, in the same
@@ -104,7 +104,9 @@ export const WINDOWS = { week: { days: 7, label: "This week" }, month: { days: 3
 /// How a model was made (D7): as its app said when it was published
 /// (supabase/made_with.sql, web/card.js madeOf), and for a model whose app
 /// did not, as its tags say: with the assistant or Brickify (web/card.js
-/// ASSISTANT_TAGS, the same two the SQL reads), or by hand, every other.
+/// ASSISTANT_TAGS, the same two the SQL reads), or by hand, every other;
+/// only where its owner chose to show it (supabase/made_with_shown.sql):
+/// a model they did not say of is in Hand-built, never told apart.
 export const MADES = { hand: "Hand-built", assistant: "With the assistant" };
 export { ASSISTANT_TAGS };
 
@@ -381,7 +383,12 @@ export function listQuery(query, perPage, mostPages, { mine = false, signedIn = 
   const tag = query.tag === undefined ? "" : cleanTag(query.tag);
   if (query.tag !== undefined && String(query.tag) !== "") {
     if (tag.length < 2) throw new Unacceptable("a tag is two letters or more");
-    said.tag = asked.tag = tag;
+    said.tag = tag;
+    // The tags that say how a model was made are its owner's to show
+    // (supabase/made_with_shown.sql): asked by one, the list is of those
+    // whose owner chose to say it, as With the assistant's is.
+    if (ASSISTANT_TAGS.includes(tag)) said.made = asked.made = "assistant";
+    else asked.tag = tag;
   }
   const sort = String(query.sort ?? "newest") || "newest";
   const sorts = mine ? { ...SORTS, ...MINE_SORTS } : SORTS;
@@ -404,9 +411,28 @@ export function listQuery(query, perPage, mostPages, { mine = false, signedIn = 
     if (!mine) throw new Unacceptable("sign in, and ask with mine=1, to see what you can build now", 401);
     said.ready = asked.buildable = true;
   }
+  // Built from a real set, as counted (altbuilds, api/_alts.js,
+  // supabase/alt_builds.sql): alt=N, every part from set N or N one of the
+  // fewest sets that hold every part; from_one_set=1, every part from one
+  // set, whichever it is. For the feed and the gallery to ask.
+  const alt = String(query.alt ?? "").trim();
+  if (alt) {
+    if (!ALT_SET.test(alt)) throw new Unacceptable("alt is a set's number, as on its box, like 31009-1");
+    const number = alt.toLowerCase();
+    said.alt = asked.alt = number.includes("-") ? number : `${number}-1`;
+  }
+  const oneSet = String(query.from_one_set ?? "").toLowerCase();
+  if (oneSet && oneSet !== "0" && oneSet !== "false") {
+    if (!YES.has(oneSet)) throw new Unacceptable("from_one_set is 1 or left out");
+    said.from_one_set = asked.one_set = true;
+  }
   if (testsAsked(query)) said.tests = asked.tests = true;
   return { asked, said };
 }
+
+/// A set's number as alt= takes it: api/_sets.js SET_NUMBER, which imports
+/// this file.
+const ALT_SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 
 /// What can move in a model, as the app finds it from the model's joints
 /// when it is published (src/assembly/playable.gd: Playable.KINDS), in the
@@ -475,7 +501,10 @@ export function movesWords(card, most = MOST_MOTIONS) {
 
 /// A card as a client is given it: what directory_card read, and where its
 /// page and pictures are.
-export function cardOf(origin, row) {
+export function cardOf(origin, given) {
+  // How it was made, only where its owner chose to say (web/card.js
+  // madePublic, supabase/made_with_shown.sql).
+  const row = madePublic(given);
   const url = `${origin}/m/${row.id}`;
   const version = Date.parse(row.updated_at || "") || 0;
   return {
@@ -484,9 +513,12 @@ export function cardOf(origin, row) {
     steps: row.steps ?? null, own_steps: row.own_steps === true, technic: row.technic === true,
     // Its newest version passed the app's four tests (supabase/tested.sql).
     tested: row.tested === true,
-    // Who laid its parts, as its app said (supabase/made_with.sql); null
-    // where it did not, and its tags say.
+    // Still being built, shared as work in progress (supabase/wip.sql).
+    wip: row.wip === true,
+    // Who laid its parts, as its app said (supabase/made_with.sql), where
+    // its owner chose to show it; null where it did not, and its tags say.
     made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null,
+    made_with_shown: row.made_with_shown === true,
     // Who modelled it, when its sharer did not: the app's Library's model
     // it is (api/_omr_credit.js, supabase/modelled_by.sql); null for most.
     modelled_by: modelledByOf(row.modelled_by),
