@@ -6658,6 +6658,12 @@ func _build_ui() -> void:
 	# the step it is on.
 	_builder.place_step = _steps.place_step
 	middle.add_child(_steps)
+	# The line over a phone's model kept above the bar as it opens, grows
+	# with a step's parts and goes: it was placed once, over the bar's five
+	# when they came after it (ux15's docs picture, "opened Car" over Next).
+	if _phone != null:
+		_steps.item_rect_changed.connect(Callable(_phone, &"_lay_pill"))
+		_steps.visibility_changed.connect(Callable(_phone, &"_lay_pill"))
 	# The booklet's page laid out by hand, over the whole window, is made the
 	# first time it is asked for (_make_page_editor).
 
