@@ -795,9 +795,11 @@ func _measure_align() -> void:
 			if brick.part_id == part_id and would.is_finite() \
 					and brick.transform.origin.is_equal_approx(would + Vector3(-20, 0, 0)):
 				there = true
-		_check14("x -1 and Enter put it down a stud along x from its ghost (%s; %s; in hand: %s)" % [
-			would, _bar.status_text().left(40), str(_builder.is_carrying())],
-			not _builder.is_carrying() and there)
+		# A phone has no keys to type with: its number pad is the handles'.
+		if not _on_phone:
+			_check14("x -1 and Enter put it down a stud along x from its ghost (%s; %s; in hand: %s)"
+				% [would, _bar.status_text().left(40), str(_builder.is_carrying())],
+				not _builder.is_carrying() and there)
 	await _run_command("panel_properties", "", "", 10)
 	await _run_command("grid", "p12_07_grid", "View, Stud grid", 20)
 	await _run_command("grid", "", "", 10)
