@@ -864,19 +864,39 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.notice .acts .icon-btn.small { min-width: 44px; min-height: 44px; }
 }
 /* Beside the list (listkit, 2026-11-23), the feed's column on both tabs:
-   Show, the list's kinds a line each, the one shown lit, each with how many
-   groups have it; your achievements as a card, the group's row without its
+   Show, the list's kinds, the one shown lit, each with how many groups
+   have it; your achievements as a card, the group's row without its
    own frame, its newest two levels, the card lit while unread; and where to
    choose what you hear of. */
-.kind-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.kind-list a {
-	display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); padding: 6px var(--s-2);
-	border-radius: var(--r-2); color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none;
-}
-.kind-list a:hover { color: var(--ink); background: var(--panel-hi); }
-.kind-list a[aria-current="true"] { color: var(--ink); background: var(--panel-hi); box-shadow: inset 2px 0 0 var(--accent-edge); }
+/* Show is the site's row of chips (.pills.scroller, a.pill) under 900 px:
+   the first thing under the head's tabs, kept under the header as the list
+   scrolls (the gallery's toolbar), on the page's ground carried out to the
+   window's edges; from 900 px a line each in the aside. */
 .kind-list .n { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-@media (pointer: coarse) { .kind-list a { min-height: 44px; } }
+@media (width < 900px) {
+	.notices-aside { display: contents; }
+	.notices-aside > .kinds {
+		position: sticky; top: var(--head-h); z-index: 6; order: -1; min-width: 0;
+		margin-block: calc(-1 * var(--s-4)); padding: var(--s-2) 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+	}
+	.notices-aside > .kinds::before {
+		content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+		background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
+	}
+	.notices-aside > .kinds h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (width >= 900px) {
+	.kind-list.pills.scroller {
+		display: grid; gap: 2px; margin: 0; padding: 0; overflow: visible; scroll-snap-type: none; mask-image: none;
+	}
+	.kind-list a.pill {
+		display: flex; justify-content: space-between; gap: var(--s-2); min-height: 0; padding: 6px var(--s-2);
+		border: 0; border-radius: var(--r-2); background: none; color: var(--ink-soft); font-weight: 600; white-space: normal;
+	}
+	.kind-list a.pill:hover { color: var(--ink); background: var(--panel-hi); }
+	.kind-list a.pill[aria-current="true"] { color: var(--ink); background: var(--panel-hi); box-shadow: inset 2px 0 0 var(--accent-edge); }
+}
+@media (width >= 900px) and (pointer: coarse) { .kind-list a.pill { min-height: 44px; } }
 .achieved:has(.notice.unread) { border-color: var(--accent-edge); }
 .achieved .list-row { grid-template-columns: 48px minmax(0, 1fr) auto; column-gap: var(--s-3); padding: 0; border: 0; background: none; box-shadow: none; }
 .achieved .list-row > .row-pic { width: 48px; aspect-ratio: 1; }
