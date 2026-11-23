@@ -2916,8 +2916,11 @@ plan with Claude as the client.
   false), and deploy.sh's `app_closed` lets the site's own pages frame it;
   its ways out take the whole window (`src/main.gd` `WHOLE_WINDOW`). Signed
   in (`<html data-signed="in">`, web/theme.js before the first frame): the
-  band gives way to Share a build (`/app?share`, `main.gd`
-  `_maybe_share`) and the tabs For you, Following (`op=feed`) and New.
+  band is its search row alone, `#find-q` with Share a build (`/app?share`,
+  `main.gd` `_maybe_share`) and Share a file beside it (`.home-acts >
+  .mine`), over the tabs For you, Following (`op=feed`) and New
+  (homefix, 2026-11-23; homefeed_check step 7: the search in view, level
+  with Share a build, "/" focusing it, the first post over the foot).
   Prove it with `tools/web/homefeed_check.mjs --url=<a served site>
   [--signed-in] [--try-start]` and `tools/web/landing_check.mjs`: a site
   put together by `tools/site.py OUT` and filled by `node
@@ -5406,8 +5409,11 @@ plan with Claude as the client.
   under, `#hero-mark`: see `home hero`), then `#feed`: `.feed-head` (its
   h2, the tabs hidden) and `#stream`, the posts (see `the home page's
   feed`), the first begun in the first screen; Show more (`#feed-more`).
-  Signed in: no band, `.feed-you` (Share a build, Share a file from another
-  program) and the tabs. Then `#beta`, `#why` (the studio, `#sets-models`
+  Signed in: the band is `.home-acts` alone, the same `#find` with Share
+  a build and Share a file from another program (`.mine`) beside it, and
+  the tabs. The band's foot: `--s-7` under its last line and over the
+  feed's heading (landing_check's "room", each at least 32 px, the two
+  within 8 px; homefix, 2026-11-23). Then `#beta`, `#why` (the studio, `#sets-models`
   four real sets live) and `#start`. `tools/web/landing_check.mjs` checks at
   390 x 844 and 1280 x 800, light and dark: the search and Start building
   whole in the first screen, on a phone the first post's picture begun in it

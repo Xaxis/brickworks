@@ -12,9 +12,10 @@
   a hover or a tap, and how it was made, each a link to that feature's docs.
   Signed out, one band over it says what Brickworks is, with the search and
   Start building; a post in the stream opens the studio itself in the feed
-  on a tap. Signed in, Share a build and the tabs For you, Following and
-  New. Under the feed: the beta while it is open, the studio (the app's
-  picture and five things a build needs), and one last offer. No title or
+  on a tap. Signed in, the same search with Share a build beside it, and
+  the tabs For you, Following and New. Under the feed: the beta while it
+  is open, the studio (the app's picture and five things a build needs),
+  and one last offer. No title or
   first screen calls it AI. Every claim is something the app does today
   (.claude/skills/verify/features/web.md, docs-site/).
 
@@ -77,15 +78,15 @@
 /* The first screen (homefeed, 2026-11-23; docs/SOCIAL.md section 11): the
    feed. Signed out, one band over it says what Brickworks is in a line,
    with the search and Start building; signed in (<html data-signed>,
-   web/theme.js, before the first frame) the band gives way to Share a
-   build and the feed's tabs, For you, Following and New. Laid out so a
-   phone's first post starts within 600 px and a laptop's first row of
-   pictures is whole in its first screen, above the beta bar. */
-.home-band { padding: clamp(16px, 2vw, 24px) 0 var(--s-4); }
-:root[data-signed="in"] .home-band { display: none; }
+   web/theme.js, before the first frame) the band is the search alone with
+   Share a build beside it, over the feed's tabs, For you, Following and
+   New. Laid out so a phone's first post starts within 600 px and a
+   laptop's first row of pictures is whole in its first screen, above the
+   beta bar. */
+.home-band { padding: clamp(16px, 2vw, 24px) 0 var(--s-7); }
 /* The words on the left and the mark in bricks beside them from 900 px,
-   large (400 px, rising into the header's shadow and over the band's
-   foot), its line on the mark's own baseline; under that a compact band
+   large (up to 400 px, rising into the header's shadow), its line on the
+   mark's own baseline; under that a compact band
    over the words, the mark at 45% of the width with its line beside it
    (hero3d, 2026-11-23). Both keep the band short enough that a laptop's
    first screen shows at least 60% of each first-row picture of the feed
@@ -95,13 +96,12 @@
 .hero-mark { margin: 0; min-width: 0; display: flex; align-items: flex-end; gap: var(--s-3); }
 @media (width < 900px) { .hero-mark { order: -1; } }
 @media (width >= 900px) {
-	.home-band { padding: 16px 0 var(--s-3); background-image: radial-gradient(26% 85% at 82% 48%, rgba(242, 205, 55, 0.18), transparent 72%), var(--studs); }
+	.home-band { padding: 16px 0 var(--s-7); background-image: radial-gradient(26% 85% at 82% 48%, rgba(242, 205, 55, 0.18), transparent 72%), var(--studs); }
 	.home-hero { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-6); }
 	/* Up 47 px under the header (the stage's empty top: the bricks begin
 	   9 px under the header's edge; the header, over it, keeps its own
-	   clicks) and over the band's bottom padding: the mark as large as it
-	   can be with the band no taller. */
-	.hero-mark { position: relative; flex-direction: column; align-items: center; gap: 0; margin: -47px 0 -12px; }
+	   clicks): the mark as large as it can be with the band no taller. */
+	.hero-mark { position: relative; flex-direction: column; align-items: center; gap: 0; margin: -47px 0 0; }
 }
 /* The mark: its poster in the HTML, its size given, so the page is whole
    at its first paint and nothing moves when the 3D takes the poster's
@@ -111,8 +111,13 @@
 	position: relative; flex: none; width: 45%; aspect-ratio: 460 / 414; border-radius: var(--r-3);
 	touch-action: pan-y; -webkit-tap-highlight-color: transparent; outline-offset: 2px;
 }
+/* From 900 px as tall as the window leaves it, 400 px at most: the band's
+   foot and the feed's head keep the page's rhythm (homefix, 2026-11-23,
+   the owner: "you fucked up the consistent spacing above 'What builders
+   are making'"; its line sat on the band's edge and the heading on the
+   line) and a laptop's 800 px still shows the first row of builds. */
 @media (width >= 900px) {
-	.hero-stage { width: auto; height: 400px; }
+	.hero-stage { width: auto; height: clamp(280px, 100vh - 500px, 400px); }
 	/* Its focus ring round the mark and its line, from the header's edge
 	   down (the stage's top is under the header). */
 	@supports selector(:has(a)) {
@@ -141,7 +146,7 @@
 .hero-credit a { color: var(--ink); font-weight: 600; }
 .hero-credit .hero-sep { display: none; margin-inline: 0.45em; color: var(--ink-faint); }
 @media (width >= 900px) {
-	.hero-credit { position: relative; flex-direction: row; gap: 0; margin-top: -19px; padding: 0 0 8px; white-space: nowrap; }
+	.hero-credit { position: relative; flex-direction: row; gap: 0; margin-top: -19px; padding: 0; white-space: nowrap; }
 	.hero-credit .hero-sep { display: inline; }
 }
 /* The line at --t-h1, a page title's size. */
@@ -159,8 +164,9 @@
 .home-acts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; max-width: 720px; }
 .find { position: relative; flex: 1 1 320px; min-width: 0; }
 .home-acts > .cta { flex: none; }
+.home-acts > .mine { display: none; }
 @media (width < 600px) {
-	.home-acts > .cta { flex: 1 1 100%; justify-content: center; }
+	.home-acts > .start { flex: 1 1 100%; justify-content: center; }
 	.find .search .hint { display: none; }
 	.find .search input { padding-right: 12px; }
 	.home-words .note { display: none; }
@@ -185,13 +191,31 @@
 .find-list [role="option"] small { margin-left: auto; padding-left: var(--s-3); color: var(--ink-faint); font-size: var(--t-tiny); white-space: nowrap; }
 .find-list .all { color: var(--ink-soft); font-size: var(--t-small); }
 
-/* The feed: its head (signed in, Share a build and the tabs), then the
-   stream, a column on a phone, two from 700 px, three from 1100 and four
-   from 1560; the studio to try two columns wide where there are two. */
-.home-feed { padding: 0 0 var(--section); }
-:root[data-signed="in"] .home-feed { padding-top: clamp(16px, 3vw, 32px); }
-.feed-you { display: none; flex-wrap: wrap; gap: var(--s-3); align-items: center; margin: 0 0 var(--s-4); }
-:root[data-signed="in"] .feed-you { display: flex; }
+/* Signed in (homefix, 2026-11-23, the owner: "for logged in users on the
+   landing page why dont you have a elegant consistent inline search bar
+   for them?!"), the band is its row alone: the same search, the field
+   and its suggestions, taking what is left of the row, and Share a build
+   and Share a file beside it where Start building was; on a phone the
+   search the whole width over them. No line, mark or ground: the feed's
+   tabs under it. The heading is kept for a screen reader. */
+:root[data-signed="in"] .home-band { padding: clamp(16px, 3vw, 32px) 0 0; background: none; }
+:root[data-signed="in"] .home-hero { display: block; }
+:root[data-signed="in"] .hero-mark, :root[data-signed="in"] .home-words .lede,
+:root[data-signed="in"] .home-words .note, :root[data-signed="in"] .home-acts > .start { display: none; }
+:root[data-signed="in"] .home-words h1 {
+	position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+:root[data-signed="in"] .home-acts { max-width: none; align-items: center; }
+:root[data-signed="in"] .home-acts > .mine { display: inline-flex; }
+@media (width < 600px) { :root[data-signed="in"] .find { flex-basis: 100%; } }
+
+/* The feed: its head (signed in, the tabs), then the stream, a column on
+   a phone, two from 700 px, three from 1100 and four from 1560; the
+   studio to try two columns wide where there are two. Signed out, its
+   head as far under the band's line as the band's foot is over it, as an
+   inner page's body is under its head (site.css .page-hero, .page-body). */
+.home-feed { padding: var(--s-7) 0 var(--section); }
+:root[data-signed="in"] .home-feed { padding-top: var(--s-5); border-top: 0; }
 .feed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-4); border-bottom: 1px solid var(--line); }
 .feed-head h2 { margin: 0; padding: 0 0 10px; font-size: var(--t-h2); line-height: 1.25; font-weight: 650; }
 .feed-head .tabs { display: none; margin: 0 0 -1px; border-bottom: 0; min-width: 0; overflow-x: auto; }
@@ -294,8 +318,9 @@
 	<!-- The band over the feed, signed out (homefeed, 2026-11-23): what
 	     Brickworks is in a line, a search over models, builders and sets
 	     (web/home-find.js, asked for once the field is used) and Start
-	     building, which opens the studio. Signed in it gives way to Share a
-	     build and the feed's tabs (<html data-signed>, web/theme.js). -->
+	     building, which opens the studio. Signed in, the search alone with
+	     Share a build and Share a file beside it (.mine), over the feed's
+	     tabs (<html data-signed>, web/theme.js; homefix, 2026-11-23). -->
 	<section class="home-band halo" id="home" aria-labelledby="hero-h">
 		<div class="wrap wide home-hero">
 			<div class="home-words">
@@ -315,7 +340,9 @@
 						</label>
 						<div class="find-list" id="find-list" role="listbox" aria-label="What the search finds" hidden></div>
 					</form>
-					<a class="cta" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta start" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta mine" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost mine" href="/share-model">Share a file from another program</a>
 				</div>
 				<p class="note">Free, with nothing to install. <a href="/compare">How it compares with Studio</a></p>
 			</div>
@@ -352,10 +379,6 @@
 	     New. The skeletons are what a checkout's own page shows until then. -->
 	<section class="home-feed" id="feed" aria-labelledby="feed-h">
 		<div class="wrap wide">
-			<div class="feed-you">
-				<a class="cta" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
-				<a class="cta ghost" href="/share-model">Share a file from another program</a>
-			</div>
 			<div class="feed-head">
 				<h2 id="feed-h">What builders are making</h2>
 				<div class="tabs" role="tablist" aria-label="The feed" id="feed-tabs">
