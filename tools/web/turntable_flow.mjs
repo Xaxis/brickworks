@@ -116,12 +116,15 @@ function metas(html) {
 }
 
 /// The names storage has for [id] in the clips' bucket, asked with the
-/// secret key (a list: no file's bytes come with it).
+/// secret key (a list: no file's bytes come with it). Searched by name, as
+/// api/_erase.js asks: a list's prefix is a folder, and the clips are at
+/// the bucket's root (<id>.webm), so by prefix it listed none, ever.
 async function stored(id) {
   const reply = await fetch(`${SUPABASE}/storage/v1/object/list/shared-clips`, { method: "POST",
     headers: { apikey: SECRET, authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
-    body: JSON.stringify({ prefix: id, limit: 10, offset: 0 }) });
-  return reply.ok ? (await reply.json()).map((file) => file.name) : [`(storage answered ${reply.status})`];
+    body: JSON.stringify({ prefix: "", search: id, limit: 10, offset: 0 }) });
+  return reply.ok ? (await reply.json()).filter((file) => file.id !== null && String(file.name).startsWith(`${id}.`))
+    .map((file) => file.name) : [`(storage answered ${reply.status})`];
 }
 
 const MODEL = ["0 FILE main.ldr", "0 Turntable", "0 Name: main.ldr", "0 Author: Brickworks",
@@ -185,6 +188,20 @@ async function main() {
   try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await signInContext(context, designer);
+    // The recorder's worker asks for its scene with no cookie (credentials:
+    // "omit", tools/viewer/clip_worker.js), so on a preview the bypass
+    // cookie the first visit takes never went with it: Vercel's login
+    // answered, and every visit said cannot-draw (rel-m319, in 3.9 s). The
+    // bypass goes with it as a header there (Playwright routes a worker's
+    // requests); brickworks.diy has no protection and is asked as it is.
+    // Each answer is said, so a cannot-draw is the scene's or the drawing's.
+    const scenes = [];
+    const isScene = (url) => url.origin === new URL(base).origin && /^\/m\/[A-Za-z0-9]{10}\/scene\.json$/.test(url.pathname);
+    context.on("response", (one) => { if (isScene(new URL(one.url()))) scenes.push(`${one.status()} ${new URL(one.url()).search}`); });
+    if (bypass) {
+      await context.route(isScene, (route) => route.continue({ headers: { ...route.request().headers(),
+        "x-vercel-protection-bypass": bypass } }));
+    }
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
@@ -199,6 +216,8 @@ async function main() {
       if (!ENDED.test(how)) await page.waitForTimeout(500);
     }
     const took = (Date.now() - t0) / 1000;
+    check(scenes.length > 0 && scenes.every((one) => one.startsWith("200 ")),
+      `the recorder's scene answered: ${scenes.join(", ") || "never asked"}`);
     check(how === "made", `within the visit, its clip is recorded and kept: data-clip ${how || "(nothing)"} in ${took.toFixed(1)} s`);
     const drewOf = await page.evaluate(() => document.documentElement.dataset.clipOf || "").catch(() => "");
     check(drewOf === `m:${id}:1`, `it drew version 1's own scene: ${drewOf || "(none said)"}`);
