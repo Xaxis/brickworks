@@ -253,7 +253,7 @@
       "kind": "cli",
       "label": "web build and deploy",
       "entry": "tools/deploy.sh",
-      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py)",
+      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py tests/test_deploy_checks.py tests/test_storage_stamp.py tests/test_brotli_cache.py; --no-fit skips the fit check alone, DEPLOY_TIMES=1 says each step's seconds)",
       "area": "web"
     },
     {

@@ -120,9 +120,10 @@ def stamp_key(url: str, sizes: dict[str, int]) -> str:
     return digest.hexdigest()
 
 
-def stamped(key: str, stamp: Path = STAMP, now: float | None = None) -> str | None:
+def stamped(key: str, stamp: Path | None = None, now: float | None = None) -> str | None:
     """When a listing asked about exactly KEY found every mesh up, if it
     was within STAMP_HOURS; else None."""
+    stamp = stamp or STAMP
     try:
         said = json.loads(stamp.read_text())
         at = float(said["at"])
@@ -134,9 +135,10 @@ def stamped(key: str, stamp: Path = STAMP, now: float | None = None) -> str | No
     return datetime.datetime.fromtimestamp(at, datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
 
-def write_stamp(key: str, count: int, stamp: Path = STAMP) -> None:
+def write_stamp(key: str, count: int, stamp: Path | None = None) -> None:
     """A listing asked about KEY found all COUNT meshes up. Whole, then
     named, so a deploy reading it at once finds all of it or nothing."""
+    stamp = stamp or STAMP
     try:
         stamp.parent.mkdir(parents=True, exist_ok=True)
         part = stamp.with_name(f"{stamp.name}.{os.getpid()}.part")
