@@ -109,7 +109,7 @@ Every model is a card, the same everywhere on the site: its picture, its name, i
 lib:the gallery's card as a photograph
 -->
 
-A card's picture is a photograph of the model standing on a desk in daylight, path traced when the model was shared from a computer whose graphics card traces rays (the same stage as [Render's](/docs/render) Best). A model shared from a browser shows the model on the page's own ground instead.
+A card's picture is a photograph of the model standing on a desk, drawn when it was shared: path traced in daylight where the computer's graphics card traces rays (the same stage as [Render's](/docs/render) Best), and under a studio's soft lights in a browser. A model shared from a phone, or from a computer too slow to draw it in a few seconds, shows the model on the page's own ground instead.
 
 Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/collections#own)). Only you see it, and the gallery counts it for the whole page at once.
 

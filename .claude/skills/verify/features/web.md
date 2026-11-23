@@ -4554,8 +4554,12 @@ plan with Claude as the client.
   gallery, the home feed and every card show) is the model path traced on
   photoreal10's measured desk in daylight (`CardPhoto.LOOK`, the bench's
   grey 1x3 stage), framed from the way the view looks, at 960 x 720 made
-  480 x 360, opaque. Only where `PathTracer.available()`: a browser's
-  publish keeps the cut-out in the window's light. The link's picture and
+  480 x 360, opaque. Where no rays are traced (a browser) the same desk
+  is frames averaged under the studio's lights (`CardPhoto.RASTER`, 16
+  frames), given up for the cut-out past 2.5 s (`RASTER_MOST_MS`); a phone
+  (`Phone.on()`) keeps the cut-out. Check the browser's card under
+  `--rendering-method gl_compatibility` through zink (the card probe's
+  header). The link's picture and
   the page's cut-out (`/m/<id>.png`, `.cutout.png`) are Picture's as
   before, so a model's page keeps its ground in both themes. `POST
   /api/share?op=card&id=X {thumb}` puts a new card on the owner's own model
