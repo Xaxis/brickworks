@@ -30,8 +30,9 @@
 //               answers, db and storage first, the picture's own over them
 //   "storage"   what localStorage holds (a session), "session" sessionStorage
 //   "steps"     after the page is up, a person's: {"click": selector},
-//               {"hover": selector}, {"press": "Escape"}, {"wait": selector},
-//               {"scroll": selector}, {"pause": ms}
+//               {"hover": selector}, {"press": "Escape"}, {"wait": selector}
+//               (for up to "within" ms, 30 s unless said), {"scroll": selector},
+//               {"pause": ms}
 //   "crop"      a selector, a list of them (the box round them all), or
 //               "viewport"; "pad" round it
 //   "phone"     a phone's browser (touch, mobile), "scale" its pixels a point
@@ -129,6 +130,10 @@ function answerOf(answers, where) {
 // "db" and nothing else.
 const SERVER = [
   [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", (m) => ({ op: "page", id: m[1] })],
+  // Its 3D view's scene and its parts list, which a kit to post it
+  // elsewhere is drawn from (docs-site/pictures/sharing.json).
+  [/^\/m\/([A-Za-z0-9]{10})\/scene\.json$/, "share", (m) => ({ op: "scene", id: m[1] })],
+  [/^\/m\/([A-Za-z0-9]{10})\/parts\.json$/, "share", (m) => ({ op: "parts", id: m[1] })],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", (m) => ({ op: "page", id: m[1], v: m[2] })],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", (m) => ({ op: "page", handle: m[1] })],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", (m) => ({ op: "list_page", id: m[1] })],
@@ -202,7 +207,7 @@ async function act(page, step) {
   if (step.click) await page.locator(step.click).first().click();
   else if (step.hover) await page.locator(step.hover).first().hover();
   else if (step.press) await page.keyboard.press(step.press);
-  else if (step.wait) await page.waitForSelector(step.wait, { state: "visible", timeout: 30000 });
+  else if (step.wait) await page.waitForSelector(step.wait, { state: "visible", timeout: Number(step.within || 30000) });
   else if (step.scroll) await page.locator(step.scroll).first().scrollIntoViewIfNeeded();
   else if (!("pause" in step)) throw new Error(`a step this flow does not know: ${JSON.stringify(step)}`);
   await page.waitForTimeout(Number(step.pause ?? 300));
@@ -252,6 +257,15 @@ for (const shot of shots) {
           return found && { name, query: { ...Object.fromEntries(asked.searchParams), ...query(found) } };
         }).find(Boolean);
         if (made) return route.fulfill(await serverMade(made.name, made.query, asked.host, asked.protocol.replace(":", "")));
+        // A part's geometry, from the store a scene names: this checkout's own.
+        const mesh = /\/storage\/v1\/object\/public\/parts\/([0-9a-f]{8,64})\.lbm$/.exec(asked.pathname);
+        if (mesh) {
+          const file = path.join(ROOT, "assets", "generated", "parts", `${mesh[1]}.lbm`);
+          return existsSync(file)
+            ? route.fulfill({ status: 200, contentType: "application/octet-stream", body: readFileSync(file),
+              headers: { "access-control-allow-origin": "*" } })
+            : route.fulfill({ status: 404, contentType: "text/plain", body: "", headers: { "access-control-allow-origin": "*" } });
+        }
         if (local && asked.pathname.startsWith("/api/")) unknown.push(`${route.request().method()} ${where}`);
         if (local && served) return route.fulfill({ response: await route.fetch({ url: served.url + where }) });
         if (local) return route.continue();

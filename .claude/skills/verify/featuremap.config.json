@@ -6285,6 +6285,20 @@
     },
     {
       "kind": "ui",
+      "label": "a kit to post a model elsewhere",
+      "entry": "web/post-kit.js",
+      "reach": "https://brickworks.diy/m/<id>   (signed in as its designer, Share, Post it elsewhere: r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable, Flickr; each kit made in the browser from what the page published (its picture, the 3D view's scene, its parts list), checked against its place's rules (web/post-rules.js, each rule with its page), every caption with the model's link; Share the files on a phone with Web Share, Save the kit (.zip, under 50 MB) elsewhere; Open <place>; Brickworks posts nothing; counted as share.kit_<place>)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "postkit browser flow",
+      "entry": "tools/web/postkit_flow.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/postkit_flow.mjs --out=DIR   (on the design stand-in, nothing leaves the box: LDraw's 10183-1 (558 pieces) as Sam's Harbour Tram; Post it elsewhere hidden signed out and on somebody else's model, its code never loaded; each of the six kits made in 20 s or less at 1280 and 60 s or less at 390 (touch), its rules kept but Instagram's MP4 where Chromium records WebM, its zip under 50 MB read back by zipfile, every caption with the link; the kits ask only for the scene and geometry its View in 3D loads, once, nothing after the first; Ideas' main picture drawn with no text; Tab, Enter, the heading focused, Escape back to the button; pictures and timings.json in DIR. tests/test_post_kit.py holds each rule to its page)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "share a model file from the site",
       "entry": "web/share-model.js",
       "reach": "<deployment>/share-model, or the gallery's Share yours (a word beside the title on a phone too), its empty state and Put yours here   (web/share-model.html: an LDraw .ldr/.mpd/.dat or a BrickLink Studio .io chosen or dropped, read in the browser and refused in words when it is no model; an LDD .lxf sent to the app; its name, words, licence and List it in the gallery; signed in and 13 or over, published once by POST /api/share listed as chosen, its pictures drawn here from /m/<id>/scene.json by web/viewer3d.js and put on its version 1 by POST /api/share?op=pictures, its link never taken down; a lost answer's Share it again uses the link it made (op=mine); to /m/<id>; tools/web/share_model_flow.mjs)",

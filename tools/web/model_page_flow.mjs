@@ -352,12 +352,13 @@ async function partsChecks(page, label, seen, one) {
   check(`${label}: ${after.shown} rows shown, a colour's row first, no picture loaded from anywhere (${after.pictures})`,
     after.shown > 0 && after.shown <= 12 && after.firstGroup && after.pictures === 0);
   // Each lot's picture, drawn on the page (site304): only images from the
-  // site itself, and a fetch only to it, its own Supabase project and what
-  // the page made itself (blob:, the GLB In your room writes, arview).
+  // site itself and what the page made (blob:, a kit's pictures, postkit),
+  // and a fetch only to it, its own Supabase project and what the page made
+  // itself (blob:, the GLB In your room writes, arview).
   const sources = (name) => (new RegExp(`(?:^|;)\\s*${name}\\s+([^;]*)`).exec(seen.policy || "") || [])[1]?.trim().split(/\s+/) || [];
   const project = remote ? remoteDb : stand.DB;
-  check(`${label}: its policy lets in pictures from itself alone (img-src ${sources("img-src").join(" ")}) and talks to itself, its project and what it made (connect-src ${sources("connect-src").join(" ")})`,
-    JSON.stringify(sources("img-src")) === JSON.stringify(["'self'"])
+  check(`${label}: its policy lets in pictures from itself and what it made alone (img-src ${sources("img-src").join(" ")}) and talks to itself, its project and what it made (connect-src ${sources("connect-src").join(" ")})`,
+    JSON.stringify(sources("img-src")) === JSON.stringify(["'self'", "blob:"])
       && sources("connect-src").every((one) => one === "'self'" || one === project || one === "blob:") && sources("connect-src").includes("'self'"));
   await lotPictures(page, label, "drawn from its geometry");
   if (after.all) await page.click("#parts [data-all]");

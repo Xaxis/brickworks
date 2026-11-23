@@ -187,7 +187,7 @@ SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
 # say(), is English left on the page. Those no copy loads are read for
 # their words too: a set's page, which the server makes, and its scripts.
 SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js": (), "web/set-page.js": (),
-            "web/model-page.js": (), "api/_sets.js": ("setPage", "facts", "structured", "keepBarHtml"),
+            "web/model-page.js": (), "web/post-kit.js": (), "web/post-rules.js": (), "api/_sets.js": ("setPage", "facts", "structured", "keepBarHtml"),
             "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark", "madeFact",
                              "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
@@ -222,7 +222,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
 WRITTEN = ("tools/site.py",)
 # Capitalized words of those that are no English to say: code, and names.
 CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Claude", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook",
-              "Edge", "Opera", "Safari"}
+              "Edge", "Opera", "Safari", "Instagram", "Flickr"}
 # And the keys a script listens for, each a literal of its own.
 KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
 # Runs that are names, the same in every language: and each AI app's, as

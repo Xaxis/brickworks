@@ -89,7 +89,10 @@ import { basesAsked, basesSaid } from "../../api/_bases.js";
 // Who a comment names (@handle), read as the API reads it.
 import { mentionsIn } from "../../web/card.js";
 
-export const ORIGIN = "http://design.test";
+// The site's origin; STAND_IN_ORIGIN=https://design.test for a flow whose
+// page needs a secure one (WebCodecs, which a kit's turn is recorded with:
+// tools/web/postkit_flow.mjs). Read when this is first imported.
+export const ORIGIN = process.env.STAND_IN_ORIGIN || "http://design.test";
 export const DB = "https://stub.supabase.test";
 export const MODEL_ID = "DesignAbc1";
 export const HANDLE = "design-tester";
