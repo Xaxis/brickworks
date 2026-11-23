@@ -602,6 +602,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/scene[.]json", "dest": "/api/share?op=scene&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/room[.]json", "dest": "/api/share?op=room&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})/changes[.]json", "dest": "/api/share?op=changes&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },

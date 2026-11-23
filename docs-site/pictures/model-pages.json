@@ -97,6 +97,456 @@
    "features": [
     "ui:build it step player"
    ]
+  },
+  {
+   "id": "remix-line",
+   "source": "site",
+   "route": "/m/DocsSprt02",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "answers": {
+    "/m/DocsSprt02.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt02.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt02.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt03.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt04.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    }
+   },
+   "db": {
+    "rest/v1/rpc/directory_model": {
+     "id": "DocsSprt02",
+     "name": "Sports car in yellow",
+     "author": "Mika Example",
+     "parts": 191,
+     "has_image": true,
+     "has_thumb": true,
+     "listed_at": "2026-11-03T10:00:00Z",
+     "updated_at": "2026-11-03T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "car"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 35,
+     "own_steps": true,
+     "technic": false,
+     "views": 0,
+     "likes": 0,
+     "builds": 0,
+     "remixes": 1,
+     "comments": 0,
+     "by": {
+      "handle": "mika-example",
+      "name": "Mika Example"
+     },
+     "tested": false,
+     "made_with": "hand",
+     "moves": [],
+     "motions": [],
+     "description": "The sports car in yellow, with a spoiler.",
+     "listed": true,
+     "from": [
+      {
+       "id": "DocsSprt01",
+       "name": "Sports car and its driver",
+       "author": "Test builder"
+      }
+     ],
+     "remixes_listed": [
+      {
+       "id": "DocsSprt03",
+       "name": "Rally car",
+       "author": "Jo Example",
+       "parts": 205,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-06T10:00:00Z",
+       "updated_at": "2026-11-06T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "jo-example",
+        "name": "Jo Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": []
+      }
+     ]
+    },
+    "rest/v1/share_versions?model=eq.DocsSprt02": [
+     {
+      "n": 1,
+      "at": "2026-11-03T10:00:00Z",
+      "note": null,
+      "parts": 191,
+      "steps": 35,
+      "bytes": 22347,
+      "has_image": true,
+      "changes": null,
+      "first_changed": null,
+      "remixed_from_version": 1
+     }
+    ],
+    "rest/v1/shared_models?id=eq.DocsSprt02": [
+     {
+      "id": "DocsSprt02",
+      "owner": "d0c5d0c5-0000-4d0c-8d0c-00000000002a",
+      "test": false
+     }
+    ],
+    "storage/v1/object/shared-models/DocsSprt02.mpd": {
+     "file": "models/sports_car.ldr"
+    },
+    "rest/v1/people?": [
+     {
+      "account": "d0c5d0c5-0000-4d0c-8d0c-00000000002a",
+      "handle": "mika-example",
+      "name": "Mika Example"
+     }
+    ],
+    "rest/v1/share_tests?model=eq.DocsSprt02": [],
+    "rest/v1/rpc/remix_tree": {
+     "changes": {
+      "added": 4,
+      "removed": 0,
+      "moved": 0,
+      "recoloured": 31,
+      "turned": 0,
+      "parts_was": 187,
+      "parts_now": 191,
+      "n": 1,
+      "against": "DocsSprt01",
+      "against_n": 1,
+      "inferred": false,
+      "drawn": true
+     },
+     "up": [
+      {
+       "id": "DocsSprt01",
+       "name": "Sports car and its driver",
+       "author": "Test builder",
+       "depth": 1,
+       "has_image": true,
+       "has_thumb": true,
+       "updated_at": "2026-10-30T10:00:00Z",
+       "changes": null,
+       "from": null
+      }
+     ],
+     "down": [
+      {
+       "id": "DocsSprt03",
+       "name": "Rally car",
+       "author": "Jo Example",
+       "parts": 205,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-06T10:00:00Z",
+       "updated_at": "2026-11-06T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "jo-example",
+        "name": "Jo Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt02",
+       "depth": 1,
+       "changes": {
+        "added": 18,
+        "removed": 4,
+        "moved": 6,
+        "recoloured": 0,
+        "turned": 2,
+        "parts_was": 191,
+        "parts_now": 205,
+        "n": 1,
+        "against": "DocsSprt02",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      }
+     ]
+    }
+   },
+   "wait": ".model-page .remix-changes",
+   "crop": [
+    ".model-page .from",
+    ".model-page .remix-changes"
+   ],
+   "pad": 16,
+   "alt": "A remix's credit, Remixed from Sports car and its driver, and under it what it changed from version 1, with See what changed in 3D.",
+   "caption": "What a remix changed, under its credit.",
+   "features": [
+    "ui:what a remix changed and the remix tree"
+   ]
+  },
+  {
+   "id": "remix-tree",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "answers": {
+    "/m/DocsSprt02.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt02.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt02.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt03.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt04.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    }
+   },
+   "db": {
+    "rest/v1/rpc/remix_tree": {
+     "changes": null,
+     "up": [],
+     "down": [
+      {
+       "id": "DocsSprt04",
+       "name": "Sports car with a roof rack",
+       "author": "Priya Example",
+       "parts": 199,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-05T10:00:00Z",
+       "updated_at": "2026-11-05T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "priya-example",
+        "name": "Priya Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt01",
+       "depth": 1,
+       "changes": {
+        "added": 12,
+        "removed": 0,
+        "moved": 0,
+        "recoloured": 0,
+        "turned": 0,
+        "parts_was": 187,
+        "parts_now": 199,
+        "n": 1,
+        "against": "DocsSprt01",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      },
+      {
+       "id": "DocsSprt02",
+       "name": "Sports car in yellow",
+       "author": "Mika Example",
+       "parts": 191,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-03T10:00:00Z",
+       "updated_at": "2026-11-03T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 1,
+       "comments": 0,
+       "by": {
+        "handle": "mika-example",
+        "name": "Mika Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt01",
+       "depth": 1,
+       "changes": {
+        "added": 4,
+        "removed": 0,
+        "moved": 0,
+        "recoloured": 31,
+        "turned": 0,
+        "parts_was": 187,
+        "parts_now": 191,
+        "n": 1,
+        "against": "DocsSprt01",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      },
+      {
+       "id": "DocsSprt03",
+       "name": "Rally car",
+       "author": "Jo Example",
+       "parts": 205,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-06T10:00:00Z",
+       "updated_at": "2026-11-06T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "jo-example",
+        "name": "Jo Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt02",
+       "depth": 2,
+       "changes": {
+        "added": 18,
+        "removed": 4,
+        "moved": 6,
+        "recoloured": 0,
+        "turned": 2,
+        "parts_was": 191,
+        "parts_now": 205,
+        "n": 1,
+        "against": "DocsSprt02",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "scroll": "#remixes"
+    },
+    {
+     "wait": "#remixes .remix-tree"
+    }
+   ],
+   "crop": "#remixes .remix-tree",
+   "pad": 12,
+   "alt": "A model's Remixes tab as a tree: the model, marked This model, and its remixes under it, each with its picture, name, maker and what it changed.",
+   "caption": "The Remixes tab, both ways.",
+   "features": [
+    "ui:what a remix changed and the remix tree"
+   ]
   }
  ]
 }

@@ -240,6 +240,38 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .line { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .line li { margin: 3px 0; overflow-wrap: anywhere; }
 .model-page .line a { color: var(--ink); }
+/* What a remix changed, under its credit, and the Remixes tab's tree both
+   ways (remixdiff, api/_remix.js): each node its picture, name, maker and
+   what it changed from the one above it; each level set in from that one
+   and joined to it by a line; the model whose page it is ringed. */
+.model-page .remix-changes { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .remix-changes a, .model-page .remix-changes b { color: var(--ink); }
+.model-page .remix-changes b { font-weight: 600; }
+.model-page .remix-changes .what-changed { margin-left: 4px; vertical-align: 1px; }
+.model-page .remix-changes .what-changed[hidden] { display: none; }
+.remix-tree, .remix-tree ol { list-style: none; margin: 0; padding: 0; }
+.remix-tree ol { margin-left: 26px; padding-left: 14px; border-left: 2px solid var(--line-strong); }
+.remix-tree li { margin: 8px 0; }
+.remix-tree .node-card {
+	display: flex; align-items: center; gap: 12px; max-width: 640px; padding: 8px 12px 8px 8px;
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink); text-decoration: none;
+}
+.remix-tree a.node-card:hover { background: var(--panel-hi); border-color: var(--line-strong); }
+.remix-tree a.node-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.remix-tree .node-card.self { border-color: var(--accent-edge); box-shadow: inset 0 0 0 1px var(--accent-edge); }
+.remix-tree .node-card img, .remix-tree .no-picture {
+	flex: none; width: 64px; height: 48px; border-radius: calc(var(--radius) - 2px); background: var(--picture-ground); object-fit: contain;
+}
+.remix-tree .words { display: grid; min-width: 0; line-height: 1.35; }
+.remix-tree .name { font-weight: 600; overflow-wrap: anywhere; }
+.remix-tree .by, .remix-tree .change { font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
+.remix-tree .here { margin-left: auto; padding-left: 8px; font-size: var(--t-tiny); color: var(--ink-soft); white-space: nowrap; }
+@media (width < 600px) {
+	.remix-tree ol { margin-left: 12px; padding-left: 10px; }
+	.remix-tree .node-card { gap: 10px; }
+	.remix-tree .node-card img, .remix-tree .no-picture { width: 48px; height: 36px; }
+	.remix-tree .here { display: none; }
+}
 
 .gone { padding: clamp(56px, 10vw, 110px) 0; }
 
