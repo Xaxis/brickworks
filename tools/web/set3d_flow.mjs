@@ -169,10 +169,12 @@ const before3d = () => {
 async function view3d(page, phone) {
   if (phone) await page.tap(".set-page .picture .go");
   else await page.click(".set-page .picture .go");
+  // Ten minutes: the Liebherr's 6.3 million triangles took 313 s to draw whole in SwiftShader at a load
+  // of 70 (flow2), and the line says how long each took.
   const drawn = () => until(page, () => {
     const b = window.brickworks3d;
     return b && (b.timings.complete3d || b.state === "failed" || b.state === "big");
-  }, null, 240000);
+  }, null, 600000);
   let came = await drawn();
   const asked = await page.evaluate(() => (window.brickworks3d.state === "big"
     ? document.querySelector(".view3d-said")?.textContent || "" : ""));
