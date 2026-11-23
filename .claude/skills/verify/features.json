@@ -132,6 +132,7 @@
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
+        "tests/test_loop.py",
         "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -157,6 +158,7 @@
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
         "tests/test_together_poll.py"
@@ -264,6 +266,7 @@
         "tests/test_billing_pay.py",
         "tests/test_console2.py",
         "tests/test_flows_for.py",
+        "tests/test_loop.py",
         "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -364,6 +367,7 @@
         "tests/test_console.py",
         "tests/test_console3.py",
         "tests/test_feedback.py",
+        "tests/test_loop.py",
         "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_lang.py",
@@ -387,6 +391,7 @@
         "tests/test_console2.py",
         "tests/test_console3.py",
         "tests/test_flows_for.py",
+        "tests/test_loop.py",
         "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -411,6 +416,7 @@
         "tests/test_console2.py",
         "tests/test_console3.py",
         "tests/test_flows_for.py",
+        "tests/test_loop.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -802,8 +808,10 @@
       "area": "web",
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/insights/loop_check.mjs",
         "tests/test_adminclaude.py",
-        "tests/test_insights.py"
+        "tests/test_insights.py",
+        "tests/test_loop.py"
       ]
     },
     {
@@ -916,6 +924,7 @@
         "tests/test_brickbench.py",
         "tests/test_gallery_crons.py",
         "tests/test_insights.py",
+        "tests/test_loop.py",
         "tests/test_oauth_clients.py",
         "tests/test_update_parts.py"
       ]
@@ -2808,6 +2817,7 @@
         "tests/fixtures/insights/api_check.mjs",
         "tests/fixtures/insights/attacks_check.mjs",
         "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/loop_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
         "tests/test_beta_join.py",
@@ -2816,6 +2826,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py"
       ]
     },
@@ -3497,6 +3508,22 @@
       "kind": "cli",
       "entry": "tools/web/feedback_stand_in.mjs",
       "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql, feedback.sql and beta_join.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:the loop as JSON",
+      "kind": "cli",
+      "entry": "tools/loop_read.mjs",
+      "reach": "node tools/loop_read.mjs [--days=30 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--plan=all] [--tests] [--port=11390] [--out=FILE]   (the console's ?op=loop run by a local tools/web/relay_server.mjs against the live database, MASTER_EMAIL the checks' shared account (never the owner's), given only SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_PUBLISHABLE_KEY; says what a read without VIEW_SECRET cannot know; {ready: false} before supabase/loop_funnel.sql)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:the loop's card check",
+      "kind": "cli",
+      "entry": "tools/web/loop_card_check.mjs",
+      "reach": "node tests/fixtures/insights/loop_check.mjs --card=OUT/card_loop.json, then heavy node tools/web/loop_card_check.mjs --card=OUT/card_loop.json --out=OUT [--port=11391]   (locally, the console and api/admin.js on a relay against the live database, MASTER_EMAIL the checks' shared account: the live ?op=loop says not measured before supabase/loop_funnel.sql; the fixture's read at 1280 and 390, light and dark, six steps, a legend of two, the table's numbers the read's, Built and within 30 beside, each step's names; Tab reaches the chart in one stop, arrows, Home and End; Definitions' rules; pictures in OUT; ends loop_card: all ok)",
       "area": "web",
       "tests": []
     },
@@ -5252,6 +5279,14 @@
       ]
     },
     {
+      "id": "lib:the loop's read",
+      "kind": "lib",
+      "entry": "api/_loop.js",
+      "reach": "python3 tools/minitest.py tests/test_loop.py   (GET /api/admin?op=loop 401 signed out, 404 to anybody else, the same from, to, plan, device, lang, signed and tests as op=analytics; before supabase/loop_funnel.sql {ready: false}; its accounts hashed as the counter's, the checks' and the test pool's only on ?tests=1; tests/fixtures/insights/loop_check.mjs: 12 people stopped at known steps, two back, the owner, the checks' account and the test pool beside them, each step, Stopped here, Built, the kept shares, the heard-back kinds and every LOOP name equal to the hand count, the filters, a sampled visit at its weight, no VIEW_SECRET, a made-up name no step, 400 days at most, nothing left behind, --load=500 timed under 1 s over 90 days; LOOP's names all kept (python3 tools/insights_names.py --check); dry run tools/loop_funnel_try.sql; docs/ANALYTICS.md The loop)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the model in Claude",
       "kind": "lib",
       "entry": "src/net/model_views.gd",
@@ -5570,6 +5605,7 @@
         "tests/test_console.py",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -5741,6 +5777,7 @@
         "tests/test_console.py",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -6190,6 +6227,7 @@
         "tests/fixtures/insights/api_check.mjs",
         "tests/fixtures/insights/attacks_check.mjs",
         "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/loop_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
         "tests/test_beta_join.py",
@@ -6198,6 +6236,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py"
       ]
     },
@@ -6346,7 +6385,8 @@
       "reach": "https://brickworks.diy/u/<handle> and /m/<id> (Follow); every page's header (signed in, your avatar and what is new for you, on Menu at a phone's width)",
       "area": "web",
       "tests": [
-        "tests/test_blocks.py"
+        "tests/test_blocks.py",
+        "tests/test_loop.py"
       ]
     },
     {
@@ -6362,6 +6402,7 @@
         "tests/fixtures/insights/api_check.mjs",
         "tests/fixtures/insights/attacks_check.mjs",
         "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/loop_check.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/owner_notify/came_check.mjs",
@@ -6370,6 +6411,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_insights.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -6429,6 +6471,7 @@
         "tests/fixtures/insights/api_check.mjs",
         "tests/fixtures/insights/attacks_check.mjs",
         "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/loop_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/test_announce.py",
         "tests/test_beta_join.py",
@@ -6437,6 +6480,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py"
       ]
     },
@@ -6657,7 +6701,8 @@
       "reach": "https://brickworks.diy/u/<handle>   (More like <name>, under their work: up to six designers with Follow in place, hidden when nobody is close; api/people.js profilePage section#alike, follow.js showAlike)",
       "area": "web",
       "tests": [
-        "tests/test_blocks.py"
+        "tests/test_blocks.py",
+        "tests/test_loop.py"
       ]
     },
     {
@@ -6932,6 +6977,7 @@
         "tests/test_console2.py",
         "tests/test_console3.py",
         "tests/test_flows_for.py",
+        "tests/test_loop.py",
         "tests/test_owner_notify.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py",
@@ -6984,7 +7030,9 @@
       "entry": "web/privacy.html",
       "reach": "https://brickworks.diy/privacy",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/insights/loop_check.mjs"
+      ]
     },
     {
       "id": "ui:profile and collection pages",
@@ -7005,6 +7053,7 @@
         "tests/test_console.py",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -7480,7 +7529,8 @@
       "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js; Report a bug for everyone while the beta is open), the theme, Admin to /admin for the site's owner alone (op=feed_count's admin: true), and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web",
       "tests": [
-        "tests/test_blocks.py"
+        "tests/test_blocks.py",
+        "tests/test_loop.py"
       ]
     },
     {
@@ -7741,6 +7791,7 @@
         "tests/fixtures/insights/api_check.mjs",
         "tests/fixtures/insights/attacks_check.mjs",
         "tests/fixtures/insights/db_check.mjs",
+        "tests/fixtures/insights/loop_check.mjs",
         "tests/fixtures/insights/names_check.mjs",
         "tests/fixtures/insights/page_check.mjs",
         "tests/fixtures/owner_notify/came_check.mjs",
@@ -7749,6 +7800,7 @@
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_insights.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py",
         "tests/test_social.py"
@@ -7822,7 +7874,7 @@
       "id": "ui:the owner's Analytics",
       "kind": "ui",
       "entry": "web/admin-analytics.js",
-      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, the loop (each step this range against the one before as a dumbbell and a table, Built beside, each step's names; ?op=loop), retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
       "area": "web",
       "tests": []
     },
@@ -7877,6 +7929,7 @@
         "tests/test_console.py",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
+        "tests/test_loop.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
@@ -8246,6 +8299,7 @@
         "tests/test_billing_pay.py",
         "tests/test_booklet_follow.py",
         "tests/test_insights.py",
+        "tests/test_loop.py",
         "tests/test_realset.py",
         "tests/test_start_abba.py"
       ]
