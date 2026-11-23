@@ -433,9 +433,9 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   row that held only an empty heart, a fifth of the card. In
   `.models` (a grid: two to a row on a phone, three from 600 px and four
   from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
-  page of 24 is whole rows at every width; the gallery's own feed three
-  from 900 px, each picture its card's hero, and four from 1200 px, the
-  owner's four on a desktop; on a phone the week's pick comes before the
+  page of 24 is whole rows at every width; the gallery's own feed, each
+  picture its card's hero, one to a row on a phone, two from 600 px, three
+  from 900 and four from 1200, the owner's four on a desktop (2026-10-29); on a phone the week's pick comes before the
   month's challenge, so the first picture is 314 px down, sitebold), `.models.compact` (more to a
   row, beside a rail) or `.models.scroller` (one row of them, a
   Scroller). A card that carries an action keeps it inside, at its foot
