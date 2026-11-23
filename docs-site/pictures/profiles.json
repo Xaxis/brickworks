@@ -30,7 +30,7 @@
    "route": "/profile?edit=1",
    "viewport": [
     1280,
-    900
+    1000
    ],
    "themes": [
     "dark",

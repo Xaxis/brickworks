@@ -1362,7 +1362,7 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
    choices scroll, so Save stays in reach. */
 .minifig-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); display: none; }
 .minifig-dialog[open] { display: flex; flex-direction: column; }
-.minifig-maker { display: grid; grid-template-columns: 200px 1fr; gap: var(--s-5); min-height: 0; flex: 1 1 auto; }
+.minifig-maker { display: grid; grid-template-columns: 200px 1fr; grid-template-rows: minmax(0, 1fr); gap: var(--s-5); min-height: 0; flex: 1 1 auto; }
 .minifig-look { display: grid; gap: var(--s-3); justify-items: center; align-content: start; }
 .minifig-look .avatar.huge { width: 160px; height: 160px; }
 .minifig-themes { display: grid; gap: var(--s-2); width: 100%; }
@@ -1370,7 +1370,7 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	border-radius: var(--radius); border: 1px solid var(--line-strong); }
 .minifig-on.light { background: #fbfbfa; }
 .minifig-on.dark { background: #0b0c0e; }
-.minifig-choices { overflow-y: auto; min-height: 0; max-height: min(560px, calc(100dvh - 260px)); padding-right: var(--s-2); }
+.minifig-choices { overflow-y: auto; min-height: 0; padding-right: var(--s-2); }
 .minifig-group { border: 0; padding: 0; margin: 0 0 var(--s-4); min-width: 0; }
 .minifig-group legend { font-weight: 600; margin-bottom: var(--s-2); padding: 0; }
 .minifig-tiles { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -1386,10 +1386,9 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .minifig-credit { margin: var(--s-3) 0 var(--s-2); font-size: var(--t-small); }
 @media (max-width: 640px) {
 	.minifig-dialog { padding: var(--s-4); }
-	.minifig-maker { grid-template-columns: 1fr; gap: var(--s-3); }
+	.minifig-maker { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: var(--s-3); }
 	.minifig-look { grid-template-columns: auto 1fr; align-items: center; justify-items: start; }
 	.minifig-look .avatar.huge { width: 112px; height: 112px; grid-row: span 2; }
-	.minifig-choices { max-height: calc(100dvh - 380px); }
 }
 
 /* An icon from the sprite (web/icons.svg, web/kit.js iconHtml), in the

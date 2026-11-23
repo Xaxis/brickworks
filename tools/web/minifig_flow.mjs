@@ -17,7 +17,8 @@
 // --pictures, the maker, her profile, her comment, the gallery's cards and
 // the home's feed at 1280 and 390, dark and light.
 import { launch } from "./browser.mjs";
-import { deleteAccount, mintSession, PORTRAIT, STORAGE_KEY } from "./session.mjs";
+import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { PORTRAIT } from "./design_stand_in.mjs";
 import { minifigLayers, minifigOf } from "../../web/card.js";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -58,8 +59,9 @@ const shot = (page, name, clip = null) => page.screenshot({ path: path.join(out,
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
 const minifigKey = (handle) => minifigLayers(minifigOf(handle)).map((file) => file.match(/(?:face|hair)-[\w-]+/)?.[0])
   .filter(Boolean).join(" ");
-const faceOf = (selector) => (el) => {
-  const one = el || document.querySelector(selector);
+// An avatar's minifig layers or picture, read in the page: page.evaluate(faceOf, selector).
+const faceOf = (selector) => {
+  const one = document.querySelector(selector);
   if (!one) return null;
   const img = one.querySelector("img");
   return { minifig: one.classList.contains("minifig") ? (one.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : "",
@@ -138,7 +140,7 @@ try {
     const first = width === 1280 && theme === "dark";
     const { page, context } = await open("/profile", { width, theme, session: asAda(), label: `Ada ${tag}` });
     await until(page, () => document.documentElement.dataset.profile === "ready", null, 60000);
-    let head = await page.evaluate(faceOf("#avatar"));
+    let head = await page.evaluate(faceOf, "#avatar");
     if (first) {
       check(`${tag}: her profile's avatar is the minifig made from her handle ("${head?.minifig}"), ${head?.layers.length} layers at 256`,
         head?.minifig === minifigKey(ADA) && head.layers.every((one) => one.startsWith("/minifig/256/")) && !head.pictured);
@@ -169,15 +171,15 @@ try {
     if (!first) { await context.close(); continue; }
 
     console.log("3. She picks, is surprised, picks again and saves");
-    const start = await page.evaluate(faceOf("#minifig-big"));
+    const start = await page.evaluate(faceOf, "#minifig-big");
     check(`the maker starts on the handle's minifig ("${start?.minifig}")`, start?.minifig === minifigKey(ADA));
     await pick(page);
-    const mine = await page.evaluate(faceOf("#minifig-big"));
+    const mine = await page.evaluate(faceOf, "#minifig-big");
     const want = minifigLayers(picked, 256);
     check(`her picks drawn large: ${mine.layers.join(" ")}`, JSON.stringify(mine.layers) === JSON.stringify(want));
     check(`the hair colour shows for hair: ${await page.isVisible('fieldset[data-key="hairColour"]')}`, await page.isVisible('fieldset[data-key="hairColour"]'));
     await page.click("#minifig-surprise");
-    const surprised = await page.evaluate(faceOf("#minifig-big"));
+    const surprised = await page.evaluate(faceOf, "#minifig-big");
     check(`Surprise me changed it (${surprised.layers.length} layers)`, JSON.stringify(surprised.layers) !== JSON.stringify(want));
     await pick(page);
     await page.locator('fieldset[data-key="hair"] label.minifig-tile').nth(9).click();
@@ -198,7 +200,7 @@ try {
     check(`kept: ${answer?.status()} ${json.picture}, ${json.side} px, ${json.bytes} bytes, recipe ${json.minifig ? "kept" : "not kept (no column)"}`,
       answer?.status() === 200 && /op=avatar&id=/.test(json.picture || "") && json.side === 256 && json.bytes < 30 * 1024);
     await until(page, () => document.querySelector("#avatar img")?.complete);
-    head = await page.evaluate(faceOf("#avatar"));
+    head = await page.evaluate(faceOf, "#avatar");
     check(`her profile shows it as her picture at once (${head.src})`, head.pictured && head.src === json.picture);
     const kept = await api(json.picture || "/");
     writeFileSync(path.join(out, "saved_minifig.jpg"), kept.bytes || Buffer.alloc(0));
@@ -207,7 +209,7 @@ try {
     await page.reload({ waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.profile === "ready", null, 60000);
     await until(page, () => document.querySelector("#avatar img")?.complete);
-    head = await page.evaluate(faceOf("#avatar"));
+    head = await page.evaluate(faceOf, "#avatar");
     check(`after a reload, still her minifig picture`, head.pictured && head.loaded && head.src === json.picture);
     await shot(page, `profile_${width}_${theme}.png`);
     await page.click("#edit");
@@ -217,7 +219,7 @@ try {
       check(`Edit profile says "${again}"`, again === "Change your minifig");
       await page.click("#avatar-make");
       await until(page, () => document.querySelector("dialog#minifig-dialog[open] .minifig-tile .avatar.minifig"));
-      const reopened = await page.evaluate(faceOf("#minifig-big"));
+      const reopened = await page.evaluate(faceOf, "#minifig-big");
       check(`the maker opens on what she saved`, JSON.stringify(reopened.layers) === JSON.stringify(want));
       await page.click("#minifig-cancel");
     } else {
@@ -255,14 +257,16 @@ try {
     await p.page.click("#avatar-remove");
     check(`removed: ${(await removed)?.status()}`, (await removed)?.status() === 200);
     await p.page.waitForTimeout(500);
-    const back = await p.page.evaluate(faceOf("#avatar-edit"));
+    const back = await p.page.evaluate(faceOf, "#avatar-edit");
     check(`back to the minifig made from her handle ("${back?.minifig}")`, back?.minifig === minifigKey(ADA) && !back.pictured);
     await p.context.close();
   }
 
   console.log("6. Minifig avatars on the gallery's cards and the home's feed");
   for (const [width, theme] of pictures ? [[1280, "dark"], [1280, "light"], [390, "dark"], [390, "light"]] : [[1280, "dark"]]) {
-    for (const [where, wait, name] of [["/gallery", ".avatar.minifig", "gallery"], ["/", ".avatar.minifig", "home"]]) {
+    // A local relay serves the home only by its file name.
+    const home = /^http:\/\/127\.0\.0\.1:/.test(site) ? "/index.html" : "/";
+    for (const [where, wait, name] of [["/gallery", ".avatar.minifig", "gallery"], [home, ".avatar.minifig", "home"]]) {
       const { page, context } = await open(where, { width, theme, session: asAda(), label: `${name} ${width} ${theme}` });
       const seen = await until(page, (sel) => document.querySelector(sel), wait, 60000);
       const count = await page.evaluate(() => document.querySelectorAll(".avatar.minifig").length);
@@ -274,7 +278,7 @@ try {
     }
   }
 } finally {
-  if (ada) check(`her account deleted`, !(await deleteAccount(adaEmail)));
+  if (ada) check(`her account deleted`, await deleteAccount(adaEmail));
   await browser.close();
 }
 check(`no page errors (${errors.length}: ${errors.slice(0, 3).join(" | ")})`, errors.length === 0);
