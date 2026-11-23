@@ -87,7 +87,7 @@ import { cardOf } from "../../api/_photo.js";
 // checked, and said, as the API checks and says it.
 import { basesAsked, basesSaid } from "../../api/_bases.js";
 // Who a comment names (@handle), read as the API reads it.
-import { mentionsIn } from "../../web/card.js";
+import { madeOf as madeSaid, mentionsIn } from "../../web/card.js";
 
 // The site's origin; STAND_IN_ORIGIN=https://design.test for a flow whose
 // page needs a secure one (WebCodecs, which a kit's turn is recorded with:
@@ -1122,21 +1122,6 @@ function rest(where, init) {
     const rows = table().filter((row) => !(visitor && path === "shared_models" && !row.published));
     return reply(200, chosen(rows, where.searchParams));
   }
-  // Its owner's choice of whether its page says how it was made
-  // (supabase/made_with_shown.sql): kept, so the page and the gallery say it
-  // after (made_shown_flow.mjs).
-  if (method === "PATCH" && path === "shared_models") {
-    let body = {};
-    try {
-      body = JSON.parse(init.body || "{}");
-    } catch {
-      body = {};
-    }
-    const id = /^eq\.(.+)$/.exec(where.searchParams.get("id") || "")?.[1];
-    if (Object.keys(body).join() === "made_with_shown" && id) {
-      for (const row of MODELS.filter((one) => one.id === id)) row.made_with_shown = body.made_with_shown === true;
-    }
-  }
   // What a remix changed: kept, by its model, as the table keeps it.
   if (path === "remix_changes" && method === "POST") {
     const row = JSON.parse(init.body || "{}");
@@ -2077,6 +2062,22 @@ function share(method, params, who, state = {}, body = undefined) {
   const id = params.get("id") || "";
   const mine = asked(params.get("mine"));
   if (mine && !who) return answer(401, { error: SIGN_IN });
+  // Whether its page says how it was made (api/share.js madeShown,
+  // supabase/made_with_shown.sql): its owner's alone; a POST keeps it on
+  // the model, so its page and the gallery say it after.
+  if (op === "made") {
+    if (!who) return answer(401, { error: SIGN_IN });
+    const m = shownModel(id);
+    if (!m) return answer(404, { error: "there is no shared model at that link" });
+    if (m.owner !== who) return answer(403, { error: "that link is somebody else's model" });
+    if (method === "POST") {
+      if (typeof body?.shown !== "boolean") return answer(400, { error: "shown is true or false" });
+      m.made_with_shown = body.shown;
+    }
+    const made = madeSaid(m);
+    return answer(200, { id, made_with: m.made_with ?? null, way: made.way, by: made.by,
+      made_with_shown: m.made_with_shown === true, ready: true });
+  }
   // What a model is based on (api/_bases.js): its page's lines, and its
   // designer's list taken as kept, which nothing here keeps.
   if (op === "bases") {
