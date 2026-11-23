@@ -252,6 +252,7 @@ In the studio the designer sees their model as they last published it with your 
 
 <!-- covers
 ui:a change sent back on a model's page
+ui:a change sent back in Compare
 api:suggested edits
 lib:a change sent back and taken
 -->

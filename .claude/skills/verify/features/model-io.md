@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe, cli:askfirst probe, ui:missing and moved parts on open, cli:movedparts probe, cli:movedparts phone probe, cli:mvreview probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, ui:a change sent back in Compare, cli:suggest probe, cli:suggest phone probe, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe, cli:askfirst probe, ui:missing and moved parts on open, cli:movedparts probe, cli:movedparts phone probe, cli:mvreview probe -->
 
 ## Sub-features
 
@@ -1562,6 +1562,27 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `open_model` over MCP lists them (`versions=true`) and opens one
   (`version=N`). File, Export, All my models (`Exports.all_models`,
   `export_model all_models`) downloads every saved model in one .zip.
+- `a change sent back in Compare` (suggestedit, 2026-11-23;
+  `CompareView.open_suggestion`, `Main.open_suggestion`, `ModelStore.suggestion`,
+  `SharePanel._say_suggestion`): `/app?suggestion=N` (`--suggestion=N`, the
+  notification's and the model page's link) opens, for the model's designer
+  only, their model as they last published it and Compare's fourth mode on
+  it: the remix's change drawn the other way round from a save's (taken away
+  red, moved amber with a faint ghost where it goes, recoloured violet,
+  added a green ghost, `drawn_suggestion()`); a row a change (its words by
+  `suggestion_words`), each ticked, a box a kind, a row pressed frames it;
+  Take all, Take the N ticked (`op=suggestion_merge`), Decline
+  (`op=suggestion_close`). Nothing is taken without a press. Taken, the
+  merged model opens unsaved (edits made meanwhile saved first), Share's
+  note and status ready, and its publish carries `{suggestion}`, which
+  credits the remixer. Proof: `tools/probe.sh suggest_probe --
+  --pictures=DIR` and `tools/probe.sh suggest_phone_probe --
+  --pictures=DIR` (`suggest probe`, `suggest phone probe`: windowed on the
+  GPU, on `tests/fixtures/suggest/serve.mjs` and the real handlers: the
+  Account count within 60 s, 7 rows, the drawing read back by kind, all but
+  the recolour taken by clicks, the model read part by part, published and
+  kept as taken; a second change declined, the model as it was; pictures
+  `compare_`, `compare_row_`, `taken_<1280|390>.png`).
 - `compare with a save` and `model diff` (2026-10-30, compare, B10;
   `src/ui/compare_view.gd`, `src/parts/model_diff.gd`): File, Compare, Compare with…
   (the versions list with Compare alone) or Compare on a row of Versions…

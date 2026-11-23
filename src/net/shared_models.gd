@@ -110,6 +110,88 @@ func unpublish(token: String, id: String) -> Dictionary:
 		HTTPClient.METHOD_POST, token, "{}")
 
 
+## A change a remixer sent back to its designer (suggestedit, 2026-11-23;
+## api/_suggestions.js): {code, body: {id, status, you, model: {id, name, n},
+## remix, by, note, changes, counts, theirs, mine (its designer alone)}}.
+func suggestion(token: String, id: int) -> Dictionary:
+	return await _fetch("/api/share?op=suggestion&id=%d" % id, HTTPClient.METHOD_GET, token, "")
+
+
+## Its designer's newest version [param n] with the changes [param take]
+## ("all", or the ids ticked) taken in: {code, body: {text, taken, whole, n,
+## model}}. Nothing is kept until that text is published.
+func take_suggestion(token: String, id: int, n: int, take: Variant) -> Dictionary:
+	return await _fetch("/api/share?op=suggestion_merge", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"id": id, "n": n, "take": take}))
+
+
+## The kinds a sent change lists, as api/_suggest.js KINDS says them.
+const SUGGEST_KINDS: Array[String] = ["added", "removed", "moved", "recoloured", "swapped",
+	"restepped"]
+
+
+## Who sent a change, by their profile's name, else their handle.
+static func sender_of(got: Dictionary) -> String:
+	var by: Dictionary = got.get("by") if got.get("by") is Dictionary else {}
+	var who: String = str(by.get("name", "")).strip_edges()
+	if who.is_empty() and not str(by.get("handle", "")).is_empty():
+		who = "@" + str(by["handle"])
+	return who if not who.is_empty() else "A remixer"
+
+
+## "Ann's change from their remix “Red car, wider”".
+static func suggestion_heading(got: Dictionary) -> String:
+	var remix: Dictionary = got.get("remix") if got.get("remix") is Dictionary else {}
+	return "%s's change from their remix “%s”" % [sender_of(got), str(remix.get("name", ""))]
+
+
+## "3 added, 1 taken away, 2 moved", as the bell says it.
+static func suggestion_counts(counts: Variant) -> String:
+	var said := PackedStringArray()
+	if counts is Dictionary:
+		for kind: String in SUGGEST_KINDS:
+			var n: int = int((counts as Dictionary).get(kind, 0))
+			if n > 0:
+				said.append(kind_count(kind, n))
+	return ", ".join(said) if not said.is_empty() else "no change"
+
+
+static func kind_count(kind: String, n: int) -> String:
+	match kind:
+		"added":
+			return "%d added" % n
+		"removed":
+			return "%d taken away" % n
+		"moved":
+			return "%d moved" % n
+		"recoloured":
+			return "%d recoloured" % n
+		"swapped":
+			return "%d swapped" % n
+	return "%d to another step" % n
+
+
+## What a version taking [param taken] (ModelStore.suggestion) says it took:
+## "Ann's change" whole, "part of Ann's change" else.
+static func taken_words(taken: Dictionary) -> String:
+	return ("%s's change" if bool(taken.get("whole", false)) else "Part of %s's change") % sender_of(taken)
+
+
+## The note its version is published with: "With Ann's change from their
+## remix “Red car, wider”: 3 added, 1 moved."
+static func taken_note(taken: Dictionary) -> String:
+	var remix: Dictionary = taken.get("remix") if taken.get("remix") is Dictionary else {}
+	return ("With %s's change from their remix “%s”: %s." if bool(taken.get("whole", false))
+		else "With part of %s's change from their remix “%s”: %s.") % [sender_of(taken),
+		str(remix.get("name", "")), suggestion_counts(taken.get("taken", {}))]
+
+
+## Declined by its designer: {code, body: {closed, status}}.
+func decline_suggestion(token: String, id: int) -> Dictionary:
+	return await _fetch("/api/share?op=suggestion_close", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"id": id, "status": "declined"}))
+
+
 ## The account's own links: {code, body: {shared: [...]}}.
 func mine(token: String) -> Dictionary:
 	return await _fetch("/api/share?op=mine", HTTPClient.METHOD_GET, token, "")

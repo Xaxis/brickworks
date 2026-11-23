@@ -6474,6 +6474,27 @@
     },
     {
       "kind": "ui",
+      "label": "a change sent back in Compare",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "https://brickworks.diy/app?suggestion=N as the model's designer, or Open it in the studio on their model's page or the notification   (suggestedit: the designer's model as they last published it, the remix's change drawn on it: taken away red, moved amber with a faint ghost where it goes, recoloured violet, added a green ghost; a row a change, each ticked, a box a kind; a row pressed frames it; Take all, Take the ticked, Decline; nothing taken without a press; taken, the merged model opened unsaved with Share's note and its credit ready)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "suggest probe",
+      "entry": "src/dev/suggest_probe.gd",
+      "reach": "tools/probe.sh suggest_probe -- --pictures=DIR; tools/probe.sh suggest_phone_probe -- --pictures=DIR   (windowed, on the GPU, on tests/fixtures/suggest/serve.mjs: Ann sends, the app's Account count within 60 s, the notification's link opens Compare with 7 rows, the drawing read back by kind, all but the recolour taken by clicks, the model read part by part, Share's credit published and kept as taken with taken_n 2; a second change declined, the model as it was; at 1280 x 800 and 390 x 844)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "suggest phone probe",
+      "entry": "src/dev/suggest_phone_probe.gd",
+      "reach": "tools/probe.sh suggest_phone_probe -- --pictures=DIR   (suggest_probe at 390 x 844)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
       "label": "a change sent back on a model's page",
       "entry": "web/model-page.js",
       "reach": "https://brickworks.diy/m/<a remix> as its builder: Send your change, with a note; https://brickworks.diy/m/<id> as its designer: the changes sent to it with Open it in the studio; and once a version took one, With [part of] X's change from their remix R, version N under the credit and in its Log",

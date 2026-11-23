@@ -685,6 +685,7 @@ func open() -> void:
 	else:
 		_status.text = "This model has a link. Publish again to update what it shows."
 		_check_link(store.share_id, fresh)
+	_say_suggestion()
 	_follow_age()
 	_ask_prompt()
 	# Its way as the app knows who laid its parts; the rules ticked afresh.
@@ -845,7 +846,29 @@ func _check_link(id: String, words: bool = true) -> void:
 				_status.text = "Shared as work in progress. Share progress posts the next version; " \
 					+ "Publish as finished ends it."
 			_show_link(id)
+			_say_suggestion()
 			return
+
+
+## The change a remixer sent back that the model open takes in, when it is
+## this link's (ModelStore.suggestion), else {}.
+func _suggestion_here() -> Dictionary:
+	if store == null or store.suggestion.is_empty() or store.share_id.is_empty() \
+			or str(store.suggestion.get("model", "")) != store.share_id:
+		return {}
+	return store.suggestion
+
+
+## With a change taken in, the status says what publishing does with it, and
+## What changed? says whose it is, unless something else was typed there.
+func _say_suggestion() -> void:
+	var taking: Dictionary = _suggestion_here()
+	if taking.is_empty() or state in ["publishing", "unpublishing"]:
+		return
+	_status.text = "%s is in this model: publish it as version %d, and its page credits them." % [
+		SharedModels.taken_words(taking), int(taking.get("n", 0)) + 1]
+	if _note.text.strip_edges().is_empty():
+		_note.text = SharedModels.taken_note(taking).left(MOST_NOTE)
 
 
 ## What changed? is for a model with a link up: the next publish is its
@@ -1031,14 +1054,21 @@ func publish(as_wip: bool = false) -> void:
 	var note: String = _note.text.strip_edges()
 	if body.has("id") and _note.visible and not note.is_empty():
 		body["note"] = note
+	# A change a remixer sent back, taken into this version (suggestedit):
+	# the server marks it taken by it, and the model's page credits them.
+	var taking: Dictionary = _suggestion_here()
+	if body.has("id") and not taking.is_empty():
+		body["suggestion"] = {"id": int(taking["id"]), "taken": taking.get("taken", {}),
+			"whole": bool(taking.get("whole", false))}
 	var answer: Dictionary = await shared.publish(token, body)
 	# A link that is not this account's — the model came from somebody
 	# else's link, or another account shared it on this device — or one
 	# that has gone: the model gets a link of its own.
 	if int(answer["code"]) in [403, 404] and body.has("id"):
 		body.erase("id")
-		# A first version: nothing it changed from.
+		# A first version: nothing it changed from, and no change taken in.
 		body.erase("note")
+		body.erase("suggestion")
 		answer = await shared.publish(token, body)
 	_publish.disabled = false
 	var reply: Variant = answer.get("body")
@@ -1105,6 +1135,16 @@ func publish(as_wip: bool = false) -> void:
 	prompt_said = entry_words(entry)
 	if not prompt_said.is_empty():
 		_status.text = "%s %s" % [_status.text.strip_edges(), prompt_said]
+	# The change taken in: credited, or why not.
+	var credited: Variant = said.get("suggestion")
+	if credited is Dictionary and not taking.is_empty():
+		if bool((credited as Dictionary).get("taken", false)):
+			_status.text = "%s It credits %s on its page and in Versions." % [_status.text.strip_edges(),
+				SharedModels.sender_of(taking)]
+			store.suggestion = {}
+		else:
+			_status.text = "%s Not marked as taking %s's change: %s." % [_status.text.strip_edges(),
+				SharedModels.sender_of(taking), str((credited as Dictionary).get("why", "it could not be kept"))]
 	_follow_enter()
 
 
@@ -1217,6 +1257,7 @@ func page_state() -> Dictionary:
 		"moves": Array(moves),
 		"listed": _list.button_pressed if _list != null else false,
 		"remixed_from": store.remixed_from if store != null else "",
+		"suggestion": _suggestion_here(),
 		"name": _name.text if _name != null else "",
 		"author": _author.text if _author != null else "",
 		"about": _about.text if _about != null else "",
