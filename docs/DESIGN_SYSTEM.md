@@ -1155,7 +1155,10 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   Its aside (listkit, 2026-11-23), as the feed's designers are beside its
   posts: Show, the list's kinds (All, Comments, Remixes, Builds, Mentions,
   Achievements, `?kind=`) a line each with how many groups have it, the
-  one shown lit, filtering the rows in place; "Your achievements" as a
+  one shown lit, filtering the rows in place (under 900 px the site's row
+  of chips, `.pills.scroller`, first under the head's tabs and kept under
+  the header as the list scrolls, the gallery's toolbar's way, the card
+  and the link after the list); "Your achievements" as a
   card, the group's row without its frame and its newest two levels (in
   the list, every level, while Show says Achievements); and where to
   choose what you hear of.
