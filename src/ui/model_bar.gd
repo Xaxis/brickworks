@@ -427,7 +427,12 @@ func _fit_header() -> void:
 	if not brand.get_parent().visible:
 		return
 	var gutter: float = AppHeader.GUTTER_NARROW if Room.across() < 600.0 else AppHeader.GUTTER
-	var pt: float = minf(AppHeader.points(self), _fitting_pt(gutter))
+	var pt: float = AppHeader.points(self)
+	# Capped to keep the studio's row on one line where this bar is ever the
+	# studio's: on a phone the studio has its own top bar (PhoneShell), and
+	# this one heads only the viewer and Build it, at the full 61 points.
+	if not Phone.on():
+		pt = minf(pt, _fitting_pt(gutter))
 	var density: float = Icons.density(brand)
 	add_theme_stylebox_override("panel", AppHeader.ground(pt, gutter))
 	custom_minimum_size.y = (AppHeader.TALL + AppHeader.LINE) * pt
