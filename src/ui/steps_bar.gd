@@ -188,14 +188,70 @@ var _find_waiting: bool = false
 const FOUND_MOST := 40
 const FOUND_MOST_PHONE := 12
 
+# -- a phone's bar (ux15) -----------------------------------------------------------
+#
+# On a phone, held either way (not a tablet), the bar is what a person
+# following a build reaches with one thumb: the step, the next step and the
+# parts for this one. At 390 points the desktop's bar was 14 buttons in three
+# rows and two rows that slid sideways, Turn right cut off at the edge, and in
+# a shared model's viewer 11 buttons 28 by 12 points over most of the foot
+# (bench/results/ux15-2026-11-23/WALK.md). LEGO Builder's 3D instructions put
+# a step forward under the thumb and leave the rest a tap away; reviews of it
+# ask for a swipe and a quick jump to a step, which it lacks.
+#
+# So the bar is one row of five, each a fingertip: Back, the step's number
+# ("Step 12 of 35", tapped: every step, to go to any), Next, Parts (the
+# step's parts as pictures with how many, over the row, on or off) and More,
+# a sheet with the rest: the timeline's slider, Start, Play, End, the orders,
+# Find, Instructions, Done, the step edits and the booklet's look. Over the
+# row, the row of steps drawn as a strip a finger drags along, and the step's
+# words. A thumb swiped along the bar turns the page, left for Next, as Build
+# it's bars do. Sized in points here, as Build it is, so the bar is the same
+# in the studio and in a shared model's viewer, which has no TouchSizing.
+
+## A phone held either way: the bar laid out for a thumb.
+var _compact: bool = false
+var _at_button: Button
+var _parts_button: Button
+var _more_button: Button
+## What More opens: everything but the five, made into a sheet the first
+## time it is asked for.
+var _more_box: VBoxContainer
+var _more_sheet: AcceptDialog
+## Go to a step: the step's number tapped.
+var _go_sheet: AcceptDialog
+var _go_grid: GridContainer
+var _go_chips: Dictionary = {}
+## The step's parts as pictures, each with how many.
+var _strip_slide: ScrollContainer
+var _strip: HBoxContainer
+var _tiles: Array[ThumbTile] = []
+## The parts' pictures (Main's), for the strip.
+var thumbnails: PartThumbnails
+## Whether the strip shows, kept for the next time the bar opens.
+static var _parts_on: bool = true
+## A swipe along the bar: where the finger came down, or x < 0.
+var _swipe_from := Vector2(-1, -1)
+## Points, as Build it's: how far a thumb goes for a swipe, and a picture.
+const SWIPE := 56.0
+const PICTURE := 40.0
+## The step each model was left at, by what its steps are (_kept_key), for
+## the timeline opened again on it to come back there, as a booklet stays
+## open at its page.
+static var _kept_at: Dictionary = {}
+
 
 func _ready() -> void:
 	visible = false
 	set_process(true)
 	_build()
+	if _compact:
+		get_viewport().size_changed.connect(_fit_compact, CONNECT_DEFERRED)
+		_fit_compact.call_deferred()
 
 
 func _build() -> void:
+	_compact = Phone.on() and not Phone.wide()
 	var backing := StyleBoxFlat.new()
 	backing.bg_color = Color(0.09, 0.10, 0.12, 0.93)
 	backing.border_color = Color(1, 1, 1, 0.12)
@@ -430,6 +486,8 @@ func _build() -> void:
 	_look_said.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_looks.add_child(_look_said)
 	_named["booklet_said"] = _look_said
+	if _compact:
+		_lay_compact(column, line, row, back, forward)
 
 
 ## A row of choices: wrapped onto as many lines as it needs, or, on a
@@ -439,7 +497,9 @@ func _build() -> void:
 ## Booklet row's twenty took five lines of a phone's screen. Shown and
 ## hidden with it by _show_row.
 func _line(column: Container) -> Container:
-	if not Phone.on() or Phone.wide():
+	# In a phone's bar these rows are in More's sheet, which scrolls down:
+	# there they wrap.
+	if not Phone.on() or Phone.wide() or _compact:
 		var flow := HFlowContainer.new()
 		flow.add_theme_constant_override("h_separation", 6)
 		flow.add_theme_constant_override("v_separation", 4)
@@ -463,6 +523,400 @@ static func _show_row(row: Container, shown: bool) -> void:
 	var slide := row.get_parent() as ScrollContainer
 	if slide != null:
 		slide.visible = shown
+
+
+## The bar for a thumb (_compact): the desktop's rows of buttons, the slider
+## and the rows of step edits and booklet looks go in More's sheet, and the
+## five go along the foot, under the row of steps, the step's parts and its
+## words.
+func _lay_compact(column: VBoxContainer, line: Container, row: Container, back: Button,
+		forward: Button) -> void:
+	_more_box = VBoxContainer.new()
+	_more_box.add_theme_constant_override("separation", 10)
+	row.remove_child(back)
+	row.remove_child(forward)
+	for moved: Control in [line, row, _edits, _looks]:
+		column.remove_child(moved)
+		_more_box.add_child(moved)
+	# A step chosen in the sheet puts it away, as a menu goes once a row is
+	# chosen; how the booklet looks, the order and the speed leave it open,
+	# to be set and seen.
+	for name: String in ["steps_start", "steps_play", "steps_end", "steps_find", "steps_booklet",
+			"steps_done", "steps_earlier", "steps_later", "steps_merge", "steps_delete", "steps_new",
+			"steps_to", "steps_plan", "steps_name", "booklet_lay_out"]:
+		var button: BaseButton = _named.get(name) as BaseButton
+		if button != null:
+			button.pressed.connect(_close_more)
+	_reverse.pressed.connect(_close_more)
+	# The row of steps first, a strip the width of the bar a finger drags
+	# along; the parts' pictures; the step's words; then the five.
+	_strip_slide = ScrollContainer.new()
+	_strip_slide.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_strip_slide.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_strip_slide.mouse_filter = Control.MOUSE_FILTER_PASS
+	_strip = HBoxContainer.new()
+	_strip.mouse_filter = Control.MOUSE_FILTER_PASS
+	_strip_slide.add_child(_strip)
+	column.add_child(_strip_slide)
+	column.move_child(_strip_slide, _pieces.get_index())
+	_named["steps_strip"] = _strip_slide
+	var thumb := HBoxContainer.new()
+	thumb.add_theme_constant_override("separation", 6)
+	column.add_child(thumb)
+	thumb.add_child(back)
+	_at_button = _button("Step 1 of 1", "Go to a step: every step, to tap one")
+	_at_button.accessibility_name = "Go to a step"
+	_at_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_at_button.clip_text = true
+	_at_button.pressed.connect(open_go_to)
+	_at_button.resized.connect(_fit_at_words)
+	thumb.add_child(_at_button)
+	thumb.add_child(forward)
+	_parts_button = _button("Parts", "This step's parts as pictures, how many of each beside them")
+	_parts_button.toggle_mode = true
+	_parts_button.set_pressed_no_signal(_parts_on)
+	_parts_button.toggled.connect(func(on: bool) -> void:
+		_parts_on = on
+		_lay_strip())
+	thumb.add_child(_parts_button)
+	_more_button = _button("More", "Play, Start and End, the order, Find, Instructions, "
+		+ "Done and how the booklet prints the step")
+	_more_button.pressed.connect(open_more)
+	thumb.add_child(_more_button)
+	_named["steps_at"] = _at_button
+	_named["steps_parts"] = _parts_button
+	_named["steps_more"] = _more_button
+	_named["steps_thumb_row"] = thumb
+	# Sized by the bar itself, in points (_fit_compact): TouchSizing grows
+	# what it is handed from the desktop's sizes, and the viewer has none.
+	for control: Control in [back, forward, _at_button, _parts_button, _more_button, _row, _pieces,
+			_strip_slide]:
+		control.set_meta(&"for_a_finger", true)
+
+
+## The five a fingertip each and their words in points, the row of steps a
+## finger's height, the parts' pictures a size to pick from: as the window's
+## points to the unit are now (a phone turned, a browser's zoom).
+func _fit_compact() -> void:
+	if not _compact or not is_inside_tree():
+		return
+	var pt: float = Phone.per_point(get_viewport())
+	var least: float = Phone.TARGET * pt
+	for name: String in ["steps_back", "steps_at", "steps_next", "steps_parts", "steps_more"]:
+		var button: Button = _named[name]
+		button.custom_minimum_size = Vector2(0.0 if button == _at_button else least, least)
+		button.add_theme_font_size_override("font_size", roundi(15.0 * pt))
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			var face := StyleBoxFlat.new()
+			var lit: bool = button == _named["steps_next"] or (button == _parts_button
+				and state in ["pressed", "hover_pressed"])
+			face.bg_color = Look.STRONG if lit else Color(1, 1, 1, {"normal": 0.08, "hover": 0.16,
+				"pressed": 0.24, "hover_pressed": 0.24, "disabled": 0.03}[state])
+			if lit and state in ["hover", "hover_pressed"]:
+				face.bg_color = Look.STRONG_HOVER
+			face.border_color = Color(1, 1, 1, 0.14)
+			face.set_border_width_all(maxi(1, roundi(pt)))
+			face.set_corner_radius_all(roundi(8.0 * pt))
+			face.content_margin_left = 10.0 * pt
+			face.content_margin_right = 10.0 * pt
+			button.add_theme_stylebox_override(state, face)
+	_pieces.add_theme_font_size_override("font_size", roundi(13.0 * pt))
+	_row.custom_minimum_size = Vector2(0, 14.0 * pt)
+	_lay_strip()
+	_fit_at_words.call_deferred()
+
+
+## What the step's number button says: the whole of it where it fits, else
+## shorter ("Step 12 of 35", "12 of 35", "12/35").
+var _at_words: Array[String] = ["", "", ""]
+
+
+func _fit_at_words() -> void:
+	if _at_button == null:
+		return
+	var font: Font = _at_button.get_theme_font("font")
+	var font_size: int = _at_button.get_theme_font_size("font_size")
+	var room: float = _at_button.size.x - _at_button.get_theme_stylebox("normal").get_minimum_size().x
+	for words: String in _at_words:
+		if font.get_string_size(_at_button.tr(words), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= room:
+			_at_button.text = words
+			return
+	_at_button.text = _at_words[-1]
+
+
+## The five's words for the place showing.
+func _show_compact() -> void:
+	var at: Instructions.Step = current_step()
+	if at != null:
+		var last: int = _steps[-1].number
+		_at_words = ["Step %d of %d" % [at.number, last], "%d of %d" % [at.number, last],
+			"%d/%d" % [at.number, last]]
+		if not at.called().is_empty():
+			_pieces.text = at.shortened_name(NAME_SHOWN) + " · " + _pieces.text
+	elif (_mode == 0 or _mode == AUTHORS) and not _steps.is_empty():
+		var steps: int = _steps[-1].number
+		_at_words = ["%d steps" % steps, "%d steps" % steps, str(steps)]
+	else:
+		_at_words = ["%d of %d" % [_shown, _length()], "%d of %d" % [_shown, _length()],
+			"%d/%d" % [_shown, _length()]]
+	_at_button.tooltip_text = _caption.text
+	_fit_at_words()
+	_lay_strip()
+
+
+## The step's parts as a booklet's callout has them: a picture of each part
+## in its colour, how many beside it, the most first. None at the start, in
+## the orders with no steps, or with Parts off; a step that puts on a
+## finished sub-assembly shows the parts that go on beside it.
+func _lay_strip() -> void:
+	if _strip == null:
+		return
+	# Laid again only for another step: playback shows a brick a frame.
+	var at: Instructions.Step = current_step()
+	var key: String = "%s|%s|%s|%.3f" % [at.get_instance_id() if at != null else 0, _parts_on, visible,
+		Phone.per_point(get_viewport()) if is_inside_tree() else 1.0]
+	if key == _strip_key:
+		return
+	_strip_key = key
+	for child: Node in _strip.get_children():
+		_strip.remove_child(child)
+		child.queue_free()
+	_tiles.clear()
+	var lots: Array[Dictionary] = step_lots_of(at) if _parts_on and at != null and visible else []
+	_strip_slide.visible = not lots.is_empty()
+	if lots.is_empty():
+		if thumbnails != null:
+			thumbnails.watch(self, [] as Array[ThumbTile])
+		return
+	var pt: float = Phone.per_point(get_viewport()) if is_inside_tree() else 1.0
+	for lot: Dictionary in lots:
+		var cell := HBoxContainer.new()
+		cell.add_theme_constant_override("separation", roundi(2.0 * pt))
+		cell.mouse_filter = Control.MOUSE_FILTER_PASS
+		cell.tooltip_text = "%d × %s, %s" % [int(lot["count"]), lot["name"], lot["colour_name"]]
+		var tile := ThumbTile.new(str(lot["part"]), int(lot["colour"]))
+		tile.custom_minimum_size = Vector2.ONE * PICTURE * pt
+		tile.mouse_filter = Control.MOUSE_FILTER_PASS
+		var ready: Texture2D = thumbnails.peek(tile.part_id, tile.color_code) if thumbnails != null else null
+		if ready != null:
+			tile.show_picture(ready, false)
+		cell.add_child(tile)
+		var count := Label.new()
+		count.text = "%dx" % int(lot["count"])
+		count.add_theme_font_size_override("font_size", roundi(15.0 * pt))
+		count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		cell.add_child(count)
+		# Sized here in points, not grown again as the bar's desktop sizes are.
+		for sized: Control in [cell, tile, count]:
+			sized.set_meta(&"for_a_finger", true)
+		_strip.add_child(cell)
+		_tiles.append(tile)
+	if thumbnails != null:
+		_watch_tiles()
+
+
+## The pictures asked for once the step itself is drawn, as Build it's are.
+func _watch_tiles() -> void:
+	_tiles_laid += 1
+	var laid: int = _tiles_laid
+	await RenderingServer.frame_post_draw
+	if laid == _tiles_laid and thumbnails != null and is_instance_valid(self):
+		thumbnails.watch(self, _tiles if visible else ([] as Array[ThumbTile]))
+
+
+var _tiles_laid: int = 0
+## The step, the switch and the size the strip was last laid for.
+var _strip_key: String = ""
+
+
+## [param at]'s parts, one entry a part in a colour, the most first, as Build
+## it's callout lists them: {"part", "colour", "count", "name", "colour_name"}.
+func step_lots_of(at: Instructions.Step) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if at == null or _world == null or _library == null:
+		return out
+	var counts: Dictionary = {}
+	for brick_id: int in at.brick_ids:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick == null or _scenery.has(brick_id):
+			continue
+		var key: String = "%s|%d" % [brick.part_id, brick.color_code]
+		if not counts.has(key):
+			var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+			var name: String = info.name.strip_edges() if info != null else brick.part_id
+			while name.contains("  "):
+				name = name.replace("  ", " ")
+			counts[key] = {"part": brick.part_id, "colour": brick.color_code, "count": 0,
+				"name": name, "colour_name": _library.color(brick.color_code).name}
+		counts[key]["count"] = int(counts[key]["count"]) + 1
+	for lot: Dictionary in counts.values():
+		out.append(lot)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if int(a["count"]) != int(b["count"]):
+			return int(a["count"]) > int(b["count"])
+		return str(a["name"]) < str(b["name"]))
+	return out
+
+
+## What the strip shows, for a check: its pictures, and how many are drawn.
+func parts_state() -> Dictionary:
+	var drawn: int = 0
+	for tile: ThumbTile in _tiles:
+		if is_instance_valid(tile) and tile.state == ThumbTile.State.READY:
+			drawn += 1
+	return {"on": _parts_on, "pictures": _tiles.size() if _strip_slide != null and _strip_slide.visible else 0,
+		"drawn": drawn}
+
+
+## More: the rest of the bar, in a sheet from the foot.
+func open_more() -> void:
+	if _more_sheet == null:
+		_more_sheet = AcceptDialog.new()
+		_more_sheet.title = "Steps"
+		_more_sheet.ok_button_text = Look.CLOSE
+		var slide := ScrollContainer.new()
+		slide.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		slide.add_child(_more_box)
+		_more_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_more_sheet.add_child(slide)
+		_named["steps_more_sheet"] = _more_sheet
+		(shell if shell != null else self as Node).add_child(_more_sheet)
+	var room: Vector2 = get_viewport().get_visible_rect().size
+	var slide: ScrollContainer = _more_box.get_parent() as ScrollContainer
+	slide.custom_minimum_size = Vector2(minf(room.x * 0.9, 560.0 * Phone.per_point(get_viewport())),
+		minf(_more_box.get_combined_minimum_size().y, room.y * 0.55))
+	_more_sheet.popup_centered()
+
+
+func _close_more() -> void:
+	if _more_sheet != null and _more_sheet.visible:
+		_more_sheet.hide()
+
+
+## Go to a step: every step's number, a tap each, the one showing lit. A
+## step built in a callout is gone to at the first of its own steps.
+func open_go_to() -> void:
+	if _steps.is_empty() or _step_ends.is_empty():
+		open_more()
+		return
+	if _go_sheet == null:
+		_go_sheet = AcceptDialog.new()
+		_go_sheet.title = "Go to a step"
+		_go_sheet.ok_button_text = Look.CLOSE
+		var slide := ScrollContainer.new()
+		slide.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		_go_grid = GridContainer.new()
+		_go_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slide.add_child(_go_grid)
+		_go_sheet.add_child(slide)
+		_named["steps_go_sheet"] = _go_sheet
+		(shell if shell != null else self as Node).add_child(_go_sheet)
+	for child: Node in _go_grid.get_children():
+		_go_grid.remove_child(child)
+		child.queue_free()
+	_go_chips.clear()
+	var pt: float = Phone.per_point(get_viewport())
+	var room: Vector2 = get_viewport().get_visible_rect().size
+	var across: float = minf(room.x * 0.9, 560.0 * pt)
+	var chip_size: float = (Phone.TARGET + 8.0) * pt
+	_go_grid.columns = maxi(1, int(across / (chip_size + 6.0 * pt)))
+	_go_grid.add_theme_constant_override("h_separation", roundi(6.0 * pt))
+	_go_grid.add_theme_constant_override("v_separation", roundi(6.0 * pt))
+	var lit: Instructions.Step = current_step()
+	for index: int in _steps.size():
+		var number: int = _steps[index].number
+		if _go_chips.has(number):
+			continue
+		var chip := Button.new()
+		chip.text = str(number)
+		chip.focus_mode = Control.FOCUS_NONE
+		chip.toggle_mode = true
+		chip.set_pressed_no_signal(lit != null and lit.number == number)
+		chip.custom_minimum_size = Vector2(chip_size, chip_size)
+		chip.add_theme_font_size_override("font_size", roundi(16.0 * pt))
+		chip.tooltip_text = _steps[index].caption(_steps[-1].number)
+		chip.set_meta(&"for_a_finger", true)
+		var to: int = index
+		chip.pressed.connect(func() -> void:
+			_show_cell(to)
+			stepped.emit()
+			_go_sheet.hide())
+		_go_grid.add_child(chip)
+		_go_chips[number] = chip
+	var slide: ScrollContainer = _go_grid.get_parent() as ScrollContainer
+	var rows: int = ceili(float(_go_chips.size()) / _go_grid.columns)
+	slide.custom_minimum_size = Vector2(across, minf(rows * (chip_size + 6.0 * pt), room.y * 0.55))
+	_go_sheet.popup_centered()
+	# The step showing in sight, on a long model.
+	var shown: Variant = _go_chips.get(lit.number if lit != null else -1)
+	if shown is Control:
+		slide.ensure_control_visible.call_deferred(shown)
+
+
+## The go-to sheet's button for step [param number], while it is open.
+func go_to_step_control(number: int) -> Control:
+	if _go_sheet == null or not _go_sheet.visible:
+		return null
+	return _go_chips.get(number) as Control
+
+
+## A thumb drawn along the bar turns the page, left for Next and right for
+## Back, as Build it's bars do; across, and far enough, so a tap that wobbles
+## is still a tap. Not on the row of steps, which a drag scrubs, nor on the
+## parts' pictures, which slide. Read before the buttons have it: a swipe
+## that ends on the button it began on is no press of it.
+func _input(event: InputEvent) -> void:
+	if not _compact or not visible:
+		return
+	var button := event as InputEventMouseButton
+	if button != null and button.button_index == MOUSE_BUTTON_LEFT:
+		if button.pressed:
+			_swipe_from = button.position if _swipes_at(button.position) else Vector2(-1, -1)
+			return
+		if _swipe_from.x < 0.0:
+			return
+		var moved: Vector2 = button.position - _swipe_from
+		_swipe_from = Vector2(-1, -1)
+		var reach: float = SWIPE * Phone.per_point(get_viewport())
+		if absf(moved.x) < reach or absf(moved.x) < absf(moved.y) * 1.5:
+			return
+		get_viewport().set_input_as_handled()
+		_let_go_of_presses()
+		if moved.x < 0.0:
+			step_forward()
+		else:
+			step_back()
+
+
+func _swipes_at(point: Vector2) -> bool:
+	if not get_global_rect().has_point(point):
+		return false
+	for away: Control in [_row, _strip_slide]:
+		if away != null and away.is_visible_in_tree() and away.get_global_rect().has_point(point):
+			return false
+	return true
+
+
+## The press a swipe began on a button let go of, unpressed: the release that
+## would have pressed it was the swipe's.
+func _let_go_of_presses() -> void:
+	var row: Control = _named.get("steps_thumb_row")
+	if row == null:
+		return
+	for child: Node in row.get_children():
+		var pressed := child as BaseButton
+		if pressed != null and not pressed.disabled:
+			pressed.disabled = true
+			pressed.disabled = false
+
+
+## What a model's steps are, as a key to keep the step it was left at by:
+## the same model opened again lays out the same steps (Instructions.plan).
+func _kept_key() -> String:
+	var parts: Array = []
+	for step: Instructions.Step in _steps:
+		parts.append(step.parts)
+	return "%d|%d|%d|%d" % [_mode, _steps.size(), _order.size(), hash(parts)]
 
 
 ## Words, not symbols.
@@ -503,7 +957,7 @@ func _button(label: String, tip: String) -> Button:
 ## (Working): on Orthanc the order is seconds of work in a browser, and it
 ## held the page on one frame with nothing on screen to say so.
 func start(world: BrickWorld, library: PartLibrary,
-		scenery: Dictionary = {}) -> bool:
+		scenery: Dictionary = {}, resume: bool = false) -> bool:
 	if _job != null:
 		return false
 	_library = library
@@ -546,9 +1000,15 @@ func start(world: BrickWorld, library: PartLibrary,
 	visible = true
 	_reorder()
 	# The first step, as the booklet opens: an empty baseplate is a page
-	# with nothing on it.
-	_show(_step_ends[0] if (_mode == 0 or _mode == AUTHORS) and not _step_ends.is_empty()
-		else 1)
+	# with nothing on it. Opened again by the person on the same model, the
+	# step they left it at (ux15: a phone's thumb put the steps away to
+	# build, and came back to step 1 of 35).
+	var kept: int = int(_kept_at.get(_kept_key(), -1)) if resume else -1
+	if kept > 0 and kept <= _length():
+		_show(kept)
+	else:
+		_show(_step_ends[0] if (_mode == 0 or _mode == AUTHORS) and not _step_ends.is_empty()
+			else 1)
 	job.end()
 	return true
 
@@ -597,11 +1057,19 @@ func cancel_start() -> void:
 func stop() -> void:
 	cancel_start()
 	_stop_play()
+	# Where it was left, for the same model's steps opened again.
+	if visible and (_mode == 0 or _mode == AUTHORS) and _shown > 0 and not _steps.is_empty():
+		_kept_at[_kept_key()] = _shown
+	_close_more()
+	if _go_sheet != null:
+		_go_sheet.hide()
 	_forget_ghosts()
 	# The find goes with the timeline: opened again, on this model or the
 	# next, it starts empty rather than with a list for steps no longer up.
 	clear_find()
 	visible = false
+	if _compact:
+		_lay_strip()
 	# An empty set means "all of it" — leaving playback has to put the
 	# model back, or the bricks after the current step stay missing.
 	reveal.emit({})
@@ -667,7 +1135,8 @@ func _set_mode_quietly(mode: int) -> void:
 	_show_row(_edits, mode == AUTHORS and editable)
 	# The row of steps for the steps a drop changes: the author's, or the
 	# worked-out ones of a model that has none of its own yet.
-	_row.visible = editable and (mode == AUTHORS or (mode == 0 and not _authored))
+	_row.visible = editable and (mode == AUTHORS or (mode == 0 and not _authored)) \
+		or _compact and (mode == AUTHORS or mode == 0)
 	# The booklet follows the build order or the author's steps, and an
 	# edit of how a step is printed gives a model the worked-out steps
 	# first, as a step edit does.
@@ -1032,6 +1501,8 @@ func _show(count: int) -> void:
 				# Worth saying. The alternative is a step that looks wrong
 				# to anyone following it with real bricks in their hands.
 				_pieces.text += "  (hold this one in place)"
+	if _compact:
+		_show_compact()
 	_pieces.tooltip_text = _pieces.text
 	_row.queue_redraw()
 	_light_found()
@@ -1112,6 +1583,8 @@ func _show_history(count: int) -> void:
 	_caption.text = "Change %d of %d · %d standing" % [_shown, _events.size(), alive.size()]
 	_pieces.text = ("History: every change, removals included" + (
 		" — %d of these were taken out later" % gone if gone > 0 else ""))
+	if _compact:
+		_show_compact()
 	_pieces.tooltip_text = _pieces.text
 	reveal.emit(showing)
 

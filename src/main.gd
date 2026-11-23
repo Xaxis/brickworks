@@ -3198,6 +3198,11 @@ func _enter_view() -> void:
 	# ...but not what the app is busy with (Working): the timeline of a big
 	# model takes a while to work out here too.
 	_shell.status.only_the_work()
+	# On a phone, two fingers turn and pinch the model, as in the studio
+	# (_dress_for_phone): the view cube's buttons were 13 points across in
+	# a corner of the model (ux15).
+	if Phone.on() and not Phone.wide():
+		_gizmo.visible = false
 	# The strip of editing keys, and the room kept for it.
 	if _hint != null:
 		(_hint.get_parent() as Control).visible = false
@@ -5077,7 +5082,7 @@ func _build_from_step_one() -> void:
 		await get_tree().create_timer(0.3).timeout
 	if _steps.is_playing_back() or _steps.is_starting():
 		return
-	await _toggle_steps()
+	await _toggle_steps(false)
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -6522,6 +6527,12 @@ func _build_ui() -> void:
 		add_child(_touch)
 	else:
 		_stack.add_section(_bin)
+		# A shared model's viewer on a phone: its dialogs and sheets (the
+		# timeline's More, Go to a step, the parts list) sized for a finger
+		# as the studio's are. They were the desktop's, 28 by 12 points (ux15).
+		if Phone.on():
+			_touch = TouchSizing.new()
+			add_child(_touch)
 	_bin_dock = SideDock.new()
 	_bin_dock.title = "Parts"
 	_bin_dock.icon = "parts"
@@ -6634,6 +6645,8 @@ func _build_ui() -> void:
 	# Above the key strip, so the strip stays where it always is rather
 	# than jumping down the screen when playback starts.
 	_steps = StepsBar.new()
+	# A phone's bar shows the step's parts as pictures (StepsBar._lay_strip).
+	_steps.thumbnails = _thumbnails
 	# The end of the timeline shows the model again as it was, which is
 	# with whatever was hidden by hand still hidden.
 	_steps.reveal.connect(_steps_revealed)
@@ -9580,7 +9593,9 @@ func _show_found(ids: PackedInt64Array, what: String) -> void:
 ## Start or leave the booklet. Editing while playback is on would place
 ## bricks into a model that is only half on screen, so the build steps
 ## are worked out once, on entry, from whatever is there.
-func _toggle_steps() -> void:
+## [param resume]: opened by the person, on the step they left this model's
+## steps at (StepsBar.start); a set's Build it opens at the first.
+func _toggle_steps(resume: bool = true) -> void:
 	if _playback != null and _playback.is_playing():
 		_playback.stop()
 	# Pressed again while the steps are still being worked out: never mind.
@@ -9592,7 +9607,7 @@ func _toggle_steps() -> void:
 		return
 	if _world.brick_count() == 0:
 		return
-	await _steps.start(_world, _library, _store.scenery)
+	await _steps.start(_world, _library, _store.scenery, resume)
 
 
 func _on_model_changed() -> void:

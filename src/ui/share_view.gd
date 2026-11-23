@@ -129,6 +129,8 @@ var _build: Button
 var _booklet: Button
 var _parts: Button
 var _copy: Button
+## On a phone, the line under the name the bar's buttons go on (_fit_bar).
+var _bar_line: HBoxContainer
 var _card: PanelContainer
 var _card_title: Label
 var _card_words: Label
@@ -236,9 +238,16 @@ func _build_bar() -> void:
 	backing.content_margin_bottom = 8
 	_bar.add_theme_stylebox_override("panel", backing)
 
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 6)
+	_bar.add_child(stack)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	_bar.add_child(row)
+	stack.add_child(row)
+	_bar_line = HBoxContainer.new()
+	_bar_line.add_theme_constant_override("separation", 6)
+	_bar_line.visible = false
+	stack.add_child(_bar_line)
 
 	# No Brickworks of its own: the app's header is over it, with the mark and
 	# the way home (AppHeader), as over every mode.
@@ -362,6 +371,38 @@ func _button(row: Container, words: String, tip: String) -> Button:
 	_face(button)
 	row.add_child(button)
 	return button
+
+
+## On a phone (ux15) the bar's buttons go on a line of their own under the
+## name, each a fingertip tall and an equal share of the width, their words
+## in points: beside the name they were the desktop's, 15 points tall, and
+## Open in Brickworks 80 by 15. A tablet keeps the desktop's one line.
+func _fit_bar(pt: float) -> void:
+	if _bar_line == null or not Phone.on() or Phone.wide():
+		return
+	_bar_line.visible = true
+	_bar_line.add_theme_constant_override("separation", roundi(6.0 * pt))
+	for button: Button in [_steps, _booklet, _parts, _copy]:
+		if button.get_parent() != _bar_line:
+			button.get_parent().remove_child(button)
+			_bar_line.add_child(button)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.size_flags_vertical = Control.SIZE_FILL
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		button.custom_minimum_size = Vector2(Phone.TARGET * pt, Phone.TARGET * pt)
+		button.add_theme_font_size_override("font_size", roundi(14.0 * pt))
+		for state: String in ["normal", "hover", "pressed", "disabled"]:
+			var was: StyleBox = button.get_theme_stylebox(state)
+			var face := (was.duplicate() if was is StyleBoxFlat else StyleBoxFlat.new()) as StyleBoxFlat
+			face.content_margin_left = 8.0 * pt
+			face.content_margin_right = 8.0 * pt
+			face.content_margin_top = 4.0 * pt
+			face.content_margin_bottom = 4.0 * pt
+			face.set_corner_radius_all(roundi(8.0 * pt))
+			button.add_theme_stylebox_override(state, face)
+		# The longest words take the most of the line.
+		button.size_flags_stretch_ratio = 1.6 if button == _copy else 1.0
 
 
 ## A face of its own, as the timeline's buttons have: drawn flat, the bar
@@ -849,6 +890,7 @@ func _fit_big() -> void:
 	_party_pill.visible = _big.visible
 	_fit_party()
 	_make_pt = pt if _narrow else 1.0
+	_fit_bar(pt)
 	make.fit(_make_pt)
 	make.visible = ending and ready
 	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown() or _play.visible
