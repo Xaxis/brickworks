@@ -150,26 +150,57 @@ func _restep(path: String, into: String) -> void:
 	for line: int in file.moved():
 		print("    line %d (%s) from step %d of %s to %d" % [line + 1, file.lines[line].strip_edges().get_slice(" ", 14),
 			file.was[line] + 1, file.section_name(line), int(file.block[line]) + 1])
-	# Left once nothing more moves: each still in the air is held by nothing
-	# later in its own file (else it would have moved there), and placing its
-	# sub-model after what holds it held it no better: only building it in
-	# another section's steps (a flattening) could. Each is said with what
-	# holds it.
-	var own_later: int = 0
+	# Left once nothing more moves. Each still in the air is held in its own
+	# file only by parts in the air with it, and they by another section's
+	# parts: a sub-model built in the hand, as a booklet's callout is, that
+	# rests on another sub-model. No order of its own file's steps holds
+	# them; only building them in the steps of the model that puts both on
+	# (a flattening) could. Each is said with what holds it.
+	var aloft: Dictionary = {}          # id -> its depth, for every part in the air
+	var line_of_id: Dictionary = {}     # id -> its line at that depth
 	for float_at: Array in now["floats"]:
-		var found: Array = _line_of(now, int(float_at[0]), int(float_at[1]), file)
-		var at: int = int(found[0])
-		var thing: PackedInt64Array = _thing_of(now, int(float_at[0]), int(float_at[1]))
 		var depth: int = _depth_of(now, int(float_at[0]), int(float_at[1]))
-		var part_line: int = _at_depth(now, int(float_at[1]), depth, file)
-		if part_line >= 0 and file.block.has(part_line) and _joined_after(now, thing, depth, part_line, file) >= 0:
-			own_later += 1
+		for id: int in _thing_of(now, int(float_at[0]), int(float_at[1])):
+			aloft[id] = depth
+			line_of_id[id] = _at_depth(now, id, depth, file)
+	var outside: Dictionary = {}        # id -> held by another section's part
+	var own: Dictionary = {}            # id -> the parts in the air of its section it is joined to
+	var unheld: int = 0                 # held in its own file by a part not in the air
+	for id: int in aloft:
+		own[id] = []
+		var at: int = int(line_of_id[id])
+		for other: Variant in (now["near"] as Dictionary).get(id, {}):
+			var by: int = _at_depth(now, int(other), int(aloft[id]), file)
+			if at < 0 or by < 0 or not file.block.has(by) or file.section_of[by] != file.section_of[at]:
+				outside[id] = true
+			elif aloft.has(int(other)):
+				(own[id] as Array).append(int(other))
+			else:
+				unheld += 1
+	# Each part in the air with what it is joined to in its own file, and
+	# whether that reaches another section's part.
+	var cut_off: int = 0
+	for id: int in aloft:
+		var seen: Dictionary = {id: true}
+		var queue: Array = [id]
+		var reaches: bool = false
+		while not queue.is_empty() and not reaches:
+			var here: int = queue.pop_back()
+			reaches = outside.has(here)
+			for next: int in own[here]:
+				if not seen.has(next):
+					seen[next] = true
+					queue.append(next)
+		cut_off += 0 if reaches else 1
+	for float_at: Array in now["floats"]:
+		var thing: PackedInt64Array = _thing_of(now, int(float_at[0]), int(float_at[1]))
+		var part_line: int = int(line_of_id[int(float_at[1])])
 		print("    in the air: step %d, %s; held by %s" % [int(float_at[0]),
 			("line %d (%s, %s)" % [part_line + 1, file.lines[part_line].strip_edges(), file.section_name(part_line)])
 			if part_line >= 0 else "its line not read back", _held_by(now, thing, file)])
-	_check("%s: in the air %d (was %d), each held by nothing later in its own file (%d are), so only a flattening could hold it (%d passes of %d); hidden %d (was %d)"
-		% [path, now["floats"].size(), first["floats"].size(), own_later, passes, PASSES, now["hidden"].size(),
-		first["hidden"].size()], passes < PASSES and own_later == 0
+	_check("%s: in the air %d (was %d), each held in its own file only by parts in the air with it (%d by one not), they by another section's (%d not): only a flattening could hold them (%d passes of %d); hidden %d (was %d)"
+		% [path, now["floats"].size(), first["floats"].size(), unheld, cut_off, passes, PASSES,
+		now["hidden"].size(), first["hidden"].size()], passes < PASSES and unheld == 0 and cut_off == 0
 		and now["floats"].size() <= first["floats"].size() and now["hidden"].size() <= first["hidden"].size())
 	var others: Array = Restepped.other_changes(text, made)
 	_check("%s: every other line the file's, in its section (%d changed: %s)" % [path, others.size(),

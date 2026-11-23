@@ -1780,8 +1780,14 @@ picture the assistant is shown.
   stepkeep_probe` (headless; `SK_ONLY=castle`, `station`, `robot`, `10179`,
   `edits`, `callouts`, `nosteps`, `time` or `shipped`: every model in
   models/ and tools/web/gallery_seeds/ that opens in its saved steps puts no
-  part in the air; `SK_SHIP_OUT=DIR` works out again any that does, saved as
-  Save writes it). `Instructions.plan(...,
+  part in the air but those only a flattening could hold, `SHIPPED_ALOFT`,
+  and saves unedited byte for byte). `tools/probe.sh restep_probe`
+  (headless, ~10 min; `RESTEP_OUT=DIR`, `RESTEP_FILES=res://a.ldr,...`)
+  moves a shipped model's part lines among its own section's STEP lines,
+  and a sub-model's placing line, until no move holds more: every other
+  line kept, the same FILE sections; what is left is held in its own file
+  only by parts in the air with it, and they by another sub-model's (the
+  sports car's 23). `Instructions.plan(...,
   authored=true)` groups by those steps (`_authored_plan`; on Timeline and a
   share, `plan_paced`, what holds what is read a slice at a time, as for a
   worked-out plan: in one go the Wizard's Tower's own steps held a frame for
