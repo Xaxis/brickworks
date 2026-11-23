@@ -42,8 +42,9 @@
 //          page's whole first second, the strip's room decided before the
 //          first frame: a first visit open (home, gallery, a set's page, a
 //          model's) and off (the server's pages, which say it in their
-//          head), open heard two days ago, and heard off an hour ago (none
-//          on that page, the strip from the next).
+//          head), open heard two days ago, heard off an hour ago (none on
+//          that page, the strip from the next), and heard off since a
+//          set's page said open.
 //
 // Off: no bar and no #beta on any page, /beta says Coming soon with no way
 // in, and after the first page the bar's script is not asked for again
@@ -656,9 +657,10 @@ try {
   // after, so the header stays where it was first drawn. A set's page held
   // 48 px for it, then let it go half a second in as the server said the
   // beta was off (checkdrift, 2026-11-23), which the layout-shift count
-  // missed. Pages the server makes say the beta in their head; a page kept
-  // as a file, first visited while the beta is off, cannot know, and holds
-  // the room as for the open beta (said, not judged).
+  // missed. Pages the server makes say the beta in their head, and when;
+  // what the browser heard since is taken over it. A page kept as a file,
+  // first visited while the beta is off, cannot know, and holds the room as
+  // for the open beta (said, not judged).
   if (!remote && asked("steady")) await section("steady", async () => {
     console.log("steady: the header where it was first drawn, the first second at 390");
     const SET = "/library/set/30476-1";
@@ -669,6 +671,9 @@ try {
       { name: "a first visit, the beta off", beta: "off", kept: null, pages: server, want: 0 },
       { name: "open, heard two days ago", beta: "open", kept: { beta: "open", at: -2 * day }, pages: ["/", SET], want: 48 },
       { name: "heard off an hour ago, open now", beta: "open", kept: { beta: "off", at: -3600000 }, pages: ["/gallery"], want: 0, next: 48 },
+      // What the browser heard after the page was made is taken over what
+      // the page says (a page the CDN kept: a set's, a day).
+      { name: "heard off since the page said open", beta: "open", kept: { beta: "off", at: 0 }, pages: [SET], want: 0 },
       { name: "a first visit to a file page, the beta off", beta: "off", kept: null, pages: ["/gallery"], want: null },
     ];
     for (const round of rounds) {

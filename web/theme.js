@@ -175,7 +175,8 @@
 // and never after but by the person's own act (betabar.js), so the strip
 // moves nothing as it comes (pagebar) and never goes once drawn: unless its
 // × hid it here, a page the server makes holds it as that page says the
-// beta is (<meta name="brickworks-beta">, api/_settings.js sayBeta); any other holds it
+// beta is (<meta name="brickworks-beta">, api/_settings.js sayBeta), unless
+// what was heard here is newer (a page the CDN kept); any other holds it
 // unless the beta was last heard off, so a first visit holds it as for the
 // open beta. A set's page on a phone held it, then let it go half a second
 // in, as the server said off (checkdrift, 2026-11-23). Never on an embed's
@@ -189,7 +190,8 @@
   } catch {
     heard = null;
   }
-  const said = document.querySelector('meta[name="brickworks-beta"]')?.content || "";
+  const page = document.querySelector('meta[name="brickworks-beta"]');
+  const said = page && (!heard || Number(page.dataset.at || 0) >= Number(heard.at || 0)) ? page.content : "";
   const age = Date.now() - Number(heard?.at || 0);
   if (said === "open" || (!said && heard?.beta === "open" && age < 86400000)) root.dataset.beta = "open";
   if (said === "off" || (!said && heard?.beta === "off" && age < 600000)) {

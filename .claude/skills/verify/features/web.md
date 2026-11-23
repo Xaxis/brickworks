@@ -6235,7 +6235,9 @@ plan with Claude as the client.
   person's own act (betabar.js drawBar {act}: Settings' switch, Undo, a
   show in another tab): a page the server makes says the beta in its head
   (`<meta name="brickworks-beta">` just before theme.js, api/_settings.js
-  sayBeta and betaSaid, from share.js, people.js and Talk's html senders);
+  sayBeta and betaSaid, from share.js, people.js and Talk's html senders,
+  with when it was said, so an answer the browser heard since wins over a
+  page the CDN kept: a set's, a day);
   a file page holds it unless the beta was last heard off (a first visit
   holds it, so a never-seen visitor's first file page while the beta is off
   is the one page that loses it, said by `--only=steady`); a kept "off"
@@ -6279,7 +6281,8 @@ plan with Claude as the client.
   ends "betahome: all ok"; `--only=hide,back` for the x, its toast, Undo,
   Settings' choice and the menus' Report a bug; `--only=steady` for the
   header's top every frame of the first second at 390, open, off, open
-  heard two days ago and off heard an hour ago), then on a `tools/deploy.sh --unit --beta-open`
+  heard two days ago, off heard an hour ago and off heard since a set's
+  page said open), then on a `tools/deploy.sh --unit --beta-open`
   preview `--url=<preview>` with `BW_BYPASS`: the months left are the
   deployment's (?op=beta_spots), and Join's focus is read a frame after the
   page has loaded and drawn, when web/beta.js puts it there.

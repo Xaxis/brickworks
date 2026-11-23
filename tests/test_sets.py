@@ -355,7 +355,7 @@ console.log(JSON.stringify({ list: { status: list.status, total: list.body.total
   page: [page.status, page.headers["cache-control"], page.body.includes("Key Chain Falcon")], none: none.status,
   index: index.body, first: (first.body.match(/<loc>/g) || []).length, past: past.status, owned: owned.status,
   german: [german.status, german.body.match(/<loc>[^<]*<\/loc>/g) || []], other: other.status,
-  db: asked.filter((one) => one.startsWith("https://db.test/rest")).length }));""")
+  db: asked.filter((one) => one.startsWith("https://db.test/rest") && !one.includes("/rpc/site_setting")).length }));""")
     assert said["list"] == {"status": 200, "total": 3, "of": 6, "ids": ["set-10179-1", "set-4488-1", "set-853900-1"],
                             "years": 5, "credit": {"name": "Rebrickable", "url": "https://rebrickable.com/"}}
     assert said["page"] == [200, "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800", True]
@@ -369,7 +369,9 @@ console.log(JSON.stringify({ list: { status: list.status, total: list.body.total
     assert said["german"][0] == 200 and len(said["german"][1]) == 5
     assert all(loc.startswith("<loc>https://brickworks.test/de/library/set/") for loc in said["german"][1])
     assert said["other"] == 404
-    # What somebody owns is theirs: nobody signed in is refused, and nothing asked of the database.
+    # What somebody owns is theirs: nobody signed in is refused, and nothing asked of the database
+    # (but by the set's page, the beta's switch, said in its head for the strip: api/_settings.js
+    # betaSaid, 2026-11-23).
     assert said["owned"] == 401 and said["db"] == 0
 
 

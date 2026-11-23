@@ -42,7 +42,7 @@ def pages(beta: str, *paths: str) -> list[dict] | None:
 
 
 def said(html: str) -> list[str]:
-    return re.findall(r'<meta name="brickworks-beta" content="([a-z]+)">', html)
+    return re.findall(r'<meta name="brickworks-beta" content="([a-z]+)" data-at="[0-9]{13}">', html)
 
 
 def test_each_page_the_server_makes_says_the_beta_just_before_theme_js() -> None:
@@ -53,7 +53,8 @@ def test_each_page_the_server_makes_says_the_beta_just_before_theme_js() -> None
         for path, page in zip(PAGES, answered):
             assert page["status"] == 200, (beta, path, page["status"])
             assert said(page["html"]) == [beta], (beta, path, said(page["html"]))
-            assert f'<meta name="brickworks-beta" content="{beta}">\n{THEME}' in page["html"], (beta, path)
+            assert re.search(f'<meta name="brickworks-beta" content="{beta}" data-at="[0-9]{{13}}">\n{re.escape(THEME)}',
+                             page["html"]), (beta, path)
 
 
 def test_an_embeds_card_says_nothing_of_it() -> None:
@@ -70,13 +71,13 @@ def test_the_stamp_needs_theme_js_and_a_beta_it_knows() -> None:
         "const { sayBeta, betaSaid } = await import('./api/_settings.js');"
         f"const page = '<head>\\n{THEME}\\n</head>';"
         "delete process.env.SUPABASE_URL;"
-        "console.log(JSON.stringify({ open: sayBeta(page, 'open'), none: sayBeta('<head></head>', 'open'),"
+        "console.log(JSON.stringify({ open: sayBeta(page, 'open', 1764000000000), none: sayBeta('<head></head>', 'open'),"
         "  odd: sayBeta(page, 'maybe'), nodb: await betaSaid({ headers: {} }, { BRICKWORKS_BETA: 'open' }) }));"
     )
     done = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True,
                           timeout=60, check=True)
     out = json.loads(done.stdout.strip().splitlines()[-1])
-    assert out["open"] == f'<head>\n<meta name="brickworks-beta" content="open">\n{THEME}\n</head>'
+    assert out["open"] == f'<head>\n<meta name="brickworks-beta" content="open" data-at="1764000000000">\n{THEME}\n</head>'
     assert out["none"] == "<head></head>"
     assert out["odd"] == f"<head>\n{THEME}\n</head>"
     # No database, no beta: as ?op=beta_spots answers (api/_beta.js).

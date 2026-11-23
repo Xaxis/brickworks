@@ -59,15 +59,18 @@ export async function betaSaid(request, env = process.env) {
 }
 
 /// [body], a page's HTML, with the beta's state in its head, just before
-/// web/theme.js (<meta name="brickworks-beta">): theme.js holds the beta
-/// strip's room from it before the page is drawn, or holds none, so the
-/// strip never comes or goes after (checkdrift, 2026-11-23: a set's page
-/// held 48 px on a phone, then let it go as the server said the beta was
-/// off). A page with no theme.js (an embed's card) is as it was.
-export function sayBeta(body, said) {
+/// web/theme.js (<meta name="brickworks-beta">), and when it was said
+/// ([at], ms): theme.js holds the beta strip's room from it before the page
+/// is drawn, or holds none, so the strip never comes or goes after
+/// (checkdrift, 2026-11-23: a set's page held 48 px on a phone, then let it
+/// go as the server said the beta was off). A page kept by the CDN says what
+/// was so when it was made (a set's, a day), so what the browser heard
+/// since is taken over it. A page with no theme.js (an embed's card) is as
+/// it was.
+export function sayBeta(body, said, at = Date.now()) {
   if (said !== "open" && said !== "off") return body;
   return String(body).replace('<script src="/theme.js"></script>',
-    `<meta name="brickworks-beta" content="${said}">\n<script src="/theme.js"></script>`);
+    `<meta name="brickworks-beta" content="${said}" data-at="${Math.round(at)}">\n<script src="/theme.js"></script>`);
 }
 
 /// [name] set to [value] where [request] was made, by [by]: {value, set_by,
