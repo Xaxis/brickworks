@@ -871,16 +871,94 @@ const HOW_MODEL = { alternate: "An alternate build of {model}", changed: "Change
 
 /// A model's lines under its remix line, one a thing it is based on: "An
 /// alternate build of set 6080-1 King's Castle", "Changed from “A castle”
-/// by Someone (CC BY 4.0)". "" for none. Every word escaped.
+/// by Someone (CC BY 4.0)". "" for none. Every word escaped. An alternate
+/// build of a set says what the count found (altbuilds, api/_alts.js): with
+/// [share] ({have, pieces}) ": every part from the set" or ": 97% from the
+/// set"; with [short] (its designer's own answer alone) how many of its
+/// parts the set does not hold.
 export function basedHtml(said) {
   if (!said.length) return "";
   const filled = (english, name, html) => escapeHtml(say(english)).replace(`{${name}}`, html);
+  const counted_ = (one) => {
+    if (one.how !== "alternate" || !one.set) return "";
+    if (Number(one.short) > 0) {
+      return ` <span class="alt-short" data-short="${Number(one.short)}">${escapeHtml(say("(uses {parts} not in the set)",
+        { parts: counted(Number(one.short), "part") }))}</span>`;
+    }
+    const share = one.share;
+    if (!share || !(share.pieces > 0)) return "";
+    return escapeHtml(share.have >= share.pieces ? say(": every part from the set")
+      : say(": {n}% from the set", { n: percentOf(share.have, share.pieces) }));
+  };
   const line = (one) => (one.set
     ? filled(HOW_SET[one.how], "set", `<a href="${escapeHtml(one.href)}">${escapeHtml(say("set {set}", { set: one.name ? `${one.set} ${one.name}` : one.set }))}</a>`)
+      + counted_(one)
     : filled(HOW_MODEL[one.how], "model", `<a href="${escapeHtml(one.href)}" rel="nofollow ugc noopener">“${escapeHtml(one.name)}”</a>`)
       + `${one.author ? ` ${escapeHtml(say("by {name}", { name: one.author }))}` : ""}${one.licence ? ` (${escapeHtml(one.licence)})` : ""}`);
   return `<ul class="from based-on" id="based-on" aria-label="${escapeHtml(say("What it is based on"))}">`
     + `${said.map((one) => `<li data-how="${one.how}">${line(one)}</li>`).join("")}</ul>`;
+}
+
+// ---------------------------------------------------------------------------
+// Built from a real set, counted (altbuilds, api/_alts.js).
+
+/// A share as a page says it: whole percent, never 100 short of every piece
+/// (199 of 200 is 99%). api/_alts.js percentOf is this one.
+export function percentOf(have, pieces) {
+  if (!(pieces > 0)) return 0;
+  if (have >= pieces) return 100;
+  return Math.min(99, Math.floor((100 * have) / pieces));
+}
+
+/// A set as an alternate build's line names it: its number without the
+/// "-1" every first version has, and its name ("31009 Small Cottage").
+export const setTitle = (set, name) => `${String(set).replace(/-1$/, "")}${name ? ` ${name}` : ""}`;
+
+/// Sets one after another in words: "A and B", "A, B and C".
+function andSaid(parts) {
+  if (parts.length < 2) return parts[0] || "";
+  return say("{first} and {last}", { first: parts.slice(0, -1).join(", "), last: parts[parts.length - 1] });
+}
+
+/// A model's line under its credit, from what was counted ([said]:
+/// api/_alts.js altSaid, each set with {set, name, href}): "An alternate
+/// build of 31009 Small Cottage: every part from the set", "An alternate
+/// build of 42115 and 42054", "97% from 31009 Small Cottage"; each set
+/// linking its page. "" for none.
+export function altHtml(said) {
+  if (!said || !Array.isArray(said.sets) || !said.sets.length || !(said.pieces > 0)) return "";
+  const link = (one) => `<a href="${escapeHtml(one.href)}">${escapeHtml(setTitle(one.set, one.name))}</a>`;
+  const mark = "\u0000";
+  const fill = (words, html) => escapeHtml(words).split(mark).join(html);
+  let line;
+  if (said.how === "whole") line = fill(say("An alternate build of {set}: every part from the set", { set: mark }), link(said.sets[0]));
+  else if (said.how === "group") {
+    const names = said.sets.map((_, at) => `${mark}${at}${mark}`);
+    line = escapeHtml(say("An alternate build of {sets}", { sets: andSaid(names) }))
+      .replace(new RegExp(`${mark}(\\d)${mark}`, "g"), (_, at) => link(said.sets[Number(at)]));
+  } else {
+    line = fill(say("{n}% from {set}", { n: percentOf(said.sets[0].have, said.pieces), set: mark }), link(said.sets[0]));
+  }
+  return `<p class="from alt-build" id="alt-build" data-alt="${escapeHtml(said.how)}">${line}</p>`;
+}
+
+/// How a card on a set's page is built from the set (api/_bases.js altCard),
+/// in a few words under it: "Every part from this set", "With 6111 and
+/// 8186", "97% of its parts from this set", or how its designer says it is
+/// based on it. "" for none.
+export function altCardSaid(alt, based) {
+  if (alt && alt.pieces > 0) {
+    if (alt.role === "group" && Array.isArray(alt.with) && alt.with.length) {
+      return say("{n}% from this set, the rest from {sets}", { n: percentOf(alt.have, alt.pieces),
+        sets: andSaid(alt.with.map((one) => setTitle(one.set))) });
+    }
+    if (alt.have >= alt.pieces) return say("Every part from this set");
+    return say("{n}% of its parts from this set", { n: percentOf(alt.have, alt.pieces) });
+  }
+  if (based === "alternate") return say("An alternate build of it");
+  if (based === "changed") return say("Changed from it");
+  if (based === "inspired") return say("Inspired by it");
+  return "";
 }
 
 // ---------------------------------------------------------------------------

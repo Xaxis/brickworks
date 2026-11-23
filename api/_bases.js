@@ -3,17 +3,23 @@
 //
 //   GET  ?op=bases&id=X           what model X is based on, as its page says
 //                                 it; with a session, whether it is the
-//                                 caller's to change (mine), never kept
+//                                 caller's to change (mine), never kept;
+//                                 for its designer, how many of its parts
+//                                 each set it says it is an alternate
+//                                 build of does not hold (short)
 //   POST ?op=bases                (session) {model, bases}: its designer's
 //                                 list, whole, at most three, [] for none:
 //                                 {how, set} a LEGO set by its number, or
 //                                 {how, url, title, author?, licence?} a
 //                                 work elsewhere; how is alternate (built
 //                                 from a set's parts), changed or inspired
-//   GET  ?op=set_based&set=N      the models in the gallery based on set N,
-//                                 as gallery cards, for its page
-//                                 (/library/set/N); with tests=1, test
-//                                 models too
+//   GET  ?op=set_based&set=N      the models in the gallery built from set
+//                                 N, as gallery cards, for its page
+//                                 (/library/set/N): those its designers say
+//                                 are based on it and those counted as built
+//                                 from it (api/_alts.js, set_built), each with
+//                                 how much of it is from the set; with
+//                                 tests=1, test models too
 //   GET  ?op=set_find&q=WORDS     the sets a designer may mean as they type
 //                                 a set's name or number in the dialog, at
 //                                 most eight, best first (setsFound)
@@ -36,6 +42,7 @@ import { namesTrouble } from "./_names.js";
 import { SET_NUMBER, askSets, catalogSet, pictureOf, searchCatalog, setCatalog } from "./_sets.js";
 import { wordsOf } from "./_search.js";
 import { setListsOf } from "./_lists.js";
+import { altRowsOf, recountAlts } from "./_alts.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const MOST = 3;
@@ -169,7 +176,21 @@ export async function bases(request, response) {
   let mine = false;
   if (bearer(request)) mine = (await verify(bearer(request), request)).sub === own.owner;
   // Before the file there is nowhere to keep a list: not offered (ready).
-  return response.status(200).json({ bases: said || [], mine, ready: said !== null });
+  return response.status(200).json({ bases: mine ? await withShort(id, said || []) : said || [], mine, ready: said !== null });
+}
+
+/// [said] (a model's lines), each alternate build of a set with how many of
+/// the model's pieces that set does not hold, as counted (api/_alts.js:
+/// short, 0 for every part from it; null where it is not counted yet), for
+/// its designer alone: a line the count does not bear out says so to them.
+export async function withShort(id, said, rows = null) {
+  if (!said.some((one) => one.how === "alternate" && one.set)) return said;
+  const kept = rows || (await altRowsOf([id]).catch(() => null))?.get(id) || null;
+  return said.map((one) => {
+    if (one.how !== "alternate" || !one.set) return one;
+    const row = kept?.sets.find((at) => at.set === String(one.set).toLowerCase());
+    return { ...one, short: row && kept.pieces > 0 ? Math.max(0, kept.pieces - Number(row.have || 0)) : null };
+  });
 }
 
 /// POST ?op=bases {model, bases}.
@@ -190,7 +211,11 @@ export async function basesPut(request, response) {
     const [status, words] = REFUSED[said.refused] || [400, "That could not be kept."];
     throw new Unacceptable(words, status);
   }
-  return response.status(200).json({ bases: (await basesOf(model)) || [] });
+  // Counted again with the list it has now, so a set's page lists it and
+  // its designer hears what the set does not hold (api/_alts.js).
+  const counted = await recountAlts(model);
+  const now = (await basesOf(model)) || [];
+  return response.status(200).json({ bases: await withShort(model, now, counted && { pieces: counted.pieces, sets: counted.rows }) });
 }
 
 /// GET ?op=set_find&q=WORDS: {q, sets} (setsFound), kept by the CDN.
@@ -200,7 +225,8 @@ export function setFind(request, response) {
   return response.status(200).json({ q, sets: setsFound(q) });
 }
 
-/// GET ?op=set_based&set=N: {models}, each a gallery card with [based], and
+/// GET ?op=set_based&set=N: {models}, each a gallery card with [based] and
+/// [alt] (altCard: how much of it is from the set, counted), and
 /// the public lists it is in (lists: {count, lists}, api/_lists.js
 /// setListsOf; null when that could not be read), which the set's page
 /// says beside them: one ask for what people did with the set.
@@ -209,14 +235,33 @@ export async function setBased(request, response, origin) {
   const entry = catalogSet(String(request.query?.set || ""));
   if (!entry) throw new Unacceptable("There is no such set in the catalogue.", 404);
   const lists = setListsOf(entry.set, tests).catch(() => null);
-  let rows = [];
-  try {
-    rows = await db("rpc/set_based", { method: "POST", body: { set_number: entry.set, tests } });
-  } catch (trouble) {
+  // Counted and declared, one list (supabase/alt_builds.sql set_built);
+  // before that file, the declared alone (model_bases.sql set_based); before
+  // both, none.
+  const body = { set_number: entry.set, tests };
+  const rows = await db("rpc/set_built", { method: "POST", body }).catch((trouble) => {
     if (!missing(trouble)) throw trouble;
-  }
+    return db("rpc/set_based", { method: "POST", body }).catch((older) => {
+      if (!missing(older)) throw older;
+      return [];
+    });
+  });
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : LIST_CACHE);
   return response.status(200).json({ set: entry.set,
-    models: (Array.isArray(rows) ? rows : []).map((row) => ({ ...cardOf(origin, row), based: HOWS[row.based] ? row.based : null })),
+    models: (Array.isArray(rows) ? rows : []).map((row) => ({ ...cardOf(origin, row), based: HOWS[row.based] ? row.based : null,
+      alt: altCard(row.alt) })),
     lists: await lists });
+}
+
+/// How a card on a set's page is built from the set, as set_built says it:
+/// {role, have, pieces, with: [the group's other sets, each {set, name}]},
+/// or null for a model only declared based on it.
+export function altCard(alt, setOf = catalogSet) {
+  if (!alt || typeof alt !== "object" || !["whole", "group", "best", "declared", "library"].includes(alt.role)) return null;
+  const pieces = Math.max(0, Number(alt.pieces) || 0);
+  return { role: alt.role, have: Math.min(pieces, Math.max(0, Number(alt.have) || 0)), pieces,
+    with: (Array.isArray(alt.with) ? alt.with : []).slice(0, 4).map((set) => {
+      const entry = setOf(String(set));
+      return { set: entry ? entry.set : String(set), name: entry ? entry.name : null };
+    }) };
 }

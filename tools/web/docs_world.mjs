@@ -246,4 +246,34 @@ const ownedWorld = { "$comment": "Signed in as the shared test account with a co
   + "King's Castle owned twice. Written by tools/web/docs_world.mjs: change it there.", answers: O };
 fs.writeFileSync(`${outDir}/owned.json`, JSON.stringify(ownedWorld, null, 1) + "\n");
 console.log(`owned: the sports car ${carMissing.have} of ${carMissing.pieces}, ${carMissing.missing.length} lots short`);
+// ---- built from a set (altbuilds): the little rocket, counted against every
+// set as a publish counts it (api/_alts.js countRows), its own page's line
+// and the page of the first set of its group listing it.
+const alts = await import(pathToFileURL(path.join(wt, "api/_alts.js")).href);
+const basesMod = await import(pathToFileURL(path.join(wt, "api/_bases.js")).href);
+const rocket = byId.DocsRock01;
+const rocketNeeds = share.checkModel(fs.readFileSync(path.join(wt, `models/${rocket._file}.ldr`), "utf8")).needs;
+const rocketCount = alts.countRows(owned.keyed(rocketNeeds), alts.altIndex());
+const rocketSet = rocketCount.rows[0];
+if (!rocketSet) throw new Error("docs_world: the rocket is built from no set now; choose another model for altbuilds' pictures");
+const Alt = {};
+Alt[`/api/share?op=set_based&set=${rocketSet.set}`] = { set: rocketSet.set,
+  models: [{ ...card(rocket), based: null, alt: basesMod.altCard({ role: rocketSet.role, have: rocketSet.have,
+    pieces: rocketCount.pieces, with: rocketCount.rows.filter((row) => row.set !== rocketSet.set).map((row) => row.set) }) }],
+  lists: { count: 0, lists: [] } };
+const AltDb = {};
+AltDb["rest/v1/rpc/directory_model"] = { ...dbRow(rocket), listed: true, from: [], remixes_listed: [] };
+AltDb[`rest/v1/share_versions?model=eq.${rocket.id}`] = [{ n: 1, at: day(2), note: null, parts: rocket.parts,
+  steps: rocket.steps, bytes: rocket.parts * 117, has_image: true, changes: null, first_changed: null,
+  remixed_from_version: null }];
+AltDb[`rest/v1/shared_models?id=eq.${rocket.id}`] = [{ id: rocket.id, owner: TB, test: false }];
+AltDb[`storage/v1/object/shared-models/${rocket.id}.mpd`] = { file: `models/${rocket._file}.ldr` };
+AltDb[`rest/v1/share_tests?model=eq.${rocket.id}`] = [];
+AltDb["rest/v1/rpc/alt_of"] = [{ model: rocket.id, pieces: rocketCount.pieces, rule: alts.ALT_RULE, cut: rocketCount.cut,
+  sets: rocketCount.rows }];
+const altWorld = { "$comment": "Built from a set, over test-account.json: the little rocket's page and the page of the "
+  + "first set of the group it is counted from (api/_alts.js countRows of models/rocket.ldr against every set). "
+  + "Written by tools/web/docs_world.mjs: change it there.", answers: Alt, db: AltDb };
+fs.writeFileSync(`${outDir}/alts.json`, JSON.stringify(altWorld, null, 1) + "\n");
+console.log(`alts: the rocket, ${rocketCount.pieces} pieces, ${rocketCount.rows.map((row) => `${row.role} ${row.set} ${row.have}`).join(", ")}`);
 console.log("world:", Object.keys(A).length, "answers,", Object.keys(D).length, "db;", Object.keys(S).length, "signed in");

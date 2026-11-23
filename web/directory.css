@@ -123,6 +123,12 @@
    thing, at most three. */
 .model-page ul.based-on { list-style: none; padding: 0; }
 .model-page ul.based-on li + li { margin-top: 2px; }
+/* Built from a real set, counted (altbuilds): the designer alone hears
+   what a set they named does not hold; a set's page's empty row asks for
+   the first build, its button the page's own. */
+.model-page .alt-short { color: var(--ink-soft); }
+.set-page .built-empty p { margin: 0 0 10px; }
+.set-page .built-empty p.note { color: var(--ink-soft); }
 dialog.bases-dialog { width: min(480px, calc(100vw - 32px)); }
 dialog.bases-dialog .bases-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 12px; }
 /* Each row boxed, over the report dialog's bare fieldsets (below); its

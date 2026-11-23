@@ -175,6 +175,7 @@
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
+        "tests/test_alts.py",
         "tests/test_console3.py",
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
@@ -332,6 +333,7 @@
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/test_achievements.py",
+        "tests/test_alts.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -560,6 +562,38 @@
       "entry": "src/dev/ai_settings_probe.gd",
       "reach": "tools/probe.sh ai_settings_probe   (PROBE_SIZE=1024x768 or 400x860 for the pictures at that size, in shots/ai_settings/)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:altbuilds probe",
+      "kind": "cli",
+      "entry": "src/dev/altbuilds_probe.gd",
+      "reach": "tools/probe.sh altbuilds_probe --pairs=<altbuilds_probe.mjs DIR>/pairs.json   (headless: each pair's model read as the app opens it, the set in a collection of its own, Collection.coverage and allocate the site's have and pieces, part and colour by part and colour)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:altbuilds set page paint",
+      "kind": "cli",
+      "entry": "tools/web/altbuilds_lcp.mjs",
+      "reach": "node tools/web/altbuilds_lcp.mjs --a=<relay of the tree before> --b=<relay of this one> --out=DIR   (a set's page from both at the same moment, 390 and 1280 px, 8 rounds each: LCP and when Built from this set was there)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:alternate builds backfill",
+      "kind": "cli",
+      "entry": "tools/web/alt_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/alt_backfill.mjs [--dry] [--out=FILE]   (after supabase/alt_builds.sql: every published model with needs and no count by this rule, counted and kept; --dry counts and keeps nothing; the Library's own models say own or another model of their set by its index)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:alternate builds index",
+      "kind": "cli",
+      "entry": "tools/web/alt_index.mjs",
+      "reach": "node tools/web/alt_index.mjs OUT.bin --facts=<package>/_part_facts.json   (tools/package_api.sh writes api/_alt_index.bin beside share's function: every set's lots by part and colour, packed, read back and checked; about 9 MB)",
+      "area": "web",
       "tests": []
     },
     {
@@ -4073,6 +4107,14 @@
       "tests": []
     },
     {
+      "id": "lib:alternate builds counted",
+      "kind": "lib",
+      "entry": "api/_alts.js",
+      "reach": "python3 tools/minitest.py tests/test_alts.py; node tools/web/altbuilds_probe.mjs DIR --library=<library build>/library/index.json   (every LDraw library model counted against every set from this checkout's shards: 20 pairs for tools/probe.sh altbuilds_probe --pairs=DIR/pairs.json to hold to the app's Collection check part for part, 50 called alternates for python3 tools/altbuilds_check.py DIR/precision.json, the Library's other models of a set found, the count's time); supabase/alt_builds.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/alt_builds.sql --dry --try=tools/alt_builds_try.sql --table=model_alt_sets, then node --env-file=.env tools/web/alt_sql_compare.mjs <its log> (the gallery's lists as live)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:an account's deletion",
       "kind": "lib",
       "entry": "api/_erase.js",
@@ -4665,6 +4707,7 @@
       "tests": [
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
+        "tests/test_alts.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
@@ -5382,7 +5425,7 @@
       "id": "lib:what a model is based on",
       "kind": "lib",
       "entry": "api/_bases.js",
-      "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Based on this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
+      "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Built from this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
       "area": "web",
       "tests": []
     },
@@ -5523,6 +5566,7 @@
       "tests": [
         "tests/test_library.py",
         "tests/test_library_site.py",
+        "tests/test_alts.py",
         "tests/test_browse_pages.py",
         "tests/test_gallery_crons.py",
         "tests/test_sets.py"
@@ -6255,7 +6299,7 @@
       "id": "ui:every set's page",
       "kind": "ui",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs; signed in, You own \u2212 n + in Parts you own (1-99, 0 takes it out, web/keep.js ownCount) and In N lists (?op=set_based lists, supabase/owned_quantity.sql set_lists), ownedparts)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Built from this set, the gallery's models counted or said to be built from it (web/set-page.js, ?op=set_based; Build something from it when none); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs; signed in, You own \u2212 n + in Parts you own (1-99, 0 takes it out, web/keep.js ownCount) and In N lists (?op=set_based lists, supabase/owned_quantity.sql set_lists), ownedparts)",
       "area": "web",
       "tests": []
     },
@@ -6588,6 +6632,7 @@
       "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3; the gallery's sets, builds' photos and collections are the same card (web/card.js cardHtml with a set, buildCardHtml, collectionCardHtml); signed in with a collection, a card says You have N% from half its parts up, You have every part at all, nothing under half (ownedLine, ownedparts)",
       "area": "web",
       "tests": [
+        "tests/test_alts.py",
         "tests/test_billing_pay.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
@@ -7780,6 +7825,7 @@
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
       "area": "mcp",
       "tests": [
+        "tests/test_alts.py",
         "tests/test_billing_pay.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",

@@ -29,6 +29,8 @@ On Top, **All time** beside the tabs changes to **This week** or **This month**:
 
 The address keeps the tab, the search and the filters (`/gallery?q=castle&kind=space&sort=newest`), so Back returns to them and a search can be sent to someone.
 
+The gallery's list can also be asked for the models built from a set, as its page lists them: `/api/share?op=list&alt=31009-1` gives those with every part from 31009-1 or built from it with a few other sets, and `&from_one_set=1` only those with every part from a single set ([built from a set](/docs/model-pages#built-from-a-set)).
+
 ## Filters {#filters}
 
 **Filters** opens a sheet. A number on the button says how many are on.

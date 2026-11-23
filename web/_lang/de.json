@@ -3322,6 +3322,24 @@
   "Have all": "Alle da",
   "What you're missing": "Was dir fehlt",
   "Every lot": "Jeder Posten",
-  "Not counted, as nobody owns them on their own (stickers, made parts): {parts}.": "Nicht gezählt, da sie niemand einzeln besitzt (Aufkleber, gefertigte Teile): {parts}."
+  "Not counted, as nobody owns them on their own (stickers, made parts): {parts}.": "Nicht gezählt, da sie niemand einzeln besitzt (Aufkleber, gefertigte Teile): {parts}.",
+  "(uses {parts} not in the set)": "(braucht {parts}, die nicht im Set sind)",
+  ": every part from the set": ": jedes Teil aus dem Set",
+  ": {n}% from the set": ": {n} % aus dem Set",
+  "{first} and {last}": "{first} und {last}",
+  "An alternate build of {set}: every part from the set": "Ein Alternativmodell aus {set}: jedes Teil aus dem Set",
+  "An alternate build of {sets}": "Ein Alternativmodell aus {sets}",
+  "{n}% from {set}": "{n} % aus {set}",
+  "Every part from this set": "Jedes Teil aus diesem Set",
+  "{n}% of its parts from this set": "{n} % seiner Teile aus diesem Set",
+  "An alternate build of it": "Ein Alternativmodell daraus",
+  "Changed from it": "Davon abgewandelt",
+  "Inspired by it": "Davon inspiriert",
+  "Models built from a set are not counted here yet.": "Modelle aus einem Set werden hier noch nicht gezählt.",
+  "Built from this set": "Aus diesem Set gebaut",
+  "Nobody has built anything else from this set yet.": "Noch hat niemand etwas anderes aus diesem Set gebaut.",
+  "Build something of your own from its parts: Brickworks opens with them in its parts bin, and once you publish it, it is listed here.": "Bau aus seinen Teilen etwas Eigenes: Brickworks öffnet sich mit ihnen in der Teilekiste, und sobald du es veröffentlichst, steht es hier.",
+  "Build something from it": "Etwas daraus bauen",
+  "{n}% from this set, the rest from {sets}": "{n} % aus diesem Set, der Rest aus {sets}"
  }
 }

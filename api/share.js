@@ -303,9 +303,10 @@ import { indexOf as searchIndex } from "./_search.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // What a model is based on (docs/SOCIAL.md section 7, item 5).
 import { bases, basesOf, basesPut, setBased, setFind } from "./_bases.js";
+import { altRowsOf, altSaid, keepAlts } from "./_alts.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, altHtml, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -1125,6 +1126,30 @@ const sharerOf = (model) => (model.by && model.by.name) || model.author || say("
 /// Who modelled it, under who shares it, when that is somebody else: the
 /// person the app's Library credits, the page LDraw keeps of it, and, when
 /// its sharer changed it, that they did. "" for a model its sharer made.
+/// What was counted of [page]'s model ([kept]: api/_alts.js altRowsOf's)
+/// said on it (altbuilds): page.alt, the line under its credit (altSaid,
+/// each set named from the catalogue and linking its page under [at]); or,
+/// where its designer says it is an alternate build of that same set, its
+/// share on that line instead, so the page says it once.
+export function altLine(page, kept, at = "") {
+  page.alt = null;
+  const said = kept ? altSaid(kept.sets, kept.pieces) : null;
+  if (!said) return page;
+  const sets = said.sets.map((one) => {
+    const entry = catalogSet(one.set);
+    return entry ? { ...one, set: entry.set, name: entry.name, href: `${at}/library/set/${encodeURIComponent(entry.set)}` } : null;
+  });
+  if (sets.some((one) => !one)) return page;
+  const declared = (page.based || []).filter((one) => one.how === "alternate" && one.set);
+  if (said.how !== "group" && declared.some((one) => one.set.toLowerCase() === sets[0].set.toLowerCase())) {
+    page.based = page.based.map((one) => (one.how === "alternate" && one.set && one.set.toLowerCase() === sets[0].set.toLowerCase()
+      ? { ...one, share: { have: sets[0].have, pieces: said.pieces } } : one));
+    return page;
+  }
+  page.alt = { ...said, sets };
+  return page;
+}
+
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
   return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
@@ -1416,6 +1441,7 @@ ${header}
       <h1>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
       ${modelledLine(model)}
+      ${altHtml(model.alt)}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in Brickworks"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
@@ -2315,16 +2341,21 @@ async function read(request, response) {
     // Its clip (unit turntable): the model turning in its link's preview,
     // named only on the newest version's page and while it is of that
     // version; none read is none, and the picture card it always had.
-    const [mark, photos, next, { counted, parts }, lists, based, clip] = await Promise.all([
+    const [mark, photos, next, { counted, parts }, lists, based, clip, alts] = await Promise.all([
       orUnknown("share", markOf(db, id, shown.n)),
       orUnknown("share", photosWhere(`model=eq.${id}`, shownPublicly)), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
       listsOf(id, tests).then(async (found) => found && ({ ...found,
         covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() })),
       orUnknown("share", basesOf(id)),
-      shown.n === versions[0].n && !page.library ? orUnknown("share", clipOf(id)) : null]);
+      shown.n === versions[0].n && !page.library ? orUnknown("share", clipOf(id)) : null,
+      orUnknown("share", altRowsOf([id]))]);
     // What it is based on, under its remix line and in its structured data.
     page.based = based || [];
+    // And the real set (or the few) its parts all come from, counted when
+    // it was published (api/_alts.js): a line under its credit, or the
+    // share on its designer's own line for that set.
+    altLine(page, alts?.get(id) || null, lang === "en" ? "" : `/${lang}`);
     await leaveOffBlocked(own, page, next, lists);
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
@@ -2914,6 +2945,11 @@ async function gallery(request, response, origin) {
   // Their shares only once there is something to share of.
   if (mine?.pool) asked.pool = mine.account;
   if (asked.following) asked.following = mine.account;
+  // Built from a set (altbuilds): a gallery_models older than
+  // supabase/alt_builds.sql would pass over both and list everything.
+  if ((asked.alt || asked.one_set) && (await altRowsOf(["-"]).catch(() => null)) === null) {
+    throw new Unacceptable("Models built from a set are not counted here yet.", 503);
+  }
   let rows;
   let tabs = true;
   try {
@@ -3513,7 +3549,11 @@ async function publish(request, response) {
   // What it needs, by part and colour, in place of what it needed: the
   // gallery's Build with what I own. Never stops the publish; before
   // supabase/discovery.sql there is nowhere to keep it.
-  await keepNeeds(id, needs);
+  const needsKept = await keepNeeds(id, needs);
+  // And which real set builds it, or which few sets do (api/_alts.js),
+  // counted from those needs against every set's inventory: after the
+  // answer, so the publish never waits on it.
+  if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));

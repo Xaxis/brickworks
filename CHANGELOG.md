@@ -15,6 +15,16 @@ whole cycle.
 
 ### Added
 
+- **What a model is built from.** When you publish a model, Brickworks
+  counts it against every LEGO® set and says under its name what it found:
+  *An alternate build of 31009 Small Cottage: every part from the set*, *of
+  42115 and 42054* when a few sets together hold it, or *97% from 31009*.
+  Each set's page lists what people built from it under **Built from this
+  set**, with how much of each came from the set, beside the models their
+  designers said were based on it. A set nobody has built anything else
+  from yet says so, with **Build something from it**. Say a model is an
+  alternate build of a set that lacks some of its parts, and your own page
+  tells you how many.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

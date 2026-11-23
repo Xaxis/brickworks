@@ -148,6 +148,18 @@ ui:a model's parts and its download
 
 Under its name a page credits what the model came from: a **remix** names the model it was copied from. On your own model's page, **Say what it is based on** adds up to three: **An alternate build of a set** (by its number, such as `6080-1`), **Changed from** or **Inspired by** a set or work elsewhere (its `https://` address and title, and its author and licence if known). Each set's page lists the models based on it. **Change what it is based on** changes or removes them.
 
+### Built from a set {#built-from-a-set}
+
+When a model is published, Brickworks counts it against every set Rebrickable lists, by the rules [your collection](/docs/collection) is counted by: another mould of a part counts as the part, colours are matched as the shops name them, and stickers and parts made for one model are left out. Under its name its page then says what it found:
+
+- one set holds every part: *An alternate build of 31009 Small Cottage: every part from the set*;
+- no one set does, but a few together do (the fewest, up to five): *An alternate build of 42115 and 42054*;
+- one set holds 80% or more of it: *97% from 31009*.
+
+Each set's name opens its page, where the model is listed under **Built from this set**. A model of the set itself (LDraw's model of 6080 King's Castle, say) is that set's own model, not another build of it, and says nothing here. When its designer said it is an alternate build of a set and the set lacks some of its parts, the designer's own page says so after it, *(uses 6 parts not in the set)*; nobody else is shown that.
+
+![Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.](/docs/img/model-alt-build.webp "Built from three sets, as counted when it was published.")
+
 <!-- covers
 lib:what a model is based on
 -->

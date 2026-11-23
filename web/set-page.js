@@ -5,21 +5,28 @@
 // list to download. Its parts list is a model page's (web/model-page.js);
 // nobody signed in sees the page as it is sent.
 //
-// For everybody, the models in the gallery built from the set or based on
-// it (api/_bases.js setBased, docs/SOCIAL.md section 7, item 5): a row of
-// their cards after the page's parts, before the set's theme. They change
-// as designers say so, and the page is kept a day, so they are asked here.
+// For everybody, the models in the gallery built from the set (altbuilds:
+// counted from their parts, api/_alts.js) or said by their designers to be
+// based on it (api/_bases.js setBased, docs/SOCIAL.md section 7, item 5):
+// Built from this set, a row of their cards after the page's parts, before
+// the set's theme, each saying how much of it is from the set. They change
+// as models are published and designers say so, and the page is kept a
+// day, so they are asked here. While there are none, the row says so and
+// offers Build something from it: the studio with the set's parts in its
+// parts bin (/app?parts=, the same as Open its parts in Brickworks: the
+// studio has no opener that puts a set in a person's collection).
 //
 // The page says what it found on <html data-owned>: "have/pieces", "none"
 // for no collection, "broken" when it could not ask (tools/web/sets_flow.mjs
 // reads it); on <html data-based> how many models are built from it,
-// "broken" when it could not ask (tools/web/based_on_flow.mjs); and on
+// counted or said, "broken" when it could not ask (tools/web/based_on_flow.mjs,
+// tools/web/altbuilds_lcp.mjs); and on
 // <html data-lists> how many public lists it is in (ownedparts).
 //
 // Every word in the page's language (web/card.js say: /de/library/set/<n>
 // carries its copy's words), its numbers as the language writes them.
 import { call, signedIn } from "/account.js";
-import { counted, langAt, modelCard, number, say } from "/card.js";
+import { altCardSaid, counted, langAt, modelCard, number, say } from "/card.js";
 
 const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 // A list's link (api/_mylists.js): ten letters and digits.
@@ -29,8 +36,10 @@ if (owned && SET.test(owned.dataset.set || "") && signedIn()) start(owned);
 const page = document.querySelector("article.set-page");
 if (page && SET.test(page.dataset.set || "")) builtFrom(page);
 
-/// The row of models based on the set, put before More <theme> (#similar),
-/// or at the page's end; none, no row.
+/// Built from this set: the models counted or said to be built from it, put
+/// before More <theme> (#similar), or at the page's end; each card says how
+/// much of it is from the set. None: the row says so, with Build something
+/// from it.
 async function builtFrom(article) {
   const tests = new URLSearchParams(location.search).get("tests") === "1" ? "&tests=1" : "";
   const reply = await fetch(`/api/share?op=set_based&set=${encodeURIComponent(article.dataset.set)}${tests}`).catch(() => null);
@@ -42,19 +51,51 @@ async function builtFrom(article) {
   }
   inLists(article, body.lists);
   const models = body.models.filter((model) => model && typeof model.id === "string");
+  const section = document.createElement("section");
+  section.className = "next built-from";
+  section.id = "built-from";
+  section.setAttribute("aria-labelledby", "built-from-h");
+  section.innerHTML = '<div class="scroller-head"><h2 id="built-from-h"></h2></div>';
+  section.querySelector("h2").textContent = say("Built from this set");
   if (models.length) {
-    const section = document.createElement("section");
-    section.className = "next";
-    section.id = "built-from";
-    section.setAttribute("aria-labelledby", "built-from-h");
-    section.innerHTML = '<div class="scroller-head"><h2 id="built-from-h"></h2></div>'
-      + '<div class="models scroller" role="group" aria-labelledby="built-from-h"></div>';
-    section.querySelector("h2").textContent = say("Based on this set");
-    section.querySelector(".models").append(...models.map((model) => modelCard(model)));
-    const similar = document.getElementById("similar");
-    if (similar) similar.before(section);
-    else article.append(section);
+    const row = document.createElement("div");
+    row.className = "models scroller";
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-labelledby", "built-from-h");
+    row.append(...models.map((model) => {
+      const card = modelCard(model);
+      const said = altCardSaid(model.alt, model.based);
+      if (said) {
+        const line = document.createElement("small");
+        line.className = "alt-said";
+        line.dataset.alt = model.alt?.role || model.based || "";
+        line.textContent = said;
+        card.querySelector(".words")?.append(line);
+      }
+      return card;
+    }));
+    section.append(row);
+  } else {
+    // Never a dead end (docs/MASTERPLAN.md, "Intuitive and elegant" 3).
+    const empty = document.createElement("div");
+    empty.className = "state built-empty";
+    const note = document.createElement("p");
+    note.textContent = say("Nobody has built anything else from this set yet.");
+    const how = document.createElement("p");
+    how.className = "note";
+    how.textContent = say("Build something of your own from its parts: Brickworks opens with them in its parts bin, and "
+      + "once you publish it, it is listed here.");
+    const go = document.createElement("a");
+    go.className = "cta";
+    go.href = `/app?new=1&parts=${encodeURIComponent(article.dataset.set)}`;
+    go.dataset.buildFrom = "";
+    go.textContent = say("Build something from it");
+    empty.append(note, how, go);
+    section.append(empty);
   }
+  const similar = document.getElementById("similar");
+  if (similar) similar.before(section);
+  else article.append(section);
   document.documentElement.dataset.based = String(models.length);
 }
 
