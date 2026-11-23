@@ -6534,6 +6534,20 @@
       "entry": "tools/pin_pairs.mjs",
       "reach": "node tools/pin_pairs.mjs [--check]   (writes tests/fixtures/pins/pairs.json)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a kit to post a model elsewhere",
+      "entry": "web/post-kit.js",
+      "reach": "https://brickworks.diy/m/<id>   (signed in as its designer, Share, Post it elsewhere: r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable, Flickr; each kit made in the browser from what the page published (its picture, the 3D view's scene, its parts list), checked against its place's rules (web/post-rules.js, each rule with its page), every caption with the model's link; Share the files on a phone with Web Share, Save the kit (.zip, under 50 MB) elsewhere; Open <place>; Brickworks posts nothing; counted as share.kit_<place>)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "postkit browser flow",
+      "entry": "tools/web/postkit_flow.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/postkit_flow.mjs --out=DIR   (on the design stand-in, nothing leaves the box: LDraw's 10183-1 (558 pieces) as Sam's Harbour Tram; Post it elsewhere hidden signed out and on somebody else's model, its code never loaded; each of the six kits made in 20 s or less at 1280 and 60 s or less at 390 (touch), its rules kept but Instagram's MP4 where Chromium records WebM, its zip under 50 MB read back by zipfile, every caption with the link; the kits ask only for the scene and geometry its View in 3D loads, once, nothing after the first; Ideas' main picture drawn with no text; Tab, Enter, the heading focused, Escape back to the button; pictures and timings.json in DIR. tests/test_post_kit.py holds each rule to its page)",
+      "area": "web"
     }
   ]
 }

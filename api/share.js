@@ -1282,7 +1282,32 @@ function shareSheet(origin, id, model, url) {
   const link = links(origin, id);
   return shareSheetHtml({ url, name: model.name, text: say("{name} on Brickworks", { name: model.name }),
     about: say("Its link opens this page, where anybody can turn it in 3D and build it, with no account."),
-    image: model.has_image || model.library ? link.image : "", embed: link.embed });
+    image: model.has_image || model.library ? link.image : "", embed: link.embed, post: !model.library });
+}
+
+/// What a kit to post it elsewhere is made from (unit postkit,
+/// web/post-kit.js), for its designer's browser: what its page says of it
+/// already, as data, so the kit's words and credits are the page's. Its
+/// newest version's page alone has it. [about] is the page's summary of
+/// its words. Every word in it was typed by somebody, so nothing in it can
+/// end the script it is in.
+function postFacts(origin, id, model, about) {
+  const made = madeOf(model);
+  const modeller = modelledByOf(model.modelled_by);
+  const parent = (model.from || [])[0];
+  const absolute = (href) => (typeof href === "string" && href.startsWith("/") ? `${origin}${href}` : String(href || ""));
+  const credits = [
+    ...(parent ? [{ how: "remix", name: parent.name || "", by: parent.author || "", url: parent.id ? `${origin}/m/${parent.id}` : "" }] : []),
+    ...(modeller ? [{ how: "modelled", name: model.name, by: modeller.name, url: modeller.page || "", changed: Boolean(modeller.changed) }] : []),
+    ...(model.based || []).map((one) => ({ how: one.how, set: Boolean(one.set),
+      name: one.set ? `${one.set}${one.name ? ` ${one.name}` : ""}` : one.name || "", by: one.author || "", url: absolute(one.href) })),
+  ];
+  const facts = { id, name: model.name, url: links(origin, id).url, by: (model.by && model.by.name) || model.author || "",
+    pieces: Number(model.parts) || 0, made: made.way, maker: made.by, kind: model.kind || "", tags: model.tags || [],
+    licence: LICENCES[model.licence]?.name || "", about, credits, scene: `/m/${id}/scene.json`, parts: `/m/${id}/parts.json`,
+    viewer: `/app?view=${id}` };
+  const json = JSON.stringify(facts).replace(/[<>&\u2028\u2029]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  return `<script type="application/json" id="post-facts">${json}</script>`;
 }
 
 /// How [model] was made, as a fact of its page when it was made with the
@@ -1471,6 +1496,7 @@ ${header}
       </div>
       ${set ? "" : claudePanel(origin, id, model)}
       ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url)}
+      ${set || old ? "" : postFacts(origin, id, shownModel, about)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
       ${fromLine}
       ${changedLine}
@@ -1971,7 +1997,8 @@ ${footer || `<footer><small>${NOTICE}</small></footer>`}
 /// a person who likes it, keeps it or puts it in a list (web/account.js),
 /// and the parts store (PARTS_URL, today the same place), whose geometry
 /// the Parts list draws each lot's picture from (web/part-pictures.js).
-/// Pictures from itself alone: those are drawn on a canvas, not loaded.
+/// Pictures from itself alone, and those the page made (blob:): the lots'
+/// are drawn on a canvas, not loaded.
 function pageCsp() {
   const origin = (url) => {
     try {
@@ -1982,9 +2009,10 @@ function pageCsp() {
   };
   const others = [...new Set([origin(process.env.SUPABASE_URL), origin(storeRoot())])].filter(Boolean);
   // blob: the GLB In your room writes in the page (web/room.js), which
-  // <model-viewer> fetches by its blob: address; one made by the page
-  // itself, never another's.
-  return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
+  // <model-viewer> fetches by its blob: address; and the pictures and the
+  // turn a kit to post it elsewhere draws (web/post-kit.js), shown before
+  // they are saved: each made by the page itself, never another's.
+  return "default-src 'none'; script-src 'self'; img-src 'self' blob:; media-src blob:; style-src 'self' 'unsafe-inline'; "
     + `connect-src 'self'${others.map((one) => ` ${one}`).join("")} blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
 /// The embed's: the site's stylesheets ('self'), so the card is drawn in
@@ -2207,6 +2235,7 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
   const root = storeRoot();
   const words = SITE_LANGS.includes(lang) ? partNames(lang) : null;
   const pab = pickABrick(parts);
+  const rebrickable = rebrickableCsv(parts);
   return response.status(200).json({
     ...said, ...(words ? { lang } : {}), pieces: parts.pieces,
     lots: parts.lots.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
@@ -2217,8 +2246,12 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
     // number for (Pick a Brick's: a lot with no element number known); and
     // the direct colours each lists in the nearest colour still made
     // ("#FF0000 as Reddish Orange"), as no shop sells them.
-    left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out,
+    left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickable.left_out,
       pickabrick: pab.missing.length },
+    // Rebrickable's parts-list import, as /m/X/parts.csv gives it, for the
+    // kit its designer takes there (web/post-kit.js): made from this list,
+    // so the kit fetches nothing the page has not.
+    rebrickable_csv: rebrickable.text,
     stand_ins: wantedList(parts).stand_ins,
     // The Pick a Brick list: its files, its lines (an element each) and the
     // pieces on it, the pieces of the lots it left off, and each element

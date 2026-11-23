@@ -49,6 +49,17 @@ whole cycle.
   and marks one **Resolve**d, which folds it away on the page. Notifications
   say it is "on a part".
 
+- **Post it elsewhere.** On your shared model's page, **Share** offers a
+  kit for r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable and
+  Flickr, each in that place's own form and checked against its rules,
+  every one with your model's link: Reddit's title with its flair (SEC and
+  the designer's credit for somebody else's design) and the words to
+  paste; Instagram's 1080 × 1350 cover, a 1080 × 1920 turn and a caption of
+  five hashtags at most; LEGO® Ideas' pieces, pictures and a main picture
+  with no text checked, saying what fails; Rebrickable's parts CSV; and
+  Flickr's largest picture. Your browser makes it from what the page has
+  published; a phone hands the files to its share sheet, a computer saves
+  one zip. Brickworks posts nothing anywhere: you post it yourself.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

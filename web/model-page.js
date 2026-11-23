@@ -69,12 +69,36 @@ else if (marks && /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/.test(id || "")) {
 // This month's challenge (supabase/challenges.sql), for the model's own
 // designer: Enter this month's challenge, or that it is in.
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
+// Post it elsewhere (unit postkit, web/post-kit.js), for the model's own
+// designer, known from the answer basesOwn has: Share's sheet offers a kit
+// for each place it is posted to, made in this browser. Nobody else loads
+// any of it.
+let kitsShown = false;
+function postKitsOwn() {
+  const sheet = document.getElementById("share-sheet");
+  const facts = document.getElementById("post-facts");
+  if (kitsShown || !sheet || !facts || !sheet.querySelector("#post-kits")) return;
+  kitsShown = true;
+  let read = null;
+  try {
+    read = JSON.parse(facts.textContent);
+  } catch {
+    return;
+  }
+  import("/post-kit.js").then((kit) => {
+    kit.startPostKits(sheet, { facts: read, parts: pageParts ? () => pageParts() : null });
+    document.documentElement.dataset.postKits = "shown";
+  }, () => { kitsShown = false; });
+}
+
 // What it is based on (api/_bases.js), for the model's own designer: Say
 // what it is based on, or Change it, in a dialog of at most three; the
 // page's lines drawn again from what was kept. <html data-bases> says how
 // many its designer's page shows, "not-open" before model_bases.sql
 // (tools/web/based_on_flow.mjs reads it).
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
+// Signed in on the page (signinux): drawn for them, where they are.
+else if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) addEventListener("brickworks:signed-in-done", () => basesOwn(), { once: true });
 // Comments on a part (partpins): the comments and the model in 3D, each
 // told of the other through this. The comments say which pins there are,
 // numbered (pins), and whether a part may be commented on (open); the 3D
@@ -149,6 +173,9 @@ if (tabs) startTabs(tabs);
 // Its parts (api/share.js partsSection): the list asked for as it nears the
 // screen, so a visit that never gets there asks for nothing.
 const partsPart = document.getElementById("parts");
+// The page's parts list once it is asked for (startParts): a promise of
+// parts.json, or of null.
+let pageParts = null;
 if (partsPart && partsPart.dataset.parts) startParts(partsPart);
 // Its clip (unit turntable): the model turning once round, which its link's
 // preview plays in Discord, Slack and X (api/share.js, og:video). Recorded
@@ -749,7 +776,7 @@ function startParts(section) {
           item.textContent = say("The list did not come. Reload the page to ask for it again.");
           list.replaceChildren(item);
           asked = null;
-          return;
+          return null;
         }
         lots = body.lots;
         draw();
@@ -767,10 +794,13 @@ function startParts(section) {
             else pic.dataset.picture = "none";
           }
         });
+        return body;
       });
     return asked;
   };
   partLots = () => Promise.resolve(load()).then(() => lots);
+  // The same list, for a kit to post it elsewhere (web/post-kit.js).
+  pageParts = load;
   for (const choice of choices) {
     choice.addEventListener("click", () => {
       group = choice.dataset.group;
@@ -2270,6 +2300,7 @@ function enterDialog(said) {
 async function basesOwn() {
   const answer = await call(`/api/share?op=bases&id=${id}`);
   if (answer.status !== 200 || !answer.body.mine) return;
+  postKitsOwn();
   // Before supabase/model_bases.sql there is nowhere to keep a list.
   if (!answer.body.ready) {
     document.documentElement.dataset.bases = "not-open";

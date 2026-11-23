@@ -23,10 +23,16 @@
 export const CLIP = { width: 768, height: 432, fps: 24, frames: 96, maxBytes: 1572864 };
 
 // What each kind is tried as, best first: H.264's constrained baseline,
-// which every player decodes, then main; VP9, then VP8.
+// which every player decodes, then main; VP9, then VP8. Each at the level
+// its frame needs: 3.1 holds the link's clip, and a frame past 1280 x 720
+// (Instagram's 1080 x 1920 turn, web/post-kit.js) needs 4.0.
 const CODECS = {
   mp4: ["avc1.42001f", "avc1.42e01f", "avc1.4d001f"],
   webm: ["vp09.00.10.08", "vp8"],
+};
+const CODECS_LARGE = {
+  mp4: ["avc1.420028", "avc1.42e028", "avc1.4d0028"],
+  webm: ["vp09.00.40.08", "vp8"],
 };
 const BITRATE = 1_800_000;
 // A key frame every two seconds, so a player can start part way.
@@ -36,19 +42,25 @@ const BACKDROP = ["#f6f7f9", "#dfe2e8"];
 const WORDMARK = { words: "brickworks.diy", font: '600 15px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
   colour: "rgba(91, 97, 112, 0.7)", margin: 14 };
 
-/// The encoder's settings for [codec] at [bitrate].
-function settings(codec, bitrate) {
-  const made = { codec, width: CLIP.width, height: CLIP.height, bitrate, bitrateMode: "variable",
-    framerate: CLIP.fps, latencyMode: "quality" };
+/// The codecs to try for a clip of [shape].
+const codecsOf = (shape) => (shape.width * shape.height > 1280 * 720 ? CODECS_LARGE : CODECS);
+
+/// The encoder's settings for [codec] at [bitrate], for a clip of [shape]:
+/// the link's clip at the encoder's best, a frame past 1280 x 720 at its
+/// quicker setting, where a software encoder's best takes the time of many
+/// times the pixels (Instagram's turn, web/post-kit.js).
+function settings(codec, bitrate, shape) {
+  const made = { codec, width: shape.width, height: shape.height, bitrate, bitrateMode: "variable",
+    framerate: shape.fps, latencyMode: shape.width * shape.height > 1280 * 720 ? "realtime" : "quality" };
   if (codec.startsWith("avc1")) made.avc = { format: "avc" };
   return made;
 }
 
-/// The first of [kind]'s codecs this browser encodes, or "".
-async function codecFor(kind) {
-  for (const codec of CODECS[kind] || []) {
+/// The first of [kind]'s codecs this browser encodes for [shape], or "".
+async function codecFor(kind, shape) {
+  for (const codec of codecsOf(shape)[kind] || []) {
     try {
-      const answer = await VideoEncoder.isConfigSupported(settings(codec, BITRATE));
+      const answer = await VideoEncoder.isConfigSupported(settings(codec, shape.bitrate || BITRATE, shape));
       if (answer && answer.supported) return codec;
     } catch { /* the next */ }
   }
@@ -57,13 +69,14 @@ async function codecFor(kind) {
 
 const encodes = () => typeof VideoEncoder === "function" && typeof VideoFrame === "function";
 
-/// The best kind of clip this browser can write: "mp4" where it encodes
-/// H.264, "webm" where it encodes VP9 or VP8 alone, "" where it has no
-/// WebCodecs or none of them.
-export async function clipKind() {
+/// The best kind of clip this browser can write of [shape] (the link's
+/// clip unless another is given): "mp4" where it encodes H.264, "webm"
+/// where it encodes VP9 or VP8 alone, "" where it has no WebCodecs or none
+/// of them.
+export async function clipKind(shape = CLIP) {
   if (!encodes()) return "";
-  if (await codecFor("mp4")) return "mp4";
-  if (await codecFor("webm")) return "webm";
+  if (await codecFor("mp4", shape)) return "mp4";
+  if (await codecFor("webm", shape)) return "webm";
   return "";
 }
 
@@ -73,27 +86,39 @@ export async function clipKind() {
 /// width, height, ms}, or null where it cannot be made here or [signal]
 /// stops it. [gate], where given, is waited on before each frame (the
 /// worker holds it while the page is hidden). Written at half the bitrate
-/// once more where it comes out past 1.5 MB. Never throws.
-export async function recordClip(draw, { kind = "", signal = null, gate = null } = {}) {
+/// once more where it comes out past 1.5 MB. Never throws. [shape] is the
+/// link's clip (CLIP) unless another is given: {width, height, fps,
+/// frames, maxBytes, bitrate}, as Instagram's turn is (web/post-kit.js).
+/// Why it made none is put on [report].why, where a report is given.
+export async function recordClip(draw, { kind = "", signal = null, gate = null, shape = CLIP, report = null } = {}) {
+  const why = (said) => {
+    if (report) report.why = said;
+    return null;
+  };
   try {
-    if (!encodes()) return null;
-    const wanted = kind || (await clipKind());
-    const codec = wanted ? await codecFor(wanted) : "";
-    if (!codec) return null;
-    for (const bitrate of [BITRATE, BITRATE / 2]) {
-      const made = await encodeOnce(draw, wanted, codec, bitrate, signal, gate);
+    if (!encodes()) return why("no WebCodecs");
+    const wanted = kind || (await clipKind(shape));
+    const codec = wanted ? await codecFor(wanted, shape) : "";
+    if (!codec) return why(`no encoder for ${shape.width} x ${shape.height}`);
+    const bitrate = shape.bitrate || BITRATE;
+    for (const rate of [bitrate, bitrate / 2]) {
+      const made = await encodeOnce(draw, wanted, codec, rate, signal, gate, shape, report);
       if (!made) return null;
-      if (made.bytes.length <= CLIP.maxBytes) return made;
+      if (made.bytes.length <= shape.maxBytes) return made;
+      if (report) report.why = `${codec} came to ${made.bytes.length} bytes`;
     }
     return null;
-  } catch {
-    return null;
+  } catch (trouble) {
+    return why(`${trouble && trouble.message ? trouble.message : trouble}`);
   }
 }
 
-/// A frame's own canvas: the backdrop, the model over it, the wordmark.
-function easel() {
-  const { width, height } = CLIP;
+/// A picture's own canvas, [width] by [height]: the backdrop, the model
+/// over it, and the wordmark unless [wordmark] is false. What it drew is
+/// counted on [drawn] (each layer, and every run of text), so a check can
+/// say what is on a picture without reading it: LEGO® Ideas takes no text
+/// on a project's main picture (web/post-kit.js).
+export function easel({ width, height, wordmark = true } = CLIP) {
   const canvas = typeof OffscreenCanvas === "function" ? new OffscreenCanvas(width, height)
     : Object.assign(document.createElement("canvas"), { width, height });
   const pen = canvas.getContext("2d", { alpha: false });
@@ -102,17 +127,30 @@ function easel() {
   ground.addColorStop(1, BACKDROP[1]);
   pen.imageSmoothingEnabled = true;
   pen.imageSmoothingQuality = "high";
+  const drawn = { layers: [], text: [] };
+  // The wordmark at the same share of the frame on a picture of any size.
+  const scale = Math.max(1, Math.min(width, height) / CLIP.height);
   return {
     canvas,
-    paint(model) {
+    drawn,
+    /// [model] over the backdrop, drawn to the whole frame; [box], where
+    /// given, the part of the frame it is drawn in ({x, y, width, height}).
+    paint(model, box = null) {
       pen.fillStyle = ground;
       pen.fillRect(0, 0, width, height);
-      pen.drawImage(model, 0, 0, width, height);
-      pen.font = WORDMARK.font;
+      if (box) pen.drawImage(model, box.x, box.y, box.width, box.height);
+      else pen.drawImage(model, 0, 0, width, height);
+      if (!drawn.layers.length) drawn.layers.push("backdrop", "model");
+      if (!wordmark) return;
+      pen.font = WORDMARK.font.replace("15px", `${Math.round(15 * scale)}px`);
       pen.textAlign = "right";
       pen.textBaseline = "alphabetic";
       pen.fillStyle = WORDMARK.colour;
-      pen.fillText(WORDMARK.words, width - WORDMARK.margin, height - WORDMARK.margin);
+      pen.fillText(WORDMARK.words, width - WORDMARK.margin * scale, height - WORDMARK.margin * scale);
+      if (!drawn.text.length) {
+        drawn.layers.push("wordmark");
+        drawn.text.push(WORDMARK.words);
+      }
     },
   };
 }
@@ -129,8 +167,12 @@ function breathe() {
   });
 }
 
-async function encodeOnce(draw, kind, codec, bitrate, signal, gate) {
-  const { fps, frames } = CLIP;
+async function encodeOnce(draw, kind, codec, bitrate, signal, gate, shape, report = null) {
+  const why = (said) => {
+    if (report) report.why = `${codec}: ${said}`;
+    return null;
+  };
+  const { fps, frames } = shape;
   const chunks = [];
   let description = null;
   let failure = null;
@@ -151,13 +193,13 @@ async function encodeOnce(draw, kind, codec, bitrate, signal, gate) {
   });
   const close = () => { try { if (encoder.state !== "closed") encoder.close(); } catch { /* closed */ } };
   try {
-    encoder.configure(settings(codec, bitrate));
-    const page = easel();
+    encoder.configure(settings(codec, bitrate, shape));
+    const page = easel(shape);
     const step = 1e6 / fps;
     for (let i = 0; i < frames; i++) {
       if (gate) await gate();
-      if (signal && signal.aborted) { close(); return null; }
-      if (failure) { close(); return null; }
+      if (signal && signal.aborted) { close(); return why("stopped"); }
+      if (failure) { close(); return why(failure.message || String(failure)); }
       // Drawn and copied in one go: a WebGL canvas is only readable in
       // the task that drew it.
       page.paint(draw(i / frames));
@@ -173,16 +215,18 @@ async function encodeOnce(draw, kind, codec, bitrate, signal, gate) {
     }
     await Promise.race([encoder.flush(), stopped]);
     close();
-    if (failure || chunks.length !== frames) return null;
+    if (failure) return why(failure.message || String(failure));
+    if (chunks.length !== frames) return why(`${chunks.length} of ${frames} frames came out`);
+    const { width, height } = shape;
     const bytes = kind === "mp4"
-      ? (description ? muxMp4({ width: CLIP.width, height: CLIP.height, fps, description, chunks }) : null)
-      : muxWebm({ width: CLIP.width, height: CLIP.height, fps, codec: codec.startsWith("vp8") ? "V_VP8" : "V_VP9", chunks });
-    if (!bytes) return null;
-    return { kind, type: kind === "mp4" ? "video/mp4" : "video/webm", codec, bytes, width: CLIP.width,
-      height: CLIP.height, ms: (frames * 1000) / fps };
-  } catch {
+      ? (description ? muxMp4({ width, height, fps, description, chunks }) : null)
+      : muxWebm({ width, height, fps, codec: codec.startsWith("vp8") ? "V_VP8" : "V_VP9", chunks });
+    if (!bytes) return why("it could not be put in its file");
+    return { kind, type: kind === "mp4" ? "video/mp4" : "video/webm", codec, bytes, width, height,
+      ms: (frames * 1000) / fps };
+  } catch (trouble) {
     close();
-    return null;
+    return why(trouble && trouble.message ? trouble.message : String(trouble));
   }
 }
 

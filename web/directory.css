@@ -981,6 +981,35 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .share-sheet .actions { margin-top: var(--s-4); }
 .share-sheet .share-to { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
 .share-sheet .share-to p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+/* Post it elsewhere, its designer's (web/post-kit.js): the places as the
+   networks are, and the kit for one in a dialog of its own over the sheet,
+   its pictures in a row of thumbnails, its words to copy, its rules ticked
+   (or crossed, or a dot for one the person keeps), then how to take it. */
+.share-sheet .post-kits { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.share-sheet .post-kits p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.share-sheet .post-kits p small { display: block; color: var(--ink-faint); }
+dialog.post-kit { width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.post-kit h2:focus { outline: none; }
+.post-kit h3 { margin: var(--s-4) 0 var(--s-2); font-size: var(--t-body); }
+.post-kit .kit-pictures { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: 72px; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.post-kit .kit-pictures img, .post-kit .kit-pictures video {
+	width: 100%; height: 100%; object-fit: contain; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel-hi);
+}
+.post-kit .kit-pictures video { grid-column: span 2; grid-row: span 2; }
+.post-kit .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-3); }
+.post-kit .copy-row label { flex: 1 1 16em; margin: 0; }
+.post-kit .kit-words > p { margin: 0 0 var(--s-3); color: var(--ink); }
+.post-kit .kit-rules b { font-weight: 560; }
+.post-kit .kit-rules li[data-how="fails"]::before {
+	left: 4px; top: 0.2em; width: 12px; height: 12px; border: 0; transform: none;
+	background: linear-gradient(45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%),
+		linear-gradient(-45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%);
+}
+.post-kit .kit-rules li[data-how="fails"] b { color: var(--bad); }
+.post-kit .kit-rules li[data-how="yours"]::before {
+	left: 7px; top: 0.55em; width: 6px; height: 6px; border: 0; border-radius: 50%; transform: none; background: var(--ink-faint);
+}
+.post-kit .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
 
 /* The directory of collections as wide as the gallery it is a tab of, its
    title and a line about it over the tabs. */

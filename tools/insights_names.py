@@ -85,6 +85,8 @@ def acts() -> set[str]:
     fns = re.findall(r'"([a-z_]+)"', re.search(r"const ACTS = new Set\(\[([^\]]+)\]\)", src).group(1))
     skip = set(re.findall(r'"([a-z_]+)"', re.search(r"const NOT_ACTS = new Set\(\[([^\]]+)\]\)", src).group(1)))
     out = {"account.signed_in"}
+    # The acts a page says itself (a kit to post a model elsewhere, taken).
+    out.update(re.findall(r'"(share\.kit_[a-z]+)"', re.search(r"const KIT_ACTS = \[([^\]]+)\]", src).group(1)))
     for fn in fns:
         files = [ROOT / "api" / f"{fn}.js"]
         text = "\n".join(f.read_text(encoding="utf-8") for f in files if f.exists())

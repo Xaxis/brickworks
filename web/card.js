@@ -277,13 +277,28 @@ export function shareTargets({ url, text, image = "" }) {
   ].filter(Boolean);
 }
 
+/// The places a model's designer can take a kit to post it (unit postkit,
+/// web/post-kit.js): each its key and its name, in the page's language.
+/// Brickworks posts nothing to any of them; the kit is made in the
+/// designer's browser.
+export const postPlaces = () => [["legomoc", "r/legomoc"], ["lego", "r/lego"], ["instagram", "Instagram"],
+  ["ideas", say("LEGO® Ideas")], ["rebrickable", "Rebrickable"], ["flickr", "Flickr"]];
+
 /// Share's sheet, every page's (docs/SOCIAL.md U14 and section 7): the
 /// site's dialog with the page's link and Copy, the networks to post it to
 /// (shareTargets), the code that embeds it where it has one ([embed]), and
 /// a way to the phone's own share sheet, which web/share-sheet.js shows
 /// where the browser has one. [name] heads it, [about] says what the link
 /// opens, [text] is what a post says. Closed, and inert with no script.
-export function shareSheetHtml({ url, name, about = "", text = name, image = "", embed = "" }) {
+/// With [post], a model's: Post it elsewhere (postPlaces), hidden until
+/// its page knows the person looking is its designer (web/model-page.js).
+export function shareSheetHtml({ url, name, about = "", text = name, image = "", embed = "", post = false }) {
+  const places = post ? `<div class="post-kits" id="post-kits" role="group" aria-labelledby="post-kits-h" hidden>`
+    + `<p id="post-kits-h">${escapeHtml(say("Post it elsewhere"))} <small>${escapeHtml(say("A kit for each place, in its own "
+      + "form and rules, with this link: its pictures, its words and its files. You post it, from your own account."))}</small></p>`
+    + postPlaces().map(([key, label]) => `<button type="button" class="cta ghost small" data-kit="${key}" `
+      + `aria-haspopup="dialog">${escapeHtml(label)}</button>`).join("")
+    + `</div>` : "";
   const to = shareTargets({ url, text, image }).map(([key, label, href]) => `<a class="cta ghost small" data-to="${key}" `
     + `href="${escapeHtml(href)}"${key === "email" ? "" : ' target="_blank" rel="noopener noreferrer"'}>${escapeHtml(label)}`
     + `${key === "email" ? "" : `<span class="visually-hidden"> ${escapeHtml(say("(opens in a new tab)"))}</span>`}</a>`).join("");
@@ -294,6 +309,7 @@ export function shareSheetHtml({ url, name, about = "", text = name, image = "",
     + `<div class="copy-row"><label>${escapeHtml(say("Its link"))}<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
     + `<button type="button" class="cta" data-copy="share-link">${escapeHtml(say("Copy link"))}</button></div>`
     + `<div class="share-to" role="group" aria-labelledby="share-to-h"><p id="share-to-h">${escapeHtml(say("Post it to"))}</p>${to}</div>`
+    + places
     + (embed ? `<div class="copy-row"><label>${escapeHtml(say("Embed it in a page"))} <small>${escapeHtml(say("Its picture and name, "
       + "opening it here, light or dark to suit whoever looks at it"))}</small>`
       + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(embed)}</textarea></label>`
