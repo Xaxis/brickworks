@@ -148,18 +148,25 @@ function judge(one, got, want) {
     found.push(["the page", `is ${n(container.left)} to ${n(container.right)} px (main ${got.containerIs}), not the header's ${n(header.left)} to ${n(header.right)}`]);
   }
   if (one.kind === EDGES) return found;
-  if (!got.band || !got.bandFirst) return [...found, ["its head", "is not the site's (.page-hero first in <main>)"]];
-  if (!got.h1 || !got.h1.inTitle) return [...found, ["its h1", "is not in the head's .page-title"]];
+  // Each fault is named and the page measured on past it, so a page drawn
+  // its own way says how far it is off, not only that it is.
+  const band = got.band && got.bandFirst;
+  if (!band) found.push(["its head", "is not the site's (.page-hero first in <main>)"]);
+  if (!got.h1) return [...found, ["the page", "has no h1"]];
+  if (!got.h1.inTitle) found.push(["its h1", "is not in the head's .page-title"]);
   if (!near(got.h1.left, container.left)) found.push(["its h1", `starts at ${n(got.h1.left)} px, not the page's edge at ${n(container.left)}`]);
   if (Math.abs(got.h1.size - got.want.h1) > 0.25) found.push(["its h1", `is ${n(got.h1.size)} px, not --t-h1's ${n(got.want.h1)}`]);
-  if (!near(got.bandPad, got.want.pad)) found.push(["its head", `is padded ${n(got.bandPad)} px over the title, not ${n(got.want.pad)}`]);
-  if (want) {
-    if (!near(got.h1.top - got.band.top, want.h1.top - want.band.top) || !near(got.band.top, want.band.top)) {
-      found.push(["its h1", `is ${n(got.h1.top)} px down the page, the pattern's at ${n(want.h1.top)}`]);
-    }
+  // The tokens, whatever the feed does: the head padded --s-6 (--s-4 on a
+  // phone) over the h1, and the h1 the first thing in it.
+  if (band && !near(got.bandPad, got.want.pad)) found.push(["its head", `is padded ${n(got.bandPad)} px over the title, not ${n(got.want.pad)}`]);
+  if (band && !near(got.h1.top - got.band.top, got.want.pad)) {
+    found.push(["its h1", `is ${n(got.h1.top - got.band.top)} px under the head's top, not the padding's ${n(got.want.pad)}`]);
+  }
+  if (want?.h1) {
+    if (!near(got.h1.top, want.h1.top)) found.push(["its h1", `is ${n(got.h1.top)} px down the page, the feed's at ${n(want.h1.top)}`]);
     if (got.tabs && want.tabs && got.head && want.head
       && !near(got.tabs.top - got.head.bottom, want.tabs.top - want.head.bottom)) {
-      found.push(["its tabs", `are ${n(got.tabs.top - got.head.bottom)} px under its head, the pattern's ${n(want.tabs.top - want.head.bottom)}`]);
+      found.push(["its tabs", `are ${n(got.tabs.top - got.head.bottom)} px under its head, the feed's ${n(want.tabs.top - want.head.bottom)}`]);
     }
   }
   if (got.tabs && !near(got.tabs.left, container.left)) found.push(["its tabs", `start at ${n(got.tabs.left)} px, not the page's edge at ${n(container.left)}`]);
@@ -198,13 +205,8 @@ try {
             const got = await page.evaluate(layout);
             pages += 1;
             const key = `${width} ${theme} ${who}`;
-            // The pattern: the feed's, held to the tokens itself.
-            if (one.name === "feed" && !patterns.has(key)) {
-              patterns.set(key, got);
-              if (got.h1 && got.band && !near(got.h1.top - got.band.top, got.want.pad)) {
-                fail(label, `the pattern's h1 is ${n(got.h1.top - got.band.top)} px under the band's top, not its padding's ${n(got.want.pad)}`);
-              }
-            }
+            // The pattern: the feed's, held to the tokens like every page.
+            if (one.name === "feed" && !patterns.has(key)) patterns.set(key, got);
             const found = judge(one, got, patterns.get(key) || patterns.get(`${width} ${theme} out`));
             for (const [what, why] of found) fail(label, `${what} ${why}`);
             if (!found.length) {

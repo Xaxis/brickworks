@@ -1876,8 +1876,12 @@ plan with Claude as the client.
   /settings, /faq, the legal pages, /takedown, /changelog, /compare,
   /share-model; object and landing pages held to the width only. Run
   alone: `node tools/web/layout_audit.mjs [--out=DIR] [--root=OLD]
-  [--url=<preview>]` ("layout audit: all ok"); on today's live (630700306)
-  it fails every page on its h1's place. Talk's lists and its new thread
+  [--url=<preview>]` ("layout audit: all ok"). Each fault is named and the
+  page measured on past it; every h1 is held to the tokens (32 px under
+  the head's top, 16 on a phone) as well as to the feed's. On rel-m323
+  (630700306) it fails /notifications four ways at 1280: its h1 111 px
+  under the head's top, the head padded 72, the h1 outside a
+  .page-title, its list not the site's. Talk's lists and its new thread
   are drawn here by `design_stand_in.mjs` (three threads, the boards'
   counts).
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
