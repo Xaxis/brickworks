@@ -328,8 +328,11 @@ try {
           if (storeLog) {
             console.log(`        storage read for this view: ${kb(bytes)} (${read.map((one) => `${one.path} ${kb(one.bytes)}`).join(", ") || "none"})`);
             if (!firstOfSet) {
-              check(`${label}: a view after the set's first reads none of its file from storage (${read.filter((one) => /\.mpd$/.test(one.path)).length} reads of it)`,
-                !read.some((one) => /\.mpd$/.test(one.path)));
+              // This set's file only: another run against the same relay reads its own sets' (flow4 counted
+              // flow5's first read of 42100-1 against 42120-1).
+              const mine = read.filter((one) => one.path.endsWith(`/${set}.mpd`));
+              check(`${label}: a view after the set's first reads none of its file from storage (${mine.length} reads of it)`,
+                mine.length === 0);
             }
           }
           check(`${label}: no script error (${page.errors.join(" | ") || "none"})`, page.errors.length === 0);
