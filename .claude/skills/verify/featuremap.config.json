@@ -3919,6 +3919,13 @@
     },
     {
       "kind": "cli",
+      "label": "set3d browser flow",
+      "entry": "tools/web/set3d_flow.mjs",
+      "reach": "node --env-file=.env tools/web/set3d_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--langs=de,fr,es] [--store-log=FILE]   (set3d: ten modelled sets, 30 to 9,092 parts, turned in 3D on their own pages at 1280 and 390 in both themes, no 3D code before View in 3D, the frame, keys or a swipe, full screen, the named stage; two catalogue-only sets saying they have no 3D model; no WebGL keeping the picture; de/fr/es; what each view cost and read from storage)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "set parts probe",
       "entry": "src/dev/set_parts_probe.gd",
       "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",

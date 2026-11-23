@@ -15,6 +15,12 @@ whole cycle.
 
 ### Added
 
+- **Every modelled set turns in 3D on its own page.** A set's page in the
+  library whose set LDraw has modelled, about 1,300 of them, says **View
+  in 3D** on its picture, and the set turns right there, as a shared
+  model's does: drag, zoom, the keys, full screen, and **Open in the app**
+  beside it. Nothing of it loads until you ask. A set LDraw has not
+  modelled says **No 3D model of this set yet** under its picture.
 - **Choose what you hear of, and where.** Settings › Notifications has a
   row for each kind of notification, from comments on your models to news
   from Brickworks, and a box for each place it can reach you: here (the

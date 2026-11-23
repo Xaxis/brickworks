@@ -51,6 +51,9 @@ declare -A CMD=(
   # local only: made_shown_flow.mjs. It runs a local relay against production's functions with throwaway accounts (aiprivate); model_page and gallery carry what a stranger sees.
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
   # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
+  # local only: set3d_flow.mjs. It turns ten sets of up to 9,092 parts in 3D at two widths and both themes,
+  # an hour of SwiftShader under load, and counts storage bytes only through the local relay's preload
+  # (store_count.mjs); library_site and model_page hold the inline viewer on previews (set3d).
   # local only: bootlook_flow.mjs. It serves a web export (--dir) itself and holds its load to a slow network, so a deployment cannot stand in (bootlook).
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and

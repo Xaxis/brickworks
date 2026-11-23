@@ -256,6 +256,7 @@ const lots = [{ count: 48, name: "Slope Brick 31 1 x 2 x 0.667", colour_name: "L
   { count: 12, name: "Plate 1 x 2", colour_name: "Blue" }];
 console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4488-1"), 2]] }),
   explorer: page("10497-1", { lots }), chain: page("853900-1"),
+  other: page("4488-1", { held: { main: null, more: [{ id: "omr-4488-1_B", name: "Millennium Falcon - Mini — B model" }] } }),
   brief: S.starterBrief(S.catalogSet("10497-1"), lots), files: S.sitemapSets(catalog.sets, "https://b.test"),
   de: S.sitemapSets(catalog.sets, "https://b.test", "de") }));""")
     falcon, explorer, chain = said["falcon"], said["explorer"], said["chain"]
@@ -271,6 +272,17 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
     assert 'href="/app?new=1&amp;library=omr-10179-1" data-build3d' in falcon
     assert 'href="/library/omr-10179-1">a page of its own' in falcon and "/library/omr-10179-1_B" in falcon
     assert 'src="/library/omr-10179-1.cutout.webp"' in falcon
+    # In 3D in the page (set3d): its picture the way into the 3D view a
+    # gallery model's page has (web/start3d.js, /viewer3d.js), from its own
+    # scene; a set with no model says it has none, and offers no 3D.
+    assert ('<a class="picture" href="/app?new=1&amp;library=omr-10179-1" aria-label="View Millennium Falcon in 3D" '
+            'data-scene="/library/omr-10179-1/scene.json" data-parts="0">') in falcon
+    assert '<span class="go" aria-hidden="true">View in 3D</span>' in falcon and 'class="no3d"' not in falcon
+    assert '<script src="/model-page.js" type="module"></script>' in falcon
+    assert '<p class="no3d">No 3D model of this set yet</p>' in explorer
+    assert "data-scene" not in explorer and 'class="go"' not in explorer and '<a class="picture"' not in explorer
+    # Only another build of it in LDraw: that is listed under In 3D, and the page never says it has none.
+    assert 'href="/library/omr-4488-1_B"' in said["other"] and 'class="no3d"' not in said["other"]
     assert 'href="/library/set/4488-1">2 × 4488-1 Millennium Falcon - Mini' in falcon
     assert '<a href="/library?theme=Star%20Wars%20%3E%20Ultimate%20Collector%20Series">Ultimate Collector Series</a>' in falcon
     # No model: its picture drawn from its parts, its parts into the app, and a brief to design with them.

@@ -172,6 +172,109 @@
    "features": [
     "ui:every set's page"
    ]
+  },
+  {
+   "id": "set-3d",
+   "source": "site",
+   "route": "/library/set/10297-1",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "store": true,
+   "answers": {
+    "/library/omr-10297-1.cutout.webp": {
+     "file": "docs-site/pictures/files/omr-10297-1.cutout.webp"
+    }
+   },
+   "steps": [
+    {
+     "click": ".set-page .picture .go"
+    },
+    {
+     "wait": ".set-page .view3d[data-state=\"ready\"]",
+     "within": 240000,
+     "pause": 5600
+    }
+   ],
+   "crop": [
+    ".set-page .media",
+    ".set-page .side"
+   ],
+   "pad": 12,
+   "alt": "The Boutique Hotel's page with LDraw's model of it turning in 3D where its picture was: Zoom out, Zoom in, Reset the view, Full screen and Back to the picture under it, Open in the app beside them, and beside it the set's name, Own, Want, Build it in 3D and its facts.",
+   "caption": "A set LDraw has modelled, turned in 3D on its own page.",
+   "features": [
+    "ui:every set's page",
+    "ui:a model in 3D on its page"
+   ]
+  },
+  {
+   "id": "set-3d-phone",
+   "source": "site",
+   "route": "/library/set/10297-1",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "phone": true,
+   "store": true,
+   "answers": {
+    "/library/omr-10297-1.cutout.webp": {
+     "file": "docs-site/pictures/files/omr-10297-1.cutout.webp"
+    }
+   },
+   "steps": [
+    {
+     "click": ".set-page .picture .go"
+    },
+    {
+     "wait": ".set-page .view3d[data-state=\"ready\"]",
+     "within": 240000,
+     "pause": 5600
+    }
+   ],
+   "crop": ".set-page .media",
+   "pad": 8,
+   "alt": "On a phone, the Boutique Hotel in 3D in its page's square picture frame, its tools under it and Open in the app.",
+   "caption": "The same on a phone: a finger across turns it, up or down scrolls the page.",
+   "features": [
+    "ui:every set's page",
+    "ui:a model in 3D on its page"
+   ]
+  },
+  {
+   "id": "set-no3d",
+   "source": "site",
+   "route": "/library/set/10318-1",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/library/set/10318-1.jpg": {
+     "file": "docs-site/pictures/files/set-10318-1.jpg"
+    }
+   },
+   "crop": ".set-page .media",
+   "pad": 8,
+   "alt": "Concorde's page, a set LDraw has no model of: a few of its parts drawn by Brickworks, and under them, No 3D model of this set yet.",
+   "caption": "A set with no 3D model says so under its picture.",
+   "features": [
+    "ui:every set's page"
+   ]
   }
  ]
 }
