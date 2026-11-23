@@ -226,6 +226,8 @@ func _build() -> void:
 	_confirm.ok_button_text = "Clear it"
 	_confirm.confirmed.connect(func() -> void: attend.call("clear", _on_clear))
 	add_child(_confirm)
+	# It cannot be undone: in red, not Save's blue (Look.danger).
+	Look.danger(_confirm.get_ok_button())
 
 	_confirm_new = ConfirmationDialog.new()
 	_confirm_new.title = "Start a new model?"
