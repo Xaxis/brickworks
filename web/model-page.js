@@ -775,6 +775,7 @@ function startParts(section) {
       .then((body) => {
         if (!body || !Array.isArray(body.lots)) {
           list.removeAttribute("aria-busy");
+          if (all) all.hidden = true;
           const item = document.createElement("li");
           item.className = "group";
           item.textContent = say("The list did not come. Reload the page to ask for it again.");
@@ -818,7 +819,9 @@ function startParts(section) {
   if (all) {
     all.addEventListener("click", () => {
       open = true;
+      // In the page before the list comes: pressed then, the list comes whole.
       if (lots) draw();
+      else load();
       // The next row in reach of the keyboard, where Show all was.
       list.querySelectorAll("li")[LOTS_SHOWN]?.setAttribute("tabindex", "-1");
       list.querySelectorAll("li")[LOTS_SHOWN]?.focus({ preventScroll: true });
