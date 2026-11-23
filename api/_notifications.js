@@ -74,10 +74,10 @@
 
 import { bearer, isMaster, verify } from "./_auth.js";
 import { db, dbAll, orUnknown } from "./_db.js";
-import { promptsById } from "./_prompts.js";
+import { promptNow, promptsById } from "./_prompts.js";
 import { withFaces } from "./_faces.js";
 import { scopeOf } from "./_settings.js";
-import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
+import { Unacceptable, inLanguage, siteWords, testsAsked } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
 import { blockCounts, blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
 import { pinnedAmong } from "./_comments.js";
@@ -225,7 +225,7 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     // A reply to somebody else's comment on your model is a comment on it;
     // a pin (supabase/comment_pins.sql) is one on a part of it.
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
-      link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
+      link: `${origin}/m/${model}#comment-${Number(row.comment)}`, ...(row.pinned ? { pinned: true } : {}),
       line: row.parent ? stepped(say("{who} replied to a comment on step {step}"), say("{who} replied to a comment"))
         : row.pinned ? stepped(say("{who} commented on a part, step {step}"), say("{who} commented on a part"))
           : stepped(say("{who} commented on step {step}"), say("{who} commented")) };
@@ -537,6 +537,61 @@ export async function chooseNotification(request, response) {
   if (said?.refused) throw new Unacceptable("That was a lot at once. Try again in a minute.", 429);
   return response.status(200).json({ kind, channel, on: (said[channel] || []).includes(kind), here: said.here, push: said.push,
     email: said.email });
+}
+
+/// What the studio's first screen tells of what came back on a person's
+/// models (src/ui/studio_start.gd): a comment (on a part or not), a photo
+/// of a build, a remix.
+const CAME = new Set(["comment", "photo", "remix"]);
+/// The most it lists.
+const CAME_MOST = 8;
+
+/// GET ?op=studio_start (session): what the studio's first screen shows
+/// beside the person's own models (studiostart, docs/PLAN.md row 1): what
+/// came back on their models, newest first, each {kind, model, name,
+/// picture, line, who, said, at, new, link, comment, pinned}, [model] the
+/// one of theirs it is on and [comment] a comment's number, which the
+/// studio lights the part of when [pinned]; and this week's quick build
+/// (api/_prompts.js promptNow) as {prompt}, or null. Only read: nothing is
+/// marked seen or read (the avatar's count stays until Notifications is
+/// opened), and no level is written down. Nothing by anybody they blocked,
+/// as Notifications says it.
+export async function studioStart(request, response, { origin }) {
+  response.setHeader("Cache-Control", "private, no-store");
+  const asker = await who(request);
+  if (!asker) throw new Unacceptable("Sign in to see what happened to your models: we email you a code, no password.", 401);
+  const tests = testsAsked(request.query || {});
+  // Asked side by side, as the studio waits on it: the list, the week's
+  // build and who they blocked at once, then which comments are on a part
+  // and which models of the blocked to leave out at once.
+  const [page, week, handles] = await Promise.all([
+    call("notification_list", { viewer: asker, mark: false }, () => ({ missing: true })),
+    orUnknown("prompts", promptNow(origin, tests)),
+    blockedHandles(asker),
+  ]);
+  const listed = page && page.missing ? await listBefore(asker, false) : page;
+  const prompt = week || null;
+  if (!listed) return response.status(200).json({ ready: false, came: [], prompt });
+  const rows = (listed.rows || []).filter((row) => CAME.has(row?.kind) && ID.test(String(row?.on || "")))
+    .slice(0, CAME_MOST * 3);
+  const [gone] = await Promise.all([
+    handles.size ? blockedModels(asker, rows.map((row) => row?.model)) : new Set(),
+    pinnedAmong(rows.filter((row) => PINNABLE.has(row?.kind))),
+  ]);
+  const kept = handles.size ? rowsWithout(rows, handles, gone) : rows;
+  const lang = String(request.query?.lang || "en");
+  const came = inLanguage(lang, siteWords(lang), () => {
+    const groups = noticeGroups({ ...listed, rows: kept.slice(0, CAME_MOST) }, origin).groups;
+    return groups.flatMap((group) => group.rows.map((said, index) => ({ said, group, row: index })))
+      .sort((a, b) => Date.parse(b.said.at) - Date.parse(a.said.at))
+      .map(({ said, group }) => {
+        const number = /#comment-(\d+)$/.exec(String(said.link || ""));
+        return { kind: said.kind, model: group.model, name: group.name, picture: group.picture, line: said.line,
+          who: said.who, said: said.said, at: said.at, new: said.new, link: said.link,
+          comment: number ? Number(number[1]) : 0, pinned: said.pinned === true };
+      });
+  });
+  return response.status(200).json(await withFaces({ ready: true, came, prompt }));
 }
 
 export async function notificationsRead(request, response) {

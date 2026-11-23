@@ -387,6 +387,27 @@ static func prompt_line(prompt: Dictionary, most: int = -1) -> String:
 	return "This week's quick build, %s: “%s” Publish it by %s to enter." % [title, brief, day]
 
 
+## The studio's first screen (api/people.js ?op=studio_start): what came
+## back on the person's models and this week's quick build, nothing marked
+## read: {code, body: {ready, came: [...], prompt}} (StudioStart).
+## Its lines in [param lang], the interface's language (Language.current).
+func studio_start(token: String, lang: String = "en") -> Dictionary:
+	return await _fetch("/api/people?op=studio_start&lang=" + lang.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
+## A page of the gallery (api/share.js ?op=list), as the library's Community
+## shelf asks it: [param words] searched for, or the gallery's own first
+## page for none; with [param token], nobody they blocked in it. {code,
+## body: {models: [...], more}}.
+func gallery(words: String, token: String = "") -> Dictionary:
+	var asked: String = "/api/share?op=list&page=1"
+	if not words.strip_edges().is_empty():
+		asked += "&q=" + words.strip_edges().left(100).uri_encode()
+	if not token.is_empty():
+		asked += "&mine=1"
+	return await _fetch(asked, HTTPClient.METHOD_GET, token, "")
+
+
 ## One request, as Account._fetch makes it (PageFetch).
 func _fetch(path: String, method: int, token: String, body: String) -> Dictionary:
 	var headers := PackedStringArray(["content-type: application/json"])

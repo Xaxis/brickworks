@@ -17014,3 +17014,134 @@ msgstr "Brickworks : la page d’accueil"
 
 msgid "The site's home page, in this tab"
 msgstr "La page d’accueil du site, dans cet onglet"
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "Welcome back"
+msgstr "Bon retour"
+
+msgid "Pick up where you left off, or see what came back from other builders."
+msgstr "Reprenez là où vous en étiez, ou voyez ce que les autres constructeurs vous ont répondu."
+
+msgid "New model"
+msgstr "Nouveau modèle"
+
+msgid "Put this away (Esc): the model is behind it"
+msgstr "Masquer (Échap) : le modèle est derrière"
+
+msgid "Continue"
+msgstr "Continuer"
+
+msgid "Bringing your models here from your account…"
+msgstr "Vos modèles arrivent depuis votre compte…"
+
+msgid "Nothing saved yet: a model you save is here next time, on any device you sign in on."
+msgstr "Rien d'enregistré pour l'instant : un modèle que vous enregistrez sera ici la prochaine fois, sur tout appareil où vous vous connectez."
+
+msgid "What came back on your models"
+msgstr "Ce que vos modèles ont reçu"
+
+msgid "Find in the gallery"
+msgstr "Trouver dans la galerie"
+
+msgid "Search: a tug, a castle, a 6-wide car…"
+msgstr "Rechercher : un remorqueur, un château, une voiture de 6 de large…"
+
+msgid "Open the studio on this screen"
+msgstr "Ouvrir le studio sur cet écran"
+
+msgid "No quick build this week: the month's challenge is on its page."
+msgstr "Pas de construction rapide cette semaine : le défi du mois est sur sa page."
+
+msgid "Brickworks could not be reached just now."
+msgstr "Brickworks est injoignable pour le moment."
+
+msgid "Publish by %s"
+msgstr "Publiez d'ici %s"
+
+msgid "1 entry so far"
+msgstr "1 participation pour l'instant"
+
+msgid "%d entries so far"
+msgstr "%d participations pour l'instant"
+
+msgid "Start from its template"
+msgstr "Partir de son modèle de départ"
+
+msgid "Your own copy of its template, on the baseplate: publish it to enter"
+msgstr "Votre propre copie de son modèle de départ, sur la plaque : publiez-la pour participer"
+
+msgid "Nothing yet. Share a model, and comments, builds and remixes of it come back here."
+msgstr "Rien pour l'instant. Partagez un modèle : ses commentaires, constructions et remixes arrivent ici."
+
+msgid "on a part: shows it"
+msgstr "sur une pièce : la montre"
+
+msgid "Open the model at this comment's part"
+msgstr "Ouvrir le modèle sur la pièce de ce commentaire"
+
+msgid "Open the model"
+msgstr "Ouvrir le modèle"
+
+msgid "See the photo on its page"
+msgstr "Voir la photo sur sa page"
+
+msgid "See the remix on its page"
+msgstr "Voir le remix sur sa page"
+
+msgid "New in the gallery"
+msgstr "Nouveau dans la galerie"
+
+msgid "Found for “%s”"
+msgstr "Trouvé pour « %s »"
+
+msgid "Looking for “%s”…"
+msgstr "Recherche de « %s »…"
+
+msgid "Nothing in the gallery matches. Try fewer words."
+msgstr "Rien dans la galerie ne correspond. Essayez avec moins de mots."
+
+msgid "The gallery could not be reached just now."
+msgstr "La galerie est injoignable pour le moment."
+
+msgid "by %s · %s"
+msgstr "par %s · %s"
+
+msgid "A copy of “%s” of your own, on the baseplate"
+msgstr "Votre propre copie de « %s », sur la plaque"
+
+msgid "Open “%s”"
+msgstr "Ouvrir « %s »"
+
+msgid "%d min ago"
+msgstr "il y a %d min"
+
+msgid "%d h ago"
+msgstr "il y a %d h"
+
+msgid "yesterday"
+msgstr "hier"
+
+msgid "%d days ago"
+msgstr "il y a %d jours"
+
+msgid "%s's comment is on this part: “%s”"
+msgstr "Le commentaire de %s porte sur cette pièce : « %s »"
+
+msgid "%s commented: “%s” — reply on its page"
+msgstr "%s a commenté : « %s » — répondez sur sa page"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "Search with fewer words: at most %d letters"
+msgstr "Cherchez avec moins de mots : %d caractères au plus"
+
+# The studio's first screen (studiostart, src/ui/studio_start.gd).
+msgid "See it and its entries"
+msgstr "La voir, avec ses participations"
+
+msgid "Its page: the brief, what others built, and how to enter"
+msgstr "Sa page : la consigne, ce que d'autres ont construit, et comment participer"
+
+msgid "Bringing “%s” from your account…"
+msgstr "« %s » arrive depuis votre compte…"
+
+msgid "“%s” could not be brought from your account just now: try File › Open in a moment"
+msgstr "« %s » n'a pas pu être récupéré depuis votre compte : réessayez dans un instant avec Fichier › Ouvrir"

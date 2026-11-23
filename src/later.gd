@@ -63,6 +63,8 @@ const PATHS: Dictionary[StringName, String] = {
 	# the viewer's menu on a part, the studio's notice and list.
 	&"PartPins": "res://src/ui/part_pins.gd",
 	&"PartPinsPanel": "res://src/ui/part_pins_panel.gd",
+	# The studio's first screen for somebody signed in (studiostart).
+	&"StudioStart": "res://src/ui/studio_start.gd",
 	&"PinPlace": "res://src/net/pin_place.gd",
 	# The month's challenge in the studio: its line over the model and its
 	# rules ticked on it.
