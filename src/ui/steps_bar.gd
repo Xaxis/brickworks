@@ -514,6 +514,15 @@ func _lay_compact(column: VBoxContainer, line: Container, row: Container, back: 
 	for moved: Control in [line, row, _edits, _looks]:
 		column.remove_child(moved)
 		_more_box.add_child(moved)
+	# The step's words over the slider, the sheet's width, wrapped: beside it,
+	# 190 wide, they ran past the sheet's edge.
+	line.remove_child(_caption)
+	_more_box.add_child(_caption)
+	_more_box.move_child(_caption, 0)
+	_caption.custom_minimum_size = Vector2.ZERO
+	_caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# A step chosen in the sheet puts it away, as a menu goes once a row is
 	# chosen; how the booklet looks, the order and the speed leave it open,
 	# to be set and seen.
@@ -760,10 +769,13 @@ func open_more() -> void:
 		_more_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_more_sheet.add_child(slide)
 		(shell if shell != null else self as Node).add_child(_more_sheet)
+	# Half the screen, the model above it: sized by what the box asked for,
+	# the sheet was 40 points tall the first time, its rows laid out only
+	# once shown, and held the slider alone (ux15's walk, p18).
 	var room: Vector2 = get_viewport().get_visible_rect().size
 	var slide: ScrollContainer = _more_box.get_parent() as ScrollContainer
 	slide.custom_minimum_size = Vector2(minf(room.x * 0.9, 560.0 * Phone.per_point(get_viewport())),
-		minf(_more_box.get_combined_minimum_size().y, room.y * 0.55))
+		room.y * 0.5)
 	_more_sheet.popup_centered()
 
 
