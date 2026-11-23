@@ -315,7 +315,7 @@ const JOURNEYS = {
       await page.keyboard.type("The tower's hinge is clever.");
       await tabTo(page, label, 'form.comment-new button[type="submit"]', { most: 3 });
       await page.keyboard.press("Enter");
-      const said = await until(page, () => /Added/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
+      const said = await until(page, () => /Posted/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
       await settle(page);
       const now = await page.evaluate(focusNow);
       check(said && !now.lost, `${label}: a comment sent with Enter: "${await page.evaluate(() => document.querySelector(".comments-said")?.textContent)}", the focus on ${now.said}`);
@@ -337,10 +337,10 @@ const JOURNEYS = {
       await page.keyboard.type("Thank you!");
       await tabTo(page, label, 'form.reply-new button[type="submit"]', { most: 3 });
       await page.keyboard.press("Enter");
-      const said = await until(page, () => /Replied/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
+      const said = await until(page, () => /Posted/.test(document.querySelector(".comments-said")?.textContent || ""), null, 8000);
       await settle(page);
       const now = await page.evaluate(focusNow);
-      check(said && !now.lost && now.said.length > 0, `${label}: a reply sent with Enter: said "Replied.", the focus on ${now.said}`);
+      check(said && !now.lost && now.said.length > 0, `${label}: a reply sent with Enter: said "Posted.", the focus on ${now.said}`);
     }
     check(!errors.length, `${label}: no script errors (${errors.join("; ") || "none"})`);
     await shot(page, `model_${theme}`);

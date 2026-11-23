@@ -977,7 +977,7 @@ try {
                 && /^Step 3/.test(t.steps["comment-101"]?.[0] || "") && /[?&]step=3$/.test(t.steps["comment-101"]?.[1] || "")
                 && !t.steps["comment-102"]);
               check(`${label}: the box is shown (${t.send}), Reply on each of the 3 comments (${t.replyButtons}), nothing wider than the screen`,
-                t.box && t.send === (signedIn ? "Add the comment" : "Sign in and add it") && t.replyButtons === 3 && !t.wide);
+                t.box && t.send === "Post" && t.replyButtons === 3 && !t.wide);
               await page.click("#comment-103 > .comment-main > .comment-acts button:text-is('Reply')");
               const boxed = await until(page, () => document.activeElement?.closest?.("#comment-103 form.reply-new"), null, 4000);
               check(`${label}: Reply opens a box under Priya's thread, ready to type`, boxed);
@@ -991,9 +991,9 @@ try {
                 const kept = await page.evaluate(() => document.querySelector("#comment-103 form.reply-new textarea")?.value);
                 check(`${label}: and what was typed is kept ("${kept}")`, kept === "Thank you: under, then it clicks.");
               } else {
-                const went = await until(page, () => document.querySelector("#comments .comments-said")?.textContent === "Replied."
+                const went = await until(page, () => document.querySelector("#comments .comments-said")?.textContent === "Posted."
                   && !document.querySelector("#comments form.reply-new"), null, 6000);
-                check(`${label}: signed in, the reply goes ("Replied.") and its box closes`, went);
+                check(`${label}: signed in, the reply goes ("Posted.") and its box closes`, went);
               }
             }
             await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));

@@ -432,7 +432,7 @@ async function modelSaid(browser, code, width, at) {
     // under each, and its step's pill where one is on a step.
     check((chrome.none ? chrome.none === script(code, "Nobody has commented yet.")
       : chrome.reply === script(code, "Reply") && (!chrome.step || chrome.step.startsWith(stepWord)))
-      && chrome.send === script(code, "Sign in and add it"),
+      && chrome.send === script(code, "Post"),
       `${where}: the comments say ${[chrome.none, chrome.reply, chrome.step, chrome.send].filter(Boolean).map((text) => `"${text}"`).join(", ")}`);
     const day = new Intl.DateTimeFormat(code === "en" ? "en-GB" : code, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
     const wrongDates = chrome.dates.filter(([iso, text]) => !text.startsWith(day.format(new Date(iso))));

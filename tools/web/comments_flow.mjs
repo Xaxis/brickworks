@@ -331,7 +331,7 @@ try {
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });
   now = await untilDrawn(page, (d) => d.items.length === 4, "the comments for a visitor");
   check(`reads all four, the newest first, with the box shown to them too ("${now.send}")`,
-    now.form && now.send === "Sign in and add it" && !now.why && now.items[0].body === ON_GONE);
+    now.form && now.send === "Post" && !now.why && now.items[0].body === ON_GONE);
   check(`...and may report each (${now.items[1].acts.join(", ")})`, now.items.every((c) => c.acts.includes("Report it")));
   await page.fill("#comment-body", FROM_VISITOR);
   await page.click("#comments form.comment-new button[type=submit]");
@@ -497,7 +497,7 @@ async function replies(page, stepComment) {
   const theirs = now.items.find((c) => c.body === REPLY_OWNER);
   const parent = now.items.find((c) => c.body === ON_STEP);
   check(`the owner's reply is under the step comment, marked "${theirs.designer}", with its avatar, said "${now.said}"`,
-    theirs.reply && theirs.under === parent.id && theirs.designer === "Designer" && theirs.avatar && now.said === "Replied."
+    theirs.reply && theirs.under === parent.id && theirs.designer === "Designer" && theirs.avatar && now.said === "Posted."
     && !now.items.some((c) => c.reply && c.acts.includes("Reply")));
   await page.evaluate(() => document.getElementById("comments").scrollIntoView());
   await shot(page, "5a_owner_replied.png");
