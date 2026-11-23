@@ -3933,12 +3933,16 @@ func _look_for_asks() -> void:
 func _ask_context() -> Dictionary:
 	var parts: Array = []
 	if not _builder.selection.is_empty():
-		for one: Dictionary in PinPlace.bricks_of(_world, _store.lift(), _store.scenery):
+		# A Later class, reached as one: named here, main.gd could not
+		# compile before the data pack holding it was mounted, and the web
+		# start stopped at "Could not find script for class PinPlace".
+		var pins: GDScript = Later.script(&"PinPlace")
+		for one: Dictionary in pins.bricks_of(_world, _store.lift(), _store.scenery):
 			if not _builder.selection.has(int(one["id"])):
 				continue
 			var info: PartLibrary.PartInfo = _library.parts.get(str(one["part"]))
 			var colour: PartLibrary.BrickColor = _library.colors.get(int(one["colour"]))
-			var said: String = PinPlace.part_said(info.name if info != null else "")
+			var said: String = pins.part_said(info.name if info != null else "")
 			one["words"] = ("the %s" % said if not said.is_empty() else "a part") \
 				+ (", %s" % colour.name.replace("_", " ").to_lower() if colour != null else "")
 			parts.append(one)
