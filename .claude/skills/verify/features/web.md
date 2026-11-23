@@ -3664,7 +3664,9 @@ plan with Claude as the client.
   answer kept 20 s by the CDN and 20 s more stale, so a version is on the
   page within a minute); `web/set-page.js versionsOf` draws
   `section#versions` "Versions of this set" before `#built-from`, each card's
-  `small.version-said[data-changed]`, or none said with Make your own
+  `small.version-said[data-changed]` and a picture of its model (LDraw's as
+  it is by `/library/<id>.webp`; a changed one by its own card, else its
+  `.cutout.png`, else LDraw's; never "No picture"), or none said with Make your own
   version (`[data-version-empty]`), `<html data-versions>` the count or
   "broken". A version's own page says `#alt-build[data-alt=version]` "A
   version of LEGO® set <set>" (`api/share.js altLine` from its `own` row,

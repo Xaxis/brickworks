@@ -119,6 +119,29 @@ const look = () => {
   };
 };
 
+/// The versions' row scrolled to, its pictures given 30 s to come: each
+/// card's picture, whether it came, and whether its tile said "No picture".
+async function pictured(page) {
+  const row = await page.$("#versions");
+  if (!row) return [];
+  await row.scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => [...document.querySelectorAll("#versions .model img")]
+    .every((one) => one.complete && one.naturalWidth > 0), null, { timeout: 30000, polling: 250 }).catch(() => null);
+  const tiles = await page.evaluate(() => [...document.querySelectorAll("#versions .model")].map((card) => {
+    const picture = card.querySelector(".frame img");
+    return { id: card.dataset.id, src: picture ? new URL(picture.src).pathname : "", came: Boolean(picture?.naturalWidth),
+      none: card.querySelector(".frame")?.classList.contains("none") === true };
+  }));
+  await page.evaluate(() => window.scrollTo(0, 0));
+  return tiles;
+}
+
+/// Whether every version's tile shows its model: LDraw's as it is by the
+/// library's picture of [model]; a changed one by its own card picture or
+/// cut-out, else LDraw's; none blank, none "No picture".
+const shownWell = (tiles, model) => tiles.length > 0 && tiles.every((tile) => tile.came && !tile.none
+  && (tile.src === `/library/${model}.webp` || new RegExp(`^/m/${tile.id}(\\.webp|\\.cutout\\.png)$`).test(tile.src)));
+
 async function modelled(browser) {
   for (const set of SETS) {
     for (const width of WIDTHS) {
@@ -143,6 +166,8 @@ async function modelled(browser) {
               seen.cards.length === Number(seen.count) && seen.cards.every((card) => /^\/m\/[A-Za-z0-9]{10}$/.test(card.href)
                 && (card.changed === "true" ? card.said === "Their own version: changed from LDraw's model"
                   : card.said === "LDraw's model, as it is")));
+            const tiles = await pictured(page);
+            check(`${label}: each version's tile shows its model (${JSON.stringify(tiles)})`, shownWell(tiles, model));
           } else {
             check(`${label}: none yet, said, with Make your own version (${seen.empty}, ${seen.emptyGo})`,
               seen.empty === "Nobody has published their own version of this set yet." && seen.emptyGo === seen.version);
@@ -254,11 +279,12 @@ async function published(browser) {
     const card = seen.cards.find((one) => one.href === `/m/${id}`);
     check(`the set's page shows its card first, said changed (${JSON.stringify(card)}, first ${seen.cards[0]?.href})`,
       Boolean(card) && card.changed === "true" && seen.cards[0]?.href === `/m/${id}`);
-    const row = await page.$("#versions");
-    if (row) {
-      await row.scrollIntoViewIfNeeded();
-      await page.screenshot({ path: path.join(out, "published_version.png") });
-    }
+    // Published with no picture of its own: shown by LDraw's model it was made from.
+    const tiles = await pictured(page);
+    check(`every version's tile shows its model, this one with no picture of its own LDraw's (${JSON.stringify(tiles)})`,
+      shownWell(tiles, "omr-346-2") && tiles.find((tile) => tile.id === id)?.src === "/library/omr-346-2.webp");
+    await (await page.$("#versions"))?.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(out, "published_version.png") });
   } finally {
     await context.close();
   }
