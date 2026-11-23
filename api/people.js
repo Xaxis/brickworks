@@ -126,7 +126,11 @@
 //   GET  ?op=notifications        (session) what happened to the caller's
 //                                 models, grouped by model; opening it
 //                                 clears its count (api/_notifications.js)
-//   POST ?op=notifications_read   (session) {model}, {challenge}, {announcement, clicked?}, {achievements: true}
+//   GET  ?op=studio_start         (session) the studio's first screen: what
+//                                 came back on the caller's models and this
+//                                 week's quick build, nothing marked read
+//                                 (api/_notifications.js studioStart)
+//   POST ?op=notifications_read  (session) {model}, {challenge}, {announcement, clicked?}, {achievements: true}
 //                                 or {all: true}: read
 //   POST ?op=news                 (session) {news}: Brickworks' news by email or not, off until chosen
 //   GET  ?op=push[&endpoint=]     whether this deployment pushes, its key, and (session) whether
@@ -258,7 +262,7 @@ import { chooseNews, newsOf, newsUnsubscribe } from "./_announce.js";
 import {
   feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
-import { feedCount, notifications, notificationsRead } from "./_notifications.js";
+import { feedCount, notifications, notificationsRead, studioStart } from "./_notifications.js";
 import { DIRECTORY_PAGE, coversOf, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf } from "./_lists.js";
 import {
   ITEMS_PAGE, KEY, MOST_MODELS_IN_A_LIST, OWNED_SIZES, OWNED_SORTS, itemsOf, keep, keeps, listCsv, listItems, listOrder,
@@ -2023,6 +2027,7 @@ async function handler(request, response) {
       if (op === "latest") return await latest(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);
       if (op === "notifications") return await notifications(request, response, { origin: "" });
+      if (op === "studio_start") return await studioStart(request, response, { origin: "" });
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
       if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
       if (op === "challenge_entry") return await challengeEntry(request, response);

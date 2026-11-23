@@ -153,6 +153,24 @@ var gate_for_probe: bool = false
 ## model ([method _offer_assistant]). A probe about it puts it up for itself,
 ## as one about the sign-in screen does; any other sees the model as it was.
 var offer_for_probe: bool = false
+## The studio's first screen for somebody signed in (src/ui/studio_start.gd):
+## a probe about it puts it up for itself, as one about the sign-in screen
+## does; made when it is first due.
+var start_for_probe: bool = false
+var _studio_start: Control
+## Whether this start has decided on it: shown once a tab, never by itself again.
+var _start_decided: bool = false
+## The baseplate left bare at start for it, in place of the example car:
+## somebody signed in, nothing of theirs back yet (_open_theirs opens the
+## model they saved last there, as it does over the car).
+var _start_bare: bool = false
+## When the studio was first up to use, in ticks: what the first screen's
+## time is counted from.
+var _first_open_ms: int = -1
+## The comments on parts of the model open asked again this often while the
+## studio is open, so one written meanwhile shows within a minute (partpins'
+## gap, docs/PLAN.md row 1).
+const PINS_EVERY := 30.0
 var _offer: HBoxContainer
 var _offer_show: Button
 var _offer_close: Button
@@ -1136,6 +1154,9 @@ func _tell_page() -> void:
 		# all (tools/web/noai_flow.mjs), and the first visit's line offering it.
 		"assistant": _shell.assistant_shown if _shell != null else false,
 		"offer": _offer != null and _offer.visible,
+		# The studio's first screen (tools/web/studiostart_flow.mjs): what it
+		# shows, and when it held three real things after the studio was up.
+		"studio_start": _start_state(),
 		# What the last 3D model brickified came to, for brickify_flow.mjs.
 		"brickified": _brickify_made.last_summary if _brickify_made != null else "",
 		# The size the panel will lay it at, so a flow knows what it typed was taken.
@@ -1281,6 +1302,9 @@ func _page_controls() -> Dictionary:
 		named.merge(_simulate.controls_by_name())
 	if _hidden_colours_made != null:
 		named.merge(_hidden_colours.controls_by_name())
+	# The studio's first screen (StudioStart): its choices while it is up.
+	if _studio_start != null:
+		named.merge(_studio_start.call("controls_by_name"))
 	if _bin != null:
 		named.merge(_bin.controls_by_name())
 	if _elements_made != null:
@@ -2042,10 +2066,17 @@ func _ready() -> void:
 			var saved: Array[ModelStore.Entry] = _store.list_saved()
 			if not saved.is_empty():
 				placed = _open(saved[0].path)
-		if placed == 0 and not empty:
+		# Somebody signed in with nothing of theirs here yet: a bare baseplate
+		# under the studio's first screen, never the example car, and the
+		# model they saved last opened on it once the account says which
+		# (_open_theirs); the car only for an account with none (_maybe_start).
+		_start_bare = placed == 0 and not empty and _start_wanted()
+		if _start_bare:
+			_store.begin(ModelStore.UNTITLED)
+		if placed == 0 and not empty and not _start_bare:
 			placed = _open(SAMPLE_MODEL)
 			_sample_untouched = placed > 0
-		if placed == 0 and not empty:
+		if placed == 0 and not empty and not _start_bare:
 			placed = _build_demo()
 	_lay_baseplate()
 	# Whatever changes the model from here on is kept, by whatever path.
@@ -2064,6 +2095,7 @@ func _ready() -> void:
 	# Open in Brickworks, from a shared model's viewer: once whatever was
 	# here is back, and once somebody is signed in (_on_account_changed).
 	_first_open_done = true
+	_first_open_ms = Time.get_ticks_msec()
 	# The first part picked finds its ghost's and its marks' shaders made.
 	if OS.has_feature("web") and _renders_when_idle:
 		_warm_first_pick()
@@ -2076,6 +2108,7 @@ func _ready() -> void:
 	_maybe_open_library()
 	_maybe_fill_bin()
 	_maybe_join_together()
+	_maybe_start()
 	# Somebody with saved models: the browser is asked to keep them, as it
 	# is at a first save (StorageKeep, ModelStore._write).
 	if ModelStore.any_saved():
@@ -2954,6 +2987,7 @@ func _on_account_changed() -> void:
 	_maybe_copy()
 	_maybe_share()
 	_maybe_join_together()
+	_maybe_start()
 	_tell_connector_who()
 
 
@@ -6437,6 +6471,13 @@ func _build_ui() -> void:
 	# The comments on parts of a model with a link, for its builder.
 	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _look_for_pins())
 	_store.begun.connect(func(_name: String) -> void: _look_for_pins())
+	# And again while the studio is open, for a pin written meanwhile.
+	var pins_clock := Timer.new()
+	pins_clock.name = "PinsAgain"
+	pins_clock.wait_time = PINS_EVERY
+	pins_clock.timeout.connect(_pins_again)
+	add_child(pins_clock)
+	pins_clock.start()
 	_builder.placed.connect(func(id: int, _part: String) -> void:
 		_last_put = id
 		_sample_untouched = false
@@ -6831,6 +6872,7 @@ func _build_ui() -> void:
 	_notices.get_child(0).add_child(_full_offer)
 	_cloud.short_of_room.connect(_full_offer.tell)
 	_cloud.looked.connect(_open_theirs)
+	_cloud.looked.connect(_maybe_start)
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
@@ -6893,6 +6935,10 @@ func _build_ui() -> void:
 		_gate = SignInGate.new()
 		_gate.setup(_account)
 		$HUD.add_child(_gate)
+		# Signed in by its code, and the screen gone: the first screen, if due.
+		_gate.visibility_changed.connect(func() -> void:
+			if not _gate.visible:
+				_maybe_start())
 
 	# Last, so the buttons above are all there for it to give a
 	# pointing hand to; any made later are caught as they arrive.
@@ -9155,6 +9201,9 @@ func _on_model_changed() -> void:
 ## a deliberate change taking the last part off lets an empty model be
 ## written over a file with parts in it (ModelStore.emptied).
 func _on_model_edited() -> void:
+	# The model changed, by anyone: the first screen has done its work.
+	if _studio_start != null:
+		_studio_start.call("close", "edited")
 	# A band or a spring on a part just moved follows it, in the same step.
 	if _flex != null:
 		_flex.follow_moved()
@@ -10689,7 +10738,7 @@ func _camera_aim() -> Array:
 ## flow starts from; a person who had a model on the screen here gets it
 ## back from this device's own copy before any of this (ModelStore.restore).
 func _open_theirs() -> void:
-	if _theirs_opened or not _sample_untouched or _cloud.newest.is_empty() \
+	if _theirs_opened or not (_sample_untouched or _still_bare()) or _cloud.newest.is_empty() \
 			or not _copying.is_empty() or not _from_library.is_empty() or _store.read_only:
 		return
 	var path: String = ModelStore.SAVE_DIR + _cloud.newest + ".ldr"
@@ -10705,6 +10754,178 @@ func _open_theirs() -> void:
 
 ## Whether [method _open_theirs] has opened one this start.
 var _theirs_opened: bool = false
+
+
+# -- the studio's first screen (studiostart) ------------------------------------------
+
+## Whether the studio opens on its first screen (StudioStart) now: for a
+## person in front of the window, signed in, who opened the studio itself and
+## not for something (a link to copy or view, a file, New tab, a design's
+## flags, the library), and has not turned it off. A browser a check drives
+## (navigator.webdriver) starts where it always has, on the example car, unless
+## its address asks (?start), as the counting asks (web/counting.js).
+func _start_wanted() -> bool:
+	if _account == null or not _account.signed_in() or not _viewing.is_empty() or _store.read_only:
+		return false
+	if start_for_probe:
+		return true
+	if not _gate_wanted() or not _copying.is_empty() or not _from_library.is_empty():
+		return false
+	if TabSession.opened_new() or not TabSession.given_file().is_empty():
+		return false
+	if str(ShellPrefs.value("studio_start")) == "off":
+		return false
+	for argument: String in OS.get_cmdline_user_args():
+		if not (argument.begins_with("--lang") or argument.begins_with("--tests") or argument == "--start"):
+			return false
+	if OS.has_feature("web") and not _has_argument("--start") \
+			and bool(JavaScriptBridge.eval("navigator.webdriver === true", true)):
+		return false
+	return true
+
+
+## The baseplate left bare for the first screen, and still so: nothing put
+## on it or opened since.
+func _still_bare() -> bool:
+	return _start_bare and _builder.history_depth() == 0 \
+		and _world.brick_count() <= _store.scenery.size() and _store.title == ModelStore.UNTITLED
+
+
+## The first screen, once a tab, when it is due: the studio up, nobody's
+## sign-in screen over it, and an account with a model (here, or the
+## account's once it has said). An account with none gets the example car,
+## as a first visit does, and Build your first model (FirstBuild).
+func _maybe_start() -> void:
+	if _start_decided or not _first_open_done or not _built or _gated() or not _start_wanted():
+		return
+	if _builder.history_depth() > 0:
+		_start_decided = true
+		return
+	var saved: Array[ModelStore.Entry] = _store.list_saved()
+	if saved.is_empty() and _cloud != null and _cloud.newest.is_empty():
+		# The account not looked at yet: asked again when it has been.
+		if _cloud.state.is_empty() and _cloud.keeps and not start_for_probe:
+			return
+		_start_decided = true
+		if _still_bare():
+			_start_bare = false
+			_sample_untouched = _open(SAMPLE_MODEL) > 0
+			_lay_baseplate()
+			_camera.frame(_built_bounds())
+		return
+	_start_decided = true
+	_studio_start_now().call("open", saved)
+
+
+## StudioStart, made the first time: over the model, under the sign-in screen.
+func _studio_start_now() -> Control:
+	if _studio_start != null:
+		return _studio_start
+	_studio_start = Later.make(&"StudioStart")
+	_studio_start.set("shared", _shared)
+	_studio_start.set("store", _store)
+	_studio_start.set("account", _account)
+	_studio_start.set("pictures", _model_library)
+	_studio_start.set("open_saved", func(path: String) -> void:
+		if _store.title == path.get_file().get_basename() and not _store.example:
+			return
+		var placed: int = await _bar.open_with_progress(path)
+		if placed >= 0:
+			_bar.opened.emit(placed))
+	_studio_start.set("copy", _start_copy)
+	_studio_start.set("came_wanted", _open_came)
+	_studio_start.set("begin_new", func() -> void: _bar.ask_for_new())
+	$HUD.add_child(_studio_start)
+	if _gate != null:
+		$HUD.move_child(_studio_start, _gate.get_index())
+	_bar.started_new.connect(func() -> void: _studio_start.call("close", "edited"))
+	_bar.cleared.connect(func() -> void: _studio_start.call("close", "edited"))
+	return _studio_start
+
+
+func _start_state() -> Dictionary:
+	if _studio_start == null:
+		return {"made": false, "bare": _still_bare(), "decided": _start_decided}
+	var state: Dictionary = _studio_start.call("page_state")
+	state["made"] = true
+	state["bare"] = _still_bare()
+	state["decided"] = _start_decided
+	var filled: int = int(state["filled_ms"])
+	state["after_open_ms"] = filled - _first_open_ms if filled >= 0 and _first_open_ms >= 0 else -1
+	state["lit"] = _part_pins.lit if _part_pins != null else 0
+	return state
+
+
+## A gallery model or this week's template, [param id], opened as a copy of
+## the person's own in this tab, as Open in Brickworks makes one (_maybe_copy):
+## their work on the baseplate kept first.
+func _start_copy(id: String) -> void:
+	if not SharedModels.is_id(id) or not _viewing.is_empty():
+		return
+	_copying = id
+	_copy_started = false
+	_maybe_copy()
+
+
+## What came back on a model of theirs, chosen on the first screen: a
+## comment opens the model (theirs, as saved here) and one on a part lights
+## that part (_light_comment); a photo of a build or a remix is on the
+## model's page, in a new tab.
+func _open_came(item: Dictionary) -> void:
+	var link: String = str(item.get("link", ""))
+	var address: String = link if link.begins_with("http") else Deployment.api_base() + link
+	var id: String = str(item.get("model", ""))
+	if str(item.get("kind", "")) != "comment" or not SharedModels.is_id(id):
+		Outside.open_link(address)
+		return
+	if _store.share_id != id:
+		var path: String = Later.script(&"StudioStart").saved_with(id, _store.list_saved())
+		if path.is_empty():
+			Outside.open_link(address)
+			return
+		var placed: int = await _bar.open_with_progress(path)
+		if placed < 0:
+			return
+		_bar.opened.emit(placed)
+	var who: String = str(item.get("who", "")) if item.get("who") is String else ""
+	if bool(item.get("pinned", false)) and await _light_comment(int(item.get("comment", 0))):
+		_bar.say("%s's comment is on this part: “%s”" % [who if not who.is_empty() else "A builder",
+			str(item.get("said", ""))])
+		return
+	_bar.say("%s commented: “%s” — reply on its page" % [who if not who.is_empty() else "A builder",
+		str(item.get("said", ""))])
+
+
+## The part comment [param comment] is pinned to, selected and framed
+## (PartPins.show_pin): from the pins asked for already, or asked for now.
+## False when it is on no part of the model as it stands.
+func _light_comment(comment: int) -> bool:
+	var one: Dictionary = _pin_of(comment)
+	if one.is_empty():
+		await _look_for_pins()
+		one = _pin_of(comment)
+	return not one.is_empty() and _part_pins != null and _part_pins.show_pin(one)
+
+
+func _pin_of(comment: int) -> Dictionary:
+	if _part_pins == null or comment <= 0:
+		return {}
+	for one: Dictionary in _part_pins.pinned():
+		if int(one.get("id", 0)) == comment:
+			return one
+	return {}
+
+
+## The comments on parts of the model open asked again (_look_for_pins)
+## while the studio is in front of somebody: a pin written meanwhile shows
+## on its part, with the notice, within [constant PINS_EVERY] and the answer.
+## Not while the tab is hidden, nor with no link or nobody signed in.
+func _pins_again() -> void:
+	if _store.share_id.is_empty() or _account == null or not _account.signed_in() or not _viewing.is_empty():
+		return
+	if OS.has_feature("web") and bool(JavaScriptBridge.eval("document.hidden === true", true)):
+		return
+	_look_for_pins()
 
 
 ## The end of a drag that carried a part: down where the pointer is, if it
