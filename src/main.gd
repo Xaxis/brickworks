@@ -476,7 +476,7 @@ var _hidden_colours: PanelContainer:
 ## The HiddenColoursPanel if it has been made, else null (_make_hidden_colours).
 var _hidden_colours_made: PanelContainer = null
 ## Simulate's column, docked beside the model's, and the other panels'
-## that work on the model as it is seen (Motions, Hose, tube or chain…,
+## that work on the model as it is seen (Motions, Cable, hose or chain…,
 ## Colour the hidden parts, Stress's legend): shown while any is open, so
 ## the model's column (and the lens centred on it) is what is left of the
 ## window. Over the model's left edge Simulate's covered half a gear train
@@ -6131,7 +6131,7 @@ func _build_ui() -> void:
 	_builder.picked.connect(func(part_id: String, color_code: int) -> void:
 		_bin.show_held(part_id, color_code)
 		_refresh_preview()
-		_bar.say("picked %s" % part_id))
+		_bar.say("picked %s" % _part_said(part_id)))
 
 	_bin.part_chosen.connect(_on_part_chosen)
 	_bin.chose_by_keyboard.connect(func() -> void:
@@ -6687,7 +6687,7 @@ func _build_ui() -> void:
 	# The ruler, made as it is first taken out.
 	_verbs.make_measure = _make_measure
 
-	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel in the
+	# Make, Cable, hose or chain…: src/ui/flex_tool.gd, its panel in the
 	# column beside the model's, as Simulate's is.
 	_flex = FlexTool.new()
 	_flex.world = _world
@@ -7811,8 +7811,11 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		# is up (BookletMaker.warm): built in its first picture, it was a
 		# second of a frame on a first start.
 		_warm_booklet()
+		# What happens next said in the title: a parent who asked for
+		# instructions to print was asked where to put a web page, and could
+		# not tell it opens in their browser with Print there (ux12).
 		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
-			"Save the instructions")
+			"Save the instructions: they open in your browser, to print or save as a PDF")
 		if to.is_empty():
 			return ""
 	# Said in the status bar while it works (Working), and in the tab it is
@@ -9229,7 +9232,7 @@ func open_render() -> void:
 	_render.open()
 
 
-## Make, Hose, tube or chain…; Make, Reshape the hose or chain.
+## Make, Cable, hose or chain…; Make, Reshape the hose or chain.
 func open_flex() -> void:
 	if _measure != null:
 		_measure.leave()
@@ -9452,8 +9455,16 @@ func _on_part_chosen(part_id: String) -> void:
 		# does nothing, which reads as the app being broken rather than
 		# as the app waiting — and on a slow connection that is several
 		# seconds of it.
-		_bar.say("fetching %s…" % part_id)
+		_bar.say("fetching %s…" % _part_said(part_id))
 	_refresh_preview()
+
+
+## A part by the name its tile shows ("Brick 2 × 4"), its number where the
+## catalogue has none: the status bar said "3001 ready" when a part came,
+## a number a first visitor never typed and does not know (ux12).
+func _part_said(part_id: String) -> String:
+	var info: PartLibrary.PartInfo = _library.parts.get(part_id) if _library != null else null
+	return PartsBin.said_name(info) if info != null else part_id
 
 
 func _on_part_fetched(part_id: String) -> void:
@@ -9465,7 +9476,7 @@ func _on_part_fetched(part_id: String) -> void:
 			_on_landed())
 	if _builder.held_part == part_id:
 		_refresh_preview()
-		_bar.say("%s ready" % part_id)
+		_bar.say("%s ready to put down" % _part_said(part_id))
 
 
 ## Parts on their way put down: as each arrives, or once motions kept as one

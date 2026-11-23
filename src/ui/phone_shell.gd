@@ -516,8 +516,17 @@ func _share_top() -> void:
 ## share; where one does not, the row is pictures alone, each still said by
 ## its word (accessibility_name) and named in its tooltip. "Colo" and
 ## "Selec", cut short at 150%, read as typos.
+##
+## The word is measured against the width each button is laid out at, not
+## its least: on a phone each fills its seventh of the row (SIZE_EXPAND_FILL),
+## 53 points at 390 and 59 at 430. Measured against
+## the fingertip's 44 the row was pictures alone on every phone, and the line
+## over it said "Parts to pick one" of a button with no word Parts (ux12, a
+## first visit at 390).
 func _share_row() -> void:
 	var share: float = _row_share()
+	var inside: float = get_viewport().get_visible_rect().size.x - p(8) * 2.0
+	var each: float = share if wide else maxf(share, floorf(inside / TOOLS.size()))
 	var fits: bool = true
 	for tool: Array in TOOLS:
 		var button: Button = _tool_buttons.get(str(tool[0]))
@@ -525,9 +534,9 @@ func _share_row() -> void:
 			continue
 		button.custom_minimum_size.x = share
 		var font: Font = button.get_theme_font("font")
-		var wide: float = font.get_string_size(str(tool[1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		var needs: float = font.get_string_size(str(tool[1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
 			button.get_theme_font_size("font_size")).x + p(2) * 2.0
-		fits = fits and wide <= share
+		fits = fits and needs <= each
 	for tool: Array in TOOLS:
 		var button: Button = _tool_buttons.get(str(tool[0]))
 		if button != null:

@@ -674,7 +674,7 @@ func definitions() -> Array:
 		},
 		{
 			"name": "lay_flex",
-			"description": ("Lay a hose, tube, string or chain, as Make, Hose, tube or chain "
+			"description": ("Lay a hose, tube, string or chain, as Make, Cable, hose or chain "
 				+ "does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two "
 				+ "parts' pin holes, axles or pins; string between two studs; chain or tread "
 				+ "round sprockets= (two or more gears in one plane). The real length that "

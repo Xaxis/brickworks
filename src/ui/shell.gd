@@ -277,7 +277,10 @@ var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
 	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
-	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
+	# ux12: the instructions too, where a parent looking to print them looks
+	# first (File, Export); the same command as Build's row, one id in both.
+	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "instructions",
+		"export_bricklink",
 		"export_rebrickable",
 		"export_pickabrick",
 		"-",
@@ -1163,7 +1166,7 @@ func _define() -> void:
 	_add("open", "Open…", CTRL | KEY_O, bar._on_open, Callable(),
 		"Reopen a saved model, an example, or a file from this computer")
 	_add("library", "Library…", 0, func() -> void: library_dialog.open(), Callable(),
-		"Any of LDraw's models of real sets, or a model the community shared, opened in a new %s"
+		"Any of LDraw's models of real sets, or a model shared in the gallery, opened in a new %s"
 		% ("tab" if web else "window"))
 	_add("import_ldraw", "LDraw model (.ldr, .mpd)…", 0, bar._import)
 	_add("import_io", "BrickLink Studio model (.io)…", 0, bar._import)
@@ -1239,7 +1242,7 @@ func _define() -> void:
 	_add("pose", "Motions…", 0, func() -> void: app.call("open_pose"), something,
 		"The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered")
 	_add("instructions", "Instructions…", 0, _instructions, something,
-		"Building instructions for this model, step by step")
+		"Building instructions for this model, step by step, to print or to save as a PDF")
 	_add("share", "Share…", 0, func() -> void: app.call("_share_wanted"), something,
 		"A link anyone can open to see this model, its steps and its parts list")
 	# src/net/together.gd, src/ui/together_dialog.gd.
@@ -1454,8 +1457,8 @@ func _define() -> void:
 	_add("booklet_page_setup", "Page setup…", 0, open_page_setup, Callable(),
 		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, its cover, header and footer, the step numbers' and parts boxes' sizes and colours; kept with the model, and as a style by a name for another")
 	# src/ui/flex_tool.gd.
-	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
-		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
+	_add("flex", "Cable, hose or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
+		"Lay a motor's cable or a wire, a hose, a tube, a string or a chain from one connector to another, along a curve")
 	_add("reshape_flex", "Reshape the hose or chain", 0, func() -> void: app.call("reshape_flex"),
 		func() -> bool: return bool(app.call("can_reshape_flex")),
 		"Drag the selected hose's bend, or put its chain round other sprockets")
@@ -1692,7 +1695,10 @@ func _define() -> void:
 	_add("brickify", "Brickify a 3D model…", CTRL | KEY_I,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
-	_add("part_maker", "Part maker…", 0, func() -> void:
+	# One name with the bin's button and the panel's title, "Make a part":
+	# the menu called it "Part maker…", so a person who met it in the bin did
+	# not know it again in Make (ux12).
+	_add("part_maker", "Make a part…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")
 	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the

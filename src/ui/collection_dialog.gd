@@ -354,6 +354,8 @@ func _build() -> void:
 	_confirm_clear.ok_button_text = "Forget it all"
 	_confirm_clear.confirmed.connect(_on_clear)
 	add_child(_confirm_clear)
+	# It cannot be undone: in red, not Save's blue (Look.danger).
+	Look.danger(_confirm_clear.get_ok_button())
 
 
 func _own_page() -> Control:

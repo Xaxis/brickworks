@@ -586,8 +586,8 @@ msgstr "3D-Modell in Steine umwandeln…"
 msgid "Reference picture…"
 msgstr "Referenzbild…"
 
-msgid "Hose, tube or chain…"
-msgstr "Schlauch, Rohr oder Kette…"
+msgid "Cable, hose or chain…"
+msgstr "Kabel, Schlauch oder Kette…"
 
 msgid "Reshape the hose or chain"
 msgstr "Schlauch oder Kette umformen"
@@ -741,8 +741,8 @@ msgstr "Ein neues Modell in einem eigenen Tab beginnen"
 msgid "Reopen a saved model, an example, or a file from this computer"
 msgstr "Ein gespeichertes Modell, ein Beispiel oder eine Datei von diesem Computer öffnen"
 
-msgid "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
-msgstr "Eines der LDraw-Modelle echter Sets oder ein von der Community geteiltes Modell, in einem neuen Fenster geöffnet"
+msgid "Any of LDraw's models of real sets, or a model shared in the gallery, opened in a new window"
+msgstr "Eines der LDraw-Modelle echter Sets oder ein in der Galerie geteiltes Modell, in einem neuen Fenster geöffnet"
 
 msgid "The sets and parts you own: from Rebrickable, BrickLink, or typed in"
 msgstr "Die Sets und Teile, die du besitzt: von Rebrickable, BrickLink oder selbst eingegeben"
@@ -948,8 +948,8 @@ msgstr "Den Schritt der Zeitleiste entfernen; seine Teile kommen zum Schritt dav
 msgid "The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered"
 msgstr "Die eigenen Bewegungen des Modells, etwa Türen öffnen oder Ausleger heben: abgespielt, durch Ziehen der Teile aufgenommen und gerendert"
 
-msgid "Building instructions for this model, step by step"
-msgstr "Bauanleitung für dieses Modell, Schritt für Schritt"
+msgid "Building instructions for this model, step by step, to print or to save as a PDF"
+msgstr "Bauanleitung für dieses Modell, Schritt für Schritt, zum Drucken oder als PDF zu speichern"
 
 msgid "The model turned 45 degrees for this step's picture, and the steps after it"
 msgstr "Das Modell für das Bild dieses Schritts um 45 Grad gedreht, und für die Schritte danach"
@@ -1047,8 +1047,8 @@ msgstr "Ein OBJ-, STL-, PLY-, 3MF-, VOX-, FBX- oder glTF-Modell laden – eine S
 msgid "A photo, plan or drawing laid on the floor or stood behind the model, to build over"
 msgstr "Ein Foto, Plan oder eine Zeichnung, auf den Boden gelegt oder hinter das Modell gestellt, um darüber zu bauen"
 
-msgid "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
-msgstr "Einen Schlauch, ein Rohr, eine Schnur oder eine Kette entlang einer Kurve von einem Anschluss zum anderen legen"
+msgid "Lay a motor's cable or a wire, a hose, a tube, a string or a chain from one connector to another, along a curve"
+msgstr "Das Kabel eines Motors oder einen Draht, einen Schlauch, ein Rohr, eine Schnur oder eine Kette entlang einer Kurve von einem Anschluss zum anderen legen"
 
 msgid "Drag the selected hose's bend, or put its chain round other sprockets"
 msgstr "Die Biegung des ausgewählten Schlauchs ziehen oder seine Kette um andere Kettenräder legen"
@@ -3674,11 +3674,11 @@ msgid "%s° between the %s and the %s"
 msgstr "%s° zwischen %s und %s"
 
 # Opening and saving: File, Open's list, Godot's file dialog, the Library, Save as, Versions, Saved models, the confirmations, Export a 3D model
-msgid "From a file on this computer (LDraw, Studio .io, LDD .lxf)…"
-msgstr "Aus einer Datei auf diesem Computer (LDraw, Studio .io, LDD .lxf)…"
+msgid "From a file (LDraw, Studio .io, LDD .lxf)…"
+msgstr "Aus einer Datei (LDraw, Studio .io, LDD .lxf)…"
 
-msgid "From the library: real sets and the community's models…"
-msgstr "Aus der Bibliothek: echte Sets und Modelle der Community…"
+msgid "From the library: real sets and the gallery's models…"
+msgstr "Aus der Bibliothek: echte Sets und Modelle der Galerie…"
 
 msgid "Rename or delete saved models…"
 msgstr "Gespeicherte Modelle umbenennen oder löschen…"
@@ -3821,11 +3821,11 @@ msgstr "LDraw-Sets"
 msgid "Community"
 msgstr "Community"
 
-msgid "Search sets by name, set number, theme or designer"
-msgstr "Sets nach Name, Setnummer, Thema oder Designer suchen"
+msgid "Set number or name, theme, designer"
+msgstr "Setnummer oder Name, Thema, Designer"
 
-msgid "Search models by name, designer or tag"
-msgstr "Modelle nach Name, Designer oder Tag suchen"
+msgid "Model name, designer or tag"
+msgstr "Modellname, Designer oder Tag"
 
 msgid "Any theme"
 msgstr "Jedes Thema"
@@ -3899,8 +3899,8 @@ msgstr "Am häufigsten geremixt"
 msgid "Models of real LEGO® sets from LDraw's Official Model Repository, each made by the LDraw member credited and free to use under its licence. Open puts one in a new %s; the model here stays as it is."
 msgstr "Modelle echter LEGO® Sets aus dem Official Model Repository von LDraw, jedes vom genannten LDraw-Mitglied erstellt und unter seiner Lizenz frei nutzbar. Öffnen legt eines in ein neues %s; das Modell hier bleibt, wie es ist."
 
-msgid "Models people built in Brickworks and shared. Open copies one into your models in a new %s, as Open in Brickworks on its page does: credit its designer and keep to its licence."
-msgstr "Modelle, die Leute in Brickworks gebaut und geteilt haben. Öffnen kopiert eines in deine Modelle, in einem neuen %s, wie „In Brickworks öffnen“ auf seiner Seite: nenne seinen Designer und halte dich an seine Lizenz."
+msgid "Models people built in Brickworks and shared in its gallery. Open copies one into your models in a new %s, as Open in Brickworks on its page does: credit its designer and keep to its licence."
+msgstr "Modelle, die Leute in Brickworks gebaut und in seiner Galerie geteilt haben. Öffnen kopiert eines in deine Modelle, in einem neuen %s, wie „In Brickworks öffnen“ auf seiner Seite: nenne seinen Designer und halte dich an seine Lizenz."
 
 msgid "tab"
 msgstr "Tab"
@@ -3944,8 +3944,8 @@ msgstr "Jedes Thema, Jahr und jede Größe"
 msgid "Any kind and size"
 msgstr "Jede Art und Größe"
 
-msgid "Search Community for %s"
-msgstr "In der Community nach %s suchen"
+msgid "Search the gallery for %s"
+msgstr "In der Galerie nach %s suchen"
 
 msgid "Search LDraw sets for %s"
 msgstr "In den LDraw-Sets nach %s suchen"
@@ -16104,8 +16104,8 @@ msgstr "Stecker drehen"
 msgid "Turn the plug half round on its contacts, so its motor runs the other way"
 msgstr "Den Stecker auf seinen Kontakten halb herumdrehen, damit sein Motor andersherum läuft"
 
-msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."
-msgstr "Hier gibt nichts einem Motor Strom, also dreht Abspielen ihn von Hand: füge eine Batteriebox oder einen Hub hinzu und verlege sein Kabel (Erstellen, Schlauch, Rohr oder Kette…, Power Functions-Kabel)."
+msgid "Nothing here gives a motor power, so Play turns it by hand: add a battery box or a hub and lay its cable (Make, Cable, hose or chain…, Power Functions cable)."
+msgstr "Hier gibt nichts einem Motor Strom, also dreht Abspielen ihn von Hand: füge eine Batteriebox oder einen Hub hinzu und verlege sein Kabel (Erstellen, Kabel, Schlauch oder Kette…, Power Functions-Kabel)."
 
 msgid "Stopped at %s going back."
 msgstr "Beim Zurücklaufen bei %s angehalten."
@@ -16168,8 +16168,8 @@ msgstr "sein Stecker (#%d) ist %s"
 msgid "its own cable's plug is in nothing, so it turns by hand; put the plug on a box or lay a cable from it to run it by the box"
 msgstr "der Stecker seines eigenen Kabels steckt in nichts, also dreht er sich von Hand; stecke den Stecker auf eine Box oder verlege ein Kabel von ihm, damit die Box ihn antreibt"
 
-msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Hose, tube or chain…, a cable) to run it by the box"
-msgstr "im Modell ist kein Kabel von ihm gezeichnet, also dreht er sich von Hand; verlege eines von ihm zu einer Box (Erstellen › Schlauch, Rohr oder Kette…, ein Kabel), damit die Box ihn antreibt"
+msgid "no cable of it is drawn in the model, so it turns by hand; lay one from it to a box (Make › Cable, hose or chain…, a cable) to run it by the box"
+msgstr "im Modell ist kein Kabel von ihm gezeichnet, also dreht er sich von Hand; verlege eines von ihm zu einer Box (Erstellen › Kabel, Schlauch oder Kette…, ein Kabel), damit die Box ihn antreibt"
 
 msgid "its cable reaches no battery box, receiver or hub"
 msgstr "sein Kabel erreicht keine Batteriebox, keinen Empfänger und keinen Hub"
@@ -16861,3 +16861,31 @@ msgstr "Veröffentlicht, nicht eingereicht: %s"
 
 msgid "Brickworks could not enter it just now. Press Enter again in a minute."
 msgstr "Brickworks konnte es gerade nicht einreichen. Drücke in einer Minute erneut auf Teilnehmen."
+# ux12: the app's words made plain where people stumbled
+
+msgid "Cable, hose or chain"
+msgstr "Kabel, Schlauch oder Kette"
+
+msgid "Gallery"
+msgstr "Galerie"
+
+msgid "Any of LDraw's models of real sets, or a model shared in the gallery, opened in a new tab"
+msgstr "Eines der LDraw-Modelle echter Sets oder ein in der Galerie geteiltes Modell, in einem neuen Tab geöffnet"
+
+msgid "Search the gallery's models"
+msgstr "Die Modelle der Galerie durchsuchen"
+
+msgid "%s ready to put down"
+msgstr "%s bereit zum Absetzen"
+
+msgid "fetching %s…"
+msgstr "%s wird geladen…"
+
+msgid "picked %s"
+msgstr "%s aufgenommen"
+
+msgid "motor's cable outlet or contacts of a box or hub"
+msgstr "Kabelausgang eines Motors oder Kontakte einer Box oder eines Hubs"
+
+msgid "Save the instructions: they open in your browser, to print or save as a PDF"
+msgstr "Die Anleitung speichern: Sie öffnet sich in deinem Browser, zum Drucken oder als PDF"

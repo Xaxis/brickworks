@@ -7,7 +7,7 @@
 ##   PROBE_SIZE=1400x900 tools/probe.sh flex_room_probe
 ##
 ## The model is flex_pose_flow's: two Technic bricks with holes, two gears
-## above them, and a turntable behind. Make, Hose, tube or chain… is
+## above them, and a turntable behind. Make, Cable, hose or chain… is
 ## opened, and then:
 ## - the panel stands beside the model's room, not in it, and nothing of
 ##   the window is over the model but the view cube (Main.model_cover);
