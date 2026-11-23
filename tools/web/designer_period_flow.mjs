@@ -202,8 +202,20 @@ const shot = (page, name, full) => page.screenshot({ path: path.join(out, name),
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 
-/// What Insights drew in [box]: the tiles, the chart, the rows.
-const drawn = (page, box) => page.evaluate((boxId) => {
+/// What Insights drew in [box]: the tiles, the chart, the rows. The chart's
+/// columns are drawn by a ResizeObserver, in the frame after the page says
+/// ready: read straight after, it had no columns and no ticks (rel-m319,
+/// "0 weeks of views" beside a picture of five), so its svg, or its note
+/// that nothing is counted yet, is waited for first (a minute at most: one
+/// never drawn still fails below).
+const drawn = async (page, box) => {
+  await page.waitForFunction((boxId) => {
+    const figure = document.getElementById(boxId)?.querySelector(".period-chart");
+    return !figure || Boolean(figure.querySelector("svg, .note"));
+  }, box, { timeout: 60000 }).catch(() => {});
+  return seenIn(page, box);
+};
+const seenIn = (page, box) => page.evaluate((boxId) => {
   const panel = document.getElementById(boxId);
   const counts = (el) => ({ now: Number(el.dataset.now), before: Number(el.dataset.before), ever: Number(el.dataset.ever),
     from: el.dataset.from, nowDays: Number(el.dataset.nowDays), beforeDays: Number(el.dataset.beforeDays),
@@ -481,8 +493,15 @@ try {
     check(`${held30} numbers against the rows: ${wrong.length} wrong${wrong.length ? ` (${wrong.slice(0, 4).join("; ")})` : ""}`,
       held30 === MODELS * 6 * 13 && wrong.length === 0);
     const sums = Object.fromEntries(KINDS.map((kind) => [kind, sumOf(period, kind)]));
+    // Comments are written through the API (ce618cb51), so on the day this
+    // runs, and today is in neither window (they end yesterday): theirs are
+    // held to every one a visitor sees in all, and in the last 30 to those
+    // dated before today (none, unless UTC's day turned while this ran).
+    const daysAgo = events.comments.filter((e) => e.day < period.today).length;
     check(`and nothing passes by counting nothing: ${KINDS.map((kind) => `${kind} ${sums[kind].now}/${sums[kind].before}/${sums[kind].ever}`).join(", ")}`,
-      KINDS.every((kind) => sums[kind].now > 0 && sums[kind].ever > 0));
+      KINDS.every((kind) => (kind === "comments"
+        ? sums.comments.now === daysAgo && sums.comments.before === 0 && sums.comments.ever === events.comments.length
+        : sums[kind].now > 0) && sums[kind].ever > 0));
     check("the totals are the models added up, counted from the earliest and for the most days of any",
       KINDS.every((kind) => JSON.stringify(period.totals?.[kind]) === JSON.stringify(sums[kind])));
     // The edges, while the day the rows were dated on is still the answer's.
