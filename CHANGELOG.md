@@ -15,6 +15,12 @@ whole cycle.
 
 ### Added
 
+- **Every modelled set turns in 3D on its own page.** A set's page in the
+  library whose set LDraw has modelled, about 1,300 of them, says **View
+  in 3D** on its picture, and the set turns right there, as a shared
+  model's does: drag, zoom, the keys, full screen, and **Open in the app**
+  beside it. Nothing of it loads until you ask. A set LDraw has not
+  modelled says **No 3D model of this set yet** under its picture.
 - **What a model is built from.** When you publish a model, Brickworks
   counts it against every LEGO® set and says under its name what it found:
   *An alternate build of 31009 Small Cottage: every part from the set*, *of

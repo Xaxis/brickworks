@@ -1,5 +1,5 @@
 ---
-ai: The LDraw community's 3D models of real sets, opened in the app (File › Library) or browsed at /library with every other LEGO® set and its parts list, and the LDraw Parts Library every part comes from. An assistant searches them with gallery library=true and opens one with open_model library=.
+ai: The LDraw community's 3D models of real sets, opened in the app (File › Library) or turned in 3D on a set's page (/library/set/<number>), browsed at /library with every other LEGO® set and its parts list, and the LDraw Parts Library every part comes from. An assistant searches them with gallery library=true and opens one with open_model library=.
 rules:
   - One LDraw unit is 0.4 mm exactly; files go to and from LDCad, LeoCAD and Studio unchanged.
   - Each set says who modelled it and under which licence.
@@ -67,6 +67,28 @@ ui:an LDraw set's page
 ui:every set's page
 api:a set's own picture
 lib:a set's picture drawn from its parts
+-->
+
+### Turn it in 3D on its page {#set-3d}
+
+Where LDraw has a model of the set, about 1,300 of them, its picture says **View in 3D**. Press it, click the picture or drag across it, and the set turns right there in the picture's frame, as a [shared model's](/docs/model-pages#viewer) does, with nothing to install and nothing else on the page moving.
+
+- Drag to turn it and right-drag to move it; once you have pressed it, the wheel zooms (before that the wheel scrolls the page).
+- With it focused, the arrow keys turn it, **+** and **−** zoom, **0** goes back to where it started and **F** is full screen. The buttons under it do the same, and **Back to the picture** puts the picture back.
+- On a phone, a finger across turns it and up or down scrolls the page, until you take hold of it with a tap; then one finger turns it and two pinch.
+- **Open in the app** beside it opens the model in Brickworks, to step through its build, take it apart or change it.
+- A model larger than your device turns smoothly, over 3 million triangles on a phone, asks first. A browser that cannot draw in 3D says so and keeps the picture.
+
+Nothing of the 3D view is loaded until you ask for it, so the page opens as quickly as one without it. A set LDraw has not modelled keeps its picture and says **No 3D model of this set yet** under it.
+
+![The Boutique Hotel's page with LDraw's model of it turning in 3D where its picture was: Zoom out, Zoom in, Reset the view, Full screen and Back to the picture under it, Open in the app beside them, and beside it the set's name, Own, Want, Build it in 3D and its facts.](/docs/img/set-3d.webp "A set LDraw has modelled, turned in 3D on its own page.")
+
+![On a phone, the Boutique Hotel in 3D in its page's square picture frame, its tools under it and Open in the app.](/docs/img/set-3d-phone.webp "The same on a phone: a finger across turns it, up or down scrolls the page.")
+
+![Concorde's page, a set LDraw has no model of: a few of its parts drawn by Brickworks, and under them, No 3D model of this set yet.](/docs/img/set-no3d.webp "A set with no 3D model says so under its picture.")
+
+<!-- covers
+ui:a model in 3D on its page
 -->
 
 ## The parts {#parts}

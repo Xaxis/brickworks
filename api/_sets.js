@@ -483,9 +483,15 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
       + `alt="${escapeHtml(alt)}" width="1200" height="630" fetchpriority="high">`
       + `${model ? `<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span>` : ""}`
     : `<span class="none">${asText(say("No picture: Rebrickable lists no parts for it"))}</span>`;
-  // Its own picture is Rebrickable's, and said so under it, short.
+  // Its own picture is Rebrickable's, and said so under it, short. A set
+  // LDraw has a model of turns in 3D in the picture's frame (web/start3d.js,
+  // as a gallery model's page does); one it has none of says so there,
+  // where View in 3D would be (set3d); one with only another build of it
+  // (3740-1, 3741-1) lists that under In 3D instead.
   const pictureCredit = photo
     ? `<p class="picture-credit">${asText(say("Picture:"))} <a href="${escapeHtml(creditOf(entry))}">Rebrickable</a></p>` : "";
+  const pictureFoot = others.length ? pictureCredit
+    : `<div class="picture-foot"><p class="no3d">${asText(say("No 3D model of this set yet"))}</p>${pictureCredit}</div>`;
   const insideHtml = inside.length
     ? `<section class="words" id="inside" aria-labelledby="inside-h"><h2 id="inside-h">${asText(say("Sets packed in it"))}</h2><ul class="pills">`
       + inside.map(([one, n]) => `<li><a class="pill" href="${at}${pageOf(one)}">${n > 1 ? `${n} × ` : ""}`
@@ -564,7 +570,7 @@ ${chrome.header}
     ${viewer ? `<a class="picture" href="${escapeHtml(viewer)}" aria-label="${asText(say("View {name} in 3D", { name: entry.name }))}" `
       + `data-scene="/library/${escapeHtml(model.id)}/scene.json" data-parts="${Number(model.parts) || 0}">${pictureHtml}</a>`
     : `<div class="picture${photo ? " photo" : ""}">${pictureHtml}</div>`}
-    ${pictureCredit}
+    ${pictureFoot}
     </div>
     <div class="side">
       <h1>${escapeHtml(entry.name)}</h1>
