@@ -87,7 +87,7 @@
 					"name": "library",
 					"words": "Library…",
 					"key": "Ctrl+Shift+O",
-					"tip": "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
+					"tip": "Any of LDraw's models of real sets, or a model shared in the gallery, opened in a new window"
 				},
 				{
 					"name": "collection",
@@ -244,6 +244,12 @@
 							"words": "Picture of the model (.png)",
 							"key": "",
 							"tip": ""
+						},
+						{
+							"name": "instructions",
+							"words": "Instructions…",
+							"key": "Alt+B",
+							"tip": "Building instructions for this model, step by step, to print or to save as a PDF"
 						},
 						{
 							"name": "export_bricklink",
@@ -1117,7 +1123,7 @@
 					"name": "instructions",
 					"words": "Instructions…",
 					"key": "Alt+B",
-					"tip": "Building instructions for this model, step by step"
+					"tip": "Building instructions for this model, step by step, to print or to save as a PDF"
 				},
 				{
 					"submenu": "booklet",
@@ -1396,9 +1402,9 @@
 				},
 				{
 					"name": "flex",
-					"words": "Hose, tube or chain…",
+					"words": "Cable, hose or chain…",
 					"key": "",
-					"tip": "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
+					"tip": "Lay a motor's cable or a wire, a hose, a tube, a string or a chain from one connector to another, along a curve"
 				},
 				{
 					"name": "reshape_flex",
@@ -1411,7 +1417,7 @@
 				},
 				{
 					"name": "part_maker",
-					"words": "Part maker…",
+					"words": "Make a part…",
 					"key": "",
 					"tip": "Make a part of your own from the part in hand"
 				},

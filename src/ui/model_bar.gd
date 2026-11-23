@@ -85,10 +85,11 @@ signal library_wanted()
 ## Someone wants to rename or delete saved models (SavedModelsDialog).
 signal saved_models_wanted()
 signal opened(bricks: int)
-## A person's own open found parts its file names by a number LDraw has moved
-## or made an alias, or has no file for (ModelStore.moved): Shell offers them
-## (MovedOffer) and asks about a part with no file (MovedPartsDialog).
-signal moved_found()
+## An open found parts its file names by a number LDraw has moved or made an
+## alias, or has no file for (ModelStore.moved): Shell offers the renumbered
+## ones in a person's [param own] file once, the file named by [param of]
+## (MovedOffer), and asks about a part with no file (MovedPartsDialog).
+signal moved_found(own: bool, of: String)
 ## Whatever the bar says (say), for a phone's line over the model.
 signal said(text: String)
 
@@ -226,6 +227,8 @@ func _build() -> void:
 	_confirm.ok_button_text = "Clear it"
 	_confirm.confirmed.connect(func() -> void: attend.call("clear", _on_clear))
 	add_child(_confirm)
+	# It cannot be undone: in red, not Save's blue (Look.danger).
+	Look.danger(_confirm.get_ok_button())
 
 	_confirm_new = ConfirmationDialog.new()
 	_confirm_new.title = "Start a new model?"
@@ -706,8 +709,10 @@ func _on_open() -> void:
 	# Exporting an .ldr and then having nowhere to put it back was the
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
-	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
-	_saves.add_item("From the library: real sets and the community's models…", LIBRARY)
+	# "From a file", not "on this computer": on a phone or a tablet, where
+	# it opens the device's own files, that was wrong (ux12, the walk at 390).
+	_saves.add_item("From a file (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_saves.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	# With the other commands, above the saves. Under them, forty saves put
 	# it below the window's foot, out of sight until the menu was scrolled,
 	# and no tap on a phone found it (fling272b, 2026-10-26).
@@ -750,7 +755,7 @@ func _on_pick(id: int) -> void:
 	var placed: int = await open_with_progress(entry.path)
 	if placed >= 0:
 		opened.emit(placed)
-		offer_moved()
+		offer_moved(not entry.example, entry.path)
 
 
 ## Open a saved model or an example, the status bar saying so first
@@ -776,14 +781,24 @@ func open_with_progress(path: String) -> int:
 	return placed
 
 
-## After a person's own open (File, Open; a file; Recent; the library): the
-## parts its file names by a moved or alias number, or has no file for,
-## offered to them (moved_found: Shell's bar over the model, and the list
-## for a part with no file), when it has any. Not a session's open,
-## Together's or an undo's, which say it their own way or not at all.
-func offer_moved() -> void:
+## After a person's open (File, Open; a file; Recent; the library): the parts
+## its file names by a moved or alias number, or has no file for, offered to
+## them (moved_found: Shell's bar over the model, and the list for a part with
+## no file), when it has any. Not a session's open, Together's or an undo's,
+## which say it their own way or not at all.
+##
+## The renumbered ones only in the person's [param own] file, named by [param
+## of] (its path or file name; the model's title when not given), and once
+## (MovedOffer). An official set from the library or an example opens as it
+## is: drawn right already, it is not theirs to renumber, and the strip over
+## a set just opened was in the way of every fan who opened one (ux12). So
+## does another program's file, a Studio .io or an LDD .lxf (MovedOffer
+## .is_ldraw): "5 parts have new numbers in the LDraw library" stood over a
+## friend's Studio file through every step of ux13's walk (p6), LDraw's
+## history said of a file that is not LDraw's, which Studio opens unasked.
+func offer_moved(own: bool = true, of: String = "") -> void:
 	if store != null and store.not_opened.is_empty() and not store.moved.is_empty():
-		moved_found.emit()
+		moved_found.emit(own and MovedOffer.is_ldraw(of), of if not of.is_empty() else store.title)
 
 
 ## Missing and moved parts' Update all and Replace checked, and open_model
@@ -989,8 +1004,8 @@ func into_model() -> void:
 	_into_entries = store.list_saved()
 	var examples: Array[ModelStore.Entry] = store.list_examples()
 	_into.clear()
-	_into.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
-	_into.add_item("From the library: real sets and the community's models…", LIBRARY)
+	_into.add_item("From a file (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_into.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	_into.add_separator("Put in this model, then click where it goes")
 	for n: int in _into_entries.size():
 		_into.add_item(_into_entries[n].describe(), n)
@@ -1128,7 +1143,7 @@ func _import() -> void:
 			if not _picker.notes.is_empty():
 				note += " — " + _picker.notes
 			_say(note)
-			offer_moved())
+			offer_moved(true, file_name))
 		_picker.failed.connect(func(why: String) -> void: _say(why))
 	_picker.ask()
 

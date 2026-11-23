@@ -213,7 +213,11 @@ export function linkOf(raw, hosts = SITE_HOSTS) {
   let found = path.match(/^\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/?$/);
   if (found) {
     const step = n(url.searchParams.get("step"));
-    return step ? { href, kind: "step", model: found[1], step } : { href, kind: "model", model: found[1] };
+    // A version's own page (/m/X/v/N): its card is that version's, with its
+    // picture, as a work in progress posts each one (api/_wip.js).
+    const version = found[2] ? Number(found[2]) : null;
+    return step ? { href, kind: "step", model: found[1], step }
+      : { href, kind: "model", model: found[1], ...(version ? { version } : {}) };
   }
   if (path === "/app" && MODEL.test(url.searchParams.get("view") || "")) {
     const step = n(url.searchParams.get("step"));
@@ -264,7 +268,7 @@ export function embedsIn(text, hosts = SITE_HOSTS) {
   for (const piece of piecesOf(text, hosts)) {
     const link = piece.link;
     if (!link || !["model", "step", "set", "challenge", "part"].includes(link.kind)) continue;
-    const key = JSON.stringify([link.kind, link.model, link.step, link.set, link.challenge, link.part]);
+    const key = JSON.stringify([link.kind, link.model, link.step, link.set, link.challenge, link.part, link.version]);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(link);
@@ -393,10 +397,15 @@ export function embedsHtml(embeds, found = {}) {
     if (one.kind === "model" || one.kind === "step") {
       const model = found.models?.get(one.model);
       if (!model) continue;
-      const picture = modelPicture(model);
+      // A version's card shows that version's small picture (api/share.js
+      // op=thumb with n, its big one where none was kept).
+      const version = one.kind === "model" && one.version ? Number(one.version) : null;
+      const picture = version ? `/m/${model.id}/v/${version}.webp` : modelPicture(model);
       const line = one.kind === "step" ? say("Step {n}: open it in the viewer", { n: number(one.step) })
+        : version ? say("Version {n}: open it", { n: number(version) })
         : model.author ? say("by {name}", { name: model.author }) : say("A model in the gallery");
-      items.push(`<li class="talk-embed ${one.kind}"><a href="${escapeHtml(one.kind === "step" ? one.href : `${at}/m/${model.id}`)}">`
+      const opens = one.kind === "step" ? one.href : version ? `${at}/m/${model.id}/v/${version}` : `${at}/m/${model.id}`;
+      items.push(`<li class="talk-embed ${one.kind}${version ? " version" : ""}"><a href="${escapeHtml(opens)}">`
         + `${picture ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="120" height="90">` : ""}`
         + `<span><b>${escapeHtml(model.name || say("A model"))}</b><small>${escapeHtml(line)}</small></span></a></li>`);
     } else if (one.kind === "set") {
@@ -1038,8 +1047,27 @@ export async function talkThread(request, response, { origin }) {
   return response.status(200).json({ thread: page.thread, posts: page.posts || [], blocked_some: page.blocked_some === true, you });
 }
 
-/// GET ?op=talk_latest&n=4: the newest threads of every board, for the
-/// homepage's Latest talk; &html=1 drawn in the language asked.
+/// The newest post of [thread] that is not its first, as the home's feed
+/// shows a thread's latest reply (homefeed, 2026-11-23): {by, said, at},
+/// its words cut to 200 characters; null for none, or when it cannot be
+/// read. As the thread's page shows it to somebody signed out.
+async function lastReply(thread, tests) {
+  if (!(Number(thread.replies) > 0)) return null;
+  const page = await call("talk_thread_page", { p_thread: Number(thread.id), p_tests: tests, viewer: null }, () => null)
+    .catch(() => null);
+  const posts = Array.isArray(page?.posts) ? page.posts.filter((one) => one && !one.first && !one.hidden && one.body) : [];
+  const last = posts[posts.length - 1];
+  if (!last) return null;
+  return { by: last.handle ? { handle: String(last.handle), name: String(last.by || last.handle) } : null,
+    said: summary(String(last.body), 200), at: last.at };
+}
+
+/// GET ?op=talk_latest&n=4: the newest threads of every board; &html=1
+/// drawn in the language asked. With &reply=1 (the home's feed, homefeed,
+/// 2026-11-23) each thread also carries its address (path) and its latest
+/// reply (reply, lastReply's); with &talking=N as well the newest N comments
+/// on the gallery's models (talking, talk_talking's), which the feed's cards
+/// show under their models. Signed out, kept by the CDN.
 export async function talkLatest(request, response) {
   const query = request.query || {};
   const tests = testsAsked(query);
@@ -1048,6 +1076,15 @@ export async function talkLatest(request, response) {
   await houseWrites(tests);
   const listed = await call("talk_threads_of", { p_board: null, p_tests: tests, viewer: null, p_before: null, p_limit: n, p_q: null },
     () => ({ threads: [], missing: true }));
+  if (String(query.reply || "") === "1" && String(query.html || "") !== "1") {
+    const asked = Math.min(24, whole(query.talking) || 0);
+    const [replies, talking] = await Promise.all([
+      Promise.all((listed.threads || []).map((one) => lastReply(one, tests))),
+      asked ? call("talk_talking", { p_tests: tests, viewer: null, p_limit: asked }, () => []).catch(() => []) : []]);
+    const faced = await withFaces({ threads: (listed.threads || []).map((one, i) => ({ ...one, path: threadPath(one), reply: replies[i] })),
+      talking: Array.isArray(talking) ? talking : [] });
+    return response.status(200).json({ ready: !listed.missing, threads: faced.threads, talking: faced.talking });
+  }
   const threads = (await withFaces({ threads: listed.threads || [] })).threads;
   if (String(query.html || "") === "1") {
     const lang = langOf(query);

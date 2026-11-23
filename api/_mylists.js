@@ -41,6 +41,23 @@
 //                                {id, sort: "added"} back to the newest first
 //   POST ?op=owned_choice        (session) {shows}: the sets they own on their
 //                                profile, or not (profile_shows.owned)
+//   POST ?op=list_link           (session) {id, on}: one of their lists (id,
+//                                or "want") shared by a link, a new key each
+//                                time (made private, off the profile and out
+//                                of the directory); on false: the link
+//                                revoked, so it opens nothing from the next
+//                                request (supabase/lists_link.sql)
+//   POST ?op=import_preview      (session) {into: "owned"|"want"|<id>, sets}:
+//                                what an import of those set numbers would
+//                                do before it is done: matched (put in),
+//                                already there, not found (not a set in the
+//                                library), nothing written (a read, never
+//                                counted as a change)
+//
+// Who sees a list (docs/LISTS.md section 5, lists2a): its owner always;
+// anybody, when it is public; anybody with its link, when it is shared by
+// one (/c/X?link=<key>, never listed anywhere, its page never kept by the
+// CDN nor by a search engine). listShown says which.
 //
 // And for api/people.js's pages: a list's page (/c/X) draws its items with
 // itemsOf, a profile its Sets tab with ownedShowcase, and the gallery's
@@ -79,6 +96,8 @@ const LIMIT = [300, 3000];
 /// A list's name and words when the person has not named it: the wishlist
 /// is made the first time something is wanted, in their language's word.
 const WISHLIST = "Wishlist";
+/// A link's key (supabase/lists_link.sql): 16 random bytes, base64url.
+export const LINK = /^[A-Za-z0-9_-]{22}$/;
 
 
 async function signed(request) {
@@ -114,11 +133,32 @@ const quoted = (values) => values.map((one) => `"${String(one).replace(/["\\]/g,
 
 /// The caller's lists as a picker shows them, their wishlist first.
 async function listsOf(account) {
-  const rows = await db(`model_collections?owner=eq.${account}`
-    + "&select=id,name,description,public,kind,sort,cover,taken_down_at,updated_at&order=updated_at.desc");
-  return rows.filter((row) => ID.test(String(row.id)))
+  const [rows, links] = await Promise.all([
+    db(`model_collections?owner=eq.${account}`
+      + "&select=id,name,description,public,kind,sort,cover,taken_down_at,updated_at&order=updated_at.desc"),
+    linksOf(account),
+  ]);
+  return rows.filter((row) => ID.test(String(row.id))).map((row) => ({ ...row, link: links.get(row.id) || null }))
     .sort((a, b) => (a.kind === "want" ? -1 : 0) - (b.kind === "want" ? -1 : 0));
 }
+
+/// The keys of [account]'s lists shared by a link: id -> key. None before
+/// supabase/lists_link.sql (no such column: a 400), as when none is shared.
+async function linksOf(account) {
+  try {
+    const rows = await db(`model_collections?owner=eq.${account}&link=not.is.null&select=id,link`);
+    return new Map(rows.filter((row) => LINK.test(String(row.link || ""))).map((row) => [row.id, row.link]));
+  } catch (trouble) {
+    if (/: 400$/.test(String(trouble?.message || ""))) return new Map();
+    throw trouble;
+  }
+}
+
+/// Who sees a list: "public", "link" (anybody with its link) or "private".
+export const visibilityOf = (row) => (row.public === true ? "public" : row.link ? "link" : "private");
+
+/// A list's link, for its owner: its page's address with the key.
+export const linkUrl = (origin, id, key) => (key ? `${origin}/c/${id}?link=${key}` : null);
 
 /// How many of each set number [account] owns, every copy from anywhere
 /// (My collection's sets; a minifigure is never one): number -> count.
@@ -162,10 +202,13 @@ async function shownModels(ids) {
   return shown;
 }
 
-/// A list as the picker and /lists are given it.
-function listSaid(row, counts) {
+/// A list as the picker and /lists are given it: who sees it and its link
+/// only from a row read with its link (listsOf), so an answer that did not
+/// read it never says it is not shared.
+function listSaid(row, counts, origin = "") {
   const n = counts?.get(row.id) || { sets: 0, models: 0 };
   return { id: row.id, name: String(row.name || ""), description: row.description || null, public: row.public === true,
+    ...(Object.hasOwn(row, "link") ? { visibility: visibilityOf(row), link: row.public === true ? null : linkUrl(origin, row.id, row.link) } : {}),
     kind: row.kind === "want" ? "want" : null, sort: row.sort === "manual" ? "manual" : "added", cover: row.cover || null,
     down: Boolean(row.taken_down_at), sets: n.sets, models: n.models, count: n.sets + n.models, updated_at: row.updated_at };
 }
@@ -173,7 +216,7 @@ function listSaid(row, counts) {
 // ---------------------------------------------------------------------------
 // What the caller has of what a page shows.
 
-export async function keeps(request, response) {
+export async function keeps(request, response, { origin = "" } = {}) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signed(request);
   const sets = listed(request.query?.sets, setOf);
@@ -194,7 +237,7 @@ export async function keeps(request, response) {
   const counts = await setCounts(ids, { models: false });
   return response.status(200).json({
     signed_in: true,
-    lists: lists.map((row) => listSaid(row, counts)),
+    lists: lists.map((row) => listSaid(row, counts, origin)),
     want: lists.find((row) => row.kind === "want")?.id || null,
     sets: Object.fromEntries(sets.map((set) => [set, { own: owned.get(set) || 0,
       lists: inSets.filter((row) => row.set_num === set).map((row) => row.collection) }])),
@@ -467,6 +510,98 @@ export async function ownedShown(account) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Shared by a link (supabase/lists_link.sql).
+
+/// A new key for a list's link.
+const newLink = () => randomBytes(16).toString("base64url");
+
+export async function listLink(request, response, { origin = "" } = {}) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signed(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  if (typeof body.on !== "boolean") throw new Unacceptable("say on: true (share it by a link) or on: false (stop)");
+  const id = body.id === "want" ? await wishlistOf(account) : String(body.id || "");
+  const list = id ? (await db(`model_collections?id=eq.${encodeURIComponent(id)}&owner=eq.${account}`
+    + "&select=id,name,public,kind,taken_down_at"))[0] : null;
+  if (!list || !ID.test(String(list.id))) throw new Unacceptable("there is no list of yours at that id", 404);
+  if (body.on && list.taken_down_at) {
+    throw new Unacceptable("Brickworks took this list down, so it stays private: it is still yours, with everything in it.", 403);
+  }
+  // A link anybody may be sent is a public thing: the age rule, as for a
+  // public list (api/_trust.js).
+  if (body.on) {
+    const young = await publicTrouble(account, { collection: true });
+    if (young) throw new Unacceptable(young, 422);
+  }
+  await counted(account);
+  const key = body.on ? newLink() : null;
+  const now = new Date().toISOString();
+  let rows;
+  try {
+    rows = await db(`model_collections?id=eq.${list.id}&owner=eq.${account}`, { method: "PATCH",
+      body: body.on ? { public: false, link: key, link_at: now, updated_at: now } : { link: null, updated_at: now },
+      prefer: "return=representation" });
+  } catch (trouble) {
+    if (/: 400$/.test(String(trouble?.message || ""))) throw new Unacceptable("lists shared by a link are not on this deployment yet", 503);
+    throw trouble;
+  }
+  const row = rows?.[0];
+  if (!row) throw new Unacceptable("there is no list of yours at that id", 404);
+  return response.status(200).json({ id: row.id, public: row.public === true, visibility: visibilityOf(row),
+    link: linkUrl(origin, row.id, row.link) });
+}
+
+// ---------------------------------------------------------------------------
+// An import, seen before it is made (docs/LISTS.md section 5 item 6).
+
+/// What putting [typed] (set numbers as a file or a person gave them) into
+/// a list would do, as three lists of the numbers as given, each once:
+/// matched (a set of the library, not there yet: put in), already (there
+/// already: left as it is) and missing (not a set the library has: left
+/// out). [held] is the set numbers the list has (lower-cased, as kept);
+/// [known] says a number's set, or "" (setOf). Pure, for the probe.
+export function previewSets(typed, held, known = setOf) {
+  const seen = new Set();
+  const out = { matched: [], already: [], missing: [] };
+  for (const raw of Array.isArray(typed) ? typed : []) {
+    const given = String(raw ?? "").trim();
+    if (!given) continue;
+    // No set number is this long: not found, and not looked up.
+    const set = given.length > 40 ? "" : known(given);
+    const key = set || `?${given.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (!set) out.missing.push(given);
+    else if (held.has(set)) out.already.push(set);
+    else out.matched.push(set);
+  }
+  return out;
+}
+
+export async function importPreview(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
+  const account = await signed(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const into = String(body.into || "");
+  if (!Array.isArray(body.sets)) throw new Unacceptable("name the set numbers: sets");
+  // Each as given, never cut: a number no set has is said as typed.
+  const typed = body.sets.map((one) => String(one ?? "").trim()).filter(Boolean);
+  if (typed.length > MOST_SETS_IN_A_LIST) throw new Unacceptable(`one import is at most ${MOST_SETS_IN_A_LIST} sets`);
+  let held;
+  if (into === "owned") {
+    held = new Set((await ownedCounts(account)).keys());
+  } else {
+    const id = into === "want" ? await wishlistOf(account) : into;
+    if (into !== "want" && !(await ownList(id, account))) throw new Unacceptable("there is no list of yours at that id", 404);
+    const rows = id ? await dbAll(`collection_sets?collection=eq.${id}&select=set_num`, "set_num") : [];
+    held = new Set(rows.map((row) => String(row.set_num)));
+  }
+  const said = previewSets(typed, held);
+  return response.status(200).json({ into, ...said,
+    counts: { matched: said.matched.length, already: said.already.length, missing: said.missing.length } });
+}
+
 /// The sizes a showcase filters by, a set's parts.
 export const OWNED_SIZES = { small: [0, 199], medium: [200, 999], large: [1000, 2999], huge: [3000, Infinity] };
 export const OWNED_SORTS = ["added", "year", "pieces", "name"];
@@ -529,18 +664,36 @@ export async function ownedShowcase(account, { theme = "", decade = "", size = "
 /// A list as [account] may see it: its row with whose it is, or null (a
 /// private list answers anybody else as one that does not exist; so does
 /// one whose owner the site's owner took out).
-export async function listShown(id, account) {
+export async function listShown(id, account, link = "") {
   if (!ID.test(String(id || ""))) return null;
   const row = (await db(`model_collections?id=eq.${id}`
     + "&select=id,owner,name,description,public,kind,sort,cover,taken_down_at,updated_at"))[0];
   if (!row) return null;
+  // Opened by its link: shared by one, and that one (a key revoked, or
+  // made again, opens nothing). Asked only with a key, so a database
+  // before lists_link.sql answers every other page as it did.
+  const byLink = row.owner !== account && !row.public && LINK.test(String(link || "")) && await linked(id, link);
   if (row.owner !== account) {
-    if (!row.public) return null;
+    if (!row.public && !byLink) return null;
     const barred = await db(`barred_accounts?account=eq.${row.owner}&select=account`);
     if (barred.length) return null;
   }
   const person = (await db(`people?account=eq.${row.owner}&select=handle,name`))[0];
-  return { ...row, mine: row.owner === account, by: person ? { handle: person.handle, name: person.name } : null };
+  return { ...row, mine: row.owner === account, by_link: Boolean(byLink),
+    by: person ? { handle: person.handle, name: person.name } : null };
+}
+
+/// Whether list [id] is shared by a link with key [key] now: never a
+/// public or taken-down one (lists_link.sql clears their key), nor before
+/// lists_link.sql (a 400).
+async function linked(id, key) {
+  try {
+    const rows = await db(`model_collections?id=eq.${id}&link=eq.${key}&public=is.false&taken_down_at=is.null&select=id`);
+    return rows.length === 1;
+  } catch (trouble) {
+    if (/: 400$/.test(String(trouble?.message || ""))) return false;
+    throw trouble;
+  }
 }
 
 /// Page [page] of list [list]'s items, in its order, as cards: {total,
@@ -594,15 +747,16 @@ export async function listItems(request, response, { origin }) {
     if (!account) throw new Unacceptable("Sign in first: we email you a code, no password.", 401);
     return response.status(200).json({ id: null, kind: "want", mine: true, total: 0, sets: 0, models: 0, page, more: false, items: [] });
   }
-  const list = await listShown(id, account);
+  const link = String(request.query?.link || "");
+  const list = await listShown(id, account, link);
   if (!list) throw new Unacceptable("there is no list at that id", 404);
   const shown = await itemsOf(origin, list, { mine: list.mine, tests, page });
   return response.status(200).json({ id: list.id, name: list.name, description: list.description, public: list.public,
     kind: list.kind === "want" ? "want" : null, sort: list.sort, cover: list.cover, down: Boolean(list.taken_down_at),
-    mine: list.mine, by: list.by, url: `${origin}/c/${list.id}`, ...shown });
+    mine: list.mine, by: list.by, url: list.by_link ? linkUrl(origin, list.id, link) : `${origin}/c/${list.id}`, ...shown });
 }
 
-export async function yourLists(request, response) {
+export async function yourLists(request, response, { origin = "" } = {}) {
   response.setHeader("Cache-Control", "private, no-store");
   const account = await signed(request);
   const [lists, owned, saved, person, shows] = await Promise.all([
@@ -620,7 +774,7 @@ export async function yourLists(request, response) {
     pieces += (catalogSet(set)?.parts || 0) * n;
   }
   return response.status(200).json({
-    lists: lists.map((row) => listSaid(row, counts)),
+    lists: lists.map((row) => listSaid(row, counts, origin)),
     owned: { sets: copies, unique: owned.size, pieces, shown: shows },
     saved: { models: saved },
     profile: person[0] ? { handle: person[0].handle } : null,
@@ -651,7 +805,7 @@ export async function listCsv(request, response, { origin }) {
     sets = [...(await ownedCounts(account))].map(([set, qty]) => ({ set, qty }));
   } else {
     const id = asked === "want" ? (account ? await wishlistOf(account) : null) : asked;
-    const list = id ? await listShown(id, account) : null;
+    const list = id ? await listShown(id, account, String(request.query?.link || "")) : null;
     if (!list) throw new Unacceptable("there is no list at that id", 404);
     name = `brickworks-${list.kind === "want" ? "wishlist" : list.id}`;
     const all = await db("rpc/list_items", { method: "POST", body: { list: list.id, private: list.mine, tests: list.mine } });

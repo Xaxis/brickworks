@@ -76,7 +76,7 @@ lib:studio decorations
 
 ![The Make a part dialog with Wedge chosen among its ten families: a red wedge plate in the preview, its width and length, which side is straight, and the words under them saying what it is, its far corner cut flat.](/docs/img/figures-part-maker.webp "Make a part…: a 2 x 4 wedge plate with its far corner cut flat.")
 
-1. Press **Make a part…** in the parts bin (or **Make › Part maker…**, which starts from the part in hand).
+1. Press **Make a part…** in the parts bin (or **Make › Make a part…**, which starts from the part in hand).
 2. Choose a family: **Brick**, **Slope**, **Curved**, **Inverted**, **Round**, **Bracket**, **Technic**, **Clip**, **Bar** or **Wedge**. Or type a part number: **Start from it** resizes it, **Change it** changes the part itself (longer, taller, studs off or on, a piece cut out).
 3. Set its size in studs and plates, and what its family asks: a slope's angle, which way a bracket or a clip faces, a wedge's straight side and **Far corner cut flat**. The preview is the part itself.
 4. Name it and press **Add to parts**. It goes in the bin under **Custom**, with studs and connections that snap like a real part's.

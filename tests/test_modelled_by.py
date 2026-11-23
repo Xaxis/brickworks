@@ -127,8 +127,9 @@ def test_a_library_model_is_credited_from_the_library_not_from_its_file() -> Non
     if said is None:
         return
     as_published, renamed_said = said
+    # Which of the page's models it is, too (altbuilds: a set's own model is no alternate of it).
     assert as_published == {"name": "Marc Giraudet", "page": "https://library.ldraw.org/omr/sets/1024",
-                            "licence": "cc-by-2.0", "changed": False}
+                            "licence": "cc-by-2.0", "changed": False, "set": "346-2", "alternate_of": None}
     assert renamed_said == as_published
 
 
@@ -151,7 +152,7 @@ def test_a_changed_library_model_keeps_its_credit_and_says_it_was_changed() -> N
     if said is None:
         return
     assert said == [{"name": "Marc Giraudet", "page": "https://library.ldraw.org/omr/sets/1024",
-                     "licence": "cc-by-2.0", "changed": True}]
+                     "licence": "cc-by-2.0", "changed": True, "set": "346-2", "alternate_of": None}]
 
 
 def test_the_card_says_who_modelled_it_not_who_shares_it() -> None:

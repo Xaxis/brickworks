@@ -25,6 +25,7 @@ description: Save the model as a file for another program, a 3D printer or a sho
 | BrickLink Studio model (`.io`) | Open it in Studio, with its steps |
 | 3D model (`.glb`, `.gltf`, `.obj`, `.stl`, `.3mf`) | Blender, AR, a 3D printer, one printing in colour |
 | Picture of the model (`.png`) | The model alone, 2400 x 1600, with nothing behind it |
+| Instructions… | The building instructions, to print or save as a PDF: see [Instructions](/docs/instructions#booklet) |
 | BrickLink wanted list (`.xml`) | Buy the parts on BrickLink |
 | Rebrickable parts list (`.csv`) | Buy the parts, or check them against your sets on Rebrickable |
 | LEGO® Pick a Brick list (`.csv`), [[Alt+L]] | Buy the parts new from LEGO® Pick a Brick, by their element numbers |

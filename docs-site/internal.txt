@@ -12,6 +12,8 @@ entry:tools/web/*  # browser flows and checks, run against a deployment by the r
 entry:tools/docs_shots.py  # how the docs' own pictures are made from the app and the site
 entry:tools/bench/*  # the design benches: the project's measures of Claude's designs
 entry:tools/photoreal/cycles/*  # the photo bench's Cycles ceiling and factor swaps: a measure on this box, never the app's (docs/RENDERING.md 5j)
+lib:where hands leave their marks  # the path tracer's handled wear, off in the app (StudioRender.PRODUCT_RUBBED 0) and asked for only by the photo bench until its judge says it helps (docs/RENDERING.md 5m)
+lib:the stage matched to the photographs  # the path tracer's tables matched to the bench's photographs, off in the app (StudioRender.PRODUCT_TABLE, _TABLE_LIGHT and _FILL 0) and asked for only by the photo bench (docs/RENDERING.md 5n)
 entry:tools/release/*  # how a release is made, checked and published
 entry:tools/release.py  # building, smoking and publishing the desktop packages
 entry:tools/update_check.py  # how the desktop updater is proven with real packages
@@ -79,6 +81,7 @@ ui:the console's connector  # the owner's, on the admin page (a person's own con
 ui:the console's site  # the owner's, on the admin page
 ui:the console's moderation  # the owner's, on the admin page (what a person reports is in the docs)
 ui:the console's challenges  # the owner's, on the admin page (the challenge a person enters is in challenges.md)
+ui:setting the weekly quick build  # the owner's, on the admin page (the quick build a person enters is in challenges.md)
 ui:the console's data  # the owner's, on the admin page
 ui:the console's switches section  # the owner's, on the admin page (the notice a visitor sees is in web-and-desktop.md)
 lib:the console's part C  # the owner's console's notice, variables, usage, export, sign-out and find, in the database
@@ -87,6 +90,8 @@ lib:the social desk's Reddit adapter  # the social desk's calls to Reddit for Br
 ui:the owner's social desk  # the owner's, on the admin page (/admin › Social)
 lib:the counter's route and its reads  # the counter's server side and the owner's read of it; a person meets the counter and /counting, not it (docs/ANALYTICS.md)
 ui:the owner's Analytics  # the owner's, on the admin page (/admin › Analytics)
+lib:the loop's read  # the owner's loop funnel's server side, read only on the admin page (/admin › Analytics › Funnels, docs/ANALYTICS.md "The loop"); a visitor never meets it
+cli:the loop as JSON  # tools/loop_read.mjs prints the owner's loop funnel for a unit's report, signed in as the checks' test account; a visitor never meets it
 lib:Claude in the console  # the owner's Claude on the admin page, on the owner's own Anthropic key (docs/ADMIN_CLAUDE.md); a visitor never meets it
 lib:Claude's read-only tools  # what the owner's Claude on the admin page may read, and its one write, a social desk draft
 lib:the Claude API client  # the admin page's calls to Anthropic on the owner's own key; a visitor never meets it
@@ -100,3 +105,7 @@ ui:review sign-in page  # an app directory's reviewer's, linked from nowhere: th
 cli:browse pages  # tools/browse_pages.py writes the gallery tabs' pages (/library, /builds, /collections) from web/gallery.html; a visitor meets the gallery, not it
 entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: how the app is tested
 lib:the web's catalogue as columns  # the form the web build reads the parts catalogue in (webstart11); a visitor meets the parts bin, which reads the same either way
+cli:pin version pairs  # tools/pin_pairs.mjs writes the version pairs tests/test_partpins.py and the partpins probe hold the pin rule to; a person meets the pins it tests (model-pages#on-a-part)
+cli:prompts check  # tools/prompts_check.mjs checks the house's quick build models and their stack from a checkout; a person meets the models, not it
+cli:prompt pictures  # tools/prompt_pictures.mjs draws the docs world's quick build pictures; a reader meets the docs' picture, not it
+cli:challenge rules check  # tools/challenge_rules_check.mjs writes the site's challenge_check answers for the studio's ticks to be compared with; a person meets the line's ticks, not it

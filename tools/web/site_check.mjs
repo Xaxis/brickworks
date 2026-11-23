@@ -30,7 +30,7 @@
 //     theme's colours, nothing sideways, no error logged.
 //
 // Screenshots of every page at phone and laptop size go to --out.
-import { launch, allPictures } from "./browser.mjs";
+import { launch, allPictures, bypassCookie } from "./browser.mjs";
 import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -185,7 +185,7 @@ if (modelId) {
 
 // Where the landing page lists the site's places, the challenge is one: the
 // month's, or the next told (walk239's W10: the landing page linked none).
-if (!/<nav class="foot-links"[^>]*>[\s\S]*?<a href="\/challenge">Challenge<\/a>[\s\S]*?<\/nav>/.test(pageHtml["/"] || "")) {
+if (!/<nav class="foot-links"[^>]*>[\s\S]*?<a href="\/challenge">Challenges?<\/a>[\s\S]*?<\/nav>/.test(pageHtml["/"] || "")) {
   fail("/ does not link /challenge among the site's places");
 } else ok("/ links /challenge among the site's places");
 
@@ -481,6 +481,7 @@ const SHOTS = [["/", "home"], ["/gallery", "gallery"], ["/download", "download"]
 for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]]) {
   for (const [path, name] of SHOTS) {
     const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });
+    bypassCookie(context, headers);
     const page = await context.newPage();
     const said = [];
     page.on("console", (m) => { if (m.type() === "error") said.push(m.text().slice(0, 160)); });
@@ -547,6 +548,7 @@ for (const [width, height] of [[390, 844], [1280, 900]]) {
     for (const path of CONNECT) {
       const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers,
         colorScheme: theme, isMobile: width < 600, hasTouch: width < 600 });
+      bypassCookie(context, headers);
       const page = await context.newPage();
       const said = [];
       page.on("console", (m) => { if (m.type() === "error") said.push(m.text().slice(0, 160)); });
@@ -588,6 +590,7 @@ await browser.close();
 {
   const real = await launch({ signedOut: true, realCounter: true });
   const context = await real.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
+  bypassCookie(context, headers);
   await context.addInitScript(() => Object.defineProperty(Navigator.prototype, "webdriver", { get: () => false }));
   const sent = [];
   await context.route("https://overlook.technology/**", (route) => {
@@ -615,6 +618,7 @@ await browser.close();
 if (sha && args["no-app"] === undefined) {
   const appBrowser = await launch();
   const context = await appBrowser.newContext({ viewport: { width: 1280, height: 800 }, extraHTTPHeaders: headers });
+  bypassCookie(context, headers);
   const page = await context.newPage();
   try {
     await page.goto(`${base}/app?view=AAAAAAAAAA`, { waitUntil: "domcontentloaded", timeout: 120000 });

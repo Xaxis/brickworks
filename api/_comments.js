@@ -16,6 +16,15 @@
 //   POST ?op=reply                (session) {id, body}: a reply to comment
 //                                 id, on its step and version; to a reply,
 //                                 in its thread (supabase/replies.sql)
+//   POST ?op=pin                  (session) {model, version, step?, body,
+//                                 part: {part, colour, at}}: a comment on a
+//                                 part of that version (partpins,
+//                                 supabase/comment_pins.sql), the part
+//                                 found in the version's own file by its
+//                                 number, colour and place (at, LDraw's
+//                                 coordinates), which keeps it as a pin
+//   POST ?op=pin_resolve          (session) {id, resolved}: the model's
+//                                 owner done with a pin, or not
 //   POST ?op=comment_change       (session) {id, what, body?}: its author
 //                                 edits it (edit, with body) or removes it
 //                                 (remove); the model's owner hides it or
@@ -62,6 +71,17 @@
 // name}]), which the page links; an @handle nobody was told of stays
 // words. Before the file a comment names nobody, and goes as ever.
 //
+// A pin (2026-11-23, supabase/comment_pins.sql, partpins) is a comment on a
+// part, under every rule of one; each comment says its part (pin: {part,
+// colour, at, section, line, near, full}, or null) and whether its model's
+// owner resolved it (resolved). Which part of the version shown it is on is
+// the page's and the app's to work out, by one rule (web/card.js pinPlace),
+// from that version's parts. The server keeps only what it read in the
+// file: a part the page names that the version's file does not have where
+// it says is refused. Before the file, the list says pins: false and a pin
+// is refused as not open yet; a notification, a push and the day's email
+// say "on a part" of one (pinnedAmong).
+//
 // A block (2026-11-19, supabase/block.sql, api/_blocks.js): the comments of
 // somebody a model's owner blocked are hidden on it from everybody but
 // their writer, who sees them as before; whoever you blocked, their
@@ -78,8 +98,11 @@ import { Unacceptable, count } from "./_directory.js";
 import { mentionsIn } from "./_card.js";
 import { namesTrouble } from "./_names.js";
 import { feedSaid } from "./_follows.js";
+import { noticeSaid } from "./_notifications.js";
 import { blockedHandles, blockedModels, commentsShown, hiddenComments, refuseFor, rowsWithout, standing, unnameable }
   from "./_blocks.js";
+import { PIN, pinOf, pinPart, pinTurn } from "./_card.js";
+import { getFile } from "./_builds.js";
 
 export const MOST_CHARACTERS = 1000;
 // How often, as comments.sql counts it (may_act): [an hour, a day].
@@ -89,6 +112,7 @@ const VERSION = /^[1-9][0-9]{0,5}$/;
 const NOT_THERE = /: 404$/;
 const NOT_YET = "Comments are not open on Brickworks yet.";
 const REPLIES_NOT_YET = "Replies are not open on Brickworks yet: add a comment of your own.";
+const PINS_NOT_YET = "Comments on a part are not open on Brickworks yet: add a comment on the model.";
 
 // What a refusal from comments.sql says, and its status.
 export const WORDS = {
@@ -107,6 +131,8 @@ export const WORDS = {
   no_comment: [404, "That comment is not there any more, so it cannot be answered."],
   not_yours: [403, "That comment is somebody else's."],
   not_owner: [403, "Only the model's builder can do that."],
+  place: [400, "Say which part: its number, its colour and where it stands."],
+  no_part: [409, "That part is not in this version of the model: press the part again."],
 };
 
 function refused(code) {
@@ -194,7 +220,75 @@ export function commentSaid(comment, asked, newest, versions) {
     by_owner: comment.by_owner === true, mine: comment.mine === true, hidden: comment.hidden === true,
     older: comment.version < newest, said: saidWhere(comment, newest),
     parent: Number.isInteger(comment.parent) ? comment.parent : null,
+    pin: pinShown(comment.pin), resolved: Boolean(comment.resolved_at) && Boolean(comment.pin),
+    resolved_at: comment.pin && comment.resolved_at ? comment.resolved_at : null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Pure: a comment's part.
+
+const point = (given) => (Array.isArray(given) && given.length === 3 && given.every((v) => Number.isFinite(Number(v)))
+  && given.every((v) => Math.abs(Number(v)) < 1e7) ? given.map(Number) : null);
+
+/// A kept pin as an answer gives it, or null for none or one not read.
+export function pinShown(pin) {
+  if (!pin || typeof pin !== "object") return null;
+  const at = point(pin.at);
+  if (!at || typeof pin.part !== "string" || !Number.isFinite(Number(pin.colour))) return null;
+  return { part: pin.part.slice(0, 64), colour: Number(pin.colour), at, turn: pinTurn(pin.turn),
+    section: String(pin.section ?? "").slice(0, 255), line: Number.isInteger(pin.line) && pin.line >= 0 ? pin.line : 0,
+    near: (Array.isArray(pin.near) ? pin.near : []).map(point).filter(Boolean).slice(0, PIN.most), full: pin.full !== false,
+    with: (Array.isArray(pin.with) ? pin.with : []).filter((one) => Array.isArray(one) && typeof one[0] === "string"
+      && Number.isFinite(Number(one[1]))).slice(0, 16).map((one) => [one[0].slice(0, 64), Number(one[1])]) };
+}
+
+/// The part a page says was pressed ({part, colour, at, turn?}), read at
+/// this edge: {part} or {trouble} in words. Nothing of it is kept but what
+/// the version's file says (pinFrom); its turn only tells apart parts of
+/// one kind that stand in one place.
+export function cleanPart(given) {
+  if (!given || typeof given !== "object") return { trouble: WORDS.place[1] };
+  const part = typeof given.part === "string" ? given.part.trim() : "";
+  const colour = Number(given.colour);
+  const at = point(given.at);
+  if (!part || part.length > 64 || /[\u0000-\u001f\u007f"<>\\]/.test(part) || !Number.isInteger(colour) || colour < 0
+    || colour > 0x7fffffff || !at) {
+    return { trouble: WORDS.place[1] };
+  }
+  return { part: { part, colour, at, turn: pinTurn(given.turn) } };
+}
+
+/// The pin for [given] ({part, colour, at, turn}) among [places] (placesOf,
+/// a version's parts): the part of that colour standing within PIN.slack
+/// of where it says, of its number (turned nearest as it says, where several
+/// stand there), or (a number the page knows the part by, LDraw having
+/// moved it) the one part of that colour there. Null where the file has
+/// none.
+export function pinFrom(places, given) {
+  const want = pinPart(given.part);
+  let best = -1;
+  let bestOff = Infinity;
+  let other = -1;
+  let others = 0;
+  places.forEach((one, i) => {
+    if (Number(one.colour) !== given.colour) return;
+    const off = Math.hypot(one.at[0] - given.at[0], one.at[1] - given.at[1], one.at[2] - given.at[2]);
+    if (off > PIN.slack) return;
+    if (pinPart(one.part) === want) {
+      // Nearest, and of two in one place the one turned as the page says.
+      const turned = given.turn && one.turn ? Math.max(...one.turn.map((v, k) => Math.abs(v - given.turn[k]))) : 0;
+      if (off + turned * 10 < bestOff) [best, bestOff] = [i, off + turned * 10];
+    } else {
+      others += 1;
+      other = i;
+    }
+  });
+  const index = best >= 0 ? best : others === 1 ? other : -1;
+  if (index < 0) return null;
+  // By the number the page knows it by: the one every page and the app
+  // compare (web/card.js pinPlace).
+  return { ...pinOf(places, index), part: given.part };
 }
 
 // ---------------------------------------------------------------------------
@@ -273,7 +367,7 @@ export async function listComments(request, response) {
   }
   const on = await call("comments_on", { model_id: id, asker: who }, () => ({ missing: true }));
   if (on && on.missing) {
-    return response.status(200).json({ model: id, ready: false, open: false, comments: [], version: 1, newest: 1,
+    return response.status(200).json({ model: id, ready: false, open: false, pins: false, comments: [], version: 1, newest: 1,
       you: { signed_in: Boolean(who), may_write: false, why_not: NOT_YET, owner: false } });
   }
   if (!on) throw refused("no_model");
@@ -285,7 +379,8 @@ export async function listComments(request, response) {
   const hidden = await hiddenComments(id, who);
   const comments = await withMentions(commentsShown((on.comments || []).map((one) => commentSaid(one, asked, newest, versions)), hidden));
   return response.status(200).json(await withFaces({ model: id, ready: true, version: asked, newest, open: on.open === true,
-    replies: on.threads === true, count: comments.length, comments, you: await youOn(id, who, on.owner === true) }));
+    replies: on.threads === true, pins: on.pins === true, count: comments.length, comments,
+    you: await youOn(id, who, on.owner === true) }));
 }
 
 /// A new comment. Its model's owner, if they asked to be emailed and no
@@ -361,6 +456,121 @@ export async function addReply(request, response, { origin }) {
     console.error(`comments: digest: ${String(problem?.message || problem).slice(0, 160)}`);
   }
   return response.status(201).json({ comment, ...(told.state === "dry" ? { told } : {}) });
+}
+
+/// A version's own file, as text: [id]'s version [n] of [newest]
+/// (api/share.js keeps the newest as <id>.mpd and each before it as
+/// <id>.v<n>.mpd), or null where it is not there.
+async function versionText(id, n, newest) {
+  const file = await getFile("shared-models", n === newest ? `${id}.mpd` : `${id}.v${n}.mpd`);
+  return file ? file.toString("utf8") : null;
+}
+
+// A version's parts, read once a while (a person pins a few parts of a
+// version in a row): id:n:newest -> placesOf's.
+const placesKept = new Map();
+const PLACES_KEPT = 8;
+
+async function placesFor(id, n, newest) {
+  const key = `${id}:${n}:${newest}`;
+  if (placesKept.has(key)) return placesKept.get(key);
+  const text = await versionText(id, n, newest);
+  // Read only here: every other request of api/people.js starts without it.
+  const { placesOf } = await import("./_parts.js");
+  const places = text === null ? null : placesOf(text);
+  placesKept.set(key, places);
+  if (placesKept.size > PLACES_KEPT) placesKept.delete(placesKept.keys().next().value);
+  return places;
+}
+
+/// A comment on a part (op=pin): as a comment (addComment), with the part
+/// pressed, found in the version's file and kept as its pin.
+export async function addPin(request, response, { origin }) {
+  response.setHeader("Cache-Control", "no-store");
+  const who = await account(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const id = String(body.model || "");
+  if (!ID.test(id)) throw new Unacceptable("name the model: model, its link's ten characters");
+  const version = body.version === undefined || body.version === null ? null : Number(body.version);
+  if (!Number.isInteger(version) || version < 1 || version > 100000) {
+    throw new Unacceptable("say which version it is on: version, a number from 1");
+  }
+  const step = body.step === undefined || body.step === null || body.step === "" ? null : Number(body.step);
+  if (step !== null && (!Number.isInteger(step) || step < 1 || step > 200000)) {
+    throw new Unacceptable("step is a step's number, from 1, or none for the whole model");
+  }
+  const { text, trouble } = cleanComment(body.body);
+  if (trouble) throw new Unacceptable(trouble);
+  const { part, trouble: wrong } = cleanPart(body.part);
+  if (wrong) throw new Unacceptable(wrong);
+  refuseFor(await standing(who, { model: id }), "comment");
+  // Who may write first, so a refusal reads no file.
+  const why = await call("comment_trouble", { account: who, model_id: id }, notYet);
+  if (why) throw refused(why);
+  let versions = await versionsOf(id);
+  if (!versions.some((one) => one.n === version)) throw refused("no_version");
+  let places = await placesFor(id, version, versions[0].n);
+  if (places === null) {
+    // A version published since: its file was the newest's.
+    versions = await versionsOf(id);
+    places = versions.some((one) => one.n === version) ? await placesFor(id, version, versions[0].n) : null;
+  }
+  if (places === null) throw refused("no_version");
+  const pin = pinFrom(places, part);
+  if (!pin) throw refused("no_part");
+  const made = await call("add_pin", { account: who, model_id: id, at_version: version, at_step: step, said: text,
+    place: pin }, () => {
+    throw new Unacceptable(PINS_NOT_YET, 503);
+  });
+  if (made?.refused) throw refused(made.refused);
+  const comment = commentSaid(made.comment, version, versions[0].n, versions);
+  const mentions = await mention(who, comment.id, text);
+  if (mentions.length) comment.mentions = mentions;
+  let told = { state: "none" };
+  try {
+    if (made.owner && made.owner !== who) {
+      const sent = await sendCommentDigests({ origin, owner: made.owner });
+      if (sent.digests[0]) told = { state: sent.digests[0].state, id: sent.digests[0].id };
+    }
+  } catch (problem) {
+    console.error(`comments: digest: ${String(problem?.message || problem).slice(0, 160)}`);
+  }
+  return response.status(201).json({ comment, ...(told.state === "dry" ? { told } : {}) });
+}
+
+/// The model's owner done with a pin (resolved true), or not (false).
+export async function resolvePin(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const who = await account(request);
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const id = Number(body.id);
+  if (!Number.isInteger(id) || id < 1) throw new Unacceptable("name the comment: id, a number");
+  if (typeof body.resolved !== "boolean") throw new Unacceptable("say resolved: true or resolved: false");
+  const done = await call("resolve_pin", { account: who, comment_id: id, done: body.resolved }, () => {
+    throw new Unacceptable(PINS_NOT_YET, 503);
+  });
+  if (done?.refused) throw refused(done.refused);
+  const one = done.comment;
+  return response.status(200).json({ comment: commentSaid(one, one.version, one.version,
+    [{ n: one.version, steps: null, first_changed: null }]) });
+}
+
+/// Which of [rows] (each with its comment's id at [key]) are pins: each
+/// such row marked pinned, in place; [rows] as they were when that cannot
+/// be asked (before comment_pins.sql, or the database not answering).
+export async function pinnedAmong(rows, key = "comment") {
+  const ids = [...new Set((Array.isArray(rows) ? rows : []).map((row) => Number(row?.[key]))
+    .filter((n) => Number.isInteger(n) && n > 0))];
+  if (!ids.length) return rows;
+  let pins = [];
+  try {
+    pins = await call("comment_pins_of", { comment_ids: ids.slice(0, 1000) }, () => []);
+  } catch (problem) {
+    console.error(`comments: pins of: ${String(problem?.message || problem).slice(0, 160)}`);
+  }
+  const pinned = new Set((Array.isArray(pins) ? pins : []).map((one) => Number(one?.comment)));
+  for (const row of rows) if (row && pinned.has(Number(row[key]))) row.pinned = true;
+  return rows;
 }
 
 export async function changeComment(request, response) {
@@ -456,26 +666,40 @@ function short(text, most) {
   return line.length > most ? `${line.slice(0, most - 1)}…` : line;
 }
 
-/// The email for a digest ({comments, more, feed, feed_more}): {subject,
-/// text, html}. Each comment's model, where it was said, by whom, its first
-/// words, and a link to it on the model's page; then each row of the feed
-/// of the kinds chosen (follows.sql), in the words the feed says it, with
-/// its link.
+/// The email for a digest ({comments, more, feed, feed_more, notices,
+/// notices_more}): {subject, text, html}. Each comment's model, where it was
+/// said, by whom, its first words, and a link to it on the model's page;
+/// then each row of the feed of the kinds chosen (follows.sql), in the
+/// words the feed says it, with its link; then each notification of the
+/// kinds chosen by email in Settings (notification_prefs.sql: a reply, a
+/// mention, likes, Talk, a challenge, a result, a level), in the words
+/// Notifications says it, with its link.
 export function renderCommentDigest(digest, origin) {
   const comments = Array.isArray(digest?.comments) ? digest.comments : [];
   const feed = (Array.isArray(digest?.feed) ? digest.feed : []).map((row) => feedSaid(row, origin));
+  const notices = (Array.isArray(digest?.notices) ? digest.notices : []).map((row) => {
+    const said = noticeSaid(row, origin);
+    return { kind: row.kind, line: String(said.line || "").replace("{who}", said.who || ""), said: said.said || "",
+      link: said.link, name: short(row.kind === "remix" ? row.of_name : row.name || row.title || "", 80) };
+  });
   const n = comments.length;
   const m = feed.length;
+  const k = notices.length;
   const more = Number(digest?.more) || 0;
   const feedMore = Number(digest?.feed_more) || 0;
-  const things = (k) => (k === 1 ? "something new" : `${k} new things`);
-  const subject = m === 0
-    ? (n === 1 ? "Brickworks: a comment on your model" : `Brickworks: ${n} comments on your models`)
-    : n === 0 ? `Brickworks: ${things(m)} in your feed`
-      : `Brickworks: ${count(n, "comment")} on your models, and ${things(m)} in your feed`;
+  const noticesMore = Number(digest?.notices_more) || 0;
+  const things = (j) => (j === 1 ? "something new" : `${j} new things`);
+  const before = n === 0 && m === 0 ? ""
+    : m === 0 ? (n === 1 ? "Brickworks: a comment on your model" : `Brickworks: ${n} comments on your models`)
+      : n === 0 ? `Brickworks: ${things(m)} in your feed`
+        : `Brickworks: ${count(n, "comment")} on your models, and ${things(m)} in your feed`;
+  const subject = k === 0 ? before
+    : before ? `${before}, and ${k === 1 ? "one more thing" : `${k} more things`} for you`
+      : `Brickworks: ${k === 1 ? "something new" : `${k} new things`} for you`;
   const items = comments.map((one) => ({
     name: short(one.name || "your model", 80),
-    where: one.step ? `step ${one.step} of version ${one.version}` : `version ${one.version}`,
+    where: one.pinned ? (one.step ? `a part, step ${one.step} of version ${one.version}` : `a part of version ${one.version}`)
+      : one.step ? `step ${one.step} of version ${one.version}` : `version ${one.version}`,
     by: one.by ? short(one.by, 40) : "a builder",
     body: short(one.body, 280),
     link: `${origin}/m/${one.model}#comment-${one.id}`,
@@ -484,7 +708,10 @@ export function renderCommentDigest(digest, origin) {
   const behind = more ? `${more} more wait for tomorrow's email.` : "";
   const feedHead = m === 0 ? "" : "In your feed since the last email:";
   const feedBehind = feedMore ? `${feedMore} more are in your feed: ${origin}/feed` : "";
-  const off = `You asked for these at ${origin}/profile, at most one a day. Turn them off there.`;
+  const noticesHead = k === 0 ? "" : "For you since the last email:";
+  const noticesBehind = noticesMore ? `${noticesMore} more are in your notifications: ${origin}/notifications` : "";
+  const off = `You asked for these at ${origin}/settings#email-part, at most one a day. Turn them off there.`;
+  const told = (one) => `${one.name ? `“${one.name}”: ` : ""}${one.line}${one.said ? `: “${one.said}”` : ""}`;
   const line = (row) => `${row.who} ${row.did} “${row.name}”${row.said ? `: “${row.said}”` : ""}`;
   const text = [...(since ? [since, ""] : []),
     ...items.flatMap((item, at) => [`${at + 1}. “${item.name}”, on ${item.where}, by ${item.by}:`,
@@ -492,7 +719,10 @@ export function renderCommentDigest(digest, origin) {
     ...(behind ? [behind, ""] : []),
     ...(feedHead ? [feedHead, ""] : []),
     ...feed.flatMap((row) => [`- ${line(row)}`, `  ${row.link}`, ""]),
-    ...(feedBehind ? [feedBehind, ""] : []), off].join("\n");
+    ...(feedBehind ? [feedBehind, ""] : []),
+    ...(noticesHead ? [noticesHead, ""] : []),
+    ...notices.flatMap((one) => [`- ${told(one)}`, `  ${one.link}`, ""]),
+    ...(noticesBehind ? [noticesBehind, ""] : []), off].join("\n");
   const html = `<!doctype html>
 <div style="font:15px/1.55 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;color:#14181d;max-width:560px;margin:0 auto;padding:24px 20px">
   <p style="margin:0 0 16px;font-size:14px;color:#5b6472">Brickworks</p>
@@ -510,6 +740,13 @@ export function renderCommentDigest(digest, origin) {
     <p style="margin:0"><a href="${escape(row.link)}">See it</a></p>
   </div>`).join("\n  ")}
   ${feedBehind ? `<p style="margin:0 0 12px">${escape(feedBehind)}</p>` : ""}
+  ${noticesHead ? `<p style="margin:8px 0 12px"><b>${escape(noticesHead)}</b></p>` : ""}
+  ${notices.map((one) => `<div style="margin:0 0 12px;padding:10px 14px;border:1px solid #d9dee5;border-radius:8px" data-kind="${escape(one.kind)}">
+    <p style="margin:0 0 4px">${one.name ? `<b>${escape(one.name)}</b>: ` : ""}${escape(one.line)}</p>
+    ${one.said ? `<p style="margin:0 0 6px">“${escape(one.said)}”</p>` : ""}
+    <p style="margin:0"><a href="${escape(one.link)}">See it</a></p>
+  </div>`).join("\n  ")}
+  ${noticesBehind ? `<p style="margin:0 0 12px">${escape(noticesBehind)}</p>` : ""}
   <p style="margin:0;color:#97a0ae;font-size:13px">${escape(off)}</p>
 </div>`;
   return { subject, text, html };
@@ -527,13 +764,15 @@ export function renderCommentDigest(digest, origin) {
 async function digestShown(digest) {
   const comments = Array.isArray(digest?.comments) ? digest.comments : [];
   const feed = Array.isArray(digest?.feed) ? digest.feed : [];
+  const notices = Array.isArray(digest?.notices) ? digest.notices : [];
   const owner = digest?.owner || null;
   const handles = owner ? await blockedHandles(owner) : new Set();
-  if (!handles.size) return { ...digest, comments, feed };
+  if (!handles.size) return { ...digest, comments, feed, notices };
   const models = [...new Set(comments.map((one) => String(one?.model || "")).filter(Boolean))];
   const hidden = new Set((await Promise.all(models.map((model) => hiddenComments(model, owner)))).flatMap((ids) => [...ids]));
-  const gone = await blockedModels(owner, feed.map((row) => row?.model));
-  return { ...digest, comments: comments.filter((one) => !hidden.has(Number(one?.id))), feed: rowsWithout(feed, handles, gone) };
+  const gone = await blockedModels(owner, [...feed, ...notices].map((row) => row?.model));
+  return { ...digest, comments: comments.filter((one) => !hidden.has(Number(one?.id))), feed: rowsWithout(feed, handles, gone),
+    notices: rowsWithout(notices, handles, gone) };
 }
 
 export async function sendCommentDigests({ origin, owner = null }) {
@@ -541,6 +780,8 @@ export async function sendCommentDigests({ origin, owner = null }) {
   const done = [];
   for (const claimed of Array.isArray(due) ? due : []) {
     const digest = await digestShown(claimed);
+    // A pin is said to be on a part.
+    await pinnedAmong(digest.comments, "id");
     const email = renderCommentDigest(digest, origin);
     const finish = (outcome) => db("rpc/finish_comment_digest", { method: "POST", body: {
       one: digest.digest, outcome, said_subject: email.subject, said_body: email.text, said_html: email.html } });
@@ -548,7 +789,7 @@ export async function sendCommentDigests({ origin, owner = null }) {
     // address is made up, at a domain that takes no mail. Recorded, never sent.
     // Or one whose every line came from somebody its owner blocked since.
     if (digest.test === true || /@(resend\.dev|oc\.brickworks\.diy)$/i.test(String(digest.email || ""))
-      || (!digest.comments.length && !digest.feed.length)) {
+      || (!digest.comments.length && !digest.feed.length && !digest.notices.length)) {
       await finish("dry");
       done.push({ id: digest.digest, owner: digest.owner, state: "dry" });
       continue;

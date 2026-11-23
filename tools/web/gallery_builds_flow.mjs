@@ -27,7 +27,7 @@
 //   - with nothing to show (the API's answer emptied in the browser): the
 //     empty tab says what a build is, I built it, and links to the gallery;
 //   - the gallery's tabs and the LDraw library's have Builds, before
-//     Collections.
+//     Lists.
 //   - each card loads its photo's copy (socialtails, 2026-11-06), not the
 //     whole kept photo: the photos are 1,600 x 1,200, their copies 480 x
 //     360, enough for a card at 1280 px 1x and on the phone at 2x (each
@@ -398,8 +398,8 @@ try {
     const html = await (await fetch(`${site}${at}`, { headers })).text();
     const tabs = (html.match(/<nav class="tabs"[\s\S]*?<\/nav>/) || [""])[0];
     const links = [...tabs.matchAll(/<a href="([^"]+)"/g)].map((one) => one[1]);
-    check(`${at}'s tabs have Builds before Collections (${links.join(" ")})`,
-      links.includes("/builds") && links.indexOf("/builds") === links.indexOf("/collections") - 1);
+    check(`${at}'s tabs have Builds before Lists (${links.join(" ")})`,
+      links.includes("/builds") && links.indexOf("/builds") === links.indexOf("/gallery-lists") - 1);
   }
 } catch (trouble) {
   check(`the flow ran to its end (${String(trouble.message || trouble).slice(0, 300)})`, false);

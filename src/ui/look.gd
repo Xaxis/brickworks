@@ -40,6 +40,23 @@ const OUTLINE := Color(0.83, 0.85, 0.89)
 const STRONG := Color(0.20, 0.42, 0.85)
 const STRONG_HOVER := Color(0.21, 0.44, 0.88)
 const STRONG_DOWN := Color(0.17, 0.36, 0.75)
+## What cannot be taken back (Clear it, Forget it all), as the site's
+## --bad: white words 5.0:1 on it, it 3.4:1 on the face, as STRONG is held.
+## The words a window closes with, one for each kind, as the platform's own
+## apps close theirs (GNOME's and Windows' windows and Studio's panels Close,
+## a finished edit Done, a bar's ×, a message OK): the Library said Done,
+## Render Close and the split view × for the same act (ux12's walk). A window
+## or panel you look at or work in, whose changes are made as you make them:
+## CLOSE. A mode left for the whole model (the timeline, Build it, editing
+## inside a sub-assembly, laying out a page): DONE. A strip or a small bar
+## over the model: × in its corner, "Close" its tooltip. A message with
+## nothing to choose: OK. A question: its answer's verb, and Cancel.
+const CLOSE := "Close"
+const DONE := "Done"
+
+const DANGER := Color(0.80, 0.22, 0.18)
+const DANGER_HOVER := Color(0.83, 0.24, 0.20)
+const DANGER_DOWN := Color(0.76, 0.20, 0.17)
 ## One of a choice that is chosen (a tab, a segment): the accent, at least
 ## 3:1 on the face; at 38% it was 2.0:1.
 const CHOSEN := Color(0.36, 0.6, 1.0, 0.65)
@@ -215,7 +232,28 @@ static func buttons() -> void:
 	for item: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
 			"font_hover_pressed_color"]:
 		theme.set_color(item, &"DefaultButton", Color(1, 1, 1))
+	# What cannot be taken back, in red as the site's danger buttons are
+	# (DESIGN_SYSTEM.md, .cta.danger in --bad): Clear it and Forget it all
+	# were the same blue as Save, the colour that says "this one" (ux12).
+	theme.set_type_variation(&"DangerButton", &"Button")
+	var reds: Dictionary = {"normal": DANGER, "hover": DANGER_HOVER, "pressed": DANGER_DOWN}
+	for state: String in reds:
+		var face := theme.get_stylebox(state, "Button").duplicate() as StyleBoxFlat
+		face.bg_color = reds[state]
+		face.set_border_width_all(0)
+		theme.set_stylebox(state, &"DangerButton", face)
+	for item: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
+			"font_hover_pressed_color"]:
+		theme.set_color(item, &"DangerButton", Color(1, 1, 1))
 	(Engine.get_main_loop() as SceneTree).node_added.connect(_default_marked)
+
+
+## [param button] drawn as what cannot be taken back ([constant DANGER]).
+## Set once the dialog it is in is in the tree: a question's OK is marked
+## its default as its Cancel comes in (_default_marked), which this follows.
+static func danger(button: Button) -> void:
+	if button != null:
+		button.theme_type_variation = &"DangerButton"
 
 
 ## A dialog's default button marked as such wherever it has a choice

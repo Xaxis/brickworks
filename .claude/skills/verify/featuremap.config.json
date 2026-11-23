@@ -1310,7 +1310,7 @@
       "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Hose, tube or chain…, click two pin holes or two gears; Make, Reshape the hose or chain)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Cable, hose or chain…, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building"
     },
     {
@@ -1471,7 +1471,7 @@
       "kind": "ui",
       "label": "landing page",
       "entry": "web/index.html",
-      "reach": "https://brickworks.diy/   (locally: node tools/web/landing_check.mjs --file=web/index.html)",
+      "reach": "https://brickworks.diy/   (the feed first (homefeed): signed out one line, the search and Start building over one stream of posts, the first within 600 px on a phone; signed in Share a build and the tabs For you, Following and New; locally: node tools/web/landing_check.mjs --file=web/index.html, or --url=<a site put together by tools/site.py and tools/web/home_shelf.mjs, served with its API>)",
       "area": "web"
     },
     {
@@ -1569,7 +1569,7 @@
       "kind": "ui",
       "label": "gallery page",
       "entry": "web/gallery.html",
-      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Collections and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
+      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Lists (/gallery-lists) and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web"
     },
     {
@@ -1667,7 +1667,7 @@
       "kind": "ui",
       "label": "profile and collection pages",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or lists (?tab=collections lands on lists), ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web"
     },
     {
@@ -2668,7 +2668,7 @@
       "kind": "lib",
       "label": "build with what I own",
       "entry": "api/_owned.js",
-      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool, a kept pool counted again by its rule); the SQL in tools/discovery_try.sql and tools/pool_rule_try.sql; the page in the discovery browser flow, signed in with a collection",
+      "reach": "node tools/web/owned_probe.mjs --sets=<checkout>/assets/generated/sets   (the sums alone: a file's needs, both sides spelled one way, a set's shard, a pool, a kept pool counted again by its rule); the SQL in tools/discovery_try.sql and tools/pool_rule_try.sql; the page in the discovery browser flow, signed in with a collection; what a model is missing of a collection: node tools/web/ownedparts_probe.mjs (real OMR files less real inventories), tools/owned_quantity_try.sql",
       "area": "web"
     },
     {
@@ -2976,7 +2976,7 @@
       "kind": "ui",
       "label": "model card",
       "entry": "web/card.js",
-      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3; the gallery's sets, builds' photos and collections are the same card (web/card.js cardHtml with a set, buildCardHtml, collectionCardHtml)",
+      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3; the gallery's sets, builds' photos and collections are the same card (web/card.js cardHtml with a set, buildCardHtml, collectionCardHtml); signed in with a collection, a card says You have N% from half its parts up, You have every part at all, nothing under half (ownedLine, ownedparts)",
       "area": "web"
     },
     {
@@ -3011,7 +3011,7 @@
       "kind": "ui",
       "label": "model page action bar",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the share sheet with its link, Post it to each network and the embed code, Comment, I built it, More: Report it; Like and Save sign in on the way)",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: the card's control, Saved and your lists in one panel (web/keep.js), Share: the share sheet with its link, Post it to each network and the embed code, Comment, I built it, More: Report it; Like and Save sign in on the way)",
       "area": "web"
     },
     {
@@ -3046,7 +3046,7 @@
       "kind": "ui",
       "label": "a model's parts and its download",
       "entry": "api/_parts.js",
-      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, LEGO® Pick a Brick CSV /m/<id>/parts-pab.csv (past 400 elements also parts-pab-2.csv and on; what it leaves off under the buttons), the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
+      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, LEGO® Pick a Brick CSV /m/<id>/parts-pab.csv (past 400 elements also parts-pab-2.csv and on; what it leaves off under the buttons), the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd; signed in: how much of it you have and All · Missing · Have all, Missing the lots short with BrickLink XML, Rebrickable CSV and Pick a Brick CSV of only those (api/share.js ?op=parts_missing, ownedparts: tools/web/ownedparts_flow.mjs))",
       "area": "web"
     },
     {
@@ -3529,7 +3529,7 @@
       "kind": "ui",
       "label": "collections directory",
       "entry": "web/collections.js",
-      "reach": "https://brickworks.diy/collections  (?sort=followed, ?q=, ?page=N, ?tests=1; the gallery's Collections tab, switched in place: web/collections.js reads /api/people?op=collections a page at a time, each card web/card.js collectionCardHtml; supabase/collection_directory.sql, its search supabase/collection_search.sql; web/collections.html written by tools/browse_pages.py; linked from the footer)",
+      "reach": "https://brickworks.diy/gallery-lists  (/collections, its forms and languages, a 301 here with its query: api/people.js op=moved; ?sort=followed, ?q=, ?page=N, ?tests=1; the gallery's Lists tab, switched in place: web/collections.js reads /api/people?op=collections a page at a time, each card web/card.js collectionCardHtml; supabase/collection_directory.sql, its search supabase/collection_search.sql; web/collections.html written by tools/browse_pages.py; linked from the footer)",
       "area": "web"
     },
     {
@@ -3893,7 +3893,7 @@
       "kind": "ui",
       "label": "every set's page",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Built from this set, the gallery's models counted or said to be built from it (web/set-page.js, ?op=set_based; Build something from it when none); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs; signed in, You own − n + in Parts you own (1-99, 0 takes it out, web/keep.js ownCount) and In N lists (?op=set_based lists, supabase/owned_quantity.sql set_lists), ownedparts)",
       "area": "web"
     },
     {
@@ -3949,7 +3949,7 @@
       "kind": "ui",
       "label": "a list's pages",
       "entry": "web/pager.js",
-      "reach": "every list's foot: /gallery, /library, /u/<handle> (Models, Likes), /c/<id>, /collections, /challenge (each group); Show more, the count, the numbered links, ?page=N with Show earlier; all at once on /_kit",
+      "reach": "every list's foot: /gallery, /library, /u/<handle> (Models, Likes), /c/<id>, /gallery-lists, /challenge (each group); Show more, the count, the numbered links, ?page=N with Show earlier; all at once on /_kit",
       "area": "web"
     },
     {
@@ -4096,7 +4096,7 @@
       "kind": "lib",
       "label": "what a model is based on",
       "entry": "api/_bases.js",
-      "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Based on this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
+      "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Built from this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
       "area": "web"
     },
     {
@@ -4285,7 +4285,7 @@
       "kind": "ui",
       "label": "bands and springs by hand",
       "entry": "src/assembly/bands.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain…, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Cable, hose or chain…, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
       "area": "building"
     },
     {
@@ -4516,7 +4516,7 @@
       "kind": "cli",
       "label": "browse pages",
       "entry": "tools/browse_pages.py",
-      "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/collections.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
+      "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/gallery-lists.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
       "area": "web"
     },
     {
@@ -5622,14 +5622,14 @@
       "kind": "ui",
       "label": "own want and save",
       "entry": "web/keep.js",
-      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
+      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron), /m/<id> (the model page's Save beside Like: the card's control, one panel, since lists2a): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "your lists page",
       "entry": "web/lists.html",
-      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share, Edit, Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
+      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share (a private list asks: Anyone with the link, chosen, or Public), Stop sharing (a link-only list: its link a 404 from the next request), Edit (Who sees it: Only you, Anyone with the link, Public), Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers; See what it adds first: to add, already there, not found, nothing written until Add), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
       "area": "web"
     },
     {
@@ -6273,14 +6273,14 @@
       "kind": "ui",
       "label": "this month's challenge on the home page",
       "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#now under the app's picture: #challenge with its days left, or its round, and #pick, This week's pick, both from GET /api/share?op=shelves, asked at once)",
+      "reach": "https://brickworks.diy/   (#challenge, a post of the feed, third at the latest: its name, brief, days and up to four entries written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves; This week's pick is the feed's first post, marked Week's pick)",
       "area": "web"
     },
     {
       "kind": "cli",
       "label": "challenge home check",
       "entry": "tools/web/challengehome_check.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge and pick within two screens at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge third in the feed at the latest and the pick its first post at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
       "area": "web"
     },
     {
@@ -6371,7 +6371,7 @@
       "kind": "cli",
       "label": "homescreen browser flow",
       "entry": "tools/web/homescreen_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--headed under xvfb-run]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR [--parts=fresh,install,offline,requests,offer,time,push,look] [--device=headless|window|firefox]   (or a local relay_server.mjs with VAPID_PRIVATE_KEY in its env; push knocks as the throwaway who is due; her device is the first of headless Chromium, Chromium in its own Xvfb and Firefox that reaches a push service: Firefox, on Playwright's builds)",
       "area": "web"
     },
     {
@@ -6412,8 +6412,8 @@
     {
       "kind": "ui",
       "label": "the latest in talk on the home page",
-      "entry": "web/talk-strip.js",
-      "reach": "https://brickworks.diy/ (#talk-latest, filled from GET /api/people?op=talk_latest&n=4&html=1)",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/ (Talk's newest threads as posts of the feed, each with its latest reply, from GET /api/people?op=talk_latest&n=6&reply=1&talking=24; none before talk.sql)",
       "area": "web"
     },
     {
@@ -6492,6 +6492,440 @@
       "entry": "tools/web/page_lcp_pairs.mjs",
       "reach": "node tools/web/page_lcp_pairs.mjs --base=<a tree with the base's web/ and api/> --rounds=8 --out=DIR   (the stand-in's pages in both at the same moments, a browser each; worse only past the noise)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "comments pinned to parts",
+      "entry": "supabase/comment_pins.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/comment_pins.sql --dry --try=tools/comment_pins_try.sql --table=model_comments   (after replies.sql; api/_comments.js addPin / resolvePin / pinnedAmong, web/card.js pinPlace; the rule on 100 version pairs and the promises in tests/test_partpins.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "comment on a part in 3D",
+      "entry": "tools/viewer/inline.js",
+      "reach": "https://brickworks.diy/m/<id>: View in 3D, then a right click, a long press or Shift+F10 on a part, Comment on this part; the comment's line turns the view to it (web/model-page.js, web/start3d.js, tools/viewer/view.js dots); in the app's viewer /app?view=<id> the same (src/ui/part_pins.gd)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "comments on parts in the studio",
+      "entry": "src/ui/part_pins_panel.gd",
+      "reach": "godot --path .  (open a model you published: the notice N comments on parts of this model, Show; each pin lights and frames its part, Resolve)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partpins probe",
+      "entry": "src/dev/partpins_probe.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/partpins_probe.gd -- --pictures=DIR",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "partpins browser flow",
+      "entry": "tools/web/partpins_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 11400 --static=web --hold=pins, then node --env-file=.env tools/web/partpins_flow.mjs --url=http://127.0.0.1:11400 --out=DIR   (preview_checks.sh partpins: the pick at 1280 and 390, pins on the page, a new version, Resolve, a block)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "pin version pairs",
+      "entry": "tools/pin_pairs.mjs",
+      "reach": "node tools/pin_pairs.mjs [--check]   (writes tests/fixtures/pins/pairs.json)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a kit to post a model elsewhere",
+      "entry": "web/post-kit.js",
+      "reach": "https://brickworks.diy/m/<id>   (signed in as its designer, Share, Post it elsewhere: r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable, Flickr; each kit made in the browser from what the page published (its picture, the 3D view's scene, its parts list), checked against its place's rules (web/post-rules.js, each rule with its page), every caption with the model's link; Share the files on a phone with Web Share, Save the kit (.zip, under 50 MB) elsewhere; Open <place>; Brickworks posts nothing; counted as share.kit_<place>)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "postkit browser flow",
+      "entry": "tools/web/postkit_flow.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/postkit_flow.mjs --out=DIR   (on the design stand-in, nothing leaves the box: LDraw's 10183-1 (558 pieces) as Sam's Harbour Tram; Post it elsewhere hidden signed out and on somebody else's model, its code never loaded; each of the six kits made in 20 s or less at 1280 and 60 s or less at 390 (touch), its rules kept but Instagram's MP4 where Chromium records WebM, its zip under 50 MB read back by zipfile, every caption with the link; the kits ask only for the scene and geometry its View in 3D loads, once, nothing after the first; Ideas' main picture drawn with no text; Tab, Enter, the heading focused, Escape back to the button; pictures and timings.json in DIR. tests/test_post_kit.py holds each rule to its page)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "show your build",
+      "entry": "src/ui/make_card.gd",
+      "reach": "https://brickworks.diy/m/<id>, Build it, Next to the last step (or the viewer's timeline stepped onto its end, or Finish): a card under the top bar says how many have built it (the finish's own answer) with Show your build (Add a photo of your build on the designer's own model); the camera on a touch screen, a file elsewhere (PickImage, undecoded), the photo read on a worker and shown upright from its Exif, a line about it (140 characters at most, refused in words past it), Post: ?op=photo_start, the bytes PUT to the signed URL, ?op=photo (api/_builds.js, made safe server-side), then \"Posted: on the model's page\" with its link; signed out, Post asks for the sign-in in place (SignInGate with a purpose, Not now) and the photo and words stay on the card (sessionStorage on the web, for orangecheck's round trip); under 13 and may_act's limit said in the server's words, nothing sent; tools/probe.sh makes_probe; tools/web/makes_flow.mjs",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "makes probe",
+      "entry": "src/dev/makes_probe.gd",
+      "reach": "tools/probe.sh makes_probe; PROBE_SIZE=390x844 tools/probe.sh makes_probe   (windowed, FakeShared for the API: the card only on the last step, under the top bar with the model framed below it, 44-point targets; a JPEG with Exif orientation 6 chosen in the app's own dialog, shown upright, read on a worker (longest frame printed), sent byte for byte through photo_start, the signed URL and ?op=photo with its words, posted in 2 presses; signed out 10 of 10 back on the last step with the photo and words, Not now; under 13, may_act's limit, a non-picture and 141 characters refused in words, nothing sent; the designer's Add a photo of your build; 20 more finishes send nothing; Close at the end hands the card to the viewer, the timeline off its end puts it away; pictures in shots/makes/<WxH>/)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "makes browser flow",
+      "entry": "tools/web/makes_flow.mjs",
+      "reach": "node --env-file=.env tools/web/makes_flow.mjs --url=http://127.0.0.1:11350 --out=DIR   (against relay_server.mjs --static=build/web --hold=model_builds,build_photos,report_photos --trust-stand-in; a throwaway designer and builder: at 390 touch and 1280, the last step's Show your build, the page's file chooser, a JPEG with GPS and orientation, Post in 3 taps; served back with no Exif, upright, its card copy at most 480 wide; first in the model page's Builds strip and on the designer's notifications within 60 s; 20 more finishes counted once; a non-picture refused; signed out at 390 the sign-in in place, the page reloaded with the photo kept, a code typed, Post; accounts deleted)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "alternate builds counted",
+      "entry": "api/_alts.js",
+      "reach": "python3 tools/minitest.py tests/test_alts.py; node tools/web/altbuilds_probe.mjs DIR --library=<library build>/library/index.json   (every LDraw library model counted against every set from this checkout's shards: 20 pairs for tools/probe.sh altbuilds_probe --pairs=DIR/pairs.json to hold to the app's Collection check part for part, 50 called alternates for python3 tools/altbuilds_check.py DIR/precision.json, the Library's other models of a set found, the count's time); supabase/alt_builds.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/alt_builds.sql --dry --try=tools/alt_builds_try.sql --table=model_alt_sets, then node --env-file=.env tools/web/alt_sql_compare.mjs <its log> (the gallery's lists as live)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "altbuilds probe",
+      "entry": "src/dev/altbuilds_probe.gd",
+      "reach": "tools/probe.sh altbuilds_probe --pairs=<altbuilds_probe.mjs DIR>/pairs.json   (headless: each pair's model read as the app opens it, the set in a collection of its own, Collection.coverage and allocate the site's have and pieces, part and colour by part and colour)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "alternate builds backfill",
+      "entry": "tools/web/alt_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/alt_backfill.mjs [--dry] [--out=FILE]   (after supabase/alt_builds.sql: every published model with needs and no count by this rule, counted and kept; --dry counts and keeps nothing; the Library's own models say own or another model of their set by its index)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "alternate builds index",
+      "entry": "tools/web/alt_index.mjs",
+      "reach": "node tools/web/alt_index.mjs OUT.bin --facts=<package>/_part_facts.json   (tools/package_api.sh writes api/_alt_index.bin beside share's function: every set's lots by part and colour, packed, read back and checked; about 9 MB)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "altbuilds set page paint",
+      "entry": "tools/web/altbuilds_lcp.mjs",
+      "reach": "node tools/web/altbuilds_lcp.mjs --a=<relay of the tree before> --b=<relay of this one> --out=DIR   (a set's page from both at the same moment, 390 and 1280 px, 8 rounds each: LCP and when Built from this set was there)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build",
+      "entry": "supabase/challenge_prompts.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_prompts.sql --dry --try=tools/challenge_prompts_try.sql --table=challenges   (after challenges.sql, challenge_year.sql, challenge_rounds.sql, challenge_list_order.sql, talk.sql and achievements.sql; the month's answers' md5s equal the live ones; then the prompts browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build's house work",
+      "entry": "api/_prompts.js",
+      "reach": "GET /api/share/prompts with the cron's key (hourly at :41; ?tests=1 a flow's): each template published as the house, the house's two entries of its own prompts, an ended week's stack; written down in the console's Site as the job prompts",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build's stack",
+      "entry": "api/_prompts.js",
+      "reach": "node tools/prompts_check.mjs OUT   (the house's eight entries stacked: each its own 0 FILE credited to its maker, the parts their sum, each foot on the studs below; OUT/stack.png and stack.mpd)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the weekly quick build's page",
+      "entry": "web/challenge.js",
+      "reach": "<deployment>/challenge?id=<a prompt's id>   (Start to /app?copy=<template>, its entries newest first turning in 3D on a tap, the stack once it ended; the hub's This week's quick build; GET /api/people?op=challenge&id=N answers {prompt})",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the weekly quick build on the home page",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#challenge-week, a line under the month's challenge: This week's quick build: <title>, from GET /api/share?op=shelves prompt_now)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a quick build's notice",
+      "entry": "web/notice-view.js",
+      "reach": "<deployment>/notifications   (a weekly quick build's group, Quick build: <title>, with Start to /app?copy=<template>; api/_notifications.js)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "setting the weekly quick build",
+      "entry": "web/admin-challenges.js",
+      "reach": "<deployment>/admin#gallery/challenges as MASTER_EMAIL: Kind, Weekly quick build: a title, a brief, its days and a template link or the house's plate; listed under the month's with End it now (POST /api/admin?op=challenge {kind: prompt})",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "the quick build in the studio",
+      "entry": "src/main.gd",
+      "reach": "/app?copy=<a template's id>: This week's quick build said above the model with Got it (GET /api/people?op=prompt_of); Share's Enters this week's quick build, ticked, one tap to keep it out (src/ui/share_panel.gd)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt probe",
+      "entry": "src/dev/prompt_probe.gd",
+      "reach": "tools/probe.sh prompt_probe   (the brief above the model at 1280 and on a phone, the publish dialog's box, prompt_out sent only when unticked)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "the month's challenge in the studio",
+      "entry": "src/ui/challenge_line.gd",
+      "reach": "godot --path .  while a challenge is open (GET /api/people?op=challenge_rules, each hour and with the sign-in): one line with the model's notices, its name and days left; pressed, its rules ticked on the model (src/net/challenge_rules.gd, api/share.js checkModel ported), each failed one saying what to change; Test it; x hides it for that challenge (user://challenge_line.cfg)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "Enter from Share",
+      "entry": "src/ui/share_panel.gd",
+      "reach": "File > Share while the month's rules pass on the model: Enter <title> under Publish with its way (Built by hand, Built with the assistant); one press lists it with the name, publishes and POSTs /api/people?op=enter; a failing rule says what to change, Publish stays one press",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge line probe",
+      "entry": "src/dev/challenge_line_probe.gd",
+      "reach": "PROBE_SIZE=WxH tools/probe.sh challenge_line_probe   (390x844 430x932 768x1024 1280x800 1920x1080: the line never over the model, named for a screen reader, its rules ticked live, Hide, Enter in one press)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge rules probe",
+      "entry": "src/dev/challenge_rules_probe.gd",
+      "reach": "tools/probe.sh challenge_rules_probe --fixtures=DIR   (the port against challenge_check on the same 30 stored files x 3 rules, 90 of 90; writes DIR/studio, the texts and findings the studio would publish, for challenge_rules_check --studio)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge rules check",
+      "entry": "tools/challenge_rules_check.mjs",
+      "reach": "node tools/challenge_rules_check.mjs --out=DIR   (the site's challenge_check on 30 published models under 3 test challenges, in a rolled-back transaction: the rules probe's fixtures); --studio=DIR/studio after the probe: the studio's texts and findings published in a rolled-back transaction, its 90 ticks against challenge_check's answers to them",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the fan vote two at a time",
+      "entry": "web/challenge.js",
+      "reach": "https://brickworks.diy/challenge?pair=hand (or =assistant), or Compare them two at a time, in 3D over the cards while votes are cast: two entries side by side (stacked on a phone), each its blind embed /m/<id>/embed?blind=1&autoplay=1 turning; This one keeps one and brings the next; then Vote for it",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge pair check",
+      "entry": "tools/web/challenge_pair_check.mjs",
+      "reach": "node tools/web/challenge_pair_check.mjs --url=<a local relay> --out=DIR   (the pair at 1280 and 390, no maker's name or count in the page or its frames, a vote cast, LCP beside the cards' at the same moments)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompts check",
+      "entry": "tools/prompts_check.mjs",
+      "reach": "node tools/prompts_check.mjs [OUT]   (no network: the house's templates and entries checked part by part, and their stack)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt pictures",
+      "entry": "tools/prompt_pictures.mjs",
+      "reach": "node tools/prompt_pictures.mjs OUT   (the docs world's template and Habitat entries, as the run draws them)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompts browser flow",
+      "entry": "tools/web/prompts_flow.mjs",
+      "reach": "node --env-file=.env tools/web/prompts_flow.mjs --url=<relay or preview> --out=DIR   (MASTER_EMAIL, CRON_SECRET; after challenge_prompts.sql is applied, else exit 2)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt start pair",
+      "entry": "tools/web/prompt_start_pair.mjs",
+      "reach": "node --env-file=.env tools/web/prompt_start_pair.mjs --url=<relay_server --static=build/web> --out=DIR [--rounds=6]   (Start on a quick build against a plain copy link, the same build at the same moments, at 390 and 1280: within + 2 s)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "work in progress kept and ranked",
+      "entry": "supabase/wip.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/wip.sql --dry --try=tools/wip_try.sql --table=share_versions   (not applied yet; the lead applies it; tools/sql_compare.mjs for the gallery's queries; python3 tools/minitest.py tests/test_wip.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "work in progress shared by version",
+      "entry": "api/_wip.js",
+      "reach": "the studio: File › Share… then Share progress (src/ui/share_panel.gd); POST /api/share {wip: true} and ?op=finish {id}; a follower's /feed, the model's Show and tell thread in /talk   (godot --headless --path . --script src/dev/wip_probe.gd; tools/web/wip_flow.mjs once wip.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a model's log",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>#versions (the Log tab; /m/<id>/v/<n> each version, /m/<id>/v/<n>.webp its picture; Mark it finished for its owner while it is work in progress)   (tools/web/log_lcp.mjs --base=DIR)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wip probe",
+      "entry": "src/dev/wip_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/wip_probe.gd   (tools/probe.sh wip_probe; the panel's picture: tools/docs_shots.py --only=sharing-progress)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wip browser flow",
+      "entry": "tools/web/wip_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/flow.env tools/web/wip_flow.mjs --url=http://127.0.0.1:11440 --out=DIR over relay_server.mjs 11440 --static=build/web, once supabase/wip.sql is applied (before, NOT RUN, exit 2); on a preview BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the log's largest paint",
+      "entry": "tools/web/log_lcp.mjs",
+      "reach": "node tools/web/log_lcp.mjs --base=DIR [--rounds=8] --out=DIR   (DIR: git archive of the tree before, its node_modules and assets linked in)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "sharelink probe",
+      "entry": "src/dev/sharelink_probe.gd",
+      "reach": "tools/probe.sh sharelink_probe   (headless: /app?share opens the share panel for the model on the baseplate once signed in, kept while signed out, once; never toggled shut)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the home page's feed",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/   (#stream: builds, Talk threads with their latest reply, the month's challenge with its entries, Try it here, builders to follow, photos of builds, each a post (web/home-feed.js postHtml), the first six in the page as served (tools/web/home_shelf.mjs), the rest after with nothing moving; on each build Like, Add a comment, Follow (asking a visitor to sign in on the spot), Share, 3D, Open in the studio, Remix, Build it, Parts; node tools/web/homefeed_check.mjs --url=... [--signed-in] [--try-start], node tools/web/landing_check.mjs --url=...)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the home page's search",
+      "entry": "web/home-find.js",
+      "reach": "https://brickworks.diy/   (#find-q: type 2 letters for models, builders and sets from GET /api/share?op=list&q= and op=library&q=, then the gallery's and the sets' own search; arrows, Enter, Escape; \"/\" puts the cursor in it; node tools/web/landing_check.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "home shelf at deploy",
+      "entry": "tools/web/home_shelf.mjs",
+      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: the feed's first six posts written into OUT/index.html and each language's copy, their pictures copied to OUT/img/home/; web/_home.json when an answer cannot be read; python3 tools/minitest.py tests/test_home_shelf.py)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "homefeed check",
+      "entry": "tools/web/homefeed_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/homefeed_check.mjs --url=<preview or a site served here> --out=DIR [--signed-in] [--try-start]   (the feed's posts as served, Like/comment/Follow asking to sign in on the spot, 3D, Try it here; --signed-in throwaways Ann and Bea: the tabs, a like, a comment, a follow, a visitor signing in from a like; --try-start the studio in the post on the engine without threads, on a deployment with homefeed's deploy.sh)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "where hands leave their marks",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal9, docs/RENDERING.md 5m: at Best in the Product look, path traced, the handled wear gathered where hands and stacking touch a part (RenderSettings.rubbed, path_tracer.glsl gathered_wear: the body's edges, each stud's rim and wall, dust at each stud's foot; 0 unless asked, StudioRender.PRODUCT_RUBBED), drawn by the shader's marks version (#[versions], PathTracer.marked, _make_marked) so a picture without it is the plain version's, byte for byte photoreal8's (--without=rubbed); the bench's 6660 driver seated in its car base's open centre)",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "the stage matched to the photographs",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal10, docs/RENDERING.md 5n: at Best in the Product look, path traced on a backdrop, the stage matched to each photograph by measure: the table's own relief and colour (RenderSettings.table with surface 1 a desk, 2 a leather pad, 3 a stone counter; path_tracer.glsl table_height, table_normal, table_paper, the relief also in the denoiser's guide), the light falling off across it from a lamp that stands near (table_light, the model's radii, toward the staged key; table_falloff) and the shade tinted towards daylight's fill by as much of the light as the model keeps from it (fill; shadow_marked); each 0 unless asked (StudioRender.PRODUCT_TABLE, _TABLE_LIGHT, _FILL), drawn by the shader's marks version so a picture without them is the plain version's, byte for byte photoreal9's (--shots= photoreal9's shots file); the bench's shots keep the tables on black_2x4, grey_1x3 and green_plate_macro)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "open in brickworks for a stranger",
+      "entry": "src/net/asked_copy.gd",
+      "reach": "https://brickworks.diy/m/<id> signed out: Open in Brickworks (/app?copy=<id>): that model on the baseplate behind the sign-in screen (Sign in to make it yours), never the example car; signed in by the code, by orangecheck through /profile?then=/app?copy=<id>, or in another tab, its copy saved in your models under its name, credited, framed; a reload or a second tab on the same link opens that copy, never a second",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a copy's first acts",
+      "entry": "src/ui/first_acts.gd",
+      "reach": "a copy just made by Open in Brickworks: Recolour a part (the Paint tool), Add a part (the parts, search ready) and Build it (the timeline from step 1) along the top of the model, once a person on a device; gone at the first edit, Escape or ×",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "firstminute browser flow",
+      "entry": "tools/web/firstminute_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; BW_BYPASS=$VERCEL_BYPASS node tools/web/firstminute_flow.mjs --url=<preview> --out=DIR [--ways=code,returning,reload,profile,tab2] [--sizes=1280,390] [--before]   (a stranger from a gallery model's Open in Brickworks to a saved change, timed, pictures and results.json; or --url=http://127.0.0.1:PORT on relay_server.mjs --static=<export>)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "firstminute probe",
+      "entry": "src/dev/firstminute_probe.gd",
+      "reach": "tools/probe.sh firstminute_probe   (windowed: the asked-for model behind the sign-in screen, its copy saved once signed in, the three acts and what each does, put away by an edit and Escape, no second copy, a reload mid sign-in; pictures in shots/firstminute/)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the loading page",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app while the app loads (#boot): the mark beside the wordmark; the wall in CSS 3D (#wall, bootWall), its bricks dropping in as the engine's files come (#laid of #total), turning slowly; a tip under it every 5 s (#tip, bootTips, window.brickworksTips): a computer's keys or a touch screen's gestures, en/de/fr/es, waiting under the pointer, the next visit at the next (localStorage brickworks.tip); dark or light by the system or the site's kept brickworks.theme; reduced motion still. heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>]",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "loading page browser flow",
+      "entry": "tools/web/bootlook_flow.mjs",
+      "reach": "heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>] [--port=11651] [--only=pictures|checks]   (pictures at 1280x800 and 390x844 touch, dark and light, early/mid/late in a 2.5 Mbps load; layout shifts 0; every tip in en/de/fr/es on a computer and a phone on page.clock: fits, new, in the language, heard once; hover waits; the next visit's first; reduced motion; the theme kept; the app up behind it; no new address against --base). A build to flow: python3 tools/web/shell_arm.py BASE OUT, an export's engine and packs behind this checkout's page",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "what you hear of and where",
+      "entry": "supabase/notification_prefs.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/notification_prefs.sql --dry --try=tools/notification_prefs_try.sql --table=notification_prefs   (and --try=tools/notification_prefs_matrix_try.sql: each of the 11 kinds on and off on each channel; tests/test_inbox.py; then the inbox browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what you hear of in settings",
+      "entry": "web/settings.js",
+      "reach": "https://brickworks.diy/settings#kinds-part signed in: a row a kind (11), a box each for Here, Push and Email (44 px), Muted models with Unmute (#muted-part); before supabase/notification_prefs.sql every box but email's not to be ticked, said so",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "mute a model's notifications",
+      "entry": "web/notifications.js",
+      "reach": "https://brickworks.diy/notifications signed in: a model's group, More › Mute this model (Undo in the toast); or the model's page, More › Mute notifications (web/model-page.js muteItem); unmute in Settings › Muted models",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "notifications done",
+      "entry": "web/notifications.html",
+      "reach": "https://brickworks.diy/notifications signed in: each group's Done (check icon) and Mark all done, Undo in the toast; Inbox and Done (?view=done)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the account menu's newest five",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar's menu, as it opens, shows /notifications' first five (op=notifications&most=5, marks nothing seen) with their pictures, each opening its place; at 390 px under Menu",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "inbox browser flow",
+      "entry": "tools/web/inbox_flow.mjs",
+      "reach": "node --env-file=.env tools/web/inbox_flow.mjs --url=<relay or preview> --out=DIR   (BW_BYPASS=$VERCEL_BYPASS for a preview; checks before and after supabase/notification_prefs.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wirekeep probe",
+      "entry": "src/dev/wirekeep_probe.gd",
+      "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
+      "area": "model-io"
     }
   ]
 }

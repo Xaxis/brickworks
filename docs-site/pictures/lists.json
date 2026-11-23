@@ -1,0 +1,418 @@
+{
+ "shots": [
+  {
+   "id": "lists-save",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "wait": "[data-keep=\"model:DocsSprt01\"] [data-keep-more]"
+    },
+    {
+     "click": "[data-keep=\"model:DocsSprt01\"] [data-keep-more]"
+    },
+    {
+     "wait": "dialog.keep-panel[open]"
+    }
+   ],
+   "crop": "dialog.keep-panel",
+   "pad": 12,
+   "alt": "A model's page, signed in, with Save pressed and its chevron's panel open: the model's name, Saved ticked, Your lists with a box for each marked only you, by its link or public, New list… and Manage your lists.",
+   "caption": "Save and your lists, on a model's page.",
+   "features": [
+    "ui:shared model page and card",
+    "ui:own want and save"
+   ]
+  },
+  {
+   "id": "lists-save-phone",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "wait": "[data-keep=\"model:DocsSprt01\"] [data-keep-more]"
+    },
+    {
+     "click": "[data-keep=\"model:DocsSprt01\"] [data-keep-more]"
+    },
+    {
+     "wait": "dialog.keep-panel[open]"
+    }
+   ],
+   "crop": "viewport",
+   "pad": 0,
+   "alt": "Save's panel on a phone: a sheet from the foot of the screen with Saved and your lists.",
+   "caption": "The same panel on a phone.",
+   "features": [
+    "ui:shared model page and card",
+    "ui:own want and save"
+   ],
+   "phone": true
+  },
+  {
+   "id": "lists-share-link",
+   "source": "site",
+   "route": "/lists?list=DocsList05",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "wait": "#share:not([hidden])"
+    },
+    {
+     "click": "#share"
+    },
+    {
+     "wait": "dialog[open] fieldset"
+    }
+   ],
+   "crop": "dialog[open]",
+   "pad": 12,
+   "alt": "Share on a list only you see: Share Weekend builds asks who may open it once you send its link, with Anyone with the link chosen (not on your profile or in the gallery, and you can stop sharing at any time) and Public, then Share it and Cancel.",
+   "caption": "Sharing a list by its link.",
+   "features": [
+    "ui:your lists page"
+   ]
+  },
+  {
+   "id": "lists-share-link-phone",
+   "source": "site",
+   "route": "/lists?list=DocsList05",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "wait": "#share:not([hidden])"
+    },
+    {
+     "click": "#share"
+    },
+    {
+     "wait": "dialog[open] fieldset"
+    }
+   ],
+   "crop": "viewport",
+   "pad": 0,
+   "alt": "The same on a phone.",
+   "caption": "Sharing by a link, on a phone.",
+   "features": [
+    "ui:your lists page"
+   ],
+   "phone": true
+  },
+  {
+   "id": "lists-import-preview",
+   "source": "site",
+   "route": "/lists?list=DocsList02",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "wait": "#import:not([hidden])"
+    },
+    {
+     "click": "#import"
+    },
+    {
+     "wait": "dialog[open] textarea"
+    },
+    {
+     "fill": "dialog[open] textarea",
+     "text": "10497, 6080, 75192-1, 42115, 99999"
+    },
+    {
+     "click": "dialog[open] button[type=submit]"
+    },
+    {
+     "wait": "[data-import-count=\"matched\"]"
+    }
+   ],
+   "crop": "dialog[open]",
+   "pad": 12,
+   "alt": "Add sets showing what it adds: 3 to add, 1 already there, 1 not found with its number, and Add 3 sets, Back and Cancel.",
+   "caption": "What an import adds, before it adds it.",
+   "features": [
+    "ui:your lists page"
+   ]
+  },
+  {
+   "id": "lists-import-preview-phone",
+   "source": "site",
+   "route": "/lists?list=DocsList02",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "wait": "#import:not([hidden])"
+    },
+    {
+     "click": "#import"
+    },
+    {
+     "wait": "dialog[open] textarea"
+    },
+    {
+     "fill": "dialog[open] textarea",
+     "text": "10497, 6080, 75192-1, 42115, 99999"
+    },
+    {
+     "click": "dialog[open] button[type=submit]"
+    },
+    {
+     "wait": "[data-import-count=\"matched\"]"
+    }
+   ],
+   "crop": "viewport",
+   "pad": 0,
+   "alt": "The same on a phone.",
+   "caption": "An import's preview, on a phone.",
+   "features": [
+    "ui:your lists page"
+   ],
+   "phone": true
+  },
+  {
+   "id": "lists-directory",
+   "source": "site",
+   "route": "/gallery-lists",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "article.collection-card",
+   "alt": "The gallery's Lists tab: the search, the pills Recently added to and Most followed, and lists as cards, each with a cover of four model pictures, its name, its owner, how many models and followers, and Follow.",
+   "caption": "brickworks.diy/gallery-lists.",
+   "features": [
+    "ui:collections directory"
+   ]
+  },
+  {
+   "id": "lists-directory-phone",
+   "source": "site",
+   "route": "/gallery-lists",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "article.collection-card",
+   "alt": "The gallery's Lists tab on a phone.",
+   "caption": "The gallery's Lists, on a phone.",
+   "features": [
+    "ui:collections directory"
+   ],
+   "phone": true
+  },
+  {
+   "id": "set-own-count",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "wait": "[data-keep-count]:not([hidden])"
+    },
+    {
+     "scroll": "#owned"
+    }
+   ],
+   "crop": "#owned",
+   "pad": 12,
+   "alt": "Parts you own on a set's page, signed in: You own, with − and + round a box saying 2, copies of this set: its parts count as yours that many times; then Parts you own: all of them.",
+   "caption": "How many of a set you own, on its page.",
+   "features": [
+    "ui:every set's page"
+   ]
+  },
+  {
+   "id": "set-own-count-phone",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "wait": "[data-keep-count]:not([hidden])"
+    },
+    {
+     "scroll": "#owned"
+    }
+   ],
+   "crop": "#owned",
+   "pad": 8,
+   "alt": "You own − 2 + on a set's page on a phone, and Parts you own: all of them.",
+   "caption": "How many you own, on a phone.",
+   "features": [
+    "ui:every set's page"
+   ]
+  },
+  {
+   "id": "set-in-lists",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "wait": "#in-lists"
+    },
+    {
+     "scroll": "#in-lists"
+    }
+   ],
+   "crop": "#in-lists",
+   "pad": 12,
+   "alt": "In 3 lists on a set's page: People put it in 3 public lists, and the lists by name, each with whose it is.",
+   "caption": "The public lists a set is in.",
+   "features": [
+    "ui:every set's page"
+   ]
+  },
+  {
+   "id": "set-in-lists-phone",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "wait": "#in-lists"
+    },
+    {
+     "scroll": "#in-lists"
+    }
+   ],
+   "crop": "#in-lists",
+   "pad": 8,
+   "alt": "In 3 lists on a phone: the three public lists the set is in, as pills.",
+   "caption": "The lists a set is in, on a phone.",
+   "features": [
+    "ui:every set's page"
+   ]
+  }
+ ]
+}

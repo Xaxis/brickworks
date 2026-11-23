@@ -138,7 +138,7 @@ def test_it_is_a_tab_of_the_gallery_beside_top_new_and_collections() -> None:
         tabs = tabs[:tabs.index("</nav>")]
         links = re.findall(r'<a href="([^"]+)"', tabs)
         assert "/builds" in links, page
-        assert links.index("/builds") == links.index("/collections") - 1, page
+        assert links.index("/builds") == links.index("/gallery-lists") - 1, page
 
 
 def card(photo: dict) -> str:

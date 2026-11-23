@@ -29,7 +29,8 @@
 ## file saying them. They were the worked-out plan's alone, and the first
 ## edit lost every one. A model with steps of its own (7140-1 as its author
 ## stepped it) and one of no sub-models are given none: no mark, and no
-## line in the file, after an edit. And the castle (models/castle.ldr),
+## line in the file, after an edit. And the castle (models/castle.ldr, its
+## STEP lines taken out: since stepkeep2 they are its steps when it opens),
 ## whose sub-models built whole put 31 parts in the air (suitesteps): its
 ## towers and walls go up a course of each in turn, so each is kept built
 ## in the steps of the model that places it (AuthorSteps.IN_PARENT,
@@ -221,7 +222,10 @@ func _kept_shown() -> bool:
 ## gives back the worked-out sections.
 func _turned_down(name: String, path: String) -> void:
 	print("\n%s" % name)
-	await _open(FileAccess.get_file_as_string(path), name)
+	# With its STEP lines taken out: since stepkeep2 the steps an older build
+	# saved it in are its steps when it opens, sub-models built whole, and
+	# this is the castle as a model nobody gave steps, as it opened up to then.
+	await _open(_without_steps(FileAccess.get_file_as_string(path)), name)
 	var held_in: Dictionary = _by_path()
 	var steps: Array[Instructions.Step] = _plan()
 	var opened: Dictionary = await _tested(_store.to_text(name, true))

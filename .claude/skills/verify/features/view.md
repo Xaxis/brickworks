@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, lib:staged product photographs, lib:no two parts alike, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, lib:staged product photographs, lib:no two parts alike, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe, lib:where hands leave their marks, lib:the stage matched to the photographs -->
 
 ## Sub-features
 
@@ -1753,9 +1753,59 @@ picture the assistant is shown.
   `ModelStore.to_text` writes them, the autosave too, and the
   `0 !BRICKWORKS AUTHORED_STEPS` line under the model's header. A file
   Brickworks wrote with its own worked-out steps (`0 Author: Brickworks` and no
-  such line: every shipped model, every save before this) is not the author's,
-  and is worked out again (`LdrModel.steps_are_authored`), or a model saved
-  yesterday would put a new tower in its last step. `Instructions.plan(...,
+  such line: every shipped model, every save before this) is not the author's
+  (`LdrModel.steps_are_authored`). Up to stepkeep2 (2026-11-22) it was worked
+  out again at every open, and the castle saved and opened again had 2,363 of
+  its 2,496 parts in another step (fpjudge). Now its `0 STEP` lines are its
+  steps on opening it, read as an author's are and still no one's
+  (`LdrModel.steps_are_saved`, `steps_are_kept`; `BrickWorld.steps_own`): the
+  timeline opens in them, a share's pages show them (`SharedPages.pages_for`),
+  and a save writes them with no `AUTHORED_STEPS` line, so nothing is added to
+  the file. Worked out only for a file with no `0 STEP` line (an older build's
+  autosave) or when asked: **Plan steps** in the timeline's row and
+  edit_steps `plan` take every step off (`AuthorSteps.cleared`, one undo; not
+  on someone else's file). A step with a look of its own (name, notes, page,
+  zoom: `BookletLooks.own_count`) keeps it: the plan's numbers are given to
+  the model (`AuthorSteps.adopt_plan`, `steps_own` as it was, so a named
+  model stays the person's) and each look goes to
+  the step most of its parts went to (`BookletLooks.carried`); where two come
+  to share a step the press asks first, with the count (`Shell._ask_plan`),
+  and edit_steps says it after (sk2fix; sk2review F5). Every step edit and
+  step look waits while parts are in hand (`Shell._steps_wait`; sk2review
+  F2). After an edit of such a model
+  (`ModelStore.looks_follow_edit` -> `_steps_follow_saved`,
+  `AuthorSteps.follow_saved`, in the edit's undo): a part put down goes in
+  the step of what it rests on (its boxes one cell lower in the builder's
+  lattice; a copy built on the side by the step that puts it on), the latest
+  of several, or a new last step of its section, or past a full step of
+  parts put down since the open (`AuthorSteps._step_on`, the plan's
+  `_per_step`; sk2review F4); a part moved, by any means (a drag's put-down
+  is marked `"moved"` by `Builder._put_carried`; sk2review F1), keeps its
+  step unless all it rests on comes later; several followed from the bottom
+  up by what holds what (`AuthorSteps._bottom_up`; F3); a part taken off
+  leaves its step, an emptied step gone. **Check:** `tools/probe.sh
+  sk2review_probe` (headless; `SK2R_ONLY=drag,pair,stack,hand,looks`, the
+  review's repros: each FAIL is a finding back; drag, pair and redo move
+  the yard's bricks, `YARD`, and say how many were tried, since the
+  station's search found none, keepfix). A person's step edit makes them theirs
+  (`AuthorSteps.ensure`, undo `stepsown`): saved with `AUTHORED_STEPS`, as a
+  worked-out model's first step edit always has; so does a model put in with
+  its author's steps (`Builder._bring_steps`; ic3 clash, menu), and a
+  session's clear keeps the flag for its undo (`Main._clear_undone`;
+  copyfaults clear_lit). **Check:** `tools/probe.sh
+  stepkeep_probe` (headless; `SK_ONLY=castle`, `station`, `robot`, `10179`,
+  `edits`, `callouts`, `nosteps`, `time` or `shipped`: every model in
+  models/ and tools/web/gallery_seeds/ that opens in its saved steps puts no
+  part in the air but those only a flattening could hold, `SHIPPED_ALOFT`,
+  and saves unedited byte for byte). `tools/probe.sh restep_probe`
+  (headless, ~10 min; `RESTEP_OUT=DIR`, `RESTEP_FILES=res://a.ldr,...`)
+  moves a shipped model's part lines among its own section's STEP lines,
+  and a sub-model's placing line, until no move holds more: every other
+  line kept, the same FILE sections; what is left is held in its own file
+  only by parts in the air with it, and they by another sub-model's (the
+  sports car's 23). A part hidden behind what its section built before it
+  goes earlier, to the latest step where it is in sight and held (`_unhide`,
+  by halves; the castle's two floor plates, so it is Tested, keepfix). `Instructions.plan(...,
   authored=true)` groups by those steps (`_authored_plan`; on Timeline and a
   share, `plan_paced`, what holds what is read a slice at a time, as for a
   worked-out plan: in one go the Wizard's Tower's own steps held a frame for
@@ -3208,6 +3258,49 @@ picture the assistant is shown.
   ΔE2000 5; between two parts of one colour on the sets the render's
   CIEDE2000 stays no more than the photographs' (6657's reds 2.4 against
   4.2).
+- `where hands leave their marks` (`RenderSettings.rubbed`,
+  `StudioRender.PRODUCT_RUBBED`; photoreal9, docs/RENDERING.md 5m): at Best
+  in the Product look, path traced, a part's handled wear gathered where
+  hands and stacking touch it (path_tracer.glsl `gathered_wear`): patchy
+  matt scuffs within half a millimetre of the body's edges, most near its
+  top, hairline scratches across them, each stud's top rim rubbed and its
+  wall streaked, dust at each stud's foot; each part its own, seeded by its
+  place, the model never changed. 0 unless asked: judged within the noise
+  in four pools. It is drawn by the shader's "marks" version
+  (`#[versions]` in path_tracer.glsl; `PathTracer.marked`, `_make_marked`
+  builds that pipeline the first time a picture asks), so a picture without
+  it is drawn by the "plain" version, photoreal8's code. Compatibility and
+  the web draw none of it. Check: `tools/probe.sh photoreal_probe --
+  --tag=T --without=rubbed` draws photoreal8's pictures byte for byte (20
+  of 20, both seeds, beside its kept draws), and `--shots=FILE` with
+  `rubbed` 1 per shot draws the wear; `python3 tools/bench/photoreal.py
+  colour T` keeps the tent's faces within ΔE2000 5 with it on. The bench's
+  6660 (tools/photoreal/models/set_6660.mpd) seats its driver in the car
+  base's 2 x 2 open centre, his cap under the roof's glass.
+- `the stage matched to the photographs` (`RenderSettings.table`, `table_light`,
+  `fill`; `StudioRender.PRODUCT_TABLE`, `_TABLE_LIGHT`, `_FILL`; photoreal10,
+  docs/RENDERING.md 5n): at Best in the Product look, path traced on a
+  backdrop, the stage each photograph shows, matched by measure: the
+  table's own relief and colour (`surface` 1 a desk's laminate and blotches,
+  2 a leather pad's domed cells and creases, 3 a stone counter's grains and
+  mottle; path_tracer.glsl `table_height`, `table_normal`, `table_paper`;
+  the relief is in the denoiser's guide, so it is kept), the light falling
+  off across it from a lamp that stands near (`table_light` model radii
+  toward the staged key; `table_falloff`), and the shade tinted towards
+  daylight's fill by as much of the light as the model keeps from it
+  (`fill`; `shadow_marked`), so the open floor stays the backdrop's colour.
+  Each 0 unless asked; drawn by the shader's "marks" version, so a picture
+  without them is drawn by "plain", photoreal9's code. The bench's shots
+  (tools/photoreal/shots.json) keep the tables on black_2x4, grey_1x3 and
+  green_plate_macro (judged: the close-ups 0.38 to 0.49). Check:
+  `tools/probe.sh photoreal_probe -- --tag=T --shots=FILE` with photoreal9's
+  shots file (`git show fea8a984b:tools/photoreal/shots.json`) draws
+  photoreal9's pictures byte for byte (10 of 10), the bench's own shots
+  draw the three tables, and `fill` per shot tints the shade; the
+  photographs' measures (`python3 tools/photoreal/stage_measure.py
+  shots/photoreal/T --frame-fix`) put each table's spread and the desk's
+  fall within 20% of the photograph's, and the white sets' shade within
+  1 b*.
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong

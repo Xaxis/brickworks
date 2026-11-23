@@ -1,8 +1,8 @@
 // The gallery as one page to browse (browse, 2026-11-02; the owner: "one is
 // just a tab in another... they should be like filters too, not loading
-// actual separate pages"): Top, New, Builds, Collections and Sets are tabs
+// actual separate pages"): Top, New, Builds, Lists and Sets are tabs
 // of one page (web/gallery.html, web/gallery.js) that switch in place, each
-// at its own address (/gallery, /gallery?sort=newest, /builds, /collections,
+// at its own address (/gallery, /gallery?sort=newest, /builds, /gallery-lists (/collections until lists2a, which answers 301 to it),
 // /library), against a deployment.
 //
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/browse_flow.mjs --url=<preview> --out=DIR
@@ -22,7 +22,7 @@
 //      library's for "castle".
 //   4. A reload of each tab's address shows that tab.
 //   5. The old addresses: /library, /library?theme=Town, /builds,
-//      /collections and /de/library answer 200 with their own canonical
+//      /gallery-lists (and /collections through its 301) and /de/library answer 200 with their own canonical
 //      link and hreflang alternates, and open on their tab (in German for
 //      /de/library).
 //   6. At 390 px, in English and German: the tab row scrolls inside itself
@@ -58,7 +58,7 @@ const TABS = {
   new: { path: "/gallery", sort: "newest", api: (q) => `/api/share?op=list&sort=newest&page=1${q ? `&q=${encodeURIComponent(q)}` : ""}`,
     ids: (body) => (body.models || []).map((one) => String(one.id)) },
   builds: { path: "/builds", api: () => "/api/people?op=builds&page=1", ids: (body) => (body.photos || []).map((one) => String(one.id)) },
-  collections: { path: "/collections", api: () => "/api/people?op=collections&page=1",
+  collections: { path: "/gallery-lists", api: () => "/api/people?op=collections&page=1",
     ids: (body) => (body.collections || []).map((one) => String(one.id)) },
   sets: { path: "/library", api: (q) => `/api/share?op=library&page=1${q ? `&q=${encodeURIComponent(q)}&sort=match` : ""}`,
     ids: (body) => (body.models || []).map((one) => String(one.id)) },
@@ -247,7 +247,7 @@ try {
   {
     const made = await context(1280);
     for (const [which, address] of [["top", "/gallery"], ["new", "/gallery?sort=newest"], ["builds", "/builds"],
-      ["collections", "/collections"], ["sets", "/library"]]) {
+      ["collections", "/gallery-lists"], ["sets", "/library"]]) {
       const { page, status } = await opened(made, address);
       const drawn = await shown(page, which);
       await page.reload({ waitUntil: "load" }).catch(() => {});
@@ -262,7 +262,8 @@ try {
   {
     const made = await context(1280);
     for (const [address, which, canonical] of [["/library", "sets", "/library"], ["/library?theme=Town", "sets", "/library"],
-      ["/builds", "builds", "/builds"], ["/collections", "collections", "/collections"], ["/de/library", "sets", "/de/library"]]) {
+      ["/builds", "builds", "/builds"], ["/gallery-lists", "collections", "/gallery-lists"], ["/collections", "collections", "/gallery-lists"],
+      ["/de/library", "sets", "/de/library"]]) {
       const { page, status } = await opened(made, address);
       const head = await page.evaluate(() => ({
         canonical: document.querySelector('link[rel="canonical"]')?.getAttribute("href") || "",
