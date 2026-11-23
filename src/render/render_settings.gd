@@ -211,6 +211,10 @@ var source_wide: float = -1.0
 var source_tall: float = -1.0
 var source_fall: float = -1.0
 var source_key: float = -1.0
+## How much of the large source a staged table mirrors (photoreal14b), 0 to
+## 1: 0 lit by it but no glare from it, so the table keeps its own colour.
+## Below 0, StudioRender's SOURCE_SPILL.
+var source_spill: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

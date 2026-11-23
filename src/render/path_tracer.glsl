@@ -1696,6 +1696,12 @@ float lit_pdf(vec3 way, vec3 n) {
 	float share = source_share();
 	return share > 0.0 ? share * source_pdf(way) + (1.0 - share) * sky_pdf(way, n) : sky_pdf(way, n);
 }
+
+// Whether the surface being lit is a staged table (photoreal14b): lit by the
+// large source as the white card is, but mirroring only scene.source_shape.y
+// of it. Mirrored whole, its glare was as bright again as its own colour,
+// and the table was drawn nearly white.
+bool on_table = false;
 #else
 #define lit_from sky_light
 #define lit_pdf sky_pdf
@@ -1750,7 +1756,24 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 		vec3 f = reflect_light(s, n, v, l, pdf_bounce);
 		if (max(f.r, max(f.g, f.b)) > 0.0) {
 			vec3 let = through_masked(at, l, 1e7, lit_mask(l));
+#ifdef MARKS
+			if (on_table && share > 0.0) {
+				// The source's light on a table is taken here alone (its bounce
+				// leaves it), so it weighs 1: its colour as the white card's is
+				// lit, and of its gloss (the whole lobe, the glance's Fresnel
+				// too) only as much as asked.
+				float n_l = max(dot(n, l), 0.0);
+				vec3 f0 = mix(vec3(0.08 * s.specular), s.albedo, s.metallic);
+				vec3 own = (vec3(1.0) - schlick(f0, max(dot(n, v), 0.0))) * (1.0 - s.metallic) * s.albedo / PI * n_l;
+				vec3 fd = mix(own, f, scene.source_shape.y);
+				sum += (f * sky_light(l) * balance(pdf_light, pdf_bounce) + fd * source_light(l)) * let
+					/ pdf_light;
+			} else {
+				sum += f * lit_from(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
+			}
+#else
 			sum += f * lit_from(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
+#endif
 		}
 	}
 	return sum;
@@ -1819,11 +1842,20 @@ void main() {
 					radiance += carried * scene.background.rgb;
 				} else {
 					float weight = sharp ? 1.0 : balance(last_pdf, lit_pdf(way, last_n));
+#ifdef MARKS
+					// Off a table, the source was taken by direct() alone.
+					radiance += carried * (on_table && source_share() > 0.0 ? sky_light(way) : lit_from(way))
+						* weight;
+#else
 					radiance += carried * lit_from(way) * weight;
+#endif
 				}
 				break;
 			}
 			Instance thing = instances[hit.instance];
+#ifdef MARKS
+			on_table = thing.info.y == KIND_SWEEP && scene.stage.x > 0.5 && scene.look.w > -0.5;
+#endif
 			if (inside) {
 				// Through the clear plastic it went in at.
 				carried *= exp(-absorb * hit.t);

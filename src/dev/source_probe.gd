@@ -21,6 +21,11 @@
 ##     the same picture with the source asked off (both 640x360, 64 samples,
 ##     one seed); the seamless without it (none in the tent), and its picture
 ##     the same as with it asked off;
+##   on each table its own colour kept: the table where the meter reads its
+##     white card (between the 55th and 65th hundredths of its lightness, the car's
+##     place left out) within KEPT (CIEDE2000) of the same with the source off.
+##     Mirroring the source whole drew it 29 to 39 off on wood, leather and
+##     terrazzo, nearly white (photoreal14b, StudioRender.SOURCE_SPILL);
 ##   the car on each table at Best, 1280x720, 256 samples: the median of
 ##     three no slower than CAR_MOST s (the app's own time, ProbeTime).
 ## Elsewhere (Compatibility, the web, a card without ray tracing) Best has no
@@ -32,11 +37,13 @@ const MODEL := "res://models/car.ldr"
 const TABLES := ["desk", "wood", "leather", "terrazzo"]
 const CHANGED := 1.0
 const CAR_MOST := 2.9
+const KEPT := 8.0
 
 var _failures: int = 0
 var _main: Node
 var _out: String = ""
 var _last_screen := Vector2.ZERO
+var _pair: Array[Image] = []
 
 
 func _initialize() -> void:
@@ -118,6 +125,13 @@ func _run() -> void:
 			continue
 		var level: float = renderer._source_level(dialog.settings)
 		var change: float = await _against_off(dialog, world, called)
+		if not stage.is_empty() and _pair.size() == 2:
+			var on_colour: Vector3 = _table_colour(_pair[0])
+			var off_colour: Vector3 = _table_colour(_pair[1])
+			var apart: float = _de2000(off_colour, on_colour)
+			_check("%s: the table keeps its own colour, %.1f apart (CIEDE2000, at most %.0f): L* %.1f a %.1f b %.1f, off %.1f %.1f %.1f"
+				% [called, apart, KEPT, on_colour.x, on_colour.y, on_colour.z, off_colour.x, off_colour.y,
+				off_colour.z], apart <= KEPT)
 		if stage.is_empty():
 			_check("seamless: no source in the tent (level %.0f), the picture as with it asked off (%.2f L*)"
 				% [level, change], level == 0.0 and change < 0.05)
@@ -159,6 +173,7 @@ func _against_off(dialog: RenderDialog, world: BrickWorld, called: String) -> fl
 		if picture == null:
 			return 0.0
 		pictures.append(picture)
+	_pair = pictures
 	pictures[0].save_png(_out.path_join("pair").path_join("%s_on.png" % called))
 	pictures[1].save_png(_out.path_join("pair").path_join("%s_off.png" % called))
 	var w: int = pictures[0].get_width()
@@ -199,6 +214,82 @@ func _times(dialog: RenderDialog, world: BrickWorld) -> void:
 			_check("the car on %s at Best, 1280x720, 256 samples: %s s, the median at most %.1f" % [stage,
 				", ".join(times.map(func(t: float) -> String: return "%.2f" % t)), CAR_MOST],
 				times.size() == 3 and times[1] <= CAR_MOST)
+
+
+## The table's colour where the meter reads its white card (StudioRender's
+## _open_floor reads the 60th hundredth of the floor's lightness): the mean,
+## in linear light, of what lies between the 55th and the 65th, the car's
+## place (the middle of a 640x360 picture) left out; as CIE Lab.
+static func _table_colour(picture: Image) -> Vector3:
+	var seen: Array = []
+	var w: int = picture.get_width()
+	var h: int = picture.get_height()
+	for y: int in range(0, h, 2):
+		for x: int in range(0, w, 2):
+			if x >= w * 9 / 32 and x <= w * 47 / 64 and y >= h * 25 / 72 and y <= h * 31 / 36:
+				continue
+			var lin: Color = picture.get_pixel(x, y).srgb_to_linear()
+			seen.append([0.2126 * lin.r + 0.7152 * lin.g + 0.0722 * lin.b, Vector3(lin.r, lin.g, lin.b)])
+	seen.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var sum := Vector3.ZERO
+	var from: int = int(seen.size() * 0.55)
+	var to: int = int(seen.size() * 0.65)
+	for n: int in range(from, to):
+		sum += seen[n][1]
+	return _lab(sum / float(maxi(to - from, 1)))
+
+
+## CIE Lab (D65) of a linear sRGB colour.
+static func _lab(c: Vector3) -> Vector3:
+	var x: float = (0.4124 * c.x + 0.3576 * c.y + 0.1805 * c.z) / 0.95047
+	var y: float = 0.2126 * c.x + 0.7152 * c.y + 0.0722 * c.z
+	var z: float = (0.0193 * c.x + 0.1192 * c.y + 0.9505 * c.z) / 1.08883
+	var f := func(t: float) -> float: return pow(t, 1.0 / 3.0) if t > 216.0 / 24389.0 else (24389.0 / 27.0 * t + 16.0) / 116.0
+	var fx: float = f.call(x)
+	var fy: float = f.call(y)
+	var fz: float = f.call(z)
+	return Vector3(116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz))
+
+
+## CIEDE2000 between two Lab colours.
+static func _de2000(one: Vector3, two: Vector3) -> float:
+	var c1: float = Vector2(one.y, one.z).length()
+	var c2: float = Vector2(two.y, two.z).length()
+	var cm: float = (c1 + c2) / 2.0
+	var g: float = 0.5 * (1.0 - sqrt(pow(cm, 7.0) / (pow(cm, 7.0) + pow(25.0, 7.0))))
+	var a1: float = (1.0 + g) * one.y
+	var a2: float = (1.0 + g) * two.y
+	var c1p: float = Vector2(a1, one.z).length()
+	var c2p: float = Vector2(a2, two.z).length()
+	var h1: float = fposmod(rad_to_deg(atan2(one.z, a1)), 360.0)
+	var h2: float = fposmod(rad_to_deg(atan2(two.z, a2)), 360.0)
+	var dl: float = two.x - one.x
+	var dc: float = c2p - c1p
+	var dh: float = 0.0
+	if c1p * c2p != 0.0:
+		dh = h2 - h1
+		if dh > 180.0:
+			dh -= 360.0
+		elif dh < -180.0:
+			dh += 360.0
+	var dhh: float = 2.0 * sqrt(c1p * c2p) * sin(deg_to_rad(dh / 2.0))
+	var lm: float = (one.x + two.x) / 2.0
+	var cpm: float = (c1p + c2p) / 2.0
+	var hm: float = h1 + h2
+	if c1p * c2p != 0.0:
+		if absf(h1 - h2) <= 180.0:
+			hm = (h1 + h2) / 2.0
+		else:
+			hm = (h1 + h2 + 360.0) / 2.0 if h1 + h2 < 360.0 else (h1 + h2 - 360.0) / 2.0
+	var t: float = 1.0 - 0.17 * cos(deg_to_rad(hm - 30.0)) + 0.24 * cos(deg_to_rad(2.0 * hm)) \
+		+ 0.32 * cos(deg_to_rad(3.0 * hm + 6.0)) - 0.20 * cos(deg_to_rad(4.0 * hm - 63.0))
+	var theta: float = 30.0 * exp(-pow((hm - 275.0) / 25.0, 2.0))
+	var rc: float = 2.0 * sqrt(pow(cpm, 7.0) / (pow(cpm, 7.0) + pow(25.0, 7.0)))
+	var sl: float = 1.0 + 0.015 * pow(lm - 50.0, 2.0) / sqrt(20.0 + pow(lm - 50.0, 2.0))
+	var sc: float = 1.0 + 0.045 * cpm
+	var sh: float = 1.0 + 0.015 * cpm * t
+	var rt: float = -sin(deg_to_rad(2.0 * theta)) * rc
+	return sqrt(pow(dl / sl, 2.0) + pow(dc / sc, 2.0) + pow(dhh / sh, 2.0) + rt * (dc / sc) * (dhh / sh))
 
 
 ## CIE L* of an sRGB colour.

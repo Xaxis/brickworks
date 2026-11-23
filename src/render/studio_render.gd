@@ -203,6 +203,10 @@ const SOURCE_TALL := 50.0
 const SOURCE_EDGE := 0.04
 const SOURCE_FALL := 0.0
 const SOURCE_KEY := 0.05
+## How much of the source a staged table mirrors (photoreal14b, RenderSettings
+## source_spill): none. It is lit by it as the white card is, so it keeps its
+## own colour; mirrored whole, its glare drew wood and terrazzo nearly white.
+const SOURCE_SPILL := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -3129,7 +3133,8 @@ func _source_rows(settings: RenderSettings, shot: Shot) -> PackedFloat32Array:
 		across.x, across.y, across.z, wide,
 		face_up.x, face_up.y, face_up.z, tall,
 		tint.r, tint.g, tint.b, SOURCE_EDGE,
-		clampf(_own(settings.source_fall, SOURCE_FALL), 0.0, 1.0), 0.0, 0.0, 0.0])
+		clampf(_own(settings.source_fall, SOURCE_FALL), 0.0, 1.0),
+		clampf(_own(settings.source_spill, SOURCE_SPILL), 0.0, 1.0), 0.0, 0.0])
 
 
 ## The stage matched to the photographs by measure (photoreal10) that
