@@ -1281,7 +1281,7 @@ function claudePanel(origin, id, model) {
     + `<p class="said claude-said" role="status"></p></div>`;
 }
 
-function actionBar(origin, id, model, url = links(origin, id).url) {
+function actionBar(origin, id, model, url = links(origin, id).url, file = "") {
   // A set of the LDraw library has no row to like, save, comment on or say
   // was built: Share and More alone.
   const more = asText(say("More"));
@@ -1305,6 +1305,9 @@ function actionBar(origin, id, model, url = links(origin, id).url) {
       word: say("Built"), attrs: `data-mark="built" title="${asText(say("I built it: add a photo of your build"))}"` })
     + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
       + `${iconHtml("more")}</summary><div class="menu-list">`
+      // Download, More's on a phone, where Open in Brickworks and With your
+      // Claude fill the row it shared (web/directory.css .menu-download).
+      + (file ? `<a class="menu-download" href="${escapeHtml(file)}" download>${asText(say("Download"))}</a>` : "")
       + `<button type="button" data-report="${asText(say("this model"))}" data-report-model="${id}" hidden>${asText(say("Report it"))}</button>`
       + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
     + `</div>`
@@ -1543,7 +1546,7 @@ ${header}
         <a class="cta ghost" href="${fileAt}.mpd" download>${asText(say("Download"))}</a>
       </div>
       ${set ? "" : claudePanel(origin, id, model)}
-      ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url)}
+      ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url, `${fileAt}.mpd`)}
       ${set || old ? "" : postFacts(origin, id, shownModel, about)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
       ${fromLine}

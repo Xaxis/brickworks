@@ -38,9 +38,11 @@ import functools
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
-from test_insights import _pg_env
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_insights import _pg_env  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 SQL = (ROOT / "supabase/loop_funnel.sql").read_text()
