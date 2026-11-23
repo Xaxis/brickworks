@@ -874,15 +874,10 @@ h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: 
 main > section, .band { padding: var(--section) 0; }
 main > section + section { border-top: 1px solid var(--line); }
 
-/* A page: every page but the landing one is this. Its head (an eyebrow,
-   the title, a lede), then what it has; .prose for the pages that are
-   words (questions, the legal pages), narrower and quieter. */
+/* A page's parts under its head (.page-hero, below); .prose for the
+   pages that are words (questions, the legal pages), narrower and
+   quieter. */
 .page { padding: var(--page-top) 0 var(--section); }
-.page-head { margin-bottom: var(--s-6); }
-/* A page made of wraps side by side under <main>, its head the first. */
-main > .wrap.page-head:first-child { padding-top: var(--page-top); }
-.page-head .lede { margin-bottom: 0; }
-.page-head .eyebrow { margin-bottom: var(--s-3); }
 .page section { margin-top: var(--s-7); }
 .page section > h2:first-child { margin-top: 0; }
 .prose { max-width: 760px; }
@@ -894,16 +889,22 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    of its own, its words and its way on in the middle (sitepolish,
    2026-11-23: a faint dashed line round words left in its corner, on the
    page's own ground, read as a placeholder nobody had finished). A state
-   laid out as a row of its own (.feed-ask, .share-drop) keeps its start. */
+   laid out as a row of its own (.feed-ask, .share-drop) keeps its start.
+   The one empty state (listkit, 2026-11-23): every list's "nothing here
+   yet" and its way in, the feed's, the notifications', Talk's, a list's;
+   its words, then at most a line of links or one .actions. */
 .state {
 	margin: 0; padding: var(--s-6) var(--s-5); border: 1px dashed var(--line-strong); border-radius: var(--radius);
 	background: var(--bg-soft); color: var(--ink-soft); text-align: center; text-wrap: pretty;
 }
+.state > * { margin-block: 0; }
+.state > * + * { margin-top: var(--s-3); }
 .state:not(.feed-ask, .share-drop) > * { max-width: 62ch; margin-inline: auto; }
 .state :is(.actions, .pills) { justify-content: center; }
 .state:is(.feed-ask, .share-drop) { text-align: start; }
 .state .link { color: var(--ink); }
-/* A page that is yours alone, signed out (settings, notifications): what
+/* A page that is yours alone, signed out (settings, notifications, the
+   feed, your lists; listkit made it the one for every such page): what
    signing in gives and the way in, a panel where the page's own would be,
    not a line of words in the open (sitepolish). */
 .gate {
@@ -2048,31 +2049,127 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 
    .page-hero: the head, the whole width: the yellow's light from above
    over the baseplate of studs, which fade into the ground under the words
-   (a gradient over them, not a mask: one layer to paint). Its .wrap
-   holds the .eyebrow, the h1, the .lede and, under them, .hero-meta (a
-   date, a count) or .actions. */
+   (a gradient over them, not a mask: one layer to paint).
+
+   One head for every page but the landing page and an object's (listkit,
+   2026-11-23; the owner, of the feed beside the notifications:
+   "inconsistent widths and layouts"; each page had built its own, its
+   title 32 to 104 px under the header). Its .wrap holds:
+     .page-head    the title and its one line at the left (.page-title:
+                   the h1, the .lede), the page's actions at the right
+                   (.page-acts: a button, a search, a date), their feet
+                   on one line;
+     .tabs         the page's views, when it has them, on the band's foot,
+                   the one shown underlined on its line.
+   No eyebrow over the title: the header says where you are, and the tabs
+   which view. Under 600 px the line is left out (the gallery's was, so
+   what a page lists starts on a phone's first screen), and a search
+   takes a row of its own under the title. tools/web/layout_audit.mjs
+   fails a page whose h1 or tabs are not where this puts them. */
 .page-hero {
-	padding: var(--page-top) 0 var(--s-7); border-bottom: 1px solid var(--line);
+	padding: var(--s-6) 0; border-bottom: 1px solid var(--line);
 	background-image: var(--glow), linear-gradient(180deg, transparent 10%, var(--bg) 90%), var(--studs);
 	background-size: auto, auto, 24px 24px; background-repeat: no-repeat, no-repeat, repeat;
 }
-.page-hero h1 { max-width: 22ch; }
-.page-hero .lede { margin-bottom: 0; }
-.page-hero .actions { margin-top: var(--s-5); }
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.page-title { flex: 1 1 360px; min-width: 0; align-self: flex-start; }
+.page-head h1 { margin: 0; overflow-wrap: anywhere; }
+.page-head .lede { margin: var(--s-2) 0 0; max-width: 72ch; }
+.page-acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); min-width: 0; }
+.page-acts:not(:has(> :not([hidden]))) { display: none; }
+/* A search among them (the gallery's, Talk's): the site's .search, in its
+   form when it has one. */
+.page-acts:has(> :is(.search, [role="search"])) { flex: 1 1 520px; max-width: 640px; flex-wrap: nowrap; justify-content: flex-end; }
+/* Wide enough for the longest of its words, the Sets tab's "Search sets by
+   name, number or theme", beside the "/" (sitepolish: cut at "or the" at 1280). */
+.page-acts > :is(.search, [role="search"]) { flex: 1 1 380px; max-width: 460px; min-width: 0; }
+.page-acts .hero-meta { margin: 0; }
 /* A rule page's copy in another language: one line under its heading,
    that the English text binds (tools/site_lang.py BOUND). */
-.page-hero .binding { margin: 0 0 var(--s-3); color: var(--ink-faint); font-size: var(--t-small); }
-/* A head that ends in .tabs (the legal pages, /feed and /notifications):
-   the tabs sit on the head's line, the one shown underlined on it. */
-.page-hero:has(> .wrap > .tabs:last-child) { padding-bottom: 0; }
-.page-hero > .wrap > .tabs:last-child { margin-block: var(--s-5) -1px; border-bottom: 0; }
+.page-hero .binding { margin: var(--s-2) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
+/* The tabs on the band's foot, alone or in a .tab-bar with a control at
+   its end (the gallery's Top over). */
+.tab-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; }
+.tab-bar > .tabs { flex: 1; min-width: 0; margin: 0 0 -1px; border-bottom: 0; }
+.page-hero:has(> .wrap > :is(.tabs, .tab-bar):last-child) { padding-bottom: 0; }
+.page-hero > .wrap > :is(.tabs, .tab-bar):last-child { margin: var(--s-5) 0 0; }
+.page-hero > .wrap > .tabs:last-child { margin-bottom: -1px; border-bottom: 0; }
+@media (width < 600px) {
+	/* The title and the actions on one row, a search on the next; the
+	   title's row a control's height on every page, so the h1 is where it
+	   is on every page whatever is beside it. */
+	.page-hero { padding-top: var(--s-4); }
+	.page-head { align-items: flex-start; column-gap: var(--s-3); }
+	.page-head .lede, .page-head .binding, .page-acts .hint { display: none; }
+	.page-title { flex: 1 1 0; }
+	.page-head h1 { display: flex; align-items: center; min-height: var(--control-h); }
+	.page-acts { flex: none; }
+	.page-acts:has(> :is(.search, [role="search"])) { display: contents; }
+	.page-acts > :is(.search, [role="search"]) { order: 1; flex: 1 1 100%; max-width: none; }
+	.page-acts .search input { padding-right: 12px; }
+}
 .hero-meta {
 	display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: var(--s-4) 0 0; padding: 0;
 	list-style: none; color: var(--ink-faint); font-size: var(--t-small);
 }
 .hero-meta b { color: var(--ink-soft); font-weight: 600; }
 /* Under the head, the page's own parts. */
-.page-body { padding: var(--s-7) 0 var(--section); }
+.page-body { padding: var(--s-6) 0 var(--section); }
+
+/* A list page's body (listkit): its list (.list-main), and from 900 px
+   its aside (.list-aside) at the page's right edge, sticky under the
+   header. The list is one measure on every page, the feed's posts, the
+   notifications and Talk's threads alike; under 900 px the aside follows
+   the list. */
+.list-layout { display: grid; gap: var(--s-6) var(--s-7); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.list-main { display: grid; gap: var(--s-4); align-content: start; min-width: 0; max-width: 760px; }
+.list-aside { min-width: 0; display: grid; gap: var(--s-6); align-content: start; }
+.list-aside > section { min-width: 0; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1); }
+.list-aside h2 { margin: 0 0 var(--s-3); }
+@media (width >= 900px) {
+	.list-layout:has(> .list-aside:not([hidden])) { grid-template-columns: minmax(0, 760px) 320px; justify-content: space-between; }
+	.list-aside { position: sticky; top: calc(var(--head-h) + var(--s-5)); }
+}
+
+/* A row (listkit): one for every list of what was made, said or done: a
+   post of the feed, a notification, a thread of Talk. ol.list-rows >
+   li.list-row: its picture (.row-pic, 4:3) or who (.row-face, an
+   avatar), then .row-body (.row-title, .row-said, .row-meta: who and
+   when), then at most one .row-act; a post's card (.row-card) under the
+   words. Not read yet, or pinned: .unread, edged in the accent. */
+.list-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.list-row {
+	display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-2) var(--s-4); align-items: start;
+	min-width: 0; padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+	box-shadow: var(--highlight), var(--shadow-1);
+}
+.list-row:is(.unread, .new, .pinned) { border-color: var(--accent-edge); }
+.list-row > .row-pic, .list-row > .row-face { grid-column: 1; grid-row: 1 / span 2; }
+.list-row > .row-pic {
+	display: block; width: 96px; aspect-ratio: 4 / 3; height: auto; overflow: hidden; object-fit: cover;
+	border-radius: var(--r-2); background: var(--picture-ground);
+}
+.list-row > .row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.list-row > .row-face { display: inline-flex; flex: none; text-decoration: none; }
+.row-body { grid-column: 2; min-width: 0; }
+.list-row:not(:has(> .row-pic, > .row-face)) > .row-body { grid-column: 1 / 3; }
+.row-act { grid-column: 3; grid-row: 1; display: flex; align-items: center; gap: var(--s-2); }
+.row-card { grid-column: 2 / -1; min-width: 0; max-width: 560px; }
+.list-row:not(:has(> .row-pic, > .row-face)) > .row-card { grid-column: 1 / -1; }
+.row-title { margin: 0; line-height: 1.35; overflow-wrap: anywhere; }
+.row-title a { color: var(--ink); text-decoration: none; }
+.row-title a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+.row-said { display: block; margin: var(--s-1) 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.row-meta { display: block; margin: var(--s-1) 0 0; color: var(--ink-faint); font-size: var(--t-small); overflow-wrap: anywhere; }
+.row-meta a { color: var(--ink-soft); }
+.row-body .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--s-1) 0 0; }
+.list-row .dot { display: inline-block; width: 10px; height: 10px; margin-left: var(--s-2); vertical-align: middle; border-radius: 50%; background: var(--accent-edge); }
+@media (width < 600px) {
+	.list-row { padding: var(--s-3); column-gap: var(--s-3); }
+	.list-row > .row-pic { width: 72px; }
+	/* A post's card the row's whole width on a phone, as it was. */
+	.list-row > .row-card { grid-column: 1 / -1; }
+}
 
 /* .page-grid: what is on the page (.page-toc) down the left from 900 px,
    sticky under the header, and the parts beside it; over them, in one
@@ -2118,15 +2215,11 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
    board's icon on a tile, and at its end who is in it (the starter's
    avatar, the last replier's over it), how many replied and when the last
    did; on a phone the end goes under the words. */
-.talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.talk-row {
-	position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 6px 16px; align-items: center;
-	border: 1px solid var(--line); border-radius: var(--r-3); padding: 14px 16px; background: var(--panel);
-	box-shadow: var(--highlight), var(--shadow-1); transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
-}
+/* The row itself is the site's (.list-row, listkit): its grid, edge,
+   padding and ground; here only what a thread adds to it. */
+.talk-row { position: relative; align-items: center; transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease); }
 .talk-row:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
-.talk-row.pinned { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
-.talk-row-pic { align-self: start; display: block; width: 96px; height: 72px; border-radius: var(--r-2); overflow: hidden; background: var(--picture-ground); text-decoration: none; }
+.talk-row-pic { align-self: start; border-radius: var(--r-2); background: var(--picture-ground); text-decoration: none; }
 .talk-row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* A board's icon on its own tint (Talk's tiles, a row with no picture). */
 .talk-tile {
@@ -2183,10 +2276,9 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .talk-last .talk-first[data-replies="0"] { color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 400; }
 .talk-empty, .talk-searched { color: var(--ink-soft); }
 @media (width < 600px) {
-	.talk-row { grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 8px 12px; padding: 12px; }
-	.talk-row-pic { width: 64px; height: 48px; }
 	.talk-tile .icon { width: 24px; height: 24px; }
-	.talk-row-end { grid-column: 2; display: flex; align-items: center; justify-items: start; gap: 8px; min-width: 0; text-align: start; }
+	.talk-row { align-items: start; }
+	.talk-row-end { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-items: start; gap: 8px; min-width: 0; text-align: start; }
 	.talk-last { display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
 }
 /* The homepage's latest: two columns from 900 px, a skeleton row's height

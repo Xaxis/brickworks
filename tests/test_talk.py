@@ -228,7 +228,7 @@ console.log(JSON.stringify({
   open: row(months("2026-11-01", "2026-11-30")), soon: row(months("2027-10-01", "2027-10-31")),
   ran: row(months("2026-10-01", "2026-10-31")), none: row(null) }));
 """)
-    assert re.search(r'class="talk-row-pic"[^>]*><img src="/m/AbCdEfGh12\.webp\?v=\w+"', said["pictured"])
+    assert re.search(r'class="row-pic talk-row-pic"[^>]*><img src="/m/AbCdEfGh12\.webp\?v=\w+"', said["pictured"])
     assert "talk-month" not in said["pictured"] and "no-picture" not in said["pictured"]
     assert '<span class="talk-tile talk-month b-challenges open"><b>Nov</b><small>2026</small></span>' in said["open"]
     assert '<span class="talk-tile talk-month b-challenges soon"><b>Oct</b><small>2027</small></span>' in said["soon"]

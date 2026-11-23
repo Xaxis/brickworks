@@ -391,7 +391,7 @@ export async function replyInCard(card, thread, { opener = null, tests = "", lan
   }
   // A post of the feed has its latest reply's room over its acts; a row of
   // a list has none, so one is made under its line of who and when.
-  const words = card.querySelector(".post-words, .talk-row-main") || card;
+  const words = card.querySelector(".post-words, .row-body") || card;
   const acts = words.querySelector(".post-acts");
   const meta = words.querySelector(".talk-row-meta");
   if (!words.querySelector(".said-room")) {
