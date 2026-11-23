@@ -8739,9 +8739,13 @@ const SHEET_MOST := 0.6
 ## picking from at 1280 x 720 and 1400 x 900, and its rail brought it back
 ## beside Stress with every shelf in sight (binstay, APP_UX9 #2).
 func _tool_column_shown() -> void:
+	# The list of comments and answers on parts too (PartPins): seated here
+	# and left out, it opened in a column never shown, so nothing in it could
+	# be pressed (partpins' own probe, 0 of 10, 2026-11-23).
 	var open: bool = _shown(_simulate_made) or _flex.panel.visible or _shown(_pose_made) \
 		or _shown(_hidden_colours_made) or _shell.stress.panel.visible \
-		or _shown(_finish_made) and _finish_made.get_parent() == _tool_panels
+		or _shown(_finish_made) and _finish_made.get_parent() == _tool_panels \
+		or _part_pins != null and _part_pins.list_open()
 	if open == _tool_column.visible:
 		return
 	var room: Rect2 = _model_rect()

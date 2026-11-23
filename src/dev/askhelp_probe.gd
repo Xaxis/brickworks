@@ -153,11 +153,28 @@ func _model_text() -> String:
 
 func _the_studio() -> void:
 	var fake := FakeShared.new()
+	# A window a phone's size is laid out for one, as the web build lays out a
+	# phone's browser (Phone.on is the web's alone).
+	var window: Vector2i = DisplayServer.window_get_size()
+	if mini(window.x, window.y) < int(Phone.NARROW):
+		Phone._on = 1
+		Phone._wide = false
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("_shared", fake)
 	root.add_child(_main)
 	for _n: int in 240:
 		await process_frame
+	# A phone draws at a browser's scale, as twist_probe holds it.
+	if _main.get("_phone") != null:
+		(_main.get("_phone") as Node).set_process(false)
+		for link: Dictionary in root.size_changed.get_connections():
+			var call: Callable = link["callable"]
+			if call.get_method() == &"_match_screen_density":
+				root.size_changed.disconnect(call)
+		var main_script: GDScript = _main.get_script()
+		root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
+			ShellPrefs.interface_size(), true)
+		await _settle()
 	var account: Account = _main.get("_account")
 	var store: ModelStore = _main.get("_store")
 	var bar: ModelBar = _main.get("_bar")
@@ -353,8 +370,12 @@ func _the_studio() -> void:
 	_check(got_it != null and (pins.page_state().get("answers_lit", []) as Array).is_empty(),
 		"Got it lets the rest go")
 
+	# The timeline put away, as one is before turning to the list.
+	steps.stop()
+	await _settle()
 	pins.call("open_list")
 	await _settle()
+	await _picture("answers_list")
 	var rows: Array = (pins.page_state().get("list", {}) as Dictionary).get("rows", [])
 	var talk_rows: Array = rows.filter(func(row: Dictionary) -> bool: return bool(row.get("talk", false)))
 	_check(talk_rows.size() == 2 and str((talk_rows[0] as Dictionary).get("by", "")).contains("in Talk")
@@ -363,10 +384,13 @@ func _the_studio() -> void:
 			return "%s / %s" % [row.get("by"), row.get("settle")])])
 	var done: Control = pins.controls_by_name().get("part_pin_resolve_%d" % int((talk_rows[0] as Dictionary).get("number", 0))) \
 		if not talk_rows.is_empty() else null
+	# Pressed, the list is filled again and its buttons freed: whether there
+	# was one is kept first.
+	var had_done: bool = done != null
 	if done != null:
 		await _into_view(done)
 		await _press(done)
-	_check(done != null and fake.resolved_calls.is_empty() and int(pins.page_state().get("open", 0)) == 1,
+	_check(had_done and fake.resolved_calls.is_empty() and int(pins.page_state().get("open", 0)) == 1,
 		"Done puts one away here and sends nothing (%s, %d open)" % [fake.resolved_calls,
 			int(pins.page_state().get("open", 0))])
 
