@@ -2305,9 +2305,10 @@ with gaps between the letters, one gate a part) was read as outlined lettering a
 
 **What is left.** A table drawn this way pales towards the source, most on
 the whole car at the app's camera (bench/results/photoreal14-2026-11-23/
-probes/source_pair): the white card is metered round the model, in its
-shade when lit from behind, so the picture is exposed up and the table,
-drawn at its own colour, goes towards white. The photographs keep their
+probes/source_pair). Likely, not yet proven by a run: the white card
+is metered round the model, in its shade when lit from behind, so the
+picture is exposed up and the table, drawn at its own colour, goes
+towards white. The photographs keep their
 tables at their own level. The light-and-shadow tell is still named on
 92% of verdicts and 28 of 80 is short of 32: the next lever is the
 metering with the source on (`StudioRender._meter_card`).
