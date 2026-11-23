@@ -52,7 +52,7 @@
 // (under xvfb-run here), where headless Chromium cannot reach a push
 // service. Throwaway accounts at Resend's test addresses, deleted at the
 // end with their models. Pictures and the request log in --out.
-import { instantScroll, launch, quietCounter, SOFTWARE } from "./browser.mjs";
+import { bypassCookie, instantScroll, launch, quietCounter, SOFTWARE } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { chromium } from "playwright";
 import { spawn } from "node:child_process";
@@ -75,10 +75,15 @@ mkdirSync(out, { recursive: true });
 const ALL = ["fresh", "install", "offline", "requests", "offer", "time", "push", "look"];
 const parts = new Set(args.parts ? String(args.parts).split(",") : ALL);
 const bypass = process.env.BW_BYPASS || "";
-// The bypass as a cookie too, so the worker's own requests (a page it asks
-// the network for) carry it as the page's would.
-const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-set-bypass-cookie": "true",
-  "x-vercel-skip-toolbar": "1" } : {};
+// The bypass header alone. The worker's own requests carry the bypass
+// cookie, which browser.mjs's bypassCookie asks for once in each context,
+// before its first page. Asked for in this header instead, on every request,
+// a preview answers each request without the cookie by a 307 back to
+// itself that sets it: node's fetch keeps no cookies and went round to
+// "redirect count exceeded" (push's "fetch failed"), and so did Chromium's
+// fetch of the manifest, which is sent without cookies, so Chromium read no
+// manifest while it found the site installable (rel-m319, twice each).
+const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const rand = randomBytes(4).toString("hex");
 const adaEmail = `delivered+bw-home-ada-${rand}@resend.dev`;
 const bobEmail = `delivered+bw-home-bob-${rand}@resend.dev`;
@@ -93,6 +98,16 @@ const check = (what, ok) => {
   return ok;
 };
 const note = (what) => console.log(`  --    ${what}`);
+/// What went wrong, with what it came from: node's fetch says only "fetch
+/// failed", its cause (a refused connection, a timeout, a name not found)
+/// is the error (rel-m319's push, twice).
+const why = (trouble) => {
+  const said = [String(trouble?.message || trouble)];
+  for (let cause = trouble?.cause; cause && said.length < 4; cause = cause.cause) {
+    said.push([cause.code, cause.message || String(cause)].filter(Boolean).join(" "));
+  }
+  return said.join(": ");
+};
 const errors = [];
 function listen(page, who) {
   page.on("pageerror", (e) => errors.push(`${who}: ${String(e).slice(0, 200)}`));
@@ -118,7 +133,10 @@ async function api(pathname, { method = "GET", token, body } = {}) {
   const sent = { ...headers };
   if (token) sent.authorization = `Bearer ${token}`;
   if (body !== undefined) sent["content-type"] = "application/json";
-  const reply = await fetch(`${site}${pathname}`, { method, headers: sent, body: body === undefined ? undefined : JSON.stringify(body) });
+  const reply = await fetch(`${site}${pathname}`, { method, headers: sent, body: body === undefined ? undefined : JSON.stringify(body) })
+    .catch((trouble) => {
+      throw new Error(`${method} ${pathname.split("?")[0]}${pathname.includes("?op=") ? `?op=${new URL(pathname, "http://x").searchParams.get("op")}` : ""}: ${why(trouble)}`);
+    });
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
 }
 
@@ -314,6 +332,18 @@ async function install() {
         if (tries) await page.waitForTimeout(1000);
         tries += 1;
         manifest = await cdp.send("Page.getAppManifest").catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
+      }
+      if (!manifest.url) {
+        // What Chromium had to read: the page's link, and the file as the
+        // page itself is answered it.
+        const seen = await page.evaluate(async () => {
+          const links = [...document.querySelectorAll("link[rel=manifest]")].map((one) => `${one.getAttribute("href")} ${one.crossOrigin || "-"}`);
+          const answer = await fetch("/site.webmanifest", { credentials: "omit" }).catch((trouble) => ({ status: String(trouble) }));
+          return { links, at: location.href, status: answer.status, redirected: answer.redirected, type: answer.type,
+            url: answer.url, ctype: answer.headers?.get?.("content-type") };
+        }).catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
+        note(`${width} px: Chromium's manifest said ${JSON.stringify({ ...manifest, data: manifest.data ? `${manifest.data.length} chars` : manifest.data }).slice(0, 600)}`);
+        note(`${width} px: the page ${JSON.stringify(seen).slice(0, 600)}`);
       }
       const said = await cdp.send("Page.getInstallabilityErrors").catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
       const errs = (said.installabilityErrors || []).map((one) => one.errorId);
@@ -605,8 +635,11 @@ const model = (name) => `0 ${name}\r\n0 Name: home.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 
 
 async function accounts() {
   if (ada) return;
-  ada = await mintSession(adaEmail);
-  bob = await mintSession(bobEmail);
+  const minted = (email) => mintSession(email).catch((trouble) => {
+    throw new Error(`signing ${email.split("@")[0]} in at Supabase: ${why(trouble)}`);
+  });
+  ada = await minted(adaEmail);
+  bob = await minted(bobEmail);
   const a = await api("/api/people?op=profile", { method: "POST", token: ada.access_token, body: { handle: ADA, name: "Ada Home" } });
   const b = await api("/api/people?op=profile", { method: "POST", token: bob.access_token, body: { handle: BOB, name: "Bob Home" } });
   check(`throwaway profiles: ${a.status}, ${b.status}`, a.status === 200 && b.status === 200);
@@ -821,9 +854,9 @@ async function openDevice(headed) {
     if (headed) xvfb?.kill();
   };
   try {
-    // As launch() gives its contexts: scrolls that land at once, and the
-    // visit counter answered here.
-    await quietCounter(await instantScroll(device));
+    // As launch() gives its contexts: the bypass cookie, scrolls that land
+    // at once, and the visit counter answered here.
+    await quietCounter(await instantScroll(bypassCookie(device, headers)));
     await device.grantPermissions(["notifications"], { origin: site });
     await seed(device, ada);
     const page = device.pages()[0] || await device.newPage();
@@ -907,7 +940,8 @@ try {
   if (parts.has("look")) await lookAt();
 } catch (trouble) {
   failed += 1;
-  console.log(`  FAIL  ${trouble.stack || trouble}`);
+  console.log(`  FAIL  ${why(trouble)}`);
+  console.log(`        ${String(trouble?.stack || "").split("\n").slice(1, 4).map((line) => line.trim()).join(" | ")}`);
 } finally {
   check(`no script errors or refused requests (${errors.length})`, errors.length === 0);
   for (const one of errors.slice(0, 5)) console.log(`        ${one}`);
