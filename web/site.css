@@ -2037,14 +2037,15 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 /* A board's icon on its own tint (Talk's tiles, a row with no picture). */
 .talk-tile {
 	display: grid; place-items: center; width: 100%; height: 100%; border-radius: inherit;
-	background: color-mix(in srgb, var(--tile, var(--accent)) 16%, var(--panel)); color: color-mix(in srgb, var(--tile, var(--accent)) 70%, var(--ink));
+	background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: color-mix(in srgb, var(--accent) 70%, var(--ink));
 }
 .talk-tile .icon { width: 30px; height: 30px; stroke-width: 1.6; }
-.b-show { --tile: var(--blue); }
-.b-help { --tile: var(--green); }
-.b-ideas { --tile: var(--yellow); }
-.b-challenges { --tile: var(--red); }
-.b-news { --tile: var(--ink-soft); }
+/* Each board its own colour, on the tile itself or on the board's link around it. */
+:is(.talk-tile.b-show, .b-show > .talk-tile) { background: color-mix(in srgb, var(--blue) 16%, var(--panel)); color: color-mix(in srgb, var(--blue) 70%, var(--ink)); }
+:is(.talk-tile.b-help, .b-help > .talk-tile) { background: color-mix(in srgb, var(--green) 16%, var(--panel)); color: color-mix(in srgb, var(--green) 70%, var(--ink)); }
+:is(.talk-tile.b-ideas, .b-ideas > .talk-tile) { background: color-mix(in srgb, var(--yellow) 16%, var(--panel)); color: color-mix(in srgb, var(--yellow) 70%, var(--ink)); }
+:is(.talk-tile.b-challenges, .b-challenges > .talk-tile) { background: color-mix(in srgb, var(--red) 16%, var(--panel)); color: color-mix(in srgb, var(--red) 70%, var(--ink)); }
+:is(.talk-tile.b-news, .b-news > .talk-tile) { background: color-mix(in srgb, var(--ink-soft) 16%, var(--panel)); color: color-mix(in srgb, var(--ink-soft) 70%, var(--ink)); }
 .talk-row-title { margin: 0; font-size: var(--t-h3); font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
 .talk-row-title a { color: var(--ink); text-decoration: none; }
 .talk-row-title a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }

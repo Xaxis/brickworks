@@ -16,7 +16,7 @@ api:GET/POST /api/share
 lib:directory
 -->
 
-![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Lists and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
+![The gallery's front on a computer: the heading, search and tabs, then the Week's pick across the page, its picture large beside its name, why it is picked, Build it and Open in Brickworks, and under it the cards three to a row, each with its picture, name, designer, part count, Like, comments and Remix.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
 
 ## On the home page {#home}
 
@@ -88,7 +88,7 @@ ui:a list's pages
 
 The gallery's front (Top, all time, nothing searched) has shelves among the cards:
 
-- **Week's pick**, the first card, with a line saying why: chosen each Monday from the past seven days by builds, remixes and the Tested mark, never one picked in the past eight weeks. A pick the site's owner made says *Chosen by Brickworks*.
+- **Week's pick**, a row of its own across the top with its picture large, with a line saying why and **Build it** and **Open in Brickworks** beside it; rest the pointer on its picture to turn the model in 3D. It is chosen each Monday from the past seven days by builds, remixes and the Tested mark, never one picked in the past eight weeks. A pick the site's owner made says *Chosen by Brickworks*.
 - **Today in the gallery**: one model a day, by its past 30 days' likes, builds, comments, remixes and the Tested mark, not again for four weeks; and one set from [the LDraw library](/docs/ldraw-library), never the same twice in 90 days.
 - **You can build now**, signed in: models you own every part for, from [your collection](/docs/collection). With no collection yet it says how to add one (in the app, **Build › My collection…**).
 - **Small builds**: under 200 parts, an evening's build, the most built and remixed first, with **See every small build**.
@@ -103,7 +103,7 @@ lib:the gallery's daily choice
 
 ## A card {#card}
 
-Every model is a card, the same everywhere on the site: its picture, its name, its designer (press to open [their page](#designer)), its part count, and how many liked, built and commented on it once there are any. The heart on the picture likes it. **✓ Tested** says it passed [Brickworks' four tests](/docs/sharing#tested). A card says *Moves: steering, boom* when something on it moves, which anybody can move on its page, and *Won* with a challenge's name when it won one.
+Every model is a card, the same everywhere on the site: its picture, its name, its designer (press to open [their page](#designer)), its part count, and how many liked, built and commented on it once there are any. A set from LDraw's library names who modelled it, and under that who shares it. In the gallery a card ends in **Like**, its comments and **Remix** (a copy of your own to change, in the studio), each with its count once there is one; a card lifts as the pointer comes over it. **✓ Tested** says it passed [Brickworks' four tests](/docs/sharing#tested). A card says *Moves: steering, boom* when something on it moves, which anybody can move on its page, and *Won* with a challenge's name when it won one.
 
 Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/lists#own)). Only you see it, and the gallery counts it for the whole page at once.
 
