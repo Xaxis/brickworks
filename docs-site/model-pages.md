@@ -153,6 +153,8 @@ No connector yet? **Connect Claude** goes to [Connect your AI](/docs/connect#wit
 
 <!-- covers
 ui:change a model with your Claude
+-->
+
 ## Open in Brickworks: a copy to change {#open}
 
 **Open in Brickworks** opens the studio with this model on the baseplate, never the example car. Signed out, it is there behind the studio's sign-in, which says it opens as your own copy: sign in with your email's code or with orangecheck (a new account answers the age question first) and you come back to it. Signed in, the copy is saved in your models under the model's name, credited to this page (its page says *Remixed from* once you [share it](/docs/sharing#remix)), and framed whole. The page you came from stays as it was.
