@@ -7228,8 +7228,11 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		# is up (BookletMaker.warm): built in its first picture, it was a
 		# second of a frame on a first start.
 		_warm_booklet()
+		# What happens next said in the title: a parent who asked for
+		# instructions to print was asked where to put a web page, and could
+		# not tell it opens in their browser with Print there (ux12).
 		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
-			"Save the instructions")
+			"Save the instructions: they open in your browser, to print or save as a PDF")
 		if to.is_empty():
 			return ""
 	# Said in the status bar while it works (Working), and in the tab it is

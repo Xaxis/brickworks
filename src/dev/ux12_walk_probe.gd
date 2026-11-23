@@ -141,8 +141,18 @@ func _fan() -> void:
 	await _search_bin("6080", "p2_01_bin_6080", "the set's number in the parts bin's search")
 	await _library("6080", "sets", "p2_02_library_6080", "File, Library: 6080")
 	await _close_all()
+	# As a new window opens it (?library=): not awaited, so a question over
+	# work not saved is answered Don't save here rather than waited on.
 	_main.set("_from_library", SET)
-	await _main.call("_maybe_open_library")
+	_main.call("_maybe_open_library")
+	for _n: int in 120:
+		await process_frame
+		var asking: Variant = _bar.get("_confirm_open")
+		if asking is Window and (asking as Window).visible:
+			print("UX12 p2: asked to save what was there first; answered Don't save")
+			(asking as Window).hide()
+			_bar.emit_signal("_replace_answered", "discard")
+			break
 	await _until_still(240)
 	await _step("p2_03_set_open", "the set opened, as Library's Open opens it")
 	await _run_command("instructions", "p2_04_instructions", "File, Instructions", 120)
@@ -159,7 +169,8 @@ func _fan() -> void:
 
 func _technic() -> void:
 	print("\nUX12 p3: a Technic builder wiring a motor")
-	await _run_command("new", "", "", 30)
+	_main.call("clear_model")
+	await _frames(30)
 	await _search_bin("motor", "p3_01_bin_motor", "the parts bin's search: motor")
 	await _take_first_tile("p3_02_motor_in_hand", "the first motor tile pressed")
 	await _put_down(Vector3(-40, 0, 0), "p3_03_motor_down", "the motor put on the baseplate")
