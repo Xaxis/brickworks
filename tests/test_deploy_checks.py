@@ -23,10 +23,13 @@ SENT_BR = ["index.wasm", "index.pck", "index.data.pck", "index.parts.bin", "inde
            "index.hdri.bin", "index.fonts.bin", "index.js"]
 
 # Stands in for node: each check sleeps and exits as the test says (STUB_<NAME>_SLEEP and
-# _EXIT), and writes down when it began and ended. One process, so a TERM ends it.
+# _EXIT), and writes down when it began and ended. One process, so a TERM ends it. The
+# build's own scripts (home_shelf.mjs, brotli.mjs) do nothing and pass.
 NODE = """#!/usr/bin/python3
 import os, sys, time
-name = {"check.mjs": "APP", "fit_check.mjs": "FIT", "landing_check.mjs": "LANDING"}[os.path.basename(sys.argv[1])]
+name = {"check.mjs": "APP", "fit_check.mjs": "FIT", "landing_check.mjs": "LANDING"}.get(os.path.basename(sys.argv[1]))
+if name is None:
+    sys.exit(0)
 log = os.environ["STUB_LOG"]
 with open(log, "a") as out:
     out.write(f"{name} start {time.time()}\\n")

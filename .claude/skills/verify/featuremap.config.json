@@ -6131,6 +6131,20 @@
     },
     {
       "kind": "cli",
+      "label": "lean release lists",
+      "entry": "tools/release/lean.py",
+      "reach": "tools/release/lean.py checks|probes --live SHA --head SHA --tree DIR [--named ...] [--smoke ...] [--every] | record checks|probes NAME BUILT AT OUT... [--passed ...]   (train.sh at staging and once merged, reship; what a release's change against live reaches less what was proven since; proof in $RELEASE_OUT/proofs/; tests/test_lean.py)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "nightly checks",
+      "entry": "tools/release/nightly.sh",
+      "reach": "tools/release/nightly.sh run [REF] | plan [REF] | install [HH:MM] | status   (a systemd user timer at 18:00 local: every check and every headless probe on origin/pre261, their passes written as proof for lean.py; $RELEASE_OUT/nightly-YYYYMMDD.summary)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
       "label": "sharelink probe",
       "entry": "src/dev/sharelink_probe.gd",
       "reach": "tools/probe.sh sharelink_probe   (headless: /app?share opens the share panel for the model on the baseplate once signed in, kept while signed out, once; never toggled shut)",
