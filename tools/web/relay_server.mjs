@@ -119,7 +119,7 @@ const arrivals = process.argv.includes("--arrivals") ? [] : null;
 // at /__held/<table>, on this machine only, and a check may POST a row there.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges",
-  "notifications", "replies", "feedback", "announce", "talk"].includes(name));
+  "notifications", "replies", "pins", "feedback", "announce", "talk"].includes(name));
 const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
   heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
