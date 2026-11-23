@@ -351,7 +351,7 @@ func _panel(fake: FakeShared) -> void:
 		if not _store.prompt_now().is_empty():
 			break
 	var asked: int = fake.prompt_asked.size()
-	var panel: SharePanel = _open_share()
+	var panel: SharePanel = await _open_share()
 	_check("File › Share… opens the panel", panel != null and panel.visible)
 	if panel == null or not panel.visible:
 		return
@@ -404,7 +404,7 @@ func _panel(fake: FakeShared) -> void:
 	panel.visible = false
 	_store.prompt = {}
 	asked = fake.prompt_asked.size()
-	_check("Share opens again", _open_share().visible)
+	_check("Share opens again", (await _open_share()).visible)
 	await _until_shown(panel, fake, asked)
 	_check("asked of the server, and the box is there again (%d asked)" % (fake.prompt_asked.size() - asked),
 		fake.prompt_asked.size() == asked + 1 and box.is_visible_in_tree() and box.text == BOX)
@@ -414,7 +414,7 @@ func _panel(fake: FakeShared) -> void:
 	await _bar._start_new()
 	await _frames(10)
 	asked = fake.prompt_asked.size()
-	_check("Share opens on it", _open_share().visible)
+	_check("Share opens on it", (await _open_share()).visible)
 	await _frames(40)
 	_check("no box, and nothing asked (%d asked)" % (fake.prompt_asked.size() - asked),
 		not box.visible and not panel.controls_by_name().has("share_prompt")
@@ -424,11 +424,20 @@ func _panel(fake: FakeShared) -> void:
 
 ## File › Share…, by its command, or as Main runs it where the layout has no
 ## such command.
+## A command runs as the shell attends it (Shell.attend): the first Share
+## loads its panel after its busy line is drawn, frames later, so the panel
+## is waited for, up to five seconds, not read the moment it is asked.
 func _open_share() -> SharePanel:
 	if not _shell.run("share"):
 		print("  (share is not a command here: opened as Main opens it)")
 		_main.call("_share_wanted")
-	return _main.get("_share_panel")
+	var began: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - began < 5000:
+		var made: SharePanel = _main.get("_share_panel_made")
+		if made != null and made.visible:
+			return made
+		await process_frame
+	return _main.get("_share_panel_made")
 
 
 ## The strip's other notices shown just now, by their class.
