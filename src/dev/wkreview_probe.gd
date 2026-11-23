@@ -292,8 +292,11 @@ const CASES: Array = [
 	# stay there, once.
 	["make_in_roof", "house_own", "make_in_roof", [], []],
 	# The printed panel's part swapped or painted: its texture-only geometry
-	# ("0 !:") says the part and colour the model now has.
-	["swap_fallback", "house_own", "swap_fallback", [], []],
+	# ("0 !:") says the part and colour the model now has: the swap's one
+	# changed line, the file's 4865b written as the 4865a it is now (wkfix F7).
+	["swap_fallback", "house_own", "swap_fallback",
+		["0 !: # # # # # # # # # # # # # # 4865b.dat"], [],
+		["0 !: # # # # # # # # # # # # # # 4865a.dat"], []],
 	["recolour_fallback", "house_own", "recolour_fallback", [], []],
 	# A whole write of a stepped file: LPub's MULTI_STEP still round its steps.
 	["multistep_other", "steps_other", "make_pair", [], []],

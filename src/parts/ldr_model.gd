@@ -775,9 +775,13 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	# by their lines: a whole write writes a sub-model the file had in the
 	# frame the file gave it (Assemblies.file_frames).
 	keep.out["locals"] = model._read_locals()
-	# And the file's pictures its TEXMAP lines kept name: a whole write
-	# carries each one nothing else of it writes (ModelStore._text_into).
-	keep.out["data"] = _pictures_named(keep.out, model.embedded_data)
+	# And every picture the file carries (!DATA): a whole write writes each
+	# one nothing else of it writes (ModelStore._text_into). Only those its
+	# kept TEXMAP lines named were kept up to keepfix, so a printed tile taken
+	# off wrote its picture once more and lost it at the next save (wkreview
+	# remove_tile, not saved again byte for byte), and LPub's INSERT PICTURE
+	# lost its own (wkreview N4).
+	keep.out["data"] = model.embedded_data
 	model.kept_lines = keep.out
 	return model
 
@@ -3262,25 +3266,6 @@ static func _unbound(lines: Array) -> Array:
 	while cut > 0 and _binds_next(_fields(str(lines[cut - 1]).strip_edges())):
 		cut -= 1
 	return lines if cut == lines.size() else lines.slice(0, cut)
-
-
-## Of [param data] (a file's !DATA pictures, by lower-case file name), those
-## a TEXMAP line of [param kept] ([member kept_lines]) names, by a word of it.
-static func _pictures_named(kept: Dictionary, data: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	if data.is_empty():
-		return out
-	for table: String in ["before", "after", "head", "end"]:
-		for at: Variant in kept[table]:
-			for item: Array in kept[table][at]:
-				var line: String = str(item[0])
-				if not line.to_upper().contains("!TEXMAP"):
-					continue
-				for word: String in _fields(line.strip_edges()):
-					var named: String = word.replace("\\", "/").get_file().to_lower()
-					if data.has(named):
-						out[named] = data[named]
-	return out
 
 
 static func _kept_texts(lines: Array, gone: Dictionary) -> Array:
