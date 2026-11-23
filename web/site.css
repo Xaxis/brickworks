@@ -1209,7 +1209,9 @@ dialog.keep-panel.at-foot::backdrop { background: var(--scrim); }
 .model .social > * { position: relative; z-index: 1; }
 .model .social .icon-btn { min-height: 36px; padding: 0 10px; gap: 6px; border-color: transparent; background: none; color: var(--ink-soft); }
 .model .social .icon-btn:hover { background: var(--panel-hi); color: var(--ink); }
-.model .social .icon-btn[aria-pressed="true"] { border-color: transparent; color: var(--red, var(--ink)); }
+/* Liked: the heart filled in red, its count in ink (red words were 3.6:1 on a dark card). */
+.model .social .icon-btn[aria-pressed="true"] { border-color: transparent; color: var(--ink); }
+.model .social .icon-btn[aria-pressed="true"] .icon { color: var(--red); }
 .model .social .n { font-size: var(--t-small); font-weight: 600; font-variant-numeric: tabular-nums; }
 .model .social .tally { margin-left: var(--s-2); }
 /* Who shares a model somebody else modelled, under that person's name. */
