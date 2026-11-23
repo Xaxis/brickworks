@@ -197,14 +197,18 @@ var edge: float = -1.0
 ## sky's units (0 none); [member source_rise] how high its middle stands
 ## (degrees), [member source_turn] how far round from straight behind the
 ## model (degrees, to the right), [member source_wide] and
-## [member source_tall] how big it is seen from the model (degrees), and
-## [member source_key] how much of a staged table's near key stays with it
-## (0 none, 1 all). Below 0, StudioRender's PRODUCT_SOURCE and SOURCE_*.
+## [member source_tall] how big it is seen from the model (degrees),
+## [member source_fall] how much darker its edges are than its middle (0
+## even, 1 dark at the corners), and [member source_key] how much of a
+## staged table's near key stays with it (0 none, 1 all). Below 0,
+## StudioRender's PRODUCT_SOURCE and SOURCE_*; [member source_rise] below 0
+## stands it where a flat top mirrors it, as high as the camera looks down.
 var source: float = -1.0
 var source_rise: float = -1.0
 var source_turn: float = -1.0
 var source_wide: float = -1.0
 var source_tall: float = -1.0
+var source_fall: float = -1.0
 var source_key: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that

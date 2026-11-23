@@ -171,11 +171,14 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// sees it, sharp-edged. The way to its middle (xyz) and its light (w, in
 	// the sky's units: 0 none); its face's right (xyz) and half width (w, a
 	// tangent); its face's up and half height (the same); its colour (rgb)
-	// and how soft its edges are (w, a share of its half size).
+	// and how soft its edges are (w, a share of its half size). How much
+	// darker its edges are than its middle, as a softbox's diffuser is (x,
+	// 0 even, 1 dark at the corners; yzw unused).
 	vec4 source;
 	vec4 source_right;
 	vec4 source_up;
 	vec4 source_colour;
+	vec4 source_shape;
 #endif
 } scene;
 
@@ -498,6 +501,7 @@ vec3 source_light(vec3 way) {
 	}
 	float edge = max(scene.source_colour.w, 1e-3);
 	float within = (1.0 - smoothstep(1.0 - edge, 1.0, abs(at.x))) * (1.0 - smoothstep(1.0 - edge, 1.0, abs(at.y)));
+	within *= 1.0 - scene.source_shape.x * min((at.x * at.x + at.y * at.y) * 0.5, 1.0);
 	return scene.source_colour.rgb * scene.source.w * within;
 }
 
@@ -521,6 +525,18 @@ vec3 source_pick(vec2 u) {
 float source_share() {
 	return scene.source.w > 0.0 ? SOURCE_SHARE : 0.0;
 }
+
+// What stops a way towards the light. The source stands in front of the
+// backdrop's paper, inside the tent, so a way that meets it above the floor
+// passes the sweep (its wall stands close behind the model and would hide
+// it); every other way is stopped by the sweep as before.
+uint lit_mask(vec3 way) {
+	vec3 at = source_at(way);
+	bool to_source = at.z > 0.0 && abs(at.x) < 1.0 && abs(at.y) < 1.0 && way.y > 0.02;
+	return to_source ? MASK_SOLID : MASK_SOLID | MASK_SWEEP;
+}
+#else
+#define lit_mask(way) (MASK_SOLID | MASK_SWEEP)
 #endif
 
 // How likely the panorama's table is to pick this direction, per steradian.
@@ -1733,7 +1749,7 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 		float pdf_bounce;
 		vec3 f = reflect_light(s, n, v, l, pdf_bounce);
 		if (max(f.r, max(f.g, f.b)) > 0.0) {
-			vec3 let = through(at, l);
+			vec3 let = through_masked(at, l, 1e7, lit_mask(l));
 			sum += f * lit_from(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
 		}
 	}
@@ -1787,7 +1803,9 @@ void main() {
 		vec4 first = vec4(0.0, 0.0, 0.0, 4.0);
 		bool met = false;
 		for (int event = 0; event < most + 8; event++) {
-			if (!trace(from, way, 1e7, 0xFFu, gl_RayFlagsOpaqueEXT)) {
+			// A bounce towards the large source passes the sweep (lit_mask).
+			uint seen = !straight && lit_mask(way) == MASK_SOLID ? 0xFFu & ~MASK_SWEEP : 0xFFu;
+			if (!trace(from, way, 1e7, seen, gl_RayFlagsOpaqueEXT)) {
 				met = true;
 				if (straight && scene.stage.x > 0.5 && scene.look.w < -0.5) {
 					// Nothing past a staged surface's white card: the card alone
@@ -1874,7 +1892,7 @@ void main() {
 				// over everything seen through a windscreen.
 				float f = schlick(vec3(0.045), abs(dot(ng, v))).x;
 				vec3 mirrored = reflect(way, n);
-				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, MASK_SOLID | MASK_SWEEP,
+				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, lit_mask(mirrored),
 						gl_RayFlagsOpaqueEXT)) {
 					radiance += carried * f * lit_from(mirrored);
 				}

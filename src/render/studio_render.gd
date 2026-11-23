@@ -180,17 +180,21 @@ const PRODUCT_FILL := 0.0
 const PRODUCT_EDGE := 1.0
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
 ## source and source_*; path_tracer.glsl's source_light): 0 unless asked
-## until judged. Its light in the sky's units, where its middle stands
-## (degrees up, and round from straight behind the model as the camera sees
-## it), how big it is seen from the model (degrees), how soft its edges are
-## (a share of its half size), and how much of a staged table's near key
-## stays beside it.
+## until judged. Its light in the sky's units; where its middle stands
+## (round from straight behind the model as the camera sees it, in degrees;
+## and up, where a flat top mirrors it: as high as the camera looks down,
+## kept within SOURCE_RISE_LOW and SOURCE_RISE_HIGH and its lower edge above
+## the floor); how big it is seen from the model (degrees), how soft its
+## edges are (a share of its half size), how much darker its edges are than
+## its middle, and how much of a staged table's near key stays beside it.
 const PRODUCT_SOURCE := 0.0
-const SOURCE_RISE := 40.0
+const SOURCE_RISE_LOW := 15.0
+const SOURCE_RISE_HIGH := 65.0
 const SOURCE_TURN := 0.0
-const SOURCE_WIDE := 60.0
-const SOURCE_TALL := 40.0
+const SOURCE_WIDE := 90.0
+const SOURCE_TALL := 50.0
 const SOURCE_EDGE := 0.04
+const SOURCE_FALL := 0.0
 const SOURCE_KEY := 1.0
 
 ## The most one traced sample of the product look may give, in what its
@@ -3084,14 +3088,15 @@ func _source_level(settings: RenderSettings) -> float:
 
 ## The large source as path_tracer.glsl's Scene reads it: the way to its
 ## middle and its light, its face's right and half width, its up and half
-## height (tangents), its colour and its edges' softness. It stands where
-## the camera sees it above and behind the model, turning with the view as a
-## photographer moves the box with the camera.
+## height (tangents), its colour and its edges' softness, and how much darker
+## its edges are. It stands where the camera sees it above and behind the
+## model, turning and rising with the view as a photographer moves the box
+## with the camera, so a flat top always mirrors it.
 func _source_rows(settings: RenderSettings, shot: Shot) -> PackedFloat32Array:
 	var level: float = _source_level(settings)
 	if level <= 0.0:
 		var none := PackedFloat32Array()
-		none.resize(16)
+		none.resize(20)
 		return none
 	# Into the picture along the floor (path_tracer.glsl's tent_frame): a
 	# camera looking straight down has the picture's up as its way in.
@@ -3100,19 +3105,24 @@ func _source_rows(settings: RenderSettings, shot: Shot) -> PackedFloat32Array:
 	var ahead := Vector3(-back.x, 0.0, -back.z) + Vector3(up.x, 0.0, up.z)
 	var into: Vector3 = ahead.normalized() if ahead.length_squared() > 1e-8 else Vector3(0.0, 0.0, -1.0)
 	var right := Vector3(-into.z, 0.0, into.x)
-	var rise: float = deg_to_rad(_own(settings.source_rise, SOURCE_RISE))
+	var tall_deg: float = clampf(_own(settings.source_tall, SOURCE_TALL), 1.0, 170.0)
+	var looks_down: float = rad_to_deg(asin(clampf(back.y, -1.0, 1.0)))
+	var mirrored: float = clampf(looks_down, maxf(SOURCE_RISE_LOW, tall_deg * 0.5 + 3.0),
+		maxf(SOURCE_RISE_HIGH, tall_deg * 0.5 + 3.0))
+	var rise: float = deg_to_rad(_own(settings.source_rise, mirrored))
 	var turn: float = deg_to_rad(_own(settings.source_turn, SOURCE_TURN))
 	var flat: Vector3 = into * cos(turn) + right * sin(turn)
 	var middle: Vector3 = (flat * cos(rise) + Vector3.UP * sin(rise)).normalized()
 	var across: Vector3 = (right * cos(turn) - into * sin(turn)).normalized()
 	var face_up: Vector3 = across.cross(middle).normalized()
 	var wide: float = tan(deg_to_rad(clampf(_own(settings.source_wide, SOURCE_WIDE), 1.0, 170.0)) * 0.5)
-	var tall: float = tan(deg_to_rad(clampf(_own(settings.source_tall, SOURCE_TALL), 1.0, 170.0)) * 0.5)
+	var tall: float = tan(deg_to_rad(tall_deg) * 0.5)
 	var tint: Color = _paper_tint(settings) if _tented(settings) else Color(1, 1, 1)
 	return PackedFloat32Array([middle.x, middle.y, middle.z, level,
 		across.x, across.y, across.z, wide,
 		face_up.x, face_up.y, face_up.z, tall,
-		tint.r, tint.g, tint.b, SOURCE_EDGE])
+		tint.r, tint.g, tint.b, SOURCE_EDGE,
+		clampf(_own(settings.source_fall, SOURCE_FALL), 0.0, 1.0), 0.0, 0.0, 0.0])
 
 
 ## The stage matched to the photographs by measure (photoreal10) that
