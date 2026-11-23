@@ -301,11 +301,16 @@ try {
   const asked = (path, { method = "GET", token = "", body } = {}) => fetch(`${origin}${path}`, { method,
     headers: { ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(body ? { "content-type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  // Storage's prefix is a folder, and the clips are at the bucket's root
+  // (<id>.webm): listed by prefix, the clip was never seen, and its gone
+  // passed with nothing to see (rel-m319). Searched by name instead, as
+  // api/_erase.js asks, this model's own files only.
   const clipsOf = async (id) => {
     const reply = await fetch(`${supabase}/storage/v1/object/list/shared-clips`, { method: "POST",
       headers: { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" },
-      body: JSON.stringify({ prefix: id, limit: 10, offset: 0 }) });
-    return reply.ok ? (await reply.json()).map((file) => file.name) : [`(storage answered ${reply.status})`];
+      body: JSON.stringify({ prefix: "", search: id, limit: 10, offset: 0 }) });
+    return reply.ok ? (await reply.json()).filter((file) => file.id !== null && String(file.name).startsWith(`${id}.`))
+      .map((file) => file.name) : [`(storage answered ${reply.status})`];
   };
   const { access_token: token } = await mintSession(email);
   const model = ["0 FILE main.ldr", "0 Clip test", "0 Name: main.ldr", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
