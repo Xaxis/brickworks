@@ -126,7 +126,8 @@ var dust: float = -1.0
 var paper: float = -1.0
 ## What that grain is (photoreal5), for the photo bench to match the surface
 ## each photograph's parts stand on: 0 a paper's or a card's fibres, 1 a
-## matte desk's specks and smudges.
+## matte desk's specks and smudges; and drawn by [member table]
+## (photoreal10), 2 a leather desk pad, 3 a stone counter.
 var surface: int = 0
 ## A photograph's staging (photoreal7), Best path traced in the product look:
 ## one of StudioRender.STAGES (what the model stands on, lit as any surface
@@ -172,6 +173,17 @@ var play: float = -1.0
 ## 1 as the bench's black 2x4 shows it). Below 0, StudioRender's
 ## PRODUCT_RUBBED.
 var rubbed: float = -1.0
+## The stage matched to the photographs by measure (photoreal10), path traced
+## in the product look on a backdrop: the table's own relief, a leather's
+## cells, a stone's grains, a desk's laminate (0 none, 1 as measured; which
+## table is [member surface]); how far the light that falls off across the
+## table stands from the model (its radii, 0 none); how much the shade's fill
+## is tinted as daylight is, by as much of the light as the model keeps from
+## it (0 none, 1 as measured). Below 0, StudioRender's PRODUCT_TABLE,
+## _TABLE_LIGHT and _FILL.
+var table: float = -1.0
+var table_light: float = -1.0
+var fill: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

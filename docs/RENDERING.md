@@ -2043,6 +2043,79 @@ not colour: leather's cells and stone's grain shaded by a normal from the
 surface's own texture. The wear on light colours reads as noise: its scuffs
 should follow the edge, not a 3D noise.
 
+## 5n. The stage matched to the photographs by measure (photoreal10)
+
+photoreal9 measured what each photograph's stage shows and found the
+render's tables flat, its desk evenly lit and its shade yellower than the
+photographs'. photoreal10 built each as a lever and tuned it until the
+render's own measure was within 20% of the photograph's (within 1 b* for the
+shade), before any judge was asked.
+
+**The measure.** `tools/photoreal/stage_measure.py` is photoreal9's
+measure9: the backdrop outside the model's outline, in CIELAB. One fix,
+`--frame-fix`: the outline seeds the whole frame edge as backdrop, so where
+the render's frame cuts the model (6532's yellow front) 40 yellow pixels at
+b* +64 were counted in the shade's core and moved its b* by +3. With the fix
+the photographs' numbers stay as they were, except where a photograph's own
+frame cuts a part (green_plate_macro's core).
+
+**The levers.** Each is drawn only where Best is path traced, in the
+Product look, on a backdrop, and is seeded by the place. The model and its
+file are never changed. Each is 0 unless asked
+(`StudioRender.PRODUCT_TABLE`, `_TABLE_LIGHT`, `_FILL`).
+- **table** (`RenderSettings.table`, with `surface` 1 a desk, 2 a leather
+  pad, 3 a stone counter): the table's own relief and colour
+  (`table_height`, `table_normal`, `table_paper`). The leather has domed cells
+  about 1.5 mm across with thin creases between them. The stone has grains a
+  few tenths of a millimetre across over a mottle. The desk has an orange
+  peel and broad blotches. The relief's normal is in the denoiser's guide;
+  without it the filter smoothed the relief away.
+- **table_light** (the model's radii): the light falls off across the table
+  from a lamp that stands near it, toward the staged key, by the inverse
+  cube of the distance (`table_falloff`). A photograph's desk is never lit
+  evenly.
+- **fill**: the shade is tinted towards daylight's fill by as much of the
+  light as the model keeps from it (`shadow_marked`). The open floor stays
+  the backdrop's colour exactly, and the deepest shade is the bluest. Tinting
+  the fill against the key, as photoreal9 tinted the walls, moved the shade
+  by 1 to 3 b* whatever the strength: most of what lights the open floor
+  lights the shade too, and their ratio kept the colour.
+- **The lens.** The black 2x4's leather is drawn at f/45, focused at 0.3 of
+  its depth (it was f/64 at 0.45), so its grain falls off with distance as the
+  photograph's does. This is the shot's own camera, set in the bench's shots
+  file with the table.
+
+**Measured, photograph : before : after** (`--frame-fix`):
+
+| measure | photograph | before | after |
+|---|---|---|---|
+| leather spread (black_2x4) | 12.0 | 9.0 | 9.4 |
+| leather grain far / near | 0.91 / 3.46 | 0.21 / 0.19 | 0.85 / 3.54 |
+| desk spread (grey_1x3) | 11.7 | 2.4 | 9.5 |
+| desk fall, right less left | -6.4 | +0.2 | -7.0 |
+| stone spread (green_plate_macro) | 17.6 | 3.0 | 15.8 |
+| 6532 shade b* | -4.2 | -0.1 | -4.8 |
+| 6660 shade b* | -3.2 | +1.4 | -3.2 |
+
+The leather's spread is the one measure short: 22% under, 2 points outside
+the band. Deeper relief, darker creases, more tone per cell and a broader
+tone all left it at 9.3 to 9.4. The spread is taken over the lit part, at a
+quarter of the picture's size, where the cells are a pixel or two across.
+
+**Tried and taken out, never judged.** A lever that could not reach its
+number was not judged.
+- **Letters as single raised strokes.** The photographs' strokes are
+  lighter than the stud's top (photoreal10's logo measure, signed: +0.51 of each stroke's
+  contrast, +1.9 L* at a set's distance). A rounded ridge at full height drew
+  them darker (-0.16 to -0.36), because its walls stand near 45 degrees and
+  mirror the floor. At a third or half of that height they turn lighter but
+  faint (+0.27 to +0.40 L* at distance). A smooth finish on the walls did not
+  change the sign.
+- **Wear along part edges** in place of scuffs from a noise. The close-ups
+  carry no age, so it drew nothing there. On the sets an edge is a pixel or
+  two, and the faces' own grain (0.16 against the photographs' 0.04) does not
+  come from the wear. No measure could see it.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

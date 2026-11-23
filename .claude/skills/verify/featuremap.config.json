@@ -4464,6 +4464,13 @@
       "area": "view"
     },
     {
+      "kind": "lib",
+      "label": "the stage matched to the photographs",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal10, docs/RENDERING.md 5n: at Best in the Product look, path traced on a backdrop, the stage matched to each photograph by measure: the table's own relief and colour (RenderSettings.table with surface 1 a desk, 2 a leather pad, 3 a stone counter; path_tracer.glsl table_height, table_normal, table_paper, the relief also in the denoiser's guide), the light falling off across it from a lamp that stands near (table_light, the model's radii, toward the staged key; table_falloff) and the shade tinted towards daylight's fill by as much of the light as the model keeps from it (fill; shadow_marked); each 0 unless asked (StudioRender.PRODUCT_TABLE, _TABLE_LIGHT, _FILL), drawn by the shader's marks version so a picture without them is the plain version's, byte for byte photoreal9's)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "photoreal cycles",
       "entry": "tools/photoreal/cycles/render.py",

@@ -3227,6 +3227,27 @@ picture the assistant is shown.
   colour T` keeps the tent's faces within ΔE2000 5 with it on. The bench's
   6660 (tools/photoreal/models/set_6660.mpd) seats its driver in the car
   base's 2 x 2 open centre, his cap under the roof's glass.
+- `the stage matched to the photographs` (`RenderSettings.table`, `table_light`,
+  `fill`; `StudioRender.PRODUCT_TABLE`, `_TABLE_LIGHT`, `_FILL`; photoreal10,
+  docs/RENDERING.md 5n): at Best in the Product look, path traced on a
+  backdrop, the stage each photograph shows, matched by measure: the
+  table's own relief and colour (`surface` 1 a desk's laminate and blotches,
+  2 a leather pad's domed cells and creases, 3 a stone counter's grains and
+  mottle; path_tracer.glsl `table_height`, `table_normal`, `table_paper`;
+  the relief is in the denoiser's guide, so it is kept), the light falling
+  off across it from a lamp that stands near (`table_light` model radii
+  toward the staged key; `table_falloff`), and the shade tinted towards
+  daylight's fill by as much of the light as the model keeps from it
+  (`fill`; `shadow_marked`), so the open floor stays the backdrop's colour.
+  Each 0 unless asked; drawn by the shader's "marks" version, so a picture
+  without them is drawn by "plain", photoreal9's code. Check:
+  `tools/probe.sh photoreal_probe -- --tag=T` draws photoreal9's pictures
+  byte for byte (10 of 10 against fea8a984b's), and `--shots=FILE` with
+  `table`, `table_light`, `surface` or `fill` per shot draws them; the
+  photographs' measures (`python3 tools/photoreal/stage_measure.py
+  shots/photoreal/T --frame-fix`) put each table's spread and the desk's
+  fall within 20% of the photograph's, and the white sets' shade within
+  1 b*.
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong
