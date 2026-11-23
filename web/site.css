@@ -1990,7 +1990,8 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
    .view3d): the frame's own size, so nothing moves. */
 .post-pic > .view3d { position: absolute; inset: 0; z-index: 1; }
 .post-words { display: flex; flex: 1; flex-direction: column; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-4); }
-.post-title { margin: 0; overflow: hidden; color: var(--ink); font-size: var(--t-body); font-weight: 650; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+/* A post's title is its h3, at the scale's --t-h3 (design_flow headings). */
+.post-title { margin: 0; overflow: hidden; color: var(--ink); font-size: var(--t-h3); font-weight: 650; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .post-title a { color: inherit; text-decoration: none; }
 .post-title a:hover { text-decoration: underline; }
 .post.talk .post-title, .post.challenge .post-title, .post.try .post-title { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
