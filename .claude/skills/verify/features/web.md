@@ -9623,7 +9623,12 @@ PROBE_SIZE=390x844 tools/probe.sh studio_start_probe -- --pictures=shots/studio_
 
 It passes when it ends "the studio's first screen: every check passed": the
 four saved models newest first, the week's build, three came back (one on a
-part) and six from the gallery; the pin pressed selects its part within a
+part) and six from the gallery; every Continue tile showing its model (the
+three with no stored picture drawn from their files, `StudioStart._drawing_of`,
+kept in `user://thumbnails/` by the file's MD5) and no letter; each came-back
+row led by whoever it was (their picture, or their initial on their colour,
+`StudioStart.tone_of` = `web/card.js avatarTone`); × at the card's top right
+and New model a button's height, the title under them on a phone; the pin pressed selects its part within a
 second; a pin written meanwhile shows within a minute unasked
 (`Main.PINS_EVERY`); Escape; a gallery model opened as a copy. Then in a
 browser, with two throwaway accounts, on a local relay over an export or a
