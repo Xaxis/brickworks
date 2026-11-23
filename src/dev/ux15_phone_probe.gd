@@ -543,22 +543,17 @@ func _studio_steps() -> void:
 func _own_version() -> void:
 	print("\nUX15 p17: a set's Make your own version, one thing changed")
 	await _close_all()
-	_main.set("_from_library", SET)
-	_main.call("_maybe_open_library")
-	for _n: int in 120:
-		await process_frame
-		var asking: Variant = _bar.get("_confirm_open")
-		if asking is Window and (asking as Window).visible:
-			print("UX15 p17: asked to save what was there first; answered Don't save")
-			(asking as Window).hide()
-			_bar.emit_signal("_replace_answered", "discard")
-			break
-	# The set comes from the library: fetched, then laid out.
+	# The set's file as the library sends it (Main._maybe_open_library, after
+	# its fetch): a probe reaches no library, and the fetch waited for ever.
+	# From here it is what a person meets: the set opened as a copy of its own.
+	var text: String = FileAccess.get_file_as_string("res://vendor/omr/files/6080-1.mpd")
+	_store.keeps = false
+	_main.call("clear_model")
+	await _frames(10)
 	var since: int = Time.get_ticks_msec()
-	while _world.brick_count() < 20 and Time.get_ticks_msec() - since < 120000:
-		await process_frame
-	print("UX15 p17: the set's %d parts in %.1f s" % [_world.brick_count(),
-		(Time.get_ticks_msec() - since) / 1000.0])
+	var result: Dictionary = await _bar.open_text_with_progress(text, "King's Castle")
+	print("UX15 p17: the set's %d parts in %.1f s (%s)" % [_world.brick_count(),
+		(Time.get_ticks_msec() - since) / 1000.0, str(result.get("error", ""))])
 	await _until_still(240)
 	await _step("p17_01_opened", "the set opened as a copy of its own")
 	# One part, near the middle of the screen, tapped and recoloured.
