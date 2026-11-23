@@ -3052,8 +3052,8 @@ plan with Claude as the client.
   why}: a refused post never stops the publish). Publish then reads
   Publish as finished, which ends it. Before wip.sql, `wipReady()` is
   false: nothing reads the columns, and Share progress is refused 503 in
-  words. `src/dev/wip_probe.gd` (headless; `PROBE_SIZE=1280x800
-  tools/probe.sh wip_probe` for its pictures in shots/wip/): two presses,
+  words. `src/dev/wip_probe.gd` (`tools/probe.sh wip_probe`, headless;
+  the panel's picture `tools/docs_shots.py --only=sharing-progress`): two presses,
   the body sent, the panel's words, the next version, Publish as finished,
   a WIP link reopened, under 13 off. `tools/web/wip_flow.mjs` end to end
   over a relay (`relay_server.mjs 11440 --static=build/web`) once wip.sql

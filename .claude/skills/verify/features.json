@@ -3852,7 +3852,7 @@
       "id": "cli:wip probe",
       "kind": "cli",
       "entry": "src/dev/wip_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/wip_probe.gd   (PROBE_SIZE=1280x800 tools/probe.sh wip_probe for shots/wip/)",
+      "reach": "godot --headless --path . --script src/dev/wip_probe.gd   (tools/probe.sh wip_probe; the panel's picture: tools/docs_shots.py --only=sharing-progress)",
       "area": "web",
       "tests": []
     },

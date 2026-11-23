@@ -2,7 +2,7 @@
 ## (2026-11-23, unit buildlog; api/_wip.js, supabase/wip.sql).
 ##
 ##   godot --headless --path . --script src/dev/wip_probe.gd
-##   PROBE_SIZE=1280x800 tools/probe.sh wip_probe        windowed, its pictures
+##   (the panel's pictures: tools/docs_shots.py --only=sharing-progress)
 ##
 ## A model was shared when it was finished, so the months it took to build
 ## were seen by nobody. Now the share panel has Share progress beside
@@ -27,8 +27,8 @@
 ##      sent.
 ##
 ## It loads on a build from before (what is new is asked for by name), so
-## that build fails its checks rather than failing to load. Pictures in
-## shots/wip/, named by the window's size: 1_shared, 3_finished.
+## that build fails its checks rather than failing to load. Run in a
+## window, it writes shots/wip/<size>_1_shared and _3_finished.
 extends SceneTree
 
 const SHOTS := "res://shots/wip/"
