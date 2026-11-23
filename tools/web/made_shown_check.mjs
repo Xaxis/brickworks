@@ -6,9 +6,8 @@
 //
 // Against the stand-in database (design_stand_in.mjs), with no browser and
 // no network: --root's api/ answering as a deployment does. Two of the
-// house's models are tagged ai-designed and described "Designed with the
-// assistant.": HouseMod01's owner said nothing, HouseMod02's chose to show
-// it. For each, what a stranger is told:
+// house's models are tagged ai-designed: HouseMod01's owner said nothing,
+// HouseMod02's chose to show it. For each, what a stranger is told:
 //
 //   its page (/m/X): With the assistant among the facts, and the
 //     ai-designed tag, on HouseMod02's alone;
@@ -21,8 +20,8 @@
 //     assistant on HouseMod02's, no pill on HouseMod01's, and no Built by
 //     hand anywhere, which would tell the two apart.
 //
-// The house's own words (its descriptions, "Designed with the assistant.")
-// are its own, and stay. Exits 1 on any failure.
+// The house's own words no longer say it either (supabase/house_words.sql).
+// Exits 1 on any failure.
 import * as stand from "./design_stand_in.mjs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";

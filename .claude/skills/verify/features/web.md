@@ -2460,6 +2460,14 @@ plan with Claude as the client.
   house.sql's, since the API refuses a profile save of the reserved handle;
   dry-run with `tools/house_shelf_try.sql` (296 characters, no other
   profile changed). The lead applies it with the shelf's first slice.
+  `supabase/house_words.sql` (aiprivate, 2026-11-23, the owner: nothing
+  says a model was made with the assistant unless its owner shows it) says
+  the bio and 21 house models' descriptions again without who or what
+  designed them, each only while it is still the words it replaces,
+  updated_at kept; the seeds (`tools/web/gallery_seeds/seeds.json`) and the
+  stand-in say the same. Dry-run with `--again=supabase/house_words.sql
+  --try=tools/house_words_try.sql` (saying 0 of 56, the search words too,
+  none moved up New).
 - `who modelled a shared model` (`supabase/modelled_by.sql`,
   `supabase/modelled_by_changed.sql`, `api/_omr_credit.js`
   `libraryCredit`): a model its sharer did not make, the shelf from the
