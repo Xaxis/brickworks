@@ -16025,6 +16025,18 @@ msgstr "die Schritte sind schon aus dem Modell, wie es ist, ermittelt"
 msgid "worked the steps out again from the model as it is"
 msgstr "die Schritte neu aus dem Modell, wie es ist, ermittelt"
 
+msgid "the parts in hand are in no step: put them down, or press Escape, first"
+msgstr "die Teile in der Hand sind in keinem Schritt: lege sie erst ab oder drücke Esc"
+
+msgid "worked the steps out again from the model as it is: %d of the %d steps with a name, notes or a page of their own share a step with another now, where one name and page stand"
+msgstr "die Schritte neu aus dem Modell, wie es ist, ermittelt: %d der %d Schritte mit eigenem Namen, eigenen Notizen oder eigener Seite teilen sich jetzt einen Schritt mit einem anderen, in dem ein Name und eine Seite bleiben"
+
+msgid "worked the steps out again from the model as it is, each step's name, notes and page with its parts"
+msgstr "die Schritte neu aus dem Modell, wie es ist, ermittelt, Name, Notizen und Seite jedes Schritts bei seinen Teilen"
+
+msgid "%d of the %d steps with a name, notes or a page of their own would share a step with another, where one name and page stand: their notes are kept. One undo brings them back."
+msgstr "%d der %d Schritte mit eigenem Namen, eigenen Notizen oder eigener Seite würden sich einen Schritt mit einem anderen teilen, in dem ein Name und eine Seite bleiben: ihre Notizen bleiben erhalten. Ein Rückgängig holt sie zurück."
+
 # Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
 msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
 msgstr "Das gewählte Foto wird an Brickognize (brickognize.com) geschickt, einen Drittanbieter, der LEGO® Teile erkennt. Nach seinen Bedingungen darf er das Foto behalten und damit seine Erkennung trainieren, und er ist nur für den privaten, nicht kommerziellen Gebrauch: Die Lizenz von Pro für den kommerziellen Gebrauch deckt ihn nicht ab.\n\nNur das Foto wird gesendet, nie dein Modell, und nichts wird gesendet, bevor du ein Foto wählst."

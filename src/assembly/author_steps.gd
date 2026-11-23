@@ -1081,9 +1081,12 @@ static func held_name(placement: Object) -> String:
 ## file (BrickWorld.steps_own): each part it put down ([param added], ids)
 ## given the step of what it rests on, the latest where it rests on several,
 ## or a new last step of its section where it rests on nothing of it (on the
-## floor, or held by what stands beside it); and each part it moved
-## ([param moved]) left in its step unless everything it now rests on comes
-## later, when it goes in the step of what it rests on. No other part's step
+## floor, or held by what stands beside it), or past a full step of parts
+## put down since the open ([method _step_on]); and each part it moved
+## ([param moved], by any means) left in its step unless everything it now
+## rests on comes later, when it goes in the step of what it rests on. The
+## parts are followed from the bottom up, by what holds what
+## ([method _bottom_up]). No other part's step
 ## changes, and a step the edit emptied is gone with its last part, as the
 ## writer writes only steps with something in them. What a part rests on is
 ## what its boxes, one cell lower, meet in the builder's [param lattice], as
@@ -1120,6 +1123,7 @@ static func follow_saved(world: BrickWorld, lattice: BrickLattice, added: Array,
 		return low_a < low_b if low_a != low_b else a.id < b.id
 	var given: Dictionary = {}      ## a part put down in this edit -> the step it was given
 	var last: Dictionary = {}       ## section -> the new last step given in this edit
+	var full: Dictionary = {}       ## section -> {step: its parts, "most": the plan's per step}
 	var order: Array = copies.keys()
 	for copy: String in order:
 		(copies[copy] as Array).sort_custom(lowest)
@@ -1130,44 +1134,138 @@ static func follow_saved(world: BrickWorld, lattice: BrickLattice, added: Array,
 		var section: String = home(world, Assemblies.parent_of(copy))
 		var at: int = -1
 		for brick: BrickWorld.Brick in copies[copy]:
-			for step: int in _rests_in(world, lattice, brick, section, skip, given):
-				at = maxi(at, step)
+			for rest: Array in _rests_in(world, lattice, brick, section, skip, given):
+				at = maxi(at, int(rest[0]))
 		if at < 0:
 			at = _new_last(world, section, skip, last)
 		undo.append({"undo": "unitstep", "unit": copy, "step": -1})
 		world.unit_steps[copy] = at
-	var fresh: Array = placed.filter(func(brick: BrickWorld.Brick) -> bool: return brick.step < 0)
-	fresh.sort_custom(lowest)
-	for brick: BrickWorld.Brick in fresh:
+	# Each part put down with no step yet, and each moved: typed, nudged,
+	# turned, or picked up and put down, as the mouse drags a part
+	# (Builder._put_carried marks those). Up to sk2fix a dragged part kept the
+	# step it was lifted from wherever it went, and the station's brick of
+	# step 2 put on a step-40 top was shown in the air (sk2review F1).
+	var parts: Array = placed.filter(func(brick: BrickWorld.Brick) -> bool: return brick.step < 0)
+	var seen: Dictionary = {}
+	for brick: BrickWorld.Brick in parts:
+		seen[brick.id] = true
+	for id: Variant in moved:
+		var brick: BrickWorld.Brick = world.get_brick(int(id))
+		if brick == null or seen.has(brick.id) or given.has(brick.id) or skip.has(brick.id) \
+				or lattice.boxes_of(brick.id).is_empty():
+			continue
+		seen[brick.id] = true
+		parts.append(brick)
+	for brick: BrickWorld.Brick in _bottom_up(lattice, parts, lowest, skip):
 		var section: String = home(world, Assemblies.path_of(brick))
 		var under: Array = _rests_in(world, lattice, brick, section, skip, given)
-		var at: int = -1
-		for step: int in under:
-			at = maxi(at, step)
-		if at < 0:
-			at = _new_last(world, section, skip, last)
+		if brick.step >= 0:
+			# Moved: kept in its step while something it rests on is built
+			# by then.
+			if under.is_empty():
+				continue
+			var first: int = 1 << 30
+			for rest: Array in under:
+				first = mini(first, int(rest[0]))
+			if first <= brick.step:
+				continue
+		var at: int = _step_on(world, under, section, skip, last, full)
 		undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
 		brick.step = at
 		given[brick.id] = at
-	for id: Variant in moved:
-		var brick: BrickWorld.Brick = world.get_brick(int(id))
-		if brick == null or brick.step < 0 or given.has(brick.id) or skip.has(brick.id) \
-				or lattice.boxes_of(brick.id).is_empty():
-			continue
-		var section: String = home(world, Assemblies.path_of(brick))
-		var under: Array = _rests_in(world, lattice, brick, section, skip, given)
-		if under.is_empty():
-			continue
-		var first: int = 1 << 30
-		var latest: int = -1
-		for step: int in under:
-			first = mini(first, step)
-			latest = maxi(latest, step)
-		if first <= brick.step:
-			continue
-		undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
-		brick.step = latest
+		if full.has(section):
+			var counts: Dictionary = full[section]
+			counts[at] = int(counts.get(at, 0)) + 1
 	return undo
+
+
+## [param parts] in the order to follow them: each after every one of them
+## it rests on (what its boxes meet one cell lower, as [method _rests_in]
+## reads it), the lowest first of those free to go ([param lowest]). Two
+## stacked parts moved together were followed in the order they were
+## selected, and the upper, first, read the lower's old step and was built
+## before it (sk2review F3). By what holds what, not by height: a part's
+## lowest cell is no measure of what rests on it, as a slope or a part
+## hooked under another's lip has cells above its neighbour's lowest. A ring
+## of them resting on each other is broken at its lowest.
+static func _bottom_up(lattice: BrickLattice, parts: Array, lowest: Callable,
+		skip: Dictionary) -> Array:
+	if parts.size() < 2:
+		return parts
+	var mine: Dictionary = {}
+	for brick: BrickWorld.Brick in parts:
+		mine[brick.id] = true
+	var waits: Dictionary = {}      ## a part -> how many of the parts it rests on are still to go
+	var holds: Dictionary = {}      ## a part -> the parts that rest on it
+	for brick: BrickWorld.Brick in parts:
+		var below: PackedInt32Array = BrickLattice.moved_by(lattice.boxes_of(brick.id),
+			Vector3i(0, -1, 0))
+		var count: int = 0
+		for other_id: int in lattice.blockers_boxes(below, brick.id, skip):
+			if mine.has(other_id):
+				count += 1
+				(holds.get_or_add(other_id, []) as Array).append(brick.id)
+		waits[brick.id] = count
+	var left: Array = parts.duplicate()
+	left.sort_custom(lowest)
+	var out: Array = []
+	while not left.is_empty():
+		var pick: int = 0
+		for index: int in left.size():
+			if int(waits[(left[index] as BrickWorld.Brick).id]) <= 0:
+				pick = index
+				break
+		var brick: BrickWorld.Brick = left[pick]
+		left.remove_at(pick)
+		out.append(brick)
+		for upper: int in holds.get(brick.id, []):
+			waits[upper] = int(waits[upper]) - 1
+	return out
+
+
+## The step a part resting on [param under] ([method _rests_in]) goes in,
+## in [param section]: the latest of what it rests on, or the step after
+## the section's last where it rests on nothing of it ([method _new_last]).
+## Where the latest holds a part put down since the model was opened (one
+## from no line of its file, BrickWorld.Brick.origin) and as many parts as
+## the plan puts in one step of a model this size (Instructions._per_step),
+## the part starts a new step after the section's last: a builder's step is
+## what they hold in their hand before looking back at the page. Up to
+## sk2fix ten bricks stacked one at a time were one step, and a model built
+## over several sessions piled each into the steps of its first save
+## (sk2review F4). Only on a part put down since: a part put on what the
+## file built goes with it, however many are there, as a detail goes with
+## the wall it is on; and every other part keeps its step. [param full]
+## keeps each section's counts once read.
+static func _step_on(world: BrickWorld, under: Array, section: String, skip: Dictionary,
+		last: Dictionary, full: Dictionary) -> int:
+	var at: int = -1
+	var on_new: bool = false
+	for rest: Array in under:
+		if int(rest[0]) > at:
+			at = int(rest[0])
+			on_new = false
+		if int(rest[0]) == at and (rest[1] as BrickWorld.Brick).origin.is_empty():
+			on_new = true
+	if at < 0:
+		return _new_last(world, section, skip, last)
+	if not on_new:
+		return at
+	if not full.has(section):
+		var items: Array = items_of(world, section, skip)
+		var counts: Dictionary = {}
+		for item: Dictionary in items:
+			counts[int(item["step"])] = int(counts.get(int(item["step"]), 0)) + 1
+		full[section] = counts
+		counts["most"] = Instructions._per_step(items.size())
+	var counted: Dictionary = full[section]
+	if int(counted.get(at, 0)) < int(counted["most"]):
+		return at
+	var after: int = at
+	for step: Variant in counted:
+		if step is int:
+			after = maxi(after, int(step))
+	return after + 1
 
 
 ## The step after [param section]'s last, the same for every part an edit
@@ -1273,7 +1371,7 @@ static func cleared(world: BrickWorld, skip: Dictionary = {}) -> Array:
 ## in the same edit), a part of a copy built on the side inside it by the
 ## step the section puts that copy on. What is outside the section (the
 ## model round a copy built on the side, which is built apart from it), and
-## what has no step yet, says nothing.
+## what has no step yet, says nothing. Each as [its step, the part it is].
 static func _rests_in(world: BrickWorld, lattice: BrickLattice, brick: BrickWorld.Brick,
 		section: String, skip: Dictionary, given: Dictionary) -> Array:
 	var out: Array = []
@@ -1298,7 +1396,7 @@ static func _rests_in(world: BrickWorld, lattice: BrickLattice, brick: BrickWorl
 					step = int(world.unit_steps.get(at, -1))
 					break
 		if step >= 0:
-			out.append(step)
+			out.append([step, other])
 	return out
 
 

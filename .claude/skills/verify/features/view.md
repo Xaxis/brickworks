@@ -1764,14 +1764,28 @@ picture the assistant is shown.
   the file. Worked out only for a file with no `0 STEP` line (an older build's
   autosave) or when asked: **Plan steps** in the timeline's row and
   edit_steps `plan` take every step off (`AuthorSteps.cleared`, one undo; not
-  on someone else's file). After an edit of such a model
+  on someone else's file). A step with a look of its own (name, notes, page,
+  zoom: `BookletLooks.own_count`) keeps it: the plan's numbers are given to
+  the model (`AuthorSteps.adopt_plan`, `steps_own` as it was, so a named
+  model stays the person's) and each look goes to
+  the step most of its parts went to (`BookletLooks.carried`); where two come
+  to share a step the press asks first, with the count (`Shell._ask_plan`),
+  and edit_steps says it after (sk2fix; sk2review F5). Every step edit and
+  step look waits while parts are in hand (`Shell._steps_wait`; sk2review
+  F2). After an edit of such a model
   (`ModelStore.looks_follow_edit` -> `_steps_follow_saved`,
   `AuthorSteps.follow_saved`, in the edit's undo): a part put down goes in
   the step of what it rests on (its boxes one cell lower in the builder's
   lattice; a copy built on the side by the step that puts it on), the latest
-  of several, or a new last step of its section; a part moved keeps its step
-  unless all it rests on comes later; a part taken off leaves its step, an
-  emptied step gone. A person's step edit makes them theirs
+  of several, or a new last step of its section, or past a full step of
+  parts put down since the open (`AuthorSteps._step_on`, the plan's
+  `_per_step`; sk2review F4); a part moved, by any means (a drag's put-down
+  is marked `"moved"` by `Builder._put_carried`; sk2review F1), keeps its
+  step unless all it rests on comes later; several followed from the bottom
+  up by what holds what (`AuthorSteps._bottom_up`; F3); a part taken off
+  leaves its step, an emptied step gone. **Check:** `tools/probe.sh
+  sk2review_probe` (headless; `SK2R_ONLY=drag,pair,stack,hand,looks`, the
+  review's repros: each FAIL is a finding back). A person's step edit makes them theirs
   (`AuthorSteps.ensure`, undo `stepsown`): saved with `AUTHORED_STEPS`, as a
   worked-out model's first step edit always has; so does a model put in with
   its author's steps (`Builder._bring_steps`; ic3 clash, menu), and a

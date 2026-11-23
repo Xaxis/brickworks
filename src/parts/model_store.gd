@@ -4303,7 +4303,8 @@ func _steps_follow_saved(step: Dictionary) -> void:
 
 
 ## The parts [param step] put down ([param added]) and moved ([param moved]),
-## by their ids now, its groups read through.
+## by their ids now, its groups read through: a part picked up and put down
+## is moved (Builder._put_carried).
 func _bricks_edited(step: Dictionary, added: Array, moved: Array) -> void:
 	match str(step.get("undo", "")):
 		"group":
@@ -4311,7 +4312,8 @@ func _bricks_edited(step: Dictionary, added: Array, moved: Array) -> void:
 				if inner is Dictionary:
 					_bricks_edited(inner, added, moved)
 		"remove":
-			added.append(builder._live(int(step["brick"])))
+			(moved if bool(step.get("moved", false)) else added).append(
+				builder._live(int(step["brick"])))
 		"move":
 			moved.append(builder._live(int(step["brick"])))
 

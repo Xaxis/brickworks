@@ -16025,6 +16025,18 @@ msgstr "les étapes sont déjà calculées à partir du modèle tel qu'il est"
 msgid "worked the steps out again from the model as it is"
 msgstr "étapes recalculées à partir du modèle tel qu'il est"
 
+msgid "the parts in hand are in no step: put them down, or press Escape, first"
+msgstr "les pièces en main ne sont dans aucune étape : posez-les ou appuyez d’abord sur Échap"
+
+msgid "worked the steps out again from the model as it is: %d of the %d steps with a name, notes or a page of their own share a step with another now, where one name and page stand"
+msgstr "étapes recalculées à partir du modèle tel qu'il est : %d des %d étapes avec un nom, des notes ou une page à elles partagent maintenant une étape avec une autre, où un seul nom et une seule page restent"
+
+msgid "worked the steps out again from the model as it is, each step's name, notes and page with its parts"
+msgstr "étapes recalculées à partir du modèle tel qu'il est, le nom, les notes et la page de chaque étape avec ses pièces"
+
+msgid "%d of the %d steps with a name, notes or a page of their own would share a step with another, where one name and page stand: their notes are kept. One undo brings them back."
+msgstr "%d des %d étapes avec un nom, des notes ou une page à elles partageraient une étape avec une autre, où un seul nom et une seule page restent : leurs notes sont gardées. Une annulation les rétablit."
+
 # Build mode's "Where does this go?": a photo of a part in hand to its step (partstep)
 msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nOnly the photo is sent, never your model, and nothing is sent until you choose a photo."
 msgstr "La photo que vous choisissez est envoyée à Brickognize (brickognize.com), un service tiers qui identifie les pièces LEGO®. Selon ses conditions, il peut garder la photo et s’en servir pour entraîner sa reconnaissance, et il est réservé à un usage personnel et non commercial : la licence commerciale de Pro ne le couvre pas.\n\nSeule la photo est envoyée, jamais votre modèle, et rien n’est envoyé avant que vous choisissiez une photo."

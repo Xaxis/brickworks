@@ -25,8 +25,18 @@
 ##   looks   a step named (edit_steps name), then Plan steps: what it takes off
 ##           with the steps (the step's name) said in its words
 ##
+## sk2fix's own, for its fixes:
+##   redo      a drag and a stack, each undone and redone byte for byte, the
+##             stack saved and opened again the same
+##   ask       Plan steps pressed where two named steps come to share one:
+##             asked first, with the count; confirmed, one name; one undo
+##   heldlook  edit_steps name and the press of Plan steps while a part is
+##             held: refused in words, Escape puts it back
+##   fixtime   the follow's time on Orthanc as its own (16 ms a follow)
+##
 ##   godot --headless --path . --script src/dev/sk2review_probe.gd
-##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand,looks   only those
+##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand,looks,redo,ask,heldlook,fixtime   only those
+##   -- --sk2r=drag,pair,...                     the same, as the suite gives it
 ##   SK2R_OUT=DIR                                the texts written there
 extends SceneTree
 
@@ -117,6 +127,12 @@ func _run() -> void:
 	_shell = _main.get("_shell")
 	_store.keeps = true
 	_only = OS.get_environment("SK2R_ONLY").split(",", false)
+	# From the suite's list (tools/suite/headless.txt), which gives arguments
+	# and no environment: a name of the probe's own, as main.tscn reads the
+	# app's (--out, --model, --step...) from the same command line.
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--sk2r="):
+			_only = arg.trim_prefix("--sk2r=").split(",", false)
 	print("tree: %s" % ("stepkeep2 + wholekeep" if FileAccess.file_exists(
 		"res://src/dev/wholekeep_probe.gd") else "stepkeep2"))
 	if _asked("drag"):
@@ -135,6 +151,14 @@ func _run() -> void:
 		await _hand()
 	if _asked("looks"):
 		await _looks()
+	if _asked("redo"):
+		await _redo()
+	if _asked("ask"):
+		await _ask()
+	if _asked("heldlook"):
+		await _held_look()
+	if _asked("fixtime"):
+		await _fix_time()
 	print("")
 	print("%d FAILURE(S)" % _failures if _failures else "every case holds")
 	quit(1 if _failures else 0)
@@ -590,6 +614,278 @@ func _into() -> void:
 		return int(item.get("step", -1)) >= 0).size()
 	_check("into: opened, %d parts in the steps saved; put in whole (Into this model), %d of %d (error \"%s\")"
 		% [own, stepped, items.size(), str(held.get("error", ""))], stepped == items.size() and stepped > 0)
+
+
+# -- sk2fix: undo and redo, the press that asks, a look while held, the time ----
+
+
+## Two bricks side by side on the floor, each in a step of its own: a plan
+## puts them in one.
+const PAIR := """0 sk pair
+0 Name: sk_pair.ldr
+0 Author: Brickworks
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+"""
+const ORTHANC := "res://models/orthanc.ldr"
+
+
+## A drag followed, and ten bricks stacked: each undone, the save byte for
+## byte as before; redone, byte for byte as done, the dragged part in the
+## step it was followed into.
+func _redo() -> void:
+	print("\n== redo (station): a drag and a stack undone and redone")
+	await _open(STATION)
+	var text0: String = _store.to_text(_store.title, true)
+	var at: Dictionary = _on_model_at(_plan())
+	var done: bool = false
+	for pair: Array in _early_onto_late(at):
+		var brick: BrickWorld.Brick = _world.get_brick(int(pair[0]))
+		var under: BrickWorld.Brick = _world.get_brick(int(pair[1]))
+		if brick == null or under == null:
+			continue
+		var from: Transform3D = brick.transform
+		var to := Vector3(under.transform.origin + Vector3(0.0, _rise(brick), 0.0))
+		var part: String = brick.part_id
+		var was_step: int = brick.step
+		var under_step: int = under.step
+		_builder.clear_selection()
+		_builder.selection[brick.id] = true
+		if _builder.lift_selection() == 0:
+			continue
+		var carry: Carry = _builder.carrying
+		carry.stand_where_lifted(_builder.lattice, _builder)
+		carry.pin()
+		if not carry.show_moved(Transform3D(Basis.IDENTITY, to - from.origin), _builder.lattice,
+				_builder) or _builder.place() == 0:
+			_builder.cancel_carry()
+			await _frames(1)
+			continue
+		await _edited()
+		var put: Array = _put_ids(_builder.last_step())
+		if put.size() != 1:
+			_builder.undo()
+			await _frames(2)
+			continue
+		var moved: BrickWorld.Brick = _world.get_brick(int(put[0]))
+		var followed: int = moved.step
+		var text1: String = _store.to_text(_store.title, true)
+		_check("redo: dragged from step %d onto a part of step %d, in step %d" % [was_step,
+			under_step, followed], followed == under_step)
+		_builder.undo()
+		await _frames(2)
+		var back: BrickWorld.Brick = _brick_at(part, from)
+		_check("redo: the drag undone, the part back in step %d (%s), the save byte for byte"
+			% [was_step, back.step if back != null else -1], back != null and back.step == was_step
+			and _store.to_text(_store.title, true) == text0)
+		_builder.redo()
+		await _frames(2)
+		var again: BrickWorld.Brick = _brick_at(part, Transform3D(from.basis, to))
+		var text2: String = _store.to_text(_store.title, true)
+		_check("redo: the drag redone, the part in step %d (%s), the save byte for byte"
+			% [followed, again.step if again != null else -1], again != null
+			and again.step == followed and text2 == text1)
+		if text2 != text1:
+			_first_diff(text1, text2)
+		_builder.undo()
+		await _frames(2)
+		done = true
+		break
+	_check("redo: a part of the first steps dragged onto a later one", done)
+	var top: BrickWorld.Brick = _top_of(func(brick: BrickWorld.Brick) -> bool:
+		return Assemblies.path_of(brick).is_empty())
+	var on: BrickWorld.Brick = top
+	var put_count: int = 0
+	for _n: int in 10:
+		var id: int = _put_on(on)
+		if id == 0:
+			break
+		await _edited()
+		put_count += 1
+		on = _world.get_brick(id)
+	var stacked: String = _store.to_text(_store.title, true)
+	for _n: int in put_count:
+		_builder.undo()
+	await _frames(2)
+	_check("redo: %d stacked, each undone, the save byte for byte" % put_count,
+		put_count == 10 and _store.to_text(_store.title, true) == text0)
+	for _n: int in put_count:
+		_builder.redo()
+	await _frames(2)
+	var restacked: String = _store.to_text(_store.title, true)
+	_check("redo: ...each redone, the save byte for byte as stacked", restacked == stacked)
+	if restacked != stacked:
+		_first_diff(stacked, restacked)
+	# Saved and opened again: the steps the stack was given, held.
+	var called: String = "sk2fix stack"
+	_forget(called)
+	_store.title = called
+	_store.save_as(called)
+	await _reopen(ModelStore.saved_path(called))
+	_check("redo: the stack saved and opened again, written the same (%s)" % _own_steps(),
+		_own_steps() and _store.to_text(_store.title, true) == FileAccess.get_file_as_string(
+			ModelStore.saved_path(called)))
+	_forget(called)
+
+
+## Plan steps pressed where two named steps' parts come to share one: asked
+## first, with the count, and nothing changed; done on Plan steps, one name
+## standing, and one undo giving both back. Over MCP: done, and said after.
+func _ask() -> void:
+	print("\n== ask: Plan steps where two named steps come to share one")
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	var path: String = "user://sk2fix_pair.ldr"
+	_write(path, PAIR)
+	await _open(path)
+	_check("ask: the pair opens in its saved steps, two (%d)" % _plan().size(),
+		_own_steps() and _plan().size() == 2)
+	for named: Array in [[1, "The left brick"], [2, "The right brick"]]:
+		var said: String = str(await tools.run("edit_steps", {"op": "name", "step": named[0],
+			"name": named[1]}))
+		print("  named step %d: \"%s\"" % [named[0], said.left(80)])
+	await _frames(2)
+	var text_named: String = _store.to_text(_store.title, true)
+	_check("ask: both names in the save", text_named.contains("The left brick")
+		and text_named.contains("The right brick"))
+	_shell.edit_steps("plan")
+	await _frames(2)
+	var asked: ConfirmationDialog = _shell.get("_plan_asked")
+	var text_asked: String = _store.to_text(_store.title, true)
+	_check("ask: the press asks first (%s: \"%s\"), and nothing changed"
+		% [asked != null and asked.visible, asked.dialog_text.left(90) if asked != null else ""],
+		asked != null and asked.visible and asked.dialog_text.contains("1 of the 2")
+		and text_asked == text_named)
+	if asked == null:
+		return
+	asked.hide()
+	asked.confirmed.emit()
+	await _frames(4)
+	var text_planned: String = _store.to_text(_store.title, true)
+	var names: int = int(text_planned.contains("The left brick")) \
+		+ int(text_planned.contains("The right brick"))
+	_check("ask: Plan steps, confirmed: one step (%d), one name standing (%d), said \"%s\""
+		% [_plan().size(), names, _bar.get("_status").text.left(110)], _plan().size() == 1
+		and names == 1 and str(_bar.get("_status").text).contains("1 of the 2"))
+	_builder.undo()
+	await _frames(2)
+	_check("ask: undone, both steps and both names back, byte for byte",
+		_store.to_text(_store.title, true) == text_named)
+	_builder.redo()
+	await _frames(2)
+	_check("ask: redone, as planned, byte for byte", _store.to_text(_store.title, true) == text_planned)
+	_builder.undo()
+	await _frames(2)
+	var said_mcp: String = str(await tools.run("edit_steps", {"op": "plan"}))
+	await _frames(2)
+	_check("ask: over MCP, planned and said after (\"%s\")" % said_mcp.left(140),
+		said_mcp.contains("1 of the 2") and _plan().size() == 1)
+	_builder.undo()
+	await _frames(2)
+	_check("ask: ...undone, byte for byte", _store.to_text(_store.title, true) == text_named)
+	# A name the plan keeps on a step of its own: no question.
+	_main.call("clear_model")
+	await _frames(4)
+	DirAccess.remove_absolute(path)
+
+
+## A step's look asked for while a part is held (edit_steps name, the press
+## of Plan steps): refused in words, nothing changed, and Escape puts the
+## part back.
+func _held_look() -> void:
+	print("\n== heldlook (station): a step named and Plan steps pressed while a part is held")
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	await _open(STATION)
+	var total: int = _parts_on()
+	var text0: String = _store.to_text(_store.title, true)
+	var top: BrickWorld.Brick = _top_of(func(brick: BrickWorld.Brick) -> bool:
+		return Assemblies.path_of(brick).is_empty())
+	var part: String = top.part_id
+	var from: Transform3D = top.transform
+	_builder.clear_selection()
+	_builder.selection[top.id] = true
+	_check("heldlook: picked up", _builder.lift_selection() > 0)
+	var said: String = str(await tools.run("edit_steps", {"op": "name", "step": 3,
+		"name": "Held"}))
+	_shell.edit_steps("plan")
+	await _frames(2)
+	var bar_said: String = str(_bar.get("_status").text)
+	_check("heldlook: refused in words (\"%s\"; the bar \"%s\")" % [said.left(80), bar_said.left(80)],
+		said.contains("in hand") and bar_said.contains("in hand"))
+	_builder.cancel_carry()
+	await _frames(2)
+	var back: BrickWorld.Brick = _brick_at(part, from)
+	_check("heldlook: Escape, the part back (%s), parts %d of %d, the save byte for byte"
+		% [back != null, _parts_on(), total], back != null and _parts_on() == total
+		and _store.to_text(_store.title, true) == text0)
+
+
+## The follow's own time on Orthanc as the app's own held steps, the biggest
+## model whose edits are followed: a part put on its top, twelve stacked (a
+## step filling and a new one started), and a part dragged; each the work of
+## one frame (16 ms is the bar). And Plan steps with a named step, which
+## works the whole plan out to keep the name (said, not checked).
+func _fix_time() -> void:
+	print("\n== fixtime (orthanc as its own): the follow's time")
+	var own_path: String = "user://sk2fix_orthanc_own.ldr"
+	_write(own_path, FileAccess.get_file_as_string(ORTHANC).replace(AUTHORED + "\n", ""))
+	await _open(own_path)
+	if not _check("fixtime: orthanc opens as the app's own steps", _own_steps()):
+		return
+	var top: BrickWorld.Brick = _top_of(func(_brick: BrickWorld.Brick) -> bool: return true)
+	var on: BrickWorld.Brick = top
+	var most: float = 0.0
+	var times: PackedStringArray = []
+	var steps: Dictionary = {}
+	for _n: int in 12:
+		var id: int = _put_on(on)
+		if id == 0:
+			break
+		var began: int = Time.get_ticks_usec()
+		_store._steps_follow_saved(_builder.last_step())
+		var ms: float = float(Time.get_ticks_usec() - began) / 1000.0
+		most = maxf(most, ms)
+		times.append("%.1f" % ms)
+		on = _world.get_brick(id)
+		steps[on.step] = true
+		await _edited()
+	_check("fixtime: twelve stacked, in %d steps, each followed in at most %.1f ms (%s)"
+		% [steps.size(), most, ", ".join(times)], most <= 16.0 and steps.size() > 1)
+	var lifted: BrickWorld.Brick = _world.get_brick(on.id)
+	_builder.clear_selection()
+	_builder.selection[lifted.id] = true
+	var drag_ms: float = -1.0
+	if _builder.lift_selection() > 0:
+		var carry: Carry = _builder.carrying
+		carry.stand_where_lifted(_builder.lattice, _builder)
+		carry.pin()
+		carry.show_moved(Transform3D.IDENTITY, _builder.lattice, _builder)
+		if _builder.place() != 0:
+			var began: int = Time.get_ticks_usec()
+			_store._steps_follow_saved(_builder.last_step())
+			drag_ms = float(Time.get_ticks_usec() - began) / 1000.0
+			await _edited()
+		else:
+			_builder.cancel_carry()
+	_check("fixtime: a part dragged, followed in %.1f ms" % drag_ms, drag_ms >= 0.0
+		and drag_ms <= 16.0)
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	await tools.run("edit_steps", {"op": "name", "step": 2, "name": "Orthanc's second"})
+	await _frames(2)
+	var began_plan: int = Time.get_ticks_usec()
+	var said: String = _shell.change_steps("plan", [], null)
+	print("  (said) Plan steps with a named step: %.0f ms (\"%s\")" % [
+		float(Time.get_ticks_usec() - began_plan) / 1000.0, said.left(100)])
+	_main.call("clear_model")
+	await _frames(4)
+	DirAccess.remove_absolute(own_path)
 
 
 # -- reading ---------------------------------------------------------------------

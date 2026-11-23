@@ -2922,7 +2922,15 @@ func _put_carried() -> int:
 		if carrying.lifted:
 			world.get_brick(brick_id).origin = str(item.get("origin", ""))
 		lattice.occupy_boxes(brick_id, item["boxes"])
-		steps.append({"undo": "remove", "brick": brick_id})
+		# Picked up and put down, a part is moved, and a model whose steps
+		# are the app's own follows it as a typed move (ModelStore
+		# ._bricks_edited, AuthorSteps.follow_saved): read as a part put
+		# down with a step, the station's step-2 brick dragged onto a
+		# step-40 top kept step 2 and was shown in the air (sk2review F1).
+		if carrying.lifted:
+			steps.append({"undo": "remove", "brick": brick_id, "moved": true})
+		else:
+			steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)
 	if ids.is_empty():
 		return 0

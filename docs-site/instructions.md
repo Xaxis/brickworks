@@ -87,10 +87,11 @@ A model you save comes back in the steps it was saved in. As you build, Brickwor
 From then on, an edit changes only the steps it touches:
 
 - A part you put down goes in the step of the part it rests on. One on the floor, or held only from the side, goes in a new last step.
-- A part you move keeps its step, unless everything it now rests on comes later: then it goes in that step.
+- A part you put on one you put down since you opened the model goes in that one's step until the step holds as many parts as Brickworks puts in a step of a model that size (4 under 150 parts, 6 under 500, 8 from then on). The next starts a new step after the last, so ten bricks stacked one at a time are two steps or more, never one that grows each session. A part put on what the file built goes in that part's step however many are there, as a detail goes with the wall it is on.
+- A part you move keeps its step, unless everything it now rests on comes later: then it goes in that step. That holds however you move it: dragged, nudged with the arrow keys, typed, turned or by an assistant. Several moved together are followed from the bottom up, each after what it rests on.
 - A part you take off leaves its step, and a step left empty is gone.
 
-Change a step yourself (**Earlier**, **Merge with next**, a part moved to another step) and the steps are yours, as an author's are. To have Brickworks work the steps out again from the model as it is, press **Plan steps** in the timeline's row: it is one Undo. An assistant asks for the same with edit_steps' plan. A Brickworks file with no steps in it, such as an older autosave, is worked out afresh when it opens.
+Change a step yourself (**Earlier**, **Merge with next**, a part moved to another step) and the steps are yours, as an author's are. To have Brickworks work the steps out again from the model as it is, press **Plan steps** in the timeline's row: it is one Undo. A step you gave a name, notes or a page of its own keeps them on the step most of its parts go to. Where two such steps' parts come to share one step, only one name and page can stand there: **Plan steps** says how many before it changes anything, and keeps both steps' notes. An assistant asks for the same with edit_steps' plan, and is told the same after. While you hold parts you picked up, the steps wait: put them down, or press Escape, first. A Brickworks file with no steps in it, such as an older autosave, is worked out afresh when it opens.
 
 ### A step's name {#step-name}
 
