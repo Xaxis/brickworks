@@ -403,9 +403,12 @@ func show_claude_tab(said: Array) -> void:
 	if _claude_tab == null:
 		return
 	var text: String = str(said[0])
+	var was: bool = _claude_tab.visible
 	_claude_tab.visible = not text.is_empty() and not plain
 	if _claude_words.text != text:
 		_claude_words.text = text
+	if was != _claude_tab.visible:
+		_fit_header.call_deferred()
 	_claude_dot.color = said[1]
 	_claude_words.tooltip_text = str(said[2])
 
@@ -465,25 +468,40 @@ var points: float = 1.0
 ## the point (1.85 in a browser 390 across), and the header in points put
 ## Menu and Account on a second line there. Counted for the studio's row in
 ## every mode, the plain ones too, so the header is one size in all of them;
-## the Claude tab, when it shows, takes the mark's name first (_fit_mark).
+## the Claude tab is counted while it shows (the studio's alone, and only
+## where Claude reaches this tab).
 func _fitting_pt(gutter: float) -> float:
 	var row: HFlowContainer = brand.get_parent()
 	var gap: float = float(row.get_theme_constant("h_separation"))
-	# The menus, each by its own size (hidden in a plain mode, the box would
-	# count none), the model's name, the 8-unit gap after the mark, and the
-	# gaps between the row's six.
-	var units: float = NAME_NARROW + 8.0 + gap * 6.0
-	for child: Node in menus.get_children():
-		var menu: Control = child as Control
-		if menu != null and menu.visible:
-			units += menu.get_combined_minimum_size().x + float(menus.get_theme_constant("separation"))
-	# Per point: the gutters, the bare mark, and Menu and Account as
-	# dress_button sizes them (15-point words, 14 points either side).
 	var font: Font = _account.get_theme_font("font")
-	var per_pt: float = 2.0 * gutter + AppHeader.TARGET + 28.0 \
-		+ font.get_string_size(_account.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
-	if home != null:
-		per_pt += 28.0 + font.get_string_size(mark.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	# In points: the gutters and the bare mark; Menu and Account as
+	# dress_button sizes them (15-point words, 14 points either side).
+	var per_pt: float = 2.0 * gutter + AppHeader.TARGET
+	# In units: every other control the studio's row shows, each with the gap
+	# before it; the menus and the model's name (at its narrowest) counted in
+	# every mode, so the header is one size in all of them. Counting a few
+	# of them by hand missed the 12-unit gap after the menus, and the row
+	# still wrapped (app_menu_probe at 720 units).
+	var units: float = 0.0
+	for child: Node in row.get_children():
+		var control: Control = child as Control
+		if control == null or control == brand:
+			continue
+		var studio: bool = control == menus or control == _name
+		if not control.visible and not studio:
+			continue
+		units += gap
+		if control == _account or (home != null and control == mark):
+			per_pt += 28.0 + font.get_string_size((control as Button).text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		elif control == _name:
+			units += NAME_NARROW
+		elif control == menus:
+			for each: Node in menus.get_children():
+				var menu: Control = each as Control
+				if menu != null and menu.visible:
+					units += menu.get_combined_minimum_size().x + float(menus.get_theme_constant("separation"))
+		else:
+			units += control.get_combined_minimum_size().x
 	# A few units spare: sizes are rounded to whole units and points.
 	var room: float = get_viewport().get_visible_rect().size.x - units - 6.0
 	return maxf(room / per_pt, 0.5)
