@@ -17145,3 +17145,76 @@ msgstr "„%s“ kommt aus deinem Konto…"
 
 msgid "“%s” could not be brought from your account just now: try File › Open in a moment"
 msgstr "„%s“ konnte gerade nicht aus deinem Konto geholt werden: Versuche es gleich über Datei › Öffnen"
+
+# Building now: a Build together session opened to watchers (buildlive).
+msgid "%s asks to build with you. Give them a seat in Build together."
+msgstr "%s möchte mit dir bauen. Gib der Person unter Gemeinsam bauen einen Platz."
+
+msgid "A watcher"
+msgstr "Jemand, der zuschaut"
+
+msgid "Only the owner of the session opens it to watchers."
+msgstr "Nur wer die Sitzung gestartet hat, kann sie für Zuschauende öffnen."
+
+msgid "Could not open it to watchers"
+msgstr "Konnte sie nicht für Zuschauende öffnen"
+
+msgid "Open to watchers: anyone with its page can watch you build, and ask to join."
+msgstr "Für Zuschauende offen: Alle, die die Seite haben, können dir beim Bauen zusehen und fragen, ob sie mitbauen dürfen."
+
+msgid "Could not close it to watchers"
+msgstr "Konnte sie nicht für Zuschauende schließen"
+
+msgid "Only the owner of the session gives a seat."
+msgstr "Nur wer die Sitzung gestartet hat, kann einen Platz geben."
+
+msgid "Could not give the seat"
+msgstr "Konnte den Platz nicht geben"
+
+msgid "Open to watchers"
+msgstr "Für Zuschauende öffnen"
+
+msgid "Anyone may watch you build at a page of its own, listed first on the home page and your profile; signed in, they chat and can ask to build"
+msgstr "Alle können dir auf einer eigenen Seite beim Bauen zusehen, ganz oben auf der Startseite und in deinem Profil; angemeldet chatten sie und können fragen, ob sie mitbauen dürfen"
+
+msgid "The page anyone may watch on. It never lets anyone change the model"
+msgstr "Die Seite, auf der alle zusehen können. Sie lässt niemanden das Modell ändern"
+
+msgid "Close to watchers"
+msgstr "Für Zuschauende schließen"
+
+msgid "Its page says it is closed, and it is listed no more; the session goes on"
+msgstr "Die Seite sagt, dass sie geschlossen ist, und sie wird nicht mehr aufgeführt; die Sitzung geht weiter"
+
+msgid "Open to watchers: nobody watching yet"
+msgstr "Für Zuschauende offen: Noch schaut niemand zu"
+
+msgid "Open to watchers: 1 watching"
+msgstr "Für Zuschauende offen: 1 schaut zu"
+
+msgid "Open to watchers: %d watching"
+msgstr "Für Zuschauende offen: %d schauen zu"
+
+msgid "%s asks to build"
+msgstr "%s möchte mitbauen"
+
+msgid "Give a seat"
+msgstr "Platz geben"
+
+msgid "They join the session and build with you; Remove takes them out again"
+msgstr "Die Person tritt der Sitzung bei und baut mit dir; Entfernen nimmt sie wieder heraus"
+
+msgid "Nobody watched it"
+msgstr "Niemand hat zugeschaut"
+
+msgid "1 person watched it"
+msgstr "1 Person hat zugeschaut"
+
+msgid "%d people watched it"
+msgstr "%d Personen haben zugeschaut"
+
+msgid "%s. Share progress keeps where it got to as a version in the model's log."
+msgstr "%s. Fortschritt teilen hält fest, wie weit es ist, als Version im Verlauf des Modells."
+
+msgid "%s. Sharing its progress as a version in the model's log."
+msgstr "%s. Der Fortschritt wird als Version im Verlauf des Modells geteilt."

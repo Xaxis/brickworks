@@ -3,7 +3,7 @@
 Two people build one model at once, live, each in a browser or the desktop
 app, joined by a link (docs/TOGETHER.md).
 
-<!-- covers: ui:build together, lib:building together, api:POST /api/together, cli:together probe, cli:together browser flow, cli:together desktop probe, cli:together timing -->
+<!-- covers: ui:build together, lib:building together, api:POST /api/together, cli:together probe, cli:together browser flow, cli:together desktop probe, cli:together timing, ui:watching a build live, ui:building now listed, cli:live flow -->
 
 ## Sub-features
 
@@ -21,7 +21,16 @@ app, joined by a link (docs/TOGETHER.md).
   to `--together=`) joins once signed in and the first model is down
   (`Main._maybe_join_together`), then shows the panel. Controls for checks:
   `together_start`, `together_join_field`, `together_join`, `together_copy`,
-  `together_end`, `together_remove_N`, `together_close`.
+  `together_end`, `together_remove_N`, `together_close`. The owner's watch box (buildlive): **Open to watchers**
+  (`together_watch_open`, `Together.open_to_watchers`), then the watch
+  page's address with **Copy** (`together_watch_copy`), how many watch
+  (`op=watch_count` every 20 s while the panel is open), **Close to
+  watchers** (`together_watch_close`), and each watcher who asked with
+  **Give a seat** (`together_seat_N`, `Together.give_seat`); none of it for
+  a joiner. A watcher's line is in the chat by its `~by` name. Ending a
+  watched session emits `watched_ended`, and `Main._keep_watched` shares
+  progress as a version when the model is shared (`together_watch_probe`,
+  headless, no server).
 - `building together` (`src/net/together.gd`, `Together`): start (uids for
   every part, a snapshot), join (opens the text, matches parts to uids, pins
   each to the owner's exact state and lift), capture (the world's change log
@@ -186,6 +195,31 @@ app, joined by a link (docs/TOGETHER.md).
   (`tools/web/together_flow.mjs`), `together desktop probe`
   (`src/dev/together_probe.gd`), and `together_pins_probe` (the real app
   in a window): below.
+
+- `watching a build live` (`web/live.js`, `web/live.html` at
+  `/live/<watch>` and `/<lang>/live/<watch>`; `api/together.js` "Watching";
+  `supabase/together_watch.sql`): the designer opens their session to
+  watchers (`op=watch_open {s}`, owner only, 13 or over; `op=watch_close`;
+  `op=end` closes it too and answers `watched`). Its public name `watch` (12
+  letters) is not the secret: `op=send`, `poll`, `join` and `seat` never take
+  it (`send {w}` 403). A page opens on `op=watching&w=` (the model as it
+  stands, its chat, the show's channel and the relay's public key) and hears
+  each change on Supabase Realtime (topic `live:<hmac>`, event `show`), each
+  message signed by the relay (Ed25519 from HKDF of the secret key): a page
+  drops anything unsigned or forged (`window.brickworksLive.dropped`). A gap
+  is read back by `op=watch_ops {w, after, viewer}`, which is also the page's
+  heartbeat every 20 s (`together_watchers`, the peak). Signed in: a line
+  (`watch_say`, 13 or over, not blocked, 8 a minute; `~chat` and `~by` in the
+  log, which the studio hears as any line), Ask to build (`watch_ask`, once
+  in 2 minutes), and the seat the designer gives (`op=seat {s, who}`: the
+  secret sealed AES-GCM in a `~seat` op, read back only by its own asker
+  through `watch_seat`). `window.brickworksLive`: `heard[seq] {at, via}`,
+  `drawn[seq]`, `bricks`, `channel`, `verified`, `dropped`, `ended`.
+- `building now listed` (`web/live-now.js`, `[data-live-now]` in
+  `web/index.html` before the feed's head and in the profile's head,
+  `api/people.js`): `op=live[&handle=]`, builds open to watchers whose
+  designer was heard in the last 90 s, shown in public, not a test account's
+  (`&tests=1` the checks' own); `dataset.liveCount`. Hidden when there is none.
 
 ## How to reach it
 
@@ -374,6 +408,19 @@ signed in as someone else.
   (tools/release/preview_checks.sh); they need supabase/together.sql applied
   to the project, and the flow's section 8 (a model sent in parts)
   supabase/together_big.sql.
+
+- Watching, end to end, about 4 minutes: `live flow` (feature map),
+  with `--hold=...,together_watch,together_watchers` until
+  `supabase/together_watch.sql` is applied and `--egress` for what the
+  relay read from Supabase by op. Expect `live_flow: all N passed`:
+  listed within 10 s and on the designer's profile only, 10 pages each
+  hearing every part (`via: told`) and drawing it within 1 s at p95, a send
+  by the show's name 403, a line carrying a change 403, a forged channel
+  message dropped by every page, chat to the other pages and to the
+  studio's poll with its `~by`, under-13 chat 422, ask, seat, join and
+  build, ended on every page and unlisted; `live_flow.json` holds the
+  timings and the bytes per watcher-minute; pictures `watch-*.png`,
+  `home-*.png`, `profile-*.png` at 1280 and 390.
 
 ## Gotchas
 

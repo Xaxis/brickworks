@@ -1389,7 +1389,8 @@ ${paged}${scriptWords}${siteChrome(lang).head}
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
 <script src="/follow.js" type="module"></script>
-<script src="/keep.js" type="module"></script>${paged ? `
+<script src="/keep.js" type="module"></script>
+<script src="/live-now.js" type="module"></script>${paged ? `
 <script src="/pager.js" type="module"></script>` : ""}${mine ? `
 <script src="/designs.js" type="module"></script>` : ""}${mine || share ? `
 <script src="/person.js" type="module"></script>` : ""}${photos ? `
@@ -1838,6 +1839,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
   ${head}
   <div class="obj-main">
   ${banner}
+  <div class="live-now" data-live-now data-live-handle="${escapeHtml(person.handle)}" hidden></div>
   <div class="work" id="work">
   ${tabsHtml}
   <div class="tab-panel" data-panel="${tab}">${tab === "models" ? pinned : ""}${panel}</div>

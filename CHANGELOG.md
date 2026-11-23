@@ -38,6 +38,14 @@ whole cycle.
   count and into a Done view, **Mark all done** all of them, each with
   Undo, and anything new comes back. The account menu shows your five
   newest, with their pictures.
+- **Building now: watch a model being built, live.** In **File › Build
+  together…**, **Open to watchers** gives your session a page anyone can
+  watch, listed first on the home page and on your profile while you
+  build. Watchers see each part land in 3D and chat with you, and anyone
+  signed in can **Ask to build**. **Give a seat** puts them in the session
+  beside you. Nothing a watcher does changes the model. When you end the
+  session, where it got to is kept as a version in the model's log (Share
+  progress), if the model is shared.
 - **Change any model with your own Claude.** Every model's page has **With
   your Claude** beside **Open in Brickworks**: say what should change (or
   nothing, and Claude asks), press **Copy for Claude**, and paste the message

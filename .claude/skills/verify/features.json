@@ -2082,6 +2082,14 @@
       "tests": []
     },
     {
+      "id": "cli:live flow",
+      "kind": "cli",
+      "entry": "tools/web/live_flow.mjs",
+      "reach": "node --env-file=FLOW_ENV tools/web/relay_server.mjs 11800 --static=build/web --egress --hold=together_sessions,together_people,together_ops,together_snapshot_parts,together_watch,together_watchers, then node --env-file=FLOW_ENV tools/web/live_flow.mjs --url=http://127.0.0.1:11800 --out=DIR [--watchers=10] [--parts=20]   (FLOW_ENV: the SUPABASE_* and PARTS_URL lines of .env)",
+      "area": "together",
+      "tests": []
+    },
+    {
       "id": "cli:loading page browser flow",
       "kind": "cli",
       "entry": "tools/web/bootlook_flow.mjs",
@@ -6486,6 +6494,14 @@
       "tests": []
     },
     {
+      "id": "ui:building now listed",
+      "kind": "ui",
+      "entry": "web/live-now.js",
+      "reach": "https://brickworks.diy/ and /u/<handle>   ([data-live-now], first in the home's feed and on the designer's profile while a build is open to watchers: GET /api/together?op=live[&handle=], the CDN's 4 s; nothing shows while nothing is being built)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:building video",
       "kind": "ui",
       "entry": "src/render/build_render.gd",
@@ -8861,6 +8877,27 @@
       "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
       "area": "view",
       "tests": []
+    },
+    {
+      "id": "ui:watching a build live",
+      "kind": "ui",
+      "entry": "web/live.js",
+      "reach": "<deployment>/live/<watch>   (a Build together session its designer opened to watchers: GET /api/together?op=watching&w=, each change on the show's Realtime channel signed by the relay (Ed25519), a gap read back by POST ?op=watch_ops; signed in: POST ?op=watch_say, watch_ask, watch_seat; web/live.html, the 3D view web/live3d.js from tools/viewer/live.js)",
+      "area": "together",
+      "tests": [
+        "tests/fixtures/console/db2_check.mjs",
+        "tests/fixtures/console/db3_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/db_check.mjs",
+        "tests/test_beta.py",
+        "tests/test_billing.py",
+        "tests/test_billing_pay.py",
+        "tests/test_console2.py",
+        "tests/test_insights.py",
+        "tests/test_release_train.py",
+        "tests/test_start_abba.py"
+      ]
     },
     {
       "id": "ui:what a remix changed and the remix tree",

@@ -31,6 +31,20 @@ var _chat_row: HBoxContainer
 var _chat_field: LineEdit
 var _chat_send: Button
 var _chat_note: Label
+## Building now (buildlive): the owner's session opened to watchers, its page
+## and how many watch it, and each watcher who asked to build with Give a seat.
+var _watch_box: VBoxContainer
+var _watch_open: Button
+var _watch_row: HBoxContainer
+var _watch_link: LineEdit
+var _watch_copy: Button
+var _watch_count: Label
+var _watch_close: Button
+var _asks: VBoxContainer
+var _seats: Array[Button] = []
+var _counting: Timer
+## How often the panel asks how many watch, while it is open on a watched session.
+const COUNT_EVERY := 20.0
 ## The chat lines shown, the newest last.
 const CHAT_SHOWN := 8
 ## Who is in it and the chat, each kept to a height of its own that does not
@@ -119,6 +133,7 @@ func _ready() -> void:
 		_copy.text = "Copied")
 	_link_row.add_child(_copy)
 	column.add_child(_link_row)
+	_make_watch_box(column)
 	_rows = VBoxContainer.new()
 	_rows.add_theme_constant_override("separation", 4)
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -166,6 +181,119 @@ func _ready() -> void:
 	# changes size.
 	_column.minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
 	get_tree().root.size_changed.connect(_fit, CONNECT_DEFERRED)
+
+
+## Open to watchers, its link and count, Close, and the asks to build.
+func _make_watch_box(column: VBoxContainer) -> void:
+	_watch_box = VBoxContainer.new()
+	_watch_box.add_theme_constant_override("separation", 6)
+	_watch_open = Button.new()
+	_watch_open.text = "Open to watchers"
+	_watch_open.focus_mode = Control.FOCUS_NONE
+	_watch_open.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_watch_open.tooltip_text = ("Anyone may watch you build at a page of its own, listed first on the home "
+		+ "page and your profile; signed in, they chat and can ask to build")
+	_watch_open.pressed.connect(func() -> void: _watch_act(together.open_to_watchers))
+	_watch_box.add_child(_watch_open)
+	_watch_row = HBoxContainer.new()
+	_watch_row.add_theme_constant_override("separation", 8)
+	_watch_link = LineEdit.new()
+	_watch_link.editable = false
+	_watch_link.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_watch_link.tooltip_text = "The page anyone may watch on. It never lets anyone change the model"
+	_watch_row.add_child(_watch_link)
+	_watch_copy = Button.new()
+	_watch_copy.text = "Copy"
+	_watch_copy.focus_mode = Control.FOCUS_NONE
+	_watch_copy.pressed.connect(func() -> void:
+		DisplayServer.clipboard_set(str(together.watch.get("link", "")))
+		_watch_copy.text = "Copied")
+	_watch_row.add_child(_watch_copy)
+	_watch_box.add_child(_watch_row)
+	var counted := HBoxContainer.new()
+	counted.add_theme_constant_override("separation", 8)
+	_watch_count = Label.new()
+	_watch_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	counted.add_child(_watch_count)
+	_watch_close = Button.new()
+	_watch_close.text = "Close to watchers"
+	_watch_close.focus_mode = Control.FOCUS_NONE
+	_watch_close.tooltip_text = "Its page says it is closed, and it is listed no more; the session goes on"
+	_watch_close.pressed.connect(func() -> void: _watch_act(together.close_to_watchers))
+	counted.add_child(_watch_close)
+	_watch_box.add_child(counted)
+	_asks = VBoxContainer.new()
+	_asks.add_theme_constant_override("separation", 4)
+	_watch_box.add_child(_asks)
+	column.add_child(_watch_box)
+	_counting = Timer.new()
+	_counting.wait_time = COUNT_EVERY
+	_counting.timeout.connect(func() -> void:
+		if visible and not together.watch.is_empty():
+			together.count_watchers())
+	add_child(_counting)
+	visibility_changed.connect(func() -> void:
+		if visible and together.owns and not together.watch.is_empty():
+			together.count_watchers()
+			_counting.start()
+		else:
+			_counting.stop())
+
+
+## Open or close it to watchers, the buttons held while it is asked.
+func _watch_act(act: Callable) -> void:
+	_busy = true
+	fill()
+	var trouble: String = await act.call()
+	_busy = false
+	if not trouble.is_empty():
+		together.said.emit(trouble)
+	if visible and not together.watch.is_empty():
+		_counting.start()
+	fill()
+
+
+## What the watch box shows: the owner's alone, in a session.
+func _fill_watch() -> void:
+	for child: Node in _asks.get_children():
+		child.queue_free()
+	_seats.clear()
+	var shown: bool = together.live and together.owns
+	_watch_box.visible = shown
+	if not shown:
+		return
+	var open: bool = not together.watch.is_empty()
+	_watch_open.visible = not open
+	_watch_open.disabled = _busy
+	_watch_row.visible = open
+	_watch_close.get_parent().visible = open
+	_watch_close.disabled = _busy
+	if not open:
+		return
+	_watch_link.text = str(together.watch.get("link", ""))
+	_watch_copy.text = "Copy"
+	var n: int = int(together.watch.get("watchers", 0))
+	_watch_count.text = "Open to watchers: nobody watching yet" if n == 0 \
+		else "Open to watchers: 1 watching" if n == 1 else "Open to watchers: %d watching" % n
+	for item: Variant in together.asks:
+		var ask: Dictionary = item
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var words := Label.new()
+		words.text = "%s asks to build" % str(ask.get("name", ""))
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(words)
+		var give := Button.new()
+		give.text = "Give a seat"
+		give.focus_mode = Control.FOCUS_NONE
+		give.disabled = _busy
+		give.tooltip_text = "They join the session and build with you; Remove takes them out again"
+		var who: String = str(ask.get("who", ""))
+		give.pressed.connect(func() -> void: _watch_act(func() -> String: return await together.give_seat(who)))
+		row.add_child(give)
+		_seats.append(give)
+		_asks.add_child(row)
 
 
 ## A list kept to a height of its own (_hold_heights), scrolled up and down.
@@ -286,6 +414,7 @@ func fill() -> void:
 	_chat_box.visible = live
 	_start.disabled = _busy
 	_join.disabled = _busy
+	_fill_watch()
 	if not live:
 		_note.text = ("Build this model with someone else, live, each in your own browser or the "
 			+ "app. Start a session and send them its link; they sign in and join. Each of you "
@@ -434,6 +563,13 @@ func controls_by_name() -> Dictionary:
 	if _link_row.is_visible_in_tree():
 		out["together_copy"] = _copy
 		out["together_end"] = _end
+	if _watch_open.is_visible_in_tree():
+		out["together_watch_open"] = _watch_open
+	if _watch_row.is_visible_in_tree():
+		out["together_watch_copy"] = _watch_copy
+		out["together_watch_close"] = _watch_close
+	for n: int in _seats.size():
+		out["together_seat_%d" % (n + 1)] = _seats[n]
 	if _chat_row.is_visible_in_tree():
 		out["together_chat_field"] = _chat_field
 		out["together_chat_send"] = _chat_send
@@ -446,4 +582,6 @@ func controls_by_name() -> Dictionary:
 
 ## What it says, for a probe.
 func page_state() -> Dictionary:
-	return {"open": visible, "note": _note.text if _note != null else ""}
+	return {"open": visible, "note": _note.text if _note != null else "",
+		"watch": _watch_count.text if _watch_count != null and _watch_row.visible else "",
+		"asks": _seats.size()}
