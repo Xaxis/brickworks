@@ -29,7 +29,8 @@
 // With --static=DIR it also serves a web export from DIR, with the two
 // headers the threaded build needs, so a local build talks to these same
 // functions as it would on Vercel: tools/web/freeze_check.mjs drives one
-// over the connector this way.
+// over the connector this way. The export is at / and, as on a deployment,
+// at /app (its address kept).
 //
 //   node tools/web/relay_server.mjs 8790 --static=build/web
 //
@@ -85,6 +86,11 @@
 // they are, and the functions the API asks answered over the live ones
 // (tools/web/replies_stand_in.mjs), for tools/web/comments_flow.mjs.
 //
+// --hold=pins holds supabase/comment_pins.sql: each pin's part and when it
+// was resolved kept here, the pins written to the project as the comments
+// they are, and the functions the API asks answered over the live ones
+// (tools/web/pins_stand_in.mjs), for tools/web/partpins_flow.mjs.
+//
 // --hold=feedback holds supabase/feedback.sql and beta.sql in a Postgres of
 // this machine's own, the files themselves answering every beta_* and
 // feedback_* function, and the 'feedback' bucket in memory
@@ -114,7 +120,7 @@ const arrivals = process.argv.includes("--arrivals") ? [] : null;
 // at /__held/<table>, on this machine only, and a check may POST a row there.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges",
-  "notifications", "replies", "feedback", "announce", "talk"].includes(name));
+  "notifications", "replies", "pins", "feedback", "announce", "talk"].includes(name));
 const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
   heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
@@ -142,6 +148,9 @@ if (heldNotifications) heldNotifications.hold();
 // Outermost of all: it reads the project's comments and notifications.
 const heldReplies = holding.includes("replies") ? await import("./replies_stand_in.mjs") : null;
 if (heldReplies) heldReplies.hold();
+// Over that: it reads the project's comments (and the replies' held list).
+const heldPins = holding.includes("pins") ? await import("./pins_stand_in.mjs") : null;
+if (heldPins) heldPins.hold();
 // Apart from the rest: its functions and bucket are no other stand-in's.
 const heldFeedback = holding.includes("feedback") ? await import("./feedback_stand_in.mjs") : null;
 if (heldFeedback) await heldFeedback.hold();
@@ -179,6 +188,8 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
+  // A version's small picture (the page's Log, Talk's cards): ?n=, not ?v=.
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]webp$/, "share", "thumb_version"],
   // Its file to download, and its parts list as JSON, a BrickLink wanted
   // list and a Rebrickable CSV, of the newest version or an older one.
   [/^\/m\/([A-Za-z0-9]{10})[.]mpd$/, "share", "file"],
@@ -318,7 +329,8 @@ http.createServer(async (incoming, outgoing) => {
     if (arrivals.length > 5000) arrivals.splice(0, 1000);
   }
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
-    || heldNotifications || heldReplies || heldFeedback || heldAnnounce || heldTalk) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+    || heldNotifications || heldReplies || heldPins || heldFeedback || heldAnnounce || heldTalk)
+    && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   // A row a check puts in a held table (tools/web/adminclaude_flow.mjs's
   // hostile reply), as the server would write it: through the table's own
   // checks, never the project.
@@ -334,7 +346,7 @@ http.createServer(async (incoming, outgoing) => {
   if (asked) {
     const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? heldFollows?.rowsOf(asked[1])
       ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1])
-      ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1])
+      ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1]) ?? heldPins?.rowsOf(asked[1])
       ?? (heldFeedback ? await heldFeedback.rowsOf(asked[1]) : null)
       ?? (heldAnnounce ? await heldAnnounce.rowsOf(asked[1]) : null)
       ?? (heldTalk ? await heldTalk.rowsOf(asked[1]) : null) ?? null;
@@ -378,6 +390,7 @@ http.createServer(async (incoming, outgoing) => {
     if (captured[1] && mapped[1] === "share") query.id = captured[1];
     if (captured[2] && mapped[1] === "share") query.v = captured[2];
     if (captured[3] && mapped[1] === "share") query.as = captured[3];
+    if (mapped[2] === "thumb_version") Object.assign(query, { op: "thumb", n: captured[2], v: undefined });
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (mapped[2] === "page_lang" && mapped[1] === "people") Object.assign(query, { op: "page", lang: captured[1], handle: captured[2] });
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];
@@ -421,12 +434,16 @@ http.createServer(async (incoming, outgoing) => {
     handler = await route("people");
     Object.assign(query, { op: "challenge", picture: "1" });
   }
-  // The app is at /app, which the deployment sends on to the build with
-  // its query (?view=<id>, ?copy=<id>) intact.
-  if (site && /^\/app\/?$/.test(url.pathname)) {
-    outgoing.writeHead(302, { location: `/${url.search}` });
+  // The app is at /app, which the deployment answers with the build's page,
+  // the address kept with its query (?view=<id>, ?copy=<id>): deploy.sh's
+  // route. Sent on to / here, the app's own sign-in screen sent the site
+  // then=/?copy=…, which /profile rightly follows only to /app, and the
+  // person was left on /profile (fmfin, 2026-11-23).
+  if (site && url.pathname === "/app/") {
+    outgoing.writeHead(302, { location: `/app${url.search}` });
     return outgoing.end();
   }
+  if (site && url.pathname === "/app" && serveFile("/index.html", outgoing)) return;
   if (!handler && !found && !mapped && serveFile(url.pathname, outgoing)) return;
   if (!handler) {
     const file = incoming.method === "GET" ? page(url.pathname) : null;

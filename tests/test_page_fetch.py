@@ -49,6 +49,7 @@ KEPT = {
     # What PageFetch does not carry.
     "src/net/model_library.gd": "a set's file of up to 36 MB, said a megabyte at a time as it comes",
     "src/net/brickognize.gd": "a picture sent as bytes (request_raw)",
+    "src/net/photo_upload.gd": "a build's photo sent as bytes (request_raw)",
     # The assistant's calls to the person's own AI, seconds to minutes each,
     # and stopped mid-call by cancel_request: left as they were (framefetch).
     "src/ai/assistant.gd": "the assistant's model calls",

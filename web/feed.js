@@ -45,7 +45,7 @@ function here(link, otherwise = `${langAt()}/feed`) {
   try {
     const url = new URL(String(link || ""), location.origin);
     if (url.origin !== location.origin) return otherwise;
-    const copied = /^\/(?:[muc]\/|(?:challenge|profile|collections)(?=\/?$))/.test(url.pathname);
+    const copied = /^\/(?:[muc]\/|(?:challenge|profile|gallery-lists|collections)(?=\/?$))/.test(url.pathname);
     return (copied ? langAt() : "") + url.pathname + url.search + url.hash;
   } catch {
     return otherwise;

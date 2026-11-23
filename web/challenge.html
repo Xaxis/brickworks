@@ -104,8 +104,8 @@
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
 			<a href="/talk">Talk</a>
+			<a href="/challenge" aria-current="page">Challenges</a>
 			<a href="/docs">Docs</a>
-			<a href="/plans">Plans</a>
 			<a class="cta" href="/app">Open the app</a>
 			<a class="cta ghost" href="/profile?sign-in" data-account>Sign in</a>
 		</nav>
@@ -115,6 +115,7 @@
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
 					<a href="/talk">Talk</a>
+					<a href="/challenge" aria-current="page">Challenges</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Plans</a>
 					<a href="/download">Desktop app</a>
@@ -177,6 +178,51 @@
 	<div class="wrap wide page-body">
 		<noscript><p class="state">The challenge is drawn with a little JavaScript, which is off in this browser.</p></noscript>
 
+		<!-- The hub: this week's quick build beside the month's challenge (api/_prompts.js). -->
+		<section id="week" class="challenge-part week" aria-labelledby="week-h" hidden>
+			<article class="week-card">
+				<p class="challenge-status"><span class="badge good">This week’s quick build</span> <span class="note" id="week-days"></span></p>
+				<h2 id="week-h"><a id="week-title" href="/challenge"></a></h2>
+				<p id="week-brief"></p>
+				<p class="note" id="week-count"></p>
+				<div class="actions">
+					<a class="cta" id="week-start" href="/app">Start</a>
+					<a class="cta ghost" id="week-see" href="/challenge">See the entries</a>
+				</div>
+			</article>
+		</section>
+
+		<!-- A quick build that ended: every entry stacked as one model, the house's. -->
+		<section id="stack" class="challenge-part stack" aria-labelledby="stack-h" hidden>
+			<h2 id="stack-h">The stack</h2>
+			<p class="note" id="stack-said">Every entry, one on the next, each its own sub-model credited to its maker. Turn it, open it in the studio, or build it.</p>
+			<div class="models turns" id="stack-card"></div>
+		</section>
+
+		<!-- A quick build's entries: every one, newest first, each turning in 3D on a tap. -->
+		<section id="prompt-entries" class="challenge-part" aria-labelledby="prompt-entries-h" hidden>
+			<div class="entries-head">
+				<h2 id="prompt-entries-h">Entries</h2>
+				<p class="note" id="prompt-count"></p>
+			</div>
+			<div class="models turns" id="prompt-cards"></div>
+			<div class="empty-state" id="prompt-empty" hidden>
+				<p>Nobody has published one yet. Be the first: Start opens the template in the studio.</p>
+				<a class="cta" id="prompt-empty-start" href="/app">Start</a>
+			</div>
+		</section>
+
+		<!-- How a quick build works: no rules, no vote, one publish. -->
+		<section id="prompt-how" class="challenge-part" aria-labelledby="prompt-how-h" hidden>
+			<h2 id="prompt-how-h">How it works</h2>
+			<ol class="steps">
+				<li><h3>Start</h3><p>Start opens the template in the studio as a copy of your own: the plate and the brief.</p></li>
+				<li><h3>Build</h3><p>Build on it, by hand or with the assistant. There are no rules but the brief, and no vote.</p></li>
+				<li><h3>Publish</h3><p>Publish it in the gallery before the week ends, and it is entered: the publish dialog says so, and one tap keeps it out.</p></li>
+			</ol>
+			<p class="note">When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.</p>
+		</section>
+
 		<!-- Once it ends: who won, one in each group, before everything else. -->
 		<section id="winners" class="challenge-part" aria-labelledby="winners-h" hidden>
 			<h2 id="winners-h">The winners</h2>
@@ -191,6 +237,17 @@
 			</div>
 			<div class="tabs" id="group-tabs" role="tablist" aria-label="Groups"></div>
 			<p class="vote-said" id="vote-said" hidden></p>
+			<p class="pair-go" id="pair-go" hidden><a class="cta ghost small" id="pair-link" href="?pair=hand"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#eye"></use></svg><span>Compare them two at a time, in 3D</span></a></p>
+			<!-- Two at a time: each turning in its own blind embed, its name alone (web/challenge.js drawPair). -->
+			<div class="pair" id="pair" role="tabpanel" hidden>
+				<p class="pair-said" id="pair-said" tabindex="-1" aria-live="polite"></p>
+				<div class="pair-two" id="pair-two"></div>
+				<div class="actions pair-acts">
+					<button type="button" class="cta big" id="pair-vote" hidden>Vote</button>
+					<button type="button" class="cta ghost" id="pair-again" hidden>Start again</button>
+					<a class="cta ghost" id="pair-back" href="/challenge">See every entry</a>
+				</div>
+			</div>
 			<div id="groups"></div>
 			<p class="said" id="said" role="status"></p>
 		</section>
@@ -281,8 +338,8 @@
 						<li><a href="/gallery">Gallery</a></li>
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
-						<li><a href="/challenge">Challenge</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/challenge">Challenges</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

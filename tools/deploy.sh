@@ -293,6 +293,9 @@ echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 # how the site and the studio were used rolled up, rows past 30 days gone.
 # Every five minutes /api/plans/owner-notify (api/_notify.js): the owner's
 # notifications mailed as they set them in /admin › Notifications.
+# At 41 past each hour /api/share/prompts (api/_prompts.js): the weekly
+# quick build's house work, each template published, the house's two
+# entries, and once a week ends the stack of its entries.
 # Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
@@ -344,6 +347,14 @@ python3 tools/site.py .vercel/output/static | sed 's/^/deploy: /' || {
   echo "deploy FAILED: could not put the website together (tools/site.py)"; exit 1; }
 [ -f .vercel/output/static/index.html ] && [ -f .vercel/output/static/404.html ] || {
   echo "deploy FAILED: the website has no index.html or 404.html"; exit 1; }
+# The home page's first screen in the page as it is served (landing,
+# 2026-11-22): the shelf's real models, their pictures copied beside the
+# page, and the month's challenge, from the live gallery, else from
+# web/_home.json. It never fails the deploy for an answer it could not
+# read: the page then asks for them itself (web/landing.js).
+HOME_FROM="${HOME_FROM:-https://brickworks.diy}"
+timeout 300 node tools/web/home_shelf.mjs .vercel/output/static --from="$HOME_FROM" </dev/null | sed 's/^/deploy: /' || {
+  echo "deploy FAILED: could not write the home page's first screen (tools/web/home_shelf.mjs)"; exit 1; }
 
 # The site's pages at addresses without .html: /download, not
 # /download.html. The owner, 2026-10-12: "do you realize how oldschool
@@ -485,7 +496,12 @@ closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 
 # blob: in the site's connect-src: a model page's In your room writes its GLB
 # in the page and hands <model-viewer> its blob: address (web/room.js).
 site_csp="default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src ${reach} blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
-csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
+# The app may be framed by the site's own pages, and only by them: the home
+# page's feed opens the studio in a post (Try it here, web/landing.js
+# tryHere; homefeed, 2026-11-23). Every page of the origin is the site's,
+# with no script but its own, so nothing else can frame it.
+app_closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${app_closed}"
 # Where Claude sends someone to sign in (web/authorize.html). Stricter than
 # the app's: no eval, and it talks only to itself and the sign-in service.
 # And none of the cross-origin isolation headers: the app's threaded build
@@ -535,7 +551,8 @@ cat > .vercel/output/config.json <<EOF
              { "path": "/api/plans/social-due", "schedule": "*/15 * * * *" },
              { "path": "/api/plans/tally-daily", "schedule": "27 3 * * *" },
              { "path": "/api/plans/owner-notify", "schedule": "*/5 * * * *" },
-             { "path": "/api/plans/announce-due", "schedule": "8,23,38,53 * * * *" } ],
+             { "path": "/api/plans/announce-due", "schedule": "8,23,38,53 * * * *" },
+             { "path": "/api/share/prompts", "schedule": "41 * * * *" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -557,6 +574,7 @@ $docs_moved
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/otp/canary", "dest": "/api/otp?op=canary" },
     { "src": "/api/share/feature", "dest": "/api/share?op=feature" },
+    { "src": "/api/share/prompts", "dest": "/api/share?op=prompts" },
     { "src": "/api/share/omr", "dest": "/api/share?op=omr" },
     { "src": "/api/plans/beta-daily", "dest": "/api/plans?op=beta_daily" },
     { "src": "/api/plans/social-due", "dest": "/api/plans?op=social_due" },
@@ -592,6 +610,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/room[.]json", "dest": "/api/share?op=room&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1&v=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]webp", "dest": "/api/share?op=thumb&id=\$1&n=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1" },
@@ -606,6 +625,8 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
+    { "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" },
+    { "src": "/($langs)/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists&lang=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/parts[.](json|xml|csv)", "dest": "/api/share?op=catalog_parts&set=\$1&as=\$2" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]jpg", "dest": "/api/share?op=catalog_picture&set=\$1" },

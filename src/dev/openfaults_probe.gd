@@ -748,8 +748,12 @@ func _sorted_bricks() -> Array:
 
 
 ## Every part: number, colour, copy, step (its rank among its home's steps)
-## and place; the copies; each copy's step.
+## and place; the copies; each copy's step. The app's own steps read back
+## from its file (BrickWorld.steps_own) are no one's, -1 as on a model whose
+## steps are worked out: its save writes them and its open keeps them, the
+## same booklet (stepkeep2; stepkeep_probe compares them).
 func _state() -> Dictionary:
+	var own: bool = _world.steps_own
 	var lift: Vector3 = _store.lift()
 	var tree: Dictionary = {}
 	var spaces: Dictionary = {}
@@ -760,9 +764,9 @@ func _state() -> Dictionary:
 		for segment: String in Assemblies.segments(path):
 			at = Assemblies.join(at, segment)
 			tree[at] = true
-		_add(spaces, _home(path), brick.step)
+		_add(spaces, _home(path), -1 if own else brick.step)
 	for unit: String in tree:
-		var step: int = int(_world.unit_steps.get(unit, -1))
+		var step: int = -1 if own else int(_world.unit_steps.get(unit, -1))
 		if step != AuthorSteps.IN_PARENT:
 			_add(spaces, _home(Assemblies.parent_of(unit)), step)
 	var ranks: Dictionary = {}
@@ -778,12 +782,12 @@ func _state() -> Dictionary:
 		var brick: BrickWorld.Brick = item
 		var path: String = Assemblies.path_of(brick)
 		parts.append("%s %d %s step %d at %s" % [brick.part_id, brick.color_code, path,
-			int(ranks[_home(path)][brick.step]),
+			int(ranks[_home(path)][-1 if own else brick.step]),
 			_place(Transform3D(brick.transform.basis, brick.transform.origin - lift))])
 	parts.sort()
 	var units: Dictionary = {}
 	for unit: String in tree:
-		var step: int = int(_world.unit_steps.get(unit, -1))
+		var step: int = -1 if own else int(_world.unit_steps.get(unit, -1))
 		units[unit] = "in its parent's" if step == AuthorSteps.IN_PARENT \
 			else str(ranks[_home(Assemblies.parent_of(unit))].get(step, step))
 	var paths: Array = tree.keys()

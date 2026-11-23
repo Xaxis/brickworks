@@ -68,6 +68,17 @@ var _shader: RID
 var _pipeline: RID
 var _sbt: RID
 var _range: int = 0
+## The shader's "marks" version (photoreal9): the tracer with the wear
+## that hands leave, made the first time a picture asks for it ([member
+## marked]). The "plain" version is the code that drew every picture
+## before it, so a picture without it is drawn exactly as it was: the
+## shader with it compiled in, at 0, moved some 20,000 pixels of a close-up
+## by up to 11 levels, the compiler ordering and fusing its arithmetic
+## another way.
+var _file: RDShaderFile
+var _marked_shader: RID
+var _marked_pipeline: RID
+var _marked_sbt: RID
 var _resolve_shader: RID
 var _resolve_pipeline: RID
 var _sampler: RID
@@ -140,6 +151,10 @@ const PLAY_SHIFT := 1.5
 ## card with each part (its record's last number, 0 to 255), as the closest
 ## hit, which draws the logo, reads no scene.
 var studs: float = 0.0
+## Whether the picture asks for the wear hands leave (photoreal9,
+## RenderSettings.rubbed), set before [method stage]: it is then traced by
+## the shader's "marks" version.
+var marked: bool = false
 ## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
 ## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
 var _fitted: Dictionary = {}
@@ -193,30 +208,17 @@ func _make() -> bool:
 	if not available():
 		return false
 	_rd = RenderingServer.get_rendering_device()
-	var file: RDShaderFile = load("res://src/render/path_tracer.glsl") as RDShaderFile
+	_file = load("res://src/render/path_tracer.glsl") as RDShaderFile
 	var resolve_file: RDShaderFile = load("res://src/render/path_tracer_resolve.glsl") as RDShaderFile
-	if file == null or resolve_file == null:
+	if _file == null or resolve_file == null:
 		return _refused("its shaders did not load")
-	var spirv: RDShaderSPIRV = file.get_spirv()
-	for stage: String in ["raygen", "miss", "closest_hit"]:
-		var error: String = spirv.get("compile_error_" + stage)
-		if not error.is_empty():
-			return _refused("%s: %s" % [stage, error])
-	_shader = _rd.shader_create_from_spirv(spirv, "Path tracer")
-	var raygen := RDPipelineShader.new()
-	raygen.shader = _shader
-	var miss := RDPipelineShader.new()
-	miss.shader = _shader
-	var closest := RDPipelineShader.new()
-	closest.shader = _shader
-	var group := RDHitGroup.new()
-	group.closest_hit_shader = closest
-	_pipeline = _rd.raytracing_pipeline_create([raygen], [miss], [group], 1)
-	if not _pipeline.is_valid():
-		return _refused("the card refused the pipeline")
-	_sbt = _rd.hit_sbt_create(_pipeline, 1)
-	_range = _rd.hit_sbt_range_alloc(_sbt, 1)
-	_rd.hit_sbt_range_update(_sbt, _range, 0, PackedInt32Array([0]))
+	var made: Array = _pipeline_of("plain")
+	if made.is_empty():
+		return false
+	_shader = made[0]
+	_pipeline = made[1]
+	_sbt = made[2]
+	_range = made[3]
 	var resolve_spirv: RDShaderSPIRV = resolve_file.get_spirv()
 	if not resolve_spirv.compile_error_compute.is_empty():
 		return _refused("resolve: %s" % resolve_spirv.compile_error_compute)
@@ -235,6 +237,56 @@ func _make() -> bool:
 	tile.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
 	_tile_sampler = _rd.sampler_create(tile)
 	_holders += 1
+	return true
+
+
+## The shader's [param version] on the card: [shader, pipeline, its hit
+## table, the table's range], or empty, refused.
+func _pipeline_of(version: String) -> Array:
+	var spirv: RDShaderSPIRV = _file.get_spirv(version)
+	if spirv == null:
+		_refused("its shader has no %s version" % version)
+		return []
+	for stage: String in ["raygen", "miss", "closest_hit"]:
+		var error: String = spirv.get("compile_error_" + stage)
+		if not error.is_empty():
+			_refused("%s: %s" % [stage, error])
+			return []
+	var shader: RID = _rd.shader_create_from_spirv(spirv, "Path tracer" if version == "plain"
+		else "Path tracer (%s)" % version)
+	var raygen := RDPipelineShader.new()
+	raygen.shader = shader
+	var miss := RDPipelineShader.new()
+	miss.shader = shader
+	var closest := RDPipelineShader.new()
+	closest.shader = shader
+	var group := RDHitGroup.new()
+	group.closest_hit_shader = closest
+	var pipeline: RID = _rd.raytracing_pipeline_create([raygen], [miss], [group], 1)
+	if not pipeline.is_valid():
+		_rd.free_rid(shader)
+		_refused("the card refused the pipeline")
+		return []
+	var sbt: RID = _rd.hit_sbt_create(pipeline, 1)
+	var at: int = _rd.hit_sbt_range_alloc(sbt, 1)
+	_rd.hit_sbt_range_update(sbt, at, 0, PackedInt32Array([0]))
+	return [shader, pipeline, sbt, at]
+
+
+## The "marks" version on the card (photoreal9), made the first time it is
+## asked for. Its hit table's range is the plain one's, so the set's
+## instances, which name the plain one's, are found in it.
+func _make_marked() -> bool:
+	if _marked_pipeline.is_valid():
+		return true
+	var made: Array = _pipeline_of("marks")
+	if made.is_empty():
+		return false
+	_marked_shader = made[0]
+	_marked_pipeline = made[1]
+	_marked_sbt = made[2]
+	if int(made[3]) != _range:
+		return _refused("its marks' hit table is not the plain one's")
 	return true
 
 
@@ -336,6 +388,8 @@ func _seated(place: Transform3D, key: int) -> Transform3D:
 ## False when there is nothing to trace or no card to trace it on.
 func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	if not _make():
+		return false
+	if marked and not _make_marked():
 		return false
 	_free_picture_set()
 	var shape_index: Dictionary = {}
@@ -624,7 +678,7 @@ func _bind() -> void:
 	uniforms.append(_uniform(10, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide]))
 	uniforms.append(_uniform(11, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
 		[_tile_sampler, _surface_texture]))
-	_trace_set = _rd.uniform_set_create(uniforms, _shader, 0)
+	_trace_set = _rd.uniform_set_create(uniforms, _marked_shader if marked else _shader, 0)
 	var resolving: Array[RDUniform] = [
 		_uniform(0, RenderingDevice.UNIFORM_TYPE_IMAGE, [_accum]),
 		_uniform(1, RenderingDevice.UNIFORM_TYPE_IMAGE, [_picture]),
@@ -666,10 +720,10 @@ func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
 	push.encode_u32(12, 1 if samples == 0 else 0)
 	push.encode_u32(16, row)
 	var list: int = _rd.raytracing_list_begin()
-	_rd.raytracing_list_bind_raytracing_pipeline(list, _pipeline)
+	_rd.raytracing_list_bind_raytracing_pipeline(list, _marked_pipeline if marked else _pipeline)
 	_rd.raytracing_list_bind_uniform_set(list, _trace_set, 0)
 	_rd.raytracing_list_set_push_constant(list, push, push.size())
-	_rd.raytracing_list_trace_rays(list, 0, _sbt, _size.x, band, 1)
+	_rd.raytracing_list_trace_rays(list, 0, _marked_sbt if marked else _sbt, _size.x, band, 1)
 	_rd.raytracing_list_end()
 	_rd.capture_timestamp("PathTracer %d" % get_instance_id())
 	if row + band >= _size.y:
@@ -804,7 +858,10 @@ func release() -> void:
 					_free(rid)
 		_shapes.clear()
 	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler,
-			_tile_sampler]:
+			_tile_sampler, _marked_sbt, _marked_pipeline, _marked_shader]:
 		_free(rid)
 	_pipeline = RID()
+	_marked_pipeline = RID()
+	_marked_sbt = RID()
+	_marked_shader = RID()
 	_rd = null

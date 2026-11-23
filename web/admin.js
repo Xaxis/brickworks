@@ -624,7 +624,7 @@ async function person(account, again = false, told = "") {
       reason.maxLength = 200;
       const form = make("form", "console-form", make("label", "", "Why ", make("small", "", "for you; kept with it"), reason));
       form.append(make("div", "row", act("Take out the account", () => (confirm(`Take every model of ${one.email} out of the gallery, `
-        + "and keep them out? Their profile and public collections go too.")
+        + "and keep them out? Their profile and public lists go too.")
         ? post({ op: "bar", account }, said, "The account is out.", { body: { reason: reason.value },
           after: () => afterPerson(account, "The account is out: none of its models is listed.") })
         : Promise.resolve(false)), "cta ghost small")));
@@ -753,7 +753,7 @@ function dataActs(one, account) {
   done.setAttribute("role", "status");
   form.append(
     make("p", "", "Only at its person's request. Its models come out of the gallery and their links stop working; its profile, "
-      + "favourites, lists, comments, follows, photos, the sets it owns and its AI apps' connections are deleted with it, exactly as "
+      + "saved models, lists, comments, follows, photos, the sets it owns and its AI apps' connections are deleted with it, exactly as "
       + "when they delete it themselves. "),
     make("p", "", make("b", "", "This is irreversible: nothing of it can be brought back.")),
     make("label", "", `Type ${one.email || "its address"} to confirm`, typed),

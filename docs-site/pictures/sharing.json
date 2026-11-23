@@ -44,7 +44,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and the guidelines.",
+   "alt": "The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and Share progress side by side, and the guidelines.",
    "caption": "File › Share…, before it is published.",
    "features": [
     "ui:share panel"
@@ -120,11 +120,380 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The Share panel once published: Publish now reading Update the link, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.",
+   "alt": "The Share panel once published: Publish now reading Update the link beside Share progress, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.",
    "caption": "The panel once the model is published.",
    "features": [
     "ui:share panel",
     "lib:versions of a shared model"
+   ]
+  },
+  {
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "id": "sharing-post-kits",
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#post-kits [data-kit]"
+    }
+   ],
+   "crop": "#share-sheet",
+   "pad": 12,
+   "alt": "Share's sheet on your own model's page: its link with Copy link, Post it to each network, Embed it in a page, then Post it elsewhere with a button for each of r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable and Flickr.",
+   "caption": "Share on your own model's page, with Post it elsewhere.",
+   "features": [
+    "ui:a kit to post a model elsewhere"
+   ]
+  },
+  {
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "id": "sharing-kit-legomoc",
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#post-kits [data-kit]"
+    },
+    {
+     "click": "#post-kits [data-kit=\"legomoc\"]"
+    },
+    {
+     "wait": "html[data-kit=\"made\"] #post-kit .kit-rules",
+     "within": 240000
+    },
+    {
+     "pause": 600
+    }
+   ],
+   "crop": "#post-kit",
+   "pad": 12,
+   "alt": "The r/legomoc kit: its pictures, the title with its flair, the words to paste as a comment with the model's link, each with Copy, then its rules, each with a link to the rule, Save the kit and Open r/legomoc.",
+   "caption": "The kit for r/legomoc.",
+   "features": [
+    "ui:a kit to post a model elsewhere"
+   ]
+  },
+  {
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "id": "sharing-kit-lego",
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#post-kits [data-kit]"
+    },
+    {
+     "click": "#post-kits [data-kit=\"lego\"]"
+    },
+    {
+     "wait": "html[data-kit=\"made\"] #post-kit .kit-rules",
+     "within": 240000
+    },
+    {
+     "pause": 600
+    }
+   ],
+   "crop": "#post-kit",
+   "pad": 12,
+   "alt": "The r/lego kit: its pictures, the title, the words to paste with the model's link, and its rules, among them r/lego's one post in ten, yours to keep, then Save the kit and Open r/lego.",
+   "caption": "The kit for r/lego.",
+   "features": [
+    "ui:a kit to post a model elsewhere"
+   ]
+  },
+  {
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "id": "sharing-kit-instagram",
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#post-kits [data-kit]"
+    },
+    {
+     "click": "#post-kits [data-kit=\"instagram\"]"
+    },
+    {
+     "wait": "html[data-kit=\"made\"] #post-kit .kit-rules",
+     "within": 240000
+    },
+    {
+     "pause": 600
+    }
+   ],
+   "crop": "#post-kit",
+   "pad": 12,
+   "alt": "The Instagram kit: a 1080 by 1350 cover with the wordmark, a 1080 by 1920 turn of the model, the caption with five hashtags at most and the model's link, and Instagram's rules.",
+   "caption": "The kit for Instagram.",
+   "features": [
+    "ui:a kit to post a model elsewhere"
+   ]
+  },
+  {
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "id": "sharing-kit-ideas",
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#post-kits [data-kit]"
+    },
+    {
+     "click": "#post-kits [data-kit=\"ideas\"]"
+    },
+    {
+     "wait": "html[data-kit=\"made\"] #post-kit .kit-rules",
+     "within": 240000
+    },
+    {
+     "pause": 600
+    }
+   ],
+   "crop": "#post-kit",
+   "pad": 12,
+   "alt": "The LEGO® Ideas kit for a 187-piece model: the line saying it does not keep one of the rules, its pictures, its description, then its rules with the one it fails first, 200 to 5,000 pieces, then at most 15 pictures, no text on the main picture and no box art kept, and the note that Brickworks is not the LEGO Group.",
+   "caption": "The kit for LEGO® Ideas.",
+   "features": [
+    "ui:a kit to post a model elsewhere"
+   ]
+  },
+  {
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "id": "sharing-kit-rebrickable",
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#post-kits [data-kit]"
+    },
+    {
+     "click": "#post-kits [data-kit=\"rebrickable\"]"
+    },
+    {
+     "wait": "html[data-kit=\"made\"] #post-kit .kit-rules",
+     "within": 240000
+    },
+    {
+     "pause": 600
+    }
+   ],
+   "crop": "#post-kit",
+   "pad": 12,
+   "alt": "The Rebrickable kit: its pictures, its description with the model's link, and its rules: the parts list as Rebrickable's CSV, the instructions yours to add, then Save the kit and Open Rebrickable.",
+   "caption": "The kit for Rebrickable.",
+   "features": [
+    "ui:a kit to post a model elsewhere"
+   ]
+  },
+  {
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "id": "sharing-kit-flickr",
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#post-kits [data-kit]"
+    },
+    {
+     "click": "#post-kits [data-kit=\"flickr\"]"
+    },
+    {
+     "wait": "html[data-kit=\"made\"] #post-kit .kit-rules",
+     "within": 240000
+    },
+    {
+     "pause": 600
+    }
+   ],
+   "crop": "#post-kit",
+   "pad": 12,
+   "alt": "The Flickr kit: the largest picture, 2560 pixels across, its description with the model's link, and Flickr's rules, then Save the kit and Open Flickr.",
+   "caption": "The kit for Flickr.",
+   "features": [
+    "ui:a kit to post a model elsewhere"
+   ]
+  },
+  {
+   "id": "sharing-progress",
+   "source": "app",
+   "answers": {
+    "publish": {
+     "code": 201,
+     "body": {
+      "id": "DocsSprt01",
+      "url": "https://brickworks.diy/m/DocsSprt01",
+      "parts": 187,
+      "updated": false,
+      "listed": true,
+      "version": 1,
+      "said": "",
+      "author": "Test builder",
+      "tested": {
+       "kept": true
+      },
+      "wip": true,
+      "finished": false,
+      "talk": {
+       "thread": 14,
+       "post": 41,
+       "made": true,
+       "url": "https://brickworks.diy/talk/t/14"
+      }
+     }
+    }
+   },
+   "setup": [
+    {
+     "open": "res://models/sports_car.ldr"
+    },
+    {
+     "run": "share",
+     "after": 30
+    },
+    {
+     "click": "_share_panel._name"
+    },
+    {
+     "key": "Ctrl+A"
+    },
+    {
+     "type": "Sports car and its driver"
+    },
+    {
+     "click": "_share_panel._tags"
+    },
+    {
+     "type": "car, sports, racing"
+    },
+    {
+     "click": "_share_panel._about"
+    },
+    {
+     "type": "A red two-seater with its driver, and a steering wheel that turns the front wheels."
+    },
+    {
+     "click": "_share_panel._credit"
+    },
+    {
+     "click": "_share_panel._list"
+    },
+    {
+     "click": "_share_panel._progress"
+    },
+    {
+     "until": "_share_panel.state",
+     "is": "published",
+     "frames": 3600
+    },
+    {
+     "frames": 30
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Share panel after Share progress: Publish now reading Publish as finished beside Share progress, then the line Version 1 is shared as work in progress, in the gallery's Newest and your followers' feeds, kept out of Top and the challenges until you publish it as finished, and that its Talk thread has the post.",
+   "caption": "Share progress: this version, shared while it is still being built.",
+   "features": [
+    "ui:share panel",
+    "ui:work in progress shared by version"
    ]
   }
  ]

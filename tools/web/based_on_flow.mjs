@@ -273,8 +273,9 @@ try {
       && Array.isArray(json.body.based_on) && json.body.based_on.length === 0);
     await setPage.goto(`${site}/library/set/${SET}?tests=1`, { waitUntil: "load" });
     const based = await until(setPage, () => document.documentElement.dataset.based, "the set's page's answer");
-    check(`set ${SET}'s page lists nothing (data-based ${based}, no row)`, based === "0"
-      && (await setPage.locator("#built-from").count()) === 0);
+    // The row asks for the first build instead (altbuilds): no card in it.
+    check(`set ${SET}'s page lists nothing (data-based ${based}, no card)`, based === "0"
+      && (await setPage.locator("#built-from .model").count()) === 0);
     await shot(ivyPage, "0_not_open.png");
   } else {
     // --- 2. Ivy says what it is based on ---------------------------------------
@@ -363,7 +364,7 @@ try {
       cards: [...document.querySelectorAll("#built-from .models .model")].map((card) => card.dataset.id),
       before: document.querySelector("#built-from")?.nextElementSibling?.id || "" }));
     check(`at 390 px (dark): data-based ${based}, "${row.heading}", cards ${row.cards.join(", ")}, then #${row.before || "nothing"}`,
-      Number(based) >= 1 && row.heading === "Based on this set" && row.cards.includes(castle));
+      Number(based) >= 1 && row.heading === "Built from this set" && row.cards.includes(castle));
     await setPhone.locator("#built-from").scrollIntoViewIfNeeded();
     await shot(setPhone, "3_set_page_390_dark.png");
     check("nothing sideways", !(await sideways(setPhone)));

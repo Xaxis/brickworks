@@ -32,6 +32,17 @@
 //                                                      wishlist's
 //                                                      (api/_mylists.js)
 //   {"from": "sets", "text": "10237-1, 6020"}          typed by number
+//
+// The website shows an import before it makes it (lists2a, docs/LISTS.md
+// section 5 item 6): the same body with "preview": true is read, mapped and
+// made on the row as it is now, and answered as what it would do, with
+// nothing written: {preview: {matched, already, missing, gone, lots,
+// left_out, wanted}} (asShown). The import itself then says "as_shown":
+// true, and is made by the same rule on the row as it is then: a set
+// number Brickworks' catalogue has no set for is left out, and so, when it
+// adds, is a set the person owns already (a second copy of every set the
+// file shares with what they own is never what an export meant). The app's
+// imports say neither, and are made as they always were.
 //   {"from": "figs", "figs": [{"fig": "sw0001a", "name": "Luke Skywalker"}]}
 //                                                      minifigures, by
 //                                                      BrickLink's number
@@ -75,7 +86,9 @@
 //       a set, at the count the person saw, taken out
 //   {"op": "own", "set": "6020-1", "was": 0, "qty": 1}
 //       how many of a set the person owns, every copy from anywhere, from
-//       the count they saw to qty (0: none): the website's Own (lists1).
+//       the count they saw to qty (0: none, at most MOST_OWNED, 99, unless
+//       it comes down): the website's Own (lists1) and a set's page's You
+//       own (ownedparts).
 //       More goes onto their own copy (src "hand"); fewer comes off theirs
 //       first, then off the other sources' copies. Back up to a count an
 //       Own (with an id) took it down from, nothing changed since, puts
@@ -194,6 +207,7 @@ import { COLOUR_NAMES } from "./_colours.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import { builtCount, plainColour, readShard, resolvePart, shardOf } from "./_owned.js";
+import { catalogSet, setCatalog } from "./_sets.js";
 
 export const MAX_BYTES = 1_000_000;
 /// Keep them and Take back name every lot a session added, up to MAX_LOTS.
@@ -201,6 +215,10 @@ export const MAX_KEEP_BYTES = 4_000_000;
 export const MAX_SETS = 5000;
 export const MAX_LOTS = 20000;
 const MAX_QTY = 100000;
+/// The most copies of a set Own's count takes by hand (ownedparts): 1 to 99,
+/// as a set's page offers it. A file of the person's own can bring more
+/// (MAX_QTY), and a count over this still comes down a copy at a time.
+export const MOST_OWNED = 99;
 
 const SET_NUMBER = /^[a-z0-9][a-z0-9._]{0,24}(-[0-9]{1,3})?$/;
 const PART_NUMBER = /^[a-z0-9][a-z0-9._-]{0,40}$/;
@@ -1150,6 +1168,9 @@ export function applyOp(have, body, books = new Map()) {
     const copiesOf = () => sets.list.filter((s) => s.set === set && !s.fig);
     const now = copiesOf().reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
     if (now !== was) throw new Conflict(`${set} is ${now} now, not the ${was} shown`, have);
+    if (qty > MOST_OWNED && qty > now) {
+      throw new Refusal(400, `${set}: you can own from 1 to ${MOST_OWNED} copies of a set here, not ${qty}`);
+    }
     if (qty === now) return { next: null, done: { owned: now } };
     if (qty > now) {
       // Back to a count an Own took it down from, with nothing changed
@@ -1497,6 +1518,77 @@ function importing(have, body, imported, books = new Map()) {
   };
 }
 
+/// An import as the website shows it before it is made, on the row [have]
+/// as it is (lists2a): [imported] (parseImport's) less the sets the
+/// catalogue has no set for ([known]: a set number -> its set or null,
+/// catalogSet), and, in [mode] "add", less the sets already owned; and what
+/// that would do, each set number once, as the file spells it lower-cased:
+///   matched   sets it puts in that are not owned yet
+///   already   sets it lists that are owned already (left as they are when
+///             it adds; a replace counts them as the file does)
+///   missing   numbers the catalogue has no set for: left out
+///   gone      (a replace) owned sets the same site's file brought before
+///             and this one does not list: taken out
+///   lots      loose parts' lots it adds; left_out, what it cannot map
+///   wanted    a Brickset file's wanted sets the catalogue has (the
+///             website puts them on the wishlist), those it has not in
+///             missing too
+/// Pure, for the probe: {imported, preview}.
+export function asShown(have, imported, body, known = catalogSet) {
+  const mode = body?.mode === "replace" ? "replace" : "add";
+  const owned = new Set(have.sets.filter((s) => !s.fig).map((s) => String(s.set).toLowerCase()));
+  const seen = new Set();
+  const preview = { matched: [], already: [], missing: [], gone: [], lots: 0, left_out: [], wanted: [] };
+  const kept = [];
+  let unknown = 0;
+  let ownedAlready = 0;
+  for (const s of imported.sets) {
+    if (s.fig) {
+      kept.push(s);
+      continue;
+    }
+    const set = String(s.set).toLowerCase();
+    const first = !seen.has(set);
+    seen.add(set);
+    if (!known(set)) {
+      if (first) preview.missing.push(set);
+      unknown += s.qty;
+      continue;
+    }
+    if (owned.has(set)) {
+      if (first) preview.already.push(set);
+      if (mode !== "replace") {
+        ownedAlready += s.qty;
+        continue;
+      }
+    } else if (first) {
+      preview.matched.push(set);
+    }
+    kept.push(s);
+  }
+  const leftOut = { ...imported.leftOut };
+  if (unknown) leftOut["a set number Brickworks' catalogue has no set for"] = unknown;
+  if (ownedAlready) leftOut["a set you own already"] = ownedAlready;
+  const shownImport = { ...imported, sets: kept, leftOut };
+  for (const set of Array.isArray(imported.wanted) ? imported.wanted : []) {
+    const number = String(set).toLowerCase();
+    if (known(number)) preview.wanted.push(number);
+    else if (!seen.has(number)) {
+      seen.add(number);
+      preview.missing.push(number);
+    }
+  }
+  if (imported.wanted) shownImport.wanted = preview.wanted;
+  if (mode === "replace") {
+    const { next } = merged(have, shownImport, mode, SOURCE_OF[String(body?.from)]);
+    const after = new Set(next.sets.filter((s) => !s.fig).map((s) => String(s.set).toLowerCase()));
+    preview.gone = [...owned].filter((set) => !after.has(set));
+  }
+  preview.lots = shownImport.parts.length;
+  preview.left_out = Object.entries(imported.leftOut).map(([why, count]) => ({ why, count }));
+  return { imported: shownImport, preview };
+}
+
 /// An older app's PUT (rel-m267 and before), made as remove_set when it is
 /// the collection as kept with one set number gone, every lot as kept:
 /// such an app takes a set out by filtering its whole copy and sending it.
@@ -1781,13 +1873,21 @@ async function handler(request, response) {
         + "figs, or op lots, set, keep, take_back, remove_set, own, missing or start_over");
     }
     const imported = parseImport(body);
+    // Shown first, then made as shown (asShown): both need the catalogue.
+    const showing = body.preview === true || body.as_shown === true;
+    if (showing && !setCatalog()) throw new Refusal(503, "the set catalogue is not on this deployment");
+    if (body.preview === true) {
+      return response.status(200).json({ preview: asShown(await readRow(owner), imported, body).preview, written: false });
+    }
     const books = new Map();
+    let said = imported;
     const { row, done } = await change(owner, async (have) => {
-      await inventoriesFor(have, body, imported, books, originOf(request));
-      return importing(have, body, imported, books);
+      said = showing ? asShown(have, imported, body).imported : imported;
+      await inventoriesFor(have, body, said, books, originOf(request));
+      return importing(have, body, said, books);
     }, id);
     return response.status(200).json({ ...shown(row), done, imported: done.imported, left_out: done.left_out || [],
-      ...(imported.wanted ? { wanted: imported.wanted } : {}) });
+      ...(said.wanted ? { wanted: said.wanted } : {}) });
   } catch (error) {
     if (error instanceof Conflict && owning !== null) {
       return response.status(409).json({ error: error.message, owned: ownedOf(error.row, owning) });

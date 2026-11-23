@@ -39,7 +39,7 @@ export const LOOP = [
   ["discovered", "site", "view", "/talk/t/:n"],
   ["discovered", "site", "view", "/u/:handle"],
   ["discovered", "site", "view", "/c/:id"],
-  ["discovered", "site", "view", "/collections"],
+  ["discovered", "site", "view", "/gallery-lists"],
   ["discovered", "site", "view", "/builds"],
   ["discovered", "site", "view", "/feed"],
   ["discovered", "site", "view", "/challenge"],

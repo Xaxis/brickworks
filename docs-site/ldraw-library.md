@@ -54,7 +54,11 @@ Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](
 - **Open its parts in Brickworks**: the app with the set's parts in the bin, the most used first (`/app?parts=<number>` does the same);
 - **Design with these parts**: the app with the assistant on and a brief naming the set's parts, for your own AI to design from when you send it;
 - where LDraw has a model of it, **Build it in 3D**, and that model's own page at `brickworks.diy/library/<id>`: who modelled it and under which licence, **Share**, and **Open in Brickworks**, which opens it as File › Library… does;
-- **Based on this set**: gallery models whose designers said they were built from it, changed from it or inspired by it ([based on](/docs/model-pages#based-on)).
+- **Built from this set**: gallery models built from its parts, as Brickworks counted them when they were published (every part from this set; 80% or more of their parts from it; or from it and up to four other sets together), and models whose designers said they were built from it, changed from it or inspired by it ([based on](/docs/model-pages#based-on)). Each card says how much of it is from the set: *Every part from this set*, *92% of its parts from this set*, *73% from this set, the rest from 9764 and 11032*. When there are none yet it says so, and **Build something from it** opens Brickworks with the set's parts in the bin; publish what you build and it is listed here.
+
+![Built from this set on a set's page: the little rocket's card, saying 73% from this set, the rest from 9764 and 11032.](/docs/img/set-built-from.webp "What people built from a set, on its page.")
+
+![Built from this set on a phone, with nothing yet: Nobody has built anything else from this set yet, what to do about it, and Build something from it.](/docs/img/set-built-empty.webp "A set nobody has built anything else from yet, on a phone.")
 
 Its picture is LDraw's model where there is one; otherwise the set's own picture, Rebrickable's and credited to them, kept on Brickworks' storage so your browser never asks them; for the few with none, a few of its most distinctive parts, drawn by Brickworks. Set and inventory data is Rebrickable's, copied at most once a day.
 

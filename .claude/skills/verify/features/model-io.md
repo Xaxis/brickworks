@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe, cli:askfirst probe, ui:missing and moved parts on open, cli:movedparts probe, cli:movedparts phone probe, cli:mvreview probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:wirekeep probe, cli:open faults probe, cli:askfirst probe, ui:missing and moved parts on open, cli:movedparts probe, cli:movedparts phone probe, cli:mvreview probe -->
 
 ## Sub-features
 
@@ -23,6 +23,25 @@ Whether what you built is still there tomorrow, and still means the same thing.
   head of the model, in the autosave, saves, LDraw and Studio exports and the
   text a shared link carries, and is read back on open; a file without it gets
   the floor new models start on. `floor_probe` round-trips each.
+  A model whose lowest part is below the ground opens stood up on it
+  (`ModelStore.lift_for`) and a save takes the lift off again. Each
+  sub-model is written in a frame that does not move with that lift
+  (`Assemblies._first_frame`): one the file had, in the frame the file gave
+  it, as its parts read from the file say (`Assemblies._read_frames`, from
+  `LdrModel._read_locals`), and exactly the frame its placing line gives
+  where its parts say that one (`Assemblies._read_said`: worked back from a
+  turned part, the robot's right arm went `1 0 0.00000001 0 1.0000001` at
+  each save, keepfix, stepkeep's robot); one the app made, at the file's origin. At the
+  window's origin, a cable laid on a battery box set into the ground went
+  `1 16 0 0 0` at its first save and `1 16 0 70 0` at every save after
+  (wirekeep), and the castle's eleven sub-models, which its file places at
+  `0 -8 0`, were written anew for one part put down: 4,431 lines (flatq).
+  **Check:** `tools/probe.sh wirekeep_probe` (headless): a sub-model made
+  there saved, opened, saved and again, byte for byte; one made while lifted;
+  42042's LDCad cable in a model of the app's own. `-- --files=DIR` keeps
+  every file it writes. And `wholekeep_probe`: every sub-model's lines as the
+  file had them after each edit; the castle with a part put down changes its
+  line and the floor's.
 - `working model that could not open` (`ModelStore.restore`,
   `src/ui/restore_notice.gd`): at start-up a working model none of whose parts
   can be had (not in this build's catalogue, or not LDraw) is kept as it was,
@@ -477,7 +496,26 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
   paints 42079-1's rope, saves, opens another file, comes back to it
   yellow), `keep_text` and `kt3r` (each save a patch keeping every line
-  the edit did not touch, or live's write), `copyfaults` (a copy renamed,
+  the edit did not touch, or live's write), `wholekeep` (a save written
+  whole keeps each line the file carried that the app does not read beside
+  the line it was beside, `LdrModel.kept_lines`: comments, other programs'
+  lines, TEXMAP blocks round their parts, moved as their parts move, and the
+  pictures they name; and
+  each sub-model its file had a section, one built in the model's steps
+  placed by its line after `0 !BRICKWORKS BUILT`, which says the step each
+  of its section's steps is built in, where all its parts go on in one of
+  them; one built across two or more is written after IN lines, as every
+  other reader builds a sub-model whole at its line's step: `steps_kept`,
+  but one the file itself placed after a BUILT line stays its section, and
+  the app's COPY and BUILT lines go back where the file had them among its
+  comments; unedited, every line in its section in order, and the file
+  opened and saved byte for byte: wholekeep's `built, none`, keepfix),
+  `wkreview` (wholekeep's review repros, wkfix: a part taken off takes its
+  TEXMAP NEXT, INVERTNEXT and GROUP_NXT with it; LPub's MULTI_STEP stays
+  round its steps; a head line said twice is written twice; a FALLBACK
+  part swapped or painted has its `0 !:` line say the part it is; a part
+  taken out of a nested copy votes no frame for its new one; geom and
+  patch_move_tile are NOTEs pre261 shares), `copyfaults` (a copy renamed,
   duplicated, swapped over MCP or given a step edit leaves its twin as it
   was, or both alike, and one moved or painted moves or paints only the
   twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown;
@@ -1782,6 +1820,7 @@ godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
 godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, parts only the file has, write, round trip, refusals
+godot --headless --path . --script src/dev/wholekeep_probe.gd   # a save written whole keeps the file's sub-models, comments, other programs' lines, TEXMAPs and pictures (WK_CASES=ldcad,own,built,castle; ~5 min)
 godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   # someone else's file comes back as it went in, edits as such
 godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd vendor/omr/files/42058-1.mpd vendor/omr/files/42053-1.mpd   # LDCad's flexible parts drawn, one piece each, the file still itself
 # ...and in a browser, on a local export (tools/export.sh web), served with tools/web/serve.py

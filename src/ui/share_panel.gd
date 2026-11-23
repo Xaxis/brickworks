@@ -39,11 +39,37 @@
 ## for everybody; failed, the status line says which test and why, and only
 ## its owner is ever told.
 ##
+## This week's quick build (2026-11-23, api/people.js ?op=prompt_of): a copy
+## of a weekly prompt's template (ModelStore.remixed_from), listed in the
+## gallery while the week is open, enters it unless its box under List it in
+## the gallery is unticked, which sends prompt_out. Asked each time the panel
+## opens, so a copy reopened days later enters as one just made does; the
+## status line then says it was entered, or the server's words why not.
+##
+## The month's challenge (2026-11-23, challengestudio): while one is open and
+## its rules pass on the model as the studio ticks them (ChallengeLine), Enter
+## <title> under Publish, with the way it was built as the site's Enter asks
+## (by hand, with the assistant; the app's own record of who laid its parts
+## first). One press lists it in the gallery with its designer's name on it,
+## publishes, and enters it (?op=enter): the status line says it is in and
+## where, or the server's words why not. A rule it breaks is said under it
+## with what to change, and Enter waits; Publish alone is one press as ever.
+## A model in the challenge already says so, and publishing again keeps it in.
+##
 ## And what the model's page and the gallery say about it (2026-10-13, the
 ## directory): a few lines about it, tags, its kind — guessed from the name
 ## and the tags (ModelKinds), for its owner to change — and a licence, CC
 ## BY unless they choose otherwise. With the big picture goes a small one
 ## for the gallery's cards, so a page of them is quick on a phone.
+##
+## And Share progress beside Publish (2026-11-23, buildlog; api/_wip.js): the
+## same publish, marked work in progress, in one press. It lists the model
+## and credits its designer, so their followers see each version in their
+## feeds, and the model's one Show and tell thread in Talk gets a post a
+## version (its picture, its note, what changed); the gallery keeps it out
+## of Top, This week's pick and the challenges while it is being built.
+## Publish then says Publish as finished: that version finishes it, said in
+## the thread too, and from then it ranks as any model does.
 ##
 ## Beside Publish, the community guidelines (2026-10-18, web/guidelines.html):
 ## publishing means agreeing to them. And for an account that said it is
@@ -116,6 +142,34 @@ var _words_for: String = "-"
 var _licence: OptionButton
 var _licence_says: Label
 var _list: CheckBox
+## This week's quick build the model is a copy of the template of
+## (SharedModels.prompt_in), {} for none; its box, shown only then; and
+## whether the person keeps it in (ticked unless they untick it), for the
+## template it was asked for. And what the last publish's answer said of it.
+var prompt: Dictionary = {}
+var _prompt_box: CheckBox
+var _prompt_in: bool = true
+var _prompt_for: String = ""
+var prompt_said: String = ""
+## The month's challenge's line (Main._make_challenge_line), null until it
+## is made: its challenge and its ticks are what Enter follows.
+var challenge_line: Control = null:
+	set(line):
+		challenge_line = line
+		if line != null and line.has_signal(&"ticked") and not line.is_connected(&"ticked", _follow_enter):
+			line.connect(&"ticked", _follow_enter)
+var _enter_row: HBoxContainer
+var _enter: Button
+var _way: OptionButton
+var _enter_said: Label
+## The way it is being entered while Enter's publish goes on, else "".
+var entering: String = ""
+## What the last Enter said, for a probe and the status line.
+var enter_said: String = ""
+## The model's entry in the challenge open now ({way, label}), {} for none,
+## for the link it was asked of (?op=challenge_entry).
+var entry: Dictionary = {}
+var _entry_for: String = ""
 ## What changed, said by its owner: for a model that has a link already.
 var _note_label: Label
 var _note: LineEdit
@@ -132,6 +186,12 @@ var tested: Dictionary = {}
 var tested_said: String = ""
 var _status: Label
 var _publish: Button
+## Share progress: Publish, marked work in progress.
+var _progress: Button
+## Whether the link is work in progress, as the server last said it, and
+## what Talk said of the last publish's post ({url} or {why}).
+var wip: bool = false
+var talk: Dictionary = {}
 var _link_box: VBoxContainer
 var _link: LineEdit
 var _opens_row: HBoxContainer
@@ -265,7 +325,16 @@ func setup() -> void:
 		+ "Untick it and publish again to take it out and keep the link."
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.add_theme_font_size_override("font_size", 12)
+	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
 	form.add_child(_list)
+	# Under it: an entry is a gallery model, so it is ticked only with it.
+	_prompt_box = CheckBox.new()
+	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
+	_prompt_box.focus_mode = Control.FOCUS_NONE
+	_prompt_box.add_theme_font_size_override("font_size", 12)
+	_prompt_box.visible = false
+	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
+	form.add_child(_prompt_box)
 	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
 		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
 	_young.visible = false
@@ -282,12 +351,54 @@ func setup() -> void:
 	form.add_child(_note)
 	_show_note(false)
 
+	# Publish, and beside it the same marked work in progress.
+	var acts := HBoxContainer.new()
+	acts.add_theme_constant_override("separation", 8)
+	column.add_child(acts)
 	_publish = Button.new()
 	_publish.text = "Publish"
 	_publish.custom_minimum_size = Vector2(0, 34)
+	_publish.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_publish.focus_mode = Control.FOCUS_NONE
-	_publish.pressed.connect(publish)
-	column.add_child(_publish)
+	_publish.pressed.connect(func() -> void: publish(false))
+	acts.add_child(_publish)
+	_progress = Button.new()
+	_progress.text = "Share progress"
+	_progress.custom_minimum_size = Vector2(0, 34)
+	_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_progress.focus_mode = Control.FOCUS_NONE
+	_progress.tooltip_text = "Publish this version as work in progress: listed with your name, in your " \
+		+ "followers' feeds and in its own Talk thread, kept out of Top and the challenges until you " \
+		+ "publish it as finished."
+	_progress.pressed.connect(func() -> void: publish(true))
+	acts.add_child(_progress)
+	# Enter the month's challenge: one press more than Publish, and only
+	# while its rules pass on the model (_follow_enter).
+	_enter_row = HBoxContainer.new()
+	_enter_row.add_theme_constant_override("separation", 6)
+	_enter_row.visible = false
+	column.add_child(_enter_row)
+	_enter = Button.new()
+	_enter.custom_minimum_size = Vector2(0, 34)
+	_enter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enter.focus_mode = Control.FOCUS_NONE
+	_enter.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_enter.clip_text = true
+	_enter.tooltip_text = "Lists it in the gallery with your name on it, publishes it and enters it"
+	_enter.pressed.connect(publish_and_enter)
+	_enter_row.add_child(_enter)
+	_way = OptionButton.new()
+	_way.focus_mode = Control.FOCUS_NONE
+	_way.add_theme_font_size_override("font_size", 12)
+	_way.add_item("Built by hand")
+	_way.set_item_metadata(0, "hand")
+	_way.add_item("Built with the assistant")
+	_way.set_item_metadata(1, "assistant")
+	_way.tooltip_text = "How it was built: the challenge judges the two apart"
+	_enter_row.add_child(_way)
+	_enter_said = _line("", 11, 0.75)
+	_enter_said.visible = false
+	column.add_child(_enter_said)
 	_sign_in = Button.new()
 	_sign_in.text = "Sign in"
 	_sign_in.name = "share_sign_in"
@@ -397,6 +508,71 @@ func _follow_age() -> void:
 		_credit.disabled = true
 	else:
 		_credit.disabled = false
+	# Work in progress is shared in the gallery and in Talk, by name.
+	_progress.disabled = young or _list.disabled or state in ["publishing", "unpublishing"]
+	_progress.tooltip_text = ("Work in progress is shared in the gallery and Talk, which are for people 13 and over."
+		if young else "Brickworks took it out of the gallery, so it cannot be shared there." if _list.disabled
+		else "Publish this version as work in progress: listed with your name, in your followers' feeds and "
+			+ "in its own Talk thread, kept out of Top and the challenges until you publish it as finished.")
+	_follow_prompt()
+
+
+## The quick build's box as the gallery's stands: shown for a copy of an
+## open prompt's template, ticked as the person left it while the model is
+## listed, and unticked and greyed while it is not, for it cannot enter.
+func _follow_prompt() -> void:
+	if _prompt_box == null:
+		return
+	_prompt_box.visible = not prompt.is_empty()
+	if prompt.is_empty():
+		return
+	_prompt_box.text = "Enters this week's quick build: %s" % prompt["title"]
+	var listed: bool = _list.button_pressed and not _list.disabled
+	_prompt_box.disabled = not listed
+	_prompt_box.set_pressed_no_signal(listed and _prompt_in)
+	_follow_enter()
+
+
+## This week's quick build, for the model the copy was made from: what was
+## known of it shown at once (Main asked as the copy opened), then as the
+## server says it now. Nothing shown for a model copied from no link, nor
+## when nothing answers.
+func _ask_prompt() -> void:
+	var template: String = store.remixed_from
+	if template != _prompt_for:
+		_prompt_for = template
+		_prompt_in = true
+	prompt = store.prompt_now()
+	_follow_prompt()
+	if template.is_empty() or shared == null:
+		return
+	var got: Dictionary = await shared.prompt_of(template)
+	if store.remixed_from != template:
+		return
+	store.prompt = got
+	prompt = got
+	if not prompt.is_empty():
+		Language.keep_name(str(prompt["title"]))
+	_follow_prompt()
+
+
+## What the status line adds of a publish's answer about the quick build
+## ([param said], api/share.js "prompt"): that it was entered, and where
+## every entry is; or the server's words why it was not; or nothing.
+static func entry_words(said: Variant) -> String:
+	if not said is Dictionary:
+		return ""
+	var entry: Dictionary = said
+	var title: String = str(entry["title"]) if entry.get("title") is String else ""
+	if entry.get("entered") == true and not title.is_empty():
+		var page: String = str(entry["page"]) if entry.get("page") is String else ""
+		if not page.begins_with("https://"):
+			return "Entered in this week's quick build: %s." % title
+		return "Entered in this week's quick build: %s. Every entry is at %s." % [title,
+			page.trim_prefix("https://")]
+	if entry.get("entered") == false and entry.get("said") is String:
+		return str(entry["said"]).strip_edges()
+	return ""
 
 
 func _line(text: String, size: int, alpha: float) -> Label:
@@ -523,6 +699,7 @@ func open() -> void:
 		_fresh_words()
 	if store.share_id.is_empty():
 		state = "idle"
+		wip = false
 		_list.button_pressed = false
 		_list.disabled = false
 		_status.text = _waiting_words()
@@ -532,6 +709,128 @@ func open() -> void:
 		_status.text = "This model has a link. Publish again to update what it shows."
 		_check_link(store.share_id, fresh)
 	_follow_age()
+	_ask_prompt()
+	# Its way as the app knows who laid its parts; the rules ticked afresh.
+	_way.select(1 if store.made_with == "assistant" else 0)
+	_follow_enter()
+	_ask_entry()
+	if challenge_line != null:
+		challenge_line.call("check_now")
+
+
+## Enter's row as the month's challenge and its rules stand on the model
+## (ChallengeLine): hidden with no challenge open, for a copy of a quick
+## build's template (which publishing enters), for an account under 13, and
+## for a model in it already, which says so; greyed with the rule it breaks
+## and what to change, or while the rules are ticked.
+func _follow_enter() -> void:
+	if _enter_row == null:
+		return
+	var c: Dictionary = challenge_line.get("challenge") if challenge_line != null else {}
+	var title: String = str(c.get("title", ""))
+	var shown: bool = not c.is_empty() and bool(c.get("entering", true)) and prompt.is_empty() \
+		and not _kept_private() and not _list.disabled
+	if shown and not entry.is_empty():
+		_enter_row.visible = false
+		_say_enter("In %s, %s. Publishing again keeps it in." % [title,
+			"built with the assistant" if str(entry.get("way", "")) == "assistant" else "built by hand"])
+		return
+	_enter_row.visible = shown
+	if not shown:
+		_say_enter("")
+		return
+	_enter.text = "Entering…" if not entering.is_empty() else "Enter %s" % title
+	var failed: String = str(challenge_line.call("first_failed"))
+	var passes: bool = bool(challenge_line.call("passes"))
+	_enter.disabled = not passes or state in ["publishing", "unpublishing"] or not entering.is_empty()
+	_way.disabled = _enter.disabled
+	if not failed.is_empty():
+		_say_enter("Not yet: %s" % failed)
+	elif not passes:
+		_say_enter("Ticking %s's rules on the model…" % title)
+	else:
+		var tested_rule: bool = bool((c.get("rules", {}) as Dictionary).get("tested", false))
+		_say_enter("Enter lists it in the gallery with your name on it, publishes it and enters it. "
+			+ "A publish tests it, as the rules ask." if tested_rule and not challenge_line.call("tested_now") is Dictionary
+			else "Enter lists it in the gallery with your name on it, publishes it and enters it.")
+
+
+func _say_enter(words: String) -> void:
+	_enter_said.text = words
+	_enter_said.visible = not words.is_empty()
+
+
+## Whether the model's link is in the month's challenge (?op=challenge_entry),
+## asked once a link, so Enter says it is in rather than asking again.
+func _ask_entry() -> void:
+	var id: String = store.share_id
+	if id == _entry_for:
+		return
+	_entry_for = id
+	entry = {}
+	if id.is_empty() or challenge_line == null or (challenge_line.get("challenge") as Dictionary).is_empty():
+		_follow_enter()
+		return
+	var token: String = await account.access_token()
+	if token.is_empty():
+		return
+	var answer: Dictionary = await shared.challenge_entry(token, id)
+	if store.share_id != id:
+		return
+	var body: Variant = answer.get("body")
+	if int(answer.get("code", 0)) == 200 and body is Dictionary and (body as Dictionary).get("entry") is Dictionary:
+		entry = (body as Dictionary)["entry"]
+	_follow_enter()
+
+
+## Enter: lists it in the gallery with its designer's name on it, publishes
+## it, and enters it in the month's challenge the way chosen (?op=enter).
+## The status line says it is in and where, or the server's words why not;
+## a publish that fails says why and enters nothing.
+func publish_and_enter() -> void:
+	if _enter_row == null or not _enter_row.visible or _enter.disabled or not entering.is_empty():
+		return
+	var c: Dictionary = challenge_line.get("challenge")
+	var way: String = str(_way.get_item_metadata(maxi(0, _way.selected)))
+	# An entry is a model in the gallery with its designer's name on it.
+	_list.button_pressed = true
+	if not _credit.button_pressed:
+		_credit.button_pressed = true
+	if _author.text.strip_edges().is_empty():
+		await _suggest_author()
+	if _author.text.strip_edges().is_empty():
+		_author.grab_focus()
+		_fail("Say the name to credit under Show who made it: an entry has its designer's name on it.")
+		return
+	entering = way
+	enter_said = ""
+	_follow_enter()
+	await publish()
+	entering = ""
+	if state != "published" or store.share_id.is_empty():
+		_follow_enter()
+		return
+	var token: String = await account.access_token()
+	var answer: Dictionary = await shared.enter(token, store.share_id, way)
+	var said: Variant = answer.get("body")
+	var title: String = str(c.get("title", ""))
+	if int(answer.get("code", 0)) == 201:
+		entry = {"way": way}
+		_entry_for = store.share_id
+		var page: String = str(c.get("page", ""))
+		var how: String = "built with the assistant" if way == "assistant" else "built by hand"
+		enter_said = ("Entered in %s, %s. It is on the challenge's page: %s." % [title, how,
+			page.trim_prefix("https://")]) if not page.is_empty() \
+			else "Entered in %s, %s. It is on the challenge's page." % [title, how]
+	elif said is Dictionary and str((said as Dictionary).get("refused", "")) == "entered":
+		entry = {"way": way}
+		_entry_for = store.share_id
+		enter_said = "It is in %s already." % title
+	else:
+		enter_said = "Published, not entered: %s" % SharedModels.trouble(answer,
+			"Brickworks could not enter it just now. Press Enter again in a minute.")
+	_status.text = "%s %s" % [_status.text.strip_edges(), enter_said]
+	_follow_enter()
 
 
 ## Whether the model's link is up or was taken down, so the buttons say
@@ -552,6 +851,8 @@ func _check_link(id: String, words: bool = true) -> void:
 			# The box as the link is, so Update the link does not take a
 			# listed model out of the gallery by surprise.
 			var barred: bool = bool((one as Dictionary).get("barred", false))
+			# Work in progress: Publish then finishes it.
+			wip = up and bool((one as Dictionary).get("wip", false))
 			if words:
 				_words_from(one as Dictionary)
 			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
@@ -563,6 +864,9 @@ func _check_link(id: String, words: bool = true) -> void:
 				_status.text = "Shared at this link and listed in the gallery. Publish again to update it."
 			if barred:
 				_status.text += " Brickworks took it out of the gallery, so it cannot be listed there."
+			if wip:
+				_status.text = "Shared as work in progress. Share progress posts the next version; " \
+					+ "Publish as finished ends it."
 			_show_link(id)
 			return
 
@@ -587,7 +891,7 @@ func _show_link(id: String) -> void:
 	_open_link.disabled = not up
 	_unpublish.visible = up
 	_publish.text = "Publish" if id.is_empty() else (
-		"Update the link" if up else "Publish again")
+		"Publish as finished" if up and wip else "Update the link" if up else "Publish again")
 
 
 ## The link as it opens: still, or playing [member playing] (?motion=, the
@@ -655,14 +959,23 @@ static func one_assembly(world: BrickWorld, scenery: Dictionary) -> String:
 	return name
 
 
-## Publish the model as it stands, at its own link if it has one.
-func publish() -> void:
+## Publish the model as it stands, at its own link if it has one; [as_wip]
+## marks it work in progress (Share progress), listed and credited.
+func publish(as_wip: bool = false) -> void:
 	if state in ["publishing", "unpublishing"]:
 		return
 	var name: String = _name.text.strip_edges()
 	if name.is_empty():
 		_fail("Give the model a name first.")
 		return
+	if as_wip and (_progress.disabled or _list.disabled):
+		_fail(_progress.tooltip_text)
+		return
+	if as_wip:
+		# Shared with everybody, by name: in the gallery, so followers see it.
+		_list.button_pressed = true
+		if not _credit.button_pressed:
+			_credit.button_pressed = true
 	if account.renewing:
 		_status.text = Account.waiting_words("It is published")
 	var token: String = await account.access_token()
@@ -670,8 +983,17 @@ func publish() -> void:
 		_fail("Sign in to Brickworks to share a model.")
 		_sign_in.visible = sign_in.is_valid()
 		return
+	if as_wip and _author.text.strip_edges().is_empty():
+		await _suggest_author()
+	# It is shown by its designer's name (api/share.js refuses it without).
+	if as_wip and _author.text.strip_edges().is_empty():
+		_fail("Work in progress is shown by your name: give the name to credit, or make a profile at brickworks.diy/profile.")
+		return
 	state = "publishing"
 	_publish.disabled = true
+	var revision: int = store.world.revision
+	_follow_enter()
+	_progress.disabled = true
 	_status.text = "Taking its picture…"
 	var pictures: Dictionary = await _pictures()
 	var png: PackedByteArray = pictures["png"]
@@ -681,6 +1003,7 @@ func publish() -> void:
 	if model.is_empty():
 		_publish.disabled = false
 		_fail("Stopped before it was published.")
+		_follow_age()
 		return
 	# Whom it credits, when it is somebody else's (a model the Library
 	# opened: ModelStore.credit), carried in it as a saved file carries it:
@@ -699,6 +1022,10 @@ func publish() -> void:
 	steps_job.end()
 	model = str(made["text"])
 	tested = made["tested"]
+	# The four tests' finding, for the challenge's Tested rule on the model
+	# as it was when this publish began.
+	if challenge_line != null and tested.has("tests"):
+		challenge_line.call("found_tested", tested["tests"], revision)
 	_status.text = "Publishing…"
 	var body: Dictionary = {"name": name, "model": model}
 	if tested.has("tests"):
@@ -730,6 +1057,12 @@ func publish() -> void:
 	if not store.share_id.is_empty():
 		body["id"] = store.share_id
 	body["listed"] = _list.button_pressed and not _list.disabled
+	# Kept out of this week's quick build only when its box was unticked:
+	# the server enters a copy of the template by default.
+	if not prompt.is_empty() and not _prompt_in:
+		body["prompt_out"] = true
+	# Work in progress, or not: a link that was one is finished by this.
+	body["wip"] = as_wip
 	if not store.remixed_from.is_empty():
 		body["remixed_from"] = store.remixed_from
 		if store.remixed_from_version > 0:
@@ -751,6 +1084,7 @@ func publish() -> void:
 	var reply: Variant = answer.get("body")
 	if not int(answer["code"]) in [200, 201] or not reply is Dictionary:
 		_fail(SharedModels.trouble(answer, "Brickworks could not publish it just now."))
+		_follow_age()
 		return
 	var said: Dictionary = reply
 	store.share_id = str(said.get("id", ""))
@@ -762,7 +1096,13 @@ func publish() -> void:
 	if said.get("author") is String and body.has("author"):
 		_author.text = str(said["author"])
 	state = "published"
+	# Work in progress now, or finished by this one (api/_wip.js), and what
+	# Talk said of its post.
+	wip = bool(said.get("wip", false))
+	var finished: bool = bool(said.get("finished", false))
+	talk = said.get("talk") if said.get("talk") is Dictionary else {}
 	_show_link(store.share_id)
+	_follow_age()
 	url = str(said.get("url", url))
 	embed = str(said.get("embed", embed))
 	_link.text = link()
@@ -779,6 +1119,16 @@ func publish() -> void:
 		_status.text = "Version %d is up at this link%s, and version %d is kept at its own. %s" % [
 			version, " and listed in the gallery" if listed else "", version - 1, version_said]
 		_status.text = _status.text.strip_edges()
+	# Shared as work in progress, or finished: where it went, and Talk's word.
+	if wip or finished:
+		_status.text = ("Version %d is shared as work in progress: in the gallery's Newest and your followers' "
+			+ "feeds, kept out of Top and the challenges until you publish it as finished.") % version if wip \
+			else "Version %d is the finished one: it ranks in the gallery like any model now." % version
+		if not version_said.is_empty():
+			_status.text += " " + version_said
+		_status.text += (" Its Talk thread has the post." if talk.has("url")
+			else " Not posted in Talk: %s" % str(talk.get("why", "Talk could not take it just now.")) if not talk.is_empty()
+			else "")
 	_note.text = ""
 	_show_note(true)
 	# Whether it is marked Tested, or which test it failed and why: a note
@@ -788,6 +1138,14 @@ func publish() -> void:
 	if kept is Dictionary and not bool((kept as Dictionary).get("kept", false)) and tested.has("tests"):
 		tested_said = "Not tested: %s." % str((kept as Dictionary).get("why", "it could not be kept"))
 	_status.text = "%s %s" % [_status.text, tested_said]
+	# Entered in this week's quick build, or why not.
+	var entry: Variant = said.get("prompt")
+	if entry is Dictionary and (entry as Dictionary).get("title") is String:
+		Language.keep_name(str((entry as Dictionary)["title"]))
+	prompt_said = entry_words(entry)
+	if not prompt_said.is_empty():
+		_status.text = "%s %s" % [_status.text.strip_edges(), prompt_said]
+	_follow_enter()
 
 
 func unpublish() -> void:
@@ -805,6 +1163,7 @@ func unpublish() -> void:
 		_fail(SharedModels.trouble(answer, "Brickworks could not take it down just now."))
 		return
 	state = "unpublished"
+	wip = false
 	# Out of the gallery with it (api/share.js); listed again only if
 	# ticked again.
 	_list.button_pressed = false
@@ -816,6 +1175,7 @@ func _fail(words: String) -> void:
 	if state != "published" and state != "unpublished":
 		state = "failed"
 	_status.text = words
+	_follow_enter()
 
 
 ## The link's pictures: the model from where the view is looking. For link
@@ -866,8 +1226,13 @@ func controls_by_name() -> Dictionary:
 		return {}
 	var named_controls: Dictionary = {"share_name": _name, "share_credit": _credit,
 		"share_about": _about, "share_tags": _tags, "share_kind": _kind,
-		"share_licence": _licence, "share_list": _list, "share_publish": _publish,
+		"share_licence": _licence, "share_list": _list, "share_publish": _publish, "share_progress": _progress,
 		"share_guidelines": _guidelines, "share_done": _done}
+	if _prompt_box.is_visible_in_tree():
+		named_controls["share_prompt"] = _prompt_box
+	if _enter_row.is_visible_in_tree():
+		named_controls["share_enter"] = _enter
+		named_controls["share_way"] = _way
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
 	if _note.is_visible_in_tree():
@@ -907,7 +1272,18 @@ func page_state() -> Dictionary:
 		"guidelines": guidelines_url(),
 		"list_disabled": _list.disabled if _list != null else false,
 		"credit_disabled": _credit.disabled if _credit != null else false,
-		"young": _young.visible if _young != null else false}
+		"young": _young.visible if _young != null else false,
+		"prompt": prompt.duplicate(), "prompt_said": prompt_said,
+		"prompt_shown": _prompt_box.visible if _prompt_box != null else false,
+		"prompt_in": _prompt_box.button_pressed if _prompt_box != null else false,
+		"prompt_disabled": _prompt_box.disabled if _prompt_box != null else false,
+		"enter_shown": _enter_row.visible if _enter_row != null else false,
+		"enter_text": _enter.text if _enter != null else "",
+		"enter_disabled": _enter.disabled if _enter != null else true,
+		"enter_line": _enter_said.text if _enter_said != null and _enter_said.visible else "",
+		"enter_said": enter_said, "entry": entry.duplicate(),
+		"wip": wip, "talk": talk, "publish_text": _publish.text if _publish != null else "",
+		"progress_disabled": _progress.disabled if _progress != null else true}
 
 
 ## Escape closes it, like the other panels.

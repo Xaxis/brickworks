@@ -70,6 +70,12 @@ const REMIX_META := "0 !BRICKWORKS REMIX "
 ## before it still reads the link.
 var remixed_from_version: int = 0
 const REMIX_VERSION_META := "0 !BRICKWORKS REMIX_VERSION "
+## This week's quick build when the link it was copied from is its template
+## (SharedModels.prompt_in: {id, title, brief, ends_on, template, page}), or
+## {}: as Main asked as the copy opened, and Share as it last opened. In
+## memory only, never in a file: whether the week is still open is the
+## server's to say each time. Read through [method prompt_now].
+var prompt: Dictionary = {}
 ## The real set this model was opened from ("10182"), or empty: a file of
 ## the LDraw model repository says so in its header, and a model saved
 ## from one carries it on as a meta line. HiddenColours asks before it
@@ -763,6 +769,14 @@ func _saved_over_elsewhere(path: String, name: String) -> bool:
 	return true
 
 
+## [member prompt] while the model is still a copy of its template, else {}:
+## one opened, begun or cleared since is not that copy, nor does it enter.
+func prompt_now() -> Dictionary:
+	if remixed_from.is_empty() or str(prompt.get("template", "")) != remixed_from:
+		return {}
+	return prompt
+
+
 ## The model on the baseplate is a new one, nothing of it saved, called
 ## [param name] for what is going down on it.
 ##
@@ -1444,6 +1458,19 @@ func _set_aside(paced: bool) -> void:
 	_drop(into, OPENS_KEPT)
 
 
+## The model's parts as a publish sends them, for the challenge's rules
+## ticked as it is built (ChallengeLine): a big model written over frames
+## as the autosave writes it, and "" when it changed meanwhile, to be asked
+## again, so no frame writes a big one whole.
+func text_for_rules() -> String:
+	if world.brick_count() - scenery.size() < PACED_FROM:
+		return to_text(title)
+	var revision: int = world.revision
+	var made: Array = []
+	await _text_into(made, title, false, {}, FramePace.new())
+	return str(made[0]) if world.revision == revision else ""
+
+
 ## The model on the baseplate as the autosave writes it, a big one over
 ## frames when [param paced].
 func _model_text(paced: bool) -> String:
@@ -1716,9 +1743,11 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 
 	var flattened: Array = model.flatten(library.parts)
 	_phase("flatten")
-	# The author's steps go on to every part; steps Brickworks worked out
-	# and wrote are no one's, and are worked out again (LdrModel).
-	var authored: bool = model.steps_are_authored()
+	# The steps the file carries go on to every part: an author's, and the
+	# app's own saved ones, kept as they were saved and still no one's
+	# (LdrModel.steps_are_saved, BrickWorld.steps_own). Worked out afresh
+	# only for a file with none (stepkeep2).
+	var authored: bool = model.steps_are_kept()
 	# Each part's number as the file has it, before it is made what is put
 	# down: what the list of moved and missing parts names ([member moved]).
 	var numbers_said: PackedStringArray = MovedParts.said_of(flattened)
@@ -1844,6 +1873,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
+	world.steps_own = model.steps_are_saved()
 	# And how its booklet shows them: ROTSTEP's turns and the app's own
 	# lines (BookletLooks); where the steps are not the author's, only the
 	# whole booklet's, its page set up and guides (_read_text).
@@ -1853,6 +1883,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	world.section_lines = Assemblies.lines_of(model)
 	# And each section's name in the file, a whole write's again.
 	world.section_files = model.file_names()
+	# And every line of its sections it does not read, beside the line it
+	# was beside: a whole write writes it there again (LdrModel.kept_lines).
+	world.kept_lines = model.kept_lines
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -4003,6 +4036,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			int(step_of.get(brick.id, 0)))
 		placement.group = brick.group
 		placement.unit = Assemblies.path_of(brick)
+		# Its line in the file, which the lines kept beside it are written
+		# beside again (LdrModel.kept_lines).
+		placement.origin = brick.origin
 		placements.append(placement)
 	# In build order where there is one, and bottom to top otherwise, so
 	# the file reads the way it would be built. Sorting by height alone
@@ -4034,6 +4070,10 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	for item: Variant in _held_placements():
 		used[(item as LdrModel.Placement).part_id] = true
 	var embedded: Dictionary = _part_files(used.keys())
+	# And the pictures the file carried, which the TEXMAP lines a whole write
+	# keeps name (LdrModel.kept_lines), each once: none was a part's, and
+	# every one went at the first whole write (wholekeep).
+	embedded.merge(world.kept_lines.get("data", {}))
 	# Sub-assemblies, nested or copied, go out as a tree of sub-models: each
 	# definition once, every copy a reference to it (LdrModel.write_tree).
 	var tree := Assemblies.new()
@@ -4041,6 +4081,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	tree.builder = builder
 	tree.library = library
 	tree.scenery = scenery
+	# A sub-model the app made at the file's origin, wherever the model was
+	# stood as it opened (Assemblies._first_frame).
+	tree.lift = lift
 	var figures: Dictionary = figure_frames(model)
 	# What is not on the baseplate and goes out in its copy too: each copy
 	# compared by what it holds of them as well (Assemblies.file_frames).
@@ -4091,11 +4134,12 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
 				pair[1], maxi(waiting.step, 0))
 			held.group = waiting.group
+			held.origin = waiting.origin
 			# In its sub-model, as the file had it: one with nothing on the
 			# baseplate (a band whose pieces could not be made) is written
 			# still, not its parts loose in the model.
 			var unit: String = world.held_path(waiting)
-			_hold_unit(instances, unit, back)
+			_hold_unit(instances, unit, back * Transform3D(Basis.IDENTITY, _lift_now()))
 			held.group = Assemblies.group_of(unit)
 			held.unit = unit
 			placements.append(held)
@@ -4154,13 +4198,22 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# A sub-model's own lights, views and motions in its own section, by its
 	# definition; one that has none, every copy built in its parent's steps,
 	# after the IN line of one of its copies (Assemblies.lines_within).
+	# Each copy built in the model's own steps whose section its file had is
+	# written as that section, placed by its line (LdrModel.built_sections):
+	# its sub-model's own lines in it, by the steps the save writes.
+	var sectioned: Dictionary = LdrModel.built_sections(placements, instances, unit_steps,
+		world.section_files, steps, world.kept_lines) if not instances.is_empty() else {}
+	var units_written: Dictionary = sectioned.get("units", unit_steps)
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, tree.lines_written(world, instances, back, unit_steps),
-		world.section_files, tree.lines_within(world, instances, back, unit_steps)) \
+		unit_steps, known, steps, tree.lines_written(world, instances, back, units_written),
+		world.section_files, tree.lines_within(world, instances, back, units_written),
+		world.kept_lines, sectioned) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
-			world.section_files)
-	if authored:
+			world.section_files, world.kept_lines)
+	# Not the app's own steps read back from its file (BrickWorld.steps_own):
+	# kept, and still no one's, the file says no more than it did.
+	if authored and not model.steps_own:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,
 	# its steps still no one's when Brickworks worked them out.
@@ -4274,9 +4327,43 @@ func looks_follow_edit() -> void:
 	if _held_go_with(step):
 		held = _held_placements()
 	_steps_follow_grafts(step)
+	_steps_follow_saved(step)
 	_held_follow(Assemblies.moves_in(builder, step))
 	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
+
+
+## After [param step], on a model whose steps are the app's own saved ones
+## (BrickWorld.steps_own): each part it put down in the step of what it rests
+## on, and each it moved where its step would leave it in the air after what
+## it rests on now, in the same undo (AuthorSteps.follow_saved). Every other
+## part keeps its step, so the booklet saved is the booklet reopened, edited
+## only where the edit was.
+func _steps_follow_saved(step: Dictionary) -> void:
+	if not world.steps_own or builder.lattice == null:
+		return
+	var added: Array = []
+	var moved: Array = []
+	_bricks_edited(step, added, moved)
+	if added.is_empty() and moved.is_empty():
+		return
+	builder.extend_last(AuthorSteps.follow_saved(world, builder.lattice, added, moved, scenery))
+
+
+## The parts [param step] put down ([param added]) and moved ([param moved]),
+## by their ids now, its groups read through: a part picked up and put down
+## is moved (Builder._put_carried).
+func _bricks_edited(step: Dictionary, added: Array, moved: Array) -> void:
+	match str(step.get("undo", "")):
+		"group":
+			for inner: Variant in step.get("steps", []):
+				if inner is Dictionary:
+					_bricks_edited(inner, added, moved)
+		"remove":
+			(moved if bool(step.get("moved", false)) else added).append(
+				builder._live(int(step["brick"])))
+		"move":
+			moved.append(builder._live(int(step["brick"])))
 
 
 ## After [param step] took the last model put into someone else's file with

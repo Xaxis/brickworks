@@ -1,0 +1,1265 @@
+{
+ "$comment": "Signed in as the shared test account with a collection, over signed-in.json: each card's share of it, what the sports car is missing of it (api/share.js missingAnswer of its own file less a made-up hand) and King's Castle owned twice. Written by tools/web/docs_world.mjs: change it there.",
+ "answers": {
+  "/api/share?op=parts_missing&id=DocsSprt01": {
+   "id": "DocsSprt01",
+   "version": 1,
+   "newest": 1,
+   "name": "Sports-car-and-its-driver",
+   "collection": true,
+   "pieces": 187,
+   "have": 138,
+   "lots": 58,
+   "whole": 39,
+   "left": {
+    "lots": 0,
+    "pieces": 0,
+    "keys": []
+   },
+   "unknown": [],
+   "missing": [
+    {
+     "part": "3070b",
+     "name": "Tile 1 x 1 with Groove",
+     "category": "Tile",
+     "colour": 15,
+     "colour_name": "White",
+     "hex": "f4f4f4",
+     "count": 3,
+     "need": 6,
+     "have": 3,
+     "element": "6550138",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3460",
+     "name": "Plate 1 x 8",
+     "category": "Plate",
+     "colour": 0,
+     "colour_name": "Black",
+     "hex": "1b2a34",
+     "count": 14,
+     "need": 14,
+     "have": 0,
+     "element": "346026",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "63864",
+     "name": "Tile 1 x 3",
+     "category": "Tile",
+     "colour": 4,
+     "colour_name": "Red",
+     "hex": "b40000",
+     "count": 3,
+     "need": 6,
+     "have": 3,
+     "element": "4533742",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "6141",
+     "name": "Plate 1 x 1 Round",
+     "category": "Plate",
+     "colour": 0,
+     "colour_name": "Black",
+     "hex": "1b2a34",
+     "count": 4,
+     "need": 4,
+     "have": 0,
+     "element": "614126",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "6141",
+     "name": "Plate 1 x 1 Round",
+     "category": "Plate",
+     "colour": 71,
+     "colour_name": "Light Bluish Grey",
+     "hex": "969696",
+     "count": 1,
+     "need": 2,
+     "have": 1,
+     "element": "4211525",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3010",
+     "name": "Brick 1 x 4",
+     "category": "Brick",
+     "colour": 0,
+     "colour_name": "Black",
+     "hex": "1b2a34",
+     "count": 2,
+     "need": 3,
+     "have": 1,
+     "element": "301026",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3010",
+     "name": "Brick 1 x 4",
+     "category": "Brick",
+     "colour": 4,
+     "colour_name": "Red",
+     "hex": "b40000",
+     "count": 2,
+     "need": 2,
+     "have": 0,
+     "element": "301021",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3065",
+     "name": "Brick 1 x 2 without Centre Stud",
+     "category": "Brick",
+     "colour": 40,
+     "colour_name": "Trans Brown",
+     "hex": "635f52",
+     "count": 2,
+     "need": 4,
+     "have": 2,
+     "element": "4226179",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "98282",
+     "name": "Car Mudguard 4 x 2.5 x 1",
+     "category": "Car",
+     "colour": 4,
+     "colour_name": "Red",
+     "hex": "b40000",
+     "count": 4,
+     "need": 4,
+     "have": 0,
+     "element": "6143434",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "15068",
+     "name": "Slope Brick Curved 2 x 2 x 0.667",
+     "category": "Slope",
+     "colour": 4,
+     "colour_name": "Red",
+     "hex": "b40000",
+     "count": 2,
+     "need": 4,
+     "have": 2,
+     "element": "6105976",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3032",
+     "name": "Plate 4 x 6",
+     "category": "Plate",
+     "colour": 0,
+     "colour_name": "Black",
+     "hex": "1b2a34",
+     "count": 3,
+     "need": 3,
+     "have": 0,
+     "element": "303226",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3820",
+     "name": "Minifig Hand",
+     "category": "Minifig",
+     "colour": 71,
+     "colour_name": "Light Bluish Grey",
+     "hex": "969696",
+     "count": 1,
+     "need": 2,
+     "have": 1,
+     "element": "4211692",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3034",
+     "name": "Plate 2 x 8",
+     "category": "Plate",
+     "colour": 0,
+     "colour_name": "Black",
+     "hex": "1b2a34",
+     "count": 2,
+     "need": 2,
+     "have": 0,
+     "element": "303426",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "25269",
+     "name": "Tile 1 x 1 Corner Round",
+     "category": "Tile",
+     "colour": 4,
+     "colour_name": "Red",
+     "hex": "b40000",
+     "count": 1,
+     "need": 2,
+     "have": 1,
+     "element": "6170390",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3818",
+     "name": "Minifig Arm Right",
+     "category": "Minifig",
+     "colour": 1,
+     "colour_name": "Blue",
+     "hex": "1e5aa8",
+     "count": 1,
+     "need": 1,
+     "have": 0,
+     "element": "381823",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "3626cp01",
+     "name": "Minifig Head with Standard Grin Pattern (Hollow Stud)",
+     "category": "Minifig",
+     "colour": 14,
+     "colour_name": "Yellow",
+     "hex": "fac80a",
+     "count": 1,
+     "need": 1,
+     "have": 0,
+     "element": null,
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "973py1",
+     "name": "Minifig Torso with Race Suit with Chevrolet Racing Logos and Blue Stripes Pattern",
+     "category": "Minifig",
+     "colour": 4,
+     "colour_name": "Red",
+     "hex": "b40000",
+     "count": 1,
+     "need": 1,
+     "have": 0,
+     "element": null,
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "89801",
+     "name": "Minifig Trophy Cup 3.6L",
+     "category": "Minifig Accessory",
+     "colour": 297,
+     "colour_name": "Pearl Gold",
+     "hex": "aa7f2e",
+     "count": 1,
+     "need": 1,
+     "have": 0,
+     "element": "6181993",
+     "custom": false,
+     "mesh": null
+    },
+    {
+     "part": "6636",
+     "name": "Tile 1 x 6",
+     "category": "Tile",
+     "colour": 4,
+     "colour_name": "Red",
+     "hex": "b40000",
+     "count": 1,
+     "need": 1,
+     "have": 0,
+     "element": "4113858",
+     "custom": false,
+     "mesh": null
+    }
+   ],
+   "files": {
+    "bricklink": "<INVENTORY>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3070</ITEMID>\n    <COLOR>1</COLOR>\n    <MINQTY>3</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3460</ITEMID>\n    <COLOR>11</COLOR>\n    <MINQTY>14</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>63864</ITEMID>\n    <COLOR>5</COLOR>\n    <MINQTY>3</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>4073</ITEMID>\n    <COLOR>11</COLOR>\n    <MINQTY>4</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>4073</ITEMID>\n    <COLOR>86</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3010</ITEMID>\n    <COLOR>11</COLOR>\n    <MINQTY>2</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3010</ITEMID>\n    <COLOR>5</COLOR>\n    <MINQTY>2</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3065</ITEMID>\n    <COLOR>13</COLOR>\n    <MINQTY>2</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>98282</ITEMID>\n    <COLOR>5</COLOR>\n    <MINQTY>4</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>15068</ITEMID>\n    <COLOR>5</COLOR>\n    <MINQTY>2</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3032</ITEMID>\n    <COLOR>11</COLOR>\n    <MINQTY>3</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>983</ITEMID>\n    <COLOR>86</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3034</ITEMID>\n    <COLOR>11</COLOR>\n    <MINQTY>2</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>25269</ITEMID>\n    <COLOR>5</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>982</ITEMID>\n    <COLOR>7</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>3626p01</ITEMID>\n    <COLOR>3</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>973py1</ITEMID>\n    <COLOR>5</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>89801</ITEMID>\n    <COLOR>115</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n  <ITEM>\n    <ITEMTYPE>P</ITEMTYPE>\n    <ITEMID>6636</ITEMID>\n    <COLOR>5</COLOR>\n    <MINQTY>1</MINQTY>\n  </ITEM>\n</INVENTORY>\n",
+    "rebrickable": "Part,Color,Quantity\n3070b,15,3\n3460,0,14\n63864,4,3\n6141,0,4\n6141,71,1\n3010,0,2\n3010,4,2\n3065,40,2\n98282,4,4\n15068,4,2\n3032,0,3\n3820,71,1\n3034,0,2\n25269,4,1\n3818,1,1\n3626cpr0001,14,1\n973c28h14pr4584,4,1\n89801,297,1\n6636,4,1\n",
+    "pickabrick": [
+     "elementId,quantity\r\n6550138,3\r\n346026,14\r\n4533742,3\r\n614126,4\r\n4211525,1\r\n301026,2\r\n301021,2\r\n4226179,2\r\n6143434,4\r\n6105976,2\r\n303226,3\r\n4211692,1\r\n303426,2\r\n6170390,1\r\n381823,1\r\n6181993,1\r\n4113858,1"
+    ]
+   },
+   "left_out": {
+    "bricklink": 0,
+    "rebrickable": 0,
+    "pickabrick": 2
+   },
+   "stand_ins": [],
+   "pickabrick": {
+    "files": 1,
+    "lines": 17,
+    "pieces": 47,
+    "left_out_pieces": 2,
+    "over": {}
+   }
+  },
+  "/api/share?op=list": {
+   "q": "",
+   "sort": "top",
+   "page": 1,
+   "per_page": 24,
+   "more": false,
+   "models": [
+    {
+     "id": "DocsSprt01",
+     "name": "Sports car and its driver",
+     "author": "Test builder",
+     "parts": 187,
+     "listed_at": "2026-10-30T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "car",
+      "sports",
+      "racing"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 35,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 23,
+     "remixes": 2,
+     "builds": 14,
+     "comments": 3,
+     "moves": [
+      "steering"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsSprt01",
+     "image": "/m/DocsSprt01.png",
+     "thumb": "/m/DocsSprt01.webp?v=mvuswn40",
+     "owned": {
+      "have": 138,
+      "pieces": 187
+     }
+    },
+    {
+     "id": "DocsShop01",
+     "name": "Corner shop",
+     "author": "Test builder",
+     "parts": 797,
+     "listed_at": "2026-10-29T10:00:00Z",
+     "kind": "town",
+     "tags": [
+      "modular",
+      "shop",
+      "town"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 104,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 31,
+     "remixes": 1,
+     "builds": 11,
+     "comments": 4,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsShop01",
+     "image": "/m/DocsShop01.png",
+     "thumb": "/m/DocsShop01.webp?v=mvtdgsg0",
+     "owned": {
+      "have": 797,
+      "pieces": 797
+     }
+    },
+    {
+     "id": "DocsFire01",
+     "name": "Fire station",
+     "author": "Test builder",
+     "parts": 535,
+     "listed_at": "2026-10-28T10:00:00Z",
+     "kind": "town",
+     "tags": [
+      "fire",
+      "station",
+      "town"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 120,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 19,
+     "remixes": 1,
+     "builds": 9,
+     "comments": 2,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsFire01",
+     "image": "/m/DocsFire01.png",
+     "thumb": "/m/DocsFire01.webp?v=mvry0xs0",
+     "owned": {
+      "have": 161,
+      "pieces": 535
+     }
+    },
+    {
+     "id": "DocsOwl001",
+     "name": "Barn owl",
+     "author": "Test builder",
+     "parts": 1032,
+     "listed_at": "2026-10-27T10:00:00Z",
+     "kind": "nature",
+     "tags": [
+      "owl",
+      "bird",
+      "animal"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 130,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 27,
+     "remixes": 0,
+     "builds": 7,
+     "comments": 1,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsOwl001",
+     "image": "/m/DocsOwl001.png",
+     "thumb": "/m/DocsOwl001.webp?v=mvqil340",
+     "owned": {
+      "have": 661,
+      "pieces": 1032
+     }
+    },
+    {
+     "id": "DocsRckt01",
+     "name": "Three-core rocket",
+     "author": "Test builder",
+     "parts": 353,
+     "listed_at": "2026-10-26T10:00:00Z",
+     "kind": "space",
+     "tags": [
+      "rocket",
+      "space"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 65,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 15,
+     "remixes": 1,
+     "builds": 6,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsRckt01",
+     "image": "/m/DocsRckt01.png",
+     "thumb": "/m/DocsRckt01.webp?v=mvp358g0",
+     "owned": {
+      "have": 247,
+      "pieces": 353
+     }
+    },
+    {
+     "id": "DocsOrry01",
+     "name": "Orrery",
+     "author": "Test builder",
+     "parts": 520,
+     "listed_at": "2026-10-25T10:00:00Z",
+     "kind": "mechanism",
+     "tags": [
+      "orrery",
+      "planets",
+      "technic"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 136,
+     "own_steps": true,
+     "technic": true,
+     "tested": false,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 12,
+     "remixes": 0,
+     "builds": 5,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsOrry01",
+     "image": "/m/DocsOrry01.png",
+     "thumb": "/m/DocsOrry01.webp?v=mvnnpds0",
+     "owned": {
+      "have": 104,
+      "pieces": 520
+     }
+    },
+    {
+     "id": "DocsKart01",
+     "name": "Technic go-kart",
+     "author": "Test builder",
+     "parts": 57,
+     "listed_at": "2026-10-24T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "technic",
+      "kart"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 20,
+     "own_steps": true,
+     "technic": true,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 9,
+     "remixes": 0,
+     "builds": 8,
+     "comments": 0,
+     "moves": [
+      "steering"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsKart01",
+     "image": "/m/DocsKart01.png",
+     "thumb": "/m/DocsKart01.webp?v=mvm89j40",
+     "owned": {
+      "have": 57,
+      "pieces": 57
+     }
+    },
+    {
+     "id": "DocsLite01",
+     "name": "Lighthouse",
+     "author": "Test builder",
+     "parts": 84,
+     "listed_at": "2026-10-23T10:00:00Z",
+     "kind": "architecture",
+     "tags": [
+      "lighthouse",
+      "coast"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 12,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 8,
+     "remixes": 0,
+     "builds": 6,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsLite01",
+     "image": "/m/DocsLite01.png",
+     "thumb": "/m/DocsLite01.webp?v=mvkstog0",
+     "owned": {
+      "have": 51,
+      "pieces": 84
+     }
+    },
+    {
+     "id": "DocsHous01",
+     "name": "Little house",
+     "author": "Test builder",
+     "parts": 71,
+     "listed_at": "2026-10-22T10:00:00Z",
+     "kind": "town",
+     "tags": [
+      "house",
+      "town"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 10,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 6,
+     "remixes": 0,
+     "builds": 5,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsHous01",
+     "image": "/m/DocsHous01.png",
+     "thumb": "/m/DocsHous01.webp?v=mvjddts0",
+     "owned": {
+      "have": 20,
+      "pieces": 71
+     }
+    },
+    {
+     "id": "DocsTree01",
+     "name": "Tree",
+     "author": "Test builder",
+     "parts": 69,
+     "listed_at": "2026-10-21T10:00:00Z",
+     "kind": "nature",
+     "tags": [
+      "tree"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 9,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 5,
+     "remixes": 0,
+     "builds": 4,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsTree01",
+     "image": "/m/DocsTree01.png",
+     "thumb": "/m/DocsTree01.webp?v=mvhxxz40",
+     "owned": {
+      "have": 69,
+      "pieces": 69
+     }
+    },
+    {
+     "id": "DocsRock01",
+     "name": "Rocket",
+     "author": "Test builder",
+     "parts": 68,
+     "listed_at": "2026-10-20T10:00:00Z",
+     "kind": "space",
+     "tags": [
+      "rocket",
+      "space"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 10,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 4,
+     "remixes": 0,
+     "builds": 3,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsRock01",
+     "image": "/m/DocsRock01.png",
+     "thumb": "/m/DocsRock01.webp?v=mvgii4g0",
+     "owned": {
+      "have": 22,
+      "pieces": 68
+     }
+    },
+    {
+     "id": "DocsBoat01",
+     "name": "Boat",
+     "author": "Test builder",
+     "parts": 49,
+     "listed_at": "2026-10-19T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "boat",
+      "water"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 8,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 3,
+     "remixes": 0,
+     "builds": 2,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsBoat01",
+     "image": "/m/DocsBoat01.png",
+     "thumb": "/m/DocsBoat01.webp?v=mvf329s0",
+     "owned": {
+      "have": 30,
+      "pieces": 49
+     }
+    }
+   ],
+   "kinds": [
+    {
+     "id": "castle",
+     "label": "Castles and fantasy"
+    },
+    {
+     "id": "space",
+     "label": "Space"
+    },
+    {
+     "id": "vehicle",
+     "label": "Vehicles"
+    },
+    {
+     "id": "town",
+     "label": "Town and buildings"
+    },
+    {
+     "id": "architecture",
+     "label": "Architecture"
+    },
+    {
+     "id": "mechanism",
+     "label": "Mechanisms"
+    },
+    {
+     "id": "robot",
+     "label": "Robots and machines"
+    },
+    {
+     "id": "nature",
+     "label": "Animals and nature"
+    },
+    {
+     "id": "figure",
+     "label": "Figures and characters"
+    },
+    {
+     "id": "art",
+     "label": "Art and mosaics"
+    },
+    {
+     "id": "other",
+     "label": "Something else"
+    }
+   ],
+   "sizes": [
+    {
+     "id": "small",
+     "label": "Small, under 200 parts"
+    },
+    {
+     "id": "medium",
+     "label": "Medium, 200 to 999 parts"
+    },
+    {
+     "id": "large",
+     "label": "Large, 1,000 parts or more"
+    }
+   ],
+   "sorts": [
+    {
+     "id": "newest",
+     "label": "Newest"
+    },
+    {
+     "id": "views",
+     "label": "Most viewed"
+    },
+    {
+     "id": "likes",
+     "label": "Most liked"
+    },
+    {
+     "id": "remixes",
+     "label": "Most remixed"
+    },
+    {
+     "id": "builds",
+     "label": "Most built"
+    },
+    {
+     "id": "top",
+     "label": "Top builds"
+    }
+   ],
+   "windows": [
+    {
+     "id": "week",
+     "label": "This week"
+    },
+    {
+     "id": "month",
+     "label": "This month"
+    }
+   ],
+   "mades": [
+    {
+     "id": "hand",
+     "label": "Hand-built"
+    },
+    {
+     "id": "assistant",
+     "label": "With the assistant"
+    }
+   ],
+   "following": false,
+   "score": {
+    "builds": 3,
+    "remixes": 2,
+    "tested": 5
+   },
+   "mine": {
+    "lots": 214,
+    "pieces": 3120,
+    "unknown": 0
+   }
+  },
+  "/api/share?op=shelves": {
+   "pick": {
+    "chosen": false,
+    "week": {
+     "builds": 4,
+     "remixes": 1,
+     "tested": true
+    },
+    "model": {
+     "id": "DocsSprt01",
+     "name": "Sports car and its driver",
+     "author": "Test builder",
+     "parts": 187,
+     "listed_at": "2026-10-30T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "car",
+      "sports",
+      "racing"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 35,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 23,
+     "remixes": 2,
+     "builds": 14,
+     "comments": 3,
+     "moves": [
+      "steering"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsSprt01",
+     "image": "/m/DocsSprt01.png",
+     "thumb": "/m/DocsSprt01.webp?v=mvuswn40",
+     "owned": {
+      "have": 138,
+      "pieces": 187
+     }
+    }
+   },
+   "small": {
+    "models": [
+     {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "parts": 187,
+      "listed_at": "2026-10-30T10:00:00Z",
+      "kind": "vehicle",
+      "tags": [
+       "car",
+       "sports",
+       "racing"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 35,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 23,
+      "remixes": 2,
+      "builds": 14,
+      "comments": 3,
+      "moves": [
+       "steering"
+      ],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsSprt01",
+      "image": "/m/DocsSprt01.png",
+      "thumb": "/m/DocsSprt01.webp?v=mvuswn40",
+      "owned": {
+       "have": 138,
+       "pieces": 187
+      }
+     },
+     {
+      "id": "DocsKart01",
+      "name": "Technic go-kart",
+      "author": "Test builder",
+      "parts": 57,
+      "listed_at": "2026-10-24T10:00:00Z",
+      "kind": "vehicle",
+      "tags": [
+       "technic",
+       "kart"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 20,
+      "own_steps": true,
+      "technic": true,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 9,
+      "remixes": 0,
+      "builds": 8,
+      "comments": 0,
+      "moves": [
+       "steering"
+      ],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsKart01",
+      "image": "/m/DocsKart01.png",
+      "thumb": "/m/DocsKart01.webp?v=mvm89j40",
+      "owned": {
+       "have": 57,
+       "pieces": 57
+      }
+     },
+     {
+      "id": "DocsLite01",
+      "name": "Lighthouse",
+      "author": "Test builder",
+      "parts": 84,
+      "listed_at": "2026-10-23T10:00:00Z",
+      "kind": "architecture",
+      "tags": [
+       "lighthouse",
+       "coast"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 12,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 8,
+      "remixes": 0,
+      "builds": 6,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsLite01",
+      "image": "/m/DocsLite01.png",
+      "thumb": "/m/DocsLite01.webp?v=mvkstog0",
+      "owned": {
+       "have": 51,
+       "pieces": 84
+      }
+     },
+     {
+      "id": "DocsHous01",
+      "name": "Little house",
+      "author": "Test builder",
+      "parts": 71,
+      "listed_at": "2026-10-22T10:00:00Z",
+      "kind": "town",
+      "tags": [
+       "house",
+       "town"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 10,
+      "own_steps": true,
+      "technic": false,
+      "tested": false,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 6,
+      "remixes": 0,
+      "builds": 5,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsHous01",
+      "image": "/m/DocsHous01.png",
+      "thumb": "/m/DocsHous01.webp?v=mvjddts0",
+      "owned": {
+       "have": 20,
+       "pieces": 71
+      }
+     },
+     {
+      "id": "DocsTree01",
+      "name": "Tree",
+      "author": "Test builder",
+      "parts": 69,
+      "listed_at": "2026-10-21T10:00:00Z",
+      "kind": "nature",
+      "tags": [
+       "tree"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 9,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 5,
+      "remixes": 0,
+      "builds": 4,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsTree01",
+      "image": "/m/DocsTree01.png",
+      "thumb": "/m/DocsTree01.webp?v=mvhxxz40",
+      "owned": {
+       "have": 69,
+       "pieces": 69
+      }
+     },
+     {
+      "id": "DocsRock01",
+      "name": "Rocket",
+      "author": "Test builder",
+      "parts": 68,
+      "listed_at": "2026-10-20T10:00:00Z",
+      "kind": "space",
+      "tags": [
+       "rocket",
+       "space"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 10,
+      "own_steps": true,
+      "technic": false,
+      "tested": true,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 4,
+      "remixes": 0,
+      "builds": 3,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsRock01",
+      "image": "/m/DocsRock01.png",
+      "thumb": "/m/DocsRock01.webp?v=mvgii4g0",
+      "owned": {
+       "have": 22,
+       "pieces": 68
+      }
+     },
+     {
+      "id": "DocsBoat01",
+      "name": "Boat",
+      "author": "Test builder",
+      "parts": 49,
+      "listed_at": "2026-10-19T10:00:00Z",
+      "kind": "vehicle",
+      "tags": [
+       "boat",
+       "water"
+      ],
+      "licence": "cc-by-4.0",
+      "steps": 8,
+      "own_steps": true,
+      "technic": false,
+      "tested": false,
+      "made_with": "hand",
+      "modelled_by": null,
+      "views": 0,
+      "likes": 3,
+      "remixes": 0,
+      "builds": 2,
+      "comments": 0,
+      "moves": [],
+      "motions": [],
+      "by": {
+       "handle": "test-builder",
+       "name": "Test builder"
+      },
+      "url": "/m/DocsBoat01",
+      "image": "/m/DocsBoat01.png",
+      "thumb": "/m/DocsBoat01.webp?v=mvf329s0",
+      "owned": {
+       "have": 30,
+       "pieces": 49
+      }
+     }
+    ],
+    "more": false
+   },
+   "score": {
+    "builds": 3,
+    "remixes": 2,
+    "tested": 5
+   }
+  },
+  "/api/share?op=set_based&set=6080-1": {
+   "set": "6080-1",
+   "models": [],
+   "lists": {
+    "count": 3,
+    "lists": [
+     {
+      "id": "DocsList05",
+      "name": "Castles to build",
+      "count": 9,
+      "by": {
+       "handle": "ada",
+       "name": "Ada Lovelace"
+      }
+     },
+     {
+      "id": "DocsList06",
+      "name": "Classic Castle",
+      "count": 14,
+      "by": {
+       "handle": "ben-b",
+       "name": "Ben"
+      }
+     },
+     {
+      "id": "DocsList07",
+      "name": "My childhood sets",
+      "count": 31,
+      "by": {
+       "handle": "kimbricks",
+       "name": "Kim"
+      }
+     }
+    ]
+   }
+  },
+  "/api/people?op=keeps&sets=6080-1": {
+   "sets": {
+    "6080-1": {
+     "own": 2,
+     "lists": []
+    }
+   },
+   "models": {},
+   "lists": [],
+   "want": null
+  },
+  "/api/share?op=catalog_owned&set=6080-1": {
+   "set": "6080-1",
+   "collection": true,
+   "pieces": 642,
+   "have": 642,
+   "missing": 0
+  }
+ }
+}

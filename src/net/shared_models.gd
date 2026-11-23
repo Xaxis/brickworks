@@ -10,6 +10,7 @@ extends Node
 ## A link's id, as the server makes them. Anything else in a page's
 ## address is refused before it reaches a request.
 const ID := "^[A-Za-z0-9]{10}$"
+const PhotoUpload := preload("res://src/net/photo_upload.gd")
 
 
 static func is_id(text: String) -> bool:
@@ -215,6 +216,175 @@ func comments(id: String, version: int = 0, token: String = "") -> Dictionary:
 ## {error}.
 func comment(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/people?op=comment", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+## Add a comment on a part (partpins, 2026-11-23), as the session's account:
+## {model, version, step (or null), body, part: {part, colour, at}}, the part
+## as the viewer picked it, at in LDraw's coordinates; the server finds it in
+## that version's file and keeps its line. 201 with {comment} and its pin; a
+## refusal says why in {error}.
+func pin(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=pin", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+## The model's owner done with a comment on a part ([param resolved] true),
+## or not: 200 with {comment}, its resolved_at said; a refusal says why in
+## {error}.
+func resolve_pin(token: String, id: int, resolved: bool) -> Dictionary:
+	return await _fetch("/api/people?op=pin_resolve", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"id": id, "resolved": resolved}))
+
+
+## A real build's photos (api/people.js, api/_builds.js), as the step
+## player's last step posts one (MakeCard). The photos of [param id] as the
+## account asking may act on them: {code, body: {owner, left, photos, mine}}
+## ("owner": the model is the account's own; "left": how many more it may
+## add, of three).
+func photos(id: String, token: String) -> Dictionary:
+	return await _fetch("/api/people?op=photos&id=" + id.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
+## Where to send one: {model, type, size} to {code, body: {upload, ticket,
+## key}}, or a refusal in {error} (the age rule, may_act's limit, three on a
+## model) before anything of the photo is sent.
+func photo_start(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=photo_start", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+## The photo's [param bytes], of [param type], to the [param url] photo_start
+## signed for them, with the storage gateway's [param key] beside it, as the
+## model's page sends one (web/model-page.js): {code}. Bytes, which
+## PageFetch's text bodies cannot carry, so src/net/photo_upload.gd sends them.
+func photo_send(url: String, key: String, type: String, bytes: PackedByteArray) -> Dictionary:
+	return await PhotoUpload.send(self, url, key, type, bytes)
+
+
+## The photo sent, kept: {model, ticket, words?} to 201 {id, page, card, ...}
+## (api/people.js photoSaid), or a refusal in {error}.
+func photo_keep(token: String, body: Dictionary) -> Dictionary:
+	return await _fetch("/api/people?op=photo", HTTPClient.METHOD_POST, token, JSON.stringify(body))
+
+
+# -- this week's quick build -------------------------------------------------
+#
+# A weekly prompt (api/people.js ?op=prompt_of, 2026-11-23): a challenge with
+# a model to start from, its template. Start on its page opens the studio on
+# a copy of the template (/app?copy=<id>, Main._maybe_copy), and that copy,
+# published during the week, enters it. The studio says the brief above the
+# model (Main._ask_prompt), and Share asks whether to enter (SharePanel).
+
+const MONTHS: Array[String] = ["January", "February", "March", "April", "May", "June", "July",
+	"August", "September", "October", "November", "December"]
+## The most of a brief said above the model on a touch screen, where every
+## line of it is a line less of the model's room.
+const BRIEF_ON_A_PHONE := 120
+
+
+# -- the month's challenge, in the studio ------------------------------------
+#
+# The challenge open now and its rules (api/people.js ?op=challenge_rules,
+# 2026-11-23), ticked on the model as it is built (ChallengeLine), and a
+# model entered from Share (?op=enter) or asked whether it is in
+# (?op=challenge_entry). Read at the edge by ChallengeRules.rules_in and
+# SharePanel, which this core never names.
+
+## The month's challenge open now, as the server answers: {code, body}.
+## With [param token], a test account's is the checks' own.
+func challenge_rules(token: String) -> Dictionary:
+	return await _fetch("/api/people?op=challenge_rules", HTTPClient.METHOD_GET, token, "")
+
+
+## [param model] entered in the challenge open now, built [param way] (hand
+## or assistant): {code, body}, body {entered, title, label} or {error,
+## refused}.
+func enter(token: String, model: String, way: String) -> Dictionary:
+	return await _fetch("/api/people?op=enter", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"model": model, "way": way}))
+
+
+## Whether [param model], the caller's, is in the challenge open now:
+## {code, body}, body {mine, challenge, entry, keeps, broken}.
+func challenge_entry(token: String, model: String) -> Dictionary:
+	if not is_id(model):
+		return {"code": 0, "body": null}
+	return await _fetch("/api/people?op=challenge_entry&id=" + model.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
+## This week's quick build when [param template] is the model it starts
+## from: {id, title, brief, starts_on, ends_on, template, page}, or {} when
+## it is not the template of one open now. Anything else that comes back,
+## another status, another shape or nothing at all, is no prompt either, and
+## never said as a trouble: the copy is the person's model all the same.
+## Anybody may ask, signed in or not.
+func prompt_of(template: String) -> Dictionary:
+	if not is_id(template):
+		return {}
+	var answer: Dictionary = await _fetch("/api/people?op=prompt_of&model=" + template.uri_encode(),
+		HTTPClient.METHOD_GET, "", "")
+	return prompt_in(answer, template)
+
+
+## The prompt an answer of ?op=prompt_of names, read at the edge: a whole
+## number id, a title, a day it ends that is a day, and the template asked
+## about; {} for anything short of that, or one said to be closed.
+static func prompt_in(answer: Dictionary, template: String) -> Dictionary:
+	if int(answer.get("code", 0)) != 200 or not answer.get("body") is Dictionary:
+		return {}
+	var said: Variant = (answer["body"] as Dictionary).get("prompt")
+	if not said is Dictionary:
+		return {}
+	var prompt: Dictionary = said
+	var id: Variant = prompt.get("id")
+	var title: String = str(prompt["title"]).strip_edges() if prompt.get("title") is String else ""
+	var ends: String = str(prompt["ends_on"]) if prompt.get("ends_on") is String else ""
+	if not (id is int or id is float) or int(id) <= 0 or title.is_empty() \
+			or day_words(ends).is_empty() or prompt.get("open") == false \
+			or prompt.get("template") is String and str(prompt["template"]) != template:
+		return {}
+	var page: String = str(prompt["page"]) if prompt.get("page") is String else ""
+	return {"id": int(id), "title": title,
+		"brief": str(prompt["brief"]).strip_edges() if prompt.get("brief") is String else "",
+		"starts_on": str(prompt["starts_on"]) if prompt.get("starts_on") is String else "",
+		"ends_on": ends, "template": template,
+		"page": page if page.begins_with("https://") else ""}
+
+
+## "2026-11-29" as "29 November", or "" for what is not a day.
+static func day_words(iso: String) -> String:
+	var found: RegExMatch = RegEx.create_from_string("^\\d{4}-(\\d{2})-(\\d{2})$").search(iso)
+	if found == null:
+		return ""
+	var month: int = found.get_string(1).to_int()
+	var day: int = found.get_string(2).to_int()
+	if month < 1 or month > 12 or day < 1 or day > 31:
+		return ""
+	return "%d %s" % [day, MONTHS[month - 1]]
+
+
+## What the studio says of [param prompt] ([method prompt_in]): its title,
+## its brief in quotes and the day to publish by. A brief longer than [param most]
+## characters is cut, so the day it ends is always said: after its last
+## whole sentence that fits, which keeps each sentence one a language finds
+## (Language's ". "), else at a word, with an ellipsis.
+static func prompt_line(prompt: Dictionary, most: int = -1) -> String:
+	var title: String = str(prompt["title"])
+	var brief: String = str(prompt.get("brief", "")).strip_edges()
+	if most > 0 and brief.length() > most:
+		var cut: String = brief.left(most + 1)
+		var sentence: int = maxi(maxi(cut.rfind(". "), cut.rfind("! ")), cut.rfind("? "))
+		var space: int = cut.rfind(" ")
+		if sentence > most / 2:
+			brief = cut.left(sentence + 1)
+		else:
+			brief = (cut.left(space) if space > most / 2 else cut.left(most)).rstrip(" ,;:.—-") + "…"
+	var day: String = day_words(str(prompt["ends_on"]))
+	if brief.is_empty():
+		return "This week's quick build: %s. Publish it by %s to enter." % [title, day]
+	if not brief.right(1) in [".", "!", "?", "…"]:
+		brief += "."
+	# The brief in quotes: the owner's words, drawn as written in every
+	# language (Language keeps what an entry quotes), never half translated.
+	return "This week's quick build, %s: “%s” Publish it by %s to enter." % [title, brief, day]
 
 
 ## One request, as Account._fetch makes it (PageFetch).
