@@ -2490,7 +2490,11 @@ plan with Claude as the client.
   saying only the reply and the tower's like; unmute; the barn's page
   mute; Done in one request, a second tab, a reload, Undo, Mark all done,
   something new back. Pictures `docs_*` in `--out`. Push per kind is
-  `homescreen_flow.mjs`'s push part (comments ticked in the grid).
+  `homescreen_flow.mjs`'s push part (comments ticked in the grid). Each
+  browser after the first signs in by itself (`mintSession`): the minted
+  refresh token replayed after two renewals is refused by Supabase
+  (`refresh_token_already_used`), which ends every session of that
+  sign-in (checkdrift 2026-11-23).
 - `latest on Brickworks and designers to follow` (`api/_follows.js`
   `latest`, `designersFrom`, docs/SOCIAL.md U9): `GET ?op=latest`, anybody,
   `{models, photos, designers}`: the 8 newest listed models as the
