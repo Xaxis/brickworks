@@ -26,8 +26,11 @@
 // --signed-in (a deployment whose checks' accounts may post: a preview or
 // this machine's relay; never brickworks.diy): Ann shares a model of her
 // own (in the checks' pool, ?tests=1) and Bea, signed in:
-//   7. sees no line, Share a build to /app?share, and the tabs For you,
-//      Following and New, For you pressed, the arrows moving along them;
+//   7. sees no line, the home's search whole in the first screen in one
+//      row with Share a build to /app?share ("/" puts the cursor in it;
+//      homefix, 2026-11-23), the first post begun over the window's foot,
+//      and the tabs For you, Following and New, For you pressed, the arrows
+//      moving along them;
 //   8. likes Ann's post (counted at once and by the server) and takes it
 //      back; comments on it in place (its comment there and on the model);
 //      follows Ann from it, and Following then shows Ann's model; New puts
@@ -312,13 +315,31 @@ try {
 
     // 7. The page as Bea has it.
     const { context, page } = await open("/?tests=1", { session: people.bea });
-    const shown = await page.evaluate(() => ({
-      band: Boolean(document.getElementById("home")?.offsetHeight),
-      share: document.getElementById("share-build")?.offsetHeight ? document.getElementById("share-build").getAttribute("href") : "",
-      tabs: [...document.querySelectorAll("#feed-tabs [role=tab]")].map((tab) => `${tab.textContent.trim()}${tab.getAttribute("aria-selected") === "true" ? "*" : ""}`),
-    }));
-    check(`7. signed in: no line (${!shown.band}), Share a build to ${shown.share}, tabs ${shown.tabs.join(" ")}`,
-      !shown.band && shown.share === "/app?share" && shown.tabs.join() === "For you*,Following,New");
+    const shown = await page.evaluate(() => {
+      const bar = document.querySelector("#beta-bar.shown");
+      const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
+      const box = (el) => (el && el.offsetHeight ? el.getBoundingClientRect() : null);
+      const field = box(document.getElementById("find-q"));
+      const share = box(document.getElementById("share-build"));
+      const post = box(document.querySelector("#stream > .post:not(.skeleton)"));
+      return {
+        line: Boolean(document.querySelector("#home .lede")?.offsetHeight),
+        search: Boolean(field && field.top >= 0 && field.bottom <= foot && field.width >= 240),
+        row: Boolean(field && share && Math.abs(field.top - share.top) < 2),
+        first: post ? Math.round(post.top) : -1,
+        foot: Math.round(foot),
+        share: share ? document.getElementById("share-build").getAttribute("href") : "",
+        tabs: [...document.querySelectorAll("#feed-tabs [role=tab]")].map((tab) => `${tab.textContent.trim()}${tab.getAttribute("aria-selected") === "true" ? "*" : ""}`),
+      };
+    });
+    await page.keyboard.press("/");
+    const slash = await page.evaluate(() => document.activeElement?.id || "");
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => document.activeElement?.blur());
+    check(`7. signed in: no line (${!shown.line}), the search in view (${shown.search}) beside Share a build (${shown.row}) to ${shown.share}, "/" to ${slash || "nothing"}, `
+      + `the first post at ${shown.first} px (foot ${shown.foot}), tabs ${shown.tabs.join(" ")}`,
+      !shown.line && shown.search && shown.row && slash === "find-q" && shown.first >= 0 && shown.first < shown.foot - 100
+      && shown.share === "/app?share" && shown.tabs.join() === "For you*,Following,New");
     await page.focus("#tab-foryou");
     await page.keyboard.press("ArrowRight");
     const arrowed = await until(page, () => (document.documentElement.dataset.feedTab === "following"

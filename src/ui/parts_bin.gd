@@ -173,6 +173,9 @@ signal stickers_wanted
 ## A worked construction chosen under Techniques, to hold whole: its parts
 ## as Carry holds them, and its name.
 signal construction_chosen(parts: Array, name: String)
+## The model's own sub-assembly, named in the search, chosen to put
+## another of down (Main: a copy of it in hand, ux14).
+signal own_assembly_chosen(name: String)
 ## A part or a construction chosen from the keyboard (Tab to its tile, then
 ## Return): the keys go to the model, to aim it and put it down.
 signal chose_by_keyboard
@@ -395,6 +398,22 @@ func _build() -> void:
 	# model tree and the properties open give back their room before the
 	# parts do (PanelStack.heights).
 	_scroll.custom_minimum_size.y = _z(PARTS_LEAST)
+	# The model's own sub-assembly the search names, first, to put another
+	# down: the bin said "Bumper" was the model's and where another came
+	# from, where Studio's and LDCad's palettes list a model's own sub-models
+	# to place (ux13's walk, p7, left 1).
+	_own_row = Button.new()
+	_own_row.name = "bin_own_assembly"
+	_own_row.visible = false
+	_own_row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_own_row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_own_row.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_own_row.custom_minimum_size = Vector2(0, _z(Phone.TARGET if by_finger else 34.0))
+	FocusGuard.by_keyboard(_own_row)
+	_own_row.pressed.connect(func() -> void:
+		if not _own_named.is_empty():
+			own_assembly_chosen.emit(_own_named))
+	root.add_child(_own_row)
 	root.add_child(_scroll)
 
 	_grid = GridContainer.new()
@@ -3540,9 +3559,14 @@ func _update_status() -> void:
 	# Studio's palette lists a model's own sub-models (ux13's walk, p7). Said
 	# first, with where another copy of it comes from.
 	var own: String = _own_assembly_named(typed)
+	_own_named = own
+	_own_row.visible = not own.is_empty()
 	if not own.is_empty():
-		_status.text = ("“%s” is a sub-assembly of this model: select it, and Edit, Duplicate "
-			+ "puts another down\n%s") % [own, _status.text]
+		_own_row.text = "“%s”, this model's sub-assembly: put another down" % own
+		_own_row.tooltip_text = ("A copy of “%s” in hand: each click puts one down, Esc stops. "
+			+ "Each is a copy of it, and an edit inside one changes them all") % own
+		_status.text = ("“%s” is a sub-assembly of this model: the row above puts another down\n%s") \
+			% [own, _status.text]
 
 
 ## The model's sub-assembly called [param typed] (any case), as it is
@@ -3568,6 +3592,11 @@ func _own_assembly_named(typed: String) -> String:
 				if not def.is_empty():
 					_assembly_names[def.to_lower()] = def
 	return str(_assembly_names.get(typed, ""))
+
+
+## The sub-assembly the search names now, and the row that puts another down.
+var _own_named: String = ""
+var _own_row: Button
 
 
 ## The model's sub-assemblies by name, lowercase -> as written, and the

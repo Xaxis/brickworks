@@ -18,13 +18,16 @@
 // shortlist).
 //
 // Titles and briefs go on the page as text.
-import { $, TESTS, adminJson, ago, cell, emptyRow, make, post, rowAct as act, say, segmented, when } from "/admin-kit.js";
+import { $, TESTS, adminJson, ago, ask, cell, emptyRow, make, post, rowAct as act, say, segmented, when } from "/admin-kit.js";
 import { again, onReport } from "/admin-gallery.js";
 import { rulesSaid } from "/card.js";
 
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
 const today = () => new Date().toISOString().slice(0, 10);
+/// End it now, asked first: what visitors will see, said before it is done.
+const endAsked = (title) => ({ title: `End "${title}" now?`, body: "No more entries or votes. Visitors will see it as ended "
+  + "today, with the most voted in each group as its winners.", yes: "End it now", danger: true });
 const daysBetween = (from, to) => Math.round((Date.parse(`${String(to).slice(0, 10)}T00:00:00Z`)
   - Date.parse(`${String(from).slice(0, 10)}T00:00:00Z`)) / 86400000) + 1;
 /// What is left of a challenge running, today counted: "12 days left", "its
@@ -139,10 +142,8 @@ function drawChallenges(list) {
     const acts = make("td", "acts");
     if (one.state !== "ended") {
       // What visitors will see, said before it is done.
-      acts.append(act("End it now", () => (confirm(`End "${one.title}" now? No more entries or votes. Visitors will see it as `
-        + "ended today, with the most voted in each group as its winners.")
-        ? post({ op: "end_challenge", challenge: one.id }, "challenges-note", `"${one.title}" has ended.`, { after: again })
-        : Promise.resolve(false))));
+      acts.append(act("End it now", async () => (await ask(endAsked(one.title)))
+        && post({ op: "end_challenge", challenge: one.id }, "challenges-note", `"${one.title}" has ended.`, { after: again })));
     }
     row.append(acts);
     rows.append(row);
@@ -301,8 +302,9 @@ function shortlistPart(c, rounds, groups, redraw) {
     event.preventDefault();
     const models = [...form.querySelectorAll('input[name="model"]:checked')].map((box) => box.value);
     const opens = rounds.votes_from && rounds.votes_from > today() ? `on ${dayOf(rounds.votes_from)}` : "at once";
-    if (!confirm(models.length ? `Publish a shortlist of ${models.length}? Visitors see it at once, as chosen by ${judged}, and the `
-      + `fan vote opens ${opens}. Once it opens the shortlist stays as it is.` : "Clear the shortlist? Nothing can be voted for until one is published.")) return;
+    if (!(await ask(models.length ? { title: `Publish a shortlist of ${models.length}?`, body: `Visitors see it at once, as chosen by `
+      + `${judged}, and the fan vote opens ${opens}. Once it opens the shortlist stays as it is.`, yes: "Publish it" }
+      : { title: "Clear the shortlist?", body: "Nothing can be voted for until one is published.", yes: "Clear it", danger: true }))) return;
     save.disabled = true;
     const done = await post({ op: "shortlist", challenge: String(c.id) }, note, models.length ? "Published." : "Cleared.", { body: { models } });
     save.disabled = false;
@@ -385,10 +387,8 @@ export async function challengeOf(id, told = "") {
   if (c.state !== "ended") {
     const said = make("p", "note");
     said.setAttribute("role", "status");
-    parts.push(make("div", "part", make("div", "acts-row", act("End it now", () => (confirm(`End "${c.title}" now? No more entries `
-      + "or votes. Visitors will see it as ended today, with the most voted in each group as its winners.")
-      ? post({ op: "end_challenge", challenge: c.id }, said, `"${c.title}" has ended.`, { after: again })
-      : Promise.resolve(false)))), said));
+    parts.push(make("div", "part", make("div", "acts-row", act("End it now", async () => (await ask(endAsked(c.title)))
+      && post({ op: "end_challenge", challenge: c.id }, said, `"${c.title}" has ended.`, { after: again }))), said));
   }
   return { title: c.title, parts };
 }

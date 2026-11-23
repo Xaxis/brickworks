@@ -884,17 +884,22 @@ export function threadPageHtml({ page, found, hosts, tests, now = Date.now() }) 
     + `<span><small>${asText(say("The model"))}</small><b>${escapeHtml(thread.model.name || "")}</b></span></a>` : "";
   const challenge = thread.challenge?.id ? `<span class="talk-challenge"><a class="cta" href="${at}/challenge?id=${Number(thread.challenge.id)}${thread.challenge.test ? "&tests=1" : ""}">`
     + `${asText(say("See the challenge, enter and vote"))}</a></span>` : "";
-  return `<div class="wrap talk-page" data-talk="thread" data-thread="${Number(thread.id)}" data-board="${thread.board}"${thread.locked ? " data-locked" : ""}${tests ? " data-tests" : ""}>
+  // An object's page (pagekit, site.css .obj-layout): the posts, the box to
+  // reply and the boards, and beside them the aside, the thread's head (its
+  // board, title, who started it, when and how many replied), Reply, the
+  // challenge and Follow, and the model it is about. On a phone the aside
+  // is the page's head.
+  return `<div class="wrap talk-page obj-page" data-talk="thread" data-thread="${Number(thread.id)}" data-board="${thread.board}"${thread.locked ? " data-locked" : ""}${tests ? " data-tests" : ""}>
+<div class="obj-layout talk-thread-layout">
+<aside class="obj-aside talk-thread-head" aria-label="${asText(say("About this thread"))}">
 <p class="talk-crumbs"><a href="${at}/talk${tests ? "?tests=1" : ""}">${asText(say("Talk"))}</a> › <a href="${at}/talk/b/${thread.board}${tests ? "?tests=1" : ""}">${asText(said.name)}</a></p>
-<header class="talk-thread-head">
-<h1>${escapeHtml(thread.title)}</h1>
+<h1 class="obj-title"${String(thread.title || "").length > 60 ? ` title="${escapeHtml(thread.title)}"` : ""}>${escapeHtml(thread.title)}</h1>
 <p class="talk-row-meta">${pills ? `${pills} ` : ""}${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}${replies ? ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>` : ""}</p>
-${model}
-<div class="actions talk-thread-acts">${challenge}<button class="cta ghost" type="button" data-talk-follow aria-pressed="false" hidden>${asText(say("Follow"))}</button>
+<div class="actions talk-thread-acts">${thread.locked ? "" : `<a class="cta" href="#reply">${asText(say("Reply"))}</a>`}${challenge}<button class="cta ghost" type="button" data-talk-follow aria-pressed="false" hidden>${asText(say("Follow"))}</button>
 <span class="note talk-follow-said" data-talk-follow-said hidden></span></div>
-</header>
-<div class="talk-layout talk-thread-layout">
-<div class="talk-thread-main">
+${model}
+</aside>
+<div class="obj-main talk-thread-main">
 <ol class="comment-list talk-posts" id="talk-posts">${postsHtml(page, { found, hosts, now })}</ol>
 <p class="note" data-blocked-some hidden>${asText(say("Some posts here are by people you blocked, so they are not shown."))}</p>
 <section class="talk-reply" id="reply" aria-labelledby="talk-reply-title">
@@ -912,10 +917,10 @@ ${thread.locked ? `<p class="note">${asText(say("This thread is locked: it takes
 <div class="talk-signin" data-signin><p>${asText(say("Sign in to reply: we email you a code, no password. Anyone can read Talk."))}</p>
 <button class="cta" type="button" data-act="sign-in" hidden>${asText(say("Sign in to reply"))}</button></div>`}
 </section>
-</div>
-<aside class="talk-aside">
+<div class="talk-aside talk-thread-boards">
 ${boardsListHtml(thread.board)}
-</aside>
+</div>
+</div>
 </div>
 </div>`;
 }

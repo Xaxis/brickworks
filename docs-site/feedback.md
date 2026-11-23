@@ -1,5 +1,5 @@
 ---
-ai: Send feedback is in the app's Brickworks menu (the mark at the left of the menu bar), in every site page's footer and the account menu, and at brickworks.diy/feedback; Help › Report a bug… (Alt+Shift+R) opens the app's bug report, over the window with its picture taken to mark the spot on. Both send something wrong, an idea or a question to the people who make Brickworks, with only what the person ticks: a picture, the app's version and system, the open model, the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, Send feedback asks an email address. While the beta is open, as it is on brickworks.diy, Report a bug is also beside Account on the app's top bar, on its error notices as Report this, and in the site's beta bar. No tool sends feedback; send the person to Brickworks › Send feedback…, Help › Report a bug… or /feedback.
+ai: Send feedback is in the app's menu (Menu at the right of the app's header in a browser, the mark at the left in the desktop app), in every site page's footer and the account menu, and at brickworks.diy/feedback; Help › Report a bug… (Alt+Shift+R) opens the app's bug report, over the window with its picture taken to mark the spot on. Both send something wrong, an idea or a question to the people who make Brickworks, with only what the person ticks: a picture, the app's version and system, the open model, the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, Send feedback asks an email address. While the beta is open, as it is on brickworks.diy, Report a bug is also beside Account on the app's top bar, on its error notices as Report this, and in the site's beta bar. No tool sends feedback; send the person to Brickworks › Send feedback…, Help › Report a bug… or /feedback.
 rules:
   - Nothing goes with a report unless the person chooses it, and they can see all of it first.
   - Only the people who make Brickworks read reports; answers come by email and are kept with the report.
@@ -12,7 +12,7 @@ Something wrong, an idea, or a question: send it from wherever you are. We read 
 
 ## Send feedback {#send}
 
-- **In the app**: **Brickworks › Send feedback…**, in the menu under the mark at the top left.
+- **In the app**: **Send feedback…** in the app's menu: **Menu** at the top right in a browser, the mark at the top left in the desktop app.
 - **On the site**: **Send feedback** in the footer of every page or in your account menu (your picture, top right), or [/feedback](/feedback).
 
 Choose what it is (something is wrong, an idea, or a question), say what happened or what you would like, and **Send**. Signed out, give your email address so we can answer you.

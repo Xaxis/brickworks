@@ -14,8 +14,10 @@
 //             Tab to the first card's name and Enter opens its model;
 //   model     Like (pressed, its count in its name, the focus kept), Save
 //             (its lists, the focus in them; a list ticked and the focus
-//             kept; Escape closes it back to Save), a comment typed and
-//             sent (said in the page's status), Reply under a comment (the
+//             kept; Escape closes it back to Save), the Comments tab (Tab
+//             to the row of tabs, Right to Comments: its panel shown and
+//             #comments in the address), a comment typed and sent (said in
+//             the page's status), Reply under a comment below the box (the
 //             focus in its box; Escape takes it away, back to Reply; sent,
 //             the focus not lost); Share's toast, said as it is shown;
 //   report    signed out, More, Report it: the dialog takes the focus,
@@ -241,7 +243,8 @@ const JOURNEYS = {
   async model(browser, theme) {
     const { context, page, errors } = await visit(browser, `/m/${stand.MODEL_ID}`, { theme, state: { likes: new Map() } });
     const label = `model ${theme}`;
-    await until(page, () => !document.getElementById("comments")?.hidden && document.querySelector("#comments .comment"), null, 15000);
+    // The comments listed, in their tab's panel, not shown until it is chosen.
+    await until(page, () => !document.querySelector("#comments .comments-body")?.hidden && document.querySelector("#comments .comment"), null, 15000);
     // Like: pressed, its count in its name, the focus kept.
     if (await tabTo(page, label, '[data-mark="like"]')) {
       const before = await page.evaluate(focusNow);
@@ -315,8 +318,19 @@ const JOURNEYS = {
         && document.activeElement?.matches("#marks [data-share]"), null, 3000);
       check(back, `${label}: Escape closes the sheet, back on Share (${(await page.evaluate(focusNow)).said})`);
     }
-    // A comment, typed and sent.
-    if (await tabTo(page, label, "#comment-body")) {
+    // The Comments tab: Tab reaches the chosen tab (Overview), Right moves
+    // to Comments and chooses it, as a tablist does (web/tabs.js).
+    let commentsOpen = false;
+    if (await tabTo(page, label, '#page-tabs [role="tab"]')) {
+      await page.keyboard.press("ArrowRight");
+      commentsOpen = await until(page, () => document.activeElement?.matches('#page-tabs [data-tab="comments"]')
+        && document.activeElement.getAttribute("aria-selected") === "true" && !document.getElementById("comments")?.hidden, null, 3000);
+      const now = await judgeStop(page, label);
+      const hash = await page.evaluate(() => location.hash);
+      check(commentsOpen && hash === "#comments", `${label}: Right on the tabs chooses Comments, its panel shown, ${hash || "no key"} in the address (${now.said})`);
+    }
+    // A comment, typed and sent: its box is the panel's first, over the list.
+    if (commentsOpen && await tabTo(page, label, "#comment-body")) {
       await page.keyboard.type("The tower's hinge is clever.");
       await tabTo(page, label, 'form.comment-new button[type="submit"]', { most: 3 });
       await page.keyboard.press("Enter");
@@ -325,9 +339,9 @@ const JOURNEYS = {
       const now = await page.evaluate(focusNow);
       check(said && !now.lost, `${label}: a comment sent with Enter: "${await page.evaluate(() => document.querySelector(".comments-said")?.textContent)}", the focus on ${now.said}`);
     }
-    // Reply, back up the page from the comment's box: its box, Escape,
-    // then sent.
-    if (await tabTo(page, label, '.comment-acts button[data-reply]', { most: 30, back: true })) {
+    // Reply, on down the page from the comment's box (the list under it):
+    // its box, Escape, then sent.
+    if (commentsOpen && await tabTo(page, label, '.comment-acts button[data-reply]', { most: 30 })) {
       const reply = await page.evaluate(focusNow);
       check(/^Reply to .+/.test(reply.name) || /^Reply/.test(reply.name), `${label}: a comment's Reply says whose (${reply.said})`);
       await page.keyboard.press("Enter");

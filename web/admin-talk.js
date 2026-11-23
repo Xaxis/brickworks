@@ -5,7 +5,7 @@
 //
 // Everything is put on the page as text, never as markup: every word here
 // was typed by somebody else.
-import { $, TESTS, adminJson, ago, cell, count, link, make, post, rowAct, say } from "/admin-kit.js";
+import { $, TESTS, adminJson, ago, ask, cell, count, link, make, post, rowAct, say } from "/admin-kit.js";
 
 const BOARDS = { show: "Show and tell", help: "Help", ideas: "Ideas", challenges: "Challenges", news: "News" };
 const REASONS = { spam: "Spam", offensive: "Offensive", sexual: "Sexual", violent: "Violent", copied: "Copied",
@@ -55,8 +55,8 @@ function drawReports(reports) {
     acts.append(
       one.hidden ? rowAct("Show it, and let the reports go", () => act({ act: "show", post: one.post }, where, `Shown again: ${whose}.`))
         : rowAct("Hide it", () => act({ act: "hide", post: one.post }, where, `Hidden: ${whose}.`)),
-      rowAct("Remove it", () => (confirm("Remove this post from Talk for good?")
-        ? act({ act: "remove", post: one.post }, where, `Removed: ${whose}.`) : Promise.resolve(false))),
+      rowAct("Remove it", async () => (await ask({ title: "Remove this post from Talk for good?", body: `It is ${whose}.`,
+        yes: "Remove it", danger: true })) && act({ act: "remove", post: one.post }, where, `Removed: ${whose}.`)),
       rowAct("Let the reports go", () => act({ act: "dismiss", post: one.post }, where, `Reports let go: ${whose}.`)));
     if (!one.banned) {
       const length = make("select");
@@ -120,8 +120,8 @@ function drawThreads(threads) {
       }
       acts.append(to, rowAct("Move", () => act({ act: "move", thread: one.id, board: to.value }, where,
         `Moved to ${BOARDS[to.value] || to.value}: ${quote(one.title)}.`)),
-        rowAct("Remove", () => (confirm(`Remove “${one.title}” and every post in it from Talk?`)
-          ? act({ act: "remove", thread: one.id }, where, `Removed: ${quote(one.title)}.`) : Promise.resolve(false))));
+        rowAct("Remove", async () => (await ask({ title: `Remove ${quote(one.title)} from Talk?`, body: "Every post in it goes too, for good.",
+          yes: "Remove", danger: true })) && act({ act: "remove", thread: one.id }, where, `Removed: ${quote(one.title)}.`)));
     }
     acts.append(where);
     cell(row, acts);

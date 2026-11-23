@@ -1284,8 +1284,8 @@ func _define() -> void:
 		"Copy the selection")
 	_add("paste", "Paste", CTRL | KEY_V, func() -> void: verbs.paste(), Callable(),
 		"Hold a copy of what was copied: click to put it down, {rotate_held|turns it}")
-	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_selection(),
-		selected, "Hold a copy of the selection, to put down beside it")
+	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_beside(),
+		selected, "Put a copy of the selection down beside it, selected to move on")
 	# src/assembly/pattern.gd, src/ui/pattern_dialog.gd.
 	_add("pattern", "Pattern…", CTRL | SHIFT | KEY_D, func() -> void:
 		if builder.is_carrying():

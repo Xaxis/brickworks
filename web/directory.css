@@ -116,30 +116,35 @@
 .set-page .picture.photo, .set-page .picture.photo img { background: var(--photo-ground); }
 .set-page .picture-credit { margin: 6px 2px 0; text-align: right; font-size: var(--t-small); color: var(--ink-faint); }
 .set-page .picture-credit a { color: inherit; }
+/* A set LDraw has no model of says so under its picture, where a modelled
+   set's picture says View in 3D (set3d), its credit at the right. */
+.set-page .picture-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-3); margin: 6px 2px 0; }
+.set-page .picture-foot .picture-credit { margin: 0 0 0 auto; }
+.set-page .no3d { margin: 0; font-size: var(--t-small); color: var(--ink-soft); }
 @media (width < 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
 /* On a phone the picture is square: at 390 px it is 358 px tall, not 188,
    and web/model-page.js draws the model as large as its width lets it,
    the picture's own ground carried on above and below a wide one. */
 @media (width < 600px) { .model-page .picture { aspect-ratio: 1 / 1; } }
-/* On a laptop 4:3, as tall as the column beside it (sitepolish, 2026-11-23:
-   at 1280 the picture was 380 px tall beside a column of 560, the model in
-   a strip of it, where a model's page on Printables or MakerWorld leads with
-   a picture as tall as its buying box), and 16:10 from 1600 px, so the
-   whole of it stays on a 900 px tall window's first screen. Drawn the way a
-   phone's square is (web/model-page.js fitPicture). */
-@media (width >= 900px) { .model-page .picture { aspect-ratio: 4 / 3; } }
-@media (width >= 1600px) { .model-page .picture { aspect-ratio: 16 / 10; } }
+/* On a laptop 16:10, as tall as the column beside it (sitepolish,
+   2026-11-23: at 1280 the picture was 380 px tall beside a column of 560,
+   where a model's page on Printables or MakerWorld leads with a picture as
+   tall as its buying box; it was 4:3 then, beside a column of nine
+   buttons). With the column cut to one action, the social row and its
+   facts (pagekit), 16:10 is its height, and the tabs under the picture are
+   on an 800 px tall window's first screen. Drawn the way a phone's square
+   is (web/model-page.js fitPicture). */
+@media (width >= 900px) { .model-page .picture { aspect-ratio: 16 / 10; } }
 
-/* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
-   under the header as the page scrolls past its parts. */
-.model-page .page-tabs { position: sticky; top: var(--head-h); z-index: 5; background: var(--bg); margin-block: var(--s-2); }
-.model-page .page-tabs.loose { background: none; }
-/* Gone to: clear of the tabs, beyond the header's own scroll-padding
-   (site.css html), which every other part of the page has alone: a margin
-   of 84 px on every section added to it and landed a part 160 px down. */
-.model-page .rest > section { scroll-margin-top: 44px; }
+/* The page's tabs (api/share.js pageTabs, site.css .obj-tabs): real tabs,
+   each switching its panel in place under the picture (pagekit; before,
+   links down one long page, kept on screen by a bar of their own). */
+.model-page .page-tabs { margin: var(--s-5) 0 var(--s-4); }
+@media (width < 900px) { .model-page .page-tabs { margin-top: var(--s-2); } }
 
-.model-page h1 { font-size: var(--t-h1); margin: 0 0 12px; overflow-wrap: anywhere; line-height: 1.15; }
+/* Its name: two lines at most, at a size the column holds (.obj-title);
+   it was three lines of 56 px. */
+.model-page h1:not(.obj-title) { font-size: var(--t-h1); margin: 0 0 12px; overflow-wrap: anywhere; line-height: 1.15; }
 .model-page .from { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
 .model-page .from a { color: var(--ink); }
 /* What it is based on (api/_bases.js): a line a thing, under its remix
@@ -217,14 +222,6 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .open-split > .open-claude .icon { width: 18px; height: 18px; }
 .open-split > .open-claude .narrow { display: none; }
 @media (width < 600px) { .open-split > .open-claude .wide { display: none; } .open-split > .open-claude .narrow { display: inline; } }
-/* On a phone the control fills the row Download shared, and Download on a
-   row of its own pushed the action bar below the first screen (it ended at
-   866 of 844 at 390 px, gatefix): there Download is More's first item. */
-.more-menu .menu-download { display: none; }
-@media (width < 600px) {
-	.model-page .side:has(.open-claude:not([hidden])) .actions > a[download] { display: none; }
-	.model-page .side:has(.open-claude:not([hidden])) .more-menu .menu-download { display: block; }
-}
 /* What should it change, Copy for Claude and the way to connect it: under
    the row, as Save's lists are, pushing the page down. */
 .claude-panel {
@@ -285,12 +282,23 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .next h2 a { color: inherit; }
 
 .model-page section { margin-top: var(--s-7); max-width: 72ch; }
-.model-page .rest > section + section { padding-top: var(--s-6); border-top: 1px solid var(--line); }
-.model-page .rest > section:first-of-type { margin-top: 12px; }
-/* A first part not shown (a set's Owned, signed out) leaves the next one
-   first: no line and no gap of two over it (sitepolish: 80 px and a rule
-   between a set's column and its Parts, on a phone and a laptop). */
-.model-page .rest > section[hidden]:first-of-type + section { margin-top: 12px; padding-top: 0; border-top: 0; }
+/* A tab's panel starts under its tab, a panel a part (pagekit). */
+.model-page .obj-panels > section { margin-top: 0; }
+.model-page .obj-panels > section.parts, .model-page .obj-panels > section.tree { max-width: none; }
+/* The public collections it is in, the Overview's last part. */
+.model-page .in-lists { margin-top: var(--s-6); }
+.model-page .in-lists h3 { margin-top: 0; }
+/* The action bar on a phone: Like, Save and Share together at its start,
+   More at its end, as they sit in the column on a laptop. */
+@media (width < 600px) { .model-page .action-bar { justify-content: flex-start; } .model-page .action-bar .more-menu { margin-left: auto; } }
+/* A set's: what you own of its parts at the Parts tab's top, and where its
+   data is from a quiet line under the tabs, not a part of its own. */
+.model-page .parts > .owned { margin: 0 0 var(--s-5); }
+.model-page .set-credit { margin-top: var(--s-6); padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.model-page .set-credit .credit { margin: 0; font-size: var(--t-small); color: var(--ink-faint); }
+.model-page .set-credit .credit a { color: var(--ink-soft); }
+/* A tab with nothing yet: one line and its way in (site.css .obj-empty). */
+.model-page .builds .obj-empty + .add-build { margin-top: 0; }
 .model-page section h2 { margin: 0 0 var(--s-2); }
 .model-page section h3 { margin: var(--s-4) 0 var(--s-2); }
 .model-page .tags { margin: 18px 0 0; }
@@ -411,6 +419,25 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .remix-changes b { font-weight: 600; }
 .model-page .remix-changes .what-changed { margin-left: 4px; vertical-align: 1px; }
 .model-page .remix-changes .what-changed[hidden] { display: none; }
+/* A change sent back (suggestedit, api/_suggestions.js): whose changes its
+   versions took in, under its credit and in its Log; and for its designer
+   the ones sent to it, for a remix's own builder the way to send theirs. */
+.model-page .suggested-credit { list-style: none; margin: 0 0 10px; padding: 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .suggested-credit li { margin: 2px 0; }
+.model-page .suggested-credit a, .model-page .log-credit a { color: var(--ink); }
+.model-page .log-credit { margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .suggest-box { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); }
+.model-page .suggest-box[hidden] { display: none; }
+.model-page .suggest-head { font-size: 1rem; margin: 0 0 8px; }
+.model-page .suggest-open { list-style: none; margin: 0 0 4px; padding: 0; }
+.model-page .suggest-open li { margin: 0 0 10px; overflow-wrap: anywhere; }
+.model-page .suggest-open q { color: var(--ink-soft); }
+.model-page .suggest-open .cta { margin-left: 4px; }
+.model-page .suggest-send { display: grid; gap: 8px; }
+.model-page .suggest-send label { color: var(--ink-soft); }
+.model-page .suggest-send textarea { width: 100%; box-sizing: border-box; font: inherit; resize: vertical; }
+.model-page .suggest-send button { justify-self: start; }
+.model-page .suggest-send .said:empty { display: none; }
 .remix-tree, .remix-tree ol { list-style: none; margin: 0; padding: 0; }
 .remix-tree ol { margin-left: 26px; padding-left: 14px; border-left: 2px solid var(--line-strong); }
 .remix-tree li { margin: 8px 0; }
@@ -496,6 +523,19 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .challenge-clock .numbers[hidden] { display: none; }
 /* Under the head, its parts a section apart. */
 .challenge .page-body { display: flex; flex-direction: column; gap: var(--s-8); }
+/* Its parts as tabs (pagekit): each panel's parts a section apart, the
+   tab naming the part (its heading kept for a screen reader). */
+.challenge .obj-tabs { margin-top: 0; }
+.challenge .obj-panels > [role="tabpanel"] { display: flex; flex-direction: column; gap: var(--s-7); }
+.challenge .entries-head { justify-content: flex-end; }
+/* From 700 px the sort sits at the end of the groups' row, not a row of
+   its own between two rows of tabs. */
+@media (width >= 700px) {
+	.challenge #entries { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-4); align-items: end; }
+	.challenge #entries > * { grid-column: 1 / -1; }
+	.challenge #entries > #group-tabs { grid-column: 1; grid-row: 1; }
+	.challenge #entries > .entries-head { grid-column: 2; grid-row: 1; margin: 0 0 var(--s-4); }
+}
 .challenge-part > h2 { margin-bottom: var(--s-4); }
 /* The winners: one in each group, each its card under what it won, lit in
    the accent; two side by side from 600 px. */
@@ -683,9 +723,8 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comments { max-width: 72ch; }
 /* The comments' place while they are asked (api/share.js commentsSection),
    as tall as the section drawn with none yet and the box (site275). */
-.model-page .comments-hold { display: flex; flex-direction: column; gap: 8px; margin-top: var(--s-7); padding-bottom: 40px; max-width: 72ch; }
-/* Under its line as the section it holds the place of will be. */
-.model-page .rest > section + .comments-hold { padding-top: var(--s-6); border-top: 1px solid var(--line); }
+.model-page .comments-hold { display: flex; flex-direction: column; gap: 8px; padding-bottom: 40px; max-width: 72ch; }
+.model-page .comments-lede { margin-top: 0; }
 .model-page .comments-hold .bone { margin: 0; }
 .model-page .comments-hold .title { width: 8em; height: 1.3em; font-size: var(--t-h3); }
 .model-page .comments-hold .box { width: 100%; height: calc(3lh + 22px); border-radius: var(--control-radius); }
@@ -1066,7 +1105,10 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
    them when not, so a page is no taller for them on a laptop. */
 .profile .standing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-4); }
 .profile .standing .numbers, .profile .standing .awards { margin: 0; }
-.profile .pinned { margin-top: var(--s-6); }
+/* Pinned: the first of the Models tab, the tabs under the banner on the
+   first screen of a 16:10 laptop (pagekit; over them it put the tabs at
+   721 px of 800, under the beta's bar). */
+.profile .tab-panel > .pinned { margin: 0 0 var(--s-6); }
 /* Up to three pinned (api/people.js MOST_PINS): on a laptop a third of the
    row each, larger than the cards under them, rather than three of a
    scroller's 300 px and the rest of the row empty (sitepolish). */
@@ -1096,6 +1138,87 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.bannered .profile-head .avatar { margin-top: -48px; }
 	.profile-head .acts { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* A person's page as an object's page (pagekit, site.css .obj-layout): who
+   they are in the aside, their avatar over their name, Follow the one
+   action, then Share and More, their words, links and numbers; the page's
+   work beside it, their banner leading it as a model's picture leads its
+   page, then what they pinned and the tabs. Under 900 px the aside is the
+   page's head, before the work. */
+.profile.obj-page { padding-top: var(--s-5); }
+.person-card.profile-head { display: block; margin: 0; padding: var(--s-5); align-items: initial; }
+.person-card .person-id { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: var(--s-3); }
+.person-card .person-id .avatar { margin: 0; box-shadow: none; }
+.person-card .person-id .who { min-width: 0; }
+.person-card .person-id h1 { margin: 0 0 var(--s-1); }
+.person-card .person-id .handle { margin: 0; }
+.person-card .acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: var(--s-2); margin: var(--s-4) 0 0; }
+.person-card .acts .follow-line { display: contents; }
+.person-card .acts .follow-line .said:empty { display: none; }
+.person-card .acts .follow-line .said { flex-basis: 100%; }
+.person-card .acts > .more-menu { margin-left: auto; }
+.person-card .cta.follow { flex: 1 1 auto; }
+.person-card .cta.follow[aria-pressed="true"] { background: var(--panel); color: var(--ink); border-color: var(--accent-edge); box-shadow: var(--highlight), var(--shadow-1); }
+.person-card .bio { margin: var(--s-4) 0 0; }
+.person-card .links { margin: var(--s-3) 0 0; }
+.person-card .standing { margin: var(--s-4) 0 0; padding-top: var(--s-4); border-top: 1px solid var(--line); display: grid; gap: var(--s-3); }
+.person-card .numbers { gap: var(--s-1) var(--s-4); }
+.person-card .numbers b { font-size: var(--t-body); }
+.profile .obj-main > .banner { margin: 0 0 var(--s-5); }
+.profile .obj-main > .work:first-child, .profile .obj-main > .banner + .work { margin-top: 0; }
+.profile .obj-tabs { margin-top: 0; }
+@media (width >= 900px) { .profile .obj-main .models:not(.scroller) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); } }
+@media (width < 900px) {
+	.person-card.profile-head { padding: 0; }
+	.person-card .person-id { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; }
+	.person-card .person-id .avatar.huge { width: 72px; height: 72px; font-size: var(--t-h2); }
+	.person-card .standing { border-top: 0; padding-top: 0; }
+	/* Its badges one row that scrolls on its own, not a third of a
+	   phone's first screen. */
+	.person-card .pills.awards { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+	.person-card .pills.awards::-webkit-scrollbar { display: none; }
+	.person-card .pills.awards > li { flex: 0 0 auto; }
+}
+
+/* A collection's page as an object's page: its cover, name, whose, words,
+   numbers and actions in the aside, what is in it beside them. */
+.list.obj-page { padding-top: var(--s-5); }
+.list-card-aside.list-head { display: block; margin: 0; }
+.list-card-aside .cover { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin: 0 0 var(--s-4); }
+.list-card-aside .eyebrow { margin: 0 0 var(--s-1); }
+.list-card-aside h1 { margin: 0 0 var(--s-1); }
+.list-card-aside .handle { color: var(--ink-soft); margin: 0; overflow-wrap: anywhere; }
+.list-card-aside .bio { margin: var(--s-3) 0 0; }
+.list-card-aside .numbers { margin: var(--s-4) 0 0; gap: var(--s-1) var(--s-4); }
+.list-card-aside .numbers b { font-size: var(--t-body); }
+.list-card-aside .acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: var(--s-4) 0 0; }
+.list-card-aside .acts .follow-line { display: contents; }
+.list-card-aside .acts .follow-line .said:empty { display: none; }
+.list-card-aside .acts > .more-menu { margin-left: auto; }
+.list-card-aside .cta.follow { flex: 1 1 auto; }
+.list-card-aside .cta.follow[aria-pressed="true"] { background: var(--panel); color: var(--ink); border-color: var(--accent-edge); box-shadow: var(--highlight), var(--shadow-1); }
+@media (width < 900px) {
+	.list-card-aside.list-head { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 0 var(--s-4); align-items: start; }
+	.list-card-aside .cover { grid-row: span 3; margin: 0; }
+	.list-card-aside > :not(.cover) { grid-column: 2; }
+	.list-card-aside > .bio, .list-card-aside > .numbers, .list-card-aside > .acts { grid-column: 1 / -1; }
+}
+
+/* A Talk thread as an object's page (api/_talk.js threadPageHtml): its
+   head, Reply, the model it is about and the boards in the aside; the
+   posts beside it, read from the top. */
+.talk-page.obj-page { padding-top: var(--s-5); }
+.talk-thread-layout.obj-layout { grid-template-columns: minmax(0, 1fr) 340px; }
+.obj-aside.talk-thread-head { margin: 0; }
+.obj-aside.talk-thread-head h2 { font-size: var(--t-h3); }
+.talk-thread-head .talk-crumbs { margin: 0 0 var(--s-2); }
+.talk-thread-head .talk-row-meta { margin: 0; }
+.talk-thread-head .talk-thread-acts { margin: var(--s-4) 0 0; }
+.talk-thread-head .talk-thread-acts > .cta { flex: 1 1 auto; }
+.talk-thread-head .talk-model { margin: var(--s-4) 0 0; }
+.talk-thread-main > .talk-posts { margin-top: 0; }
+.talk-thread-boards { margin-top: var(--s-7); }
+@media (width < 900px) { .talk-thread-layout.obj-layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* Photos of real builds in a tab of their own: any shape, so in columns. */
 .build-grid { columns: 3 220px; column-gap: 12px; }

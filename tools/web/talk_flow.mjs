@@ -18,9 +18,10 @@
 //      house's first threads in them (never empty), what is said under the
 //      models beside them, and a thread's Reply asking to sign in.
 //   2. Ann shares a model; its page offers her a Show and tell thread about
-//      it; she starts one there with a step of it and @Bea in her words: the
-//      thread shows the model's card, the step's, Bea's name as a link, and
-//      its JSON-LD (DiscussionForumPosting). The model's page links to it.
+//      it (in its Comments tab, chosen); she starts one there with a step of
+//      it and @Bea in her words: the thread shows the model's card, the
+//      step's, Bea's name as a link, and its JSON-LD
+//      (DiscussionForumPosting). The model's page links to it.
 //   3. Bea is told she was mentioned; she answers, and Ann is told of the
 //      reply, on her Notifications page too.
 //   4. Search finds the thread by a word of it, and says when nothing does.
@@ -46,6 +47,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -129,7 +131,7 @@ async function open(pathname, { who = null, phone = false } = {}) {
   page.on("console", (m) => {
     if (/SCRIPT ERROR|Content Security Policy|Refused to/.test(m.text())) errors.push(`${pathname}: ${m.text().slice(0, 220)}`);
   });
-  page.on("dialog", (dialog) => dialog.accept());
+  await answerAsks(page);
   await page.goto(`${site}${pathname}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   return page;
 }
@@ -227,6 +229,8 @@ try {
     return place && !place.hidden && place.querySelector("a") ? place.querySelector("a").getAttribute("href") : null;
   }, "the model page's Talk offer", 60);
   check(`her model's page offers a Show and tell thread: ${offer}`, /\/talk\/new\?model=/.test(offer));
+  // The offer is in the Comments tab's panel, shown once that tab is chosen.
+  await annModel.click('#page-tabs [data-tab="comments"]');
   await annModel.click("#talk-about a");
   await until(annModel, () => document.querySelector("[data-start-form]") && !document.querySelector("[data-start-form]").hidden, "the start form");
   check("the form starts in Show and tell, about her model", await annModel.evaluate(() =>

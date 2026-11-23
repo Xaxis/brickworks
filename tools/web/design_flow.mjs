@@ -13,7 +13,9 @@
 // copied the control styles it needed, and what a copy missed fell back
 // to the browser. This visits every page and opens every dialog, at 390
 // and 1280 px, light and dark, signed out and signed in, and reads each
-// visible input, select, textarea and button as the browser draws it. It
+// visible input, select, textarea and button as the browser draws it. An
+// object's page shows one tab's panel at a time (web/tabs.js, pagekit): each
+// of its other tabs is chosen and the page judged again with it shown. It
 // fails on what a person would notice:
 //
 //   a control the browser drew its own way: a dropdown it drew (appearance
@@ -465,6 +467,26 @@ async function judge(page, label, what, scope, file, more = []) {
   }
 }
 
+/// The tabs of an object's page (api/_tabs.js, web/tabs.js) shown but not
+/// chosen as it opened, by key, in their order; none on other pages.
+const otherTabs = (page) => page.evaluate(() => [...document.querySelectorAll('#page-tabs[role="tablist"] [role="tab"]')]
+  .filter((tab) => !tab.hidden && tab.getAttribute("aria-selected") !== "true"
+    && document.getElementById(tab.getAttribute("aria-controls") || ""))
+  .map((tab) => tab.dataset.tab));
+
+/// [key]'s tab pressed (with none, the first shown), as a person presses
+/// it: whether it was chosen and its panel shows.
+async function chooseTab(page, key) {
+  const tab = key ? `#page-tabs [role="tab"][data-tab="${key}"]` : '#page-tabs [role="tab"]:not([hidden])';
+  if (!(await page.$(tab))) return false;
+  await page.click(tab, { timeout: 10000 }).catch(() => null);
+  return page.waitForFunction((at) => {
+    const one = document.querySelector(at);
+    const panel = document.getElementById(one?.getAttribute("aria-controls") || "");
+    return one?.getAttribute("aria-selected") === "true" && Boolean(panel) && !panel.hidden;
+  }, tab, { timeout: 5000 }).then(() => true, () => false);
+}
+
 try {
   for (const one of PAGES) {
     if ((only && !only.includes(one.name)) || one.skip || (remote && one.local)) continue;
@@ -488,6 +510,14 @@ try {
             await page.waitForTimeout(300);
             if (!one.dialogOnly) {
               await judge(page, label, "page", null, `${stem}.png`, [...await headerOrder(page, signedIn), ...await headerGutter(page)]);
+              // Each other tab of an object's page, pressed: the page as it
+              // then shows, its picture whole; then the first tab again, for
+              // the dialogs.
+              for (const key of await otherTabs(page)) {
+                const shown = await chooseTab(page, key);
+                await judge(page, label, shown ? `${key} tab` : `${key} tab (missing)`, null, `${stem}_tab-${key}.png`);
+              }
+              await chooseTab(page, null);
             }
             // A state that does not last is judged as it is shown.
             const now = (what, scope) => judge(page, label, what, scope, `${stem}_${what.replace(/\W+/g, "-")}.png`);

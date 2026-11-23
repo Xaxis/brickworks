@@ -368,6 +368,63 @@ a click. Here:
 
 [st-bt]: https://studiohelp.bricklink.com/hc/en-us/articles/6477757327767
 
+## Watching: building now (buildlive, 2026-11-23)
+
+The designer opens a session to watchers from the studio: **Open to
+watchers** in File › Build together… (`Together.open_to_watchers`,
+`op=watch_open {s, model}`). The session gets a second name, `watch`, 12
+letters and digits, which is public and is not the secret. Its page is
+`/live/<watch>` (`web/live.html`, `web/live.js`). While it is open, and while
+the designer's studio is heard from (90 s), it is listed first in the home
+page's feed and on their profile (`web/live-now.js`, `op=live`). The page
+shows the model in the light 3D viewer (`web/live3d.js`, from
+`tools/viewer/live.js`), each part landing as it is put down, beside the
+chat. Signed in, a person 13 or over chats there and anyone signed in may
+**Ask to build**. The designer sees the ask in the panel with **Give a
+seat**, and the watcher's page then offers **Build with them now**, which
+opens the session in their studio. Ending the session closes the show; the
+app then keeps where it got to as a version in the model's log through
+Share progress, when the model is shared (`Main._keep_watched`).
+
+**Why not let watchers poll.** A poll is a function call and database reads
+per watcher many times a second. Ten watchers on one build would cost what
+ten builders cost, and on 2026-11-12 the organisation went over its Supabase
+egress quota. So the relay sends each change once, at the moment it is
+numbered: one broadcast on Supabase Realtime (the REST endpoint
+`/realtime/v1/api/broadcast`, from the function, with the secret key), on a
+public channel named by an HMAC of the watch name. Each page holds a
+websocket to Realtime with the publishable key and listens to that one
+channel. This is the one thing a page reaches at Supabase beyond signing in.
+It is a broadcast channel: no table, no row security, no session. The
+security policy names the Realtime origin and nothing else new.
+
+**Why it is signed.** Anybody who has the publishable key may send on a
+public channel. So the relay signs every message with Ed25519, a key derived
+by HKDF from the secret key, and hands out the public half in
+`op=watching`. A page verifies each message with WebCrypto and drops
+anything unsigned, forged, or about another show
+(`window.brickworksLive.dropped`). A browser without Ed25519 in WebCrypto
+reads by number instead (`op=watch_ops`, every 1.5 s).
+
+**What a watcher may do.** A watcher can never change the model. The watch
+name opens no editing op: `send {w}` is refused 403, and `poll`, `join` and
+`seat` take only the secret. A watcher's line and ask go through
+`together_watch_append` (`supabase/together_watch.sql`), which refuses any
+key but `~chat`, `~ask`, `~seat`, `~by` and `~key`, and anything once the
+show is closed or the session has ended. They come into the session's log
+from the client `watching`, and the studio hears them as it hears any line,
+by the name in `~by`. A seat's secret is sealed (AES-256-GCM, a key by HKDF)
+into the `~seat` op. Only the asker reads it back, through
+`op=watch_seat`, which checks it opens this session.
+
+**What a page does.** It opens with `op=watching` (the model as it stands,
+the chat, the channel and the key; the CDN keeps it 2 s), then listens.
+A gap in the numbers is read back by `op=watch_ops {w, after, viewer}`. The
+same call every 20 s is the page's heartbeat, which counts it as a watcher
+(`together_watchers`, one row per page, a random id kept in the tab) and
+keeps the peak. The parts' geometry comes from the parts bucket, as every
+model page's does.
+
 ## Proof
 
 - `tools/web/together_probe.mjs`: the server's half from three accounts.

@@ -452,6 +452,20 @@ export function madeOf(model) {
     by: brickify ? "brickify" : tags.includes("ai-designed") ? "assistant" : "hand", said: "tags" };
 }
 
+/// [model] as anybody may be told of it. How it was made is its owner's to
+/// say (the owner, 2026-11-23: not "unless a user wants to share it that
+/// way"): until they chose to show it (made_with_shown,
+/// supabase/made_with_shown.sql) its made_with is not said and the tags
+/// that say it are left off, so madeOf finds it built by hand, as it does
+/// any model that never said. Before that file is applied no model says it
+/// is shown, and none is. made_with is still kept, for its owner.
+export function madePublic(model) {
+  if (!model || typeof model !== "object") return model;
+  if (model.made_with_shown === true) return model;
+  return { ...model, made_with: null, made_with_shown: false,
+    tags: Array.isArray(model.tags) ? model.tags.filter((tag) => !ASSISTANT_TAGS.includes(tag)) : model.tags };
+}
+
 /// The marks a card for [model] carries over its picture that a page may
 /// leave off: "tested".
 export function marksOf(model) {
@@ -1011,6 +1025,8 @@ export function altHtml(said) {
   const fill = (words, html) => escapeHtml(words).split(mark).join(html);
   let line;
   if (said.how === "whole") line = fill(say("An alternate build of {set}: every part from the set", { set: mark }), link(said.sets[0]));
+  // A version of the set itself (sethub): its own LDraw model, published.
+  else if (said.how === "version") line = fill(say("A version of LEGO® set {set}", { set: mark }), link(said.sets[0]));
   else if (said.how === "group") {
     const names = said.sets.map((_, at) => `${mark}${at}${mark}`);
     line = escapeHtml(say("An alternate build of {sets}", { sets: andSaid(names) }))

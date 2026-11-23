@@ -101,9 +101,15 @@ What a stranger sees, at 390 x 844 and at 1280 x 800:
 1. **One band, one line**, beside the hero (above). "Build, share and find LEGO® models", one
    sentence ("A free CAD in your browser. Every build here was made in it:
    open one, change it, build it."), the search over models, builders and
-   real sets, and **Start building**. Signed in, the band gives way to
-   **Share a build** (`/app?share`: the studio's share panel for their
-   last model) and the tabs.
+   real sets, and **Start building**. Signed in, the band is the same
+   search alone, with **Share a build** (`/app?share`: the studio's share
+   panel for their last model) and Share a file beside it, over the tabs
+   (homefix, 2026-11-23). The band's foot keeps the page's rhythm: 48 px
+   (`--s-7`) from its last line down to its edge and from the edge to
+   the feed's heading, as an inner page's head and body are (24, `--s-5`,
+   on a phone, whose first post still starts within 600 px); from 900 px
+   the mark is as tall as an 800 px window leaves it (280 to 400 px), so
+   the first row of builds still shows.
 2. **The feed**, at once under it (the first post begun in the first
    screen, under the hero): one stream of posts, a column on a phone, two from 700 px,
    three from 1100 and four from 1560. This week's pick first, then Top and

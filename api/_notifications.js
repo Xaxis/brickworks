@@ -74,10 +74,10 @@
 
 import { bearer, isMaster, verify } from "./_auth.js";
 import { db, dbAll, orUnknown } from "./_db.js";
-import { promptsById } from "./_prompts.js";
+import { promptNow, promptsById } from "./_prompts.js";
 import { withFaces } from "./_faces.js";
 import { scopeOf } from "./_settings.js";
-import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
+import { Unacceptable, inLanguage, siteWords, testsAsked } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
 import { blockCounts, blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
 import { pinnedAmong } from "./_comments.js";
@@ -124,8 +124,11 @@ export const MAILED_AS = { comment: "comments", photo: "photos", remix: "remixes
 export const DEFAULTS = Object.freeze({ here: KINDS, push: ["reply", "mention"], email: [], muted: [], done: {},
   done_all: null });
 
+/// A change sent back from a remix, and one of theirs taken (suggestedit),
+/// are a remix's: shown, muted and chosen with remixes, so somebody who chose
+/// their kinds still hears of them.
 const AS_KIND = { talk_mention: "mention", talk_reply: "talk", challenge_open: "challenge", challenge_closing: "challenge",
-  challenge_won: "result", announcement: "news" };
+  challenge_won: "result", announcement: "news", suggestion: "remix", suggestion_taken: "remix" };
 /// A row's kind as the kind a person chooses (notification_kind).
 export const kindOf = (raw) => AS_KIND[raw] || String(raw || "");
 
@@ -225,7 +228,7 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     // A reply to somebody else's comment on your model is a comment on it;
     // a pin (supabase/comment_pins.sql) is one on a part of it.
     return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
-      link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
+      link: `${origin}/m/${model}#comment-${Number(row.comment)}`, ...(row.pinned ? { pinned: true } : {}),
       line: row.parent ? stepped(say("{who} replied to a comment on step {step}"), say("{who} replied to a comment"))
         : row.pinned ? stepped(say("{who} commented on a part, step {step}"), say("{who} commented on a part"))
           : stepped(say("{who} commented on step {step}"), say("{who} commented")) };
@@ -266,6 +269,24 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     return { ...base, who: base.who || say("Somebody"), link: `${origin}/m/${model}`,
       line: say("{who} remixed it as {name}").replace("{name}", quote(quoted(row.name || say("a model"), 80))) };
   }
+  if (row.kind === "suggestion") {
+    // A remixer sent their change back (supabase/suggestions.sql): opened
+    // in the studio, as Compare, to take all of it or part.
+    const changes = suggestionLine(row.counts);
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.note, 240),
+      link: `${origin}/app?suggestion=${Number(row.suggestion) || 0}`, suggestion: Number(row.suggestion) || 0,
+      line: changes ? say("{who} sent you a change from their remix {name}: {changes}")
+        .replace("{name}", quote(quoted(row.name || say("a model"), 80))).replace("{changes}", changes)
+        : say("{who} sent you a change from their remix {name}").replace("{name}", quote(quoted(row.name || say("a model"), 80))) };
+  }
+  if (row.kind === "suggestion_taken") {
+    // The designer took it into a version of their model.
+    const of = ID.test(String(row.of || "")) ? row.of : model;
+    const n = Number(row.n) || 0;
+    return { ...base, who: base.who || say("The designer"), link: `${origin}/m/${of}${n ? `/v/${n}` : ""}`,
+      line: (row.whole === true ? say("{who} took your change into {name}") : say("{who} took part of your change into {name}"))
+        .replace("{name}", quote(quoted(row.name || say("their model"), 80))) };
+  }
   if (row.kind === "likes") {
     return { ...base, link: `${origin}/m/${model}`,
       line: `${counted(Number(row.likes) || 0, "new like", "new likes")} ${dayWords(row.day, now)}`.trim() };
@@ -300,6 +321,36 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
       : say("won {title} among the models built by hand, with {votes}", { title, votes }) };
   }
   return { ...base, link: `${origin}/m/${model}`, line: say("something happened") };
+}
+
+/// What a change sent back changes, kind by kind, as a notification says
+/// it: "2 added, 1 moved"; "" for none.
+export function suggestionLine(counts) {
+  const words = { added: (n) => say("{n} added", { n }), removed: (n) => say("{n} taken away", { n }),
+    moved: (n) => say("{n} moved", { n }), recoloured: (n) => say("{n} recoloured", { n }),
+    swapped: (n) => say("{n} swapped", { n }), restepped: (n) => say("{n} to another step", { n }) };
+  return Object.keys(words).filter((kind) => Number.isInteger(counts?.[kind]) && counts[kind] > 0)
+    .map((kind) => words[kind](counts[kind])).join(", ");
+}
+
+/// [listed] (notification_list's page) with what [viewer] hears of changes
+/// sent back (supabase/suggestions.sql suggestion_notices) among its rows,
+/// newest first, and the models those are about among its models; as it
+/// was before that file.
+async function withSuggestions(listed, viewer) {
+  const rows = await call("suggestion_notices", { viewer, since: null }, () => null).catch((trouble) => {
+    console.error(`notifications: changes sent back: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    return null;
+  });
+  if (!Array.isArray(rows) || rows.length === 0) return listed;
+  const all = [...(listed.rows || []), ...rows].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)).slice(0, 200);
+  const models = { ...(listed.models || {}) };
+  const wanted = [...new Set(rows.map((row) => String(row.on || "")).filter((id) => ID.test(id) && !models[id]))];
+  if (wanted.length) {
+    const cards = await db(`shared_models?id=in.(${wanted.join(",")})&select=id,name,has_image,has_thumb,updated_at`).catch(() => []);
+    for (const card of cards) models[card.id] = card;
+  }
+  return { ...listed, rows: all, models };
 }
 
 /// The rows of notification_list, grouped by the model they are about,
@@ -424,8 +475,9 @@ export async function notifications(request, response, { origin }) {
   await marked(asker);
   const [page, prefs] = await Promise.all([call("notification_list", { viewer: asker, mark }, () => ({ missing: true })),
     prefsOf(asker)]);
-  const listed = page && page.missing ? await listBefore(asker, mark) : page;
-  if (!listed) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false, chosen: false });
+  const before = page && page.missing ? await listBefore(asker, mark) : page;
+  if (!before) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false, chosen: false });
+  const listed = await withSuggestions(before, asker);
   // Nothing by anybody they blocked, nor about a model of theirs: a remix
   // of yours whose maker is unnamed, a reply on their model.
   const handles = await blockedHandles(asker);
@@ -539,6 +591,61 @@ export async function chooseNotification(request, response) {
     email: said.email });
 }
 
+/// What the studio's first screen tells of what came back on a person's
+/// models (src/ui/studio_start.gd): a comment (on a part or not), a photo
+/// of a build, a remix.
+const CAME = new Set(["comment", "photo", "remix"]);
+/// The most it lists.
+const CAME_MOST = 8;
+
+/// GET ?op=studio_start (session): what the studio's first screen shows
+/// beside the person's own models (studiostart, docs/PLAN.md row 1): what
+/// came back on their models, newest first, each {kind, model, name,
+/// picture, line, who, said, at, new, link, comment, pinned}, [model] the
+/// one of theirs it is on and [comment] a comment's number, which the
+/// studio lights the part of when [pinned]; and this week's quick build
+/// (api/_prompts.js promptNow) as {prompt}, or null. Only read: nothing is
+/// marked seen or read (the avatar's count stays until Notifications is
+/// opened), and no level is written down. Nothing by anybody they blocked,
+/// as Notifications says it.
+export async function studioStart(request, response, { origin }) {
+  response.setHeader("Cache-Control", "private, no-store");
+  const asker = await who(request);
+  if (!asker) throw new Unacceptable("Sign in to see what happened to your models: we email you a code, no password.", 401);
+  const tests = testsAsked(request.query || {});
+  // Asked side by side, as the studio waits on it: the list, the week's
+  // build and who they blocked at once, then which comments are on a part
+  // and which models of the blocked to leave out at once.
+  const [page, week, handles] = await Promise.all([
+    call("notification_list", { viewer: asker, mark: false }, () => ({ missing: true })),
+    orUnknown("prompts", promptNow(origin, tests)),
+    blockedHandles(asker),
+  ]);
+  const listed = page && page.missing ? await listBefore(asker, false) : page;
+  const prompt = week || null;
+  if (!listed) return response.status(200).json({ ready: false, came: [], prompt });
+  const rows = (listed.rows || []).filter((row) => CAME.has(row?.kind) && ID.test(String(row?.on || "")))
+    .slice(0, CAME_MOST * 3);
+  const [gone] = await Promise.all([
+    handles.size ? blockedModels(asker, rows.map((row) => row?.model)) : new Set(),
+    pinnedAmong(rows.filter((row) => PINNABLE.has(row?.kind))),
+  ]);
+  const kept = handles.size ? rowsWithout(rows, handles, gone) : rows;
+  const lang = String(request.query?.lang || "en");
+  const came = inLanguage(lang, siteWords(lang), () => {
+    const groups = noticeGroups({ ...listed, rows: kept.slice(0, CAME_MOST) }, origin).groups;
+    return groups.flatMap((group) => group.rows.map((said, index) => ({ said, group, row: index })))
+      .sort((a, b) => Date.parse(b.said.at) - Date.parse(a.said.at))
+      .map(({ said, group }) => {
+        const number = /#comment-(\d+)$/.exec(String(said.link || ""));
+        return { kind: said.kind, model: group.model, name: group.name, picture: group.picture, line: said.line,
+          who: said.who, said: said.said, at: said.at, new: said.new, link: said.link,
+          comment: number ? Number(number[1]) : 0, pinned: said.pinned === true };
+      });
+  });
+  return response.status(200).json(await withFaces({ ready: true, came, prompt }));
+}
+
 export async function notificationsRead(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const asker = await who(request);
@@ -591,7 +698,7 @@ export async function notificationsRead(request, response) {
 export async function newCounts(asker) {
   // Levels reached written down once, before either count reads them.
   const levels = marked(asker);
-  const [both, since, barred, kept] = await Promise.all([
+  const [both, since, barred, kept, suggested] = await Promise.all([
     levels.then(() => call("notification_counts", { viewer: asker }, () => ({ missing: true }))),
     call("feed_new_count", { viewer: asker }, () => null),
     // Counted again without what their blocks leave out of the lists
@@ -603,9 +710,13 @@ export async function newCounts(asker) {
       console.error(`notifications: kept count: ${String(problem?.message || problem).slice(0, 160)}`);
       return null;
     }),
+    // Changes sent back to them, or of theirs taken, since they last
+    // looked (supabase/suggestions.sql): blocks already left out.
+    call("suggestion_new_count", { viewer: asker }, () => 0).catch(() => 0),
   ]);
   if (both && !both.missing) {
-    const notices = Number.isInteger(kept) ? kept : barred ? barred.notifications : Number(both.notifications) || 0;
+    const notices = (Number.isInteger(kept) ? kept : barred ? barred.notifications : Number(both.notifications) || 0)
+      + (Number(suggested) || 0);
     const feed = barred ? barred.feed : since !== null && since !== undefined ? Number(since) || 0 : Number(both.feed) || 0;
     return { count: Math.min(notices + feed, 99), notifications: notices, feed, ready: true };
   }
