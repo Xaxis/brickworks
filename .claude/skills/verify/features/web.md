@@ -3500,8 +3500,20 @@ plan with Claude as the client.
   lit (`brickworks3d.pins.asked`), **Answer on this part** in the 3D's menu
   (`[data-on-part]` over the reply box, `op=talk_reply {part}`), each answer's
   `.talk-on-part` line; the studio asks `op=talk_asks&model=X` every 20 s
-  while the model has asks and lights each new answer's part.
-  `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`);
+  while the model has asks and lights each new answer's part. Its 3D's
+  first view (`start3d margin: 0.08`, `view.js fitting` with the tools'
+  band as `foot`) holds the whole step about 8% clear of each edge and
+  above the tools: the flow projects all 32 corners (within 0.85 of the
+  frame's half, at the stage's own aspect) and hits each with
+  `elementFromPoint` (the 3D itself, no button or hint over it); the frame
+  is square under 600 px and 16:10 from 900, as a model's page; the ask
+  and the posts share one column on the header's edges. Its poster and the
+  thread's link preview are the model's own picture (`askPicture`, the
+  asked version's), a model with none a plain frame (and its embed's,
+  `embedCard`): never `/share.png`, which had stood in as an advert; the
+  flow publishes `tests/fixtures/talk/ask_windmill.png` and compares bytes.
+  `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`,
+  `--keep` leaves its thread for a look on 127.0.0.1);
   `src/dev/askhelp_probe.gd` at 1280x800 and 390x844 (`--pictures=DIR`).
 - `comments on parts in the studio` (`src/ui/part_pins_panel.gd`,
   `src/ui/part_pins.gd`, `main._look_for_pins`): opening a model you
@@ -4198,8 +4210,14 @@ plan with Claude as the client.
   copies in `?op=set_based`'s `versions` (`api/_bases.js setVersions`, the
   answer kept 20 s by the CDN and 20 s more stale, so a version is on the
   page within a minute); `web/set-page.js versionsOf` draws
-  `section#versions` "Versions of this set" before `#built-from`, each card's
-  `small.version-said[data-changed]` and a picture of its model (LDraw's as
+  `section#versions` "Versions of this set" before `#built-from`, each card
+  `[data-changed]`, credited by `web/card.js cardHtml`: LDraw's model as
+  it is "Modelled by" its modeller (`[data-modelled-by]`) and
+  `small.version-said` "LDraw's model, as it is"; a changed one by who
+  published it (`a.who` to `/u/<handle>`, their avatar), never "Modelled
+  by", with `small[data-changed-from]` "Changed from LDraw's model by
+  <modeller>" under it, as on any card and on its own page
+  (`api/share.js modelledLine`, under `designerRow`); and a picture of its model (LDraw's as
   it is by `/library/<id>.webp`; a changed one by its own card, else its
   `.cutout.png`, else LDraw's; never "No picture"), or none said with Make your own
   version (`[data-version-empty]`), `<html data-versions>` the count or
@@ -4214,7 +4232,12 @@ plan with Claude as the client.
   relay, 11-23). `--open-time[=N]` against a deployment times Make your own
   version's address beside the plain studio's in two browsers at once, and
   logs where the version's time went (the app's state as it changed, its
-  fetches, the page's frames over 250 ms apart).
+  fetches, the page's frames over 250 ms apart). `--trace` adds every
+  WebGL call and each engine frame over 200 ms, to tell the app's own work
+  from shader compiles and frames the browser never gave. A local export
+  works too: relay --static with each browser signed in as its own
+  throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23;
+  the 2 s bar is not met there).
 - **Search that finds what a builder means** (search, 2026-10-30):
   `api/_search.js` reads a query word by word (misspelt by edit distance,
   run together or apart, plurals, accents and apostrophes, set numbers and
@@ -6970,7 +6993,11 @@ locally (numbers in the unit's report).
 
 The design system, with no network and no account (pages from the
 checkout, `/m/<id>`, `/u/<handle>`, `/c/<id>` and the embed made by its
-`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`):
+`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`).
+Each model's picture (`/m/<id>.png`, `.webp`, a version's) and a set's
+(`/library/set/<num>.webp`) is a house card from `tests/fixtures/stand_in/`
+picked for that id (`PICTURE_OF`, else one by its id), so cards and model
+pages read true; `/share.png` is the og card's alone:
 
 ```sh
 heavy node tools/web/design_flow.mjs --out=shots/design              # this checkout

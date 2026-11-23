@@ -419,9 +419,12 @@ try {
   if (levelled) {
     // His photo of his build of the tower is his first level.
     const his = await listDrawn(bobPage);
-    check(`Bob, with no models: only his achievements, "${his.map((one) => one.rows.map((row) => row.text).join("; ")).join(" | ")}"`,
+    // His achievements are the aside's card (listkit, 2026-11-23), so the
+    // list itself is empty and says so.
+    check(`Bob, with no models: only his achievements, in the aside's card, "${his.map((one) => one.rows.map((row) => row.text).join("; ")).join(" | ")}", the list's empty state beside it`,
       his.length === 1 && his[0].achievements && his[0].rows.length === 1
-      && /^You reached Builder · first build, level 1 of 5/.test(his[0].rows[0].text) && !(await bobPage.isVisible("#empty")));
+      && /^You reached Builder · first build, level 1 of 5/.test(his[0].rows[0].text)
+      && await bobPage.isVisible("#achieved .notice") && await bobPage.isVisible("#empty"));
   } else {
     check(`Bob, with no models: the empty state, its ways in (${await bobPage.isVisible("#empty")})`,
       await bobPage.isVisible("#empty") && (await bobPage.textContent("#empty")).includes("Nothing yet"));

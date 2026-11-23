@@ -34,10 +34,11 @@
 }
 :is(.model-page, .embed, .showcase, .turns, .talk-ask) .view3d[hidden] { display: none; }
 /* On a phone a model's page has a square picture (directory.css), and the
-   view is its shape too. */
-@media (width < 600px) { .model-page .view3d { aspect-ratio: 1 / 1; } }
+   view is its shape too; a question's step in Talk the same (talk.css), so
+   the tools at its foot have room under the model. */
+@media (width < 600px) { :is(.model-page, .talk-ask) .view3d { aspect-ratio: 1 / 1; } }
 /* From 900 px 16:10, the picture's own shape there (directory.css, pagekit). */
-@media (width >= 900px) { .model-page .view3d { aspect-ratio: 16 / 10; } }
+@media (width >= 900px) { :is(.model-page, .talk-ask) .view3d { aspect-ratio: 16 / 10; } }
 :is(.model-page, .embed, .showcase, .turns, .talk-ask) .view3d.shown {
 	border-color: var(--line); background: var(--picture-ground); pointer-events: auto;
 	transition: background-color 160ms var(--ease);

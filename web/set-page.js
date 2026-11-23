@@ -147,12 +147,16 @@ function versionsOf(article, versions, before) {
           if (!picture.src.endsWith(ldraw)) picture.src = ldraw;
         });
       }
-      const line = document.createElement("small");
-      line.className = "alt-said version-said";
-      line.dataset.changed = String(model.changed === true);
-      line.textContent = model.changed === true ? say("Their own version: changed from LDraw's model")
-        : say("LDraw's model, as it is");
-      card.querySelector(".words")?.append(line);
+      // A changed one is its sharer's, and its card says so (cardHtml:
+      // who published it, and whose model it was changed from); LDraw's as
+      // it is says that it is.
+      card.dataset.changed = String(model.changed === true);
+      if (model.changed !== true) {
+        const line = document.createElement("small");
+        line.className = "alt-said version-said";
+        line.textContent = say("LDraw's model, as it is");
+        card.querySelector(".words")?.append(line);
+      }
       return card;
     }));
     section.append(row);

@@ -1154,12 +1154,14 @@ function testedMark(mark, steps = null) {
 /// alone, with an avatar made from it; a model shared with no credit, none.
 function designerRow(model) {
   // Somebody else modelled it (a set from LDraw's library the house shares):
-  // they lead, their initial for an avatar, the line that credits them
-  // beside it, and who shares it under, with Follow (sitebold, 2026-11-23:
-  // forty such pages were headed "Brickworks").
+  // they lead, with an avatar made from their name, the line that credits
+  // them beside it, and who shares it under, with Follow (sitebold,
+  // 2026-11-23: forty such pages were headed "Brickworks"). A version its
+  // sharer changed is theirs: they lead, and the line under them says whose
+  // LDraw model it was changed from (sethub).
   const modeller = modelledByOf(model.modelled_by);
   const sharer = model.by ? model.by.name : model.author || "";
-  if (modeller && sharer && modeller.name !== sharer) {
+  if (modeller && !modeller.changed && sharer && modeller.name !== sharer) {
     const via = model.by ? `<a class="who" href="${langAt()}/u/${escapeHtml(model.by.handle)}">${avatarHtml(model.by, { size: "small" })}`
       + `<span>${escapeHtml(model.by.name)}</span></a>` : `<span class="who">${escapeHtml(sharer)}</span>`;
     // Follow beside the sharer it follows, not beside the modeller's name.
@@ -1222,9 +1224,15 @@ export function altLine(page, kept, at = "") {
 
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
-  return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
-    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}`
-    + `${modeller.changed ? escapeHtml(say(", changed by {name}", { name: sharerOf(model) })) : ""}</p>` : "";
+  if (!modeller) return "";
+  // Changed by whoever shares it (designerRow heads the page with them):
+  // theirs, changed from LDraw's model, its modeller linking LDraw's page.
+  if (modeller.changed) {
+    return `<p class="from modelled-by" data-changed-from>${sayHtml("Changed from LDraw's model by {name}",
+      { name: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(modeller.name)}</a>` })}</p>`;
+  }
+  return `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
+    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}</p>`;
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
@@ -2048,7 +2056,9 @@ async function oembed(request, response, origin) {
 /// for itself; [row] is given it without its maker (embedAnswer).
 function embedCard(origin, id, row, lang = "en", words = null, clip = null, blind = false) {
   const link = links(origin, id);
-  const poster = row.has_image ? `/m/${id}.png` : "/share.png";
+  // Its own picture, or the picture's ground with nothing on it: never the
+  // site's share card, which read as an advert where the model should be.
+  const poster = row.has_image ? `/m/${id}.png` : "";
   const at = lang === "en" ? "" : `/${lang}`;
   const page = at ? `${origin}${at}/m/${id}` : link.url;
   const viewer = at ? `${link.viewer}&lang=${lang}` : link.viewer;
@@ -2090,8 +2100,8 @@ ${scriptWords}${siteChrome().head}
 <div class="media">
 <a class="picture" href="${escapeHtml(viewer)}" rel="noopener" aria-label="${escapeHtml(say("View {name} in 3D", { name: row.name }))}"
   data-scene="/m/${id}/scene.json">${clip
-    ? `<video src="${escapeHtml(clip.path)}" poster="${escapeHtml(poster)}" muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
-    : `<img src="${escapeHtml(poster)}" alt="">`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
+    ? `<video src="${escapeHtml(clip.path)}"${poster ? ` poster="${escapeHtml(poster)}"` : ""} muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
+    : poster ? `<img src="${escapeHtml(poster)}" alt="">` : ""}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
 ${clip ? iconButtonHtml({ icon: "pause", name: say("Pause"), small: true, attrs: 'data-clip-toggle hidden' }) : ""}
 </div>
 ${blind ? "" : `<div class="embed-bar">

@@ -1397,8 +1397,9 @@ async function theLibrary() {
     && r.json?.licence === "cc-by-2.0",
     `changed by its sharer: still credited, said to be changed, still CC BY 2.0 (${JSON.stringify(r.json?.modelled_by)}, ${r.json?.licence})`);
   r = await call(`/m/${r.json?.id}`);
-  check(r.status === 200 && /Modelled by <b>Marc Giraudet<\/b> for .*, changed by /.test(r.text),
-    `and its page says it was changed (${r.status})`);
+  check(r.status === 200 && /data-changed-from>Changed from LDraw's model by <a href="[^"]+">Marc Giraudet<\/a>/.test(r.text)
+    && !/class="from modelled-by">Modelled by/.test(r.text),
+    `and its page says it was changed from Marc Giraudet's, never "Modelled by" him (${r.status})`);
   // A credit line of its own over a model of its own: nobody, and the licence chosen.
   r = await share("Probe Forged Credit", `0 FILE 346-2 - Main.ldr\n${credit}\n${SMALL}`, "cc-by-4.0");
   check(r.status === 201 && r.json?.modelled_by === null && r.json?.licence === "cc-by-4.0",

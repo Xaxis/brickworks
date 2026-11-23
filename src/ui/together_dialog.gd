@@ -430,6 +430,7 @@ func _hold_heights() -> void:
 	_line_h = line
 	_row_h = row
 	_gap_h = gap
+	_even_rows()
 	_cut_lists()
 	# Deferred, it ran before the layout made room for the line just said,
 	# and the chat stopped a line short of it (together_chat_probe).
@@ -464,6 +465,17 @@ func _cut_lists() -> void:
 	if _chat_scroll.custom_minimum_size.y != chat:
 		_chat_scroll.custom_minimum_size.y = chat
 		LaidOut.to_end(_chat_scroll)
+
+
+## Every person's row as tall as one with buttons, yours too, so the list's
+## height is whole rows: cut to one, it showed your row and half of the
+## next, its buttons cut through the middle (buildfit, 1024 x 600).
+func _even_rows() -> void:
+	if _row_h <= 0.0:
+		return
+	for row: Node in _rows.get_children():
+		if row is Control and (row as Control).custom_minimum_size.y != _row_h:
+			(row as Control).custom_minimum_size.y = _row_h
 
 
 func _people_tall(rows: int) -> float:
@@ -531,6 +543,7 @@ func fill() -> void:
 			who += " (its owner)"
 		words.text = "%s  ·  %s" % [who, "here" if bool(person.get("here", false)) else "away"]
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(words)
 		if not bool(person.get("me", false)):
 			var them: String = str(person.get("who", ""))
@@ -559,6 +572,7 @@ func fill() -> void:
 			row.add_child(take_out)
 			_removes.append(take_out)
 		_rows.add_child(row)
+	_even_rows()
 	_fill_chat()
 	_hold_heights()
 
