@@ -1366,7 +1366,8 @@ ${paged}${scriptWords}${siteChrome(lang).head}
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
 <script src="/follow.js" type="module"></script>
-<script src="/keep.js" type="module"></script>${paged ? `
+<script src="/keep.js" type="module"></script>
+<script src="/live-now.js" type="module"></script>${paged ? `
 <script src="/pager.js" type="module"></script>` : ""}${mine ? `
 <script src="/designs.js" type="module"></script>` : ""}${mine || share ? `
 <script src="/person.js" type="module"></script>` : ""}${photos ? `
@@ -1735,7 +1736,8 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
   </header>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="${asText(say("Elsewhere"))}">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>`;
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>
+  <div class="live-now" data-live-now data-live-handle="${escapeHtml(person.handle)}" hidden></div>`;
 
   // Pinned: up to three of their models, in the order they chose.
   const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">${asText(say("Pinned"))}</h2>

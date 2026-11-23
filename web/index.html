@@ -188,6 +188,7 @@
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/landing.js" type="module"></script>
+<script src="/live-now.js" type="module"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -275,6 +276,9 @@
 				<a class="cta" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
 				<a class="cta ghost" href="/share-model">Share a file from another program</a>
 			</div>
+			<!-- Building now (web/live-now.js, buildlive): builds open to
+			     watchers this moment, first; nothing while there are none. -->
+			<div class="live-now" data-live-now hidden></div>
 			<div class="feed-head">
 				<h2 id="feed-h">What builders are making</h2>
 				<div class="tabs" role="tablist" aria-label="The feed" id="feed-tabs">

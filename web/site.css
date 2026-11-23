@@ -2087,3 +2087,26 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 /* The 3D view in a post's picture (web/view3d.css .showcase .view3d): the
    picture's 4:3, not a model page's 1200 x 630. */
 .post-pic.showcase > .view3d { inset: 0; height: 100%; aspect-ratio: auto; border-radius: 0; }
+/* Building now (web/live-now.js, buildlive): the builds open to watchers,
+   first in the home feed and on their designer's profile. A row of cards,
+   each a link to its watch page; scrolled sideways when there are more
+   than fit. */
+.live-now { margin: 0 0 var(--s-5, 24px); }
+.live-now[hidden] { display: none; }
+.live-now-h { display: flex; align-items: center; gap: 10px; margin: 0 0 var(--s-3, 12px); font-size: 18px; }
+.live-now-h .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(208, 51, 47, 0.18); }
+.live-now-row { display: flex; gap: var(--s-3, 12px); overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.live-card { flex: 0 0 min(320px, 82vw); display: flex; gap: 12px; align-items: center; padding: 10px; min-height: 44px;
+	border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--panel); color: var(--ink);
+	text-decoration: none; scroll-snap-align: start; box-shadow: var(--highlight), var(--shadow-1); }
+.live-card:hover { background: var(--panel-hi); }
+.live-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.live-pic { position: relative; flex: none; width: 96px; aspect-ratio: 4 / 3; border-radius: var(--r-2); overflow: hidden;
+	background: var(--picture-ground); }
+.live-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.live-tag { position: absolute; left: 6px; top: 6px; padding: 1px 6px; border-radius: var(--r-pill); background: var(--red); color: #fff;
+	font-size: 11px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; }
+.live-words { display: grid; gap: 2px; min-width: 0; }
+.live-words b, .live-words span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-words span { color: var(--ink-soft); font-size: var(--t-small); }
+.live-words .live-count { color: var(--ink-faint); }
