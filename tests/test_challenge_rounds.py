@@ -52,10 +52,14 @@ def test_the_file_only_adds() -> None:
 
 
 def test_it_replaces_nothing() -> None:
-    others = {name for path in (ROOT / "supabase").glob("*.sql") if path.name != "challenge_rounds.sql"
+    # challenge_prompts.sql replaces some of these again, each guarded and each
+    # the live body with one edit (tests/test_prompts.py).
+    others = {name for path in (ROOT / "supabase").glob("*.sql") if path.name not in ("challenge_rounds.sql", "challenge_prompts.sql")
               for name in defined(path.read_text())}
     assert not set(defined(SQL)) & others, set(defined(SQL)) & others
-    assert "challenge_rounds.sql" not in (ROOT / "supabase/later.tsv").read_text()
+    rows = [line.split("\t") for line in (ROOT / "supabase/later.tsv").read_text().splitlines() if line.strip() and not line.startswith("#")]
+    assert not [row for row in rows if row[2] == "challenge_rounds.sql"]
+    assert {row[2] for row in rows if row[0] == "challenge_rounds.sql"} <= {"challenge_prompts.sql"}
 
 
 def test_the_functions_and_the_table_are_the_servers_alone() -> None:

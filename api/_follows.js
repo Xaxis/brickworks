@@ -121,6 +121,23 @@ export function feedSaid(row, origin = "") {
     url: `${origin}/u/${row.by.handle}` } : null;
   const base = { kind: row.kind, at: row.at, who: by ? by.name : say("A builder"), by, name, said: "" };
   const line = (said, values = {}) => said.replace(/\{(n|step)\}/g, (all, key) => (key in values ? String(values[key]) : all));
+  // Work in progress (supabase/wip.sql follow_rows: wip, finished): its
+  // first version shared while still building, each one after, and the
+  // version that finished it, whether published so or marked on its page.
+  if (row.kind === "model" && row.wip === true) {
+    return { ...base, did: "shared work in progress:", wip: true, link: `${origin}/m/${row.model}`,
+      line: say("{who} shared work in progress: {name}") };
+  }
+  if (row.kind === "version" && row.finished === true) {
+    return { ...base, did: `finished, as version ${Number(row.version)}:`, finished: true,
+      said: row.later ? "" : quoted(row.note, 280), link: `${origin}/m/${row.model}/v/${Number(row.version)}`,
+      line: line(say("{who} finished {name}: version {n} is the finished one"), { n: Number(row.version) }) };
+  }
+  if (row.kind === "version" && row.wip === true) {
+    return { ...base, did: `shared progress, version ${Number(row.version)}, on`, wip: true, said: quoted(row.note, 280),
+      link: `${origin}/m/${row.model}/v/${Number(row.version)}`,
+      line: line(say("{who} shared progress on {name}: version {n}"), { n: Number(row.version) }) };
+  }
   if (row.kind === "model") {
     return { ...base, did: "shared a new model", link: `${origin}/m/${row.model}`, line: say("{who} shared a new model {name}") };
   }

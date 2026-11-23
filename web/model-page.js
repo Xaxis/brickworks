@@ -20,14 +20,25 @@
 // words; an @handle the server told (docs/SOCIAL.md section 7, item 6) is
 // a link to that profile, and typing @ in a box offers the people on the
 // page (pickMentions).
+//
+// And comments on a part (partpins, 2026-11-23, supabase/comment_pins.sql):
+// where the comments say pins can be written, a part pressed in the 3D view
+// (its menu's Comment on this part) puts "On the 2 × 4 brick" over the box,
+// with Cancel, and the comment sent is a pin on it. Each pin says the part
+// and step it is on as a button that opens the 3D view and turns it there,
+// numbered oldest first, as its dot and the studio's list number it; on
+// this version where the 3D view placed it (web/card.js pinPlace), "moved
+// since" where its part moved, and "on version N", pressable no more, where
+// it is on no part of this one. A pin its designer resolved is folded away
+// under Resolved; its designer may resolve one here too.
 import { askToSignIn, call, email, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
 import { avatarHtml } from "/kit.js";
 import { makeComposer, wireComposer } from "/composer.js";
-import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, setPhoto, sharpPhotos, themeSaid,
-  told } from "/card.js";
-import { wireShare } from "/share-sheet.js";
+import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, pinPart, pinSaid, rulesSaid, say, setPhoto,
+  sharpPhotos, themeSaid, told } from "/card.js";
+import { copy, wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 import { guardPhoneOpens } from "/phone-warn.js";
 
@@ -59,12 +70,53 @@ else if (marks && /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/.test(id || "")) {
 // This month's challenge (supabase/challenges.sql), for the model's own
 // designer: Enter this month's challenge, or that it is in.
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
+// Post it elsewhere (unit postkit, web/post-kit.js), for the model's own
+// designer, known from the answer basesOwn has: Share's sheet offers a kit
+// for each place it is posted to, made in this browser. Nobody else loads
+// any of it.
+let kitsShown = false;
+function postKitsOwn() {
+  const sheet = document.getElementById("share-sheet");
+  const facts = document.getElementById("post-facts");
+  if (kitsShown || !sheet || !facts || !sheet.querySelector("#post-kits")) return;
+  kitsShown = true;
+  let read = null;
+  try {
+    read = JSON.parse(facts.textContent);
+  } catch {
+    return;
+  }
+  import("/post-kit.js").then((kit) => {
+    kit.startPostKits(sheet, { facts: read, parts: pageParts ? () => pageParts() : null });
+    document.documentElement.dataset.postKits = "shown";
+  }, () => { kitsShown = false; });
+}
+
 // What it is based on (api/_bases.js), for the model's own designer: Say
 // what it is based on, or Change it, in a dialog of at most three; the
 // page's lines drawn again from what was kept. <html data-bases> says how
 // many its designer's page shows, "not-open" before model_bases.sql
 // (tools/web/based_on_flow.mjs reads it).
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
+// Signed in on the page (signinux): drawn for them, where they are.
+else if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) addEventListener("brickworks:signed-in-done", () => basesOwn(), { once: true });
+// Comments on a part (partpins): the comments and the model in 3D, each
+// told of the other through this. The comments say which pins there are,
+// numbered (pins), and whether a part may be commented on (open); the 3D
+// view says where each is on this version (placed), which part was asked
+// for (wanted) and which dot was pressed (pressed). [view] is start3d's.
+const pinBridge = { pins: [], open: false, view: null, wanted: null, placed: null, pressed: null, name: null };
+const pinHooks = {
+  pins: () => pinBridge.pins,
+  mayPin: () => pinBridge.open,
+  pinWanted: (part) => pinBridge.wanted?.(part),
+  placed: (list) => pinBridge.placed?.(list),
+  pinPressed: (id) => pinBridge.pressed?.(id) || "",
+  partName: (part, colour) => pinBridge.name?.(part, colour) || "",
+};
+// The Parts list's lots, for a pin's part's name: asked for by the list
+// (startParts), whose one request this shares.
+let partLots = null;
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 // Its photos of real builds, the whole one where a copy would be drawn
@@ -84,9 +136,25 @@ if (frame) startPicture(frame);
 // on the picture or the first drag across it (web/start3d.js, as the embed
 // has it). Drawn by /viewer3d.js (tools/viewer/inline.js), asked for only
 // then.
-const close3d = frame && frame.dataset.scene ? start3d(frame).close : null;
+const in3d = frame && frame.dataset.scene ? start3d(frame, pinHooks) : null;
+const close3d = in3d ? in3d.close : null;
+pinBridge.view = in3d;
+// A remix's "See what changed in 3D", under its credit (api/_remix.js): the
+// 3D view, opened with What changed on, and the page brought to it.
+const seeChanges = document.querySelector(".model-page .remix-changes .what-changed");
+if (seeChanges && in3d && frame.dataset.changes) {
+  seeChanges.addEventListener("click", (event) => {
+    frame.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    in3d.open(event.pointerType === "touch" ? "touch" : event.detail === 0 ? "key" : "mouse", true);
+  });
+} else if (seeChanges) {
+  seeChanges.hidden = true;
+}
 // A model too big for a phone said so before the studio opens it (phonetruth).
 guardPhoneOpens();
+// Open in Brickworks' second choice, With your Claude (claudelink).
+const claudePanel = document.getElementById("claude-panel");
+if (claudePanel && /^[A-Za-z0-9]{10}$/.test(claudePanel.dataset.id || "")) startClaude(claudePanel);
 // In your room (APP_UX5 #13, arview): where this browser can place a model
 // in a room through the camera (AR Quick Look on an iPhone or iPad, WebXR's
 // immersive AR on an Android phone or a headset), a button on the picture's
@@ -106,6 +174,9 @@ if (tabs) startTabs(tabs);
 // Its parts (api/share.js partsSection): the list asked for as it nears the
 // screen, so a visit that never gets there asks for nothing.
 const partsPart = document.getElementById("parts");
+// The page's parts list once it is asked for (startParts): a promise of
+// parts.json, or of null.
+let pageParts = null;
 if (partsPart && partsPart.dataset.parts) startParts(partsPart);
 // Its clip (unit turntable): the model turning once round, which its link's
 // preview plays in Discord, Slack and X (api/share.js, og:video). Recorded
@@ -119,6 +190,140 @@ let clipAsked = false;
 const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && frame?.dataset.scene === `/m/${id}/scene.json`;
 if (newestScene && signedIn()) clipOwn();
 else if (newestScene) addEventListener("brickworks:signed-in-done", () => clipOwn(), { once: true });
+
+/// The longest ask a message carries, in characters: a sentence or three.
+/// Longer is refused with words, never cut (self_attack, Text).
+const ASK_MOST = 500;
+/// Where the message waits while the person connects Claude: read by the
+/// connect pages (web/docs.js), and given back to this model's box.
+const ASK_KEPT = "brickworks.claude.ask";
+
+/// What the person typed, as one line: Unicode spaces as spaces, the
+/// zero-width ones gone, runs of space and line breaks one space.
+function askOf(text) {
+  return String(text || "").replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .replace(/[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+/g, " ").trim();
+}
+
+/// The message for the person's own Claude (claudelink): the model by its
+/// name, designer and link, the one call that opens a copy of it in their
+/// models, what to change or to ask them, and that the copy is credited to
+/// it once they publish it. In the page's language; the call as it is
+/// named.
+function claudeMessage(panel, ask) {
+  const { id: link, name, by, url } = panel.dataset;
+  const model = by ? say("“{name}” by {by}", { name, by }) : say("“{name}”", { name });
+  return [say("Please change a LEGO® model on Brickworks for me: {model}, {url}", { model, url }),
+    `${say("With the Brickworks connector, call open_model with link={link}: it opens a copy in my models, and the original stays as it is.", { link })} `
+      + (ask ? say("Then change the copy: {ask}", { ask }) : say("Then ask me what to change.")),
+    say("When it is done, show me how it looks. I will publish the copy, and its page will credit the original.")].join("\n\n");
+}
+
+/// With your Claude: the second half of Open in Brickworks shown and made
+/// to open [panel], whose Copy for Claude copies the message (and, where
+/// the copy is refused, shows it to select), whose Share to Claude hands it
+/// to a phone's share sheet, and whose Connect Claude keeps it for the
+/// connect page. Escape closes the panel, back on the button that opened it.
+/// <html data-claude> says what happened last: open, copied, shared, kept,
+/// refused (too long), failed.
+function startClaude(panel) {
+  const opener = document.querySelector("[data-open-claude]");
+  const form = panel.querySelector(".claude-ask");
+  const field = panel.querySelector("#claude-ask");
+  const said = panel.querySelector(".claude-said");
+  const shown = panel.querySelector(".claude-message");
+  const share = panel.querySelector("[data-claude-share]");
+  if (!opener || !form || !field) return;
+  const mark = (what) => { document.documentElement.dataset.claude = what; };
+  // Its words back when the person comes back from connecting Claude.
+  try {
+    const kept = JSON.parse(localStorage.getItem(ASK_KEPT) || "null");
+    if (kept && kept.id === panel.dataset.id && typeof kept.ask === "string") field.value = kept.ask;
+  } catch {
+    // Nothing kept, or storage refused: an empty box.
+  }
+  const show = (open) => {
+    panel.hidden = !open;
+    opener.setAttribute("aria-expanded", String(open));
+    if (open) {
+      mark("open");
+      field.focus();
+    }
+  };
+  opener.hidden = false;
+  opener.addEventListener("click", () => show(panel.hidden));
+  panel.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || panel.hidden) return;
+    event.preventDefault();
+    show(false);
+    opener.focus();
+  });
+  // The message, or null with the reason said: an ask over the most.
+  const message = () => {
+    const ask = askOf(field.value);
+    if (ask.length > ASK_MOST) {
+      said.textContent = say("That is {n} characters: a message for Claude takes {most} at most. Say it shorter, or say the rest to Claude in the chat.",
+        { n: number(ask.length), most: number(ASK_MOST) });
+      mark("refused");
+      field.focus();
+      return null;
+    }
+    return claudeMessage(panel, ask);
+  };
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = message();
+    if (text === null) return;
+    shown.value = text;
+    if (await copy(text)) {
+      shown.hidden = true;
+      said.textContent = say("Copied. Paste it into a chat with your Claude, with the Brickworks connector on.");
+      mark("copied");
+      return;
+    }
+    shown.hidden = false;
+    shown.focus();
+    shown.select();
+    said.textContent = say("It did not copy just now: select it and copy it yourself");
+    mark("failed");
+  });
+  // A phone's own share sheet, where the browser has one: Claude's app is
+  // one of the places it offers.
+  share.hidden = !(typeof navigator.share === "function" && matchMedia("(pointer: coarse)").matches
+    && (!navigator.canShare || navigator.canShare({ text: "Brickworks" })));
+  share.addEventListener("click", async () => {
+    const text = message();
+    if (text === null) return;
+    try {
+      await navigator.share({ text });
+      said.textContent = "";
+      mark("shared");
+    } catch (trouble) {
+      // Closed without sharing: nothing to say.
+      if (trouble && trouble.name !== "AbortError") {
+        said.textContent = say("That did not open just now: use Copy for Claude instead");
+        mark("failed");
+      }
+    }
+  });
+  // Connect Claude first: the message waits on the connect page, and is on
+  // the clipboard too where the browser allows.
+  panel.querySelector("[data-claude-connect]")?.addEventListener("click", (event) => {
+    const text = message();
+    if (text === null) {
+      event.preventDefault();
+      return;
+    }
+    try {
+      localStorage.setItem(ASK_KEPT, JSON.stringify({ id: panel.dataset.id, name: panel.dataset.name, url: location.href,
+        ask: askOf(field.value), text, at: Date.now() }));
+      mark("kept");
+    } catch {
+      // Storage refused: the clipboard still has it.
+    }
+    copy(text);
+  });
+}
 
 /// What this browser remembers of this model's clip for the account
 /// signed in here (localStorage): {mine: false} where it is somebody
@@ -452,10 +657,26 @@ const SVG = "http://www.w3.org/2000/svg";
 /// names in the visitor's, as the app says them (?lang=de: api/share.js
 /// partsAnswer), on a page with no copy in it (a model's) too, and LDraw's
 /// where the app has no words for one, each marked with its language.
+///
+/// A model's list, to somebody signed in (ownedparts): how much of it they
+/// have, counted as the gallery's cards count it, and All · Missing · Have
+/// all, the list less what they own, those they have every one of, each lot
+/// with its count; with Missing chosen, the shops' lists are of only those
+/// (api/share.js op=parts_missing, startMine).
 function startParts(section) {
   const list = section.querySelector(".lot-list");
+  const reserved = list?.style.minHeight || "";
   const all = section.querySelector("[data-all]");
   const choices = [...section.querySelectorAll("[data-group]")];
+  // The model and version this list is of; a set's page's is not one (it
+  // says what is owned of it itself, web/set-page.js).
+  const ofModel = /^\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/parts\.json$/.exec(section.dataset.parts || "");
+  // What they are missing (startMine's answer) and which lots are shown:
+  // "all", "missing" or "whole".
+  let mine = null;
+  let show = "all";
+  // Its row, kept from the start for somebody signed in (holdMine).
+  let held = null;
   // What draws the lots' pictures (web/part-pictures.js): undefined until
   // it is here, false where there is none.
   let pictures;
@@ -514,8 +735,25 @@ function startParts(section) {
     qty.className = "qty";
     qty.textContent = `× ${number(lot.count)}`;
     qty.setAttribute("aria-label", say("{n} of them", { n: number(lot.count) }));
+    // Short of it: how many more, and how many of it they have.
+    if (show === "missing" && Number.isInteger(lot.need)) {
+      qty.setAttribute("aria-label", say("{n} more needed", { n: number(lot.count) }));
+      if (lot.have > 0) {
+        const had = document.createElement("span");
+        had.className = "had";
+        had.textContent = `· ${say("you have {have} of {need}", { have: number(lot.have), need: number(lot.need) })}`;
+        meta.append(had);
+      }
+    }
     item.append(pic, what, qty);
     return item;
+  };
+  // The lots shown: every one, those they are short of (with how many
+  // short), or those they have every one of.
+  const shownLots = () => {
+    if (!mine || show === "all") return lots;
+    if (show === "missing") return mine.missing;
+    return lots.filter((lot) => !mine.short.has(`${lot.part}/${lot.colour}`));
   };
   const heading = (words, n, hex, code) => {
     const item = document.createElement("li");
@@ -534,7 +772,7 @@ function startParts(section) {
     // Each colour (or kind) with the most of its parts first, its lots
     // under it.
     const groups = new Map();
-    for (const lot of lots) {
+    for (const lot of shownLots()) {
       const key = group === "colour" ? `c${lot.colour}` : `k${lot.category || ""}`;
       const said = group === "colour" ? lot.colour_said : lot.category_said;
       const words = said || (group === "colour" ? lot.colour_name : lot.category);
@@ -554,6 +792,10 @@ function startParts(section) {
     rows.forEach((item, at) => { item.hidden = !open && at >= LOTS_SHOWN; });
     list.replaceChildren(...rows);
     list.removeAttribute("aria-busy");
+    // The room kept for the whole list before it came (api/share.js
+    // partsSection), kept for it alone: Missing or Have all, chosen, take
+    // what they hold, so no empty space under a short one.
+    list.style.minHeight = show === "all" ? reserved : "";
     if (all) all.hidden = open || rows.length <= LOTS_SHOWN;
   };
   const load = () => {
@@ -572,7 +814,7 @@ function startParts(section) {
           item.textContent = say("The list did not come. Reload the page to ask for it again.");
           list.replaceChildren(item);
           asked = null;
-          return;
+          return null;
         }
         lots = body.lots;
         draw();
@@ -590,9 +832,15 @@ function startParts(section) {
             else pic.dataset.picture = "none";
           }
         });
+        return body;
       });
+    // What they are missing, asked beside the list.
+    if (ofModel && signedIn()) startMine(asked);
     return asked;
   };
+  partLots = () => Promise.resolve(load()).then(() => lots);
+  // The same list, for a kit to post it elsewhere (web/post-kit.js).
+  pageParts = load;
   for (const choice of choices) {
     choice.addEventListener("click", () => {
       group = choice.dataset.group;
@@ -610,6 +858,189 @@ function startParts(section) {
       list.querySelectorAll("li")[LOTS_SHOWN]?.focus({ preventScroll: true });
     });
   }
+  /// What they have of it, said over the list once the list is here, and
+  /// All · Missing · Have all to choose between: the list's own row, kept
+  /// for it from the start (holdMine), so nothing under it moves.
+  let started = false;
+  async function startMine(listed) {
+    if (started || !ofModel) return;
+    started = true;
+    const row = held || (held = holdMine());
+    const said = row.querySelector(".parts-have");
+    const version = ofModel[2] ? `&v=${ofModel[2]}` : "";
+    const [answer] = await Promise.all([
+      call(`/api/share?op=parts_missing&id=${ofModel[1]}${version}${lang !== "en" ? `&lang=${lang}` : ""}`).catch(() => null),
+      listed]);
+    const body = answer?.body;
+    // The list did not come: it says so, and this is asked again with it.
+    if (!lots) {
+      started = false;
+      said.textContent = "";
+      return;
+    }
+    if (!answer || answer.status !== 200 || !body || typeof body !== "object") {
+      said.textContent = answer?.status === 401 ? say("Sign in again to see what you are missing.")
+        : say("What you own could not be read just now. Reload the page to ask again.");
+      document.documentElement.dataset.missing = "broken";
+      started = answer?.status === 401 ? false : started;
+      return;
+    }
+    const pieces = Number(body.pieces) || 0;
+    const have = Math.min(Number(body.have) || 0, pieces);
+    if (!body.collection) {
+      said.textContent = say("Mark the sets you own (Own, on a set's page) or add your parts in the app, "
+        + "and this says what you are missing.");
+      document.documentElement.dataset.missing = "none";
+      return;
+    }
+    const missing = (Array.isArray(body.missing) ? body.missing : []).filter((lot) => lot && typeof lot.part === "string");
+    // Those they are short of, and those nobody owns on their own: neither
+    // is one they have every one of.
+    mine = { missing, short: new Set([...missing.map((lot) => `${lot.part}/${lot.colour}`),
+      ...(Array.isArray(body.left?.keys) ? body.left.keys.map(String) : [])]), body };
+    const whole = Number(body.whole) || 0;
+    const shortBy = missing.reduce((n, lot) => n + (Number(lot.count) || 0), 0);
+    if (!missing.length) {
+      said.textContent = `✓ ${say("Have all {n} of its parts.", { n: number(pieces) })}`;
+      said.classList.add("all");
+    } else {
+      const share = (Math.floor((100 * have) / Math.max(pieces, 1)) / 100)
+        .toLocaleString(globalThis.brickworksLang?.locale || "en-US", { style: "percent", maximumFractionDigits: 0 });
+      said.textContent = say("You have {have} of its {pieces} parts ({share}): {short} missing, in {lots}.",
+        { have: number(have), pieces: number(pieces), share, short: number(shortBy), lots: counted(missing.length, "lot") });
+    }
+    if (Number(body.unknown) > 0) {
+      const sets = counted(Number(body.unknown), "set");
+      said.textContent += " " + (Number(body.unknown) === 1
+        ? say("{sets} of yours has no parts list here, so what is in it is not counted.", { sets })
+        : say("{sets} of yours have no parts list here, so what is in them is not counted.", { sets }));
+    }
+    document.documentElement.dataset.missing = `${have}/${pieces}/${missing.length}`;
+    if (!missing.length) return;
+    // All · Missing · Have all, each with how many lots.
+    const shows = row.querySelector(".segmented");
+    const counts = { all: lots.length, missing: missing.length, whole };
+    for (const button of shows.querySelectorAll("[data-show]")) {
+      const n = counts[button.dataset.show];
+      button.querySelector(".n").textContent = number(n);
+      button.setAttribute("aria-label", `${button.dataset.label}: ${counted(n, "lot")}`);
+      button.addEventListener("click", () => choose(button.dataset.show));
+    }
+    shows.hidden = false;
+    mineShops(body);
+  }
+
+  /// The row that says what they have, made at once (before what it says
+  /// is known) between the count and Colour · Kind, so the list does not
+  /// move when it comes; and All · Missing · Have all, hidden until then.
+  function holdMine() {
+    const row = document.createElement("div");
+    row.className = "parts-mine";
+    const said = document.createElement("p");
+    said.className = "parts-have";
+    said.setAttribute("role", "status");
+    said.textContent = say("Counting what you have of it…");
+    const shows = document.createElement("div");
+    shows.className = "segmented";
+    shows.setAttribute("role", "group");
+    shows.setAttribute("aria-label", say("Show"));
+    shows.hidden = true;
+    for (const [value, words] of [["all", say("All")], ["missing", say("Missing")], ["whole", say("Have all")]]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.show = value;
+      button.dataset.label = value === "missing" ? say("What you're missing") : value === "whole" ? say("Have all") : say("Every lot");
+      button.setAttribute("aria-pressed", String(value === show));
+      const word = document.createElement("span");
+      word.textContent = words;
+      const n = document.createElement("span");
+      n.className = "n";
+      button.append(word, " ", n);
+      shows.append(button);
+    }
+    row.append(said, shows);
+    (section.querySelector(".parts-bar") || list).before(row);
+    return row;
+  }
+
+  /// Which lots are shown, and the shops' lists of them: only the missing
+  /// ones' while Missing is chosen, the whole model's otherwise.
+  function choose(value) {
+    show = value;
+    for (const button of section.querySelectorAll(".parts-mine [data-show]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.show === value));
+    }
+    const missing = value === "missing";
+    for (const whole of section.querySelectorAll(".parts-shops:not(.missing), .pab-note:not(.missing)")) whole.hidden = missing;
+    for (const only of section.querySelectorAll(".parts-shops.missing, .pab-note.missing")) only.hidden = !missing;
+    if (lots) draw();
+    document.documentElement.dataset.partsShown = value;
+  }
+
+  /// The shops' lists of only what they are missing, beside the whole
+  /// model's and in their place while Missing is chosen: BrickLink XML,
+  /// Rebrickable CSV and LEGO® Pick a Brick CSV (a file of 400 elements
+  /// each), made here from the answer, so one click downloads each; and
+  /// what Pick a Brick leaves off, said under them.
+  function mineShops(body) {
+    const files = body.files || {};
+    const base = String(body.name || ofModel[1]).replace(/[^A-Za-z0-9 ._-]+/g, "").trim() || ofModel[1];
+    const shops = document.createElement("div");
+    shops.className = "parts-shops missing";
+    shops.hidden = show !== "missing";
+    const download = (words, text, type, name, title = "") => {
+      if (typeof text !== "string" || !text) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "cta ghost small";
+      button.textContent = words;
+      button.dataset.missing = name;
+      if (title) button.title = title;
+      button.addEventListener("click", () => {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([text], { type }));
+        link.download = name;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      });
+      shops.append(button);
+    };
+    download("BrickLink XML", files.bricklink, "application/xml", `${base}-missing-bricklink.xml`);
+    download("Rebrickable CSV", files.rebrickable, "text/csv", `${base}-missing-rebrickable.csv`);
+    const pab = Array.isArray(files.pickabrick) ? files.pickabrick : [];
+    const what = say("A list of LEGO® element numbers to upload at LEGO® Pick a Brick");
+    pab.forEach((text, n) => download(pab.length > 1
+      ? say("LEGO® Pick a Brick CSV, {n} of {all}", { n: number(n + 1), all: number(pab.length) }) : say("LEGO® Pick a Brick CSV"),
+    text, "text/csv", `${base}-missing-pickabrick${pab.length > 1 ? `-${n + 1}` : ""}.csv`, what));
+    const whole = section.querySelector(".parts-shops:not(.missing)");
+    if (whole) whole.after(shops);
+    else section.querySelector(".parts-bar")?.append(shops);
+    // What the lists leave off: what nobody owns on its own is in no count;
+    // a lot with no LEGO® element number known is not on Pick a Brick's.
+    const notes = [];
+    const left = Number(body.left_out?.pickabrick) || 0;
+    if (left) {
+      notes.push(say("Not on the Pick a Brick list, with no LEGO® element number known: {lots} ({parts}).", {
+        lots: counted(left, "lot"), parts: counted(Number(body.pickabrick?.left_out_pieces) || 0, "part") }));
+    }
+    if (Number(body.left?.lots) > 0) {
+      notes.push(say("Not counted, as nobody owns them on their own (stickers, made parts): {parts}.",
+        { parts: counted(Number(body.left.pieces) || 0, "part") }));
+    }
+    if (notes.length) {
+      const note = document.createElement("p");
+      note.className = "note pab-note missing";
+      note.hidden = show !== "missing";
+      note.textContent = notes.join(" ");
+      (section.querySelector(".pab-note:not(.missing)") || section.querySelector(".parts-bar"))?.after(note);
+    }
+  }
+  // Signed in on this page after the list came (the header's Sign in).
+  addEventListener("brickworks:signed-in-done", () => { if (lots && ofModel && signedIn()) startMine(asked); });
+  if (ofModel && signedIn()) held = holdMine();
+
   document.querySelector('#page-tabs a[data-tab="parts"]')?.addEventListener("click", load);
   // Watched once the page has loaded, its picture first: the list never
   // competes with what is on the first screen.
@@ -638,6 +1069,31 @@ function startComments(section) {
   const why = section.querySelector(".comment-why");
   const said = section.querySelector(".comments-said");
   let state = null;
+  // Comments on a part: the part pressed in 3D that the box is on ({part,
+  // colour, at, turn, name}, the 3D view's), each pin's number, where the 3D
+  // view placed each (id -> {index, moved}, or null for on no part here;
+  // none until it has), and the Parts list's lots for their names.
+  let aiming = null;
+  let pinNumber = new Map();
+  let placed = new Map();
+  let lots = null;
+  let lotsAsked = false;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const chip = document.createElement("p");
+  chip.className = "comment-part";
+  chip.hidden = true;
+  chip.setAttribute("aria-live", "polite");
+  form.querySelector(".comment-on")?.after(chip);
+  // Resolved pins, folded away under the list.
+  const fold = document.createElement("details");
+  fold.className = "comments-resolved";
+  fold.hidden = true;
+  const foldSaid = document.createElement("summary");
+  foldSaid.className = "pill";
+  const foldList = document.createElement("ol");
+  foldList.className = "comment-list";
+  fold.append(foldSaid, foldList);
+  list.after(fold);
   // The thread whose reply box is open, and what was typed in it, kept
   // across a sign-in and a redraw.
   let replying = null;
@@ -673,9 +1129,13 @@ function startComments(section) {
     // Not open on this deployment yet (comments.sql): nothing to show.
     hold?.remove();
     section.hidden = state.ready === false;
+    pinsOf();
     draw();
+    // The 3D view, if open, places them again.
+    pinBridge.view?.pinsChanged();
     commentsSaid(state, setOpen);
     talkAbout(state.you?.owner === true);
+    finishFor(state.you?.owner === true);
   }
   commentsLoaded = { reload: load };
 
@@ -716,6 +1176,36 @@ function startComments(section) {
     place.hidden = false;
   }
 
+  /// Mark it finished, on a work in progress's Log, for its designer alone
+  /// (api/_wip.js finish, buildlog): its newest version is the finished
+  /// one, told in its Talk thread and to their followers, and from then it
+  /// ranks in the gallery as any model does. Anybody else never sees it.
+  let finishWired = false;
+  function finishFor(owner) {
+    const button = document.querySelector("[data-finish]");
+    const said = document.querySelector(".finish-said");
+    if (!button || !said || !owner || finishWired) return;
+    finishWired = true;
+    button.hidden = false;
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      said.hidden = false;
+      said.textContent = say("Marking it finished…");
+      const answer = await call("/api/share?op=finish", { method: "POST", body: { id: model } }).catch(() => null);
+      if (!answer || answer.status !== 200) {
+        button.disabled = false;
+        said.textContent = told(answer?.body?.error, say("It could not be marked finished just now. Try again in a minute."));
+        return;
+      }
+      const n = Number(answer.body.version) || 1;
+      document.querySelectorAll(".pill.wip").forEach((pill) => pill.closest("li:not(.log-entry)")?.remove());
+      button.closest(".wip-line")?.remove();
+      const posted = answer.body.talk?.url ? " " + say("It is said in its Talk thread too.") : "";
+      said.textContent = say("Finished: version {n} is the finished one, and your followers are told.", { n }) + posted;
+      document.documentElement.dataset.finished = String(n);
+    });
+  }
+
   /// The viewer at [at], a step of version [of]: Build it, opened there.
   // On a copy, in its language, as web/theme.js carries it into the links
   // drawn with the page.
@@ -740,6 +1230,123 @@ function startComments(section) {
   /// Somebody signed out may say something: the box is everybody's, and
   /// sending signs them in first. Whether they may then is the server's.
   const mayTry = () => state.you?.may_write || (!state.you?.signed_in && state.open);
+
+  /// The pins in the answer, numbered oldest first, resolved ones too, as
+  /// the studio numbers them (src/ui/part_pins.gd), for the 3D view; and,
+  /// once the page has loaded, their parts' names asked for.
+  function pinsOf() {
+    const order = (a, b) => (Date.parse(a.at) - Date.parse(b.at)) || (a.id - b.id);
+    const pinned = state.pins === true ? (state.comments || []).filter((one) => one.pin && !one.parent).sort(order) : [];
+    pinNumber = new Map(pinned.map((one, k) => [one.id, k + 1]));
+    pinBridge.pins = pinned.map((one) => ({ id: one.id, n: pinNumber.get(one.id), pin: one.pin, resolved: Boolean(one.resolved),
+      version: one.version }));
+    pinBridge.open = state.pins === true && Boolean(state.open) && Boolean(mayTry());
+    if (pinned.length && !lotsAsked && partLots) {
+      lotsAsked = true;
+      const ask = () => partLots().then((got) => {
+        lots = Array.isArray(got) ? got : null;
+        if (lots) draw();
+      });
+      if (document.readyState === "complete") ask();
+      else addEventListener("load", ask, { once: true });
+    }
+  }
+
+  /// A part's name in the page's language, from the Parts list: of its
+  /// number in its colour, else in any; "" while it is not known.
+  function nameOf(part, colour) {
+    if (!lots) return "";
+    const want = pinPart(part);
+    const found = lots.find((lot) => pinPart(lot.part) === want && Number(lot.colour) === Number(colour))
+      || lots.find((lot) => pinPart(lot.part) === want);
+    return found ? found.said || found.name || "" : "";
+  }
+  const capital = (words) => words.charAt(0).toLocaleUpperCase(globalThis.brickworksLang?.code || "en") + words.slice(1);
+
+  /// A part pressed in 3D (its menu's Comment on this part): the box is on
+  /// it, said over it, and in reach.
+  function aim(part) {
+    if (!pinBridge.open) return;
+    aiming = part;
+    drawChip();
+    form.hidden = false;
+    form.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+    box.focus({ preventScroll: true });
+  }
+  function unaim(focus) {
+    aiming = null;
+    drawChip();
+    pinBridge.view?.light(-1);
+    if (focus) box.focus();
+  }
+  function drawChip() {
+    chip.replaceChildren();
+    chip.hidden = !aiming;
+    if (!aiming) return;
+    const tag = document.createElement("span");
+    tag.className = "pill pin";
+    tag.textContent = capital(pinSaid(nameOf(aiming.part, aiming.colour) || aiming.name || "", null));
+    const cancel = button(say("Cancel"), () => unaim(true));
+    cancel.setAttribute("aria-label", say("Cancel: comment on the whole model"));
+    chip.append(tag, " ", cancel);
+  }
+  pinBridge.wanted = aim;
+  pinBridge.name = nameOf;
+  pinBridge.placed = (where) => {
+    placed = new Map(where.map((one) => [one.id, one.index >= 0 ? { index: one.index, moved: one.moved } : null]));
+    draw();
+  };
+  // A dot pressed in 3D: its comment marked, and a line of it for the view
+  // to show.
+  pinBridge.pressed = (id) => {
+    for (const marked of section.querySelectorAll("li.comment.asked")) marked.classList.remove("asked");
+    document.getElementById(`comment-${id}`)?.classList.add("asked");
+    const one = (state?.comments || []).find((comment) => comment.id === id);
+    if (!one) return "";
+    const letters = [...one.body];
+    return `${number(pinNumber.get(id) || 0)}. ${one.by || say("A builder")}: ${letters.length > 90 ? `${letters.slice(0, 90).join("")}…` : one.body}`;
+  };
+
+  /// A pin's line: its number, and the part and step it is on, as the 3D
+  /// view placed it on this version (before it has, on its own version as
+  /// it was made); pressed, the 3D view turned to it. Words alone where it
+  /// is on no part of this one, or there is no 3D view.
+  function pinLine(one) {
+    const line = document.createElement("p");
+    line.className = "comment-pin";
+    const n = pinNumber.get(one.id) || 0;
+    const badge = document.createElement("span");
+    badge.className = "pin-n";
+    badge.setAttribute("aria-hidden", "true");
+    badge.textContent = number(n);
+    const here = one.version === version;
+    const where = placed.get(one.id);
+    const name = nameOf(one.pin.part, one.pin.colour);
+    const words = where || (where === undefined && here)
+      ? `${pinSaid(name, here ? one.step : one.on_step ?? null)}${where?.moved ? ` ${say("(moved since)")}` : ""}`
+      : say("{where}, on version {version}", { where: pinSaid(name, one.step), version: number(one.version) });
+    if (where === null || !pinBridge.view) {
+      const plain = document.createElement("span");
+      plain.textContent = words;
+      line.classList.toggle("gone", where === null);
+      line.append(badge, plain);
+      return line;
+    }
+    const go = button(words, (event) => {
+      frame?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+      pinBridge.view.showPin(one.id, event.detail === 0 ? "key" : event.pointerType || "mouse");
+    }, "link pin-go");
+    go.setAttribute("aria-label", say("Pin {n}, {where}: show it in 3D", { n: number(n), where: words }));
+    line.append(badge, go);
+    return line;
+  }
+
+  async function resolve(one) {
+    const answer = await call("/api/people?op=pin_resolve", { method: "POST", body: { id: one.id, resolved: !one.resolved } });
+    if (answer.status !== 200) return tell(told(answer.body.error, say("That did not work just now.")));
+    tell(one.resolved ? say("Open again.") : say("Resolved: folded away under Resolved."));
+    await load();
+  }
 
   /// One comment or reply: the avatar, who (a link to their page), the
   /// Designer pill on the model's owner's, the step as a pill that opens
@@ -766,8 +1373,16 @@ function startComments(section) {
       tag.textContent = say("Designer");
       head.append(" ", tag);
     }
-    // A reply is on its comment's step: said once, on the comment.
-    if (one.step && !reply) {
+    const pinned = Boolean(one.pin) && !reply && pinNumber.has(one.id);
+    if (pinned && one.resolved) {
+      const tag = document.createElement("span");
+      tag.className = "pill resolved";
+      tag.textContent = say("Resolved");
+      head.append(" ", tag);
+    }
+    // A reply is on its comment's step: said once, on the comment; a
+    // pin's, on its line.
+    if (one.step && !reply && !pinned) {
       const pill = document.createElement("a");
       pill.className = "pill step";
       const here = one.on_step !== null && one.on_step !== undefined;
@@ -805,7 +1420,9 @@ function startComments(section) {
       link.textContent = piece.at;
       words.append(link);
     }
-    main.append(head, words);
+    main.append(head);
+    if (pinned) main.append(pinLine(one));
+    main.append(words);
     if (one.hidden) {
       const note = document.createElement("p");
       note.className = "note";
@@ -827,6 +1444,7 @@ function startComments(section) {
       answer.setAttribute("aria-label", one.by ? say("Reply to {name}", { name: one.by }) : say("Reply to a builder"));
       acts.append(answer);
     }
+    if (state.you?.owner && pinned) acts.append(button(one.resolved ? say("Open it again") : say("Resolve"), () => resolve(one)));
     if (state.you?.owner) {
       acts.append(button(one.hidden ? say("Show it") : say("Hide it"), () => change(one, one.hidden ? "show" : "hide")));
     }
@@ -875,10 +1493,17 @@ function startComments(section) {
     // A person on the keyboard pressed something in a comment (Hide it,
     // Show it): the same comment's button keeps the focus once it is drawn
     // again, else the comment, else the list's heading, never the body.
-    const at = list.contains(document.activeElement) ? document.activeElement : null;
+    const within = (element) => list.contains(element) || fold.contains(element);
+    const at = within(document.activeElement) && document.activeElement !== foldSaid ? document.activeElement : null;
     const where = at && { comment: at.closest("li.comment")?.id, words: at.localName === "button" ? at.textContent : "" };
-    list.replaceChildren(...threads.map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
-    if (where && !list.contains(document.activeElement) && !document.querySelector("form.reply-new")) {
+    // A pin its designer resolved, folded away under Resolved.
+    const done = (one) => Boolean(one.pin && one.resolved && pinNumber.has(one.id));
+    const folded = threads.filter(done);
+    list.replaceChildren(...threads.filter((one) => !done(one)).map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
+    foldList.replaceChildren(...folded.map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
+    foldSaid.textContent = say("Resolved ({n})", { n: number(folded.length) });
+    fold.hidden = folded.length === 0;
+    if (where && !within(document.activeElement) && !document.querySelector("form.reply-new")) {
       const again = where.comment && document.getElementById(where.comment);
       const pressed = again && [...again.querySelectorAll(":scope > .comment-main > .comment-acts button")]
         .find((one) => one.textContent === where.words);
@@ -927,6 +1552,7 @@ function startComments(section) {
     const named = /^#comment-\d+$/.test(location.hash) ? document.getElementById(location.hash.slice(1)) : null;
     if (named && !draw.shown) {
       draw.shown = true;
+      if (fold.contains(named)) fold.open = true;
       named.classList.add("asked");
       named.scrollIntoView({ block: "center" });
     }
@@ -1018,10 +1644,14 @@ function startComments(section) {
     },
     send: async (words) => {
       const at = step.value === "" ? null : Number(step.value);
-      const answer = await call("/api/people?op=comment", { method: "POST", body: { model, version, step: at, body: words } });
-      return answer.status === 201 ? { ok: true, made: { at } } : { ok: false, error: told(answer.body?.error) };
+      // On the part pressed in 3D: a pin, the part as the 3D view had it.
+      const part = aiming && { part: aiming.part, colour: aiming.colour, at: aiming.at, turn: aiming.turn };
+      const answer = await call(part ? "/api/people?op=pin" : "/api/people?op=comment", { method: "POST",
+        body: { model, version, step: at, body: words, ...(part ? { part } : {}) } });
+      return answer.status === 201 ? { ok: true, made: { at, part } } : { ok: false, error: told(answer.body?.error) };
     },
-    done: async ({ at }) => {
+    done: async ({ at, part }) => {
+      if (part) unaim(false);
       tell(at ? say("Posted, on step {n}.", { n: at }) : say("Posted."));
       await load();
     },
@@ -1716,6 +2346,69 @@ function commentsSaid(state, setOpen) {
   numbers.textContent = say("How your models are doing");
   menu.prepend(turn, numbers);
   document.documentElement.dataset.modelOwner = "yes";
+  madeChoice(menu);
+}
+
+/// The owner's say in whether this page tells how it was made (api/share.js
+/// ?op=made, supabase/made_with_shown.sql): for a model made with the
+/// assistant or Brickify, one item in More, Say it was made with the
+/// assistant (or Brickify) while nothing says so, and Stop saying it once
+/// something does. Nothing for one built by hand, or before the column is
+/// there to keep it. The fact among the page's own is put in or taken out
+/// at once; everybody else's copy of the page says it within the minute.
+async function madeChoice(menu) {
+  const answer = await call(`/api/share?op=made&id=${id}`);
+  const made = answer.status === 200 ? answer.body : null;
+  if (!made || !made.ready || made.way !== "assistant") return;
+  menu.querySelector("[data-made-choice]")?.remove();
+  const brickify = made.by === "brickify";
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "owner-only";
+  item.dataset.madeChoice = "";
+  let shown = made.made_with_shown === true;
+  const name = () => {
+    item.textContent = shown
+      ? say(brickify ? "Stop saying it was made with Brickify" : "Stop saying it was made with the assistant")
+      : say(brickify ? "Say it was made with Brickify" : "Say it was made with the assistant");
+    item.dataset.madeChoice = shown ? "shown" : "quiet";
+  };
+  name();
+  item.addEventListener("click", async () => {
+    marks.querySelector("#more").open = false;
+    item.disabled = true;
+    const sent = await call(`/api/share?op=made&id=${id}`, { method: "POST", body: { shown: !shown } });
+    item.disabled = false;
+    const said = document.querySelector(".marks-said");
+    if (sent.status !== 200) {
+      if (said) said.textContent = told(sent.body.error, say("That did not work just now."));
+      return;
+    }
+    shown = sent.body.made_with_shown === true;
+    name();
+    madeFact(shown, brickify);
+    if (said) {
+      said.textContent = shown
+        ? say(brickify ? "Its page now says it was made with Brickify." : "Its page now says it was made with the assistant.")
+        : say("Its page no longer says how it was made.");
+    }
+  });
+  menu.prepend(item);
+}
+
+/// The page's fact of how it was made (api/share.js madeFact), put in or
+/// taken out as its owner chooses.
+function madeFact(shown, brickify) {
+  const facts = document.querySelector("ul.facts.pills");
+  if (!facts) return;
+  facts.querySelector("li.pill.made")?.remove();
+  if (!shown) return;
+  const fact = document.createElement("li");
+  fact.className = "pill made";
+  fact.title = say(brickify ? "Made from a 3D model with Brickify, {how}" : "Designed with the assistant, {how}",
+    { how: say("as the app said when it was published") });
+  fact.textContent = brickify ? "Brickify" : say("With the assistant");
+  facts.append(fact);
 }
 
 // ---------------------------------------------------------------------------
@@ -1892,6 +2585,7 @@ function enterDialog(said) {
 async function basesOwn() {
   const answer = await call(`/api/share?op=bases&id=${id}`);
   if (answer.status !== 200 || !answer.body.mine) return;
+  postKitsOwn();
   // Before supabase/model_bases.sql there is nowhere to keep a list.
   if (!answer.body.ready) {
     document.documentElement.dataset.bases = "not-open";

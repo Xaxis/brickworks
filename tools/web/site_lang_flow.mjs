@@ -1196,11 +1196,14 @@ async function viewerSaid(browser, code, width, at) {
       state: document.querySelector(".view3d").dataset.state,
       tools: [...document.querySelectorAll(".view3d-tools [data-act]")].map((b) => b.getAttribute("aria-label")),
       bar: document.querySelector(".view3d-tools")?.getAttribute("aria-label") || "",
+      // A remix whose changes are counted has What changed on the bar too (remixdiff).
+      changes: Boolean(document.querySelector(".model-page .picture")?.dataset.changes),
       app: document.querySelector(".view3d-app")?.textContent.trim() || "",
       stage: document.querySelector(".view3d .stage")?.getAttribute("aria-label") || "",
       name: document.querySelector("main h1")?.textContent.trim() || "",
     }));
-    const tools = ["Zoom out", "Zoom in", "Reset the view", "Full screen", "Back to the picture"].map((word) => script(code, word));
+    const tools = ["Zoom out", "Zoom in", "Reset the view", ...(said.changes ? ["What changed"] : []), "Full screen", "Back to the picture"]
+      .map((word) => script(code, word));
     check(said.state === "ready" && JSON.stringify(said.tools) === JSON.stringify(tools) && said.bar === script(code, "3D view")
       && said.app === script(code, "Open in the app"),
       `${where}: ${said.state}, its tools ${said.tools.map((name) => `"${name}"`).join(", ")}, "${said.app}"`);

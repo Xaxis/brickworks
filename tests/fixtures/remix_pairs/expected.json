@@ -1,0 +1,14 @@
+{
+ "01_add": { "added": 5, "removed": 0, "moved": 0, "recoloured": 0, "turned": 0, "parts_was": 42, "parts_now": 47 },
+ "02_remove": { "added": 0, "removed": 4, "moved": 0, "recoloured": 0, "turned": 0, "parts_was": 42, "parts_now": 38 },
+ "03_recolour": { "added": 0, "removed": 0, "moved": 0, "recoloured": 3, "turned": 0, "parts_was": 42, "parts_now": 42 },
+ "04_move": { "added": 0, "removed": 0, "moved": 4, "recoloured": 0, "turned": 0, "parts_was": 42, "parts_now": 42 },
+ "05_turn": { "added": 0, "removed": 0, "moved": 3, "recoloured": 0, "turned": 3, "parts_was": 42, "parts_now": 42 },
+ "06_swap_mould": { "added": 2, "removed": 2, "moved": 0, "recoloured": 0, "turned": 0, "parts_was": 42, "parts_now": 42 },
+ "07_sub_model_added": { "added": 6, "removed": 0, "moved": 0, "recoloured": 0, "turned": 0, "parts_was": 42, "parts_now": 48 },
+ "08_mix_add_remove_recolour": { "added": 2, "removed": 1, "moved": 0, "recoloured": 1, "turned": 0, "parts_was": 42, "parts_now": 43 },
+ "09_mix_move_turn_recolour": { "added": 1, "removed": 1, "moved": 2, "recoloured": 1, "turned": 1, "parts_was": 42, "parts_now": 42 },
+ "10_mix_sub_model_moved": { "added": 0, "removed": 0, "moved": 6, "recoloured": 0, "turned": 3, "parts_was": 42, "parts_now": 42 },
+ "11_mix_ten_alike": { "added": 0, "removed": 0, "moved": 2, "recoloured": 0, "turned": 0, "parts_was": 42, "parts_now": 42 },
+ "12_mix_old_numbers": { "added": 0, "removed": 0, "moved": 1, "recoloured": 0, "turned": 1, "parts_was": 42, "parts_now": 42 }
+}

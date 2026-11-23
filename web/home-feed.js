@@ -22,7 +22,7 @@
 //   people     builders to follow
 //   photo      a photo of a real build of a model
 import {
-  avatarHtml, counted, escapeHtml, iconButtonHtml, iconHtml, langAt, likeName, madeOf, motionWords, number, photoSrc, pictureOf, say,
+  avatarHtml, counted, escapeHtml, iconButtonHtml, iconHtml, langAt, likeName, madeOf, madePublic, motionWords, number, photoSrc, pictureOf, say,
 } from "./card.js";
 
 /// The cards the deploy writes into the page: a laptop's first two rows of
@@ -43,11 +43,13 @@ const BOARDS = { show: "Show and tell", help: "Help", ideas: "Ideas", challenges
 
 /// How a model was made, and what it does, as the feed says it: each a
 /// small pill to the docs page of the feature that made it so, so a card
-/// says what the studio did as well as what the builder did.
+/// says what the studio did as well as what the builder did. How it was
+/// made only where its owner chose to say (web/card.js madePublic): no
+/// card says Built by hand either, or one that says nothing would be told
+/// apart by it.
 export const MADE_DOCS = {
   assistant: ["Designed with the assistant", "/docs/ai"],
   brickify: ["Made with Brickify", "/docs/art-and-brickify"],
-  hand: ["Built by hand", "/docs/placing-parts"],
   moves: ["/docs/joints-and-mechanisms"],
   steps: ["/docs/instructions"],
 };
@@ -90,12 +92,15 @@ function headHtml(by, line, { follow = false, author = "" } = {}) {
 }
 
 /// The pills that say how [model] was made and what it does: two at most,
-/// how it was made first.
+/// how it was made first, where its owner chose to say it.
 export function madeHtml(model) {
   const pills = [];
-  const made = madeOf(model);
-  const [words, docs] = MADE_DOCS[made.by === "brickify" ? "brickify" : made.way] || MADE_DOCS.hand;
-  pills.push(`<a class="pill" href="${docs}" data-made="${escapeHtml(made.by === "brickify" ? "brickify" : made.way)}">${escapeHtml(say(words))}</a>`);
+  const made = madeOf(madePublic(model));
+  if (made.way === "assistant") {
+    const by = made.by === "brickify" ? "brickify" : "assistant";
+    const [words, docs] = MADE_DOCS[by];
+    pills.push(`<a class="pill" href="${docs}" data-made="${by}">${escapeHtml(say(words))}</a>`);
+  }
   const motions = Array.isArray(model.motions) ? model.motions.filter((one) => typeof one === "string" && one) : [];
   const moves = Array.isArray(model.moves) ? model.moves.filter((one) => typeof one === "string" && one) : [];
   if (motions.length || moves.length) {
@@ -236,8 +241,10 @@ export function daysOf(from, to) {
 /// ?op=challenge's with its entries): its name and brief as its maker wrote
 /// them (English), its days, up to four entries' pictures, and the way in.
 /// Its badges and line keep their ids, which web/landing.js says again with
-/// the days left once it has asked.
-export function challengePostHtml(c, entries = []) {
+/// the days left once it has asked. [week], this week's quick build (the
+/// answers' prompt_now), a line under its days: its name, to its page,
+/// where Start is; a test one never.
+export function challengePostHtml(c, entries = [], week = null) {
   if (!c || !c.title) return "";
   const at = langAt();
   const shown = entries.filter((one) => one && MODEL.test(String(one.id)) && pictureOf(one)).slice(0, 4);
@@ -252,9 +259,17 @@ export function challengePostHtml(c, entries = []) {
     + `<p class="eyebrow">${escapeHtml(say("The month’s challenge"))}</p>`
     + `<h3 class="post-title" id="challenge-h" lang="en">${escapeHtml(String(c.title))}</h3>`
     + `${c.brief ? `<p id="challenge-brief" lang="en">${escapeHtml(String(c.brief))}</p>` : `<p id="challenge-brief"></p>`}`
-    + `<p class="note" id="challenge-days">${escapeHtml(span)}</p>${strip}`
+    + `<p class="note" id="challenge-days">${escapeHtml(span)}</p>${weekLineHtml(week)}${strip}`
     + `<p class="go-on"><a class="cta small" href="${at}/challenge" id="challenge-go">${escapeHtml(say("Enter the challenge"))}</a>`
     + `<a class="cta ghost small" href="${at}/challenge#entries">${escapeHtml(say("See the entries"))}</a></p></div></article>`;
+}
+
+/// This week's quick build's line in the challenge's post, or nothing.
+function weekLineHtml(w) {
+  if (!w || w.test || !/^[1-9][0-9]{0,15}$/.test(String(w.id)) || !w.title) return "";
+  const [before, after = ""] = say("This week’s quick build: {title}").split("{title}");
+  return `<p class="note week-line" id="challenge-week">${escapeHtml(before)}<a id="challenge-week-go" lang="en" `
+    + `href="${langAt()}/challenge?id=${w.id}">${escapeHtml(String(w.title))}</a>${escapeHtml(after)}</p>`;
 }
 
 /// The studio itself in the stream: [model] on it, opened in the card on a
@@ -311,7 +326,7 @@ export function photoPostHtml(photo) {
 export function postHtml(item, { eager = false } = {}) {
   if (item.kind === "build") return buildPostHtml(item.model, { eager, said: item.said, line: item.line, pick: item.pick });
   if (item.kind === "talk") return talkPostHtml(item.thread);
-  if (item.kind === "challenge") return challengePostHtml(item.challenge, item.entries);
+  if (item.kind === "challenge") return challengePostHtml(item.challenge, item.entries, item.week);
   if (item.kind === "try") return tryPostHtml(item.model);
   if (item.kind === "people") return peoplePostHtml(item.designers);
   if (item.kind === "photo") return photoPostHtml(item.photo);
@@ -373,7 +388,9 @@ export function compose(given, { tab = "foryou", skip = new Set() } = {}) {
   const c = given.challenge?.challenge || given.shelves?.challenge || null;
   const live = c && !c.test && ["open", "upcoming"].includes(c.state) && c.title ? c : null;
   const entries = live && Array.isArray(live.groups) ? live.groups.flatMap((group) => group.entries || []) : [];
-  const challenge = live ? [{ kind: "challenge", challenge: live, entries }] : [];
+  // This week's quick build, a line in the month's post (prompts: api/_prompts.js promptNow).
+  const week = given.challenge?.prompt_now || given.shelves?.prompt_now || null;
+  const challenge = live ? [{ kind: "challenge", challenge: live, entries, week }] : [];
   const movers = [...top, ...newest].filter((m) => (m.motions || []).length || (m.moves || []).length);
   const tryModel = movers[0] || top[0] || newest[0] || pick;
   const trying = tryModel && tab === "foryou" ? [{ kind: "try", model: tryModel }] : [];

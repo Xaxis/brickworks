@@ -213,7 +213,11 @@ export function linkOf(raw, hosts = SITE_HOSTS) {
   let found = path.match(/^\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/?$/);
   if (found) {
     const step = n(url.searchParams.get("step"));
-    return step ? { href, kind: "step", model: found[1], step } : { href, kind: "model", model: found[1] };
+    // A version's own page (/m/X/v/N): its card is that version's, with its
+    // picture, as a work in progress posts each one (api/_wip.js).
+    const version = found[2] ? Number(found[2]) : null;
+    return step ? { href, kind: "step", model: found[1], step }
+      : { href, kind: "model", model: found[1], ...(version ? { version } : {}) };
   }
   if (path === "/app" && MODEL.test(url.searchParams.get("view") || "")) {
     const step = n(url.searchParams.get("step"));
@@ -264,7 +268,7 @@ export function embedsIn(text, hosts = SITE_HOSTS) {
   for (const piece of piecesOf(text, hosts)) {
     const link = piece.link;
     if (!link || !["model", "step", "set", "challenge", "part"].includes(link.kind)) continue;
-    const key = JSON.stringify([link.kind, link.model, link.step, link.set, link.challenge, link.part]);
+    const key = JSON.stringify([link.kind, link.model, link.step, link.set, link.challenge, link.part, link.version]);
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(link);
@@ -378,10 +382,15 @@ export function embedsHtml(embeds, found = {}) {
     if (one.kind === "model" || one.kind === "step") {
       const model = found.models?.get(one.model);
       if (!model) continue;
-      const picture = modelPicture(model);
+      // A version's card shows that version's small picture (api/share.js
+      // op=thumb with n, its big one where none was kept).
+      const version = one.kind === "model" && one.version ? Number(one.version) : null;
+      const picture = version ? `/m/${model.id}/v/${version}.webp` : modelPicture(model);
       const line = one.kind === "step" ? say("Step {n}: open it in the viewer", { n: number(one.step) })
+        : version ? say("Version {n}: open it", { n: number(version) })
         : model.author ? say("by {name}", { name: model.author }) : say("A model in the gallery");
-      items.push(`<li class="talk-embed ${one.kind}"><a href="${escapeHtml(one.kind === "step" ? one.href : `${at}/m/${model.id}`)}">`
+      const opens = one.kind === "step" ? one.href : version ? `${at}/m/${model.id}/v/${version}` : `${at}/m/${model.id}`;
+      items.push(`<li class="talk-embed ${one.kind}${version ? " version" : ""}"><a href="${escapeHtml(opens)}">`
         + `${picture ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" width="120" height="90">` : ""}`
         + `<span><b>${escapeHtml(model.name || say("A model"))}</b><small>${escapeHtml(line)}</small></span></a></li>`);
     } else if (one.kind === "set") {

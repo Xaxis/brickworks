@@ -25,7 +25,9 @@ when the code that counts it names it:
                  (src/**/*.gd) and a line
 
   python3 tools/insights_names.py           writes api/_insights_names.js
-  python3 tools/insights_names.py --check   says whether it is up to date
+  python3 tools/insights_names.py --check   says whether it is up to date, and
+                                            whether every name api/_loop.js's
+                                            LOOP counts is one kept
 """
 
 from __future__ import annotations
@@ -83,6 +85,8 @@ def acts() -> set[str]:
     fns = re.findall(r'"([a-z_]+)"', re.search(r"const ACTS = new Set\(\[([^\]]+)\]\)", src).group(1))
     skip = set(re.findall(r'"([a-z_]+)"', re.search(r"const NOT_ACTS = new Set\(\[([^\]]+)\]\)", src).group(1)))
     out = {"account.signed_in"}
+    # The acts a page says itself (a kit to post a model elsewhere, taken).
+    out.update(re.findall(r'"(share\.kit_[a-z]+)"', re.search(r"const KIT_ACTS = \[([^\]]+)\]", src).group(1)))
     for fn in fns:
         files = [ROOT / "api" / f"{fn}.js"]
         text = "\n".join(f.read_text(encoding="utf-8") for f in files if f.exists())
@@ -229,7 +233,7 @@ def build() -> dict:
             "panel": sorted(panels()),
             "press": sorted(press),
             "command": sorted(command_names),
-            "run": sorted({"simulate", "render", "booklet", "together"} | {f"render_{k}" for k in render_kinds}),
+            "run": sorted({"simulate", "render", "booklet", "together", "pin_resolved"} | {f"render_{k}" for k in render_kinds}),
             "milestone": ["first_part", "first_save", "studio"],
             "part": ["placed"],
             "save": ["model"],
@@ -254,16 +258,39 @@ def render(data: dict) -> str:
             f"export const NAMES = {json.dumps(data, separators=(',', ':'))};\n")
 
 
+LOOP = ROOT / "api" / "_loop.js"
+LOOP_LINE = re.compile(r'^\s*\["(discovered|opened|changed|shared)", "(site|studio)", "([a-z]+)", "([^"]+)"\],?\s*$', re.M)
+
+
+def loop_unkept(data: dict) -> tuple[int, list[str]]:
+    """The loop's lines (api/_loop.js LOOP) and those naming nothing the
+    counter keeps: a step counted from a name that never lands reads 0 for
+    good, so a unit's typo is refused here, not found in the console."""
+    text = LOOP.read_text(encoding="utf-8") if LOOP.exists() else ""
+    body = re.search(r"export const LOOP = \[(.*?)\n\];", text, re.S)
+    lines = LOOP_LINE.findall(body.group(1)) if body else []
+    unkept = [f"{step} {surface} {kind} {name}" for step, surface, kind, name in lines
+              if name not in data["exact"].get(surface, {}).get(kind, [])]
+    return len(lines), unkept
+
+
 def main() -> int:
-    text = render(build())
+    data = build()
+    text = render(data)
+    looped, unkept = loop_unkept(data)
+    for line in unkept:
+        print(f"insights_names: api/_loop.js counts a name the counter never keeps: {line}")
+    if not looped:
+        print("insights_names: api/_loop.js has no LOOP lines this can read")
     if "--check" in sys.argv:
         if not OUT.exists() or OUT.read_text(encoding="utf-8") != text:
             print("insights_names: api/_insights_names.js is not what the code names: run python3 tools/insights_names.py")
             return 1
-        print("insights_names: up to date")
+        if unkept or not looped:
+            return 1
+        print(f"insights_names: up to date, and the loop's {looped} names are all kept")
         return 0
     OUT.write_text(text, encoding="utf-8")
-    data = build()
     sizes = {k: len(v) for k, v in data["exact"]["studio"].items()} | {f"site_{k}": len(v) for k, v in data["exact"]["site"].items()}
     print(f"insights_names: wrote {OUT.relative_to(ROOT)} ({len(text)} bytes): {sizes}, "
           f"{len(data['families'])} families from {len(data['words'])} files")
