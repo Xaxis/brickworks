@@ -209,7 +209,9 @@ const MODELS = [
     updated_at: "2026-10-16T07:00:00Z", description: "Six-wheeled, with a turntable mast and working suspension." }),
   model({ id: "SamModel01", owner: SAM, name: "Harbour Tram", author: "Sam Okafor", parts: 340, steps: 14,
     kind: "vehicle", tags: ["tram", "train", "town"], listed_at: "2026-09-12T10:00:00Z",
-    updated_at: "2026-09-12T10:00:00Z", description: "A two-car harbour tram with a pantograph." }),
+    updated_at: "2026-09-12T10:00:00Z", description: "A two-car harbour tram with a pantograph.",
+    // Laid with the assistant, as its app said, and not shown (made_with_shown.sql).
+    made_with: "assistant", made_with_shown: false }),
   model({ id: "SamModel02", owner: SAM, name: "Corner Bakery", author: null, parts: 610, steps: 22, kind: "town",
     tags: ["town", "modular"], listed: false, updated_at: "2026-10-08T10:00:00Z" }),
 ];
@@ -1055,6 +1057,21 @@ function rest(where, init) {
     const visitor = !new Headers(init.headers || {}).get("authorization");
     const rows = table().filter((row) => !(visitor && path === "shared_models" && !row.published));
     return reply(200, chosen(rows, where.searchParams));
+  }
+  // Its owner's choice of whether its page says how it was made
+  // (supabase/made_with_shown.sql): kept, so the page and the gallery say it
+  // after (made_shown_flow.mjs).
+  if (method === "PATCH" && path === "shared_models") {
+    let body = {};
+    try {
+      body = JSON.parse(init.body || "{}");
+    } catch {
+      body = {};
+    }
+    const id = /^eq\.(.+)$/.exec(where.searchParams.get("id") || "")?.[1];
+    if (Object.keys(body).join() === "made_with_shown" && id) {
+      for (const row of MODELS.filter((one) => one.id === id)) row.made_with_shown = body.made_with_shown === true;
+    }
   }
   // A write: taken as done, and kept nowhere.
   const asked = String(new Headers(init.headers || {}).get("prefer") || "");

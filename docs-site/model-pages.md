@@ -97,7 +97,7 @@ ui:model page pictures and tabs
 - **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
 - **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first.
-- **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead.
+- **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead, and, for a model made with the assistant or Brickify, **Say it was made with the assistant** (or **with Brickify**): nothing on the site says how a model was made until you choose to, and **Stop saying it was made with the assistant** takes it back. Its page then says **With the assistant** among its facts, and the gallery's **Made: With the assistant** lists it.
 - On your own model, **Enter this month's challenge** ([the challenge](/docs/challenges#enter)).
 
 ![The Share sheet of a model's page: its link with Copy link, Post it to Reddit, Bluesky, Pinterest, X, Facebook and Email, and Embed it in a page with Copy code.](/docs/img/model-share.webp "Share, on a model's page.")

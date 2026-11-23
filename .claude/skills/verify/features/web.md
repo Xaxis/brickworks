@@ -966,7 +966,12 @@ plan with Claude as the client.
   drops a row not shown), Hand-built every other. A challenge's track is
   the entrant's own and unchanged. `node tools/web/made_shown_check.mjs`
   (stand-in, no browser: HouseMod01 tagged and not shown, HouseMod02
-  shown; 5 FAIL on base 919471139). Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
+  shown; 5 FAIL on base 919471139). The owner's choice on the model page
+  (web/model-page.js `madeChoice`): signed in as its owner, More has **Say
+  it was made with the assistant** (Brickify's: **with Brickify**), or
+  **Stop saying it...** once shown, from `?op=made` (none for a hand-built
+  model, or before the column); pressed, it POSTs `{shown}` and puts the
+  page's `li.pill.made` fact in or takes it out at once. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) whose links each open a tab — the threaded engine
