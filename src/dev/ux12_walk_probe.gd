@@ -763,11 +763,20 @@ func _measure_align() -> void:
 	await _run_command("mode_move", "p12_04_move_tool", "Tools, Move", 20)
 	var verbs: EditVerbs = _shell.get("verbs")
 	var part_id: String = ""
+	var over: Vector2 = get_root().get_visible_rect().size * 0.5
 	if not _builder.selection.is_empty():
-		part_id = _world.get_brick(int(_builder.selection.keys()[0])).part_id
+		var picked: BrickWorld.Brick = _world.get_brick(int(_builder.selection.keys()[0]))
+		part_id = picked.part_id
+		over = _camera.unproject_position(picked.transform.origin)
 	if verbs != null and not _builder.selection.is_empty():
 		verbs.lift()
 		await _frames(10)
+		# The pointer over the model where the part was, as a person's is
+		# when they type: a ghost only shows under it (EditVerbs._begin_typing).
+		if not _on_phone:
+			await _move(over)
+			await _move(over + Vector2(1, 0))
+			await _frames(10)
 		# Where its ghost is as the number is typed: a typed move goes from
 		# there, as typed_moves_probe's "-2z" does.
 		var would: Vector3 = Vector3.INF
