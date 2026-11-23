@@ -384,7 +384,9 @@ func _library(words: String, source: String, shot: String, what: String) -> void
 func _open_model(path: String, name: String) -> void:
 	await _close_all()
 	var text: String = FileAccess.get_file_as_string(ProjectSettings.globalize_path(path))
-	await _bar.open_text_with_progress(text, name)
+	var result: Dictionary = await _bar.open_text_with_progress(text, name)
+	# As every open of the app's says it, so the view frames it (Main).
+	_bar.opened.emit(int(result.get("placed", 0)))
 	await _until_still(120)
 
 
