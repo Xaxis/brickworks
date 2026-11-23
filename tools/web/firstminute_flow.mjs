@@ -221,7 +221,11 @@ async function codeOnSite(page, email) {
 
 // The first moment after the sign-in that the baseplate holds the asked-for
 // model, watching every look in between for the example car.
-async function watchCopy(page, seconds) {
+// [madeBefore]: the copy was made, and its acts offered, before a reload: the
+// page after it has the copy open with nothing of this run's making to say
+// so (copied.made is the tab's), so the copy is known by its name and the
+// link it came from.
+async function watchCopy(page, seconds, madeBefore = false) {
   const end = Date.now() + seconds * 1000;
   let car = 0;
   let last = null;
@@ -232,7 +236,8 @@ async function watchCopy(page, seconds) {
       if (s.share.title === SAMPLE) car += 1;
       const named = String(s.share.title || "");
       if (named && named !== SAMPLE && (named === modelName || named.startsWith(`${modelName} (`))
-        && !s.url.includes("copy=") && (before || s.share.copied?.made)) {
+        && !s.url.includes("copy=") && (before || s.share.copied?.made
+          || (madeBefore && s.share.copied?.from === id))) {
         return { ok: true, car, s };
       }
     }
@@ -349,8 +354,14 @@ async function walk(width, way) {
       result.answered = await answerStudio(page, p);
     } else if (way === "reload") {
       await codeInStudio(page, p, email);
-      await until(page, () => (window.brickworksControls || {}).age_go, 60);
+      result.age_asked = Boolean(await until(page, () => (window.brickworksControls || {}).age_go, 60));
       await shot(page, "age-question");
+      // No age question asked (an account the admin API mints is not), the
+      // copy is made and its acts offered before the reload: after it they
+      // are not offered again, the copy open as it was (fmfin, 2026-11-23).
+      const pre = await look(page);
+      result.made_before_reload = Boolean(pre.share.copied?.made);
+      result.acts_before_reload = Boolean(pre.share.acts?.shown);
       await page.reload({ waitUntil: "domcontentloaded" });
       result.after_reload = (await look(page)).url;
       result.answered = await answerStudio(page, p);
@@ -380,7 +391,7 @@ async function walk(width, way) {
       await answerStudio(page, p);
     }
     const t1 = Date.now();
-    const got = await watchCopy(into, 240);
+    const got = await watchCopy(into, 240, Boolean(result.made_before_reload));
     result.copy_s = Math.round((Date.now() - t0) / 1000);
     result.copy_after_signin_s = Math.round((Date.now() - t1) / 1000);
     result.title = got.s?.share?.title;
@@ -393,7 +404,11 @@ async function walk(width, way) {
     if (!before) {
       const acts = await until(into, () => (window.brickworksShare || {}).acts?.shown ? window.brickworksShare.acts : null, 30);
       result.acts = acts;
-      check(`${tag}: the three first acts offered: ${JSON.stringify(acts?.acts || [])}`, Boolean(acts) && acts.acts?.length === 3);
+      if (result.acts_before_reload) {
+        check(`${tag}: the acts offered before the reload, and not again after it: ${JSON.stringify(acts?.acts || [])}`, !acts);
+      } else {
+        check(`${tag}: the three first acts offered: ${JSON.stringify(acts?.acts || [])}`, Boolean(acts) && acts.acts?.length === 3);
+      }
       check(`${tag}: credited to the original (${got.s?.share?.copied?.from})`, got.s?.share?.copied?.from === id);
     }
     const change = await changeAndSave(into, press(into), phone);
