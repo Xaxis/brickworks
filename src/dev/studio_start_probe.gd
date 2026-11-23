@@ -235,6 +235,7 @@ func _the_pin(start: Control, fake: FakeShared) -> void:
 	var world: BrickWorld = _main.get("_world")
 	var store: ModelStore = _main.get("_store")
 	var asked: int = fake.asked_comments
+	await _into_sight(row)
 	var pressed_ms: int = Time.get_ticks_msec()
 	_press_now(row)
 	var meant: int = 0
@@ -317,6 +318,7 @@ func _a_copy(start: Control, fake: FakeShared) -> void:
 	if tile == null:
 		_check(false, "(d) a gallery model to press")
 		return
+	await _into_sight(tile)
 	_press_now(tile)
 	var store: ModelStore = _main.get("_store")
 	for _n: int in 600:
@@ -336,6 +338,16 @@ func _brick_coloured(world: BrickWorld, colour: int) -> int:
 	return 0
 
 
+## Scrolled into sight, as a person does before pressing: below the fold of
+## a phone's window a press landed on the scrim and put the screen away.
+func _into_sight(control: Control) -> void:
+	var scroll: ScrollContainer = _scroll_of(control)
+	if scroll != null:
+		scroll.ensure_control_visible(control)
+		for _n: int in 3:
+			await process_frame
+
+
 func _press_now(control: Control) -> void:
 	var at: Vector2 = control.get_global_rect().get_center()
 	for down: bool in [true, false]:
@@ -347,6 +359,13 @@ func _press_now(control: Control) -> void:
 		event.global_position = event.position
 		Input.parse_input_event(event)
 		await process_frame
+
+
+func _scroll_of(control: Control) -> ScrollContainer:
+	var up: Node = control.get_parent()
+	while up != null and not up is ScrollContainer:
+		up = up.get_parent()
+	return up as ScrollContainer
 
 
 func _as_event(at: Vector2) -> Vector2:

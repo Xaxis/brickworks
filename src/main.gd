@@ -167,6 +167,10 @@ var _start_bare: bool = false
 ## When the studio was first up to use, in ticks: what the first screen's
 ## time is counted from.
 var _first_open_ms: int = -1
+## A row of what came back pressed (_open_came): when, and how long until its
+## part was lit, in ms of the app's own clock (-1 while it is not).
+var _came_pressed_ms: int = -1
+var _came_lit_ms: int = -1
 ## The comments on parts of the model open asked again this often while the
 ## studio is open, so one written meanwhile shows within a minute (partpins'
 ## gap, docs/PLAN.md row 1).
@@ -11172,6 +11176,9 @@ func _start_state() -> Dictionary:
 	var filled: int = int(state["filled_ms"])
 	state["after_open_ms"] = filled - _first_open_ms if filled >= 0 and _first_open_ms >= 0 else -1
 	state["lit"] = _part_pins.lit if _part_pins != null else 0
+	# A pinned row pressed: how long until its part was lit, as the app
+	# counts it (the page hears of it only at its next telling).
+	state["pin_ms"] = _came_lit_ms
 	# The example car on the baseplate, untouched; and how many models are
 	# saved here, by their files' names alone (a device the account's
 	# models are being brought to).
@@ -11200,6 +11207,8 @@ func _start_copy(id: String) -> void:
 ## that part (_light_comment); a photo of a build or a remix is on the
 ## model's page, in a new tab.
 func _open_came(item: Dictionary) -> void:
+	_came_pressed_ms = Time.get_ticks_msec()
+	_came_lit_ms = -1
 	var link: String = str(item.get("link", ""))
 	var address: String = link if link.begins_with("http") else Deployment.api_base() + link
 	var id: String = str(item.get("model", ""))
@@ -11219,6 +11228,7 @@ func _open_came(item: Dictionary) -> void:
 		_bar.opened.emit(placed)
 	var who: String = str(item.get("who", "")) if item.get("who") is String else ""
 	if bool(item.get("pinned", false)) and await _light_comment(int(item.get("comment", 0))):
+		_came_lit_ms = Time.get_ticks_msec() - _came_pressed_ms
 		_bar.say("%s's comment is on this part: “%s”" % [who if not who.is_empty() else "A builder",
 			str(item.get("said", ""))])
 		return
