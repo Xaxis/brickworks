@@ -190,6 +190,22 @@ var fill: float = -1.0
 ## everywhere, 1 as the photographs show it. Below 0, StudioRender's
 ## PRODUCT_EDGE.
 var edge: float = -1.0
+## A large bright source the glossy tops mirror (photoreal14), path traced in
+## the product look on a backdrop: a softbox or a window card standing above
+## and behind the model as the camera sees it, sharp-edged, the tent or the
+## room kept round it for the fill. [member source] is its light in the
+## sky's units (0 none); [member source_rise] how high its middle stands
+## (degrees), [member source_turn] how far round from straight behind the
+## model (degrees, to the right), [member source_wide] and
+## [member source_tall] how big it is seen from the model (degrees), and
+## [member source_key] how much of a staged table's near key stays with it
+## (0 none, 1 all). Below 0, StudioRender's PRODUCT_SOURCE and SOURCE_*.
+var source: float = -1.0
+var source_rise: float = -1.0
+var source_turn: float = -1.0
+var source_wide: float = -1.0
+var source_tall: float = -1.0
+var source_key: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

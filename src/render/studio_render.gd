@@ -178,6 +178,20 @@ const PRODUCT_FILL := 0.0
 ## judged alone beside the photographs against this tree without it, the
 ## solo judge called more renders photographs (16 of 80 against 11), so on.
 const PRODUCT_EDGE := 1.0
+## The large source the glossy tops mirror (photoreal14, RenderSettings
+## source and source_*; path_tracer.glsl's source_light): 0 unless asked
+## until judged. Its light in the sky's units, where its middle stands
+## (degrees up, and round from straight behind the model as the camera sees
+## it), how big it is seen from the model (degrees), how soft its edges are
+## (a share of its half size), and how much of a staged table's near key
+## stays beside it.
+const PRODUCT_SOURCE := 0.0
+const SOURCE_RISE := 40.0
+const SOURCE_TURN := 0.0
+const SOURCE_WIDE := 60.0
+const SOURCE_TALL := 40.0
+const SOURCE_EDGE := 0.04
+const SOURCE_KEY := 1.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -3052,7 +3066,53 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([float(matched.get("table", 0.0)), float(matched.get("table_light", 0.0)),
 		maxf(_bounds.size.length() * 0.5, 10.0), float(matched.get("fill", 0.0))])
 	data.append_array([key_way.x, key_way.y, key_way.z, 0.0])
+	# The large source (photoreal14), read only by the shader's marks version.
+	data.append_array(_source_rows(settings, shot))
 	return data
+
+
+## How bright the large source (photoreal14) that [param settings] ask for
+## is, in the sky's units: 0 for none. Where nobody asks, PRODUCT_SOURCE on a
+## table under the studio's light, and none elsewhere. Only where the
+## product look is drawn as a camera draws (on a backdrop).
+func _source_level(settings: RenderSettings) -> float:
+	if settings.look != "product" or not _photographic(settings):
+		return 0.0
+	var fallback: float = PRODUCT_SOURCE if _table(settings) and settings.lighting == "studio" else 0.0
+	return maxf(_own(settings.source, fallback), 0.0)
+
+
+## The large source as path_tracer.glsl's Scene reads it: the way to its
+## middle and its light, its face's right and half width, its up and half
+## height (tangents), its colour and its edges' softness. It stands where
+## the camera sees it above and behind the model, turning with the view as a
+## photographer moves the box with the camera.
+func _source_rows(settings: RenderSettings, shot: Shot) -> PackedFloat32Array:
+	var level: float = _source_level(settings)
+	if level <= 0.0:
+		var none := PackedFloat32Array()
+		none.resize(16)
+		return none
+	# Into the picture along the floor (path_tracer.glsl's tent_frame): a
+	# camera looking straight down has the picture's up as its way in.
+	var back: Vector3 = shot.basis.z
+	var up: Vector3 = shot.basis.y
+	var ahead := Vector3(-back.x, 0.0, -back.z) + Vector3(up.x, 0.0, up.z)
+	var into: Vector3 = ahead.normalized() if ahead.length_squared() > 1e-8 else Vector3(0.0, 0.0, -1.0)
+	var right := Vector3(-into.z, 0.0, into.x)
+	var rise: float = deg_to_rad(_own(settings.source_rise, SOURCE_RISE))
+	var turn: float = deg_to_rad(_own(settings.source_turn, SOURCE_TURN))
+	var flat: Vector3 = into * cos(turn) + right * sin(turn)
+	var middle: Vector3 = (flat * cos(rise) + Vector3.UP * sin(rise)).normalized()
+	var across: Vector3 = (right * cos(turn) - into * sin(turn)).normalized()
+	var face_up: Vector3 = across.cross(middle).normalized()
+	var wide: float = tan(deg_to_rad(clampf(_own(settings.source_wide, SOURCE_WIDE), 1.0, 170.0)) * 0.5)
+	var tall: float = tan(deg_to_rad(clampf(_own(settings.source_tall, SOURCE_TALL), 1.0, 170.0)) * 0.5)
+	var tint: Color = _paper_tint(settings) if _tented(settings) else Color(1, 1, 1)
+	return PackedFloat32Array([middle.x, middle.y, middle.z, level,
+		across.x, across.y, across.z, wide,
+		face_up.x, face_up.y, face_up.z, tall,
+		tint.r, tint.g, tint.b, SOURCE_EDGE])
 
 
 ## The stage matched to the photographs by measure (photoreal10) that
@@ -3070,6 +3130,9 @@ func _matched(settings: RenderSettings) -> Dictionary:
 		var value: float = _own(float(pair[1]), float(pair[2]))
 		if value > 0.0:
 			out[pair[0]] = value
+	# The large source (photoreal14) is drawn by the same version.
+	if _source_level(settings) > 0.0:
+		out["source"] = _source_level(settings)
 	return out
 
 
@@ -3200,6 +3263,9 @@ func _stage_key(settings: RenderSettings) -> Array:
 	var size: float = _own(settings.key_size, STAGE_KEY_SIZE) * radius
 	var tint: Color = _paper_tint(settings) if _tented(settings) else Color(1, 1, 1)
 	var light: Color = tint * TENT_KEY * _own(settings.key_share, STAGE_KEY_SHARE)
+	# Beside a large source (photoreal14), as much of the key as it keeps.
+	if _source_level(settings) > 0.0:
+		light *= clampf(_own(settings.source_key, SOURCE_KEY), 0.0, 1.0)
 	return [centre + way * far, minf(size, far * 0.9), light, far]
 
 

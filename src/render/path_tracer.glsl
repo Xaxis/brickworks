@@ -166,6 +166,16 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	vec4 table;
 	// The way towards that light (xyz; w unused).
 	vec4 table_key;
+	// The large bright source a glossy top mirrors (photoreal14): a softbox
+	// or a window card standing above and behind the model as the camera
+	// sees it, sharp-edged. The way to its middle (xyz) and its light (w, in
+	// the sky's units: 0 none); its face's right (xyz) and half width (w, a
+	// tangent); its face's up and half height (the same); its colour (rgb)
+	// and how soft its edges are (w, a share of its half size).
+	vec4 source;
+	vec4 source_right;
+	vec4 source_up;
+	vec4 source_colour;
 #endif
 } scene;
 
@@ -458,6 +468,60 @@ vec3 sky_light(vec3 way) {
 	vec3 below = mix(scene.sky_horizon.rgb, scene.sky_ground.rgb, pow(max(-way.y, 0.0), 0.4));
 	return scene.sky.rgb * (way.y >= 0.0 ? above : below);
 }
+
+#ifdef MARKS
+// The large source (photoreal14). A product photograph's glossy top is mostly
+// what it mirrors: the black 2x4's top in its photograph is 7.4 stops over its
+// side, mirroring a bright window behind it, where the tent's even walls and
+// the room's panorama left ours darker than its side. A rectangle seen from
+// the model at a distance, its edges straight and sharp as a softbox's or a
+// window's are; lit by it directly and mirrored in every gloss, its shadow
+// cast. Each way across its face is picked evenly in the plane of the face
+// (its tangents), so its chance per steradian grows towards the corners.
+const float SOURCE_SHARE = 0.5;
+
+// Where a way meets the face, in its half sizes (|x|, |y| under 1 within),
+// and 0 in z where it does not meet it at all.
+vec3 source_at(vec3 way) {
+	float d = dot(way, scene.source.xyz);
+	if (scene.source.w <= 0.0 || d <= 1e-4) {
+		return vec3(2.0, 2.0, 0.0);
+	}
+	return vec3(dot(way, scene.source_right.xyz) / d / scene.source_right.w,
+		dot(way, scene.source_up.xyz) / d / scene.source_up.w, 1.0);
+}
+
+vec3 source_light(vec3 way) {
+	vec3 at = source_at(way);
+	if (at.z <= 0.0 || abs(at.x) >= 1.0 || abs(at.y) >= 1.0) {
+		return vec3(0.0);
+	}
+	float edge = max(scene.source_colour.w, 1e-3);
+	float within = (1.0 - smoothstep(1.0 - edge, 1.0, abs(at.x))) * (1.0 - smoothstep(1.0 - edge, 1.0, abs(at.y)));
+	return scene.source_colour.rgb * scene.source.w * within;
+}
+
+float source_pdf(vec3 way) {
+	vec3 at = source_at(way);
+	if (at.z <= 0.0 || abs(at.x) >= 1.0 || abs(at.y) >= 1.0) {
+		return 0.0;
+	}
+	float x = at.x * scene.source_right.w;
+	float y = at.y * scene.source_up.w;
+	float r2 = 1.0 + x * x + y * y;
+	return r2 * sqrt(r2) / (4.0 * scene.source_right.w * scene.source_up.w);
+}
+
+vec3 source_pick(vec2 u) {
+	return normalize(scene.source.xyz + scene.source_right.xyz * ((u.x * 2.0 - 1.0) * scene.source_right.w)
+		+ scene.source_up.xyz * ((u.y * 2.0 - 1.0) * scene.source_up.w));
+}
+
+// The share of the light's own picks that go to the source: none without one.
+float source_share() {
+	return scene.source.w > 0.0 ? SOURCE_SHARE : 0.0;
+}
+#endif
 
 // How likely the panorama's table is to pick this direction, per steradian.
 float place_pdf(vec3 way) {
@@ -1448,6 +1512,19 @@ vec3 shadow_marked(vec3 at, vec3 n, vec3 relief) {
 			kept += c * max(dot(relief, l), 0.0) / facing * let;
 		}
 	}
+	if (scene.source.w > 0.0) {
+		// The large source (photoreal14): its light and its shadow, once.
+		vec3 l = source_pick(rand2());
+		float facing = max(dot(n, l), 0.0);
+		float pdf = source_pdf(l);
+		float c = pdf > 0.0 ? luminance(source_light(l)) * facing / pdf : 0.0;
+		if (c > 0.0) {
+			vec3 let = through_masked(at, l, 1e7, MASK_SOLID);
+			all += c;
+			seen += c * let;
+			kept += c * max(dot(relief, l), 0.0) / facing * let;
+		}
+	}
 	for (int k = 0; k < 4; k++) {
 		vec3 l;
 		float own = 0.0;
@@ -1591,6 +1668,23 @@ float sky_pdf(vec3 way, vec3 n) {
 	return scene.sky.w > 0.5 ? place_pdf(way) : max(dot(n, way), 0.0) / PI;
 }
 
+#ifdef MARKS
+// The sky's and the large source's light together (photoreal14), and how
+// likely the light's own picks are to find a way: the source's share of the
+// picks by its own chance, the rest by the sky's.
+vec3 lit_from(vec3 way) {
+	return sky_light(way) + source_light(way);
+}
+
+float lit_pdf(vec3 way, vec3 n) {
+	float share = source_share();
+	return share > 0.0 ? share * source_pdf(way) + (1.0 - share) * sky_pdf(way, n) : sky_pdf(way, n);
+}
+#else
+#define lit_from sky_light
+#define lit_pdf sky_pdf
+#endif
+
 // The light arriving at a point of a surface straight from the lights and
 // the sky.
 vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
@@ -1612,7 +1706,17 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 	// over the hemisphere otherwise, and weighed against the bounce.
 	float pdf_light;
 	vec3 l;
+#ifdef MARKS
+	// The large source (photoreal14) half the time when there is one: its
+	// chance drawn only then, so without one each path is as it was.
+	float share = source_share();
+	bool to_source = share > 0.0 && rand() < share;
+	if (to_source) {
+		l = source_pick(rand2());
+	} else if (tent()) {
+#else
 	if (tent()) {
+#endif
 		l = tent_pick(n, pdf_light);
 	} else if (scene.sky.w > 0.5) {
 		l = place_pick(rand2(), pdf_light);
@@ -1620,12 +1724,17 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 		l = cosine_around(n, rand2());
 		pdf_light = max(dot(n, l), 0.0) / PI;
 	}
+#ifdef MARKS
+	if (share > 0.0) {
+		pdf_light = lit_pdf(l, n);
+	}
+#endif
 	if (pdf_light > 0.0) {
 		float pdf_bounce;
 		vec3 f = reflect_light(s, n, v, l, pdf_bounce);
 		if (max(f.r, max(f.g, f.b)) > 0.0) {
 			vec3 let = through(at, l);
-			sum += f * sky_light(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
+			sum += f * lit_from(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
 		}
 	}
 	return sum;
@@ -1691,8 +1800,8 @@ void main() {
 					// What is behind everything, as the eye sees it.
 					radiance += carried * scene.background.rgb;
 				} else {
-					float weight = sharp ? 1.0 : balance(last_pdf, sky_pdf(way, last_n));
-					radiance += carried * sky_light(way) * weight;
+					float weight = sharp ? 1.0 : balance(last_pdf, lit_pdf(way, last_n));
+					radiance += carried * lit_from(way) * weight;
 				}
 				break;
 			}
@@ -1767,7 +1876,7 @@ void main() {
 				vec3 mirrored = reflect(way, n);
 				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, MASK_SOLID | MASK_SWEEP,
 						gl_RayFlagsOpaqueEXT)) {
-					radiance += carried * f * sky_light(mirrored);
+					radiance += carried * f * lit_from(mirrored);
 				}
 				if (scene.look.x > 0.5 && !inside && scene.wear.x > 0.0) {
 					// A handled clear part (photoreal4): fine scratches in its skin

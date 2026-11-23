@@ -472,7 +472,8 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	var without: PackedStringArray = _arg("without", "").split(",", false)
 	for key: String in ["grain", "vignette", "aberration", "softness", "sharpen", "jpeg", "age",
 			"dust", "paper", "seating", "tone", "balance", "batch", "handling", "studs", "play",
-			"rubbed", "table", "table_light", "fill", "edge"]:
+			"rubbed", "table", "table_light", "fill", "edge", "source", "source_rise", "source_turn",
+			"source_wide", "source_tall", "source_key"]:
 		if key in without:
 			settings.set(key, 0.0)
 		elif shot.has(key):
