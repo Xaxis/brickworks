@@ -126,7 +126,8 @@ var dust: float = -1.0
 var paper: float = -1.0
 ## What that grain is (photoreal5), for the photo bench to match the surface
 ## each photograph's parts stand on: 0 a paper's or a card's fibres, 1 a
-## matte desk's specks and smudges.
+## matte desk's specks and smudges; and drawn by [member table]
+## (photoreal10), 2 a leather desk pad, 3 a stone counter.
 var surface: int = 0
 ## A photograph's staging (photoreal7), Best path traced in the product look:
 ## one of StudioRender.STAGES (what the model stands on, lit as any surface
@@ -151,6 +152,38 @@ var balance: float = -1.0
 ## quite square (0 exactly, 1 up to PathTracer.SEAT_SHIFT off and SEAT_TURN
 ## degrees turned); below 0, PRODUCT_SEATING.
 var seating: float = -1.0
+## No two parts alike (photoreal8), path traced in the product look: how far
+## each part's colour strays from the next of its colour, by its batch and
+## its age (0 none, 1 as far as the photographed sets' parts do); how
+## unevenly the parts have been handled, some scuffed and dulled and most
+## not (0 none, 1 as the photographed sets'); and how far each stud's logo
+## and top differ from the next (0 none, 1 some rubbed nearly flat). Below
+## 0, StudioRender's PRODUCT_BATCH, PRODUCT_HANDLING and PRODUCT_STUDS.
+var batch: float = -1.0
+var handling: float = -1.0
+var studs: float = -1.0
+## That seating as LEGO's own play lets a part sit (photoreal8): its turn
+## about the vertical kept to the stud grid's and its slide across a little
+## wider, as measured from above (0 as photoreal4 drew it, 1 as measured).
+## Below 0, StudioRender's PRODUCT_PLAY.
+var play: float = -1.0
+## How much handled wear gathers where fingers and stacking touch
+## (photoreal9), path traced in the product look: the body's edges, each
+## stud's rim and wall, dust at each stud's foot, each part its own (0 none,
+## 1 as the bench's black 2x4 shows it). Below 0, StudioRender's
+## PRODUCT_RUBBED.
+var rubbed: float = -1.0
+## The stage matched to the photographs by measure (photoreal10), path traced
+## in the product look on a backdrop: the table's own relief, a leather's
+## cells, a stone's grains, a desk's laminate (0 none, 1 as measured; which
+## table is [member surface]); how far the light that falls off across the
+## table stands from the model (its radii, 0 none); how much the shade's fill
+## is tinted as daylight is, by as much of the light as the model keeps from
+## it (0 none, 1 as measured). Below 0, StudioRender's PRODUCT_TABLE,
+## _TABLE_LIGHT and _FILL.
+var table: float = -1.0
+var table_light: float = -1.0
+var fill: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

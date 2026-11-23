@@ -709,6 +709,11 @@
           <div class="with-preview">
             <form id="challenge-form" class="card console-form">
               <h3>Set a challenge</h3>
+              <fieldset class="kind">
+                <legend>Kind</legend>
+                <label class="choice"><input type="radio" name="kind" value="month" checked> Monthly challenge: rules, entries, a vote</label>
+                <label class="choice"><input type="radio" name="kind" value="prompt"> Weekly quick build: a brief and a template, entered by publishing, stacked at its end</label>
+              </fieldset>
               <label>Title
                 <input name="title" maxlength="80" required></label>
               <label>The brief: what to build, in a line or two
@@ -723,6 +728,11 @@
                   <div class="dropdowns"></div>
                 </fieldset>
               </div>
+              <label class="prompt-only" hidden>Its template: a published model's link, or leave it empty for the house's 8×8 plate
+                <input name="template" maxlength="200" placeholder="brickworks.diy/m/AbCdEfGhIj"></label>
+              <p class="note prompt-only" hidden>A week from its first day. Start on its page and in its notice opens the
+                template in the studio; publishing a copy in the gallery that week enters it; when it ends, every entry is
+                stacked into one model the house publishes. One a week, beside the month's challenge.</p>
               <fieldset class="rules">
                 <legend>Rules, up to three</legend>
                 <label class="choice"><input type="checkbox" name="has_most"> At most

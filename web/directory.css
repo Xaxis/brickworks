@@ -123,6 +123,12 @@
    thing, at most three. */
 .model-page ul.based-on { list-style: none; padding: 0; }
 .model-page ul.based-on li + li { margin-top: 2px; }
+/* Built from a real set, counted (altbuilds): the designer alone hears
+   what a set they named does not hold; a set's page's empty row asks for
+   the first build, its button the page's own. */
+.model-page .alt-short { color: var(--ink-soft); }
+.set-page .built-empty p { margin: 0 0 10px; }
+.set-page .built-empty p.note { color: var(--ink-soft); }
 dialog.bases-dialog { width: min(480px, calc(100vw - 32px)); }
 dialog.bases-dialog .bases-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 12px; }
 /* Each row boxed, over the report dialog's bare fieldsets (below); its
@@ -142,6 +148,43 @@ dialog.bases-dialog .actions { margin-top: 16px; }
    sharing the row: three in a row fit neither a phone nor the column. */
 .model-page .side .actions > .cta { flex: 1 1 auto; }
 .model-page .side .actions > .cta:first-child { flex-basis: 100%; }
+/* Open in Brickworks and its second choice, With your Claude, one control
+   (claudelink): the two halves of a ghost button, the second opening the
+   panel under the row. Once the second shows, the control has the row and
+   Download the one under it; a long language's words wrap in the first
+   half rather than push the control past a phone's edge. */
+.model-page .side .actions > .open-split { display: flex; flex: 1 1 auto; min-width: 0; }
+.model-page .side .actions > .open-split:has(> .open-claude:not([hidden])) { flex-basis: 100%; }
+.open-split > .cta { flex: 1 1 auto; min-width: 0; white-space: normal; text-align: center; }
+.open-split:has(> .open-claude:not([hidden])) > .cta { border-start-end-radius: 0; border-end-end-radius: 0; }
+.open-split > .open-claude {
+	display: inline-flex; align-items: center; gap: var(--s-1); flex: none; min-height: var(--control-h); margin-inline-start: -1px; padding: 0 12px;
+	border: 1px solid var(--line-strong); border-radius: 0 var(--control-radius) var(--control-radius) 0;
+	background: var(--panel); box-shadow: var(--highlight), var(--shadow-1); color: var(--ink); font-weight: 640;
+}
+.open-split > .open-claude:hover { background: var(--panel-hi); }
+.open-split > .open-claude[aria-expanded="true"] { border-color: var(--accent-edge); }
+.open-split > .open-claude[aria-expanded="true"] > .icon:last-child { transform: rotate(180deg); }
+.open-split > .open-claude .icon { width: 18px; height: 18px; }
+.open-split > .open-claude .narrow { display: none; }
+@media (width < 600px) { .open-split > .open-claude .wide { display: none; } .open-split > .open-claude .narrow { display: inline; } }
+/* What should it change, Copy for Claude and the way to connect it: under
+   the row, as Save's lists are, pushing the page down. */
+.claude-panel {
+	display: grid; gap: var(--s-2); margin: 0 0 12px; padding: 12px; border-radius: var(--r-3);
+	border: 1px solid var(--line); background: var(--panel);
+}
+.claude-panel[hidden] { display: none; }
+.claude-panel .claude-head { margin: 0; font-weight: 640; }
+.claude-panel .claude-about { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.claude-panel .claude-ask { display: grid; gap: var(--s-2); }
+.claude-panel .claude-ask label small { color: var(--ink-soft); font-weight: 400; }
+.claude-panel .claude-do { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.claude-panel .claude-do > .cta { flex: 1 1 auto; }
+.claude-panel .claude-connect { margin: 0; }
+.claude-panel .claude-message[hidden] { display: none; }
+.claude-panel .claude-said { margin: 0; }
+.claude-panel .claude-said:empty { display: none; }
 
 /* Who made it: their avatar, name and handle, a link to their profile,
    and Follow beside it. */
@@ -204,6 +247,28 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .earlier { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
 .model-page .earlier a { color: var(--ink); }
+/* The Log (api/share.js versionsSection): every version newest first, its
+   small picture beside its date, what changed and its note; the one shown
+   edged. A picture holds its 4:3 place before it comes, so nothing moves. */
+.model-page .versions h3 { margin: 18px 0 8px; font-size: var(--t-body); }
+.model-page .earlier.log { list-style: none; padding: 0; display: grid; gap: 10px; }
+.model-page .log-entry {
+	display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: start; margin: 0;
+	padding: 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+.model-page .log-entry[aria-current="true"] { border-color: var(--line-strong); }
+.model-page .log-picture { display: block; aspect-ratio: 4 / 3; border-radius: var(--r-1); background: var(--panel-hi); overflow: hidden; }
+.model-page .log-picture img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.model-page .log-main p { margin: 0 0 4px; }
+.model-page .log-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--ink-soft); }
+.model-page .log-head > a { font-weight: 600; }
+.model-page .log-head .when { margin-left: 0; }
+.model-page .log-changed { color: var(--ink-soft); }
+.model-page .log-note q { color: var(--ink); white-space: pre-line; }
+.model-page .wip-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--ink-soft); }
+@media (max-width: 520px) {
+	.model-page .log-entry { grid-template-columns: 96px minmax(0, 1fr); gap: 10px; }
+}
 /* Its parts (api/share.js partsSection, web/model-page.js startParts): how
    many in how many lots, Colour or Kind and the shops' lists (a model's
    three: what LEGO® Pick a Brick leaves off said under them), then a
@@ -217,6 +282,23 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* The shops' lists, one group: it wraps as a whole beside Colour and Kind
    or under them, never one shop a row apart from the rest. */
 .parts-shops { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+/* What somebody signed in has of a model's parts (ownedparts,
+   web/model-page.js startMine): the line that says it, then All · Missing ·
+   Have all, each with how many lots; the row is kept from the start, a
+   field's height, so the list under it does not move when it is said. */
+.parts-mine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); min-height: var(--control-h);
+	margin: 0 0 var(--s-3); }
+.parts-mine .parts-have { flex: 1 1 240px; margin: 0; }
+.parts-mine .parts-have.all { font-weight: 600; }
+.parts-mine .segmented .n { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.parts-mine .segmented [aria-pressed="true"] .n { color: var(--ink); }
+/* A set page's You own − n + (ownedparts, api/_sets.js ownCountHtml), in
+   Parts you own once they own it: the number a field four digits wide
+   between − and +, and what it means beside it. */
+.owned-count .keep-count { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); }
+.owned-count label { font-weight: 600; }
+.owned-count input { width: 4.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.owned-count .note { flex: 1 1 14em; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 .lot-list { list-style: none; margin: 0 0 var(--s-3); padding: 0; }
 .lot-list li {
 	display: flex; align-items: center; gap: var(--s-3); height: 60px; min-width: 0;
@@ -240,6 +322,38 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .line { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .line li { margin: 3px 0; overflow-wrap: anywhere; }
 .model-page .line a { color: var(--ink); }
+/* What a remix changed, under its credit, and the Remixes tab's tree both
+   ways (remixdiff, api/_remix.js): each node its picture, name, maker and
+   what it changed from the one above it; each level set in from that one
+   and joined to it by a line; the model whose page it is ringed. */
+.model-page .remix-changes { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.model-page .remix-changes a, .model-page .remix-changes b { color: var(--ink); }
+.model-page .remix-changes b { font-weight: 600; }
+.model-page .remix-changes .what-changed { margin-left: 4px; vertical-align: 1px; }
+.model-page .remix-changes .what-changed[hidden] { display: none; }
+.remix-tree, .remix-tree ol { list-style: none; margin: 0; padding: 0; }
+.remix-tree ol { margin-left: 26px; padding-left: 14px; border-left: 2px solid var(--line-strong); }
+.remix-tree li { margin: 8px 0; }
+.remix-tree .node-card {
+	display: flex; align-items: center; gap: 12px; max-width: 640px; padding: 8px 12px 8px 8px;
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink); text-decoration: none;
+}
+.remix-tree a.node-card:hover { background: var(--panel-hi); border-color: var(--line-strong); }
+.remix-tree a.node-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.remix-tree .node-card.self { border-color: var(--accent-edge); box-shadow: inset 0 0 0 1px var(--accent-edge); }
+.remix-tree .node-card img, .remix-tree .no-picture {
+	flex: none; width: 64px; height: 48px; border-radius: calc(var(--radius) - 2px); background: var(--picture-ground); object-fit: contain;
+}
+.remix-tree .words { display: grid; min-width: 0; line-height: 1.35; }
+.remix-tree .name { font-weight: 600; overflow-wrap: anywhere; }
+.remix-tree .by, .remix-tree .change { font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
+.remix-tree .here { margin-left: auto; padding-left: 8px; font-size: var(--t-tiny); color: var(--ink-soft); white-space: nowrap; }
+@media (width < 600px) {
+	.remix-tree ol { margin-left: 12px; padding-left: 10px; }
+	.remix-tree .node-card { gap: 10px; }
+	.remix-tree .node-card img, .remix-tree .no-picture { width: 48px; height: 36px; }
+	.remix-tree .here { display: none; }
+}
 
 .gone { padding: clamp(56px, 10vw, 110px) 0; }
 
@@ -330,6 +444,29 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .vote-said .icon { flex: none; width: 18px; height: 18px; color: var(--green); }
 .vote-said .said { min-width: 0; overflow-wrap: anywhere; }
 #groups .why-not { margin: 0 0 var(--s-4); }
+#groups[hidden] { display: none; }
+/* Two at a time: the way to it over the cards; the pair side by side,
+   each its blind embed turning in a frame of the card's shape, its name
+   and This one under it; one above the other on a phone. */
+.pair-go { margin: 0 0 var(--s-4); }
+.pair-go[hidden], .pair[hidden] { display: none; }
+.pair-go .icon { width: 18px; height: 18px; }
+.pair-said { margin: 0 0 var(--s-4); color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
+.pair-said:focus { outline: none; }
+.pair-said b { color: var(--ink); }
+.pair-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4); }
+.pair-two[data-state="chosen"], .pair-two[data-state="voted"] { grid-template-columns: minmax(0, 560px); justify-content: center; }
+.pair-one { margin: 0; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line);
+	border-radius: var(--radius); overflow: hidden; background: var(--panel); }
+.pair-frame { aspect-ratio: 4 / 3; background: var(--picture-ground); }
+.pair-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.pair-words { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--s-4); }
+.pair-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pair-keep { flex: none; }
+.pair-acts { margin-top: var(--s-4); }
+@media (max-width: 640px) {
+	.pair-two { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+}
 #groups .state p { margin: 0 0 var(--s-3); }
 #groups .state p:last-child { margin: 0; }
 /* What a card says of its entry, at its foot, level across a row: the
@@ -347,11 +484,26 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* How it works: three steps, and what only some need folded under them. */
 #how .steps { margin-bottom: var(--s-5); }
 /* The next one told: a panel lit as the month's tile on the home is. */
-.next-one {
+/* This week's quick build on the hub: the next one's panel, the act in it. */
+.next-one, .week-card {
 	max-width: 760px; padding: var(--s-5) var(--s-6); border: 1px solid var(--accent-edge); border-radius: var(--r-4);
 	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
 	box-shadow: var(--highlight), var(--shadow-1);
 }
+.week-card h2 { margin: 0 0 var(--s-1); }
+.week-card h2 a { color: inherit; }
+.week-card p { margin: 0; color: var(--ink-soft); }
+.week-card .challenge-status { margin-bottom: var(--s-3); }
+.week-card .note { margin-top: var(--s-2); }
+.week-card .actions { margin-top: var(--s-4); }
+/* A quick build's cards: a tap on the picture turns the model in 3D in
+   its place (web/start3d.js), above the card's own link. */
+.turns .model .frame { position: relative; }
+.turns .model .frame > a.picture { position: relative; z-index: 2; display: block; cursor: grab; }
+.turns .model .frame > a.picture img { display: block; width: 100%; height: auto; }
+#stack .turns { max-width: 760px; grid-template-columns: 1fr; }
+#prompt-empty { display: grid; gap: var(--s-3); justify-items: start; }
+#prompt-empty[hidden] { display: none; }
 .next-one h3 { margin: 0 0 var(--s-1); }
 .next-one p { margin: 0; color: var(--ink-soft); }
 .next-one .challenge-status { margin-bottom: var(--s-3); }
@@ -527,6 +679,25 @@ dialog.bases-dialog .set-chosen[hidden] { display: none; }
 :is(.model-page, .talk-page) .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 :is(.model-page, .talk-page) .comment-new .note, .model-page .comment-why .note { margin: 0; }
 :is(.model-page, .talk-page) .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+/* A comment on a part (partpins, web/model-page.js): its number, as its
+   dot in 3D has it, and the part and step it is on, a link that turns the
+   3D view there; words alone on a part not in this version. The box on a
+   part says which over it, a pill with Cancel. Pins resolved fold away
+   under the list, a pill to open them. */
+.model-page .comment-pin { margin: 0 0 4px; display: flex; align-items: baseline; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
+.model-page .comment-pin .pin-n {
+	flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+	align-self: center;
+}
+.model-page .comment-pin.gone .pin-n { background: var(--line-strong); color: var(--ink); }
+.model-page .comment-pin .pin-go { color: var(--ink); text-align: left; }
+.model-page .comment-part { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.model-page .comment-part[hidden] { display: none; }
+.model-page .comment-part .pill.pin { color: var(--ink); border-color: var(--accent-edge); white-space: normal; }
+.model-page .comments-resolved { margin-top: 12px; }
+.model-page .comments-resolved[hidden] { display: none; }
+.model-page .comments-resolved > .comment-list { opacity: 0.85; }
 @media (width < 600px) {
 	:is(.model-page, .talk-page) .comment { gap: 10px; padding: 10px 12px; }
 	.model-page .replies { padding-left: 10px; }
@@ -893,6 +1064,35 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .share-sheet .actions { margin-top: var(--s-4); }
 .share-sheet .share-to { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
 .share-sheet .share-to p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+/* Post it elsewhere, its designer's (web/post-kit.js): the places as the
+   networks are, and the kit for one in a dialog of its own over the sheet,
+   its pictures in a row of thumbnails, its words to copy, its rules ticked
+   (or crossed, or a dot for one the person keeps), then how to take it. */
+.share-sheet .post-kits { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.share-sheet .post-kits p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.share-sheet .post-kits p small { display: block; color: var(--ink-faint); }
+dialog.post-kit { width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; }
+.post-kit h2:focus { outline: none; }
+.post-kit h3 { margin: var(--s-4) 0 var(--s-2); font-size: var(--t-body); }
+.post-kit .kit-pictures { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); grid-auto-rows: 72px; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.post-kit .kit-pictures img, .post-kit .kit-pictures video {
+	width: 100%; height: 100%; object-fit: contain; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel-hi);
+}
+.post-kit .kit-pictures video { grid-column: span 2; grid-row: span 2; }
+.post-kit .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-3); }
+.post-kit .copy-row label { flex: 1 1 16em; margin: 0; }
+.post-kit .kit-words > p { margin: 0 0 var(--s-3); color: var(--ink); }
+.post-kit .kit-rules b { font-weight: 560; }
+.post-kit .kit-rules li[data-how="fails"]::before {
+	left: 4px; top: 0.2em; width: 12px; height: 12px; border: 0; transform: none;
+	background: linear-gradient(45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%),
+		linear-gradient(-45deg, transparent 43%, var(--bad) 43% 57%, transparent 57%);
+}
+.post-kit .kit-rules li[data-how="fails"] b { color: var(--bad); }
+.post-kit .kit-rules li[data-how="yours"]::before {
+	left: 7px; top: 0.55em; width: 6px; height: 6px; border: 0; border-radius: 50%; transform: none; background: var(--ink-faint);
+}
+.post-kit .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
 
 /* The directory of collections as wide as the gallery it is a tab of, its
    title and a line about it over the tabs. */

@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down, ui:setting the weekly quick build, ui:the quick build in the studio, cli:prompt probe, ui:the month's challenge in the studio, ui:Enter from Share, cli:challenge line probe, cli:challenge rules probe -->
 
 ## Sub-features
 
@@ -1111,6 +1111,36 @@ password is put on it. On a 429 it waits and asks again, about two minutes in
 all, saying so. The flows about the sign-in itself (`account_flow`,
 `people_flow`'s visitor, `first_steps`' dialog, `oauth_flow`'s authorize page)
 type a minted code (`mintCode`) and so still drive the real `/auth/v1/verify`.
+
+- `the month's challenge in the studio` (challengestudio, 2026-11-23;
+  `src/ui/challenge_line.gd` `ChallengeLine`, made by `Main._make_challenge_line`
+  2.5 s after start, never in a probe's run unless its own `SharedModels`
+  answers): `GET /api/people?op=challenge_rules` (`api/_challenges.js
+  challengeRules`, the set's lots as kept by `challenge_set_lots`,
+  `supabase/challenge_studio.sql`) read at the edge by
+  `ChallengeRules.rules_in`. One line in the notices strip, its name, days
+  left and "N of M rules kept"; pressed, each rule ticked (`rows`: ok, no,
+  unknown) with what to change, Test it (the four tests,
+  `SharedPages.attach_tested`), Publish to enter, See the challenge; x
+  hides it for that challenge. Ticked at most once a second as the model
+  changes, from `ModelStore.text_for_rules` (the text a publish sends),
+  read by `ChallengeRules.read`, a port of `api/share.js` `checkModel` and
+  `api/_owned.js` `keyed`/`spelled`, on a worker over 120 KB. A copy of
+  this week's quick build names the quick build instead, once its brief is
+  read. Proven equal to the site's `challenge_check` by
+  `challenge_rules_probe` on `tools/challenge_rules_check.mjs`'s fixtures
+  (the port, on the same stored files), then by `challenge_rules_check
+  --studio` (the site's check of the very texts and findings the studio
+  would publish, in a rolled-back transaction).
+  `page_state()` and `controls_by_name()` (`challenge_line`,
+  `challenge_hide`, `challenge_test`, `challenge_publish`, `challenge_page`).
+- `Enter from Share` (`src/ui/share_panel.gd`): `share_enter` ("Enter
+  <title>") and `share_way` under Publish while the line's rules pass
+  (`ChallengeLine.passes`, a Tested not known counted as passing);
+  `publish_and_enter` lists it with the name, publishes, then `POST
+  ?op=enter {model, way}`; `page_state` `enter_shown`, `enter_text`,
+  `enter_disabled`, `enter_line`, `enter_said`, `entry`
+  (`?op=challenge_entry`).
 
 ## Gotchas
 

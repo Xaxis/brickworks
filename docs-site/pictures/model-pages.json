@@ -24,6 +24,185 @@
    ]
   },
   {
+   "id": "comments-on-parts",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "answers": {
+    "/api/people?op=comments&id=DocsSprt01": {
+     "model": "DocsSprt01",
+     "ready": true,
+     "version": 1,
+     "newest": 1,
+     "open": true,
+     "replies": true,
+     "pins": true,
+     "count": 3,
+     "comments": [
+      {
+       "id": 101,
+       "version": 1,
+       "step": 12,
+       "on_step": 12,
+       "body": "Should this brick sit a plate higher? It hides the stripe on the door.",
+       "at": "2026-11-20T09:00:00Z",
+       "edited_at": null,
+       "by": "Ivy Hart",
+       "handle": "ivyhart",
+       "by_owner": false,
+       "mine": false,
+       "hidden": false,
+       "older": false,
+       "said": "on step 12 of version 1",
+       "parent": null,
+       "pin": {
+        "part": "3001",
+        "colour": 4,
+        "at": [
+         280,
+         -56,
+         -60
+        ],
+        "turn": [
+         1,
+         0,
+         0,
+         0,
+         1,
+         0,
+         0,
+         0,
+         1
+        ],
+        "section": "",
+        "line": 66,
+        "near": [],
+        "full": true,
+        "with": []
+       },
+       "resolved": false,
+       "resolved_at": null
+      },
+      {
+       "id": 102,
+       "version": 1,
+       "step": null,
+       "on_step": null,
+       "body": "Lovely shape. The bonnet is spot on.",
+       "at": "2026-11-20T10:30:00Z",
+       "edited_at": null,
+       "by": "Jon Reyes",
+       "handle": "jonreyes",
+       "by_owner": false,
+       "mine": false,
+       "hidden": false,
+       "older": false,
+       "said": "on version 1",
+       "parent": null,
+       "pin": null,
+       "resolved": false,
+       "resolved_at": null
+      },
+      {
+       "id": 103,
+       "version": 1,
+       "step": 6,
+       "on_step": 6,
+       "body": "This plate could be a tile, so the roof is smooth.",
+       "at": "2026-11-19T16:00:00Z",
+       "edited_at": null,
+       "by": "Jon Reyes",
+       "handle": "jonreyes",
+       "by_owner": false,
+       "mine": false,
+       "hidden": false,
+       "older": false,
+       "said": "on step 6 of version 1",
+       "parent": null,
+       "pin": {
+        "part": "3022",
+        "colour": 0,
+        "at": [
+         240,
+         -32,
+         -20
+        ],
+        "turn": [
+         1,
+         0,
+         0,
+         0,
+         1,
+         0,
+         0,
+         0,
+         1
+        ],
+        "section": "",
+        "line": 17,
+        "near": [],
+        "full": true,
+        "with": []
+       },
+       "resolved": true,
+       "resolved_at": "2026-11-21T08:00:00Z"
+      }
+     ],
+     "you": {
+      "signed_in": false,
+      "may_write": false,
+      "why_not": "Sign in to add a comment: we email you a code, no password.",
+      "owner": false
+     }
+    },
+    "/m/DocsSprt01/parts.json": {
+     "lots": [
+      {
+       "part": "3001",
+       "colour": 4,
+       "name": "Brick 2 x 4",
+       "count": 2
+      },
+      {
+       "part": "3022",
+       "colour": 0,
+       "name": "Plate 2 x 2",
+       "count": 2
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "click": "[data-tab=comments]"
+    },
+    {
+     "wait": ".comment-pin"
+    },
+    {
+     "pause": 400
+    }
+   ],
+   "crop": "#comments",
+   "pad": 12,
+   "alt": "The Comments of a model's page: Ivy Hart's comment on the 2 × 4 brick, step 12, with its pin's number, then Jon Reyes's on the whole model, and under them Resolved (1), Jon Reyes's comment on the 2 × 2 plate folded away.",
+   "caption": "Comments on parts, on a model's page.",
+   "features": [
+    "ui:comment on a part in 3D",
+    "lib:comments pinned to parts"
+   ]
+  },
+  {
    "id": "model-share",
    "source": "site",
    "route": "/m/DocsSprt01",
@@ -52,6 +231,155 @@
    "caption": "Share, on a model's page.",
    "features": [
     "ui:model page action bar"
+   ]
+  },
+  {
+   "id": "model-log",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    1600
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": ".earlier.log img",
+   "db": {
+    "rest/v1/share_versions?model=eq.DocsSprt01": [
+     {
+      "n": 3,
+      "at": "2026-11-02T18:10:00Z",
+      "note": "The roof, and the driver in his seat.",
+      "parts": 187,
+      "steps": 35,
+      "bytes": 21879,
+      "has_image": true,
+      "has_thumb": true,
+      "first_changed": 33,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 43,
+      "changes": {
+       "added": [
+        {
+         "part": "3069b",
+         "colour": 4,
+         "count": 6
+        },
+        {
+         "part": "3626c",
+         "colour": 14,
+         "count": 1
+        }
+       ],
+       "removed": [],
+       "added_count": 7,
+       "removed_count": 0,
+       "added_in": [
+        34
+       ],
+       "removed_from": [],
+       "steps_added": [
+        34
+       ],
+       "steps_removed": [],
+       "steps_changed": [
+        34
+       ],
+       "first": 34,
+       "compared": true,
+       "parts": 187,
+       "steps": 35
+      }
+     },
+     {
+      "n": 2,
+      "at": "2026-10-31T16:40:00Z",
+      "note": "Doors that open, on 2 x 2 hinge bricks one plate lower.",
+      "parts": 168,
+      "steps": 32,
+      "bytes": 19810,
+      "has_image": true,
+      "has_thumb": true,
+      "first_changed": 21,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 42,
+      "changes": {
+       "added": [
+        {
+         "part": "3937",
+         "colour": 4,
+         "count": 4
+        },
+        {
+         "part": "3938",
+         "colour": 4,
+         "count": 4
+        }
+       ],
+       "removed": [],
+       "added_count": 8,
+       "removed_count": 0,
+       "added_in": [
+        21
+       ],
+       "removed_from": [],
+       "steps_added": [
+        21
+       ],
+       "steps_removed": [],
+       "steps_changed": [
+        21
+       ],
+       "first": 21,
+       "compared": true,
+       "parts": 168,
+       "steps": 32
+      }
+     },
+     {
+      "n": 1,
+      "at": "2026-10-30T10:00:00Z",
+      "note": null,
+      "parts": 160,
+      "steps": 30,
+      "bytes": 18800,
+      "has_image": true,
+      "has_thumb": true,
+      "changes": null,
+      "first_changed": null,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 41
+     }
+    ]
+   },
+   "answers": {
+    "/m/DocsSprt01/v/": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    }
+   },
+   "steps": [
+    {
+     "scroll": "#versions"
+    }
+   ],
+   "crop": "#versions",
+   "pad": 12,
+   "alt": "A model's Log while it is being built: the Work in progress mark and what it means, what changed in version 3 and its note, then every version newest first, each with its picture, its date, what changed and its note, versions marked Work in progress.",
+   "caption": "The Log of a model shared as work in progress.",
+   "features": [
+    "ui:a model's log",
+    "lib:versions of a shared model"
    ]
   },
   {
@@ -96,6 +424,647 @@
    "caption": "Build it, One part.",
    "features": [
     "ui:build it step player"
+   ]
+  },
+  {
+   "id": "model-claude",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "storage": {
+    "brickworks.claude.ask": {
+     "id": "DocsSprt01",
+     "ask": "Make the roof dark blue"
+    }
+   },
+   "wait": "a.picture img",
+   "steps": [
+    {
+     "click": "[data-open-claude]"
+    },
+    {
+     "wait": "#claude-panel"
+    }
+   ],
+   "crop": [
+    ".model-page .side .actions",
+    "#claude-panel"
+   ],
+   "pad": 12,
+   "alt": "A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
+   "caption": "With your Claude, on a model's page.",
+   "features": [
+    "ui:change a model with your Claude"
+   ]
+  },
+  {
+   "id": "remix-line",
+   "source": "site",
+   "route": "/m/DocsSprt02",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "answers": {
+    "/m/DocsSprt02.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt02.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt02.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt03.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt04.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    }
+   },
+   "db": {
+    "rest/v1/rpc/directory_model": {
+     "id": "DocsSprt02",
+     "name": "Sports car in yellow",
+     "author": "Mika Example",
+     "parts": 191,
+     "has_image": true,
+     "has_thumb": true,
+     "listed_at": "2026-11-03T10:00:00Z",
+     "updated_at": "2026-11-03T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "car"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 35,
+     "own_steps": true,
+     "technic": false,
+     "views": 0,
+     "likes": 0,
+     "builds": 0,
+     "remixes": 1,
+     "comments": 0,
+     "by": {
+      "handle": "mika-example",
+      "name": "Mika Example"
+     },
+     "tested": false,
+     "made_with": "hand",
+     "moves": [],
+     "motions": [],
+     "description": "The sports car in yellow, with a spoiler.",
+     "listed": true,
+     "from": [
+      {
+       "id": "DocsSprt01",
+       "name": "Sports car and its driver",
+       "author": "Test builder"
+      }
+     ],
+     "remixes_listed": [
+      {
+       "id": "DocsSprt03",
+       "name": "Rally car",
+       "author": "Jo Example",
+       "parts": 205,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-06T10:00:00Z",
+       "updated_at": "2026-11-06T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "jo-example",
+        "name": "Jo Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": []
+      }
+     ]
+    },
+    "rest/v1/share_versions?model=eq.DocsSprt02": [
+     {
+      "n": 1,
+      "at": "2026-11-03T10:00:00Z",
+      "note": null,
+      "parts": 191,
+      "steps": 35,
+      "bytes": 22347,
+      "has_image": true,
+      "changes": null,
+      "first_changed": null,
+      "remixed_from_version": 1
+     }
+    ],
+    "rest/v1/shared_models?id=eq.DocsSprt02": [
+     {
+      "id": "DocsSprt02",
+      "owner": "d0c5d0c5-0000-4d0c-8d0c-00000000002a",
+      "test": false
+     }
+    ],
+    "storage/v1/object/shared-models/DocsSprt02.mpd": {
+     "file": "models/sports_car.ldr"
+    },
+    "rest/v1/people?": [
+     {
+      "account": "d0c5d0c5-0000-4d0c-8d0c-00000000002a",
+      "handle": "mika-example",
+      "name": "Mika Example"
+     }
+    ],
+    "rest/v1/share_tests?model=eq.DocsSprt02": [],
+    "rest/v1/rpc/remix_tree": {
+     "changes": {
+      "added": 4,
+      "removed": 0,
+      "moved": 0,
+      "recoloured": 31,
+      "turned": 0,
+      "parts_was": 187,
+      "parts_now": 191,
+      "n": 1,
+      "against": "DocsSprt01",
+      "against_n": 1,
+      "inferred": false,
+      "drawn": true
+     },
+     "up": [
+      {
+       "id": "DocsSprt01",
+       "name": "Sports car and its driver",
+       "author": "Test builder",
+       "depth": 1,
+       "has_image": true,
+       "has_thumb": true,
+       "updated_at": "2026-10-30T10:00:00Z",
+       "changes": null,
+       "from": null
+      }
+     ],
+     "down": [
+      {
+       "id": "DocsSprt03",
+       "name": "Rally car",
+       "author": "Jo Example",
+       "parts": 205,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-06T10:00:00Z",
+       "updated_at": "2026-11-06T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "jo-example",
+        "name": "Jo Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt02",
+       "depth": 1,
+       "changes": {
+        "added": 18,
+        "removed": 4,
+        "moved": 6,
+        "recoloured": 0,
+        "turned": 2,
+        "parts_was": 191,
+        "parts_now": 205,
+        "n": 1,
+        "against": "DocsSprt02",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      }
+     ]
+    }
+   },
+   "wait": ".model-page .remix-changes",
+   "crop": [
+    ".model-page .from",
+    ".model-page .remix-changes"
+   ],
+   "pad": 16,
+   "alt": "A remix's credit, Remixed from Sports car and its driver, and under it what it changed from version 1, with See what changed in 3D.",
+   "caption": "What a remix changed, under its credit.",
+   "features": [
+    "ui:what a remix changed and the remix tree"
+   ]
+  },
+  {
+   "id": "remix-tree",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "answers": {
+    "/m/DocsSprt02.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt02.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt02.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt03.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt03.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.webp": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    },
+    "/m/DocsSprt04.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    },
+    "/m/DocsSprt04.cutout.png": {
+     "file": "docs-site/pictures/files/DocsSprt01.cutout.png"
+    }
+   },
+   "db": {
+    "rest/v1/rpc/remix_tree": {
+     "changes": null,
+     "up": [],
+     "down": [
+      {
+       "id": "DocsSprt04",
+       "name": "Sports car with a roof rack",
+       "author": "Priya Example",
+       "parts": 199,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-05T10:00:00Z",
+       "updated_at": "2026-11-05T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "priya-example",
+        "name": "Priya Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt01",
+       "depth": 1,
+       "changes": {
+        "added": 12,
+        "removed": 0,
+        "moved": 0,
+        "recoloured": 0,
+        "turned": 0,
+        "parts_was": 187,
+        "parts_now": 199,
+        "n": 1,
+        "against": "DocsSprt01",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      },
+      {
+       "id": "DocsSprt02",
+       "name": "Sports car in yellow",
+       "author": "Mika Example",
+       "parts": 191,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-03T10:00:00Z",
+       "updated_at": "2026-11-03T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 1,
+       "comments": 0,
+       "by": {
+        "handle": "mika-example",
+        "name": "Mika Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt01",
+       "depth": 1,
+       "changes": {
+        "added": 4,
+        "removed": 0,
+        "moved": 0,
+        "recoloured": 31,
+        "turned": 0,
+        "parts_was": 187,
+        "parts_now": 191,
+        "n": 1,
+        "against": "DocsSprt01",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      },
+      {
+       "id": "DocsSprt03",
+       "name": "Rally car",
+       "author": "Jo Example",
+       "parts": 205,
+       "has_image": true,
+       "has_thumb": true,
+       "listed_at": "2026-11-06T10:00:00Z",
+       "updated_at": "2026-11-06T10:00:00Z",
+       "kind": "vehicle",
+       "tags": [
+        "car"
+       ],
+       "licence": "cc-by-4.0",
+       "steps": 35,
+       "own_steps": true,
+       "technic": false,
+       "views": 0,
+       "likes": 0,
+       "builds": 0,
+       "remixes": 0,
+       "comments": 0,
+       "by": {
+        "handle": "jo-example",
+        "name": "Jo Example"
+       },
+       "tested": false,
+       "made_with": "hand",
+       "moves": [],
+       "motions": [],
+       "parent": "DocsSprt02",
+       "depth": 2,
+       "changes": {
+        "added": 18,
+        "removed": 4,
+        "moved": 6,
+        "recoloured": 0,
+        "turned": 2,
+        "parts_was": 191,
+        "parts_now": 205,
+        "n": 1,
+        "against": "DocsSprt02",
+        "against_n": 1,
+        "inferred": false,
+        "drawn": true
+       }
+      }
+     ]
+    }
+   },
+   "steps": [
+    {
+     "scroll": "#remixes"
+    },
+    {
+     "wait": "#remixes .remix-tree"
+    }
+   ],
+   "crop": "#remixes .remix-tree",
+   "pad": 12,
+   "alt": "A model's Remixes tab as a tree: the model, marked This model, and its remixes under it, each with its picture, name, maker and what it changed.",
+   "caption": "The Remixes tab, both ways.",
+   "features": [
+    "ui:what a remix changed and the remix tree"
+   ]
+  },
+  {
+   "id": "show-your-build",
+   "source": "app",
+   "view": "DocsSprt01",
+   "answers": {
+    "fetch": {
+     "code": 200,
+     "body": {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "parts": 187,
+      "url": "https://brickworks.diy/m/DocsSprt01",
+      "builds": 14
+     },
+     "model_file": "res://models/sports_car.ldr"
+    }
+   },
+   "setup": [
+    {
+     "call": "_enter_build",
+     "after": 60
+    },
+    {
+     "key": "End",
+     "after": 60
+    }
+   ],
+   "crop": "window",
+   "width": 1000,
+   "alt": "The last step of Build it: under the top bar, a card saying 14 people have built it, with Show your build beside it, the finished model below, and Finish at the bottom.",
+   "caption": "Show your build, on the last step.",
+   "features": [
+    "ui:show your build"
+   ]
+  },
+  {
+   "id": "parts-missing",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=3"
+   ],
+   "pad": 12,
+   "alt": "A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO® Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.",
+   "caption": "What you're missing, on a model's Parts tab.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
+  },
+  {
+   "id": "parts-missing-phone",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=1"
+   ],
+   "pad": 8,
+   "alt": "What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.",
+   "caption": "What you're missing, on a phone.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
+  },
+  {
+   "id": "model-alt-build",
+   "source": "site",
+   "route": "/m/DocsRock01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "alts"
+   ],
+   "wait": "#alt-build",
+   "crop": [
+    ".side h1",
+    "#alt-build"
+   ],
+   "pad": 12,
+   "alt": "Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.",
+   "caption": "Built from three sets, as counted when it was published.",
+   "features": [
+    "ui:shared model page and card",
+    "lib:alternate builds counted"
    ]
   }
  ]

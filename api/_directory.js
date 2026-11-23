@@ -404,9 +404,28 @@ export function listQuery(query, perPage, mostPages, { mine = false, signedIn = 
     if (!mine) throw new Unacceptable("sign in, and ask with mine=1, to see what you can build now", 401);
     said.ready = asked.buildable = true;
   }
+  // Built from a real set, as counted (altbuilds, api/_alts.js,
+  // supabase/alt_builds.sql): alt=N, every part from set N or N one of the
+  // fewest sets that hold every part; from_one_set=1, every part from one
+  // set, whichever it is. For the feed and the gallery to ask.
+  const alt = String(query.alt ?? "").trim();
+  if (alt) {
+    if (!ALT_SET.test(alt)) throw new Unacceptable("alt is a set's number, as on its box, like 31009-1");
+    const number = alt.toLowerCase();
+    said.alt = asked.alt = number.includes("-") ? number : `${number}-1`;
+  }
+  const oneSet = String(query.from_one_set ?? "").toLowerCase();
+  if (oneSet && oneSet !== "0" && oneSet !== "false") {
+    if (!YES.has(oneSet)) throw new Unacceptable("from_one_set is 1 or left out");
+    said.from_one_set = asked.one_set = true;
+  }
   if (testsAsked(query)) said.tests = asked.tests = true;
   return { asked, said };
 }
+
+/// A set's number as alt= takes it: api/_sets.js SET_NUMBER, which imports
+/// this file.
+const ALT_SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 
 /// What can move in a model, as the app finds it from the model's joints
 /// when it is published (src/assembly/playable.gd: Playable.KINDS), in the
@@ -484,6 +503,8 @@ export function cardOf(origin, row) {
     steps: row.steps ?? null, own_steps: row.own_steps === true, technic: row.technic === true,
     // Its newest version passed the app's four tests (supabase/tested.sql).
     tested: row.tested === true,
+    // Still being built, shared as work in progress (supabase/wip.sql).
+    wip: row.wip === true,
     // Who laid its parts, as its app said (supabase/made_with.sql); null
     // where it did not, and its tags say.
     made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null,

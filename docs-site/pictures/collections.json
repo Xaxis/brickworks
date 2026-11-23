@@ -53,6 +53,140 @@
    "features": [
     "ui:collections directory"
    ]
+  },
+  {
+   "id": "set-own-count",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "wait": "[data-keep-count]:not([hidden])"
+    },
+    {
+     "scroll": "#owned"
+    }
+   ],
+   "crop": "#owned",
+   "pad": 12,
+   "alt": "Parts you own on a set's page, signed in: You own, with \u2212 and + round a box saying 2, copies of this set: its parts count as yours that many times; then Parts you own: all of them.",
+   "caption": "How many of a set you own, on its page.",
+   "features": [
+    "ui:every set's page"
+   ]
+  },
+  {
+   "id": "set-own-count-phone",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "wait": "[data-keep-count]:not([hidden])"
+    },
+    {
+     "scroll": "#owned"
+    }
+   ],
+   "crop": "#owned",
+   "pad": 8,
+   "alt": "You own \u2212 2 + on a set's page on a phone, and Parts you own: all of them.",
+   "caption": "How many you own, on a phone.",
+   "features": [
+    "ui:every set's page"
+   ]
+  },
+  {
+   "id": "set-in-lists",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "wait": "#in-lists"
+    },
+    {
+     "scroll": "#in-lists"
+    }
+   ],
+   "crop": "#in-lists",
+   "pad": 12,
+   "alt": "In 3 lists on a set's page: People put it in 3 public lists, and the lists by name, each with whose it is.",
+   "caption": "The public lists a set is in.",
+   "features": [
+    "ui:every set's page"
+   ]
+  },
+  {
+   "id": "set-in-lists-phone",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "wait": "#in-lists"
+    },
+    {
+     "scroll": "#in-lists"
+    }
+   ],
+   "crop": "#in-lists",
+   "pad": 8,
+   "alt": "In 3 lists on a phone: the three public lists the set is in, as pills.",
+   "caption": "The lists a set is in, on a phone.",
+   "features": [
+    "ui:every set's page"
+   ]
   }
  ]
 }

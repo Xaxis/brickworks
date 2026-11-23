@@ -49,6 +49,8 @@ export function ownOrigin(request) {
 /// Each cron Run now may run: its path, and why it is safe.
 export const RUNNABLE = {
   gallery_feature: { path: "/api/share/feature", said: "The front's choice: one a day, under its lock; again the same day changes nothing" },
+  prompts: { path: "/api/share/prompts", said: "The quick build's house work, under its lock: each thing done once, "
+    + "so again finds nothing due" },
   omr_watch: { path: "/api/share/omr", said: "The look at LDraw's OMR: a few pages, a second apart, under its lock" },
   share_sweep: { path: "/api/share/sweep", said: "Files no published model owns: a deleted model's always, others never more than a quarter unasked" },
   canary: { path: "/api/otp/canary", said: "A sign-in code sent to Resend's test inbox and read back" },

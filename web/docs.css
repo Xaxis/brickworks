@@ -289,3 +289,8 @@ dialog form label.docs-search-field { display: flex; flex: 1; min-width: 0; alig
 	.docs-search-hint { display: none; }
 	dialog.docs-search { margin-top: var(--s-4); max-height: calc(100vh - 32px); }
 }
+
+/* The message a model's page kept for Claude (web/docs.js, claudelink): its
+   words to copy across the callout, Copy it and the way back under them. */
+.kept-ask textarea { display: block; width: 100%; margin-top: var(--s-2); }
+.kept-ask .actions { margin: var(--s-2) 0 0; }
