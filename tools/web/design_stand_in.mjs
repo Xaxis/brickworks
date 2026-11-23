@@ -431,6 +431,9 @@ export function crowd(n) {
     owner: CROWD_OWNERS[at % CROWD_OWNERS.length], name: `Crowd model ${at + 1}`,
     author: personOf(CROWD_OWNERS[at % CROWD_OWNERS.length]).name, parts: 40 + at * 7, steps: 4,
     kind: CROWD_KINDS[at % CROWD_KINDS.length], tags: at % 5 === 0 ? ["ai-designed"] : [],
+    // Every tenth's owner chose to say it was made with the assistant
+    // (made_with_shown.sql); the other ai-designed half say nothing of it.
+    made_with_shown: at % 10 === 0,
     listed_at: new Date(Date.parse("2026-06-01T12:00:00Z") - at * 3600 * 1000).toISOString(),
     updated_at: "2026-06-01T12:00:00Z" }));
 }
