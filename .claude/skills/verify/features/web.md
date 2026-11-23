@@ -3654,7 +3654,8 @@ plan with Claude as the client.
   (`[data-build3d]`, `/app?new=1&library=<id>&build`: Main's `--library`
   with `--build` opens the model and then its timeline at the first step,
   `_build_from_step_one`, once its parts are in; an app without it opens the
-  model as before) and **Make your own version** (`[data-version]`,
+  model as before; `tools/probe.sh sethub_probe`, headless, opens Moon
+  Walker both ways from a stand-in store on port 11763) and **Make your own version** (`[data-version]`,
   `/app?new=1&library=<id>`: the studio writes LDraw's credit into the copy,
   and its publish is counted the set's own model, `api/_alts.js` role
   `own`). `lib:a set's versions` (`supabase/set_versions.sql`
