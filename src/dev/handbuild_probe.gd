@@ -169,8 +169,8 @@ func _duplicate_and_turn() -> void:
 	print("  duplicate and turn")
 	_select_only(_bricks_near(Vector3(-60, 0, 20)))
 	await _frames(2)
-	await _key(KEY_D, true)
-	_check("Ctrl-D holds a copy of the selection", _builder.is_carrying()
+	(_main.get("_verbs") as EditVerbs).duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
+	_check("the Clone tool holds a copy of the selection", _builder.is_carrying()
 		and _builder.carrying.count() == 3)
 	_check("...and leaves the clipboard alone", Carry.clipboard.size() == 3)
 	await _key(KEY_R)
@@ -2120,7 +2120,7 @@ func _first_timer() -> void:
 
 
 ## Patterns (docs/APP_UX.md, B6): a fence of 12 posts in 5 actions, from
-## one post: a click on it, Ctrl-D, a click two studs over, "11x" and Enter.
+## one post: a click on it, a copy held (the Clone tool), a click two studs over, "11x" and Enter.
 ## A ring of 16 on turntables in 6, from one wall piece on a turntable: a
 ## click, a Shift-click, Ctrl+Shift+D, Round, "16" and Enter. Each counted
 ## as typed_moves_probe counts (a click, a key, a number typed); each copy
@@ -2142,9 +2142,9 @@ func _patterns() -> void:
 	await _click(_screen(Vector3(-210, 100, 10)))
 	acts += 1
 	_check("a click selects the post", _builder.selection.size() == 1)
-	await _key(KEY_D, true)
+	(_main.get("_verbs") as EditVerbs).duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
 	acts += 1
-	_check("Ctrl-D holds a copy", _builder.is_carrying())
+	_check("the Clone tool holds a copy", _builder.is_carrying())
 	await _click(_screen(Vector3(-170, 0, 10)))
 	acts += 1
 	_check("a click two studs over puts it down (%d posts), another in hand" % _count(),
@@ -2184,7 +2184,7 @@ func _patterns() -> void:
 	_put("2453b", 4, Vector3(-210, 120, 10))
 	await _frames(3)
 	await _click(_screen(Vector3(-210, 100, 10)))
-	await _key(KEY_D, true)
+	(_main.get("_verbs") as EditVerbs).duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
 	await _click(_screen(Vector3(-90, 0, 10)))
 	await _type("/4")
 	await _key(KEY_ENTER)
@@ -2204,7 +2204,7 @@ func _patterns() -> void:
 	_put("3005", 1, Vector3(110, 24, 10))
 	await _frames(3)
 	await _click(_screen(Vector3(-210, 100, 10)))
-	await _key(KEY_D, true)
+	(_main.get("_verbs") as EditVerbs).duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
 	await _click(_screen(Vector3(-170, 0, 10)))
 	var before: int = _count()
 	await _type("11x")

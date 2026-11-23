@@ -105,12 +105,15 @@
 	--r-pill: 999px;
 	--control-radius: var(--r-2);
 	--radius: var(--r-3);
-	/* A page's width: a page of words keeps --page; a page of cards and
-	   pictures (.wrap.wide: the gallery, a person, a collection, a model,
-	   the landing page's row of models) and the header and
-	   footer on every page use the window up to --page-wide. Nothing was
-	   wider than 1,140 px, 59% of a 1920 window (site273). */
-	--page: 1140px;
+	/* A page's width: one for every page, the header's and the footer's
+	   too, the window less its gutters (--gutter: 16, 24 from 600 px, 32 from
+	   1200 px; sitepolish) up to --page-wide (homefix,
+	   2026-11-23, the owner: Talk "does not have the same page width as
+	   the other pages"; a page of words had kept 1,140 px, so its edges
+	   sat 54 px inside the header's at 1280). A page of words keeps its
+	   lines to a measure inside it (.prose, .lede, a setting's line), not
+	   by a narrower page. tools/web/design_flow.mjs fails a page whose
+	   main container's edges are not the header's. */
 	--page-wide: 1600px;
 	/* The room between a page and the window's edge: a phone's 16 px, and
 	   more as the window grows, so a page of cards on a laptop does not run
@@ -309,8 +312,7 @@ a:focus-visible { border-radius: var(--r-1); }
 
 @media (width >= 600px) { :root { --gutter: 24px; } }
 @media (width >= 1200px) { :root { --gutter: 32px; } }
-.wrap { width: min(100% - 2 * var(--gutter), var(--page)); margin-inline: auto; }
-.wrap.wide, .site-head > .wrap, .site-foot > .wrap { width: min(100% - 2 * var(--gutter), var(--page-wide)); }
+.wrap { width: min(100% - 2 * var(--gutter), var(--page-wide)); margin-inline: auto; }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);
@@ -1219,6 +1221,23 @@ dialog.keep-panel.at-foot::backdrop { background: var(--scrim); }
 .model .by .acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-3); font-size: inherit; }
 .model .tally { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--ink-soft); }
 .model .tally .icon { width: 16px; height: 16px; }
+/* The gallery's card ends in what people do with a model (web/card.js,
+   sitebold, 2026-11-23): Like, its comments and Remix into the studio,
+   quiet icon buttons with their counts once there are some, then its
+   builds; each over the name's stretched link, as the designer's is. */
+.model .social { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; margin: var(--s-2) 0 0 -10px; }
+.model .social > * { position: relative; z-index: 1; }
+.model .social .icon-btn { min-height: 36px; padding: 0 10px; gap: 6px; border-color: transparent; background: none; color: var(--ink-soft); }
+.model .social .icon-btn:hover { background: var(--panel-hi); color: var(--ink); }
+/* Liked: the heart filled in red, its count in ink (red words were 3.6:1 on a dark card). */
+.model .social .icon-btn[aria-pressed="true"] { border-color: transparent; color: var(--ink); }
+.model .social .icon-btn[aria-pressed="true"] .icon { color: var(--red); }
+.model .social .n { font-size: var(--t-small); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* None yet: a quiet 0, so a row of counts never reads as counts missing. */
+.model .social .n.zero { color: var(--ink-faint); font-weight: 400; }
+.model .social .tally { margin-left: var(--s-2); }
+/* Who shares a model somebody else modelled, under that person's name. */
+.model small.via { color: var(--ink-faint); }
 /* A photo of a real build as a card (web/card.js buildCardHtml), the
    gallery's Builds tab: the model card's shape, the photo cut to its 4:3;
    who built it and when on one line, and what they said of it, two lines
@@ -1986,6 +2005,13 @@ summary.pill:active, .segmented button:active, .menu summary:active { transform:
 .model:active, .list-card:active, .tile:has(> a.open):active { transform: scale(0.99); }
 @media (hover: hover) {
 	.model:hover, .list-card:hover, .tile:has(> a.open):hover { transform: translateY(-2px); }
+	/* A card rises under the mouse, its picture nearer, as a post on a
+	   social site does (sitebold, 2026-11-23: 2 px went unseen); not while
+	   its model turns in 3D in it, whose full screen a moved card would hold. */
+	.model:hover { transform: translateY(-4px); }
+	.model:has(.view3d):hover { transform: none; }
+	.model .frame img { transition: transform 300ms var(--ease); }
+	.model:hover .frame img { transform: scale(1.04); }
 	.tile:has(> a.open):hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 	.feature:hover { border-color: var(--line-strong); }
 	.model:active, .list-card:active { transform: translateY(-1px) scale(0.99); }
@@ -2003,7 +2029,8 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 		transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important;
 	}
 	.cta:active, :where(button):active, .icon-btn:active, .pill:active, .segmented button:active, .menu summary:active,
-	.model:hover, .model:active, .list-card:hover, .list-card:active, .tile:hover, .tile:active { transform: none; }
+	.model:hover, .model:active, .list-card:hover, .list-card:active, .tile:hover, .tile:active,
+	.model:hover .frame img { transform: none; }
 }
 
 /* Read aloud, not shown. */
@@ -2085,20 +2112,45 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
    is here and not in talk.css, which only Talk's pages load. */
 /* A row is a card as a model's is: its title the one link, stretched over
    all of it, the starter's name and the board links of their own over it;
-   its first words two lines at most; under them one line, the starter's
-   avatar, who and when, and its marks at the line's end (sitepolish,
-   2026-11-23: the board was a pill on a line of its own in every row, each
-   row a wall of four lines, "0 replies" on every one). */
+   its first words two lines at most; under them who started it and when,
+   and its marks (sitepolish). As a forum lays a row out (sitebold,
+   2026-11-23): its picture first, the model it is about or else its
+   board's icon on a tile, and at its end who is in it (the starter's
+   avatar, the last replier's over it), how many replied and when the last
+   did; on a phone the end goes under the words. */
 .talk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .talk-row {
-	position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start;
+	position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 6px 16px; align-items: center;
 	border: 1px solid var(--line); border-radius: var(--r-3); padding: 14px 16px; background: var(--panel);
 	box-shadow: var(--highlight), var(--shadow-1); transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
 }
 .talk-row:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
-.talk-row:has(.talk-row-picture) { grid-template-columns: 96px minmax(0, 1fr); }
 .talk-row.pinned { border-color: color-mix(in srgb, var(--accent-edge) 45%, var(--line)); }
-.talk-row-picture { width: 96px; height: 72px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.talk-row-pic { align-self: start; display: block; width: 96px; height: 72px; border-radius: var(--r-2); overflow: hidden; background: var(--picture-ground); text-decoration: none; }
+.talk-row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* A board's icon on its own tint (Talk's tiles, a row with no picture). */
+.talk-tile {
+	display: grid; place-items: center; width: 100%; height: 100%; border-radius: inherit;
+	background: color-mix(in srgb, var(--accent) 16%, var(--panel)); color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+}
+.talk-tile .icon { width: 30px; height: 30px; stroke-width: 1.6; }
+/* Each board its own colour, on the tile itself or on the board's link around it. */
+:is(.talk-tile.b-show, .b-show > .talk-tile) { background: color-mix(in srgb, var(--blue) 16%, var(--panel)); color: color-mix(in srgb, var(--blue) 70%, var(--ink)); }
+:is(.talk-tile.b-help, .b-help > .talk-tile) { background: color-mix(in srgb, var(--green) 16%, var(--panel)); color: color-mix(in srgb, var(--green) 70%, var(--ink)); }
+:is(.talk-tile.b-ideas, .b-ideas > .talk-tile) { background: color-mix(in srgb, var(--yellow) 16%, var(--panel)); color: color-mix(in srgb, var(--yellow) 70%, var(--ink)); }
+:is(.talk-tile.b-challenges, .b-challenges > .talk-tile) { background: color-mix(in srgb, var(--red) 16%, var(--panel)); color: color-mix(in srgb, var(--red) 70%, var(--ink)); }
+:is(.talk-tile.b-news, .b-news > .talk-tile) { background: color-mix(in srgb, var(--ink-soft) 16%, var(--panel)); color: color-mix(in srgb, var(--ink-soft) 70%, var(--ink)); }
+/* A challenge's month while it has no picture (api/_talk.js monthTileHtml):
+   a calendar's page, its year on the band and its month under it; the band
+   red for the one open now, its tint for the ones to come or that ran. */
+.talk-tile.talk-month { display: flex; flex-direction: column; place-items: stretch; border: 1px solid color-mix(in srgb, var(--red) 30%, var(--line)); }
+.talk-month small {
+	display: block; padding: 2px 0; text-align: center; font-size: var(--t-tiny); font-weight: 700; letter-spacing: 0.08em;
+	font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--red) 26%, var(--panel)); color: var(--ink);
+}
+.talk-month.open small { background: var(--avatar-1); color: var(--on-avatar); }
+.talk-month b { display: grid; flex: 1; place-items: center; order: 1; font-size: var(--t-h2); font-weight: 700; line-height: 1; color: var(--ink); }
+.talk-month.ran b { color: var(--ink-soft); }
 .talk-row-title { margin: 0; font-size: var(--t-h3); font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
 .talk-row-title a { color: var(--ink); text-decoration: none; }
 .talk-row-title a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
@@ -2109,16 +2161,33 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	margin: 4px 0 0; color: var(--ink-soft); overflow-wrap: anywhere;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.talk-row-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 10px 0 0; }
+.talk-row-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0 0; }
 .talk-row-foot .talk-row-meta { margin: 0; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .talk-row .pills { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .talk-row-meta { margin: 6px 0 0; font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
 .talk-row-meta a { color: var(--ink); }
 .talk-row :is(.talk-row-meta, .pills) a { position: relative; z-index: 1; }
+/* A reply made in the row (web/composer.js replyInCard, feedinline): its
+   room and composer on lines of their own under the row's line, over the
+   row's link. */
+.talk-row-foot > :is(.said-room, .composer) { flex: 1 0 100%; order: 1; }
+.talk-row :is(.said-room, .composer) { position: relative; z-index: 1; }
+/* Its end: who is in it, then how many replied and when the last did. */
+.talk-row-end { display: grid; justify-items: end; gap: 6px; min-width: 120px; text-align: end; }
+.talk-faces { display: flex; }
+.talk-faces .avatar { box-shadow: 0 0 0 2px var(--panel); }
+.talk-faces .avatar + .avatar { margin-left: -8px; }
+.talk-last { display: grid; gap: 2px; font-size: var(--t-small); color: var(--ink-soft); }
+.talk-last .talk-replies { color: var(--ink); font-weight: 650; }
+.talk-last small { color: var(--ink-faint); font-size: var(--t-tiny); }
+.talk-last .talk-first[data-replies="0"] { color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 400; }
 .talk-empty, .talk-searched { color: var(--ink-soft); }
 @media (width < 600px) {
-	.talk-row:has(.talk-row-picture) { grid-template-columns: 72px minmax(0, 1fr); }
-	.talk-row-picture { width: 72px; height: 54px; }
+	.talk-row { grid-template-columns: 64px minmax(0, 1fr); align-items: start; gap: 8px 12px; padding: 12px; }
+	.talk-row-pic { width: 64px; height: 48px; }
+	.talk-tile .icon { width: 24px; height: 24px; }
+	.talk-row-end { grid-column: 2; display: flex; align-items: center; justify-items: start; gap: 8px; min-width: 0; text-align: start; }
+	.talk-last { display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
 }
 /* The homepage's latest: two columns from 900 px, a skeleton row's height
    held until the rows come. */
@@ -2185,35 +2254,62 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	.post-verbs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 	.post-verbs > :first-child { grid-column: 1 / -1; }
 }
-/* What was said of it: the newest comment, two lines held whatever comes,
-   and the way to say something, opened in place (web/landing.js). */
+/* What was said, in a post of the feed and a row of Talk (web/home-feed.js
+   saidLineHtml; web/composer.js puts in what is posted there the same way):
+   each a small face, a name and the words on one line, the room held for
+   two whatever comes, so a line that comes later moves nothing. Opened (the
+   composer there), each says up to three lines; all of them ("n more"),
+   whole, scrolled within the post past a few. */
 .post-talk { display: flex; flex-direction: column; gap: var(--s-1); margin-top: auto; padding-top: var(--s-2); border-top: 1px solid var(--line); }
-.post-said {
-	display: -webkit-box; min-height: calc(2 * 1.45em); margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small);
-	line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere;
+.said-room { display: flex; flex-direction: column; justify-content: center; gap: var(--s-1); min-height: calc(48px + var(--s-1)); }
+.talk-row .said-room { min-height: 0; margin-top: var(--s-2); }
+.talk-row .said-room:not(:has(.said-line)) { display: none; }
+.said-lines { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.said-lines[hidden] { display: none; }
+.said-line { display: flex; align-items: center; gap: var(--s-2); min-width: 0; min-height: 24px; }
+.said-line > .avatar { flex: none; }
+.said-line p { flex: 1; min-width: 0; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small); line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.said-line .who { color: var(--ink); font-weight: 650; text-decoration: none; }
+.said-line a.who:hover { text-decoration: underline; }
+.said-line.reply { padding-left: calc(24px + var(--s-2)); }
+.said-line.pending { opacity: .65; }
+.said-wait { color: var(--ink-faint); font-size: var(--t-tiny); }
+.said-none { margin: 0; color: var(--ink-faint); font-size: var(--t-small); line-height: 1.45; }
+:is(.post-talk.open, .post.talk, .talk-row) .said-line { align-items: flex-start; }
+:is(.post-talk.open, .post.talk, .talk-row) .said-line p {
+	display: -webkit-box; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3;
 }
-.post-said .who { color: var(--ink); font-weight: 650; text-decoration: none; }
-.post-said .first { color: var(--ink-faint); }
-.post-say {
-	align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink-soft);
+.post.talk .said-line p { -webkit-line-clamp: 2; line-clamp: 2; }
+.post-talk.every .said-lines { max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding-right: var(--s-1); }
+.post-talk.every .said-line p { display: block; }
+.said-acts { display: flex; align-items: center; gap: var(--s-3); margin: 0; }
+.post-say, .said-more {
+	min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink-soft);
 	font: inherit; font-size: var(--t-small); font-weight: 600; cursor: pointer;
 }
-.post-say:hover { color: var(--ink); text-decoration: underline; }
-.post-comments { display: flex; flex-direction: column; gap: var(--s-2); }
-.post-comments[hidden] { display: none; }
-.post-comments ol { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
-.post-comments li { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
-.post-comments li b { color: var(--ink); }
-.post-comments textarea { width: 100%; min-height: 72px; resize: vertical; }
-.post-comments .actions { justify-content: flex-end; }
-/* A thread's latest reply, on the soft ground under its first words. */
-.post-reply { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-radius: var(--r-2); background: var(--bg-soft); }
-.post-reply p {
-	display: -webkit-box; min-height: calc(2 * 1.45em); margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small);
-	line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere;
-}
-.post-reply b { color: var(--ink); }
-.post-reply.none p { color: var(--ink-faint); }
+.said-more { margin-left: auto; color: var(--ink-faint); font-weight: 500; }
+.said-more[hidden] { display: none; }
+:is(.post-say, .said-more):hover { color: var(--ink); text-decoration: underline; }
+.post-acts a.tally { color: var(--ink-soft); text-decoration: none; }
+.post-acts a.tally:hover { color: var(--ink); text-decoration: underline; }
+/* The composer (web/composer.js), the same wherever something is said: a
+   feed's post, a row of Talk, a model's page, a thread's page. The box,
+   the guidelines and the keys that post under it, then what happened, and
+   Cancel and Post. A finger has no Ctrl, so a phone is not told of it. */
+.composer { display: grid; gap: var(--s-2); margin: 0; }
+.composer[hidden] { display: none; }
+.composer textarea { width: 100%; min-height: 72px; resize: vertical; }
+.composer-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s-3); margin: 0; color: var(--ink-faint); font-size: var(--t-tiny); }
+.composer-foot[hidden] { display: none; }
+.composer-foot a { color: var(--ink-soft); }
+.composer-count { margin-left: auto; }
+.composer-count:empty { display: none; }
+.composer-count.bad { color: var(--bad); }
+@media (pointer: coarse) { .composer-keys { display: none; } }
+.composer-go { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.composer-said { flex: 1 1 12em; min-width: 0; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+:is(.post, .talk-row) .composer { margin-top: var(--s-2); }
+.post-talk .composer { margin-top: var(--s-1); }
 .post.talk .post-acts, .post.challenge .go-on { margin-top: auto; }
 /* The month's challenge: lit from above in the accent, as its tile is. */
 .post.challenge { border-color: var(--accent-edge); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; }
@@ -2255,3 +2351,31 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 /* The 3D view in a post's picture (web/view3d.css .showcase .view3d): the
    picture's 4:3, not a model page's 1200 x 630. */
 .post-pic.showcase > .view3d { inset: 0; height: 100%; aspect-ratio: auto; border-radius: 0; }
+/* Building now (web/live-now.js, buildlive): the builds open to watchers,
+   first in the home feed and on their designer's profile. A row of cards,
+   each a link to its watch page; scrolled sideways when there are more
+   than fit. */
+.live-now { margin: 0 0 var(--s-5, 24px); }
+.live-now[hidden] { display: none; }
+.live-now-h { display: flex; align-items: center; gap: 10px; margin: 0 0 var(--s-3, 12px); font-size: 18px; }
+.live-now-h .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); box-shadow: 0 0 0 4px rgba(208, 51, 47, 0.18); }
+.live-now-row { display: flex; gap: var(--s-3, 12px); overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.live-card { flex: 0 0 min(320px, 82vw); display: flex; gap: 12px; align-items: center; padding: 10px; min-height: 44px;
+	border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--panel); color: var(--ink);
+	text-decoration: none; scroll-snap-align: start; box-shadow: var(--highlight), var(--shadow-1); }
+.live-card:hover { background: var(--panel-hi); }
+.live-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.live-pic { position: relative; flex: none; width: 96px; aspect-ratio: 4 / 3; border-radius: var(--r-2); overflow: hidden;
+	background: var(--picture-ground); }
+.live-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.live-tag { position: absolute; left: 6px; top: 6px; padding: 1px 6px; border-radius: var(--r-pill); background: var(--red); color: #fff;
+	font-size: 11px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; }
+.live-words { display: grid; gap: 2px; min-width: 0; }
+/* The title over two lines before it is cut, and who is building it whole:
+   on one line each, "Lighthouse keeper's c…" and "Ada is building it n…". */
+.live-words b { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+	overflow-wrap: anywhere; line-height: 1.25; }
+.live-words span { overflow-wrap: anywhere; }
+.live-words .live-count { white-space: nowrap; }
+.live-words span { color: var(--ink-soft); font-size: var(--t-small); }
+.live-words .live-count { color: var(--ink-faint); }

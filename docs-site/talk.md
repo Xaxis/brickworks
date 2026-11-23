@@ -10,7 +10,7 @@ description: The boards, starting a thread and replying, pasting a model or a st
 
 Talk is where builders on Brickworks talk about anything, not only under one model: show what you built, ask for help with a step, share ideas and talk about the month's challenge. It is at [brickworks.diy/talk](/talk), linked from the top of every page. Anybody can read it; you sign in to write.
 
-![Talk at brickworks.diy/talk: Start a thread and Search Talk, the tabs Latest, Show and tell, Help, Ideas, Challenges and News with their counts, the newest threads with their board, first words, who started them and how many replies, and beside them what builders said under the models, then the boards.](/docs/img/talk-list.webp "brickworks.diy/talk.")
+![Talk at brickworks.diy/talk: Start a thread and Search Talk, the six boards as tiles with an icon and a count each, the newest threads each with its model's picture or its board's icon, who started it and who replied last, and beside them what builders said under the models.](/docs/img/talk-list.webp "brickworks.diy/talk.")
 
 <!-- covers
 ui:the talk forum
@@ -28,7 +28,7 @@ ui:the latest in talk on the home page
 - **Challenges**: each month's [challenge](/docs/challenges) has its own thread, started by Brickworks.
 - **News**: what is new on Brickworks. Only Brickworks starts a thread here; anybody can reply.
 
-Beside the threads, **On the models** shows the newest comments under the gallery's models. The [home page](/docs/gallery#home) shows the newest threads too, under its row of models, once there are three. **Talk** is in the header beside Gallery and Challenges, in a phone's Menu and in the footer's Community.
+Each thread's row shows the picture of the model it is about, or its challenge's (its cover or its top entry), else the challenge's month, or its board's icon, the faces of who started it and who replied last, and how many replies it has and when the last came. Beside the threads, **On the models** shows the newest comments under the gallery's models, each with the model's picture. The [home page](/docs/gallery#home) shows the newest threads too, under its row of models, once there are three. **Talk** is in the header beside Gallery and Challenges, in a phone's Menu and in the footer's Community.
 
 ## Start a thread {#start}
 
@@ -54,13 +54,13 @@ ui:a thread in talk
 
 - **Paste a link** to a model, one version of it (`/m/<id>/v/<n>`), a step of one (open it in the viewer at that step and copy the address), a set or the challenge on Brickworks: it shows as a card with its picture, a version's with that version's. A part number from Rebrickable or BrickLink shows as a part. A link to any other site stays plain words.
 - **Write `@` and a handle** to tell somebody: they see it on their [Notifications](/docs/profiles#notifications). Up to three a post.
-- **Reply** answers the whole thread; Reply on a post says whom you are answering.
+- **Reply** answers the whole thread; Reply on a post says whom you are answering. Each row of a board has **Reply** too, which opens the box in the row: your reply shows under it and you stay on the board. The box works as [everywhere on Brickworks](/docs/gallery#composer): [[Ctrl]]+[[Enter]] posts, [[Enter]] is a new line, and signed out, **Post** signs you in and then posts what you wrote.
 - **Edit** and **Remove** are on your own posts. Removing the first post removes the whole thread.
 - **Follow** tells you of every new post in the thread, on your [Notifications](/docs/profiles#notifications) and, where you turned it on, as [this device's notification](/docs/profiles#settings). You follow a thread you started or replied in; press **Following** to stop. Mentions and replies to your own thread reach you either way.
 
 ## Search and feeds {#search}
 
-**Search Talk** finds threads by the words in their titles and posts, the start of a word too. Each board has an RSS feed (**RSS feed** under the boards), and so does all of Talk, at `brickworks.diy/talk.rss`.
+**Search Talk** finds threads by the words in their titles and posts, the start of a word too. Each board has an RSS feed (**RSS feed** under On the models), and so does all of Talk, at `brickworks.diy/talk.rss`.
 
 ## Report and block {#report}
 

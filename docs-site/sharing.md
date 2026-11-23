@@ -9,16 +9,17 @@ nav: Sharing a model
 description: Publish a model at a link anyone can open in 3D, step through and build, list it in the gallery, share its progress version by version, update it, or take it down.
 ---
 
-Sharing gives a model a link anyone can open with no account: the model in 3D, its building steps, the booklet and the parts list. It is **File › Share…**, or **Share** on the toolbar, once there are parts on the baseplate. You need to be signed in.
+Sharing gives a model a link anyone can open with no account: the model in 3D, its building steps, the booklet and the parts list. It is **File › Share…**, or **Share** on the toolbar, once there are parts on the baseplate. You need to be signed in: signed out, the panel has **Sign in** beside **Publish**, and on a phone the greyed Share row in **More** says why.
 
 ## Share a model {#share}
 
-1. Turn the view to show the model as you want it seen: its picture is taken from where the view is looking.
+1. Turn the view to show the model as you want it seen: its pictures are taken from where the view is looking. Its card in the gallery is drawn as a photograph of it on a desk, which adds a second or two to sharing; on a phone it is the model on the page's own ground.
 2. **File › Share…**.
 3. Give it a **Name**: the model's own, or, for one never named that is a single minifigure or sub-assembly, that one's. **About it (shown on its page)** says what it is, up to 1,000 characters; **Tags** help people find it; **Kind** is guessed from the name, the tags and About, and you can change it.
 4. Choose a **Licence**: **CC BY 4.0** (anyone may share and change it, crediting you), **CC BY-SA 4.0** (and what they make is shared the same way) or **All rights reserved** (people may build it for themselves and ask you before sharing it).
 5. Tick **Show who made it** to put a name on its page: **The name to credit** is your profile's name when you have one.
 6. Tick **List it in the gallery** to put it in [the gallery](/docs/gallery) as well. Unticked, only people you send the link to find it.
+   For a model made with [the assistant](/docs/ai) or [Brickify](/docs/art-and-brickify), **Say it was made with the assistant** (or **with Brickify**) is under it, unticked: how a model was made is yours to say, and nothing on the site says it until you tick it. Ticked, its page says **With the assistant** and the gallery's **Made** filter finds it. You can change it later under **More** on [its page](/docs/model-pages#actions).
 7. Press **Publish**. Publishing means you agree to the [guidelines](/guidelines). Still building it? Press **Share progress** beside it instead: see [Share progress](#progress).
 
 ![The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and Share progress side by side, and the guidelines.](/docs/img/sharing-panel.webp "File › Share…, before it is published.")

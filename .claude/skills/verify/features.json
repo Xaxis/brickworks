@@ -159,6 +159,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
@@ -182,6 +183,7 @@
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_console3.py",
@@ -342,6 +344,7 @@
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/fixtures/suggest/world.mjs",
         "tests/test_achievements.py",
         "tests/test_alts.py",
@@ -1068,6 +1071,22 @@
       "kind": "cli",
       "entry": "tools/web/card_check.mjs",
       "reach": "node tools/web/card_check.mjs   (no network: the server's /c/<id> cards against the browser's, and sample cards by the server's module and the browser's; --root=DIR for another checkout)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:card judge",
+      "kind": "cli",
+      "entry": "tools/bench/cardlook.py",
+      "reach": "python3 tools/bench/cardlook.py sheet DIR --looks new  |  python3 tools/bench/cardlook.py judge DIR --look new --out OUT",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:card probe",
+      "kind": "cli",
+      "entry": "src/dev/card_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_probe.gd -- --pictures=DIR [--only=1,6] [--looks=LOOKS.json]",
       "area": "web",
       "tests": []
     },
@@ -2079,6 +2098,14 @@
       "entry": "tools/web/lists_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/lists_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [lists]; or a local relay_server.mjs on a port of yours, never 10080, which fetch refuses)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:live flow",
+      "kind": "cli",
+      "entry": "tools/web/live_flow.mjs",
+      "reach": "node --env-file=FLOW_ENV tools/web/relay_server.mjs 11800 --static=build/web --egress --hold=together_sessions,together_people,together_ops,together_snapshot_parts,together_watch,together_watchers, then node --env-file=FLOW_ENV tools/web/live_flow.mjs --url=http://127.0.0.1:11800 --out=DIR [--watchers=10] [--parts=20]   (FLOW_ENV: the SUPABASE_* and PARTS_URL lines of .env)",
+      "area": "together",
       "tests": []
     },
     {
@@ -3660,6 +3687,22 @@
       "tests": []
     },
     {
+      "id": "cli:suggest phone probe",
+      "kind": "cli",
+      "entry": "src/dev/suggest_phone_probe.gd",
+      "reach": "tools/probe.sh suggest_phone_probe -- --pictures=DIR   (suggest_probe at 390 x 844)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:suggest probe",
+      "kind": "cli",
+      "entry": "src/dev/suggest_probe.gd",
+      "reach": "tools/probe.sh suggest_probe -- --pictures=DIR; tools/probe.sh suggest_phone_probe -- --pictures=DIR   (windowed, on the GPU, on tests/fixtures/suggest/serve.mjs: Ann sends, the app's Account count within 60 s, the notification's link opens Compare with 7 rows, the drawing read back by kind, all but the recolour taken by clicks, the model read part by part, Share's credit published and kept as taken with taken_n 2; a second change declined, the model as it was; at 1280 x 800 and 390 x 844)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:swapfind phone probe",
       "kind": "cli",
       "entry": "src/dev/swapfind_phone_probe.gd",
@@ -5077,6 +5120,7 @@
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_flows_for.py",
@@ -5110,6 +5154,14 @@
       "entry": "src/assembly/wiring.gd",
       "reach": "tools/probe.sh wires_probe   (headless: PF cables, plugs, a receiver, a pole reverser, a Control+ hub and an extension wire read by hand, a motor with no cable by hand, a plug beside other parts no cable, the model mirrored the same, 9 V boxes, wires and 58124c02; a Power Functions cable laid by lay_flex from an M motor to a box, 500 LDU, one undo, saved and reopened byte for byte, then an item: Reshape reads its ends, lay_flex item= lays it again, outlet to outlet refused; 42042's L motor in Simulate runs at 390 rpm once its box is clicked through EditVerbs.click, Play switches an off box on, a selection made otherwise flips nothing, and it stops with its plug pulled; -- --sets=bench/results/wires-2026-11-22/sets.json --rows=ROWS clicks each set's sources and measures its motors as KINEFUNCS reads their functions, tools/wires_sets.py writes the listing; src/dev/wires_repro.gd -- FILES reads every OMR power set and the review's synthetic cases)",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:moulded edges",
+      "kind": "lib",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal13, docs/RENDERING.md 5q: at Best in the Product look, path traced, each edge's rounding straying along it, each part its own way, with a nick here and there, and a slope's face rounded into the part's ends (RenderSettings.edge, StudioRender.PRODUCT_EDGE 1; path_tracer.glsl edge_round, bevelled; PathTracer.edge in each part's info.w, the byte above studs'); --without=edge draws photoreal10's pictures)",
+      "area": "view",
       "tests": []
     },
     {
@@ -5647,6 +5699,14 @@
       "tests": []
     },
     {
+      "id": "lib:the gallery's card as a photograph",
+      "kind": "lib",
+      "entry": "src/render/card_photo.gd",
+      "reach": "File \u203a Share\u2026 \u203a Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk, frames averaged on the same desk in a browser within 2.5 s (CardPhoto, src/ui/share_panel.gd _pictures); a phone keeps the cut-out",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the gallery's daily choice",
       "kind": "lib",
       "entry": "api/_featured.js",
@@ -6050,6 +6110,14 @@
       ]
     },
     {
+      "id": "ui:a change sent back in Compare",
+      "kind": "ui",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "https://brickworks.diy/app?suggestion=N as the model's designer, or Open it in the studio on their model's page or the notification   (suggestedit: the designer's model as they last published it, the remix's change drawn on it: taken away red, moved amber with a faint ghost where it goes, recoloured violet, added a green ghost; a row a change, each ticked, a box a kind; a row pressed frames it; Take all, Take the ticked, Decline; nothing taken without a press; taken, the merged model opened unsaved with Share's note and its credit ready)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:a change sent back on a model's page",
       "kind": "ui",
       "entry": "web/model-page.js",
@@ -6078,6 +6146,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -6279,6 +6348,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -6483,6 +6553,14 @@
       "entry": "src/ui/together_dialog.gd",
       "reach": "File, Build together\u2026: Start a session (a link to send) or paste a link and Join; in one, the link, who is in it, Remove, End the session or Leave. A link opened in a browser (/app?together=<secret>) or --together=<secret> joins at start",
       "area": "together",
+      "tests": []
+    },
+    {
+      "id": "ui:building now listed",
+      "kind": "ui",
+      "entry": "web/live-now.js",
+      "reach": "https://brickworks.diy/ and /u/<handle>   ([data-live-now], first in the home's feed and on the designer's profile while a build is open to watchers: GET /api/together?op=live[&handle=], the CDN's 4 s; nothing shows while nothing is being built)",
+      "area": "web",
       "tests": []
     },
     {
@@ -6940,6 +7018,7 @@
       "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Lists (/gallery-lists) and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_builds.py",
         "tests/test_gallery_tabs.py",
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
@@ -7639,6 +7718,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -7815,6 +7895,14 @@
       "entry": "src/ui/saved_views.gd",
       "reach": "tools/probe.sh savedviews && PROBE_SIZE=1400x900 tools/probe.sh savedviews   (by hand: View, Viewpoint, Save this view\u2026 or Alt-V, a name; Alt-Shift-1 to 9 look from each again; save and open the model; Render's Camera lists them, its Preset keeps its choices; View, Viewpoint, Render each saved view, or the queue's Add each saved view; view_model and render_model view= over MCP)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:saying something in place",
+      "kind": "ui",
+      "entry": "web/composer.js",
+      "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",
+      "area": "web",
       "tests": []
     },
     {
@@ -8428,6 +8516,7 @@
       "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick, Today in the gallery (the featured model and the set from the LDraw library) and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_builds.py",
         "tests/test_gallery_tabs.py",
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
@@ -8607,6 +8696,7 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
+        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -8861,6 +8951,27 @@
       "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
       "area": "view",
       "tests": []
+    },
+    {
+      "id": "ui:watching a build live",
+      "kind": "ui",
+      "entry": "web/live.js",
+      "reach": "<deployment>/live/<watch>   (a Build together session its designer opened to watchers: GET /api/together?op=watching&w=, each change on the show's Realtime channel signed by the relay (Ed25519), a gap read back by POST ?op=watch_ops; signed in: POST ?op=watch_say, watch_ask, watch_seat; web/live.html, the 3D view web/live3d.js from tools/viewer/live.js)",
+      "area": "together",
+      "tests": [
+        "tests/fixtures/console/db2_check.mjs",
+        "tests/fixtures/console/db3_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
+        "tests/fixtures/owner_notify/api_check.mjs",
+        "tests/fixtures/owner_notify/db_check.mjs",
+        "tests/test_beta.py",
+        "tests/test_billing.py",
+        "tests/test_billing_pay.py",
+        "tests/test_console2.py",
+        "tests/test_insights.py",
+        "tests/test_release_train.py",
+        "tests/test_start_abba.py"
+      ]
     },
     {
       "id": "ui:what a remix changed and the remix tree",

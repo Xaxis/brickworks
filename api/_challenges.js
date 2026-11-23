@@ -258,16 +258,46 @@ function challengeFile(lang = "en") {
 /// else the first shortlisted entry's, else its newest entry's; each only
 /// with a picture. Null when it has none of these. Pure.
 export function pictureFor(origin, page, rounds = null) {
+  const card = coverOf(page, rounds);
+  return card ? cardOf(origin, card).image : null;
+}
+
+/// The model card pictureFor shows of [page], or null. Pure.
+function coverOf(page, rounds = null) {
   if (!page) return null;
   const cards = new Map((page.entries || []).filter((one) => one && one.card && one.card.has_image)
     .map((one) => [one.model, one.card]));
   const newest = [...(page.entries || [])].filter((one) => cards.has(one.model))
     .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))[0];
-  const card = (rounds?.cover && rounds.cover.has_image && ID.test(String(rounds.cover.id || "")) ? rounds.cover : null)
+  return (rounds?.cover && rounds.cover.has_image && ID.test(String(rounds.cover.id || "")) ? rounds.cover : null)
     || (page.winners || []).map((one) => cards.get(one.model)).find(Boolean)
     || (rounds?.shortlist || []).map((one) => cards.get(one.model)).find(Boolean)
     || (newest ? cards.get(newest.model) : null);
-  return card ? cardOf(origin, card).image : null;
+}
+
+/// The model cards Talk's rows show for challenges [ids] (sitebold,
+/// 2026-11-23: a list of challenge threads was a column of one icon): the
+/// one open now as its own page pictures it (coverOf), one that ran by its
+/// first winner's (challenge_past). A Map of id to {id, has_image,
+/// has_thumb, updated_at}, without the ones with no picture. Read only:
+/// nothing is counted or settled here, and a failure is an empty Map.
+export async function challengeCards(ids, tests = false) {
+  const wanted = new Set((ids || []).map(n).filter(Boolean));
+  const found = new Map();
+  if (!wanted.size) return found;
+  const [past, page] = await Promise.all([
+    db("rpc/challenge_past", { method: "POST", body: { tests } }).catch(() => []),
+    db("rpc/challenge_page", { method: "POST", body: { tests } }).catch(() => null)]);
+  const keep = (id, card) => {
+    if (card && card.has_image && ID.test(String(card.id || "")) && !found.has(id)) {
+      found.set(id, { id: card.id, has_image: true, has_thumb: card.has_thumb === true, updated_at: card.updated_at || null });
+    }
+  };
+  if (page && wanted.has(n(page.id))) keep(n(page.id), coverOf(page, await roundsAsked(page.id).catch(() => null)));
+  for (const row of Array.isArray(past) ? past : []) {
+    if (wanted.has(n(row?.id))) keep(n(row.id), (row.winners || []).map((one) => one && one.card).find((card) => card && card.has_image));
+  }
+  return found;
 }
 
 /// [html], /challenge's page, with the head of challenge [page]

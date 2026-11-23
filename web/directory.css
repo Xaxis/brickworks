@@ -43,6 +43,20 @@
 	.model-page .top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "picture" "side" "rest"; gap: 16px; }
 	.model-page .side { position: static; }
 }
+/* Where it came from, under its picture (api/share.js lineage): a remix's
+   source and what it changed, what it is based on; on a phone after the
+   column. Its row only where it has one, or the grid's gap shows twice. */
+.model-page .top:has(> .lineage) { grid-template-areas: "picture side" "under side" "rest side"; }
+.model-page .lineage {
+	grid-area: under; min-width: 0; display: grid; gap: var(--s-2); padding: var(--s-3) var(--s-4);
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+}
+.model-page .lineage > :is(p, ul, div) { margin: 0; }
+@media (width < 900px) { .model-page .top:has(> .lineage) { grid-template-areas: "picture" "side" "under" "rest"; } }
+/* View in 3D, the picture's way in, as large as the picture asks for. */
+@media (width >= 900px) {
+	.model-page .media .picture .go { min-height: 48px; padding: 0 var(--s-5); font-size: var(--t-body); }
+}
 
 /* The picture is the shape it was published at, 1200 x 630, so the page
    holds its space before it arrives; on the theme's own ground, which a
@@ -235,6 +249,17 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .shared-by .names small { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
 .model-page .shared-by a.who:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
 .model-page .shared-by .said { flex-basis: 100%; }
+/* Somebody else modelled it (api/share.js designerRow, _sets.js
+   modellerHtml): they lead, by their initial and the line that credits
+   them, and who shares it is under, small (sitebold, 2026-11-23). */
+.model-page .shared-by.credit { flex-wrap: nowrap; align-items: center; }
+.model-page .shared-by.credit > .avatar { flex: none; }
+.model-page .shared-by.credit .names { flex: 1; gap: 2px; line-height: 1.4; }
+.model-page .shared-by.credit .modelled-by { margin: 0; color: var(--ink-soft); }
+.model-page .shared-by.credit .modelled-by b { color: var(--ink); font-size: var(--t-body); }
+.model-page .shared-via { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--s-3); color: var(--ink-faint); font-size: var(--t-small); }
+.model-page .shared-via .who { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+.model-page .shared-via a.who:hover span { color: var(--ink); text-decoration: underline; }
 .model-page .shared-by .said:empty { display: none; }
 
 /* The action bar (web/model-page.js): the kit's icon buttons in a row,
@@ -248,6 +273,12 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 @media (width < 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
 .action-bar > .keep { border-color: var(--line); background: transparent; box-shadow: none; }
 .action-bar > .keep > button { min-height: calc(var(--control-h) - 2px); }
+/* A model's Save is its icon, as Like's and Share's are, its word in its
+   tooltip and its name ("Save Riverside Watchtower"): with the word, pre261's
+   Save took the row to a second line at 1280 (the lead, 2026-11-23). Its
+   lists' half stays as it is. */
+.model-page .action-bar > .keep > .keep-main { padding-inline: 12px 10px; }
+.model-page .action-bar > .keep > .keep-main .word { display: none; }
 .marks-said { margin: 6px 0 0; }
 .marks-said:empty { display: none; }
 

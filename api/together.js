@@ -104,9 +104,12 @@
 // anyone, as it shares a model by link like anyone (supabase/trust.sql);
 // only its name is never shown.
 import { noted } from "./_noted.js";
-import { createHash, createHmac, randomBytes } from "node:crypto";
-import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
-import { db, dbConfigured } from "./_db.js";
+import { createCipheriv, createDecipheriv, createHash, createHmac, createPrivateKey, createPublicKey, hkdfSync, randomBytes,
+  sign as signEd } from "node:crypto";
+import { AuthError, authConfigured, bearer, isTestAccount, verify } from "./_auth.js";
+import { standingBetween } from "./_blocks.js";
+import { storeRoot } from "./_omr_credit.js";
+import { db, dbConfigured, dbCount } from "./_db.js";
 import { ageOf, shownPublicly } from "./_trust.js";
 import { namesTrouble } from "./_names.js";
 
@@ -628,6 +631,9 @@ async function snapshotPart(request, me) {
 
 async function send(request, me) {
   const body = request.body || {};
+  // Somebody watching holds the show's name, never the session's secret: an
+  // edit from them is refused (buildlive).
+  if (body.w !== undefined && body.s === undefined) throw new Refusal(403, WATCH_WORDS.read_only);
   const id = idOf(secretOf(body));
   const client = String(body.client || "");
   if (!CLIENT.test(client)) throw new Refusal(400, "send from which client?");
@@ -645,10 +651,17 @@ async function send(request, me) {
   // it, so a send costs one round trip to the database; the refusal is put
   // in words only when there is one.
   try {
-    const seqs = await db("rpc/together_append", {
+    // And whether it is open to watchers, at the same time (watchedNow keeps
+    // it a moment): each change goes to them as it is numbered.
+    const [seqs, show] = await Promise.all([db("rpc/together_append", {
       method: "POST",
       body: { p_session: id, p_author: me, p_client: client, p_ops: body.ops.map(({ cid, changes }) => ({ cid, changes })) },
-    });
+    }), watchedNow(id)]);
+    if (show && Array.isArray(seqs) && seqs.length === body.ops.length) {
+      const who = whoOf(id, me);
+      await tellWatchers(show, id, Number(seqs[0]), Number(seqs[seqs.length - 1]),
+        body.ops.map((op, k) => ({ seq: Number(seqs[k]), who, changes: op.changes })));
+    }
     return { seqs, at: Date.now() };
   } catch (trouble) {
     // Ended, or not in it: said as such.
@@ -905,7 +918,10 @@ async function end(request, me) {
   if (!session.ended_at) {
     await db(`together_sessions?id=eq.${id}`, { method: "PATCH", body: { ended_at: new Date().toISOString() } });
   }
-  return { ended: true };
+  // Its show, if it had one, ends with it: its pages told, and the studio
+  // told how many watched, for the version it ends as (buildlive).
+  const show = await closeShow(id, { ended: true });
+  return { ended: true, ...(show ? { watched: { watch: show.watch, peak: Number(show.peak) || 0, model: show.model || null } } : {}) };
 }
 
 async function leave(request, me) {
@@ -1194,7 +1210,616 @@ async function partyPoll(request) {
 const PARTY_OPS = { party_start: partyStart, party_join: partyJoin, party_send: partySend, party_poll: partyPoll };
 // -- end of Build party ------------------------------------------------------
 
-const OPS = { start, join, send, poll, end, leave, remove, point, upload, snapshot: snapshotPart };
+// -- Watching (buildlive, 2026-11-23) ----------------------------------------
+//
+// Building now: the owner of a session opens it to watchers from the studio
+// (supabase/together_watch.sql, web/live.js, docs/TOGETHER.md "Watching").
+// It is listed first in the home feed and on their profile (op=live), and
+// anyone may watch at /live/<watch>: the model drawn in the site's light 3D
+// viewer, each part landing as it is put down, and the chat. An account 13
+// or over may chat there, and anyone signed in may ask to build; the owner
+// gives a seat to somebody who asked (op=seat), who then builds in it as
+// anyone who joined by its link does.
+//
+// A watcher never holds the session's secret, so nothing they send is an
+// edit: a send by the show's name is refused (send, below), and what a
+// watcher says goes through together_watch_append, which takes a chat line,
+// an ask or a seat and nothing else. Their lines are in the session's own
+// log, from the client "watching", so every builder's poll reads them where
+// it reads the rest.
+//
+// The parts reach the watchers at once, on the show's own channel of the
+// database's Realtime, as each send is numbered: one message to every
+// watcher, not a poll each (each a function and a trip to the database a
+// few times a second). Anybody who knows a public channel's name may say
+// something on it, so every message is signed here with a key of this
+// server's (Ed25519, from the secret key), and a page takes only what it can
+// check against the key the relay gave it (web/live.js): a watcher cannot
+// put a part, or a line, in front of the others. What a page misses (asleep,
+// a message lost) it reads back by number (op=watch_ops), which it also
+// asks every WATCH_HEARD_MS to be counted among the watchers.
+//
+//   ?op=watch_open  {s, model}  the owner opens the show: its name and address;
+//                               [model] the shared model it builds, if theirs
+//   ?op=watch_close {s}         the owner closes it (ending the session does too)
+//   ?op=seat        {s, who}    the owner gives a seat to [who], who asked
+//   GET ?op=live[&handle=h]     the shows open now, the newest first: kept 4 s
+//   GET ?op=watching&w=W        the show as it stands: kept 2 s
+//   ?op=watch_ops   {w, after, viewer}  the lines after [after], and how many watch
+//   ?op=watch_me    {w}         signed in: who they are in it, and what they may do
+//   ?op=watch_say   {w, text}   signed in, 13 or over: a chat line
+//   ?op=watch_ask   {w}         signed in: ask to build
+//   ?op=watch_seat  {w}         signed in: the session's link, once given a seat
+const WATCH = /^[A-Za-z0-9]{12}$/;
+const WATCH_LETTERS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+const VIEWER = /^[a-z0-9]{8,32}$/;
+const MODEL_ID = /^[A-Za-z0-9]{10}$/;
+const WATCH_CLIENT = "watching";
+// A page says it is there this often, and is counted while it said so within
+// WATCHED_MS.
+const WATCH_HEARD_MS = 20_000;
+const WATCHED_MS = 60_000;
+// A show is listed while its owner's studio was heard from within this long
+// (a poll marks it every 20 s at most): a tab closed without ending it goes.
+const OWNER_HEARD_MS = 90_000;
+const LIVE_MOST = 24;
+// What a watcher may say: this many lines a minute, an ask this often.
+const SAY_PER_MINUTE = 8;
+const ASK_EVERY_MS = 120_000;
+// The chat lines and asks a page is given as it opens.
+const CHAT_KEPT = 50;
+// Changes read for the model as it stands, at most: a page past it is told
+// to open the model in the studio instead.
+const WATCH_OPS_MOST = 40_000;
+// A message on the channel at most this long; past it, the pages are told
+// only its numbers and read it back (watch_ops).
+const MESSAGE_MOST = 200_000;
+const WATCH_WORDS = {
+  missing: "Watching opens on Brickworks soon.",
+  closed: "This build is not open to watchers.",
+  read_only: "Watching shows the model as it is built; nothing you do here changes it. Ask to build for a seat.",
+  blocked: "You can’t chat in this build.",
+  too_fast: "That is a lot of chat at once: wait a moment.",
+  asked: "You asked a moment ago: the designer has it.",
+  owner: "It is your own build: open it in the studio.",
+  removed: "The designer took you out of this build.",
+  nobody: "Nobody like that asked to build.",
+  ended: "The designer has ended this build.",
+};
+
+// The key every message to the watchers is signed with: Ed25519, its seed
+// from the server's secret key, so every function signs with the same one
+// and nothing else holds it.
+let watchKeys = null;
+function signer() {
+  if (watchKeys) return watchKeys;
+  const secret = String(process.env.SUPABASE_SECRET_KEY || "");
+  if (!secret) return null;
+  const seed = Buffer.from(hkdfSync("sha256", secret, "brickworks", "buildlive: the watchers' messages", 32));
+  const privateKey = createPrivateKey({ key: Buffer.concat([Buffer.from("302e020100300506032b657004220420", "hex"), seed]),
+    format: "der", type: "pkcs8" });
+  const raw = createPublicKey(privateKey).export({ format: "der", type: "spki" }).subarray(-32);
+  watchKeys = { privateKey, pub: Buffer.from(raw).toString("base64url") };
+  return watchKeys;
+}
+const signedBy = (text) => signEd(null, Buffer.from(text), signer().privateKey).toString("base64url");
+
+// A seat's link kept in the log it is given in, sealed with a key of this
+// server's (AES-256-GCM, from the secret key): the log alone gives nobody a
+// way in, and only the person given it is told it (watch_seat).
+function sealKey() {
+  return Buffer.from(hkdfSync("sha256", String(process.env.SUPABASE_SECRET_KEY || ""), "brickworks",
+    "buildlive: a seat's link", 32));
+}
+function seal(token) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", sealKey(), iv);
+  const body = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), body]).toString("base64url");
+}
+function unseal(sealed) {
+  try {
+    const raw = Buffer.from(String(sealed), "base64url");
+    const decipher = createDecipheriv("aes-256-gcm", sealKey(), raw.subarray(0, 12));
+    decipher.setAuthTag(raw.subarray(12, 28));
+    const token = Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]).toString("utf8");
+    return TOKEN.test(token) ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+// The show's channel, by its name signed with the secret key, as a
+// session's own is (channelOf).
+const showChannelOf = (watch) => `live:${createHmac("sha256", String(process.env.SUPABASE_SECRET_KEY || ""))
+  .update(`watch:${watch}`).digest("hex").slice(0, 32)}`;
+
+function watchName() {
+  const bytes = randomBytes(12);
+  return [...bytes].map((b) => WATCH_LETTERS[b % WATCH_LETTERS.length]).join("");
+}
+
+function watchAsked(request) {
+  const w = String(request.body?.w || request.query?.w || "");
+  if (!WATCH.test(w)) throw new Refusal(404, "no such build");
+  return w;
+}
+
+const WATCH_ROW = "session,watch,owner,title,model,opened_at,closed_at,peak";
+
+// Whether together_watch.sql is applied: a table it makes, missing, is
+// PostgREST's 404 (PGRST205) or 42P01.
+const notMade = (trouble) => /PGRST205|42P01|does not exist|Could not find the table/.test(String(trouble?.message || trouble));
+
+async function showOf(w, { session = false } = {}) {
+  let rows;
+  try {
+    rows = await db(`together_watch?watch=eq.${w}&select=${WATCH_ROW}${session ? ",together_sessions(last_seq,ended_at)" : ""}`);
+  } catch (trouble) {
+    if (notMade(trouble)) throw new Refusal(404, "no such build");
+    throw trouble;
+  }
+  if (!rows?.[0]) throw new Refusal(404, "no such build");
+  return rows[0];
+}
+
+// Whether session [id] is open to watchers, as a send asks it: its show's
+// row or null, kept a moment in this instance so a send costs no more trips
+// for it (a show opened on another instance is told to its pages from the
+// first send after the moment, and they read back what came before).
+const watchedKept = new Map();
+const WATCHED_KEPT_MS = 3_000;
+async function watchedNow(id) {
+  const kept = watchedKept.get(id);
+  if (kept && Date.now() - kept.at < WATCHED_KEPT_MS) return kept.row;
+  let row = null;
+  try {
+    [row] = await db(`together_watch?session=eq.${id}&closed_at=is.null&select=${WATCH_ROW}`) || [];
+  } catch {
+    row = null;
+  }
+  watchedKept.set(id, { row: row || null, at: Date.now() });
+  if (watchedKept.size > 500) watchedKept.delete(watchedKept.keys().next().value);
+  return row || null;
+}
+
+// What a watcher is shown of [changes]: each part as [part, colour, its 12
+// numbers] or null for taken off, the title, and the chat, asks and seats;
+// never a seat's link, a comment's words or a made part's files.
+function forWatchers(changes) {
+  const out = {};
+  for (const [key, value] of Object.entries(changes || {})) {
+    if (!key.startsWith("~")) out[key] = Array.isArray(value) ? value.slice(0, 3) : null;
+    else if (["~chat", "~ask", "~by", "~seat", "~title"].includes(key)) out[key] = value;
+  }
+  return out;
+}
+
+// The parts and colours [ops] name, as the viewer draws them (api/_parts.js
+// meshRowsOf), read only once a show has parts to tell.
+let partsModule = null;
+async function meshesOf(ops) {
+  const ids = new Set();
+  const codes = new Set();
+  for (const op of ops) {
+    for (const [key, value] of Object.entries(op.changes || {})) {
+      if (key.startsWith("~") || !Array.isArray(value)) continue;
+      ids.add(String(value[0]));
+      codes.add(Number(value[1]));
+    }
+  }
+  if (ids.size === 0) return { meshes: {}, colours: {} };
+  partsModule ||= await import("./_parts.js");
+  return partsModule.meshRowsOf([...ids], [...codes]);
+}
+
+// The names chat lines are said by: a watcher's own (~by), else a builder's.
+async function namesFor(id, ops) {
+  if (!ops.some((op) => op.changes?.["~chat"] !== undefined && op.changes?.["~by"] === undefined)) return {};
+  const names = {};
+  for (const row of await peopleRows(id)) names[whoOf(id, row.account)] = row.name || "A builder";
+  return names;
+}
+
+// Rows of the log as the watchers are shown them.
+function watcherOps(id, rows) {
+  return rows.map((row) => ({ seq: Number(row.seq), who: whoOf(id, row.author), changes: forWatchers(row.changes) }))
+    .filter((op) => Object.keys(op.changes).length > 0);
+}
+
+// [ops] (numbered [from] to [to]) to every page watching [show], signed.
+// Past MESSAGE_MOST, only the numbers: the pages read them back.
+async function tellWatchers(show, id, from, to, ops, extra = {}) {
+  if (!signer()) return;
+  const shown = ops.map((op) => ({ ...op, changes: forWatchers(op.changes) }))
+    .filter((op) => Object.keys(op.changes).length > 0);
+  const [{ meshes, colours }, names] = await Promise.all([meshesOf(shown), namesFor(id, shown)]);
+  let d = JSON.stringify({ w: show.watch, from, to, ops: shown, meshes, colours, names, at: Date.now(), ...extra });
+  if (d.length > MESSAGE_MOST) d = JSON.stringify({ w: show.watch, from, to, ops: [], more: true, at: Date.now(), ...extra });
+  const key = process.env.SUPABASE_SECRET_KEY;
+  await fetch(`${realtime()}/api/broadcast`, {
+    method: "POST",
+    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({ messages: [{ topic: showChannelOf(show.watch), event: "show", payload: { d, sig: signedBy(d) },
+      private: false }] }),
+    signal: AbortSignal.timeout(2000),
+  }).catch(() => null);
+}
+
+// A line from [me] in session [id]'s log: its number.
+async function watchAppend(id, me, changes) {
+  try {
+    return Number(await db("rpc/together_watch_append", { method: "POST",
+      body: { p_session: id, p_author: me, p_changes: changes } }));
+  } catch (trouble) {
+    if (/together:ended/.test(String(trouble?.message))) throw new Refusal(410, WATCH_WORDS.ended);
+    if (/together:closed/.test(String(trouble?.message))) throw new Refusal(409, WATCH_WORDS.closed);
+    if (notMade(trouble) || /PGRST202|Could not find the function/.test(String(trouble?.message))) {
+      throw new Refusal(503, WATCH_WORDS.missing);
+    }
+    throw trouble;
+  }
+}
+
+// Counted by the database (a HEAD, no rows): read as rows, each watcher's
+// heartbeat cost a row for every other watcher, which grows as their square.
+async function watchersOf(id) {
+  const since = new Date(Date.now() - WATCHED_MS).toISOString();
+  return dbCount(`together_watchers?session=eq.${id}&seen_at=gt.${since}`).catch(() => 0);
+}
+
+async function watchOpen(request, me) {
+  const body = request.body || {};
+  const token = secretOf(body);
+  const id = idOf(token);
+  const session = await inSession(id, me);
+  if (session.owner !== me) throw new Refusal(403, "only the designer opens their build to watchers");
+  // Watching is public, as the gallery is: 13 and over, the age question
+  // answered, never an account taken out of the gallery.
+  const trouble = await chatTrouble(me);
+  if (trouble) {
+    throw new Refusal(403, trouble === CHAT_WORDS.under_13 ? "Watching is for people 13 and over. Building together is yours."
+      : trouble.replace(/chat\.?$/, "open it to watchers."));
+  }
+  const model = MODEL_ID.test(String(body.model || "")) ? String(body.model) : null;
+  let mine = null;
+  if (model) {
+    const [row] = await db(`shared_models?id=eq.${model}&select=owner`).catch(() => []) || [];
+    mine = row?.owner === me ? model : null;
+  }
+  let [row] = [];
+  try {
+    [row] = await db(`together_watch?session=eq.${id}&select=${WATCH_ROW}`) || [];
+  } catch (trouble2) {
+    if (notMade(trouble2)) throw new Refusal(503, WATCH_WORDS.missing);
+    throw trouble2;
+  }
+  if (row) {
+    [row] = await db(`together_watch?session=eq.${id}`, { method: "PATCH", prefer: "return=representation",
+      body: { closed_at: null, ...(row.closed_at ? { opened_at: new Date().toISOString() } : {}),
+        title: session.title, ...(mine ? { model: mine } : {}) } }) || [row];
+  } else {
+    [row] = await db("together_watch", { method: "POST", prefer: "return=representation",
+      body: { session: id, watch: watchName(), owner: me, title: session.title, model: mine,
+        tests: isTestAccount(request.claims) } }) || [];
+  }
+  watchedKept.delete(id);
+  return { watch: row.watch, link: `${originOf(request)}/live/${row.watch}`, watchers: await watchersOf(id), model: row.model || null };
+}
+
+// How many watch the owner's session now, for the studio's Build together
+// panel while it is open: one read of the session and one of its watchers.
+async function watchCount(request, me) {
+  const id = idOf(secretOf(request.body));
+  const session = await inSession(id, me);
+  if (session.owner !== me) throw new Refusal(403, "only the designer counts their watchers");
+  const show = await watchedNow(id);
+  return { open: Boolean(show), watchers: show ? await watchersOf(id) : 0 };
+}
+
+async function watchClose(request, me) {
+  const id = idOf(secretOf(request.body));
+  const session = await inSession(id, me);
+  if (session.owner !== me) throw new Refusal(403, "only the designer closes their build to watchers");
+  return { closed: Boolean(await closeShow(id, { closed: true })) };
+}
+
+// The show of session [id] closed, if it was open, and its pages told: the
+// row as it was, or null.
+async function closeShow(id, said) {
+  let row;
+  try {
+    [row] = await db(`together_watch?session=eq.${id}&closed_at=is.null`, { method: "PATCH",
+      prefer: "return=representation", body: { closed_at: new Date().toISOString() } }) || [];
+  } catch {
+    return null;
+  }
+  watchedKept.delete(id);
+  if (!row) return null;
+  const [session] = await db(`together_sessions?id=eq.${id}&select=last_seq`).catch(() => []) || [];
+  const at = Number(session?.last_seq) || 0;
+  await tellWatchers(row, id, at, at, [], said);
+  return row;
+}
+
+// The owner gives a seat to [who], who asked to build: in the session from
+// now, and told its link (watch_seat).
+async function seat(request, me) {
+  const body = request.body || {};
+  const token = secretOf(body);
+  const id = idOf(token);
+  const who = String(body.who || "");
+  if (!WHO.test(who)) throw new Refusal(400, "a seat for whom?");
+  const session = await inSession(id, me);
+  if (session.owner !== me) throw new Refusal(403, "only the designer gives a seat");
+  const asks = await db(`together_ops?session=eq.${id}&client=eq.${WATCH_CLIENT}&order=seq.desc&limit=500`
+    + "&select=author,changes") || [];
+  const asked = asks.find((row) => row.changes?.["~ask"] !== undefined && whoOf(id, row.author) === who);
+  if (!asked || asked.author === me) throw new Refusal(404, WATCH_WORDS.nobody);
+  const [there] = await db(`together_people?session=eq.${id}&account=eq.${asked.author}&select=removed_at`) || [];
+  if (there?.removed_at) throw new Refusal(409, "You took them out of this session.");
+  if (!there) {
+    // In it from now, shown away until they open it.
+    await db("together_people", { method: "POST", body: { session: id, account: asked.author,
+      name: await shownName(asked.author), seen_at: new Date(0).toISOString() } });
+  }
+  const seq = await watchAppend(id, me, { "~seat": who, "~key": seal(token) });
+  const show = await watchedNow(id);
+  if (show) await tellWatchers(show, id, seq, seq, [{ seq, who: whoOf(id, me), changes: { "~seat": who } }]);
+  return { seq, who };
+}
+
+// The shows open now, the newest first, as the home feed and a profile list
+// them: {live: [{watch, link, title, model, designer: {name, handle},
+// watchers, since}]}.
+async function live(request, response) {
+  const query = request.query || {};
+  const tests = String(query.tests || "") === "1";
+  const handle = String(query.handle || "");
+  response.setHeader("Cache-Control", tests ? "private, no-store" : "public, max-age=0, s-maxage=4, stale-while-revalidate=4");
+  let rows;
+  try {
+    rows = await db(`together_watch?closed_at=is.null&tests=is.${tests}&order=opened_at.desc&limit=${LIVE_MOST * 2}`
+      + `&select=${WATCH_ROW}`) || [];
+  } catch {
+    return { live: [] };
+  }
+  if (handle) {
+    if (!/^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/.test(handle)) return { live: [] };
+    const [person] = await db(`people?handle=eq.${handle}&select=account`).catch(() => []) || [];
+    rows = person ? rows.filter((row) => row.owner === person.account) : [];
+  }
+  if (rows.length === 0) return { live: [] };
+  const ids = rows.map((row) => row.session);
+  const owners = [...new Set(rows.map((row) => row.owner))];
+  const [sessions, owning, profiles] = await Promise.all([
+    db(`together_sessions?id=in.(${ids.join(",")})&ended_at=is.null&select=id,title`),
+    db(`together_people?session=in.(${ids.join(",")})&account=in.(${owners.join(",")})&select=session,account,seen_at,left_at`),
+    db(`people?account=in.(${owners.join(",")})&select=account,handle,name`),
+  ]);
+  const open = new Map((sessions || []).map((one) => [one.id, one]));
+  const heard = new Map((owning || []).filter((one) => !one.left_at).map((one) => [`${one.session}:${one.account}`, Date.parse(one.seen_at)]));
+  const named = new Map((profiles || []).map((one) => [one.account, one]));
+  const out = [];
+  for (const row of rows) {
+    if (!open.has(row.session) || Date.now() - (heard.get(`${row.session}:${row.owner}`) || 0) > OWNER_HEARD_MS) continue;
+    const person = named.get(row.owner);
+    // Shown only by a name a visitor may be shown (watch_open asks it).
+    if (!person?.handle || !(await shownPublicly(row.owner).catch(() => false))) continue;
+    out.push({ watch: row.watch, link: `/live/${row.watch}`, title: open.get(row.session).title || row.title || "",
+      model: row.model || null, designer: { name: String(person.name || person.handle), handle: person.handle },
+      session: row.session, since: row.opened_at });
+    if (out.length >= LIVE_MOST) break;
+  }
+  // How many watch each one listed, counted by the database: a read of the
+  // watchers' rows grew with every page watching.
+  const counts = await Promise.all(out.map((one) => watchersOf(one.session)));
+  return { live: out.map(({ session, ...one }, n) => ({ ...one, watchers: counts[n] })) };
+}
+
+// The model of session [id] as it stands, every change applied to the
+// parts it began with: {bricks: Map uid -> [part, colour, 12 numbers],
+// title, seq, chat, asks, seats}.
+async function standing(id, session) {
+  const [whole] = await db(`together_sessions?id=eq.${id}&select=snapshot`) || [];
+  let snapshot = whole?.snapshot || {};
+  if (snapshot.stored !== undefined) {
+    const parts = await db(`together_snapshot_parts?session=eq.${id}&order=n.asc&select=n,text`) || [];
+    try { snapshot = JSON.parse(parts.map((part) => part.text).join("")); } catch { snapshot = {}; }
+  }
+  const bricks = new Map();
+  for (const entry of Array.isArray(snapshot.bricks) ? snapshot.bricks : []) {
+    if (Array.isArray(entry) && UID.test(String(entry[0])) && checkState(entry.slice(1))) {
+      bricks.set(entry[0], entry.slice(1, 4));
+    }
+  }
+  let title = session.title || "";
+  const chat = [];
+  const asks = [];
+  const seats = [];
+  let seq = 0;
+  for (let after = 0; after < WATCH_OPS_MOST;) {
+    const rows = await db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=1000`
+      + "&select=seq,author,changes") || [];
+    for (const row of rows) {
+      seq = Number(row.seq);
+      for (const [key, value] of Object.entries(row.changes || {})) {
+        if (!key.startsWith("~")) {
+          if (Array.isArray(value)) bricks.set(key, value.slice(0, 3));
+          else bricks.delete(key);
+        } else if (key === "~title" && typeof value === "string") title = value;
+      }
+      const said = row.changes || {};
+      const who = whoOf(id, row.author);
+      if (typeof said["~chat"] === "string") chat.push({ seq, who, by: typeof said["~by"] === "string" ? said["~by"] : null, text: said["~chat"] });
+      if (said["~ask"] !== undefined) asks.push({ seq, who, by: typeof said["~by"] === "string" ? said["~by"] : "" });
+      if (typeof said["~seat"] === "string") seats.push({ seq, who: said["~seat"] });
+    }
+    if (rows.length < 1000) break;
+    after = seq;
+  }
+  return { bricks, title, seq: Math.max(seq, 0), chat: chat.slice(-CHAT_KEPT), asks: asks.slice(-20), seats: seats.slice(-20) };
+}
+
+// GET ?op=watching&w=W: the show as a page opens on it, the same for every
+// visitor (kept by the CDN 2 s): the model as it stands, its parts' and
+// colours' looks, the chat, who builds, how many watch, and how to hear the
+// rest (the channel, its key, and the key its messages are signed with).
+async function watching(request, response) {
+  const w = watchAsked(request);
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=2, stale-while-revalidate=8");
+  const show = await showOf(w);
+  const id = show.session;
+  const session = await sessionRow(id);
+  if (!session) return { w, ended: true, title: show.title, model: show.model || null };
+  const ended = Boolean(session.ended_at);
+  const [state, rows, [person], watchers] = await Promise.all([standing(id, session), peopleRows(id),
+    db(`people?account=eq.${show.owner}&select=handle,name`).then((got) => got || []), watchersOf(id)]);
+  const names = {};
+  const people = [];
+  for (const row of rows) {
+    if (row.removed_at) continue;
+    const who = whoOf(id, row.account);
+    names[who] = row.name || (row.account === show.owner ? "The designer" : "A builder");
+    people.push({ who, name: names[who], owner: row.account === show.owner });
+  }
+  const bricks = [...state.bricks.entries()].map(([uid, value]) => [uid, ...value]);
+  const { meshes, colours } = await meshesOf([{ changes: Object.fromEntries(state.bricks) }]);
+  const shown = await shownPublicly(show.owner).catch(() => false);
+  return {
+    w, title: state.title || show.title, model: show.model || null, ended, closed: Boolean(show.closed_at),
+    designer: shown && person ? { name: String(person.name || person.handle || ""), handle: person.handle || "" } : null,
+    seq: state.seq, bricks, meshes, colours, root: storeRoot(),
+    chat: state.chat.map((line) => ({ ...line, by: line.by ?? names[line.who] ?? "A builder" })),
+    asks: state.asks, seats: state.seats, people, watchers, since: show.opened_at,
+    channel: { url: `${realtime().replace(/^http/, "ws")}/websocket`, key: String(process.env.SUPABASE_PUBLISHABLE_KEY || ""),
+      topic: showChannelOf(w), event: "show" },
+    verify: signer()?.pub || "", heard_ms: WATCH_HEARD_MS,
+  };
+}
+
+// The lines after [after] (each as the watchers are shown it), how many
+// watch, and whether it ended; and the page [viewer] counted among them.
+async function watchOps(request) {
+  const body = request.body || {};
+  const w = watchAsked(request);
+  const after = Math.max(0, Math.floor(Number(body.after) || 0));
+  const viewer = String(body.viewer || "");
+  // The show and its session in one read; the log only when it has gone
+  // past [after]. Most calls are a page's heartbeat with nothing new: the
+  // show, the count and the page's own row, and no rows of the log.
+  const show = await showOf(w, { session: true });
+  const id = show.session;
+  const session = show.together_sessions || null;
+  if (!session) return { w, ended: true, ops: [], seq: after };
+  const rows = Number(session.last_seq) > after
+    ? await db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}&select=seq,author,changes`)
+    : [];
+  if (VIEWER.test(viewer)) {
+    await db("together_watchers?on_conflict=session,viewer", { method: "POST", prefer: "resolution=merge-duplicates",
+      body: { session: id, viewer: createHash("sha256").update(`${id}:${viewer}`).digest("hex").slice(0, 16),
+        seen_at: new Date().toISOString() } }).catch(() => null);
+  }
+  const ops = watcherOps(id, rows || []);
+  const watchers = await watchersOf(id);
+  if (watchers > (Number(show.peak) || 0)) {
+    db(`together_watch?session=eq.${id}`, { method: "PATCH", body: { peak: watchers } }).catch(() => null);
+  }
+  const [{ meshes, colours }, names] = await Promise.all([meshesOf(ops), namesFor(id, ops)]);
+  // As far as the rows read go: the session's own last number, read beside
+  // them, can be past a change that committed between the two reads.
+  const last = rows?.length ? Number(rows[rows.length - 1].seq) : after;
+  return { w, ops, meshes, colours, names, seq: last, more: rows?.length === SEND_MOST, watchers,
+    ended: Boolean(session.ended_at), closed: Boolean(show.closed_at) };
+}
+
+// Signed in: who they are in this show (as its log names them), whether
+// they may chat (or why not), whether they asked, and whether they have a
+// seat.
+async function watchMe(request, me) {
+  const show = await showOf(watchAsked(request));
+  const id = show.session;
+  const who = whoOf(id, me);
+  const [chat, standingNow, [there]] = await Promise.all([chatTrouble(me), standingBetween(me, show.owner),
+    db(`together_people?session=eq.${id}&account=eq.${me}&select=removed_at`).then((got) => got || [])]);
+  return { who, owner: show.owner === me, chat: standingNow ? WATCH_WORDS.blocked : chat || "",
+    seated: Boolean(there && !there.removed_at), removed: Boolean(there?.removed_at) };
+}
+
+// What a watcher may not send: anything but their words.
+function refuseEdits(body) {
+  if (body && (body.ops !== undefined || body.changes !== undefined || body.s !== undefined)) {
+    throw new Refusal(403, WATCH_WORDS.read_only);
+  }
+}
+
+async function watchSay(request, me) {
+  const body = request.body || {};
+  refuseEdits(body);
+  const show = await showOf(watchAsked(request));
+  if (show.closed_at) throw new Refusal(409, WATCH_WORDS.closed);
+  const id = show.session;
+  const trouble = await chatTrouble(me);
+  if (trouble) throw new Refusal(422, trouble);
+  if (await standingBetween(me, show.owner)) throw new Refusal(403, WATCH_WORDS.blocked);
+  const text = chatLine(body.text);
+  const minute = new Date(Date.now() - 60_000).toISOString();
+  const recent = await db(`together_ops?session=eq.${id}&author=eq.${me}&client=eq.${WATCH_CLIENT}&at=gt.${minute}&select=seq`) || [];
+  if (recent.length >= SAY_PER_MINUTE) throw new Refusal(429, WATCH_WORDS.too_fast);
+  const by = (await shownName(me)) || "A watcher";
+  const changes = { "~chat": text, "~by": by };
+  const seq = await watchAppend(id, me, changes);
+  await tellWatchers(show, id, seq, seq, [{ seq, who: whoOf(id, me), changes }]);
+  return { seq, who: whoOf(id, me), by };
+}
+
+async function watchAsk(request, me) {
+  const body = request.body || {};
+  refuseEdits(body);
+  const show = await showOf(watchAsked(request));
+  if (show.closed_at) throw new Refusal(409, WATCH_WORDS.closed);
+  if (show.owner === me) throw new Refusal(409, WATCH_WORDS.owner);
+  const id = show.session;
+  const [there] = await db(`together_people?session=eq.${id}&account=eq.${me}&select=removed_at`) || [];
+  if (there?.removed_at) throw new Refusal(403, WATCH_WORDS.removed);
+  if (there) return { seated: true, who: whoOf(id, me) };
+  if (await standingBetween(me, show.owner)) throw new Refusal(403, WATCH_WORDS.blocked);
+  const since = new Date(Date.now() - ASK_EVERY_MS).toISOString();
+  const recent = await db(`together_ops?session=eq.${id}&author=eq.${me}&client=eq.${WATCH_CLIENT}&at=gt.${since}`
+    + "&select=changes") || [];
+  if (recent.some((row) => row.changes?.["~ask"] !== undefined)) throw new Refusal(429, WATCH_WORDS.asked);
+  const by = (await shownName(me)) || "A watcher";
+  const changes = { "~ask": by, "~by": by };
+  const seq = await watchAppend(id, me, changes);
+  await tellWatchers(show, id, seq, seq, [{ seq, who: whoOf(id, me), changes }]);
+  return { seq, who: whoOf(id, me), asked: true };
+}
+
+// The session's link, for somebody the designer gave a seat.
+async function watchSeat(request, me) {
+  refuseEdits(request.body);
+  const show = await showOf(watchAsked(request));
+  const id = show.session;
+  const who = whoOf(id, me);
+  const [there] = await db(`together_people?session=eq.${id}&account=eq.${me}&select=removed_at`) || [];
+  if (!there) return { seated: false, who };
+  if (there.removed_at) throw new Refusal(403, WATCH_WORDS.removed);
+  const seats = await db(`together_ops?session=eq.${id}&client=eq.${WATCH_CLIENT}&author=eq.${show.owner}`
+    + "&order=seq.desc&limit=200&select=changes") || [];
+  const given = seats.find((row) => row.changes?.["~seat"] === who && row.changes?.["~key"]);
+  const token = given ? unseal(given.changes["~key"]) : null;
+  if (!token || idOf(token) !== id) return { seated: false, who };
+  return { seated: true, who, link: `${originOf(request)}/app?together=${token}` };
+}
+
+// Signed in or not, by GET or POST: the show and the listing. Signed in:
+// the rest.
+const WATCH_OPEN_OPS = { live, watching, watch_ops: watchOps };
+const WATCH_SIGNED_OPS = { watch_me: watchMe, watch_say: watchSay, watch_ask: watchAsk, watch_seat: watchSeat };
+// -- end of Watching ---------------------------------------------------------
+
+const OPS = { start, join, send, poll, end, leave, remove, point, upload, snapshot: snapshotPart,
+  watch_open: watchOpen, watch_close: watchClose, watch_count: watchCount, seat, ...WATCH_SIGNED_OPS };
 const LINES = "application/x-ndjson";
 
 async function handler(request, response) {
@@ -1203,7 +1828,7 @@ async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response.status(204)
       .setHeader("Access-Control-Allow-Headers", "content-type, authorization")
-      .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS").end();
+      .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS").end();
   }
   try {
     // A build party's: no sign-in (above).
@@ -1212,6 +1837,13 @@ async function handler(request, response) {
       if (!dbConfigured()) throw new Refusal(503, "building together is not configured here");
       if (request.method !== "POST") throw new Refusal(405, "POST only");
       return response.status(200).json(await party(request));
+    }
+    // A show and the listing of them: for anybody, signed in or not (buildlive).
+    const open = WATCH_OPEN_OPS[String(request.query?.op || "")];
+    if (open) {
+      if (!dbConfigured()) throw new Refusal(503, "watching is not configured here");
+      if (request.method !== "POST" && request.method !== "GET") throw new Refusal(405, "GET or POST");
+      return response.status(200).json(await open(request, response));
     }
     if (!authConfigured() || !dbConfigured()) throw new Refusal(503, "building together is not configured here");
     if (request.method !== "POST") throw new Refusal(405, "POST only");
@@ -1225,6 +1857,7 @@ async function handler(request, response) {
     }
     const me = String(claims.sub || "");
     if (!/^[0-9a-f-]{36}$/i.test(me)) throw new Refusal(401, "that sign-in names nobody");
+    request.claims = claims;
     const answer = await op(request, me, response);
     // A poll answering a line at a time ends with its last line.
     if (response.headersSent) return response.end(`${JSON.stringify(answer)}\n`);

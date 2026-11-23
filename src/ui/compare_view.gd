@@ -27,6 +27,11 @@
 ## selects that part and frames it; a set the model is says it matches. What
 ## changed is drawn on the model as a save's comparison draws it.
 ##
+## Its fourth (suggestedit, PLAN row 5) is a change a remixer sent back from
+## their remix, opened from the designer's notification: drawn on their model
+## as they last published it, and taken whole or a change at a time by their
+## ticks (Main.open_suggestion).
+##
 ## Comparing changes nothing. The drawing is BrickWorld's stress layer, the
 ## picture alone (a brick keeps its paint, the history no step, the save its
 ## state), and View, Stress is turned off meanwhile; the ghosts are a world
@@ -157,6 +162,10 @@ func close(restore_view: bool = true) -> void:
 	version = null
 	_was = []
 	checked = null
+	suggestion = {}
+	suggest_diff = null
+	_suggest_ghosts.clear()
+	taking = false
 	chosen = -1
 	# A check still on its way is dropped (_asked), so nothing waits on it.
 	_asked += 1
@@ -180,6 +189,8 @@ func _process(_delta: float) -> void:
 		return
 	if mode == SET:
 		_set_again()
+		return
+	if mode == SUGGEST:
 		return
 	if diff == null or store.laying:
 		return
@@ -552,6 +563,8 @@ func fields() -> Dictionary:
 		return parts_fields()
 	if mode == SET:
 		return set_fields()
+	if mode == SUGGEST:
+		return suggest_fields()
 	var counts: Dictionary = {}
 	for kind: String in _counts:
 		counts[kind] = (_counts[kind] as Label).text
@@ -568,6 +581,8 @@ func controls_by_name() -> Dictionary:
 		return _parts_controls()
 	if mode == SET:
 		return _set_controls()
+	if mode == SUGGEST:
+		return _suggest_controls()
 	return {"compare_close": _close, "compare_previous": _previous, "compare_next": _next}
 
 
@@ -575,7 +590,9 @@ func controls_by_name() -> Dictionary:
 
 ## Which the panel shows: one of the model's saves drawn on it ([constant
 ## SAVE]), or the parts of any two of a set, a saved model and the model open
-## now ([constant PARTS]), a sheet over the model as the parts list is.
+## now ([constant PARTS]), a sheet over the model as the parts list is; or the
+## model against a set's own ([constant SET]), or a change a remixer sent
+## back ([constant SUGGEST]), each a side panel where the save's is.
 const SAVE := "save"
 const PARTS := "parts"
 ## The parts sheet's largest size; inset 14 px in a smaller model area.
@@ -701,6 +718,8 @@ func _show_mode(which: String) -> void:
 		_build_parts()
 	if which == SET and _set_column == null:
 		_build_set()
+	if which == SUGGEST and _suggest_column == null:
+		_build_suggest()
 	if which != SAVE and _side_place.is_empty():
 		_side_place = {"anchors": [anchor_left, anchor_top, anchor_right, anchor_bottom],
 			"offsets": [offset_left, offset_top, offset_right, offset_bottom],
@@ -711,6 +730,8 @@ func _show_mode(which: String) -> void:
 		_parts_column.visible = which == PARTS
 	if _set_column != null:
 		_set_column.visible = which == SET
+	if _suggest_column != null:
+		_suggest_column.visible = which == SUGGEST
 	custom_minimum_size.x = SET_WIDE if which == SET else WIDE
 	if which == PARTS:
 		_place_parts()
@@ -722,6 +743,8 @@ func _show_mode(which: String) -> void:
 			# Wider, by its left edge: its right stays where the save's is.
 			offset_left = offset_right - SET_WIDE
 			_place_set()
+		elif which == SUGGEST:
+			_place_suggest()
 
 
 ## Each edge's anchor, then its offset. Left and top first, each pushing the
@@ -1446,4 +1469,500 @@ func _set_controls() -> Dictionary:
 		"compare_set_go": _set_go, "compare_set_list": _set_scroll}
 	for n: int in _set_buttons.size():
 		named["compare_set_row_%d" % n] = _set_buttons[n]
+	return named
+
+
+# -- suggestedit: a remixer's change sent back (PLAN row 5) ---------------------
+
+## The fourth mode: a change a remixer sent back from their remix (api/
+## _suggestions.js), drawn on the designer's model as they last published it,
+## which Main opened for it. On the model: a part the change takes away red,
+## one it moves amber with a faint ghost where it goes, one it paints
+## violet, and what it adds a green ghost where it goes (a part swapped for
+## another is both); what it only puts in another step is listed. Each
+## change ticked to take, by itself or by its kind, all ticked to begin
+## with; a row pressed frames it. Nothing is taken but by Take all or Take
+## the ticked, and Decline says no to all of it.
+const SUGGEST := "suggest"
+const SUGGEST_WIDE := 400.0
+## What a part the change adds is drawn as: Trans-Bright Green glass.
+const ADDED_GHOST := 35
+const RESTEPPED := Color(0.45, 0.75, 1.0)
+## Most rows listed: a change past it is still taken by Take all.
+const SUGGEST_SHOWN := 400
+
+## The change shown, as the server said it, or {} before one.
+var suggestion: Dictionary = {}
+## Each change's id -> whether it is ticked to take.
+var ticked: Dictionary = {}
+## Whether a take or a decline is on its way, for a probe.
+var taking: bool = false
+## What the drawing is: the model on the baseplate against the remix's parts.
+var suggest_diff: ModelDiff = null
+var _take: Callable
+var _decline: Callable
+var _suggest_column: VBoxContainer = null
+var _suggest_close: Button
+var _suggest_head: Label
+var _suggest_note: Label
+var _suggest_kinds: HFlowContainer
+var _suggest_kind_boxes: Dictionary = {}
+var _suggest_scroll: ScrollContainer
+var _suggest_rows: VBoxContainer
+var _suggest_what: Label
+var _suggest_all: Button
+var _suggest_ticked: Button
+var _suggest_decline: Button
+var _suggest_said: Label
+var _suggest_boxes: Array[CheckBox] = []
+var _suggest_buttons: Array[Button] = []
+var _suggest_ghosts: Dictionary = {}
+
+
+## The change [param got] (api/_suggestions.js suggestionAnswer, the
+## designer's), drawn on the model open now, which is its designer's version
+## got.model.n. [param take] is called with "all" or the ids ticked and
+## answers "" or what went wrong; [param decline] the same with nothing.
+func open_suggestion(got: Dictionary, take: Callable, decline: Callable) -> void:
+	if visible and mode != SUGGEST:
+		close()
+	_show_mode(SUGGEST)
+	if not visible:
+		_aim = camera.aim() if camera != null else {}
+		_stress_was = stress != null and stress.on
+		if _stress_was:
+			stress.set_on(false)
+	suggestion = got
+	_take = take
+	_decline = decline
+	taking = false
+	ticked.clear()
+	for change: Variant in got.get("changes", []):
+		ticked[str((change as Dictionary)["id"])] = true
+	chosen = -1
+	visible = true
+	set_process(true)
+	_draw_suggestion()
+	_fill_suggestion()
+	_suggest_said.text = ""
+	# Placed again once its words are laid out, for the list's height.
+	_place_suggest.call_deferred()
+	compared += 1
+	say.call("%s: %s" % [SharedModels.suggestion_heading(got), SharedModels.suggestion_counts(got.get("counts", {}))])
+
+
+## The model on the baseplate drawn against the remix's parts, by Compare's
+## matching: what the change takes away, moves and paints tinted on the
+## model, and what it adds and where it moves to as ghosts.
+func _draw_suggestion() -> void:
+	var theirs: Array = ModelDiff.parts_of_text(str(suggestion.get("theirs", "")), library)
+	var mine: Array = ModelDiff.parts_of_world(world, store.scenery, store.lift(), store.awaited_now())
+	suggest_diff = ModelDiff.between(mine, theirs)
+	_revision = world.revision
+	var tints: Dictionary = {}
+	for change: ModelDiff.Change in suggest_diff.changes:
+		if change.was != null and change.was.id != 0:
+			tints[change.was.id] = colour_of(change.kind)
+	world.set_stress(true, tints)
+	_drop_ghosts()
+	_suggest_ghosts.clear()
+	_ghosts = BrickWorld.new()
+	_ghosts.library = library
+	_ghosts.keeps_history = false
+	_ghosts.name = "compare_ghosts"
+	world.add_child(_ghosts)
+	var lift := Transform3D(Basis.IDENTITY, store.lift())
+	var see_through: Dictionary = {}
+	for n: int in suggest_diff.changes.size():
+		var change: ModelDiff.Change = suggest_diff.changes[n]
+		if change.kind != ModelDiff.ADDED and change.kind != ModelDiff.MOVED:
+			continue
+		var ghost: int = _ghosts.add_brick(change.now.part_id,
+			ADDED_GHOST if change.kind == ModelDiff.ADDED else MOVED_GHOST, lift * change.now.at)
+		if ghost == 0:
+			continue
+		_ghost_of[n] = ghost
+		_suggest_ghosts[ghost] = change.kind
+		if change.kind == ModelDiff.MOVED:
+			see_through[ghost] = true
+	_ghosts.set_xray(see_through)
+
+
+## What is drawn, for a probe: the parts tinted on the model and the ghosts,
+## each counted by the kind of change it shows.
+func drawn_suggestion() -> Dictionary:
+	var tinted: Dictionary = {}
+	var ghosts_of: Dictionary = {}
+	if suggest_diff != null:
+		for change: ModelDiff.Change in suggest_diff.changes:
+			if change.was != null and change.was.id != 0 and world.get_brick(change.was.id) != null:
+				tinted[change.kind] = int(tinted.get(change.kind, 0)) + 1
+	for ghost: int in _suggest_ghosts:
+		if _ghosts != null and _ghosts.get_brick(ghost) != null:
+			var kind: String = _suggest_ghosts[ghost]
+			ghosts_of[kind] = int(ghosts_of.get(kind, 0)) + 1
+	return {"tinted": tinted, "ghosts": ghosts_of}
+
+
+## The colour a sent change of [param kind] is listed in.
+static func suggest_colour_of(kind: String) -> Color:
+	match kind:
+		"added", "swapped":
+			return ADDED
+		"removed":
+			return REMOVED
+		"moved":
+			return MOVED
+		"restepped":
+			return RESTEPPED
+	return RECOLOURED
+
+
+## What one sent change is, as its row says it: "Added: Brick 2 x 4 in Red,
+## step 3", "Swapped Brick 1 x 2 for Brick 1 x 4 in Red, step 2".
+static func suggestion_words(change: Dictionary, library: PartLibrary) -> String:
+	var name: String = StressView._named(library, str(change.get("part", "")))
+	var colour: String = _colour(library, int(change.get("colour", 0)))
+	var was: Dictionary = change.get("was") if change.get("was") is Dictionary else {}
+	var now: Dictionary = change.get("now") if change.get("now") is Dictionary else {}
+	var said: String
+	match str(change.get("kind", "")):
+		"added":
+			said = "Added: %s in %s, step %d" % [name, colour, int(now.get("step", 0))]
+		"removed":
+			said = "Taken away: %s in %s, step %d" % [name, colour, int(was.get("step", 0))]
+		"moved":
+			said = "%s: %s in %s, step %d" % [_moved_said(change), name, colour, int(now.get("step", 0))]
+			if bool(change.get("restepped", false)):
+				said += " (from step %d)" % int(was.get("step", 0))
+		"recoloured":
+			said = "Recoloured %s to %s: %s, step %d" % [_colour(library, int(change.get("from_colour", 0))),
+				colour, name, int(now.get("step", 0))]
+		"swapped":
+			said = "Swapped %s for %s in %s, step %d" % [StressView._named(library,
+				str(change.get("from_part", ""))), name, colour, int(now.get("step", 0))]
+		_:
+			said = "To step %d from step %d: %s in %s" % [int(now.get("step", 0)),
+				int(was.get("step", 0)), name, colour]
+	var section: String = str(change.get("section", ""))
+	# A part of its own ("; "), which Language translates by itself.
+	if not section.is_empty():
+		said += "; in sub-model “%s”" % section
+	return said
+
+
+## "Moved 2 studs", "Turned", "Moved 1 plate and turned": from where it is
+## said to stand first, before and after.
+static func _moved_said(change: Dictionary) -> String:
+	var said := PackedStringArray()
+	var from: Vector3 = _point(change.get("was"))
+	var to: Vector3 = _point(change.get("now"))
+	if from.distance_to(to) >= ModelDiff.NEAR:
+		said.append("Moved " + _distance(to - from))
+	if bool(change.get("turned", false)):
+		said.append("turned" if not said.is_empty() else "Turned")
+	return " and ".join(said) if not said.is_empty() else "Moved"
+
+
+## The first place [param side] ({at: [[x, y, z], ...]}) is said to stand.
+static func _point(side: Variant) -> Vector3:
+	if side is Dictionary and (side as Dictionary).get("at") is Array \
+			and not ((side as Dictionary)["at"] as Array).is_empty():
+		var at: Variant = ((side as Dictionary)["at"] as Array)[0]
+		if at is Array and (at as Array).size() == 3:
+			return Vector3(float(at[0]), float(at[1]), float(at[2]))
+	return Vector3.ZERO
+
+
+## A row pressed: the view framed on where the change is, before and after.
+func choose_suggested(n: int) -> void:
+	var changes: Array = suggestion.get("changes", [])
+	if n < 0 or n >= changes.size():
+		return
+	chosen = n
+	var change: Dictionary = changes[n]
+	for k: int in _suggest_buttons.size():
+		_suggest_buttons[k].button_pressed = k == n
+	var box := AABB()
+	var first := true
+	for side: String in ["was", "now"]:
+		var placed: Variant = (change.get(side) as Dictionary).get("at") if change.get(side) is Dictionary else null
+		if not placed is Array:
+			continue
+		for at: Variant in placed:
+			if not at is Array or (at as Array).size() != 3:
+				continue
+			var point: Vector3 = store.lift() + Vector3(float(at[0]), float(at[1]), float(at[2]))
+			box = AABB(point, Vector3.ZERO) if first else box.expand(point)
+			first = false
+	if camera != null and not first:
+		camera.frame(box.grow(24.0), 1.6)
+	_suggest_what.text = suggestion_words(change, library) + "."
+	_suggest_what.visible = true
+
+
+func _ticked_ids() -> Array:
+	var out: Array = []
+	for change: Variant in suggestion.get("changes", []):
+		var id: String = str((change as Dictionary)["id"])
+		if bool(ticked.get(id, false)):
+			out.append(id)
+	return out
+
+
+## Tick or untick change [param n], or every change of [param kind].
+func tick(n: int, on: bool) -> void:
+	var changes: Array = suggestion.get("changes", [])
+	if n >= 0 and n < changes.size():
+		ticked[str((changes[n] as Dictionary)["id"])] = on
+	_say_ticked()
+
+
+func tick_kind(kind: String, on: bool) -> void:
+	var changes: Array = suggestion.get("changes", [])
+	for n: int in changes.size():
+		if str((changes[n] as Dictionary).get("kind", "")) == kind:
+			ticked[str((changes[n] as Dictionary)["id"])] = on
+			if n < _suggest_boxes.size():
+				_suggest_boxes[n].set_pressed_no_signal(on)
+	_say_ticked()
+
+
+## The buttons and each kind's box as the ticks now are.
+func _say_ticked() -> void:
+	var changes: Array = suggestion.get("changes", [])
+	var picked: int = _ticked_ids().size()
+	_suggest_ticked.text = "Take the %d ticked" % picked if picked != 1 else "Take the 1 ticked"
+	_suggest_ticked.disabled = picked == 0 or taking
+	_suggest_all.disabled = changes.is_empty() or taking
+	_suggest_decline.disabled = taking
+	for kind: String in _suggest_kind_boxes:
+		var all_on := true
+		for change: Variant in changes:
+			if str((change as Dictionary).get("kind", "")) == kind \
+					and not bool(ticked.get(str((change as Dictionary)["id"]), false)):
+				all_on = false
+		(_suggest_kind_boxes[kind] as CheckBox).set_pressed_no_signal(all_on)
+
+
+## Take all of it ([param whole]) or the changes ticked: Main asks for the
+## model with them taken in and opens it, which closes this.
+func take_suggested(whole: bool) -> void:
+	if taking or not _take.is_valid():
+		return
+	var take: Variant = "all" if whole else _ticked_ids()
+	if take is Array and (take as Array).is_empty():
+		return
+	# Every change ticked, when every one is listed, is all of it.
+	if take is Array and (take as Array).size() == (suggestion.get("changes", []) as Array).size() \
+			and bool(suggestion.get("listed", true)):
+		take = "all"
+	taking = true
+	_say_ticked()
+	_suggest_said.text = "Taking it into your model…"
+	var trouble: String = await _take.call(take)
+	taking = false
+	if visible and mode == SUGGEST:
+		_say_ticked()
+		_suggest_said.text = trouble
+
+
+func decline_suggested() -> void:
+	if taking or not _decline.is_valid():
+		return
+	taking = true
+	_say_ticked()
+	_suggest_said.text = "Saying no to it…"
+	var trouble: String = await _decline.call()
+	taking = false
+	if trouble.is_empty():
+		close()
+		return
+	if visible and mode == SUGGEST:
+		_say_ticked()
+		_suggest_said.text = trouble
+
+
+func _suggest_wide() -> float:
+	var area: float = (get_parent() as Control).size.x if get_parent() is Control \
+		else get_viewport_rect().size.x
+	return clampf(area - 28.0, WIDE, SUGGEST_WIDE) if area > 0.0 else SUGGEST_WIDE
+
+
+func _build_suggest() -> void:
+	_suggest_column = VBoxContainer.new()
+	_suggest_column.add_theme_constant_override("separation", 7)
+	_suggest_column.visible = false
+	add_child(_suggest_column)
+	if get_parent() is Control:
+		(get_parent() as Control).resized.connect(func() -> void:
+			if visible and mode == SUGGEST:
+				_place_suggest())
+	var header := HBoxContainer.new()
+	_suggest_column.add_child(header)
+	var title := Label.new()
+	title.text = "Compare: a change sent to you"
+	title.add_theme_font_size_override("font_size", 14)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	_suggest_close = _button(header, "Close", func() -> void: close(),
+		"Stop comparing: your model as it was, the change still waiting for you (Esc)")
+	_suggest_head = _words(_suggest_column, 12, 0.9)
+	_suggest_note = _words(_suggest_column, 12, 1.0)
+	_suggest_note.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+	var legend := VBoxContainer.new()
+	legend.add_theme_constant_override("separation", 3)
+	_suggest_column.add_child(legend)
+	_legend_row(legend, ADDED, 11, 0.8).text = "Added: a green ghost where it goes"
+	_legend_row(legend, REMOVED, 11, 0.8).text = "Taken away: red"
+	_legend_row(legend, MOVED, 11, 0.8).text = "Moved: amber, a faint ghost where it goes"
+	_legend_row(legend, RECOLOURED, 11, 0.8).text = "Recoloured: violet"
+	_suggest_kinds = HFlowContainer.new()
+	_suggest_kinds.add_theme_constant_override("h_separation", 8)
+	_suggest_column.add_child(_suggest_kinds)
+	_suggest_scroll = ScrollContainer.new()
+	_suggest_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_suggest_scroll.custom_minimum_size = Vector2(SUGGEST_WIDE - 28.0, 220)
+	_suggest_column.add_child(_suggest_scroll)
+	_suggest_rows = VBoxContainer.new()
+	_suggest_rows.add_theme_constant_override("separation", 2)
+	_suggest_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_suggest_scroll.add_child(_suggest_rows)
+	_suggest_column.add_child(HSeparator.new())
+	_suggest_what = _words(_suggest_column, 12, 0.95)
+	_suggest_what.visible = false
+	var act := HFlowContainer.new()
+	act.add_theme_constant_override("h_separation", 8)
+	act.add_theme_constant_override("v_separation", 6)
+	_suggest_column.add_child(act)
+	_suggest_all = _button(act, "Take all", func() -> void: await take_suggested(true),
+		"All of the change taken into your model, opened for you to look at and publish as its next version")
+	_suggest_ticked = _button(act, "Take the ticked", func() -> void: await take_suggested(false),
+		"Only the changes ticked taken into your model, opened for you to look at and publish as its next version")
+	_suggest_decline = _button(act, "Decline", func() -> void: await decline_suggested(),
+		"Say no to this change: nothing of it is taken, and it leaves your notifications")
+	_suggest_said = _words(_suggest_column, 12, 0.9)
+	_suggest_said.add_theme_color_override("font_color", MOVED.lightened(0.2))
+
+
+## The list as tall as the model area leaves room for, and the panel as wide
+## as a phone has room for.
+func _place_suggest() -> void:
+	var wide: float = _suggest_wide()
+	custom_minimum_size.x = wide
+	offset_left = offset_right - wide
+	for label: Label in [_suggest_head, _suggest_note, _suggest_what, _suggest_said]:
+		label.custom_minimum_size.x = wide - 28.0
+	_suggest_scroll.custom_minimum_size.x = wide - 28.0
+	var area: float = (get_parent() as Control).size.y if get_parent() is Control \
+		else get_viewport_rect().size.y
+	# The list takes what the rest of the panel leaves of the model area: it
+	# showed four rows at 1280 x 800 with room for eight under it.
+	var rest: float = _suggest_column.get_combined_minimum_size().y - _suggest_scroll.custom_minimum_size.y
+	_suggest_scroll.custom_minimum_size.y = clampf(area - offset_top - rest - 48.0, 110.0, 420.0)
+	for row: Button in _suggest_buttons:
+		row.custom_minimum_size.x = wide - 76.0
+
+
+func _fill_suggestion() -> void:
+	for child: Node in _suggest_rows.get_children():
+		_suggest_rows.remove_child(child)
+		child.queue_free()
+	for child: Node in _suggest_kinds.get_children():
+		_suggest_kinds.remove_child(child)
+		child.queue_free()
+	_suggest_boxes.clear()
+	_suggest_buttons.clear()
+	_suggest_kind_boxes.clear()
+	_suggest_what.visible = false
+	var got: Dictionary = suggestion
+	var model: Dictionary = got.get("model") if got.get("model") is Dictionary else {}
+	_suggest_head.text = "%s, against your version %d." % [SharedModels.suggestion_heading(got), int(model.get("n", 0))]
+	var note: String = str(got.get("note", "")) if got.get("note") is String else ""
+	_suggest_note.text = "“%s”" % note
+	_suggest_note.visible = not note.is_empty()
+	var counts: Dictionary = got.get("counts") if got.get("counts") is Dictionary else {}
+	for kind: String in SharedModels.SUGGEST_KINDS:
+		var n: int = int(counts.get(kind, 0))
+		if n == 0:
+			continue
+		var box := CheckBox.new()
+		box.text = SharedModels.kind_count(kind, n)
+		box.button_pressed = true
+		box.focus_mode = Control.FOCUS_NONE
+		box.add_theme_font_size_override("font_size", 12)
+		box.tooltip_text = "Tick or untick every change of this kind"
+		box.icon = _chip(suggest_colour_of(kind))
+		box.toggled.connect(func(on: bool) -> void: tick_kind(kind, on))
+		_suggest_kinds.add_child(box)
+		_suggest_kind_boxes[kind] = box
+	var changes: Array = got.get("changes", [])
+	for n: int in mini(changes.size(), SUGGEST_SHOWN):
+		var change: Dictionary = changes[n]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 2)
+		_suggest_rows.add_child(row)
+		var box := CheckBox.new()
+		box.button_pressed = bool(ticked.get(str(change["id"]), true))
+		box.focus_mode = Control.FOCUS_NONE
+		box.tooltip_text = "Take this change, or leave it"
+		box.toggled.connect(func(on: bool) -> void: tick(n, on))
+		row.add_child(box)
+		_suggest_boxes.append(box)
+		var words := Button.new()
+		words.flat = true
+		words.toggle_mode = true
+		words.focus_mode = Control.FOCUS_NONE
+		words.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.add_theme_font_size_override("font_size", 12)
+		words.icon = _chip(suggest_colour_of(str(change.get("kind", ""))))
+		words.text = suggestion_words(change, library)
+		words.tooltip_text = "Frame it in the view"
+		words.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.pressed.connect(func() -> void: choose_suggested(n))
+		row.add_child(words)
+		_suggest_buttons.append(words)
+	if changes.size() > SUGGEST_SHOWN or int(got.get("total", 0)) > changes.size():
+		var more := Label.new()
+		more.text = "…and %d more changes, which Take all takes." % (maxi(int(got.get("total", 0)),
+			changes.size()) - mini(changes.size(), SUGGEST_SHOWN))
+		more.add_theme_font_size_override("font_size", 11)
+		_suggest_rows.add_child(more)
+	if changes.is_empty() and int(got.get("total", 0)) == 0:
+		var none := Label.new()
+		none.text = "Your model is already as the remix has it."
+		none.add_theme_font_size_override("font_size", 12)
+		_suggest_rows.add_child(none)
+	_place_suggest()
+	_say_ticked()
+
+
+## What the panel shows, for a probe to read as a person would.
+func suggest_fields() -> Dictionary:
+	if _suggest_column == null:
+		return {"open": false, "mode": mode}
+	var rows: Array = []
+	for n: int in _suggest_buttons.size():
+		rows.append({"text": _suggest_buttons[n].text, "ticked": _suggest_boxes[n].button_pressed})
+	var kinds: Dictionary = {}
+	for kind: String in _suggest_kind_boxes:
+		kinds[kind] = {"text": (_suggest_kind_boxes[kind] as CheckBox).text,
+			"ticked": (_suggest_kind_boxes[kind] as CheckBox).button_pressed}
+	return {"open": visible and mode == SUGGEST, "mode": mode, "head": _suggest_head.text,
+		"note": _suggest_note.text if _suggest_note.visible else "", "kinds": kinds, "rows": rows,
+		"what": _suggest_what.text if _suggest_what.visible else "", "said": _suggest_said.text,
+		"take_ticked": _suggest_ticked.text, "taking": taking, "drawn": drawn_suggestion()}
+
+
+func _suggest_controls() -> Dictionary:
+	var named: Dictionary = {"compare_close": _suggest_close, "suggest_take_all": _suggest_all,
+		"suggest_take_ticked": _suggest_ticked, "suggest_decline": _suggest_decline,
+		"suggest_list": _suggest_scroll}
+	for kind: String in _suggest_kind_boxes:
+		named["suggest_kind_" + kind] = _suggest_kind_boxes[kind]
+	for n: int in _suggest_buttons.size():
+		named["suggest_tick_%d" % n] = _suggest_boxes[n]
+		named["suggest_row_%d" % n] = _suggest_buttons[n]
 	return named

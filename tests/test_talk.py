@@ -211,3 +211,26 @@ def test_the_house_writes_as_itself() -> None:
     assert "values (p_board, p_title, house, p_seed, coalesce(p_test, false))" in body
     assert "values (t, house, p_said, true)" in body, "a seed's first post is the house's"
     assert "x.seed = p_seed and x.test = coalesce(p_test, false)" in body, "a seed is written once a pool"
+
+
+def test_a_challenges_row_shows_its_picture_else_its_month() -> None:
+    """The challenges' board was a column of one icon (sitebold, 2026-11-23): a challenge's
+    row shows its picture once it has one (its cover or top entry), else its month."""
+    said = node("""
+import { threadRowHtml } from "./api/_talk.js";
+const now = Date.parse("2026-11-20T12:00:00Z");
+const row = (challenge) => threadRowHtml({ id: 7, title: "Castles", board: "challenges", by: { name: "Brickworks", handle: "brickworks" },
+  at: "2026-11-01T00:00:00Z", replies: 0, challenge }, { now });
+const months = (from, to) => ({ id: 119, title: "Castles", starts_on: from, ends_on: to });
+console.log(JSON.stringify({
+  pictured: row({ ...months("2026-11-01", "2026-11-30"), card: { id: "AbCdEfGh12", has_image: true, has_thumb: true,
+    updated_at: "2026-11-02T00:00:00Z" } }),
+  open: row(months("2026-11-01", "2026-11-30")), soon: row(months("2027-10-01", "2027-10-31")),
+  ran: row(months("2026-10-01", "2026-10-31")), none: row(null) }));
+""")
+    assert re.search(r'class="talk-row-pic"[^>]*><img src="/m/AbCdEfGh12\.webp\?v=\w+"', said["pictured"])
+    assert "talk-month" not in said["pictured"] and "no-picture" not in said["pictured"]
+    assert '<span class="talk-tile talk-month b-challenges open"><b>Nov</b><small>2026</small></span>' in said["open"]
+    assert '<span class="talk-tile talk-month b-challenges soon"><b>Oct</b><small>2027</small></span>' in said["soon"]
+    assert 'talk-month b-challenges ran"><b>Oct</b><small>2026</small>' in said["ran"]
+    assert "talk-month" not in said["none"] and '<span class="talk-tile b-challenges">' in said["none"]

@@ -216,7 +216,11 @@ a token, in `site.css`, `directory.css`, a page's own `<style>` and a
 adds a token to `:root`, and only `:root` makes one. And **a count is
 said once there is one**: never "0 likes" or "following 0" (a card, a
 model's page, a profile, your account); a count that a press can make one
-is on the page, `hidden`, for the script to show.
+is on the page, `hidden`, for the script to show. One exception: the
+gallery card's row of Like, Comments and Remix shows a quiet `0`
+(`.n.zero`, `iconButtonHtml({ zero: true })`), since three bare icons in a
+row read as counts missing (the lead, 2026-11-23); the label still says no
+0.
 
 ## Components
 
@@ -405,22 +409,34 @@ is on the page, `hidden`, for the script to show.
   browser it is said again whenever cards `modelCard` made come onto the
   page, before it is drawn).
   They stacked two and three rows deep, 30% of a phone's picture, and
-  every card said "Tested" and "Assistant" (site273). Where the page
-  passes `like: true` (the gallery), its like is an `.icon-btn.small` over
-  the picture's top-right corner, on a `--panel` ground, `aria-pressed`,
-  its count beside the heart. It is an `article`: its name (`a.open`, 16
-  px at every width) is the one link to the model, stretched over the
-  whole card, so the designer's name and the like sit inside it as a link
-  and a button of their own. Under the name, one line, `.by`: the
-  designer's `.small` avatar and name (`a.who`, to their page), its size,
-  then `.acts`, its numbers, each an icon and a count and none at nought:
-  likes (a `.tally` where the like is not a button), builds finished and
-  comments. Then a line each for what it has (Moves, what your collection
-  holds, what it won). No card ends in a row of its own for its numbers:
-  it held only an empty heart on every card, a fifth of its height. In
+  every card said "Tested" and "Assistant" (site273). It is an
+  `article`: its name (`a.open`, 16 px at every width) is the one link to
+  the model, stretched over the whole card, so the designer's name and its
+  controls sit inside it as links and buttons of their own (`position:
+  relative; z-index: 1`). Under the name, one line, `.by`: the designer's
+  `.small` avatar and name (`a.who`, to their page), its size, then
+  `.acts`, its numbers, each an icon and a count and none at nought: likes
+  (a `.tally`), builds finished and comments. Where somebody else modelled
+  it (`modelled_by`: a set from LDraw's library the house shares), they
+  lead the line instead, their initial for an avatar (`.who.modeller`,
+  "Modelled by" them said on hover), and a `small.via` line under it says
+  "Shared by" the sharer (sitebold, 2026-11-23: forty of the gallery's
+  cards read "Brickworks"). Then a line each for what it has (Moves, what
+  your collection holds, what it won). Where the page passes `like: true`
+  (the gallery), the card ends in `.social`, what people do with a model,
+  as a post on a social site does (sitebold): Like (`.icon-btn.small`,
+  `aria-pressed`, named with the model), Comments (to its page's
+  comments) and Remix (`/app?copy=`, into the studio), each its icon and
+  its count, 0 as a quiet 0 (`.n.zero`, faint and regular), then its
+  builds; the picture carries only
+  its marks and Save. It replaced a like over the picture's corner and a
+  row that held only an empty heart, a fifth of the card. In
   `.models` (a grid: two to a row on a phone, three from 600 px and four
   from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
-  page of 24 is whole rows at every width), `.models.compact` (more to a
+  page of 24 is whole rows at every width; the gallery's own feed three
+  from 900 px, each picture its card's hero, and four from 1200 px, the
+  owner's four on a desktop; on a phone the week's pick comes before the
+  month's challenge, so the first picture is 314 px down, sitebold), `.models.compact` (more to a
   row, beside a rail) or `.models.scroller` (one row of them, a
   Scroller). A card that carries an action keeps it inside, at its foot
   over the card's link as the designer's name is (a collection's Follow, a
@@ -461,18 +477,20 @@ is on the page, `hidden`, for the script to show.
   `load(n)` answering `{ items, more, pages, total }`, and `start()`; a
   card put in later fires `pager:drawn` on the list (`web/follow.js` wires
   a collection's Follow on it). Not for shelves (`.models.scroller`).
-- **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
-  (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
-  person, a collection and a model's page (the landing page's
-  two strips keep `--page` since site356, in line with its other
-  sections, and scroll inside it; the feed keeps it since sitepolish, as
-  Notifications, the tab beside it, does, so the title does not jump
-  between them); and for the header and the footer on every page, so the
-  mark and the account sit where they do on the gallery. Nothing was wider
-  than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
-  page keeps `--gutter` from the window's edge: 16 px on a phone, 24 from
-  600 px, 32 from 1200 px (sitepolish, 2026-11-23: the gallery, a model, a
-  person and a set ran to 16 px of a laptop's edge). A
+- **Width**: one for every page, `.wrap`: the window less its
+  `--gutter` (16 px on a phone, 24 from 600 px, 32 from 1200 px;
+  gutters (`--gutter`: 16 px on a phone, 24 from 600 px, 32 from 1200 px;
+  sitepolish), up to `--page-wide` (1,600 px), the header's and the footer's
+  too, so every page's edges are the gallery's and the header's (homefix,
+  2026-11-23, the owner: Talk "does not have the same page width as the
+  other pages"; a page of words had kept a narrower `--page`, 1,140 px,
+  its edges 54 px inside the header's at 1280). A page of words keeps its
+  lines to a measure inside it (`.prose` 760 px, `.lede` 60ch, a
+  setting's 70ch); a page whose content is centred (plans, beta) centres
+  it inside the width (`.narrow > *` at 980 px). `.wrap.wide` is the same
+  width (the class stays as a name). design_flow fails a page whose first
+  `main .wrap` is not at the header's edges; tests/test_page_width.py
+  fails any page width set but `.wrap`'s, and Talk's pages off `.wrap`. A
   model's page: from 1200 px its column is 480 px, room for its action
   bar in one row inside the panel it is from 900 px (site357), and its
   picture the rest; on a phone (under 600 px) its picture is square, and
@@ -483,7 +501,13 @@ is on the page, `hidden`, for the script to show.
   (`web/model-page.js` `fitPicture`, by transform alone, so nothing
   shifts); between 600 and 900 px the frame is the picture's own shape.
   Its facts are one quiet line of words, a dot between two on a line,
-  those that lead somewhere links, not pills.
+  those that lead somewhere links, not pills. Where it came from (a
+  remix's source, what it changed, what it is based on) is a panel under
+  the picture, `.lineage`, and on a phone after the column, so the
+  column holds the name, who made it, the actions and the counts; a model
+  somebody else modelled heads the column with them (`.shared-by.credit`,
+  "Shared by" its sharer under), as a set's page does (sitebold,
+  2026-11-23).
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
@@ -629,7 +653,8 @@ is on the page, `hidden`, for the script to show.
   `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
-  icon once there is one. `.labelled` (`iconButtonHtml({ labelled: true })`)
+  icon once there is one (`zero: true`: a quiet 0 before, the gallery
+  card's). `.labelled` (`iconButtonHtml({ labelled: true })`)
   says a word for it too, between the icon and the count (`word`, its
   name unless said, and in its label): a model's Like and I built it
   ("Built"), which nobody reads from a glyph alone; on a phone (600 px and
@@ -674,7 +699,9 @@ is on the page, `hidden`, for the script to show.
   Turn it anyway, or Open in the app.
 - **Action bar**: `.action-bar`, a model's page's row of icon buttons
   (Like, Save, Share, Comment, I built it) with the more menu at its end;
-  one row across the column on a phone. `api/share.js` `actionBar`,
+  one row at every width: Like says its word from 600 px, Save is its
+  icon alone (its word in its tooltip and its name; sitebold, 2026-11-23:
+  with its word the row wrapped at 1280). `api/share.js` `actionBar`,
   `web/model-page.js`.
 - **Share's sheet** (docs/SOCIAL.md U14 and section 7): `dialog.share-sheet`,
   the site's dialog made wider for the embed code, the same on every page

@@ -38,6 +38,14 @@ whole cycle.
   count and into a Done view, **Mark all done** all of them, each with
   Undo, and anything new comes back. The account menu shows your five
   newest, with their pictures.
+- **Building now: watch a model being built, live.** In **File › Build
+  together…**, **Open to watchers** gives your session a page anyone can
+  watch, listed first on the home page and on your profile while you
+  build. Watchers see each part land in 3D and chat with you, and anyone
+  signed in can **Ask to build**. **Give a seat** puts them in the session
+  beside you. Nothing a watcher does changes the model. When you end the
+  session, where it got to is kept as a version in the model's log (Share
+  progress), if the model is shared.
 - **Change any model with your own Claude.** Every model's page has **With
   your Claude** beside **Open in Brickworks**: say what should change (or
   nothing, and Claude asks), press **Copy for Claude**, and paste the message
@@ -330,6 +338,26 @@ whole cycle.
 
 ### Changed
 
+- **Duplicate puts its copy down beside the original.** Edit › Duplicate
+  (Ctrl+D) seats the copy next to what was selected, selected so a drag
+  takes it where it goes, and one undo takes it back; type 5x straight after
+  for a row of five. The Clone tool still holds a copy for each click.
+- **Instructions save as a PDF when that is what you ask for.** The save
+  dialog asks for a PDF first, with a web page the other choice, and opens
+  the PDF when it is written.
+- **Recolouring a whole model.** Find and replace opened with parts selected
+  finds what they share, so parts selected by their colour are all
+  recoloured at once; its colour lists show swatches, the model's most used
+  first, and the colours made now before the rest.
+- **Versions and the Open list say when as a person does**: yesterday, or
+  how many days ago, and each version how many parts it added or took away.
+- **Smaller things the walks found:** with a part in hand, X, Y or Z opens
+  the number field ("x 1" moves it a stud); the ruler's measurement is in
+  the status line; Paint says when the parts are that colour already;
+  Simulate with nothing turning keeps its controls out of the way until
+  something turns; a model's own sub-assembly is first in the parts bin to
+  put another down; Share signed out offers Sign in, and a greyed row in a
+  phone's More says why.
 - **The home page opens on the community.** Its first screen, on a phone
   and on a computer, is a search over models, builders and real sets (what
   it finds shows as you type), **Start building**, this month's challenge

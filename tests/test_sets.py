@@ -275,6 +275,9 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
     assert '<a class="cta ghost" href="/app?new=1&amp;library=omr-10179-1" data-version' in falcon
     assert ">Make your own version</a>" in falcon and ">Build it</a>" in falcon
     assert 'href="/library/omr-10179-1">a page of its own' in falcon and "/library/omr-10179-1_B" in falcon
+    # Who modelled it heads its credit, by their initial, linked to LDraw's page of it (sitebold).
+    assert re.search(r'<div class="shared-by credit"><span class="avatar [^"]*" aria-hidden="true">R</span><div class="names">'
+                     r'<p class="from modelled-by">Modelled by <b>Roland Dahl</b> for <a href="https://library\.ldraw\.org/omr/sets/\d+">', falcon)
     assert 'src="/library/omr-10179-1.cutout.webp"' in falcon
     # In 3D in the page (set3d): its picture the way into the 3D view a
     # gallery model's page has (web/start3d.js, /viewer3d.js), from its own

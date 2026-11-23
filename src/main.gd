@@ -206,6 +206,12 @@ var _view_version: int = 1
 var _view_newest: int = 1
 var _view_versions: Array = []
 var _copy_started: bool = false
+## A change a remixer sent back to this designer (/app?suggestion=<n>, as
+## --suggestion=<n>, their notification's link; suggestedit): opened once
+## they are signed in and whatever was on the baseplate is back
+## (_maybe_suggestion), 0 for none.
+var _suggesting: int = 0
+var _suggest_started: bool = false
 ## Share a build, from the home page's feed (/app?share; homefeed,
 ## 2026-11-23): the share panel opens for the model the app comes back
 ## with, their last, once it is back and somebody is signed in
@@ -2007,6 +2013,8 @@ func _ready() -> void:
 		_viewing = _argument("--view")
 	if _copying.is_empty() and SharedModels.is_id(_argument("--copy")):
 		_copying = _argument("--copy")
+	if _suggesting == 0 and RegEx.create_from_string("^[1-9][0-9]{0,11}$").search(_argument("--suggestion")) != null:
+		_suggesting = _argument("--suggestion").to_int()
 	if _from_library.is_empty() and ModelLibrary.is_id(_argument("--library")):
 		_from_library = _argument("--library")
 		_from_library_build = _has_argument("--build")
@@ -2141,6 +2149,7 @@ func _ready() -> void:
 	if _updater != null:
 		_updater.begin()
 	_maybe_copy()
+	_maybe_suggestion()
 	_maybe_share()
 	_maybe_open_library()
 	_maybe_fill_bin()
@@ -3029,6 +3038,7 @@ func _on_account_changed() -> void:
 		return
 	_look_for_pins()
 	_maybe_copy()
+	_maybe_suggestion()
 	_maybe_share()
 	_maybe_join_together()
 	# Signed out: what the first screen asked as them goes with it.
@@ -3124,6 +3134,21 @@ func _make_challenge_line() -> void:
 	if _share_panel_made != null:
 		_share_panel_made.set("challenge_line", _challenge_line)
 	_challenge_line.call("ask")
+
+
+## A build watched live has ended (Together.watched_ended): where it got to
+## kept as a version in the model's log, Share progress in the Share panel,
+## when the model is shared; else said how to (PLAN row 6, buildlive).
+func _keep_watched(watched: Dictionary) -> void:
+	var peak: int = int(watched.get("peak", 0))
+	var seen: String = "Nobody watched it" if peak == 0 else "1 person watched it" if peak == 1 \
+		else "%d people watched it" % peak
+	if _store.share_id.is_empty() or not _viewing.is_empty() or not _built:
+		_bar.say("%s. Share progress keeps where it got to as a version in the model's log." % seen)
+		return
+	_share_panel.open()
+	_bar.say("%s. Sharing its progress as a version in the model's log." % seen)
+	_share_panel.call("publish", true)
 
 
 ## File › Share…: the panel that publishes this model as the signed-in
@@ -4894,6 +4919,121 @@ func _first_build_it() -> void:
 		_steps.to_start()
 
 
+## A change sent back (/app?suggestion=<n>): once they are signed in and
+## whatever was on the baseplate is back, as a link's copy waits.
+func _maybe_suggestion() -> void:
+	if _suggesting == 0 or _suggest_started or not _first_open_done \
+			or _account == null or not _account.lets_in():
+		return
+	_suggest_started = true
+	_set_address("")
+	await open_suggestion(_suggesting)
+
+
+## A change a remixer sent back from their remix (suggestedit; api/
+## _suggestions.js), opened for its designer: their model as they last
+## published it, opened in this tab, with the change drawn on it in Compare
+## to take all of, some of, or none (CompareView's Suggest mode). What was
+## on the baseplate is kept first if it was not saved, so following the
+## notification never loses work. "" once it is open, else what went wrong,
+## said in the status bar too.
+func open_suggestion(id: int) -> String:
+	_bar.say("opening the change sent to you…")
+	var token: String = await _account.access_token()
+	if token.is_empty():
+		return _suggestion_trouble("sign in to Brickworks to see the change sent to you")
+	var answer: Dictionary = await _shared.suggestion(token, id)
+	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
+		return _suggestion_trouble("could not open the change: " + SharedModels.trouble(answer,
+			"Brickworks did not answer"))
+	var got: Dictionary = answer["body"]
+	var remix: Dictionary = got.get("remix") if got.get("remix") is Dictionary else {}
+	if str(got.get("you", "")) != "designer" or not got.get("mine") is String:
+		return _suggestion_trouble("your change from “%s” waits for its designer to look at it"
+			% str(remix.get("name", "")))
+	if str(got.get("status", "")) != "open":
+		return _suggestion_trouble("that change was taken already" if str(got.get("status", "")) == "taken"
+			else "that change was declined already")
+	var model: Dictionary = got.get("model") if got.get("model") is Dictionary else {}
+	var name: String = str(model.get("name", "Shared model"))
+	if not await _open_designers(str(got["mine"]), name, str(model.get("id", "")), true):
+		return "could not open your model"
+	_shell.compare.open_suggestion(got, _take_suggestion.bind(got), _decline_suggestion.bind(got))
+	return ""
+
+
+func _suggestion_trouble(said: String) -> String:
+	_bar.say(said)
+	return said
+
+
+## [param text], the designer's model (as published, or with a change taken
+## in), opened in this tab as theirs, at its link [param link]; with [param
+## keep_first] what was on the baseplate kept first if it was not saved.
+## False, said, when it cannot be opened.
+func _open_designers(text: String, name: String, link: String, keep_first: bool = false) -> bool:
+	if keep_first and not _sample_untouched and _store.has_unsaved_work():
+		_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
+			else "Untitled"))
+	var result: Dictionary = await _store.open_text_fetched(text, name)
+	if not str(result["error"]).is_empty():
+		_bar.say("could not open “%s”: %s" % [name, result["error"]])
+		return false
+	_store.share_id = link
+	_bar.opened.emit(int(result["placed"]))
+	var since: int = Time.get_ticks_msec()
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+		_bar.say("opening “%s” — %d parts on their way…" % [name, _store.awaited.size()])
+		await get_tree().create_timer(0.3).timeout
+	return true
+
+
+## Take [param take] ("all", or the ids ticked) of the change [param got]:
+## the designer's version with it taken in, as the server merges it, opened
+## in place of the one compared, and Share opened to publish it as their
+## next version, which credits the remixer (ModelStore.suggestion). "" once
+## it is open, else what went wrong.
+func _take_suggestion(take: Variant, got: Dictionary) -> String:
+	var token: String = await _account.access_token()
+	if token.is_empty():
+		return "Sign in to Brickworks to take it."
+	var model: Dictionary = got.get("model") if got.get("model") is Dictionary else {}
+	var answer: Dictionary = await _shared.take_suggestion(token, int(got["id"]), int(model.get("n", 0)), take)
+	if int(answer["code"]) != 200 or not answer["body"] is Dictionary \
+			or not (answer["body"] as Dictionary).get("text") is String:
+		return SharedModels.trouble(answer, "Brickworks could not take it just now.")
+	var merged: Dictionary = answer["body"]
+	var name: String = str(model.get("name", "Shared model"))
+	# An edit made while comparing is the designer's: kept under its own name
+	# before the version with the change is opened over it.
+	if _store.world.revision != _shell.compare.get("_revision") and _store.has_unsaved_work():
+		_store.save_as(_store.unused_name(name))
+	if not await _open_designers(str(merged["text"]), name, str(model.get("id", ""))):
+		return "Could not open your model with it taken in."
+	var by: Dictionary = got.get("by") if got.get("by") is Dictionary else {}
+	_store.suggestion = {"id": int(got["id"]), "taken": merged.get("taken", {}),
+		"whole": bool(merged.get("whole", false)), "by": by, "remix": got.get("remix", {}),
+		"model": str(model.get("id", "")), "n": int(merged.get("n", 0))}
+	_bar.say("%s is in “%s” now: publish it from Share as version %d, and its page credits them" % [
+		SharedModels.taken_words(_store.suggestion), name, int(merged.get("n", 0)) + 1])
+	if _share_panel_made == null or not _share_panel_made.visible:
+		_share_wanted()
+	return ""
+
+
+## Say no to the change [param got]: closed, and gone from the designer's
+## notifications. "" once it is, else what went wrong.
+func _decline_suggestion(got: Dictionary) -> String:
+	var token: String = await _account.access_token()
+	if token.is_empty():
+		return "Sign in to Brickworks to say no to it."
+	var answer: Dictionary = await _shared.decline_suggestion(token, int(got["id"]))
+	if int(answer["code"]) != 200:
+		return SharedModels.trouble(answer, "Brickworks could not say no to it just now.")
+	_bar.say("declined %s; your model is as it was" % SharedModels.suggestion_heading(got))
+	return ""
+
+
 ## This week's quick build, when [param template] is the model it starts
 ## from (SharedModels.prompt_of): its title, its brief and the day to publish
 ## it by, said above the model with Got it, and kept with the copy in memory
@@ -6418,6 +6558,7 @@ func _build_ui() -> void:
 		_refresh_preview())
 	_bin.construction_chosen.connect(func(parts: Array, what: String) -> void:
 		_verbs.hold(parts, what))
+	_bin.own_assembly_chosen.connect(_hold_own_assembly)
 	_bin.color_chosen.connect(_on_color_chosen)
 	_bin.swatch_pressed.connect(_on_swatch_pressed)
 	# A part dragged out of the bin: in hand from the start of the drag
@@ -8020,8 +8161,11 @@ func _make_share_panel() -> void:
 	share.shared = _shared
 	share.moves_of = _moves_now
 	share.picture = _exports.picture
+	share.look = _look()
+	share.rig_lights = _rig_lights()
 	share.named = _bar.model_name
 	share.challenge_line = _challenge_line
+	share.sign_in = func() -> void: _bar.account_wanted.emit()
 	share.setup()
 	_add_to_hud(share)
 	var kind: GDScript = Later.script(&"SharePanel")
@@ -8063,6 +8207,7 @@ func _make_measure() -> Node3D:
 		_measure.camera = _camera
 		_measure.world = _world
 		_measure.library = _library
+		_measure.say_line = func(line: String) -> void: _bar.say(line)
 		_measure.label = _viewport_label(13)
 		_measure.label.visible = false
 		_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -8133,6 +8278,8 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		called: String = "") -> String:
 	var title: String = called if not called.is_empty() else _bar.model_name()
 	var given: bool = not to.is_empty()
+	# Where the PDF the person asked for goes, when it was a PDF ("" for a page).
+	var pdf_to: String = ""
 	if not given and not OS.has_feature("web"):
 		var leave: Dictionary = skip if skip is Dictionary else _store.scenery
 		if not _world.bricks().any(func(brick: BrickWorld.Brick) -> bool:
@@ -8145,11 +8292,27 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_warm_booklet()
 		# What happens next said in the title: a parent who asked for
 		# instructions to print was asked where to put a web page, and could
-		# not tell it opens in their browser with Print there (ux12).
-		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
-			"Save the instructions: they open in your browser, to print or save as a PDF")
+		# not tell it opens in their browser with Print there (ux12). Then
+		# someone who wanted a PDF was still asked for a web page, and the PDF
+		# was a file beside it said only after (ux13's walk, p9). So the
+		# dialog asks for a PDF, with a web page the other kind in its list,
+		# and what is chosen is what is written (ux14). Where no dialog asks
+		# (a probe's or a session's folder), the page and its PDF, as before.
+		if SaveTo.asks():
+			to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.pdf"), "",
+				"Save the instructions as a PDF, or as a web page to read and print in your browser",
+				PackedStringArray(["html"]))
+		else:
+			to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
+				"Save the instructions: they open in your browser, to print or save as a PDF")
 		if to.is_empty():
 			return ""
+		if not to.get_extension().to_lower() in ["html", "htm"]:
+			pdf_to = to if to.get_extension().to_lower() == "pdf" else to + ".pdf"
+			# The page the PDF is read from, kept where the app keeps its own.
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(BOOKLET_PAGES))
+			to = ProjectSettings.globalize_path(BOOKLET_PAGES).path_join(
+				pdf_to.get_file().get_basename() + ".html")
 	# Said in the status bar while it works (Working), and in the tab it is
 	# going to on the web, which is the one in front while it draws. A
 	# session's job (ToolJobs) is the same bar, handed in.
@@ -8178,7 +8341,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_booklet_out.queue_free()
 	_booklet_out = (await Later.script_in_background(&"BookletOut", job)).new()
 	add_child(_booklet_out)
-	var show: bool = not given and Later.script(&"BookletMaker").open_when_written
+	var show: bool = not given and Later.script(&"BookletMaker").open_when_written and pdf_to.is_empty()
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
 	maker.wrote.connect(Callable(_booklet_out, &"take"))
@@ -8215,7 +8378,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 			# (walk256 D9, 2026-10-25). A session's or a command line's
 			# booklet, written where it was told, is the page alone.
 			var pdf: String = ""
-			var beside: String = to.get_basename() + ".pdf"
+			var beside: String = to.get_basename() + ".pdf" if pdf_to.is_empty() else pdf_to
 			if not given and not _booklet_writing and beside != to:
 				job.say("Writing the PDF…")
 				_booklet_writing = true
@@ -8227,6 +8390,8 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 					note += ", and as a PDF in %s%s" % [pdf, _pdf_missed]
 			if show:
 				note = _open_booklet(to, steps, _booklet_out, pdf)
+			elif not pdf_to.is_empty():
+				note = _booklet_pdf_said(pdf, pdf_to, steps)
 	elif _booklet_out.shown:
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
@@ -8242,6 +8407,20 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 
 ## The last booklet drawn, still there to be read (BookletOut).
 var _booklet_out: Node = null
+## Where the page a PDF the person asked for is read from is kept: theirs is
+## the PDF, so the page is not put beside it (ux14).
+const BOOKLET_PAGES := "user://booklets"
+
+
+## What is said once the instructions asked for as a PDF are written: the
+## PDF, opened in the reader the system has for one, or where it is.
+func _booklet_pdf_said(pdf: String, wanted: String, steps: int) -> String:
+	if pdf.is_empty():
+		return "could not write the PDF %s" % wanted
+	if Later.script(&"BookletMaker").open_when_written and SaveTo.open(pdf):
+		return "the instructions are saved as a PDF and open in your PDF reader, %d steps: %s%s" % [
+			steps, pdf, _pdf_missed]
+	return "the instructions are saved as a PDF, %d steps: %s%s" % [steps, pdf, _pdf_missed]
 
 
 ## BookletMaker.warm, its script compiled on a worker first, the frames
@@ -9675,6 +9854,7 @@ func _make_together() -> void:
 	made.camera = _camera
 	made.base_url = Deployment.api_base()
 	made.said.connect(func(words: String) -> void: _bar.say(words))
+	made.watched_ended.connect(_keep_watched)
 	# An edit the copies of its sub-model have not yet followed, or refused
 	# (_edited_soon, at the frame's end), done before the session reads the
 	# model: one taken back is never sent at all.
@@ -9846,6 +10026,41 @@ func _on_part_failed(part_id: String, why: String) -> void:
 		_bar.say("%d %s — %d %s could not be loaded, and %s kept in the file"
 			% [down, "brick" if down == 1 else "bricks", lost, "part" if lost == 1 else "parts",
 				"is" if lost == 1 else "are"])
+
+
+## The bin's row for the model's own sub-assembly [param name] (PartsBin,
+## ux14): its first copy selected and another in hand, as Edit, Duplicate's
+## clone does, each click putting one down. A copy, so an edit inside one is
+## in them all.
+func _hold_own_assembly(name: String) -> void:
+	var first: String = ""
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var path: String = Assemblies.path_of(brick)
+		var segments: PackedStringArray = Assemblies.segments(path)
+		var upto: String = ""
+		for segment: String in segments:
+			upto = Assemblies.join(upto, segment)
+			if Assemblies.definition(segment) == name:
+				break
+		if not upto.is_empty() and Assemblies.definition(upto.get_file()) == name:
+			if first.is_empty():
+				first = upto
+			if upto == first:
+				ids.append(brick.id)
+	if ids.is_empty():
+		_bar.say("“%s” is not in this model now" % name)
+		return
+	# Set, not toggled: select_brick toggles, and a click on a part of a
+	# sub-assembly takes all of it, so each of its parts in turn took the
+	# copy and let it go again (ux14's after walk: nothing selected).
+	_builder.clear_selection()
+	for brick_id: int in ids:
+		_builder.selection[brick_id] = true
+	_builder.selection_changed.emit(_builder.selection.size())
+	_verbs.duplicate_selection(true)
 
 
 func _on_color_chosen(color_code: int) -> void:

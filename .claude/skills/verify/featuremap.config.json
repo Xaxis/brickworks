@@ -7017,6 +7017,83 @@
       "entry": "tools/web/suggest_flow.mjs",
       "reach": "node tools/web/suggest_flow.mjs --out=DIR   (no network: tests/fixtures/suggest/world.mjs through the real handlers; at 390 and 1280: Send from the remix's page, nobody else sees the box, the designer's header counts it within 60 s with no reload, the list and its studio link, the credit under the credit and in the Log after a version takes part of it)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "watching a build live",
+      "entry": "web/live.js",
+      "reach": "<deployment>/live/<watch>   (a Build together session its designer opened to watchers: GET /api/together?op=watching&w=, each change on the show's Realtime channel signed by the relay (Ed25519), a gap read back by POST ?op=watch_ops; signed in: POST ?op=watch_say, watch_ask, watch_seat; web/live.html, the 3D view web/live3d.js from tools/viewer/live.js)",
+      "area": "together"
+    },
+    {
+      "kind": "ui",
+      "label": "building now listed",
+      "entry": "web/live-now.js",
+      "reach": "https://brickworks.diy/ and /u/<handle>   ([data-live-now], first in the home's feed and on the designer's profile while a build is open to watchers: GET /api/together?op=live[&handle=], the CDN's 4 s; nothing shows while nothing is being built)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "live flow",
+      "entry": "tools/web/live_flow.mjs",
+      "reach": "node --env-file=FLOW_ENV tools/web/relay_server.mjs 11800 --static=build/web --egress --hold=together_sessions,together_people,together_ops,together_snapshot_parts,together_watch,together_watchers, then node --env-file=FLOW_ENV tools/web/live_flow.mjs --url=http://127.0.0.1:11800 --out=DIR [--watchers=10] [--parts=20]   (FLOW_ENV: the SUPABASE_* and PARTS_URL lines of .env)",
+      "area": "together"
+    },
+    {
+      "kind": "lib",
+      "label": "the gallery's card as a photograph",
+      "entry": "src/render/card_photo.gd",
+      "reach": "File › Share… › Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk, frames averaged on the same desk in a browser within 2.5 s (CardPhoto, src/ui/share_panel.gd _pictures); a phone keeps the cut-out",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card probe",
+      "entry": "src/dev/card_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_probe.gd -- --pictures=DIR [--only=1,6] [--looks=LOOKS.json]",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card judge",
+      "entry": "tools/bench/cardlook.py",
+      "reach": "python3 tools/bench/cardlook.py sheet DIR --looks new  |  python3 tools/bench/cardlook.py judge DIR --look new --out OUT",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "moulded edges",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal13, docs/RENDERING.md 5q: at Best in the Product look, path traced, each edge's rounding straying along it, each part its own way, with a nick here and there, and a slope's face rounded into the part's ends (RenderSettings.edge, StudioRender.PRODUCT_EDGE 1; path_tracer.glsl edge_round, bevelled; PathTracer.edge in each part's info.w, the byte above studs'); --without=edge draws photoreal10's pictures)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "a change sent back in Compare",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "https://brickworks.diy/app?suggestion=N as the model's designer, or Open it in the studio on their model's page or the notification   (suggestedit: the designer's model as they last published it, the remix's change drawn on it: taken away red, moved amber with a faint ghost where it goes, recoloured violet, added a green ghost; a row a change, each ticked, a box a kind; a row pressed frames it; Take all, Take the ticked, Decline; nothing taken without a press; taken, the merged model opened unsaved with Share's note and its credit ready)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "suggest probe",
+      "entry": "src/dev/suggest_probe.gd",
+      "reach": "tools/probe.sh suggest_probe -- --pictures=DIR; tools/probe.sh suggest_phone_probe -- --pictures=DIR   (windowed, on the GPU, on tests/fixtures/suggest/serve.mjs: Ann sends, the app's Account count within 60 s, the notification's link opens Compare with 7 rows, the drawing read back by kind, all but the recolour taken by clicks, the model read part by part, Share's credit published and kept as taken with taken_n 2; a second change declined, the model as it was; at 1280 x 800 and 390 x 844)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "suggest phone probe",
+      "entry": "src/dev/suggest_phone_probe.gd",
+      "reach": "tools/probe.sh suggest_phone_probe -- --pictures=DIR   (suggest_probe at 390 x 844)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "saying something in place",
+      "entry": "web/composer.js",
+      "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",
+      "area": "web"
     }
   ]
 }

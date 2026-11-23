@@ -16,21 +16,21 @@ api:GET/POST /api/share
 lib:directory
 -->
 
-![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Lists and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
+![The gallery's front on a computer: the heading, search and tabs, then the Week's pick across the page, its picture large beside its name, why it is picked, Build it and Open in Brickworks, and under it the cards three to a row, each with its picture, name, designer, part count, Like, comments and Remix.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
 
 ## On the home page {#home}
 
 The [home page](/) is a feed of what builders make and say. Signed out, one line over it says what Brickworks is, a search finds models, builders and real sets as you type, and **Start building** opens the app. Then the feed, one post after another:
 
-- **A build**: who made it, with **Follow**; its picture; how it was made, where its builder chose to say (**Designed with the assistant**, **Made with Brickify**), and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). The newest comment is under it, with **Add a comment**.
-- **A thread in [Talk](/docs/talk)**, with its latest reply and **Reply**.
+- **A build**: who made it, with **Follow**; its picture; how it was made, where its builder chose to say (**Designed with the assistant**, **Made with Brickify**), and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). Its newest two comments are under it, with **Add a comment** and, when it has more, **n more**, which opens the rest in the post.
+- **A thread in [Talk](/docs/talk)**, with its latest reply and **Reply**; its replies count opens the whole thread.
 - **This month's [challenge](/docs/challenges)**, its days left and its entries, with **Enter the challenge**.
 - **Try the studio, right here**: **Try it here** puts the studio itself in the post, a model on it to turn, play with and build step by step. **Open the whole studio** opens a copy of it as yours.
 - **Builders to follow**, and photos of models people [built for real](/docs/model-pages#actions).
 
 ![The home page on a computer: Gallery, Talk, Challenges and Docs across the top; Build, share and find LEGO® models over the search and Start building; then the feed's first row, This week's pick first, each post with who made it, its picture, how it was made, its likes and Open in the studio, Remix, Build it and Parts.](/docs/img/home-first-screen.webp "The home page: one line, then the feed.")
 
-Press **3D** on a picture, or rest the pointer on it, to turn the model in its place; [[Esc]] puts the picture back. Like, a comment and Follow ask you to sign in there and then, and go on once you are in; what you typed is kept. **Show more** at the end adds more posts.
+Press **3D** on a picture, or rest the pointer on it, to turn the model in its place; [[Esc]] puts the picture back. **Add a comment** and **Reply** open the box right in the post: what you post shows there at once, under the latest, and you never leave the feed. Like, a comment and Follow ask you to sign in there and then, and go on once you are in; what you typed is kept and posted from where you were. **Show more** at the end adds more posts.
 
 Signed in, the line gives way to the same search, with **Share a build** beside it, which opens [the share panel](/docs/sharing) in the app for your last model, and three tabs: **For you**, everything, as you have it; **Following**, what the people you follow made; and **New**, the newest first. The arrow keys move along the tabs. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
 
@@ -39,6 +39,21 @@ Signed in, the line gives way to the same search, with **Share a build** beside 
 <!-- covers
 ui:the home page's feed
 ui:the home page's search
+-->
+
+### Saying something {#composer}
+
+The box is the same wherever you say something on Brickworks: in a post of the feed, in a row of [Talk](/docs/talk), under a model's [comments](/docs/model-pages#comments) and at the end of a thread.
+
+- [[Enter]] starts a new line; it never posts. [[Ctrl]]+[[Enter]] (on a Mac [[Cmd]]+[[Enter]]) or **Post** posts it, once however often you press.
+- [[Esc]] closes a box opened in a post or a row, and you are back on the button that opened it.
+- Once it posts, your words show in the post or the row at once, and a box opened there folds away again.
+- Under the box are the [community guidelines](/guidelines), and near the most a post takes, how many characters are left.
+- Signed out, **Post** asks you to sign in with a code by email; once you are in it posts what you wrote, from the same place.
+- If you cannot post there (under 13, comments turned off, a locked thread), the box says why instead.
+
+<!-- covers
+ui:saying something in place
 -->
 
 ## Find a model {#find}
@@ -88,7 +103,7 @@ ui:a list's pages
 
 The gallery's front (Top, all time, nothing searched) has shelves among the cards:
 
-- **Week's pick**, the first card, with a line saying why: chosen each Monday from the past seven days by builds, remixes and the Tested mark, never one picked in the past eight weeks. A pick the site's owner made says *Chosen by Brickworks*.
+- **Week's pick**, a row of its own across the top with its picture large, with a line saying why and **Build it** and **Open in Brickworks** beside it; rest the pointer on its picture to turn the model in 3D. It is chosen each Monday from the past seven days by builds, remixes and the Tested mark, never one picked in the past eight weeks. A pick the site's owner made says *Chosen by Brickworks*.
 - **Today in the gallery**: one model a day, by its past 30 days' likes, builds, comments, remixes and the Tested mark, not again for four weeks; and one set from [the LDraw library](/docs/ldraw-library), never the same twice in 90 days.
 - **You can build now**, signed in: models you own every part for, from [your collection](/docs/collection). With no collection yet it says how to add one (in the app, **Build › My collection…**).
 - **Small builds**: under 200 parts, an evening's build, the most built and remixed first, with **See every small build**.
@@ -103,7 +118,13 @@ lib:the gallery's daily choice
 
 ## A card {#card}
 
-Every model is a card, the same everywhere on the site: its picture, its name, its designer (press to open [their page](#designer)), its part count, and how many liked, built and commented on it once there are any. The heart on the picture likes it. **✓ Tested** says it passed [Brickworks' four tests](/docs/sharing#tested). A card says *Moves: steering, boom* when something on it moves, which anybody can move on its page, and *Won* with a challenge's name when it won one.
+Every model is a card, the same everywhere on the site: its picture, its name, its designer (press to open [their page](#designer)), its part count, and how many liked, built and commented on it once there are any. A set from LDraw's library names who modelled it, and under that who shares it. In the gallery a card ends in **Like**, its comments and **Remix** (a copy of your own to change, in the studio), each with its count; a card lifts as the pointer comes over it. **✓ Tested** says it passed [Brickworks' four tests](/docs/sharing#tested). A card says *Moves: steering, boom* when something on it moves, which anybody can move on its page, and *Won* with a challenge's name when it won one.
+
+<!-- covers
+lib:the gallery's card as a photograph
+-->
+
+A card's picture is a photograph of the model standing on a desk, drawn when it was shared: path traced in daylight where the computer's graphics card traces rays (the same stage as [Render's](/docs/render) Best), and under a studio's soft lights in a browser. A model shared from a phone, or from a computer too slow to draw it in a few seconds, shows the model on the page's own ground instead.
 
 Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/lists#own)). Only you see it, and the gallery counts it for the whole page at once.
 
