@@ -865,7 +865,9 @@ func _whole_assembly() -> String:
 	var unit: Variant = verbs.assemblies.unit_path_of(int(builder.selection.keys()[0]))
 	if unit == null or str(unit).is_empty():
 		return ""
-	return str(unit) if verbs.assemblies.ids_under(str(unit)).size() == builder.selection.size() else ""
+	# Its parts counted from the kept index, without a walk in script: the
+	# hint asks every frame, and Orthanc's sub-assemblies run to thousands.
+	return str(unit) if verbs.assemblies.bricks_under(str(unit)).size() == builder.selection.size() else ""
 
 
 func _lay_pill() -> void:
