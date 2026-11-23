@@ -23,6 +23,10 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { serveDir, TYPES } from "./static_server.mjs";
+// Software drawing (SOFTWARE), and browser.mjs brings in storage_mirror.mjs,
+// as every script here that starts a browser does. Its launch() is not
+// used: that signs pages in, and these are drawn signed out.
+import { SOFTWARE } from "./browser.mjs";
 import { MINIFIG } from "../../web/card.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -38,8 +42,6 @@ const three = join(resolve(String(args.deps)), "node_modules/three");
 const out = resolve(String(args.out || join(ROOT, "web/minifig")));
 const only = args.only ? new Set(String(args.only).split(",")) : null;
 const QUALITY = 0.9;
-// Software drawing, as tools/web/browser.mjs SOFTWARE (not imported: it signs pages in).
-const SOFTWARE = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"];
 
 const catalogue = JSON.parse(readFileSync(join(ROOT, "assets/generated/catalogue.json"), "utf8"));
 const meshOf = new Map(catalogue.parts.map((p) => [p.id, p.mesh]));
