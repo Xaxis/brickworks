@@ -114,6 +114,11 @@ for handler in api/*.js; do
         echo "deploy FAILED: no $dir/part_names/part_names_$lang.json (tools/export.sh web)"; exit 1
       fi
     done
+    # The parts drawn in one colour as the app places each, which what a
+    # remix changed is counted with (api/_parts.js currentTable).
+    if ! cp "$dir/part_names/part_current.json" "$fn/_part_current.json"; then
+      echo "deploy FAILED: no $dir/part_names/part_current.json (tools/export.sh web)"; exit 1
+    fi
   fi
   # /challenge?id=N is the challenge page with that challenge's own head
   # (api/_challenges.js challengeHead), so a link to one shows it; and
@@ -145,6 +150,13 @@ for handler in api/*.js; do
     cp web/sitemap.xml "$fn/_sitemap.xml"
     cp "$facts/_parts_table.json" "$fn/_parts_table.json"
     cp "$facts/_scene_table.json" "$fn/_scene_table.json"
+    # Every set's parts by part and colour, spelled by the facts packed
+    # beside it: what a model is an alternate build of, counted as it is
+    # published (api/_alts.js, altbuilds).
+    if ! node tools/web/alt_index.mjs "$fn/_alt_index.bin" --facts="$facts/_part_facts.json" | sed 's/^/deploy: /' \
+        || [ ! -s "$fn/_alt_index.bin" ]; then
+      echo "deploy FAILED: no sets' index for /api/share (tools/web/alt_index.mjs)"; exit 1
+    fi
   fi
   # Every set in Rebrickable's catalogue, a page each at /library/set/<n>
   # (api/_sets.js): written from the vendored CSVs and the set shards,

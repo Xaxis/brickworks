@@ -1211,6 +1211,10 @@ summary.pill { width: fit-content; list-style: none; }
 summary.pill::-webkit-details-marker { display: none; }
 .pill.good { color: var(--green); border-color: var(--green); font-weight: 600; }
 .pill.new { color: var(--ink); border-color: var(--accent-edge); }
+/* Work in progress (supabase/wip.sql): a model still being built, on its
+   card, its page and its Log; .finished the version that finished it. */
+.pill.wip { color: var(--accent-ink); border-color: var(--accent-edge); background: var(--accent-soft); }
+.pill.finished { color: var(--ink); border-color: var(--ink-faint); }
 .pill.tag { gap: 0; }
 .pill.tag::before { content: "#"; color: var(--ink-faint); }
 /* Its quieter part: a handle after a name. */
@@ -2096,6 +2100,8 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .post.challenge #challenge-brief { display: -webkit-box; min-height: calc(2 * 1.45em); margin: 0; overflow: hidden; color: var(--ink-soft);
 	font-size: var(--t-small); line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 .post.challenge .note { margin: 0; }
+/* This week's quick build, a line under the month's days (prompts): one line always. */
+.post.challenge #challenge-week { margin-top: var(--s-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .post-entries { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); margin: var(--s-2) 0 0; padding: 0; list-style: none; }
 .post-entries a { display: block; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-1); background: var(--picture-ground); }
 .post-entries img { display: block; width: 100%; height: 100%; object-fit: cover; }

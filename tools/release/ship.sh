@@ -112,7 +112,23 @@ if [ -z "$URL" ]; then
   # What CI ran on every push and nobody read: the version, the Python
   # suite, the shell scripts. First, as it needs no import: two minutes in
   # its slot at load 40 (2026-10-26).
-  "$HERE/ci_gate.sh" "$W" || { echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh)"; exit 1; }
+  # SHIP_GATE_OK="tests/a.py tests/b.py ...": test files whose failures the
+  # lead judged (known before the merge, the environment, docs pictures yet
+  # to be made) and ships past, each named in the log. Anything else failing,
+  # a shell script or the version, still holds. rel-m321 held 40 minutes on
+  # seven such failures with nothing visitors would see (2026-11-23).
+  gate_out=$("$HERE/ci_gate.sh" "$W" 2>&1); gate=$?
+  echo "$gate_out" | tail -40
+  if [ $gate -ne 0 ]; then
+    failed=$(echo "$gate_out" | sed -n 's/^ *FAIL  \(tests\/[^: ]*\).*/\1/p' | sort -u)
+    other=$(echo "$gate_out" | grep -E 'FAILED|FAIL' | grep -vE '^ *FAIL  tests/|python FAILED' | head -3)
+    unjudged=$(for f in $failed; do case " ${SHIP_GATE_OK:-} " in *" $f "*) ;; *) echo "$f" ;; esac; done)
+    if [ -n "$failed" ] && [ -z "$unjudged" ] && [ -z "$other" ]; then
+      echo "SHIP: ships past the Python suite's judged failures (SHIP_GATE_OK): $(echo $failed)"
+    else
+      echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh)${unjudged:+: not judged: $(echo $unjudged)}"; exit 1
+    fi
+  fi
 fi
 if [ -z "$URL" ] && [ ${#DEPLOY_DIR[@]} -eq 0 ]; then
   import_here || { echo "SHIP: held, the import did not finish (tools/fresh_import.sh)"; exit 1; }

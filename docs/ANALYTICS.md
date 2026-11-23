@@ -236,6 +236,63 @@ the owner unless asked, `all`, `free`, `tester`, `pro`, `owner`, `none`;
 - **Definitions:** what each number means; every number's name in the
   section links to its own.
 
+### The loop
+
+The third card of Funnels: the site's loop, discover, open, change, share,
+hear back, come back, in person-days, for the range against the same
+number of days just before it, with the change. `GET /api/admin?op=loop`
+reads it (`api/_loop.js`, the same `from`, `to`, `plan`, `device`, `lang`,
+`signed` and `tests` as `op=analytics`), through `public.insights_loop`
+(`supabase/loop_funnel.sql`: one function, additive, the server's alone;
+dry run `tools/loop_funnel_try.sql`). Before the SQL is applied the card
+says so and the op answers `{ready: false}`.
+
+| Step | A person-day reached it when |
+|---|---|
+| Discovered | it viewed the home, the gallery, the library or a set's page, a model's page, Talk, a profile, a collection, the builds, the feed or the challenge |
+| Opened | it viewed a model's page, opened the studio (a model's viewer and Build it open in it) or the step player |
+| Changed | it put down a part in the studio |
+| Shared | it pressed Publish, shared a model from a file, commented or replied, posted a build photo, started or answered a Talk thread, or entered the challenge; or the social tables keep a model published, a build photo, a comment, a Talk post or a challenge entry of its account's that day (a model published from the studio reaches the server, not the page); never what the owner took down |
+| Heard back | its account heard from somebody else that day or in the 7 after: a like, a comment or a build photo on its model, a reply to it or in its thread, a follow, its model built to the last step |
+| Came back | its account was active again on a later day within 7 days (the studio, the site signed in, or Claude's calls); within 30 beside it |
+
+**Built** (`?op=built`, a model followed to its last step, once a device)
+has no account, so it is its own number beside the steps, of models by
+people's accounts, and no filter narrows it.
+
+Each step counts the person-days that did it, whatever else they did;
+**Stopped here** places each person-day once, at the furthest step it
+reached (Came back, else Heard back, else Shared, and so on). The card
+draws each step as a dumbbell, this range in the series blue and the one
+before in a quieter step of the same ramp (`--viz-seq-3` light,
+`--viz-seq-2` dark, validated as a pair against each panel), with its
+legend, a tooltip on hover and focus, one Tab stop and the arrow keys from
+step to step, and as a table; under it, what each step counted, name by
+name, against before.
+
+**Each step's acts are one table.** `LOOP` in `api/_loop.js` lists every
+name a step counts as `[step, surface, kind, name]`, the names the counter
+already keeps (`tools/insights_names.py --check` refuses one it does not).
+A unit that adds an act adds its line to a block of its own at the table's
+end. The function takes at most 63 names (one bit each).
+
+What it cannot say: rows older than 30 days are gone, so a range reaching
+back further counts nobody on those days (the card says how many); a day
+near the range's end has had less time to hear back or come back; and
+without VIEW_SECRET (a local relay's read, `tools/loop_read.mjs`) no hash
+is joined to an account, so Heard back, the social tables' shares and
+Claude's days read 0 and the owner is not left out. Nothing new is kept
+about anybody: it reads only the visits, events, social tables and
+Claude's daily calls the site already keeps.
+
+`node tools/loop_read.mjs [--days=30 | --from= --to=] [--plan=] [--tests]
+[--out=FILE]` prints the loop as JSON through the op, run locally by
+`tools/web/relay_server.mjs` against the live database with the checks'
+shared account as MASTER_EMAIL (never the owner's), given only the three
+Supabase keys. The read answers in about 15 ms on today's rows and in under
+0.2 s over 90 days of 1,400 visits and 41,000 rows (the fixture's
+`--load=50`); `tests/test_loop.py` times `--load=500`.
+
 Charts follow the dataviz method: one series each in one blue (#2a78d6
 light, #3987e5 dark, both validated against the console's panels), thin
 marks, a hairline grid, a tooltip on hover and focus, and each chart as a
@@ -253,7 +310,9 @@ call's count), `api/_insights_names.js` (the names it keeps, made by
 `supabase/analytics2.sql` (additive; every table with row security on and
 nothing granted, its functions the server's alone; analytics2 is the
 review's fixes, dry-run in `tools/analytics2_try.sql`),
-`web/admin-analytics.js`. Proven by `tests/test_insights.py` (with
+`web/admin-analytics.js`; the loop in `api/_loop.js`,
+`supabase/loop_funnel.sql` and `tools/loop_read.mjs`, proven by
+`tests/test_loop.py` (`tests/fixtures/insights/loop_check.mjs`). Proven by `tests/test_insights.py` (with
 `tests/fixtures/insights/attacks_check.mjs`, the review's attacks, and
 `tests/test_insights_page.py`) and, on a deployment,
 `tools/web/insights_flow.mjs` (preview check `insights`).

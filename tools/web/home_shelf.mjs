@@ -161,10 +161,11 @@ export function heroOpen(page, id) {
 /// Only what a first screen and its posts show, of each answer, to keep.
 function kept(name, answer) {
   if (name === "top" || name === "newest") return { models: (answer.models || []).slice(0, FIRST + 4) };
-  if (name === "shelves") return { pick: answer.pick || null, challenge: answer.challenge || null };
+  if (name === "shelves") return { pick: answer.pick || null, challenge: answer.challenge || null, prompt_now: answer.prompt_now || null };
   if (name === "challenge") {
     const c = answer.challenge;
-    return { ready: answer.ready, challenge: c ? { ...c, groups: (c.groups || []).map((g) => ({ ...g, entries: (g.entries || []).slice(0, 4) })) } : null };
+    return { ready: answer.ready, challenge: c ? { ...c, groups: (c.groups || []).map((g) => ({ ...g, entries: (g.entries || []).slice(0, 4) })) } : null,
+      prompt_now: answer.prompt_now || null };
   }
   if (name === "talk") return { ready: answer.ready, threads: (answer.threads || []).slice(0, 4), talking: (answer.talking || []).slice(0, 12) };
   if (name === "latest") return { models: [], photos: (answer.photos || []).slice(0, 2), designers: (answer.designers || []).slice(0, 4) };

@@ -8,7 +8,10 @@
 ## signal that arrives later.
 ##
 ## Emits [signal picked] with a decoded image, or [signal failed] with
-## something to show. Never both.
+## something to show. Never both. Or, [member undecoded], [signal chosen]
+## with the file's bytes as they are, for a caller that reads them off the
+## main thread (MakeCard: a phone's photo is a third of a second to decode
+## in a browser, a step player's frame 16 ms).
 class_name PickImage
 extends Node
 
@@ -18,10 +21,13 @@ const MAX_BYTES := 24 * 1024 * 1024
 
 signal picked(image: Image)
 signal failed(why: String)
+signal chosen(bytes: PackedByteArray, hint: String)
 
 ## On a phone, the camera rather than the photos already taken: a part in
 ## the hand is photographed there and then.
 var camera: bool = false
+## Hand the bytes over undecoded, by [signal chosen].
+var undecoded: bool = false
 
 var _dialog: FileDialog
 var _bridge: JavaScriptObject
@@ -109,6 +115,9 @@ func _from_browser(arguments: Array) -> void:
 func _decode(bytes: PackedByteArray, hint: String) -> void:
 	if bytes.size() > MAX_BYTES:
 		failed.emit("that picture is too large")
+		return
+	if undecoded:
+		chosen.emit(bytes, hint)
 		return
 
 	var image := Image.new()

@@ -20,6 +20,18 @@ The sets you own are [My collection](/docs/collection): owning a set on the site
 
 Own and Want are separate: you can own one copy and want another. Signed out, any of these asks you to sign in (a code by email, no password) and then does what you pressed. A card shows ×2 when you own two, and a dot on its chevron when it is in a list of yours.
 
+On a set's page you own, **Parts you own** has **You own** with − and + round how many copies: type a number from 1 to 99 and press Enter, or 0 to take the set out (with **Undo**). Each copy counts its parts again, for the gallery's cards and every model's [What you're missing](/docs/model-pages#missing). Changed on another device or tab meanwhile, it says so and shows the number there now.
+
+![Parts you own on a set's page, signed in: You own, with − and + round a box saying 2, copies of this set: its parts count as yours that many times; then Parts you own: all of them.](/docs/img/set-own-count.webp "How many of a set you own, on its page.")
+
+![You own − 2 + on a set's page on a phone, and Parts you own: all of them.](/docs/img/set-own-count-phone.webp "How many you own, on a phone.")
+
+A set's page also says **In 3 lists** when people put it in public lists: each list by name and whose, a link to it. Wishlists and private lists are never counted.
+
+![In 3 lists on a set's page: People put it in 3 public lists, and the lists by name, each with whose it is.](/docs/img/set-in-lists.webp "The public lists a set is in.")
+
+![In 3 lists on a phone: the three public lists the set is in, as pills.](/docs/img/set-in-lists-phone.webp "The lists a set is in, on a phone.")
+
 ## Save a gallery model {#save-card}
 
 A model's card in the gallery has **Save** and the same chevron: **Saved** (your own, nobody else sees it) and a box for each of your lists.

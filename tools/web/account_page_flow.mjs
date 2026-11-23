@@ -213,7 +213,8 @@ const profileSaid = (page) => page.evaluate(() => {
     columns: getComputedStyle(document.getElementById("my-models")).gridTemplateColumns.split(" ").filter(Boolean).length,
     avatar: (() => {
       const a = document.getElementById("avatar");
-      return a ? { letter: a.textContent, tile: [...a.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(a).bottom } : null;
+      return a ? { minifig: (a.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" "),
+        tile: [...a.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(a).bottom } : null;
     })(),
     nameBottom: box(document.getElementById("title"))?.bottom ?? 1e9,
     editBottom: box(document.getElementById("edit"))?.bottom ?? 1e9,
@@ -366,9 +367,9 @@ try {
           new Promise((done) => setTimeout(done, 6000))]);
       });
       const said = await profileSaid(page);
-      check(`${label}: "${said.name}", ${said.handle.split(" · ")[0]}, an avatar "${said.avatar?.letter}" on a tile`,
+      check(`${label}: "${said.name}", ${said.handle.split(" · ")[0]}, the minifig "${said.avatar?.minifig}" on a tile`,
         said.me && !said.start && said.name === "Ada Account" && said.handle.startsWith(`@${ADA}`)
-        && said.avatar?.tile && said.avatar.letter === "A");
+        && said.avatar?.tile && said.avatar.minifig === minifigKey(ADA));
       check(`${label}: her words, links (ugc nofollow), the banner and her pins in her order`,
         said.bio === "Castles and small machines.\nFor the account page flow."
         && said.links.map((one) => one.href).join(" ") === LINKS.join(" ")

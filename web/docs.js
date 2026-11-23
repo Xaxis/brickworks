@@ -43,6 +43,77 @@
     });
   }
 
+  // -- the message a model's page kept for Claude (claudelink) ---------------
+  // "No connector yet? Connect Claude" under a model's With your Claude came
+  // here with the message kept (web/model-page.js startClaude): on the
+  // connect pages it waits at the top, to copy once Claude is connected,
+  // with the way back to the model. A week at most; Forget it ends it.
+  const kept = (() => {
+    try {
+      const said = JSON.parse(localStorage.getItem("brickworks.claude.ask") || "null");
+      return said && typeof said.text === "string" && Date.now() - Number(said.at) < 7 * 86400000 ? said : null;
+    } catch {
+      return null;
+    }
+  })();
+  const head = document.querySelector(".docs-article > .docs-head");
+  if (kept && head && /^\/docs\/connect(-claude)?$/.test(location.pathname.replace(/\.html$/, ""))) {
+    const box = document.createElement("aside");
+    box.className = "callout accent kept-ask";
+    box.setAttribute("aria-label", "Your message for Claude");
+    const title = document.createElement("p");
+    title.className = "callout-title";
+    title.textContent = "Your message for Claude";
+    const words = document.createElement("p");
+    words.textContent = `About “${String(kept.name || "the model")}”: once Claude has the Brickworks connector, paste it into a new chat there.`;
+    const text = document.createElement("textarea");
+    text.readOnly = true;
+    text.rows = 5;
+    text.value = kept.text;
+    text.setAttribute("aria-label", "Your message for Claude");
+    const row = document.createElement("p");
+    row.className = "actions";
+    const copyIt = document.createElement("button");
+    copyIt.type = "button";
+    copyIt.className = "cta ghost small";
+    copyIt.textContent = "Copy it";
+    copyIt.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(kept.text);
+        copyIt.textContent = "Copied";
+      } catch {
+        text.select();
+        copyIt.textContent = "Select it";
+      }
+      setTimeout(() => { copyIt.textContent = "Copy it"; }, 1600);
+    });
+    row.append(copyIt);
+    if (/^https?:\/\/[^/]+\/(?:[a-z]{2}\/)?m\/[A-Za-z0-9]{10}/.test(String(kept.url || ""))
+      && new URL(kept.url).origin === location.origin) {
+      const back = document.createElement("a");
+      back.className = "cta ghost small";
+      back.href = kept.url;
+      back.textContent = "Back to the model";
+      row.append(back);
+    }
+    const forget = document.createElement("button");
+    forget.type = "button";
+    forget.className = "link";
+    forget.textContent = "Forget it";
+    forget.addEventListener("click", () => {
+      try {
+        localStorage.removeItem("brickworks.claude.ask");
+      } catch {
+        // Storage refused: it goes with the week.
+      }
+      box.remove();
+      head.querySelector("h1")?.focus?.();
+    });
+    row.append(forget);
+    box.append(title, words, text, row);
+    head.after(box);
+  }
+
   // -- Copy on a block of code -------------------------------------------------
   for (const block of document.querySelectorAll(".code")) {
     const button = document.createElement("button");

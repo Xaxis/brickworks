@@ -293,6 +293,9 @@ echo "deploy: the engine at /e/$engine/, the build at /b/$sha/"
 # how the site and the studio were used rolled up, rows past 30 days gone.
 # Every five minutes /api/plans/owner-notify (api/_notify.js): the owner's
 # notifications mailed as they set them in /admin › Notifications.
+# At 41 past each hour /api/share/prompts (api/_prompts.js): the weekly
+# quick build's house work, each template published, the house's two
+# entries, and once a week ends the stack of its entries.
 # Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
@@ -548,7 +551,8 @@ cat > .vercel/output/config.json <<EOF
              { "path": "/api/plans/social-due", "schedule": "*/15 * * * *" },
              { "path": "/api/plans/tally-daily", "schedule": "27 3 * * *" },
              { "path": "/api/plans/owner-notify", "schedule": "*/5 * * * *" },
-             { "path": "/api/plans/announce-due", "schedule": "8,23,38,53 * * * *" } ],
+             { "path": "/api/plans/announce-due", "schedule": "8,23,38,53 * * * *" },
+             { "path": "/api/share/prompts", "schedule": "41 * * * *" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -570,6 +574,7 @@ $docs_moved
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/otp/canary", "dest": "/api/otp?op=canary" },
     { "src": "/api/share/feature", "dest": "/api/share?op=feature" },
+    { "src": "/api/share/prompts", "dest": "/api/share?op=prompts" },
     { "src": "/api/share/omr", "dest": "/api/share?op=omr" },
     { "src": "/api/plans/beta-daily", "dest": "/api/plans?op=beta_daily" },
     { "src": "/api/plans/social-due", "dest": "/api/plans?op=social_due" },
@@ -605,6 +610,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/room[.]json", "dest": "/api/share?op=room&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1&v=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]webp", "dest": "/api/share?op=thumb&id=\$1&n=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]png", "dest": "/api/share?op=image&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1" },
@@ -615,6 +621,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/scene[.]json", "dest": "/api/share?op=scene&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/room[.]json", "dest": "/api/share?op=room&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})/changes[.]json", "dest": "/api/share?op=changes&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },

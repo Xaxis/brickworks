@@ -1,5 +1,7 @@
 # brickworks.diy as a social site: research and plan
 
+The CAD and the community as one loop, graded step by step, with the units that join them: [MASTERPLAN.md](MASTERPLAN.md) (2026-11-23).
+
 The owner (2026-10-22): "drastically improve the brickworks.diy site, it
 needs to feel and act much more like a 'social media' site… the UI/UX of
 the gallery need to be drastically improved, including individual gallery
@@ -1638,6 +1640,39 @@ What it does not do yet: likes on posts, accepted answers in Help, a
 board you follow (Discourse's Watching First Post), and post drafts kept
 across devices. Each is a follow-up for the owner to choose.
 
+## 11. Work in progress, shared by version (2026-11-23)
+
+A model was shared when it was finished, so the weeks it took to build
+were seen by nobody, and a builder's followers heard of it once. Builders
+on the LEGO® sites post a WIP topic and add to it as they go (Eurobricks'
+[WIP] threads, Flickr albums); Brickworks now keeps that for them, from
+the studio, in one press (unit buildlog; `supabase/wip.sql`, `api/_wip.js`,
+`src/ui/share_panel.gd`, docs-site/sharing.md#progress).
+
+- **Share progress** beside Publish in the studio's Share panel publishes
+  the version as Publish does, marked WIP, listed and credited, with its
+  note (What changed?). Publish then reads Publish as finished; Mark it
+  finished on the page's Log calls the newest one finished.
+- **Talk.** The first WIP opens the model's one Show and tell thread, by
+  its designer, with the model's card; each later WIP version is one post
+  in it (its note, the versions' own line of what changed, and the
+  version's card with its picture, `/m/X/v/N.webp`), never a new thread;
+  the finish is the last post. `wip_talk` holds the version row, so a
+  version asked twice posts once, and Talk's own rules (limits, bans, the
+  age question, blocks) hold for every post. A post Talk refuses never
+  stops the publish; the panel says why.
+- **The feed.** Followers of the designer see *shared work in progress*,
+  *shared progress on … version N* and *finished …*; followers of the
+  thread are told of each post as of any reply.
+- **Ranking.** A WIP model is in Newest, marked, and never in Top, the
+  ranked sorts, This week's pick, a challenge, a feature or a shelf
+  (`gallery_shows`, `gallery_models`); finished, it ranks as any model.
+- **The Log.** A model's Versions tab is its Log: every version, newest
+  first, each with its picture, date, note and what changed, WIP and
+  Finished marked, each opening `/m/X/v/N`.
+
+What it does not do yet: a WIP's own picture strip of photos between
+versions, and saying in the studio which followers have seen a version.
 ## 11. The home is the feed (2026-11-23)
 
 The owner, 2026-11-23: "turn the landing into our lego 'social media' as it
