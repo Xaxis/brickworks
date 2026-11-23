@@ -642,14 +642,14 @@ float part_bell(uint which, uint salt) {
 // photographs, between neighbouring parts of one colour facing one way, the
 // CIEDE2000 is 2 to 4 (yellow 2.1, reds 3.2 and 4.2, whites 2.6 and 4.2),
 // hue and chroma 1.0 to 2.6 of it. Turned in Oklab, so a stray is as far to
-// the eye in every colour: at [param amount] 1 a part's hue turns by a bell
-// of 4 degrees (sd), its chroma by 8 percent and its light by 12 (a pale
-// part's by 4, a pale part's whites already strayed by its age), and a pale
-// part goes a hair warmer or cooler. A saturated red's hue is lost to the
-// camera's gamut (its green and blue are 0 in the picture), so on a red the
-// light carries it: drawn, two of 6657's reds differ by 2.7 (its
-// photograph's 4.2), 6660's whites by 3.6 (3.5 with their age alone). Half
-// as far was judged too, and gained nothing (docs/RENDERING.md 5l).
+// the eye in every colour: at [param amount] 1 a part's hue turns by up to
+// 4 degrees, its chroma by up to 8 percent and its light by up to 12 (a
+// pale part's 4, a pale part's whites already strayed by its age), and a
+// pale part goes a hair warmer or cooler, each by a bell of its own held
+// within 1 sd (batch_bell). A saturated red's hue is lost to the camera's
+// gamut (its green and blue are 0 in the picture), so on a red the light
+// carries it. Half as far was judged too, and gained nothing
+// (docs/RENDERING.md 5l).
 vec3 oklab_of(vec3 c) {
 	vec3 lms = vec3(dot(c, vec3(0.4122214708, 0.5363325363, 0.0514459929)),
 		dot(c, vec3(0.2119034982, 0.6806995451, 0.1073969566)),
@@ -670,12 +670,12 @@ vec3 linear_of(vec3 o) {
 		dot(lms, vec3(-0.0041960863, -0.7034186147, 1.7076147010)));
 }
 
-// A batch's own bell (photoreal8): part_bell held within 1.5 sd, as a batch
+// A batch's own bell (photoreal8): part_bell held within 1 sd, as a batch
 // further off than LEGO's tolerance never leaves the factory. Unheld,
 // three_2x2_top's green brick was drawn 5.9 from its photograph's colour
-// (CIEDE2000; 2.7 with no stray).
+// (CIEDE2000; 2.7 with no stray), held within 1.5 sd 5.2.
 float batch_bell(uint which, uint salt) {
-	return clamp(part_bell(which, salt), -0.5, 0.5);
+	return clamp(part_bell(which, salt), -1.0 / 3.0, 1.0 / 3.0);
 }
 
 vec3 batch_of(vec3 body, uint which, float amount) {
