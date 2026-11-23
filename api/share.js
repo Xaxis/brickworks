@@ -1707,7 +1707,10 @@ function partsSection(at, parts) {
     + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
     + pickABrickNote(pab)
     + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
-    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
+    // Show all in the page from the start where the list will need it, so
+    // its row is in the space kept too: put in only with the list, it moved
+    // everything under the panel 48 px (checkdrift, 2026-11-23).
+    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
 }
