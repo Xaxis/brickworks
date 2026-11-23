@@ -395,7 +395,9 @@ func _floating_is_said(library: PartLibrary) -> void:
 		var floating: Array = report.risks.filter(func(risk: Stability.Risk) -> bool:
 			return risk.kind == Stability.FLOATS)
 		var words: String = Stability.floating_words(floating)
-		var ok: bool = floating.size() == int(case[2]) and words.contains(str(case[3])) \
+		# Godot's "".contains("") is false: a case with no words wants none.
+		var ok: bool = floating.size() == int(case[2]) \
+			and (words.contains(str(case[3])) if not str(case[3]).is_empty() else words.is_empty()) \
 			and (floating.is_empty() or report.summary().contains("float")) \
 			and floating.all(func(risk: Stability.Risk) -> bool:
 				return placed.slice(placed.size() - int(case[2])).has(risk.brick_id))
