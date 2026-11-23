@@ -109,6 +109,9 @@ function take(op, via) {
 /// names, then its changes in order; read back from the relay if it skips
 /// a number.
 function takeAll(said, via) {
+  // A message from before what this page has: one signed long ago and sent
+  // again on the channel by anybody (it is public) ends nothing.
+  const stale = Number.isInteger(said.to) && said.to < state.seq;
   Object.assign(state.meshes, said.meshes || {});
   Object.assign(state.colours, said.colours || {});
   Object.assign(state.names, said.names || {});
@@ -121,7 +124,7 @@ function takeAll(said, via) {
   const to = Number.isInteger(said.to) ? said.to : Number.isInteger(said.seq) ? said.seq : state.seq;
   state.seq = Math.max(state.seq, to);
   if (Number.isInteger(said.watchers)) watchers(said.watchers);
-  if (said.ended || said.closed) end(said.ended ? "ended" : "closed");
+  if (!stale && (said.ended || said.closed)) end(said.ended ? "ended" : "closed");
   if (said.more) catchUp();
   if (parts) draw();
 }
@@ -456,12 +459,12 @@ async function open() {
   // not (no Ed25519 in this browser to check a message, the channel refused,
   // or reconnecting), the page's only way to hear then.
   const often = Number(show.heard_ms) || 20_000;
-  let asked = Date.now();
+  let readAt = Date.now();
   const tick = setInterval(() => {
     if (state.ended) return clearInterval(tick);
     const hearing = Boolean(state.key) && state.channel === "joined";
-    if (hearing && (Date.now() - asked < often || document.visibilityState !== "visible")) return;
-    asked = Date.now();
+    if (hearing && (Date.now() - readAt < often || document.visibilityState !== "visible")) return;
+    readAt = Date.now();
     catchUp();
   }, 1500);
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && catchUp());

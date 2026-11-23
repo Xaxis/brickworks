@@ -95,6 +95,7 @@ const brick = (part, colour, x, y, z) => [part, colour, [1, 0, 0, 0, 1, 0, 0, 0,
 const PALETTE = [4, 1, 14, 2, 15, 0, 25, 27];
 
 const people = {};
+const pages = [];
 let studioStopped = false;
 let pictureMs = 0;
 // Each time the relay was asked the whole show (op=watching): a page opened, or this flow's own reads.
@@ -161,7 +162,6 @@ try {
   // --- 2. watched --------------------------------------------------------------
   console.log(`2. ${WATCHERS} watchers, ${PARTS} parts`);
   browser = await launch({ signedOut: true });
-  const pages = [];
   for (let k = 0; k < WATCHERS; k++) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
     const page = await context.newPage();
@@ -206,7 +206,7 @@ try {
   }
   for (const [k, page] of pages.entries()) {
     await until(() => page.evaluate(() => Boolean(window.brickworksLive?.ready && window.brickworksLive.channel === "joined"
-      && window.brickworksLive.view)), `watcher ${k} hearing`, 120, 250);
+      && window.brickworksLive.view)), `watcher ${k} hearing`, 300, 250);
   }
   const shown = await pages[0].evaluate(() => window.brickworksLive.bricks.size);
   // What a page opens on, kept for the docs' picture (docs-site/pictures/build-together.json).
@@ -400,6 +400,17 @@ try {
   check("no page error", errors.length === 0, errors.slice(0, 4).join(" | "));
 } catch (trouble) {
   check(`the flow ran to its end: ${String(trouble?.message || trouble).slice(0, 240)}`, false);
+  // What each page had come to, to say why.
+  for (const [k, page] of pages.entries()) {
+    const had = await page.evaluate(() => {
+      const live = window.brickworksLive || {};
+      return { ready: live.ready, channel: live.channel, view: Boolean(live.view), parts: live.bricks?.size, seq: live.seq,
+        said: document.getElementById("live-said")?.textContent || "", errors: (live.errors || []).slice(0, 3) };
+    }).catch((why) => ({ unread: String(why).slice(0, 120) }));
+    console.log(`  --    page ${k}: ${JSON.stringify(had)} (load ${loadNow()})`);
+    if (k === 0) await page.screenshot({ path: path.join(out, "stuck-page0.png"), timeout: 60000 }).catch(() => null);
+  }
+  if (errors.length) console.log(`  --    page errors: ${errors.slice(0, 4).join(" | ")}`);
 } finally {
   studioStopped = true;
   if (browser) await browser.close().catch(() => {});

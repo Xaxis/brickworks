@@ -2107,6 +2107,11 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .live-tag { position: absolute; left: 6px; top: 6px; padding: 1px 6px; border-radius: var(--r-pill); background: var(--red); color: #fff;
 	font-size: 11px; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; }
 .live-words { display: grid; gap: 2px; min-width: 0; }
-.live-words b, .live-words span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The title over two lines before it is cut, and who is building it whole:
+   on one line each, "Lighthouse keeper's c…" and "Ada is building it n…". */
+.live-words b { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+	overflow-wrap: anywhere; line-height: 1.25; }
+.live-words span { overflow-wrap: anywhere; }
+.live-words .live-count { white-space: nowrap; }
 .live-words span { color: var(--ink-soft); font-size: var(--t-small); }
 .live-words .live-count { color: var(--ink-faint); }
