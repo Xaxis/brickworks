@@ -93,7 +93,7 @@ ui:model page pictures and tabs
 
 ## The buttons {#actions}
 
-- **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** (the model as LDraw, `/m/<id>.mpd`).
+- **Build it**, **Open in Brickworks** ([a copy in your own models](#open)) and **Download** (the model as LDraw, `/m/<id>.mpd`).
 - **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
 - **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first.
@@ -108,6 +108,19 @@ ui:the embed in 3D
 lib:real builds: finishes counted and photos of builds
 lib:a build photo made safe
 ui:enter this month's challenge
+-->
+
+## Open in Brickworks: a copy to change {#open}
+
+**Open in Brickworks** opens the studio with this model on the baseplate, never the example car. Signed out, it is there behind the studio's sign-in, which says it opens as your own copy: sign in with your email's code or with orangecheck (a new account answers the age question first) and you come back to it. Signed in, the copy is saved in your models under the model's name, credited to this page (its page says *Remixed from* once you [share it](/docs/sharing#remix)), and framed whole. The page you came from stays as it was.
+
+The first time, three things to do with it are offered along the top of the model: **Recolour a part** takes the Paint tool, so a colour and then a part paints it; **Add a part** opens the parts with their search ready; **Build it** plays the timeline from the first step. Your first change, [[Esc]] or **×** puts that line away, and it is not offered again.
+
+Pressed again a moment later, in the same tab after a reload or in a second tab, Open in Brickworks opens the copy you made rather than making another. Signed in to the site in another tab while the studio waits at its sign-in, the studio carries on by itself.
+
+<!-- covers
+ui:open in brickworks for a stranger
+ui:a copy's first acts
 -->
 
 ## Comments {#comments}

@@ -52,6 +52,15 @@ extends Control
 const WIDE := 420.0
 
 var account: Account
+## The model a stranger's Open in Brickworks asked for, on the baseplate
+## behind the screen (Main._open_asked), or "": the way in says it is theirs
+## to change once they are in, rather than "start building" over a model
+## they did not choose (firstminute, 2026-11-23).
+var asked: String = "":
+	set(value):
+		asked = value
+		if _title != null:
+			_follow()
 
 var _card: PanelContainer
 var _form: SignInForm
@@ -63,6 +72,8 @@ var _unreachable: VBoxContainer
 var _retry: Button
 var _shown_form: bool = false
 var _title: Label
+## Under the title, the model asked for and what signing in does with it.
+var _asked_line: Label
 var _age: VBoxContainer
 var _months: Array[Button] = []
 var _year: LineEdit
@@ -162,6 +173,10 @@ func setup(with_account: Account) -> void:
 	_title.add_theme_font_size_override("font_size", 20)
 	_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_title)
+
+	_asked_line = _line("", 14, 0.95)
+	_asked_line.visible = false
+	column.add_child(_asked_line)
 
 	_ended = _line("", 12, 1.0)
 	_ended.add_theme_color_override("font_color", Color(1.0, 0.72, 0.45))
@@ -493,7 +508,11 @@ func _follow() -> void:
 	_title.text = "One question first" if asking_age else (
 		"Welcome to Brickworks" if welcoming else (
 		"You are a beta tester" if thanking else (
-		"Accounts are for 13 and over" if told else "Sign in to start building")))
+		"Accounts are for 13 and over" if told else (
+		"Sign in to make it yours" if not asked.is_empty() and state == Account.State.SIGNED_OUT
+		else "Sign in to start building"))))
+	_asked_line.text = "“%s” opens as your own copy, saved in your models, to change as you like." % asked
+	_asked_line.visible = not asked.is_empty() and state == Account.State.SIGNED_OUT and not told
 	_beta_mark.visible = welcoming or thanking
 	_welcome.visible = welcoming
 	_thanks.visible = thanking

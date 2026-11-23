@@ -1569,6 +1569,22 @@
       "tests": []
     },
     {
+      "id": "cli:firstminute browser flow",
+      "kind": "cli",
+      "entry": "tools/web/firstminute_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; BW_BYPASS=$VERCEL_BYPASS node tools/web/firstminute_flow.mjs --url=<preview> --out=DIR [--ways=code,returning,reload,profile,tab2] [--sizes=1280,390] [--before]   (a stranger from a gallery model's Open in Brickworks to a saved change, timed, pictures and results.json; or --url=http://127.0.0.1:PORT on relay_server.mjs --static=<export>)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:firstminute probe",
+      "kind": "cli",
+      "entry": "src/dev/firstminute_probe.gd",
+      "reach": "tools/probe.sh firstminute_probe   (windowed: the asked-for model behind the sign-in screen, its copy saved once signed in, the three acts and what each does, put away by an edit and Escape, no second copy, a reload mid sign-in; pictures in shots/firstminute/)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:flex skin probe",
       "kind": "cli",
       "entry": "src/dev/flex_skin_probe.gd",
@@ -5544,6 +5560,14 @@
       ]
     },
     {
+      "id": "ui:a copy's first acts",
+      "kind": "ui",
+      "entry": "src/ui/first_acts.gd",
+      "reach": "a copy just made by Open in Brickworks: Recolour a part (the Paint tool), Add a part (the parts, search ready) and Build it (the timeline from step 1) along the top of the model, once a person on a device; gone at the first edit, Escape or \u00d7",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:a designer's page",
       "kind": "ui",
       "entry": "api/people.js",
@@ -6796,6 +6820,14 @@
       "entry": "src/parts/ldd_lxf.gd",
       "reach": "godot --headless --path . --script src/dev/lxf_probe.gd   (by hand: File, Import, then LEGO Digital Designer model, and choose an .lxf)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:open in brickworks for a stranger",
+      "kind": "ui",
+      "entry": "src/net/asked_copy.gd",
+      "reach": "https://brickworks.diy/m/<id> signed out: Open in Brickworks (/app?copy=<id>): that model on the baseplate behind the sign-in screen (Sign in to make it yours), never the example car; signed in by the code, by orangecheck through /profile?then=/app?copy=<id>, or in another tab, its copy saved in your models under its name, credited, framed; a reload or a second tab on the same link opens that copy, never a second",
+      "area": "web",
       "tests": []
     },
     {

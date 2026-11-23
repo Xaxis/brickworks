@@ -16415,3 +16415,40 @@ msgstr "Sobre un vade de cuero"
 
 msgid "On terrazzo"
 msgstr "Sobre terrazo"
+
+# Open in Brickworks for a stranger: the model asked for behind the sign-in, and its copy's first acts (firstminute)
+msgid "Sign in to make it yours"
+msgstr "Inicia sesión para hacerlo tuyo"
+
+msgid "“%s” opens as your own copy, saved in your models, to change as you like."
+msgstr "«%s» se abre como tu propia copia, guardada en tus modelos, para cambiarla a tu gusto."
+
+msgid "“%s” is yours to change:"
+msgstr "«%s» es tuyo para cambiarlo:"
+
+msgid "Recolour a part"
+msgstr "Cambiar el color de una pieza"
+
+msgid "Add a part"
+msgstr "Añadir una pieza"
+
+msgid "The Paint tool: pick a colour, then click a part to paint it"
+msgstr "La herramienta Pintar: elige un color y haz clic en una pieza para pintarla"
+
+msgid "The parts: pick one, then click where it goes"
+msgstr "Las piezas: elige una y haz clic donde va"
+
+msgid "The timeline: the model step by step, as its booklet builds it"
+msgstr "La línea de tiempo: el modelo paso a paso, como lo construye su folleto"
+
+msgid "Paint: pick a colour, then a part to paint it that colour"
+msgstr "Pintar: elige un color y luego una pieza para pintarla de ese color"
+
+msgid "Pick a part, then where it goes on the model"
+msgstr "Elige una pieza y luego dónde va en el modelo"
+
+msgid "“%s” is your copy of it, made a moment ago: opened, not copied again"
+msgstr "«%s» es tu copia, hecha hace un momento: abierta, no copiada otra vez"
+
+msgid "could not save “%s” into your models: File › Save as… keeps it"
+msgstr "no se pudo guardar «%s» en tus modelos: Archivo › Guardar como… lo conserva"

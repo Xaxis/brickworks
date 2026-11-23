@@ -15,6 +15,15 @@ whole cycle.
 
 ### Added
 
+- **Open in Brickworks leads to the model you chose.** Pressed on a model's
+  page, it opens the studio with that model on the baseplate, never the
+  example car. Signed out, it waits behind the sign-in, which says it opens
+  as your own copy; sign in by email, with orangecheck or in another tab,
+  even as a new account, and the copy is saved in your models, credited and
+  framed. The first time, **Recolour a part**, **Add a part** and **Build it**
+  are offered along the top of the model, gone at your first change or
+  Escape. A reload or a second tab on the same link opens the copy you made,
+  never a second one.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

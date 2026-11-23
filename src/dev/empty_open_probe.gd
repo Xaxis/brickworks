@@ -388,6 +388,9 @@ func _by_tool_library(kind: String) -> String:
 
 func _by_copy_link(kind: String) -> String:
 	_set_shared(kind)
+	# One link here stands for each kind of file in turn: a copy of it made
+	# a moment ago is opened again, not made anew (AskedCopy, firstminute).
+	AskedCopy.forget()
 	_main.set("_copying", LINK)
 	_main.set("_copy_started", false)
 	_main.set("_first_open_done", true)
