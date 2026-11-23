@@ -7069,27 +7069,6 @@
     },
     {
       "kind": "ui",
-      "label": "a change sent back in Compare",
-      "entry": "src/ui/compare_view.gd",
-      "reach": "https://brickworks.diy/app?suggestion=N as the model's designer, or Open it in the studio on their model's page or the notification   (suggestedit: the designer's model as they last published it, the remix's change drawn on it: taken away red, moved amber with a faint ghost where it goes, recoloured violet, added a green ghost; a row a change, each ticked, a box a kind; a row pressed frames it; Take all, Take the ticked, Decline; nothing taken without a press; taken, the merged model opened unsaved with Share's note and its credit ready)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "suggest probe",
-      "entry": "src/dev/suggest_probe.gd",
-      "reach": "tools/probe.sh suggest_probe -- --pictures=DIR; tools/probe.sh suggest_phone_probe -- --pictures=DIR   (windowed, on the GPU, on tests/fixtures/suggest/serve.mjs: Ann sends, the app's Account count within 60 s, the notification's link opens Compare with 7 rows, the drawing read back by kind, all but the recolour taken by clicks, the model read part by part, Share's credit published and kept as taken with taken_n 2; a second change declined, the model as it was; at 1280 x 800 and 390 x 844)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "suggest phone probe",
-      "entry": "src/dev/suggest_phone_probe.gd",
-      "reach": "tools/probe.sh suggest_phone_probe -- --pictures=DIR   (suggest_probe at 390 x 844)",
-      "area": "model-io"
-    },
-    {
-      "kind": "ui",
       "label": "saying something in place",
       "entry": "web/composer.js",
       "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",

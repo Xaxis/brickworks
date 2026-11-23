@@ -159,7 +159,6 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_comment_mentions.py",
         "tests/test_console.py",
         "tests/test_console3.py",
@@ -183,7 +182,6 @@
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_console3.py",
@@ -344,7 +342,6 @@
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/fixtures/suggest/world.mjs",
         "tests/test_achievements.py",
         "tests/test_alts.py",
@@ -3687,22 +3684,6 @@
       "tests": []
     },
     {
-      "id": "cli:suggest phone probe",
-      "kind": "cli",
-      "entry": "src/dev/suggest_phone_probe.gd",
-      "reach": "tools/probe.sh suggest_phone_probe -- --pictures=DIR   (suggest_probe at 390 x 844)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
-      "id": "cli:suggest probe",
-      "kind": "cli",
-      "entry": "src/dev/suggest_probe.gd",
-      "reach": "tools/probe.sh suggest_probe -- --pictures=DIR; tools/probe.sh suggest_phone_probe -- --pictures=DIR   (windowed, on the GPU, on tests/fixtures/suggest/serve.mjs: Ann sends, the app's Account count within 60 s, the notification's link opens Compare with 7 rows, the drawing read back by kind, all but the recolour taken by clicks, the model read part by part, Share's credit published and kept as taken with taken_n 2; a second change declined, the model as it was; at 1280 x 800 and 390 x 844)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
       "id": "cli:swapfind phone probe",
       "kind": "cli",
       "entry": "src/dev/swapfind_phone_probe.gd",
@@ -5120,7 +5101,6 @@
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/social/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/fixtures/suggest/world.mjs",
         "tests/test_alts.py",
         "tests/test_flows_for.py",
@@ -6110,14 +6090,6 @@
       ]
     },
     {
-      "id": "ui:a change sent back in Compare",
-      "kind": "ui",
-      "entry": "src/ui/compare_view.gd",
-      "reach": "https://brickworks.diy/app?suggestion=N as the model's designer, or Open it in the studio on their model's page or the notification   (suggestedit: the designer's model as they last published it, the remix's change drawn on it: taken away red, moved amber with a faint ghost where it goes, recoloured violet, added a green ghost; a row a change, each ticked, a box a kind; a row pressed frames it; Take all, Take the ticked, Decline; nothing taken without a press; taken, the merged model opened unsaved with Share's note and its credit ready)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
       "id": "ui:a change sent back on a model's page",
       "kind": "ui",
       "entry": "web/model-page.js",
@@ -6146,7 +6118,6 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -6348,7 +6319,6 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -7717,7 +7687,6 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",
@@ -8694,7 +8663,6 @@
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
         "tests/fixtures/suggest/flow.mjs",
-        "tests/fixtures/suggest/serve.mjs",
         "tests/test_announce.py",
         "tests/test_blocks.py",
         "tests/test_challenge_notices.py",

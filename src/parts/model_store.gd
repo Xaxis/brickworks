@@ -76,12 +76,6 @@ const REMIX_VERSION_META := "0 !BRICKWORKS REMIX_VERSION "
 ## memory only, never in a file: whether the week is still open is the
 ## server's to say each time. Read through [method prompt_now].
 var prompt: Dictionary = {}
-## A change sent back from a remix that the model open now takes in
-## (suggestedit, CompareView's Suggest mode): {id, taken, whole, by, remix,
-## model, n} as its designer took it, or {}. In memory only, as [member
-## prompt] is: Share's publish names it (api/share.js suggestion), and the
-## server marks it taken by the version that publish makes.
-var suggestion: Dictionary = {}
 ## The real set this model was opened from ("10182"), or empty: a file of
 ## the LDraw model repository says so in its header, and a model saved
 ## from one carries it on as a meta line. HiddenColours asks before it
@@ -809,7 +803,6 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	remixed_from = ""
 	remixed_from_version = 0
 	credit = {}
-	suggestion = {}
 	from_set = ""
 	hidden_scheme = {}
 	pins = PinnedComments.new()
@@ -2083,7 +2076,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		if not named.is_empty():
 			title = named
 	share_id = read["share"]
-	suggestion = {}
 	remixed_from = read["remix"]
 	remixed_from_version = read["remix_version"] if not remixed_from.is_empty() else 0
 	credit = read["credit"]
