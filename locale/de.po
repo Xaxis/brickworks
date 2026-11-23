@@ -16572,3 +16572,15 @@ msgstr "gestern um %s"
 
 msgid "%s at %s, %d days ago"
 msgstr "%s um %s, vor %d Tagen"
+
+msgid "the selection is %s already: click another colour in Colour, then %s paints it"
+msgstr "die Auswahl ist schon %s: klicke unter Farbe eine andere Farbe an, dann färbt %s sie"
+
+msgid "straight after Duplicate a number is copies: 5x makes it 5 in a row"
+msgstr "direkt nach Duplizieren ist eine Zahl Kopien: 5x macht 5 in einer Reihe"
+
+msgid "drag the copy to move it"
+msgstr "zieh die Kopie, um sie zu bewegen"
+
+msgid "Not made now"
+msgstr "Heute nicht hergestellt"

@@ -681,6 +681,12 @@ func _recolour() -> void:
 		var find: OptionButton = (bar as Node).get("_find_colour")
 		print("UX14 p11 find lists %d colours, replace with %d; swatches: %s" % [find.item_count,
 			into.item_count, str(into.item_count > 1 and into.get_item_icon(1) != null)])
+		var find_part: LineEdit = (bar as Node).get("_find_part")
+		_check14("Find takes what the 24 share: any part (\"%s\") in %s" % [find_part.text,
+			find.get_item_text(find.selected)], find_part.text.is_empty()
+			and int((bar as Node).call("_picked", find)) == most)
+		_check14("...its colours with their swatches (%s)" % str(into.get_item_icon(1) != null),
+			into.item_count > 1 and into.get_item_icon(1) != null)
 		into.show_popup()
 		await _frames(20)
 		await _step("p11_05_replace_colours", "Replace with: the colours to choose from")
@@ -699,6 +705,8 @@ func _recolour() -> void:
 			if brick.color_code == most and not _store.scenery.has(brick.id):
 				left += 1
 		print("UX14 p11 left in the old colour: %d" % left)
+		_check14("Replace recolours all %d, none left in the old colour (%d left)"
+			% [int(counts.get(most, 0)), left], left == 0)
 	await _close_all()
 	# The second colour by painting: what is selected, a colour clicked.
 	var second: int = -1
@@ -712,7 +720,10 @@ func _recolour() -> void:
 			break
 	await _run_command("select_colour", "", "", 20)
 	await _step("p11_08_second_selected", "the second colour selected, to paint")
+	_builder.held_color = second
 	await _run_command("paint", "p11_09_painted", "Paint the selection with the colour in hand", 30)
+	_check14("Paint in the colour they are already says why: %s" % _bar.status_text().left(90),
+		_bar.status_text().contains("already"))
 	await _close_all()
 
 
@@ -738,6 +749,10 @@ func _measure_align() -> void:
 			await _frames(10)
 	await _step("p12_02_measured", "two points measured, end to end")
 	print("UX14 p12 the ruler said: %s" % _bar.status_text())
+	if not _on_phone:
+		_check14("the status line says the measurement: %s" % _bar.status_text().left(80),
+			_bar.status_text().contains("studs across") or _bar.status_text().contains(" deep")
+			or _bar.status_text().contains("plates up"))
 	await _key(KEY_ESCAPE)
 	await _frames(10)
 	# One part selected, to move by exactly one stud along x.
@@ -747,6 +762,11 @@ func _measure_align() -> void:
 	await _run_command("panel_properties", "p12_03_properties", "Properties: where the part is", 30)
 	await _run_command("mode_move", "p12_04_move_tool", "Tools, Move", 20)
 	var verbs: EditVerbs = _shell.get("verbs")
+	var lifted_from: Vector3 = Vector3.INF
+	var lifted_id: int = -1
+	if not _builder.selection.is_empty():
+		lifted_id = int(_builder.selection.keys()[0])
+		lifted_from = _world.get_brick(lifted_id).transform.origin
 	if verbs != null and not _builder.selection.is_empty():
 		verbs.lift()
 		await _frames(10)
@@ -756,6 +776,14 @@ func _measure_align() -> void:
 		await _key(KEY_ENTER)
 		await _frames(10)
 		await _step("p12_06_moved", "moved one stud along x")
+		var now_at: Vector3 = Vector3.INF
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.id == lifted_id or _builder.selection.has(brick.id):
+				now_at = brick.transform.origin
+		_check14("x 1 and Enter put it down a stud along x (%s to %s, in hand: %s)" % [lifted_from,
+			now_at, str(_builder.is_carrying())], not _builder.is_carrying()
+			and now_at.is_finite() and lifted_from.is_finite()
+			and absf(absf(now_at.x - lifted_from.x) - 20.0) < 0.1)
 	await _run_command("panel_properties", "", "", 10)
 	await _run_command("grid", "p12_07_grid", "View, Stud grid", 20)
 	await _run_command("grid", "", "", 10)
@@ -804,6 +832,8 @@ func _returning() -> void:
 	print("\nUX14 p14: last week's model and its versions")
 	var text: String = FileAccess.get_file_as_string(ProjectSettings.globalize_path("res://models/car.ldr"))
 	var stem: String = "Weekend racer"
+	# As the app saved it: its own name in its head, as in the file's.
+	text = text.replace("0 Car\r\n", "0 %s\r\n" % stem).replace("0 Name: car.ldr", "0 Name: %s.ldr" % stem)
 	DirAccess.make_dir_recursive_absolute(ModelStore.SAVE_DIR)
 	var path: String = ModelStore.SAVE_DIR + stem + ".ldr"
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)

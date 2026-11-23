@@ -60,11 +60,30 @@ func _ready() -> void:
 ## and colour, the colour in hand to replace with ready, and everything
 ## said again.
 func open() -> void:
-	var picked: Array = _finder.builder.selection.keys()
-	if not picked.is_empty():
-		var brick: BrickWorld.Brick = _finder.world.get_brick(int(picked[0]))
-		if brick != null:
-			set_find(brick.part_id, brick.color_code)
+	# What the selection shares, not its first part: 24 parts selected by
+	# their colour were found as the first one's Brick 1 x 3 in that colour,
+	# and Replace changed 4 of the 24 (ux14's walk, p11). Several parts in
+	# one colour find that colour on any part; one part in several colours,
+	# that part in any colour.
+	var part: String = ""
+	var colour: int = -1
+	var first: bool = true
+	var shared: Array = [true, true]
+	for brick_id: int in _finder.builder.selection.keys():
+		var brick: BrickWorld.Brick = _finder.world.get_brick(brick_id)
+		if brick == null:
+			continue
+		if first:
+			part = brick.part_id
+			colour = brick.color_code
+			first = false
+			continue
+		if brick.part_id != part:
+			shared[0] = false
+		if brick.color_code != colour:
+			shared[1] = false
+	if not first and (shared[0] or shared[1]):
+		set_find(part if shared[0] else "", colour if shared[1] else -1)
 	_fill_where()
 	visible = true
 	refresh()
@@ -446,7 +465,20 @@ func _fill_into_colours() -> void:
 		codes.append(code)
 	codes.sort_custom(func(a: int, b: int) -> bool:
 		return _finder.colour_name(a).naturalnocasecmp_to(_finder.colour_name(b)) < 0)
-	for code: int in codes:
+	# The colours made now first, then the rest under a line of their own:
+	# 321 in one run from Aqua put a theme's White below eight Canvas
+	# colours a set has never had (ux14's walk, p11).
+	var now: Array = codes.filter(func(code: int) -> bool: return _finder.library.is_current(code))
+	var not_now: Array = codes.filter(func(code: int) -> bool:
+		return not _finder.library.is_current(code))
+	for code: int in now:
+		_into_colour.add_icon_item(_swatch(code), _finder.colour_name(code))
+		_into_colour.set_item_metadata(_into_colour.item_count - 1, code)
+	if not now.is_empty() and not not_now.is_empty():
+		_into_colour.add_separator("Not made now")
+		# An int for anything that reads the list's colours (_choose).
+		_into_colour.set_item_metadata(_into_colour.item_count - 1, -2)
+	for code: int in not_now:
 		_into_colour.add_icon_item(_swatch(code), _finder.colour_name(code))
 		_into_colour.set_item_metadata(_into_colour.item_count - 1, code)
 

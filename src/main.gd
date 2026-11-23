@@ -7156,6 +7156,7 @@ func _make_measure() -> Node3D:
 		_measure.camera = _camera
 		_measure.world = _world
 		_measure.library = _library
+		_measure.say_line = func(line: String) -> void: _bar.say(line)
 		_measure.label = _viewport_label(13)
 		_measure.label.visible = false
 		_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)

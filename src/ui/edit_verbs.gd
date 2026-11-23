@@ -282,6 +282,11 @@ func press(name: String) -> void:
 			if painted > 0:
 				edited.call()
 				say.call("painted %s" % _parts(painted))
+			elif not builder.selection.is_empty():
+				# Painted the colour they are already, and nothing said: the
+				# selection stayed as it was with no word why (ux14's walk, p11).
+				say.call(Keymap.filled("the selection is %s already: click another colour in Colour, then {paint|paints it}")
+					% builder.library.color(builder.held_color).name.replace("_", " "))
 		"delete":
 			var job: Working.Job = await _say_first(builder.selection.size(),
 				"Taking off %s parts…")
@@ -1583,6 +1588,8 @@ func _ready() -> void:
 	typed = TypedEntry.new()
 	# A number while a handle is dragged, or straight after, is the
 	# handles' (Handles); otherwise it moves what is in hand.
+	typed.takes_axis = func() -> bool:
+		return builder.is_carrying() and not _handles_want_typing() and not _handles_typing()
 	typed.may_open = func() -> bool:
 		return handles.begin_typing() if _handles_want_typing() else _begin_typing()
 	typed.opened_as = func() -> String:
@@ -1613,6 +1620,8 @@ func _ready() -> void:
 			_pattern.hide_copies()
 		_typed_cancel()
 	typed.still_held = func() -> bool:
+		if _typed_was.has("copies_only"):
+			return not _copied.is_empty() and int(_copied["depth"]) == builder.history_depth()
 		return handles.is_dragging() if _handles_typing() else builder.is_pinned()
 	typed.clear_of = func() -> Rect2:
 		return handles.on_screen() if _handles_typing() else _hand_on_screen()
@@ -1687,6 +1696,8 @@ func _begin_typing() -> bool:
 	# by hand (duplicate_beside).
 	if not builder.is_carrying() and not _copied.is_empty() \
 			and int(_copied["depth"]) == builder.history_depth():
+		# Copies only: nothing is in hand for a move to move (_typed_apply).
+		_typed_was = {"copies_only": true}
 		return true
 	var armed: Dictionary = _armed
 	_armed = {}
@@ -1737,6 +1748,9 @@ func _typed_preview(what: Dictionary) -> String:
 
 ## Put it down where the number says: one step to undo, as any placement.
 func _typed_apply(what: Dictionary) -> bool:
+	if _typed_was.has("copies_only"):
+		say.call("straight after Duplicate a number is copies: 5x makes it 5 in a row; drag the copy to move it")
+		return false
 	if not builder.typed_hand(what["move"], float(what["turn"]), float(what["tilt"]),
 			-_level_right()):
 		return false
@@ -1857,7 +1871,9 @@ func _copies_put(what: Dictionary) -> bool:
 	builder.unpin_hand()
 	edited.call()
 	aim_again.call()
-	say.call("%s — Esc puts the copy in hand away" % what["words"])
+	# After Duplicate's copy beside, nothing is in hand to put away.
+	say.call(("%s — Esc puts the copy in hand away" if builder.is_carrying() else "%s")
+		% what["words"])
 	return true
 
 
