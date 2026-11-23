@@ -12664,6 +12664,16 @@ func _cursor_state() -> Cursors.Situation:
 ## interface; a menu or a dialog that is open still gets it first, being
 ## a window of its own.
 func _input(event: InputEvent) -> void:
+	# A finger's lift on a phone ends its hold here, ahead of the interface,
+	# which can keep it from the model: a tap whose click opened a dialog
+	# (More, Save) has its lift go to the dialog, and Godot then hands the
+	# next lift to the control that tap was on, a hidden button that keeps
+	# it. The next tap on a part read as a hold and opened its actions
+	# (ux15's walk 3, after a save).
+	var lifted: InputEventScreenTouch = event as InputEventScreenTouch
+	if lifted != null and not lifted.pressed and lifted.index == _touch_index and _phone_hold != null:
+		_touch_index = -1
+		_phone_hold.stop()
 	# Where the pointer is, for the viewer's hover: every move, over the
 	# model or not, so moving onto the bar lets go of the part.
 	if event is InputEventMouseMotion and not _viewing.is_empty():
