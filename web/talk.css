@@ -3,22 +3,10 @@
    .tabs for the boards, .pill, .cta, the comments' posts (directory.css
    .comment), and only the layout here. A stranger's words are kept as
    typed: pre-wrap, broken anywhere. */
-.talk-page { padding-block: var(--s-6) var(--s-8); }
-.talk-crumbs { margin: 0 0 var(--s-2); font-size: var(--t-small); color: var(--ink-soft); min-height: 1lh; }
-.talk-head h1, .talk-thread-head h1 { margin: 0 0 var(--s-3); overflow-wrap: anywhere; }
-.talk-head .lede { margin-bottom: var(--s-4); }
-.talk-tools { gap: 12px; margin-bottom: var(--s-5); }
-.talk-search { display: flex; gap: 8px; flex: 1 1 280px; max-width: 440px; }
-.talk-search input { flex: 1; min-width: 0; }
-.talk-boards { margin-bottom: var(--s-5); }
+/* A thread (an object's page); the lists and the new thread's page are
+   the site's list page (site.css .page-hero, .page-body, .list-layout). */
+.talk-page:not(.page-body) { padding-block: var(--s-6) var(--s-8); }
 
-.talk-layout { display: grid; gap: var(--s-7); grid-template-columns: minmax(0, 1fr); }
-@media (width >= 960px) { .talk-layout { grid-template-columns: minmax(0, 1fr) 300px; } }
-
-.talk-more { margin: var(--s-5) 0 0; }
-
-.talk-aside h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
-.talk-aside section + section { margin-top: var(--s-6); }
 .talk-talking { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .talk-talking a { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; color: var(--ink); text-decoration: none; }
 .talk-talking a:not(:has(img)) { grid-template-columns: minmax(0, 1fr); }
@@ -31,6 +19,7 @@
 .talk-board-list dd { margin: 0 0 10px; font-size: var(--t-small); color: var(--ink-soft); }
 
 /* A thread: its head, its model, its posts (the comments' own), the box. */
+.talk-thread-head h1 { margin: 0 0 var(--s-3); overflow-wrap: anywhere; }
 .talk-thread-head { margin-bottom: var(--s-5); }
 .talk-model {
 	display: inline-grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; margin: 6px 0 12px;

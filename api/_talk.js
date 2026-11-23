@@ -56,7 +56,7 @@ import { unnameable } from "./_blocks.js";
 import { withFaces } from "./_faces.js";
 import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } from "./_builds.js";
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
-import { avatarHtml, langAt, mentionPieces, mentionsIn, number, say } from "./_card.js";
+import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, number, pageHeadHtml, say } from "./_card.js";
 
 export const BOARDS = ["show", "help", "ideas", "challenges", "news"];
 export const MOST_CHARACTERS = 4000;
@@ -358,12 +358,14 @@ export function threadRowHtml(thread, { now = Date.now(), board = null } = {}) {
   const picture = modelPicture(thread.model) || (thread.photo && PHOTO.test(thread.photo.id || "") ? `/talk/p/${thread.photo.id}.card.jpg` : "");
   const replies = Number(thread.replies) || 0;
   const last = thread.last_by && replies ? ` · ${sayHtml("last from {who}", { who: escapeHtml(thread.last_by.name || "") })}` : "";
-  return `<li class="talk-row${thread.pinned ? " pinned" : ""}" data-thread="${Number(thread.id)}">`
-    + `${picture ? `<img class="talk-row-picture" src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">` : ""}`
-    + `<div class="talk-row-main"><h3 class="talk-row-title"><a href="${at}${threadPath(thread)}">${escapeHtml(thread.title)}</a></h3>`
+  // The site's one row (site.css .list-row): its picture, its title, what
+  // it says, who and when.
+  return `<li class="list-row talk-row${thread.pinned ? " pinned" : ""}" data-thread="${Number(thread.id)}">`
+    + `${picture ? `<img class="row-pic" src="${escapeHtml(picture)}" alt="" loading="lazy" width="96" height="72">` : ""}`
+    + `<div class="row-body"><h3 class="row-title talk-row-title"><a href="${at}${threadPath(thread)}">${escapeHtml(thread.title)}</a></h3>`
     + `${pills ? `<p class="pills">${pills}</p>` : ""}`
-    + `${thread.said ? `<p class="talk-row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
-    + `<p class="talk-row-meta">${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}`
+    + `${thread.said ? `<p class="row-said">${escapeHtml(summary(thread.said, 160))}</p>` : ""}`
+    + `<p class="row-meta talk-row-meta">${sayHtml("{who} started it", { who: whoHtml(thread.by) })} · ${timeHtml(thread.at, now)}`
     + ` · <span class="talk-replies">${escapeHtml(replies === 1 ? say("1 reply") : say("{n} replies", { n: number(replies) }))}</span>`
     + `${last}${replies ? ` ${timeHtml(thread.last_at, now)}` : ""}</p></div></li>`;
 }
@@ -753,35 +755,28 @@ export function listPageHtml({ board, q, before, listed, counts, talking, models
   const query = tests ? "&tests=1" : "";
   const threads = listed.threads || [];
   const older = listed.more && threads.length
-    ? `<p class="talk-more"><a class="cta ghost" href="${at}/talk${board ? `/b/${board}` : ""}?before=${encodeURIComponent(threads[threads.length - 1].last_at)}`
+    ? `<p class="pager"><a class="cta ghost pager-more" href="${at}/talk${board ? `/b/${board}` : ""}?before=${encodeURIComponent(threads[threads.length - 1].last_at)}`
       + `${q ? `&q=${encodeURIComponent(q)}` : ""}${query}">${asText(say("Older threads"))}</a></p>` : "";
-  const empty = q ? `<p class="talk-empty">${sayHtml("Nothing in Talk says {words}. Try fewer words, or start a thread about it.", { words: `“${escapeHtml(q)}”` })}</p>`
-    : before ? `<p class="talk-empty">${asText(say("No older threads."))}</p>`
-    : `<p class="talk-empty">${asText(say("Nothing here yet. Start the first thread: people who follow this board will see it."))}</p>`;
+  const empty = q ? `<p class="state talk-empty">${sayHtml("Nothing in Talk says {words}. Try fewer words, or start a thread about it.", { words: `“${escapeHtml(q)}”` })}</p>`
+    : before ? `<p class="state talk-empty">${asText(say("No older threads."))}</p>`
+    : `<p class="state talk-empty">${asText(say("Nothing here yet. Start the first thread: people who follow this board will see it."))}</p>`;
   const start = `${at}/talk/new${board && board !== "news" ? `?board=${board}` : ""}`;
-  return `<div class="wrap talk-page" data-talk="list"${board ? ` data-board="${board}"` : ""}>
-<header class="talk-head">
-<p class="talk-crumbs">${board ? `<a href="${at}/talk">${asText(say("Talk"))}</a> ›` : ""}</p>
-<h1>${asText(board ? said.name : say("Talk"))}</h1>
-<p class="lede">${asText(board ? said.about : say("Show what you built, ask for help, share ideas and talk about the month’s challenge with other builders."))}</p>
-<div class="actions talk-tools">
-<a class="cta" href="${start}" data-start>${asText(say("Start a thread"))}</a>
-<form class="talk-search" role="search" action="${at}/talk" method="get">
-<label class="visually-hidden" for="talk-q">${asText(say("Search Talk"))}</label>
-<input id="talk-q" type="search" name="q" maxlength="200" value="${escapeHtml(q || "")}" placeholder="${asText(say("Search Talk"))}">
-${tests ? '<input type="hidden" name="tests" value="1">' : ""}<button class="cta ghost" type="submit">${asText(say("Search"))}</button>
-</form>
-</div>
-</header>
-${boardsHtml(board, counts, tests)}
-<div class="talk-layout">
-<section class="talk-threads" aria-labelledby="talk-threads-title">
+  const acts = `<form class="talk-search" role="search" action="${at}/talk" method="get">`
+    + `<label class="search">${iconHtml("search")}<span class="visually-hidden">${asText(say("Search Talk"))}</span>`
+    + `<input id="talk-q" type="search" name="q" maxlength="200" value="${escapeHtml(q || "")}" placeholder="${asText(say("Search Talk"))}" enterkeyhint="search"></label>`
+    + `${tests ? '<input type="hidden" name="tests" value="1">' : ""}</form>`
+    + `<a class="cta" href="${start}" data-start>${asText(say("Start a thread"))}</a>`;
+  return `${pageHeadHtml({ title: board ? said.name : say("Talk"), acts, tabs: boardsHtml(board, counts, tests),
+    lede: board ? said.about : say("Show what you built, ask for help, share ideas and talk about the month’s challenge with other builders.") })}
+<div class="wrap page-body talk-page" data-talk="list"${board ? ` data-board="${board}"` : ""}>
+<div class="list-layout">
+<section class="list-main talk-threads" aria-labelledby="talk-threads-title">
 <h2 class="visually-hidden" id="talk-threads-title">${asText(q ? say("Threads that say it") : say("Threads"))}</h2>
 ${q ? `<p class="talk-searched">${sayHtml("Threads that say {words}", { words: `“${escapeHtml(q)}”` })} · <a href="${at}/talk${board ? `/b/${board}` : ""}${tests ? "?tests=1" : ""}">${asText(say("Clear the search"))}</a></p>` : ""}
-${threads.length ? `<ol class="talk-list" id="talk-list">${threads.map((one) => threadRowHtml(one, { now, board })).join("")}</ol>` : empty}
+${threads.length ? `<ol class="list-rows talk-list" id="talk-list">${threads.map((one) => threadRowHtml(one, { now, board })).join("")}</ol>` : empty}
 ${older}
 </section>
-<aside class="talk-aside">
+<aside class="list-aside talk-aside">
 <section aria-labelledby="talk-on-models">
 <h2 id="talk-on-models">${asText(say("On the models"))}</h2>
 ${talkingHtml(talking, models, now)}
@@ -845,9 +840,8 @@ ${thread.locked ? `<p class="note">${asText(say("This thread is locked: it takes
 export function newPageHtml({ board, model }) {
   const at = langAt();
   const chosen = BOARDS.includes(board) && board !== "news" ? board : "";
-  return `<div class="wrap talk-page talk-new" data-talk="new">
-<p class="talk-crumbs"><a href="${at}/talk">${asText(say("Talk"))}</a> ›</p>
-<h1>${asText(say("Start a thread"))}</h1>
+  return `${pageHeadHtml({ title: say("Start a thread"), acts: `<a class="cta ghost" href="${at}/talk">${asText(say("Cancel"))}</a>` })}
+<div class="wrap page-body talk-page talk-new" data-talk="new">
 <form class="talk-form talk-start" data-start-form hidden>
 <fieldset class="talk-board-pick"><legend>${asText(say("Board"))}</legend>
 ${BOARDS.filter((id) => id !== "news").map((id) => `<label class="choice"><input type="radio" name="board" value="${id}" required${(model ? id === "show" : id === chosen) ? " checked" : ""}> <b>${asText(boardSaid(id).name)}</b> <small>${asText(boardSaid(id).about)}</small></label>`).join("\n")}
@@ -1049,7 +1043,7 @@ export async function talkLatest(request, response) {
     const lang = langOf(query);
     const now = Date.now();
     const html = inLanguage(lang, lang === "en" ? null : siteWords(lang), () => (threads.length
-      ? `<ol class="talk-list talk-strip-list">${threads.map((one) => threadRowHtml(one, { now })).join("")}</ol>` : ""));
+      ? `<ol class="list-rows talk-list talk-strip-list">${threads.map((one) => threadRowHtml(one, { now })).join("")}</ol>` : ""));
     return response.status(200).json({ ready: !listed.missing, count: threads.length, html });
   }
   return response.status(200).json({ ready: !listed.missing, threads });
