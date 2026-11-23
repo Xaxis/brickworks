@@ -16415,3 +16415,67 @@ msgstr "Sobre un vade de cuero"
 
 msgid "On terrazzo"
 msgstr "Sobre terrazo"
+
+# This week's quick build: the studio's line above a copy of its template, the
+# day to publish it by, and Share's box and its status line (prompts). "%d May" is
+# the comments' own, above.
+
+msgid "This week's quick build: %s"
+msgstr "Construcción rápida de la semana: %s"
+
+msgid "Publish it by %s to enter."
+msgstr "Publícalo hasta el %s para participar."
+
+msgid "This week's quick build, %s: “%s” Publish it by %s to enter."
+msgstr "Construcción rápida de la semana, %s: «%s» Publícalo hasta el %s para participar."
+
+msgid "%d January"
+msgstr "%d de enero"
+
+msgid "%d February"
+msgstr "%d de febrero"
+
+msgid "%d March"
+msgstr "%d de marzo"
+
+msgid "%d April"
+msgstr "%d de abril"
+
+msgid "%d June"
+msgstr "%d de junio"
+
+msgid "%d July"
+msgstr "%d de julio"
+
+msgid "%d August"
+msgstr "%d de agosto"
+
+msgid "%d September"
+msgstr "%d de septiembre"
+
+msgid "%d October"
+msgstr "%d de octubre"
+
+msgid "%d November"
+msgstr "%d de noviembre"
+
+msgid "%d December"
+msgstr "%d de diciembre"
+
+msgid "Got it"
+msgstr "Entendido"
+
+msgid "Enters this week's quick build: %s"
+msgstr "Participa en la construcción rápida de la semana: %s"
+
+msgid "Shown in the gallery, it enters this week's quick build"
+msgstr "Mostrado en la galería, participa en la construcción rápida de la semana"
+
+msgid "Entered in this week's quick build: %s"
+msgstr "Inscrito en la construcción rápida de la semana: %s"
+
+msgid "Entered in this week's quick build: %s."
+msgstr "Inscrito en la construcción rápida de la semana: %s."
+
+msgid "Every entry is at %s."
+msgstr "Todas las participaciones están en %s."

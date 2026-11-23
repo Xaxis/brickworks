@@ -70,6 +70,12 @@ const REMIX_META := "0 !BRICKWORKS REMIX "
 ## before it still reads the link.
 var remixed_from_version: int = 0
 const REMIX_VERSION_META := "0 !BRICKWORKS REMIX_VERSION "
+## This week's quick build when the link it was copied from is its template
+## (SharedModels.prompt_in: {id, title, brief, ends_on, template, page}), or
+## {}: as Main asked as the copy opened, and Share as it last opened. In
+## memory only, never in a file: whether the week is still open is the
+## server's to say each time. Read through [method prompt_now].
+var prompt: Dictionary = {}
 ## The real set this model was opened from ("10182"), or empty: a file of
 ## the LDraw model repository says so in its header, and a model saved
 ## from one carries it on as a meta line. HiddenColours asks before it
@@ -761,6 +767,14 @@ func _saved_over_elsewhere(path: String, name: String) -> bool:
 		+ "reload it, or keep yours and save again") % [name, TabSession.elsewhere()]
 	saved_by_another.emit(name)
 	return true
+
+
+## [member prompt] while the model is still a copy of its template, else {}:
+## one opened, begun or cleared since is not that copy, nor does it enter.
+func prompt_now() -> Dictionary:
+	if remixed_from.is_empty() or str(prompt.get("template", "")) != remixed_from:
+		return {}
+	return prompt
 
 
 ## The model on the baseplate is a new one, nothing of it saved, called

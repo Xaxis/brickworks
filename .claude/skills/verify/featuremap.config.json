@@ -6422,6 +6422,90 @@
       "entry": "tools/web/talk_stand_in.mjs",
       "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build",
+      "entry": "supabase/challenge_prompts.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_prompts.sql --dry --try=tools/challenge_prompts_try.sql --table=challenges   (after challenges.sql, challenge_year.sql, challenge_rounds.sql, challenge_list_order.sql, talk.sql and achievements.sql; the month's answers' md5s equal the live ones; then the prompts browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build's house work",
+      "entry": "api/_prompts.js",
+      "reach": "GET /api/share/prompts with the cron's key (hourly at :41; ?tests=1 a flow's): each template published as the house, the house's two entries of its own prompts, an ended week's stack; written down in the console's Site as the job prompts",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly quick build's stack",
+      "entry": "api/_prompts.js",
+      "reach": "node tools/prompts_check.mjs OUT   (the house's eight entries stacked: each its own 0 FILE credited to its maker, the parts their sum, each foot on the studs below; OUT/stack.png and stack.mpd)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the weekly quick build's page",
+      "entry": "web/challenge.js",
+      "reach": "<deployment>/challenge?id=<a prompt's id>   (Start to /app?copy=<template>, its entries newest first turning in 3D on a tap, the stack once it ended; the hub's This week's quick build; GET /api/people?op=challenge&id=N answers {prompt})",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the weekly quick build on the home page",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#challenge-week, a line under the month's challenge: This week's quick build: <title>, from GET /api/share?op=shelves prompt_now)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a quick build's notice",
+      "entry": "web/notice-view.js",
+      "reach": "<deployment>/notifications   (a weekly quick build's group, Quick build: <title>, with Start to /app?copy=<template>; api/_notifications.js)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "setting the weekly quick build",
+      "entry": "web/admin-challenges.js",
+      "reach": "<deployment>/admin#gallery/challenges as MASTER_EMAIL: Kind, Weekly quick build: a title, a brief, its days and a template link or the house's plate; listed under the month's with End it now (POST /api/admin?op=challenge {kind: prompt})",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "the quick build in the studio",
+      "entry": "src/main.gd",
+      "reach": "/app?copy=<a template's id>: This week's quick build said above the model with Got it (GET /api/people?op=prompt_of); Share's Enters this week's quick build, ticked, one tap to keep it out (src/ui/share_panel.gd)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt probe",
+      "entry": "src/dev/prompt_probe.gd",
+      "reach": "tools/probe.sh prompt_probe   (the brief above the model at 1280 and on a phone, the publish dialog's box, prompt_out sent only when unticked)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "prompts check",
+      "entry": "tools/prompts_check.mjs",
+      "reach": "node tools/prompts_check.mjs [OUT]   (no network: the house's templates and entries checked part by part, and their stack)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompt pictures",
+      "entry": "tools/prompt_pictures.mjs",
+      "reach": "node tools/prompt_pictures.mjs OUT   (the docs world's template and Habitat entries, as the run draws them)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "prompts browser flow",
+      "entry": "tools/web/prompts_flow.mjs",
+      "reach": "node --env-file=.env tools/web/prompts_flow.mjs --url=<relay or preview> --out=DIR   (MASTER_EMAIL, CRON_SECRET; after challenge_prompts.sql is applied, else exit 2)",
+      "area": "web"
     }
   ]
 }

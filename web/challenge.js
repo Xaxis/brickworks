@@ -848,7 +848,122 @@ function drawEmpty(kind) {
   $("again").hidden = kind !== "broken";
 }
 
+// ---------------------------------------------------------------------------
+// A weekly quick build (api/_prompts.js): a brief, a template that Start
+// opens in the studio, every entry newest first, and once it ends the stack
+// of them all. No rules, no vote.
+
+/// The hub's panel for this week's quick build ([week], the answer's
+/// prompt_now), or none.
+function drawWeek(week) {
+  $("week").hidden = !week;
+  if (!week) return;
+  const page = pageOf(week.id);
+  $("week-title").textContent = week.title;
+  $("week-title").href = page;
+  $("week-brief").textContent = week.brief;
+  $("week-days").textContent = say("Until {day}", { day: SHORT.format(startOf(week.ends_on)) });
+  $("week-count").textContent = week.entries ? counted(week.entries, "entry", "entries") : say("Be the first to publish one.");
+  $("week-start").hidden = !week.start;
+  if (week.start) $("week-start").href = week.start;
+  $("week-see").href = page;
+}
+
+/// [card] (modelCard's) with its picture a way into the model in 3D, in its
+/// place, on a tap (web/start3d.js, as the embed's): the 3D code and looks
+/// asked for only then.
+function turning(card, entry) {
+  const img = card.querySelector(".frame > img");
+  if (!img) return card;
+  const picture = document.createElement("a");
+  picture.className = "picture";
+  picture.href = `/app?view=${entry.id}`;
+  picture.dataset.scene = `/m/${entry.id}/scene.json`;
+  picture.setAttribute("aria-label", say("View {name} in 3D", { name: entry.name }));
+  img.replaceWith(picture);
+  picture.append(img);
+  const go = (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    for (const kind of ["click", "pointerdown"]) picture.removeEventListener(kind, go);
+    if (!document.querySelector('link[href="/view3d.css"]')) {
+      document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet", href: "/view3d.css" }));
+    }
+    import("/start3d.js").then(({ start3d }) => start3d(picture).open("tap")).catch(() => { location.href = picture.href; });
+  };
+  picture.addEventListener("click", go);
+  return card;
+}
+
+/// A quick build's page ([p], the answer's prompt).
+function drawPrompt(p) {
+  clearInterval(ticking);
+  const open = p.state === "open";
+  const coming = p.state === "upcoming";
+  root.dataset.year = "no";
+  for (const id of ["winners", "entries", "how", "next", "past", "week", "rules-part", "enter", "enter-note", "again"]) $(id).hidden = true;
+  $("crumbs").hidden = false;
+  $("crumb").textContent = p.title;
+  const status = $("status");
+  status.hidden = false;
+  status.className = `badge ${open ? "good" : coming ? "accent" : ""}`.trim();
+  status.textContent = open ? say("Open") : coming ? say("Opens soon") : say("Ended");
+  $("eyebrow").textContent = open ? say("This week’s quick build") : coming ? say("The next quick build") : say("A past quick build");
+  $("title").textContent = p.title;
+  document.title = say("{title} · a Brickworks quick build", { title: p.title });
+  $("brief").textContent = p.brief;
+  // The way in: the template, a copy of it in the studio.
+  $("start").hidden = !open || !p.start;
+  if (p.start) $("start").href = p.start;
+  $("start").textContent = say("Start");
+  $("to-hub").hidden = false;
+  $("to-hub").href = `${langAt()}/challenge${tests ? "?tests=1" : ""}`;
+  $("share").hidden = false;
+  const at = { from: dayOf(p.starts_on), to: dayOf(p.ends_on) };
+  $("share").onclick = () => openShare(sheetFor({ url: `${location.origin}${pageOf(p.id)}`, name: p.title,
+    text: say("{title}: Brickworks' quick build of the week, {from} to {to}", { title: p.title, ...at }),
+    about: say("Its link opens this quick build: its brief, its template to start from, and every entry.") }));
+  // Where it stands: a countdown to its end, or the days it ran.
+  $("clock").hidden = false;
+  $("countdown").hidden = true;
+  $("rounds").hidden = true;
+  $("numbers").hidden = true;
+  $("clock-h").textContent = open ? say("Ends in") : coming ? say("Opens in") : say("Ran");
+  const days = daysOf(p.starts_on, p.ends_on);
+  $("reach").hidden = !open;
+  if (open) {
+    const total = Math.round((endOf(p.ends_on) - startOf(p.starts_on)) / 86400000);
+    const today = Math.min(total, Math.floor((Date.now() - startOf(p.starts_on)) / 86400000) + 1);
+    $("days").textContent = say("{days} · day {day} of {total}", { days, day: number(today), total: number(total) });
+    $("reach").firstElementChild.style.width = `${Math.max(2, Math.min(100, (today / total) * 100)).toFixed(1)}%`;
+    countdown(endOf(p.ends_on), (time) => say("Ends in {time}", { time }));
+  } else if (coming) {
+    $("days").textContent = days;
+    countdown(startOf(p.starts_on), (time) => say("Opens in {time}", { time }));
+  } else {
+    $("days").textContent = say("Ran {days}", { days });
+  }
+  // The stack, once made.
+  $("stack").hidden = !p.stack;
+  $("stack-card").replaceChildren(...(p.stack ? [turning(modelCard(p.stack, { eager: true }), p.stack)] : []));
+  // Every entry, newest first; never empty: the template's Start.
+  const entries = Array.isArray(p.entries) ? p.entries : [];
+  $("prompt-entries").hidden = coming;
+  $("prompt-count").textContent = entries.length
+    ? say("{entries} by {makers}", { entries: counted(entries.length, "entry", "entries"), makers: counted(p.makers || 1, "builder") })
+    : "";
+  $("prompt-cards").replaceChildren(...entries.map((entry, i) => turning(modelCard(entry, { eager: i < 4 }), entry)));
+  $("prompt-empty").hidden = entries.length > 0 || !open || !p.start;
+  if (p.start) $("prompt-empty-start").href = p.start;
+  $("prompt-how").hidden = !open && !coming;
+  root.dataset.challenge = `prompt-${p.state}`;
+  root.dataset.clock = open ? "counting" : "ended";
+}
+
 function draw() {
+  if (state.prompt) return drawPrompt(state.prompt);
+  for (const id of ["stack", "prompt-entries", "prompt-how"]) $(id).hidden = true;
+  drawWeek(asked ? null : state.prompt_now || null);
   const c = state.challenge;
   root.dataset.year = state.year ? "yes" : "no";
   drawNext(asked ? null : state.next || null);
@@ -883,7 +998,7 @@ async function load() {
       answer = { status: reply.status, body: await reply.json().catch(() => ({})) };
     }
     if (answer.status === 404 && asked) {
-      for (const id of ["winners", "entries", "how", "next", "past"]) $(id).hidden = true;
+      for (const id of ["winners", "entries", "how", "next", "past", "week", "stack", "prompt-entries", "prompt-how"]) $(id).hidden = true;
       drawEmpty("gone");
       root.dataset.challenge = "gone";
       return;
@@ -892,8 +1007,8 @@ async function load() {
     state = answer.body;
     draw();
   } catch {
-    if (state?.challenge) return tell(say("The challenge did not load just now. Try again in a minute."));
-    for (const id of ["winners", "entries", "how", "next", "past"]) $(id).hidden = true;
+    if (state?.challenge || state?.prompt) return tell(say("The challenge did not load just now. Try again in a minute."));
+    for (const id of ["winners", "entries", "how", "next", "past", "week", "stack", "prompt-entries", "prompt-how"]) $(id).hidden = true;
     drawEmpty("broken");
     root.dataset.challenge = "broken";
   }

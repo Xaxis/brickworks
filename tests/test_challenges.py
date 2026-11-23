@@ -75,7 +75,7 @@ def test_it_replaces_only_the_feed_which_keeps_every_row_it_had() -> None:
     others = {
         name
         for path in (ROOT / "supabase").glob("*.sql")
-        if path.name not in ("challenges.sql", "challenge_year.sql", "challenge_list_order.sql")
+        if path.name not in ("challenges.sql", "challenge_year.sql", "challenge_list_order.sql", "challenge_prompts.sql")
         for name in defined(path.read_text())
     }
     mine = defined(SQL)

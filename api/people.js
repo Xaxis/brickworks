@@ -153,6 +153,9 @@
 //                                 rules say of X
 //   POST ?op=enter, withdraw, vote  (session) a model entered or taken back,
 //                                 a vote cast (api/_challenges.js)
+//   GET  ?op=prompt_of&model=X    the weekly quick build open now whose
+//                                 template X is, or null: what the studio and
+//                                 its publish dialog say (api/_prompts.js)
 //   GET  ?op=talk_page, talk, talk_thread, talk_latest, talk_rss, talk_model,
 //        talk_photo               Talk, the builders' forum: /talk, a board,
 //                                 a thread, its feeds and photos (api/_talk.js)
@@ -271,6 +274,7 @@ import { avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, langAt, l
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
+import { promptOfAnswer } from "./_prompts.js";
 import {
   reportPost, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead, talkReply,
   talkRss, talkStart, talkThread,
@@ -2014,6 +2018,7 @@ async function handler(request, response) {
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
       if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
       if (op === "challenge_entry") return await challengeEntry(request, response);
+      if (op === "prompt_of") return await promptOfAnswer(request, response, { origin: originOf(request) });
       // Your lists (api/_mylists.js, supabase/lists.sql).
       if (op === "keeps") return await keeps(request, response);
       if (op === "lists") return await yourLists(request, response);

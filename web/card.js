@@ -236,6 +236,9 @@ export const TRACKS = {
     how: "A model is marked Tested when it stands at every step as it is shared.", href: "/docs/sharing#tested" },
   challenger: { name: "Challenger", unit: ["challenge", "challenges"], first: "first challenge",
     what: ["challenge entered", "challenges entered"], how: "Enter this month's building challenge.", href: "/challenge" },
+  // Weeks in a row with an entry in the weekly quick build (supabase/challenge_prompts.sql).
+  streak: { name: "Streak", unit: ["week", "weeks"], first: "first week", what: ["week in a row with a quick build", "weeks in a row with a quick build"],
+    how: "Publish an entry to the weekly quick build, week after week.", href: "/challenge" },
 };
 
 /// A level as its pill says it: "Designer · 10 models", "Designer · first

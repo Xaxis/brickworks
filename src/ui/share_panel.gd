@@ -39,6 +39,13 @@
 ## for everybody; failed, the status line says which test and why, and only
 ## its owner is ever told.
 ##
+## This week's quick build (2026-11-23, api/people.js ?op=prompt_of): a copy
+## of a weekly prompt's template (ModelStore.remixed_from), listed in the
+## gallery while the week is open, enters it unless its box under List it in
+## the gallery is unticked, which sends prompt_out. Asked each time the panel
+## opens, so a copy reopened days later enters as one just made does; the
+## status line then says it was entered, or the server's words why not.
+##
 ## And what the model's page and the gallery say about it (2026-10-13, the
 ## directory): a few lines about it, tags, its kind — guessed from the name
 ## and the tags (ModelKinds), for its owner to change — and a licence, CC
@@ -111,6 +118,15 @@ var _words_for: String = "-"
 var _licence: OptionButton
 var _licence_says: Label
 var _list: CheckBox
+## This week's quick build the model is a copy of the template of
+## (SharedModels.prompt_in), {} for none; its box, shown only then; and
+## whether the person keeps it in (ticked unless they untick it), for the
+## template it was asked for. And what the last publish's answer said of it.
+var prompt: Dictionary = {}
+var _prompt_box: CheckBox
+var _prompt_in: bool = true
+var _prompt_for: String = ""
+var prompt_said: String = ""
 ## What changed, said by its owner: for a model that has a link already.
 var _note_label: Label
 var _note: LineEdit
@@ -260,7 +276,16 @@ func setup() -> void:
 		+ "Untick it and publish again to take it out and keep the link."
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.add_theme_font_size_override("font_size", 12)
+	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
 	form.add_child(_list)
+	# Under it: an entry is a gallery model, so it is ticked only with it.
+	_prompt_box = CheckBox.new()
+	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
+	_prompt_box.focus_mode = Control.FOCUS_NONE
+	_prompt_box.add_theme_font_size_override("font_size", 12)
+	_prompt_box.visible = false
+	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
+	form.add_child(_prompt_box)
 	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
 		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
 	_young.visible = false
@@ -380,6 +405,64 @@ func _follow_age() -> void:
 		_credit.disabled = true
 	else:
 		_credit.disabled = false
+	_follow_prompt()
+
+
+## The quick build's box as the gallery's stands: shown for a copy of an
+## open prompt's template, ticked as the person left it while the model is
+## listed, and unticked and greyed while it is not, for it cannot enter.
+func _follow_prompt() -> void:
+	if _prompt_box == null:
+		return
+	_prompt_box.visible = not prompt.is_empty()
+	if prompt.is_empty():
+		return
+	_prompt_box.text = "Enters this week's quick build: %s" % prompt["title"]
+	var listed: bool = _list.button_pressed and not _list.disabled
+	_prompt_box.disabled = not listed
+	_prompt_box.set_pressed_no_signal(listed and _prompt_in)
+
+
+## This week's quick build, for the model the copy was made from: what was
+## known of it shown at once (Main asked as the copy opened), then as the
+## server says it now. Nothing shown for a model copied from no link, nor
+## when nothing answers.
+func _ask_prompt() -> void:
+	var template: String = store.remixed_from
+	if template != _prompt_for:
+		_prompt_for = template
+		_prompt_in = true
+	prompt = store.prompt_now()
+	_follow_prompt()
+	if template.is_empty() or shared == null:
+		return
+	var got: Dictionary = await shared.prompt_of(template)
+	if store.remixed_from != template:
+		return
+	store.prompt = got
+	prompt = got
+	if not prompt.is_empty():
+		Language.keep_name(str(prompt["title"]))
+	_follow_prompt()
+
+
+## What the status line adds of a publish's answer about the quick build
+## ([param said], api/share.js "prompt"): that it was entered, and where
+## every entry is; or the server's words why it was not; or nothing.
+static func entry_words(said: Variant) -> String:
+	if not said is Dictionary:
+		return ""
+	var entry: Dictionary = said
+	var title: String = str(entry["title"]) if entry.get("title") is String else ""
+	if entry.get("entered") == true and not title.is_empty():
+		var page: String = str(entry["page"]) if entry.get("page") is String else ""
+		if not page.begins_with("https://"):
+			return "Entered in this week's quick build: %s." % title
+		return "Entered in this week's quick build: %s. Every entry is at %s." % [title,
+			page.trim_prefix("https://")]
+	if entry.get("entered") == false and entry.get("said") is String:
+		return str(entry["said"]).strip_edges()
+	return ""
 
 
 func _line(text: String, size: int, alpha: float) -> Label:
@@ -509,6 +592,7 @@ func open() -> void:
 		_status.text = "This model has a link. Publish again to update what it shows."
 		_check_link(store.share_id, fresh)
 	_follow_age()
+	_ask_prompt()
 
 
 ## Whether the model's link is up or was taken down, so the buttons say
@@ -690,6 +774,10 @@ func publish() -> void:
 	if not store.share_id.is_empty():
 		body["id"] = store.share_id
 	body["listed"] = _list.button_pressed and not _list.disabled
+	# Kept out of this week's quick build only when its box was unticked:
+	# the server enters a copy of the template by default.
+	if not prompt.is_empty() and not _prompt_in:
+		body["prompt_out"] = true
 	if not store.remixed_from.is_empty():
 		body["remixed_from"] = store.remixed_from
 		if store.remixed_from_version > 0:
@@ -748,6 +836,13 @@ func publish() -> void:
 	if kept is Dictionary and not bool((kept as Dictionary).get("kept", false)) and tested.has("tests"):
 		tested_said = "Not tested: %s." % str((kept as Dictionary).get("why", "it could not be kept"))
 	_status.text = "%s %s" % [_status.text, tested_said]
+	# Entered in this week's quick build, or why not.
+	var entry: Variant = said.get("prompt")
+	if entry is Dictionary and (entry as Dictionary).get("title") is String:
+		Language.keep_name(str((entry as Dictionary)["title"]))
+	prompt_said = entry_words(entry)
+	if not prompt_said.is_empty():
+		_status.text = "%s %s" % [_status.text.strip_edges(), prompt_said]
 
 
 func unpublish() -> void:
@@ -828,6 +923,8 @@ func controls_by_name() -> Dictionary:
 		"share_about": _about, "share_tags": _tags, "share_kind": _kind,
 		"share_licence": _licence, "share_list": _list, "share_publish": _publish,
 		"share_guidelines": _guidelines, "share_done": _done}
+	if _prompt_box.is_visible_in_tree():
+		named_controls["share_prompt"] = _prompt_box
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
 	if _note.is_visible_in_tree():
@@ -867,7 +964,11 @@ func page_state() -> Dictionary:
 		"guidelines": guidelines_url(),
 		"list_disabled": _list.disabled if _list != null else false,
 		"credit_disabled": _credit.disabled if _credit != null else false,
-		"young": _young.visible if _young != null else false}
+		"young": _young.visible if _young != null else false,
+		"prompt": prompt.duplicate(), "prompt_said": prompt_said,
+		"prompt_shown": _prompt_box.visible if _prompt_box != null else false,
+		"prompt_in": _prompt_box.button_pressed if _prompt_box != null else false,
+		"prompt_disabled": _prompt_box.disabled if _prompt_box != null else false}
 
 
 ## Escape closes it, like the other panels.

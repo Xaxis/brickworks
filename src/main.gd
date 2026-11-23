@@ -524,6 +524,9 @@ var _full_offer: AccountFullOffer
 var _restore_notice: RestoreNotice
 ## This computer runs the simpler graphics mode, said once (GraphicsMode).
 var _graphics_notice: RestoreNotice
+## This week's quick build, said above the model once a copy of its template
+## is open (_ask_prompt): made the first time there is one to say.
+var _prompt_notice: RestoreNotice
 ## Something went wrong in the app's own scripts, said above the model with
 ## Report this while the beta is open (bugreport, _on_script_error); made
 ## the first time.
@@ -1122,6 +1125,9 @@ func _tell_page() -> void:
 	JavaScriptBridge.eval("window.brickworksShare = %s" % JSON.stringify({
 		"viewing": _viewing,
 		"copying": _copying,
+		# This week's quick build the copy is of, and what the studio says of it.
+		"prompt": _store.prompt_now(),
+		"prompt_line": _prompt_notice.words() if _prompt_notice != null else "",
 		"read_only": _store.read_only,
 		"keeps": _store.keeps,
 		"panel": _share_panel_made.page_state() if _share_panel_made != null else {},
@@ -1263,6 +1269,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_error_notice.controls_by_name())
 	if _graphics_notice != null:
 		named.merge(_graphics_notice.controls_by_name())
+	if _prompt_notice != null:
+		named.merge(_prompt_notice.controls_by_name())
 	if _brickify_made != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -4080,6 +4088,9 @@ func _maybe_copy() -> void:
 	# Its designer and licence, shown in Properties (Inspector).
 	_store.credit = SharedModels.credit_of(shared, _copying)
 	_bar.opened.emit(int(result["placed"]))
+	# This week's quick build, when the link is its template: asked once the
+	# copy is open and never waited on, so the copy opens as quickly as any.
+	_ask_prompt(_copying)
 	var since: int = Time.get_ticks_msec()
 	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
 		_bar.say("copying “%s” — %d parts on their way…" % [name, _store.awaited.size()])
@@ -4092,6 +4103,35 @@ func _maybe_copy() -> void:
 	_store.save_as(kept)
 	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was; %s"
 		% [kept, ModelBar.credit_words(_store.credit)])
+
+
+## This week's quick build, when [param template] is the model it starts
+## from (SharedModels.prompt_of): its title, its brief and the day to publish
+## it by, said above the model with Got it, and kept with the copy in memory
+## (ModelStore.prompt) for Share. Nothing is said when it is not one, or
+## nothing answers, nor when the copy has gone by the time it answers.
+##
+## Above the model as every notice is (_notices), not over it: on a phone
+## its words over its button, as wide as the phone, and only so much of a
+## long brief that the strip stays clear of the model (prompt_probe).
+func _ask_prompt(template: String) -> void:
+	var prompt: Dictionary = await _shared.prompt_of(template)
+	if prompt.is_empty() or _store.remixed_from != template:
+		return
+	_store.prompt = prompt
+	if _prompt_notice == null:
+		_prompt_notice = RestoreNotice.new()
+		_prompt_notice.key = "prompt_got_it"
+		_prompt_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_notices.get_child(0).add_child(_prompt_notice)
+		# About the copy, not whatever is opened or begun after it.
+		_bar.opened.connect(func(_bricks: int) -> void: _prompt_notice.dismiss())
+		_bar.started_new.connect(_prompt_notice.dismiss)
+		_bar.cleared.connect(_prompt_notice.dismiss)
+	# Its name drawn as written, in every language.
+	Language.keep_name(str(prompt["title"]))
+	_prompt_notice.tell(SharedModels.prompt_line(prompt,
+		SharedModels.BRIEF_ON_A_PHONE if _phone != null else -1))
 
 
 ## The longest brief an address may draft.

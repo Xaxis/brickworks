@@ -347,11 +347,26 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 /* How it works: three steps, and what only some need folded under them. */
 #how .steps { margin-bottom: var(--s-5); }
 /* The next one told: a panel lit as the month's tile on the home is. */
-.next-one {
+/* This week's quick build on the hub: the next one's panel, the act in it. */
+.next-one, .week-card {
 	max-width: 760px; padding: var(--s-5) var(--s-6); border: 1px solid var(--accent-edge); border-radius: var(--r-4);
 	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
 	box-shadow: var(--highlight), var(--shadow-1);
 }
+.week-card h2 { margin: 0 0 var(--s-1); }
+.week-card h2 a { color: inherit; }
+.week-card p { margin: 0; color: var(--ink-soft); }
+.week-card .challenge-status { margin-bottom: var(--s-3); }
+.week-card .note { margin-top: var(--s-2); }
+.week-card .actions { margin-top: var(--s-4); }
+/* A quick build's cards: a tap on the picture turns the model in 3D in
+   its place (web/start3d.js), above the card's own link. */
+.turns .model .frame { position: relative; }
+.turns .model .frame > a.picture { position: relative; z-index: 2; display: block; cursor: grab; }
+.turns .model .frame > a.picture img { display: block; width: 100%; height: auto; }
+#stack .turns { max-width: 760px; grid-template-columns: 1fr; }
+#prompt-empty { display: grid; gap: var(--s-3); justify-items: start; }
+#prompt-empty[hidden] { display: none; }
 .next-one h3 { margin: 0 0 var(--s-1); }
 .next-one p { margin: 0; color: var(--ink-soft); }
 .next-one .challenge-status { margin-bottom: var(--s-3); }

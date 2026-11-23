@@ -56,6 +56,7 @@ import { db, orUnknown } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { SITE_LANGS, TESTS_CACHE, Unacceptable, cardOf, escapeHtml, inLanguage, siteWords, summary, testsAsked } from "./_directory.js";
 import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
+import { promptAnswer, promptNow } from "./_prompts.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -271,18 +272,23 @@ export function pictureFor(origin, page, rounds = null) {
 /// the page's own.
 export function challengeHead(html, origin, page, tests = false, lang = "en", rounds = null) {
   if (!page || !page.id || !page.title) return html;
-  const title = say("{title} · Brickworks challenge", { title: String(page.title).replace(/\s+/g, " ").trim() });
+  // A weekly quick build (api/_prompts.js) is named as one.
+  const prompt = page.kind === "prompt";
+  const title = say(prompt ? "{title} · Brickworks quick build" : "{title} · Brickworks challenge",
+    { title: String(page.title).replace(/\s+/g, " ").trim() });
   const brief = String(page.brief || "").replace(/\s+/g, " ").trim();
   const days = lang === "en" ? daysSaid(page.starts_on, page.ends_on) : new Intl.DateTimeFormat(lang,
     { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).formatRange(dateOf(page.starts_on), dateOf(page.ends_on));
-  const when = page.state === "ended" ? say("Ran {days}: see who won.", { days })
+  const when = prompt ? (page.state === "ended" ? say("Ran {days}: see every entry, and the stack of them all.", { days })
+    : say("Open {days}: start from the template in the studio.", { days }))
+    : page.state === "ended" ? say("Ran {days}: see who won.", { days })
     : page.state === "upcoming" ? say("From {days}.", { days }) : say("Open {days}.", { days });
   const about = `${summary(brief, 220)} ${when}`.trim();
   const asked = `?id=${n(page.id)}${tests && page.test ? "&tests=1" : ""}`;
   // The page in [code], English's for x-default.
   const copy = (code) => `${origin}${["en", "x-default"].includes(code) ? "" : `/${code}`}/challenge${asked}`;
   const url = copy(lang);
-  const image = pictureFor(origin, page, rounds) || `${origin}/share.png`;
+  const image = (prompt ? promptPicture(origin, page) : pictureFor(origin, page, rounds)) || `${origin}/share.png`;
   const swaps = [
     [/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`],
     [/<meta name="description" content="[^"]*">/, `<meta name="description" content="${escapeHtml(about)}">`],
@@ -310,10 +316,20 @@ export async function challengePageHtml(origin, id, tests, lang = "en") {
   const code = SITE_LANGS.includes(lang) && challengeFile(lang) ? lang : "en";
   const html = challengeFile(code);
   if (!id) return html;
-  const page = await db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
+  const prompt = await db("rpc/prompt_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
+  const page = prompt && prompt.id ? prompt
+    : await db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
   const rounds = page && page.id ? await roundsAsked(page.id).catch(() => null) : null;
   return inLanguage(code, code === "en" ? null : siteWords(code),
     () => challengeHead(html, origin, page && page.id ? page : null, tests, code, rounds));
+}
+
+/// A prompt's picture where it is shared: its stack's once made, else its
+/// newest entry's, else its template's; each only with a picture. Pure.
+export function promptPicture(origin, page) {
+  const pictured = [page.stack, ...(page.entries || []).map((one) => one && one.card), page.template]
+    .find((card) => card && card.has_image && ID.test(String(card.id || "")));
+  return pictured ? `${origin}/m/${pictured.id}.png` : null;
 }
 
 /// GET ?op=challenge&picture=1: the picture of the challenge /challenge
@@ -454,8 +470,16 @@ export async function challenge(request, response, { origin }) {
   if (String(request.query?.picture || "") === "1") return pictureRedirect(response, origin, tests);
   const who = bearer(request) ? await caller(request) : null;
   response.setHeader("Cache-Control", who || tests ? TESTS_CACHE : PAGE_CACHE);
+  // A weekly quick build's own page (api/_prompts.js): its template, its
+  // entries and its stack; no rules, no vote.
+  if (asked) {
+    const prompt = await orUnknown("prompts", promptAnswer(origin, asked, tests));
+    if (prompt) return response.status(200).json(await withFaces({ ready: true, challenge: null, prompt }));
+  }
+  // The hub names the week's quick build beside the month's challenge.
+  const week = asked ? null : await orUnknown("prompts", promptNow(origin, tests));
   const { ready, page } = await pageOf(tests, asked);
-  if (!ready) return response.status(200).json({ ready: false, challenge: null });
+  if (!ready) return response.status(200).json({ ready: false, challenge: null, ...(week ? { prompt_now: week } : {}) });
   if (asked && !page) return response.status(404).json({ error: "There is no challenge at that number to show." });
   // The hub says what ran before and what comes next; a challenge's own page
   // is that challenge alone. What is beside the challenge asked for (what
@@ -464,7 +488,7 @@ export async function challenge(request, response, { origin }) {
   const between = asked ? {} : await orUnknown("challenges", betweenOf(origin, tests, page ? n(page.id) : null));
   if (!page) {
     return response.status(200).json(await withFaces({ ready: true, challenge: null, ...between,
-      ...(who ? { you: { signed_in: true } } : {}) }));
+      ...(week ? { prompt_now: week } : {}), ...(who ? { you: { signed_in: true } } : {}) }));
   }
   const [wins, rounds] = await Promise.all([
     orUnknown("challenges", winsOf((page.entries || []).map((one) => one.model), tests)).then((said) => said || new Map()),
@@ -486,7 +510,8 @@ export async function challenge(request, response, { origin }) {
         : !kind ? "A test account votes only in a test challenge."
           : mine?.under_13 ? VOTE_SAID.under_13[1] : mine?.may_vote !== true ? ASK_FIRST : null };
   }
-  return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...between, ...(you ? { you } : {}) }));
+  return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...between,
+    ...(week ? { prompt_now: week } : {}), ...(you ? { you } : {}) }));
 }
 
 /// GET ?op=challenge_entry&id=X: for X's own designer, the challenge open

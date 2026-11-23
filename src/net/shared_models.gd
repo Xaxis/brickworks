@@ -217,6 +217,98 @@ func comment(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/people?op=comment", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 
 
+# -- this week's quick build -------------------------------------------------
+#
+# A weekly prompt (api/people.js ?op=prompt_of, 2026-11-23): a challenge with
+# a model to start from, its template. Start on its page opens the studio on
+# a copy of the template (/app?copy=<id>, Main._maybe_copy), and that copy,
+# published during the week, enters it. The studio says the brief above the
+# model (Main._ask_prompt), and Share asks whether to enter (SharePanel).
+
+const MONTHS: Array[String] = ["January", "February", "March", "April", "May", "June", "July",
+	"August", "September", "October", "November", "December"]
+## The most of a brief said above the model on a touch screen, where every
+## line of it is a line less of the model's room.
+const BRIEF_ON_A_PHONE := 120
+
+
+## This week's quick build when [param template] is the model it starts
+## from: {id, title, brief, starts_on, ends_on, template, page}, or {} when
+## it is not the template of one open now. Anything else that comes back,
+## another status, another shape or nothing at all, is no prompt either, and
+## never said as a trouble: the copy is the person's model all the same.
+## Anybody may ask, signed in or not.
+func prompt_of(template: String) -> Dictionary:
+	if not is_id(template):
+		return {}
+	var answer: Dictionary = await _fetch("/api/people?op=prompt_of&model=" + template.uri_encode(),
+		HTTPClient.METHOD_GET, "", "")
+	return prompt_in(answer, template)
+
+
+## The prompt an answer of ?op=prompt_of names, read at the edge: a whole
+## number id, a title, a day it ends that is a day, and the template asked
+## about; {} for anything short of that, or one said to be closed.
+static func prompt_in(answer: Dictionary, template: String) -> Dictionary:
+	if int(answer.get("code", 0)) != 200 or not answer.get("body") is Dictionary:
+		return {}
+	var said: Variant = (answer["body"] as Dictionary).get("prompt")
+	if not said is Dictionary:
+		return {}
+	var prompt: Dictionary = said
+	var id: Variant = prompt.get("id")
+	var title: String = str(prompt["title"]).strip_edges() if prompt.get("title") is String else ""
+	var ends: String = str(prompt["ends_on"]) if prompt.get("ends_on") is String else ""
+	if not (id is int or id is float) or int(id) <= 0 or title.is_empty() \
+			or day_words(ends).is_empty() or prompt.get("open") == false \
+			or prompt.get("template") is String and str(prompt["template"]) != template:
+		return {}
+	var page: String = str(prompt["page"]) if prompt.get("page") is String else ""
+	return {"id": int(id), "title": title,
+		"brief": str(prompt["brief"]).strip_edges() if prompt.get("brief") is String else "",
+		"starts_on": str(prompt["starts_on"]) if prompt.get("starts_on") is String else "",
+		"ends_on": ends, "template": template,
+		"page": page if page.begins_with("https://") else ""}
+
+
+## "2026-11-29" as "29 November", or "" for what is not a day.
+static func day_words(iso: String) -> String:
+	var found: RegExMatch = RegEx.create_from_string("^\\d{4}-(\\d{2})-(\\d{2})$").search(iso)
+	if found == null:
+		return ""
+	var month: int = found.get_string(1).to_int()
+	var day: int = found.get_string(2).to_int()
+	if month < 1 or month > 12 or day < 1 or day > 31:
+		return ""
+	return "%d %s" % [day, MONTHS[month - 1]]
+
+
+## What the studio says of [param prompt] ([method prompt_in]): its title,
+## its brief in quotes and the day to publish by. A brief longer than [param most]
+## characters is cut, so the day it ends is always said: after its last
+## whole sentence that fits, which keeps each sentence one a language finds
+## (Language's ". "), else at a word, with an ellipsis.
+static func prompt_line(prompt: Dictionary, most: int = -1) -> String:
+	var title: String = str(prompt["title"])
+	var brief: String = str(prompt.get("brief", "")).strip_edges()
+	if most > 0 and brief.length() > most:
+		var cut: String = brief.left(most + 1)
+		var sentence: int = maxi(maxi(cut.rfind(". "), cut.rfind("! ")), cut.rfind("? "))
+		var space: int = cut.rfind(" ")
+		if sentence > most / 2:
+			brief = cut.left(sentence + 1)
+		else:
+			brief = (cut.left(space) if space > most / 2 else cut.left(most)).rstrip(" ,;:.—-") + "…"
+	var day: String = day_words(str(prompt["ends_on"]))
+	if brief.is_empty():
+		return "This week's quick build: %s. Publish it by %s to enter." % [title, day]
+	if not brief.right(1) in [".", "!", "?", "…"]:
+		brief += "."
+	# The brief in quotes: the owner's words, drawn as written in every
+	# language (Language keeps what an entry quotes), never half translated.
+	return "This week's quick build, %s: “%s” Publish it by %s to enter." % [title, brief, day]
+
+
 ## One request, as Account._fetch makes it (PageFetch).
 func _fetch(path: String, method: int, token: String, body: String) -> Dictionary:
 	var headers := PackedStringArray(["content-type: application/json"])

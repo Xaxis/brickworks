@@ -23,6 +23,28 @@
    ]
   },
   {
+   "id": "challenge-prompt",
+   "source": "site",
+   "route": "/challenge?id=21",
+   "viewport": [
+    1280,
+    1200
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "#prompt-cards .model",
+   "alt": "This week's quick build, Habitat: its brief, Start to open the template in the studio, the days left, and its entries newest first, each turning in 3D on a tap; then how it works in three steps, Start, Build and Publish.",
+   "caption": "A weekly quick build's page, brickworks.diy/challenge?id=21.",
+   "features": [
+    "ui:the weekly quick build's page"
+   ]
+  },
+  {
    "id": "challenge-enter",
    "source": "site",
    "route": "/m/DocsSprt01",

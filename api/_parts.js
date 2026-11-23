@@ -1056,6 +1056,25 @@ function drawnAs(library, id, table = null) {
 /// draws is in it, through the sub-models; a part the file carries, or one
 /// nobody knows, is left out, having no geometry in the store. [of] says
 /// what it is of. Null where there is no table to pack with.
+/// Every part of the model in [text] the catalogue draws, through the
+/// sub-models, as the 3D view places it (sceneOf): {mesh, colour, hex, m},
+/// [m] its LDraw matrix (x y z, then the rows), turned as its stub turns it.
+/// What api/_flatlay.js drawModel draws a published model's picture from.
+export function placedOf(text, given = partsTable(), table = sceneTable()) {
+  if (!given || !table) return [];
+  const library = makeLibrary(given);
+  const out = [];
+  for (const one of flatten(parse(String(text).replace(/^﻿/, "")), library)) {
+    const drawn = drawnAs(library, one.part, table);
+    if (!drawn) continue;
+    const direct = isDirect(one.colour) ? directOf(one.colour) : null;
+    out.push({ mesh: drawn.info.mesh, colour: one.colour, part: drawn.part,
+      hex: direct ? direct.hex : given.colours[one.colour]?.[1] || "a0a5a9",
+      m: drawn.by ? compose(one.m, drawn.by) : one.m });
+  }
+  return out;
+}
+
 export function sceneOf(text, root, of = "", given = partsTable(), table = sceneTable()) {
   if (!given || !table) return null;
   const model = parse(String(text).replace(/^﻿/, ""));

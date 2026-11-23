@@ -1,10 +1,10 @@
 ---
-ai: The monthly challenge at /challenge: a theme with rules Brickworks checks, entries from people's own shared models in two groups (built by hand, built with the assistant), a vote in each group, and winners named when the month ends.
+ai: The monthly challenge at /challenge: a theme with rules Brickworks checks, entries from people's own shared models in two groups (built by hand, built with the assistant), a vote in each group, and winners named when the month ends. Beside it, the weekly quick build: a brief and a template model to start from, entered by publishing a copy of the template in the gallery that week, with no vote; when the week ends every entry is stacked into one model, credited to its makers.
 rules:
   - A model that breaks a rule is refused with each broken rule named.
 title: The monthly challenge
 nav: The monthly challenge
-description: Each month's theme and rules, how to enter a model of yours by hand or with the assistant, how voting works, and how a month ends.
+description: Each month's theme and rules, how to enter a model of yours by hand or with the assistant, how voting works, and how a month ends; and the weekly quick build, its template, its stack and your streak.
 ---
 
 Each month Brickworks sets a building challenge: a theme, a brief and rules it checks on every model, such as at most so many parts, only the parts of one real set, or marked Tested. Enter a model of yours, and vote for the best. It is at [brickworks.diy/challenge](/challenge), linked from the gallery.
@@ -68,4 +68,28 @@ Your [notifications](/docs/profiles#notifications) tell you when a challenge ope
 
 <!-- covers
 lib:challenge notices
+-->
+
+## The weekly quick build {#quick-build}
+
+Beside the month's challenge, every week has a **quick build**: a short brief, such as *a home for one minifigure on an 8×8 plate*, and a template to start from, a model Brickworks publishes for the week. There are no rules but the brief, and no vote. This week's is on [brickworks.diy/challenge](/challenge), on the home page under the month's challenge, and in your notifications when it opens.
+
+**Start** on its page, or in its notice, opens the studio on a copy of the template, and the studio says the brief above the model. Build on it, by hand or with the assistant. When you publish it in the gallery before the week ends, it is entered: the publish dialog says *Enters this week's quick build*, ticked; untick it to keep that model out. An entry is your model, credited as a remix of the template, and anyone 13 or over may enter, up to three a week.
+
+Its page shows every entry, the newest first. Tap a card's picture and the model turns in 3D in its place, as it does on a model's page.
+
+![This week's quick build, Habitat: its brief, Start to open the template in the studio, the days left, and its entries newest first, each turning in 3D on a tap; then how it works in three steps, Start, Build and Publish.](/docs/img/challenge-prompt.webp "A weekly quick build's page, brickworks.diy/challenge?id=21.")
+
+When the week ends, Brickworks stacks every entry into one model, **the stack**: each entry its own sub-model, named and credited to its maker with a link to it, laid one on the next with each plate on the studs of the one below. It is published in the gallery and shown at the top of the week's page: turn it, open it in the studio, or build it step by step.
+
+Enter in weeks one after another and your profile's **Streak** grows: two weeks in a row reach its first level, then 4, 8, 13, 26 and 52.
+
+<!-- covers
+ui:the weekly quick build's page
+ui:the weekly quick build on the home page
+ui:a quick build's notice
+ui:the quick build in the studio
+lib:the weekly quick build
+lib:the weekly quick build's stack
+lib:the weekly quick build's house work
 -->

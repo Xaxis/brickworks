@@ -434,7 +434,7 @@ async function local() {
     const challenger = tiles.find((one) => one.track === "challenger") || { lines: [] };
     check(`your page ${width} ${theme}: Achievements (${tab.address}), a tile a track in order: ${tiles.map((one) => `${one.name}:${one.level}`).join(" · ")}`,
       tab.current === "achievements" && tab.address === "?tab=achievements"
-      && tiles.map((one) => one.track).join(",") === "designer,built,builder,remixed,tested,challenger"
+      && tiles.map((one) => one.track).join(",") === "designer,built,builder,remixed,tested,challenger,streak"
       && tiles.every((one) => one.icon) && shownToAll.every((id) => levels[id] > 0));
     check(`your page ${width} ${theme}: Built says where it is and what is next: ${built.lines.join(" / ")} (${built.bar})`,
       built.name === "Built · once" && built.lines.join("|") === "Level 1 of 6|9 builds finished to the last step.|1 more to reach Built · 10 times.|Each build of one of your models that somebody finishes counts."

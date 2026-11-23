@@ -51,7 +51,8 @@
 // A challenge's end needs the file.
 
 import { bearer, isMaster, verify } from "./_auth.js";
-import { db, dbAll } from "./_db.js";
+import { db, dbAll, orUnknown } from "./_db.js";
+import { promptsById } from "./_prompts.js";
 import { withFaces } from "./_faces.js";
 import { scopeOf } from "./_settings.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
@@ -198,6 +199,14 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
         of: Number(row.of) || level }) };
   }
   const title = quote(quoted(row.title || say("the challenge"), 80));
+  if (CHALLENGE.has(row.kind) && row.prompt) {
+    // A weekly quick build (api/_prompts.js): Start, not enter.
+    const day = dateWords(row.ends_on);
+    const line = row.kind === "challenge_closing"
+      ? say("The last two days of this week's quick build, {title}: publish yours by the end of {day}", { title, day })
+      : say("This week's quick build is {title}: start from its template, and publish by the end of {day}", { title, day });
+    return { ...base, link: challengeLink(row, origin), line };
+  }
   if (CHALLENGE.has(row.kind)) {
     const day = dateWords(row.ends_on);
     const line = row.kind === "challenge_open" ? say("{title} is open: enter by the end of {day}", { title, day })
@@ -253,8 +262,12 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
         link: `${origin}/profile?tab=achievements`, at: row.at, new: false, unread: false, rows: [] });
     }
     if (challenge && !groups.has(on)) {
-      groups.set(on, { model: "", challenge, name: say("Challenge: {title}", { title: quoted(row.title || say("a challenge"), 80) }), picture: null,
-        link: challengeLink(row, origin), at: row.at, new: false, unread: false, rows: [] });
+      // A weekly quick build's group starts the studio on its template.
+      const template = row.prompt && ID.test(String(row.prompt.template || "")) ? row.prompt.template : "";
+      groups.set(on, { model: "", challenge, name: say(row.prompt ? "Quick build: {title}" : "Challenge: {title}",
+        { title: quoted(row.title || say("a challenge"), 80) }), picture: null,
+        link: challengeLink(row, origin), ...(template ? { start: `${origin}/app?copy=${template}` } : {}),
+        at: row.at, new: false, unread: false, rows: [] });
     }
     if (talk && !groups.has(on)) {
       groups.set(on, { model: "", talk, name: say("Talk: {title}", { title: quoted(row.title || say("a thread"), 100) }), picture: null,
@@ -330,6 +343,13 @@ export async function notifications(request, response, { origin }) {
   const handles = await blockedHandles(asker);
   const gone = handles.size ? await blockedModels(asker, (listed.rows || []).map((row) => row?.model)) : new Set();
   const read = handles.size ? { ...listed, rows: rowsWithout(listed.rows, handles, gone) } : listed;
+  // Which challenges told of are weekly quick builds, and their templates.
+  const prompts = (read.rows || []).some((row) => CHALLENGE.has(row?.kind))
+    ? await orUnknown("prompts", promptsById(true)) : null;
+  if (prompts && prompts.size) {
+    read.rows = read.rows.map((row) => (CHALLENGE.has(row?.kind) && prompts.has(Number(row.challenge))
+      ? { ...row, prompt: prompts.get(Number(row.challenge)) } : row));
+  }
   // Each line in the language the page asks in (?lang=).
   const lang = String(request.query?.lang || "en");
   return response.status(200).json(await withFaces({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,

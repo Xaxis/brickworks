@@ -15,6 +15,16 @@ whole cycle.
 
 ### Added
 
+- **A quick build every week.** Beside the month's challenge, each week
+  has a short brief and a template to start from, an 8×8 plate. **Start**,
+  on its page or in its notice, opens the studio on a copy of the template
+  with the brief said above the model. Publish it in the gallery that week
+  and it is entered: the publish dialog says so, and one tap keeps it out.
+  There is no vote. Its page shows every entry, the newest first, each
+  turning in 3D on a tap, and when the week ends Brickworks stacks them all
+  into one model, each entry its own sub-model credited to its maker, to
+  turn, open or build. Weeks entered in a row are a **Streak** on your
+  profile. The owner sets them in the console's Challenges.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

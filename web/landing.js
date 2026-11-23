@@ -174,7 +174,24 @@ async function now() {
     if (go) link.textContent = go;
     if (c.id) link.href = `${langAt()}/challenge`;
   }
+  week(answer?.prompt_now || null);
   pick(answer?.pick?.model || null);
+}
+
+/// This week's quick build ([w], the answer's prompt_now: api/_prompts.js
+/// promptNow), in its line under the month's: its name, to its page, where
+/// Start is. None, the line keeps its own words. A test one never.
+function week(w) {
+  const line = document.getElementById("challenge-week");
+  if (!line || !w || w.test || !/^[1-9][0-9]{0,15}$/.test(String(w.id))) return;
+  const go = document.createElement("a");
+  go.id = "challenge-week-go";
+  go.href = `${langAt()}/challenge?id=${w.id}`;
+  go.textContent = String(w.title || "");
+  go.lang = "en";
+  const [before, after = ""] = say("This week’s quick build: {title}").split("{title}");
+  line.replaceChildren(before, go, after);
+  html.dataset.week = "shown";
 }
 
 /// This week's pick: its picture, once it has arrived (never a dead one),

@@ -278,7 +278,7 @@ import {
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
-  pickABrick, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+  pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
@@ -292,7 +292,9 @@ import {
   searchCatalog, setCatalog, setPage as catalogPage, setsBeside as catalogBeside, sitemapSets, themeTree, titleOf,
   yearsOf,
 } from "./_sets.js";
-import { flatLayJpeg } from "./_flatlay.js";
+import { drawModel, flatLayJpeg, pngOf } from "./_flatlay.js";
+import { parseLbm } from "./_lbm.js";
+import { heightOf, promptNow, promptOnPublish, runPrompts } from "./_prompts.js";
 import { indexOf as searchIndex } from "./_search.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // What a model is based on (docs/SOCIAL.md section 7, item 5).
@@ -2239,6 +2241,7 @@ async function read(request, response) {
   if (op === "clip_need") return clipNeed(request, response);
   if (op === "sweep") return sweep(request, response);
   if (op === "feature") return feature(request, response);
+  if (op === "prompts") return prompts(request, response);
   if (op === "omr") return omrWatch(request, response);
   if (op === "list") return gallery(request, response, origin);
   if (op === "shelves") return shelves(request, response, origin);
@@ -3011,7 +3014,7 @@ async function shelves(request, response, origin) {
   const tests = testsAsked(request.query || {});
   const mine = await whoseOwn(request, origin);
   const notYet = (trouble) => (/: 404$/.test(String(trouble?.message || "")) ? null : Promise.reject(trouble));
-  const [pick, small, ready, challenge, kept] = await Promise.all([
+  const [pick, small, ready, challenge, kept, week] = await Promise.all([
     db("rpc/gallery_pick", { method: "POST", body: { tests } }).catch(notYet),
     db("rpc/directory_models", { method: "POST", body: { query: {
       most: SIZES.small.most, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}),
@@ -3023,6 +3026,8 @@ async function shelves(request, response, origin) {
     challengeLine(tests),
     // What the cron chose (supabase/gallery_crons.sql): none before it is applied.
     db("rpc/gallery_features_now", { method: "POST", body: { tests } }).catch(notYet),
+    // This week's quick build (api/_prompts.js), for the home's line under the month's.
+    promptNow(origin, tests).catch(() => null),
   ]);
   const shown = (card) => Boolean(card && ID.test(String(card.id || "")));
   // The week's pick the cron kept, unless the owner chose one; a list asked
@@ -3065,6 +3070,7 @@ async function shelves(request, response, origin) {
     small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: cards.small,
       more: (small || []).length > SHELF },
     challenge,
+    prompt_now: week,
     score: SCORE,
   });
 }
@@ -3176,8 +3182,17 @@ function saidAbout(body) {
 
 async function publish(request, response) {
   const claims = await verify(bearer(request), request);
-  const owner = claims.sub;
   const body = request.body && typeof request.body === "object" ? request.body : {};
+  const { status, answer } = await publishModel(claims, body, request);
+  return response.status(status).json(answer);
+}
+
+/// A publish by [claims]' account of [body] (the POST's, above), [request]
+/// the one it came in on (its origin and scope): {status, answer}. The
+/// house publishes through it too (api/_prompts.js, its own claims), and
+/// says which pool its model is in ([test]).
+export async function publishModel(claims, body, request, { test = isTestAccount(claims) } = {}) {
+  const owner = claims.sub;
   // What a file says of its builder without their asking (an Author line
   // with an email address, a place on their computer: web/private-lines.js)
   // is left out of what is kept, from the app, the connector or the site's
@@ -3382,7 +3397,7 @@ async function publish(request, response) {
   const row = { name, author, parts, bytes, has_image: Boolean(picture), has_thumb: Boolean(thumb),
     published: true, updated_at: now, listed, listed_at: listed ? (newlyListed ? now : existing.listed_at) : null,
     remixed_from: remixedFrom, description, tags, kind, licence, steps, own_steps: ownSteps, technic,
-    test: isTestAccount(claims) };
+    test };
   if (existing) {
     await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: row });
   } else {
@@ -3431,14 +3446,18 @@ async function publish(request, response) {
   }
 
   const origin = originOf(request);
-  return response.status(existing ? 200 : 201).json({
+  // A copy of the template of this week's quick build, published in the
+  // gallery, enters it; prompt_out (the dialog's one tap) keeps it out
+  // (api/_prompts.js). Never in the way of the publish.
+  const prompt = await promptOnPublish(origin, owner, id, remixedFrom, body.prompt_out === true);
+  return { status: existing ? 200 : 201, answer: {
     id, name, author, parts, bytes, published: true, updated: Boolean(existing),
     listed, remixed_from: remixedFrom, remixed_from_version: remixedFromVersion, gallery: `${origin}/gallery`,
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    made_with: madeKept, modelled_by: modelledKept, ...links(origin, id),
-  });
+    made_with: madeKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}), ...links(origin, id),
+  } };
 }
 
 /// How long after its publish a version may still be given its pictures.
@@ -3884,6 +3903,72 @@ async function feature(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (!isCron(request)) return response.status(401).json({ error: "the front's choice is the cron's" });
   return response.status(200).json(await runFeatures({ db, sets: () => librarySets(), holder: holderOf(request) }));
+}
+
+/// /api/share/prompts, the cron's every hour (and ?tests=1 a flow's, with
+/// the cron's key): the house's part of the weekly quick build
+/// (api/_prompts.js runPrompts), published as the house, through the
+/// publish every model goes through, with a picture drawn of its parts.
+async function prompts(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!isCron(request)) return response.status(401).json({ error: "the house's quick builds are the cron's" });
+  const house = await db("rpc/talk_house", { method: "POST", body: {} });
+  if (!house) return response.status(409).json({ error: "the house has no account on this project" });
+  const tests = testsAsked(request.query || {});
+  const table = partsTable();
+  const root = storeRoot();
+  const meshes = new Map();
+  // Each part's geometry, once a mesh, from the store the app reads it from.
+  const placedWith = async (text) => {
+    const placed = placedOf(text, table);
+    for (const one of placed) {
+      if (!meshes.has(one.mesh)) {
+        const bytes = root ? await storeBytes(`${one.mesh}.lbm`).catch(() => null) : null;
+        meshes.set(one.mesh, bytes ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length) : null);
+      }
+      one.bytes = meshes.get(one.mesh);
+    }
+    return placed;
+  };
+  const done = await runPrompts({
+    tests, holder: holderOf(request), origin: originOf(request),
+    publishAs: async ({ body, test }) => (await publishModel({ sub: house, email: "" }, body, request, { test })).answer,
+    readModel: async (id) => (ID.test(id) ? (await getFile(`${id}.mpd`))?.toString("utf8") ?? null : null),
+    measure: async (text) => heightOf((await placedWith(text)).map((one) => ({ m: one.m, corners: cornersOf(one.bytes) }))),
+    picture: async (text) => {
+      const placed = await placedWith(text);
+      return placed.some((one) => one.bytes) ? pngOf(drawModel(placed, paletteOf(table))).toString("base64") : null;
+    },
+  });
+  return response.status(200).json(done);
+}
+
+/// The corners of a part's box ([bytes] its .lbm), in LDraw's own frame
+/// (its y and z turned back over): what heightOf turns as the part is placed.
+function cornersOf(bytes) {
+  if (!bytes) return null;
+  let geometry;
+  try {
+    geometry = parseLbm(bytes);
+  } catch {
+    return null;
+  }
+  const low = [Infinity, Infinity, Infinity];
+  const high = [-Infinity, -Infinity, -Infinity];
+  for (const surface of geometry.surfaces) {
+    const at = surface.position;
+    for (let v = 0; v < at.length; v += 3) {
+      const p = [at[v], -at[v + 1], -at[v + 2]];
+      for (let k = 0; k < 3; k += 1) {
+        low[k] = Math.min(low[k], p[k]);
+        high[k] = Math.max(high[k], p[k]);
+      }
+    }
+  }
+  if (!Number.isFinite(low[0])) return null;
+  const out = [];
+  for (const x of [low[0], high[0]]) for (const y of [low[1], high[1]]) for (const z of [low[2], high[2]]) out.push([x, y, z]);
+  return out;
 }
 
 /// How LDraw's site is asked, as tools/omr.py asks it: named, and briefly.

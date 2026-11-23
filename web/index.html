@@ -121,6 +121,9 @@
 .now-row { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
 @media (width >= 900px) { .now-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .now-row .badges { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
+/* This week's quick build, a line under the month's days: one line always,
+   its words filled in place (web/landing.js), so nothing under it moves. */
+#challenge-week { margin-top: var(--s-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #challenge-brief { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; min-height: 2lh; }
 .tile.pick > a.open { flex-direction: row; align-items: stretch; }
 .tile.pick .pic { flex: 0 0 42%; aspect-ratio: 4 / 3; border-bottom: 0; border-right: 1px solid var(--line); }
@@ -232,7 +235,8 @@
 
 	<!-- Now on Brickworks (web/landing.js, from /api/share?op=shelves, asked
 	     at once): this month's challenge, its days left and the way in, or
-	     the next one told, or what a challenge is; and This week's pick from
+	     the next one told, or what a challenge is, with this week's quick
+	     build in a line under it; and This week's pick from
 	     the gallery. Each holds its place from the first frame. -->
 	<section class="section now" id="now" aria-labelledby="now-h">
 		<div class="wrap">
@@ -244,6 +248,7 @@
 						<h3 id="challenge-h">A new challenge</h3>
 						<p id="challenge-brief">Build to the month’s brief, by hand or with help, and the builders vote for their favourites.</p>
 						<p class="note" id="challenge-days">A new theme each month</p>
+						<p class="note week-line" id="challenge-week">And every week, a quick build: <a href="/challenge" id="challenge-week-go">start from its template</a></p>
 						<p class="go-on"><a class="cta ghost" href="/challenge" id="challenge-go">See the challenge</a></p>
 					</div>
 				</article>
