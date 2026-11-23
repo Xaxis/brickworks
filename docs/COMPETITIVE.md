@@ -1,5 +1,7 @@
 # Brickworks against the field
 
+The CAD and the community as one loop, graded step by step, with the units that join them: [MASTERPLAN.md](MASTERPLAN.md) (2026-11-23).
+
 ## The scorecard
 
 Kept current by each round of the app's plan. **Round eleven, 20 November

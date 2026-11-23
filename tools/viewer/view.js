@@ -23,6 +23,11 @@ import { INHERIT, parseLbm } from "../../web/lbm.js";
 import { SCENERY } from "./scene.js";
 
 export const CLAY = new Color(0xc9ced6);
+// A part a remix took away, drawn where it stood (addGhosts): the app's
+// Compare draws them red (CompareView.REMOVED_GHOST).
+const GHOST = new Color(0xe5484d);
+// A surface moulded in a colour the scene does not name.
+const UNKNOWN = new Color().setHex(0x9a9a9a);
 // Where the camera starts, unless told (from): the app's front-right corner
 // (ModelShot "corner").
 const CORNER = [0.72, 0.52, 0.72];
@@ -568,7 +573,7 @@ export class View {
         g.setMatrixAt(k, matrix);
         if (look && look.colour) c.copy(look.colour);
         else if (fixed >= 0) c.copy(this.colours[fixed]);
-        else if (fixed === -2) c.setHex(0x9a9a9a);
+        else if (fixed === -2) c.copy(UNKNOWN);
         else c.copy(this.colours[d.colour[i]] || CLAY);
         g.setColorAt(k, c);
       }
@@ -620,6 +625,93 @@ export class View {
   }
 
   themed() { this.render(); }
+
+  // The parts a remix took away, drawn as ghosts where they stood, over
+  // the model (inline.js What changed; api/_remix.js): [g] an unpacked
+  // scene of them (scene.js unpack), their geometry from the same store.
+  // Drawn once, then shown or hidden; never picked, never counted as shown.
+  async addGhosts(g) {
+    if (this.ghosts) {
+      this.ghosts.visible = true;
+      this.render();
+      return;
+    }
+    const group = this.ghosts = new Group();
+    group.renderOrder = 3;
+    this.scene.add(group);
+    const material = new MeshStandardMaterial({ color: GHOST, roughness: 0.6, metalness: 0.0, transparent: true,
+      opacity: 0.32, depthWrite: false, side: DoubleSide });
+    const by = new Map();
+    for (let i = 0; i < g.n; i++) {
+      if (!by.has(g.mesh[i])) by.set(g.mesh[i], []);
+      by.get(g.mesh[i]).push(i);
+    }
+    const order = [...by.entries()];
+    const matrix = new Matrix4();
+    const p = new Vector3();
+    const q = new Quaternion();
+    const one = new Vector3(1, 1, 1);
+    let next = 0;
+    const work = async () => {
+      while (next < order.length) {
+        const [m, bricks] = order[next++];
+        const mesh = g.meshes[m] || { part: "?", hash: "", bounds: [] };
+        const shape = (await this.o.shapeOf(mesh)) || boxOf(mesh.bounds);
+        for (const surface of shape.surfaces) {
+          const instanced = new InstancedMesh(geometryOf(surface), material, bricks.length);
+          instanced.userData = { ghosts: Int32Array.from(bricks) };
+          instanced.renderOrder = 3;
+          instanced.frustumCulled = false;
+          bricks.forEach((i, k) => {
+            p.set(g.position[i * 3], g.position[i * 3 + 1], g.position[i * 3 + 2]);
+            q.set(g.turn[i * 4], g.turn[i * 4 + 1], g.turn[i * 4 + 2], g.turn[i * 4 + 3]);
+            matrix.compose(p, q, one);
+            instanced.setMatrixAt(k, matrix);
+          });
+          instanced.instanceMatrix.needsUpdate = true;
+          group.add(instanced);
+        }
+        this.render();
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(FETCHING, order.length) }, work));
+  }
+
+  hideGhosts() {
+    if (!this.ghosts) return;
+    this.ghosts.visible = false;
+    this.render();
+  }
+
+  // What a check reads of What changed, from what is drawn: each brick's
+  // index that is drawn in its own colour (not faded) and each ghost drawn,
+  // by the instances' own colours and the ghosts' group (inline.js state).
+  drawnChanges() {
+    const own = new Set();
+    const faded = new Set();
+    const c = new Color();
+    for (const g of this.groups) {
+      const { bricks, fixed } = g.userData;
+      if (!g.instanceColor) continue;
+      for (let k = 0; k < bricks.length; k++) {
+        const i = bricks[k];
+        if (this.d.flags[i] & SCENERY) continue;
+        g.getColorAt(k, c);
+        const mine = fixed >= 0 ? this.colours[fixed] : fixed === -2 ? UNKNOWN : this.colours[this.d.colour[i]] || CLAY;
+        if (Math.abs(c.r - mine.r) + Math.abs(c.g - mine.g) + Math.abs(c.b - mine.b) < 1e-3) own.add(i);
+        else faded.add(i);
+      }
+    }
+    // A part faded on any of its surfaces is not lit.
+    for (const i of faded) own.delete(i);
+    let ghosts = 0;
+    if (this.ghosts && this.ghosts.visible) {
+      const seen = new Set();
+      for (const mesh of this.ghosts.children) for (const i of mesh.userData.ghosts) seen.add(i);
+      ghosts = seen.size;
+    }
+    return { lit: [...own].sort((a, b) => a - b), faded: faded.size, ghosts };
+  }
 
   // What a check can read of the stage: whether the model is drawn, by the
   // share of pixels that are not the background, read the moment after a

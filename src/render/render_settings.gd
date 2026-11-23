@@ -151,6 +151,21 @@ var balance: float = -1.0
 ## quite square (0 exactly, 1 up to PathTracer.SEAT_SHIFT off and SEAT_TURN
 ## degrees turned); below 0, PRODUCT_SEATING.
 var seating: float = -1.0
+## No two parts alike (photoreal8), path traced in the product look: how far
+## each part's colour strays from the next of its colour, by its batch and
+## its age (0 none, 1 as far as the photographed sets' parts do); how
+## unevenly the parts have been handled, some scuffed and dulled and most
+## not (0 none, 1 as the photographed sets'); and how far each stud's logo
+## and top differ from the next (0 none, 1 some rubbed nearly flat). Below
+## 0, StudioRender's PRODUCT_BATCH, PRODUCT_HANDLING and PRODUCT_STUDS.
+var batch: float = -1.0
+var handling: float = -1.0
+var studs: float = -1.0
+## That seating as LEGO's own play lets a part sit (photoreal8): its turn
+## about the vertical kept to the stud grid's and its slide across a little
+## wider, as measured from above (0 as photoreal4 drew it, 1 as measured).
+## Below 0, StudioRender's PRODUCT_PLAY.
+var play: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

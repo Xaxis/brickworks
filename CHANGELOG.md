@@ -15,6 +15,28 @@ whole cycle.
 
 ### Added
 
+- **Change any model with your own Claude.** Every model's page has **With
+  your Claude** beside **Open in Brickworks**: say what should change (or
+  nothing, and Claude asks), press **Copy for Claude**, and paste the message
+  into a chat with Claude and the Brickworks connector. Claude opens a copy in
+  your models, changes it, and shows you; the shared model stays as it was.
+  Publish the copy and its page says it was remixed from the original. On a
+  phone, **Share to Claude** hands the message to the Claude app; with no
+  connector yet, **Connect Claude** keeps the message for you on the connect
+  page. A chat that starts by opening a model is now told how to change what
+  is built, not how to design something new.
+- **What a remix changed, counted and shown.** A remix's page says what
+  it changed from the version it was copied from, under its credit:
+  *What it changed from version 1: 42 parts added, 8 taken away, 3
+  recoloured, 5 moved*, counted by the same rules as Compare in the app,
+  once, when it is shared. **See what changed in 3D** opens the 3D view
+  with **What changed** on: the parts it added, moved or recoloured in
+  their colours, the rest faded, and the parts it took away as faint red
+  ghosts. It is a toggle on the view's bar, off until you press it, on a
+  phone too. A model's **Remixes** tab now draws the line it is part of as
+  a tree: up to the first model, and its remixes three levels down, each
+  card saying what it is a remix of, and of what that was, and what it
+  changed.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,
@@ -162,6 +184,11 @@ whole cycle.
   take them back. Tell it what a set is missing and it marks one count a
   part for all your copies, says each change as it was and as it is, and
   makes a big set whole again in one call.
+- **The site's owner sees whether people go round the loop.** The owner's
+  console counts, a day at a time, how many people discovered something,
+  opened a model, changed one, shared, heard back from somebody and came
+  back, each against the days just before. It reads only what the site
+  counts already: nothing more is kept about anybody.
 
 ### Changed
 

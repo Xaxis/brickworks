@@ -256,10 +256,17 @@ function readable(asked = "") {
   const said = [];
   const top = root ? document.querySelector(root) : document.documentElement;
   if (!top) return said;
+  // Text the page itself marks English on a page that is not: content in
+  // its own language, said so for readers and screen readers alike, such as
+  // a challenge's brief the owner wrote once (landing.js, brief.lang = "en";
+  // rel-m319's site_lang, 2026-11-23). Words the page means to translate
+  // carry no such mark.
+  const page = (document.documentElement.lang || "").toLowerCase();
+  const english = (el) => !page.startsWith("en") && (el.closest("[lang]")?.lang || "").toLowerCase().startsWith("en");
   const walk = document.createTreeWalker(top, NodeFilter.SHOW_TEXT);
   for (let node = walk.nextNode(); node; node = walk.nextNode()) {
     const parent = node.parentElement;
-    if (!parent || parent.closest(SKIP)) continue;
+    if (!parent || parent.closest(SKIP) || english(parent)) continue;
     const pick = parent.closest("#themes [data-pick]")?.dataset.pick;
     if (pick && pick.replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®")
       === node.textContent.trim()) continue;
@@ -268,7 +275,7 @@ function readable(asked = "") {
     if (text.trim()) said.push(text.trim());
   }
   for (const el of [top, ...top.querySelectorAll("[alt], [title], [aria-label], [placeholder]")]) {
-    if (el.closest(SKIP)) continue;
+    if (el.closest(SKIP) || english(el)) continue;
     for (const name of ["alt", "title", "aria-label", "placeholder"]) {
       if (el.hasAttribute(name) && el.getAttribute(name).trim()) said.push(el.getAttribute(name));
     }
@@ -1189,11 +1196,14 @@ async function viewerSaid(browser, code, width, at) {
       state: document.querySelector(".view3d").dataset.state,
       tools: [...document.querySelectorAll(".view3d-tools [data-act]")].map((b) => b.getAttribute("aria-label")),
       bar: document.querySelector(".view3d-tools")?.getAttribute("aria-label") || "",
+      // A remix whose changes are counted has What changed on the bar too (remixdiff).
+      changes: Boolean(document.querySelector(".model-page .picture")?.dataset.changes),
       app: document.querySelector(".view3d-app")?.textContent.trim() || "",
       stage: document.querySelector(".view3d .stage")?.getAttribute("aria-label") || "",
       name: document.querySelector("main h1")?.textContent.trim() || "",
     }));
-    const tools = ["Zoom out", "Zoom in", "Reset the view", "Full screen", "Back to the picture"].map((word) => script(code, word));
+    const tools = ["Zoom out", "Zoom in", "Reset the view", ...(said.changes ? ["What changed"] : []), "Full screen", "Back to the picture"]
+      .map((word) => script(code, word));
     check(said.state === "ready" && JSON.stringify(said.tools) === JSON.stringify(tools) && said.bar === script(code, "3D view")
       && said.app === script(code, "Open in the app"),
       `${where}: ${said.state}, its tools ${said.tools.map((name) => `"${name}"`).join(", ")}, "${said.app}"`);

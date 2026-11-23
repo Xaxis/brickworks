@@ -61,6 +61,17 @@ if [ $merged = 0 ]; then
   for f in $(git diff --name-only --diff-filter=U | grep -E '^locale/.*\.po$'); do
     python3 "$HERE/resolve_po.py" "$f" && git add "$f"
   done
+  # The site's word lists and the docs' picture lists: JSON that every unit appends a block to, so two units
+  # conflict there at every merge (remixdiff after claudelink, 2026-11-23: 85 files held with the translated
+  # pages). Settled by meaning (resolve_json.py: both sides' new keys and ids kept, a value both changed stays a
+  # conflict); the translated pages are then written again from the merged words, so either side will do.
+  for f in $(git diff --name-only --diff-filter=U | grep -E '^(web/_lang|docs-site/pictures)/.*\.json$'); do
+    python3 "$HERE/resolve_json.py" "$f" && git add "$f"
+  done
+  gen=$(git diff --name-only --diff-filter=U | grep -E '^web/(de|fr|es)/.*\.html$')
+  if [ -n "$gen" ] && ! git diff --name-only --diff-filter=U | grep -qE '^web/_lang/'; then
+    git checkout --ours -- $gen && python3 tools/site_lang.py >/dev/null && git add web/de web/fr web/es
+  fi
   if git diff --name-only --diff-filter=U | grep -qx .claude/skills/verify/features.json; then
     git checkout --theirs .claude/skills/verify/features.json && git add .claude/skills/verify/features.json
   fi

@@ -191,6 +191,8 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/room[.]json$/, "share", "room"],
+  // What a remix changed, for its 3D view (api/_remix.js).
+  [/^\/m\/([A-Za-z0-9]{10})\/changes[.]json$/, "share", "changes"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/room[.]json$/, "share", "room"],
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],

@@ -75,11 +75,19 @@
 	font-size: var(--t-tiny); box-shadow: 0 1px 3px var(--shade); pointer-events: none; text-align: center;
 }
 :is(.model-page, .embed, .showcase) .view3d-hint[hidden] { display: none; }
+/* What changed's counts, while it is on (a remix's page, tools/viewer/inline.js). */
+:is(.model-page, .embed, .showcase) .view3d-legend {
+	position: absolute; top: var(--s-3); left: var(--s-3); margin: 0; max-width: calc(100% - 2 * var(--s-3));
+	padding: 6px 12px; border-radius: var(--r-pill); background: var(--panel); color: var(--ink);
+	font-size: var(--t-tiny); box-shadow: 0 1px 3px var(--shade); pointer-events: none;
+}
+:is(.model-page, .embed, .showcase) .view3d-legend[hidden] { display: none; }
 /* A phone's frame has room at its foot for the tools alone: the way into
    the app goes to its head, and the hint above the tools. */
 @container (width < 520px) {
 	:is(.model-page, .embed, .showcase) .view3d-app { top: var(--s-3); bottom: auto; }
 	:is(.model-page, .embed, .showcase) .view3d-hint { top: auto; bottom: calc(var(--s-3) + 46px); }
+	:is(.model-page, .embed, .showcase) .view3d-legend { top: calc(var(--s-3) + 46px); }
 }
 :is(.model-page, .embed, .showcase) .view3d.full, :is(.model-page, .embed, .showcase) .view3d:fullscreen {
 	position: fixed; inset: 0; width: auto; height: auto; aspect-ratio: auto; z-index: 90;
