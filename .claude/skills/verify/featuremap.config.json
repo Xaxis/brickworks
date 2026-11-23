@@ -6989,6 +6989,34 @@
       "entry": "src/dev/studio_start_probe.gd",
       "reach": "tools/probe.sh studio_start_probe -- --pictures=DIR   (windowed, PROBE_SIZE=390x844 too: the first screen opened once signed in, its lists from a stand-in server, the pin pressed lit within 1 s, a pin written meanwhile shown within a minute unasked, Escape, a gallery model as a copy)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a change sent back and taken",
+      "entry": "api/_suggest.js",
+      "reach": "python3 tools/minitest.py tests/test_suggest.py   (suggestedit: each class of edit (add, remove, move, recolour, swap, another step, a step of its own, inside a sub-model, a sub-model of its own) made to 16 real sets of vendor/omr (tests/fixtures/suggest/check.mjs), taken whole, every change ticked, each alone and all but each, read again and held to the model it should be part for part and step for step; nothing taken is the designer's file byte for byte; their header, comments, metas and line ends kept; bound metas and brackets; the bell's lines. node tests/fixtures/suggest/check.mjs vendor/omr/files/*.mpd for every set)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "suggested edits",
+      "entry": "api/_suggestions.js",
+      "reach": "POST /api/share?op=suggest {remix, note}; GET ?op=suggestion&id=N; POST ?op=suggestion_merge {id, n, take}; POST ?op=suggestion_close; GET ?op=suggestions&id=X; a publish's {suggestion}   (supabase/suggestions.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/suggestions.sql --dry --try=tools/suggestions_try.sql --table=model_suggestions: sent, sent again, refused, heard of by the designer at once, listed for them alone, taken as a version, heard of by the remixer)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a change sent back on a model's page",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<a remix> as its builder: Send your change, with a note; https://brickworks.diy/m/<id> as its designer: the changes sent to it with Open it in the studio; and once a version took one, With [part of] X's change from their remix R, version N under the credit and in its Log",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "suggest browser flow",
+      "entry": "tools/web/suggest_flow.mjs",
+      "reach": "node tools/web/suggest_flow.mjs --out=DIR   (no network: tests/fixtures/suggest/world.mjs through the real handlers; at 390 and 1280: Send from the remix's page, nobody else sees the box, the designer's header counts it within 60 s with no reload, the list and its studio link, the credit under the credit and in the Log after a version takes part of it)",
+      "area": "web"
     }
   ]
 }

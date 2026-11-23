@@ -307,6 +307,8 @@ import { changedLineHtml, changesAnswer, countAfter, ownChanges, treeHtml, treeO
 import { NOT_YET as WIP_NOT_YET, SHOWN as WIP_SHOWN, finish as finishWip, isWip, postVersion, wipReady } from "./_wip.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
+import { checkSuggestion, closeAnswer, listOf as suggestionsOf, markTaken, mergeAnswer, sendSuggestion,
+  suggestionAnswer } from "./_suggestions.js";
 import { freshPool, heldOf, keyed, missingOf, ownedKey, poolOf, readShard, shardOf } from "./_owned.js";
 // Every set in the catalogue, a page each (sets364), and the picture drawn
 // of one LDraw has no model of.
@@ -1579,6 +1581,8 @@ ${header}
       ${fromLine}
       ${changedLine}
       ${basedHtml(model.based || [])}
+      ${set ? "" : suggestedLine(id, model.suggested, at)}
+      ${set || old ? "" : `<div class="suggest-box" id="suggest-box" data-model="${id}"${parent?.id ? ` data-remix-of="${parent.id}"` : ""} hidden></div>`}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
@@ -1853,6 +1857,29 @@ const logged = (versions) => (versions[0]?.n ?? 1) > 1 || versions.some((one) =>
 /// then every version, newest first, each with its small picture (the one
 /// kept with it, /m/X/v/N.webp), its date, what changed and its note, work
 /// in progress and the finished one marked, each opening its own page.
+/// A change a remixer sent back that version [taken.n] took in
+/// (api/_suggestions.js listOf's taken), as its Log and its credit say it:
+/// "With Ann’s change from their remix “Red car, wider”", or "With part of".
+function suggestedWords(taken, at = "") {
+  const handle = /^[a-z0-9-]{3,24}$/.test(String(taken.by?.handle || "")) ? taken.by.handle : null;
+  const name = String(taken.by?.name || taken.by?.handle || say("a remixer"));
+  const who = handle ? `<a href="${at}/u/${handle}">${escapeHtml(name)}</a>` : escapeHtml(name);
+  const remix = /^[A-Za-z0-9]{10}$/.test(String(taken.remix || ""))
+    ? `<a href="${at}/m/${taken.remix}">“${escapeHtml(String(taken.name || ""))}”</a>` : `“${escapeHtml(String(taken.name || ""))}”`;
+  return sayHtml(taken.whole ? "With {who}’s change from their remix {remix}" : "With part of {who}’s change from their remix {remix}",
+    { who, remix });
+}
+
+/// Under the model's credit: the changes its versions took in from
+/// remixes, newest first, three at most and the rest counted; none, nothing.
+function suggestedLine(id, taken = [], at = "") {
+  if (!Array.isArray(taken) || taken.length === 0) return "";
+  const shown = taken.slice(0, 3).map((one) => `<li>${suggestedWords(one, at)}, `
+    + `<a href="${at}/m/${id}/v/${Number(one.n)}">${asText(say("version {n}", { n: Number(one.n) }))}</a></li>`);
+  const more = taken.length > 3 ? `<li>${asText(say("and {n} more in its Log", { n: taken.length - 3 }))}</li>` : "";
+  return `<ul class="suggested-credit" aria-label="${asText(say("Changes taken in from remixes"))}">${shown.join("")}${more}</ul>`;
+}
+
 function versionsSection(id, versions, shown, at = "", model = {}) {
   const newest = versions[0]?.n ?? 1;
   if (!logged(versions) || !shown) return "";
@@ -1891,7 +1918,9 @@ function versionsSection(id, versions, shown, at = "", model = {}) {
       + ` <span class="when">${when(one.at)}</span>${marks ? ` ${marks}` : ""}</p>`
       + `${words ? `<p class="log-changed">${escapeHtml(words)}</p>`
         : one.n === 1 ? `<p class="log-changed">${asText(say("The first version."))}</p>` : ""}`
-      + `${one.note ? `<p class="log-note"><q>${escapeHtml(one.note)}</q></p>` : ""}</div></li>`;
+      + `${one.note ? `<p class="log-note"><q>${escapeHtml(one.note)}</q></p>` : ""}`
+      + `${(model.suggested || []).filter((taken) => Number(taken.n) === one.n)
+        .map((taken) => `<p class="log-credit">${suggestedWords(taken, at)}</p>`).join("")}</div></li>`;
   }).join("");
   return `<section class="versions" id="versions"${panelAttrs("versions")}><h2 class="visually-hidden" id="versions-h">${asText(say("Log"))}</h2>
     ${building}
@@ -2459,6 +2488,17 @@ async function read(request, response) {
 
   if (op === "mine") return mine(request, response, origin);
   if (op === "made") return madeShown(request, response);
+  // A change a remixer sent back (api/_suggestions.js): one, for its
+  // designer or its sender; and a model's, open ones for its designer alone.
+  if (op === "suggestion") {
+    response.setHeader("Cache-Control", "private, no-store");
+    return response.status(200).json(await suggestionAnswer(await verify(bearer(request), request), request.query, { getFile }));
+  }
+  if (op === "suggestions") {
+    response.setHeader("Cache-Control", "private, no-store");
+    const viewer = bearer(request) ? (await verify(bearer(request), request)).sub : null;
+    return response.status(200).json(await suggestionsOf(id, viewer));
+  }
   if (op === "tested") return testedOwn(request, response);
   if (op === "clip_need") return clipNeed(request, response);
   if (op === "sweep") return sweep(request, response);
@@ -2534,7 +2574,7 @@ async function read(request, response) {
     // Its clip (unit turntable): the model turning in its link's preview,
     // named only on the newest version's page and while it is of that
     // version; none read is none, and the picture card it always had.
-    const [mark, photos, next, { counted, parts }, lists, based, clip, tree, alts] = await Promise.all([
+    const [mark, photos, next, { counted, parts }, lists, based, clip, tree, alts, suggested] = await Promise.all([
       orUnknown("share", markOf(db, id, shown.n)),
       orUnknown("share", photosWhere(`model=eq.${id}`, shownPublicly)), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
@@ -2546,9 +2586,13 @@ async function read(request, response) {
       // changed (supabase/remix_changes.sql): null before that, and the
       // page is as it was.
       page.library ? null : orUnknown("share", treeOf(id)),
-      orUnknown("share", altRowsOf([id]))]);
+      orUnknown("share", altRowsOf([id])),
+      // The changes remixers sent back that its versions took in
+      // (supabase/suggestions.sql): credited under its credit and in its Log.
+      page.library ? null : orUnknown("share", suggestionsOf(id))]);
     // What it is based on, under its remix line and in its structured data.
     page.based = based || [];
+    page.suggested = Array.isArray(suggested?.taken) ? suggested.taken : [];
     page.tree = tree;
     // And the real set (or the few) its parts all come from, counted when
     // it was published (api/_alts.js): a line under its credit, or the
@@ -3653,6 +3697,8 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // motions' names, from the text itself (supabase/motions.sql).
   const moves = checkMoves(body.moves);
   const motions = motionsIn(model);
+  // A change a remixer sent back that this version takes (api/_suggestions.js).
+  const suggestion = checkSuggestion(body.suggestion);
   const name = cleanText(body.name, MAX_NAME);
   if (!name) throw new Refusal("give the model a name to share it under");
   // A credit is the person's profile, by its name, when they have one shown
@@ -3888,6 +3934,9 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // counted from those needs against every set's inventory: after the
   // answer, so the publish never waits on it.
   if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
+  // The change it takes, marked taken by this version: its sender is
+  // named in its Versions and hears of it. Never stops the publish.
+  const suggested = suggestion && existing ? await markTaken(owner, id, n, suggestion) : null;
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const shownKept = await keepMadeShown(id, owner, shownAsked);
@@ -3936,7 +3985,8 @@ export async function publishModel(claims, body, request, { test = isTestAccount
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
     version_url: `${origin}/m/${id}/v/${n}`, tested: kept, moves: movesKept.moves, motions: movesKept.motions,
-    made_with: madeKept, made_with_shown: shownKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}), ...links(origin, id),
+    made_with: madeKept, made_with_shown: shownKept, modelled_by: modelledKept, ...(prompt ? { prompt } : {}),
+    ...(suggested ? { suggestion: suggested } : {}), ...links(origin, id),
   } };
 }
 
@@ -4505,6 +4555,15 @@ async function handler(request, response) {
     if (op === "bases") return await basesPut(request, response);
     if (op === "clip") return await clipPut(request, response);
     if (op === "made") return await madeShown(request, response);
+    if (op === "suggest") {
+      const { status, answer } = await sendSuggestion(await verify(bearer(request), request), request.body, { getFile,
+        origin: originOf(request) });
+      return response.status(status).json(answer);
+    }
+    if (op === "suggestion_merge") {
+      return response.status(200).json(await mergeAnswer(await verify(bearer(request), request), request.body, { getFile }));
+    }
+    if (op === "suggestion_close") return response.status(200).json(await closeAnswer(await verify(bearer(request), request), request.body));
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {
