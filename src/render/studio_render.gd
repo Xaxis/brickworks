@@ -151,9 +151,11 @@ const PRODUCT_TONE := 0.5
 const PRODUCT_BALANCE := 1.0
 ## No two parts alike (photoreal8, RenderSettings batch, handling, studs and
 ## play): each part's colour batch, how much each has been handled, each
-## stud's logo, and each part's seat, as far apart as the photographed parts
-## are. Judged on the photo bench one at a time and together
-## (docs/RENDERING.md 5l).
+## stud's logo, and each part's seat, no further apart than the photographed
+## parts are. Judged on the photo bench one at a time and together
+## (docs/RENDERING.md 5l): batch, studs and play each lifted the close-ups
+## beyond the judge's noise and are the product look's own; handling lifted
+## the sets a little and lowered the close-ups more, so it is 0.
 const PRODUCT_BATCH := 1.0
 const PRODUCT_HANDLING := 0.0
 const PRODUCT_STUDS := 1.0

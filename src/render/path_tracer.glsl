@@ -670,25 +670,32 @@ vec3 linear_of(vec3 o) {
 		dot(lms, vec3(-0.0041960863, -0.7034186147, 1.7076147010)));
 }
 
+// A batch's own bell (photoreal8): part_bell held within 1.5 sd, as a batch
+// further off than LEGO's tolerance never leaves the factory. Unheld,
+// three_2x2_top's green brick was drawn 5.9 from its photograph's colour
+// (CIEDE2000; 2.7 with no stray).
+float batch_bell(uint which, uint salt) {
+	return clamp(part_bell(which, salt), -0.5, 0.5);
+}
+
 vec3 batch_of(vec3 body, uint which, float amount) {
 	float lum = dot(body, vec3(0.2126, 0.7152, 0.0722));
 	float spread = max(max(body.r, body.g), body.b) - min(min(body.r, body.g), body.b);
 	float pale = smoothstep(0.12, 0.55, lum) * (1.0 - smoothstep(0.04, 0.2, spread));
 	vec3 lab = oklab_of(body);
-	float turn = radians(12.0) * part_bell(which, 1u) * amount;
+	float turn = radians(12.0) * batch_bell(which, 1u) * amount;
 	vec2 ab = vec2(lab.y * cos(turn) - lab.z * sin(turn), lab.y * sin(turn) + lab.z * cos(turn));
-	ab *= 1.0 + 0.24 * part_bell(which, 2u) * amount;
-	ab.y += 0.012 * part_bell(which, 4u) * amount * pale;
+	ab *= 1.0 + 0.24 * batch_bell(which, 2u) * amount;
+	ab.y += 0.012 * batch_bell(which, 4u) * amount * pale;
 	vec3 out_colour = max(linear_of(vec3(lab.x, ab)), vec3(0.0));
-	return out_colour * (1.0 + 0.36 * (1.0 - 0.7 * pale) * part_bell(which, 3u) * amount);
+	return out_colour * (1.0 + 0.36 * (1.0 - 0.7 * pale) * batch_bell(which, 3u) * amount);
 }
 
 // How much more a part has been handled than its set's age says
 // (photoreal8), 0 to [param amount]: most parts hardly at all, a few a lot
 // (the square of the part's own number), as the bench's set photographs
-// show it: of six white faces side by side on one truck, the door's has a
-// dark scuff and specks (L* spread 15 across one), the rest are nearly
-// clean (0.2 to 3.8).
+// show it: of six white faces side by side on one truck, one is scuffed and
+// specked (L* spread 15 across it), the rest nearly clean (0.2 to 3.8).
 float handled_of(uint which, float amount) {
 	float u = float(pcg(which * 3266489917u + 668265263u) & 0xffffu) / 65535.0;
 	return amount * u * u;
