@@ -17474,3 +17474,13 @@ msgstr "%d × %s, %s"
 
 msgid "Edit a copy"
 msgstr "Editar una copia"
+
+# ux15: a set's sub-assembly on a phone
+msgid "Edit inside %s, a part at a time"
+msgstr "Editar dentro de %s, pieza a pieza"
+
+msgid "%s selected, %d parts"
+msgstr "%s seleccionado, %d piezas"
+
+msgid "hold, then Edit inside, to change one"
+msgstr "mantén pulsado y luego Editar dentro, para cambiar una"

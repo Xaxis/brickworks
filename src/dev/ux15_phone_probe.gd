@@ -556,12 +556,30 @@ func _own_version() -> void:
 		(Time.get_ticks_msec() - since) / 1000.0, str(result.get("error", ""))])
 	await _until_still(240)
 	await _step("p17_01_opened", "the set opened as a copy of its own")
-	# One part, near the middle of the screen, tapped and recoloured.
+	# One part, near the middle of the screen, tapped and recoloured. A
+	# quick tap, the finger up in the frame it went down: three frames of a
+	# 741-part set drawn in software outlast a hold (Main.HOLD_MS), and the
+	# walk's tap read as one.
 	var brick: BrickWorld.Brick = _brick_near(_model_middle())
 	if brick != null:
-		await _tap(_camera.unproject_position(brick.transform.origin))
-		await _frames(20)
+		await _quick_tap(_camera.unproject_position(brick.transform.origin))
 	await _step("p17_02_selected", "a part tapped")
+	var took: int = _builder.selection.size()
+	var said: String = str(_phone.call("hint")) if _phone != null else ""
+	_check15("a tap takes the part's sub-assembly, and the line says how to change one (%d, %s)" % [took, said],
+		took == 1 or said.contains("Edit inside"))
+	if took > 1 and brick != null:
+		await _hold(_camera.unproject_position(brick.transform.origin), 1.0)
+		await _step("p17_02b_actions", "a finger held on it: its actions")
+		var inside: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_row_enter_assembly")
+		_check15("its actions offer Edit inside", inside is Control and (inside as Control).is_visible_in_tree())
+		if inside is Control:
+			await _press_at(_centre(inside as Control))
+			await _frames(30)
+		await _quick_tap(_camera.unproject_position(brick.transform.origin))
+		await _step("p17_02c_inside", "Edit inside, the part tapped again")
+		_check15("inside it, a tap takes the part alone (%d)" % _builder.selection.size(),
+			_builder.selection.size() >= 1 and _builder.selection.size() < took)
 	await _tool("colour")
 	await _step("p17_03_colours", "Colour tapped")
 	var was: int = brick.color_code if brick != null else -1
@@ -685,6 +703,13 @@ func _pinch(at: Vector2, from: float, to: float) -> void:
 	await _frames(2)
 	_touch(0, a, false)
 	await _frames(6)
+
+
+## A finger down and up in one frame.
+func _quick_tap(at: Vector2) -> void:
+	_touch(0, at, true)
+	_touch(0, at, false)
+	await _frames(20)
 
 
 func _hold(at: Vector2, seconds: float) -> void:
