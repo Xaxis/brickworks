@@ -4618,6 +4618,18 @@ msgstr "Unter diesem Link geteilt und in der Galerie gezeigt. Veröffentliche er
 msgid "Brickworks took it out of the gallery, so it cannot be listed there."
 msgstr "Brickworks hat es aus der Galerie genommen, daher kann es dort nicht gezeigt werden."
 
+msgid "Share progress"
+msgstr "Fortschritt teilen"
+
+msgid "Publish this version as work in progress: listed with your name, in your followers' feeds and in its own Talk thread, kept out of Top and the challenges until you publish it as finished."
+msgstr "Diese Version als „In Arbeit“ veröffentlichen: mit deinem Namen gezeigt, in den Feeds deiner Follower und in einem eigenen Thema im Forum, nicht unter „Beste“ und nicht in den Wettbewerben, bis du es als fertig veröffentlichst."
+
+msgid "Work in progress is shared in the gallery and Talk, which are for people 13 and over."
+msgstr "Unfertiges wird in der Galerie und im Forum geteilt, und beide sind für Menschen ab 13."
+
+msgid "Brickworks took it out of the gallery, so it cannot be shared there."
+msgstr "Brickworks hat es aus der Galerie genommen, daher kann es dort nicht geteilt werden."
+
 msgid "Signing you in… %s once that is done."
 msgstr "Du wirst angemeldet… %s, sobald das erledigt ist."
 
