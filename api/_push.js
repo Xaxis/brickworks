@@ -64,7 +64,8 @@ import { createCipheriv, createECDH, createHmac, createPrivateKey, randomBytes, 
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { db, dbConfigured, reach } from "./_db.js";
 import { SITE_LANGS, Unacceptable, inLanguage, siteWords } from "./_directory.js";
-import { noticeSaid } from "./_notifications.js";
+import { PINNABLE, noticeSaid } from "./_notifications.js";
+import { pinnedAmong } from "./_comments.js";
 import { blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
 import { say } from "./_card.js";
 
@@ -312,6 +313,8 @@ export async function sendDue(request, { most = 25 } = {}) {
       await again(all);
       continue;
     }
+    // A comment on a part says so, as Notifications does.
+    await pinnedAmong(all.filter((row) => PINNABLE.has(row?.kind)));
     await Promise.all(devices.map(async (device) => {
       const shown = new Set(rowsWithout(device.rows, handles, hidden));
       // A push a model, its newest row's words, with how many came with it.

@@ -37,6 +37,93 @@ whole cycle.
   a tree: up to the first model, and its remixes three levels down, each
   card saying what it is a remix of, and of what that was, and what it
   changed.
+- **Comment on a part.** On a shared model's page, in its 3D view, or in
+  the app's viewer, right-click a part (or touch and hold it, or press
+  Shift+F10 with the part in the middle) and choose **Comment on this
+  part**. The comment keeps the part and says where it is, "on the 2 × 4
+  brick, step 12", and a small numbered dot marks the part in 3D; pressing
+  the line turns the view to it. On a newer version the dot stays on the
+  part, follows it if it moved a little ("moved since"), and is never put
+  on a part it was not about. The designer sees how many are open when
+  they open the model in the app, lists them, lights and frames each part,
+  and marks one **Resolve**d, which folds it away on the page. Notifications
+  say it is "on a part".
+
+- **Post it elsewhere.** On your shared model's page, **Share** offers a
+  kit for r/legomoc, r/lego, Instagram, LEGO® Ideas, Rebrickable and
+  Flickr, each in that place's own form and checked against its rules,
+  every one with your model's link: Reddit's title with its flair (SEC and
+  the designer's credit for somebody else's design) and the words to
+  paste; Instagram's 1080 × 1350 cover, a 1080 × 1920 turn and a caption of
+  five hashtags at most; LEGO® Ideas' pieces, pictures and a main picture
+  with no text checked, saying what fails; Rebrickable's parts CSV; and
+  Flickr's largest picture. Your browser makes it from what the page has
+  published; a phone hands the files to its share sheet, a computer saves
+  one zip. Brickworks posts nothing anywhere: you post it yourself.
+- **Show your build, where the build ends.** The last step of Build it
+  says how many people have built the model and offers **Show your
+  build**: the camera on a phone, a photo on a computer, a line about it
+  if you like, and **Post**. It goes on the model's page, first in its
+  Builds, and its designer is told. Not signed in, Post asks you to sign
+  in right there and brings you back to the last step with your photo
+  still chosen. What the camera wrote into the photo is taken out before
+  anyone sees it. The viewer's timeline offers the same at its last step.
+- **What a model is built from.** When you publish a model, Brickworks
+  counts it against every LEGO® set and says under its name what it found:
+  *An alternate build of 31009 Small Cottage: every part from the set*, *of
+  42115 and 42054* when a few sets together hold it, or *97% from 31009*.
+  Each set's page lists what people built from it under **Built from this
+  set**, with how much of each came from the set, beside the models their
+  designers said were based on it. A set nobody has built anything else
+  from yet says so, with **Build something from it**. Say a model is an
+  alternate build of a set that lacks some of its parts, and your own page
+  tells you how many.
+- **The month's challenge in the studio.** While a challenge is open, one
+  small line over the model names it and its days left; press it and its
+  rules are ticked on the model as you build (*112 of 150 parts*, *only
+  parts from set 31009*, *Tested*), each one it breaks saying what to
+  change. They are the rules the site checks, ticked the same way. When the
+  model keeps them, Share says **Enter** under Publish, with how you built
+  it: one press publishes it in the gallery with your name and enters it.
+  **×** hides the line for that challenge.
+- **The fan vote two at a time.** On the challenge's page, **Compare them
+  two at a time, in 3D** shows two entries side by side, one above the
+  other on a phone, each turning, with nobody's name and no counts. Keep
+  the one you like more and the next comes beside it, until one is left
+  to vote for.
+- **A quick build every week.** Beside the month's challenge, each week
+  has a short brief and a template to start from, an 8×8 plate. **Start**,
+  on its page or in its notice, opens the studio on a copy of the template
+  with the brief said above the model. Publish it in the gallery that week
+  and it is entered: the publish dialog says so, and one tap keeps it out.
+  There is no vote. Its page shows every entry, the newest first, each
+  turning in 3D on a tap, and when the week ends Brickworks stacks them all
+  into one model, each entry its own sub-model credited to its maker, to
+  turn, open or build. Weeks entered in a row are a **Streak** on your
+  profile. The owner sets them in the console's Challenges.
+- **Share your model while you build it.** The Share panel has **Share
+  progress** beside Publish: one press shares this version as work in
+  progress, with what changed. Your followers see each version in their
+  feed, and the model gets one Show and tell thread in Talk that gains a
+  post a version, with its picture, your note and what changed. While it is
+  work in progress it is in the gallery's Newest, marked, and kept out of
+  Top, This week's pick and the challenges. **Publish as finished**, or
+  **Mark it finished** on its page, ends it, and it ranks as any model.
+- **A model's Log.** A shared model's Versions tab is now its **Log**:
+  every version, the newest first, each with its picture, the day, what
+  changed and its note, and a link to that version.
+
+- **brickworks.diy's home is a feed.** What builders make and say, one post
+  after another: new builds, threads in Talk with their latest reply, this
+  month's challenge with its entries, builders to follow and photos of
+  real builds. Each build says how it was made, with a link to how to do
+  it, and opens in the studio, as a remix of your own, as steps to build,
+  or as its parts to buy, from the post. Press **3D** to turn it where its
+  picture was. Like, comment and follow from the post; signed out, you
+  sign in there and go on where you were. **Try it here** puts the studio
+  itself in the feed. Signed in, the feed has tabs (**For you**,
+  **Following**, **New**) and **Share a build** opens the share panel for
+  your last model.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,
@@ -192,6 +279,16 @@ whole cycle.
 
 ### Changed
 
+- **The home page opens on the community.** Its first screen, on a phone
+  and on a computer, is a search over models, builders and real sets (what
+  it finds shows as you type), **Start building**, this month's challenge
+  with its days left, and a row of the gallery's models with their
+  pictures, in tabs: Top, its first card this week's pick, New, and real
+  sets in 3D. The models are in the page as it arrives, so they show at
+  once and nothing moves when the newest arrive. Under them, once the
+  builders' forum has talk, its newest threads. The header on every page
+  leads with Gallery, Talk and Challenges, then Docs; Plans and the desktop
+  app are in the menu and the footer.
 - **The loading page builds its wall in 3D, with a tip under it.** While
   the app loads in a browser, real-looking bricks drop onto a baseplate and
   seat, course by course, as the app arrives, and the wall turns slowly

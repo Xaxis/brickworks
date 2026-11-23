@@ -301,6 +301,10 @@ function viewed() {
 // counter's own or the page's machinery.
 const ACTS = new Set(["share", "people", "collection", "models", "account", "plans", "otp", "orangecheck"]);
 const NOT_ACTS = new Set(["tally", "social_visit", "notice", "feed_count", "seen", "me"]);
+// The acts a page says itself, which no request of the API's does: a kit
+// to post a model elsewhere, taken, for each place (web/post-kit.js).
+const KIT_ACTS = ["share.kit_legomoc", "share.kit_lego", "share.kit_instagram", "share.kit_ideas", "share.kit_rebrickable",
+  "share.kit_flickr"];
 
 /// The page's own fetch, watched for writes to the site's API: their name
 /// and op, whether they went, never what they sent or got; and the bearer
@@ -404,6 +408,8 @@ function watchStudio() {
   let rendering = null;
   let booklet = null;
   let together = null;
+  // Pins resolved in the studio (src/ui/part_pins.gd), counted as they go.
+  let resolves = Number(window.brickworksPins?.resolves) || 0;
   let controls = {};
   const shown = new Set();
 
@@ -484,6 +490,11 @@ function watchStudio() {
     } else if (together && !room?.live) {
       one("run", "together", now - together, true);
       together = null;
+    }
+    const pins = Number(window.brickworksPins?.resolves) || 0;
+    for (; resolves < pins; resolves += 1) {
+      one("run", "pin_resolved", 0, true);
+      acted("run", "pin_resolved");
     }
     // The controls shown, each once a page.
     controls = window.brickworksControls && typeof window.brickworksControls === "object" ? window.brickworksControls : {};
@@ -634,6 +645,15 @@ function start() {
     addEventListener("brickworks:signed-in", () => {
       count("act", "account.signed_in", { ok: true });
       acted("act", "account.signed_in");
+    });
+    // A kit to post a model elsewhere, taken (web/post-kit.js): made in
+    // the browser, so no request of the API's says it. Each place its own
+    // act, and only these (tools/insights_names.py reads KIT_ACTS).
+    addEventListener("brickworks:kit", (event) => {
+      const name = `share.kit_${event.detail?.place}`;
+      if (!KIT_ACTS.includes(name)) return;
+      count("act", name, { ok: true });
+      acted("act", name);
     });
   }
   setInterval(() => {

@@ -58,6 +58,16 @@ const PATHS: Dictionary[StringName, String] = {
 	&"SavedModelsDialog": "res://src/ui/saved_models_dialog.gd",
 	&"SharePanel": "res://src/ui/share_panel.gd",
 	&"ShareView": "res://src/ui/share_view.gd",
+	# partpins: comments on a part of a shared model, made when an answer
+	# says there are some (Main._part_pins_now): where each is, the dots,
+	# the viewer's menu on a part, the studio's notice and list.
+	&"PartPins": "res://src/ui/part_pins.gd",
+	&"PartPinsPanel": "res://src/ui/part_pins_panel.gd",
+	&"PinPlace": "res://src/net/pin_place.gd",
+	# The month's challenge in the studio: its line over the model and its
+	# rules ticked on it.
+	&"ChallengeLine": "res://src/ui/challenge_line.gd",
+	&"ChallengeRules": "res://src/net/challenge_rules.gd",
 	&"SimulatePanel": "res://src/ui/simulate_panel.gd",
 	&"TogetherDialog": "res://src/ui/together_dialog.gd",
 	# What they make: Brick Art, figures, motions played, the booklet.

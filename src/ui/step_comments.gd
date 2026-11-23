@@ -22,6 +22,13 @@
 ## words are said in place of the box, with a way to the model's page to
 ## sign in when nobody is. This only shows and says what was pressed:
 ## main.gd asks the server and sends (_comments_for_view).
+##
+## A comment on a part (partpins, 2026-11-23) is written from the menu on a
+## part (PartPins): the panel opens on the box with a line saying which part
+## it goes on ("On the 2 × 4 brick") and Cancel. Listed, such a comment says
+## where it is in a line of its own that turns the view to its part ("On
+## the 2 × 4 brick, step 12"), beside its number on the model; a resolved one
+## is folded under Resolved.
 class_name StepComments
 extends Control
 
@@ -32,6 +39,8 @@ signal opened
 signal send_wanted(step: int, body: String)
 ## The model's page, to sign in there.
 signal page_wanted
+## A comment on a part's line was pressed: its part shown (PartPins).
+signal pin_pressed(one: Dictionary)
 
 ## The most a comment says, as the server takes it.
 const LONGEST := 1000
@@ -54,6 +63,14 @@ var asking: bool = false
 ## Where the panel may go, in the host's coordinates: the part of the
 ## window the model is seen in.
 var area: Callable = Callable()
+## Whether the server keeps comments on a part (its answer's pins).
+var pins: bool = false
+## The part a comment being written goes on, as a pin sends it (PartPins
+## part_of: {part, colour, at, ...}), or {} for one on the step.
+var aiming: Dictionary = {}
+## How a comment on a part is said where it is listed (PartPins.line_of):
+## {words, number, pressable, resolved}. Unset, none is said.
+var pin_line: Callable = Callable()
 
 ## The count, to put on the step: the host adds it where it belongs.
 var pill: Button
@@ -71,6 +88,16 @@ var _close: Button
 var _pt: float = 1.0
 var _shown: Array = []
 var _sending: bool = false
+var _aim_row: HBoxContainer
+var _aim_words: Label
+var _aim_cancel: Button
+## Resolved comments on parts, under their own line, folded until opened.
+var _fold: Button
+var _folded: bool = true
+var _resolved_shown: int = 0
+var _focus_due: bool = false
+## Each listed pin's line that is pressed, by its number.
+var _pin_buttons: Dictionary = {}
 
 const MONTHS: Array[String] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
 	"Oct", "Nov", "Dec"]
@@ -129,6 +156,18 @@ func _build_panel() -> void:
 	_sign_in.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_sign_in.pressed.connect(func() -> void: page_wanted.emit())
 	column.add_child(_sign_in)
+	_aim_row = HBoxContainer.new()
+	_aim_row.visible = false
+	column.add_child(_aim_row)
+	_aim_words = Label.new()
+	_aim_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_aim_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_aim_words.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_aim_words.modulate = Color(1.0, 0.86, 0.45)
+	_aim_row.add_child(_aim_words)
+	_aim_cancel = _button("Cancel", "Write a comment on the step instead of on this part")
+	_aim_cancel.pressed.connect(cancel_aim)
+	_aim_row.add_child(_aim_cancel)
 	_write = HBoxContainer.new()
 	column.add_child(_write)
 	_box = LineEdit.new()
@@ -174,11 +213,11 @@ func fit(pt: float, pill_points: float = 16.0) -> void:
 	_list.add_theme_constant_override("separation", roundi(10.0 * _pt))
 	_write.add_theme_constant_override("separation", roundi(8.0 * _pt))
 	_title.add_theme_font_size_override("font_size", roundi(18.0 * _pt))
-	for words: Label in [_why, _said]:
+	for words: Label in [_why, _said, _aim_words]:
 		words.add_theme_font_size_override("font_size", roundi(15.0 * _pt))
 	_box.add_theme_font_size_override("font_size", roundi(16.0 * _pt))
 	_box.custom_minimum_size = Vector2(0.0, 44.0 * _pt)
-	for button: Button in [_close, _send, _sign_in]:
+	for button: Button in [_close, _send, _sign_in, _aim_cancel]:
 		button.add_theme_font_size_override("font_size", roundi(16.0 * _pt))
 		button.custom_minimum_size = Vector2(0.0, 44.0 * _pt)
 		_face(button, Color(0.78, 0.06, 0.18) if button == _send else Color(1, 1, 1, 0.12))
@@ -208,6 +247,9 @@ func show_answer(answer: Dictionary) -> void:
 	comments = answer["comments"] if answer.get("comments") is Array else []
 	you = answer["you"] if answer.get("you") is Dictionary else {}
 	taking = answer.get("open", true) != false
+	pins = answer.get("pins") is bool and bool(answer["pins"])
+	if not pins:
+		aiming = {}
 	_redraw()
 
 
@@ -271,9 +313,40 @@ func open() -> void:
 
 func close() -> void:
 	_panel.visible = false
+	aiming = {}
 	if _box.has_focus():
 		_box.release_focus()
 	set_process(false)
+
+
+## Open on the box for a comment on [param part] (PartPins.part_of), saying
+## so in [param words] ("On the 2 × 4 brick"), with Cancel.
+func aim(part: Dictionary, words: String) -> void:
+	if not known or part.is_empty():
+		return
+	if not _panel.visible:
+		open()
+	aiming = part
+	_aim_words.text = words
+	_said.text = ""
+	# Typed into at once, here or once who is here is found out (asking).
+	_focus_due = true
+	_fill()
+
+
+## The comment goes on the step again, not on a part.
+func cancel_aim() -> void:
+	aiming = {}
+	if _panel.visible:
+		_fill()
+		if _write.visible:
+			_box.grab_focus.call_deferred()
+
+
+## Whether [param one] is a comment on a part its model's builder said was
+## done with.
+static func resolved(one: Dictionary) -> bool:
+	return (one.get("resolved") is bool and bool(one["resolved"])) or one.get("resolved_at") is String
 
 
 ## The panel's words: the step's comments, then the box or why there is none.
@@ -282,11 +355,38 @@ func _fill() -> void:
 	for child: Node in _list.get_children():
 		_list.remove_child(child)
 		child.queue_free()
-	_shown = on_step()
+	_pin_buttons.clear()
+	_fold = null
+	_shown = []
+	var folded_away: Array = []
+	for one: Variant in on_step():
+		if (one as Dictionary).get("pin") is Dictionary and resolved(one as Dictionary):
+			folded_away.append(one)
+		else:
+			_shown.append(one)
 	var wide: float = _width() - 24.0 * _pt
 	for one: Variant in _shown:
 		_list.add_child(_entry(one as Dictionary, wide))
-	if _shown.is_empty():
+	# Resolved: kept, and folded away under their own line until opened.
+	_resolved_shown = 0
+	if not folded_away.is_empty():
+		_fold = _button(("Resolved (%d)" % folded_away.size()) if _folded else "Hide resolved",
+			"The comments on parts its builder has dealt with")
+		_fold.add_theme_font_size_override("font_size", roundi(14.0 * _pt))
+		_fold.custom_minimum_size = Vector2(0.0, 36.0 * _pt)
+		_face(_fold, Color(1, 1, 1, 0.08))
+		_fold.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		_fold.pressed.connect(func() -> void:
+			_folded = not _folded
+			_fill())
+		_list.add_child(_fold)
+		if not _folded:
+			for one: Variant in folded_away:
+				var entry: Control = _entry(one as Dictionary, wide)
+				entry.modulate = Color(1, 1, 1, 0.6)
+				_list.add_child(entry)
+				_resolved_shown += 1
+	if _shown.is_empty() and folded_away.is_empty():
 		var none := Label.new()
 		none.text = "No comments on the whole model yet." if step == 0 \
 			else "No comments on this step yet."
@@ -295,6 +395,13 @@ func _fill() -> void:
 		_list.add_child(none)
 	var may: bool = bool(you.get("may_write", false))
 	_write.visible = may and not asking
+	_aim_row.visible = not aiming.is_empty() and _write.visible
+	if _focus_due and _write.visible:
+		_focus_due = false
+		_box.grab_focus.call_deferred()
+	_box.placeholder_text = "Say something about this part" if _aim_row.visible else "Add a comment"
+	_send.tooltip_text = "Add your comment on this part" if _aim_row.visible \
+		else "Add your comment on this step"
 	_why.text = "One moment…" if asking else ("" if may else str(you.get("why_not", "")))
 	if not asking and not may and _why.text.is_empty():
 		_why.text = "Comments cannot be added here just now."
@@ -337,6 +444,11 @@ func _entry(one: Dictionary, wide: float) -> Control:
 		said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		said.custom_minimum_size = Vector2(wide, 0.0)
 		entry.add_child(said)
+	# On a part: where it is, beside its number on the model, pressed to
+	# turn the view to it; "On version 2" for a part not in the model shown.
+	var line: Dictionary = pin_line.call(one) if pin_line.is_valid() and one.get("pin") is Dictionary else {}
+	if not line.is_empty():
+		entry.add_child(_pin_row(line, one, wide))
 	var body := Label.new()
 	body.text = str(one.get("body", ""))
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -344,6 +456,56 @@ func _entry(one: Dictionary, wide: float) -> Control:
 	body.add_theme_font_size_override("font_size", roundi(16.0 * _pt))
 	entry.add_child(body)
 	return entry
+
+
+func _pin_row(line: Dictionary, one: Dictionary, wide: float) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", roundi(6.0 * _pt))
+	var number: int = int(line.get("number", 0))
+	if number > 0 and not bool(line.get("resolved", false)):
+		var dot := Label.new()
+		dot.text = str(number)
+		dot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		dot.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		dot.custom_minimum_size = Vector2(22.0, 22.0) * _pt
+		dot.add_theme_font_size_override("font_size", roundi(12.0 * _pt))
+		dot.add_theme_color_override("font_color", Color.WHITE)
+		var round_dot := StyleBoxFlat.new()
+		round_dot.bg_color = Color("#e8590c")
+		round_dot.border_color = Color.WHITE
+		round_dot.set_border_width_all(maxi(1, roundi(1.5 * _pt)))
+		round_dot.set_corner_radius_all(roundi(11.0 * _pt))
+		dot.add_theme_stylebox_override("normal", round_dot)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(dot)
+	var words: String = str(line.get("words", ""))
+	if bool(line.get("pressable", false)) and not pin_pressed.get_connections().is_empty():
+		var go := Button.new()
+		go.text = words
+		go.flat = true
+		go.focus_mode = Control.FOCUS_NONE
+		go.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		go.tooltip_text = "Turn the view to its part, lit"
+		go.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		go.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		go.custom_minimum_size = Vector2(maxf(wide - 40.0 * _pt, 60.0), 30.0 * _pt)
+		go.add_theme_font_size_override("font_size", roundi(14.0 * _pt))
+		for state: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+			go.add_theme_color_override(state, Color(1.0, 0.72, 0.5) if state == "font_color"
+				else Color(1.0, 0.84, 0.68))
+		go.pressed.connect(func() -> void: pin_pressed.emit(one))
+		row.add_child(go)
+		if number > 0:
+			_pin_buttons[number] = go
+	else:
+		var said := Label.new()
+		said.text = words
+		said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		said.custom_minimum_size = Vector2(maxf(wide - 40.0 * _pt, 60.0), 0.0)
+		said.modulate = Color(1.0, 0.86, 0.45)
+		said.add_theme_font_size_override("font_size", roundi(14.0 * _pt))
+		row.add_child(said)
+	return row
 
 
 ## "On step 7 of version 1, an older one", for a comment made on an older
@@ -410,6 +572,7 @@ func _sent_pressed() -> void:
 ## emptied.
 func sent() -> void:
 	_sending = false
+	aiming = {}
 	_box.text = ""
 	_said.text = "Added."
 	_redraw()
@@ -438,17 +601,33 @@ func controls_by_name() -> Dictionary:
 			named[prefix + "_comment_send"] = _send
 		if _sign_in.visible:
 			named[prefix + "_comment_sign_in"] = _sign_in
+		if _aim_row.visible:
+			named[prefix + "_pin_cancel"] = _aim_cancel
+		if _fold != null:
+			named[prefix + "_pins_resolved"] = _fold
+		for number: int in _pin_buttons:
+			named[prefix + "_pin_%d" % number] = _pin_buttons[number]
 	return named
 
 
 func page_state() -> Dictionary:
 	var bodies: Array = []
 	var where: Array = []
+	var on_parts: Array = []
 	if _panel.visible:
 		for one: Variant in _shown:
 			bodies.append(str((one as Dictionary).get("body", "")))
 			where.append(_where(one as Dictionary))
+			var line: Dictionary = pin_line.call(one) if pin_line.is_valid() \
+				and (one as Dictionary).get("pin") is Dictionary else {}
+			on_parts.append(str(line.get("words", "")))
 	return {"comments": count() if known else 0, "comments_open": _panel.visible,
 		"comments_shown": bodies, "comments_where": where, "comment_why_not": _why.text if _panel.visible and _why.visible else "",
 		"comment_can_write": _panel.visible and _write.visible,
-		"comment_said": _said.text if _panel.visible else "", "comment_pill": pill.text if pill.visible else ""}
+		"comment_said": _said.text if _panel.visible else "", "comment_pill": pill.text if pill.visible else "",
+		# Comments on a part (partpins): where each listed is, the part one
+		# being written goes on, and the resolved ones folded away.
+		"comments_pins": on_parts, "comment_pins_on": pins,
+		"comment_on_part": _aim_words.text if _panel.visible and _aim_row.visible else "",
+		"comments_resolved": _fold.text if _panel.visible and _fold != null else "",
+		"comments_resolved_shown": _resolved_shown if _panel.visible else 0}

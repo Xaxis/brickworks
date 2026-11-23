@@ -45,6 +45,12 @@
 ## the other guesses (PartStep). Said first, once, as the parts bin says it:
 ## the photo goes to Brickognize, a third party, and nothing else does.
 ##
+## Show your build (makes, 2026-11-23): on the last step, a card under the
+## top bar says how many have built the model and offers Show your build, a
+## photo of the real build posted on the model's page (MakeCard). main.gd
+## puts it up before the view is framed, so the finished model is framed
+## below it, and sends what it is given.
+##
 ## This only shows a page and says what was pressed; main.gd turns the
 ## page (BuildSteps says what is on it) and keeps the place.
 class_name BuildMode
@@ -157,6 +163,10 @@ var _index: Dictionary = {}
 var _indexed: BuildSteps = null
 ## Where photos go: Brickognize's, or a probe's stub.
 var photo_url: String = Brickognize.URL
+## Show your build, on the last step (makes): its card, and whether the page
+## shown is the build's end.
+var make: MakeCard
+var ending: bool = false
 
 
 func _ready() -> void:
@@ -171,6 +181,7 @@ func _ready() -> void:
 	_build_top()
 	_build_bottom()
 	_build_card()
+	_build_make()
 	get_viewport().size_changed.connect(_fit)
 	_fit()
 
@@ -392,6 +403,9 @@ func _fit() -> void:
 		button.add_theme_font_size_override("font_size", roundi(16.0 * pt))
 		button.custom_minimum_size = Vector2(0.0, TARGET * pt)
 	_fit_where(column.custom_minimum_size.x)
+	if make != null:
+		make.fit(_pt)
+		_place_make()
 	_lay_strip()
 
 
@@ -701,6 +715,44 @@ func _place_card() -> void:
 	_card.position = Vector2(roundf((room - wide) / 2.0), _top.size.y + 8.0 * _pt)
 
 
+# -- Show your build (makes) -----------------------------------------------------
+
+
+func _build_make() -> void:
+	make = MakeCard.new()
+	add_child(make)
+	make.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	make.minimum_size_changed.connect(_place_make, CONNECT_DEFERRED)
+	_top.resized.connect(_place_make)
+	# Under the part's card while that is up: the two never lie one on the other.
+	_card.visibility_changed.connect(_place_make, CONNECT_DEFERRED)
+	_card.resized.connect(_place_make)
+
+
+## The build's end is the page shown ([param on]) or not: its card up or
+## put away, what it holds kept. Called before the view is framed, which
+## frames the finished model below it (free_rect).
+func show_end(on: bool) -> void:
+	ending = on
+	make.visible = on
+	_place_make()
+
+
+## Under the top bar, or under the part's card while it is up, as wide as
+## the bars' column, in the middle.
+func _place_make() -> void:
+	if make == null or _top == null:
+		return
+	var room: float = get_viewport().get_visible_rect().size.x if is_inside_tree() else 1600.0
+	var wide: float = minf(room - 20.0 * _pt, WIDEST * _pt)
+	var top: float = _top.size.y
+	if _card != null and _card.visible:
+		top = _card.position.y + _card.size.y
+	make.custom_minimum_size = Vector2(wide, 0.0)
+	make.size = Vector2(wide, make.get_combined_minimum_size().y)
+	make.position = Vector2(roundf((room - wide) / 2.0), top + 8.0 * _pt)
+
+
 ## The camera pressed: the photo goes to Brickognize, a third party, which
 ## is said before the first one, in the parts bin's words, and never sent
 ## without one chosen.
@@ -828,6 +880,9 @@ func close() -> void:
 	visible = false
 	comments.close()
 	_card.hide_card()
+	# Put away with its photo and words kept: Build it again, or the viewer's
+	# own end, finds them as they were.
+	show_end(false)
 	_home = -1
 	# Nothing of a photo is kept closed: the pages it read (10179's would stay
 	# alive after another model replaced them), nor its answer. And opened
@@ -854,6 +909,9 @@ func free_rect() -> Rect2:
 	# below it, where the part it lights is not behind it.
 	if _card != null and _card.visible:
 		top = maxf(top, _card.get_global_rect().end.y + 4.0 * _pt)
+	# And the build's end card: the finished model below it.
+	if make != null and make.visible:
+		top = maxf(top, make.get_global_rect().end.y + 4.0 * _pt)
 	var bottom: float = _bottom.get_global_rect().position.y
 	return Rect2(room.position.x, top, room.size.x, maxf(bottom - top, 1.0))
 
@@ -861,7 +919,8 @@ func free_rect() -> Rect2:
 func covers(point: Vector2) -> bool:
 	return visible and (_top.get_global_rect().has_point(point)
 		or _bottom.get_global_rect().has_point(point) or comments.covers(point)
-		or (_card.visible and _card.get_global_rect().has_point(point)))
+		or (_card.visible and _card.get_global_rect().has_point(point))
+		or (make.visible and make.get_global_rect().has_point(point)))
 
 
 ## A finger, or the mouse, drawn across a bar: to the left is Next, to the
@@ -936,6 +995,7 @@ func controls_by_name() -> Dictionary:
 		"build_progress": _progress, "build_one_part": _one_part, "build_whole_step": _whole_step,
 		"build_where": _where}
 	named.merge(_card.controls_by_name())
+	named.merge(make.controls_by_name())
 	if _changed.is_visible_in_tree():
 		named["build_changed_go"] = _changed_go
 	named.merge(comments.controls_by_name())
@@ -971,7 +1031,8 @@ func page_state() -> Dictionary:
 		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt),
 		"comment_step": comments.step, "party": _party_page_state(),
 		"partstep": _card.card_state().merged({"photo_ms": photo_ms, "home": _home,
-			"button": _where.text, "read_us": read_us, "index_us": index_us, "telling": _terms != null and _terms.visible})}.merged(
+			"button": _where.text, "read_us": read_us, "index_us": index_us, "telling": _terms != null and _terms.visible}),
+		"ending": ending, "make": make.card_state()}.merged(
 			comments.page_state())
 
 

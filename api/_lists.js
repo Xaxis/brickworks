@@ -152,6 +152,21 @@ export async function listsOf(id, tests = false) {
   return { count: Math.max(Number(said.count) || 0, lists.length), lists };
 }
 
+/// The public lists set [set] (a catalogue set's number, "6020-1") is in, as
+/// listsOf says a model's: {count, lists}, the one it was put in last first
+/// (supabase/owned_quantity.sql set_lists; a wishlist and a list taken down
+/// never counted). None before the file, said (ready: false); null,
+/// unknown, when the database does not answer. A set's page says "In N
+/// lists" from it (ownedparts).
+export async function setListsOf(set, tests = false) {
+  const none = { count: 0, lists: [] };
+  const said = await orUnknown("lists", call("set_lists", { set_num: String(set).toLowerCase(), tests, most: LISTS_SHOWN },
+    () => ({ ...none, ready: false })).then((found) => (found && typeof found === "object" ? found : none)));
+  if (said === null) return null;
+  const lists = (Array.isArray(said.lists) ? said.lists : []).filter((list) => ID.test(String(list?.id)));
+  return { count: Math.max(Number(said.count) || 0, lists.length), lists, ...(said.ready === false ? { ready: false } : {}) };
+}
+
 // ---------------------------------------------------------------------------
 // The directory of public collections (the gallery's Collections tab).
 
