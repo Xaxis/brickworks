@@ -428,9 +428,12 @@ func _find_floating(bricks: Array, boxes_of: Dictionary, weighed: Balance.Report
 		var ids: Array = members[root]
 		var info: PartLibrary.PartInfo = library.parts.get(named[ids[0]]) if library != null else null
 		var name: String = Inventory._tidy(info.name) if info != null else str(named[ids[0]])
-		var message: String = "%s touches nothing: it floats in the air" % name if ids.size() == 1 \
-			else "%s and the %s with it touch nothing else: they float in the air" % [
-				name, "part" if ids.size() == 2 else "%d parts" % (ids.size() - 1)]
+		var message: String = "%s touches nothing: it floats in the air" % name
+		if ids.size() == 2:
+			message = "%s and the part with it touch nothing else: they float in the air" % name
+		elif ids.size() > 2:
+			message = "%s and the %d parts with it touch nothing else: they float in the air" % [
+				name, ids.size() - 1]
 		for id: int in ids:
 			var risk := Risk.new()
 			risk.brick_id = id

@@ -2409,9 +2409,9 @@ func _reseat() -> void:
 	for risk: Stability.Risk in floating:
 		builder.selection[risk.brick_id] = true
 	builder.selection_changed.emit(builder.selection.size())
-	bar.say("every part near its studs is on them; %s, selected: move %s onto what holds %s" % [
-		Stability.floating_words(floating), "it" if floating.size() == 1 else "them",
-		"it" if floating.size() == 1 else "them"])
+	bar.say(("every part near its studs is on them; %s, selected: move it by hand" if floating.size() == 1
+		else "every part near its studs is on them; %s, selected: move them by hand")
+		% Stability.floating_words(floating))
 
 
 func _toggle_full_screen() -> void:

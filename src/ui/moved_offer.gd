@@ -14,9 +14,19 @@
 ## Said once for a file and its numbers, then never again over it: Keep as is
 ## was asked again at every open, and an official set from the library or an
 ## example is not offered at all (ModelBar.offer_moved; ux12's walk saw it over
-## a set just opened).
+## a set just opened), nor another program's file (is_ldraw).
 class_name MovedOffer
 extends PanelContainer
+
+## Another program's files, whose numbers are that program's: a Studio .io,
+## an LDD .lxf.
+const NOT_LDRAW: Array[String] = ["io", "lxf", "lxfml"]
+
+
+## Whether [param path] (a path or a file name; "" for a model of the app's
+## own) is an LDraw file, whose numbers LDraw's history is about.
+static func is_ldraw(path: String) -> bool:
+	return not path.get_extension().to_lower() in NOT_LDRAW
 
 var store: ModelStore
 ## Update all: the numbers, replaced as ModelBar.replace_moved does.

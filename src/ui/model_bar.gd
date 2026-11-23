@@ -791,10 +791,14 @@ func open_with_progress(path: String) -> int:
 ## of] (its path or file name; the model's title when not given), and once
 ## (MovedOffer). An official set from the library or an example opens as it
 ## is: drawn right already, it is not theirs to renumber, and the strip over
-## a set just opened was in the way of every fan who opened one (ux12).
+## a set just opened was in the way of every fan who opened one (ux12). So
+## does another program's file, a Studio .io or an LDD .lxf (MovedOffer
+## .is_ldraw): "5 parts have new numbers in the LDraw library" stood over a
+## friend's Studio file through every step of ux13's walk (p6), LDraw's
+## history said of a file that is not LDraw's, which Studio opens unasked.
 func offer_moved(own: bool = true, of: String = "") -> void:
 	if store != null and store.not_opened.is_empty() and not store.moved.is_empty():
-		moved_found.emit(own, of if not of.is_empty() else store.title)
+		moved_found.emit(own and MovedOffer.is_ldraw(of), of if not of.is_empty() else store.title)
 
 
 ## Missing and moved parts' Update all and Replace checked, and open_model

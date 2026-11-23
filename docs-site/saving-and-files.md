@@ -60,7 +60,7 @@ ui:open over unsaved work
 
 ## Missing and moved parts {#moved}
 
-Over the years LDraw has given some parts new numbers (3023 is now 3023b), kept others only as another part's alias, and some files name parts it has no file for at all. Moved and alias parts are drawn as the part they point to already, so such a file opens as it always did, and when it is a file of your own a bar over the model says how many, once for that file: **12 parts have new numbers in the LDraw library**. A set opened from the **Library** and the examples open as they are, with no bar.
+Over the years LDraw has given some parts new numbers (3023 is now 3023b), kept others only as another part's alias, and some files name parts it has no file for at all. Moved and alias parts are drawn as the part they point to already, so such a file opens as it always did, and when it is a file of your own a bar over the model says how many, once for that file: **12 parts have new numbers in the LDraw library**. A set opened from the **Library**, the examples, and a Studio or LDD file open as they are, with no bar.
 
 **Update all** writes the new numbers into the file, in the model and in every sub-model at once, as one change: **Edit › Undo** puts the file back just as it was, and what you did before it stays undoable below it. A part whose new number sits it differently keeps its place, its line's position and turn worked out for it, and one the library now gives a fixed colour is written in that colour. A sub-model or a part the file carries itself keeps its name, even when it has a moved part's number. **Keep as is** closes the bar and leaves the file alone.
 

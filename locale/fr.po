@@ -16454,3 +16454,45 @@ msgstr "tourner ; sur une pièce : la déplacer"
 
 msgid "last part again"
 msgstr "la dernière pièce de nouveau"
+msgid "1 part floats"
+msgstr "1 pièce flotte"
+
+msgid "%d parts float"
+msgstr "%d pièces flottent"
+
+msgid "%s touches nothing: it floats in the air"
+msgstr "%s ne touche rien : elle flotte en l'air"
+
+msgid "%s and the part with it touch nothing else: they float in the air"
+msgstr "%s et la pièce avec elle ne touchent rien d'autre : elles flottent en l'air"
+
+msgid "%s and the %d parts with it touch nothing else: they float in the air"
+msgstr "%s et les %d pièces avec elle ne touchent rien d'autre : elles flottent en l'air"
+
+msgid "%d parts touch nothing and float in the air"
+msgstr "%d pièces ne touchent rien et flottent en l'air"
+
+msgid "%s, selected"
+msgstr "%s, sélectionnée"
+
+msgid "every part near its studs is on them"
+msgstr "chaque pièce proche de ses tenons est dessus"
+
+msgid "%s, selected: move it by hand"
+msgstr "%s, sélectionnée : déplacez-la à la main"
+
+msgid "%s, selected: move them by hand"
+msgstr "%s, sélectionnées : déplacez-les à la main"
+
+msgid "In the air: %s."
+msgstr "En l'air : %s."
+
+msgid "%s: touches nothing, floating in the air"
+msgstr "%s : ne touche rien, flotte en l'air"
+msgid "Set number or name"
+msgstr "Numéro ou nom du set"
+
+msgid "Model name or designer"
+msgstr "Nom du modèle ou concepteur"
+msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
+msgstr "« %s » est un sous-ensemble de ce modèle : sélectionnez-le, et Édition, Dupliquer en pose un autre"

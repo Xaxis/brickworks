@@ -16454,3 +16454,45 @@ msgstr "drehen; auf einem Teil: es bewegen"
 
 msgid "last part again"
 msgstr "letztes Teil wieder"
+msgid "1 part floats"
+msgstr "1 Teil schwebt"
+
+msgid "%d parts float"
+msgstr "%d Teile schweben"
+
+msgid "%s touches nothing: it floats in the air"
+msgstr "%s berührt nichts: es schwebt in der Luft"
+
+msgid "%s and the part with it touch nothing else: they float in the air"
+msgstr "%s und das Teil daran berühren sonst nichts: sie schweben in der Luft"
+
+msgid "%s and the %d parts with it touch nothing else: they float in the air"
+msgstr "%s und die %d Teile daran berühren sonst nichts: sie schweben in der Luft"
+
+msgid "%d parts touch nothing and float in the air"
+msgstr "%d Teile berühren nichts und schweben in der Luft"
+
+msgid "%s, selected"
+msgstr "%s, ausgewählt"
+
+msgid "every part near its studs is on them"
+msgstr "jedes Teil nahe seinen Noppen sitzt darauf"
+
+msgid "%s, selected: move it by hand"
+msgstr "%s, ausgewählt: von Hand verschieben"
+
+msgid "%s, selected: move them by hand"
+msgstr "%s, ausgewählt: von Hand verschieben"
+
+msgid "In the air: %s."
+msgstr "In der Luft: %s."
+
+msgid "%s: touches nothing, floating in the air"
+msgstr "%s: berührt nichts, schwebt in der Luft"
+msgid "Set number or name"
+msgstr "Setnummer oder Name"
+
+msgid "Model name or designer"
+msgstr "Modellname oder Designer"
+msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
+msgstr "„%s“ ist eine Baugruppe dieses Modells: Wähle sie aus, und Bearbeiten, Duplizieren setzt eine weitere ab"
