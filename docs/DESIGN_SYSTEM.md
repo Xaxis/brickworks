@@ -529,10 +529,13 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
     `pageHeadHtml` (web/card.js), Talk's lists and its new thread; Talk's
     boards are sitebold's tiles, too large for the head's line of tabs,
     so they open its body over the threads.
-  - **The list**: `.page-body > .list-layout`: `.list-main`, 760 px, at the
-    page's left edge, and from 900 px its `.list-aside` at the page's right
-    edge, 320 px, sticky, each `section` in it a panel. Under 900 px the
-    aside follows the list.
+  - **The list**: `.page-body > .list-layout`, the whole page's width:
+    `.list-main` from the page's left edge to its right, or from 900 px to
+    its `.list-aside` (320 px, 32 px from it, sticky, each `section` in it
+    a panel) ending at the page's right edge. No column of its own width
+    with empty sides (the lead, 2026-11-23); a row's words keep a 75ch
+    measure inside it. Under 900 px, the site's breakpoint, the aside
+    follows the list.
   - **A row**: `ol.list-rows > li.list-row`: `.row-pic` (a 4:3 picture, 96
     px, 72 on a phone) or `.row-face` (an avatar), `.row-body`
     (`.row-title`, `.row-said`, `.row-meta`: who and when), at most one
@@ -548,7 +551,7 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
   `[design]`) holds every page to it at 1280 and 390, signed out and in:
   the container at the header's edges, the h1's left, top and size, the
   tabs' left and their distance under the head, the list's left and
-  width and the aside at the right edge, each within a pixel of the
+  right edges and the aside at the right edge, each within a pixel of the
   feed's, whose own h1 is held to the tokens. It fails a page drawn its
   own way, naming it.
 - **Page**: `main.page`: the space above the title, then its sections.
