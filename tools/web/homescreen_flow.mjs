@@ -47,14 +47,15 @@
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/homescreen_flow.mjs --url=<preview> --out=DIR
 //
 // --parts=fresh,install,... runs those alone. A push needs a browser with a
-// profile of its own (Chromium keeps push off in a private context), so the
-// push part opens one in a folder of its own; --headed runs it in a window
-// (under xvfb-run here), where headless Chromium cannot reach a push
-// service. Throwaway accounts at Resend's test addresses, deleted at the
-// end with their models. Pictures and the request log in --out.
-import { instantScroll, launch, quietCounter, SOFTWARE } from "./browser.mjs";
+// profile of its own (push is off in a private context), so the push part
+// opens one in a folder of its own: headless Chromium, Chromium in a window
+// (an Xvfb of its own) and Firefox in turn, until one reaches a push service
+// (DEVICES), or --device=headless|window|firefox. Throwaway accounts at
+// Resend's test addresses, deleted at the end with their models. Pictures
+// and the request log in --out.
+import { bypassCookie, instantScroll, launch, quietCounter, SOFTWARE } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { chromium } from "playwright";
+import { chromium, firefox } from "playwright";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -75,10 +76,15 @@ mkdirSync(out, { recursive: true });
 const ALL = ["fresh", "install", "offline", "requests", "offer", "time", "push", "look"];
 const parts = new Set(args.parts ? String(args.parts).split(",") : ALL);
 const bypass = process.env.BW_BYPASS || "";
-// The bypass as a cookie too, so the worker's own requests (a page it asks
-// the network for) carry it as the page's would.
-const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-set-bypass-cookie": "true",
-  "x-vercel-skip-toolbar": "1" } : {};
+// The bypass header alone. The worker's own requests carry the bypass
+// cookie, which browser.mjs's bypassCookie asks for once in each context,
+// before its first page. Asked for in this header instead, on every request,
+// a preview answers each request without the cookie by a 307 back to
+// itself that sets it: node's fetch keeps no cookies and went round to
+// "redirect count exceeded" (push's "fetch failed"), and so did Chromium's
+// fetch of the manifest, which is sent without cookies, so Chromium read no
+// manifest while it found the site installable (rel-m319, twice each).
+const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const rand = randomBytes(4).toString("hex");
 const adaEmail = `delivered+bw-home-ada-${rand}@resend.dev`;
 const bobEmail = `delivered+bw-home-bob-${rand}@resend.dev`;
@@ -93,6 +99,16 @@ const check = (what, ok) => {
   return ok;
 };
 const note = (what) => console.log(`  --    ${what}`);
+/// What went wrong, with what it came from: node's fetch says only "fetch
+/// failed", its cause (a refused connection, a timeout, a name not found)
+/// is the error (rel-m319's push, twice).
+const why = (trouble) => {
+  const said = [String(trouble?.message || trouble)];
+  for (let cause = trouble?.cause; cause && said.length < 4; cause = cause.cause) {
+    said.push([cause.code, cause.message || String(cause)].filter(Boolean).join(" "));
+  }
+  return said.join(": ");
+};
 const errors = [];
 function listen(page, who) {
   page.on("pageerror", (e) => errors.push(`${who}: ${String(e).slice(0, 200)}`));
@@ -118,7 +134,10 @@ async function api(pathname, { method = "GET", token, body } = {}) {
   const sent = { ...headers };
   if (token) sent.authorization = `Bearer ${token}`;
   if (body !== undefined) sent["content-type"] = "application/json";
-  const reply = await fetch(`${site}${pathname}`, { method, headers: sent, body: body === undefined ? undefined : JSON.stringify(body) });
+  const reply = await fetch(`${site}${pathname}`, { method, headers: sent, body: body === undefined ? undefined : JSON.stringify(body) })
+    .catch((trouble) => {
+      throw new Error(`${method} ${pathname.split("?")[0]}${pathname.includes("?op=") ? `?op=${new URL(pathname, "http://x").searchParams.get("op")}` : ""}: ${why(trouble)}`);
+    });
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
 }
 
@@ -315,6 +334,18 @@ async function install() {
         tries += 1;
         manifest = await cdp.send("Page.getAppManifest").catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
       }
+      if (!manifest.url) {
+        // What Chromium had to read: the page's link, and the file as the
+        // page itself is answered it.
+        const seen = await page.evaluate(async () => {
+          const links = [...document.querySelectorAll("link[rel=manifest]")].map((one) => `${one.getAttribute("href")} ${one.crossOrigin || "-"}`);
+          const answer = await fetch("/site.webmanifest", { credentials: "omit" }).catch((trouble) => ({ status: String(trouble) }));
+          return { links, at: location.href, status: answer.status, redirected: answer.redirected, type: answer.type,
+            url: answer.url, ctype: answer.headers?.get?.("content-type") };
+        }).catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
+        note(`${width} px: Chromium's manifest said ${JSON.stringify({ ...manifest, data: manifest.data ? `${manifest.data.length} chars` : manifest.data }).slice(0, 600)}`);
+        note(`${width} px: the page ${JSON.stringify(seen).slice(0, 600)}`);
+      }
       const said = await cdp.send("Page.getInstallabilityErrors").catch((trouble) => ({ trouble: String(trouble).split("\n")[0] }));
       const errs = (said.installabilityErrors || []).map((one) => one.errorId);
       // Its text as served (data), else Chromium's structured reading of it.
@@ -352,8 +383,33 @@ async function install() {
 async function offline() {
   console.log("offline: the network cut");
   const made = await context({ width: 1280, height: 900 });
-  const page = await made.newPage();
+  let page = await made.newPage();
   listen(page, "offline");
+  // The network cut as a device's is, for its pages and its worker alike.
+  // Playwright's setOffline cuts the requests of both, but says it to the
+  // pages by a DevTools call Chromium has deprecated: a page that loaded
+  // after the cut read navigator.onLine true (browser.mjs's own DevTools
+  // session on each page undoes it), so it never heard the network come
+  // back; and each navigation flickered online and offline again in the page
+  // being left, whose offline page (web/push.js) reloaded itself on the
+  // flicker and took the tab back from the next address (/de/library showed
+  // /library's offline page, /library /app's: m319home, 2026-11-23). So the
+  // pages are told it by Chromium's own call for it (overrideNetworkState),
+  // each address is opened in a tab of its own, as a page not seen before,
+  // and the network comes back for the worker before the page hears it.
+  const sayOffline = async (tab, offline) => {
+    tab.devtools ||= await made.newCDPSession(tab);
+    await tab.devtools.send("Network.overrideNetworkState", { offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  };
+  const openOffline = async (address) => {
+    await page.close();
+    page = await made.newPage();
+    listen(page, "offline");
+    await sayOffline(page, true);
+    const gone = await page.goto(`${site}${address}`, { waitUntil: "load" }).then(() => "",
+      (trouble) => ` (the goto: ${String(trouble.message || trouble).split("\n")[0].slice(0, 120)})`);
+    return { ...(await offlineShown(page)), gone };
+  };
   try {
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
     await controlled(page);
@@ -364,18 +420,16 @@ async function offline() {
     await page.goto(`${site}/de/gallery`, { waitUntil: "load" });
     await until(page, async () => Boolean(await caches.match("/de/offline")), "the German offline page kept", 30);
     await made.setOffline(true);
-    await made.route("**/*", (route) => route.abort("internetdisconnected"));
-    await page.goto(`${site}/library`, { waitUntil: "load" }).catch(() => null);
-    const en = await offlineShown(page);
-    check(`/library, offline: the offline page in ${en.lang}: "${en.h1}"`, en.offline && en.at === "/library" && en.lang === "en" && en.h1 === "You’re offline.");
+    const en = await openOffline("/library");
+    check(`/library, offline: the offline page in ${en.lang}: "${en.h1}"${en.gone}`, en.offline && en.at === "/library" && en.lang === "en" && en.h1 === "You’re offline.");
     await shot(page, "offline_cut-1280-dark.png");
-    await page.goto(`${site}/de/library`, { waitUntil: "load" }).catch(() => null);
-    const de = await offlineShown(page);
-    check(`/de/library, offline: the offline page in ${de.lang}: "${de.h1}"`, de.offline && de.lang === "de" && de.h1 === "Du bist offline.");
+    const de = await openOffline("/de/library");
+    check(`/de/library, offline: the offline page in ${de.lang}: "${de.h1}" at ${de.at}${de.gone}`,
+      de.offline && de.at === "/de/library" && de.lang === "de" && de.h1 === "Du bist offline.");
     // Where the installed app opens: the site's offline page, not the browser's.
-    await page.goto(`${site}/app`, { waitUntil: "load" }).catch(() => null);
-    const app = await offlineShown(page);
-    check(`/app, offline (the installed app's start): the offline page: "${app.h1}" at ${app.at}`, app.offline && app.at === "/app" && app.h1 === "You’re offline.");
+    const app = await openOffline("/app");
+    check(`/app, offline (the installed app's start): the offline page: "${app.h1}" at ${app.at}${app.gone}`,
+      app.offline && app.at === "/app" && app.h1 === "You’re offline.");
     await shot(page, "offline_app-1280-dark.png");
     // The offline page hears the network come back through web/push.js,
     // which theme.js asks for only after the load: the network came back
@@ -383,14 +437,33 @@ async function offline() {
     // reloaded it (here and on hsfix's local run). So the network comes
     // back once push.js has run, which writes this visit first thing.
     await page.evaluate(() => localStorage.removeItem("brickworks.visits"));
-    await page.goto(`${site}/library`, { waitUntil: "load" }).catch(() => null);
+    await openOffline("/library");
     await until(page, () => document.documentElement.hasAttribute("data-offline") && Boolean(localStorage.getItem("brickworks.visits")),
       "the offline page listening (push.js run)", 30);
-    await made.unroute("**/*");
+    // What happens once it is back, said if it fails: whether the page heard
+    // the network return (online, kept in sessionStorage across a reload),
+    // and each page the tab then showed.
+    await page.evaluate(() => addEventListener("online", () => sessionStorage.setItem("flow.online", String(Date.now()))));
+    const shown = [];
+    page.on("response", (response) => {
+      if (response.request().isNavigationRequest() && response.frame() === page.mainFrame()) {
+        shown.push(`${response.status()} ${response.url().replace(site, "")}${response.fromServiceWorker() ? " (worker)" : ""}`);
+      }
+    });
+    page.on("requestfailed", (request) => {
+      if (request.isNavigationRequest()) shown.push(`failed ${request.url().replace(site, "")}: ${request.failure()?.errorText}`);
+    });
     await made.setOffline(false);
+    await sayOffline(page, false);
     await until(page, () => !document.documentElement.hasAttribute("data-offline") && location.pathname === "/library"
-      && document.readyState === "complete", "the page asked for, once the network is back", 30);
-    check("the network back: /library itself, by itself", true);
+      && document.readyState === "complete", "the page asked for, once the network is back", 30).catch(async (trouble) => {
+      const state = await page.evaluate(() => ({ at: location.href, offline: document.documentElement.hasAttribute("data-offline"),
+        ready: document.readyState, onLine: navigator.onLine, heard: sessionStorage.getItem("flow.online"),
+        h1: document.querySelector("h1")?.textContent.trim() || "" })).catch((e) => ({ trouble: String(e).split("\n")[0] }));
+      note(`the network back: ${JSON.stringify(state).replace(site, "")}; the tab showed ${shown.join(", ") || "nothing new"}`);
+      throw trouble;
+    });
+    check(`the network back: /library itself, by itself (${shown.join(", ")})`, true);
   } catch (trouble) {
     check(`offline: ${trouble.message}`, false);
   }
@@ -605,8 +678,11 @@ const model = (name) => `0 ${name}\r\n0 Name: home.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 
 
 async function accounts() {
   if (ada) return;
-  ada = await mintSession(adaEmail);
-  bob = await mintSession(bobEmail);
+  const minted = (email) => mintSession(email).catch((trouble) => {
+    throw new Error(`signing ${email.split("@")[0]} in at Supabase: ${why(trouble)}`);
+  });
+  ada = await minted(adaEmail);
+  bob = await minted(bobEmail);
   const a = await api("/api/people?op=profile", { method: "POST", token: ada.access_token, body: { handle: ADA, name: "Ada Home" } });
   const b = await api("/api/people?op=profile", { method: "POST", token: bob.access_token, body: { handle: BOB, name: "Bob Home" } });
   check(`throwaway profiles: ${a.status}, ${b.status}`, a.status === 200 && b.status === 200);
@@ -639,30 +715,50 @@ async function push() {
   check(`her model: ${tower.status} /m/${tower.body.id}`, tower.status === 201 && Boolean(tower.body.id));
 
   // The browser's prompt only once it is turned on: a page of Settings,
-  // nothing granted, asks nothing by itself.
+  // nothing granted, asks nothing by itself. Counted where it would ask (the
+  // browser's prompt, its push service): headless Chromium says "denied"
+  // before anything is asked, so the permission alone could not tell
+  // (hsfix's local run).
   const plain = await context({ as: ada, width: 1280, height: 900 });
+  await plain.addInitScript(() => {
+    const said = (what) => {
+      try {
+        sessionStorage.setItem("flow.asked", `${sessionStorage.getItem("flow.asked") || ""} ${what}`.trim());
+      } catch {}
+    };
+    if (typeof Notification === "function") {
+      const ask = Notification.requestPermission.bind(Notification);
+      Notification.requestPermission = (...how) => { said("prompt"); return ask(...how); };
+    }
+    if (typeof PushManager === "function") {
+      const subscribe = PushManager.prototype.subscribe;
+      PushManager.prototype.subscribe = function (...how) { said("subscribe"); return subscribe.apply(this, how); };
+    }
+  });
   const look = await plain.newPage();
   listen(look, "settings, nothing granted");
   await look.goto(`${site}/settings#email-part`, { waitUntil: "load" });
   await until(look, () => document.getElementById("push-said") && (document.getElementById("push-on")?.disabled === false
     || document.getElementById("push-said").textContent), "the device's part drawn", 30);
   await look.waitForTimeout(2000);
-  const asked = await look.evaluate(() => Notification.permission);
+  const { permission, asked } = await look.evaluate(() => ({ permission: Notification.permission,
+    asked: sessionStorage.getItem("flow.asked") || "" }));
   const drawn = await pushPart(look);
-  check(`Settings › Notifications, before anything: the browser not asked (${asked}), the box ${drawn.checked ? "on" : "off"}, `
-    + `${drawn.disabled ? "disabled" : "enabled"} "${drawn.said}"`, asked === "default" && drawn.checked === false);
+  check(`Settings › Notifications, before anything: the browser not asked (${asked || "nothing"}; its permission ${permission}), `
+    + `the box ${drawn.checked ? "on" : "off"}, ${drawn.disabled ? "disabled" : "enabled"} "${drawn.said}"`,
+  !asked && permission !== "granted" && drawn.checked === false);
   await plain.close();
 
-  // Headless first; where its push service cannot be reached, in a window
-  // (a screen of its own, Xvfb), and said which.
+  // Each of DEVICES in turn until one is turned on, and said which, with
+  // what each before it said.
   let opened = null;
-  for (const headed of args.headed ? [true] : [false, true]) {
-    opened = await openDevice(headed).catch((trouble) => ({ on: String(trouble.message || trouble), close: async () => {} }));
+  for (const kind of args.device ? [String(args.device)] : Object.keys(DEVICES)) {
+    opened = await openDevice(kind).catch((trouble) => ({ on: String(trouble.message || trouble), close: async () => {} }));
     if (/On for this device/.test(opened.on)) {
-      note(`her device: ${headed ? "Chromium in a window (Xvfb)" : "headless Chromium"}, its push service reached`);
+      note(`her device: ${DEVICES[kind]}, its push service reached`);
       break;
     }
-    note(`${headed ? "Chromium in a window" : "headless Chromium"} could not be turned on: "${opened.on}"`);
+    note(`${DEVICES[kind]} could not be turned on: "${opened.on}"`);
     await opened.close();
     opened = null;
   }
@@ -756,13 +852,41 @@ async function push() {
       } while (Date.now() < end);
       return said;
     };
-    const onAgain = async (what) => {
+    // What the device asks of the API about itself, said when the account
+    // does not have it: each op=push the page sends, and its answer.
+    const asks = [];
+    page.on("response", (response) => {
+      const url = new URL(response.url());
+      if (url.origin !== new URL(site).origin || url.searchParams.get("op") !== "push") return;
+      const sent = response.request().postData() || "";
+      asks.push(`${response.request().method()} ${/"on":(true|false)/.exec(sent)?.[0] || ""}${/"all":true/.test(sent) ? " all" : ""} `
+        + `${response.status()}`);
+    });
+    // Settings opened afresh, by way of a blank page. A goto to the address
+    // the tab is at (#email-part and all) only moves to the part, and a
+    // reload in Firefox gives the box back as it was, checked and enabled,
+    // before the page has asked the account: either way the box said "on"
+    // with her sign-in ended and the account knowing no device, and was never
+    // pressed (m319home's runs, 2026-11-23).
+    const settingsAfresh = async () => {
+      if (page.url().startsWith(`${site}/settings`)) await page.goto("about:blank");
       await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
+    };
+    const onAgain = async (what) => {
+      asks.length = 0;
+      await settingsAfresh();
       await until(page, () => document.getElementById("push-on")?.disabled === false, `the box enabled (${what})`, 30);
-      if (!(await page.evaluate(() => document.getElementById("push-on").checked))) await page.click("#push-on");
+      const was = await page.evaluate(() => document.getElementById("push-on").checked);
+      if (!was) await page.click("#push-on");
       await until(page, () => /On for this device/.test(document.getElementById("push-said")?.textContent || "")
         || (document.getElementById("push-on").checked && !document.getElementById("push-on").disabled), `on again (${what})`, 60);
-      return devicesOf(1);
+      const said = await devicesOf(1);
+      if (said?.devices !== 1) {
+        const drawn = await pushPart(page);
+        note(`on again (${what}): the box was ${was ? "on" : "off"} and is ${drawn.checked ? "on" : "off"}, "${drawn.said}"; `
+          + `the page asked ${asks.join(", ") || "nothing"}; the account has ${JSON.stringify(said)}`);
+      }
+      return said;
     };
     const signedInAs = (kept) => page.evaluate(([name, value]) => {
       sessionStorage.clear();
@@ -785,7 +909,7 @@ async function push() {
     // Turn off on every device (S2), signed in again here.
     await signedInAs(keptNow);
     now = await onAgain("before Turn off on every device");
-    await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
+    await settingsAfresh();
     const every = await until(page, () => !document.getElementById("push-every-part")?.hidden
       && document.getElementById("push-every").textContent, "Turn off on every device shown", 30).catch(() => "");
     await page.click("#push-every");
@@ -832,28 +956,44 @@ async function push() {
   }
 }
 
-/// Ada's device: Chromium with a profile of its own (push is off in a
+/// The browsers her device can be, tried in this order (--device=KIND for
+/// one). Playwright's Chromium reaches no push service the site can send to:
+/// headless, it refuses ("push service not available"); in a window it
+/// subscribes, at jmt17.google.com, which is not the service any Chrome or
+/// Edge a person runs subscribes at (fcm.googleapis.com: PUSH_HOSTS in
+/// api/_push.js), so the API rightly refuses it. Firefox subscribes at
+/// Mozilla's, as every Firefox does, once the two settings by which
+/// Playwright turns push off are put back (m319home, 2026-11-23: on rel-m319's
+/// preview no push had ever reached a device, nor any device been turned on).
+const DEVICES = { headless: "headless Chromium", window: "Chromium in a window (Xvfb)", firefox: "Firefox (headless)" };
+const FIREFOX_PUSH = { "dom.push.serverURL": "wss://push.services.mozilla.com/", "dom.push.connection.enabled": true };
+
+/// Ada's device: a browser with a profile of its own (push is off in a
 /// private context), Settings opened, Notify me on this device pressed.
 /// {page, on: what Settings then said, close}.
-async function openDevice(headed) {
+async function openDevice(kind) {
+  if (!DEVICES[kind]) throw new Error(`no device "${kind}": ${Object.keys(DEVICES).join(", ")}`);
+  const headed = kind === "window";
   const dir = mkdtempSync(path.join(tmpdir(), "homescreen-device-"));
   const display = headed ? await screen() : null;
-  const device = await chromium.launchPersistentContext(dir, { headless: !headed, args: SOFTWARE,
-    viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, colorScheme: "dark",
-    ...(display ? { env: { ...process.env, DISPLAY: display } } : {}) });
+  const options = { viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, colorScheme: "dark" };
+  const device = kind === "firefox"
+    ? await firefox.launchPersistentContext(dir, { ...options, headless: true, firefoxUserPrefs: FIREFOX_PUSH })
+    : await chromium.launchPersistentContext(dir, { ...options, headless: !headed, args: SOFTWARE,
+      ...(display ? { env: { ...process.env, DISPLAY: display } } : {}) });
   const close = async () => {
     await device.close().catch(() => null);
     rmSync(dir, { recursive: true, force: true });
     if (headed) xvfb?.kill();
   };
   try {
-    // As launch() gives its contexts: scrolls that land at once, and the
-    // visit counter answered here.
-    await quietCounter(await instantScroll(device));
+    // As launch() gives its contexts: the bypass cookie, scrolls that land
+    // at once, and the visit counter answered here.
+    await quietCounter(await instantScroll(bypassCookie(device, headers)));
     await device.grantPermissions(["notifications"], { origin: site });
     await seed(device, ada);
     const page = device.pages()[0] || await device.newPage();
-    listen(page, `Ada's device${headed ? " (a window)" : ""}`);
+    listen(page, `Ada's device (${DEVICES[kind]})`);
     await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
     await until(page, () => document.getElementById("push-on")?.disabled === false, "the box enabled", 30);
     await page.click("#push-on");
@@ -866,11 +1006,11 @@ async function openDevice(headed) {
   }
 }
 
-// A screen of its own for a headed browser, where the run has none: Xvfb
-// on the first free display from :140, its process ended with the part.
+// A screen of its own for a headed browser: Xvfb on the first free display
+// from :140, its process ended with the part. Never the DISPLAY the run was
+// started with, which in an agent's shell is the owner's own desktop.
 let xvfb = null;
 async function screen() {
-  if (process.env.DISPLAY) return process.env.DISPLAY;
   for (let n = 140; n < 180; n += 1) {
     if (existsSync(`/tmp/.X11-unix/X${n}`) || existsSync(`/tmp/.X${n}-lock`)) continue;
     xvfb = spawn("Xvfb", [`:${n}`, "-screen", "0", "1280x1024x24", "-nolisten", "tcp"], { stdio: "ignore" });
@@ -934,7 +1074,8 @@ try {
   if (parts.has("look")) await lookAt();
 } catch (trouble) {
   failed += 1;
-  console.log(`  FAIL  ${trouble.stack || trouble}`);
+  console.log(`  FAIL  ${why(trouble)}`);
+  console.log(`        ${String(trouble?.stack || "").split("\n").slice(1, 4).map((line) => line.trim()).join(" | ")}`);
 } finally {
   check(`no script errors or refused requests (${errors.length})`, errors.length === 0);
   for (const one of errors.slice(0, 5)) console.log(`        ${one}`);
