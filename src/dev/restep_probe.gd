@@ -110,7 +110,9 @@ func _restep(path: String, into: String) -> void:
 				continue
 			if left.has(line):
 				continue
-			if int(found[1]) == -2 or file.past_last(line):
+			# A placing line may go to a step after the model's last: one of
+			# its own, after what holds it.
+			if int(found[1]) == -2:
 				left[line] = true
 				continue
 			moving[line] = maxi(int(moving.get(line, 0)), int(found[1]))
@@ -151,7 +153,7 @@ func _restep(path: String, into: String) -> void:
 	var still: int = 0
 	for float_at: Array in now["floats"]:
 		var found: Array = _line_of(now, int(float_at[0]), int(float_at[1]), file)
-		if int(found[1]) == -2 or (file.block.has(int(found[0])) and file.past_last(int(found[0]))):
+		if int(found[1]) == -2:
 			still += 1
 			print("    in the air, held only by another section's part: line %d (%s, %s)" % [
 				int(found[0]) + 1, file.lines[int(found[0])].strip_edges(), file.section_name(int(found[0]))])
@@ -190,12 +192,23 @@ func _reopened(path: String, into: String, made: String, measured: Dictionary) -
 	var shared: Array = await _shared_count(made)
 	_check("%s: the share's steps test, %d in the air, %d hidden" % [path, shared[0], shared[1]],
 		shared[0] == (measured["floats"] as Array).size())
-	# Saved as Save saves it, under a name of the probe's own.
-	var called: String = "Restep " + path.get_file().get_basename()
+	# Saved as Save saves it, under its own name: under another, its name
+	# lines are that name's.
+	var called: String = _store.title
 	_forget(called)
 	_store.save_as(called)
 	var again: String = FileAccess.get_file_as_string(ModelStore.saved_path(called))
-	_check("%s: saved unedited, byte for byte (%d bytes)" % [path, made.length()], again == made)
+	var a: PackedStringArray = made.split("\n")
+	var b: PackedStringArray = again.split("\n")
+	var first: int = -1
+	for n: int in maxi(a.size(), b.size()):
+		if n >= a.size() or n >= b.size() or a[n] != b[n]:
+			first = n
+			break
+	_check("%s: saved unedited as %s, byte for byte (%d bytes, %d saved%s)" % [path, called, made.length(),
+		again.length(), "" if first < 0 else "; line %d: %s | %s" % [first + 1,
+		a[first] if first < a.size() else "(none)", b[first] if first < b.size() else "(none)"]],
+		again == made)
 	_forget(called)
 	_main.call("clear_model")
 	await _frames(4)
@@ -442,15 +455,6 @@ class Restepped extends RefCounted:
 
 	func section_name(line: int) -> String:
 		return names[section_of[line]]
-
-	## Whether no part of [param line]'s section is put down after it: a step
-	## later, nothing more of its section could hold it.
-	func past_last(line: int) -> bool:
-		var section: int = section_of[line]
-		for other: int in block:
-			if section_of[other] == section and other != line and int(block[other]) > int(block[line]):
-				return false
-		return true
 
 	func later(line: int, to: int) -> void:
 		block[line] = maxi(int(block[line]) + 1, to)
