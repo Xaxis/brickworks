@@ -76,7 +76,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { minifigLayers, minifigOf } from "../../web/card.js";
+import { HOUSE_HANDLE, minifigLayers, minifigOf } from "../../web/card.js";
 
 // The minifigure an avatar made from [handle] shows (web/card.js minifigOf),
 // as faceOf reads one in the page: its hair and face layers.
@@ -133,7 +133,7 @@ const drawn = (page) => page.evaluate(() => {
     name: document.querySelector(".profile-head h1")?.textContent || "",
     handle: document.querySelector(".profile-head .handle")?.textContent.replace(/\s+/g, " ").trim() || "",
     avatar: avatar ? { minifig: avatar.classList.contains("minifig") ? (avatar.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : "",
-      picture: Boolean(avatar.querySelector("img")),
+      picture: Boolean(avatar.querySelector("img")), house: avatar.classList.contains("house"),
       loaded: Boolean(avatar.querySelector("img")?.naturalWidth),
       tile: [...avatar.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(avatar).bottom } : null,
     nameBottom: box(document.querySelector(".profile-head h1"))?.bottom ?? 1e9,
@@ -181,6 +181,10 @@ function headHolds(said, label, { name, handle, phone, pictured = false, likes =
   if (pictured) {
     check(`${label}: their own picture as the avatar, loaded, over its tile`,
       Boolean(said.avatar && said.avatar.tile && said.avatar.picture && said.avatar.loaded));
+  } else if (handle === HOUSE_HANDLE) {
+    // Brickworks' own account is its mark, never a minifigure (docs/TRADEMARKS.md).
+    check(`${label}: the house's avatar is the Brickworks mark, no minifig and no picture`,
+      Boolean(said.avatar && said.avatar.house && !said.avatar.minifig && !said.avatar.picture));
   } else {
     check(`${label}: an avatar made from the handle (the minifig "${said.avatar?.minifig}" on a coloured tile, no picture)`,
       Boolean(said.avatar && said.avatar.tile && !said.avatar.picture && said.avatar.minifig === minifigKey(handle)));
