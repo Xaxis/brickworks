@@ -186,3 +186,64 @@ console.log(JSON.stringify(out));
     assert got["ok"] == {"id": 3, "taken": {"added": 2, "removed": 0, "moved": 0, "recoloured": 0, "swapped": 0,
                                             "restepped": 0}, "whole": False}
     assert all(str(got[name]).startswith("refused") for name in ["bad_id", "bad_count", "bad_whole"])
+
+
+@has_node
+def test_sent_heard_at_once_taken_in_part_published_and_credited_through_the_real_handlers():
+    run = subprocess.run(["node", str(ROOT / "tests/fixtures/suggest/flow.mjs")], cwd=ROOT, capture_output=True,
+                         text=True, timeout=300, stdin=subprocess.DEVNULL)
+    assert run.returncode == 0, run.stderr[-2000:]
+    got = json.loads(run.stdout)
+    assert got["troubles"] == []
+    # Refused where it must be: nobody, the designer sending the remix, a model that is no remix.
+    assert [got[k]["status"] for k in ["not_signed_in", "not_yours", "not_a_remix"]] == [401, 403, 422]
+    # Sent, then sent again: one open, brought up to date.
+    assert got["sent"]["status"] == 201 and got["sent"]["body"]["counts"] == {
+        "added": 2, "removed": 1, "moved": 1, "recoloured": 1, "swapped": 1, "restepped": 1}
+    assert got["sent_again"]["status"] == 200 and got["sent_again"]["body"]["again"] is True
+    assert got["open_rows"] == 1
+    # The designer's bell counts it the moment it is sent, the sender's not;
+    # opening her notifications clears it, and they name it under her model.
+    assert got["before_bell"]["body"]["count"] == 0
+    assert got["bell"]["body"]["count"] == 1 and got["bell"]["body"]["notifications"] == 1
+    assert got["ann_bell"]["body"]["count"] == 0
+    assert got["bell_after_opening"]["body"]["count"] == 0
+    [group] = got["told_groups"]
+    assert group["model"] == "SuggestDee" and group["rows"][0]["kind"] == "suggestion"
+    assert group["rows"][0]["link"] == "/app?suggestion=1" and group["rows"][0]["said"] == "Wider wheels, and a spoiler"
+    # Read: the designer with her model's text, the sender without, nobody not at all.
+    designer = got["as_designer"]["body"]
+    assert designer["you"] == "designer" and designer["mine"] and designer["theirs"] and len(designer["changes"]) == 7
+    assert got["as_sender"]["body"]["you"] == "sender" and "mine" not in got["as_sender"]["body"]
+    assert got["as_nobody"]["status"] == 401
+    assert len(got["open_for_dee"]["body"]["open"]) == 1 and got["open_for_ann"]["body"]["open"] is None
+    # Taken in part: never by the sender, never into a version she does not have.
+    assert got["merge_by_ann"]["status"] == 404 and got["merge_stale"]["status"] == 409
+    assert got["merged"]["status"] == 200 and got["merged_as_engine"] is True
+    assert got["merged"]["body"]["whole"] is False and got["merged"]["body"]["taken"]["recoloured"] == 0
+    # Published as her version 2, naming it: marked taken by that version,
+    # the file the merge, version 1's kept.
+    assert got["published"]["status"] == 200 and got["published"]["body"]["version"] == 2
+    assert got["published"]["body"]["suggestion"] == {"taken": True, "id": 1}
+    assert got["row"]["status"] == "taken" and got["row"]["taken_n"] == 2 and got["row"]["whole"] is False
+    assert got["versions"] == [1, 2] and got["file_now"] and got["file_kept"]
+    assert got["taken_again"]["status"] == 409
+    # The sender hears it, under her remix, linked to the version that took it.
+    [heard] = got["ann_told"]["body"]["groups"]
+    assert heard["model"] == "SuggestAnn" and heard["rows"][0]["kind"] == "suggestion_taken"
+    assert heard["rows"][0]["link"] == "/m/SuggestDee/v/2"
+    # And the model's changes credit her, for anybody.
+    [credit] = got["credited"]["body"]["taken"]
+    assert credit["n"] == 2 and credit["by"]["handle"] == "ann"
+    # A second change, declined: closed, nothing taken.
+    assert got["second"]["status"] == 201 and got["declined"]["status"] == 200 and got["declined_row"] == "declined"
+
+
+def test_the_bell_is_asked_again_within_a_minute_in_the_app_and_on_the_site():
+    app = (ROOT / "src/ui/account_panel.gd").read_text()
+    site = (ROOT / "web/follow.js").read_text()
+    import re
+    every = float(re.search(r"const FEED_EVERY := ([0-9.]+)", app).group(1))
+    again = int(re.search(r"const ASK_AGAIN_MS = (\d+);", site).group(1))
+    assert every <= 50 and again <= 50000
+    assert "setInterval(askCountAgain, ASK_AGAIN_MS)" in site and "visibilitychange" in site

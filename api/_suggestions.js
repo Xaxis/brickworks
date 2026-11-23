@@ -156,6 +156,7 @@ export async function suggestionAnswer(claims, query, { getFile }) {
     remix: { id: remix.id, name: remix.name, n: theirs.n },
     by: by || null, designer: designer || null, taken: row.taken || null, taken_n: row.taken_n || null,
     changes: compared.changes, counts: compared.counts, sections: compared.sections, listed: compared.listed,
+    total: compared.total,
     theirs: theirs.text, ...(role === "designer" ? { mine: mine.text } : {}) };
 }
 

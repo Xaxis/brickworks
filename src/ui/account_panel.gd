@@ -24,7 +24,8 @@
 ## (2026-10-18, api/people.js ?op=feed_count, supabase/follows.sql): new
 ## models and versions from people it follows, photos, comments and remixes
 ## of its models. Asked when somebody signs in, when the panel opens, when
-## the window comes back to the front, and every five minutes; the count is
+## the window comes back to the front, and every 45 seconds, so a change a
+## remixer sends back is on it within a minute (suggestedit); the count is
 ## on Account in the bar (feed_counted) and here, with Open your feed,
 ## which is the site's /feed. Opening the feed there clears it.
 class_name AccountPanel
@@ -67,8 +68,9 @@ signal sign_out_wanted()
 ## none, or nobody is signed in.
 signal feed_counted(count: int)
 
-## How often the count is asked again while signed in.
-const FEED_EVERY := 300.0
+## How often the count is asked again while signed in: under a minute, the
+## most a change sent back waits to be heard of (suggestedit, 2026-11-23).
+const FEED_EVERY := 45.0
 
 var feed_count: int = 0
 var _feed_line: Label

@@ -611,6 +611,19 @@ document.addEventListener("pager:drawn", (event) => {
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
 showFeedCount({ ask: ![`${langAt()}/feed`, `${langAt()}/notifications`].includes(location.pathname) }).catch(() => null);
+// And again every 45 s while the page is in front, and as it comes back to
+// the front (suggestedit, 2026-11-23): a change a remixer sends back is on
+// its designer's avatar within a minute, with no reload. A tab behind
+// others asks nothing.
+const ASK_AGAIN_MS = 45000;
+let countAskedAt = Date.now();
+function askCountAgain() {
+  if (document.visibilityState !== "visible" || !signedIn() || Date.now() - countAskedAt < ASK_AGAIN_MS - 1000) return;
+  countAskedAt = Date.now();
+  showFeedCount().catch(() => null);
+}
+setInterval(askCountAgain, ASK_AGAIN_MS);
+document.addEventListener("visibilitychange", askCountAgain);
 
 // Sign in, in the header and the phone's Menu (signinux, 2026-11-13: the
 // owner, "it then takes them to another page where they have to click
