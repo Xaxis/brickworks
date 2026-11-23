@@ -107,7 +107,10 @@ async function until(page, test, what, seconds = 30, arg = null) {
   }
 }
 
-const state = (page) => page.evaluate(() => window.brickworksState || {}).catch(() => ({}));
+// The title and the pins are told in window.brickworksShare, the rest in
+// window.brickworksState (Main._tell_page): read as one.
+const state = (page) => page.evaluate(() => ({ ...(window.brickworksShare || {}), ...(window.brickworksState || {}) }))
+  .catch(() => ({}));
 
 /// Pressed where the app says the control is (window.brickworksControls).
 async function press(page, name, touch) {
@@ -245,7 +248,7 @@ try {
       const pressed = Date.now();
       await press(pinPage, `start_came_${row}`, false);
       const lit = await until(pinPage, (comment) => {
-        const s = window.brickworksState || {};
+        const s = { ...(window.brickworksShare || {}), ...(window.brickworksState || {}) };
         const pins = s.pins || {};
         const one = (pins.pins || []).find((p) => p.id === comment);
         return one && one.brick && pins.lit === one.brick ? { brick: one.brick, title: s.title, at: Date.now() } : null;
@@ -262,7 +265,7 @@ try {
       check("the commenter pins another", second.status === 201, `${second.status} ${second.body.error || ""}`);
       const wrote = Date.now();
       const shown = await until(pinPage, (was) => {
-        const pins = (window.brickworksState || {}).pins || {};
+        const pins = ({ ...(window.brickworksShare || {}), ...(window.brickworksState || {}) }).pins || {};
         return (pins.pins || []).length > was && pins.notice ? { notice: pins.notice, at: Date.now() } : null;
       }, "the new pin in the open studio", 75, before).catch(() => null);
       summary.new_pin = { ms: shown ? shown.at - wrote : null, notice: shown?.notice };
@@ -283,7 +286,7 @@ try {
     const was = (await state(page)).title;
     await press(page, "start_found_0", false);
     const copied = await until(page, (was) => {
-      const s = window.brickworksState || {};
+      const s = { ...(window.brickworksShare || {}), ...(window.brickworksState || {}) };
       return s.title && s.title !== was && !(s.studio_start || {}).shown && s.bricks > 0 ? { title: s.title, bricks: s.bricks } : null;
     }, "the copy on the baseplate", 120, was).catch(() => null);
     summary.copy = copied || {};
