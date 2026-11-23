@@ -42,6 +42,11 @@
 //     to the far right with the 'Open the app' button to the left of it";
 //   a header whose last item is closer than the page's 16 px gutter to the
 //     screen's right edge, on a phone at 320, 360 and 390 px;
+//   a page whose main container (the first drawn .wrap in <main>) does not
+//     have the header's left and right edges, the gallery's, within a
+//     pixel: one page width for every page (homefix, 2026-11-23, the owner:
+//     Talk "does not have the same page width as the other pages"; every
+//     page of words was 108 px narrower than the header at 1280);
 //   a heading off the type scale: an h2 not at --t-h2 (a landing page's
 //     h2.title at --t-section) or an h3 not at --t-h3, as drawn. There were three sizes of h2 and four of h3 (site273,
 //     2026-10-26): a model's About it at 18 px under More by at 30;
@@ -401,6 +406,22 @@ async function headerOrder(page, signedIn) {
 /// mark, Open the app and Menu ran Menu 8 px from the edge (2026-10-23).
 const GUTTER = 16;
 const PHONES = [320, 360, 390];
+
+/// What is wrong with the page's width, as [what, why]: its main
+/// container's edges are the header's (site.css .wrap, one width for every
+/// page). Run in the page.
+function pageEdges() {
+  const drawn = (el) => el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0;
+  const head = document.querySelector(".site-head > .wrap");
+  // The page's container: the .wrap round <main> (the docs' .docs-layout,
+  // with its contents beside main), else the first drawn in it.
+  const main = document.querySelector("main")?.closest(".wrap") || [...document.querySelectorAll("main .wrap")].find(drawn);
+  if (!head || !main || !drawn(head)) return [];
+  const [h, m] = [head.getBoundingClientRect(), main.getBoundingClientRect()];
+  if (Math.abs(h.left - m.left) <= 1 && Math.abs(h.right - m.right) <= 1) return [];
+  return [["the page", `is ${Math.round(m.left)} to ${Math.round(m.right)} px wide (main .${String(main.className).trim().split(/\s+/).join(".")}), `
+    + `not the header's and the gallery's ${Math.round(h.left)} to ${Math.round(h.right)}`]];
+}
 async function headerGutter(page) {
   const { width, height } = page.viewportSize();
   const widths = width < 600 ? [...new Set([...PHONES, width])] : [width];
@@ -487,7 +508,7 @@ try {
             if (one.ready && !(await one.ready(page, { width, signedIn }))) fail(label, "did not finish drawing");
             await page.waitForTimeout(300);
             if (!one.dialogOnly) {
-              await judge(page, label, "page", null, `${stem}.png`, [...await headerOrder(page, signedIn), ...await headerGutter(page)]);
+              await judge(page, label, "page", null, `${stem}.png`, [...await headerOrder(page, signedIn), ...await headerGutter(page), ...await page.evaluate(pageEdges)]);
             }
             // A state that does not last is judged as it is shown.
             const now = (what, scope) => judge(page, label, what, scope, `${stem}_${what.replace(/\W+/g, "-")}.png`);

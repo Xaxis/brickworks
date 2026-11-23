@@ -105,12 +105,14 @@
 	--r-pill: 999px;
 	--control-radius: var(--r-2);
 	--radius: var(--r-3);
-	/* A page's width: a page of words keeps --page; a page of cards and
-	   pictures (.wrap.wide: the gallery, a person, a collection, a model,
-	   the feed, the landing page's row of models) and the header and
-	   footer on every page use the window up to --page-wide. Nothing was
-	   wider than 1,140 px, 59% of a 1920 window (site273). */
-	--page: 1140px;
+	/* A page's width: one for every page, the header's and the footer's
+	   too, the window less its 16 px gutters up to --page-wide (homefix,
+	   2026-11-23, the owner: Talk "does not have the same page width as
+	   the other pages"; a page of words had kept 1,140 px, so its edges
+	   sat 54 px inside the header's at 1280). A page of words keeps its
+	   lines to a measure inside it (.prose, .lede, a setting's line), not
+	   by a narrower page. tools/web/design_flow.mjs fails a page whose
+	   main container's edges are not the header's. */
 	--page-wide: 1600px;
 	/* One type scale for every page (docs/DESIGN_SYSTEM.md): the landing
 	   page's one line, a page's title, a section's, a card's; the lede;
@@ -302,8 +304,7 @@ code.cmd {
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 a:focus-visible { border-radius: var(--r-1); }
 
-.wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
-.wrap.wide, .site-head > .wrap, .site-foot > .wrap { width: min(100% - 32px, var(--page-wide)); }
+.wrap { width: min(100% - 32px, var(--page-wide)); margin-inline: auto; }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);
@@ -2018,35 +2019,62 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	.post-verbs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 	.post-verbs > :first-child { grid-column: 1 / -1; }
 }
-/* What was said of it: the newest comment, two lines held whatever comes,
-   and the way to say something, opened in place (web/landing.js). */
+/* What was said, in a post of the feed and a row of Talk (web/home-feed.js
+   saidLineHtml; web/composer.js puts in what is posted there the same way):
+   each a small face, a name and the words on one line, the room held for
+   two whatever comes, so a line that comes later moves nothing. Opened (the
+   composer there), each says up to three lines; all of them ("n more"),
+   whole, scrolled within the post past a few. */
 .post-talk { display: flex; flex-direction: column; gap: var(--s-1); margin-top: auto; padding-top: var(--s-2); border-top: 1px solid var(--line); }
-.post-said {
-	display: -webkit-box; min-height: calc(2 * 1.45em); margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small);
-	line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere;
+.said-room { display: flex; flex-direction: column; justify-content: center; gap: var(--s-1); min-height: calc(48px + var(--s-1)); }
+.talk-row .said-room { min-height: 0; margin-top: var(--s-2); }
+.talk-row .said-room:not(:has(.said-line)) { display: none; }
+.said-lines { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+.said-lines[hidden] { display: none; }
+.said-line { display: flex; align-items: center; gap: var(--s-2); min-width: 0; min-height: 24px; }
+.said-line > .avatar { flex: none; }
+.said-line p { flex: 1; min-width: 0; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small); line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.said-line .who { color: var(--ink); font-weight: 650; text-decoration: none; }
+.said-line a.who:hover { text-decoration: underline; }
+.said-line.reply { padding-left: calc(24px + var(--s-2)); }
+.said-line.pending { opacity: .65; }
+.said-wait { color: var(--ink-faint); font-size: var(--t-tiny); }
+.said-none { margin: 0; color: var(--ink-faint); font-size: var(--t-small); line-height: 1.45; }
+:is(.post-talk.open, .post.talk, .talk-row) .said-line { align-items: flex-start; }
+:is(.post-talk.open, .post.talk, .talk-row) .said-line p {
+	display: -webkit-box; white-space: normal; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3;
 }
-.post-said .who { color: var(--ink); font-weight: 650; text-decoration: none; }
-.post-said .first { color: var(--ink-faint); }
-.post-say {
-	align-self: flex-start; min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink-soft);
+.post.talk .said-line p { -webkit-line-clamp: 2; line-clamp: 2; }
+.post-talk.every .said-lines { max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding-right: var(--s-1); }
+.post-talk.every .said-line p { display: block; }
+.said-acts { display: flex; align-items: center; gap: var(--s-3); margin: 0; }
+.post-say, .said-more {
+	min-height: 32px; padding: 0; border: 0; background: none; color: var(--ink-soft);
 	font: inherit; font-size: var(--t-small); font-weight: 600; cursor: pointer;
 }
-.post-say:hover { color: var(--ink); text-decoration: underline; }
-.post-comments { display: flex; flex-direction: column; gap: var(--s-2); }
-.post-comments[hidden] { display: none; }
-.post-comments ol { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
-.post-comments li { color: var(--ink-soft); font-size: var(--t-small); overflow-wrap: anywhere; }
-.post-comments li b { color: var(--ink); }
-.post-comments textarea { width: 100%; min-height: 72px; resize: vertical; }
-.post-comments .actions { justify-content: flex-end; }
-/* A thread's latest reply, on the soft ground under its first words. */
-.post-reply { display: flex; align-items: flex-start; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-radius: var(--r-2); background: var(--bg-soft); }
-.post-reply p {
-	display: -webkit-box; min-height: calc(2 * 1.45em); margin: 0; overflow: hidden; color: var(--ink-soft); font-size: var(--t-small);
-	line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere;
-}
-.post-reply b { color: var(--ink); }
-.post-reply.none p { color: var(--ink-faint); }
+.said-more { margin-left: auto; color: var(--ink-faint); font-weight: 500; }
+.said-more[hidden] { display: none; }
+:is(.post-say, .said-more):hover { color: var(--ink); text-decoration: underline; }
+.post-acts a.tally { color: var(--ink-soft); text-decoration: none; }
+.post-acts a.tally:hover { color: var(--ink); text-decoration: underline; }
+/* The composer (web/composer.js), the same wherever something is said: a
+   feed's post, a row of Talk, a model's page, a thread's page. The box,
+   the guidelines and the keys that post under it, then what happened, and
+   Cancel and Post. A finger has no Ctrl, so a phone is not told of it. */
+.composer { display: grid; gap: var(--s-2); margin: 0; }
+.composer[hidden] { display: none; }
+.composer textarea { width: 100%; min-height: 72px; resize: vertical; }
+.composer-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s-3); margin: 0; color: var(--ink-faint); font-size: var(--t-tiny); }
+.composer-foot[hidden] { display: none; }
+.composer-foot a { color: var(--ink-soft); }
+.composer-count { margin-left: auto; }
+.composer-count:empty { display: none; }
+.composer-count.bad { color: var(--bad); }
+@media (pointer: coarse) { .composer-keys { display: none; } }
+.composer-go { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2); }
+.composer-said { flex: 1 1 12em; min-width: 0; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+:is(.post, .talk-row) .composer { margin-top: var(--s-2); }
+.post-talk .composer { margin-top: var(--s-1); }
 .post.talk .post-acts, .post.challenge .go-on { margin-top: auto; }
 /* The month's challenge: lit from above in the accent, as its tile is. */
 .post.challenge { border-color: var(--accent-edge); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; }
