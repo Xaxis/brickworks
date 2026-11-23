@@ -373,6 +373,12 @@ var held_landed: Dictionary = {}
 ## next open lost it (hscheck). A definition renamed is not in it, and is
 ## named from its new name.
 var section_files: Dictionary = {}
+## The lines of the file the model was opened from that it does not read
+## (comments, other programs' lines, TEXMAP blocks), each by the line it was
+## beside (LdrModel.kept_lines): a whole write writes each there again
+## (LdrModel.write_tree), wherever its part now is. By the file's lines, which
+## no edit changes (Brick.origin), so set once at the open and never changed.
+var kept_lines: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -699,6 +705,7 @@ func clear(keep_numbers: bool = false) -> void:
 	held_paths = {}
 	held_landed = {}
 	section_files.clear()
+	kept_lines = {}
 	motions = null
 	program = ""
 	cut_kept = {}
@@ -928,6 +935,9 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	copy.steps_own = steps_own
 	copy.step_looks = step_looks.duplicate(true)
 	copy.motions = motions
+	# Read, never changed: the lines the file carried, and where its
+	# sub-models' parts stood in them (Assemblies._read_frames).
+	copy.kept_lines = kept_lines
 	for brick_id: int in _bricks:
 		if _ghosts.has(brick_id):
 			continue

@@ -6415,6 +6415,13 @@
       "entry": "tools/web/talk_stand_in.mjs",
       "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wirekeep probe",
+      "entry": "src/dev/wirekeep_probe.gd",
+      "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
+      "area": "model-io"
     }
   ]
 }
