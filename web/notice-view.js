@@ -87,7 +87,9 @@ export function line(one) {
 /// [one] group drawn; [i] its place, the first screen's pictures asked at once.
 export function group(one, i = 0) {
   const item = document.createElement("li");
-  item.className = `notice${one.unread ? " unread" : ""}`;
+  // The site's one row (site.css .list-row): the picture, the model and
+  // what happened to it.
+  item.className = `list-row notice${one.unread ? " unread" : ""}`;
   item.dataset.model = String(one.model || "");
   if (one.achievements) item.dataset.achievements = "";
   if (one.challenge) item.dataset.challenge = String(Number(one.challenge) || "");
@@ -101,7 +103,7 @@ export function group(one, i = 0) {
     if (!/#announcement-\d+$/.test(String(one.link || ""))) item.dataset.own = to;
   }
   const picture = document.createElement("a");
-  picture.className = one.achievements ? "pic award" : one.challenge ? "pic challenge" : told ? "pic announce" : one.talk ? "pic talk" : "pic";
+  picture.className = `row-pic pic${one.achievements ? " award" : one.challenge ? " challenge" : told ? " announce" : one.talk ? " talk" : ""}`;
   picture.href = to;
   picture.tabIndex = -1;
   picture.setAttribute("aria-hidden", "true");
@@ -121,8 +123,9 @@ export function group(one, i = 0) {
   if (told) picture.append(parsed(iconHtml("spark")));
   if (one.talk) picture.append(parsed(iconHtml("comment")));
   const body = document.createElement("div");
-  body.className = "body";
-  const title = document.createElement("h2");
+  body.className = "row-body body";
+  const title = document.createElement("h3");
+  title.className = "row-title";
   const name = document.createElement("a");
   name.href = to;
   name.textContent = String(one.name || say("Your model"));

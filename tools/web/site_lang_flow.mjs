@@ -1632,7 +1632,7 @@ const SEVENTH = [
   { name: "feed", file: "feed.html", at: "/feed", signedIn: true, drawn: () => document.documentElement.dataset.feed === "ready",
     theirs: ".feed-row .what b, .feed-row .what a, .feed-row q, .feed-photo figcaption, .people-list .name, .people-list .handle" },
   { name: "notifications", file: "notifications.html", at: "/notifications", signedIn: true,
-    drawn: () => document.documentElement.dataset.notifications === "ready", theirs: ".notice h2 a, .notice .what b, .notice q" },
+    drawn: () => document.documentElement.dataset.notifications === "ready", theirs: ".notice .row-title a, .notice .what b, .notice q" },
   { name: "builds", file: "builds.html", at: "/builds", drawn: () => ["ready", "none"].includes(document.documentElement.dataset.builds),
     theirs: "figure.build q, figure.build figcaption a" },
   { name: "feedback", file: "feedback.html", at: "/feedback", signedIn: true, drawn: () => true, theirs: "" },

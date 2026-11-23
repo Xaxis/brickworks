@@ -79,17 +79,20 @@
 <main id="main">
 	<div class="page-hero">
 		<div class="wrap">
-			<p class="eyebrow">Deins</p>
-			<h1>Deine Listen</h1>
-			<p class="lede">Die Sets, die du hast und willst, die Modelle, die du gespeichert hast, und deine eigenen Listen. Behalte alles mit einem Tipp auf seiner Karte oder Seite; zeig her, was du willst.</p>
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Deine Listen</h1>
+					<p class="lede">Die Sets, die du hast und willst, die Modelle, die du gespeichert hast, und deine eigenen Listen.</p>
+				</div>
+			</div>
 		</div>
 	</div>
 	<div class="wrap page-body lists-page">
 
-		<section id="signed-out" hidden>
-			<p class="lede">Melde dich an, um die Sets, die du hast und willst, gespeicherte Modelle und eigene Listen zu behalten. Wir schicken dir einen Code per E-Mail: kein Passwort.</p>
-			<div class="actions"><button class="cta" id="sign-in" type="button">Anmelden</button></div>
-		</section>
+		<div class="state" id="signed-out" hidden>
+			<p>Melde dich an, um die Sets, die du hast und willst, gespeicherte Modelle und eigene Listen zu behalten. Wir schicken dir einen Code per E-Mail: kein Passwort.</p>
+			<div class="actions"><button class="cta small" id="sign-in" type="button">Anmelden</button></div>
+		</div>
 		<!-- The lists' place while they are asked (lists.js), as skeletons. -->
 		<div class="skeleton lists-skeleton" id="loading" role="status">
 			<span class="visually-hidden">Deine Anmeldung wird gesucht…</span>

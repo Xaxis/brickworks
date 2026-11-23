@@ -110,15 +110,14 @@ const quoted = (text) => say("“{text}”", { text });
 
 function row(one, eager = false) {
   const item = document.createElement("li");
-  item.className = `feed-row${one.new ? " new" : ""}`;
+  // The site's one row (site.css .list-row): who, what and when, the
+  // thing under the words.
+  item.className = `list-row feed-row${one.new ? " new" : ""}`;
   item.dataset.kind = String(one.kind || "");
-  // Who did it, and what.
-  const head = document.createElement("div");
-  head.className = "post-head";
   const face = one.by && one.by.handle ? parsed(avatarHtml({ handle: one.by.handle, name: one.by.name, picture: one.by.picture })) : null;
-  if (face) head.append(toProfile(one.by, face, { tabindex: "-1", "aria-hidden": "true", class: "face" }));
+  if (face) item.append(toProfile(one.by, face, { tabindex: "-1", "aria-hidden": "true", class: "row-face" }));
   const what = document.createElement("p");
-  what.className = "what";
+  what.className = "row-title what";
   const who = document.createElement("b");
   who.textContent = String(one.who || say("A builder"));
   const name = document.createElement("a");
@@ -143,26 +142,30 @@ function row(one, eager = false) {
     what.append(" ", tag);
   }
   const words = document.createElement("div");
-  words.className = "words";
+  words.className = "row-body";
   words.append(what);
+  // What they said of it: a version's note, a photo's words.
+  if (one.said) {
+    const quote = document.createElement("q");
+    quote.className = "row-said";
+    quote.textContent = String(one.said);
+    words.append(quote);
+  }
   const said = ago(one.at);
   if (said) {
     const at = document.createElement("time");
+    at.className = "row-meta";
     at.dateTime = String(one.at);
     at.textContent = said;
     words.append(at);
   }
-  head.append(words);
-  item.append(head);
-  // What they said of it: a version's note, a photo's words.
-  if (one.said) {
-    const quote = document.createElement("q");
-    quote.textContent = String(one.said);
-    item.append(quote);
-  }
+  item.append(words);
   // The thing: the photo of the build, or the model's card.
-  if (one.kind === "photo" && one.photo && ID.test(String(one.photo.id))) item.append(photoFigure(one, eager));
-  else if (one.card) item.append(modelCard(one.card, { eager }));
+  const thing = document.createElement("div");
+  thing.className = "row-card";
+  if (one.kind === "photo" && one.photo && ID.test(String(one.photo.id))) thing.append(photoFigure(one, eager));
+  else if (one.card) thing.append(modelCard(one.card, { eager }));
+  if (thing.children.length) item.append(thing);
   return item;
 }
 
@@ -222,7 +225,6 @@ async function suggest(mine, { withLatest, skip = new Set() }) {
     .filter((one) => one && one.handle && !skip.has(one.handle)).slice(0, SUGGESTED);
   $("people").replaceChildren(...designers.map(person));
   $("designers").hidden = designers.length === 0;
-  $("layout").classList.toggle("with-rail", designers.length > 0);
   if (!withLatest) return;
   const models = Array.isArray(answer.body.models) ? answer.body.models : [];
   const photos = Array.isArray(answer.body.photos) ? answer.body.photos : [];
@@ -268,7 +270,6 @@ async function page(mine) {
   if (first) {
     const following = Array.isArray(answer.body.following) ? answer.body.following : null;
     const empty = $("rows").children.length === 0;
-    $("layout").classList.toggle("posts", !empty);
     $("nobody").hidden = !(empty && following !== null && following.length === 0);
     $("quiet").hidden = !(empty && $("nobody").hidden);
     const skip = new Set([...(following || []), ...(state?.me?.handle ? [state.me.handle] : [])]);
@@ -287,7 +288,6 @@ async function load() {
   $("layout").hidden = true;
   for (const id of ["signed-out", "nobody", "quiet", "not-yet", "latest", "designers"]) $(id).hidden = true;
   $("rows").replaceChildren();
-  $("layout").classList.remove("posts");
   $("older-line").hidden = true;
   $("said").textContent = "";
   oldest = null;

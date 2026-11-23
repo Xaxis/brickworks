@@ -432,25 +432,57 @@ is on the page, `hidden`, for the script to show.
   picture the rest; on a phone (under 600 px) its picture is square, the model drawn
   as large as its width lets it (`web/model-page.js` `fitPicture`, by
   transform alone, so nothing shifts).
-- **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
-  space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
-  `.lede`), then its sections. `.prose` for a page of words (the FAQ's
-  width, the legal pages), narrower and quieter.
-- **An inner page** (site359, 2026-10-29): every page that is not a
-  landing page opens on `.page-hero`, the whole width, lit by `--glow`
-  over `--studs` that fade out under the words (the landing pages'
-  `.halo`, quieter), its `.wrap` holding the `.eyebrow`, the `h1`, the
-  `.lede`, then `.hero-meta` (a date) or `.actions`; a head that ends in
-  `.tabs` (the legal pages and /takedown, /feed and /notifications) sits
-  them on its line. Then `.page-body`, and for a page of parts
-  `.page-grid`: `.page-toc` ("On this page", or Settings' list) down the
-  left from 900 px, sticky under the header, its part marked in
+- **One page pattern** (listkit, 2026-11-23; the owner: "the 'your feed'
+  page vs the 'your notification' page are inconsistent widths and
+  layouts ... building broken inconsistent slop"). Every page but a
+  landing page (home, plans, download, beta) and an object's (a model, a
+  person, a set, a challenge, a thread) opens on the same head, and every
+  list page lays out the same way. Before, each was built on its own: h1
+  tops at 93, 125, 172, 181 and 283 px at 1280, three heads (the
+  gallery's band, Talk's crumbs, the eyebrowed hero), actions beside the
+  title, under the lede or in a rail, three rows, three empty states,
+  three pagers and asides of 300 and 320 px from 960 or 1200 px.
+  - **The head**: `.page-hero > .wrap`, then `.page-head`: `.page-title`
+    (the `h1` and one `.lede`) at the left, `.page-acts` (a button, a
+    search, a date) at the right, their feet on one line; then the page's
+    views as `.tabs` (or a `.tab-bar`: the tabs and a control at their
+    end, the gallery's Top over) on the band's foot. No eyebrow. The `h1`
+    32 px under the band's top, 16 on a phone, where the lede is left out,
+    a search takes the next row, and the title's row is a control's
+    height whatever is beside it. A server page draws it with
+    `pageHeadHtml` (web/card.js), Talk's lists and its new thread.
+  - **The list**: `.page-body > .list-layout`: `.list-main`, 760 px, at the
+    page's left edge, and from 900 px its `.list-aside` at the page's right
+    edge, 320 px, sticky, each `section` in it a panel. Under 900 px the
+    aside follows the list.
+  - **A row**: `ol.list-rows > li.list-row`: `.row-pic` (a 4:3 picture, 96
+    px, 72 on a phone) or `.row-face` (an avatar), `.row-body`
+    (`.row-title`, `.row-said`, `.row-meta`: who and when), at most one
+    `.row-act`, and a post's `.row-card` under the words; `.unread`,
+    `.new` or `.pinned` edged in `--accent-edge`. The feed's posts, the
+    notifications and Talk's threads (and the home's Talk strip).
+  - **Empty** is `.state`, **more** is `.pager` with `.pager-more`, below.
+  - **Words** (the FAQ, the legal pages, /takedown, /changelog, /compare,
+    /share-model): the same head, then `.page-body` and `.page-grid`
+    (`.page-toc` 220 px down the left from 900 px, `.prose` beside it);
+    Your lists' rail is the same 220 px column.
+  `tools/web/layout_audit.mjs` (run by design_flow, the release's
+  `[design]`) holds every page to it at 1280 and 390, signed out and in:
+  the container at the header's edges, the h1's left, top and size, the
+  tabs' left and their distance under the head, the list's left and
+  width and the aside at the right edge, each within a pixel of the
+  feed's, whose own h1 is held to the tokens. It fails a page drawn its
+  own way, naming it.
+- **Page**: `main.page`: the space above the title, then its sections.
+  `.prose` for a page of words, narrower and quieter.
+- **An inner page** (site359, 2026-10-29): `.page-hero`, the whole width,
+  lit by `--glow` over `--studs` that fade out under the words (the
+  landing pages' `.halo`, quieter); then `.page-body`, and for a page of
+  parts `.page-grid`: `.page-toc` ("On this page", or Settings' list) down
+  the left from 900 px, sticky under the header, its part marked in
   `--accent-edge`; under 900 px a row of pills, its `ul.scroller`.
-  The FAQ, the legal pages, /takedown, /settings, /compare, /changelog,
-  /feed, /notifications, /admin and the 404. Before, each opened on a bare
-  title of its own making and read as another product beside the new home
-  and pricing.
-- **Empty**: `.state`, a dashed box for what has nothing yet.
+- **Empty**: `.state`, a dashed box for what has nothing yet: its words,
+  then at most a line of links or one `.actions` (every list's, listkit).
 - **Segmented**: `.segmented`, a few buttons in a row, the chosen one
   `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field
   (its buttons 36 px); under 600 px its buttons are a finger's 44.

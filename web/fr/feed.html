@@ -78,30 +78,33 @@
 
 <main id="main">
 	<div class="page-hero">
-		<div class="wrap wide">
-			<p class="eyebrow">Pour vous</p>
-			<h1>Votre fil</h1>
-			<p class="lede">Les nouveaux modèles, les nouvelles versions et les photos de constructions des créateurs que vous suivez.</p>
+		<div class="wrap">
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Votre fil</h1>
+					<p class="lede">Les nouveaux modèles, versions et photos de constructions des créateurs que vous suivez.</p>
+				</div>
+			</div>
 			<nav class="tabs" aria-label="Ce qui est nouveau pour vous">
 				<a href="/fr/notifications">Notifications <span class="n" data-count="notifications" hidden></span></a>
 				<a href="/fr/feed" aria-current="page">Votre fil <span class="n" data-count="feed" hidden></span></a>
 			</nav>
 		</div>
 	</div>
-	<div class="wrap wide page-body feed-page">
+	<div class="wrap page-body">
 		<!-- The page's place while the feed is asked (feed.js): posts and the
-		     designers beside them, as skeletons. -->
-		<div class="feed-layout with-rail skeleton" id="loading" role="status">
+		     designers beside them, as skeletons, in the site's list layout and rows. -->
+		<div class="list-layout skeleton" id="loading" role="status">
 			<span class="visually-hidden">Recherche de votre connexion…</span>
-			<div class="feed-main" aria-hidden="true">
-				<div class="feed-list">
-					<div class="feed-row"><div class="post-head"><span class="bone round"></span><div class="words"><span class="bone wide"></span><span class="bone short"></span></div></div>
-						<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
-					<div class="feed-row"><div class="post-head"><span class="bone round"></span><div class="words"><span class="bone wide"></span><span class="bone short"></span></div></div>
-						<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
+			<div class="list-main" aria-hidden="true">
+				<div class="list-rows">
+					<div class="list-row"><span class="row-face bone round"></span><div class="row-body"><span class="bone wide"></span><span class="bone short"></span></div>
+						<div class="row-card skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
+					<div class="list-row"><span class="row-face bone round"></span><div class="row-body"><span class="bone wide"></span><span class="bone short"></span></div>
+						<div class="row-card skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
 				</div>
 			</div>
-			<div class="feed-rail" aria-hidden="true">
+			<div class="list-aside" aria-hidden="true">
 				<span class="bone short"></span>
 				<div class="person-row"><span class="bone round"></span><div class="names"><span class="bone"></span><span class="bone short"></span></div><span class="bone button"></span></div>
 				<div class="person-row"><span class="bone round"></span><div class="names"><span class="bone"></span><span class="bone short"></span></div><span class="bone button"></span></div>
@@ -109,32 +112,34 @@
 			</div>
 		</div>
 
-		<div class="feed-layout" id="layout" hidden>
-			<div class="feed-main">
-				<div class="state feed-ask" id="signed-out" hidden>
+		<div class="list-layout" id="layout" hidden>
+			<div class="list-main">
+				<div class="state" id="signed-out" hidden>
 					<p>Connectez-vous et suivez les créateurs dont les modèles vous plaisent : ce qu’ils font arrive ici.</p>
-					<button class="cta small" id="sign-in" type="button">Se connecter</button>
+					<div class="actions"><button class="cta small" id="sign-in" type="button">Se connecter</button></div>
 				</div>
 				<p class="state" id="nobody" hidden>Vous ne suivez encore personne. Suivez un créateur : ses nouveaux modèles, ses nouvelles versions et les photos de ses constructions arriveront ici.</p>
 				<p class="state" id="quiet" hidden>Rien de nouveau ces 90 derniers jours de la part des personnes que vous suivez.</p>
 				<p class="state" id="not-yet" hidden>Le suivi et le fil ne sont pas encore ouverts sur Brickworks.</p>
-				<ol class="feed-list" id="rows" aria-label="Votre fil"></ol>
-				<div class="actions" id="older-line" hidden><button class="cta ghost" type="button" id="older">Plus anciens</button></div>
+				<ol class="list-rows feed-list" id="rows" aria-label="Votre fil"></ol>
+				<div class="pager" id="older-line" hidden><button class="cta ghost pager-more" type="button" id="older">Plus anciens</button></div>
 				<p class="said" id="said" role="status"></p>
+				<section class="latest" id="latest" hidden aria-labelledby="latest-title">
+					<div class="scroller-head">
+						<h2 id="latest-title">Récemment sur Brickworks</h2>
+						<a href="/fr/gallery?sort=newest">La galerie</a>
+					</div>
+					<div class="models" id="latest-models"></div>
+					<h3 id="photos-title" hidden>Photos de vraies constructions</h3>
+					<div class="build-grid" id="latest-photos" hidden></div>
+				</section>
 			</div>
-			<aside class="feed-rail" id="designers" hidden aria-labelledby="designers-title">
-				<h2 id="designers-title">Créateurs à suivre</h2>
-				<ul class="people-list" id="people"></ul>
+			<aside class="list-aside" id="designers" hidden aria-labelledby="designers-title">
+				<section>
+					<h2 id="designers-title">Créateurs à suivre</h2>
+					<ul class="people-list" id="people"></ul>
+				</section>
 			</aside>
-			<section class="latest" id="latest" hidden aria-labelledby="latest-title">
-				<div class="scroller-head">
-					<h2 id="latest-title">Récemment sur Brickworks</h2>
-					<a href="/fr/gallery?sort=newest">La galerie</a>
-				</div>
-				<div class="models" id="latest-models"></div>
-				<h3 id="photos-title" hidden>Photos de vraies constructions</h3>
-				<div class="build-grid" id="latest-photos" hidden></div>
-			</section>
 		</div>
 	</div>
 </main>

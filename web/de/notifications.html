@@ -79,44 +79,49 @@
 <main id="main">
 	<div class="page-hero">
 		<div class="wrap">
-			<p class="eyebrow">Für dich</p>
-			<div class="notices-head">
-				<h1>Benachrichtigungen</h1>
-				<button class="cta ghost small" type="button" id="all-read" hidden>Alle als gelesen markieren</button>
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Benachrichtigungen</h1>
+					<p class="lede">Kommentare, Nachbauten, Remixe und Likes zu deinen Modellen, Antworten, Wettbewerbe und Stufen.</p>
+				</div>
+				<div class="page-acts">
+					<button class="cta ghost small" type="button" id="all-read" hidden>Alle als gelesen markieren</button>
+				</div>
 			</div>
-			<p class="lede">Kommentare, Fotos von Nachbauten, Remixe und Likes zu deinen Modellen, Antworten auf deine Kommentare, die Wettbewerbe, bei denen du mitmachst, jede Stufe, die du erreichst, und Neuigkeiten von Brickworks.</p>
 			<nav class="tabs" aria-label="Neues für dich">
 				<a href="/de/notifications" aria-current="page">Benachrichtigungen <span class="n" data-count="notifications" hidden></span></a>
 				<a href="/de/feed">Dein Feed <span class="n" data-count="feed" hidden></span></a>
 			</nav>
 		</div>
 	</div>
-	<div class="wrap page-body notices-page">
-
-		<section id="signed-out" hidden>
-			<p class="lede">Melde dich an, um zu sehen, was mit deinen Modellen passiert: Kommentare, Fotos von Nachbauten anderer, Remixe, Likes und die Wettbewerbe, bei denen du mitmachst, sowie Antworten auf deine Kommentare. Wir schicken dir einen Code per E-Mail: kein Passwort.</p>
-			<div class="actions"><button class="cta" id="sign-in" type="button">Anmelden</button></div>
-		</section>
-		<!-- The list's place while it is asked (notifications.js), as skeletons. -->
-		<div class="skeleton" id="loading" role="status">
-			<span class="visually-hidden">Deine Anmeldung wird gesucht…</span>
-			<div class="notices" aria-hidden="true">
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+	<div class="wrap page-body">
+		<div class="list-layout">
+			<div class="list-main">
+				<div class="state" id="signed-out" hidden>
+					<p>Melde dich an, um zu sehen, was mit deinen Modellen passiert: Kommentare, Fotos von Nachbauten anderer, Remixe, Likes und die Wettbewerbe, bei denen du mitmachst, sowie Antworten auf deine Kommentare. Wir schicken dir einen Code per E-Mail: kein Passwort.</p>
+					<div class="actions"><button class="cta small" id="sign-in" type="button">Anmelden</button></div>
+				</div>
+				<!-- The list's place while it is asked (notifications.js), as skeletons of the site's rows. -->
+				<div class="skeleton" id="loading" role="status">
+					<span class="visually-hidden">Deine Anmeldung wird gesucht…</span>
+					<div class="list-rows" aria-hidden="true">
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+					</div>
+				</div>
+				<section class="list-main" id="signed-in" hidden>
+					<p class="state" id="not-yet" hidden>Benachrichtigungen gibt es auf Brickworks noch nicht.</p>
+					<ol class="list-rows notices" id="groups" aria-label="Benachrichtigungen"></ol>
+					<div class="state" id="empty" hidden>
+						<p>Noch nichts. Wenn jemand eines deiner Modelle kommentiert, es nachbaut und ein Foto davon postet, es remixt oder liket oder auf deinen Kommentar antwortet, steht es hier, beim Modell.</p>
+						<p><a href="/de/profile">Deine Modelle</a> · <a href="/de/gallery">Galerie</a> · <a href="/de/challenge">Wettbewerb des Monats</a></p>
+					</div>
+					<p class="said" id="said" role="status"></p>
+				</section>
 			</div>
 		</div>
-
-		<section id="signed-in" hidden>
-			<p class="note" id="not-yet" hidden>Benachrichtigungen gibt es auf Brickworks noch nicht.</p>
-			<ol class="notices" id="groups" aria-label="Benachrichtigungen"></ol>
-			<div class="state" id="empty" hidden>
-				<p>Noch nichts. Wenn jemand eines deiner Modelle kommentiert, es nachbaut und ein Foto davon postet, es remixt oder liket oder auf deinen Kommentar antwortet, steht es hier, beim Modell.</p>
-				<p><a href="/de/profile">Deine Modelle</a> · <a href="/de/gallery">Galerie</a> · <a href="/de/challenge">Wettbewerb des Monats</a></p>
-			</div>
-			<p class="said" id="said" role="status"></p>
-		</section>
 	</div>
 </main>
 

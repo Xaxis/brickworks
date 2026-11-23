@@ -36,8 +36,6 @@
 <link rel="stylesheet" href="/site.css">
 <style>
 .listing { padding: 0 0 72px; }
-/* The head across the window, lit from above on its baseplate of studs. */
-.browse-band { padding: var(--s-6) 0 0; }
 /* The bar of filters stays under the header; what the keyboard reaches
    is scrolled clear of both. */
 html { scroll-padding-top: calc(var(--head-h) + 72px); }
@@ -51,36 +49,9 @@ html[data-tab="builds"] [data-list]:not([data-list~="builds"]),
 html[data-tab="collections"] [data-list]:not([data-list~="collections"]),
 html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data-list]:not([data-list~="models"]) { display: none !important; }
 
-/* The head: the title and a line under it, the search beside them (under
-   600 px the search beside the title, the line left out, so the first
-   card's picture is on the first screen). */
-.finder { margin: 0 0 var(--s-4); }
-.gallery-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
-.gallery-title { min-width: 0; }
-.gallery-head h1 { margin: 0; }
-.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 60ch; color: var(--ink-soft); font-size: var(--t-lede); }
-/* The search (site.css .search) beside them; "/" puts the cursor in it. */
-.search { flex: 1 1 320px; max-width: 440px; }
-/* Share yours at the head's end, beside the search (web/share-model.html).
-   On a phone it stays a word, beside the title, and the search has a row
-   of its own, so its words are read whole (byfix: three controls in one
-   row left an icon alone and the search's words cut off). */
-.gallery-head .search { margin-left: auto; }
-@media (width < 600px) {
-	.browse-band { padding-top: var(--s-4); }
-	.gallery-head { align-items: center; column-gap: var(--s-3); }
-	.gallery-head .lede, .search .hint { display: none; }
-	.gallery-title { flex: 1 1 auto; }
-	.share-yours { flex: none; }
-	.gallery-head .search { order: 1; flex: 1 1 100%; max-width: none; margin-left: 0; }
-	.search input { padding-right: 12px; }
-}
-
 /* The tabs, and Top's time at the row's end. The tabs scroll inside
    themselves on a phone: without min-width the row grew to all of them
    and Top's time, and the page scrolled sideways. */
-.gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
-.gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
 .gallery-bar .top-window { flex: none; }
 
 /* The bar of filters: the tab's Filters, then its row of pills (the
@@ -204,31 +175,33 @@ html[data-tab="builds"] .toolbar { position: static; }
 </header>
 
 <main id="main">
-	<!-- The page's head, lit as the landing page's opening is (site.css .halo):
-	     the title, the search and the tabs; the list and its bar of filters under it. -->
-	<div class="browse-band halo">
-		<div class="wrap wide">
-			<!-- Answered by gallery.js, never sent: the page asks its lists itself.
-			     The search is the form, and searches the tab it is on; the models'
-			     controls are its controls too (form="finder"), laid out under it
-			     so the bar of filters can stay on screen over the whole list. -->
-			<form class="finder" id="finder" role="search" action="/library" method="get">
-				<div class="gallery-head">
-					<div class="gallery-title">
-						<h1 id="gallery-h">Galerie</h1>
-						<p class="lede">Modelle, die Leute in Brickworks gebaut und geteilt haben, und jedes LEGO® Set mit seinen Teilen. Dreh eines in 3D, bau es Schritt für Schritt nach oder mach es zu deinem.</p>
-					</div>
-					<label class="search">
-						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-						<span class="visually-hidden" id="q-said">Alle Sets durchsuchen</span>
-						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
-							placeholder="Sets nach Name, Nummer oder Thema suchen" aria-keyshortcuts="/">
-						<kbd class="hint" aria-hidden="true">/</kbd>
-					</label>
+	<!-- The page's head, the site's one (site.css .page-hero): the title, the
+	     search and Share yours, and the tabs; the list and its bar of filters under it. -->
+	<div class="page-hero">
+		<div class="wrap">
+			<div class="page-head">
+				<div class="page-title">
+					<h1 id="gallery-h">Galerie</h1>
+					<p class="lede">Modelle, die Leute in Brickworks gebaut und geteilt haben, und jedes LEGO® Set mit seinen Teilen. Dreh eines in 3D, bau es Schritt für Schritt nach oder mach es zu deinem.</p>
+				</div>
+				<div class="page-acts">
+					<!-- Answered by gallery.js, never sent: the page asks its lists itself.
+					     The search is the form, and searches the tab it is on; the models'
+					     controls are its controls too (form="finder"), laid out under it
+					     so the bar of filters can stay on screen over the whole list. -->
+					<form class="finder" id="finder" role="search" action="/library" method="get">
+						<label class="search">
+							<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+							<span class="visually-hidden" id="q-said">Alle Sets durchsuchen</span>
+							<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+								placeholder="Sets nach Name, Nummer oder Thema suchen" aria-keyshortcuts="/">
+							<kbd class="hint" aria-hidden="true">/</kbd>
+						</label>
+					</form>
 					<a class="cta share-yours" href="/de/share-model" aria-label="Teile deins"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"></use></svg><span class="word">Teile deins</span></a>
 				</div>
-			</form>
-			<div class="gallery-bar">
+			</div>
+			<div class="tab-bar gallery-bar">
 				<!-- What to browse, each tab at its own address and switched in place
 				     (gallery.js): Top (builds, remixes, Tested), New and Following once
 				     signed in, when the list says it can, the models; then photos of

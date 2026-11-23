@@ -91,17 +91,20 @@
 <main id="main">
 	<div class="page-hero">
 		<div class="wrap">
-			<p class="eyebrow">Yours</p>
-			<h1>Your lists</h1>
-			<p class="lede">The sets you own and want, the models you saved, and lists of your own. Keep anything with one tap from its card or its page; show off what you choose.</p>
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Your lists</h1>
+					<p class="lede">The sets you own and want, the models you saved, and lists of your own.</p>
+				</div>
+			</div>
 		</div>
 	</div>
 	<div class="wrap page-body lists-page">
 
-		<section id="signed-out" hidden>
-			<p class="lede">Sign in to keep the sets you own and want, the models you save and lists of your own. We email you a code: no password.</p>
-			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
-		</section>
+		<div class="state" id="signed-out" hidden>
+			<p>Sign in to keep the sets you own and want, the models you save and lists of your own. We email you a code: no password.</p>
+			<div class="actions"><button class="cta small" id="sign-in" type="button">Sign in</button></div>
+		</div>
 		<!-- The lists' place while they are asked (lists.js), as skeletons. -->
 		<div class="skeleton lists-skeleton" id="loading" role="status">
 			<span class="visually-hidden">Looking for your sign-in…</span>

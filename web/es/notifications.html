@@ -79,44 +79,49 @@
 <main id="main">
 	<div class="page-hero">
 		<div class="wrap">
-			<p class="eyebrow">Para ti</p>
-			<div class="notices-head">
-				<h1>Notificaciones</h1>
-				<button class="cta ghost small" type="button" id="all-read" hidden>Marcar todo como leído</button>
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Notificaciones</h1>
+					<p class="lede">Comentarios, construcciones, remezclas y me gusta en tus modelos, respuestas, retos y niveles.</p>
+				</div>
+				<div class="page-acts">
+					<button class="cta ghost small" type="button" id="all-read" hidden>Marcar todo como leído</button>
+				</div>
 			</div>
-			<p class="lede">Comentarios, fotos de construcciones, remixes y me gusta en tus modelos, respuestas a tus comentarios, los desafíos en los que participas, cada nivel que alcanzas y las novedades de Brickworks.</p>
 			<nav class="tabs" aria-label="Lo nuevo para ti">
 				<a href="/es/notifications" aria-current="page">Notificaciones <span class="n" data-count="notifications" hidden></span></a>
 				<a href="/es/feed">Tu feed <span class="n" data-count="feed" hidden></span></a>
 			</nav>
 		</div>
 	</div>
-	<div class="wrap page-body notices-page">
-
-		<section id="signed-out" hidden>
-			<p class="lede">Inicia sesión para ver lo que pasa con tus modelos: comentarios, fotos de las construcciones de otras personas, remixes, me gusta y los desafíos en los que participas, además de las respuestas a tus comentarios. Te enviamos un código por correo: sin contraseña.</p>
-			<div class="actions"><button class="cta" id="sign-in" type="button">Iniciar sesión</button></div>
-		</section>
-		<!-- The list's place while it is asked (notifications.js), as skeletons. -->
-		<div class="skeleton" id="loading" role="status">
-			<span class="visually-hidden">Buscando tu sesión…</span>
-			<div class="notices" aria-hidden="true">
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
-				<div class="notice"><div class="pic"></div><div><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+	<div class="wrap page-body">
+		<div class="list-layout">
+			<div class="list-main">
+				<div class="state" id="signed-out" hidden>
+					<p>Inicia sesión para ver lo que pasa con tus modelos: comentarios, fotos de las construcciones de otras personas, remixes, me gusta y los desafíos en los que participas, además de las respuestas a tus comentarios. Te enviamos un código por correo: sin contraseña.</p>
+					<div class="actions"><button class="cta small" id="sign-in" type="button">Iniciar sesión</button></div>
+				</div>
+				<!-- The list's place while it is asked (notifications.js), as skeletons of the site's rows. -->
+				<div class="skeleton" id="loading" role="status">
+					<span class="visually-hidden">Buscando tu sesión…</span>
+					<div class="list-rows" aria-hidden="true">
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="list-row"><div class="row-pic"></div><div class="row-body"><span class="bone"></span><span class="bone wide"></span><span class="bone short"></span></div></div>
+					</div>
+				</div>
+				<section class="list-main" id="signed-in" hidden>
+					<p class="state" id="not-yet" hidden>Las notificaciones aún no están disponibles en Brickworks.</p>
+					<ol class="list-rows notices" id="groups" aria-label="Notificaciones"></ol>
+					<div class="state" id="empty" hidden>
+						<p>Nada todavía. Cuando alguien comente uno de tus modelos, publique una foto de su construcción, lo remezcle o le dé me gusta, o responda a tu comentario, aparecerá aquí, junto al modelo.</p>
+						<p><a href="/es/profile">Tus modelos</a> · <a href="/es/gallery">la galería</a> · <a href="/es/challenge">el desafío de este mes</a></p>
+					</div>
+					<p class="said" id="said" role="status"></p>
+				</section>
 			</div>
 		</div>
-
-		<section id="signed-in" hidden>
-			<p class="note" id="not-yet" hidden>Las notificaciones aún no están disponibles en Brickworks.</p>
-			<ol class="notices" id="groups" aria-label="Notificaciones"></ol>
-			<div class="state" id="empty" hidden>
-				<p>Nada todavía. Cuando alguien comente uno de tus modelos, publique una foto de su construcción, lo remezcle o le dé me gusta, o responda a tu comentario, aparecerá aquí, junto al modelo.</p>
-				<p><a href="/es/profile">Tus modelos</a> · <a href="/es/gallery">la galería</a> · <a href="/es/challenge">el desafío de este mes</a></p>
-			</div>
-			<p class="said" id="said" role="status"></p>
-		</section>
 	</div>
 </main>
 

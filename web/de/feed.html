@@ -78,30 +78,33 @@
 
 <main id="main">
 	<div class="page-hero">
-		<div class="wrap wide">
-			<p class="eyebrow">Für dich</p>
-			<h1>Dein Feed</h1>
-			<p class="lede">Neue Modelle, neue Versionen und Fotos von Nachbauten der Designer, denen du folgst.</p>
+		<div class="wrap">
+			<div class="page-head">
+				<div class="page-title">
+					<h1>Dein Feed</h1>
+					<p class="lede">Neue Modelle, Versionen und Fotos von Nachbauten der Designer, denen du folgst.</p>
+				</div>
+			</div>
 			<nav class="tabs" aria-label="Neues für dich">
 				<a href="/de/notifications">Benachrichtigungen <span class="n" data-count="notifications" hidden></span></a>
 				<a href="/de/feed" aria-current="page">Dein Feed <span class="n" data-count="feed" hidden></span></a>
 			</nav>
 		</div>
 	</div>
-	<div class="wrap wide page-body feed-page">
+	<div class="wrap page-body">
 		<!-- The page's place while the feed is asked (feed.js): posts and the
-		     designers beside them, as skeletons. -->
-		<div class="feed-layout with-rail skeleton" id="loading" role="status">
+		     designers beside them, as skeletons, in the site's list layout and rows. -->
+		<div class="list-layout skeleton" id="loading" role="status">
 			<span class="visually-hidden">Deine Anmeldung wird gesucht…</span>
-			<div class="feed-main" aria-hidden="true">
-				<div class="feed-list">
-					<div class="feed-row"><div class="post-head"><span class="bone round"></span><div class="words"><span class="bone wide"></span><span class="bone short"></span></div></div>
-						<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
-					<div class="feed-row"><div class="post-head"><span class="bone round"></span><div class="words"><span class="bone wide"></span><span class="bone short"></span></div></div>
-						<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
+			<div class="list-main" aria-hidden="true">
+				<div class="list-rows">
+					<div class="list-row"><span class="row-face bone round"></span><div class="row-body"><span class="bone wide"></span><span class="bone short"></span></div>
+						<div class="row-card skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
+					<div class="list-row"><span class="row-face bone round"></span><div class="row-body"><span class="bone wide"></span><span class="bone short"></span></div>
+						<div class="row-card skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
 				</div>
 			</div>
-			<div class="feed-rail" aria-hidden="true">
+			<div class="list-aside" aria-hidden="true">
 				<span class="bone short"></span>
 				<div class="person-row"><span class="bone round"></span><div class="names"><span class="bone"></span><span class="bone short"></span></div><span class="bone button"></span></div>
 				<div class="person-row"><span class="bone round"></span><div class="names"><span class="bone"></span><span class="bone short"></span></div><span class="bone button"></span></div>
@@ -109,32 +112,34 @@
 			</div>
 		</div>
 
-		<div class="feed-layout" id="layout" hidden>
-			<div class="feed-main">
-				<div class="state feed-ask" id="signed-out" hidden>
+		<div class="list-layout" id="layout" hidden>
+			<div class="list-main">
+				<div class="state" id="signed-out" hidden>
 					<p>Melde dich an und folge den Designern, deren Modelle dir gefallen: Was sie bauen, erscheint hier.</p>
-					<button class="cta small" id="sign-in" type="button">Anmelden</button>
+					<div class="actions"><button class="cta small" id="sign-in" type="button">Anmelden</button></div>
 				</div>
 				<p class="state" id="nobody" hidden>Du folgst noch niemandem. Folge Designern, dann erscheinen hier ihre neuen Modelle, neuen Versionen und Fotos ihrer Nachbauten.</p>
 				<p class="state" id="quiet" hidden>In den letzten 90 Tagen gab es nichts Neues von den Leuten, denen du folgst.</p>
 				<p class="state" id="not-yet" hidden>Folgen und den Feed gibt es auf Brickworks noch nicht.</p>
-				<ol class="feed-list" id="rows" aria-label="Dein Feed"></ol>
-				<div class="actions" id="older-line" hidden><button class="cta ghost" type="button" id="older">Ältere</button></div>
+				<ol class="list-rows feed-list" id="rows" aria-label="Dein Feed"></ol>
+				<div class="pager" id="older-line" hidden><button class="cta ghost pager-more" type="button" id="older">Ältere</button></div>
 				<p class="said" id="said" role="status"></p>
+				<section class="latest" id="latest" hidden aria-labelledby="latest-title">
+					<div class="scroller-head">
+						<h2 id="latest-title">Neu auf Brickworks</h2>
+						<a href="/de/gallery?sort=newest">Die Galerie</a>
+					</div>
+					<div class="models" id="latest-models"></div>
+					<h3 id="photos-title" hidden>Fotos echter Nachbauten</h3>
+					<div class="build-grid" id="latest-photos" hidden></div>
+				</section>
 			</div>
-			<aside class="feed-rail" id="designers" hidden aria-labelledby="designers-title">
-				<h2 id="designers-title">Designer zum Folgen</h2>
-				<ul class="people-list" id="people"></ul>
+			<aside class="list-aside" id="designers" hidden aria-labelledby="designers-title">
+				<section>
+					<h2 id="designers-title">Designer zum Folgen</h2>
+					<ul class="people-list" id="people"></ul>
+				</section>
 			</aside>
-			<section class="latest" id="latest" hidden aria-labelledby="latest-title">
-				<div class="scroller-head">
-					<h2 id="latest-title">Neu auf Brickworks</h2>
-					<a href="/de/gallery?sort=newest">Die Galerie</a>
-				</div>
-				<div class="models" id="latest-models"></div>
-				<h3 id="photos-title" hidden>Fotos echter Nachbauten</h3>
-				<div class="build-grid" id="latest-photos" hidden></div>
-			</section>
 		</div>
 	</div>
 </main>
