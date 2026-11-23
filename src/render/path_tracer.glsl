@@ -144,6 +144,10 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// alpha its height, so leather's pebbles and wood's pores catch the key as
 	// the real surface's do. 0 for none.
 	vec4 relief;
+	// No two parts alike (photoreal8): how far each part's colour batch
+	// strays (x), how unevenly the parts have been handled (y), and how far
+	// each stud's logo and top differ from the next (z). 0 for none.
+	vec4 variety;
 } scene;
 
 struct Instance {
@@ -622,6 +626,59 @@ vec3 paper(vec3 at, float amount) {
 	return vec3(1.0 + amount * (0.06 * broad + 0.025 * fibre));
 }
 
+// A number from -1 to 1 for a part (its own number and a salt), most of them
+// near 0: the sum of three of the part's own, a bell's shape (sd 1/3).
+float part_bell(uint which, uint salt) {
+	uint h = pcg(which * 2654435761u + salt * 40503u + 7u);
+	float a = float(h & 0x3ffu) / 1023.0;
+	float b = float((h >> 10) & 0x3ffu) / 1023.0;
+	float c = float((h >> 20) & 0x3ffu) / 1023.0;
+	return (a + b + c - 1.5) * (2.0 / 3.0);
+}
+
+// A part's colour as its own batch moulded it (photoreal8): the colour of
+// every part of a model strays a little from the next of its colour, by the
+// batch it came from and how it has aged. Measured on the bench's three set
+// photographs, between neighbouring parts of one colour facing one way, the
+// CIEDE2000 is 2 to 4 (yellow 2.1, reds 3.2 and 4.2, whites 2.6 and 4.2),
+// most of it hue and chroma (1.0 to 2.6), a red's hue spread 1 to 3 degrees,
+// a white's b* 3.7 to 10.3. At [param amount] 1 a part's hue turns by a bell
+// of about 1.4 degrees (sd), its chroma by 3.5 percent, its lightness by 2.5
+// and a pale part goes a hair warmer or cooler: two parts then differ by
+// CIEDE2000 1.8 to 2.3 on the bench's colours, no more than the photographs.
+vec3 batch_of(vec3 body, uint which, float amount) {
+	float lum = dot(body, vec3(0.2126, 0.7152, 0.0722));
+	vec3 chroma = body - vec3(lum);
+	float turn = radians(4.2) * part_bell(which, 1u) * amount;
+	const vec3 grey = vec3(0.57735027);
+	chroma = chroma * cos(turn) + cross(grey, chroma) * sin(turn) + grey * dot(grey, chroma) * (1.0 - cos(turn));
+	chroma *= 1.0 + 0.105 * part_bell(which, 2u) * amount;
+	vec3 out_colour = max(vec3(lum) * (1.0 + 0.075 * part_bell(which, 3u) * amount) + chroma, vec3(0.0));
+	float spread = max(max(body.r, body.g), body.b) - min(min(body.r, body.g), body.b);
+	float pale = smoothstep(0.12, 0.55, lum) * (1.0 - smoothstep(0.04, 0.2, spread));
+	float warm = 0.06 * part_bell(which, 4u) * amount * pale;
+	return out_colour * vec3(1.0 + 0.3 * warm, 1.0 + 0.1 * warm, 1.0 - warm);
+}
+
+// How much more a part has been handled than its set's age says
+// (photoreal8), 0 to [param amount]: most parts hardly at all, a few a lot
+// (the square of the part's own number), as the bench's set photographs
+// show it: of six white faces side by side on one truck, one rough with
+// scuffs and specks (L* spread 13 across it), the rest nearly clean (1 to 3).
+float handled_of(uint which, float amount) {
+	float u = float(pcg(which * 3266489917u + 668265263u) & 0xffffu) / 65535.0;
+	return amount * u * u;
+}
+
+// A stud's own number from 0 to 1 (photoreal8): by its place on its part
+// and the part's own number, so each stud of each part is its own, and the
+// same in every picture.
+float stud_own(vec2 centre, uint which, uint salt) {
+	uint h = uint(int(floor(centre.x * 0.5 + 4096.0))) * 73856093u
+		^ uint(int(floor(centre.y * 0.5 + 4096.0))) * 19349663u ^ (which + salt) * 83492791u;
+	return float(pcg(h) & 0xffffu) / 65535.0;
+}
+
 // textured: the hit is on a straight slope's face (closest_hit's grain);
 // which: the part's own number (info.z: its body, print and window alike),
 // so no two parts are worn alike and one part is worn as one; ng: the
@@ -684,6 +741,9 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		// or darker than the next of its colour, and worn its own way.
 		float own = float(pcg(which * 747796405u + 2891336453u) & 0xffffu) / 65535.0;
 		body *= 1.0 + 0.07 * (own - 0.5);
+		if (scene.variety.x > 0.0) {
+			body = batch_of(body, which, scene.variety.x);
+		}
 		float handled = gloss_noise(local / 16.0 + vec3(own * 97.0, own * 31.0, 0.0));
 		// A played-with part's gloss is worn in broad patches (photoreal4): its
 		// reflections uneven across a face, as an old set's are at arm's length.
@@ -691,6 +751,15 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			+ 0.02 * own;
 		s.roughness += 0.05 * handled;
 		float age = scene.wear.x;
+		// How much more this part has been handled than the set's age says
+		// (photoreal8): most parts a little, a few a lot, and only on the faces
+		// a hand touches (its sides and its top, never its underside).
+		float rubbed = 0.0;
+		if (scene.variety.y > 0.0) {
+			rubbed = handled_of(which, scene.variety.y) * (1.0 - smoothstep(0.2, 0.7, -ng.y));
+			// Its polish dulled as a whole, some parts glossier than the next.
+			s.coat_roughness += 0.09 * rubbed;
+		}
 		if (age > 0.0) {
 			// Played with (photoreal4): a white or grey part yellows as ABS does
 			// in light and years, each its own amount (a set's whites never
@@ -718,20 +787,23 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat *= 1.0 - cover;
 			s.roughness = mix(s.roughness, 0.9, cover);
 		}
-		if (worn(local, own, age)) {
+		// A handled part's scratches and scuffs are as an older part's
+		// (photoreal8): its own handling added to the set's age.
+		float scuff_age = age + rubbed;
+		if (worn(local, own, scuff_age)) {
 			// A hairline scratch scatters what a polished face mirrors
 			// (photoreal3): on a top that mirrors the dark camera it shows as a
 			// faint light line, as handled bricks' tops do in a photograph.
 			s.coat_roughness = 0.6;
 		}
-		if (age > 0.0) {
+		if (scuff_age > 0.0) {
 			// A played-with part's edges and corners are scuffed (photoreal5):
 			// knocked against others, their skin rubbed matt in patches and a
 			// shade paler, as the sets' photographs show along their edges.
 			float scuffed = seam_at(local, thing.box_min.xyz, thing.box_max.xyz, 1.4)
 				* smoothstep(0.15, 0.55, gloss_noise(local * 0.7 + vec3(own * 41.0, 2.0, 9.0)));
-			s.coat_roughness = mix(s.coat_roughness, 0.4, scuffed * age);
-			body = mix(body, body * 1.08 + vec3(0.015), scuffed * age);
+			s.coat_roughness = mix(s.coat_roughness, 0.4, scuffed * scuff_age);
+			body = mix(body, body * 1.08 + vec3(0.015), scuffed * scuff_age);
 		}
 		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: the same skin, no
@@ -755,6 +827,20 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		// every stud's top is lighter than the face round it.
 		if (local.y > thing.box_min.w + 0.5 && abs(local.y - thing.box_max.y) < 0.3) {
 			s.coat_roughness = 0.3;
+			if (scene.variety.z > 0.0) {
+				// Each stud's top its own (photoreal8): one pressed into a
+				// hundred others rubbed duller, the next left glossier, as
+				// each cavity of a mould leaves its plate a little different.
+				vec2 centre = thing.box_min.xz + 10.0 + 20.0 * floor((local.xz - thing.box_min.xz) / 20.0);
+				float own_stud = stud_own(centre, which, 11u);
+				s.coat_roughness = 0.3 * mix(1.0, 0.55 + 1.1 * own_stud, scene.variety.z);
+			}
+		}
+		if (textured < 0.0) {
+			// Grime in the lee of a stud's raised letters (photoreal8): on an
+			// old part, dirt where each letter meets the stud's top, more on
+			// some studs than others (the closest hit's stud_logo says where).
+			body *= 1.0 - 0.45 * (-textured) * clamp(scuff_age, 0.0, 1.0);
 		}
 	}
 	s.albedo = body;
@@ -1575,6 +1661,23 @@ vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
 
 // The number of the part being hit, for each stud's own logo.
 uint part_number = 0u;
+// How far each stud's logo strays from the next (photoreal8, PathTracer.studs
+// in the instance's info.w, 0 to 255 of 1), the part's own number (info.z),
+// and the grime found by the letters of the stud just hit, for the raygen's
+// surface_of (as a negative hit.unused).
+float stud_variety = 0.0;
+uint part_key = 0u;
+float logo_grime = 0.0;
+
+// A stud's own number from 0 to 1 by its place on its part and the part's own
+// number (raygen's stud_own, the same studs the same).
+float key_hash(vec2 centre, uint salt) {
+	uint h = uint(int(floor(centre.x * 0.5 + 4096.0))) * 73856093u
+		^ uint(int(floor(centre.y * 0.5 + 4096.0))) * 19349663u ^ (part_key + salt) * 83492791u;
+	h = h * 747796405u + 2891336453u;
+	h = ((h >> ((h >> 28u) + 4u)) ^ h) * 277803737u;
+	return float(((h >> 22u) ^ h) & 0xffffu) / 65535.0;
+}
 
 float stud_hash(vec2 centre, uint salt) {
 	uint h = uint(int(floor(centre.x * 0.5 + 4096.0))) * 73856093u
@@ -1689,6 +1792,20 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 		+ (vec2(stud_hash(centre, 2u), stud_hash(centre, 3u)) - 0.5) * 0.3;
 	float depth = 0.75 + 0.5 * stud_hash(centre, 4u);
 	float soft = 0.12 * stud_hash(centre, 5u);
+	if (stud_variety > 0.0) {
+		// No two studs alike (photoreal8; the judge on photoreal7's logos:
+		// "identical on every stud"): one stud's letters pressed shallow or
+		// rubbed nearly flat by a hundred bricks pressed onto it, the next's
+		// full and crisp, a third's soft where its cavity of the mould wore.
+		float kept = key_hash(centre, 21u);
+		depth = mix(depth, 0.3 + kept, stud_variety);
+		soft = mix(soft, 0.3 * (1.0 - kept) * key_hash(centre, 22u), stud_variety);
+		// Grime settles in the lee of the letters, more on some studs than
+		// others; surface_of darkens it by the part's age.
+		float d = logo_distance(p);
+		logo_grime = stud_variety * key_hash(centre, 23u) * smoothstep(0.75, 0.4, d)
+			* smoothstep(0.15, 0.3, d);
+	}
 	// About 9 LDU across, as the real one's 3.6 mm.
 	const float e = 0.05;
 	float dx = (logo_height(p + vec2(e, 0.0), soft) - logo_height(p - vec2(e, 0.0), soft)) / (2.0 * e);
@@ -1791,6 +1908,9 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 void main() {
 	uint which = gl_InstanceCustomIndexEXT;
 	part_number = which;
+	stud_variety = float(instances[which].info.w) / 255.0;
+	part_key = instances[which].info.z;
+	logo_grime = 0.0;
 	uvec4 mesh = meshes[instances[which].info.x];
 	uint first = mesh.y + uint(gl_PrimitiveID) * 3u;
 	uint a = mesh.x + indices[first];
@@ -1825,6 +1945,9 @@ void main() {
 			// "procedural noise" and veiled the face pink in every round.
 			n = grain_bumps(local, face, n);
 			hit.unused = 1.0;
+		}
+		if (logo_grime > 0.0 && hit.unused < 0.5) {
+			hit.unused = -logo_grime;
 		}
 	}
 	// Normals go by the inverse transpose: v * M is transpose(M) * v.

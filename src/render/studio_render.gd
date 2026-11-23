@@ -149,6 +149,13 @@ const PRODUCT_JPEG := 0.0
 ## (docs/RENDERING.md 5k).
 const PRODUCT_TONE := 0.5
 const PRODUCT_BALANCE := 1.0
+## No two parts alike (photoreal8, RenderSettings batch, handling and studs):
+## each part's colour batch, how much each has been handled, and each stud's
+## logo, as far apart as the photographed sets' parts are. Judged on the
+## photo bench one at a time and together (docs/RENDERING.md 5l).
+const PRODUCT_BATCH := 0.0
+const PRODUCT_HANDLING := 0.0
+const PRODUCT_STUDS := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2606,6 +2613,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 					return null
 	_tracer.product = settings.look == "product"
 	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
+	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	# The product look's picture has the samples' grain taken out
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.
@@ -3004,6 +3012,11 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 		data.append_array([0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.9])
 	data.append_array([_balance.r, _balance.g, _balance.b, 0.0])
 	data.append_array([float(_stage_of(settings)[7]) if lit_stage else 0.0, 0.0, 0.0, 0.0])
+	# No two parts alike (photoreal8): each part's batch, its handling, each
+	# stud's logo (the closest hit reads that one from each part's record).
+	data.append_array([_own(settings.batch, PRODUCT_BATCH) if worn else 0.0,
+		_own(settings.handling, PRODUCT_HANDLING) if worn else 0.0,
+		_own(settings.studs, PRODUCT_STUDS) if worn else 0.0, 0.0])
 	return data
 
 
