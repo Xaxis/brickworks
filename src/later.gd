@@ -58,6 +58,10 @@ const PATHS: Dictionary[StringName, String] = {
 	&"SavedModelsDialog": "res://src/ui/saved_models_dialog.gd",
 	&"SharePanel": "res://src/ui/share_panel.gd",
 	&"ShareView": "res://src/ui/share_view.gd",
+	# The month's challenge in the studio: its line over the model and its
+	# rules ticked on it.
+	&"ChallengeLine": "res://src/ui/challenge_line.gd",
+	&"ChallengeRules": "res://src/net/challenge_rules.gd",
 	&"SimulatePanel": "res://src/ui/simulate_panel.gd",
 	&"TogetherDialog": "res://src/ui/together_dialog.gd",
 	# What they make: Brick Art, figures, motions played, the booklet.

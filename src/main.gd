@@ -527,6 +527,13 @@ var _graphics_notice: RestoreNotice
 ## This week's quick build, said above the model once a copy of its template
 ## is open (_ask_prompt): made the first time there is one to say.
 var _prompt_notice: RestoreNotice
+## The month's challenge open now, or this week's quick build the copy is
+## of, in one line with the other notices, its rules ticked on the model as
+## it is built (ChallengeLine, a Later class): made once the first screen is
+## up (_make_challenge_line), never in the viewer.
+var _challenge_line: Control
+## A probe's own day for the line ("2026-11-23"), else today in UTC.
+var challenge_today_for_probe: String = ""
 ## Something went wrong in the app's own scripts, said above the model with
 ## Report this while the beta is open (bugreport, _on_script_error); made
 ## the first time.
@@ -1271,6 +1278,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_graphics_notice.controls_by_name())
 	if _prompt_notice != null:
 		named.merge(_prompt_notice.controls_by_name())
+	if _challenge_line != null:
+		named.merge(_challenge_line.call("controls_by_name"))
 	if _brickify_made != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -2956,6 +2965,34 @@ func _tell_connector_who() -> void:
 		_connector_made.refresh_connections()
 
 
+## How long after start the challenge's line is made and asked for.
+const CHALLENGE_LINE_AFTER := 2.5
+
+
+## The challenge's line (ChallengeLine), with the model's other notices: the
+## month's challenge open now or this week's quick build, its rules ticked
+## on the model; Publish to enter on it opens Share. Not in the viewer,
+## which has no model of its own to enter.
+func _make_challenge_line() -> void:
+	if _challenge_line != null or not _viewing.is_empty() or _notices == null or not _built:
+		return
+	_challenge_line = Later.make(&"ChallengeLine")
+	_challenge_line.set("store", _store)
+	_challenge_line.set("library", _library)
+	_challenge_line.set("shared", _shared)
+	_challenge_line.set("account", _account)
+	_challenge_line.set("open_share", _share_wanted)
+	_challenge_line.set("prompt_notice", _prompt_notice)
+	_challenge_line.set("today_for_probe", challenge_today_for_probe)
+	if _phone != null:
+		_challenge_line.set("for_a_finger", _for_a_finger)
+	_challenge_line.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_notices.get_child(0).add_child(_challenge_line)
+	if _share_panel_made != null:
+		_share_panel_made.set("challenge_line", _challenge_line)
+	_challenge_line.call("ask")
+
+
 ## File › Share…: the panel that publishes this model as the signed-in
 ## account and hands back its link.
 func _share_wanted() -> void:
@@ -4128,6 +4165,8 @@ func _ask_prompt(template: String) -> void:
 		_bar.opened.connect(func(_bricks: int) -> void: _prompt_notice.dismiss())
 		_bar.started_new.connect(_prompt_notice.dismiss)
 		_bar.cleared.connect(_prompt_notice.dismiss)
+		if _challenge_line != null:
+			_challenge_line.set("prompt_notice", _prompt_notice)
 	# Its name drawn as written, in every language.
 	Language.keep_name(str(prompt["title"]))
 	_prompt_notice.tell(SharedModels.prompt_line(prompt,
@@ -6202,6 +6241,10 @@ func _build_ui() -> void:
 	# Report this on it while the beta is open, should the account be known
 	# already (bugreport).
 	_offer_reports()
+	# The challenge open now, in one line over the model: made once the first
+	# screen is up, so none of its code is in the first compile (Later), and
+	# asked of the server then.
+	get_tree().create_timer(CHALLENGE_LINE_AFTER).timeout.connect(_make_challenge_line)
 	# Someone else's file an edit has written whole: how many of its own
 	# lines that leaves out, said once as it is edited (ModelStore).
 	_store.lines_left_out.connect(_bar.say)
@@ -7163,6 +7206,7 @@ func _make_share_panel() -> void:
 	share.moves_of = _moves_now
 	share.picture = _exports.picture
 	share.named = _bar.model_name
+	share.challenge_line = _challenge_line
 	share.setup()
 	_add_to_hud(share)
 	var kind: GDScript = Later.script(&"SharePanel")

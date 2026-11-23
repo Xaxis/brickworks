@@ -232,6 +232,36 @@ const MONTHS: Array[String] = ["January", "February", "March", "April", "May", "
 const BRIEF_ON_A_PHONE := 120
 
 
+# -- the month's challenge, in the studio ------------------------------------
+#
+# The challenge open now and its rules (api/people.js ?op=challenge_rules,
+# 2026-11-23), ticked on the model as it is built (ChallengeLine), and a
+# model entered from Share (?op=enter) or asked whether it is in
+# (?op=challenge_entry). Read at the edge by ChallengeRules.rules_in and
+# SharePanel, which this core never names.
+
+## The month's challenge open now, as the server answers: {code, body}.
+## With [param token], a test account's is the checks' own.
+func challenge_rules(token: String) -> Dictionary:
+	return await _fetch("/api/people?op=challenge_rules", HTTPClient.METHOD_GET, token, "")
+
+
+## [param model] entered in the challenge open now, built [param way] (hand
+## or assistant): {code, body}, body {entered, title, label} or {error,
+## refused}.
+func enter(token: String, model: String, way: String) -> Dictionary:
+	return await _fetch("/api/people?op=enter", HTTPClient.METHOD_POST, token,
+		JSON.stringify({"model": model, "way": way}))
+
+
+## Whether [param model], the caller's, is in the challenge open now:
+## {code, body}, body {mine, challenge, entry, keeps, broken}.
+func challenge_entry(token: String, model: String) -> Dictionary:
+	if not is_id(model):
+		return {"code": 0, "body": null}
+	return await _fetch("/api/people?op=challenge_entry&id=" + model.uri_encode(), HTTPClient.METHOD_GET, token, "")
+
+
 ## This week's quick build when [param template] is the model it starts
 ## from: {id, title, brief, starts_on, ends_on, template, page}, or {} when
 ## it is not the template of one open now. Anything else that comes back,

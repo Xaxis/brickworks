@@ -46,6 +46,16 @@
 ## opens, so a copy reopened days later enters as one just made does; the
 ## status line then says it was entered, or the server's words why not.
 ##
+## The month's challenge (2026-11-23, challengestudio): while one is open and
+## its rules pass on the model as the studio ticks them (ChallengeLine), Enter
+## <title> under Publish, with the way it was built as the site's Enter asks
+## (by hand, with the assistant; the app's own record of who laid its parts
+## first). One press lists it in the gallery with its designer's name on it,
+## publishes, and enters it (?op=enter): the status line says it is in and
+## where, or the server's words why not. A rule it breaks is said under it
+## with what to change, and Enter waits; Publish alone is one press as ever.
+## A model in the challenge already says so, and publishing again keeps it in.
+##
 ## And what the model's page and the gallery say about it (2026-10-13, the
 ## directory): a few lines about it, tags, its kind — guessed from the name
 ## and the tags (ModelKinds), for its owner to change — and a licence, CC
@@ -127,6 +137,25 @@ var _prompt_box: CheckBox
 var _prompt_in: bool = true
 var _prompt_for: String = ""
 var prompt_said: String = ""
+## The month's challenge's line (Main._make_challenge_line), null until it
+## is made: its challenge and its ticks are what Enter follows.
+var challenge_line: Control = null:
+	set(line):
+		challenge_line = line
+		if line != null and line.has_signal(&"ticked") and not line.is_connected(&"ticked", _follow_enter):
+			line.connect(&"ticked", _follow_enter)
+var _enter_row: HBoxContainer
+var _enter: Button
+var _way: OptionButton
+var _enter_said: Label
+## The way it is being entered while Enter's publish goes on, else "".
+var entering: String = ""
+## What the last Enter said, for a probe and the status line.
+var enter_said: String = ""
+## The model's entry in the challenge open now ({way, label}), {} for none,
+## for the link it was asked of (?op=challenge_entry).
+var entry: Dictionary = {}
+var _entry_for: String = ""
 ## What changed, said by its owner: for a model that has a link already.
 var _note_label: Label
 var _note: LineEdit
@@ -308,6 +337,33 @@ func setup() -> void:
 	_publish.focus_mode = Control.FOCUS_NONE
 	_publish.pressed.connect(publish)
 	column.add_child(_publish)
+	# Enter the month's challenge: one press more than Publish, and only
+	# while its rules pass on the model (_follow_enter).
+	_enter_row = HBoxContainer.new()
+	_enter_row.add_theme_constant_override("separation", 6)
+	_enter_row.visible = false
+	column.add_child(_enter_row)
+	_enter = Button.new()
+	_enter.custom_minimum_size = Vector2(0, 34)
+	_enter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_enter.focus_mode = Control.FOCUS_NONE
+	_enter.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_enter.clip_text = true
+	_enter.tooltip_text = "Lists it in the gallery with your name on it, publishes it and enters it"
+	_enter.pressed.connect(publish_and_enter)
+	_enter_row.add_child(_enter)
+	_way = OptionButton.new()
+	_way.focus_mode = Control.FOCUS_NONE
+	_way.add_theme_font_size_override("font_size", 12)
+	_way.add_item("Built by hand")
+	_way.set_item_metadata(0, "hand")
+	_way.add_item("Built with the assistant")
+	_way.set_item_metadata(1, "assistant")
+	_way.tooltip_text = "How it was built: the challenge judges the two apart"
+	_enter_row.add_child(_way)
+	_enter_said = _line("", 11, 0.75)
+	_enter_said.visible = false
+	column.add_child(_enter_said)
 	# What publishing agrees to, where it is agreed to.
 	# One line, never wrapped: a wrapping label in a row is given no width
 	# and stands one letter to a line down the panel.
@@ -421,6 +477,7 @@ func _follow_prompt() -> void:
 	var listed: bool = _list.button_pressed and not _list.disabled
 	_prompt_box.disabled = not listed
 	_prompt_box.set_pressed_no_signal(listed and _prompt_in)
+	_follow_enter()
 
 
 ## This week's quick build, for the model the copy was made from: what was
@@ -593,6 +650,126 @@ func open() -> void:
 		_check_link(store.share_id, fresh)
 	_follow_age()
 	_ask_prompt()
+	# Its way as the app knows who laid its parts; the rules ticked afresh.
+	_way.select(1 if store.made_with == "assistant" else 0)
+	_follow_enter()
+	_ask_entry()
+	if challenge_line != null:
+		challenge_line.call("check_now")
+
+
+## Enter's row as the month's challenge and its rules stand on the model
+## (ChallengeLine): hidden with no challenge open, for a copy of a quick
+## build's template (which publishing enters), for an account under 13, and
+## for a model in it already, which says so; greyed with the rule it breaks
+## and what to change, or while the rules are ticked.
+func _follow_enter() -> void:
+	if _enter_row == null:
+		return
+	var c: Dictionary = challenge_line.get("challenge") if challenge_line != null else {}
+	var title: String = str(c.get("title", ""))
+	var shown: bool = not c.is_empty() and bool(c.get("entering", true)) and prompt.is_empty() \
+		and not _kept_private() and not _list.disabled
+	if shown and not entry.is_empty():
+		_enter_row.visible = false
+		_say_enter("In %s, %s. Publishing again keeps it in." % [title,
+			"built with the assistant" if str(entry.get("way", "")) == "assistant" else "built by hand"])
+		return
+	_enter_row.visible = shown
+	if not shown:
+		_say_enter("")
+		return
+	_enter.text = "Entering…" if not entering.is_empty() else "Enter %s" % title
+	var failed: String = str(challenge_line.call("first_failed"))
+	var passes: bool = bool(challenge_line.call("passes"))
+	_enter.disabled = not passes or state in ["publishing", "unpublishing"] or not entering.is_empty()
+	_way.disabled = _enter.disabled
+	if not failed.is_empty():
+		_say_enter("Not yet: %s" % failed)
+	elif not passes:
+		_say_enter("Ticking %s's rules on the model…" % title)
+	else:
+		var tested_rule: bool = bool((c.get("rules", {}) as Dictionary).get("tested", false))
+		_say_enter("Enter lists it in the gallery with your name on it, publishes it and enters it%s."
+			% (": a publish tests it, which the rules ask" if tested_rule
+				and not challenge_line.call("tested_now") is Dictionary else ""))
+
+
+func _say_enter(words: String) -> void:
+	_enter_said.text = words
+	_enter_said.visible = not words.is_empty()
+
+
+## Whether the model's link is in the month's challenge (?op=challenge_entry),
+## asked once a link, so Enter says it is in rather than asking again.
+func _ask_entry() -> void:
+	var id: String = store.share_id
+	if id == _entry_for:
+		return
+	_entry_for = id
+	entry = {}
+	if id.is_empty() or challenge_line == null or (challenge_line.get("challenge") as Dictionary).is_empty():
+		_follow_enter()
+		return
+	var token: String = await account.access_token()
+	if token.is_empty():
+		return
+	var answer: Dictionary = await shared.challenge_entry(token, id)
+	if store.share_id != id:
+		return
+	var body: Variant = answer.get("body")
+	if int(answer.get("code", 0)) == 200 and body is Dictionary and (body as Dictionary).get("entry") is Dictionary:
+		entry = (body as Dictionary)["entry"]
+	_follow_enter()
+
+
+## Enter: lists it in the gallery with its designer's name on it, publishes
+## it, and enters it in the month's challenge the way chosen (?op=enter).
+## The status line says it is in and where, or the server's words why not;
+## a publish that fails says why and enters nothing.
+func publish_and_enter() -> void:
+	if _enter_row == null or not _enter_row.visible or _enter.disabled or not entering.is_empty():
+		return
+	var c: Dictionary = challenge_line.get("challenge")
+	var way: String = str(_way.get_item_metadata(maxi(0, _way.selected)))
+	# An entry is a model in the gallery with its designer's name on it.
+	_list.button_pressed = true
+	if not _credit.button_pressed:
+		_credit.button_pressed = true
+	if _author.text.strip_edges().is_empty():
+		await _suggest_author()
+	if _author.text.strip_edges().is_empty():
+		_author.grab_focus()
+		_fail("Say the name to credit under Show who made it: an entry has its designer's name on it.")
+		return
+	entering = way
+	enter_said = ""
+	_follow_enter()
+	await publish()
+	entering = ""
+	if state != "published" or store.share_id.is_empty():
+		_follow_enter()
+		return
+	var token: String = await account.access_token()
+	var answer: Dictionary = await shared.enter(token, store.share_id, way)
+	var said: Variant = answer.get("body")
+	var title: String = str(c.get("title", ""))
+	if int(answer.get("code", 0)) == 201:
+		entry = {"way": way}
+		_entry_for = store.share_id
+		var page: String = str(c.get("page", ""))
+		enter_said = "Entered in %s, %s. It is on the challenge's page%s." % [title,
+			"built with the assistant" if way == "assistant" else "built by hand",
+			(": " + page.trim_prefix("https://")) if not page.is_empty() else ""]
+	elif said is Dictionary and str((said as Dictionary).get("refused", "")) == "entered":
+		entry = {"way": way}
+		_entry_for = store.share_id
+		enter_said = "It is in %s already." % title
+	else:
+		enter_said = "Published, not entered: %s" % SharedModels.trouble(answer,
+			"Brickworks could not enter it just now. Press Enter again in a minute.")
+	_status.text = "%s %s" % [_status.text.strip_edges(), enter_said]
+	_follow_enter()
 
 
 ## Whether the model's link is up or was taken down, so the buttons say
@@ -716,6 +893,8 @@ func publish() -> void:
 		return
 	state = "publishing"
 	_publish.disabled = true
+	var revision: int = store.world.revision
+	_follow_enter()
 	_status.text = "Taking its picture…"
 	var pictures: Dictionary = await _pictures()
 	var png: PackedByteArray = pictures["png"]
@@ -743,6 +922,10 @@ func publish() -> void:
 	steps_job.end()
 	model = str(made["text"])
 	tested = made["tested"]
+	# The four tests' finding, for the challenge's Tested rule on the model
+	# as it was when this publish began.
+	if challenge_line != null and tested.has("tests"):
+		challenge_line.call("found_tested", tested["tests"], revision)
 	_status.text = "Publishing…"
 	var body: Dictionary = {"name": name, "model": model}
 	if tested.has("tests"):
@@ -843,6 +1026,7 @@ func publish() -> void:
 	prompt_said = entry_words(entry)
 	if not prompt_said.is_empty():
 		_status.text = "%s %s" % [_status.text.strip_edges(), prompt_said]
+	_follow_enter()
 
 
 func unpublish() -> void:
@@ -871,6 +1055,7 @@ func _fail(words: String) -> void:
 	if state != "published" and state != "unpublished":
 		state = "failed"
 	_status.text = words
+	_follow_enter()
 
 
 ## The link's pictures: the model from where the view is looking. For link
@@ -925,6 +1110,9 @@ func controls_by_name() -> Dictionary:
 		"share_guidelines": _guidelines, "share_done": _done}
 	if _prompt_box.is_visible_in_tree():
 		named_controls["share_prompt"] = _prompt_box
+	if _enter_row.is_visible_in_tree():
+		named_controls["share_enter"] = _enter
+		named_controls["share_way"] = _way
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
 	if _note.is_visible_in_tree():
@@ -968,7 +1156,12 @@ func page_state() -> Dictionary:
 		"prompt": prompt.duplicate(), "prompt_said": prompt_said,
 		"prompt_shown": _prompt_box.visible if _prompt_box != null else false,
 		"prompt_in": _prompt_box.button_pressed if _prompt_box != null else false,
-		"prompt_disabled": _prompt_box.disabled if _prompt_box != null else false}
+		"prompt_disabled": _prompt_box.disabled if _prompt_box != null else false,
+		"enter_shown": _enter_row.visible if _enter_row != null else false,
+		"enter_text": _enter.text if _enter != null else "",
+		"enter_disabled": _enter.disabled if _enter != null else true,
+		"enter_line": _enter_said.text if _enter_said != null and _enter_said.visible else "",
+		"enter_said": enter_said, "entry": entry.duplicate()}
 
 
 ## Escape closes it, like the other panels.

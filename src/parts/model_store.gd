@@ -1458,6 +1458,19 @@ func _set_aside(paced: bool) -> void:
 	_drop(into, OPENS_KEPT)
 
 
+## The model's parts as a publish sends them, for the challenge's rules
+## ticked as it is built (ChallengeLine): a big model written over frames
+## as the autosave writes it, and "" when it changed meanwhile, to be asked
+## again, so no frame writes a big one whole.
+func text_for_rules() -> String:
+	if world.brick_count() - scenery.size() < PACED_FROM:
+		return to_text(title)
+	var revision: int = world.revision
+	var made: Array = []
+	await _text_into(made, title, false, {}, FramePace.new())
+	return str(made[0]) if world.revision == revision else ""
+
+
 ## The model on the baseplate as the autosave writes it, a big one over
 ## frames when [param paced].
 func _model_text(paced: bool) -> String:

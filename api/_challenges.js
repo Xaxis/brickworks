@@ -23,6 +23,11 @@
 //                                 challenge open now, whether X is in it, and
 //                                 what its rules say of X. Only X's owner is
 //                                 told anything.
+//   GET  ?op=challenge_rules      the studio's: the month's challenge open now,
+//                                 its rules and its set's parts as kept
+//                                 (challengeRules), and the week's quick
+//                                 build open now, so the studio ticks the
+//                                 rules on the model as it is built
 //   POST ?op=enter                (session) {model, way}: X entered, built by
 //                                 hand or with the assistant; refused in words
 //                                 that name each rule it breaks (422)
@@ -57,6 +62,7 @@ import { withFaces } from "./_faces.js";
 import { SITE_LANGS, TESTS_CACHE, Unacceptable, cardOf, escapeHtml, inLanguage, siteWords, summary, testsAsked } from "./_directory.js";
 import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
 import { promptAnswer, promptNow } from "./_prompts.js";
+import { keyed, readShard, shardOf } from "./_owned.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -512,6 +518,60 @@ export async function challenge(request, response, { origin }) {
   }
   return response.status(200).json(await withFaces({ ready: true, challenge: shown, ...between,
     ...(week ? { prompt_now: week } : {}), ...(you ? { you } : {}) }));
+}
+
+// ---------------------------------------------------------------------------
+// The studio's: the rules of the challenge open now, to tick on the model as
+// it is built (unit challengestudio, src/net/challenge_rules.gd).
+
+/// The set's parts kept with challenge [id] when it was set
+/// (supabase/challenge_studio.sql challenge_set_lots): [[part, colour, qty]],
+/// from: "challenge". Before that file, the set's inventory counted again
+/// as /admin counted it (api/admin.js setChallenge), from: "inventory",
+/// which the site's check may not match where the inventory changed since.
+async function setLotsOf(id, setNumber, origin) {
+  try {
+    const kept = await db("rpc/challenge_set_lots", { method: "POST", body: { challenge_id: id } });
+    return { lots: (Array.isArray(kept) ? kept : []).map((one) => [String(one.part), n(one.colour), n(one.qty)]),
+      from: "challenge" };
+  } catch (trouble) {
+    if (!missing(trouble)) throw trouble;
+  }
+  const shard = await readShard(shardOf(setNumber), origin).catch(() => null);
+  const record = shard?.sets?.[setNumber];
+  if (!record) return { lots: [], from: "none" };
+  return { lots: keyed([...(record.p || []), ...(record.s || [])]).map((one) => [one.part, one.colour, one.qty]),
+    from: "inventory" };
+}
+
+/// GET ?op=challenge_rules: the month's challenge open now and its rules
+/// as the studio ticks them, the set's parts with them. A test account's
+/// (its sign-in, when sent) is the flows' own. Kept by the CDN a minute
+/// when asked without a sign-in. {challenge: null} when none is open. The
+/// week's quick build is the studio's to name from the copy it has open
+/// (?op=prompt_of), so it is not said here.
+export async function challengeRules(request, response, { origin }) {
+  const who = bearer(request) ? await caller(request).catch(() => null) : null;
+  const tests = who ? who.test : testsAsked(request.query || {});
+  response.setHeader("Cache-Control", who || tests ? TESTS_CACHE : "public, max-age=0, s-maxage=60, stale-while-revalidate=60");
+  let row;
+  try {
+    row = await db("rpc/challenge_open", { method: "POST", body: { tests } });
+  } catch (trouble) {
+    if (missing(trouble)) return response.status(200).json({ ready: false, challenge: null });
+    throw trouble;
+  }
+  if (!row || !row.id) return response.status(200).json({ ready: true, challenge: null });
+  const today = new Date().toISOString().slice(0, 10);
+  const rounds = DATE.test(String(row.entries_until || "")) && DATE.test(String(row.votes_from || ""));
+  const set = row.set_number ? { number: String(row.set_number), name: row.set_name ? String(row.set_name) : null,
+    ...(await setLotsOf(n(row.id), String(row.set_number), origin)) } : null;
+  return response.status(200).json({ ready: true, challenge: {
+    id: n(row.id), title: String(row.title), brief: String(row.brief || ""), starts_on: row.starts_on, ends_on: row.ends_on,
+    entries_until: rounds ? row.entries_until : null, entering: !rounds || String(row.entries_until) >= today,
+    test: row.test === true, page: `${origin}/challenge?id=${n(row.id)}${row.test ? "&tests=1" : ""}`,
+    rules: { most_parts: row.most_parts ?? null, set, tested: row.tested === true },
+    rules_said: rulesSaid({ most_parts: row.most_parts, set_number: row.set_number, set_name: row.set_name, tested: row.tested }) } });
 }
 
 /// GET ?op=challenge_entry&id=X: for X's own designer, the challenge open
