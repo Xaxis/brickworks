@@ -1695,7 +1695,10 @@ func _define() -> void:
 	_add("brickify", "Brickify a 3D model…", CTRL | KEY_I,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose")
-	_add("part_maker", "Part maker…", 0, func() -> void:
+	# One name with the bin's button and the panel's title, "Make a part":
+	# the menu called it "Part maker…", so a person who met it in the bin did
+	# not know it again in Make (ux12).
+	_add("part_maker", "Make a part…", 0, func() -> void:
 		(app.get("_bin") as PartsBin).make_wanted.emit(), Callable(),
 		"Make a part of your own from the part in hand")
 	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
