@@ -1114,7 +1114,10 @@
   "Share a file from another program": "Eine Datei aus einem anderen Programm teilen",
   "What builders are making": "Was andere gerade bauen",
   "See the gallery": "Zur Galerie",
-  "The feed": "Der Feed"
+  "The feed": "Der Feed",
+  "Built in Brickworks<span class=\"hero-sep\" aria-hidden=\"true\">·</span><span id=\"hero-pieces\">189 pieces</span><span class=\"hero-sep\" aria-hidden=\"true\">·</span><a id=\"hero-open\" href=\"/app?model=res://models/brickworks_mark.ldr\">Open it in the studio</a>": "Gebaut in Brickworks<span class=\"hero-sep\" aria-hidden=\"true\">·</span><span id=\"hero-pieces\">189 Teile</span><span class=\"hero-sep\" aria-hidden=\"true\">·</span><a id=\"hero-open\" href=\"/app?model=res://models/brickworks_mark.ldr\">Im Studio öffnen</a>",
+  "The Brickworks mark, built in LEGO® bricks": "Das Brickworks-Zeichen, gebaut aus LEGO® Steinen",
+  "The Brickworks mark built in LEGO® bricks: a cube of yellow, red and blue bricks with one corner cut away, the cut’s faces a shade darker": "Das Brickworks-Zeichen aus LEGO® Steinen gebaut: ein Würfel aus gelben, roten und blauen Steinen mit abgeschnittener Ecke, deren Flächen eine Spur dunkler sind"
  },
  "scripts": {
   "Copy": "Kopieren",
@@ -3307,6 +3310,7 @@
   "Say what you think of it": "Sag, was du davon hältst",
   "All its comments": "Alle Kommentare",
   "Opening the studio…": "Das Studio wird geöffnet…",
-  "The Brickworks studio, with {name}": "Das Brickworks-Studio, mit {name}"
+  "The Brickworks studio, with {name}": "Das Brickworks-Studio, mit {name}",
+  "The Brickworks mark in 3D, built in LEGO® bricks. Drag to turn it; with it focused, the arrow keys turn it.": "Das Brickworks-Zeichen in 3D, gebaut aus LEGO® Steinen. Zum Drehen ziehen; ausgewählt drehen es auch die Pfeiltasten."
  }
 }

@@ -15,6 +15,12 @@ whole cycle.
 
 ### Added
 
+- **brickworks.diy opens on our mark, built in LEGO® bricks, in 3D.** 189
+  real parts, a course at a time: on your first visit the bricks fly up and
+  drop back into place, then the model turns slowly. Drag it to turn it, or use the arrow
+  keys; a brick lifts under your mouse. **Open it in the studio** opens it
+  in Brickworks, and it is one of the app's examples too. If you have asked
+  your device for less motion, it stays still until you turn it.
 - **brickworks.diy's home is a feed.** What builders make and say, one post
   after another: new builds, threads in Talk with their latest reply, this
   month's challenge with its entries, builders to follow and photos of

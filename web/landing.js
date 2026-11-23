@@ -899,3 +899,46 @@ function near(id, work, margin = "150% 0px") {
 // #why within a screen and a half of the top, so its four pictures (139 KB
 // with their list) came with the first screen, which shows none of them.
 near("sets", sets);
+
+// --- the hero: our mark in bricks, in 3D -------------------------------------
+
+// The mark's 3D in its poster's place (hero3d, 2026-11-23; web/viewer3d.js
+// hero3d, three.js and all, which a post's 3D turn uses too): asked for only
+// once the page is in (its load), the browser idle and the hero on the
+// screen, on a device that draws in 3D and has not asked to save data. One
+// that draws the finished mark slower than SLOW ms a frame (under 20 a
+// second: software, an old phone) keeps the poster. Any trouble on the way
+// keeps it too; a check that must turn it on a slow
+// machine says otherwise in sessionStorage "brickworks.hero.slow" (ms).
+// Signed in, the band is not shown and none of it is asked for. <html data-hero>: what it came to (poster, loading,
+// 3d, kept-slow, kept-failed), which tools/web/hero_check.mjs reads.
+const heroStage = document.getElementById("hero-stage");
+const SLOW = (() => { try { return Number(sessionStorage.getItem("brickworks.hero.slow")) || 50; } catch { return 50; } })();
+function heroCan() {
+  if (navigator.connection?.saveData || (navigator.hardwareConcurrency || 4) < 4 || (navigator.deviceMemory || 4) < 2) return false;
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+    return Boolean(gl);
+  } catch {
+    return false;
+  }
+}
+function hero() {
+  if (!heroStage || heroStage.offsetParent === null) return;
+  if (!heroCan()) { html.dataset.hero = "poster"; return; }
+  html.dataset.hero = "loading";
+  import("/viewer3d.js")
+    .then((made) => made.hero3d(heroStage, { scene: heroStage.dataset.scene, slow: SLOW,
+      name: say("The Brickworks mark in 3D, built in LEGO® bricks. Drag to turn it; with it focused, the arrow keys turn it.") }))
+    .then((made) => made.ready)
+    .then((live) => { html.dataset.hero = live ? "3d" : "kept-slow"; })
+    .catch(() => { html.dataset.hero = "kept-failed"; });
+}
+if (heroStage) {
+  html.dataset.hero = "poster";
+  const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));
+  const whenIn = () => idle(() => near("hero-stage", hero, "0px"), { timeout: 2500 });
+  if (document.readyState === "complete") whenIn();
+  else addEventListener("load", whenIn, { once: true });
+}

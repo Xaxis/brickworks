@@ -29,6 +29,10 @@
 import { counted, iconButtonHtml, number, say } from "../../web/card.js";
 import { sceneShape, unpack } from "./scene.js";
 import { LOOKS, View, shapes, webglWorks } from "./view.js";
+// The home's hero, the mark in bricks (tools/viewer/hero.js): in the same
+// module, so a visitor who then turns a post in 3D has its code already.
+export { hero3d } from "./hero.js";
+export { webglWorks };
 
 // The triangles a device is trusted to turn smoothly: a phone or a tablet
 // (a coarse pointer), and anything else. The library's biggest model is 6

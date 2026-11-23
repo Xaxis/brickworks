@@ -6,6 +6,84 @@ same in the browser and at the deploy) and `web/home-find.js`, on the design
 system (docs/DESIGN_SYSTEM.md); its first posts are written in at the deploy
 by `tools/web/home_shelf.mjs`.
 
+## The hero: our mark in bricks (hero3d, 2026-11-23)
+
+The owner, 23 Nov: "obviously the hero should in some way contain a
+brilliant 3D variation of our logo or something to do with LEGO". The best
+product pages lead with the product, alive; here that is a model built in
+our CAD, turning in the page, that opens in the studio.
+
+- **The model.** The mark (web/icon.svg: a cube with one corner cut away)
+  in 189 real LEGO® parts, written by `tools/web/hero_mark.mjs` into
+  `models/brickworks_mark.ldr` (one of the app's examples, Tested:
+  `src/dev/tested_models_probe.gd`) and `web/hero/`: a 12-stud cube, 30
+  plates tall, its cut 6 studs and 15 plates; outer faces Yellow, Blue and
+  Red, the cut's walls Dark Blue and Dark Red and its floor Pearl Gold
+  tiles; bricks and plates bonded a course across the one under it, each
+  course a step. The front corner, where two seen faces meet, is the red
+  face's all the way up, so the colours meet on one straight edge as the
+  logo's do (bonded red and blue in turn it read as a zip; the lead, 23
+  Nov); the other corners take the colour of the one face seen. Run it again after a change (`--check` says whether the
+  files are what it writes; it also writes the piece count into
+  `web/index.html` and into the line's words in `web/_lang/*.json`).
+- **Where.** Large, and short enough that a laptop's first screen (1280 x
+  800, over the beta bar) shows at least 60% of each first-row picture of
+  the feed, real builds plainly seen beside it, and a phone's shows its
+  first picture begun (the lead, 23 Nov; tools/web/landing_check.mjs). From
+  900 px the words on the left and the model beside both lines of the
+  title: a 400 px stage (the bricks about 340 px tall) rising 47 px under
+  the header, the bricks starting 9 px below its edge, and over the band's
+  bottom padding, with Built in Brickworks · 189 pieces · **Open it in the
+  studio** one line on its baseline, under the bricks' lowest corner. Under
+  900 px a compact band over the words: the model at 45% of the width, its
+  line beside it, a word a row. The line names it a build, never the logo
+  (docs/TRADEMARKS.md, Decision 1).
+- **Open it in the studio** opens the gallery's copy as any shared model's
+  Open does (`/app?view=<id>`), once the project's account lists it (the
+  last entry of `tools/web/gallery_seeds/seeds.json`; publishing it is a
+  production write, so the lead's): `tools/web/home_shelf.mjs` finds it at
+  the deploy and writes the link in. Until then it opens the app's own
+  copy (`/app?model=res://models/brickworks_mark.ldr`), behind the sign-in
+  for a stranger.
+- **Drawn by the site's viewer** (`tools/viewer/hero.js`, built into
+  `web/viewer3d.js`): each part's own shape from the app's .lbm, less its
+  inside and underneath, the studs drawn only where nothing sits on them
+  (about 8,000 triangles). The plastic is lit as in a studio: a soft key
+  light with its real shadow on the ground and in the cut, a fill, a rim
+  and the room in the gloss, worked out where they are seen (a prefiltered
+  map's look-ups were half of each frame in software); the seam between
+  bricks drawn dark, as the gap between real bricks reads. The ground's
+  shadow fades out by 235 LDU round the mark, so it ends softly inside the
+  picture. Transparent, on the page's own background, light or dark.
+- **Alive.** Once a visit (sessionStorage) it assembles in about 2.5 s,
+  from the poster's own picture: the finished mark's bricks leave up and
+  out of the picture, the top course first, then come down from over its
+  top a course at a time, each falling as a dropped thing does, landing
+  with the smallest bounce. Nothing appears in mid-air (each starts over
+  the picture's top, which fades what crosses it) and a brick in the air
+  casts no shadow (the key's shadows begin at the mark's reach). Then it
+  sways slowly
+  about the mark's own view, resting after 45 s with nobody near it. A drag
+  or a touch across turns it and it settles back; focused, the arrow keys
+  turn it (Home puts it back); a brick lifts under a mouse. Asked for less
+  motion: built and still, turned by hand only.
+- **Fast.** The first paint is its poster, in the HTML (`web/img/hero/`,
+  WebP with a clear ground, so one picture serves light and dark; the
+  stage's one shape, 460 / 414, at 222, 444 and 888 px across; `tools/web/hero_poster.mjs` draws them with the same
+  code). `web/landing.js` asks for the viewer only after the page's load,
+  at idle, with the hero on the screen, on a device with WebGL 2, four
+  cores and not saving data; a device that draws the finished mark slower
+  than 50 ms a frame keeps the poster, as does any trouble. The 3D fades in
+  over the poster, the same drawing, so nothing moves (CLS 0).
+
+`tools/web/hero_check.mjs` proves it at both sizes, light and dark: the
+poster at first paint (its picture taken with the viewer held back, so it
+is the page before any 3D), the viewer asked after the load, the assembly's
+frames timed to a WebGL fence, the sway, a drag, the keys, a brick lifting,
+the stage named and Open it in the studio a link into the app, no layout
+shift, a second visit not assembling again, less motion, and no WebGL
+keeping the poster with no error.
+
 ## Now: the feed (homefeed, 2026-11-23)
 
 The owner: "turn the landing into our lego 'social media' as it
@@ -15,14 +93,14 @@ do, and the decisions taken from them, are docs/SOCIAL.md section 11.
 
 What a stranger sees, at 390 x 844 and at 1280 x 800:
 
-1. **One band, one line.** "Build, share and find LEGO® models", one
+1. **One band, one line**, beside the hero (above). "Build, share and find LEGO® models", one
    sentence ("A free CAD in your browser. Every build here was made in it:
    open one, change it, build it."), the search over models, builders and
    real sets, and **Start building**. Signed in, the band gives way to
    **Share a build** (`/app?share`: the studio's share panel for their
    last model) and the tabs.
-2. **The feed**, at once under it (the first post within 600 px on a
-   phone): one stream of posts, a column on a phone, two from 700 px,
+2. **The feed**, at once under it (the first post begun in the first
+   screen, under the hero): one stream of posts, a column on a phone, two from 700 px,
    three from 1100 and four from 1560. This week's pick first, then Top and
    New in turn, the month's challenge third with its entries, then a Talk
    thread with its latest reply, the studio to try, more builds, another
@@ -88,8 +166,9 @@ build needs, Build something today.
 - de, fr, es: every new word has its entry (`tools/site_lang.py --check`).
 
 `tools/web/landing_check.mjs` (every deploy) proves the first screen: the
-search and Start building whole at both sizes, light and dark, the first
-post within 600 px on a phone with its pictures drawn, no layout shift,
+search and Start building whole at both sizes, light and dark, a phone's
+first post's picture begun in it and 60% of each of a laptop's first-row
+pictures in it (over the beta bar), its pictures drawn, no layout shift,
 Show more, the search, the challenge third at the latest, Talk's posts and
 the sets. `tools/web/homefeed_check.mjs` drives each post: the served
 HTML's links, Like, a comment and Follow asking to sign in, 3D, Try it

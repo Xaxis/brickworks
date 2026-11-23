@@ -1332,6 +1332,7 @@
 "The 3D view could not load. The picture is still here; try again in a moment.": "La vista 3D no se pudo cargar. La imagen sigue aquí; vuelve a intentarlo en un momento.",
 "The 3D view could not load: {why}. The picture is still here.": "La vista 3D no se ha podido cargar: {why}. La imagen sigue aquí.",
 "The Brickworks beta": "La beta de Brickworks",
+"The Brickworks mark in 3D, built in LEGO® bricks. Drag to turn it; with it focused, the arrow keys turn it.": "La marca de Brickworks en 3D, construida con ladrillos LEGO®. Arrástrala para girarla; seleccionada, las flechas del teclado también la giran.",
 "The Brickworks studio, with {name}": "El estudio de Brickworks, con {name}",
 "The LDraw library cannot be read just now. Try again in a minute.": "La biblioteca LDraw no se puede leer ahora mismo. Inténtalo de nuevo en un minuto.",
 "The LDraw library has no such set.": "La biblioteca LDraw no tiene ese set.",
