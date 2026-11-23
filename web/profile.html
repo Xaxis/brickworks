@@ -331,8 +331,9 @@
 					<div class="avatar-row" data-more>
 						<span class="avatar big" id="avatar-edit" aria-hidden="true"></span>
 						<div class="avatar-words">
-							<p id="avatar-said">Your avatar is made from your handle: its colour and your name’s first letter.</p>
+							<p id="avatar-said">Your avatar is a minifig made from your handle.</p>
 							<div class="avatar-acts" id="avatar-acts" hidden>
+								<button class="cta ghost small" type="button" id="avatar-make">Make a minifig</button>
 								<button class="cta ghost small" type="button" id="avatar-choose">Choose a picture</button>
 								<button class="link" type="button" id="avatar-remove" hidden>Remove the picture</button>
 							</div>
@@ -391,6 +392,29 @@
 					<button class="cta" type="button" data-crop="use">Use this picture</button>
 					<button class="cta ghost" type="button" data-crop="cancel">Cancel</button>
 				</div>
+			</dialog>
+
+			<!-- A minifig of your own, of real parts, as your avatar (web/minifig-maker.js). -->
+			<dialog class="minifig-dialog" id="minifig-dialog" aria-labelledby="minifig-h">
+				<h2 id="minifig-h">Make your minifig</h2>
+				<p>Pick a face, hair or a hat, a torso and colours. It is your avatar wherever your name is.</p>
+				<div class="minifig-maker">
+					<div class="minifig-look">
+						<span class="avatar huge" id="minifig-big" aria-hidden="true"></span>
+						<div class="minifig-themes" role="img" aria-label="Your minifig at its sizes, on a light page and a dark one">
+							<div class="minifig-on light" id="minifig-light"></div>
+							<div class="minifig-on dark" id="minifig-dark"></div>
+						</div>
+						<button class="cta ghost small" type="button" id="minifig-surprise">Surprise me</button>
+					</div>
+					<div class="minifig-choices" id="minifig-choices"></div>
+				</div>
+				<p class="note minifig-credit">Built from real parts of the LDraw™ library (CC BY).</p>
+				<div class="actions">
+					<button class="cta" type="button" id="minifig-save">Save</button>
+					<button class="cta ghost" type="button" id="minifig-cancel">Cancel</button>
+				</div>
+				<p class="said" id="minifig-note" role="status"></p>
 			</dialog>
 		</div>
 	</div>

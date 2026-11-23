@@ -76,6 +76,12 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { minifigLayers, minifigOf } from "../../web/card.js";
+
+// The minifigure an avatar made from [handle] shows (web/card.js minifigOf),
+// as faceOf reads one in the page: its hair and face layers.
+const minifigKey = (handle) => minifigLayers(minifigOf(handle)).map((file) => file.match(/(?:face|hair)-[\w-]+/)?.[0])
+  .filter(Boolean).join(" ");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -126,7 +132,8 @@ const drawn = (page) => page.evaluate(() => {
   return {
     name: document.querySelector(".profile-head h1")?.textContent || "",
     handle: document.querySelector(".profile-head .handle")?.textContent.replace(/\s+/g, " ").trim() || "",
-    avatar: avatar ? { letter: avatar.textContent, picture: Boolean(avatar.querySelector("img")),
+    avatar: avatar ? { minifig: avatar.classList.contains("minifig") ? (avatar.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : "",
+      picture: Boolean(avatar.querySelector("img")),
       loaded: Boolean(avatar.querySelector("img")?.naturalWidth),
       tile: [...avatar.classList].some((c) => /^c[1-8]$/.test(c)), bottom: box(avatar).bottom } : null,
     nameBottom: box(document.querySelector(".profile-head h1"))?.bottom ?? 1e9,
@@ -169,13 +176,14 @@ const drawn = (page) => page.evaluate(() => {
 function headHolds(said, label, { name, handle, phone, pictured = false, likes = false }) {
   check(`${label}: "${said.name}", ${said.handle.split(" · ")[0]}`, said.name === name && said.handle.startsWith(`@${handle}`));
   // Their own picture, where they chose one (supabase/avatars.sql: Robin,
-  // in the stand-in), on its tile until it loads; else the tile's letter.
+  // in the stand-in), on its tile until it loads; else the minifig made
+  // from their handle (web/card.js minifigOf).
   if (pictured) {
     check(`${label}: their own picture as the avatar, loaded, over its tile`,
       Boolean(said.avatar && said.avatar.tile && said.avatar.picture && said.avatar.loaded));
   } else {
-    check(`${label}: an avatar made from the handle ("${said.avatar?.letter}" on a coloured tile, no picture)`,
-      Boolean(said.avatar && said.avatar.tile && !said.avatar.picture && said.avatar.letter === [...name][0].toUpperCase()));
+    check(`${label}: an avatar made from the handle (the minifig "${said.avatar?.minifig}" on a coloured tile, no picture)`,
+      Boolean(said.avatar && said.avatar.tile && !said.avatar.picture && said.avatar.minifig === minifigKey(handle)));
   }
   const zeros = said.numbers.filter((one) => one.shown && (!one.n || one.n === "0"));
   check(`${label}: numbers ${said.numbers.filter((one) => one.shown).map((one) => one.text).join(" · ") || "(none yet)"}, no count of none`,

@@ -22,7 +22,7 @@ lib:the beta's spots and months
 
 The beta is open. A new account is asked once, right after its first sign-in, on the site and in the app: **Join the beta testers** or **Not now**. Nothing is chosen for you, and **Not now** is kept: the question never comes again. Any account can also join:
 
-1. Open [/beta](/beta), **Open beta** on the homepage, or **Join** in the beta bar at the foot of every page.
+1. Open [/beta](/beta), **Open beta** on the homepage, or **Join** in the beta bar at the top of every page.
 2. Signed out, **Sign up and join** signs you in first (signing in makes your account if you have none).
 3. Signed in, **Join the beta**: you are a tester at once.
 

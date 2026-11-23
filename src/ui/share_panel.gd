@@ -336,13 +336,6 @@ func setup() -> void:
 	_list.add_theme_font_size_override("font_size", 12)
 	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
 	form.add_child(_list)
-	# Off unless ticked: how it was made is the builder's to say.
-	_say_made = CheckBox.new()
-	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
-	_say_made.focus_mode = Control.FOCUS_NONE
-	_say_made.add_theme_font_size_override("font_size", 12)
-	_say_made.visible = false
-	form.add_child(_say_made)
 	# Under it: an entry is a gallery model, so it is ticked only with it.
 	_prompt_box = CheckBox.new()
 	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
@@ -351,6 +344,14 @@ func setup() -> void:
 	_prompt_box.visible = false
 	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
 	form.add_child(_prompt_box)
+	# Off unless ticked: how it was made is the builder's to say. After the
+	# quick build's box, which belongs to List it in the gallery.
+	_say_made = CheckBox.new()
+	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
+	_say_made.focus_mode = Control.FOCUS_NONE
+	_say_made.add_theme_font_size_override("font_size", 12)
+	_say_made.visible = false
+	form.add_child(_say_made)
 	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
 		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
 	_young.visible = false

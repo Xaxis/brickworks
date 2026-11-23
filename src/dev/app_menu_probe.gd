@@ -10,8 +10,8 @@
 ## colours; it takes room nobody had and pushes nothing: at the window's own
 ## width and at every narrower one down to a narrow browser's 720 units
 ## across, the bar stays one line, and the bar and the toolbar under it are
-## where they were, the same size and showing the same tools, as with the
-## app's name in words where the mark is now. Its name beside it while
+## where they were, the same size and showing the same tools, as with no
+## mark at all (before appchrome: with the app's name in words there). Its name beside it while
 ## there is room, the mark alone where there is not, the room counted with
 ## Account's count, so the count's coming moves nothing in the bar.
 ##
@@ -134,29 +134,21 @@ func _at_width(mark: MenuButton) -> void:
 		if control != null and control.visible and first == null:
 			first = control
 	var with_it: Array = _layout()
-	# Before the mark the row began with the app's name, in words: put back,
-	# in its place, for the bar as it was.
-	var name := Label.new()
-	name.text = "Brickworks"
-	name.add_theme_font_size_override("font_size", 14)
-	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# As tall as the mark: the header's height is its own (appchrome), and
-	# what this weighs is the room across the mark takes.
-	name.custom_minimum_size = Vector2(0, mark.size.y)
-	name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The bar with no mark at all. It was weighed against the app's name in
+	# words, as the row began before the mark; the header (appchrome) sizes
+	# its controls in points and fits them to the row with the mark alone,
+	# where the old words would not fit, so what this weighs now is that the
+	# mark takes room nobody else needs.
 	mark.visible = false
-	row.add_child(name)
-	row.move_child(name, 0)
 	await _frames(6)
 	var without: Array = _layout()
-	name.free()
 	mark.visible = true
 	await _frames(6)
 	print("    %d x %d units: the mark %s, the toolbar showing %d controls" % [room.x, room.y,
 		"and its name" if not mark.text.is_empty() else "alone", with_it[2]])
 	_check("...the mark first in the bar, at its left (%d), the bar one line (%d)" % [
 		mark.position.x, _line_count(row)], first == mark and mark.position.x < 1.0 and _line_count(row) == 1)
-	_check("...the bar's height, the toolbar's top and the tools it shows as they were with the name in words: %s, %s" % [
+	_check("...the bar's height, the toolbar's top and the tools it shows as they are with no mark: %s, %s" % [
 		str(with_it), str(without)], with_it == without)
 	await _shot("bar_%d" % roundi(room.x))
 

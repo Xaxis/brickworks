@@ -40,7 +40,7 @@
 @media (width < 900px) {
 	.model-page { padding-top: 12px; }
 	.model-page .crumbs { margin-bottom: 10px; }
-	.model-page .top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "picture" "side" "rest"; gap: 16px; }
+	.model-page .top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "picture" "side" "rest"; gap: 12px; }
 	.model-page .side { position: static; }
 }
 /* Where it came from, under its picture (api/share.js lineage): a remix's
@@ -121,7 +121,9 @@
 .set-page .picture-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-3); margin: 6px 2px 0; }
 .set-page .picture-foot .picture-credit { margin: 0 0 0 auto; }
 .set-page .no3d { margin: 0; font-size: var(--t-small); color: var(--ink-soft); }
-@media (width < 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
+/* On a phone smaller, so its Like and Save are on a 390x844 window's first
+   screen under the beta's strip at the top (pagebar). */
+@media (width < 600px) { .media-strip .thumb { width: 64px; height: 48px; } }
 /* On a phone the picture is square: at 390 px it is 358 px tall, not 188,
    and web/model-page.js draws the model as large as its width lets it,
    the picture's own ground carried on above and below a wide one. */

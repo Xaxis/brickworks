@@ -2280,6 +2280,14 @@
       "tests": []
     },
     {
+      "id": "cli:minifig avatar layers",
+      "kind": "cli",
+      "entry": "tools/web/minifig_layers.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/minifig_layers.mjs --deps=DIR [--only=face-3626cp01,...]   (DIR has node_modules/three 0.186.1; writes web/minifig/128 and web/minifig/256)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:minifig browser flow",
       "kind": "cli",
       "entry": "tools/web/minifig_flow.mjs",
@@ -6208,6 +6216,14 @@
       "entry": "src/ui/done_note.gd",
       "reach": "godot --path .  (Settings, Say when a long job is done, on Reduce motion's line: a design asked in the assistant's panel, Render's picture at Best, turntable, animation or build video, or the render queue drawn empty, ending while the window is not looked at: the window asks for attention and its title starts \"Done \u00b7 \" on the desktop; on the web one notification with the model's name and what finished, the permission asked at the first long job's start, never on load)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a minifig of your own as your avatar",
+      "kind": "ui",
+      "entry": "web/minifig-maker.js",
+      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig   (dialog#minifig-dialog: a face, hair or a hat and its colour, a torso print and colour, legs colour, background, Surprise me, the minifig at its sizes on a light and a dark page; Save sends the PNG and its recipe to POST /api/people?op=avatar {picture, type, minifig}; everybody without a picture is shown the minifig made from their handle, web/card.js minifigOf, and GET /api/people?op=avatar&handle=X draws it as a JPEG)",
+      "area": "web",
       "tests": []
     },
     {
