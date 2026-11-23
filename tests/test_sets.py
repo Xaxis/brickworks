@@ -248,7 +248,7 @@ console.log(JSON.stringify(ownedOf(rows, pool, keyOf)));""")
 @needs_node
 def test_a_set_s_page_says_what_it_is_credits_its_data_and_sells_nothing() -> None:
     said = node(SETS + """
-import { cardHtml } from "./web/card.js";
+import { cardHtml, minifigHtml, minifigOf } from "./web/card.js";
 const chrome = { head: "", header: "<header></header>", footer: "<footer></footer>" };
 const page = (n, extra = {}) => S.setPage({ origin: "https://brickworks.test", entry: S.catalogSet(n), chrome,
   held: models.get(n.toLowerCase()) || null, cardHtml, ...extra });
@@ -258,7 +258,7 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
   explorer: page("10497-1", { lots }), chain: page("853900-1"),
   other: page("4488-1", { held: { main: null, more: [{ id: "omr-4488-1_B", name: "Millennium Falcon - Mini — B model" }] } }),
   brief: S.starterBrief(S.catalogSet("10497-1"), lots), files: S.sitemapSets(catalog.sets, "https://b.test"),
-  de: S.sitemapSets(catalog.sets, "https://b.test", "de") }));""")
+  de: S.sitemapSets(catalog.sets, "https://b.test", "de"), fig: minifigHtml(minifigOf("Roland Dahl")) }));""")
     falcon, explorer, chain = said["falcon"], said["explorer"], said["chain"]
     for page in (falcon, explorer, chain):
         assert 'Set and inventory data: <a href="https://rebrickable.com/">Rebrickable</a>' in page
@@ -275,8 +275,10 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
     assert '<a class="cta ghost" href="/app?new=1&amp;library=omr-10179-1" data-version' in falcon
     assert ">Make your own version</a>" in falcon and ">Build it</a>" in falcon
     assert 'href="/library/omr-10179-1">a page of its own' in falcon and "/library/omr-10179-1_B" in falcon
-    # Who modelled it heads its credit, by their initial, linked to LDraw's page of it (sitebold).
-    assert re.search(r'<div class="shared-by credit"><span class="avatar [^"]*" aria-hidden="true">R</span><div class="names">'
+    # Who modelled it heads its credit, linked to LDraw's page of it (sitebold), by the
+    # minifigure made from their name, as every avatar is since avatarkit (a8ddbf0be).
+    assert 'class="avatar c' in said["fig"] and ' minifig" aria-hidden="true" style="background-image:url(/minifig/128/' in said["fig"]
+    assert re.search(r'<div class="shared-by credit">' + re.escape(said["fig"]) + r'<div class="names">'
                      r'<p class="from modelled-by">Modelled by <b>Roland Dahl</b> for <a href="https://library\.ldraw\.org/omr/sets/\d+">', falcon)
     assert 'src="/library/omr-10179-1.cutout.webp"' in falcon
     # In 3D in the page (set3d): its picture the way into the 3D view a

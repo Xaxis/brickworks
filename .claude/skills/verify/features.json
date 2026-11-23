@@ -5610,6 +5610,7 @@
       "tests": [
         "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_beta_strip_room.py",
         "tests/test_home_shelf.py",
         "tests/test_inbox.py",
         "tests/test_insights.py"
@@ -8489,6 +8490,7 @@
       "reach": "https://brickworks.diy/m/<id>/embed in an iframe (the share sheet's embed code): View in 3D on its picture turns the model in the frame (web/start3d.js imports /viewer3d.js; web/view3d.css; api/share.js embedCard and embedCsp); node tools/web/embed_flow.mjs --out=DIR on the stand-in",
       "area": "web",
       "tests": [
+        "tests/test_beta_strip_room.py",
         "tests/test_model_page.py",
         "tests/test_share_unknowns.py",
         "tests/test_turntable_page.py"
@@ -8514,6 +8516,7 @@
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_beta_strip_room.py",
         "tests/test_home_shelf.py",
         "tests/test_inbox.py",
         "tests/test_insights.py",
@@ -8772,6 +8775,7 @@
       "tests": [
         "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_beta_strip_room.py",
         "tests/test_home_shelf.py",
         "tests/test_inbox.py",
         "tests/test_insights.py"
@@ -8808,6 +8812,7 @@
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_beta_strip_room.py",
         "tests/test_home_shelf.py",
         "tests/test_inbox.py",
         "tests/test_insights.py",
@@ -8867,6 +8872,7 @@
         "tests/fixtures/announce/api_check.mjs",
         "tests/fixtures/inbox_world.mjs",
         "tests/fixtures/insights/names_check.mjs",
+        "tests/test_beta_strip_room.py",
         "tests/test_home_shelf.py",
         "tests/test_inbox.py",
         "tests/test_insights.py",
