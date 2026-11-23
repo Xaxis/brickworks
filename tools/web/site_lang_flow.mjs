@@ -256,10 +256,17 @@ function readable(asked = "") {
   const said = [];
   const top = root ? document.querySelector(root) : document.documentElement;
   if (!top) return said;
+  // Text the page itself marks English on a page that is not: content in
+  // its own language, said so for readers and screen readers alike, such as
+  // a challenge's brief the owner wrote once (landing.js, brief.lang = "en";
+  // rel-m319's site_lang, 2026-11-23). Words the page means to translate
+  // carry no such mark.
+  const page = (document.documentElement.lang || "").toLowerCase();
+  const english = (el) => !page.startsWith("en") && (el.closest("[lang]")?.lang || "").toLowerCase().startsWith("en");
   const walk = document.createTreeWalker(top, NodeFilter.SHOW_TEXT);
   for (let node = walk.nextNode(); node; node = walk.nextNode()) {
     const parent = node.parentElement;
-    if (!parent || parent.closest(SKIP)) continue;
+    if (!parent || parent.closest(SKIP) || english(parent)) continue;
     const pick = parent.closest("#themes [data-pick]")?.dataset.pick;
     if (pick && pick.replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®")
       === node.textContent.trim()) continue;
@@ -268,7 +275,7 @@ function readable(asked = "") {
     if (text.trim()) said.push(text.trim());
   }
   for (const el of [top, ...top.querySelectorAll("[alt], [title], [aria-label], [placeholder]")]) {
-    if (el.closest(SKIP)) continue;
+    if (el.closest(SKIP) || english(el)) continue;
     for (const name of ["alt", "title", "aria-label", "placeholder"]) {
       if (el.hasAttribute(name) && el.getAttribute(name).trim()) said.push(el.getAttribute(name));
     }
