@@ -160,15 +160,22 @@ def test_the_card_says_who_modelled_it_not_who_shares_it() -> None:
         "const c = await import('./web/card.js');"
         "const base = { id: 'Abcde12345', name: 'LEGO® set 6080 King\\'s Castle', parts: 691, author: 'Brickworks',"
         "  by: { handle: 'brickworks', name: 'Brickworks' }, tags: [] };"
-        "console.log(JSON.stringify([c.cardHtml({ ...base, modelled_by: { name: 'Stefan Frenz',"
-        "  page: 'https://library.ldraw.org/omr/sets/1034' } }), c.cardHtml(base)]));")
+        "const credit = { name: 'Stefan Frenz', page: 'https://library.ldraw.org/omr/sets/1034' };"
+        "console.log(JSON.stringify([c.cardHtml({ ...base, modelled_by: credit }), c.cardHtml(base),"
+        "  c.cardHtml({ ...base, by: null, author: '', modelled_by: credit })]));")
     if said is None:
         return
-    modelled, shared = said
-    # Words straight in the who-line, which wrap on a narrow card, not a
-    # span that ends in "…" (at 390 px it read "Modelled by Stefan Fr…").
-    assert '<span class="who" data-modelled-by>Modelled by Stefan Frenz</span>' in modelled
+    modelled, shared, alone = said
+    # The person who modelled it leads, as a sharer would, and who shares
+    # it is said under it (sitebold): forty such cards read "Brickworks".
+    assert ('<span class="who modeller" data-modelled-by title="Modelled by Stefan Frenz">'
+            '<span class="avatar small c') in modelled and '<span>Stefan Frenz</span></span>' in modelled
+    assert '<small class="via">Shared by Brickworks</small>' in modelled
     assert 'href="/u/brickworks"' not in modelled
+    # With nobody sharing it (a set's card), words straight in the who-line,
+    # which wrap on a narrow card, not a span that ends in "…" (at 390 px it
+    # read "Modelled by Stefan Fr…").
+    assert '<span class="who" data-modelled-by>Modelled by Stefan Frenz</span>' in alone and "via" not in alone
     # A model its sharer made: their profile, as before.
     assert 'href="/u/brickworks"' in shared and "Modelled by" not in shared
 
@@ -198,6 +205,11 @@ def test_the_page_credits_who_modelled_it_with_its_ldraw_page_and_licence() -> N
     html = page["html"]
     assert ('<p class="from modelled-by">Modelled by <b>Stefan Frenz</b> for '
             '<a href="https://library.ldraw.org/omr/sets/1034">LDraw&#39;s Official Model Repository</a></p>') in html
+    # They head the page, by their initial; who shares it is said under, with Follow.
+    head = re.search(r'<div class="shared-by credit">.*?<span class="said"', html, flags=re.S)[0]
+    assert head.startswith('<div class="shared-by credit"><span class="avatar ') and '>S</span><div class="names"><p class="from modelled-by">' in head
+    assert re.search(r'<p class="shared-via"><span>Shared by <a class="who" href="/u/[a-z0-9-]+"><span class="avatar small[^"]*"[^>]*>.*?</span>'
+                     r'<span>Robin Castell</span></a></span><button type="button" class="cta ghost small follow" data-follow="[a-z0-9-]+" hidden>', head)
     licence = re.search(r'<div class="licence">.*?</div>', html, flags=re.S)[0]
     assert "<b>CC BY 2.0.</b>" in licence
     assert ("credit Stefan Frenz, who modelled it for <a href=\"https://library.ldraw.org/omr/sets/1034\">"

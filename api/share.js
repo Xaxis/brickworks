@@ -1154,16 +1154,31 @@ function testedMark(mark, steps = null) {
 /// it knows who is asking). A credit with no profile behind it is the name
 /// alone, with an avatar made from it; a model shared with no credit, none.
 function designerRow(model) {
+  // Somebody else modelled it (a set from LDraw's library the house shares):
+  // they lead, their initial for an avatar, the line that credits them
+  // beside it, and who shares it under, with Follow (sitebold, 2026-11-23:
+  // forty such pages were headed "Brickworks").
+  const modeller = modelledByOf(model.modelled_by);
+  const sharer = model.by ? model.by.name : model.author || "";
+  if (modeller && sharer && modeller.name !== sharer) {
+    const via = model.by ? `<a class="who" href="${langAt()}/u/${escapeHtml(model.by.handle)}">${avatarHtml(model.by, { size: "small" })}`
+      + `<span>${escapeHtml(model.by.name)}</span></a>` : `<span class="who">${escapeHtml(sharer)}</span>`;
+    // Follow beside the sharer it follows, not beside the modeller's name.
+    return `<div class="shared-by credit">${avatarHtml({ name: modeller.name })}<div class="names">${modelledLine(model)}`
+      + `<p class="shared-via"><span>${sayHtml("Shared by {name}", { name: via })}</span>`
+      + `${model.by ? `<button type="button" class="cta ghost small follow" data-follow="${escapeHtml(model.by.handle)}" hidden>${asText(say("Follow"))}</button>` : ""}</p></div>`
+      + `<span class="said" role="status"></span></div>`;
+  }
   if (model.by) {
     const handle = escapeHtml(model.by.handle);
     return `<div class="shared-by"><a class="who" href="${langAt()}/u/${handle}">${avatarHtml(model.by)}`
       + `<span class="names"><b>${escapeHtml(model.by.name)}</b><small>@${handle}</small></span></a>`
       + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>${asText(say("Follow"))}</button>`
-      + `<span class="said" role="status"></span></div>`;
+      + `<span class="said" role="status"></span></div>` + modelledLine(model);
   }
-  if (!model.author) return "";
+  if (!model.author) return modelledLine(model);
   return `<div class="shared-by"><span class="who">${avatarHtml({ name: model.author })}`
-    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>`;
+    + `<span class="names"><b>${escapeHtml(model.author)}</b></span></span></div>${modelledLine(model)}`;
 }
 
 /// Who shares a model, by name, as its page heads it.
@@ -1480,6 +1495,11 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // and lit in its 3D view (/m/X/changes.json).
   const changed = !set && !old && parent?.id ? ownChanges(model.tree, version.n, parent.id) : null;
   const changedLine = changed ? changedLineHtml(changed, at, parent.id, fromVersion) : "";
+  // Where it came from, what it changed and what it is based on, under its
+  // picture (sitebold, 2026-11-23, as Printables says a remix's source under
+  // its pictures); on a phone after the column, so the first screen is the
+  // picture, the name, who made it and the action bar.
+  const lineage = `${fromLine}${changedLine}${basedHtml(model.based || [])}`;
   // What it is, as pills, each said once there is one. Its steps are the
   // ones its step player and booklet number, counted from the file shown;
   // a file that carries none has them worked out as it opens, and they are
@@ -1572,7 +1592,6 @@ ${header}
     <div class="side">
       <h1 class="obj-title"${model.name.length > 48 ? ` title="${escapeHtml(model.name)}"` : ""}>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
-      ${modelledLine(model)}
       ${altHtml(model.alt)}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in the studio"))}</a>`
@@ -1583,13 +1602,11 @@ ${header}
       ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url, `${fileAt}.mpd`)}
       ${set || old ? "" : postFacts(origin, id, shownModel, about)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
-      ${fromLine}
-      ${changedLine}
-      ${basedHtml(model.based || [])}
       ${set ? "" : suggestedLine(id, model.suggested, at)}
       ${set || old ? "" : `<div class="suggest-box" id="suggest-box" data-model="${id}"${parent?.id ? ` data-remix-of="${parent.id}"` : ""} hidden></div>`}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
+    ${lineage ? `<div class="lineage">${lineage}</div>` : ""}
     <div class="rest">
   <div class="obj-panels">
   ${pageTabs(model, newest, lists?.count, parts, logged(versions))}

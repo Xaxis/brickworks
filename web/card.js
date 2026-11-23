@@ -175,7 +175,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "gauge", "globe", "library",
-  "download", "check", "back", "next", "reset", "expand", "shrink", "close", "plus", "down", "pause", "play"];
+  "download", "check", "back", "next", "reset", "expand", "shrink", "close", "plus", "down", "pause", "play", "remix", "help", "news"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {
@@ -187,16 +187,21 @@ export function iconHtml(name) {
 /// its name and count its label ("Like, 12 likes"; "Like" at none). A
 /// toggle ([pressed] true or false) is aria-pressed. [labelled] shows a
 /// word for it between the two, [word] (its name unless said), which is
-/// in its label.
+/// in its label. [zero] shows a quiet 0 at none, where a row of them
+/// (the gallery card's) would read as counts missing.
 export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pressed = null, small = false, labelled = false,
-  word = name, attrs = "" }) {
+  word = name, attrs = "", zero = false }) {
   const n = Number(count) || 0;
   const said = n ? `${name}, ${counted(n, one, many)}` : name;
   return `<button type="button" class="icon-btn${small ? " small" : ""}${labelled ? " labelled" : ""}" aria-label="${escapeHtml(said)}"`
     + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
-    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}`
-    + `${n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>` : ""}</button>`;
+    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}${countHtml(n, zero)}</button>`;
 }
+
+/// An icon button's count: its number, a quiet 0 at none when [zero], else
+/// nothing. Its label says it (aria-hidden).
+const countHtml = (n, zero) => (n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>`
+  : zero ? `<span class="n zero" aria-hidden="true">${escapeHtml(number(0))}</span>` : "");
 
 /// What a person earned, as the row of pills under their numbers on their
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
@@ -413,6 +418,14 @@ export const langAt = () => {
   return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
 
+/// A link into the app with [query], in the page's language as theme.js
+/// carries it into the links a page is served with: a link drawn later,
+/// a card's or the pick's, is not among those (sitebold, 2026-11-23).
+export const appAt = (query) => {
+  const code = langAt().slice(1);
+  return `/app?${query}${code ? `&lang=${code}` : ""}`;
+};
+
 /// The tags that say a model was made with the assistant or Brickify, as
 /// the guidelines ask a designer to tag it (web/guidelines.html), read for
 /// a model whose app did not say (docs/SOCIAL.md D7). The gallery's "With
@@ -497,7 +510,8 @@ export function keepHtml(key, name) {
   const main = set ? (what ? say("Own {name}", { name: what }) : say("Own it")) : (what ? say("Save {name}", { name: what }) : say("Save it"));
   const more = what ? say("Add {name} to a list", { name: what }) : say("Add it to a list");
   return `<div class="keep" data-keep="${escapeHtml(key)}" data-name="${escapeHtml(what)}">`
-    + `<button type="button" class="keep-main" data-keep-main aria-pressed="false" aria-label="${escapeHtml(main)}">`
+    + `<button type="button" class="keep-main" data-keep-main aria-pressed="false" aria-label="${escapeHtml(main)}" `
+    + `title="${escapeHtml(set ? say("Own it") : say("Save it"))}">`
     + (set ? `<span class="off">${iconHtml("plus")}</span><span class="on">${iconHtml("check")}</span>` : iconHtml("save"))
     + `<span class="word">${escapeHtml(set ? say("Own") : say("Save"))}</span><span class="n" aria-hidden="true" hidden></span></button>`
     + `<button type="button" class="keep-more" data-keep-more aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml(more)}" `
@@ -562,9 +576,17 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
   // have one shown in public (supabase directory_card's by); else the name
   // they credited it to, as words; else nobody.
   const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
-  const modeller = model.modelled_by && typeof model.modelled_by === "object" && typeof model.modelled_by.name === "string"
-    ? model.modelled_by.name : "";
-  const who = modeller
+  const modeller = modellerOf(model);
+  const sharer = by ? by.name || by.handle : model.author || "";
+  // A model somebody shares that a person modelled (a set from LDraw's
+  // library, shared by the house): that person leads, as a sharer would,
+  // their initial for an avatar, and who shares it is said under it, small
+  // (sitebold, 2026-11-23: forty such cards read "Brickworks", the gallery
+  // one company's posts). A set's own card names them in words.
+  const who = modeller && sharer && sharer !== modeller
+    ? `<span class="who modeller" data-modelled-by title="${escapeHtml(say("Modelled by {name}", { name: modeller }))}">`
+      + `${avatarHtml({ name: modeller }, { size: "small" })}<span>${escapeHtml(modeller)}</span></span>`
+    : modeller
     ? `<span class="who" data-modelled-by>${escapeHtml(say("Modelled by {name}", { name: modeller }))}</span>`
     : by
     ? `<a class="who" href="${langAt()}/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
@@ -572,6 +594,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
+  if (modeller && sharer && sharer !== modeller) lines.push(`<small class="via">${escapeHtml(say("Shared by {name}", { name: sharer }))}</small>`);
   if (set) {
     const said = [set.set, set.theme && themeSaid(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
     if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);
@@ -617,26 +640,52 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
   // likes (where the like is not a button), builds finished to the last
   // step, once per device (supabase/builds.sql), and comments. Views are
   // never shown or ranked (docs/SOCIAL.md D6).
-  const tallies = earned ? "" : (like ? "" : tallyHtml("like", model.likes, "like"))
+  // Where the page makes the like a button (the gallery's), the card ends in
+  // a row of what people do with a model, as a social site's post does
+  // (sitebold, 2026-11-23): Like, its comments and Remix into the studio,
+  // each with its count, a quiet 0 at none (a row of bare icons read as
+  // counts missing), then its builds; the picture carries only its marks.
+  const social = like && !earned && !set && MODEL_ID.test(id);
+  const tallies = earned || social ? "" : (like ? "" : tallyHtml("like", model.likes, "like"))
     + tallyHtml("build", model.builds, "built", "built") + tallyHtml("comment", model.comments, "comment");
-  // The like, where the page makes it a button: over the picture's other
-  // corner, its count beside its heart. Named with the model: twenty
-  // cards' "Like" in a row say which they like.
-  const liked = like && !earned ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
-    pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
+  // The like, named with the model: twenty cards' "Like" in a row say which
+  // they like.
+  const liked = social ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
+    pressed: model.liked === true, small: true, zero: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
+  const doing = social ? `<div class="social">${liked}${iconLinkHtml({ icon: "comment", href: `${langAt()}/m/${id}#comments`,
+    name: say("Comments on {name}", { name: model.name }), count: model.comments, one: "comment", zero: true })}`
+    + `${iconLinkHtml({ icon: "remix", href: appAt(`copy=${id}`), name: say("Remix {name} in the studio", { name: model.name }),
+      count: model.remixes, one: "remix", many: "remixes", zero: true, attrs: `title="${escapeHtml(say("Remix it: a copy of your own to change, in the studio"))}"` })}`
+    + `${tallyHtml("build", model.builds, "built", "built")}</div>` : "";
   // Own (a set) or Save (a model) and your lists, over the picture's foot.
   const owned = catalogueSet(model);
   const kept = owned ? keepHtml(`set:${owned}`, model.name)
-    : keep && !set && /^[A-Za-z0-9]{10}$/.test(id) ? keepHtml(`model:${id}`, model.name) : "";
+    : keep && !set && MODEL_ID.test(id) ? keepHtml(`model:${id}`, model.name) : "";
   return `<article class="model" ${data.join(" ")}>`
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
         ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
-      : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}${kept}</div>`
+      : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${kept}</div>`
     + `<div class="words"><a class="open" href="${escapeHtml(set ? setPageOf(model, id) : `${langAt()}/m/${id}`)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
     + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`
-    + `${lines.join("")}</div></article>`;
+    + `${lines.join("")}${doing}</div></article>`;
+}
+
+/// A model's id as a link is built from (api/share.js newId).
+const MODEL_ID = /^[A-Za-z0-9]{10}$/;
+
+/// Whoever modelled [model] when that is not who shares it (the app's
+/// Library's model it is: supabase/modelled_by.sql), by name; "" for none.
+export const modellerOf = (model) => (model && model.modelled_by && typeof model.modelled_by === "object"
+  && typeof model.modelled_by.name === "string" ? model.modelled_by.name.trim() : "");
+
+/// An icon link, an icon button's look (iconButtonHtml): its icon, then its
+/// count once there is one; its name and count its label.
+function iconLinkHtml({ icon, href, name, count = 0, one = "", many = "", attrs = "", zero = false }) {
+  const n = Number(count) || 0;
+  return `<a class="icon-btn small" href="${escapeHtml(href)}" aria-label="${escapeHtml(n ? `${name}, ${counted(n, one, many)}` : name)}"`
+    + `${attrs ? ` ${attrs}` : ""}>${iconHtml(icon)}${countHtml(n, zero)}</a>`;
 }
 
 // When a build was posted, as a card says it: "30 Oct 2026", as the page's
