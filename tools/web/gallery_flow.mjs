@@ -8,7 +8,7 @@
 // dark:
 //
 //   1. the first screen: at 390 the first card's picture starts within
-//      330 px of the top, two cards to a row, four cards' names on the
+//      386 px of the top, two cards to a row, four cards' names on the
 //      first two screens; at 1280 four
 //      to a row and four whole cards on the first screen, the cards marked
 //      once (no row of marks, none that nearly every card carries, no
@@ -98,8 +98,13 @@ const browser = await launch({ signedOut: true });
 /// stand-in's Sam or not, the API answered with [state].
 async function visit({ width, theme = "light", signedIn = false, state = {}, cached = true }) {
   const phone = width < 600;
+  // No service worker: this flow answers the pages and the API itself, and
+  // the site's worker (homescreen) takes a page's navigations past every
+  // route, by its preload or its own fetch. So on rel-m319 the model's page
+  // after a like was the deployment's own, which has no such model, and
+  // had no Like. homescreen_flow checks the worker.
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
-    extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+    extraHTTPHeaders: headers, serviceWorkers: "block", ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   await stand.serveSite(context, { web, api, remote, headers, remoteDb, state });
   if (remote) {
     // The model's own page by this checkout's api/, as locally.
@@ -214,8 +219,11 @@ try {
         .map((i) => (i.complete ? null : new Promise((done) => { i.onload = i.onerror = done; })))));
       const seen = await drawn(page);
       if (width === 390) {
-        check(seen.firstPicture <= 330 && seen.columns === 2 && !seen.sideways,
-          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (330 at most), ${seen.columns} to a row, nothing sideways`);
+        // 330 until Share yours (bringyours) took the title's row and put
+        // the search on its own, 56 px lower: rel-m318's first picture at
+        // 322 px, rel-m319's at 378. The same 8 px over it as before.
+        check(seen.firstPicture <= 386 && seen.columns === 2 && !seen.sideways,
+          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (386 at most), ${seen.columns} to a row, nothing sideways`);
         check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
           `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
       } else {
