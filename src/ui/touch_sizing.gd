@@ -564,7 +564,7 @@ static func _lets_drags_by(control: Control) -> bool:
 
 
 ## Whether something round [param control] scrolls up and down, or slides
-## sideways only (StepsBar._line: the timeline's rows of choices on a phone).
+## sideways only (a row of chips).
 static func _scrolls_round(control: Control) -> bool:
 	var up: Node = control.get_parent()
 	while up != null and not up is Window:

@@ -388,7 +388,7 @@ func _build() -> void:
 	# Changing the author's steps, on the step showing: as LeoCAD and Studio
 	# keep theirs beside the step list. Shown in the author's steps only.
 	_edits = _line(column)
-	_show_row(_edits, false)
+	_edits.visible = false
 	for edit: Array in [
 			["earlier", "Earlier", "This step before the one ahead of it ({step_earlier})"],
 			["later", "Later", "This step after the one that follows it ({step_later})"],
@@ -421,7 +421,7 @@ func _build() -> void:
 	# was wider than the timeline at 1280 x 800, and pushed the bar's own
 	# Instructions and Done off the window.
 	_looks = _line(column)
-	_show_row(_looks, false)
+	_looks.visible = false
 	var title := Label.new()
 	title.text = "Booklet:"
 	title.add_theme_font_size_override("font_size", 11)
@@ -490,39 +490,15 @@ func _build() -> void:
 		_lay_compact(column, line, row, back, forward)
 
 
-## A row of choices: wrapped onto as many lines as it needs, or, on a
-## phone held upright, one line a finger slides sideways, as a phone's row
-## of chips is (Photos' edits, Maps' places). Its buttons are a fingertip
-## each way there (Main sizes the timeline by TouchSizing), and wrapped, the
-## Booklet row's twenty took five lines of a phone's screen. Shown and
-## hidden with it by _show_row.
+## A row of choices, wrapped onto as many lines as it needs. On a phone held
+## upright these rows are in More's sheet, which scrolls down (_lay_compact):
+## there they slid sideways in one line before ux15, under the five.
 func _line(column: Container) -> Container:
-	# In a phone's bar these rows are in More's sheet, which scrolls down:
-	# there they wrap.
-	if not Phone.on() or Phone.wide() or _compact:
-		var flow := HFlowContainer.new()
-		flow.add_theme_constant_override("h_separation", 6)
-		flow.add_theme_constant_override("v_separation", 4)
-		column.add_child(flow)
-		return flow
-	var slide := ScrollContainer.new()
-	slide.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	slide.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	slide.mouse_filter = Control.MOUSE_FILTER_PASS
-	column.add_child(slide)
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 6)
-	slide.add_child(line)
-	return line
-
-
-## [param row] shown or hidden, and on a phone the line it slides along with
-## it (_line).
-static func _show_row(row: Container, shown: bool) -> void:
-	row.visible = shown
-	var slide := row.get_parent() as ScrollContainer
-	if slide != null:
-		slide.visible = shown
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 4)
+	column.add_child(flow)
+	return flow
 
 
 ## The bar for a thumb (_compact): the desktop's rows of buttons, the slider
@@ -1141,14 +1117,14 @@ func set_mode(mode: int) -> void:
 func _set_mode_quietly(mode: int) -> void:
 	_mode = mode
 	_order_button.text = MODES[mode]
-	_show_row(_edits, mode == AUTHORS and editable)
+	_edits.visible = mode == AUTHORS and editable
 	# The row of steps for the steps a drop changes: the author's, or the
 	# worked-out ones of a model that has none of its own yet.
 	_row.visible = editable and (mode == AUTHORS or (mode == 0 and not _authored))
 	# The booklet follows the build order or the author's steps, and an
 	# edit of how a step is printed gives a model the worked-out steps
 	# first, as a step edit does.
-	_show_row(_looks, (mode == AUTHORS or mode == 0) and editable)
+	_looks.visible = (mode == AUTHORS or mode == 0) and editable
 	# A step found by what it places: in the orders that have steps.
 	var stepped: bool = mode == AUTHORS or mode == 0
 	_find_in_row.visible = stepped
