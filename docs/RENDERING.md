@@ -2342,6 +2342,72 @@ keeps it, and a person's Render on a table draws as it did before
 photoreal14, byte for byte. The light-and-shadow tell is named on 94% of
 the fixed tree's verdicts.
 
+## 5s. The moulded skin's breakup, measured then judged (photoreal15)
+
+The judge names "uniform colour and gloss" on nearly every verdict, and in
+the close-up photographs a top's highlight is broken and wobbly where ours
+is ruled. photoreal15 added four levers for moulded ABS's own unevenness,
+render-only, seeded by the part, in the tracer's marks version only (the
+plain version draws every default picture, byte for byte as before):
+`peel`, an orange-peel waviness of the skin (two octaves of noise on the
+normal, cells of 2.5 LDU, path_tracer.glsl `peeled`); `sink`, a dip just
+off each stud's foot and over each tube (`sunk`); `polish`, sharper tops
+than satin sides (`polish_split`); `scuff`, a few hairlines and pits
+(`sparse_scuffs`). Each is `RenderSettings.peel` and so on, and
+`StudioRender.PRODUCT_*` 0.
+
+**Measured first** (tools/photoreal/breakup_measure.py, boxes and lines in
+shots.json `breakup`; bench/results/photoreal15-2026-11-23/
+measure_table.txt): a face's mottle in stops once its plane and broad
+shading are taken out, a highlight line's or a mirrored outline's wobble in
+pixels, the dip by a stud's foot. Tolerances, set first: mottle within 30%,
+wobble within 0.5 px, dip within 0.2 stops.
+
+| close-up | photograph | off | peel 0.5 | peel 1 |
+|---|---|---|---|---|
+| three_2x2 green top mottle | 0.026 | 0.022 | 0.034 | 0.051 |
+| three_2x2 blue top mottle | 0.022 | 0.018 | 0.025 | 0.043 |
+| red_slope end mottle | 0.034 | 0.029 | 0.030 | 0.035 |
+| red_slope top strip mottle | 0.138 | 0.012 | 0.021 | 0.046 |
+| black_2x4 mirrored stud outline | 2.13 px | 0.24 | 0.24 | 0.26 |
+| green_plate top mottle | 0.34 | 0.04 | 0.04 | - |
+| green_plate dip by a stud | -0.76 | -0.07 | -0.07 | - |
+
+Peel at 0.5 fits the tent's tops; above it they turn blotchy. The
+photographs' large numbers are not the skin: wear, dust and the room each
+top mirrors. No lever reaches them without spoiling the tent, so those
+shots were reported, not fitted. Sink moved no measure (the dip -0.07 at
+any depth) and polish moved its one target the wrong way, so neither was
+judged.
+
+**Judged** (solo, 2 rounds of 2 trials, draws 11 and 12, the photographs in
+the pool, from a locked snapshot of 714695819; bench/results/
+photoreal15-2026-11-23/solo_p15pool):
+
+| arm | called a photograph | mean p | draw 11 | draw 12 | close-ups, rounds 1 and 2 |
+|---|---|---|---|---|---|
+| off | 21 of 80 | 0.280 | 0.263 | 0.296 | 0.417, 0.424 |
+| peel 0.5 | 16 of 80 | 0.255 | 0.258 | 0.252 | 0.378, 0.367 |
+| scuff 2 | 12 of 80 | 0.227 | 0.225 | 0.228 | 0.315, 0.349 |
+| peel and scuff | 16 of 80 | 0.255 | 0.265 | 0.246 | 0.382, 0.368 |
+| photoreal14's source on the tables | 24 of 80 | 0.317 | 0.366 | 0.269 | 0.482, 0.483 |
+| the source, peel and scuff | 30 of 80 | 0.363 | 0.382 | 0.344 | 0.568, 0.545 |
+
+Every lever lost to the off arm: peel by 0.044 a round in draw 12, scuff
+by 0.03 to 0.08 in every round and draw (red_slope's hairlines read as
+render marks). With the source on, peel and scuff led the source alone by
+0.026 and 0.006 in draw 11, under the 0.03 a default needs; their draw-12
+lead came from grey_1x3, whose two pictures differ in 2,034 pixels of
+786,432. So all four stay at 0, and a person's Render draws as before.
+
+**The judge's noise is the picture's name.** The off arm and the source arm
+share seven byte-identical pictures a draw (the tent and the sets). Repeats
+of one picture agree within 0.024; byte-identical twins under two blind
+names differ by up to 0.37 (three_2x2_top in draw 12: 0.66 and 0.28). So a
+pool's rounds repeat each verdict rather than adding new ones, and an arm's
+mean over ten shots carries about 0.024 of noise from the names alone. A
+lever worth keeping has to lead across draws and shots, not rounds.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

@@ -3363,6 +3363,22 @@ picture the assistant is shown.
   parent commit's pictures byte for byte; `tools/photoreal/reflect_measure.py
   LABEL=DIR` measures each close-up's top against its side and its edges'
   lines of light, photograph against render (shots.json `reflect`).
+- `the moulded skin's breakup` (`RenderSettings.peel`, `sink`, `polish`,
+  `scuff`; `StudioRender.PRODUCT_PEEL`, `_SINK`, `_POLISH`, `_SCUFF` all 0,
+  `_breakup`; path_tracer.glsl `peeled`, `sunk`, `polish_split`,
+  `sparse_scuffs`, marks version only; photoreal15, docs/RENDERING.md 5s):
+  off in the app, four bench levers. Asked for, an orange-peel waviness of
+  a part's skin (its normal, seeded by the part), sink by each stud's foot
+  and over each tube, polished tops against satin sides, and a few
+  hairline scuffs and pits. Judged alone and together beside the
+  photographs, none gained (peel and scuff alone lost to the off arm), so
+  each stays at 0 and the plain version draws every default picture. Check:
+  `tools/probe.sh photoreal_probe -- --tag=T` draws byte for byte as the
+  parent commit; `-- --tag=T --shots=FILE` with `"peel": 0.5` (or sink,
+  polish, scuff) on a shot draws it; `tools/photoreal/breakup_measure.py
+  LABEL=DIR` measures each close-up's face mottle, highlight-line wobble,
+  mirrored outlines and the dip by a stud's foot, photograph against
+  render (shots.json `breakup`).
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong
