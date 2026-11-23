@@ -70,6 +70,11 @@ function check(ok, what) {
 // One build folder, served until the run ends.
 const servers = [];
 async function serve(dir, at) {
+  // A server left on the port by a run that crashed would answer for this
+  // one, whose own dies unbound: the flow would look at that one's page.
+  if (await fetch(`http://127.0.0.1:${at}/`).then(async (r) => { await r.arrayBuffer(); return true; }).catch(() => false)) {
+    throw new Error(`port ${at} is already served: stop what holds it, or give --port another`);
+  }
   const child = spawn("python3", [join(ROOT, "tools/web/serve.py"), resolve(String(dir)), String(at), "--compressed", "--cached"],
     { stdio: ["ignore", "ignore", "inherit"] });
   servers.push(child);

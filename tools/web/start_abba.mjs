@@ -161,6 +161,12 @@ print(json.dumps({"scripts": len(c), "of": len(every), "bytes": sum(len(every[p]
 }
 
 async function serve(arm, port) {
+  // A server left on the port by a run that crashed answers for this one,
+  // whose own dies unbound, so the run would time what that one serves
+  // (bootlook2, 2026-11-23: two left from a crash an hour before).
+  if (await fetch(`http://127.0.0.1:${port}/`).then(async (r) => { await r.arrayBuffer(); return true; }).catch(() => false)) {
+    throw new Error(`port ${port} is already served: stop what holds it, or give --port another`);
+  }
   const parts = [join(arm.root || "", "assets/generated/parts"), join(ROOT, "assets/generated/parts")].find((p) => existsSync(p));
   const child = spawn("python3", [join(ROOT, "tools/web/serve.py"), arm.folder, String(port), "--parts", parts, "--delay", "0",
     "--accounts", "--compressed", "--cached"], { cwd: arm.root || ROOT, stdio: ["ignore", "ignore", "pipe"] });
