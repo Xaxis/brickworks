@@ -67,7 +67,9 @@ the server wrote it, not through told() or say() (untold); and a link to a
 page with copies written as English's (/u/..., /c/..., /gallery-lists,
 /profile, /settings, /challenge and the rest of PAGES), in those or in
 any other script a copy loads, which leaves the visitor's language for
-English (unled: ${at}/u/ or ${langAt()}/profile).
+English (unled: ${at}/u/ or ${langAt()}/profile); and a link into the app
+a script draws (href="/app?...", the 3D view's app:), which web/theme.js
+never gives the language as it does the page's own (unapped: appAt).
 
 The changelog's releases are written by tools/site.py in each copy, its
 headings, dates and links in the language (the scripts' months and "{day}
@@ -190,7 +192,7 @@ SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
 # say(), is English left on the page. Those no copy loads are read for
 # their words too: a set's page, which the server makes, and its scripts.
 SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js": (), "web/set-page.js": (),
-            "web/model-page.js": (), "web/post-kit.js": (), "web/post-rules.js": (), "api/_sets.js": ("setPage", "facts", "structured", "keepBarHtml"),
+            "web/model-page.js": (), "web/post-kit.js": (), "web/post-rules.js": (), "api/_sets.js": ("setPage", "facts", "structured", "keepBarHtml", "ownCountHtml"),
             "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark", "madeFact",
                              "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
@@ -589,6 +591,21 @@ def unled(script: str) -> list[str]:
     return [text[max(0, found.start() - 30):found.end() + 20].strip() for found in LED.finditer(text)]
 
 
+# A link into the app a script writes by hand (href="/app?...", .src =
+# `/app?...`, the 3D view's app: `/app?...`), which web/theme.js never sees:
+# it carries the language into the links a page is served with, so one
+# drawn later opens the app in English. rel-m324's feed drew 24 of them on
+# /de, after sitebold had given the cards appAt the same day.
+APP = re.compile(r"""(?:\b(?:href|src)\s*=\s*|\bapp:\s*)[`"']/app(?![\w-])""")
+
+
+def unapped(script: str) -> list[str]:
+    """The links into the app a [script] writes without the page's language
+    (web/card.js appAt gives it)."""
+    text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
+    return [text[max(0, found.start() - 30):found.end() + 20].strip() for found in APP.finditer(text)]
+
+
 def table(code: str) -> dict:
     path = WORDS / f"{code}.json"
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"pages": {}, "scripts": {}}
@@ -812,6 +829,12 @@ def main(argv: list[str]) -> int:
         if english:
             problems.append(f"{path} links to {len(english)} pages with copies as English does, first {english[0]!r}: "
                             "write ${langAt()}/u/, ${langAt()}/profile (web/card.js), so a copy's link opens the page's copy")
+        # A script's own links into the app (the server's pages are served
+        # with theirs, which theme.js carries).
+        bare = unapped(scope(path, names)) if path.startswith("web/") else []
+        if bare:
+            problems.append(f"{path} writes {len(bare)} links into the app with no language, first {bare[0]!r}: "
+                            "write appAt(`view=${id}`) (web/card.js), so a copy's link opens the app in its language")
     # A word a script says with no entry: it would be said in English.
     said_by_scripts = script_words()
     for code in LANGUAGES:

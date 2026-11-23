@@ -35,7 +35,7 @@
 // data-challenge, data-sets), which tools/web/landing_check.mjs and
 // tools/web/homefeed_check.mjs wait on.
 import { askToSignIn, call, signedIn } from "/account.js";
-import { counted, escapeHtml, iconButtonHtml, langAt, likeName, number, pictureOf, say, told } from "/card.js";
+import { appAt, counted, escapeHtml, iconButtonHtml, langAt, likeName, number, pictureOf, say, told } from "/card.js";
 import { commentsInCard, replyInCard } from "/composer.js";
 import { FIRST, compose, feedItem, keyOf, postHtml, postSkeletonHtml } from "/home-feed.js";
 import { ago, toast } from "/kit.js";
@@ -509,7 +509,7 @@ function turn(post, how) {
   const asked = Math.round(performance.now());
   const id = post.dataset.id;
   const view = import("/viewer3d.js")
-    .then((made) => made.open3d(shell, { scene: link.dataset.scene, name, app: `/app?view=${id}`, how: how === "hover" ? "mouse" : how,
+    .then((made) => made.open3d(shell, { scene: link.dataset.scene, name, app: appAt(`view=${id}`), how: how === "hover" ? "mouse" : how,
       look: "app", spin: true, timings: { asked }, closed: () => { if (turning?.shell === shell) closeTurn(); } }))
     .catch(() => {
       shell.dataset.state = "failed";
@@ -576,7 +576,7 @@ function tryHere(button) {
   said.textContent = say("Opening the studio…");
   const frame = document.createElement("iframe");
   frame.title = say("The Brickworks studio, with {name}", { name: nameOf(post) || say("a model") });
-  frame.src = `/app?view=${id}`;
+  frame.src = appAt(`view=${id}`);
   frame.allow = "fullscreen; clipboard-write";
   frame.setAttribute("allowfullscreen", "");
   // The studio's ways out (Open in Brickworks, the newest version) take the

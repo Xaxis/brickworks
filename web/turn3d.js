@@ -6,7 +6,7 @@
 // its tools work as on a model's page; the pointer leaving puts the picture
 // back. Never by touch (a tap is the card's link), nor for somebody who asked
 // for less motion.
-import { say } from "/card.js";
+import { appAt, say } from "/card.js";
 
 const REST_MS = 700;
 const fine = matchMedia("(hover: hover) and (pointer: fine)");
@@ -52,7 +52,7 @@ export function turnOnHover(card, frame, { id, name }) {
     frame.append(shell);
     const asked = Math.round(performance.now());
     const view = import("/viewer3d.js")
-      .then((made) => made.open3d(shell, { scene: `/m/${id}/scene.json`, name, app: `/app?view=${id}`, how: "mouse", look: "app",
+      .then((made) => made.open3d(shell, { scene: `/m/${id}/scene.json`, name, app: appAt(`view=${id}`), how: "mouse", look: "app",
         spin: true, timings: { asked }, closed: () => { if (turning?.shell === shell) close(); } }))
       .catch(() => {
         shell.dataset.state = "failed";

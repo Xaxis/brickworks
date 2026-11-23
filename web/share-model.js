@@ -23,7 +23,7 @@
 // What a check reads (tools/web/share_model_flow.mjs): window.brickworksShare.
 
 import { askAgeIfAsked, askToSignIn, call, signedIn } from "/account.js";
-import { langAt, number, say, told } from "/card.js";
+import { appAt, langAt, number, say, told } from "/card.js";
 import { withoutPrivateLines } from "/private-lines.js";
 import { readStudioIo, TROUBLE } from "/studio-io.js";
 
@@ -506,7 +506,7 @@ async function draw(id, name) {
   stageAt(CARD, ratio);
   const three = await import("/viewer3d.js");
   const started = performance.now();
-  three.open3d(shell, { scene: `/m/${id}/scene.json`, name, app: `/app?view=${id}`, look: "app", how: "touch", anyway: true });
+  three.open3d(shell, { scene: `/m/${id}/scene.json`, name, app: appAt(`view=${id}`), look: "app", how: "touch", anyway: true });
   const live = window.brickworks3d;
   for (;;) {
     if (live.state === "ready" && live.view && live.view.loaded >= live.view.meshesWanted) break;

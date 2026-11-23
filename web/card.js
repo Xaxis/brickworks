@@ -533,12 +533,15 @@ export const langAt = () => {
   return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
 
-/// A link into the app with [query], in the page's language as theme.js
-/// carries it into the links a page is served with: a link drawn later,
-/// a card's or the pick's, is not among those (sitebold, 2026-11-23).
-export const appAt = (query) => {
-  const code = langAt().slice(1);
-  return `/app?${query}${code ? `&lang=${code}` : ""}`;
+/// A link into the app with [query], in the language web/theme.js
+/// carries into the links a page is served with (brickworksLang.app: the
+/// one chosen, else the page's, else the browser's where not English): a
+/// link drawn later, a card's, the pick's or the feed's, is not among
+/// those (sitebold, 2026-11-23). On a page the server makes, the page's.
+export const appAt = (query = "") => {
+  const code = globalThis.brickworksLang?.app?.() || langAt().slice(1);
+  const asked = [query, code ? `lang=${code}` : ""].filter(Boolean).join("&");
+  return `/app${asked ? `?${asked}` : ""}`;
 };
 
 /// The tags that say a model was made with the assistant or Brickify, as

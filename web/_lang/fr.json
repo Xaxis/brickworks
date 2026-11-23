@@ -2806,6 +2806,8 @@
   "One more": "Un de plus",
   "How many you own": "Combien vous en avez",
   "You own {n}.": "Vous en avez {n}.",
+  "You own": "Vous avez",
+  "copies of this set: its parts count as yours that many times": "exemplaires de ce set : ses pièces comptent autant de fois comme les vôtres",
   "That list was not made: try again in a moment.": "La liste n’a pas été créée : réessayez dans un instant.",
   "Made {list}, with it in.": "{list} créée, avec lui dedans.",
   "Undo": "Annuler",

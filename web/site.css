@@ -2357,9 +2357,12 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .post-head .face { display: inline-flex; flex: none; text-decoration: none; }
 .post-head .face.glyph { width: 40px; height: 40px; }
 .post-who { display: flex; flex: 1; flex-direction: column; min-width: 0; margin: 0; line-height: 1.35; }
-.post-who .who { overflow: hidden; color: var(--ink); font-weight: 650; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.post-who .who {
+	overflow: hidden; color: var(--ink); font-weight: 650; line-height: 1.5; text-decoration: none; text-overflow: ellipsis; white-space: nowrap;
+}
 .post-who a.who:hover { text-decoration: underline; }
-.post-line { overflow: hidden; color: var(--ink-faint); font-size: var(--t-tiny); text-overflow: ellipsis; white-space: nowrap; }
+.post-line { color: var(--ink-faint); font-size: var(--t-tiny); }
+.post-line time { white-space: nowrap; }
 .post-line .pill { min-height: 0; padding: 0 8px; font-size: var(--t-micro); line-height: 18px; }
 .post-head .follow { flex: none; }
 .post-head .follow[aria-pressed="true"] { color: var(--ink-soft); }
