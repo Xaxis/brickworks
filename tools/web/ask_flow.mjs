@@ -289,6 +289,13 @@ const JOURNEYS = {
   async comment(browser, { theme, width }) {
     if (width !== 1280 || theme !== "light") return;
     const label = `/m/ comment Block ${width} ${theme}`;
+    // A deployment serves its own /m/ pages, and the stand-in's model is not
+    // one of them: it answered 404 there in every release since this was
+    // written (rel-m324's and rel-m325's previews). Said, not judged.
+    if (remote) {
+      console.log(`  --    ${label}: the stand-in's ${stand.MODEL_ID} is no model on ${remote}; run it on the stand-in`);
+      return;
+    }
     const { context, page, posts, natives, errors } = await visit(browser, `/m/${stand.MODEL_ID}#comments`, { width, theme });
     const block = page.locator("button[data-block-comment]").first();
     if (!(await block.waitFor({ state: "attached", timeout: 30000 }).then(() => true, () => false))) {

@@ -39,7 +39,14 @@ wanted() { [ "${#only[@]}" = 0 ] || [[ " ${only[*]} " == *" $1 "* ]]; }
 facts=$(mktemp -d "${TMPDIR:-/tmp}/package_api.XXXXXX") || exit 1
 trap 'rm -rf "$facts"' EXIT
 tables=()
-if wanted share || wanted together; then tables=(--parts="$facts/_parts_table.json" --scene="$facts/_scene_table.json"); fi
+# The parts' table (api/_parts.js partsTable): every route that reads it,
+# tests/test_packaged_facts.py by what each imports. /api/people names the
+# parts a Talk ask was pressed on (api/_asks.js nameOf), and named every one
+# ", " without it (rel-m325's preview, askhelp).
+TABLE_ROUTES=" share together people admin "
+if wanted share || wanted together || wanted people || wanted admin; then
+  tables=(--parts="$facts/_parts_table.json" --scene="$facts/_scene_table.json")
+fi
 if ! node tools/web/part_facts.mjs "$facts/_part_facts.json" "${tables[@]}" | sed 's/^/deploy: /' \
     || [ ! -s "$facts/_part_facts.json" ]; then
   echo "deploy FAILED: no part facts for the functions (tools/web/part_facts.mjs)"; exit 1
@@ -146,15 +153,16 @@ for handler in api/*.js; do
   fi
   # A watched session's parts as the light viewer draws them (buildlive,
   # api/_parts.js meshRowsOf): read only once a show has parts to tell.
-  if [ "$route" = together ]; then
+  if [[ "$TABLE_ROUTES" == *" $route "* ]]; then
     cp "$facts/_parts_table.json" "$fn/_parts_table.json"
+  fi
+  if [ "$route" = together ]; then
     cp "$facts/_scene_table.json" "$fn/_scene_table.json"
   fi
   if [ "$route" = share ]; then
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
     # and every listed model, profile and public collection.
     cp web/sitemap.xml "$fn/_sitemap.xml"
-    cp "$facts/_parts_table.json" "$fn/_parts_table.json"
     cp "$facts/_scene_table.json" "$fn/_scene_table.json"
     # Every set's parts by part and colour, spelled by the facts packed
     # beside it: what a model is an alternate build of, counted as it is

@@ -1476,6 +1476,12 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // the Parts list under it says.
   const shownModel = { ...model, parts: parts ? parts.pieces : old ? version.parts : model.parts };
   const fileAt = set ? `/library/${id}` : `/m/${id}${old ? `/v/${version.n}` : ""}`;
+  // Its 3D view's scene by the version this page shows, the newest's too:
+  // /m/X/scene.json is kept by the CDN as long as the page, so a page drawn
+  // after a publish opened the version before's model and placed every
+  // comment's pin on it (partpins, rel-m321 to rel-m325's previews), as
+  // the clip recorder once drew it (ttreview F2).
+  const sceneAt = set ? fileAt : `/m/${id}/v/${version.n}`;
   // Its picture with nothing behind the model, on the theme's own ground
   // (?op=cutout: the picture itself for a model published before there were
   // cut-outs). In the strip, whose frames are four to three, the cards'
@@ -1505,8 +1511,11 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // Where it came from, what it changed and what it is based on, under its
   // picture (sitebold, 2026-11-23, as Printables says a remix's source under
   // its pictures); on a phone after the column, so the first screen is the
-  // picture, the name, who made it and the action bar.
-  const lineage = `${fromLine}${changedLine}${basedHtml(model.based || [])}`;
+  // picture, the name, who made it and the action bar. The sets it can be
+  // built from with them: in the column, a house that builds from four
+  // sets said so in three lines on a phone, and its action bar ended 16 px
+  // under a 390 x 844 window's first screen (rel-m325's preview).
+  const lineage = `${fromLine}${changedLine}${altHtml(model.alt)}${basedHtml(model.based || [])}`;
   // What it is, as pills, each said once there is one. Its steps are the
   // ones its step player and booklet number, counted from the file shown;
   // a file that carries none has them worked out as it opens, and they are
@@ -1591,7 +1600,7 @@ ${header}
   <div class="top">
     <div class="media">
     <a class="picture" id="model-picture" href="${escapeHtml(viewer)}" aria-label="${escapeHtml(say("View {name} in 3D", { name: model.name }))}"
-      data-scene="${fileAt}/scene.json"${changed?.drawn ? ` data-changes="/m/${id}/changes.json?n=${changed.n}"` : ""} data-parts="${Number(shownModel.parts) || 0}">${picture
+      data-scene="${sceneAt}/scene.json"${changed?.drawn ? ` data-changes="/m/${id}/changes.json?n=${changed.n}"` : ""} data-parts="${Number(shownModel.parts) || 0}">${picture
       ? `<span class="waiting" aria-hidden="true">${asText(say("Loading its picture…"))}</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">${asText(say("No picture"))}</span>`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
     ${mediaStrip(model, picture, photos, small)}
@@ -1599,7 +1608,6 @@ ${header}
     <div class="side">
       <h1 class="obj-title"${model.name.length > 48 ? ` title="${escapeHtml(model.name)}"` : ""}>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
-      ${altHtml(model.alt)}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in the studio"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>

@@ -163,10 +163,11 @@ def test_the_card_says_who_modelled_it_not_who_shares_it() -> None:
         "const credit = { name: 'Stefan Frenz', page: 'https://library.ldraw.org/omr/sets/1034' };"
         "console.log(JSON.stringify([c.cardHtml({ ...base, modelled_by: credit }), c.cardHtml(base),"
         "  c.cardHtml({ ...base, by: null, author: '', modelled_by: credit }),"
-        "  c.cardHtml({ ...base, modelled_by: { ...credit, changed: true } })]));")
+        "  c.cardHtml({ ...base, modelled_by: { ...credit, changed: true } }),"
+        "  c.cardHtml({ ...base, modelled_by: credit }, { inWords: true })]));")
     if said is None:
         return
-    modelled, shared, alone, changed = said
+    modelled, shared, alone, changed, worded = said
     # The person who modelled it leads, as a sharer would, and who shares
     # it is said under it (sitebold): forty such cards read "Brickworks".
     assert ('<span class="who modeller" data-modelled-by title="Modelled by Stefan Frenz">'
@@ -184,6 +185,10 @@ def test_the_card_says_who_modelled_it_not_who_shares_it() -> None:
     assert 'href="/u/brickworks"' in changed and "Modelled by" not in changed
     assert '<small class="changed-from" data-changed-from>Changed from LDraw&#39;s model by Stefan Frenz</small>' in changed
     assert "data-changed-from" not in modelled and "data-changed-from" not in shared
+    # On a set's own page (its Versions, web/set-page.js), LDraw's model as
+    # it is says in words who modelled it, and nothing of who shares it
+    # (sethub; the merge with sitebold's lead had dropped the words).
+    assert '<span class="who" data-modelled-by>Modelled by Stefan Frenz</span>' in worded and "via" not in worded
 
 
 def page_of(modelled_by: dict) -> dict | None:

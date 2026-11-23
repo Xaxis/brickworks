@@ -215,7 +215,9 @@ try {
   const betaOpen = await adaPage.evaluate(() => window.brickworksBeta !== "off"
     && import("/betabar.js").then(({ betaState }) => betaState()).then((heard) => heard.beta === "open"))
     .catch(() => false);
-  const menuNow = ["profile", "notifications", "feed", "lists", "saved", "settings", "feedback",
+  // Plans and the desktop app since the header gave their links to the
+  // community (landing, 2026-11-22, web/follow.js accountPart).
+  const menuNow = ["profile", "notifications", "feed", "lists", "saved", "settings", "plans", "download", "feedback",
     ...(betaOpen ? ["report-bug"] : [])].join(",");
   await until(adaPage, (want) => [...document.querySelectorAll(".site-head .nav .account-menu .account-part nav a")]
     .map((a) => a.dataset.place).join(",") === want, "the account menu as it now is", 10, menuNow).catch(() => null);

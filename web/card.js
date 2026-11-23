@@ -658,7 +658,9 @@ const catalogueSet = (model) => (isSet(model) && typeof model.library.set === "s
 /// gallery's; a set of the catalogue always carries Own and your lists.
 /// [pick]: this week's pick (/api/share?op=shelves), first on the home
 /// page's shelf: Week's pick its first mark, as the gallery's front marks it.
-export function cardHtml(model, { earned = false, like = false, eager = false, keep = false, pick = false } = {}) {
+/// [inWords]: a set's own Versions (web/set-page.js): a model somebody
+/// modelled and another shares says "Modelled by" them, in words.
+export function cardHtml(model, { earned = false, like = false, eager = false, keep = false, pick = false, inWords = false } = {}) {
   const id = String(model.id);
   const name = escapeHtml(model.name);
   const picture = pictureOf(model);
@@ -706,8 +708,10 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
   // library, shared by the house): that person leads, as a sharer would,
   // their initial for an avatar, and who shares it is said under it, small
   // (sitebold, 2026-11-23: forty such cards read "Brickworks", the gallery
-  // one company's posts). A set's own card names them in words.
-  const who = modeller && sharer && sharer !== modeller
+  // one company's posts). A set's own card names them in words
+  // ([inWords]: its page's Versions, sethub), "Modelled by" them.
+  const led = modeller && sharer && sharer !== modeller && !inWords;
+  const who = led
     ? `<span class="who modeller" data-modelled-by title="${escapeHtml(say("Modelled by {name}", { name: modeller }))}">`
       + `${avatarHtml({ name: modeller }, { size: "small" })}<span>${escapeHtml(modeller)}</span></span>`
     : modeller
@@ -718,7 +722,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
-  if (modeller && sharer && sharer !== modeller) lines.push(`<small class="via">${escapeHtml(say("Shared by {name}", { name: sharer }))}</small>`);
+  if (led) lines.push(`<small class="via">${escapeHtml(say("Shared by {name}", { name: sharer }))}</small>`);
   if (changedFrom) {
     lines.push(`<small class="changed-from" data-changed-from>${escapeHtml(say("Changed from LDraw's model by {name}",
       { name: changedFrom }))}</small>`);
