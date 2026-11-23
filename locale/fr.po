@@ -4537,6 +4537,15 @@ msgstr "Le publier dans la galerie"
 msgid "Anyone can find it at brickworks.diy/gallery, not only people sent the link. Untick it and publish again to take it out and keep the link."
 msgstr "Tout le monde peut le trouver sur brickworks.diy/gallery, pas seulement ceux qui ont reçu le lien. Décochez et publiez à nouveau pour l'en retirer et garder le lien."
 
+msgid "Say it was made with the assistant"
+msgstr "Dire qu’il a été fait avec l’assistant"
+
+msgid "Say it was made with Brickify"
+msgstr "Dire qu’il a été fait avec Brickify"
+
+msgid "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
+msgstr "Sa page et la galerie le disent. Sans la coche, rien sur le site ne dit comment il a été fait."
+
 msgid "The gallery and a name shown on a link are for people 13 and over. Anyone you send the link to can open it all the same."
 msgstr "La galerie et un nom affiché sur un lien sont réservés aux personnes de 13 ans et plus. Toute personne à qui vous envoyez le lien peut tout de même l'ouvrir."
 

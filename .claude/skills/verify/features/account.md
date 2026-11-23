@@ -478,6 +478,15 @@ they have. A Claude connector belongs to the account that switched it on.
   published; Clear and a model begun empty make it "hand" again. Proved by
   `made_with_probe` (headless, the app as it opens, a session's real call)
   and `share_view_probe` (the three pictures and what is sent; red on base).
+  **Whether its page says so** (2026-11-23, the owner): nothing public says
+  how a model was made until its owner chooses (`supabase/made_with_shown.sql`).
+  For a model made with the assistant or Brickify, Share has one box under
+  List it in the gallery, unticked, `share_say_made`: **Say it was made
+  with the assistant** (or **with Brickify**); none for a hand-built one.
+  `SharePanel.made_fields` sends `made_with` and, where the box is offered,
+  `made_with_shown` as it is left; a link's own choice is put in from
+  `?op=mine` (`made_with_shown`, read where the column is). `made_with_probe`
+  checks the box for each way, unticked, and what is sent ticked and not.
   **Who modelled it** (gallery261, 2026-10-25): a model the Library opened,
   somebody else's from LDraw's Official Model Repository, is published with
   its credit in it (`0 !BRICKWORKS CREDIT {by, licence, page, from}`,

@@ -142,6 +142,10 @@ var _words_for: String = "-"
 var _licence: OptionButton
 var _licence_says: Label
 var _list: CheckBox
+## Whether its page says how it was made (supabase/made_with_shown.sql):
+## off unless ticked, and only for a model made with the assistant or
+## Brickify. Nothing on the site says so otherwise (the owner, 2026-11-23).
+var _say_made: CheckBox
 ## This week's quick build the model is a copy of the template of
 ## (SharedModels.prompt_in), {} for none; its box, shown only then; and
 ## whether the person keeps it in (ticked unless they untick it), for the
@@ -327,6 +331,13 @@ func setup() -> void:
 	_list.add_theme_font_size_override("font_size", 12)
 	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
 	form.add_child(_list)
+	# Off unless ticked: how it was made is the builder's to say.
+	_say_made = CheckBox.new()
+	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
+	_say_made.focus_mode = Control.FOCUS_NONE
+	_say_made.add_theme_font_size_override("font_size", 12)
+	_say_made.visible = false
+	form.add_child(_say_made)
 	# Under it: an entry is a gallery model, so it is ticked only with it.
 	_prompt_box = CheckBox.new()
 	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
@@ -645,6 +656,31 @@ func _words_from(row: Dictionary) -> void:
 	_set_licence(str(row["licence"]) if row.get("licence") is String else "cc-by-4.0")
 
 
+## Who laid its parts and whether its page says so, as a publish sends
+## them: made_with when this app knows (ModelStore.made_with), kept for its
+## owner; made_with_shown only where the box is offered, as its owner left
+## it, and nothing public says it otherwise (supabase/made_with_shown.sql).
+func made_fields() -> Dictionary:
+	var said: Dictionary = {}
+	if store.made_with in ModelStore.MADE_WAYS:
+		said["made_with"] = store.made_with
+	if _say_made.visible:
+		said["made_with_shown"] = _say_made.button_pressed
+	return said
+
+
+## The box that says how it was made, for the way this model was made
+## (ModelStore.made_with): with the assistant, or Brickify; none for one
+## built by hand. Unticked on a model with no link; a link's own choice is
+## put in by [method _check_link].
+func _follow_made() -> void:
+	var way: String = store.made_with if store != null else ""
+	_say_made.visible = way == "assistant" or way == "brickify"
+	_say_made.text = "Say it was made with Brickify" if way == "brickify" else "Say it was made with the assistant"
+	if store == null or store.share_id.is_empty():
+		_say_made.button_pressed = false
+
+
 ## The account's profile, by its name, in the box: what a credit is, as
 ## the server keeps it (api/share.js ?op=mine credit). Nothing with no
 ## profile shown in public, and never a name made from the address the
@@ -686,6 +722,7 @@ func open() -> void:
 	if fresh:
 		_words_for = which
 		_fresh_words()
+	_follow_made()
 	if store.share_id.is_empty():
 		state = "idle"
 		wip = false
@@ -846,6 +883,8 @@ func _check_link(id: String, words: bool = true) -> void:
 				_words_from(one as Dictionary)
 			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
 			_list.disabled = barred
+			# As its link says it: shown only where its owner chose.
+			_say_made.button_pressed = bool((one as Dictionary).get("made_with_shown", false))
 			_follow_age()
 			_status.text = ("Shared at this link. Publish again to update what it shows."
 				if up else "Taken down. Publish again to bring it back at the same link.")
@@ -1031,10 +1070,7 @@ func publish(as_wip: bool = false) -> void:
 		body["cutout"] = Marshalls.raw_to_base64(pictures["cutout"])
 	if not (pictures["thumb"] as PackedByteArray).is_empty():
 		body["thumb"] = Marshalls.raw_to_base64(pictures["thumb"])
-	# Who laid its parts, when this app knows (ModelStore.made_with): its card
-	# says Hand-built or With the assistant from that, not from its tags.
-	if store.made_with in ModelStore.MADE_WAYS:
-		body["made_with"] = store.made_with
+	body.merge(made_fields())
 	# What its page and the gallery say about it: said every time, so a
 	# box emptied empties it there too.
 	body["description"] = _about.text.strip_edges()
@@ -1241,6 +1277,8 @@ func controls_by_name() -> Dictionary:
 		"share_guidelines": _guidelines, "share_done": _done}
 	if _prompt_box.is_visible_in_tree():
 		named_controls["share_prompt"] = _prompt_box
+	if _say_made.is_visible_in_tree():
+		named_controls["share_say_made"] = _say_made
 	if _enter_row.is_visible_in_tree():
 		named_controls["share_enter"] = _enter
 		named_controls["share_way"] = _way
@@ -1273,6 +1311,8 @@ func page_state() -> Dictionary:
 		"about": _about.text if _about != null else "",
 		"tags": _tags.text if _tags != null else "",
 		"made_with": store.made_with if store != null else "",
+		"say_made": _say_made.text if _say_made != null and _say_made.visible else "",
+		"made_with_shown": _say_made.button_pressed if _say_made != null else false,
 		"kind": _kind_id() if _kind != null else "",
 		"licence": _licence_id() if _licence != null else "",
 		"note": _note.text if _note != null else "",

@@ -88,6 +88,12 @@ function postKitsOwn() {
   } catch {
     return;
   }
+  // How it was made, as its app said, which the page itself says only
+  // where its designer chose to (api/share.js ?op=made): the designer's own
+  // kit still knows, so a place that takes no AI-made models is said so.
+  call(`/api/share?op=made&id=${id}`).then((answer) => {
+    if (answer.status === 200 && answer.body.way) Object.assign(read, { made: answer.body.way, maker: answer.body.by });
+  }, () => {});
   import("/post-kit.js").then((kit) => {
     kit.startPostKits(sheet, { facts: read, parts: pageParts ? () => pageParts() : null });
     document.documentElement.dataset.postKits = "shown";
