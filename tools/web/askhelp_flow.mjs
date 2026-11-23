@@ -11,7 +11,7 @@
 //
 // On this machine, over Talk's stand-in (tools/web/talk_stand_in.mjs says how):
 //
-//   node --env-file=$SCRATCH/relay.env tools/web/askhelp_flow.mjs --url=http://127.0.0.1:11770 --out=DIR
+//   node --env-file=$SCRATCH/relay.env tools/web/askhelp_flow.mjs --url=http://127.0.0.1:11770 --out=DIR [--keep]
 //
 // On a preview once talk_asks.sql is applied:
 //
@@ -224,18 +224,73 @@ try {
     const framed = await visitor.evaluate(() => {
       const v = window.brickworks3d.view;
       const at = v.camera.position.clone();
-      let most = 0;
+      const xs = [];
+      const ys = [];
       for (let i = 0; i < v.corners.length; i += 3) {
         at.set(v.corners[i], v.corners[i + 1], v.corners[i + 2]).project(v.camera);
-        most = Math.max(most, Math.abs(at.x), Math.abs(at.y));
+        xs.push(at.x);
+        ys.push(at.y);
       }
-      return { most: Math.round(most * 1000) / 1000, corners: v.corners.length / 3 };
+      const r = (n) => Math.round(n * 1000) / 1000;
+      const most = Math.max(...xs.map(Math.abs), ...ys.map(Math.abs));
+      const home = v.home ? v.camera.position.distanceTo(v.home.eye) / v.home.eye.distanceTo(v.home.target) : 1;
+      return { most: r(most), corners: v.corners.length / 3, x: [r(Math.min(...xs)), r(Math.max(...xs))],
+        y: [r(Math.min(...ys)), r(Math.max(...ys))], home: home < 1e-3, aspect: r(v.camera.aspect) };
     });
     check(`${size}: its first view holds the whole step, ${(((1 - framed.most) / 2) * 100).toFixed(1)}% clear at the nearest edge`
-      + ` (${framed.corners} corners)`, framed.corners === 32 && framed.most <= 0.85 && framed.most >= 0.6);
-    await visitor.waitForTimeout(600);
+      + ` (${framed.corners} corners; across ${framed.x.join(" to ")}, up ${framed.y.join(" to ")} of the frame's half, at ${framed.aspect}`
+      + `${framed.home ? "" : ", moved from where it was framed"})`, framed.corners === 32 && framed.most <= 0.85 && framed.most >= 0.6);
+    // And nothing over it: once the first hint has gone (5 s), every corner
+    // of every part of the step, on the screen, is the 3D itself, not its
+    // tools, the way into the app or words over it (the buttons had covered
+    // the step's bottom on a phone).
+    const bare = await visitor.evaluate(async () => {
+      const v = window.brickworks3d.view;
+      const canvas = v.renderer.domElement;
+      const shell = canvas.closest(".view3d");
+      const hint = shell.querySelector(".view3d-hint");
+      for (let i = 0; i < 80 && hint && !hint.hidden; i++) await new Promise((done) => setTimeout(done, 100));
+      canvas.scrollIntoView({ block: "center" });
+      await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+      const r = canvas.getBoundingClientRect();
+      const at = v.camera.position.clone();
+      const over = {};
+      let seen = 0;
+      for (let i = 0; i < v.corners.length; i += 3) {
+        at.set(v.corners[i], v.corners[i + 1], v.corners[i + 2]).project(v.camera);
+        const hit = document.elementFromPoint(r.left + ((at.x + 1) / 2) * r.width, r.top + ((1 - at.y) / 2) * r.height);
+        const clear = hit === canvas || (hit && shell.contains(hit)
+          && !hit.closest("button, a, [role=toolbar], .view3d-app, .view3d-hint, .view3d-said, .view3d-legend"));
+        if (clear) seen += 1;
+        else {
+          const what = hit ? `${hit.tagName.toLowerCase()}.${String(hit.className?.baseVal ?? hit.className).trim().split(/\s+/).join(".")}` : "off the screen";
+          over[what] = (over[what] || 0) + 1;
+        }
+      }
+      return { seen, of: v.corners.length / 3, over, hint: Boolean(hint && !hint.hidden), frame: [Math.round(r.width), Math.round(r.height)] };
+    });
+    check(`${size}: nothing over the step: ${bare.seen} of ${bare.of} corners on the 3D itself in its ${bare.frame.join(" × ")} frame`
+      + `${Object.keys(bare.over).length ? `, covered by ${JSON.stringify(bare.over)}` : ""}${bare.hint ? ", its hint still up" : ""}`,
+      bare.of === 32 && bare.seen === bare.of && !bare.hint);
     await shot(visitor, `thread_3d_${size}.png`);
     check(`${size}: nothing goes sideways`, !(await sideways(visitor)));
+    // One page width (site.css .wrap, homefix): the thread's container on
+    // the header's edges, as design_flow's pageEdges measures it, and the
+    // ask inside them.
+    const edges = await visitor.evaluate(() => {
+      const box = (el) => (el ? el.getBoundingClientRect() : null);
+      const head = box(document.querySelector(".site-head > .wrap"));
+      const page = box(document.querySelector("main")?.closest(".wrap") || document.querySelector(".talk-page"));
+      const card = box(document.querySelector(".talk-ask"));
+      const posts = box(document.querySelector("#talk-posts"));
+      const r = (b) => (b ? [Math.round(b.left), Math.round(b.right)] : null);
+      return { head: r(head), page: r(page), card: r(card), posts: r(posts) };
+    });
+    check(`${size}: the thread on the header's edges: header ${edges.head}, page ${edges.page}, the ask ${edges.card}`,
+      Boolean(edges.head && edges.page && edges.card) && Math.abs(edges.head[0] - edges.page[0]) <= 1
+      && Math.abs(edges.head[1] - edges.page[1]) <= 1 && edges.card[0] >= edges.head[0] - 1 && edges.card[1] <= edges.head[1] + 1);
+    check(`${size}: the ask on the posts' edges: ${edges.card} and ${edges.posts}`, Boolean(edges.posts)
+      && Math.abs(edges.card[0] - edges.posts[0]) <= 1 && Math.abs(edges.card[1] - edges.posts[1]) <= 1);
     await visitor.context().close();
   }
 
@@ -313,8 +368,11 @@ try {
   check(`ran to the end: ${String(trouble?.message || trouble).split("\n")[0]}`, false);
 } finally {
   await browser.close().catch(() => {});
-  if (modelId && people.ann) await api(`/api/share?op=unpublish&id=${modelId}`, { method: "POST", token: people.ann.access_token }).catch(() => {});
-  for (const email of Object.values(emails)) await deleteAccount(email).catch(() => {});
+  // --keep leaves the people, the model and the thread for a look (on the
+  // local relay only: never on a preview, whose accounts are real).
+  if (args.keep && /^http:\/\/127\.0\.0\.1:/.test(args.url)) console.log(`  kept: ${threadPath}?tests=1`);
+  else if (modelId && people.ann) await api(`/api/share?op=unpublish&id=${modelId}`, { method: "POST", token: people.ann.access_token }).catch(() => {});
+  if (!(args.keep && /^http:\/\/127\.0\.0\.1:/.test(args.url))) for (const email of Object.values(emails)) await deleteAccount(email).catch(() => {});
 }
 for (const error of errors) console.log(`  page: ${error}`);
 check("no page errors", errors.length === 0);
