@@ -3,13 +3,10 @@
    .pill, .cta, the comments' posts (directory.css
    .comment), and only the layout here. A stranger's words are kept as
    typed: pre-wrap, broken anywhere. */
-.talk-page { padding-block: var(--s-6) var(--s-8); }
+/* A thread (an object's page); the lists and the new thread's page are
+   the site's list page (site.css .page-hero, .page-body, .list-layout). */
+.talk-page:not(.page-body) { padding-block: var(--s-6) var(--s-8); }
 .talk-crumbs { margin: 0 0 var(--s-2); font-size: var(--t-small); color: var(--ink-soft); min-height: 1lh; }
-.talk-head h1, .talk-thread-head h1 { margin: 0 0 var(--s-3); overflow-wrap: anywhere; }
-.talk-head .lede { margin-bottom: var(--s-4); }
-.talk-tools { gap: 12px; margin-bottom: var(--s-5); }
-.talk-search { display: flex; gap: 8px; flex: 1 1 280px; max-width: 440px; min-width: 0; }
-.talk-search input { flex: 1; min-width: 0; }
 /* The boards, a row of tiles (sitebold, 2026-11-23; api/_talk.js
    boardsHtml): each its icon on its own tint, its name and its count of
    threads; the one shown edged in the accent. Six across from 900 px,
@@ -43,26 +40,17 @@
 }
 @media (prefers-reduced-motion: reduce) { .talk-board-tile:hover { transform: none; } }
 
-.talk-layout { display: grid; gap: var(--s-7); grid-template-columns: minmax(0, 1fr); }
-@media (width >= 960px) { .talk-layout { grid-template-columns: minmax(0, 1fr) 300px; } }
 
-.talk-more { margin: var(--s-5) 0 0; }
 
-/* Beside the threads, each part a panel of its own, as the feed's rail
-   is; the boards a list of rows to open, not a column of underlined words
-   (sitepolish, 2026-11-23). */
-.talk-aside h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
-.talk-aside section {
-	padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
-	box-shadow: var(--highlight), var(--shadow-1);
-}
-.talk-aside section + section { margin-top: var(--s-4); }
+/* Beside the threads, the site's aside (.list-aside, listkit): each part a
+   panel; the boards a list of rows to open, not a column of underlined
+   words (sitepolish, 2026-11-23). */
 .talk-aside .note { margin: 0 0 var(--s-3); }
 .talk-aside section > .note:last-child { margin: var(--s-3) 0 0; }
 /* On the models: each model's picture large, two to a row, its name and
    what was said under it (sitebold, 2026-11-23: 64 px thumbnails). */
 .talk-talking { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
-@media (600px <= width < 960px) { .talk-talking { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (600px <= width < 900px) { .talk-talking { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 /* One alone takes the row, as large as the aside lets it. */
 .talk-talking > li:only-child { grid-column: 1 / -1; }
 .talk-talking a { display: grid; gap: 6px; color: var(--ink); text-decoration: none; }
@@ -87,6 +75,7 @@
 .talk-talking a:hover b { text-decoration: underline; }
 
 /* A thread: its head, its model, its posts (the comments' own), the box. */
+.talk-thread-head h1 { margin: 0 0 var(--s-3); overflow-wrap: anywhere; }
 .talk-thread-head { margin-bottom: var(--s-5); }
 .talk-model {
 	display: inline-grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; margin: 6px 0 12px;

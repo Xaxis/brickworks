@@ -323,7 +323,11 @@ declare -A CMD=(
   # deployment.
   # Every page and dialog, each visible control judged against the design
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
-  # by its stand-in, so no account is made.
+  # by its stand-in, so no account is made. Then, from design_flow itself,
+  # tools/web/layout_audit.mjs (listkit): every list, signed-in and words
+  # page on the one head and list layout, its container, h1 and tabs within
+  # a pixel of the feed's at 1280 and 390, signed out and in; a FAIL names
+  # the page.
   [design]="tools/web/design_flow.mjs --url=$P --out=$S/${TAG}_design"
   # Every page and dialog design visits (tools/web/site_pages.mjs), judged
   # by axe-core (tools/web/axe-core, vendored): no serious or critical

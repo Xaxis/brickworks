@@ -84,7 +84,7 @@ const recount = async () => showTabCounts(await showFeedCount().catch(() => null
 /// first control (or the previous, or the page's title) rather than lost.
 function goneFrom(item) {
   const next = item.nextElementSibling || item.previousElementSibling;
-  const into = next?.querySelector(".notice-top [data-done], .notice-top summary, h2 a") || document.querySelector(".notices-head h1");
+  const into = next?.querySelector(".row-act [data-done], .row-act summary, .row-title a") || document.querySelector(".page-head h1");
   item.remove();
   if (into) {
     if (into.tagName === "H1") into.tabIndex = -1;
@@ -236,7 +236,7 @@ $("all-read").addEventListener("click", async () => {
   }
   // The button goes with what it did: said, and the keyboard's focus on
   // the page's title rather than lost with it.
-  const title = document.querySelector(".notices-head h1");
+  const title = document.querySelector(".page-head h1");
   if (title && focused) {
     title.tabIndex = -1;
     title.focus();
@@ -258,7 +258,7 @@ $("all-done").addEventListener("click", async () => {
   }
   const before = answer.body.before ?? null;
   $("groups").replaceChildren();
-  const title = document.querySelector(".notices-head h1");
+  const title = document.querySelector(".page-head h1");
   title.tabIndex = -1;
   title.focus();
   allRead();

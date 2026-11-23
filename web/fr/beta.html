@@ -34,12 +34,21 @@
 <link rel="stylesheet" href="/site.css">
 <style>
 /* Only layout here; every control, card and panel is site.css's. */
-.beta-head { padding: var(--page-top) 0 var(--s-7); text-align: center; }
-.beta-head h1 { max-width: 20ch; margin-inline: auto; }
-.beta-head .lede { margin: 0 auto var(--s-5); max-width: 58ch; }
+/* The site's head, and the whole page's width from the header's left
+   edge like every page (listkit, 2026-11-23: a centred landing head over
+   a 980 px island, its sections at 150 px). The way in is the head's
+   action, at its right: where the beta stands, the buttons, and what
+   joining agrees to under them. */
+.beta-way { flex-direction: column; align-items: flex-end; text-align: right; }
+.beta-way .beta-state { font-weight: 600; color: var(--accent-ink); }
+.beta-way .actions { justify-content: flex-end; }
+@media (width < 600px) {
+	.beta-way { flex: 1 1 100%; align-items: stretch; text-align: left; }
+	.beta-way .actions { justify-content: flex-start; }
+}
 /* The line under the title, held at its height before it is known: a line,
    and on a phone two. */
-.spots { min-height: 1lh; margin: 0 0 var(--s-5); font-size: var(--t-lede); }
+.spots { min-height: 1lh; margin: var(--s-3) 0 0; font-size: var(--t-lede); }
 @media (width < 600px) { .spots { min-height: 2lh; } }
 .spots .bone { display: inline-block; width: 14em; max-width: 80%; vertical-align: middle; }
 /* The way in: its three rows laid in one place, those not shown kept but
@@ -52,12 +61,9 @@
 #beta-acts > [hidden] { display: flex !important; visibility: hidden; }
 /* What joining agrees to, under the way in, from the first frame (off, its
    room kept and nothing in it). */
-.beta-head .terms { max-width: 34rem; margin: var(--s-4) auto 0; color: var(--ink-soft); font-size: var(--t-small); }
+.beta-head .terms { max-width: 34rem; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 :root[data-beta-page="off"] .beta-head .terms,
 :root[data-beta-page="tester"] .beta-head .terms { visibility: hidden; }
-/* The page as wide as every page (homefix, 2026-11-23), what is in it
-   centred at 980 px. */
-.beta .narrow > * { max-width: 980px; margin-inline: auto; }
 .beta .section-head { margin-bottom: var(--s-5); }
 #report .actions { margin-top: var(--s-5); }
 /* What is new: each release a card, its heads a list. */
@@ -126,23 +132,29 @@
 </header>
 
 <main id="main" class="beta">
-	<section class="beta-head halo" aria-labelledby="beta-h">
+	<div class="page-hero beta-head">
 		<div class="wrap">
-			<p class="eyebrow"><span data-when="open">Bêta ouverte</span><span data-when="off" hidden>La bêta de Brickworks · Bientôt</span></p>
-			<h1 id="beta-h">Aidez à façonner Brickworks</h1>
-			<p class="lede">Utilisez Brickworks pour de vrai, dites-nous ce qui ne va pas, et voyez ce que nous corrigeons. Rejoindre la bêta prend un clic, et ne coûte rien.</p>
-			<p class="spots" id="spots" aria-live="polite"><span class="bone" aria-hidden="true"></span></p>
-			<div id="beta-acts">
-				<div class="actions center" data-visitor="out" hidden><button class="cta big" type="button" data-beta-join>S’inscrire et rejoindre la bêta <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost big" href="#get">Ce que reçoivent les testeurs</a></div>
-				<div class="actions center" data-visitor="in" hidden><button class="cta big" type="button" data-beta-join>Rejoindre la bêta <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost big" href="#get">Ce que reçoivent les testeurs</a></div>
-				<div class="actions center" data-visitor="tester" hidden><button class="cta big" type="button" data-beta-report>Signaler un bug</button><a class="cta ghost big" href="/fr/settings#feedback">Vos messages</a></div>
+			<div class="page-head">
+				<div class="page-title">
+					<h1 id="beta-h">Aidez à façonner Brickworks</h1>
+					<p class="lede">Utilisez Brickworks pour de vrai, dites-nous ce qui ne va pas, et voyez ce que nous corrigeons. Rejoindre la bêta prend un clic, et ne coûte rien.</p>
+					<p class="spots" id="spots" aria-live="polite"><span class="bone" aria-hidden="true"></span></p>
+				</div>
+				<div class="page-acts beta-way">
+					<p class="hero-meta beta-state"><span data-when="open">Bêta ouverte</span><span data-when="off" hidden>La bêta de Brickworks · Bientôt</span></p>
+					<div id="beta-acts">
+						<div class="actions" data-visitor="out" hidden><button class="cta big" type="button" data-beta-join>S’inscrire et rejoindre la bêta <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost big" href="#get">Ce que reçoivent les testeurs</a></div>
+						<div class="actions" data-visitor="in" hidden><button class="cta big" type="button" data-beta-join>Rejoindre la bêta <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost big" href="#get">Ce que reçoivent les testeurs</a></div>
+						<div class="actions" data-visitor="tester" hidden><button class="cta big" type="button" data-beta-report>Signaler un bug</button><a class="cta ghost big" href="/fr/settings#feedback">Vos messages</a></div>
+					</div>
+					<p class="terms">Participer, c’est accepter <a href="/fr/terms#beta">les conditions de la bêta</a> et les e-mails sur la bêta. Vous pouvez la quitter à tout moment dans les Réglages.</p>
+				</div>
 			</div>
-			<p class="terms">Participer, c’est accepter <a href="/fr/terms#beta">les conditions de la bêta</a> et les e-mails sur la bêta. Vous pouvez la quitter à tout moment dans les Réglages.</p>
 		</div>
-	</section>
+	</div>
 
 	<section class="section" id="get" aria-labelledby="get-h">
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head"><div>
 				<h2 class="title" id="get-h">Ce que reçoivent les testeurs</h2>
 				<p>Rien à payer, et peu de votre temps : utilisez-le pour de vrai et dites-nous honnêtement comment ça se passe.</p>
@@ -162,7 +174,7 @@
 	</section>
 
 	<section class="section" id="report" aria-labelledby="report-h" data-when="open" hidden>
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head"><div>
 				<h2 class="title" id="report-h">Signaler un bug en un clic</h2>
 				<p>Où que vous soyez, sans quitter ce que vous faisiez.</p>
@@ -177,7 +189,7 @@
 	</section>
 
 	<section class="section" id="new" aria-labelledby="new-h" data-when="open" hidden>
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head">
 				<div>
 					<h2 class="title" id="new-h">Quoi de neuf</h2>
@@ -196,7 +208,7 @@
 	     to try, what we know is wrong, and the early features on their
 	     account. Under the rest, so its coming moves nothing above it. -->
 	<section class="section" id="testers" aria-labelledby="try-h" hidden>
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head"><div><h2 class="title" id="try-h">Nouveautés à essayer</h2></div></div>
 			<ul class="grid" id="try"></ul>
 			<h3 class="sub-h" id="known-h">Problèmes connus</h3>
@@ -213,7 +225,7 @@
 	     emails when it joined, so the form asks neither. The welcome,
 	     Settings and the beta's emails link here, /beta#about. -->
 	<section class="section" id="about" aria-labelledby="about-h" hidden>
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head"><div>
 				<h2 class="title" id="about-h" tabindex="-1">Parlez-nous de vous</h2>
 				<p>Pour un mois de Pro : les 100 premiers testeurs que nous approuvons reçoivent 30 jours gratuits. Cela prend une minute, et c’est vous qui décidez.</p>
@@ -259,7 +271,7 @@
 	</section>
 
 	<section class="section" id="questions" aria-labelledby="q-h">
-		<div class="wrap narrow">
+		<div class="wrap">
 			<div class="section-head"><div><h2 class="title" id="q-h">Questions</h2></div></div>
 			<details class="qa">
 				<summary>Qui peut rejoindre la bêta ?</summary>
