@@ -540,7 +540,7 @@ async function deployed() {
       check(`her picture after: ${gone.status} in ${gone.waited} s (the CDN keeps it ${PICTURE_KEPT} s at most), op=me says taken out`,
         gone.status === 404 && after.json?.avatar?.picture === null && after.json?.avatar?.removed === true);
       const herPage = await fetch(`${site}/u/${ADA}?tests=1`, { headers }).then((a) => a.text());
-      check("her page shows the tile again", !herPage.includes(picture) && /class="avatar huge c\d"/.test(herPage));
+      check("her page shows her minifig again", !herPage.includes(picture) && /class="avatar huge c\d minifig"/.test(herPage));
       const files = await heldFiles();
       if (files) check(`its file deleted: ${files.length} left in the bucket`, !files.some((one) => picture.endsWith(`${one.name.replace(".jpg", "")}`)));
     } else {

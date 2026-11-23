@@ -1311,7 +1311,7 @@ function profileData(origin, { url, person, earned, about, follows, links }) {
     mainEntity: {
       "@type": "Person", name: person.name, alternateName: `@${person.handle}`, identifier: person.handle,
       url: `${origin}/u/${person.handle}`, description: person.bio || undefined,
-      image: `${origin}${person.picture || (person.handle === HOUSE_HANDLE ? "/favicon-512.png" : `/api/people?op=avatar&handle=${person.handle}`)}`,
+      image: `${origin}${person.picture || `/api/people?op=avatar&handle=${person.handle}`}`,
       sameAs: links.length ? links.map((link) => link.href) : undefined,
       interactionStatistic: ready ? [counter("FollowAction", follows.followers)] : undefined,
       agentInteractionStatistic: did.length ? did : undefined,

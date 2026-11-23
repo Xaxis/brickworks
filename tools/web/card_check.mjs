@@ -173,8 +173,8 @@ try {
   // Their own picture only from this site's address for one.
   const [face, elsewhere] = await drawn([SAMPLES[6][0], SAMPLES[7][0]], {});
   check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)
-    && !/<img[^>]*tracker\.example/.test(elsewhere) && />M<\/span>/.test(elsewhere),
-  "a designer's own picture drawn, and one from anywhere else never: the tile");
+    && !/<img[^>]*tracker\.example/.test(elsewhere) && /class="avatar small c\d minifig"[^>]*style="background-image:url\(\/minifig\/128\//.test(elsewhere),
+  "a designer's own picture drawn, and one from anywhere else never: the minifig made from their handle");
   // The like over the picture, the numbers on the designer's line.
   const [liked] = await drawn([SAMPLES[4][0]], { like: true });
   check(/<div class="frame">[^]*<button type="button" class="icon-btn small"[^>]*data-like="CardAbcde5"[^]*<\/button><\/div><div class="words">/.test(liked)
