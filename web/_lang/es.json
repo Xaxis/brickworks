@@ -3790,6 +3790,12 @@
   "The designer took you out of this build.": "El diseñador te ha sacado de esta construcción.",
   "Nobody like that asked to build.": "Esa persona no ha pedido construir.",
   "The designer has ended this build.": "El diseñador ha terminado esta construcción.",
-  "A line is at most {most} characters; this one has {n}.": "Una línea tiene como máximo {most} caracteres; esta tiene {n}."
+  "A line is at most {most} characters; this one has {n}.": "Una línea tiene como máximo {most} caracteres; esta tiene {n}.",
+  "{keys} posts": "{keys} para publicar",
+  "Post": "Publicar",
+  "Not posted: your words are still here.": "No publicado: tu texto sigue aquí.",
+  "Show fewer": "Mostrar menos",
+  "Replies": "Respuestas",
+  "Posted, on step {n}.": "Publicado, en el paso {n}."
  }
 }

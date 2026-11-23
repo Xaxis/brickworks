@@ -1840,8 +1840,7 @@ function commentsSection(id, shown, newest, steps) {
       <label class="visually-hidden" for="comment-body">${asText(say("Your comment"))}</label>
       <textarea id="comment-body" maxlength="1000" rows="3"
         placeholder="${asText(say("Say something about it, or about a step: this part goes under, not over"))}"></textarea>
-      <div class="actions"><button class="cta small" type="submit">${asText(say("Add the comment"))}</button>
-        <span class="note comment-count" aria-live="polite"></span></div>
+      <div class="actions"><button class="cta small" type="submit">${asText(say("Post"))}</button></div>
     </form>
     <ol class="comment-list"></ol>
     <div class="comment-why" hidden><p class="note"></p></div>

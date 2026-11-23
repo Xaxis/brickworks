@@ -7087,6 +7087,13 @@
       "entry": "src/dev/suggest_phone_probe.gd",
       "reach": "tools/probe.sh suggest_phone_probe -- --pictures=DIR   (suggest_probe at 390 x 844)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "saying something in place",
+      "entry": "web/composer.js",
+      "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",
+      "area": "web"
     }
   ]
 }
