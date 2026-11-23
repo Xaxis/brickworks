@@ -52,7 +52,7 @@ lib:path tracer
 
 ### Product {#product-look}
 
-**Product** draws the model as a set's box does: glossy plastic, rounded edges, clear parts you see through, a studio's light, every colour true.
+**Product** draws the model as a set's box does: glossy plastic, rounded edges, clear parts you see through, a studio's light, every colour true. At Best it is finished as a camera finishes a photograph: white-balanced on a white card where the model stands, with a camera's gentle tone curve.
 
 <!-- covers
 lib:product look
