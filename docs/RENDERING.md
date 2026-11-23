@@ -1769,6 +1769,141 @@ clean, uniform plastic with no yellowing or scuffs"), backdrop 76, light
 yellowed and scuffed unevenly, part by part, and a stud's logo that
 differs from the next.
 
+## 5l. No two parts alike (photoreal8)
+
+photoreal7's judge named our sameness in nearly every verdict: "perfectly
+uniform yellow with no variation from piece to piece", "every stud is
+identical", "the three bricks line up exactly". A real model's parts come
+from different batches, have been handled differently, and sit as the
+moulds' tolerance lets them. photoreal8 draws that, part by part, and only in the
+picture. The model and its file are never changed. Each variation is
+seeded by the part's place (`PathTracer._part_key`), so the same model
+renders the same every time.
+
+**Measured on the photographs first.** These are the targets, and a lever
+may show no more than they do:
+- **Colour.** Between neighbouring parts of one colour facing one way
+  (`face_lab`, the lightest and darkest fifths of a box left out), the
+  CIEDE2000 is 2.1 (6532's yellows), 3.2 and 4.2 (6660's and 6657's reds),
+  and 2.6 and 4.2 (6660's whites). Hue and chroma are 1.0 to 2.6 of it.
+  photoreal7's renders differ by 0.8 and 1.1 between reds: one colour,
+  one batch. Their whites already differ by more than the photographs'
+  (3.5 and 8.6), from photoreal4's yellowing, which is each part's own.
+- **Gloss and wear.** Across one face of each of six white parts on
+  6660's side, the lightness's spread is 0.2 to 3.8 on five and 15 on the
+  sixth (scuffed and specked). The render's are 0.4 to 3.2.
+- **The seat.** Seen from above (three_2x2_top), the photograph's three
+  bricks are square to each other within 0.01 degrees, 0.13 to 0.17 LDU
+  off line across, and 0.39 and 0.60 LDU apart. photoreal4's seating
+  turned ours 0.36 degrees apart and slid them 0.05.
+
+**The levers.** Each is a `RenderSettings` value (below 0, the product
+look's own, `StudioRender.PRODUCT_*`), drawn only where Best is path
+traced, in the Product look:
+- **batch** (path_tracer.glsl `batch_of`): a part's colour turned in
+  Oklab, so a stray is as far to the eye in every colour. At 1 its hue
+  turns by up to 4 degrees, its chroma by up to 8 percent and its light by
+  up to 12 (a pale part's 4, since its age already strays it), each by a
+  bell held within 1 sd (`batch_bell`). Two of 6657's reds then differ by
+  2.4, against its photograph's 4.2.
+- **handling** (`handled_of`, `print_of`): a part's polish its own (20
+  percent, sd), dulled and scuffed the more the part has been handled
+  (most parts a little, a few a lot: the square of its own number). The
+  most handled third show a fingertip's print in what they mirror, 12 by
+  15 mm on one of its sides, in ridges half a millimetre apart. Only the
+  faces a hand touches, never an underside.
+- **studs** (closest hit `stud_logo`, raygen's stud top): each stud's logo
+  its own depth and softness, some with grime where the letters meet the
+  top, and each stud's top its own sheen. The amount goes to the closest
+  hit in the instance's fourth word (`info.w`, 0 to 255).
+- **play** (`PathTracer._seated`): photoreal4's seating as the photograph
+  measures it. A part's turn about the vertical is `PLAY_TURN` (0.15) of
+  the seating's, and its slide across `PLAY_SHIFT` (1.5) times it. Drawn,
+  the three bricks are square to each other within 0.12 degrees and one
+  stands 0.16 LDU off line.
+
+Two first tries were wrong, and the pictures said so before the judge did.
+The batch first turned the hue in linear RGB, and moved a red part 0.1 to
+0.4 in the picture: a saturated red is drawn with its green and blue at 0,
+so only its light can carry a stray. Handling first only dulled the polish
+a little, and changed no face's spread on the trucks.
+
+With all four at 0, every new buffer field is zero and no new random number
+is drawn, so a render is pixel-identical to photoreal7's: 10 of 10 shots
+byte for byte from every code snapshot the unit drew, the last at 447c372fb.
+Compatibility and the web draw none of them. They have no path tracer, and
+a part's colour there is its colour.
+
+**What the judge said.** Solo, two draws each, two rounds of two trials,
+the photographs in the pool, in three runs, each with photoreal7's kept
+tree (base) beside them:
+
+| run | tree | close-ups, per round | sets, per round | called a photograph |
+|---|---|---|---|---|
+| 1 | base | 0.313 0.324 | 0.156 0.152 | 15 of 80 |
+| 1 | batch, first stray | 0.347 0.314 | 0.156 0.151 | 15 of 80 |
+| 1 | batch, twice that | 0.420 0.416 | 0.154 0.166 | 20 of 80 |
+| 1 | handling | 0.295 0.293 | 0.170 0.175 | 13 of 80 |
+| 1 | studs | 0.377 0.379 | 0.138 0.141 | 20 of 80 |
+| 1 | play | 0.360 0.348 | 0.160 0.146 | 19 of 80 |
+| 1 | all four (batch's first stray) | 0.335 0.331 | 0.174 0.174 | 16 of 80 |
+| 2 | base | 0.360 0.336 | 0.154 0.151 | 16 of 80 |
+| 2 | batch twice, studs, play | 0.379 0.400 | 0.158 0.158 | 18 of 80 |
+| 2 | that and handling 0.5 | 0.318 0.292 | 0.170 0.168 | 11 of 80 |
+| 3 | base | 0.348 0.337 | 0.160 0.169 | 17 of 80 |
+| 3 | kept, its bells held within 1.5 sd | 0.379 0.357 | 0.163 0.159 | 17 of 80 |
+| 3 | **kept, its bells held within 1 sd** | **0.392 0.373** | **0.174 0.191** | **19 of 80** |
+
+- **The judge's level moves between runs.** The same base pictures scored
+  0.313 and 0.324 on the close-ups in run 1, 0.360 and 0.336 in run 2. So
+  a tree is compared only with the base judged beside it.
+- **batch, studs and play each gained.** Over the base in run 1, the batch
+  at twice its first stray lifted the close-ups by 0.10 (the black 2x4 from
+  0.17 to 0.47), the studs by 0.06 and the play by 0.035. The first stray
+  was within the noise. So the batch's stray was doubled, and all three are
+  the product look's own (`PRODUCT_BATCH`, `PRODUCT_STUDS`, `PRODUCT_PLAY`
+  1).
+- **Handling lowered the close-ups and lifted the sets, in both runs.**
+  A close-up is one part. When that part is a handled one, its scuffs are
+  "spread evenly like a procedural texture" (the black 2x4 fell from 0.17
+  to 0.07). Among many parts of a set, a few handled ones read as real
+  (6660 rose from 0.17 to 0.24). It gained on neither at once, so
+  `PRODUCT_HANDLING` stays 0. Next for it: scuffs gathered where a hand
+  holds a part, not spread over every face.
+- **Held within 1 sd.** Unheld, the batch drew three_2x2_top's green
+  brick 5.9 from its photograph's colour (2.7 with no stray), past the
+  tent's bar of 5, and held within 1.5 sd still 5.2. A batch that far off
+  never leaves the factory, so each of its bells is held within 1 sd
+  (`batch_bell`): the green is 3.7. Held so, the kept tree lifted the
+  close-ups by 0.040 and the sets by 0.018 over the base beside it (run 3),
+  its lowest round above the base's highest in both.
+
+**Against the brief's bars** (the kept tree is batch, studs and play at 1,
+the batch's bells held):
+
+| bar | photoreal8 (kept) | met |
+|---|---|---|
+| close-ups' lowest round above photoreal7's highest | 0.373 over 0.348 (run 3; run 2, before the hold, 0.379 over 0.360) | yes |
+| sets' lowest round above photoreal7's highest | 0.174 over 0.169 (run 3; run 2 0.158 over 0.154) | yes |
+| at least 15 of 60 called a photograph | 19 of 80 (of 72 with a photograph; the base 17) | yes |
+| the wear or uniform tell under 40 of 80 | wear 76 of 80 (the base 78), "uniform" 67 (the base 75): the backdrop, the light and the edges are called uniform as often as the plastic | no |
+| paired judge at most 16 of 20, or sure at most 0.80 | 20 of 20, sure 0.844 (photoreal7's 18 of 20, 0.837) | no |
+| tent faces within ΔE2000 5 | green 3.7, red 1.6, blue 2.7, the slope 1.3 | yes |
+| the car at Best no slower than 2.9 s, or than photoreal7 in turn | medians 2.06, 2.18, 2.39 and 2.29 s at load 26, against photoreal7's 2.06, 2.21, 2.06 and 2.00 in turn (ABBA twice): under 2.9 s, and about 0.15 s (7 percent) slower than the base. At load 80 both pass 2.9: 3.07 and 2.85 against the base's 2.96 and 2.71 at load 60 to 73 | under 2.9 s, yes; as fast as the base in turn, no |
+| the model unchanged | the levers act in `PathTracer.stage` and the shader; the bench's models are unchanged after every draw (git status) | yes |
+| pixel-identical with the variation off | 10 of 10 byte for byte against photoreal7's tree, all four at 0, at 447c372fb | yes |
+
+The judge's tells for the kept tree, in 80 verdicts (run 3, the base's in
+brackets): wear 76 (78), backdrop 74 (74), light 69 (71), logos 44 (44),
+edges 44 (49), speckle 40 (49), plastic 33 (46), floating 13 (18). The
+paired judge still names "identical studs with no gate marks", "garbled,
+overlapping LEGO lettering", "minifig head has no printed face" (6660) and
+"perfectly uniform, spotless plastic". The face is there: in our 6660 the
+driver sits higher than in the photograph, so the cap stands through the
+roof's glass and the face is hidden behind its edge. The next
+levers: a stud's gate mark and its logo's lettering, handling's scuffs
+gathered where a hand holds a part, and 6660's driver seated as built.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

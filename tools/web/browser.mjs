@@ -82,14 +82,22 @@ const COUNTER = "https://overlook.technology/*";
 /// So the context also takes Vercel's bypass cookie, which that fetch does
 /// carry: asked for once per origin, through the context's own request API
 /// (it shares the context's cookies), before its first page goes there.
+/// The key is the context's header, or else BW_BYPASS, which every flow is
+/// run with: oc_flow and others route the header onto their own site's
+/// requests only, so that orangecheck's window is never sent it, and their
+/// pages went to Vercel's login once the worker fetched them (rel-m319's oc,
+/// 2026-11-23). Asked for only on Brickworks' own preview hosts, so the key
+/// never reaches another site, whichever way a flow was given it.
+const OWN_PREVIEW = /^brickworks-[a-z0-9-]+\.vercel\.app$/;
 export function bypassCookie(context, headers) {
-  const key = headers && headers["x-vercel-protection-bypass"];
+  const key = (headers && headers["x-vercel-protection-bypass"]) || process.env.BW_BYPASS || "";
   if (!key) return context;
   const asked = new Map();
   const ask = (url) => {
-    let origin;
-    try { origin = new URL(String(url)).origin; } catch { return null; }
-    if (!origin.startsWith("https://")) return null;
+    let where;
+    try { where = new URL(String(url)); } catch { return null; }
+    if (where.protocol !== "https:" || !OWN_PREVIEW.test(where.hostname)) return null;
+    const origin = where.origin;
     if (!asked.has(origin)) {
       const at = `${origin}/sw.js?x-vercel-protection-bypass=${encodeURIComponent(key)}&x-vercel-set-bypass-cookie=true`;
       asked.set(origin, context.request.get(at, { failOnStatusCode: false, timeout: 60000 }).catch(() => null));
