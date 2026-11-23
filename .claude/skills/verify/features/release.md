@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:a release written down live, cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:coming soon check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
+<!-- covers: cli:a release written down live, cli:the live smoke and its rollback, cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:coming soon check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
 
 ## Sub-features
 
@@ -307,6 +307,28 @@ that offers each system its own build. The cycle and its cadence are
   -H "apikey: $SUPABASE_SECRET_KEY" -H "Authorization: Bearer $SUPABASE_SECRET_KEY"
   -H 'content-type: application/json' -d '{"p_limit":3}'` lists the latest
   live first (rel-m295 at 35d44dbd47f2 on 2026-11-13).
+- `the live smoke and its rollback` (`tools/release/live_smoke.sh`, fastship):
+  `current [DOMAIN]` names the deployment brickworks.diy points at now
+  (`vercel inspect`), which `ship.sh` asks before it promotes. `check ORIGIN`
+  only reads: cache-busted GETs (the home page is the site's, `/app` names its
+  `/b/<sha>/`, the gallery's first model with a picture has its page and
+  picture, Talk where the build has `/talk.js`, else "no Talk on this build"),
+  then a signed-out browser under heavy that sends nothing but GETs
+  (`tools/web/live_smoke.mjs`: home at 1280 and 390, the model page's picture
+  drawn, Talk, `/app` up to its first screen). Exit 0 passed, 1 failed (each
+  reason said), 2 not checked. `guard DOMAIN PREVIOUS_URL TAG` checks the
+  domain twice; failing both, it checks PREVIOUS_URL on its own URL and, when
+  that passes, moves the domain back (`vercel rollback` for brickworks.diy,
+  `vercel alias set` for any other alias), waits until the domain's `/app`
+  names PREVIOUS's build, checks it there, writes a `TAG-rolled-back` row
+  through `release_live.sh` for `/admin#site`, and says `live_smoke: rolled
+  back ...`. Exit 0 passed, 3 rolled back and passing, 1 failed, 2 no verdict.
+  Prove: `python3 tools/minitest.py tests/test_live_smoke.py` (stand-ins for
+  vercel, curl, heavy and the check: no network), and on a throwaway alias,
+  never brickworks.diy: a broken prebuilt preview on
+  `brickworks-<name>.vercel.app`, `live_smoke.sh guard` it back to a good
+  deployment (exit 3), then `vercel alias rm` and `vercel remove` that preview
+  (bench/results/fastship-2026-11-23/smoke, 2026-11-23).
 - `download page`: `web/download.html`, served at `/download`
   (tools/site.py copies every file in `web/`; the old `/download.html` 308s
   to `/download`), and its copies at /de/download, /fr/download and

@@ -5431,6 +5431,13 @@
     },
     {
       "kind": "cli",
+      "label": "the live smoke and its rollback",
+      "entry": "tools/release/live_smoke.sh",
+      "reach": "tools/release/live_smoke.sh current [DOMAIN] | check ORIGIN | guard DOMAIN PREVIOUS_URL TAG   (ship.sh: current before it promotes, guard once the domain serves the release; a read-only smoke, its browser half tools/web/live_smoke.mjs under heavy; guard rolls the domain back to PREVIOUS_URL when the release fails twice and the build before passes; tests/test_live_smoke.py)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
       "label": "Resend's webhook set up",
       "entry": "tools/web/resend_webhook.sh",
       "reach": "RESEND_ADMIN_KEY=<the team's full-access key, never a deployment's> tools/web/resend_webhook.sh [--check] [--redeploy]   (after a release with the op is live: the webhook to /api/otp?op=mail_event, its secret in Vercel production env and .env)",
