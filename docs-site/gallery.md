@@ -32,7 +32,7 @@ The [home page](/) is a feed of what builders make and say. Signed out, one line
 
 Press **3D** on a picture, or rest the pointer on it, to turn the model in its place; [[Esc]] puts the picture back. Like, a comment and Follow ask you to sign in there and then, and go on once you are in; what you typed is kept. **Show more** at the end adds more posts.
 
-Signed in, the line gives way to **Share a build**, which opens [the share panel](/docs/sharing) in the app for your last model, and three tabs: **For you**, everything, as you have it; **Following**, what the people you follow made; and **New**, the newest first. The arrow keys move along the tabs. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
+Signed in, the line gives way to the same search, with **Share a build** beside it, which opens [the share panel](/docs/sharing) in the app for your last model, and three tabs: **For you**, everything, as you have it; **Following**, what the people you follow made; and **New**, the newest first. The arrow keys move along the tabs. In the search, the down arrow moves into what it found, [[Enter]] opens one, or the gallery's own search with what you typed; [[/]] puts the cursor in it.
 
 ![The home page on a phone: Build, share and find LEGO® models, the search and Start building, and under them the feed's first post, a build with its picture and the studio's verbs.](/docs/img/home-phone.webp "On a phone, the feed starts in the first screen.")
 
