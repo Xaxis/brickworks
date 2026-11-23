@@ -7615,7 +7615,8 @@
       "reach": "https://brickworks.diy/gallery signed in: the avatar's menu, as it opens, shows /notifications' first five (op=notifications&most=5, marks nothing seen) with their pictures, each opening its place; at 390 px under Menu",
       "area": "web",
       "tests": [
-        "tests/test_blocks.py"
+        "tests/test_blocks.py",
+        "tests/test_loop.py"
       ]
     },
     {
