@@ -950,7 +950,23 @@ plan with Claude as the client.
   assistant or brickify, as the app says (400 for anything else), kept by a
   PATCH of its own that never stops the publish (nothing before the file is
   applied) and answered as `made_with`; not said, it stays as it was.
-  `share_probe` checks both. Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
+  `share_probe` checks both. `made_with_shown` (2026-11-23, the owner: not
+  "unless a user wants to share it that way"; `supabase/made_with_shown.sql`,
+  false for every model): whether its owner chose to say how it was made,
+  true or false on a publish (400 otherwise; not said, kept as it was), and
+  `?op=made&id=X` the owner's own GET `{made_with, way, by, made_with_shown,
+  ready}` and POST `{shown}`. Until it is true nothing public says it:
+  `web/card.js madePublic` takes `made_with` and the `ai-designed`/`brickify`
+  tags off in `cardOf`, `modelPage` (its fact, its tags, its keywords,
+  similar models) and the viewer's JSON (`publishedRow` reads the column
+  where it is, and without it before the file); the feed's way pill is only
+  Designed with the assistant or Made with Brickify, shown (no Built by
+  hand, which would tell the rest apart); Made's With the assistant and
+  `tag=ai-designed` list only shown models (gallery_models, and the API
+  drops a row not shown), Hand-built every other. A challenge's track is
+  the entrant's own and unchanged. `node tools/web/made_shown_check.mjs`
+  (stand-in, no browser: HouseMod01 tagged and not shown, HouseMod02
+  shown; 5 FAIL on base 919471139). Every answer here was `no-cache` or `no-store` until the directory (now `SHARED_CACHE`, below): the picture was
   `public, max-age=60` until the probe on a preview found Vercel's CDN still
   serving it after the model was taken down. `/m/<id>/embed` (`op=embed`): a card for an iframe
   (`frame-ancestors *`) whose links each open a tab — the threaded engine
@@ -1765,8 +1781,11 @@ plan with Claude as the client.
   `object-fit: cover`; Tested is a `.pill.good`. The Assistant or Brickify
   mark is `madeOf(model)`: `made_with` as the app said (`cardOf` passes it
   from `directory_card`), else the `ai-designed`/`brickify` tags; its title
-  says which. `card_check` holds a hand-built model tagged ai-designed
-  unmarked, an untagged one of Claude's marked (red on base). Since
+  says which, and only where its owner chose to show it (`madePublic`,
+  `made_with_shown`, below). `card_check` holds a hand-built model tagged
+  ai-designed unmarked, an untagged one of Claude's marked (red on base),
+  and the model page's fact on HouseMod02 (shown) alone, never HouseMod01
+  (tagged, not shown). Since
   2026-10-26 (site277, from site273's review) the marks are one row
   (`.marks` one pill tall; a mark that does not fit is left off whole),
   and a mark 90% or more of a page's cards carry (four cards or more) is

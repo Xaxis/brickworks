@@ -22,7 +22,7 @@ lib:directory
 
 The [home page](/) is a feed of what builders make and say. Signed out, one line over it says what Brickworks is, a search finds models, builders and real sets as you type, and **Start building** opens the app. Then the feed, one post after another:
 
-- **A build**: who made it, with **Follow**; its picture; how it was made (**Designed with the assistant**, **Built by hand**, **Made with Brickify**) and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). The newest comment is under it, with **Add a comment**.
+- **A build**: who made it, with **Follow**; its picture; how it was made, where its builder chose to say (**Designed with the assistant**, **Made with Brickify**), and what moves, each a link to that part of these docs; its likes, comments and **Share**; and four ways into the studio: **Open in the studio**, **Remix** (a copy of your own to change, its page saying whose it was), **Build it** (its steps, one at a time) and **Parts** (to list and buy). The newest comment is under it, with **Add a comment**.
 - **A thread in [Talk](/docs/talk)**, with its latest reply and **Reply**.
 - **This month's [challenge](/docs/challenges)**, its days left and its entries, with **Enter the challenge**.
 - **Try the studio, right here**: **Try it here** puts the studio itself in the post, a model on it to turn, play with and build step by step. **Open the whole studio** opens a copy of it as yours.
@@ -60,7 +60,7 @@ The gallery's list can also be asked for the models built from a set, as its pag
 
 - **Order**: Top builds, Newest, Most liked, Most remixed, Most built, and, signed in with [your collection](/docs/collection), **Parts I own**, which puts first the models you own most of the parts for.
 - **Size**: Any size; Small, under 200 parts; Medium, 200 to 999; Large, 1,000 parts or more.
-- **Made**: **Hand-built** or **With the assistant**, as the app that shared it said.
+- **Made**: **With the assistant** lists the models whose builders chose to say so; **Hand-built** every other. How a model was made is its builder's to say, and nothing on the site says it until they do: **Say it was made with the assistant** as they share it, or under **More** on its page ([Model pages](/docs/model-pages#actions)).
 - **Has instructions** (steps laid out by whoever built it), **Technic or mechanism**, **Tested only**.
 
 Each filter that is on shows as a pill beside Filters; press its × to drop it, or **Clear all** when there are two or more. **Clear the filters** in the sheet drops them all. On a phone, Top's time is in the sheet too, as **Top over**.
