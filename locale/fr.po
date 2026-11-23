@@ -3674,8 +3674,8 @@ msgid "%s° between the %s and the %s"
 msgstr "%s° entre %s et %s"
 
 # Opening and saving: File, Open's list, Godot's file dialog, the Library, Save as, Versions, Saved models, the confirmations, Export a 3D model
-msgid "From a file on this computer (LDraw, Studio .io, LDD .lxf)…"
-msgstr "À partir d'un fichier de cet ordinateur (LDraw, Studio .io, LDD .lxf)…"
+msgid "From a file (LDraw, Studio .io, LDD .lxf)…"
+msgstr "À partir d'un fichier (LDraw, Studio .io, LDD .lxf)…"
 
 msgid "From the library: real sets and the gallery's models…"
 msgstr "Depuis la bibliothèque : de vrais sets et les modèles de la galerie…"

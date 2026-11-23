@@ -48,7 +48,7 @@ ui:working model that could not open
 
 ## Open a model {#open}
 
-![File › Open… as a menu: From a file on this computer, From the library, and Rename or delete saved models at the top; then three saved models, newest first, each with its count of bricks and when it was saved; then the examples.](/docs/img/saving-open.webp "File › Open… (Ctrl+O): your saved models, newest first, then the examples.")
+![File › Open… as a menu: From a file, From the library, and Rename or delete saved models at the top; then three saved models, newest first, each with its count of bricks and when it was saved; then the examples.](/docs/img/saving-open.webp "File › Open… (Ctrl+O): your saved models, newest first, then the examples.")
 
 **File › Open…** ([[Ctrl+O]]) lists your saved models, newest first, each with how many bricks it has and when it was saved, then the examples. Choose one to open it. **File › Open recent** has your last eight.
 
@@ -120,7 +120,7 @@ lib:model diff
 
 ## Keep a copy of everything {#backup}
 
-**File › Export › All my models (.zip)** downloads every model saved here as LDraw files in one .zip: a copy of your own to keep anywhere. Versions and unsaved work are not in it. To bring a model back, unzip it and open its .ldr with **File › Open… › From a file on this computer**.
+**File › Export › All my models (.zip)** downloads every model saved here as LDraw files in one .zip: a copy of your own to keep anywhere. Versions and unsaved work are not in it. To bring a model back, unzip it and open its .ldr with **File › Open… › From a file**.
 
 ## The library {#library}
 
@@ -132,7 +132,7 @@ ui:library
 
 ## Put one model into another {#into}
 
-**File › Import › Into this model…** lists your saved models and the examples, with **From a file on this computer…** and **From the library…** at the top. Choose one and it comes into your hand whole, as one sub-assembly; click where it goes. In the library, a card's **Put in this model** does the same with a real set or a model someone shared, when its licence lets it be built on.
+**File › Import › Into this model…** lists your saved models and the examples, with **From a file…** and **From the library…** at the top. Choose one and it comes into your hand whole, as one sub-assembly; click where it goes. In the library, a card's **Put in this model** does the same with a real set or a model someone shared, when its licence lets it be built on.
 
 Everything in it comes with it: its sub-assemblies, its author's build steps, parts Brickworks cannot draw (kept in the file, in their sub-assembly and step), its lights and saved views as its sub-assembly's own, and its maker, written in its sub-assembly's header. Its motions are kept in its sub-assembly as its file had them, and the bar says they play only where it is the model itself, not inside yours. A sub-assembly or file named like one of yours is given a name of its own ("Roof 2"), and the bar says so. One **Undo** takes all of it out. Your model keeps every line of its own file; when it is someone else's file with no build steps, its parts stay in its one step and the model you put in keeps its own steps inside its sub-assembly, and once you take the last model you put in back out, the file is just as it was.
 
@@ -144,7 +144,7 @@ ui:put a model into this one
 
 ## Bring in a file from another program {#formats}
 
-**File › Import** reads these, and **File › Open… › From a file on this computer** reads the first three:
+**File › Import** reads these, and **File › Open… › From a file** reads the first three:
 
 | File | Choose |
 |---|---|

@@ -708,7 +708,9 @@ func _on_open() -> void:
 	# Exporting an .ldr and then having nowhere to put it back was the
 	# shape of this before: the app could write the format it reads and
 	# could not read the format it writes.
-	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	# "From a file", not "on this computer": on a phone or a tablet, where
+	# it opens the device's own files, that was wrong (ux12, the walk at 390).
+	_saves.add_item("From a file (LDraw, Studio .io, LDD .lxf)…", IMPORT)
 	_saves.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	# With the other commands, above the saves. Under them, forty saves put
 	# it below the window's foot, out of sight until the menu was scrolled,
@@ -991,7 +993,7 @@ func into_model() -> void:
 	_into_entries = store.list_saved()
 	var examples: Array[ModelStore.Entry] = store.list_examples()
 	_into.clear()
-	_into.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_into.add_item("From a file (LDraw, Studio .io, LDD .lxf)…", IMPORT)
 	_into.add_item("From the library: real sets and the gallery's models…", LIBRARY)
 	_into.add_separator("Put in this model, then click where it goes")
 	for n: int in _into_entries.size():
