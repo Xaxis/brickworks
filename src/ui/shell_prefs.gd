@@ -58,6 +58,10 @@ const DEFAULTS: Dictionary = {
 	# then "offered", "skipped" or "done". Offered once on a device, on a
 	# first visit, and never again unasked.
 	"first_build": "",
+	# Who on this device was offered a copy's first acts (FirstActs.offer):
+	# never again for them. Not read back while it was missing here, so a
+	# reload or a second tab offered them again (fmfin, 2026-11-23).
+	"first_acts": [],
 	# partplaces: the booklet's parts boxes say where each part is kept
 	# ("from drawer 3"), from My collection's places. Turned off on Where
 	# it's kept, for a booklet made for somebody else.

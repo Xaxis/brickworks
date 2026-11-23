@@ -196,10 +196,17 @@ func _run() -> void:
 	_ok(world.brick_count() == bricks + 1 and not acts.visible,
 		"a part put down puts it away (%d parts, %d before)" % [world.brick_count(), bricks])
 	(_main.get("_verbs") as EditVerbs).set_mode("select")
+	# Written as the app writes it, in this run's own data folder (probe.sh).
+	ShellPrefs.kept_by_a_check = true
 	_ok(acts.offer(kept, "probe-person-f"), "offered to somebody new")
 	await _key(KEY_ESCAPE)
 	_ok(not acts.visible, "Escape puts it away")
 	_ok(not acts.offer(kept, "probe-person-f"), "...and it is never offered to them again")
+	# Read again from its file, as a reload or a second tab reads it: kept
+	# only in this run's memory, the next start offered it again.
+	ShellPrefs._loaded = false
+	_ok(FirstActs.offered_before("probe-person-f"), "...kept on this device, read back from its file")
+	ShellPrefs.kept_by_a_check = false
 
 	# The copy is made the moment the code is taken, with the age question
 	# still to come: a reload then comes back to the link's address, which
