@@ -4618,6 +4618,18 @@ msgstr "Partagé à ce lien et publié dans la galerie. Publiez à nouveau pour 
 msgid "Brickworks took it out of the gallery, so it cannot be listed there."
 msgstr "Brickworks l'a retiré de la galerie, il ne peut donc pas y figurer."
 
+msgid "Share progress"
+msgstr "Partager l'avancement"
+
+msgid "Publish this version as work in progress: listed with your name, in your followers' feeds and in its own Talk thread, kept out of Top and the challenges until you publish it as finished."
+msgstr "Publier cette version comme travail en cours : affichée à votre nom, dans le fil de vos abonnés et dans sa propre discussion du Forum, hors du Top et des défis jusqu'à ce que vous la publiiez comme terminée."
+
+msgid "Work in progress is shared in the gallery and Talk, which are for people 13 and over."
+msgstr "Un travail en cours est partagé dans la galerie et le Forum, réservés aux personnes de 13 ans et plus."
+
+msgid "Brickworks took it out of the gallery, so it cannot be shared there."
+msgstr "Brickworks l'a retiré de la galerie, il ne peut donc pas y être partagé."
+
 msgid "Signing you in… %s once that is done."
 msgstr "Connexion en cours… %s une fois que c'est fait."
 
