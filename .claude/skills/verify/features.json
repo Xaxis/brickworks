@@ -56,6 +56,7 @@
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_model_page.py",
         "tests/test_refresh_catalogue.py",
         "tests/test_release.py",
@@ -170,6 +171,7 @@
       "tests": [
         "tests/test_flows_for.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_model_bases.py",
         "tests/fixtures/console/api3_check.mjs",
         "tests/fixtures/owner_notify/api_check.mjs",
@@ -333,6 +335,7 @@
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",
         "tests/test_sets.py",
@@ -799,7 +802,8 @@
       "tests": [
         "tests/fixtures/console/api2_check.mjs",
         "tests/test_adminclaude.py",
-        "tests/test_insights.py"
+        "tests/test_insights.py",
+        "tests/test_live_smoke.py"
       ]
     },
     {
@@ -3338,6 +3342,14 @@
       "tests": []
     },
     {
+      "id": "cli:the live smoke and its rollback",
+      "kind": "cli",
+      "entry": "tools/release/live_smoke.sh",
+      "reach": "tools/release/live_smoke.sh current [DOMAIN] | check ORIGIN | guard DOMAIN PREVIOUS_URL TAG   (ship.sh: current before it promotes, guard once the domain serves the release; a read-only smoke, its browser half tools/web/live_smoke.mjs under heavy; guard rolls the domain back to PREVIOUS_URL when the release fails twice and the build before passes; tests/test_live_smoke.py)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:the menus written for the docs",
       "kind": "cli",
       "entry": "src/dev/docs_menus.gd",
@@ -4463,6 +4475,7 @@
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
+        "tests/test_live_smoke.py",
         "tests/test_model_bases.py",
         "tests/test_packaged_facts.py",
         "tests/test_release.py",

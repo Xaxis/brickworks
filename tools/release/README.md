@@ -318,6 +318,18 @@ What each one guards against, all learned the hard way on 2026-10-13:
   runs the check on the preview and on brickworks.diy by turns (`AB_LIVE`
   names another), and `timing_judge.py --battery LOG --run P|L EXIT LOG...`
   judges any runs' logs.
+- `live_smoke.sh` looks at the live site the moment a release is live, and
+  puts it back when the release broke it. `current [DOMAIN]` names the
+  deployment the domain points at (asked before the promotion: where to go
+  back to); `check ORIGIN` only reads (GETs, then a signed-out browser that
+  sends nothing else: home, a model page, Talk, `/app` started), about a
+  minute on a calm box; `guard DOMAIN PREVIOUS_URL TAG` checks twice, checks
+  the build before on its own URL, and only when that one passes rolls the
+  domain back (`vercel rollback` for brickworks.diy, `vercel alias set` for
+  any other alias), confirms the domain serves it, checks it there and writes
+  `TAG-rolled-back` for `/admin#site`. Exit 0 passed, 3 rolled back, 1
+  failed, 2 no verdict; the line to copy begins `live_smoke: rolled back`.
+  The next release's `vercel promote` ends the rolled-back state.
 - `ship.sh` runs the merge gates itself, once for every unit merged, under
   the release's priority: the parse gate on every GDScript file changed since
   main, and the tool list against the app. Run per merge without priority,
