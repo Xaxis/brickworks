@@ -316,6 +316,11 @@ func _build() -> void:
 		_menu.text = "Menu"
 		_menu.focus_mode = Control.FOCUS_NONE
 		_menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		# At the right edge whatever else shows: with the page laid out by
+		# hand the name goes, and Menu sat after Redo, mid-bar. Its slot takes
+		# the room the name leaves, the name all of it while it shows.
+		_menu.size_flags_horizontal = Control.SIZE_EXPAND | Control.SIZE_SHRINK_END
+		_menu.size_flags_stretch_ratio = 0.001
 		AppHeader.dress_button(_menu, p(1.0))
 		_menu.add_theme_font_size_override("font_size", ceili(p(16)))
 		_menu.pressed.connect(_open_app_menu)
@@ -542,13 +547,16 @@ func _share_top() -> void:
 	var row: HBoxContainer = _name.get_parent() as HBoxContainer
 	var gap: float = row.get_theme_constant("separation")
 	var inside: float = get_viewport().get_visible_rect().size.x - p(AppHeader.GUTTER_NARROW) * 2.0
-	# Everything but the name, Redo shown, each with its gap before it.
+	# Everything but the name, Redo shown, each with its gap before it, and a
+	# unit each for the box rounding its children's places: without, the
+	# bar came out 4 units wider than the window at 390 (appchrome_probe),
+	# Menu past the gutter.
 	var rest: float = 0.0
 	for child: Node in row.get_children():
 		var control: Control = child as Control
 		if control == _name or (not control.visible and control != redo):
 			continue
-		rest += control.get_combined_minimum_size().x + gap
+		rest += control.get_combined_minimum_size().x + gap + 1.0
 	var room: float = inside - rest
 	redo.visible = room >= p(NAME_LEAST)
 	if not redo.visible:

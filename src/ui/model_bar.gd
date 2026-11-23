@@ -433,6 +433,7 @@ func _fit_header() -> void:
 	# this one heads only the viewer and Build it, at the full 61 points.
 	if not Phone.on():
 		pt = minf(pt, _fitting_pt(gutter))
+	points = pt
 	var density: float = Icons.density(brand)
 	add_theme_stylebox_override("panel", AppHeader.ground(pt, gutter))
 	custom_minimum_size.y = (AppHeader.TALL + AppHeader.LINE) * pt
@@ -452,6 +453,9 @@ func _fit_header() -> void:
 
 var _mark_drawn_at: float = 0.0
 var _mark_drawn_pt: float = 0.0
+## The interface's units to the header's point it is drawn at now: the
+## window's (AppHeader.points), or fewer where the studio's row needs them.
+var points: float = 1.0
 
 
 ## The most points to the header that keep the studio's whole row on one
