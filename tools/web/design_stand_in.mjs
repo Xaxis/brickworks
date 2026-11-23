@@ -253,7 +253,7 @@ for (const [at, [name, kind, parts]] of [["Wizard's Tower", "castle", 9541], ["S
   ["Space Shuttle", "space", 1320], ["Steam Train", "vehicle", 760]].entries()) {
   MODELS.push(model({ id: `HouseMod0${at + 1}`, owner: HOUSE, name, author: "Brickworks", parts, steps: 12 + at, kind,
     tags: ["ai-designed"], test: true, listed_at: `2026-10-1${at}T10:00:00Z`, updated_at: `2026-10-1${at}T10:00:00Z`,
-    description: "Designed with the assistant.",
+    description: "One of the studio's own models.",
     // The second's owner chose to say how it was made (made_with_shown.sql);
     // the rest say nothing of it.
     made_with_shown: at === 1 }));
@@ -451,27 +451,26 @@ export function applied(yes) {
 let LIVE = false;
 const LIVE_MODELS = [
   ["o3dLMc5A3Z", "A sports car, and its driver", "vehicle", ["car", "racing", "minifigure"], 187, 5, "2026-10-13T13:37:34Z",
-    "A red sports car with white racing stripes and a black rear wing, and beside it its driver with a trophy and a nameplate. Designed by Claude."],
+    "A red sports car with white racing stripes and a black rear wing, and beside it its driver with a trophy and a nameplate."],
   ["cGHqpHnEFZ", "A small modular corner shop", "town", ["modular", "shop", "street", "minifigures"], 774, 57, "2026-10-13T13:37:37Z",
-    "A corner building with a shop under a striped awning, a flat above and a cornice round the roof. Designed by Claude."],
+    "A corner building with a shop under a striped awning, a flat above and a cornice round the roof."],
   ["B6FhDpMowd", "A three-core heavy-lift rocket", "space", ["rocket", "launch pad", "minifigure"], 350, 9, "2026-10-13T13:37:39Z",
-    "A heavy-lift rocket of three cores side by side on its launch mount, with the strongback tower beside it. Designed by Claude."],
+    "A heavy-lift rocket of three cores side by side on its launch mount, with the strongback tower beside it."],
   ["uoRqCfPWYJ", "A barn owl", "nature", ["owl", "bird", "sculpture"], 1037, 3, "2026-10-13T13:37:41Z",
-    "A barn owl perched on a post, its white face and tan wings shaped in layers of bricks and slopes. Designed by Claude."],
+    "A barn owl perched on a post, its white face and tan wings shaped in layers of bricks and slopes."],
   ["kfpYMjke5U", "A castle, from one sentence", "castle", ["castle", "medieval", "moat"], 2438, 72, "2026-10-13T13:37:44Z",
-    "A stone castle with four corner towers, a gatehouse and a paved courtyard, ringed by a moat. Claude designed it from a single sentence."],
+    "A stone castle with four corner towers, a gatehouse and a paved courtyard, ringed by a moat."],
   ["EzEXhtXE2C", "Wizard's Tower", "castle", ["tower", "wizard", "minifigures", "display"], 9541, 1324, "2026-10-13T13:37:46Z",
-    "A black tower of four clustered piers, banded in grey and crowned with curved horns, with furnished rooms inside. Claude designed it from one paragraph."],
+    "A black tower of four clustered piers, banded in grey and crowned with curved horns, with furnished rooms inside."],
   ["8eb6GRvnSV", "Orrery of the Sun and eight planets", "mechanism", ["orrery", "gears", "planets", "crank"], 494, 27, "2026-10-14T06:27:39Z",
-    "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own. A Claude session built it in Brickworks."],
+    "A working orrery: one crank turns all eight planets round the Sun, each through a gear train of its own."],
 ].map(([id, name, kind, tags, parts, steps, at, description]) => model({ id, owner: HOUSE, name, author: "Brickworks", parts, steps,
   // house.sql's step 2: ai-designed on the end of each one's tags.
   kind, tags: [...tags, "ai-designed"], listed_at: at, updated_at: at, description }));
 const LIVE_IDS = new Set(LIVE_MODELS.map((one) => one.id));
 // What supabase/house.sql gives the house: its words, the castle across
 // the top, three pinned; and each of the seven tagged ai-designed.
-const HOUSE_SAYS = { bio: "The Brickworks studio's own account. Every model here was designed with the assistant, "
-  + "Claude working in the app, and each one's description says how. Open one to build it step by step, or remix it as your own.",
+const HOUSE_SAYS = { bio: "The Brickworks studio's own account: its own models, and the collection From the LDraw library, real sets as LDraw's builders modelled them, each credited to them. Open one to build it step by step.",
 banner: "kfpYMjke5U", pins: ["EzEXhtXE2C", "8eb6GRvnSV", "cGHqpHnEFZ"] };
 export function liveCommunity(yes) {
   LIVE = Boolean(yes);

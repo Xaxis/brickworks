@@ -480,8 +480,8 @@ they have. A Claude connector belongs to the account that switched it on.
   and `share_view_probe` (the three pictures and what is sent; red on base).
   **Whether its page says so** (2026-11-23, the owner): nothing public says
   how a model was made until its owner chooses (`supabase/made_with_shown.sql`).
-  For a model made with the assistant or Brickify, Share has one box under
-  List it in the gallery, unticked, `share_say_made`: **Say it was made
+  For a model made with the assistant or Brickify, Share has one box after
+  List it in the gallery (and the quick build's box under it), unticked, `share_say_made`: **Say it was made
   with the assistant** (or **with Brickify**); none for a hand-built one.
   `SharePanel.made_fields` sends `made_with` and, where the box is offered,
   `made_with_shown` as it is left; a link's own choice is put in from
