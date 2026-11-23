@@ -85,10 +85,11 @@ signal library_wanted()
 ## Someone wants to rename or delete saved models (SavedModelsDialog).
 signal saved_models_wanted()
 signal opened(bricks: int)
-## A person's own open found parts its file names by a number LDraw has moved
-## or made an alias, or has no file for (ModelStore.moved): Shell offers them
-## (MovedOffer) and asks about a part with no file (MovedPartsDialog).
-signal moved_found()
+## An open found parts its file names by a number LDraw has moved or made an
+## alias, or has no file for (ModelStore.moved): Shell offers the renumbered
+## ones in a person's [param own] file once, the file named by [param of]
+## (MovedOffer), and asks about a part with no file (MovedPartsDialog).
+signal moved_found(own: bool, of: String)
 ## Whatever the bar says (say), for a phone's line over the model.
 signal said(text: String)
 
@@ -754,7 +755,7 @@ func _on_pick(id: int) -> void:
 	var placed: int = await open_with_progress(entry.path)
 	if placed >= 0:
 		opened.emit(placed)
-		offer_moved()
+		offer_moved(not entry.example, entry.path)
 
 
 ## Open a saved model or an example, the status bar saying so first
@@ -780,14 +781,20 @@ func open_with_progress(path: String) -> int:
 	return placed
 
 
-## After a person's own open (File, Open; a file; Recent; the library): the
-## parts its file names by a moved or alias number, or has no file for,
-## offered to them (moved_found: Shell's bar over the model, and the list
-## for a part with no file), when it has any. Not a session's open,
-## Together's or an undo's, which say it their own way or not at all.
-func offer_moved() -> void:
+## After a person's open (File, Open; a file; Recent; the library): the parts
+## its file names by a moved or alias number, or has no file for, offered to
+## them (moved_found: Shell's bar over the model, and the list for a part with
+## no file), when it has any. Not a session's open, Together's or an undo's,
+## which say it their own way or not at all.
+##
+## The renumbered ones only in the person's [param own] file, named by [param
+## of] (its path or file name; the model's title when not given), and once
+## (MovedOffer). An official set from the library or an example opens as it
+## is: drawn right already, it is not theirs to renumber, and the strip over
+## a set just opened was in the way of every fan who opened one (ux12).
+func offer_moved(own: bool = true, of: String = "") -> void:
 	if store != null and store.not_opened.is_empty() and not store.moved.is_empty():
-		moved_found.emit()
+		moved_found.emit(own, of if not of.is_empty() else store.title)
 
 
 ## Missing and moved parts' Update all and Replace checked, and open_model
@@ -1132,7 +1139,7 @@ func _import() -> void:
 			if not _picker.notes.is_empty():
 				note += " — " + _picker.notes
 			_say(note)
-			offer_moved())
+			offer_moved(true, file_name))
 		_picker.failed.connect(func(why: String) -> void: _say(why))
 	_picker.ask()
 

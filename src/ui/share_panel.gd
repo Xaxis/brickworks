@@ -351,7 +351,8 @@ func setup() -> void:
 	_link_box.add_child(_unpublish)
 
 	_done = Button.new()
-	_done.text = "Done"
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	_done.text = "Close"
 	_done.custom_minimum_size = Vector2(0, 32)
 	_done.focus_mode = Control.FOCUS_NONE
 	_done.pressed.connect(func() -> void: visible = false)

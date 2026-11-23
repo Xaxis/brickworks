@@ -264,7 +264,8 @@ func _build() -> void:
 		"A list of LEGO® element numbers (.csv), to upload at LEGO® Pick a Brick: the parts it has no number for are named")
 	_pickabrick.pressed.connect(func() -> void: shop_wanted.emit("pickabrick"))
 
-	_done = _header_button(header, "Done", "")
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	_done = _header_button(header, "Close", "")
 	_done.pressed.connect(hide_list)
 
 	_find = LineEdit.new()

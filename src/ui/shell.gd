@@ -1602,7 +1602,7 @@ func _define() -> void:
 		inspector.set_open(true)
 		inspector.show_place(), selected,
 		"What it is, its colour by every name, where it stands and what it is joined to")
-	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
+	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown(), true))
 	_ticked("panel_keys", key_strip_shown)
 	# A straight-on view beside the model (SplitView). F8: LDCad's Space,
 	# which swaps its split for one large view, is the app's to slide the
@@ -2144,7 +2144,7 @@ func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	var placed: int = await bar.open_with_progress(_recent[id].path)
 	if placed >= 0:
 		bar.opened.emit(placed)
-		bar.offer_moved()
+		bar.offer_moved(not _recent[id].example, _recent[id].path)
 
 
 func _fill_history(menu: PopupMenu) -> void:
@@ -2801,15 +2801,23 @@ func set_grid(on: bool) -> void:
 	ShellPrefs.put("grid", on)
 
 
+## Whether the key strip shows: on, and not every control on it learned
+## (ControlsHint.learn).
 func key_strip_shown() -> bool:
-	var hint: Control = app.get("_hint")
-	return hint != null and hint.get_parent() != null and (hint.get_parent() as Control).visible
+	var hint: ControlsHint = app.get("_hint")
+	return hint != null and hint.get_parent() != null and (hint.get_parent() as Control).visible \
+		and not hint.is_empty()
 
 
-func set_key_strip(on: bool) -> void:
-	var hint: Control = app.get("_hint")
+## The key strip on or off. Turned on by [param asked] (View, Panels, Key
+## strip), whole again: what it had left as learned comes back.
+func set_key_strip(on: bool, asked: bool = false) -> void:
+	var hint: ControlsHint = app.get("_hint")
 	if hint == null or hint.get_parent() == null:
 		return
+	if on and asked:
+		ShellPrefs.put("hints_used", {})
+		hint.rebuild()
 	(hint.get_parent() as Control).visible = on
 	ShellPrefs.put("key_strip", on)
 
@@ -4185,12 +4193,14 @@ var _moved: Window = null
 var moved_offer: MovedOffer
 
 
-## A person's open found parts its file names by a moved or alias number, or
-## has no file for (ModelBar.moved_found): the moved and alias ones offered
-## in the strip over the model, in nobody's way; a part with no file at all
-## asked about in the list, as an open always asked.
-func _show_moved() -> void:
-	moved_offer.offer()
+## An open found parts its file names by a moved or alias number, or has no
+## file for (ModelBar.moved_found): the moved and alias ones of a person's
+## [param own] file offered in the strip over the model, once for the file
+## [param of] (MovedOffer), in nobody's way; a part with no file at all asked
+## about in the list, as an open always asked.
+func _show_moved(own: bool, of: String) -> void:
+	if own:
+		moved_offer.offer(of)
 	for row: Dictionary in store.moved.values():
 		if str(row["kind"]) == MovedParts.MISSING:
 			_review_moved()

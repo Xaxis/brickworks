@@ -16444,3 +16444,13 @@ msgstr "sortie de câble d'un moteur ou contacts d'un boîtier ou d'un hub"
 
 msgid "Save the instructions: they open in your browser, to print or save as a PDF"
 msgstr "Enregistrer les instructions : elles s'ouvrent dans votre navigateur, à imprimer ou à enregistrer en PDF"
+
+# ux13: the walks' frictions
+msgid "select, put down"
+msgstr "sélectionner, poser"
+
+msgid "turn; on a part, move it"
+msgstr "tourner ; sur une pièce : la déplacer"
+
+msgid "last part again"
+msgstr "la dernière pièce de nouveau"

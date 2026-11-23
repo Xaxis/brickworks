@@ -479,7 +479,8 @@ func _build() -> void:
 	_need = _after_button("What do I need?", "What your collection is short of, and what "
 		+ "could stand in")
 	_need.pressed.connect(func() -> void: need_wanted.emit())
-	_done = _after_button("Done", "")
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	_done = _after_button("Close", "")
 	_done.pressed.connect(close)
 
 

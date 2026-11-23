@@ -10,6 +10,11 @@
 ## one step to undo), Review… (the list, MovedPartsDialog, to choose from)
 ## and Keep as is (the file as it was). A part with no file at all is still
 ## asked about in the list (Shell).
+##
+## Said once for a file and its numbers, then never again over it: Keep as is
+## was asked again at every open, and an official set from the library or an
+## example is not offered at all (ModelBar.offer_moved; ux12's walk saw it over
+## a set just opened).
 class_name MovedOffer
 extends PanelContainer
 
@@ -73,15 +78,45 @@ func _ready() -> void:
 
 
 ## Said for the model on the baseplate, as its open listed it
-## (ModelStore.moved), when it has moved or alias parts; hidden when not.
-func offer() -> void:
+## (ModelStore.moved), when it has moved or alias parts and has not been said
+## for the file [param of] and those numbers before (ShellPrefs "moved_said");
+## hidden when not.
+func offer(of: String = "") -> void:
 	var count: int = MovedParts.renumbered_count(store.moved) if store != null else 0
 	if count == 0 or store.world == null:
 		dismiss()
 		return
+	var key: String = said_key(of if not of.is_empty() else store.title, store.moved)
+	var said: Dictionary = (ShellPrefs.value("moved_said") as Dictionary).duplicate()
+	if said.has(key):
+		dismiss()
+		return
+	said[key] = int(Time.get_unix_time_from_system())
+	# The newest MOST_KEPT, so the file it is kept in stays small.
+	if said.size() > MOST_KEPT:
+		var keys: Array = said.keys()
+		keys.sort_custom(func(a: String, b: String) -> bool: return int(said[a]) < int(said[b]))
+		for old: String in keys.slice(0, said.size() - MOST_KEPT):
+			said.erase(old)
+	ShellPrefs.put("moved_said", said)
 	_of_generation = store.world.generation()
 	_words.text = words(count)
 	visible = true
+
+
+## How many files' offers are remembered as said.
+const MOST_KEPT := 200
+
+
+## What an offer is remembered by: the file [param of] and the renumbered
+## numbers [param moved] lists, so a file given more of them is offered them.
+static func said_key(of: String, moved: Dictionary) -> String:
+	var numbers: Array = []
+	for number: String in moved:
+		if str(moved[number]["kind"]) != MovedParts.MISSING:
+			numbers.append(number)
+	numbers.sort()
+	return "%s|%s" % [of, ",".join(numbers)]
 
 
 ## What the strip says of [param count] parts.

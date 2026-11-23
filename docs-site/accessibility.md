@@ -18,7 +18,7 @@ Brickworks can be used with the keyboard alone, at a bigger size and with less o
 3. On a part's tile, [[Enter]] takes the part into your hand, aimed at the middle of the view. Move the view with its keys ([The view](/docs/the-view#camera)), then [[Enter]] puts the part down.
 4. [[F6]] again gives the keys back to the model, and the next [[F6]] returns to where you were.
 
-Every command has a place in the menus, and [[Ctrl+/]] (**Find a command…**) runs any of them by name: type *mirror* or *steps* and press [[Enter]]. The keys sheet ([[F1]]) lists every key, and its box finds one: type *hinge*. The key strip over the model shows the commonest; **View › Panels › Key strip** hides it.
+Every command has a place in the menus, and [[Ctrl+/]] (**Find a command…**) runs any of them by name: type *mirror* or *steps* and press [[Enter]]. The keys sheet ([[F1]]) lists every key, and its box finds one: type *hinge*. The key strip along the model's foot shows the commonest, each until you have used it three times; **View › Panels › Key strip** hides it, or brings them all back.
 
 <!-- covers
 ui:accessibility

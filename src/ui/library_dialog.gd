@@ -260,7 +260,8 @@ func _build() -> void:
 	var fill := Control.new()
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(fill)
-	var done := _button(header, "Done", close, "library_done")
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	var done := _button(header, "Close", close, "library_done")
 	done.focus_mode = Control.FOCUS_NONE
 
 	# The search and the filters first, the shelf's note after them.
