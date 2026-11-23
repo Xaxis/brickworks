@@ -1051,14 +1051,18 @@ func _fill_more() -> void:
 			# Once the tap is done with its row, which this puts away.
 			_fill_more.call_deferred())
 		if open:
-			_more_rows(menu[1] as Array, "")
+			for row: Array in _menu_rows(menu[1] as Array, ""):
+				_more.add_row(str(row[0]), str(row[1]))
 
 
 ## The menus open in More, by name, while it is up: each opens folded.
 var _more_open: Dictionary = {}
 
 
-func _more_rows(items: Array, under: String) -> void:
+## More's rows for a menu's items, [words, command] each, a submenu's under
+## its name: what _fill_more lists and [method more_holds] reads.
+func _menu_rows(items: Array, under: String) -> Array:
+	var rows: Array = []
 	var seen: Dictionary = {}
 	for item: String in shell._shown(items):
 		if item == "-" or seen.has(item):
@@ -1067,7 +1071,8 @@ func _more_rows(items: Array, under: String) -> void:
 		if item.begins_with(">"):
 			var kind: String = item.substr(1)
 			if Shell.SUBMENUS.has(kind):
-				_more_rows(Shell.SUBMENUS[kind] as Array, str(Shell.SUBMENU_WORDS.get(kind, kind)))
+				rows.append_array(_menu_rows(Shell.SUBMENUS[kind] as Array,
+					str(Shell.SUBMENU_WORDS.get(kind, kind))))
 			continue
 		var command: Shell.Command = shell.command(item)
 		if command == null:
@@ -1075,7 +1080,22 @@ func _more_rows(items: Array, under: String) -> void:
 		var label: String = command.words
 		if not under.is_empty():
 			label = "%s: %s" % [under, label]
-		_more.add_row(label, item)
+		rows.append([label, item])
+	return rows
+
+
+## Whether More lists [param command], as a tile or a row of one of its
+## menus (folded or open): where Redo is once the top bar has no room for it.
+func more_holds(command: String) -> bool:
+	if shell == null or shell.command(command) == null:
+		return false
+	if shell._shown(QUICK).has(command):
+		return true
+	for menu: Array in Shell.touch_menus():
+		for row: Array in _menu_rows(menu[1] as Array, ""):
+			if row[1] == command:
+				return true
+	return false
 
 
 ## The colours, big: the current ones by group, or every one.
@@ -1179,8 +1199,13 @@ func state() -> Dictionary:
 		open = _newest.title
 		how = _newest.state
 	var verbs: EditVerbs = app.get("_verbs")
+	var redo: Button = _tool_buttons.get("redo")
+	# Redo on the top bar, or where it goes when the bar has no room
+	# (_share_top): tools/web/fit_check.mjs takes it missing from the bar
+	# only when More says it holds it.
 	return {"sheet": open, "sheet_state": how, "sheets": titles, "wide": wide, "hint": hint(),
-		"adding": verbs != null and verbs.adding}
+		"adding": verbs != null and verbs.adding,
+		"redo_on_top": redo != null and redo.is_visible_in_tree(), "more_redo": more_holds("redo")}
 
 
 ## A picture drawn over a row button's word, where there is no icon: the
