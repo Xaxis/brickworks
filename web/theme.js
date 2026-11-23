@@ -165,13 +165,15 @@
   }
 })();
 
-// The beta (betahome): while open, a bar at every page's foot (betabar.js)
+// The beta (betahome): while open, a strip at every page's top (betabar.js)
 // with Report a bug and Join, and the landing page's Open beta. What the
 // site last said of it is kept here ("brickworks.beta"): open in the last
 // day, <html data-beta="open"> is set before anything is drawn, so what is
 // held for it is in place at the first frame; off in the last ten minutes,
-// the bar's script is not asked for. Never on an embed's card or the
-// connector's consent page.
+// the bar's script is not asked for. The bar's own room at the top
+// (<html data-betabar>, site.css) is held from the first frame too, open
+// or not yet heard of, unless its × hid it here, so it moves nothing as it
+// comes (pagebar). Never on an embed's card or the connector's consent page.
 (() => {
   const root = document.documentElement;
   if (root.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
@@ -188,7 +190,17 @@
     window.brickworksBeta = "off";
     return;
   }
-  const load = () => import("/betabar.js").catch(() => null);
+  // As web/betabar.js barShown reads it: "off", or a day's hiding not ended.
+  let hidden = null;
+  try {
+    hidden = JSON.parse(localStorage.getItem("brickworks.betabar.hidden") || "null");
+  } catch {
+    hidden = null;
+  }
+  const shown = !(hidden === "off" || (typeof hidden === "number" && hidden > Date.now()));
+  if (shown && (!heard || (heard.beta === "open" && age < 86400000))) root.dataset.betabar = "held";
+  // Not loaded (offline), the room held for it goes.
+  const load = () => import("/betabar.js").catch(() => { delete root.dataset.betabar; });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();
 })();

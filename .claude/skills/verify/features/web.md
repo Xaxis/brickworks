@@ -5983,9 +5983,13 @@ plan with Claude as the client.
   2026-11-09, the owner's "elegantly update the homepage to advertise the
   beta testing period". While BRICKWORKS_BETA is open, every page (the
   server's /m/, /u/, /c/ too, by theme.js; never an embed or the consent
-  page) has a bar docked at the window's foot, the whole width, the page's
-  end clear of it (body padding `--betabar-h`; hero3d, 2026-11-23: floating,
-  it covered the home's first post): Open beta (to /beta), Report a bug
+  page) has a bar as a strip at the page's top, over the header, the whole
+  width, in a room the page holds from its first frame (`:root[data-betabar]`
+  set by theme.js, body padding-top `--betabar-row`), so it covers nothing,
+  moves nothing as it comes and scrolls away with the page (pagebar,
+  2026-11-23: docked at the foot it covered whatever reached the fold, an
+  object page's tabs and its Like and Save; floating, the home's first
+  post; bench/results/pagekit-2026-11-23/bar_check.mjs): Open beta (to /beta), Report a bug
   (`window.brickworksReportBug({source: "site", from})` of web/bugreport.js,
   loaded on the first press; without it Send feedback's dialog as a bug),
   and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
@@ -6001,10 +6005,7 @@ plan with Claude as the client.
   (`showBar`, "brickworks:betabar" on window, the other tabs by the
   storage). Report a bug is in the account menu and Menu for everyone while
   the beta is open (`a[data-report-bug]`, `web/follow.js`), the bar shown
-  or not. While it is shown, whatever is scrolled to
-  (Tab, a link, a page's script) stops clear above it
-  (`:root[data-betabar]` scroll-padding-bottom): Settings' Beta hub and
-  Leave were under it at 390. What the server said is kept ten minutes
+  or not. What the server said is kept ten minutes
   ("brickworks.beta"): signed in GET ?op=beta, signed out ?op=beta_spots;
   off, theme.js does not ask for the bar again for ten minutes, and nothing
   is drawn. The homepage's #beta sits under the first screen, after the
