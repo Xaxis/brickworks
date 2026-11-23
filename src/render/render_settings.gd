@@ -196,7 +196,8 @@ var edge: float = -1.0
 ## room kept round it for the fill. [member source] is its light in the
 ## sky's units (0 none); [member source_rise] how high its middle stands
 ## (degrees), [member source_turn] how far round from straight behind the
-## model (degrees, to the right), [member source_wide] and
+## model (degrees to the right, 0 to 360: 180 stands it in front, behind the
+## camera), [member source_wide] and
 ## [member source_tall] how big it is seen from the model (degrees),
 ## [member source_fall] how much darker its edges are than its middle (0
 ## even, 1 dark at the corners), and [member source_key] how much of a

@@ -179,15 +179,22 @@ const PRODUCT_FILL := 0.0
 ## solo judge called more renders photographs (16 of 80 against 11), so on.
 const PRODUCT_EDGE := 1.0
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
-## source and source_*; path_tracer.glsl's source_light): 0 unless asked
-## until judged. Its light in the sky's units; where its middle stands
+## source and source_*; path_tracer.glsl's source_light), on a table under
+## the studio's light by default: a bright window behind the model with the
+## table's own key nearly gone, as a photograph by a window has it. Judged
+## alone beside the photographs, the bench's close-ups on a table and in the
+## tent with it on every table and a small one in the tent were called
+## photographs 26 times of 80 against 17 without (both draws, both rounds
+## ahead), the grey brick 6 of 8 against 0; in the tent it lost the red
+## slope what it gave the top-down shot, so the seamless has none. Its
+## light in the sky's units; where its middle stands
 ## (round from straight behind the model as the camera sees it, in degrees;
 ## and up, where a flat top mirrors it: as high as the camera looks down,
 ## kept within SOURCE_RISE_LOW and SOURCE_RISE_HIGH and its lower edge above
 ## the floor); how big it is seen from the model (degrees), how soft its
 ## edges are (a share of its half size), how much darker its edges are than
 ## its middle, and how much of a staged table's near key stays beside it.
-const PRODUCT_SOURCE := 0.0
+const PRODUCT_SOURCE := 128.0
 const SOURCE_RISE_LOW := 15.0
 const SOURCE_RISE_HIGH := 65.0
 const SOURCE_TURN := 0.0
@@ -195,7 +202,7 @@ const SOURCE_WIDE := 90.0
 const SOURCE_TALL := 50.0
 const SOURCE_EDGE := 0.04
 const SOURCE_FALL := 0.0
-const SOURCE_KEY := 1.0
+const SOURCE_KEY := 0.05
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
