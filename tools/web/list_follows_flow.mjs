@@ -24,8 +24,9 @@
 //      their collection “…”", the tower's card under it, the collection a
 //      link; it is counted on his avatar.
 //   5. The tower's page says "In 1 collection", a pill that goes to its
-//      Collections part, a card of the collection with the tower as its
-//      cover; the collection's page has the tower as its cover too.
+//      collections, in its Overview tab (pagekit: a tab of their own no
+//      more), a card of the collection with the tower as its cover; the
+//      collection's page has the tower as its cover too.
 //   6. Bob lets it go: Follow again, the count gone, and his feed has
 //      nothing of the collection.
 //   7. Ada makes it private: its page is gone, and the tower's says no
@@ -223,10 +224,12 @@ try {
   await bobPage.goto(`${site}/m/${tower}`, { waitUntil: "load" });
   const pill = await bobPage.evaluate(() => {
     const link = document.querySelector('.facts a[href="#collections"]');
-    return { words: link?.textContent || "", tab: document.querySelector('#page-tabs a[data-tab="collections"]')?.textContent || "" };
+    // In its Overview: the Collections tab went (pagekit).
+    return { words: link?.textContent || "", overview: Boolean(document.querySelector("#overview #collections")),
+      tab: Boolean(document.querySelector('#page-tabs a[data-tab="collections"]')) };
   });
-  check(`its facts say "${pill.words}", its tabs "${pill.tab.replace(/\s+/g, " ")}"`, pill.words === "In 1 collection"
-    && /^Collections\s*1$/.test(pill.tab.trim()));
+  check(`its facts say "${pill.words}", its collections in its Overview (${pill.overview}), no tab of their own (${!pill.tab})`,
+    pill.words === "In 1 collection" && pill.overview && !pill.tab);
   await bobPage.click('.facts a[href="#collections"]');
   await until(bobPage, () => location.hash === "#collections", "the part");
   // Until the page stops scrolling (the site scrolls smoothly to a part).

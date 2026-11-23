@@ -1906,14 +1906,17 @@ function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, w
     + `<b>${escapeHtml(number(Number(n) || 0))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
   const ready = follows && follows.ready;
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="${asText(say("More"))}" title="${asText(say("More"))}">`
-    + `${iconHtml("more")}</summary><div class="menu-list"><button type="button" data-report="${asText(say("this collection"))}" `
+    + `${iconHtml("more")}</summary><div class="menu-list">`
+    + `<a href="/api/people?op=list_csv&amp;id=${id}" download data-list-csv>${asText(say("Download as CSV"))}</a>`
+    + `<button type="button" data-report="${asText(say("this collection"))}" `
     + `data-report-collection="${id}" hidden>${asText(say("Report it"))}</button><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a>`
     + "</div></details>";
   const counts = [shown.sets ? countedSaid(shown.sets, "set") : "", shown.models ? countedSaid(shown.models, "model") : ""]
     .filter(Boolean).join(", ") || countedSaid(0, "model");
   // An object's page (pagekit, site.css .obj-layout): what is in it, and
   // beside it the aside, its cover over its name, whose it is, its words,
-  // numbers, Follow, Share, the CSV and More.
+  // numbers, Follow, Share and More (the CSV first in it, as a model's
+  // Download is).
   const main = `<div class="wrap wide person list obj-page" data-id="${id}"${wish ? ' data-kind="want"' : ""}>
   <div class="obj-layout">
   <aside class="obj-aside list-card-aside list-head" aria-label="${asText(say("About {name}", { name: list.name }))}">
@@ -1931,7 +1934,6 @@ function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, w
         + `${asText(say("Follow"))}</button><span class="said" role="status"></span></p>` : ""}
       ${iconButtonHtml({ icon: "share", name: say("Share"),
         attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
-      <a class="cta ghost small" href="/api/people?op=list_csv&amp;id=${id}" download data-list-csv>${asText(say("Download as CSV"))}</a>
       ${more}
     </div>
   </aside>

@@ -53,7 +53,7 @@ Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](
 - signed in, with sets in [My collection](/docs/collection), **Parts you own: N of M**, and what you are missing as a BrickLink wanted list or a Rebrickable CSV;
 - **Open its parts in Brickworks**: the app with the set's parts in the bin, the most used first (`/app?parts=<number>` does the same);
 - **Design with these parts**: the app with the assistant on and a brief naming the set's parts, for your own AI to design from when you send it;
-- where LDraw has a model of it, **Build it in 3D**, and that model's own page at `brickworks.diy/library/<id>`: who modelled it and under which licence, **Share**, and **Open in Brickworks**, which opens it as File › Library… does;
+- where LDraw has a model of it, **Build it in 3D**, and that model's own page at `brickworks.diy/library/<id>`: who modelled it and under which licence, **Share**, and **Open in the studio**, which opens it as File › Library… does;
 - **Based on this set**: gallery models whose designers said they were built from it, changed from it or inspired by it ([based on](/docs/model-pages#based-on)).
 
 Its picture is LDraw's model where there is one; otherwise the set's own picture, Rebrickable's and credited to them, kept on Brickworks' storage so your browser never asks them; for the few with none, a few of its most distinctive parts, drawn by Brickworks. Set and inventory data is Rebrickable's, copied at most once a day.

@@ -152,7 +152,7 @@ return {{ page: [page.status, page.html], embed: [embed.status, embed.html], log
         return
     status, html = got["page"]
     assert status == 200, html[-1500:]
-    assert "<h1>Riverside Watchtower</h1>" in html
+    assert '<h1 class="obj-title">Riverside Watchtower</h1>' in html
     # Nothing said of what was not read: its 37 builds, from the page's own
     # row, but not "no photos yet", nor a collection, nor a mark.
     assert "Built to the last step 37 times" in html

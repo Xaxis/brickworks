@@ -8,7 +8,8 @@
 //   [--only=gallery,model] [--widths=390,1280] [--themes=light,dark]
 //
 // Every page and every state design_flow.mjs visits (tools/web/site_pages.mjs:
-// each dialog and menu opened), at 390 and 1280 px, light and dark, signed
+// each dialog and menu opened; on an object's page each of its other tabs
+// chosen, its panel judged), at 390 and 1280 px, light and dark, signed
 // out and signed in, judged two ways:
 //
 //   axe-core (tools/web/axe-core, vendored): the WCAG 2.2 A and AA rules
@@ -129,7 +130,8 @@ async function controls(page, scope) {
 /// in, what only the stand-in's own model and designer have (a
 /// deployment's are its own, which the stand-in answering the API does not
 /// know). Each is a [role, name] pair, the name a pattern; at least one
-/// control there must match.
+/// control there must match. A part of a page is named by its page's name
+/// and the part's selector: "model#comments", the Comments tab's panel.
 const NAMES = {
   home: { any: [["link", /^Skip to content$/], ["link", /^Open the app$/]] },
   gallery: {
@@ -140,9 +142,11 @@ const NAMES = {
   },
   model: {
     any: [["button", /^Share/], ["button", /^More/]],
-    in: [["button", /^Like/], ["button", /^Save/], ["button", /^Comment/]],
-    local: [["textbox", /comment/i], ["button", /^Reply to .+/]],
+    // Comment's button went (pagekit, 2026-11-23): its tab says the count.
+    in: [["button", /^Like/], ["button", /^Save/], ["tab", /^Comments/]],
   },
+  // The box to write one, above the list, and a comment's Reply.
+  "model#comments": { local: [["textbox", /comment/i], ["button", /^Reply to .+/]] },
   person: { any: [["button", /^Share/], ["button", /^More/]], local: [["button", /^Follow|^Following/]] },
   notifications: { in: [["button", /^Mark all read$/], ["link", /^Notifications/], ["link", /^Feed|^Your feed/]] },
   lists: { in: [["button", /^New list$/]], out: [["button", /^Sign in/]] },
@@ -208,10 +212,11 @@ async function judge(page, label, what, scope, { name, signedIn }) {
     const why = meaningless(one.role, one.name);
     if (why) found.push(`${one.role} ${one.element} ${why}`);
   }
-  // The controls a person comes for, on the whole page.
-  if (!scope && NAMES[name]) {
-    const wanted = [...(NAMES[name].any || []), ...((signedIn ? NAMES[name].in : NAMES[name].out) || []),
-      ...((signedIn && !remote && NAMES[name].local) || [])];
+  // The controls a person comes for, on the whole page or in a part of it.
+  const names = NAMES[scope ? `${name}${scope}` : name];
+  if (names) {
+    const wanted = [...(names.any || []), ...((signedIn ? names.in : names.out) || []),
+      ...((signedIn && !remote && names.local) || [])];
     for (const [role, pattern] of wanted) {
       if (!acted.some((one) => one.role === role && pattern.test(one.name))) {
         const near = acted.filter((one) => one.role === role).map((one) => `"${one.name}"`).slice(0, 6).join(", ");
@@ -225,6 +230,27 @@ async function judge(page, label, what, scope, { name, signedIn }) {
     console.log(`  ok    ${where}: ${acted.length} named controls`);
   }
   if (out) writeFileSync(path.join(out, `${where.replace(/\W+/g, "_")}.json`), JSON.stringify({ found, acted }, null, 1));
+}
+
+/// The tabs of an object's page (api/_tabs.js, web/tabs.js) shown but not
+/// chosen as it opened, by key, in their order; none on other pages. A
+/// tab's key is its panel's id.
+const otherTabs = (page) => page.evaluate(() => [...document.querySelectorAll('#page-tabs[role="tablist"] [role="tab"]')]
+  .filter((tab) => !tab.hidden && tab.getAttribute("aria-selected") !== "true"
+    && document.getElementById(tab.getAttribute("aria-controls") || ""))
+  .map((tab) => tab.dataset.tab));
+
+/// [key]'s tab pressed (with none, the first shown), as a person presses
+/// it: whether it was chosen and its panel shows.
+async function chooseTab(page, key) {
+  const tab = key ? `#page-tabs [role="tab"][data-tab="${key}"]` : '#page-tabs [role="tab"]:not([hidden])';
+  if (!(await page.$(tab))) return false;
+  await page.click(tab, { timeout: 10000 }).catch(() => null);
+  return page.waitForFunction((at) => {
+    const one = document.querySelector(at);
+    const panel = document.getElementById(one?.getAttribute("aria-controls") || "");
+    return one?.getAttribute("aria-selected") === "true" && Boolean(panel) && !panel.hidden;
+  }, tab, { timeout: 5000 }).then(() => true, () => false);
 }
 
 try {
@@ -241,7 +267,17 @@ try {
             await page.goto(base + one.path, { waitUntil: "load", timeout: 60000 });
             if (one.ready && !(await one.ready(page, { width, signedIn }))) fail(label, "did not finish drawing");
             await page.waitForTimeout(300);
-            if (!one.dialogOnly) await judge(page, label, "page", null, how);
+            if (!one.dialogOnly) {
+              await judge(page, label, "page", null, how);
+              // Each other tab of an object's page, pressed, and its panel
+              // judged (the comments, the parts, the builds); then the first
+              // tab again, for the dialogs.
+              for (const key of await otherTabs(page)) {
+                const shown = await chooseTab(page, key);
+                await judge(page, label, shown ? `${key} tab` : `${key} tab (missing)`, `#${key}`, how);
+              }
+              await chooseTab(page, null);
+            }
             const now = (what, scope) => judge(page, label, what, scope, how);
             for (const [what, scope] of one.open ? await one.open(page, { width, signedIn, judge: now }) : []) {
               await page.waitForTimeout(200);

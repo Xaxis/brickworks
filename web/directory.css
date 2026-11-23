@@ -439,6 +439,14 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .challenge .obj-tabs { margin-top: 0; }
 .challenge .obj-panels > [role="tabpanel"] { display: flex; flex-direction: column; gap: var(--s-7); }
 .challenge .entries-head { justify-content: flex-end; }
+/* From 700 px the sort sits at the end of the groups' row, not a row of
+   its own between two rows of tabs. */
+@media (width >= 700px) {
+	.challenge #entries { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-4); align-items: end; }
+	.challenge #entries > * { grid-column: 1 / -1; }
+	.challenge #entries > #group-tabs { grid-column: 1; grid-row: 1; }
+	.challenge #entries > .entries-head { grid-column: 2; grid-row: 1; margin: 0 0 var(--s-4); }
+}
 .challenge-part > h2 { margin-bottom: var(--s-4); }
 /* The winners: one in each group, each its card under what it won, lit in
    the accent; two side by side from 600 px. */
@@ -1007,6 +1015,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.person-card .person-id { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; }
 	.person-card .person-id .avatar.huge { width: 72px; height: 72px; font-size: var(--t-h2); }
 	.person-card .standing { border-top: 0; padding-top: 0; }
+	/* Its badges one row that scrolls on its own, not a third of a
+	   phone's first screen. */
+	.person-card .pills.awards { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+	.person-card .pills.awards::-webkit-scrollbar { display: none; }
+	.person-card .pills.awards > li { flex: 0 0 auto; }
 }
 
 /* A collection's page as an object's page: its cover, name, whose, words,

@@ -16,7 +16,7 @@
     "test-account"
    ],
    "wait": "a.picture img",
-   "alt": "A model's page: the model's picture with View in 3D, the tabs About, Parts, Comments, Builds and Remixes under it, and beside it its name and designer, Build it, Open in Brickworks, Download, and the bar of Like, Save, Share, Comment and Built.",
+   "alt": "A model's page: the model's picture with View in 3D, its pictures and the tabs Overview, Comments, Parts, Builds and Remixes under it, and beside it its name and designer, Build it, Open in the studio with With your Claude, the bar of Like, Save, Share and More, and its facts.",
    "caption": "A shared model's page.",
    "features": [
     "ui:shared model page and card",
@@ -133,7 +133,7 @@
     "#claude-panel"
    ],
    "pad": 12,
-   "alt": "A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
+   "alt": "A model's page with Open in the studio and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.",
    "caption": "With your Claude, on a model's page.",
    "features": [
     "ui:change a model with your Claude"

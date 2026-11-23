@@ -402,6 +402,7 @@ async function modelSaid(browser, code, width, at) {
       url: new URL(document.querySelector('meta[property="og:url"]')?.content || location.href).pathname,
       tabs: [...document.querySelectorAll("#page-tabs a")].map((a) => a.firstChild.textContent.trim()),
       actions: [...document.querySelectorAll(".side .actions a")].map((a) => a.textContent.trim()),
+      more: [...document.querySelectorAll("#more .menu-list > a")].map((a) => a.textContent.trim()),
       heads: [...document.querySelectorAll(".rest section > h2")].map((h) => h.textContent.trim()),
     }));
     check(said.title === script(code, "{name} — a Brickworks model", { name: said.name }), `${where}: its title says "${said.title}"`);
@@ -411,14 +412,16 @@ async function modelSaid(browser, code, width, at) {
     const lang = code === "en" ? "" : `/${code}`;
     check(said.crumbs[0]?.[0] === script(code, "Gallery") && said.crumbs[0]?.[1] === `${lang}/gallery`,
       `${where}: its crumbs, ${said.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
-    const tabs = ["About", "Parts", "Comments", "Builds", "Remixes"].map((word) => script(code, word));
-    const actions = ["Build it", "Open in Brickworks", "Download"].map((word) => script(code, word));
-    check(tabs.every((word) => said.tabs.includes(word)) && actions.every((word) => said.actions.includes(word)),
-      `${where}: its tabs ${said.tabs.join(" / ")}; ${said.actions.map((text) => `"${text}"`).join(", ")}`);
-    // The comments drawn by its script: the Reply under each and a step's
-    // pill in the language, each date as the language writes it.
-    await tab.locator("#comments").scrollIntoViewIfNeeded();
-    await tab.waitForFunction(() => !document.getElementById("comments")?.hidden
+    // Its tabs in order (pagekit), its two actions, and Download first in More.
+    const tabs = ["Overview", "Comments", "Parts", "Builds", "Remixes"].map((word) => script(code, word));
+    const actions = ["Build it", "Open in the studio"].map((word) => script(code, word));
+    check(JSON.stringify(said.tabs.slice(0, tabs.length)) === JSON.stringify(tabs) && actions.every((word) => said.actions.includes(word))
+      && said.more[0] === script(code, "Download"),
+      `${where}: its tabs ${said.tabs.join(" / ")}; ${said.actions.map((text) => `"${text}"`).join(", ")}; More: ${said.more.join(", ")}`);
+    // The comments drawn by its script, in their tab: the Reply under each
+    // and a step's pill in the language, each date as the language writes it.
+    await tab.click('#page-tabs [data-tab="comments"]');
+    await tab.waitForFunction(() => !document.querySelector("#comments .comments-body")?.hidden
       && document.querySelector("#comments .comment-list li"), null, { timeout: 30000 });
     const chrome = await tab.evaluate(() => ({
       reply: document.querySelector("#comments button[data-reply]")?.textContent.trim() || "",

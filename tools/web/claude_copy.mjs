@@ -1,6 +1,6 @@
 // The message a model's page copies for the person's own Claude, as the
 // person gets it (With your Claude, claudelink): the page opened in a
-// browser, Open in Brickworks' With your Claude pressed, the ask typed,
+// browser, Open in the studio's With your Claude pressed, the ask typed,
 // Copy for Claude pressed, and what reached the clipboard printed as one
 // line of JSON: {message, said, shot}. tools/bench/claudelink.py gives a
 // session this and nothing else.

@@ -21,10 +21,10 @@
 //      both themes: its title, its cover drawn, Modelled by Roland Dahl for
 //      LDraw's Official Model Repository (a link to its page there), CC BY
 //      2.0 with the licence's link, its facts (parts, steps, set, theme,
-//      year), View in 3D and Open in Brickworks opening it in the app as
+//      year), View in 3D and Open in the studio opening it in the app as
 //      the app's Library does, its parts list drawn with our pictures, and
 //      Share's sheet with its link. More of its theme under it.
-//   4. Open in Brickworks (unless --no-app): /library/omr-106-1's button
+//   4. Open in the studio (unless --no-app): /library/omr-106-1's button
 //      opens the app with the set in it, 106-1 UNICEF Van, 65 parts. In a
 //      browser of its own, signed in as the test account (.env sourced), as
 //      the app shows nothing else until somebody is; the site's pages are
@@ -209,7 +209,7 @@ try {
         deed: document.querySelector('.licence a[rel="license"]')?.getAttribute("href"),
         pills: [...document.querySelectorAll(".facts .pill")].map((one) => one.textContent.trim()),
         viewer: document.querySelector(".model-page a.picture")?.getAttribute("href"),
-        open: [...document.querySelectorAll(".side .actions a")].find((one) => one.textContent.trim() === "Open in Brickworks")?.getAttribute("href"),
+        open: [...document.querySelectorAll(".side .actions a")].find((one) => one.textContent.trim() === "Open in the studio")?.getAttribute("href"),
         crumbs: document.querySelector(".crumbs")?.textContent.replace(/\s+/g, " ").trim(),
         next: document.querySelectorAll("#similar .model").length,
       }));
@@ -222,7 +222,7 @@ try {
       check(`${at}: its facts (${facts.pills.join(" | ")})`, facts.pills.some((one) => /^5,2\d\d parts$/.test(one))
         && facts.pills.some((one) => /steps, laid out by its modeller$/.test(one)) && facts.pills.includes("Set 10179-1")
         && facts.pills.includes("Star Wars") && facts.pills.includes("2007"));
-      check(`${at}: View in 3D and Open in Brickworks open it in the app (${facts.viewer}, ${facts.open})`,
+      check(`${at}: View in 3D and Open in the studio open it in the app (${facts.viewer}, ${facts.open})`,
         facts.viewer === `/app?new=1&library=${SET}` && facts.open === facts.viewer);
       check(`${at}: under the gallery's Sets and its theme (${facts.crumbs})`, facts.crumbs === "Gallery › Sets › Star Wars");
       check(`${at}: more Star Wars sets under it (${facts.next})`, facts.next >= 3);
@@ -230,6 +230,8 @@ try {
       check(`${at}: nothing sideways (${wide} px past the window)`, wide <= 0);
       await page.screenshot({ path: path.join(out, `set_${width}_${dark ? "dark" : "light"}.png`), fullPage: false });
       if (width === 1400 && !dark) {
+        // Its parts are a tab (pagekit), chosen first.
+        await page.click('#page-tabs [data-tab="parts"]');
         await page.locator("#parts").scrollIntoViewIfNeeded();
         // Each lot's picture drawn from its part's geometry (web/part-pictures.js):
         // data-picture="drawn", a canvas in place of its colour's swatch.
@@ -265,18 +267,18 @@ try {
     await made.close();
   }
 
-  // 4. Open in Brickworks.
+  // 4. Open in the studio.
   if (!args["no-app"]) {
     const signedIn = await launch();
     const made = await signedIn.newContext({ viewport: { width: 1400, height: 900 }, extraHTTPHeaders: headers });
     const { page } = await opened(made, "/library/omr-106-1");
     await Promise.all([page.waitForURL("**/app?**", { timeout: 60000 }).catch(() => null),
-      page.click('.side .actions a.cta:has-text("Open in Brickworks")')]);
+      page.click('.side .actions a.cta:has-text("Open in the studio")')]);
     // The model's title is the page's (library_tab_flow.mjs reads it so).
     const up = await until(page, () => /^106-1 UNICEF Van/.test(document.title)
       && window.brickworksState?.bricks === 65 && !window.brickworksState?.awaited, null, 420);
     const state = await page.evaluate(() => ({ title: document.title, bricks: window.brickworksState?.bricks }));
-    check(`Open in Brickworks opens the app with the set: "${state.title}", ${state.bricks} parts`, up);
+    check(`Open in the studio opens the app with the set: "${state.title}", ${state.bricks} parts`, up);
     await page.screenshot({ path: path.join(out, "app.png"), fullPage: false });
     await signedIn.close();
   }

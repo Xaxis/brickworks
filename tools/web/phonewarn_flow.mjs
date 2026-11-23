@@ -10,7 +10,7 @@
 //      largest is the measured default (docs/PHONE.md), so it goes straight
 //      on at the number the site serves, as every gallery model does today.
 //      Then with a number under it handed to the page as the owner's
-//      (--number, 5,000): Build it and Open in Brickworks ask first on the
+//      (--number, 5,000): Build it and Open in the studio ask first on the
 //      phone alone ("About N parts: on a phone this may close the tab"),
 //      with the question in view at 430x932; Not now and Escape stay, Open
 //      it anyway goes on. The picture still opens the 3D view in its place,
@@ -211,7 +211,7 @@ try {
       /About 10,100 parts: on a phone this may close the tab\./.test(big.after.said) || (BIG.parts !== 10101 && /About [\d,]+ parts/.test(big.after.said)),
       big.after.said.slice(0, 60));
     check("… Escape stays on the page", big.then.escaped.state === "stayed" && !big.then.escaped.open && !/\/app\?/.test(big.then.escaped.url));
-    check("… Open in Brickworks asks too", big.then.copy.open);
+    check("… Open in the studio asks too", big.then.copy.open);
     check("… Not now stays on the page", big.then.notNow.state === "stayed" && !/\/app\?/.test(big.then.notNow.url));
     check("… Open it anyway goes on to the studio with the model", big.then.anyway.includes(`view=${BIG.id}`), big.then.anyway.replace(site, ""));
     const picture = await press("phone", BIG.id, "a.picture", { number: NUMBER,
