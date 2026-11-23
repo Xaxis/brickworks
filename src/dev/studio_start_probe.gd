@@ -145,8 +145,15 @@ func _run() -> void:
 
 # -- what is set up -----------------------------------------------------------------
 
+## Where StudioStart keeps the pictures it draws (StudioStart.DRAWN_AT),
+## emptied first so this run draws them.
+const DRAWN_AT := "user://thumbnails/"
+
+
 func _save_models() -> void:
 	DirAccess.make_dir_recursive_absolute(ModelStore.SAVE_DIR)
+	for file: String in DirAccess.get_files_at(DRAWN_AT):
+		DirAccess.remove_absolute(DRAWN_AT + file)
 	var names: Array[String] = ["Harbour Tug", "Castle Gate", "Red Racer", "Pinned Tower"]
 	for n: int in names.size():
 		var text: String = _grid_text(names[n], 3 + n * 2, n == 3)
@@ -241,7 +248,7 @@ func _the_list(start: Control, signed_ms: int) -> void:
 func _the_faces(start: Control, drawn_ms: int) -> void:
 	var state: Dictionary = start.call("page_state")
 	var kept: int = 0
-	for file: String in DirAccess.get_files_at(start.get("DRAWN_AT")):
+	for file: String in DirAccess.get_files_at(DRAWN_AT):
 		kept += 1 if file.get_extension() == "png" else 0
 	_check(int(state["pictured"]) == 4 and kept >= 3,
 		"(e) every Continue tile shows its model, the three with none stored drawn from their files in %d ms and kept (%d of 4 shown, %d kept)"

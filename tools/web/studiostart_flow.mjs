@@ -226,6 +226,16 @@ try {
       await page.reload({ waitUntil: "load" });
       const again = await watch(page, "back again");
       const start = again.start;
+      // Every Continue tile shows its model: its stored picture, or its file
+      // drawn on the device (StudioStart._drawing_of), never a letter.
+      const pictured = await until(page, () => {
+        const one = (window.brickworksState || {}).studio_start || {};
+        return one.continue > 0 && one.pictured >= one.continue ? one : null;
+      }, "every tile pictured", 30).catch(() => null);
+      const late = (await state(page)).studio_start || {};
+      check(`${size.name} ${scheme}, back again: every Continue tile shows its model (${late.pictured} of ${late.continue}), `
+        + `each came-back row whoever it was (${late.faces} of ${late.came})`,
+        Boolean(pictured) && late.faces >= late.came);
       await page.waitForTimeout(1500);
       await shot(page, `after_${size.name}_${scheme}.png`);
       summary.opens.push({ size: size.name, scheme, new_device_ms: fs.after_open_ms, new_device_real: fs.real,

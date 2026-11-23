@@ -1091,11 +1091,11 @@ func _face_of(by: Variant, who: String) -> Control:
 	face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	face.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
-	var round := StyleBoxFlat.new()
-	round.set_corner_radius_all(ceili(across * 0.5))
-	round.bg_color = tone_of(handle if not handle.is_empty() else said) if not said.is_empty() \
+	var disc := StyleBoxFlat.new()
+	disc.set_corner_radius_all(ceili(across * 0.5))
+	disc.bg_color = tone_of(handle if not handle.is_empty() else said) if not said.is_empty() \
 		else Color(1, 1, 1, 0.12)
-	face.add_theme_stylebox_override("panel", round)
+	face.add_theme_stylebox_override("panel", disc)
 	var letter := _label(said.left(1).to_upper() if not said.is_empty() else "?", 17, Color.WHITE)
 	letter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	letter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1117,12 +1117,12 @@ func _face_of(by: Variant, who: String) -> Control:
 ## A person's colour, as the site picks it (web/card.js avatarTone): FNV-1a
 ## of their handle, lower case, into the eight.
 static func tone_of(handle: String) -> Color:
-	var hash: int = 0x811c9dc5
+	var mixed: int = 0x811c9dc5
 	var lower: String = handle.to_lower()
 	for i: int in lower.length():
-		hash = hash ^ lower.unicode_at(i)
-		hash = (hash * 0x01000193) & 0xFFFFFFFF
-	return TONES[hash % 8]
+		mixed = mixed ^ lower.unicode_at(i)
+		mixed = (mixed * 0x01000193) & 0xFFFFFFFF
+	return TONES[mixed % 8]
 
 
 ## The link a saved model was shared under (its 0 !BRICKWORKS SHARE line,
