@@ -194,7 +194,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   ux14) puts a copy down at once beside the selection, seated where the
   original stood and selected, one undo, the clipboard untouched; with no room
   on any side it holds the copy instead (`ux12_walk_probe --only=x14`: 8 car
-  parts, none floating; "2x" then makes a row). A click puts a held copy down
+  parts, none floating; "2x" then makes a row along the floor, 69 to 77,
+  one undo for the copy and its row). A click puts a held copy down
   as one step and selects it; `R` turns it; `Esc` puts it away. After
   a click with the Clone tool another copy stays in hand (`Carry.repeats`,
   APP_UX A6), as Studio's Clone does, until `Esc`, a right click or another
@@ -646,7 +647,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the suite, PROBE_SIZE=390x844, 430x932, 768x1024 and 1024x768 by hand);
   the colours, 46-point swatches by group (`PartsBin.choose_colour`, what a
   swatch press does: it paints a selection); More, every menu's commands a
-  row each, greyed and lit as the menus are; and a finger held still on a
+  row each, greyed and lit as the menus are, a greyed row saying why under
+  its name and a why shared by greyed tiles said once above them
+  (`PhoneShell._row`, `add_tiles`, `tiles_why`; ux14, `ux12_walk_probe
+  --only=x14 --phone`); and a finger held still on a
   part (`Main._on_phone_hold`, `HOLD_MS`) brings its actions, the right-click
   menu's rows. Two fingers turn the view and pinch zooms
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
