@@ -140,6 +140,9 @@ func _run() -> void:
 			% [id, int(model["parts"]), int(model["stored_parts"]), int(model["lots"]), int(opened.get("placed", 0)),
 				str(facts.get("parts", facts.get("error", "?"))), (facts.get("needs", {}) as Dictionary).size(),
 				passed, model["tested"]])
+		var lots_moved: String = _lots_moved(port.get("needs", {}), facts.get("needs", {}))
+		if not lots_moved.is_empty():
+			print("  the studio's text needs other lots than the stored file: " + lots_moved)
 		for kind: String in ["parts", "set", "tested"]:
 			checks += 1
 			var site_said: Dictionary = (site["published"][id] as Dictionary)[kind]
@@ -172,6 +175,19 @@ func _run() -> void:
 		"all 30" if texts_differ.is_empty() else "not for " + ", ".join(texts_differ)))
 	print("%d FAILED" % _failures if _failures else "the studio ticks every rule as the site checks it")
 	quit(1 if _failures else 0)
+
+
+## The lots [param after] needs other than [param before] does, at most
+## ten of each way: "part/colour stored -> studio".
+static func _lots_moved(before: Dictionary, after: Dictionary) -> String:
+	var moved := PackedStringArray()
+	for key: String in before:
+		if int(after.get(key, 0)) != int(before[key]):
+			moved.append("%s %d -> %d" % [key, int(before[key]), int(after.get(key, 0))])
+	for key: String in after:
+		if not before.has(key):
+			moved.append("%s 0 -> %d" % [key, int(after[key])])
+	return ", ".join(moved.slice(0, 20))
 
 
 ## [param said] through JSON and back, so its whole numbers are the floats
