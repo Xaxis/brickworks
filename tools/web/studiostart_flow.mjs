@@ -71,6 +71,10 @@ const summary = { site, opens: [], pin: {}, new_pin: {}, copy: {} };
 const browser = await launch({ signedOut: true });
 
 async function context(as, { width = 1280, height = 800, touch = false, scheme = "dark" } = {}) {
+  // A sign-in of its own for each browser, as each device has: one session
+  // shared, the first browser's refresh rotated it and ended the others'
+  // ("Your sign-in has ended", flow2).
+  if (as === builder) as = await mintSession(builderEmail);
   const made = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers, colorScheme: scheme,
     ...(touch ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   await made.addInitScript(([name, value]) => {
