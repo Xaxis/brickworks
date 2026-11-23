@@ -30,6 +30,8 @@
 ## Pictures in shots/app_menu/.
 extends SceneTree
 
+## The header the menu bar is (appchrome): the mark drawn at its size.
+const AppHeader := preload("res://src/ui/app_header.gd")
 const DESKTOP_ROWS: Array = ["About Brickworks", "Send feedback…", "-", "Find a command…", "-",
 	"Brickworks website", "Documentation", "-", "Account…"]
 
@@ -87,13 +89,14 @@ func _run() -> void:
 	if not _check("the menu bar has the mark", mark != null and mark.is_visible_in_tree()):
 		_finish()
 		return
-	# Drawn at the screen's density: so many pixels, shown 18 units tall
-	# whatever the density (ModelBar.MARK_TALL, Icons.icon_for).
+	# Drawn at the screen's density: so many pixels, shown the site's 26
+	# points tall whatever the density (AppHeader.MARK, Icons.icon_for).
+	var want: float = AppHeader.MARK * AppHeader.points(mark)
 	var pixels: Vector2i = mark.icon.get_image().get_size() if mark.icon != null else Vector2i.ZERO
 	var tall: float = mark.icon.get_height() if mark.icon != null else 0.0
-	_check("...a picture, %s pixels, %.1f units tall" % [str(pixels), tall],
-		absf(tall - ModelBar.MARK_TALL) < 1.5
-		and absf(pixels.y - ModelBar.MARK_TALL * Icons.density(mark)) < 1.5)
+	_check("...a picture, %s pixels, %.1f units tall (want %.1f)" % [str(pixels), tall, want],
+		absf(tall - want) < 1.5
+		and absf(pixels.y - want * Icons.density(mark)) < 1.5)
 	_check("...named for a screen reader: \"%s\", \"%s\"" % [mark.accessibility_name,
 		mark.accessibility_description], mark.accessibility_name == "Brickworks"
 		and mark.accessibility_description.contains("About"))
@@ -142,6 +145,7 @@ func _at_width(mark: MenuButton) -> void:
 	name.add_theme_font_size_override("font_size", 14)
 	name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	name.custom_minimum_size = Vector2(0, 28)
+	name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	mark.visible = false
 	row.add_child(name)
 	row.move_child(name, 0)

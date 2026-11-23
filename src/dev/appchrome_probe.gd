@@ -249,7 +249,8 @@ func _header(main: Node, layout: String, mode: String) -> Dictionary:
 	if phone == null:
 		mark = bar.brand
 	at["mark"] = mark.get_global_rect() if mark != null else Rect2()
-	var icon_tall: float = float(mark.icon.get_height()) / Icons.density(mark) if mark != null and mark.icon != null else 0.0
+	# An icon's height is in units (Icons.icon_for's size override).
+	var icon_tall: float = float(mark.icon.get_height()) if mark != null and mark.icon != null else 0.0
 	at["icon"] = icon_tall
 	_ok(mark != null and mark.is_visible_in_tree() and absf(icon_tall - AppHeader.MARK * pt) < 1.5
 		and mark.get_global_rect().size.y >= AppHeader.TARGET * pt - 0.5,

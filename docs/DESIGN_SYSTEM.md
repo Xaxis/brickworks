@@ -90,11 +90,23 @@ sized its own titles, from 26 to 74 px. Now:
   for the app, `assets/ui/mark.svg` (the app reads nothing under web/).
   Change the mark in `web/icon.svg`, run the script, commit what it wrote;
   `tests/test_mark.py` and `tests/test_boot_splash.py` fail on a copy that
-  drifted. In the app the mark opens the app's own menu, first in the menu
-  bar where its name in words was (`ModelBar.mark`: About, the website, the
-  docs, your account, and in a browser Back to brickworks.diy), where a CAD
-  program keeps its logo's menu. It is never drawn on the model, a render
-  or an export.
+  drifted. In the app it heads **the app's header**
+  (appchrome, 2026-11-23, `src/ui/app_header.gd`), the site's own: the mark
+  at 26 px and the name at 18 px bold at the left, the app's menu and
+  Account at the right, 60 px and a line on the site's `--bg`, in every mode
+  of the app (the studio, a shared model's viewer, Build it's step player,
+  the page laid out by hand); what a mode adds goes under it, never in its
+  place. The owner found Build it's view with no mark in its header ("it
+  seems obvious that you should build a cohesive consistent view in that
+  regard when using the app"). In a browser the mark is the way home, as
+  the site's is, and the app's menu is **Menu** beside Account (About, the
+  website, the docs, your account, Back to brickworks.diy); the desktop app
+  keeps that menu on the mark, where a CAD program keeps its logo's menu. A
+  phone's top bar is the same header with its tools in it, Menu at the
+  right holding Account, as the site's phone header does.
+  `tests/test_app_header.py` fails when its numbers and site.css's part, and
+  `src/dev/appchrome_probe.gd` compares the header across the modes. It is
+  never drawn on the model, a render or an export.
 - **Four breakpoints** (2026-10-26): **600, 900, 1200 and 1600 px**, and
   no others, in `site.css`, `directory.css` and a page's own `<style>`.
   Under 600 is a phone, 600 to 900 a tablet, 900 to 1200 a laptop, 1200

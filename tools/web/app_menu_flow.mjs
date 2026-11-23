@@ -1,21 +1,27 @@
-// The app's own menu in a browser: the mark at the far left of the menu
-// bar opens About Brickworks, Send feedback, Find a command, the website,
-// the docs, Account and Back to brickworks.diy, and Back leaves the app for
-// the site's home page in the same tab. The web app had no way back to the site but the browser's own
-// Back (brand373, 2026-10-29).
+// The app's own menu in a browser: About Brickworks, Send feedback, Find a
+// command, the website, the docs, Account and Back to brickworks.diy, and the
+// way home leaves the app for the site's home page in the same tab. The web
+// app had no way back to the site but the browser's own Back (brand373,
+// 2026-10-29). Since appchrome (2026-11-23) the app's header is the site's
+// (src/ui/app_header.gd): the mark at the far left is the way home, as the
+// site's mark is (app_home), and the menu is Menu at the right beside Account
+// (app_menu). A build from before has the menu on the mark, and Back to
+// brickworks.diy is then the way home this checks.
 //
 //   node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=… [--out=shots/app_menu_web]
 //   node tools/web/app_menu_flow.mjs --url=http://127.0.0.1:8761/index.html
 //
 // At 1280 x 800, and at a phone's size with a mouse (390 x 844, the phone's
 // layout, which any window a phone's size gets: Phone): the mark is the
-// left-most control of the bar's row (window.brickworksControls.app_menu),
+// left-most control of the bar's row (window.brickworksControls.app_home, or
+// app_menu before appchrome),
 // drawn in its yellow, red and blue, and at the phone's size a fingertip
 // square, 44 points or more each way (it was 9 x 15 in the desktop's layout
 // drawn there, 2026-10-30); a click opens its menu with exactly its rows
 // (window.brickworksState.app_menu); Down and Return on the first open
-// About Brickworks; then Back to brickworks.diy, the last row, puts the
-// page at the site's own address, its header's mark showing. Pictures in
+// About Brickworks; then the mark (before appchrome Back to brickworks.diy,
+// the menu's last row) puts the page at the site's own address, its header's
+// mark showing. Pictures in
 // --out; it fails if a step does not happen or a script error is thrown.
 import { caughtUp, controlsWith, launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
@@ -71,14 +77,17 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
   // it once it is back.
   await page.waitForTimeout(3000);
   const where = await controlsWith(page, ["app_menu"], 30000);
-  const mark = where.app_menu;
+  // The mark, the way home (appchrome), or on an older build the menu itself.
+  const markName = where.app_home ? "app_home" : "app_menu";
+  const mark = where[markName];
+  const menu = where.app_menu;
   if (!check("...and still there once the layout settles", Boolean(mark))) {
     await page.screenshot({ path: `${out}/${size}_mark_gone.png` }).catch(() => {});
     await page.close();
     continue;
   }
   const row = Object.entries(where).filter(([, at]) => Math.abs(at.y - mark.y) < 8);
-  const leftMost = row.every(([name, at]) => name === "app_menu" || at.x > mark.x);
+  const leftMost = row.every(([name, at]) => name === markName || at.x > mark.x);
   check(`...at the top left (${mark.x - mark.w / 2}, ${mark.y - mark.h / 2}; ${mark.w} x ${mark.h}), `
     + `left of everything in its row: ${row.map(([name]) => name).join(", ")}`,
     mark.x - mark.w / 2 < 24 && mark.y - mark.h / 2 < 24 && leftMost);
@@ -113,7 +122,10 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
     colours.yellow > 0 && colours.red > 0 && colours.blue > 0);
   await page.screenshot({ path: `${out}/${size}_bar.png`, clip: { x: 0, y: 0, width, height: Math.min(height, 90) } });
 
-  await page.mouse.click(mark.x, mark.y);
+  if (markName === "app_home") {
+    check(`Menu at the right of the mark (${menu.x}, ${menu.y})`, menu && menu.x > mark.x + 100 && Math.abs(menu.y - mark.y) < 8);
+  }
+  await page.mouse.click(menu.x, menu.y);
   check("a click opens its menu", await until(page, async () => ((await state()).app_menu || []).length > 0, 20));
   const rows = (await state()).app_menu || [];
   check(`...its rows: ${rows.join(", ")}`, JSON.stringify(rows) === JSON.stringify(ROWS));
@@ -131,18 +143,25 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
   // Nothing waiting to be written to the browser's storage, or the page
   // rightly asks before it is left (src/boot/shell.html).
   await until(page, async () => (await page.evaluate(() => (window.brickworksUnstored ? window.brickworksUnstored() : 0))) === 0, 60);
-  await page.mouse.click(mark.x, mark.y);
-  await until(page, async () => ((await state()).app_menu || []).length > 0, 20);
-  const back = ROWS.filter((r) => r !== "-").indexOf("Back to brickworks.diy") + 1;
-  for (let n = 0; n < back; n++) {
-    await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(250);
-  }
   const app = new URL(page.url());
-  await page.keyboard.press("Enter");
+  if (markName === "app_home") {
+    // The mark is the way home, as the site's mark is.
+    const again = (await controlsWith(page, ["app_home"], 30000)).app_home || mark;
+    await page.mouse.click(again.x, again.y);
+  } else {
+    await page.mouse.click(menu.x, menu.y);
+    await until(page, async () => ((await state()).app_menu || []).length > 0, 20);
+    const back = ROWS.filter((r) => r !== "-").indexOf("Back to brickworks.diy") + 1;
+    for (let n = 0; n < back; n++) {
+      await page.keyboard.press("ArrowDown");
+      await page.waitForTimeout(250);
+    }
+    await page.keyboard.press("Enter");
+  }
   const left = await page.waitForURL((at) => at.pathname === "/" && at.origin === app.origin, { timeout: 60000 })
     .then(() => true, () => false);
-  check(`Back to brickworks.diy leaves the app for the site's home page, in this tab (${page.url().split("?")[0]})`, left);
+  check(`${markName === "app_home" ? "the mark" : "Back to brickworks.diy"} leaves the app for the site's home page, `
+    + `in this tab (${page.url().split("?")[0]})`, left);
   const header = left && await page.locator(".site-head .mark .chip").first().isVisible({ timeout: 30000 }).catch(() => false);
   check("...its header showing the mark", Boolean(header));
   await page.screenshot({ path: `${out}/${size}_site.png`, clip: { x: 0, y: 0, width, height: Math.min(height, 200) } });

@@ -649,7 +649,7 @@
       "id": "cli:app menu in a browser",
       "kind": "cli",
       "entry": "tools/web/app_menu_flow.mjs",
-      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, its rows, About, Back to brickworks.diy landing on the site)",
+      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, Menu's rows, About, the mark landing on the site)",
       "area": "building",
       "tests": []
     },
@@ -658,6 +658,14 @@
       "kind": "cli",
       "entry": "src/dev/app_menu_probe.gd",
       "reach": "tools/probe.sh app_menu_probe; PROBE_SIZE=390x844 tools/probe.sh app_menu_probe --browser   (pictures in shots/app_menu/)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:appchrome probe",
+      "kind": "cli",
+      "entry": "src/dev/appchrome_probe.gd",
+      "reach": "tools/probe.sh appchrome_probe; PROBE_SIZE=390x844 tools/probe.sh appchrome_probe   (the desktop's and the web's header in the studio, the viewer, Build it, after Close, Lay out page and after Done: one rect, mark and right controls; pictures in shots/appchrome/)",
       "area": "building",
       "tests": []
     },
@@ -7203,6 +7211,14 @@
       "tests": []
     },
     {
+      "id": "ui:one header in every mode",
+      "kind": "ui",
+      "entry": "src/ui/app_header.gd",
+      "reach": "godot --path .  (the studio, a shared model's viewer /app?view=ID, Build it /app?view=ID&build, Booklet, Lay out page: the same header, the mark at the left, the app's menu and Account at the right, 61 points on the site's ground; Build it's bar and the page editor under it; on the web the mark goes to /)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:open a shared model at a step",
       "kind": "ui",
       "entry": "src/main.gd",
@@ -7931,7 +7947,7 @@
       "id": "ui:the app menu",
       "kind": "ui",
       "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Back to brickworks.diy too)",
+      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Menu at the header's right opens it, Back to brickworks.diy too, and the mark goes home)",
       "area": "building",
       "tests": []
     },
