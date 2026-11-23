@@ -289,7 +289,7 @@ import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, na
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
-import { NOT_YET as WIP_NOT_YET, finish as finishWip, isWip, postVersion, wipReady } from "./_wip.js";
+import { NOT_YET as WIP_NOT_YET, SHOWN as WIP_SHOWN, finish as finishWip, isWip, postVersion, wipReady } from "./_wip.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
@@ -3308,6 +3308,12 @@ async function publish(request, response) {
   // progress is read or written, and a publish asking for it is refused.
   const wipHere = await wipReady();
   if (wip && !wipHere) throw new Refusal(WIP_NOT_YET, 503);
+  // Work in progress goes to the followers' feeds and a Talk thread by its
+  // designer's name, so a link shared with only a few, or a model they chose
+  // not to put their name on, is never shown there.
+  if (wip && !(listed && author)) {
+    throw new Refusal(WIP_SHOWN, 422);
+  }
   const about = saidAbout(body);
   // What its owner says changed in this version, if anything.
   const note = cleanText(body.note, MAX_NOTE) || null;
@@ -3530,7 +3536,7 @@ async function publish(request, response) {
   // A work in progress, or its finish, is one post in the model's Talk
   // thread, as its designer (api/_wip.js): never in the way of the publish.
   let talk = null;
-  if (wipHere && (wip || finished)) {
+  if (wipHere && (wip || (finished && listed && author))) {
     const profile = await db("rpc/feed_who", { method: "POST", body: { account: owner } }).catch(() => null);
     talk = await postVersion(owner, { id, name }, { n, note, changes, kind: wip ? "wip" : "finished", origin, profile });
   }

@@ -230,6 +230,11 @@ try {
   const more = withMore(file, ["1 4 0 -200 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 4 80 -200 0 1 0 0 0 1 0 0 0 1 3001.dat"]);
   check(`the model's file read back (${file.length} characters)`, file.length > 0 && !/^\s*[{<]/.test(file));
   const NOTE = "The jib is on";
+  const unlisted = await api("/api/share", { method: "POST", token: people.ada.access_token,
+    body: { id: modelId, name: NAME, model: file, listed: false, note: "only a link", wip: true } });
+  check(`work in progress by its link only is refused, nothing written (${unlisted.status}): "${unlisted.body.error}"`,
+    unlisted.status === 422 && /List it in the gallery/.test(unlisted.body.error || "")
+    && ((await api(`/api/share?id=${modelId}`)).body.versions || []).length === 1);
   const second = await api("/api/share", { method: "POST", token: people.ada.access_token,
     body: { id: modelId, name: NAME, model: more, listed: true, author: "Ada Wip", note: NOTE, wip: true } });
   check(`version ${second.body.version} shared as work in progress (${second.status}): "${second.body.said}"`,

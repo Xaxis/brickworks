@@ -683,6 +683,10 @@ func publish(as_wip: bool = false) -> void:
 		return
 	if as_wip and _author.text.strip_edges().is_empty():
 		await _suggest_author()
+	# It is shown by its designer's name (api/share.js refuses it without).
+	if as_wip and _author.text.strip_edges().is_empty():
+		_fail("Work in progress is shown by your name: give the name to credit, or make a profile at brickworks.diy/profile.")
+		return
 	state = "publishing"
 	_publish.disabled = true
 	_progress.disabled = true

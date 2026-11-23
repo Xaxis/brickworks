@@ -35,6 +35,9 @@ const ID = /^[A-Za-z0-9]{10}$/;
 // How long one function's answer to "is wip.sql applied" is kept.
 const READY_MS = 5 * 60 * 1000;
 export const NOT_YET = "Sharing work in progress is not open on Brickworks yet: publish it as it is, or try again later.";
+/// Why a work in progress must be listed and credited: it is shown by name.
+export const SHOWN = "Work in progress is shown in the gallery, to your followers and in Talk by your name: "
+  + "tick List it in the gallery and Show who made it, or press Publish to share it by its link only.";
 
 let readiness = { at: -Infinity, yes: false };
 
@@ -138,8 +141,10 @@ export async function finish(owner, given, origin) {
   const said = await db("rpc/wip_finish", { method: "POST", body: { account: owner, p_model: id } });
   if (!said || said.refused === "model") throw new Unacceptable("That is not one of your shared models.", 404);
   if (said.refused === "not_wip") throw new Unacceptable("That model is not work in progress: it is finished already.", 409);
-  const [model] = await db(`shared_models?id=eq.${id}&select=id,name,owner`);
-  const profile = await db("rpc/feed_who", { method: "POST", body: { account: owner } }).catch(() => null);
-  const talk = await postVersion(owner, model, { n: Number(said.n), kind: "marked", origin, profile });
+  const [model] = await db(`shared_models?id=eq.${id}&select=id,name,owner,listed,author`);
+  // Said in Talk only while it is shown by name, as its versions were.
+  const shown = model && model.listed === true && Boolean(model.author);
+  const profile = shown ? await db("rpc/feed_who", { method: "POST", body: { account: owner } }).catch(() => null) : null;
+  const talk = shown ? await postVersion(owner, model, { n: Number(said.n), kind: "marked", origin, profile }) : null;
   return { id, version: Number(said.n), finished_at: said.finished_at, finished: true, talk };
 }

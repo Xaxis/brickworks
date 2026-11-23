@@ -23,7 +23,9 @@
 ##      finished one; Publish reads Update the link again.
 ##   4. Opened again on a link the server says is work in progress, the
 ##      panel says so and Publish reads Publish as finished.
-##   5. Under 13: Share progress is off, and says why; pressed, nothing is
+##   5. No name to credit (no profile, the box empty): Share progress says
+##      it is shown by name and sends nothing.
+##   6. Under 13: Share progress is off, and says why; pressed, nothing is
 ##      sent.
 ##
 ## It loads on a build from before (what is new is asked for by name), so
@@ -54,6 +56,8 @@ class FakeShared extends SharedModels:
 	var version: int = 0
 	var wip_now: bool = false
 	var listed_wip: bool = false
+	## No profile: mine says no name to credit.
+	var no_credit: bool = false
 
 	func publish(_token: String, body: Dictionary) -> Dictionary:
 		published.append(body.duplicate())
@@ -76,7 +80,8 @@ class FakeShared extends SharedModels:
 		if version > 0:
 			shared.append({"id": LINK_ID, "published": true, "listed": true, "barred": false, "wip": listed_wip,
 				"name": "Probe Crane"})
-		return {"code": 200, "body": {"shared": shared, "credit": {"name": PROFILE, "handle": "probe-builder"}}}
+		return {"code": 200, "body": {"shared": shared,
+			"credit": {} if no_credit else {"name": PROFILE, "handle": "probe-builder"}}}
 
 
 func _initialize() -> void:
@@ -191,7 +196,22 @@ func _run() -> void:
 		and str(said.get("status", "")).contains("Shared as work in progress"),
 		"the panel knows it: %s, “%s”" % [said.get("status", ""), said.get("publish_text", "")])
 
-	print("\n5. under 13")
+	print("\n5. no name to credit")
+	panel.visible = false
+	fake.no_credit = true
+	panel.open()
+	await _settle()
+	var author_box: LineEdit = panel.get("_author")
+	if author_box != null:
+		author_box.text = ""
+	var before_sent: int = fake.published.size()
+	await panel.publish(true)
+	await _settle()
+	_ok(fake.published.size() == before_sent and str(panel.page_state().get("status", "")).contains("shown by your name"),
+		"nothing sent, and it says why: %s" % panel.page_state().get("status", ""))
+	fake.no_credit = false
+
+	print("\n6. under 13")
 	panel.visible = false
 	account.over_13 = false
 	panel.open()

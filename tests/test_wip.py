@@ -166,3 +166,16 @@ def test_the_studio_shares_progress_in_one_press_from_the_panel() -> None:
     start = panel.index("func publish(as_wip: bool = false)")
     head = panel[start:panel.index("state = \"publishing\"", start)]
     assert "_list.button_pressed = true" in head and "_credit.button_pressed = true" in head
+
+
+def test_a_work_in_progress_is_only_shown_by_name() -> None:
+    """Its feed rows and Talk posts carry its designer's name, so a link-only
+    model, or one they chose not to credit, is refused before anything is
+    written, and a finish of one that is no longer listed is not posted."""
+    share = (ROOT / "api/share.js").read_text()
+    publish = share[share.index("async function publish("):]
+    refusal = publish.index("if (wip && !(listed && author))")
+    assert refusal < publish.index("await putFile(") and refusal < publish.index('db("shared_models"')
+    assert "if (wipHere && (wip || (finished && listed && author)))" in publish
+    finish = (ROOT / "api/_wip.js").read_text()
+    assert "const shown = model && model.listed === true && Boolean(model.author);" in finish
