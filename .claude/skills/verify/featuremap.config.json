@@ -3919,6 +3919,13 @@
     },
     {
       "kind": "cli",
+      "label": "set3d browser flow",
+      "entry": "tools/web/set3d_flow.mjs",
+      "reach": "node --env-file=.env tools/web/set3d_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--langs=de,fr,es] [--store-log=FILE]   (set3d: ten modelled sets, 30 to 9,092 parts, turned in 3D on their own pages at 1280 and 390 in both themes, no 3D code before View in 3D, the frame, keys or a swipe, full screen, the named stage; two catalogue-only sets saying they have no 3D model; no WebGL keeping the picture; de/fr/es; what each view cost and read from storage)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "set parts probe",
       "entry": "src/dev/set_parts_probe.gd",
       "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
@@ -6926,6 +6933,20 @@
       "entry": "src/dev/wirekeep_probe.gd",
       "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "sethub browser flow",
+      "entry": "tools/web/sethub_flow.mjs",
+      "reach": "node --env-file=.env tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--publish]   (sethub: a modelled set's Build it at its first step and Make your own version under its name, Versions of this set before Built from this set with each card said changed or as it is, or none said with Make your own version, the first screen unmoved; a set with no model offering neither; de/fr/es; --versions=FILE answers the row from a set_versions dry run; --publish, once supabase/set_versions.sql is applied, this run's own account publishes a changed version of 346-2 and it is among its versions through the CDN within 60 s, its card first on the page)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a set's versions",
+      "entry": "supabase/set_versions.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/set_versions.sql --dry --try=tools/set_versions_try.sql --table=model_alt_sets   (sethub: set_versions(set, tests), the gallery's copies of a set's own LDraw model (model_alt_sets role own), changed first, a work in progress and an alternate never; read by api/_bases.js setVersions into ?op=set_based's versions)",
+      "area": "web"
     }
   ]
 }

@@ -208,6 +208,9 @@ var _shared: SharedModels
 ## (TabSession.open_another), and the tab it was chosen in keeps its model.
 var _model_library: ModelLibrary
 var _from_library: String = ""
+## Opened at its first step (?library=<id>&build, a set's page's Build it,
+## sethub): the timeline, as Timeline (B) starts it, once its parts are in.
+var _from_library_build: bool = false
 ## A set whose parts the bin opens on (/app?parts=10497-1, a set's page on
 ## the site, sets364), and words to start the assistant's brief with
 ## (&brief=), put in its box for the person to send or change.
@@ -1977,6 +1980,7 @@ func _ready() -> void:
 		_copying = _argument("--copy")
 	if _from_library.is_empty() and ModelLibrary.is_id(_argument("--library")):
 		_from_library = _argument("--library")
+		_from_library_build = _has_argument("--build")
 	if _bin_set.is_empty() and RegEx.create_from_string("^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$").search(_argument("--parts")) != null:
 		_bin_set = _argument("--parts")
 	if _brief_draft.is_empty():
@@ -4900,6 +4904,8 @@ func _maybe_open_library() -> void:
 		return
 	var id: String = _from_library
 	_from_library = ""
+	var build: bool = _from_library_build
+	_from_library_build = false
 	# Asked for at once, not once the bar is drawn: the network holds no
 	# frame, and a browser drawing in software drew it a second later.
 	var job: Working.Job = Working.begin("Fetching %s from the library…" % id)
@@ -4932,6 +4938,21 @@ func _maybe_open_library() -> void:
 		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
 	# An official set, as it is: only a part with no file is asked about.
 	_bar.offer_moved(false)
+	if build:
+		await _build_from_step_one()
+
+
+## Build it from a set's page (sethub): the model just opened, at its first
+## step in the timeline. On the web its parts come as they are wanted, and
+## the steps are worked out from all of them (as a viewer's are,
+## _view_shared), so this waits for the last, two minutes at most.
+func _build_from_step_one() -> void:
+	var since: int = Time.get_ticks_msec()
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+		await get_tree().create_timer(0.3).timeout
+	if _steps.is_playing_back() or _steps.is_starting():
+		return
+	await _toggle_steps()
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its

@@ -18,7 +18,11 @@
 //                                 (/library/set/N): those its designers say
 //                                 are based on it and those counted as built
 //                                 from it (api/_alts.js, set_built), each with
-//                                 how much of it is from the set; with
+//                                 how much of it is from the set; and its
+//                                 versions, the copies of the set's own
+//                                 LDraw model people published from Make
+//                                 your own version (set_versions,
+//                                 supabase/set_versions.sql); with
 //                                 tests=1, test models too
 //   GET  ?op=set_find&q=WORDS     the sets a designer may mean as they type
 //                                 a set's name or number in the dialog, at
@@ -51,8 +55,11 @@ export const FOUND_MOST = 8;
 /// What the list of sets found may be kept for: the catalogue changes once
 /// a day at most, and the answer is the same for everybody.
 const FIND_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
-/// What a set's list of models based on it may be kept for.
-const LIST_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=60";
+/// What a set's list of models based on it, and its versions, may be kept
+/// for: a version published is on the set's page within a minute (sethub,
+/// docs/PLAN.md row 2), the CDN's copy fresh 20 s and served stale 20 s
+/// more while it is asked again.
+const LIST_CACHE = "public, max-age=0, s-maxage=20, stale-while-revalidate=20";
 
 const missing = (trouble) => /: 404$/.test(String(trouble?.message || ""));
 const plain = (text, most) => String(text ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim()
@@ -226,7 +233,8 @@ export function setFind(request, response) {
 }
 
 /// GET ?op=set_based&set=N: {models}, each a gallery card with [based] and
-/// [alt] (altCard: how much of it is from the set, counted), and
+/// [alt] (altCard: how much of it is from the set, counted), its
+/// [versions] (setVersions: null when they could not be read), and
 /// the public lists it is in (lists: {count, lists}, api/_lists.js
 /// setListsOf; null when that could not be read), which the set's page
 /// says beside them: one ask for what people did with the set.
@@ -235,6 +243,7 @@ export async function setBased(request, response, origin) {
   const entry = catalogSet(String(request.query?.set || ""));
   if (!entry) throw new Unacceptable("There is no such set in the catalogue.", 404);
   const lists = setListsOf(entry.set, tests).catch(() => null);
+  const versions = setVersions(origin, entry.set, tests).catch(() => null);
   // Counted and declared, one list (supabase/alt_builds.sql set_built);
   // before that file, the declared alone (model_bases.sql set_based); before
   // both, none.
@@ -250,7 +259,20 @@ export async function setBased(request, response, origin) {
   return response.status(200).json({ set: entry.set,
     models: (Array.isArray(rows) ? rows : []).map((row) => ({ ...cardOf(origin, row), based: HOWS[row.based] ? row.based : null,
       alt: altCard(row.alt) })),
-    lists: await lists });
+    versions: await versions, lists: await lists });
+}
+
+/// A set's versions (sethub): the gallery's copies of its own LDraw model,
+/// as gallery cards, each with [changed] (not exactly LDraw's model) and
+/// [pieces] (how many of its pieces are the set's); changed first, then
+/// the newest. [] before supabase/set_versions.sql is applied.
+export async function setVersions(origin, set, tests) {
+  const rows = await db("rpc/set_versions", { method: "POST", body: { set_number: set, tests } }).catch((trouble) => {
+    if (!missing(trouble)) throw trouble;
+    return [];
+  });
+  return (Array.isArray(rows) ? rows : []).map((row) => ({ ...cardOf(origin, row), changed: row.changed === true,
+    pieces: Math.max(0, Number(row.pieces) || 0) }));
 }
 
 /// How a card on a set's page is built from the set, as set_built says it:

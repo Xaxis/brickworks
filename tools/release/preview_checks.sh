@@ -48,8 +48,12 @@ declare -A CMD=(
   # on the same page with no reload; a signed-out /profile opens it by
   # itself. A throwaway at a Resend test address, its code minted.
   [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
+  # local only: made_shown_flow.mjs. It runs a local relay against production's functions with throwaway accounts (aiprivate); model_page and gallery carry what a stranger sees.
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
   # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
+  # local only: set3d_flow.mjs. It turns ten sets of up to 9,092 parts in 3D at two widths and both themes,
+  # an hour of SwiftShader under load, and counts storage bytes only through the local relay's preload
+  # (store_count.mjs); library_site and model_page hold the inline viewer on previews (set3d).
   # local only: bootlook_flow.mjs. It serves a web export (--dir) itself and holds its load to a slow network, so a deployment cannot stand in (bootlook).
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and
@@ -89,6 +93,7 @@ declare -A CMD=(
   # through the sign-in; throwaway accounts, deleted after.
   [makes]="tools/web/makes_flow.mjs --url=$P --out=$S/${TAG}_makes"
   [firstminute]="tools/web/firstminute_flow.mjs --url=$P --out=$S/${TAG}_firstminute"
+  [sethub]="tools/web/sethub_flow.mjs --url=$P --out=$S/${TAG}_sethub"
   # Work in progress (buildlog, supabase/wip.sql): Share progress in the app
   # puts the model in a follower's feed and its Talk thread within 60 s, and
   # publishing it as finished ends it. Two throwaway accounts, deleted after.

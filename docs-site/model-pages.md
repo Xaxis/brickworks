@@ -125,7 +125,7 @@ ui:a model's log
 - **Like**, **Save** (into Saved at a tap, or by its arrow into any of [your lists](/docs/lists#save-card): the same control a card has), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
 - **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first. Building it with [Build it](#build-it), its last step offers the same photo where you finish ([Show your build](#show-your-build)).
-- **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead.
+- **More** has **Report it** and **Takedown requests**; on your own model, **Turn comments off** instead, and, for a model made with the assistant or Brickify, **Say it was made with the assistant** (or **with Brickify**): nothing on the site says how a model was made until you choose to, and **Stop saying it was made with the assistant** takes it back. Its page then says **With the assistant** among its facts, and the gallery's **Made: With the assistant** lists it.
 - On your own model, **Enter this month's challenge** ([the challenge](/docs/challenges#enter)).
 
 ![The Share sheet of a model's page: its link with Copy link, Post it to Reddit, Bluesky, Pinterest, X, Facebook and Email, and Embed it in a page with Copy code.](/docs/img/model-share.webp "Share, on a model's page.")
@@ -227,7 +227,7 @@ When a model is published, Brickworks counts it against every set Rebrickable li
 - no one set does, but a few together do (the fewest, up to five): *An alternate build of 42115 and 42054*;
 - one set holds 80% or more of it: *97% from 31009*.
 
-Each set's name opens its page, where the model is listed under **Built from this set**. A model of the set itself (LDraw's model of 6080 King's Castle, say) is that set's own model, not another build of it, and says nothing here. When its designer said it is an alternate build of a set and the set lacks some of its parts, the designer's own page says so after it, *(uses 6 parts not in the set)*; nobody else is shown that.
+Each set's name opens its page, where the model is listed under **Built from this set**. A model of the set itself (LDraw's model of 6080 King's Castle, say, opened from the set's page with [Make your own version](/docs/ldraw-library#every-set)) is that set's own model, not another build of it: it says *A version of LEGO® set 6080 King's Castle*, and the set's page lists it under **Versions of this set**. When its designer said it is an alternate build of a set and the set lacks some of its parts, the designer's own page says so after it, *(uses 6 parts not in the set)*; nobody else is shown that.
 
 ![Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.](/docs/img/model-alt-build.webp "Built from three sets, as counted when it was published.")
 
