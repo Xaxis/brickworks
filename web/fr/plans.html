@@ -41,7 +41,9 @@
 /* Free and Pro side by side from 900 px, their rows shared (a subgrid)
    so names, prices, buttons and lists line up whatever each says; one
    under another below. */
-.plans .narrow { width: min(100% - 32px, 980px); }
+/* The page as wide as every page (homefix, 2026-11-23), what is in it
+   centred at 980 px. */
+.plans .narrow > * { max-width: 980px; margin-inline: auto; }
 .tiers { display: grid; gap: var(--s-4); }
 @media (width >= 900px) {
 	.tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); row-gap: 0; }
