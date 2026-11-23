@@ -311,10 +311,12 @@ function page(pathname) {
   }
   const named = PAGES.find(([pattern]) => pattern.test(pathname));
   // Any other page at its bare name, as deploy.sh serves them: /admin,
-  // /takedown, /download.
+  // /takedown, /download. And the home at /, as /de/ is the German one: a
+  // plain relay answered / with nothing, so a check of the home there
+  // waited for a page that never came (checkdrift, 2026-11-23).
   const bare = /^\/([a-z0-9-]+)\/?$/.exec(pathname);
-  const name = named ? named[1] : bare && existsSync(new URL(`${bare[1]}.html`, web)) ? `${bare[1]}.html`
-    : pathname.slice(1);
+  const name = pathname === "/" ? "index.html" : named ? named[1]
+    : bare && existsSync(new URL(`${bare[1]}.html`, web)) ? `${bare[1]}.html` : pathname.slice(1);
   if (!/^[a-z0-9_-]+\.[a-z]+$/.test(name)) return null;
   const file = new URL(name, web);
   if (!existsSync(file)) return null;
