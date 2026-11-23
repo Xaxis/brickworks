@@ -45,7 +45,24 @@ plan with Claude as the client.
   fails the deploy if it cannot: the web build fetches meshes from there, and
   a catalogue of 2,376 rebuilt meshes once went live before they were up, so
   every long Technic beam failed to load. Proves it: the deploy log's "part
-  meshes in object storage" line ends "to upload : 0".
+  meshes in object storage" line ends "to upload : 0". A listing that finds
+  every mesh up is written down (`~/.cache/brickworks/storage_parts.json`,
+  keyed by the bucket and each mesh's name and size), and a run for the very
+  same meshes within a day lists nothing ("not listed again"); `--check` and
+  `--all` always list (`python3 tools/minitest.py tests/test_storage_stamp.py`,
+  8 passed). The export keeps each `.br` by the sha256 of its input
+  (`tools/web/brotli.mjs --cache`, `~/.cache/brickworks/brotli`, unused ones
+  gone after two days; `BROTLI_CACHE=` keeps none), used only when it
+  decompresses to the input's bytes, so an unchanged engine and pack say
+  "brotli: ... from the cache" (`tests/test_brotli_cache.py`, 7 passed); it
+  makes no `.gz`, which nothing read. The three browser checks (check.mjs,
+  fit_check.mjs --quick, landing_check.mjs) run side by side after the
+  upload, said in their old order with their old words, the others stopped
+  at the first that fails (`tests/test_deploy_checks.py`, 9 passed, with
+  stand-ins for Vercel and the browsers). `--no-fit` leaves out the fit
+  check alone ("deploy: no fit check (--no-fit)"), for the web lane, whose
+  app brickworks.diy already serves. `DEPLOY_TIMES=1` prints each step's
+  seconds ("deploy time: ...", "export time: ...").
   `tools/export.sh web` mends the engine before anything is compressed
   (`tools/web/wasm_proxy_fix.py`, househang 2026-11-07). Godot 4.7.2's web
   template is built with Emscripten 4.0.20, whose main thread finishes a

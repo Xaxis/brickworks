@@ -327,14 +327,20 @@ declare -A CMD=(
   # tools/web/layout_audit.mjs (listkit): every list, signed-in and words
   # page on the one head and list layout, its container, h1 and tabs within
   # a pixel of the feed's at 1280 and 390, signed out and in; a FAIL names
-  # the page.
-  [design]="tools/web/design_flow.mjs --url=$P --out=$S/${TAG}_design"
+  # the page. Light and dark each a check of its own, side by side: each
+  # visit is judged alone, and the one check was a release's longest at 22
+  # to 27 minutes (rel-m319, fastship 2026-11-23); the layout audit runs
+  # once, in the light one.
+  [design]="tools/web/design_flow.mjs --url=$P --themes=light --out=$S/${TAG}_design"
+  [design_dark]="tools/web/design_flow.mjs --url=$P --themes=dark --no-layout --out=$S/${TAG}_design_dark"
   # Every page and dialog design visits (tools/web/site_pages.mjs), judged
   # by axe-core (tools/web/axe-core, vendored): no serious or critical
   # finding at 390 and 1280, light and dark, signed out and in; and every
   # control's name in the browser's accessibility tree meaningful, the key
   # pages' controls there by name. The API answered by the stand-in.
-  [a11y]="tools/web/a11y_flow.mjs --url=$P --out=$S/${TAG}_a11y"
+  # Light and dark apart, as design's (16 to 22 minutes as one).
+  [a11y]="tools/web/a11y_flow.mjs --url=$P --themes=light --out=$S/${TAG}_a11y"
+  [a11y_dark]="tools/web/a11y_flow.mjs --url=$P --themes=dark --out=$S/${TAG}_a11y_dark"
   # The journeys by keyboard alone (Tab, Enter, Escape; Space on a
   # checkbox): the gallery to a model, Like, Save, Share, a comment and a
   # reply, Report it's dialog, Follow, the account menu to Notifications
@@ -379,7 +385,10 @@ declare -A CMD=(
   # the app ?lang=<code>, the footer's Language showing it; choosing English
   # there keeps English though the browser asks for German, and the changelog
   # sends a French browser into a French app, whose loading page speaks it.
-  [site_lang]="tools/web/site_lang_flow.mjs --url=$P --app=$P/app --out=$S/${TAG}_site_lang"
+  # German and French or Spanish apart, each beside English, which each
+  # opens first for what it compares (19 to 25 minutes as one, rel-m319).
+  [site_lang]="tools/web/site_lang_flow.mjs --url=$P --app=$P/app --langs=en,de --out=$S/${TAG}_site_lang"
+  [site_lang_fr_es]="tools/web/site_lang_flow.mjs --url=$P --app=$P/app --langs=fr,es --out=$S/${TAG}_site_lang_fr_es"
   # A model's page (docs/SOCIAL.md U4), the gallery's first model: the
   # picture, name, designer and action bar on a phone's first screen, the
   # column beside the picture on a laptop as the page scrolls; Like, Save,

@@ -253,7 +253,7 @@
       "kind": "cli",
       "label": "web build and deploy",
       "entry": "tools/deploy.sh",
-      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py)",
+      "reach": "tools/deploy.sh --prod   (says the deployment's file count, refused past 15,000; with build/web-nothreads beside the build (tools/export.sh web makes both, its packs held to the threaded export's byte for byte), that engine alone at /e/<hash>/ beside the threaded one, the packs never twice: tools/web/place_build.py STATIC SHA NOTHREADS refuses one whose packs or page differ; python3 tools/minitest.py tests/test_place_build.py tests/test_deploy_checks.py tests/test_storage_stamp.py tests/test_brotli_cache.py; --no-fit skips the fit check alone, DEPLOY_TIMES=1 says each step's seconds)",
       "area": "web"
     },
     {
@@ -7073,6 +7073,27 @@
       "entry": "tools/web/card_sweep.mjs",
       "reach": "node --env-file=.env tools/web/card_sweep.mjs [--dry] [--most=N] [--ids=A,B]   (every listed model's card not yet traced, drawn on the box's GPU and put; after supabase/card_kind.sql)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the live smoke and its rollback",
+      "entry": "tools/release/live_smoke.sh",
+      "reach": "tools/release/live_smoke.sh current [DOMAIN] | check ORIGIN | guard DOMAIN PREVIOUS_URL TAG   (ship.sh: current before it promotes, guard once the domain serves the release; a read-only smoke, its browser half tools/web/live_smoke.mjs under heavy; guard rolls the domain back to PREVIOUS_URL when the release fails twice and the build before passes; tests/test_live_smoke.py)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "lean release lists",
+      "entry": "tools/release/lean.py",
+      "reach": "tools/release/lean.py checks|probes --live SHA --head SHA --tree DIR [--named ...] [--smoke ...] [--every] | record checks|probes NAME BUILT AT OUT... [--passed ...]   (train.sh at staging and once merged, reship; what a release's change against live reaches less what was proven since; proof in $RELEASE_OUT/proofs/; tests/test_lean.py)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "nightly checks",
+      "entry": "tools/release/nightly.sh",
+      "reach": "tools/release/nightly.sh run [REF] | plan [REF] | install [HH:MM] | status   (a systemd user timer at 18:00 local: every check and every headless probe on origin/pre261, their passes written as proof for lean.py; $RELEASE_OUT/nightly-YYYYMMDD.summary)",
+      "area": "release"
     }
   ]
 }

@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:a release written down live, cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:coming soon check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
+<!-- covers: cli:a release written down live, cli:the live smoke and its rollback, cli:lean release lists, cli:nightly checks, cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:coming soon check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
 
 ## Sub-features
 
@@ -251,9 +251,13 @@ that offers each system its own build. The cycle and its cadence are
   ships it in turn, detached: it waits until PREV's `_lead.out` says
   brickworks.diy serves it, makes the release worktree, merges BRANCH at
   its tip then (a later commit waits for the next release), refuses a dirty
-  or half-merged tree, runs the lists, then the probes (four at a time, at
-  the release's priority) and `ship.sh` side by side, main moving only once
-  every probe passed (`TAG.probes`), and retires the worktrees once live.
+  or half-merged tree, runs the lists, chooses its checks and probes again
+  for what it changes against the build live then (`lean_now`, `lean.py`,
+  `TAG_lean.out`), then the probes (six at a time, at the release's
+  priority and `BOX_HEAVY_NICE=0`) and `ship.sh` side by side, main moving
+  only once every probe passed (`TAG.probes`) and `ci_gate.sh`, run beside
+  the deploy, passed; then `live_smoke.sh guard` on brickworks.diy, and the
+  worktrees retired once live.
   Each check failing in the battery runs once more alone (timing checks
   not); what still fails then runs on brickworks.diy as it is, after the
   battery and as a unit's check would (`ship.sh`, `SHIP_STALE`), and the
@@ -282,11 +286,20 @@ that offers each system its own build. The cycle and its cadence are
   `--accept CHECK "REASON"` (at reship or stage) ships past a check that
   failed on brickworks.diy too as the same script, and is refused for one
   that passes there; the log, status and merge message name it with both
-  failure lines. With no `--probes` its probes are every one
-  `tools/suite/headless.txt` lists in the branch's tree, said with how many
-  in the stage output and `TAG.train/probes.why`; `--probes "a b"` names
-  exactly those; `--probes none --why "..."` runs none and the log and
-  status say why; `--probes ""` is refused.
+  failure lines. Its checks are those named, those its change against the
+  build brickworks.diy serves reaches (`flows_for.py`) less those proven
+  since on a preview from which nothing reaches them (`lean.py`, proof in
+  `$RELEASE_OUT/proofs/`), and site, with frames when an app file changed;
+  `--every-check` carries no proof over. With no `--probes` its probes are
+  the headless ones `tools/suite/headless.txt` lists that its change reaches
+  (whose own source names what it changed, `lean.py`), less those proven
+  since, said with how many in the stage output and `TAG.train/probes.why`; `--probes all` is every headless
+  one; `--probes "a b"` names exactly those; `--probes none --why "..."`
+  runs none and the log and status say why; `--probes ""` is refused.
+  `--plan` prints the lean list, the files that differ from live and how
+  many were carried, and stages nothing. `TRAIN_REHEARSE=1` at the stage
+  runs the whole path on the preview and ends where main would move, its
+  result saying how long from its merge; main and the domain untouched.
   tools/release/README.md has the
   rest. `tests/test_release_train.py` runs it with stand-ins for the hour's
   work.
@@ -295,6 +308,18 @@ that offers each system its own build. The cycle and its cadence are
   asset's bytes, followed to the signed URL, the token never sent past the
   API): the check that still means something once the repo is private (U8).
   Both ways 15 of 15 on 2026-10-29 (a gh token standing in).
+- `nightly checks`: `tools/release/nightly.sh run` (a systemd user timer,
+  `nightly.sh install`, 18:00 local) makes a preview of origin/pre261 and
+  runs every check `preview_checks.sh` knows, each failure once more alone,
+  and every headless probe beside them, writes their passes as proof
+  (`lean.py record`) and `$RELEASE_OUT/nightly-YYYYMMDD.summary`
+  (`nightly.latest`, `nightly.sh status`); `nightly.sh plan` counts what it
+  would run. Never moves main, never promotes, nothing on brickworks.diy.
+- `lean release lists`: `tools/release/lean.py checks|probes --live L --head H
+  --tree DIR` says what a release must run and what was carried by which
+  proof; `lean.py record` writes proof. `tests/test_lean.py`,
+  `tests/test_deploy_reads.py` (a fix to a check's module reuses the
+  preview; a build step in tools/web never does).
 - `a release written down live` (`tools/release/release_live.sh`, console2):
   once brickworks.diy serves the release, `ship.sh` writes a row of
   `site_releases` (`supabase/console2.sql`, `site_release_live`): the tag,
@@ -307,6 +332,28 @@ that offers each system its own build. The cycle and its cadence are
   -H "apikey: $SUPABASE_SECRET_KEY" -H "Authorization: Bearer $SUPABASE_SECRET_KEY"
   -H 'content-type: application/json' -d '{"p_limit":3}'` lists the latest
   live first (rel-m295 at 35d44dbd47f2 on 2026-11-13).
+- `the live smoke and its rollback` (`tools/release/live_smoke.sh`, fastship):
+  `current [DOMAIN]` names the deployment brickworks.diy points at now
+  (`vercel inspect`), which `ship.sh` asks before it promotes. `check ORIGIN`
+  only reads: cache-busted GETs (the home page is the site's, `/app` names its
+  `/b/<sha>/`, the gallery's first model with a picture has its page and
+  picture, Talk where the build has `/talk.js`, else "no Talk on this build"),
+  then a signed-out browser under heavy that sends nothing but GETs
+  (`tools/web/live_smoke.mjs`: home at 1280 and 390, the model page's picture
+  drawn, Talk, `/app` up to its first screen). Exit 0 passed, 1 failed (each
+  reason said), 2 not checked. `guard DOMAIN PREVIOUS_URL TAG` checks the
+  domain twice; failing both, it checks PREVIOUS_URL on its own URL and, when
+  that passes, moves the domain back (`vercel rollback` for brickworks.diy,
+  `vercel alias set` for any other alias), waits until the domain's `/app`
+  names PREVIOUS's build, checks it there, writes a `TAG-rolled-back` row
+  through `release_live.sh` for `/admin#site`, and says `live_smoke: rolled
+  back ...`. Exit 0 passed, 3 rolled back and passing, 1 failed, 2 no verdict.
+  Prove: `python3 tools/minitest.py tests/test_live_smoke.py` (stand-ins for
+  vercel, curl, heavy and the check: no network), and on a throwaway alias,
+  never brickworks.diy: a broken prebuilt preview on
+  `brickworks-<name>.vercel.app`, `live_smoke.sh guard` it back to a good
+  deployment (exit 3), then `vercel alias rm` and `vercel remove` that preview
+  (bench/results/fastship-2026-11-23/smoke, 2026-11-23).
 - `download page`: `web/download.html`, served at `/download`
   (tools/site.py copies every file in `web/`; the old `/download.html` 308s
   to `/download`), and its copies at /de/download, /fr/download and
