@@ -366,7 +366,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`PhoneShell._top`). In a browser (`AppHeader.web_layout`) the mark is
   `app_home`, the site's `/` in this tab (`AppHeader.go_home`), and Menu
   (`app_menu`) beside Account; on the desktop the mark is the menu. In the
-  viewer Account opens the site's /settings. `tests/test_app_header.py`
+  viewer Account opens the site's /settings. Account's feed count sits over
+  its corner (`ModelBar._count`), so nothing in the header moves when it
+  comes; the header's points are capped so the studio's row stays one line
+  (`ModelBar._fitting_pt`), the same cap in every mode. `tests/test_app_header.py`
   holds the numbers to site.css; `appchrome probe` (windowed) opens every
   mode in both layouts at 1280 x 800 and 390 x 844 and compares the
   header's rect, mark and right controls with the viewer's.

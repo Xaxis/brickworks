@@ -103,7 +103,12 @@ sized its own titles, from 26 to 74 px. Now:
   website, the docs, your account, Back to brickworks.diy); the desktop app
   keeps that menu on the mark, where a CAD program keeps its logo's menu. A
   phone's top bar is the same header with its tools in it, Menu at the
-  right holding Account, as the site's phone header does.
+  right holding Account, as the site's phone header does. What came into
+  the feed is a count over Account's corner, as the site draws it, never in
+  its words: written in, it widened Account as it came and moved Menu from
+  under the pointer. Where a window is too narrow for the studio's menus
+  and the header at full size on one line, the header takes fewer points,
+  the same in every mode.
   `tests/test_app_header.py` fails when its numbers and site.css's part, and
   `src/dev/appchrome_probe.gd` compares the header across the modes. It is
   never drawn on the model, a render or an export.
