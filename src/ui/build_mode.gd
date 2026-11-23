@@ -87,6 +87,11 @@ const BY_PART_KEPT := "brickworks.build.by_part"
 ## its words to show beside it.
 const PHOTO := "res://assets/ui/tools/photo.svg"
 const WHERE_WORDS_FROM := 520.0
+## Narrower than this many points, Close is an X and Comment a bubble on the
+## title's row, and the note goes under that row (_lay_top): beside them it
+## was a column a few words wide, seven lines on a phone (appchrome 11-23).
+const TITLE_ROW_BELOW := 520.0
+const CLOSE_ICON := "res://assets/ui/tools/close.svg"
 
 var thumbnails: PartThumbnails
 
@@ -108,6 +113,12 @@ var _caption: Label
 ## (Instructions.Step.name, stepnames).
 var _step_name: Label
 var _note: Label
+## The note's place under the title's row on a phone's width, two lines of
+## it until More is pressed.
+var _summary: HBoxContainer
+var _more: Button
+var _folded: bool = true
+var _narrow: bool = false
 ## The model changed from this step since this builder's place was kept,
 ## while they are told so; 0 when it did not.
 var changed_from: int = 0
@@ -243,6 +254,22 @@ func _build_top() -> void:
 	comments.remove_child(comments.pill)
 	comments.pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	balance.add_child(comments.pill)
+	_summary = HBoxContainer.new()
+	_summary.name = "Summary"
+	_summary.visible = false
+	_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(_summary)
+	_more = _button("More", "The rest of what this step says")
+	_more.flat = true
+	_more.size_flags_vertical = Control.SIZE_SHRINK_END
+	_more.visible = false
+	_more.pressed.connect(func() -> void:
+		_folded = not _folded
+		_fold_note())
+	_summary.add_child(_more)
+	# Its lines are known once it is drawn at its width, in whatever
+	# language it is drawn in.
+	_note.draw.connect(func() -> void: _check_fold.call_deferred())
 	_progress = ProgressBar.new()
 	_progress.show_percentage = false
 	_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -397,6 +424,7 @@ func _fit() -> void:
 	comments.fit(pt, 16.0)
 	# Its words as they were, and a fingertip tall.
 	comments.pill.custom_minimum_size.y = maxf(comments.pill.custom_minimum_size.y, TARGET * pt)
+	_lay_top(room / pt < TITLE_ROW_BELOW)
 	(_told.get_parent() as HBoxContainer).add_theme_constant_override("separation", roundi(10.0 * pt))
 	for button: Button in [_one_part, _whole_step]:
 		_choice_face(button, button == _one_part)
@@ -407,6 +435,70 @@ func _fit() -> void:
 		make.fit(_pt)
 		_place_make()
 	_lay_strip()
+
+
+## Close and Comment in words either side of the title and the note under
+## the title; on a phone's width an X and a bubble on the title's row, and the
+## note under that row across the whole width, two lines until More.
+func _lay_top(narrow: bool) -> void:
+	var pt: float = _pt
+	_narrow = narrow
+	var words: VBoxContainer = _caption.get_parent()
+	var column: VBoxContainer = _top.get_child(0)
+	var home: Container = _summary if narrow else words
+	if _note.get_parent() != home:
+		_note.reparent(home, false)
+		_changed.reparent(column if narrow else words, false)
+	if narrow:
+		_summary.move_child(_note, 0)
+		column.move_child(_changed, _summary.get_index() + 1)
+	else:
+		words.move_child(_note, _step_name.get_index() + 1)
+		words.move_child(_changed, _note.get_index() + 1)
+	_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if narrow else HORIZONTAL_ALIGNMENT_CENTER
+	_close.text = "" if narrow else "Close"
+	_close.icon = Icons.icon_for(CLOSE_ICON, 20.0 * pt, Icons.density(self)) if narrow else null
+	_close.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_close.accessibility_name = "Close"
+	_close.custom_minimum_size = Vector2((TARGET if narrow else 88.0) * pt,
+		(TARGET if narrow else BUTTON) * pt)
+	(_close.get_parent().get_node("Balance") as Control).custom_minimum_size.x = \
+		(TARGET if narrow else 88.0) * pt
+	comments.compact = narrow
+	_summary.add_theme_constant_override("separation", roundi(4.0 * pt))
+	_more.add_theme_font_size_override("font_size", roundi(15.0 * pt))
+	_more.add_theme_color_override("font_color", Color(1, 1, 1, 0.78))
+	_more.add_theme_color_override("font_hover_color", Color(1, 1, 1, 1))
+	_more.custom_minimum_size = Vector2(TARGET * pt, TARGET * pt)
+	_fold_note()
+
+
+## The step's note, folded again when it says something new.
+func _say_note(words: String) -> void:
+	if words != _note.text:
+		_folded = true
+		_fold_note()
+	_note.text = words
+	_note.visible = not words.is_empty()
+
+
+func _fold_note() -> void:
+	_note.max_lines_visible = 2 if _narrow and _folded else -1
+	_more.text = "More" if _folded else "Less"
+	_check_fold.call_deferred()
+
+
+## More where the note runs past two lines on a phone's width (Less while it
+## is open). The same test whether More is shown or not: with it shown the
+## note is narrower, so it never shows and hides by turns.
+func _check_fold() -> void:
+	if _summary == null:
+		return
+	_summary.visible = _narrow and _note.visible
+	var long: bool = _summary.visible and _note.get_line_count() > 2
+	if _more.visible != long:
+		_more.visible = long
 
 
 ## "Where does this go?" in words where the row has room for them beside the
@@ -531,8 +623,7 @@ func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dict
 		Language.keep_name(_step_name.text)
 		for name: String in _step_name.text.split(" · ", false):
 			Language.keep_name(name)
-	_note.text = note if at > 0 else caption + ". Get the parts out, then press Start."
-	_note.visible = not _note.text.is_empty()
+	_say_note(note if at > 0 else caption + ". Get the parts out, then press Start.")
 	_progress.max_value = maxf(of, 1.0)
 	_progress.value = at
 	_back.disabled = at <= 0
@@ -994,6 +1085,8 @@ func controls_by_name() -> Dictionary:
 		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom,
 		"build_progress": _progress, "build_one_part": _one_part, "build_whole_step": _whole_step,
 		"build_where": _where}
+	if _more.is_visible_in_tree():
+		named["build_more"] = _more
 	named.merge(_card.controls_by_name())
 	named.merge(make.controls_by_name())
 	if _changed.is_visible_in_tree():
@@ -1021,6 +1114,8 @@ func page_state() -> Dictionary:
 	return {"open": visible, "page": page, "last": last, "caption": _caption_text,
 		"name": _step_name.text if _step_name.visible else "",
 		"note": _note.text if _note.visible else "", "told": _told.text if _told.visible else "",
+		"note_lines": _note.get_visible_line_count() if _note.visible else 0,
+		"note_more": _more.text if _more.is_visible_in_tree() else "",
 		"pictures_ms": _pictures_ms,
 		"lots": _lots.size(), "pictures": _tiles.filter(func(tile: ThumbTile) -> bool:
 			return tile.state == ThumbTile.State.READY).size(),
@@ -1104,8 +1199,7 @@ func show_party(board: Array, waiting: bool, joining: bool) -> void:
 		_caption_text = "Your part is built"
 		_caption.text = _caption_text
 		_step_name.visible = false
-		_note.text = _waiting_words(board)
-		_note.visible = true
+		_say_note(_waiting_words(board))
 		_next.text = "Waiting"
 		_next.disabled = true
 		_next.tooltip_text = "The step that puts everyone's parts together comes when everyone is done"
@@ -1116,8 +1210,7 @@ func show_party(board: Array, waiting: bool, joining: bool) -> void:
 		_caption_text = "Put it together"
 		_caption.text = _caption_text
 		_step_name.visible = false
-		_note.text = "Everyone is done. The others' parts go on where they are outlined."
-		_note.visible = true
+		_say_note("Everyone is done. The others' parts go on where they are outlined.")
 		_next.disabled = false
 		_lots = []
 		_told.visible = false

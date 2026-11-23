@@ -16871,3 +16871,6 @@ msgstr "Brickworks : la page d’accueil"
 
 msgid "The site's home page, in this tab"
 msgstr "La page d’accueil du site, dans cet onglet"
+
+msgid "Less"
+msgstr "Moins"
