@@ -1419,7 +1419,8 @@ def is_internal(feature: dict, rules: list[tuple[str, str]]) -> bool:
 
 def routes() -> set[str]:
     """The site's own addresses a docs page may link to, besides its pages."""
-    found = {"/", "/app", "/docs", "/collections", "/sitemap.xml", "/changelog"}
+    # /collections and /talk the server makes (tools/deploy.sh), no file in web/.
+    found = {"/", "/app", "/docs", "/collections", "/talk", "/sitemap.xml", "/changelog"}
     for page in WEB.glob("*.html"):
         if not page.name.startswith("_") and page.stem not in ("index", "404", "authorize"):
             found.add(f"/{page.stem}")

@@ -34,7 +34,7 @@ lib:studio renderer
 | Quality | **Quick**, **Good**, or **Best** (below) |
 | Look | **As in the window**, **Product**, **Line art** or **Comic** (below) |
 | Size | 720p, 1080p, 4K, Square, or Custom |
-| Background | White, Gradient, Grey, Dark, a Colour, or None (transparent); a contact shadow if you like |
+| Background | White, Gradient, Grey, Dark, a Colour, or None (transparent); a contact shadow if you like; and what the model [stands on](#stage) |
 | Light | Three lights, as in the window; a photographed studio, window light or daylight; or **Dark**, only the [model's own lights](#lights). **Light from** turns it round. |
 | Camera | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, from above, or a [view saved with the model](/docs/the-view#saved-views); and the **Lens**, 18 to 200 mm |
 | Depth of field | Off, or f/16 to f/2, at Best |
@@ -52,10 +52,24 @@ lib:path tracer
 
 ### Product {#product-look}
 
-**Product** draws the model as a set's box does: glossy plastic, rounded edges, clear parts you see through, a studio's light, every colour true.
+**Product** draws the model as a set's box does: glossy plastic, rounded edges, clear parts you see through, a studio's light, every colour true. At Best it is finished as a camera finishes a photograph: white-balanced on a white card where the model stands, with a camera's gentle tone curve.
 
 <!-- covers
 lib:product look
+-->
+
+### What it stands on {#stage}
+
+![The Render dialog with On a wooden table chosen under Background: the draft shows the car on the table's colour; at Best in the Product look the wood's own grain is drawn and a light stands near the model.](/docs/img/render-stage.webp "Background › On a wooden table: at Best, in the Product look, the model stands on real wood.")
+
+Under **Background**, the model can stand on something real rather than a studio's seamless paper: **Photographed on white**, **On paper**, **On a desk**, **On a wooden table**, **On a leather desk pad** or **On terrazzo**. Choosing one puts its colour on the backdrop, and you can change that colour after.
+
+At Best, in the Product look, a staged picture is lit as a photograph is: by a soft light standing near the model rather than far away, so the side nearer it is lighter and the surface darkens away from it. The wood, the leather and the terrazzo show their own grain, the model's shadow falls on it, and past a table's far edge is the room, out of focus.
+
+In a browser, and wherever Best is not path traced, a staged picture is drawn on the stage's colour alone.
+
+<!-- covers
+lib:staged product photographs
 -->
 
 ### Line art and Comic {#line-art}

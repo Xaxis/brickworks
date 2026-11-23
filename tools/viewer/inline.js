@@ -29,6 +29,10 @@
 import { counted, iconButtonHtml, number, say } from "../../web/card.js";
 import { sceneShape, unpack } from "./scene.js";
 import { LOOKS, View, shapes, webglWorks } from "./view.js";
+// The home's hero, the mark in bricks (tools/viewer/hero.js): in the same
+// module, so a visitor who then turns a post in 3D has its code already.
+export { hero3d } from "./hero.js";
+export { webglWorks };
 
 // The triangles a device is trusted to turn smoothly: a phone or a tablet
 // (a coarse pointer), and anything else. The library's biggest model is 6
@@ -204,9 +208,12 @@ export function open3d(shell, given) {
       if (shape) bytes += shape.bytes || 0;
       return shape;
     });
-    // Still as it arrives, where the picture was: the person turns it.
+    // Still as it arrives, where the picture was: the person turns it. A
+    // card of the home's feed asks it turning (given.spin, homefeed), until
+    // it is taken hold of, as the view's own autoRotate stops then; never
+    // for somebody who asked for less motion (still).
     view = new View(stage, data, {
-      still, spin: false, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
+      still, spin: given.spin === true, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
       mark: (what) => {
         // Timed to the frame drawn, not to when it was asked for: a pixel
         // read back waits for the graphics (SwiftShader draws in seconds

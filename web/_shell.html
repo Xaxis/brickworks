@@ -7,21 +7,29 @@
   they follow too. Never served: tools/site.py leaves out names that start
   with "_".
 
-  Across the top (site356, 2026-10-29, the owner: "incorporate the
-  pricing pages"): three links, Gallery, Docs and Plans, then the two
-  buttons, Open the app and your account, last at the far right (the
-  owner, 2026-10-23: "the user account circle obviously is the item that
-  goes to the far right"). The owner capped the bar at four links on
-  2026-10-20 ("the main nav has too many links"), and Download moved to
-  the footer and to Menu. Since 2026-11-07 it is "Desktop app": the page
-  says the desktop app is coming soon and offers the app in the browser
-  (the owner: "make the downloadable access 'Coming soon' ... since we
-  can't properly support it yet"), so no link here says Download
-  (tools/web/coming_soon_check.mjs). The Library was a fourth until the gallery and it became one page
+  Across the top (landing, 2026-11-22, the owner: "we want the
+  'forum/gallery' features to be better highlighted and available
+  immediately upon landing"): the community's places first, Gallery, Talk
+  (the builders' forum) and Challenges, then Docs; then the two buttons,
+  Open the app and your account, last at the far right (the owner,
+  2026-10-23: "the user account circle obviously is the item that goes to
+  the far right"). That is the four links the owner capped the bar at on
+  2026-10-20 ("the main nav has too many links"). Sets stays out of it: it
+  is the gallery's Sets tab, /library still, since the Library and the
+  gallery became one page
   (browse, 2026-11-02, the owner: "highly confusing... one is just a tab
-  in another"): every set is the gallery's Sets tab, /library still. Account says Sign in until you are, then is
-  your avatar (web/follow.js). Under 900 px: the mark, Open the app and
-  Menu, which holds the links, Desktop app and Sign in.
+  in another"), and the home page's shelf has it as a tab too. Plans moved
+  where people look for it, as Desktop app did before it: the footer, a
+  phone's Menu and, signed in, your account's menu (web/follow.js); it was
+  a third link here from site356 (2026-10-29) until then. Download moved
+  to the footer and to Menu on 2026-10-20. Since 2026-11-07 it is "Desktop
+  app": the page says the desktop app is coming soon and offers the app in
+  the browser (the owner: "make the downloadable access 'Coming soon' ...
+  since we can't properly support it yet"), so no link here says Download
+  (tools/web/coming_soon_check.mjs). Account says Sign in until you are,
+  then is your avatar (web/follow.js). Under 900 px: the mark, Open the
+  app and Menu, which holds the links, then Plans, Desktop app and Sign
+  in.
 
   The footer: the mark, a line of what Brickworks is and the theme, then
   four columns of links (Product, Community, Help, Legal), then one line
@@ -64,8 +72,9 @@
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
+			<a href="/talk">Talk</a>
+			<a href="/challenge">Challenges</a>
 			<a href="/docs">Docs</a>
-			<a href="/plans">Plans</a>
 			<a class="cta" href="/app">Open the app</a>
 			<a class="cta ghost" href="/profile?sign-in" data-account>Sign in</a>
 		</nav>
@@ -74,6 +83,8 @@
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
+					<a href="/talk">Talk</a>
+					<a href="/challenge">Challenges</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Plans</a>
 					<a href="/download">Desktop app</a>
@@ -126,8 +137,9 @@
 					<p class="foot-h" id="foot-community">Community</p>
 					<ul aria-labelledby="foot-community">
 						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
-						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/challenge">Challenges</a></li>
 						<li><a href="/collections">Collections</a></li>
 					</ul>
 				</div>

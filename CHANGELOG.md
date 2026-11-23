@@ -15,6 +15,23 @@ whole cycle.
 
 ### Added
 
+- **brickworks.diy opens on our mark, built in LEGO® bricks, in 3D.** 189
+  real parts, a course at a time: on your first visit the bricks fly up and
+  drop back into place, then the model turns slowly. Drag it to turn it, or use the arrow
+  keys; a brick lifts under your mouse. **Open it in the studio** opens it
+  in Brickworks, and it is one of the app's examples too. If you have asked
+  your device for less motion, it stays still until you turn it.
+- **brickworks.diy's home is a feed.** What builders make and say, one post
+  after another: new builds, threads in Talk with their latest reply, this
+  month's challenge with its entries, builders to follow and photos of
+  real builds. Each build says how it was made, with a link to how to do
+  it, and opens in the studio, as a remix of your own, as steps to build,
+  or as its parts to buy, from the post. Press **3D** to turn it where its
+  picture was. Like, comment and follow from the post; signed out, you
+  sign in there and go on where you were. **Try it here** puts the studio
+  itself in the feed. Signed in, the feed has tabs (**For you**,
+  **Following**, **New**) and **Share a build** opens the share panel for
+  your last model.
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,
@@ -165,6 +182,16 @@ whole cycle.
 
 ### Changed
 
+- **The home page opens on the community.** Its first screen, on a phone
+  and on a computer, is a search over models, builders and real sets (what
+  it finds shows as you type), **Start building**, this month's challenge
+  with its days left, and a row of the gallery's models with their
+  pictures, in tabs: Top, its first card this week's pick, New, and real
+  sets in 3D. The models are in the page as it arrives, so they show at
+  once and nothing moves when the newest arrive. Under them, once the
+  builders' forum has talk, its newest threads. The header on every page
+  leads with Gallery, Talk and Challenges, then Docs; Plans and the desktop
+  app are in the menu and the footer.
 - **The desktop app is coming soon.** Every page of the site, in all four
   languages, says so and opens Brickworks in your browser where it offered
   an installer, and the app's own hints that pointed to the desktop app say
@@ -217,6 +244,11 @@ whole cycle.
   they really work, with a picture of each.
 
 ### Fixed
+
+- **The beta bar no longer covers the page.** It sits along the bottom of the
+  window, and every page leaves room for it at its end. The home page's top
+  is shorter too, so the first row of builds shows whole on a laptop, and its
+  search's "Search the gallery for" rows always carry everything you typed.
 
 - With the bin, Stress and the assistant open at 1280 × 720, the timeline's
   Done and Instructions, Account and the status bar were past the window's

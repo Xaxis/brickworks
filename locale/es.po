@@ -16391,3 +16391,27 @@ msgstr "bloqueada"
 
 msgid "frozen"
 msgstr "congelada"
+
+msgid "Best, Product look: what the model stands on, lit by a light standing near it as in a photograph"
+msgstr "Máxima, Foto de producto: sobre qué está el modelo, iluminado por una luz cercana como en una fotografía"
+
+msgid "Seamless backdrop"
+msgstr "Fondo continuo"
+
+msgid "Photographed on white"
+msgstr "Fotografiado sobre blanco"
+
+msgid "On paper"
+msgstr "Sobre papel"
+
+msgid "On a desk"
+msgstr "Sobre un escritorio"
+
+msgid "On a wooden table"
+msgstr "Sobre una mesa de madera"
+
+msgid "On a leather desk pad"
+msgstr "Sobre un vade de cuero"
+
+msgid "On terrazzo"
+msgstr "Sobre terrazo"

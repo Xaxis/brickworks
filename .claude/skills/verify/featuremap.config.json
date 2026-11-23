@@ -1273,6 +1273,13 @@
     },
     {
       "kind": "cli",
+      "label": "sharelink probe",
+      "entry": "src/dev/sharelink_probe.gd",
+      "reach": "tools/probe.sh sharelink_probe   (headless: /app?share opens the share panel for the model on the baseplate once signed in, kept while signed out, once; never toggled shut)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "share browser flow",
       "entry": "tools/web/share_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --out=shots/share_web   (with .env sourced)",
@@ -1471,7 +1478,7 @@
       "kind": "ui",
       "label": "landing page",
       "entry": "web/index.html",
-      "reach": "https://brickworks.diy/   (locally: node tools/web/landing_check.mjs --file=web/index.html)",
+      "reach": "https://brickworks.diy/   (the feed first (homefeed): signed out one line, the search and Start building over one stream of posts, the first within 600 px on a phone; signed in Share a build and the tabs For you, Following and New; locally: node tools/web/landing_check.mjs --file=web/index.html, or --url=<a site put together by tools/site.py and tools/web/home_shelf.mjs, served with its API>)",
       "area": "web"
     },
     {
@@ -2844,13 +2851,6 @@
       "label": "playing motions",
       "entry": "src/assembly/motion_player.gd",
       "reach": "tools/probe.sh motions_probe   (over MCP: list_motions, define_motion, play_motion, render_motion; each track's joint turned through Grab, stops said, suggestions from what moves)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "smalls12 probe",
-      "entry": "src/dev/smalls12_probe.gd",
-      "reach": "tools/probe.sh smalls12_probe   (headless, about a minute: a motion's name read back as typed, its inner runs of spaces kept, a name of edge spaces trimmed; every motion line in the repo's models read as before; an unedited save keeps the file's bytes, Latin-1, BOM and CRLF, no last line end, each back byte for byte twice, no second copy held after a save or an autosave)",
       "area": "view"
     },
     {
@@ -6140,14 +6140,14 @@
       "kind": "cli",
       "label": "photoreal probe",
       "entry": "src/dev/photoreal_probe.gd",
-      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --car]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car)",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --draw=N --car --turns=0,90 --lighting=window,daylight --raw --cycles --fit --without=dust,age --shots=PATH]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car; --turns and --lighting sweep the light; --raw writes each picture's light before its curve as .exr; --fit fits each set's camera to its photograph's outline from shots/photoreal/masks/ (photoreal.py masks), writing NAME_fit.json and the two outlines over each other; --without zeroes a shot's camera and wear settings to measure each; --draw=N another draw (the tracer's seed); --cycles also writes each shot's scene for Cycles, NAME/<shot>.cycles.ldr and .cycles.json)",
       "area": "view"
     },
     {
       "kind": "cli",
       "label": "photoreal judge",
       "entry": "tools/bench/photoreal.py",
-      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons)",
+      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; colour NAME --out DIR; gloss NAME; camera NAME; masks; tally FILE...; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR; solo A=DIR B=DIR --name N --trials 2 --rounds 3 --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons; solo shows every photograph and render ALONE, shuffled, and writes solo_N.json with the share called a photograph and the mean probability, photographs and each label's renders apart, per round; tally groups the tells; camera measures sensor noise; masks writes the set photographs' outlines; colour writes each close-up face's CIEDE2000 from its photograph's)",
       "area": "view"
     },
     {
@@ -6193,6 +6193,62 @@
       "area": "building"
     },
     {
+      "kind": "lib",
+      "label": "judges and a fan vote and honours",
+      "entry": "supabase/challenge_rounds.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_rounds.sql --dry --try=tools/challenge_rounds_try.sql --table=challenge_shortlist   (after challenges.sql and challenge_year.sql; then the challenges browser flow's part 7 once it is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the home page's feed",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/   (#stream: builds, Talk threads with their latest reply, the month's challenge with its entries, Try it here, builders to follow, photos of builds, each a post (web/home-feed.js postHtml), the first six in the page as served (tools/web/home_shelf.mjs), the rest after with nothing moving; on each build Like, Add a comment, Follow (asking a visitor to sign in on the spot), Share, 3D, Open in the studio, Remix, Build it, Parts; node tools/web/homefeed_check.mjs --url=... [--signed-in] [--try-start], node tools/web/landing_check.mjs --url=...)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the home page's search",
+      "entry": "web/home-find.js",
+      "reach": "https://brickworks.diy/   (#find-q: type 2 letters for models, builders and sets from GET /api/share?op=list&q= and op=library&q=, then the gallery's and the sets' own search; arrows, Enter, Escape; \"/\" puts the cursor in it; node tools/web/landing_check.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "home shelf at deploy",
+      "entry": "tools/web/home_shelf.mjs",
+      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: the feed's first six posts written into OUT/index.html and each language's copy, their pictures copied to OUT/img/home/; web/_home.json when an answer cannot be read; python3 tools/minitest.py tests/test_home_shelf.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this month's challenge on the home page",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#challenge, a post of the feed, third at the latest: its name, brief, days and up to four entries written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves; This week's pick is the feed's first post, marked Week's pick)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge home check",
+      "entry": "tools/web/challengehome_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge third in the feed at the latest and the pick its first post at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "homefeed check",
+      "entry": "tools/web/homefeed_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/homefeed_check.mjs --url=<preview or a site served here> --out=DIR [--signed-in] [--try-start]   (the feed's posts as served, Like/comment/Follow asking to sign in on the spot, 3D, Try it here; --signed-in throwaways Ann and Bea: the tabs, a like, a comment, a follow, a visitor signing in from a like; --try-start the studio in the post on the engine without threads, on a deployment with homefeed's deploy.sh)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "smalls12 probe",
+      "entry": "src/dev/smalls12_probe.gd",
+      "reach": "tools/probe.sh smalls12_probe   (headless, about a minute: a motion's name read back as typed, its inner runs of spaces kept, a name of edge spaces trimmed; every motion line in the repo's models read as before; an unedited save keeps the file's bytes, Latin-1, BOM and CRLF, no last line end, each back byte for byte twice, no second copy held after a save or an autosave)",
+      "area": "view"
+    },
+    {
       "kind": "ui",
       "label": "where does this part go",
       "entry": "src/ui/part_step.gd",
@@ -6225,27 +6281,6 @@
       "label": "designer period browser flow",
       "entry": "tools/web/designer_period_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designer_period_flow.mjs --url=<preview> --out=DIR   (preview check [designer_period]; ends \"(before the file)\" until designer_period_2.sql is applied)",
-      "area": "web"
-    },
-    {
-      "kind": "lib",
-      "label": "judges and a fan vote and honours",
-      "entry": "supabase/challenge_rounds.sql",
-      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_rounds.sql --dry --try=tools/challenge_rounds_try.sql --table=challenge_shortlist   (after challenges.sql and challenge_year.sql; then the challenges browser flow's part 7 once it is applied)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "this month's challenge on the home page",
-      "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#now under the app's picture: #challenge with its days left, or its round, and #pick, This week's pick, both from GET /api/share?op=shelves, asked at once)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "challenge home check",
-      "entry": "tools/web/challengehome_check.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge and pick within two screens at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
       "area": "web"
     },
     {
@@ -6352,6 +6387,69 @@
       "entry": "src/dev/mcpreach4_probe.gd",
       "reach": "tools/probe.sh mcpreach4_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/mcpreach4_probe.gd. mcpreach4, the latest MCP walk's five stalls in their tools' own answers: attachment_points on a part with no studs (the SPIKE motor, a Technic beam) gives every face it can stand on in one call, the motor's output on each where a call with that face= puts it, and how real sets mount it, a click hinge's brick how to build on a hinge; move_part on a click hinge's brick on the plate moves the hinge's other half and says which half and which way degrees= raises it, not refused, and both halves on one plate are named held still with the plate, in the list and the refusal; submit_design names its parts' numbers against the check's brick N and edit_model takes the last; simulate_mechanism at= pictures the program at a moment with nothing written (program, history, parts), program= with at= in 1 call; check_design edit= says what the copy showed first, the model as it was after, no stale numbers)",
       "area": "mcp"
+    },
+    {
+      "kind": "lib",
+      "label": "talk threads and posts",
+      "entry": "supabase/talk.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/talk.sql --dry --try=tools/talk_try.sql --table=talk_threads   (not applied yet; api/_talk.js; docs/SOCIAL.md section 10; then tools/web/talk_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the talk forum",
+      "entry": "web/talk.js",
+      "reach": "https://brickworks.diy/talk (/talk/b/<board>, ?q= search, /talk/new, /de|fr|es/talk; ?tests=1 the checks' pool)   (api/_talk.js talkPage; GET /api/people?op=talk, ?op=talk_latest; RSS /talk.rss, /talk/b/<board>.rss)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a thread in talk",
+      "entry": "api/_talk.js",
+      "reach": "https://brickworks.diy/talk/t/<n>/<title>   (GET /api/people?op=talk_thread&id=N[&html=1]; POST ?op=talk_start, ?op=talk_reply, ?op=talk_change, ?op=talk_follow, ?op=talk_read, ?op=talk_photo_start, ?op=report {post})",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the latest in talk on the home page",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/ (Talk's newest threads as posts of the feed, each with its latest reply, from GET /api/people?op=talk_latest&n=6&reply=1&talking=24; none before talk.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "talk in the owner's console",
+      "entry": "web/admin-talk.js",
+      "reach": "<deployment>/admin#talk as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=talk; POST ?op=talk_act {act, post|thread|account, board, until, reason}, each in the audit log",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "talk browser flow",
+      "entry": "tools/web/talk_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/relay.env tools/web/talk_flow.mjs --url=http://127.0.0.1:11170 --out=DIR over relay_server.mjs 11170 --hold=talk (MASTER_EMAIL a throwaway at resend.dev); on a preview once talk.sql is applied, BW_BYPASS=$VERCEL_BYPASS ... --url=<preview> (preview_checks.sh talk)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the talk stand-in",
+      "entry": "tools/web/talk_stand_in.mjs",
+      "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "staged product photographs",
+      "entry": "src/render/studio_render.gd",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --stage=wood  (photoreal7, docs/RENDERING.md 5k: Render's Background choice StudioRender.STAGES at Best, Product; a near key (scene.near, falling off with distance), the surface lit with its grain or Poly Haven tile (binding 11, assets/surfaces/), the room past a table; the white card's colour as the white balance and a camera tone curve where asked; no stage draws pixel-identical to before)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "photoreal cycles",
+      "entry": "tools/photoreal/cycles/render.py",
+      "reach": "heavy tools/photoreal/cycles/tree.sh SCENES PNG_DIR EXR_DIR DRAW [--samples 1024 --sss 0 --studs Normal --resolution Normal --gap 0]   (photoreal6, docs/RENDERING.md 5j; a bench tool on this box, never the app's: Blender 5.2.4 in ~/.local/opt with ldr_tools_blender 0.5.3 draws each shot's scene from photoreal_probe --cycles in Cycles on the CPU, the tent or place, key, sweep as a shadow catcher and the white card's exposure as our tracer drew them; finish.py gives it our camera's finish into PNG_DIR/<shot>.png; camera_pipeline.py FROM TO puts a tree through sharpening and the photographs' JPEG; decide.py SOLO_JSON tables a solo run's trees over their draws)",
+      "area": "view"
     }
   ]
 }

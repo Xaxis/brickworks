@@ -344,6 +344,10 @@ def test_a_page_is_its_template_never_its_id() -> None:
     assert pages["version_de"] == {"name": "/m/:id/v/:n", "lang": "de"}
     assert pages["profile"]["name"] == "/u/:handle" and pages["challenge"]["name"] == "/c/:id"
     assert pages["set"]["name"] == "/library/set/:n" and pages["app"]["name"] == pages["build"]["name"] == "/app"
+    # Talk's pages, the server's (api/_talk.js): a thread never by its number.
+    assert pages["talk"] == {"name": "/talk", "lang": "en"} and pages["talk_board_de"] == {"name": "/talk/b/:board", "lang": "de"}
+    assert pages["talk_thread"]["name"] == pages["talk_bare"]["name"] == "/talk/t/:n"
+    assert pages["talk_new"] == {"name": "/talk/new", "lang": "fr"}
     assert pages["unknown"]["name"] == "/other" and pages["canonical_odd"]["name"] == "/other"
     assert pages["canonical"]["name"] == "/gallery" and pages["canonical_fr"] == {"name": "/gallery", "lang": "fr"}
     assert pages["said_es"]["lang"] == "es"

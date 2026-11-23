@@ -1540,6 +1540,187 @@ that leaves A safest without telling B anything B could act on.
 - **Limits.** At most 1,000 blocks an account, as Reddit's, and 60 an hour
   (300 a day), so blocking can't be used to probe who is who.
 
+## 10. Talk, the builders' forum (2026-11-22)
+
+Until now people could talk only under one model or one step of it. The
+owner, 2026-11-22: "We want the 'forum/gallery' features to be better
+highlighted and available immediately upon landing." Unit talk read how
+forums and the LEGO® building sites do it, then built Talk at /talk
+(`supabase/talk.sql`, `api/_talk.js`, `web/talk.js`, `/admin` › Talk).
+
+### What the others do
+
+| | Discourse [TK-TL] [TK-FL] [TK-NL] | Eurobricks [TK-EB] | Rebrickable [TK-RB] | Printables, MakerWorld | Mecabricks, BrickLink Studio |
+|---|---|---|---|---|---|
+| Where people talk | categories, topics, replies | boards by theme, a [MOC] topic per build | a forum beside the MOC pages | a separate forum site each (Prusa's forum, Bambu Lab's forum) [PR-B] [MW-H] | a forum [TK-MB]; Studio's gallery has comments only [BL] |
+| A build in a post | a pasted link becomes a card (onebox) | a picture hosted elsewhere, a link | a link to the MOC page | a link | a link |
+| New people | trust level 0: few links, no images, limits that lift with reading and time [TK-TL] | moderators approve | | | |
+| Bad posts | flags; enough of them hide the post until a moderator looks, the writer can still see it and edit [TK-FL] | report to a moderator | report | report | report |
+| Hearing of replies | Watching (every post), Tracking, Normal (mentions and replies to you), Muted [TK-NL] | follow a topic | follow | | |
+| Search engines | DiscussionForumPosting markup on every topic [TK-DF] | | | | |
+| Feeds | RSS per category and per topic | RSS per forum [TK-EB] | | | |
+
+Two things stand out. Every LEGO® building site keeps its forum apart
+from its builds: a link from one to the other at best, so a build's
+conversation and the forum's never meet. And a new forum is empty: the
+advice that holds across Discourse's own launch guides [TK-DL] and the
+research on seeding [TK-MS] is to launch with real first topics (a
+welcome, an "introduce yourself", open questions that ask for pictures),
+written by the people who run it and answered by them early, never with
+made-up members.
+
+### Decisions
+
+- **Boards, not categories.** Show and tell, Help, Ideas, Challenges and
+  News, as tabs over one list (the site's `.tabs`), "Latest" being every
+  board. News is the house's alone to start; anybody may reply.
+- **Threads and replies are the comments' own.** The same post markup
+  (`.comment`), mentions (@handle, three a post, told only to people of
+  the same pool who may be named, never somebody blocked), Report,
+  Block, hidden and removed states, the same limits through `may_act`,
+  and the same Notifications page and push: two new kinds, `talk_reply`
+  ("{who} replied in your thread / a thread you follow") and
+  `talk_mention`. Plain text only, 4,000 characters; a title 3 to 120.
+- **A pasted link is a card.** A model's page, a step of it
+  (`/app?view=ID&step=N`), a set of the library, a challenge on
+  brickworks.diy show as cards with their picture, as Discourse's
+  onebox does. A Rebrickable or BrickLink part number shows as a chip,
+  not linked. A link to any other site stays words, never a link, so
+  Talk is no place to post spam links.
+- **One photo a post**, through the build photos' own path (location and
+  time taken out, a card's copy made), kept as `talk-<id>.jpg`; served
+  only while its post is shown, its files deleted with the post (Remove)
+  or the account.
+- **Follow a thread** (Discourse's Watching): the starter and everybody
+  who posts follow it; anybody can follow or stop. Mentions and replies to
+  you reach you either way (Discourse's Normal).
+- **Reports hide.** Three different signed-in people of its pool hide a
+  post until the site's owner looks (Discourse's flags); its writer still
+  sees it, said so. A visitor's report counts for the owner's queue, not
+  for hiding.
+- **Blocks hold across Talk.** Never a post of somebody you blocked; the
+  posts of somebody a thread's starter blocked are seen by nobody but
+  their writer there; a blocked person's reply is refused in words that
+  do not say why ("You cannot post here."), as comments do.
+- **Moderation in /admin › Talk**: Reported (Hide or Show, Remove, Let
+  the reports go, Ban for a day, a week, a month or for good), Threads
+  (Pin, Lock, Hide, Move to a board, Remove) and Banned (Unban). Every
+  act is in the audit log.
+- **Never empty on its first day.**
+  - Beside the threads, what builders say under the gallery's models,
+    newest first; while nobody has said anything, the newest models with
+    a prompt to be the first.
+  - The house writes the first threads itself, through the API, dated
+    when they are written, as Brickworks, never as made-up people: a
+    welcome in News, how to ask for help in Help, "What are you building
+    this week?" in Show and tell, "What should Brickworks do next?" in
+    Ideas, and a recent change (Own, Want and your lists) in News.
+  - Each month's challenge opens its own thread in Challenges, by the
+    house, linking to the challenge.
+  - A shared model's builder is offered a Show and tell thread about it
+    on its page, and its page links to the thread once there is one.
+- **Found on the web.** Every thread is a server-drawn page with its own
+  address (`/talk/t/<n>/<title>`), DiscussionForumPosting JSON-LD with
+  the replies as Comment [TK-DF], hreflang copies in German, French and
+  Spanish, and an RSS feed for every board and for all of Talk.
+- **On the first screen.** "Talk" in the header beside Gallery, in Menu
+  and in the footer's Community; on the homepage the newest threads are
+  posts in its feed, each with its latest reply (section 11, homefeed
+  2026-11-23; landing's band before it).
+- **The two pools.** Throwaway test accounts talk in a pool of their own
+  (`?tests=1`), as the gallery's; a preview never writes the real pool's
+  house threads.
+
+What it does not do yet: likes on posts, accepted answers in Help, a
+board you follow (Discourse's Watching First Post), and post drafts kept
+across devices. Each is a follow-up for the owner to choose.
+
+## 11. The home is the feed (2026-11-23)
+
+The owner, 2026-11-23: "turn the landing into our lego 'social media' as it
+simultaneously advertises and integrates the CAD." Unit homefeed read how
+the home feeds of the social sites and the model sites work: what a card
+holds, how a card sells the tool behind it, and how a stranger becomes a
+member. Then it made brickworks.diy's home one feed (`web/home-feed.js`,
+`web/landing.js`, `tools/web/home_shelf.mjs`; docs/HOME.md).
+
+### What the others do
+
+| | A card holds | The tool behind it | A stranger |
+|---|---|---|---|
+| Instagram [HF-IG] | the picture, heart, comment, share, save | | a few rows, then a sign-in pop-up that cannot be closed |
+| Pinterest [HF-PI] | the picture; Save and a board picker on hover | | trending Pins, then a sign-up pop-up; its own test found the pop-up that cannot be closed lost members over time |
+| Reddit [HF-RD] | title, media, votes, comments; a reason ("Because…") and Join on a recommended one | | For you and Following since 2026-10-28, reopening on the last used; six trending posts for a visitor |
+| Printables [HF-PR] | picture, likes, downloads; a community feed of uploads, makes and likes, repeats collapsed | Open in PrusaSlicer, off until turned on in settings | featured models, contests |
+| MakerWorld [HF-MW] | picture, boosts, prints | Open in Bambu Studio, with the designer's printer settings; printing from the card | recommendations tuned for good new models with real photos |
+| Thingiverse [HF-TV] | picture, likes | Open in Customizer on some | downloads with no account |
+| Rebrickable [HF-RB] | picture, parts, the MOC's kind (original, alternate, mod) | Build: what you own against what it needs, the rest to a BrickLink cart | "Create an account to find MOCs you can build from the parts you already own" |
+| Mecabricks [HF-MB] | picture, four numbers with no labels, no Follow | an Editor tab on the model's page: the whole editor | "Build & Render your 3D LEGO® models online", Start Now, then twelve cards |
+| BrickLink Studio [HF-BL] | picture, likes, comments | Import in the desktop app, greyed out for display-only builds | asked to sign in once a download has started |
+| Flickr's LEGO® group [HF-FL] | the photo alone: no title, no author | | Join; a monthly takeover of Explore chosen from members |
+
+Three things decide the design. Every model site hands its builds to a
+program somewhere else, and each makes that hard: a setting to turn on, a
+desktop app, a greyed-out Import. A CAD that runs in the page can open an
+editable copy from the card itself, and can put the studio in the feed.
+The hard walls (Instagram's, Pinterest's pop-up, Reddit's tests) lose
+people, by Pinterest's own numbers; a visitor should read freely and be
+asked to sign in only when they act. And no source found a 3D turn on a
+card, or a sign-in that brings the person back to what they pressed: both
+are Brickworks' to have first.
+
+### Decisions
+
+- **The feed is the first screen, for everybody.** One stream of posts:
+  builds, Talk's threads with their latest reply, the month's challenge
+  with its entries, the studio to try, builders to follow, photos of real
+  builds. Signed out, one band over it says what Brickworks is in a line,
+  with the search and Start building, and nothing else stands between a
+  visitor and the first post (within 600 px on a phone).
+- **Signed in: For you, Following and New** (Reddit's and Instagram's
+  tabs). For you is the stream asked as them (their likes, nobody they
+  blocked); Following is what the people they follow made (`/feed`'s own
+  rows); New is everything newest first. Share a build at the top opens
+  the studio's publish for their last model (`/app?share`).
+- **Every build card is a way into the studio.** Open in the studio (the
+  viewer), Remix (a copy of their own, its page saying whose it was),
+  Build it (the steps, one at a time) and Parts (to list and buy), on
+  every card, no setting to turn on. A pill says how it was made (with
+  the assistant, by hand, Brickify, what moves, how many steps), each a
+  link to that feature's docs page: the card sells the feature that made
+  it (Mecabricks' Editor tab and Rebrickable's Build, on the card).
+- **A 3D turn in the picture's place**, on a pointer that rests on it or a
+  tap of 3D, three.js asked for only then; never unasked for somebody
+  who asked for less motion.
+- **The studio in the feed.** A Try it here post puts the real studio in
+  the post on a tap (the viewer at `/app?view=<id>`: turn it, play what
+  moves, build it step by step), nothing of it asked for before; Open the
+  whole studio takes the model across as a copy of their own. A visitor
+  edits nothing before signing in (everyone who builds has an account,
+  13 and over): what carries across is the model, not a pose played in
+  the post.
+- **No walls; asked on the spot.** A visitor reads every post, follows
+  every link, opens every model in the studio. Like, a comment and Follow
+  ask to sign in in a dialog over the page (`askToSignIn`), and once in,
+  the like or the comment goes on, the page where it was, what was typed
+  kept.
+- **Never empty on day one.** The first posts are written into the page
+  at the deploy from the live answers (the house's seeded gallery, Talk's
+  house threads, the month's challenge), or from the last answers kept
+  (`web/_home.json`), so the first screen never waits on the server; the
+  rest come once the page is idle, counts said in place, nothing in view
+  moving.
+- **An end to it.** Show more, not endless scrolling (NN/g, section 2):
+  the footer and the studio's own sections stay reachable.
+- **Found on the web.** The first posts are in the page as served, each a
+  link to its model's page, for a crawler as for a person.
+
+Not done here, each for the owner to choose: a reason on a recommended
+card ("Because you liked…"), owned-parts matching on a card ("you have 80%
+of its parts"), collapsing a builder's many uploads into one post
+(Printables), and For you ranked by what a person likes rather than by
+the gallery's own order.
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is
@@ -1723,3 +1904,56 @@ text where the page itself refused a reader.
   https://blog.ravelry.com/thursday-tip-faves-queue-library-shopping-cart/ *(excerpt)*
 - [R8-SP] Field speed of the other sites (Chrome's users, by origin):
   https://treo.sh/sitespeed/ (per domain)
+- [TK-TL] Discourse, trust level permissions reference (what a new
+  account may not do yet): https://meta.discourse.org/t/trust-level-permissions-reference/224824 ;
+  https://blog.discourse.org/2018/06/understanding-discourse-trust-levels/
+- [TK-FL] Discourse, flags and hidden posts:
+  https://meta.discourse.org/t/what-happens-when-you-flag-a-post/275 ;
+  https://meta.discourse.org/t/what-are-flags-and-how-do-they-work/32783
+- [TK-NL] Discourse, notification levels (Watching, Tracking, Normal, Muted):
+  https://meta.discourse.org/t/configuring-default-notification-settings-for-users/285619
+- [TK-DL] Discourse, launching a community (seed topics, go first, invite
+  early repliers): https://blog.discourse.org/2018/08/launching-a-successful-discourse-community/ ;
+  https://blog.discourse.org/2014/08/building-a-discourse-community/
+- [TK-MS] MIT Sloan Management Review, "The Secret to Successful Knowledge
+  Seeding": https://sloanreview.mit.edu/article/the-secret-to-successful-knowledge-seeding
+- [TK-DF] Google Search Central, discussion forum (DiscussionForumPosting)
+  structured data: https://developers.google.com/search/docs/appearance/structured-data/discussion-forum
+- [TK-EB] Eurobricks, its forums, [MOC] topics and per-forum RSS:
+  https://www.eurobricks.com/forum/forums/topic/179720-moc-sites/ ;
+  https://www.eurobricks.com/forum/forums/forum/7-community.xml/
+- [TK-RB] Brickset, interview with Rebrickable's founder (MOCs, the forum):
+  https://brickset.com/article/111720/interview-with-nathan-thom-founder-of-rebrickable
+- [TK-MB] Mecabricks' forum, as cited by builders' blogs: https://blog.firestartoys.com/?p=1139 *(excerpt)*
+
+### Round 11, the home feed (2026-11-23)
+
+Read on 2026-11-23. MakerWorld, Printables and Thingiverse answered 403,
+Rebrickable 402 and BrickLink its maintenance page, so claims about them
+rest on their help pages, blogs and press; *(excerpt)* marks a search
+result's text alone.
+
+- [HF-IG] Instagram: Following and Favorites, https://about.instagram.com/blog/announcements/favorites-and-following ;
+  suggested posts, https://help.instagram.com/381638392275939 ; the sign-in
+  wall, https://thenextweb.com/news/instagram-now-forces-people-to-sign-in-to-view-public-profiles
+- [HF-PI] Pinterest: the home feed, https://help.pinterest.com/en/article/explore-the-home-feed ;
+  saving, https://help.pinterest.com/en/article/save-pins-on-pinterest ; the
+  sign-up modal test, https://medium.com/@Pinterest_Engineering/lessons-in-growth-and-increasing-signups-d6e7d8fef479 *(excerpt)*
+- [HF-RD] Reddit: For You and Following, https://techcrunch.com/2026/10/28/reddit-is-the-latest-platform-to-embrace-the-for-you-feed/ ;
+  the logged-out landing, https://techcrunch.com/2023/08/01/reddit-updates-its-site-design-for-logged-out-users/ ;
+  login-wall tests, https://www.ghacks.net/2026/05/13/reddit-tests-forcing-logged-out-mobile-users-into-app-with-non-dismissible-pop-up/
+- [HF-PR] Printables: Open in PrusaSlicer, https://help.prusa3d.com/article/opening-models-in-prusaslicer-from-supported-websites_399198 ;
+  the community feed, https://blog.prusa3d.com/new-on-printables-com-community-feed-improved-search-new-rewards-and-more_69067/
+- [HF-MW] MakerWorld: one-step printing, https://blog.bambulab.com/makerworld-one-step-printing ;
+  Open in Bambu Studio, https://forum.bambulab.com/t/noob-question-about-print-profiles-from-mw/90714 ;
+  boosts, https://blog.bambulab.com/rethinking-rewards-makerworld-boost-system
+- [HF-TV] Thingiverse: Customizer, https://www.thingiverse.com/apps/customizer/ *(excerpt)* ;
+  the 2020 redesign, https://all3dp.com/4/thingiverse-gets-a-new-design-and-introduces-ads/
+- [HF-RB] Rebrickable: https://en.wikipedia.org/wiki/Rebrickable ; sharing a MOC,
+  https://bricknerd.com/home/mastering-rebrickable-a-guide-to-sharing-mocs-and-instructions-1-10-25
+- [HF-MB] Mecabricks: https://www.mecabricks.com/ , https://www.mecabricks.com/en/library/selection ,
+  a model page https://mecabricks.com/en/models/VzvMRWy7aJp
+- [HF-BL] BrickLink Studio: access levels, https://studiohelp.bricklink.com/hc/en-us/articles/5705436653847 ;
+  the Welcome Screen's gallery, https://studiohelp.bricklink.com/hc/en-us/articles/6153755149591
+- [HF-FL] Flickr: the LEGO® group's pool, https://www.flickr.com/groups/lego/pool/ ; Explore,
+  https://blog.flickr.net/?p=91697

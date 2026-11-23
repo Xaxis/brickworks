@@ -68,8 +68,9 @@ import { noticeSaid } from "./_notifications.js";
 import { blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
 import { say } from "./_card.js";
 
-/// The kinds of notification that are pushed.
-export const KINDS = ["comment", "reply", "mention", "photo", "remix", "result"];
+/// The kinds of notification that are pushed (Talk's since talk.sql).
+export const KINDS = ["comment", "reply", "mention", "photo", "remix", "result", "talk_reply", "talk_mention"];
+const TALK = new Set(["talk_reply", "talk_mention"]);
 /// Who a push says it is from: the site, never an email address.
 const SUBJECT = "https://brickworks.diy";
 /// How long a push service keeps one for a device that is off: a day.
@@ -222,11 +223,14 @@ export function pushSaid(row, lang = "en", origin = "https://brickworks.diy", mo
   return inLanguage(code, siteWords(code), () => {
     const said = noticeSaid(row, origin);
     const line = String(said.line || "").replace("{who}", said.who || "");
-    const name = String((row.kind === "remix" ? row.of_name : row.name) || "Brickworks").slice(0, 80);
+    // A thread of Talk is named as Notifications names it, one push a thread.
+    const thread = TALK.has(row.kind) ? Number(row.thread) || 0 : 0;
+    const name = String((row.kind === "remix" ? row.of_name : thread ? say("Talk: {title}", { title: row.title || "" }) : row.name)
+      || "Brickworks").slice(0, 80);
     const model = String(row.kind === "remix" ? row.of || row.model || "" : row.model || "");
     const others = more > 0 ? say("{n} more on its page", { n: more }) : "";
     return { title: name, body: [line, said.said, others].filter(Boolean).join("\n").slice(0, 600), url: said.link,
-      tag: model ? `model-${model}` : `kind-${row.kind}` };
+      tag: model ? `model-${model}` : thread ? `talk-${thread}` : `kind-${row.kind}` };
   });
 }
 

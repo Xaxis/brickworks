@@ -27,6 +27,9 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import site_shell  # noqa: E402  the header, marked for each copy's own page
+
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
 SITE = "https://brickworks.diy"
@@ -109,7 +112,9 @@ def copy(name: str, gallery: str) -> str:
     out = replaced(out, r'(<a href="/gallery" data-tab="top") aria-current="page"', lambda found: found.group(1), "Top's mark")
     out = replaced(out, rf'(<a href="[^"]*" data-tab="{one["tab"]}")', lambda found: f'{found.group(1)} aria-current="page"',
                    f"{one['tab']} tab")
-    return out
+    # The header's own link marked as the shell marks this page: each tab's
+    # copy is the Gallery (tools/site_shell.py OWN).
+    return site_shell.HEADER.sub(lambda _: site_shell.marked(site_shell.shell()[1], name), out, count=1)
 
 
 def written() -> dict[Path, str]:

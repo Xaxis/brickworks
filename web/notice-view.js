@@ -91,6 +91,7 @@ export function group(one, i = 0) {
   item.dataset.model = String(one.model || "");
   if (one.achievements) item.dataset.achievements = "";
   if (one.challenge) item.dataset.challenge = String(Number(one.challenge) || "");
+  if (one.talk) item.dataset.talk = String(Number(one.talk) || "");
   const told = Number(one.announcement) > 0 || one.announcement === 0;
   const to = told ? outside(one.link) : here(one.link);
   if (told) {
@@ -100,7 +101,7 @@ export function group(one, i = 0) {
     if (!/#announcement-\d+$/.test(String(one.link || ""))) item.dataset.own = to;
   }
   const picture = document.createElement("a");
-  picture.className = one.achievements ? "pic award" : one.challenge ? "pic challenge" : told ? "pic announce" : "pic";
+  picture.className = one.achievements ? "pic award" : one.challenge ? "pic challenge" : told ? "pic announce" : one.talk ? "pic talk" : "pic";
   picture.href = to;
   picture.tabIndex = -1;
   picture.setAttribute("aria-hidden", "true");
@@ -118,6 +119,7 @@ export function group(one, i = 0) {
   if (one.achievements) picture.append(parsed(iconHtml("award")));
   if (one.challenge) picture.append(parsed(iconHtml("build")));
   if (told) picture.append(parsed(iconHtml("spark")));
+  if (one.talk) picture.append(parsed(iconHtml("comment")));
   const body = document.createElement("div");
   body.className = "body";
   const title = document.createElement("h2");
