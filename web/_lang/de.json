@@ -3562,6 +3562,13 @@
   "All its comments": "Alle Kommentare",
   "Opening the studio…": "Das Studio wird geöffnet…",
   "The Brickworks studio, with {name}": "Das Brickworks-Studio, mit {name}",
-  "The Brickworks mark in 3D, built in LEGO® bricks. Drag to turn it; with it focused, the arrow keys turn it.": "Das Brickworks-Zeichen in 3D, gebaut aus LEGO® Steinen. Zum Drehen ziehen; ausgewählt drehen es auch die Pfeiltasten."
+  "The Brickworks mark in 3D, built in LEGO® bricks. Drag to turn it; with it focused, the arrow keys turn it.": "Das Brickworks-Zeichen in 3D, gebaut aus LEGO® Steinen. Zum Drehen ziehen; ausgewählt drehen es auch die Pfeiltasten.",
+  "Say it was made with the assistant": "Sagen, dass es mit dem Assistenten gemacht wurde",
+  "Say it was made with Brickify": "Sagen, dass es mit Brickify gemacht wurde",
+  "Stop saying it was made with the assistant": "Nicht mehr sagen, dass es mit dem Assistenten gemacht wurde",
+  "Stop saying it was made with Brickify": "Nicht mehr sagen, dass es mit Brickify gemacht wurde",
+  "Its page now says it was made with the assistant.": "Seine Seite sagt jetzt, dass es mit dem Assistenten gemacht wurde.",
+  "Its page now says it was made with Brickify.": "Seine Seite sagt jetzt, dass es mit Brickify gemacht wurde.",
+  "Its page no longer says how it was made.": "Seine Seite sagt nicht mehr, wie es gemacht wurde."
  }
 }
