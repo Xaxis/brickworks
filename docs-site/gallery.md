@@ -105,6 +105,12 @@ lib:the gallery's daily choice
 
 Every model is a card, the same everywhere on the site: its picture, its name, its designer (press to open [their page](#designer)), its part count, and how many liked, built and commented on it once there are any. The heart on the picture likes it. **✓ Tested** says it passed [Brickworks' four tests](/docs/sharing#tested). A card says *Moves: steering, boom* when something on it moves, which anybody can move on its page, and *Won* with a challenge's name when it won one.
 
+<!-- covers
+lib:the gallery's card as a photograph
+-->
+
+A card's picture is a photograph of the model standing on a desk, drawn when it was shared: path traced in daylight where the computer's graphics card traces rays (the same stage as [Render's](/docs/render) Best), and under a studio's soft lights in a browser. A model shared from a phone, or from a computer too slow to draw it in a few seconds, shows the model on the page's own ground instead.
+
 Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/lists#own)). Only you see it, and the gallery counts it for the whole page at once.
 
 ![Four gallery cards seen signed in with a collection: the sports car says You have 73%, the corner shop You have every part with a check, the barn owl You have 64%, and the fire station, under half, says nothing of it.](/docs/img/gallery-owned.webp "What you have of each model, on its card.")

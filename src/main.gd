@@ -8031,6 +8031,8 @@ func _make_share_panel() -> void:
 	share.shared = _shared
 	share.moves_of = _moves_now
 	share.picture = _exports.picture
+	share.look = _look()
+	share.rig_lights = _rig_lights()
 	share.named = _bar.model_name
 	share.challenge_line = _challenge_line
 	share.setup()

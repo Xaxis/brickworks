@@ -3388,6 +3388,11 @@ func finish_now() -> void:
 		_stopping = true
 
 
+## How many samples the picture being traced has so far: 0 when none is.
+func samples_traced() -> int:
+	return _tracer.samples if _busy and _tracer != null else 0
+
+
 ## Whether the last picture was path traced.
 func traced_last() -> bool:
 	return _traced_last

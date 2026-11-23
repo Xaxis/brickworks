@@ -1072,6 +1072,22 @@
       "tests": []
     },
     {
+      "id": "cli:card judge",
+      "kind": "cli",
+      "entry": "tools/bench/cardlook.py",
+      "reach": "python3 tools/bench/cardlook.py sheet DIR --looks new  |  python3 tools/bench/cardlook.py judge DIR --look new --out OUT",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:card probe",
+      "kind": "cli",
+      "entry": "src/dev/card_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_probe.gd -- --pictures=DIR [--only=1,6] [--looks=LOOKS.json]",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:carried fetch probe",
       "kind": "cli",
       "entry": "src/dev/carried_fetch_probe.gd",
@@ -5652,6 +5668,14 @@
       "entry": "src/net/gallery_tool.gd",
       "reach": "the gallery tool (AppTools): search brickworks.diy/gallery (sort top, builds, and owned with the person's sign-in; each model's builds, nought said too, moves, Tested mark and designer's handle), shelves=true for the week's pick, the small builds and what they can build now, open=<id> reads one as a reference with its credit, licence, builds, comments and photos of real builds, designer=<handle> reads a designer's page; open_model link=<id> opens a copy, as Open in Brickworks does",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "lib:the gallery's card as a photograph",
+      "kind": "lib",
+      "entry": "src/render/card_photo.gd",
+      "reach": "File \u203a Share\u2026 \u203a Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk, frames averaged on the same desk in a browser within 2.5 s (CardPhoto, src/ui/share_panel.gd _pictures); a phone keeps the cut-out",
+      "area": "web",
       "tests": []
     },
     {
