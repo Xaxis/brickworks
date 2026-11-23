@@ -292,7 +292,7 @@ static func search(of: Array, ask: Dictionary) -> Dictionary:
 			entry["author"]]).to_lower()
 		var all: bool = true
 		for word: String in words:
-			if not said.contains(word):
+			if not _begins_a_word(said, word):
 				all = false
 				break
 		if all:
@@ -319,6 +319,22 @@ static func search(of: Array, ask: Dictionary) -> Dictionary:
 	var page: int = clampi(int(ask.get("page", 1)), 1, pages)
 	return {"models": found.slice((page - 1) * PER_PAGE, page * PER_PAGE), "total": found.size(),
 		"page": page, "pages": pages}
+
+
+## Whether [param word] begins one of [param said]'s words: "car" finds Car,
+## Cars and Cargo, not Scarecrow, Helicarrier or Carbonite's Han Solo; "6080"
+## finds 6080-1. Anywhere in a word, a first visitor's "car" filled the
+## Library's first page with a scarecrow and a helicarrier (ux12).
+static func _begins_a_word(said: String, word: String) -> bool:
+	var at: int = said.find(word)
+	while at >= 0:
+		if at == 0:
+			return true
+		var before: String = said[at - 1]
+		if before.to_upper() == before.to_lower() and not before.is_valid_int():
+			return true
+		at = said.find(word, at + 1)
+	return false
 
 
 ## Who made [param entry] and on what terms, as the model carries it once

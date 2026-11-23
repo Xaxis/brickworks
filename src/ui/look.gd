@@ -44,7 +44,7 @@ const STRONG_DOWN := Color(0.17, 0.36, 0.75)
 ## --bad: white words 5.0:1 on it, it 3.4:1 on the face, as STRONG is held.
 const DANGER := Color(0.80, 0.22, 0.18)
 const DANGER_HOVER := Color(0.83, 0.24, 0.20)
-const DANGER_DOWN := Color(0.70, 0.18, 0.15)
+const DANGER_DOWN := Color(0.76, 0.20, 0.17)
 ## One of a choice that is chosen (a tab, a segment): the accent, at least
 ## 3:1 on the face; at 38% it was 2.0:1.
 const CHOSEN := Color(0.36, 0.6, 1.0, 0.65)

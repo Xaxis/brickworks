@@ -15,7 +15,7 @@
 ## Pictures in --pictures=DIR (else user://ux12_walk), named by step.
 extends SceneTree
 
-const SET := "6080-1"
+const SET := "omr-6080-1"
 
 var _main: Node
 var _camera: CadCamera
@@ -30,6 +30,7 @@ var _on_phone: bool = false
 var _out: String = "user://ux12_walk"
 var _only: PackedStringArray = []
 var _steps: int = 0
+var _failures: int = 0
 
 
 func _initialize() -> void:
@@ -106,8 +107,58 @@ func _run() -> void:
 		await _parent()
 	if _runs("p5"):
 		await _remixer()
-	print("UX12 done: %d steps pictured" % _steps)
+	await _checks()
+	print("UX12 done: %d steps pictured, %d check(s) failed" % [_steps, _failures])
 	quit(0)
+
+
+## The fixes judged in the app as it runs, one "UX12 check" line each: run
+## on the code before them, these are the frictions; after, the fixes.
+func _checks() -> void:
+	print("\nUX12 checks")
+	if _on_phone and _phone != null:
+		var buttons: Dictionary = _phone.get("_tool_buttons")
+		var bare: Array = []
+		for tool: Array in PhoneShell.TOOLS:
+			var button: Button = buttons.get(str(tool[0]))
+			if button != null and button.text.is_empty():
+				bare.append(str(tool[1]))
+		_check("the phone row says its words (bare: %s)" % ", ".join(bare), bare.is_empty())
+	var maker: Shell.Command = _shell.command("part_maker")
+	_check("Make's row names the part maker as the bin does (%s)" % maker.words,
+		maker.words == "Make a part…")
+	var flex: Shell.Command = _shell.command("flex")
+	_check("the flex tool is named for a cable (%s)" % flex.words, flex.words.begins_with("Cable"))
+	_check("Instructions under File, Export", (Shell.SUBMENUS["export"] as Array).has("instructions"))
+	var clear: ConfirmationDialog = _bar.get("_confirm")
+	_check("Clear it is red (%s)" % clear.get_ok_button().theme_type_variation,
+		clear.get_ok_button().theme_type_variation == &"DangerButton")
+	var dialog: Node = _shell.get("library_dialog")
+	dialog.call("open", "sets")
+	await _frames(20)
+	var search: LineEdit = dialog.get("_search")
+	var shown: String = search.placeholder_text
+	var font: Font = search.get_theme_font("font")
+	var room: float = search.size.x - search.get_theme_stylebox("normal").get_minimum_size().x \
+		- (search.right_icon.get_width() if search.right_icon != null else 0)
+	var needs: float = font.get_string_size(search.tr(shown), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		search.get_theme_font_size("font_size")).x
+	_check("Library's search says it takes a set's number, whole (%s: %.0f of %.0f)" % [shown,
+		needs, room], shown.begins_with("Set number") and needs <= room)
+	await _close_all()
+	_bar.call("_on_open")
+	await _frames(10)
+	var saves: PopupMenu = _bar.get("_saves")
+	var first: String = saves.get_item_text(0) if saves.item_count > 0 else ""
+	_check("Open's first row: %s" % first, first.begins_with("From a file ("))
+	saves.hide()
+	await _frames(5)
+
+
+func _check(what: String, ok: bool) -> void:
+	print("UX12 check %s  %s" % ["ok  " if ok else "FAIL", what])
+	if not ok:
+		_failures += 1
 
 
 func _runs(section: String) -> bool:
