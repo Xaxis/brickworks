@@ -6974,7 +6974,11 @@ locally (numbers in the unit's report).
 
 The design system, with no network and no account (pages from the
 checkout, `/m/<id>`, `/u/<handle>`, `/c/<id>` and the embed made by its
-`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`):
+`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`).
+Each model's picture (`/m/<id>.png`, `.webp`, a version's) and a set's
+(`/library/set/<num>.webp`) is a house card from `tests/fixtures/stand_in/`
+picked for that id (`PICTURE_OF`, else one by its id), so cards and model
+pages read true; `/share.png` is the og card's alone:
 
 ```sh
 heavy node tools/web/design_flow.mjs --out=shots/design              # this checkout
