@@ -883,6 +883,13 @@ func duplicate_beside() -> int:
 		now.append(world.get_brick(brick_id).transform)
 	var step: Variant = Later.script(&"Pattern").step_between(before, now) \
 		if before.size() == now.size() else null
+	# Along the floor: a copy let down beside its raised original is a step
+	# down as well as across, and a row of that step went into the ground
+	# (ux14's after walk: "copy 1 has no room"). The row runs level from it.
+	if step is Transform3D:
+		var level: Transform3D = step
+		level.origin.y = 0.0
+		step = level
 	_copied = {} if step == null else {"ids": ids, "at": now, "step": step,
 		"depth": builder.history_depth()}
 	say.call(Keymap.filled("a copy of %s put beside it, selected: drag it where it goes; {duplicate|puts another}; {undo|takes it back}")

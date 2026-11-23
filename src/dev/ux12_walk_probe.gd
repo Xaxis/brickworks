@@ -762,28 +762,33 @@ func _measure_align() -> void:
 	await _run_command("panel_properties", "p12_03_properties", "Properties: where the part is", 30)
 	await _run_command("mode_move", "p12_04_move_tool", "Tools, Move", 20)
 	var verbs: EditVerbs = _shell.get("verbs")
-	var lifted_from: Vector3 = Vector3.INF
-	var lifted_id: int = -1
+	var part_id: String = ""
 	if not _builder.selection.is_empty():
-		lifted_id = int(_builder.selection.keys()[0])
-		lifted_from = _world.get_brick(lifted_id).transform.origin
+		part_id = _world.get_brick(int(_builder.selection.keys()[0])).part_id
 	if verbs != null and not _builder.selection.is_empty():
 		verbs.lift()
 		await _frames(10)
+		# Where its ghost is as the number is typed: a typed move goes from
+		# there, as typed_moves_probe's "-2z" does.
+		var would: Vector3 = Vector3.INF
+		if _builder.is_carrying():
+			var placements: Array = _builder.carrying.placements(_builder)
+			if not placements.is_empty():
+				would = (placements[0]["at"] as Transform3D).origin
 		await _type("x -1")
 		await _frames(10)
-		await _step("p12_05_typed", "x -1 typed with the part in hand: outwards, it is the leftmost")
+		await _step("p12_05_typed", "x -1 typed with the part in hand")
 		await _key(KEY_ENTER)
 		await _frames(10)
 		await _step("p12_06_moved", "moved one stud along x")
-		var now_at: Vector3 = Vector3.INF
+		var there: bool = false
 		for brick: BrickWorld.Brick in _world.bricks():
-			if brick.id == lifted_id or _builder.selection.has(brick.id):
-				now_at = brick.transform.origin
-		_check14("x -1 and Enter put it down a stud along x (%s to %s, in hand: %s)" % [lifted_from,
-			now_at, str(_builder.is_carrying())], not _builder.is_carrying()
-			and now_at.is_finite() and lifted_from.is_finite()
-			and absf(absf(now_at.x - lifted_from.x) - 20.0) < 0.1)
+			if brick.part_id == part_id and would.is_finite() \
+					and brick.transform.origin.is_equal_approx(would + Vector3(-20, 0, 0)):
+				there = true
+		_check14("x -1 and Enter put it down a stud along x from its ghost (%s; %s; in hand: %s)" % [
+			would, _bar.status_text().left(40), str(_builder.is_carrying())],
+			not _builder.is_carrying() and there)
 	await _run_command("panel_properties", "", "", 10)
 	await _run_command("grid", "p12_07_grid", "View, Stud grid", 20)
 	await _run_command("grid", "", "", 10)
