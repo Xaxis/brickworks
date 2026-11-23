@@ -656,10 +656,26 @@ const SVG = "http://www.w3.org/2000/svg";
 /// names in the visitor's, as the app says them (?lang=de: api/share.js
 /// partsAnswer), on a page with no copy in it (a model's) too, and LDraw's
 /// where the app has no words for one, each marked with its language.
+///
+/// A model's list, to somebody signed in (ownedparts): how much of it they
+/// have, counted as the gallery's cards count it, and All · Missing · Have
+/// all, the list less what they own, those they have every one of, each lot
+/// with its count; with Missing chosen, the shops' lists are of only those
+/// (api/share.js op=parts_missing, startMine).
 function startParts(section) {
   const list = section.querySelector(".lot-list");
+  const reserved = list?.style.minHeight || "";
   const all = section.querySelector("[data-all]");
   const choices = [...section.querySelectorAll("[data-group]")];
+  // The model and version this list is of; a set's page's is not one (it
+  // says what is owned of it itself, web/set-page.js).
+  const ofModel = /^\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/parts\.json$/.exec(section.dataset.parts || "");
+  // What they are missing (startMine's answer) and which lots are shown:
+  // "all", "missing" or "whole".
+  let mine = null;
+  let show = "all";
+  // Its row, kept from the start for somebody signed in (holdMine).
+  let held = null;
   // What draws the lots' pictures (web/part-pictures.js): undefined until
   // it is here, false where there is none.
   let pictures;
@@ -718,8 +734,25 @@ function startParts(section) {
     qty.className = "qty";
     qty.textContent = `× ${number(lot.count)}`;
     qty.setAttribute("aria-label", say("{n} of them", { n: number(lot.count) }));
+    // Short of it: how many more, and how many of it they have.
+    if (show === "missing" && Number.isInteger(lot.need)) {
+      qty.setAttribute("aria-label", say("{n} more needed", { n: number(lot.count) }));
+      if (lot.have > 0) {
+        const had = document.createElement("span");
+        had.className = "had";
+        had.textContent = `· ${say("you have {have} of {need}", { have: number(lot.have), need: number(lot.need) })}`;
+        meta.append(had);
+      }
+    }
     item.append(pic, what, qty);
     return item;
+  };
+  // The lots shown: every one, those they are short of (with how many
+  // short), or those they have every one of.
+  const shownLots = () => {
+    if (!mine || show === "all") return lots;
+    if (show === "missing") return mine.missing;
+    return lots.filter((lot) => !mine.short.has(`${lot.part}/${lot.colour}`));
   };
   const heading = (words, n, hex, code) => {
     const item = document.createElement("li");
@@ -738,7 +771,7 @@ function startParts(section) {
     // Each colour (or kind) with the most of its parts first, its lots
     // under it.
     const groups = new Map();
-    for (const lot of lots) {
+    for (const lot of shownLots()) {
       const key = group === "colour" ? `c${lot.colour}` : `k${lot.category || ""}`;
       const said = group === "colour" ? lot.colour_said : lot.category_said;
       const words = said || (group === "colour" ? lot.colour_name : lot.category);
@@ -758,6 +791,10 @@ function startParts(section) {
     rows.forEach((item, at) => { item.hidden = !open && at >= LOTS_SHOWN; });
     list.replaceChildren(...rows);
     list.removeAttribute("aria-busy");
+    // The room kept for the whole list before it came (api/share.js
+    // partsSection), kept for it alone: Missing or Have all, chosen, take
+    // what they hold, so no empty space under a short one.
+    list.style.minHeight = show === "all" ? reserved : "";
     if (all) all.hidden = open || rows.length <= LOTS_SHOWN;
   };
   const load = () => {
@@ -796,6 +833,8 @@ function startParts(section) {
         });
         return body;
       });
+    // What they are missing, asked beside the list.
+    if (ofModel && signedIn()) startMine(asked);
     return asked;
   };
   partLots = () => Promise.resolve(load()).then(() => lots);
@@ -818,6 +857,189 @@ function startParts(section) {
       list.querySelectorAll("li")[LOTS_SHOWN]?.focus({ preventScroll: true });
     });
   }
+  /// What they have of it, said over the list once the list is here, and
+  /// All · Missing · Have all to choose between: the list's own row, kept
+  /// for it from the start (holdMine), so nothing under it moves.
+  let started = false;
+  async function startMine(listed) {
+    if (started || !ofModel) return;
+    started = true;
+    const row = held || (held = holdMine());
+    const said = row.querySelector(".parts-have");
+    const version = ofModel[2] ? `&v=${ofModel[2]}` : "";
+    const [answer] = await Promise.all([
+      call(`/api/share?op=parts_missing&id=${ofModel[1]}${version}${lang !== "en" ? `&lang=${lang}` : ""}`).catch(() => null),
+      listed]);
+    const body = answer?.body;
+    // The list did not come: it says so, and this is asked again with it.
+    if (!lots) {
+      started = false;
+      said.textContent = "";
+      return;
+    }
+    if (!answer || answer.status !== 200 || !body || typeof body !== "object") {
+      said.textContent = answer?.status === 401 ? say("Sign in again to see what you are missing.")
+        : say("What you own could not be read just now. Reload the page to ask again.");
+      document.documentElement.dataset.missing = "broken";
+      started = answer?.status === 401 ? false : started;
+      return;
+    }
+    const pieces = Number(body.pieces) || 0;
+    const have = Math.min(Number(body.have) || 0, pieces);
+    if (!body.collection) {
+      said.textContent = say("Mark the sets you own (Own, on a set's page) or add your parts in the app, "
+        + "and this says what you are missing.");
+      document.documentElement.dataset.missing = "none";
+      return;
+    }
+    const missing = (Array.isArray(body.missing) ? body.missing : []).filter((lot) => lot && typeof lot.part === "string");
+    // Those they are short of, and those nobody owns on their own: neither
+    // is one they have every one of.
+    mine = { missing, short: new Set([...missing.map((lot) => `${lot.part}/${lot.colour}`),
+      ...(Array.isArray(body.left?.keys) ? body.left.keys.map(String) : [])]), body };
+    const whole = Number(body.whole) || 0;
+    const shortBy = missing.reduce((n, lot) => n + (Number(lot.count) || 0), 0);
+    if (!missing.length) {
+      said.textContent = `✓ ${say("Have all {n} of its parts.", { n: number(pieces) })}`;
+      said.classList.add("all");
+    } else {
+      const share = (Math.floor((100 * have) / Math.max(pieces, 1)) / 100)
+        .toLocaleString(globalThis.brickworksLang?.locale || "en-US", { style: "percent", maximumFractionDigits: 0 });
+      said.textContent = say("You have {have} of its {pieces} parts ({share}): {short} missing, in {lots}.",
+        { have: number(have), pieces: number(pieces), share, short: number(shortBy), lots: counted(missing.length, "lot") });
+    }
+    if (Number(body.unknown) > 0) {
+      const sets = counted(Number(body.unknown), "set");
+      said.textContent += " " + (Number(body.unknown) === 1
+        ? say("{sets} of yours has no parts list here, so what is in it is not counted.", { sets })
+        : say("{sets} of yours have no parts list here, so what is in them is not counted.", { sets }));
+    }
+    document.documentElement.dataset.missing = `${have}/${pieces}/${missing.length}`;
+    if (!missing.length) return;
+    // All · Missing · Have all, each with how many lots.
+    const shows = row.querySelector(".segmented");
+    const counts = { all: lots.length, missing: missing.length, whole };
+    for (const button of shows.querySelectorAll("[data-show]")) {
+      const n = counts[button.dataset.show];
+      button.querySelector(".n").textContent = number(n);
+      button.setAttribute("aria-label", `${button.dataset.label}: ${counted(n, "lot")}`);
+      button.addEventListener("click", () => choose(button.dataset.show));
+    }
+    shows.hidden = false;
+    mineShops(body);
+  }
+
+  /// The row that says what they have, made at once (before what it says
+  /// is known) between the count and Colour · Kind, so the list does not
+  /// move when it comes; and All · Missing · Have all, hidden until then.
+  function holdMine() {
+    const row = document.createElement("div");
+    row.className = "parts-mine";
+    const said = document.createElement("p");
+    said.className = "parts-have";
+    said.setAttribute("role", "status");
+    said.textContent = say("Counting what you have of it…");
+    const shows = document.createElement("div");
+    shows.className = "segmented";
+    shows.setAttribute("role", "group");
+    shows.setAttribute("aria-label", say("Show"));
+    shows.hidden = true;
+    for (const [value, words] of [["all", say("All")], ["missing", say("Missing")], ["whole", say("Have all")]]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.show = value;
+      button.dataset.label = value === "missing" ? say("What you're missing") : value === "whole" ? say("Have all") : say("Every lot");
+      button.setAttribute("aria-pressed", String(value === show));
+      const word = document.createElement("span");
+      word.textContent = words;
+      const n = document.createElement("span");
+      n.className = "n";
+      button.append(word, " ", n);
+      shows.append(button);
+    }
+    row.append(said, shows);
+    (section.querySelector(".parts-bar") || list).before(row);
+    return row;
+  }
+
+  /// Which lots are shown, and the shops' lists of them: only the missing
+  /// ones' while Missing is chosen, the whole model's otherwise.
+  function choose(value) {
+    show = value;
+    for (const button of section.querySelectorAll(".parts-mine [data-show]")) {
+      button.setAttribute("aria-pressed", String(button.dataset.show === value));
+    }
+    const missing = value === "missing";
+    for (const whole of section.querySelectorAll(".parts-shops:not(.missing), .pab-note:not(.missing)")) whole.hidden = missing;
+    for (const only of section.querySelectorAll(".parts-shops.missing, .pab-note.missing")) only.hidden = !missing;
+    if (lots) draw();
+    document.documentElement.dataset.partsShown = value;
+  }
+
+  /// The shops' lists of only what they are missing, beside the whole
+  /// model's and in their place while Missing is chosen: BrickLink XML,
+  /// Rebrickable CSV and LEGO® Pick a Brick CSV (a file of 400 elements
+  /// each), made here from the answer, so one click downloads each; and
+  /// what Pick a Brick leaves off, said under them.
+  function mineShops(body) {
+    const files = body.files || {};
+    const base = String(body.name || ofModel[1]).replace(/[^A-Za-z0-9 ._-]+/g, "").trim() || ofModel[1];
+    const shops = document.createElement("div");
+    shops.className = "parts-shops missing";
+    shops.hidden = show !== "missing";
+    const download = (words, text, type, name, title = "") => {
+      if (typeof text !== "string" || !text) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "cta ghost small";
+      button.textContent = words;
+      button.dataset.missing = name;
+      if (title) button.title = title;
+      button.addEventListener("click", () => {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([text], { type }));
+        link.download = name;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      });
+      shops.append(button);
+    };
+    download("BrickLink XML", files.bricklink, "application/xml", `${base}-missing-bricklink.xml`);
+    download("Rebrickable CSV", files.rebrickable, "text/csv", `${base}-missing-rebrickable.csv`);
+    const pab = Array.isArray(files.pickabrick) ? files.pickabrick : [];
+    const what = say("A list of LEGO® element numbers to upload at LEGO® Pick a Brick");
+    pab.forEach((text, n) => download(pab.length > 1
+      ? say("LEGO® Pick a Brick CSV, {n} of {all}", { n: number(n + 1), all: number(pab.length) }) : say("LEGO® Pick a Brick CSV"),
+    text, "text/csv", `${base}-missing-pickabrick${pab.length > 1 ? `-${n + 1}` : ""}.csv`, what));
+    const whole = section.querySelector(".parts-shops:not(.missing)");
+    if (whole) whole.after(shops);
+    else section.querySelector(".parts-bar")?.append(shops);
+    // What the lists leave off: what nobody owns on its own is in no count;
+    // a lot with no LEGO® element number known is not on Pick a Brick's.
+    const notes = [];
+    const left = Number(body.left_out?.pickabrick) || 0;
+    if (left) {
+      notes.push(say("Not on the Pick a Brick list, with no LEGO® element number known: {lots} ({parts}).", {
+        lots: counted(left, "lot"), parts: counted(Number(body.pickabrick?.left_out_pieces) || 0, "part") }));
+    }
+    if (Number(body.left?.lots) > 0) {
+      notes.push(say("Not counted, as nobody owns them on their own (stickers, made parts): {parts}.",
+        { parts: counted(Number(body.left.pieces) || 0, "part") }));
+    }
+    if (notes.length) {
+      const note = document.createElement("p");
+      note.className = "note pab-note missing";
+      note.hidden = show !== "missing";
+      note.textContent = notes.join(" ");
+      (section.querySelector(".pab-note:not(.missing)") || section.querySelector(".parts-bar"))?.after(note);
+    }
+  }
+  // Signed in on this page after the list came (the header's Sign in).
+  addEventListener("brickworks:signed-in-done", () => { if (lots && ofModel && signedIn()) startMine(asked); });
+  if (ofModel && signedIn()) held = holdMine();
+
   document.querySelector('#page-tabs a[data-tab="parts"]')?.addEventListener("click", load);
   // Watched once the page has loaded, its picture first: the list never
   // competes with what is on the first screen.

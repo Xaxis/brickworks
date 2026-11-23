@@ -803,6 +803,120 @@
    "features": [
     "ui:show your build"
    ]
+  },
+  {
+   "id": "parts-missing",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=3"
+   ],
+   "pad": 12,
+   "alt": "A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO® Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.",
+   "caption": "What you're missing, on a model's Parts tab.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
+  },
+  {
+   "id": "parts-missing-phone",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "scroll": "#parts"
+    },
+    {
+     "wait": ".parts-mine .segmented:not([hidden])"
+    },
+    {
+     "click": ".parts-mine [data-show=\"missing\"]"
+    },
+    {
+     "wait": ".parts-shops.missing:not([hidden])"
+    }
+   ],
+   "crop": [
+    "#parts-h",
+    "#parts .lot-list li.lot >> nth=1"
+   ],
+   "pad": 8,
+   "alt": "What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.",
+   "caption": "What you're missing, on a phone.",
+   "features": [
+    "ui:a model's parts and its download"
+   ]
+  },
+  {
+   "id": "model-alt-build",
+   "source": "site",
+   "route": "/m/DocsRock01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "alts"
+   ],
+   "wait": "#alt-build",
+   "crop": [
+    ".side h1",
+    "#alt-build"
+   ],
+   "pad": 12,
+   "alt": "Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.",
+   "caption": "Built from three sets, as counted when it was published.",
+   "features": [
+    "ui:shared model page and card",
+    "lib:alternate builds counted"
+   ]
   }
  ]
 }

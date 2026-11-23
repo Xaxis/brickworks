@@ -39,6 +39,11 @@
 //                            elements as=pab-2, /m/X/parts-pab-2.csv, and
 //                            on) a LEGO® Pick a Brick list, each to
 //                            download; with v=N, version N's
+//   GET  ?op=parts_missing&id=X  with the session: what the person is
+//                            missing of that list, and the three shops'
+//                            lists of only those (the Parts tab's What
+//                            you're missing, ownedparts); with v=N, of
+//                            version N's; never kept by the CDN
 //   GET  ?op=scene&id=X      /m/X/scene.json: the model packed for its page's
 //                            3D view (api/_parts.js sceneOf), every part's
 //                            place, turn and colour, its geometry in the
@@ -139,7 +144,8 @@
 //   GET  ?op=bases&id=X      what X is based on, and whether the caller may
 //                            change it; POST ?op=bases {model, bases} its
 //                            designer's list; GET ?op=set_based&set=N the
-//                            models based on set N (api/_bases.js)
+//                            models based on set N (api/_bases.js) and the
+//                            public lists it is in (api/_lists.js)
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
 //                            visitor, and never for a robot
 //   POST ?op=built&id=X      {device, v?}: built to its last step, in the
@@ -286,7 +292,7 @@ import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_vers
 import { changedLineHtml, changesAnswer, countAfter, ownChanges, treeHtml, treeOf, treeWithout } from "./_remix.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
-import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
+import { freshPool, heldOf, keyed, missingOf, ownedKey, poolOf, readShard, shardOf } from "./_owned.js";
 // Every set in the catalogue, a page each (sets364), and the picture drawn
 // of one LDraw has no model of.
 import {
@@ -299,9 +305,10 @@ import { indexOf as searchIndex } from "./_search.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // What a model is based on (docs/SOCIAL.md section 7, item 5).
 import { bases, basesOf, basesPut, setBased, setFind } from "./_bases.js";
+import { altRowsOf, altSaid, keepAlts } from "./_alts.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, altHtml, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -1121,6 +1128,30 @@ const sharerOf = (model) => (model.by && model.by.name) || model.author || say("
 /// Who modelled it, under who shares it, when that is somebody else: the
 /// person the app's Library credits, the page LDraw keeps of it, and, when
 /// its sharer changed it, that they did. "" for a model its sharer made.
+/// What was counted of [page]'s model ([kept]: api/_alts.js altRowsOf's)
+/// said on it (altbuilds): page.alt, the line under its credit (altSaid,
+/// each set named from the catalogue and linking its page under [at]); or,
+/// where its designer says it is an alternate build of that same set, its
+/// share on that line instead, so the page says it once.
+export function altLine(page, kept, at = "") {
+  page.alt = null;
+  const said = kept ? altSaid(kept.sets, kept.pieces) : null;
+  if (!said) return page;
+  const sets = said.sets.map((one) => {
+    const entry = catalogSet(one.set);
+    return entry ? { ...one, set: entry.set, name: entry.name, href: `${at}/library/set/${encodeURIComponent(entry.set)}` } : null;
+  });
+  if (sets.some((one) => !one)) return page;
+  const declared = (page.based || []).filter((one) => one.how === "alternate" && one.set);
+  if (said.how !== "group" && declared.some((one) => one.set.toLowerCase() === sets[0].set.toLowerCase())) {
+    page.based = page.based.map((one) => (one.how === "alternate" && one.set && one.set.toLowerCase() === sets[0].set.toLowerCase()
+      ? { ...one, share: { have: sets[0].have, pieces: said.pieces } } : one));
+    return page;
+  }
+  page.alt = { ...said, sets };
+  return page;
+}
+
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
   return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
@@ -1488,6 +1519,7 @@ ${header}
       <h1>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
       ${modelledLine(model)}
+      ${altHtml(model.alt)}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in Brickworks"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
@@ -2354,6 +2386,7 @@ async function read(request, response) {
   if (op === "catalog_picture") return catalogPicture(response, origin, String(request.query?.set || ""));
   if (op === "catalog_photo") return catalogPhoto(response, String(request.query?.set || ""), String(request.query?.as || "card"));
   if (op === "catalog_owned") return catalogOwned(request, response, origin, String(request.query?.set || ""));
+  if (op === "parts_missing") return partsMissing(request, response, origin, id);
   if (op === "sitemap_index") return sitemapIndex(response, origin);
   if (op === "sitemap_models") return sitemapOfModels(response, origin, String(request.query?.lang || ""));
   if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""), String(request.query?.lang || "en"));
@@ -2400,7 +2433,7 @@ async function read(request, response) {
     // Its clip (unit turntable): the model turning in its link's preview,
     // named only on the newest version's page and while it is of that
     // version; none read is none, and the picture card it always had.
-    const [mark, photos, next, { counted, parts }, lists, based, clip, tree] = await Promise.all([
+    const [mark, photos, next, { counted, parts }, lists, based, clip, tree, alts] = await Promise.all([
       orUnknown("share", markOf(db, id, shown.n)),
       orUnknown("share", photosWhere(`model=eq.${id}`, shownPublicly)), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
@@ -2411,10 +2444,15 @@ async function read(request, response) {
       // Where it came from and what was remixed from it, with what each
       // changed (supabase/remix_changes.sql): null before that, and the
       // page is as it was.
-      page.library ? null : orUnknown("share", treeOf(id))]);
+      page.library ? null : orUnknown("share", treeOf(id)),
+      orUnknown("share", altRowsOf([id]))]);
     // What it is based on, under its remix line and in its structured data.
     page.based = based || [];
     page.tree = tree;
+    // And the real set (or the few) its parts all come from, counted when
+    // it was published (api/_alts.js): a line under its credit, or the
+    // share on its designer's own line for that set.
+    altLine(page, alts?.get(id) || null, lang === "en" ? "" : `/${lang}`);
     await leaveOffBlocked(own, page, next, lists);
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
@@ -2809,9 +2847,9 @@ async function catalogPicture(response, origin, number) {
 
 /// How much of set N the person signed in owns, as the app's collection
 /// counts it: {set, pieces, have, missing (lots), unknown (their sets no
-/// inventory has), wanted: {bricklink, rebrickable} (what they are missing,
-/// as each shop's list), left_out}. No collection is {pieces, have: 0,
-/// collection: false}. Never kept by anything between.
+/// inventory has), wanted: {bricklink, rebrickable, pickabrick: [file]}
+/// (what they are missing, as each shop's list), left_out}. No collection
+/// is {pieces, have: 0, collection: false}. Never kept by anything between.
 async function catalogOwned(request, response, origin, number) {
   response.setHeader("Cache-Control", "no-store");
   const entry = catalogSet(number);
@@ -2836,11 +2874,107 @@ async function catalogOwned(request, response, origin, number) {
   const short = catalogLots(owned.missing) || { pieces: 0, lots: [] };
   const bricklink = wantedList(short);
   const rebrickable = rebrickableCsv(short);
+  // And as LEGO® Pick a Brick's upload takes them (ownedparts), a file of
+  // PICK_A_BRICK_LINES elements each.
+  const pab = pickABrick(short);
   return response.status(200).json({ set: entry.set, pieces: owned.pieces, have: owned.have, collection: true,
     missing: short.lots.length, unknown: pool.unknown.length,
-    wanted: { bricklink: bricklink.text, rebrickable: rebrickable.text },
-    left_out: { bricklink: bricklink.left_out, rebrickable: rebrickable.left_out } });
+    wanted: { bricklink: bricklink.text, rebrickable: rebrickable.text, pickabrick: pab.files },
+    left_out: { bricklink: bricklink.left_out, rebrickable: rebrickable.left_out, pickabrick: pab.missing.length } });
 }
+
+/// What the person signed in is missing of a model's parts list
+/// (ownedparts): its Parts tab's What you're missing, the list
+/// /m/X/parts.json answers less what their collection holds, counted as the
+/// gallery counts their share of it (api/_owned.js heldOf, missingOf), and
+/// the shops' lists of only those lots, in the formats the tab downloads for
+/// the whole model, named for it (name, as its downloads are): {id,
+/// version, newest, name, collection, pieces, have, lots, whole,
+/// missing: [lots as parts.json's, count the number short, need, have],
+/// left: {lots, pieces} nobody owns on their own, unknown (their sets no
+/// inventory has), files: {bricklink, rebrickable, pickabrick: [file]},
+/// left_out, stand_ins, pickabrick}. No collection is {collection: false}
+/// with the list's size. The version as /m/X/parts.json reads it (v=N, the
+/// newest unless one is), and what a visitor may read of it. Never kept by
+/// anything between.
+async function partsMissing(request, response, origin, id) {
+  response.setHeader("Cache-Control", "no-store");
+  const fail = (status, error) => response.status(status).json({ error });
+  if (!ID.test(id)) return fail(400, "id is a model's link, ten letters and digits");
+  const asked = askedVersion(request);
+  let claims;
+  try {
+    claims = await verify(bearer(request), request);
+  } catch (trouble) {
+    return fail(trouble?.status || 401, trouble?.message || "Sign in to see what you are missing.");
+  }
+  const row = await publishedRow(id);
+  if (!row) {
+    const gone = await missing(id);
+    return fail(gone.status, gone.error);
+  }
+  const versions = await versionsOf(id, row);
+  const newest = versions[0].n;
+  const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
+  if (!shown) return fail(404, `There is no version ${asked} of this model: it has ${count(newest, "version")}.`);
+  const parts = await versionParts(id, shown.n, newest);
+  if (parts === undefined) return fail(410, "This model is no longer shared.");
+  if (!parts) return fail(503, "This site cannot list a model's parts just now.");
+  const keys = parts.lots.map((lot) => ownedKey(lot.part, lot.colour));
+  const held = await heldOf(claims.sub, origin, keys.filter(Boolean).map((key) => key.slice(0, key.lastIndexOf("/"))));
+  const said = { id, version: shown.n, newest, name: `${fileName(row.name, id)}${shown.n === newest ? "" : `-v${shown.n}`}` };
+  if (!held) {
+    const none = missingOf(parts, new Map());
+    return response.status(200).json({ ...said, collection: false, pieces: none.pieces, have: 0, lots: none.lots });
+  }
+  return response.status(200).json(missingAnswer(parts, held, said, String(request.query?.lang || "en")));
+}
+
+/// op=parts_missing's answer when they have a collection: model [parts]
+/// (partsOf) less what [held] holds ({held, unknown}: heldOf), [said] its
+/// id, versions and name first; in [lang] as /m/X/parts.json is. Its own
+/// so the documentation's pictures show the very answer
+/// (tools/web/docs_world.mjs).
+export function missingAnswer(parts, held, said, lang = "en") {
+  const short = missingOf(parts, held.held);
+  const lots = { pieces: short.missing.reduce((n, lot) => n + lot.count, 0), lots: short.missing };
+  const bricklink = wantedList(lots);
+  const rebrickable = rebrickableCsv(lots);
+  const pab = pickABrick(lots);
+  const words = SITE_LANGS.includes(lang) ? partNames(lang) : null;
+  const root = storeRoot();
+  return {
+    ...said, ...(words ? { lang } : {}), collection: true, pieces: short.pieces, have: short.have, lots: short.lots,
+    whole: short.whole, left: short.left, unknown: held.unknown,
+    missing: short.missing.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
+      colour_name: lot.colour_name, hex: lot.hex, count: lot.count, need: lot.need, have: lot.have,
+      element: lot.element || null, custom: lot.custom, mesh: (root && lot.mesh) || null, ...namesOf(lot, words) })),
+    files: { bricklink: bricklink.text, rebrickable: rebrickable.text, pickabrick: pab.files },
+    left_out: { bricklink: bricklink.left_out, rebrickable: rebrickable.left_out, pickabrick: pab.missing.length },
+    stand_ins: bricklink.stand_ins,
+    pickabrick: { files: pab.files.length, lines: pab.lines, pieces: pab.pieces,
+      left_out_pieces: pab.missing.reduce((n, lot) => n + lot.count, 0), over: pab.over },
+  };
+}
+
+/// Version [n] of model [id]'s parts list (partsOf), the newest being
+/// [newest]: kept here by version, which is never written again once made
+/// (a new one is a new number), so a person's What you're missing reads the
+/// model's file from storage once an instance, not once an ask (Supabase's
+/// egress cap was reached on 2026-11-12). Undefined when the file is
+/// gone, null when this deployment cannot list it.
+async function versionParts(id, n, newest) {
+  const key = `${id}/${n}`;
+  if (versionsKept.has(key)) return versionsKept.get(key);
+  const stored = versionFile(id, n, newest, "mpd");
+  const file = await getFile(stored);
+  if (!file) return undefined;
+  const parts = partsOf(stored, file);
+  versionsKept.set(key, parts);
+  if (versionsKept.size > PARTS_KEPT) versionsKept.delete(versionsKept.keys().next().value);
+  return parts;
+}
+const versionsKept = new Map();
 
 /// /sitemaps/index.xml: the sitemaps there are, the site's own
 /// (/sitemap.xml), the sets' pages', a few thousand to a file, and the
@@ -2910,6 +3044,11 @@ async function gallery(request, response, origin) {
   // Their shares only once there is something to share of.
   if (mine?.pool) asked.pool = mine.account;
   if (asked.following) asked.following = mine.account;
+  // Built from a set (altbuilds): a gallery_models older than
+  // supabase/alt_builds.sql would pass over both and list everything.
+  if ((asked.alt || asked.one_set) && (await altRowsOf(["-"]).catch(() => null)) === null) {
+    throw new Unacceptable("Models built from a set are not counted here yet.", 503);
+  }
   let rows;
   let tabs = true;
   try {
@@ -3509,7 +3648,11 @@ async function publish(request, response) {
   // What it needs, by part and colour, in place of what it needed: the
   // gallery's Build with what I own. Never stops the publish; before
   // supabase/discovery.sql there is nowhere to keep it.
-  await keepNeeds(id, needs);
+  const needsKept = await keepNeeds(id, needs);
+  // And which real set builds it, or which few sets do (api/_alts.js),
+  // counted from those needs against every set's inventory: after the
+  // answer, so the publish never waits on it.
+  if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const modelledKept = await keepModelledBy(id, owner, modelledBy, Boolean(existing));

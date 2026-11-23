@@ -105,6 +105,73 @@
    "features": [
     "ui:LDraw library page"
    ]
+  },
+  {
+   "id": "set-built-from",
+   "source": "site",
+   "route": "/library/set/910008-1",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "alts"
+   ],
+   "steps": [
+    {
+     "wait": "#built-from .model"
+    },
+    {
+     "scroll": "#built-from"
+    }
+   ],
+   "crop": "#built-from",
+   "pad": 12,
+   "alt": "Built from this set on a set's page: the little rocket's card, saying 73% from this set, the rest from 9764 and 11032.",
+   "caption": "What people built from a set, on its page.",
+   "features": [
+    "ui:every set's page",
+    "lib:alternate builds counted"
+   ]
+  },
+  {
+   "id": "set-built-empty",
+   "source": "site",
+   "route": "/library/set/6080-1",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in",
+    "owned"
+   ],
+   "phone": true,
+   "steps": [
+    {
+     "wait": "#built-from .built-empty"
+    },
+    {
+     "scroll": "#built-from"
+    }
+   ],
+   "crop": "#built-from",
+   "pad": 8,
+   "alt": "Built from this set on a phone, with nothing yet: Nobody has built anything else from this set yet, what to do about it, and Build something from it.",
+   "caption": "A set nobody has built anything else from yet, on a phone.",
+   "features": [
+    "ui:every set's page"
+   ]
   }
  ]
 }

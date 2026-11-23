@@ -176,6 +176,16 @@ ui:comments on parts in the studio
 
 The **Parts** tab lists every part by **Colour** or by **Kind**. Download it for a shop: **BrickLink XML** (`/m/<id>/parts.xml`), **Rebrickable CSV** (`/m/<id>/parts.csv`) or **LEGO® Pick a Brick CSV**.
 
+### What you're missing {#missing}
+
+Signed in, the tab says how much of the model [your collection](/docs/collection) holds, counted as the gallery's cards count it: *You have 138 of its 187 parts (73%): 49 missing, in 19 lots.* Under it, **All**, **Missing** and **Have all** show every lot, only the lots you are short of (each with how many more you need and how many you have), or the lots you have every one of. With **Missing** chosen, **BrickLink XML**, **Rebrickable CSV** and **LEGO® Pick a Brick CSV** download just the missing parts, to buy them. When you have every part it says *Have all 187 of its parts.*
+
+Parts nobody owns on their own (stickers, parts made for the model) are not counted, and the Pick a Brick list leaves off a part with no LEGO® element number known; the tab says how many of each. The element numbers come from Rebrickable's list of LEGO® elements; whether Pick a Brick has each one in stock today, its own upload tells you.
+
+![A model's Parts tab, signed in with a collection: You have 138 of its 187 parts (73%): 49 missing, in 19 lots; All, Missing and Have all with how many lots each, Missing chosen; BrickLink XML, Rebrickable CSV and LEGO® Pick a Brick CSV of just those; and the lots short, each with how many more and how many you have.](/docs/img/parts-missing.webp "What you're missing, on a model's Parts tab.")
+
+![What you're missing on a phone: how much of the model you have, All, Missing and Have all, the three shops' lists of the missing parts on rows of their own, and the first lots short.](/docs/img/parts-missing-phone.webp "What you're missing, on a phone.")
+
 <!-- covers
 ui:a model's parts and its download
 -->
@@ -183,6 +193,18 @@ ui:a model's parts and its download
 ## What it is based on {#based-on}
 
 Under its name a page credits what the model came from: a **remix** names the model it was copied from. On your own model's page, **Say what it is based on** adds up to three: **An alternate build of a set** (by its number, such as `6080-1`), **Changed from** or **Inspired by** a set or work elsewhere (its `https://` address and title, and its author and licence if known). Each set's page lists the models based on it. **Change what it is based on** changes or removes them.
+
+### Built from a set {#built-from-a-set}
+
+When a model is published, Brickworks counts it against every set Rebrickable lists, by the rules [your collection](/docs/collection) is counted by: another mould of a part counts as the part, colours are matched as the shops name them, and stickers and parts made for one model are left out. Under its name its page then says what it found:
+
+- one set holds every part: *An alternate build of 31009 Small Cottage: every part from the set*;
+- no one set does, but a few together do (the fewest, up to five): *An alternate build of 42115 and 42054*;
+- one set holds 80% or more of it: *97% from 31009*.
+
+Each set's name opens its page, where the model is listed under **Built from this set**. A model of the set itself (LDraw's model of 6080 King's Castle, say) is that set's own model, not another build of it, and says nothing here. When its designer said it is an alternate build of a set and the set lacks some of its parts, the designer's own page says so after it, *(uses 6 parts not in the set)*; nobody else is shown that.
+
+![Under a model's name and its designer: An alternate build of 910008 Modular Construction Site, 9764 Power Puzzle Challenge Kit and 11032 Creative Color Fun, each set a link to its page.](/docs/img/model-alt-build.webp "Built from three sets, as counted when it was published.")
 
 <!-- covers
 lib:what a model is based on

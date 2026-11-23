@@ -164,6 +164,15 @@ declare -A CMD=(
   # many; 1280 and 430 in both themes, nothing sideways. Throwaway
   # accounts, deleted after with everything of theirs.
   [lists]="tools/web/lists_flow.mjs --url=$P --out=$S/${TAG}_lists"
+  # What you own and lack (ownedparts): three throwaway collections (sets
+  # owned more than once, loose parts), each one's gallery page of 24 cards
+  # against a count from the raw rows (read only), the line each card
+  # draws; What you're missing on three models' Parts tabs against the
+  # list less the raw rows, its BrickLink XML and Pick a Brick list read
+  # back; You own on a set's page and its attacks (100, -1, x, two tabs,
+  # taken out elsewhere, signed out); 1280 and 390 in both themes, no API
+  # ask a card. Deleted after with everything of theirs.
+  [ownedparts]="tools/web/ownedparts_flow.mjs --url=$P --out=$S/${TAG}_ownedparts"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with
