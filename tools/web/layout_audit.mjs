@@ -74,7 +74,8 @@ const PAGES = [
   ["lists", HEAD], ["gallery", HEAD], [{ name: "search", path: "/gallery?q=castle" }, HEAD], ["builds", HEAD],
   ["collections", HEAD], [{ name: "library", path: "/library" }, HEAD], ["settings", HEAD],
   ["faq", HEAD], ["terms", HEAD], ["privacy", HEAD], ["guidelines", HEAD], ["changelog", HEAD], ["compare", HEAD],
-  ["takedown", HEAD], ["share-model", HEAD],
+  ["takedown", HEAD], ["share-model", HEAD], [{ name: "feedback", path: "/feedback" }, HEAD],
+  [{ name: "counting", path: "/counting" }, HEAD],
   ["home", EDGES], ["model", EDGES], ["person", EDGES], ["collection", EDGES], ["challenge", EDGES], ["account", EDGES],
   ["plans", EDGES], ["beta", EDGES], ["download", EDGES],
 ].map(([one, kind]) => ({ ...(typeof one === "string" ? listed.get(one) : one), kind }))
