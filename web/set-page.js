@@ -140,7 +140,7 @@ function versionsOf(article, versions, before) {
     row.append(...shown.map((model) => {
       const own = model.changed !== true ? "" : model.thumb ? pictureOf(model)
         : model.image ? `/m/${encodeURIComponent(model.id)}.cutout.png` : "";
-      const card = modelCard({ ...model, picture: own || ldraw || undefined });
+      const card = modelCard({ ...model, picture: own || ldraw || undefined }, { inWords: true });
       const picture = card.querySelector(".frame img");
       if (picture && ldraw) {
         picture.addEventListener("error", () => {

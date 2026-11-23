@@ -1440,8 +1440,14 @@ plan with Claude as the client.
   ModelShot's corner: `inline.js` LOOKS). `/viewer3d.js` (built by
   `tools/viewer/build.mjs` beside the card, from the same
   `tools/viewer/view.js`; about 580 KB, 150 KB gzipped) is imported only
-  then; its scene is `/m/<id>/scene.json` (`/m/<id>/v/<n>/scene.json`,
-  `/library/<id>/scene.json`: `api/share.js` ?op=scene and set_scene,
+  then; its scene is named by the version the page shows, the newest's too
+  (`/m/<id>/v/<n>/scene.json`, `api/share.js` `sceneAt`; `/m/<id>/scene.json`
+  is kept by the CDN as long as the page, and a page drawn after a publish
+  opened the version before's model and pinned on it: partpins), and a page
+  the CDN kept from before a publish asks for `?newest=N` once its comments
+  say a newer version (`web/model-page.js` load, then the address is put
+  back; `tests/test_model_page_fresh.py`); `/library/<id>/scene.json` for a
+  set (`api/share.js` ?op=scene and set_scene,
   `api/_parts.js` `sceneOf`, the stored file packed as the app packs the
   card's scene, every part through the sub-models, carried copies as their
   part, a retired number turned as its stub turns it (the table's
@@ -3559,8 +3565,11 @@ plan with Claude as the client.
   `model_alt_sets`; `alt_of`, `alt_needs_of`, `alt_uncounted(rule)`,
   `set_built(set, tests)` (the set page's cards, `{based, alt: {role, have,
   pieces, with}}`), `gallery_models` with `alt` and `one_set`; the service
-  role alone. A model's page says it under its credit (`web/card.js`
-  `altHtml`, `p#alt-build[data-alt]`: "An alternate build of 31009 Small
+  role alone. A model's page says it in its lineage, under its picture
+  and on a phone after the column, with what it is based on (`web/card.js`
+  `altHtml`, `p#alt-build[data-alt]`; in the column a house built from
+  four sets took three lines and pushed a phone's action bar off the first
+  screen, rel-m325): "An alternate build of 31009 Small
   Cottage: every part from the set", "of 42115 and 42054", "97% from
   31009", each set a link to `/library/set/N`); its designer's `?op=bases`
   answer carries `short` for an alternate set, drawn "(uses 6 parts not in

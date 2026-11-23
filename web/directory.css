@@ -888,7 +888,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 }
 @media (width >= 900px) {
 	.kind-list.pills.scroller {
-		display: grid; gap: 2px; margin: 0; padding: 0; overflow: visible; scroll-snap-type: none; mask-image: none;
+		display: grid; gap: 2px; margin: 0; padding: 0; overflow: visible; mask-image: none;
 	}
 	.kind-list a.pill {
 		display: flex; justify-content: space-between; gap: var(--s-2); min-height: 0; padding: 6px var(--s-2);

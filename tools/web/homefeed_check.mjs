@@ -200,10 +200,14 @@ try {
       return { line: band?.querySelector(".lede, p")?.textContent.trim() || "", band: Boolean(band?.offsetHeight),
         start: start ? start.getBoundingClientRect().bottom <= innerHeight : false,
         first: post ? Math.round(post.getBoundingClientRect().top + scrollY) : -1,
-        tabs: Boolean(document.getElementById("feed-tabs")?.offsetHeight), share: Boolean(document.getElementById("share-build")?.offsetHeight) };
+        tabs: Boolean(document.getElementById("feed-tabs")?.offsetHeight), share: Boolean(document.getElementById("share-build")?.offsetHeight),
+        // The beta strip's room over the page (pagebar): the first post is
+        // measured under it, as gallery_flow measures its first picture.
+        strip: document.documentElement.hasAttribute("data-betabar") ? Math.round(parseFloat(getComputedStyle(document.body).paddingTop) || 0) : 0 };
     });
-    check(`2. ${label}: the line "${first.line.slice(0, 60)}…", Start building in view, the first post at ${first.first} px, no tabs or Share`,
-      first.band && first.start && first.first >= 0 && (width >= 600 || first.first <= 600) && !first.tabs && !first.share);
+    check(`2. ${label}: the line "${first.line.slice(0, 60)}…", Start building in view, the first post at ${first.first} px`
+      + `${first.strip ? ` (${first.first - first.strip} under the beta strip)` : ""}, no tabs or Share`,
+      first.band && first.start && first.first >= 0 && (width >= 600 || first.first - first.strip <= 600) && !first.tabs && !first.share);
     await shot(page, `first-${label}.png`);
 
     // --- 3. A build's post --------------------------------------------------
@@ -576,13 +580,23 @@ try {
     async function offeredAfter(one, what, picture) {
       const offer = await until(one, () => window.__offer, null, 30);
       const shown = await one.click(".toast.shown .toast-act", { timeout: 2000 }).then(() => true, () => false);
-      const steps = shown && await until(one, () => (document.querySelector("dialog.first-steps[open]") ? true : null), null, 20);
+      // While the beta is open, a new account is welcomed to it first
+      // (web/account.js welcomeIfDue, betajoin) and First steps come after
+      // its Not now, pressed here as a person does: left open, it covered
+      // the page, and the next press timed out under it (rel-m320 to
+      // rel-m325's previews).
+      const first = shown && await until(one, () => (document.querySelector("dialog.first-steps[open]") ? "steps"
+        : document.querySelector("dialog.beta-welcome[open]") ? "welcome" : null), null, 20);
+      if (first === "welcome") await one.click("#beta-not-now", { timeout: 5000 }).catch(() => {});
+      const steps = first === "steps" || (first === "welcome"
+        && await until(one, () => (document.querySelector("dialog.first-steps[open]") ? true : null), null, 20));
       check(`   then First steps offered in a snackbar ("${offer?.said}") after ${what} (${offer?.done}), over no dialog (${offer?.dialogs || "none"}), `
-        + `pressed (${shown}), opening (${Boolean(steps)})`, offer?.said === "First steps" && offer.done && !offer.dialogs && Boolean(steps));
+        + `pressed (${shown}), opening (${Boolean(steps)}${first === "welcome" ? ", after the beta's welcome" : ""})`,
+        offer?.said === "First steps" && offer.done && !offer.dialogs && Boolean(steps));
       await shot(one, picture);
-      if (steps) {
+      if (steps || first) {
         await one.keyboard.press("Escape");
-        await until(one, () => (!document.querySelector("dialog[open]") ? true : null), null, 10);
+        await until(one, () => (!document.querySelector("dialog[open]") ? true : null), null, 10).catch(() => null);
       }
     }
 

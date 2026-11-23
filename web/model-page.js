@@ -198,7 +198,10 @@ if (partsPart && partsPart.dataset.parts) startParts(partsPart);
 // desktop app or the site gets one alike. Signed in on the page, the same.
 // <html data-clip> says how it went (tools/web/turntable_flow.mjs reads it).
 let clipAsked = false;
-const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && frame?.dataset.scene === `/m/${id}/scene.json`;
+// Its newest version's page: one no older version's note is on (each
+// version's scene is named by its number, api/share.js sceneAt).
+const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && Boolean(frame?.dataset.scene?.startsWith(`/m/${id}/`))
+  && !document.querySelector(".model-page .old-version");
 if (newestScene && signedIn()) clipOwn();
 else if (newestScene) addEventListener("brickworks:signed-in-done", () => clipOwn(), { once: true });
 
@@ -1099,6 +1102,24 @@ function startComments(section) {
       return tell(told(answer.body.error, say("The comments did not load just now.")));
     }
     state = answer.body;
+    // A page the CDN kept from before a newer version was published (a
+    // model's page is kept 30 s, and 30 more while it is asked again): its
+    // picture, 3D and pins are the version before's. The comments are never
+    // kept and say which is newest, so the newest's page is asked anew,
+    // once, under an address the CDN has not kept. Right after a publish a
+    // visitor saw every pin where it had been (partpins, rel-m325's preview).
+    const fresh = new URL(location.href);
+    if (Number(state.newest) > newest && version === newest && !/\/v\/\d+\/?$/.test(fresh.pathname)
+      && Number(fresh.searchParams.get("newest") || 0) < Number(state.newest)) {
+      fresh.searchParams.set("newest", String(Number(state.newest)));
+      location.replace(fresh);
+      return;
+    }
+    // Drawn anew: its address as it is shared, without the asking.
+    if (fresh.searchParams.has("newest")) {
+      fresh.searchParams.delete("newest");
+      history.replaceState(history.state, "", fresh);
+    }
     // Not open on this deployment yet (comments.sql): nothing to show, and
     // no tab (commentsSaid).
     hold?.remove();
