@@ -90,6 +90,8 @@ var _edits: Container
 ## The slider's least width, beside the step's words: narrower, the words
 ## go under it rather than the slider to a sliver.
 const SLIDER_LEAST := 120.0
+## Go to a step's chips on a long model come this many at a time.
+const GO_RUN := 50
 ## The most of a step's name its words say, on one line beside the slider
 ## (stepnames): a longer one is cut with an ellipsis, and Name… shows it whole.
 const NAME_SHOWN := 40
@@ -221,7 +223,15 @@ var _more_sheet: AcceptDialog
 ## Go to a step: the step's number tapped.
 var _go_sheet: AcceptDialog
 var _go_grid: GridContainer
+## Step number -> its chip, for the steps shown.
 var _go_chips: Dictionary = {}
+## On a long model, the runs of GO_RUN steps, a chip each, over the grid.
+var _go_runs: HFlowContainer
+## Step number -> the index of its first step, and the numbers in order.
+var _go_first: Dictionary = {}
+var _go_numbers: PackedInt32Array = []
+## Where in _go_numbers the run shown starts.
+var _go_from: int = 0
 ## The step's parts as pictures, each with how many.
 var _strip_slide: ScrollContainer
 var _strip: HBoxContainer
@@ -785,7 +795,10 @@ func _close_more() -> void:
 
 
 ## Go to a step: every step's number, a tap each, the one showing lit. A
-## step built in a callout is gone to at the first of its own steps.
+## step built in a callout is gone to at the first of its own steps. A long
+## model's steps come GO_RUN at a time, its runs chips over them ("51-100"),
+## the run with the step showing first: Orthanc's thousand chips made at once
+## took a phone's frame for themselves.
 func open_go_to() -> void:
 	if _steps.is_empty() or _step_ends.is_empty():
 		open_more()
@@ -794,13 +807,63 @@ func open_go_to() -> void:
 		_go_sheet = AcceptDialog.new()
 		_go_sheet.title = "Go to a step"
 		_go_sheet.ok_button_text = Look.CLOSE
+		var column := VBoxContainer.new()
+		_go_runs = HFlowContainer.new()
+		column.add_child(_go_runs)
 		var slide := ScrollContainer.new()
 		slide.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		_go_grid = GridContainer.new()
 		_go_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slide.add_child(_go_grid)
-		_go_sheet.add_child(slide)
+		column.add_child(slide)
+		_go_sheet.add_child(column)
 		(shell if shell != null else self as Node).add_child(_go_sheet)
+	_go_first.clear()
+	_go_numbers.clear()
+	for index: int in _steps.size():
+		var number: int = _steps[index].number
+		if not _go_first.has(number):
+			_go_first[number] = index
+			_go_numbers.append(number)
+	var lit: Instructions.Step = current_step()
+	var at: int = maxi(0, _go_numbers.find(lit.number)) if lit != null else 0
+	_go_from = at - at % GO_RUN if _go_numbers.size() > GO_RUN + GO_RUN / 5 else 0
+	_lay_go_runs()
+	_lay_go_chips()
+	_go_sheet.popup_centered()
+
+
+## The runs' chips, the one shown lit; none on a model short enough for one.
+func _lay_go_runs() -> void:
+	for child: Node in _go_runs.get_children():
+		_go_runs.remove_child(child)
+		child.queue_free()
+	var pt: float = Phone.per_point(get_viewport())
+	_go_runs.add_theme_constant_override("h_separation", roundi(6.0 * pt))
+	_go_runs.add_theme_constant_override("v_separation", roundi(6.0 * pt))
+	_go_runs.visible = _go_numbers.size() > GO_RUN + GO_RUN / 5
+	if not _go_runs.visible:
+		return
+	for from: int in range(0, _go_numbers.size(), GO_RUN):
+		var to: int = mini(from + GO_RUN, _go_numbers.size()) - 1
+		var run := Button.new()
+		run.text = "%d-%d" % [_go_numbers[from], _go_numbers[to]]
+		run.focus_mode = Control.FOCUS_NONE
+		run.toggle_mode = true
+		run.set_pressed_no_signal(from == _go_from)
+		run.custom_minimum_size = Vector2(0, Phone.TARGET * pt)
+		run.add_theme_font_size_override("font_size", roundi(15.0 * pt))
+		run.set_meta(&"for_a_finger", true)
+		var first: int = from
+		run.pressed.connect(func() -> void:
+			_go_from = first
+			_lay_go_runs.call_deferred()
+			_lay_go_chips.call_deferred())
+		_go_runs.add_child(run)
+
+
+## The steps of the run shown, a chip each, the one showing lit.
+func _lay_go_chips() -> void:
 	for child: Node in _go_grid.get_children():
 		_go_grid.remove_child(child)
 		child.queue_free()
@@ -813,10 +876,11 @@ func open_go_to() -> void:
 	_go_grid.add_theme_constant_override("h_separation", roundi(6.0 * pt))
 	_go_grid.add_theme_constant_override("v_separation", roundi(6.0 * pt))
 	var lit: Instructions.Step = current_step()
-	for index: int in _steps.size():
-		var number: int = _steps[index].number
-		if _go_chips.has(number):
-			continue
+	var last: int = _steps[-1].number
+	var upto: int = mini(_go_from + GO_RUN, _go_numbers.size()) if _go_runs.visible else _go_numbers.size()
+	for k: int in range(_go_from, upto):
+		var number: int = _go_numbers[k]
+		var index: int = _go_first[number]
 		var chip := Button.new()
 		chip.text = str(number)
 		chip.focus_mode = Control.FOCUS_NONE
@@ -824,20 +888,18 @@ func open_go_to() -> void:
 		chip.set_pressed_no_signal(lit != null and lit.number == number)
 		chip.custom_minimum_size = Vector2(chip_size, chip_size)
 		chip.add_theme_font_size_override("font_size", roundi(16.0 * pt))
-		chip.tooltip_text = _steps[index].caption(_steps[-1].number)
+		chip.tooltip_text = _steps[index].caption(last)
 		chip.set_meta(&"for_a_finger", true)
-		var to: int = index
 		chip.pressed.connect(func() -> void:
-			_show_cell(to)
+			_show_cell(index)
 			stepped.emit()
 			_go_sheet.hide())
 		_go_grid.add_child(chip)
 		_go_chips[number] = chip
 	var slide: ScrollContainer = _go_grid.get_parent() as ScrollContainer
 	var rows: int = ceili(float(_go_chips.size()) / _go_grid.columns)
-	slide.custom_minimum_size = Vector2(across, minf(rows * (chip_size + 6.0 * pt), room.y * 0.55))
-	_go_sheet.popup_centered()
-	# The step showing in sight, on a long model.
+	slide.custom_minimum_size = Vector2(across, minf(rows * (chip_size + 6.0 * pt), room.y * 0.5))
+	# The step showing in sight.
 	var shown: Variant = _go_chips.get(lit.number if lit != null else -1)
 	if shown is Control:
 		slide.ensure_control_visible.call_deferred(shown)
@@ -1085,6 +1147,9 @@ func controls_by_name() -> Dictionary:
 	if _go_sheet != null and _go_sheet.visible:
 		for number: int in _go_chips:
 			named["steps_go_%d" % number] = _go_chips[number]
+		if _go_runs.visible:
+			for run: Node in _go_runs.get_children():
+				named["steps_go_run_%s" % (run as Button).text.get_slice("-", 0)] = run
 	return named
 
 
