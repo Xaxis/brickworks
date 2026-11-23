@@ -230,7 +230,9 @@ console.log(JSON.stringify({
 """)
     assert re.search(r'class="row-pic talk-row-pic"[^>]*><img src="/m/AbCdEfGh12\.webp\?v=\w+"', said["pictured"])
     assert "talk-month" not in said["pictured"] and "no-picture" not in said["pictured"]
-    assert '<span class="talk-tile talk-month b-challenges open"><b>Nov</b><small>2026</small></span>' in said["open"]
-    assert '<span class="talk-tile talk-month b-challenges soon"><b>Oct</b><small>2027</small></span>' in said["soon"]
-    assert 'talk-month b-challenges ran"><b>Oct</b><small>2026</small>' in said["ran"]
+    assert '<span class="talk-tile talk-month b-challenges open"><b>Nov</b></span>' in said["open"]
+    assert '<span class="talk-tile talk-month b-challenges soon"><b>Oct</b></span>' in said["soon"]
+    assert 'talk-month b-challenges ran"><b>Oct</b>' in said["ran"]
+    # The month alone: a year on the tile read as a mistake.
+    assert not any(year in said[k] for k in ("open", "soon", "ran") for year in (">2026<", ">2027<"))
     assert "talk-month" not in said["none"] and '<span class="talk-tile b-challenges">' in said["none"]

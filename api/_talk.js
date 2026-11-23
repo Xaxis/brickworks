@@ -339,10 +339,11 @@ const timeHtml = (iso, now) => {
   return Number.isFinite(at) ? `<time datetime="${new Date(at).toISOString()}">${escapeHtml(whenSaid(iso, now))}</time>` : "";
 };
 
-/// A challenge's row tile while it has no picture: its month over its
-/// year, a calendar's page, in the page's language; the one open now in
+/// A challenge's row tile while it has no picture: its month alone on a
+/// calendar's page, in the page's language; the one open now banded in
 /// red, the ones to come quieter (sitebold, 2026-11-23: the challenges'
-/// board was a column of one icon). "" without a month.
+/// board was a column of one icon). Not its year: "2027 / Oct" read as a
+/// mistake (the lead, 2026-11-23). "" without a month.
 const monthTileHtml = (challenge, now) => {
   const from = Date.parse(`${challenge?.starts_on || ""}T00:00:00Z`);
   if (!Number.isFinite(from)) return "";
@@ -350,8 +351,7 @@ const monthTileHtml = (challenge, now) => {
   const state = now < from ? "soon" : Number.isFinite(to) && now > to ? "ran" : "open";
   const locale = globalThis.brickworksLang?.locale || "en-GB";
   const month = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" }).format(from).replace(/\.$/, "");
-  return `<span class="talk-tile talk-month b-challenges ${state}"><b>${escapeHtml(month)}</b>`
-    + `<small>${new Date(from).getUTCFullYear()}</small></span>`;
+  return `<span class="talk-tile talk-month b-challenges ${state}"><b>${escapeHtml(month)}</b></span>`;
 };
 
 /// A person's name, a link to their page when they have one.

@@ -2275,15 +2275,13 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 :is(.talk-tile.b-challenges, .b-challenges > .talk-tile) { background: color-mix(in srgb, var(--red) 16%, var(--panel)); color: color-mix(in srgb, var(--red) 70%, var(--ink)); }
 :is(.talk-tile.b-news, .b-news > .talk-tile) { background: color-mix(in srgb, var(--ink-soft) 16%, var(--panel)); color: color-mix(in srgb, var(--ink-soft) 70%, var(--ink)); }
 /* A challenge's month while it has no picture (api/_talk.js monthTileHtml):
-   a calendar's page, its year on the band and its month under it; the band
-   red for the one open now, its tint for the ones to come or that ran. */
+   a calendar's page, its band over the month alone (not its year, which
+   read as a mistake); the band red for the one open now, its tint for the
+   ones to come or that ran. */
 .talk-tile.talk-month { display: flex; flex-direction: column; place-items: stretch; border: 1px solid color-mix(in srgb, var(--red) 30%, var(--line)); }
-.talk-month small {
-	display: block; padding: 2px 0; text-align: center; font-size: var(--t-tiny); font-weight: 700; letter-spacing: 0.08em;
-	font-variant-numeric: tabular-nums; background: color-mix(in srgb, var(--red) 26%, var(--panel)); color: var(--ink);
-}
-.talk-month.open small { background: var(--avatar-1); color: var(--on-avatar); }
-.talk-month b { display: grid; flex: 1; place-items: center; order: 1; font-size: var(--t-h2); font-weight: 700; line-height: 1; color: var(--ink); }
+.talk-month::before { content: ""; display: block; height: 10px; background: color-mix(in srgb, var(--red) 26%, var(--panel)); }
+.talk-month.open::before { background: var(--avatar-1); }
+.talk-month b { display: grid; flex: 1; place-items: center; font-size: var(--t-h2); font-weight: 700; line-height: 1; color: var(--ink); }
 .talk-month.ran b { color: var(--ink-soft); }
 .talk-row-title { margin: 0; font-size: var(--t-h3); font-weight: 650; line-height: 1.35; overflow-wrap: anywhere; }
 .talk-row-title a { color: var(--ink); text-decoration: none; }
