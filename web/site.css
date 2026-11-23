@@ -105,12 +105,14 @@
 	--r-pill: 999px;
 	--control-radius: var(--r-2);
 	--radius: var(--r-3);
-	/* A page's width: a page of words keeps --page; a page of cards and
-	   pictures (.wrap.wide: the gallery, a person, a collection, a model,
-	   the feed, the landing page's row of models) and the header and
-	   footer on every page use the window up to --page-wide. Nothing was
-	   wider than 1,140 px, 59% of a 1920 window (site273). */
-	--page: 1140px;
+	/* A page's width: one for every page, the header's and the footer's
+	   too, the window less its 16 px gutters up to --page-wide (homefix,
+	   2026-11-23, the owner: Talk "does not have the same page width as
+	   the other pages"; a page of words had kept 1,140 px, so its edges
+	   sat 54 px inside the header's at 1280). A page of words keeps its
+	   lines to a measure inside it (.prose, .lede, a setting's line), not
+	   by a narrower page. tools/web/design_flow.mjs fails a page whose
+	   main container's edges are not the header's. */
 	--page-wide: 1600px;
 	/* One type scale for every page (docs/DESIGN_SYSTEM.md): the landing
 	   page's one line, a page's title, a section's, a card's; the lede;
@@ -302,8 +304,7 @@ code.cmd {
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 a:focus-visible { border-radius: var(--r-1); }
 
-.wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
-.wrap.wide, .site-head > .wrap, .site-foot > .wrap { width: min(100% - 32px, var(--page-wide)); }
+.wrap { width: min(100% - 32px, var(--page-wide)); margin-inline: auto; }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);

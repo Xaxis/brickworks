@@ -1833,6 +1833,10 @@ plan with Claude as the client.
   thin bar, a row snapped, reachable by keyboard when it overflows, and
   scrolled to each end its `data-more` and fade right, its Previous or
   Next hidden at its own end, shown to a mouse only, never over the view.
+  Since 2026-11-23 (homefix) also every page's width: its first drawn
+  `main .wrap` at the header's left and right edges within a pixel (one
+  page width, site.css `.wrap`), named page by page; Talk's server-made
+  pages, which it does not visit, held by tests/test_page_width.py.
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
   `[a11y]`) and `keyboard browser flow` (`tools/web/keyboard_flow.mjs`,
   `[keyboard]`): axe and the accessibility tree's names on every page,
