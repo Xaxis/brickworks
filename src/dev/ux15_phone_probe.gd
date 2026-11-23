@@ -226,10 +226,18 @@ func _follower() -> void:
 	# The parts for this step: the bar's own Parts, else the viewer's.
 	var parts: Control = _control("steps_parts")
 	if parts != null:
+		# Shown from the first step, as a booklet's parts box is; Parts takes
+		# them away for the model's room and brings them back.
+		var shown: int = _parts_shown()
 		await _press_at(_centre(parts))
 		await _frames(30)
-		await _step("p15_05_parts", "the step's parts: the bar's Parts")
-		_check15("the step's parts shown as pictures (%d)" % _parts_shown(), _parts_shown() > 0)
+		await _step("p15_05_parts_away", "Parts tapped: the pictures put away")
+		var away: int = _parts_shown()
+		await _press_at(_centre(parts))
+		await _frames(30)
+		await _step("p15_05_parts", "Parts tapped again: the step's parts as pictures")
+		_check15("the step's parts shown as pictures, and Parts puts them away and back (%d, %d, %d)"
+			% [shown, away, _parts_shown()], shown > 0 and away == 0 and _parts_shown() > 0)
 	else:
 		await _step("p15_05_parts", "the step's parts: the bar's words alone (no Parts)")
 		_check15("the step's parts shown as pictures (no Parts on the bar)", false)
@@ -408,9 +416,11 @@ func _scratch_builder() -> void:
 		await _frames(10)
 	var brick: BrickWorld.Brick = _newest_brick()
 	if brick != null:
-		await _tap(_camera.unproject_position(brick.transform.origin + Vector3(0, 12, 0)))
+		await _tap(_camera.unproject_position(brick.transform.origin))
 		await _frames(20)
 	await _step("p16_05_selected", "the part tapped")
+	_check15("the part tapped is selected (%d selected)" % _builder.selection.size(),
+		brick != null and _builder.selection.has(brick.id))
 	var turned_was: Basis = brick.transform.basis if brick != null else Basis()
 	await _tool("turn")
 	await _step("p16_06_turned", "Turn tapped")
@@ -419,15 +429,17 @@ func _scratch_builder() -> void:
 	await _tool("colour")
 	await _step("p16_07_colours", "Colour tapped")
 	var colour_was: int = brick.color_code if brick != null else -1
-	var swatch: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_swatch_4") \
+	# Another colour than its own: blue, or red on a blue part.
+	var wanted: int = 4 if colour_was == 1 else 1
+	var swatch: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_swatch_%d" % wanted) \
 		if _phone != null else null
 	if swatch is Control:
 		await _press_at(_centre(swatch as Control))
 		await _frames(20)
 	brick = _newest_brick()
-	await _step("p16_08_red", "red chosen")
-	_check15("red chosen paints the part (%d to %d)" % [colour_was, brick.color_code if brick != null else -1],
-		brick != null and brick.color_code == 4)
+	await _step("p16_08_painted", "another colour chosen")
+	_check15("the colour chosen paints the part (%d to %d)" % [colour_was, brick.color_code if brick != null else -1],
+		brick != null and brick.color_code == wanted)
 	var undo: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_undo") \
 		if _phone != null else null
 	if undo is Control:
@@ -439,7 +451,7 @@ func _scratch_builder() -> void:
 		brick != null and brick.color_code == colour_was)
 	# A finger held on the part: its menu.
 	if brick != null:
-		await _hold(_camera.unproject_position(brick.transform.origin + Vector3(0, 12, 0)), 1.0)
+		await _hold(_camera.unproject_position(brick.transform.origin), 1.0)
 		await _frames(20)
 	await _step("p16_10_held", "a finger held on the part")
 	_check15("a finger held on a part opens its menu (%s)" % _phone_sheet(), not _phone_sheet().is_empty())
@@ -552,21 +564,22 @@ func _own_version() -> void:
 	# One part, near the middle of the screen, tapped and recoloured.
 	var brick: BrickWorld.Brick = _brick_near(_model_middle())
 	if brick != null:
-		await _tap(_camera.unproject_position(brick.transform.origin + Vector3(0, 8, 0)))
+		await _tap(_camera.unproject_position(brick.transform.origin))
 		await _frames(20)
 	await _step("p17_02_selected", "a part tapped")
 	await _tool("colour")
 	await _step("p17_03_colours", "Colour tapped")
-	var swatch: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_swatch_1") \
-		if _phone != null else null
 	var was: int = brick.color_code if brick != null else -1
+	var wanted: int = 4 if was == 1 else 1
+	var swatch: Variant = (_phone.call("controls_by_name") as Dictionary).get("phone_swatch_%d" % wanted) \
+		if _phone != null else null
 	if swatch is Control:
 		await _press_at(_centre(swatch as Control))
 		await _frames(20)
-	await _step("p17_04_blue", "blue chosen")
+	await _step("p17_04_painted", "another colour chosen")
 	var now: BrickWorld.Brick = _world.get_brick(brick.id) if brick != null else null
-	_check15("the tapped part painted blue (%d to %d)" % [was, now.color_code if now != null else -1],
-		now != null and now.color_code == 1)
+	_check15("the tapped part painted (%d to %d)" % [was, now.color_code if now != null else -1],
+		now != null and now.color_code == wanted)
 	await _tool("more")
 	await _step("p17_05_more", "More, to save or share it")
 	await _close_all()
