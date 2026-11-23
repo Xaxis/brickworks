@@ -340,8 +340,9 @@ export async function forgetAccount(id) {
 /// Every account of [tests]'s kind, as the SQL joins them: its hash, id,
 /// when it joined and its plan (owner, pro, tester or free). Read by the
 /// console's People (api/_console.js), imported only here, so a beacon never
-/// loads it.
-async function accountsOf(tests) {
+/// loads it. With [unhashed], those the server cannot hash too (no
+/// VIEW_SECRET), h null: the loop's social half needs only their ids.
+export async function accountsOf(tests, { unhashed = false } = {}) {
   const { people } = await import("./_console.js");
   const read = await people(tests);
   return (read.people || []).map((one) => ({
@@ -349,7 +350,7 @@ async function accountsOf(tests) {
     id: one.id,
     joined: one.joined,
     plan: one.owner ? "owner" : one.plan?.name === "Pro" ? "pro" : one.beta?.state === "tester" ? "tester" : "free",
-  })).filter((one) => one.h);
+  })).filter((one) => one.h || unhashed);
 }
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;

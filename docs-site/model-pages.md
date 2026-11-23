@@ -1,6 +1,6 @@
 ---
 panels: ShareView#viewer, BuildMode#build-it
-ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, versions and its parts list to download.
+ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, versions and its parts list to download; and With your Claude, beside Open in Brickworks, a message for the person's own Claude that opens a copy (open_model link=) and changes it as asked, credited to the model when the copy is published.
 rules:
   - Anyone can open a model's page with no account.
   - Its parts download as a BrickLink XML, a Rebrickable CSV or a LEGO® Pick a Brick CSV, and the model as LDraw (.mpd).
@@ -93,7 +93,7 @@ ui:model page pictures and tabs
 
 ## The buttons {#actions}
 
-- **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** (the model as LDraw, `/m/<id>.mpd`).
+- **Build it**, **Open in Brickworks** (a copy in your own models, to change yourself) with its second half, **With your Claude** ([below](#with-your-claude)), and **Download** (the model as LDraw, `/m/<id>.mpd`).
 - **Like**, **Save** to your Favourites or one of [your collections](/docs/collections), and **Comment**. Each signs you in on the way if it must.
 - **Share**: **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or Email, each in a new tab; and **Embed it in a page**, whose **Copy code** puts the model's picture and name, with View in 3D and Build it, in a page of your own (`/m/<id>/embed`). Pasted into a blog, Notion or a forum that reads oEmbed, the bare link becomes that embed by itself.
 - **Built** says you built it, with a photo if you like; what the camera wrote into it is taken out first.
@@ -108,6 +108,23 @@ ui:the embed in 3D
 lib:real builds: finishes counted and photos of builds
 lib:a build photo made safe
 ui:enter this month's challenge
+-->
+
+## Change it with your Claude {#with-your-claude}
+
+Your own Claude can open a copy of any model here and change it as you ask, through the [Brickworks connector](/docs/connector).
+
+1. Press **With your Claude**, the second half of **Open in Brickworks** (on a phone it says **Claude**).
+2. Under **What should it change?** say what you want, or leave it empty and Claude asks you: *make the roof dark blue*, *add a flag on top*, *put it on a stand with a nameplate*. It takes 500 characters.
+3. Press **Copy for Claude** and paste the message into a new chat with your Claude. On a phone, **Share to Claude** hands it to the Claude app. The message names the model's link and the one call that opens it, `open_model link=<id>`.
+4. Claude opens a copy in your models, changes it and shows you; the shared model stays as it was. Publish the copy (**File › Share…**) and its page says **Remixed from** this model, and which version it was copied from.
+
+No connector yet? **Connect Claude** goes to [Connect your AI](/docs/connect#with-your-claude), and your message waits at the top of that page, to copy once Claude is connected.
+
+![A model's page with Open in Brickworks and its second half, With your Claude, pressed: under them Change it with your Claude, What should it change? with Make the roof dark blue typed, Copy for Claude, and No connector yet? Connect Claude.](/docs/img/model-claude.webp "With your Claude, on a model's page.")
+
+<!-- covers
+ui:change a model with your Claude
 -->
 
 ## Comments {#comments}
@@ -140,6 +157,25 @@ Under its name a page credits what the model came from: a **remix** names the mo
 
 <!-- covers
 lib:what a model is based on
+-->
+
+## What a remix changed {#remix-changes}
+
+A remix's page says what it changed from the model it was copied from, under its credit: *What it changed from version 1: 42 parts added, 8 taken away, 3 recoloured, 5 moved*. It is counted once, when the remix is shared, against the version it was copied from, by the same rules as the app's [Compare](/docs/saving-and-files#compare): a part moved or turned counts as moved, one painted where it stands as recoloured, and one both moved and painted as one taken away and one added. The version is a link to that version's page.
+
+![A remix's credit, Remixed from Sports car and its driver, and under it what it changed from version 1, with See what changed in 3D.](/docs/img/remix-line.webp "What a remix changed, under its credit.")
+
+**See what changed in 3D** opens the 3D view with **What changed** on: the parts it added, moved or recoloured in their own colours, every other part faded, and the parts it took away drawn as faint red ghosts where they were; a line over the view counts them. **What changed** on the view's bar turns it off and on again; it is off when the view is opened by **View in 3D**. It works the same on a phone.
+
+### The Remixes tab {#remix-tree}
+
+A model's **Remixes** tab draws where it came from and what was made from it as a tree: up to the first model of the line, then the model itself (marked *This model*), then its remixes, their remixes and theirs, three levels down. Each card says what it is a remix of, and of what that was a remix, and what it changed: *A remix of Harbour by Ann, itself a remix of Lighthouse: 4 parts added, 2 recoloured*. A model shared only by its link is not named, and remixes not in the gallery are counted under the tree.
+
+![A model's Remixes tab as a tree: the model, marked This model, and its remixes under it, each with its picture, name, maker and what it changed.](/docs/img/remix-tree.webp "The Remixes tab, both ways.")
+
+<!-- covers
+lib:what a remix changed
+ui:what a remix changed and the remix tree
 -->
 
 ## More by and similar {#more}

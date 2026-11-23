@@ -611,12 +611,18 @@ function flatten(model, library) {
         inline(nested, compose(at, one.m), placedIn, inside, depth + 1, `${copies}`);
         continue;
       }
-      out.push({ part: one.part, colour: placedIn, m: compose(at, one.m), unit });
+      // In a frame that reflects (LdrModel._inline's mirrored): a mirrored
+      // copy's part, which the app builds as its other hand.
+      out.push({ part: one.part, colour: placedIn, m: compose(at, one.m), unit, mirrored: det(at) < 0 });
     }
   };
   if (model.main) inline(model.main, IDENTITY, 0, new Set(), 0, "");
   return out;
 }
+
+/// The determinant of LDraw's twelve numbers' turn.
+const det = (m) => m[3] * (m[7] * m[11] - m[8] * m[10]) - m[4] * (m[6] * m[11] - m[8] * m[9])
+  + m[5] * (m[6] * m[10] - m[7] * m[9]);
 
 /// The flexible items a Brickworks file lays (Flex.items_among): each copy
 /// of a sub-model whose parts are all one kind's pieces. unit -> {kind, bricks}.
@@ -958,6 +964,10 @@ export function deriveSceneTable(catalogue) {
   // (PartLibrary.moved_by's each hop): a stub that turns its part, LDraw's
   // twelve numbers. A file's 3464 wheel centres stand turned as 3464b.
   const moved = {};
+  // And the colour a stub draws its part in, where it gives one
+  // (PartLibrary.moved_colour): 86037a's 4548064a white whatever the line
+  // says. What a compare of two files reads a part as (comparedParts).
+  const tints = {};
   for (const part of catalogue.parts || []) {
     const low = part.bounds_min || [-10, -24, -10];
     const high = part.bounds_max || [10, 0, 10];
@@ -965,8 +975,9 @@ export function deriveSceneTable(catalogue) {
       ...(part.fixed_colors || []).map(Number).filter(Number.isInteger)];
     const by = (part.moved_by || []).map(Number);
     if (part.moved_to && by.length === 12 && by.some((v, k) => Math.abs(v - IDENTITY[k]) > 1e-9)) moved[String(part.id)] = by;
+    if (part.moved_to && Number.isInteger(part.moved_colour) && part.moved_colour >= 0) tints[String(part.id)] = part.moved_colour;
   }
-  return { parts, moved };
+  return { parts, moved, tints };
 }
 
 /// The scene table: _scene_table.json beside this file in a deployment
@@ -1056,14 +1067,20 @@ function drawnAs(library, id, table = null) {
 /// draws is in it, through the sub-models; a part the file carries, or one
 /// nobody knows, is left out, having no geometry in the store. [of] says
 /// what it is of. Null where there is no table to pack with.
-export function sceneOf(text, root, of = "", given = partsTable(), table = sceneTable()) {
+export function sceneOf(text, root, of = "", given = partsTable(), table = sceneTable(), only = null) {
   if (!given || !table) return null;
   const model = parse(String(text).replace(/^﻿/, ""));
   const library = makeLibrary(given);
   const placed = [];
+  // With [only] (a Set), just the parts of those indexes in the whole
+  // model's packing: a remix's taken-away parts, drawn as ghosts over it
+  // (api/_remix_changes.js).
+  let k = 0;
   for (const one of flatten(model, library)) {
     const drawn = drawnAs(library, one.part, table);
-    if (drawn) placed.push({ ...drawn, colour: one.colour, ...placeOf(drawn.by ? compose(one.m, drawn.by) : one.m) });
+    if (!drawn) continue;
+    if (!only || only.has(k)) placed.push({ ...drawn, colour: one.colour, ...placeOf(drawn.by ? compose(one.m, drawn.by) : one.m) });
+    k += 1;
   }
   const n = placed.length;
   const meshes = [];
@@ -1120,6 +1137,88 @@ export function sceneOf(text, root, of = "", given = partsTable(), table = scene
   });
   return { v: 1, of, root, step, origin, meshes, colours, count: n,
     bricks: deflateSync(raw).toString("base64"), triangles };
+}
+
+/// Every part [text] puts down, read as the app's Compare reads a file
+/// (src/parts/model_diff.gd ModelDiff.parts_of_text), in the order the app
+/// puts them down (flatten): [{part, colour, m, scene, mirrored}], [m]
+/// LDraw's twelve numbers where it stands and [scene] its index in
+/// sceneOf's packing of the same text (-1 for a part that packs none, having
+/// no geometry in the store). As the app reads a part: BrickLink Studio's
+/// "bl_" name as LDraw's number where the library has it
+/// (ModelStore.studio_part); a retired number as the part it became, where
+/// its stub puts it and in the colour its stub draws it in
+/// (ModelStore.as_moved); and a part LDraw draws in one colour only, kept
+/// for old files, as the part it draws in that colour
+/// (PartLibrary.current_colour; [current], currentTable). A part in a
+/// mirrored copy stays as the file places it: the app builds its other hand
+/// (Assemblies.unmirror), which takes its geometry. A line that places
+/// nothing (no size) is left out, as LdrModel.parse leaves it. Null where
+/// there is no parts table.
+export function comparedParts(text, given = partsTable(), table = sceneTable(), current = currentTable()) {
+  if (!given) return null;
+  const model = parse(String(text).replace(/^﻿/, ""));
+  const library = makeLibrary(given);
+  const out = [];
+  let drawn = 0;
+  for (const one of flatten(model, library)) {
+    const scene = table && drawnAs(library, one.part, table) ? drawn++ : -1;
+    if (Math.abs(det(one.m)) <= 1e-6) continue;
+    let part = one.part;
+    let colour = one.colour;
+    let m = one.m;
+    if (part.startsWith("bl_") && !library.has(part) && library.has(part.slice(3))) part = part.slice(3);
+    const real = library.resolve(part);
+    if (real !== part) {
+      // Each hop's turn, and the last stub's colour (PartLibrary.moved_by,
+      // moved_colour).
+      let by = IDENTITY;
+      let tint = -1;
+      for (let hop = 0, at = part; hop < 8; hop += 1) {
+        const info = library.info(at);
+        if (!info || !info.moved || !library.has(info.moved)) break;
+        const turn = table?.moved?.[at];
+        if (turn) by = compose(by, turn);
+        if (Number.isInteger(table?.tints?.[at])) tint = table.tints[at];
+        at = info.moved;
+      }
+      if (!one.mirrored) m = compose(m, by);
+      if (tint >= 0) colour = tint;
+      part = real;
+    }
+    const fixed = current?.[part];
+    if (Array.isArray(fixed) && typeof fixed[0] === "string" && Number.isInteger(fixed[1])) [part, colour] = fixed;
+    out.push({ part, colour, m, scene, mirrored: one.mirrored });
+  }
+  return out;
+}
+
+let currents;
+
+/// The parts LDraw draws in one colour only, kept for old files, as the app
+/// places each (PartLibrary.current and current_colour): {id: [part, colour]},
+/// 303923 as ["3039", 1]. Written by the app's own library beside each web
+/// build (src/dev/write_part_names.gd, part_current.json), which
+/// tools/package_api.sh puts beside the share function as _part_current.json;
+/// read once, from there, or in a checkout from its own web build's. Null
+/// where there is neither: such a part is then read as its own number.
+export function currentTable() {
+  if (currents !== undefined) return currents;
+  currents = null;
+  for (const at of [new URL("./_part_current.json", import.meta.url),
+    new URL("../build/web/part_names/part_current.json", import.meta.url)]) {
+    if (!existsSync(at)) continue;
+    const read = JSON.parse(readFileSync(at, "utf8"));
+    currents = read && typeof read.parts === "object" ? read.parts : null;
+    break;
+  }
+  return currents;
+}
+
+/// The table given by hand (a check run).
+export function useCurrent(given) {
+  currents = given;
+  return currents;
 }
 
 // ---------------------------------------------------------------------------
