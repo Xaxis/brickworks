@@ -1,6 +1,6 @@
 ---
 panels: ShareView#viewer, BuildMode#build-it
-ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, versions and its parts list to download.
+ai: A shared model's page: its picture turned in 3D, Build it (the steps played as a booklet, a step or a part at a time), moving its parts, pictures, likes, comments, builds, remixes, its Log of versions (work in progress marked) and its parts list to download.
 rules:
   - Anyone can open a model's page with no account.
   - Its parts download as a BrickLink XML, a Rebrickable CSV or a LEGO® Pick a Brick CSV, and the model as LDraw (.mpd).
@@ -85,10 +85,22 @@ ui:a link that opens playing
 
 ## Pictures and tabs {#tabs}
 
-Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections** once it is in one, and **Versions** once it has [more than one](/docs/sharing#versions).
+Under the picture is a strip: the published picture, its designer's photos (**Add a picture**, up to three) and photos of real builds people sent; choose one to see it large. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections** once it is in one, and **Log** once it has [more than one version](/docs/sharing#versions) or is [work in progress](/docs/sharing#progress).
 
 <!-- covers
 ui:model page pictures and tabs
+-->
+
+## The Log {#log}
+
+The **Log** is every version its designer published, the newest first. Each has its picture, the day it was published, what changed from the one before (*8 parts added in step 21*) and what its designer wrote with it, and opens that version at its own address, `/m/<id>/v/<n>`. Above them is what changed in the version you are looking at, part by part.
+
+A model still being built is marked **Work in progress** at the top of its page and in its Log, each version shared so marked too. Its designer sees **Mark it finished** there: the newest version becomes the finished one, marked **Finished**, said in its Talk thread and to their followers, and the model then ranks in the gallery as any other ([Share progress](/docs/sharing#progress)).
+
+![A model's Log while it is being built: the Work in progress mark and what it means, what changed in version 3 and its note, then every version newest first, each with its picture, its date, what changed and its note, versions marked Work in progress.](/docs/img/model-log.webp "The Log of a model shared as work in progress.")
+
+<!-- covers
+ui:a model's log
 -->
 
 ## The buttons {#actions}

@@ -70,3 +70,7 @@ push.sql	push_on_photo	push_2.sql	query_canceled
 push.sql	push_on_remix	push_2.sql	query_canceled
 push.sql	push_on_settled	push_2.sql	query_canceled
 push_2.sql	push_collect	talk.sql	'talk-' || (w.item->>'thread')
+discovery.sql	gallery_shows	wip.sql	m.wip_at is null
+modelled_by.sql	directory_card	wip.sql	'wip', m.wip_at
+made_with.sql	gallery_models	wip.sql	a.sort in ('newest', 'added')
+collection_follows.sql	follow_rows	wip.sql	wip_rows(viewer

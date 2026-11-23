@@ -45,6 +45,15 @@
 ## BY unless they choose otherwise. With the big picture goes a small one
 ## for the gallery's cards, so a page of them is quick on a phone.
 ##
+## And Share progress beside Publish (2026-11-23, buildlog; api/_wip.js): the
+## same publish, marked work in progress, in one press. It lists the model
+## and credits its designer, so their followers see each version in their
+## feeds, and the model's one Show and tell thread in Talk gets a post a
+## version (its picture, its note, what changed); the gallery keeps it out
+## of Top, This week's pick and the challenges while it is being built.
+## Publish then says Publish as finished: that version finishes it, said in
+## the thread too, and from then it ranks as any model does.
+##
 ## Beside Publish, the community guidelines (2026-10-18, web/guidelines.html):
 ## publishing means agreeing to them. And for an account that said it is
 ## under 13 (Account.over_13, supabase/trust.sql), List it in the gallery and
@@ -127,6 +136,12 @@ var tested: Dictionary = {}
 var tested_said: String = ""
 var _status: Label
 var _publish: Button
+## Share progress: Publish, marked work in progress.
+var _progress: Button
+## Whether the link is work in progress, as the server last said it, and
+## what Talk said of the last publish's post ({url} or {why}).
+var wip: bool = false
+var talk: Dictionary = {}
 var _link_box: VBoxContainer
 var _link: LineEdit
 var _opens_row: HBoxContainer
@@ -277,12 +292,27 @@ func setup() -> void:
 	form.add_child(_note)
 	_show_note(false)
 
+	# Publish, and beside it the same marked work in progress.
+	var acts := HBoxContainer.new()
+	acts.add_theme_constant_override("separation", 8)
+	column.add_child(acts)
 	_publish = Button.new()
 	_publish.text = "Publish"
 	_publish.custom_minimum_size = Vector2(0, 34)
+	_publish.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_publish.focus_mode = Control.FOCUS_NONE
-	_publish.pressed.connect(publish)
-	column.add_child(_publish)
+	_publish.pressed.connect(func() -> void: publish(false))
+	acts.add_child(_publish)
+	_progress = Button.new()
+	_progress.text = "Share progress"
+	_progress.custom_minimum_size = Vector2(0, 34)
+	_progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_progress.focus_mode = Control.FOCUS_NONE
+	_progress.tooltip_text = "Publish this version as work in progress: listed with your name, in your " \
+		+ "followers' feeds and in its own Talk thread, kept out of Top and the challenges until you " \
+		+ "publish it as finished."
+	_progress.pressed.connect(func() -> void: publish(true))
+	acts.add_child(_progress)
 	# What publishing agrees to, where it is agreed to.
 	# One line, never wrapped: a wrapping label in a row is given no width
 	# and stands one letter to a line down the panel.
@@ -380,6 +410,12 @@ func _follow_age() -> void:
 		_credit.disabled = true
 	else:
 		_credit.disabled = false
+	# Work in progress is shared in the gallery and in Talk, by name.
+	_progress.disabled = young or _list.disabled or state in ["publishing", "unpublishing"]
+	_progress.tooltip_text = ("Work in progress is shared in the gallery and Talk, which are for people 13 and over."
+		if young else "Brickworks took it out of the gallery, so it cannot be shared there." if _list.disabled
+		else "Publish this version as work in progress: listed with your name, in your followers' feeds and "
+			+ "in its own Talk thread, kept out of Top and the challenges until you publish it as finished.")
 
 
 func _line(text: String, size: int, alpha: float) -> Label:
@@ -500,6 +536,7 @@ func open() -> void:
 		_fresh_words()
 	if store.share_id.is_empty():
 		state = "idle"
+		wip = false
 		_list.button_pressed = false
 		_list.disabled = false
 		_status.text = _waiting_words()
@@ -529,6 +566,8 @@ func _check_link(id: String, words: bool = true) -> void:
 			# The box as the link is, so Update the link does not take a
 			# listed model out of the gallery by surprise.
 			var barred: bool = bool((one as Dictionary).get("barred", false))
+			# Work in progress: Publish then finishes it.
+			wip = up and bool((one as Dictionary).get("wip", false))
 			if words:
 				_words_from(one as Dictionary)
 			_list.button_pressed = up and bool((one as Dictionary).get("listed", false)) and not barred
@@ -540,6 +579,9 @@ func _check_link(id: String, words: bool = true) -> void:
 				_status.text = "Shared at this link and listed in the gallery. Publish again to update it."
 			if barred:
 				_status.text += " Brickworks took it out of the gallery, so it cannot be listed there."
+			if wip:
+				_status.text = "Shared as work in progress. Share progress posts the next version; " \
+					+ "Publish as finished ends it."
 			_show_link(id)
 			return
 
@@ -564,7 +606,7 @@ func _show_link(id: String) -> void:
 	_open_link.disabled = not up
 	_unpublish.visible = up
 	_publish.text = "Publish" if id.is_empty() else (
-		"Update the link" if up else "Publish again")
+		"Publish as finished" if up and wip else "Update the link" if up else "Publish again")
 
 
 ## The link as it opens: still, or playing [member playing] (?motion=, the
@@ -616,22 +658,34 @@ func _on_account() -> void:
 		_status.text = _waiting_words()
 
 
-## Publish the model as it stands, at its own link if it has one.
-func publish() -> void:
+## Publish the model as it stands, at its own link if it has one; [as_wip]
+## marks it work in progress (Share progress), listed and credited.
+func publish(as_wip: bool = false) -> void:
 	if state in ["publishing", "unpublishing"]:
 		return
 	var name: String = _name.text.strip_edges()
 	if name.is_empty():
 		_fail("Give the model a name first.")
 		return
+	if as_wip and (_progress.disabled or _list.disabled):
+		_fail(_progress.tooltip_text)
+		return
+	if as_wip:
+		# Shared with everybody, by name: in the gallery, so followers see it.
+		_list.button_pressed = true
+		if not _credit.button_pressed:
+			_credit.button_pressed = true
 	if account.renewing:
 		_status.text = Account.waiting_words("It is published")
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_fail("Sign in to Brickworks to share a model.")
 		return
+	if as_wip and _author.text.strip_edges().is_empty():
+		await _suggest_author()
 	state = "publishing"
 	_publish.disabled = true
+	_progress.disabled = true
 	_status.text = "Taking its picture…"
 	var pictures: Dictionary = await _pictures()
 	var png: PackedByteArray = pictures["png"]
@@ -641,6 +695,7 @@ func publish() -> void:
 	if model.is_empty():
 		_publish.disabled = false
 		_fail("Stopped before it was published.")
+		_follow_age()
 		return
 	# Whom it credits, when it is somebody else's (a model the Library
 	# opened: ModelStore.credit), carried in it as a saved file carries it:
@@ -690,6 +745,8 @@ func publish() -> void:
 	if not store.share_id.is_empty():
 		body["id"] = store.share_id
 	body["listed"] = _list.button_pressed and not _list.disabled
+	# Work in progress, or not: a link that was one is finished by this.
+	body["wip"] = as_wip
 	if not store.remixed_from.is_empty():
 		body["remixed_from"] = store.remixed_from
 		if store.remixed_from_version > 0:
@@ -711,6 +768,7 @@ func publish() -> void:
 	var reply: Variant = answer.get("body")
 	if not int(answer["code"]) in [200, 201] or not reply is Dictionary:
 		_fail(SharedModels.trouble(answer, "Brickworks could not publish it just now."))
+		_follow_age()
 		return
 	var said: Dictionary = reply
 	store.share_id = str(said.get("id", ""))
@@ -722,7 +780,13 @@ func publish() -> void:
 	if said.get("author") is String and body.has("author"):
 		_author.text = str(said["author"])
 	state = "published"
+	# Work in progress now, or finished by this one (api/_wip.js), and what
+	# Talk said of its post.
+	wip = bool(said.get("wip", false))
+	var finished: bool = bool(said.get("finished", false))
+	talk = said.get("talk") if said.get("talk") is Dictionary else {}
 	_show_link(store.share_id)
+	_follow_age()
 	url = str(said.get("url", url))
 	embed = str(said.get("embed", embed))
 	_link.text = link()
@@ -739,6 +803,16 @@ func publish() -> void:
 		_status.text = "Version %d is up at this link%s, and version %d is kept at its own. %s" % [
 			version, " and listed in the gallery" if listed else "", version - 1, version_said]
 		_status.text = _status.text.strip_edges()
+	# Shared as work in progress, or finished: where it went, and Talk's word.
+	if wip or finished:
+		_status.text = ("Version %d is shared as work in progress: in the gallery's Newest and your followers' "
+			+ "feeds, kept out of Top and the challenges until you publish it as finished.") % version if wip \
+			else "Version %d is the finished one: it ranks in the gallery like any model now." % version
+		if not version_said.is_empty():
+			_status.text += " " + version_said
+		_status.text += (" Its Talk thread has the post." if talk.has("url")
+			else " Not posted in Talk: %s" % str(talk.get("why", "Talk could not take it just now.")) if not talk.is_empty()
+			else "")
 	_note.text = ""
 	_show_note(true)
 	# Whether it is marked Tested, or which test it failed and why: a note
@@ -765,6 +839,7 @@ func unpublish() -> void:
 		_fail(SharedModels.trouble(answer, "Brickworks could not take it down just now."))
 		return
 	state = "unpublished"
+	wip = false
 	# Out of the gallery with it (api/share.js); listed again only if
 	# ticked again.
 	_list.button_pressed = false
@@ -826,7 +901,7 @@ func controls_by_name() -> Dictionary:
 		return {}
 	var named_controls: Dictionary = {"share_name": _name, "share_credit": _credit,
 		"share_about": _about, "share_tags": _tags, "share_kind": _kind,
-		"share_licence": _licence, "share_list": _list, "share_publish": _publish,
+		"share_licence": _licence, "share_list": _list, "share_publish": _publish, "share_progress": _progress,
 		"share_guidelines": _guidelines, "share_done": _done}
 	if _author.is_visible_in_tree():
 		named_controls["share_author"] = _author
@@ -867,7 +942,9 @@ func page_state() -> Dictionary:
 		"guidelines": guidelines_url(),
 		"list_disabled": _list.disabled if _list != null else false,
 		"credit_disabled": _credit.disabled if _credit != null else false,
-		"young": _young.visible if _young != null else false}
+		"young": _young.visible if _young != null else false,
+		"wip": wip, "talk": talk, "publish_text": _publish.text if _publish != null else "",
+		"progress_disabled": _progress.disabled if _progress != null else true}
 
 
 ## Escape closes it, like the other panels.

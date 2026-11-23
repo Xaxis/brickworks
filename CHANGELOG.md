@@ -15,6 +15,18 @@ whole cycle.
 
 ### Added
 
+- **Share your model while you build it.** The Share panel has **Share
+  progress** beside Publish: one press shares this version as work in
+  progress, with what changed. Your followers see each version in their
+  feed, and the model gets one Show and tell thread in Talk that gains a
+  post a version, with its picture, your note and what changed. While it is
+  work in progress it is in the gallery's Newest, marked, and kept out of
+  Top, This week's pick and the challenges. **Publish as finished**, or
+  **Mark it finished** on its page, ends it, and it ranks as any model.
+- **A model's Log.** A shared model's Versions tab is now its **Log**:
+  every version, the newest first, each with its picture, the day, what
+  changed and its note, and a link to that version.
+
 - **A model's link turns where it is pasted.** The first time you visit
   your shared model's page, your browser records the model turning once
   round, four seconds and a seamless loop, and its link carries it: Discord,

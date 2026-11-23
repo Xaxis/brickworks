@@ -484,6 +484,12 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     marks.push(`<span class="pill good tested" title="${escapeHtml(say(TESTED_SAYS))}">✓ ${escapeHtml(say("Tested"))}</span>`);
     data.push('data-tested="yes"');
   }
+  // Still being built (supabase/wip.sql): said on its picture, so Newest
+  // never passes one off as finished.
+  if (model.wip === true) {
+    marks.push(`<span class="pill wip" title="${escapeHtml(say("Its designer is still building it, and shares each version"))}">${escapeHtml(say("Work in progress"))}</span>`);
+    data.push('data-wip="yes"');
+  }
   // A set of the LDraw library: its number, its theme and its year, each
   // where the index knows it.
   const set = isSet(model) ? model.library : null;

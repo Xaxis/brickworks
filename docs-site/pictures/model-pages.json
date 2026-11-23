@@ -55,6 +55,155 @@
    ]
   },
   {
+   "id": "model-log",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    1600
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": ".earlier.log img",
+   "db": {
+    "rest/v1/share_versions?model=eq.DocsSprt01": [
+     {
+      "n": 3,
+      "at": "2026-11-02T18:10:00Z",
+      "note": "The roof, and the driver in his seat.",
+      "parts": 187,
+      "steps": 35,
+      "bytes": 21879,
+      "has_image": true,
+      "has_thumb": true,
+      "first_changed": 33,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 43,
+      "changes": {
+       "added": [
+        {
+         "part": "3069b",
+         "colour": 4,
+         "count": 6
+        },
+        {
+         "part": "3626c",
+         "colour": 14,
+         "count": 1
+        }
+       ],
+       "removed": [],
+       "added_count": 7,
+       "removed_count": 0,
+       "added_in": [
+        34
+       ],
+       "removed_from": [],
+       "steps_added": [
+        34
+       ],
+       "steps_removed": [],
+       "steps_changed": [
+        34
+       ],
+       "first": 34,
+       "compared": true,
+       "parts": 187,
+       "steps": 35
+      }
+     },
+     {
+      "n": 2,
+      "at": "2026-10-31T16:40:00Z",
+      "note": "Doors that open, on 2 x 2 hinge bricks one plate lower.",
+      "parts": 168,
+      "steps": 32,
+      "bytes": 19810,
+      "has_image": true,
+      "has_thumb": true,
+      "first_changed": 21,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 42,
+      "changes": {
+       "added": [
+        {
+         "part": "3937",
+         "colour": 4,
+         "count": 4
+        },
+        {
+         "part": "3938",
+         "colour": 4,
+         "count": 4
+        }
+       ],
+       "removed": [],
+       "added_count": 8,
+       "removed_count": 0,
+       "added_in": [
+        21
+       ],
+       "removed_from": [],
+       "steps_added": [
+        21
+       ],
+       "steps_removed": [],
+       "steps_changed": [
+        21
+       ],
+       "first": 21,
+       "compared": true,
+       "parts": 168,
+       "steps": 32
+      }
+     },
+     {
+      "n": 1,
+      "at": "2026-10-30T10:00:00Z",
+      "note": null,
+      "parts": 160,
+      "steps": 30,
+      "bytes": 18800,
+      "has_image": true,
+      "has_thumb": true,
+      "changes": null,
+      "first_changed": null,
+      "remixed_from_version": null,
+      "wip": true,
+      "finished_at": null,
+      "talk_post": 41
+     }
+    ]
+   },
+   "answers": {
+    "/m/DocsSprt01/v/": {
+     "file": "docs-site/pictures/files/DocsSprt01.webp"
+    }
+   },
+   "steps": [
+    {
+     "scroll": "#versions"
+    }
+   ],
+   "crop": "#versions",
+   "pad": 12,
+   "alt": "A model's Log while it is being built: the Work in progress mark and what it means, what changed in version 3 and its note, then every version newest first, each with its picture, its date, what changed and its note, versions marked Work in progress.",
+   "caption": "The Log of a model shared as work in progress.",
+   "features": [
+    "ui:a model's log",
+    "lib:versions of a shared model"
+   ]
+  },
+  {
    "id": "build-it",
    "source": "app",
    "view": "DocsSprt01",

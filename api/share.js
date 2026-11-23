@@ -88,7 +88,7 @@
 //                            model, image?, cutout?, thumb?, id?, listed?,
 //                            remixed_from?, remixed_from_version?,
 //                            description?, tags?, kind?, licence?, note?,
-//                            tested?, made_with?}. tested is what the app
+//                            tested?, made_with?, wip?}. tested is what the app
 //                            found of the model as it published it
 //                            (api/_tested.js); made_with who laid its parts,
 //                            as the app knows it: hand, assistant or
@@ -101,7 +101,14 @@
 //                            version of it, which its page names; note is
 //                            what its owner says changed. What it says
 //                            about itself is kept on a republish that does
-//                            not say it again.
+//                            not say it again. wip true shares the version
+//                            as work in progress (api/_wip.js): marked so,
+//                            in Talk and the feed, out of Top and the pick
+//                            until a version is published without it,
+//                            which finishes it.
+//   POST ?op=finish          (session) {id}: the owner's work in progress
+//                            called finished, its newest version the
+//                            finished one (api/_wip.js)
 //   GET  ?op=library         /library's sets: every set in the catalogue
 //                            (api/_sets.js, sets364), those LDraw has a 3D
 //                            model of marked, a page at a time: searched
@@ -282,6 +289,7 @@ import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, na
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
+import { NOT_YET as WIP_NOT_YET, finish as finishWip, isWip, postVersion, wipReady } from "./_wip.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
@@ -654,7 +662,7 @@ async function wasShared(id) {
 async function ownRow(id) {
   if (!ID.test(id || "")) return null;
   const rows = await db(`shared_models?id=eq.${id}&select=id,owner,published,listed,listed_at,barred,remixed_from,`
-    + "description,tags,kind,licence,author,parts,steps,bytes,has_image,updated_at");
+    + "description,tags,kind,licence,author,parts,steps,bytes,has_image,has_thumb,updated_at");
   return rows[0] || null;
 }
 
@@ -769,16 +777,20 @@ async function mayPublishListed(owner) {
 /// none (published before its versions were kept, and not since) is its
 /// version 1, as the row says it is.
 async function versionsOf(id, row = null, limit = VERSIONS_SHOWN) {
+  // And, from supabase/wip.sql, whether each was work in progress, called
+  // finished, and kept its small picture.
+  const wipped = await wipReady();
   const rows = await db(`share_versions?model=eq.${id}&select=n,at,note,parts,steps,bytes,has_image,changes,`
-    + `first_changed,remixed_from_version&order=n.desc&limit=${limit}`);
+    + `first_changed,remixed_from_version${wipped ? ",wip,finished_at,has_thumb,talk_post" : ""}&order=n.desc&limit=${limit}`);
   const versions = rows.map((one) => ({ n: one.n, at: one.at, note: one.note ?? null, parts: one.parts,
     steps: one.steps ?? null, bytes: one.bytes, has_image: one.has_image === true,
     changes: readChanges(one.changes), first: one.first_changed ?? null,
-    from_version: one.remixed_from_version ?? null }));
+    from_version: one.remixed_from_version ?? null, wip: one.wip === true, finished_at: one.finished_at ?? null,
+    has_thumb: one.has_thumb === true, talk_post: one.talk_post ?? null }));
   if (versions.length === 0 && row) {
     versions.push({ n: 1, at: row.updated_at, note: null, parts: row.parts, steps: row.steps ?? null,
       bytes: row.bytes, has_image: row.has_image === true, changes: null, first: null, from_version: null,
-      implied: true });
+      wip: false, finished_at: null, has_thumb: false, talk_post: null, implied: true });
   }
   return versions;
 }
@@ -805,6 +817,7 @@ const remixVersion = (versions) => versions.find((one) => one.from_version)?.fro
 function versionSaid(origin, id, one, newest) {
   return { n: one.n, at: one.at, note: one.note, said: saidOf(one.n, one.changes),
     first_changed: one.first, parts: one.parts, steps: one.steps, newest: one.n === newest,
+    wip: one.wip === true, finished: Boolean(one.finished_at),
     url: one.n === newest ? `${origin}/m/${id}` : `${origin}/m/${id}/v/${one.n}` };
 }
 
@@ -1138,16 +1151,15 @@ export const NEXT_LEAST = 3;
 /// builds; or, with neither, the gallery's Top. Never from who looked at
 /// what (D13). A card the page shows
 /// already (the model, its remixes, a card in More by) is not shown again.
-/// Read through directory_models, as the gallery is, so a model taken out
-/// is never offered; a test model's own page, which only a probe has the
+/// Read through gallery_models (rankedRows), as the gallery's Top is, so a
+/// model taken out or still being built (supabase/wip.sql) is never offered; a test model's own page, which only a probe has the
 /// link to, offers test models too, as it lists its test remixes
 /// (supabase/test_models.sql). The database not answering is no rows: the
 /// page is drawn without them, never refused.
 async function nextOf(origin, id, model, own) {
   const none = { by: [], like: [], gallery: [] };
   if (!own) return none;
-  const ask = (query) => orUnknown("share", db("rpc/directory_models", { method: "POST",
-    body: { query: { sort: "top", tests: own.test === true, ...query } } }));
+  const ask = (query) => orUnknown("share", rankedRows({ sort: "top", tests: own.test === true, ...query }));
   const tags = model.tags || [];
   const [theirs, kin, ...tagged] = await Promise.all([
     model.by ? ask({ owner: own.owner, size: NEXT_MOST + 1 }) : [],
@@ -1346,6 +1358,8 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
       : asText(say("Shared by link"))}</li>`,
     newest > 1 ? `<li><a class="pill version-line" href="#versions">${asText(old ? say("Version {n} of {newest}", { n: version.n, newest })
       : say("Version {n}", { n: version.n }))}</a></li>` : "",
+    // Still being built (supabase/wip.sql): its Log has each version.
+    isWip(versions) ? `<li><a class="pill wip" href="#versions">${asText(say("Work in progress"))}</a></li>` : "",
     Number(model.remixes) ? `<li><a class="pill" href="#remixes">${counted(model.remixes, "remix", "remixes")}</a></li>` : "",
     // In the public collections it is in (docs/SOCIAL.md U11), each a card
     // under Collections.
@@ -1423,7 +1437,7 @@ ${header}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
-  ${pageTabs(model, newest, lists?.count, parts)}
+  ${pageTabs(model, newest, lists?.count, parts, logged(versions))}
   <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">${asText(say("About it"))}</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="${asText(say("Tags"))}">${tags}</ul>` : ""}
@@ -1442,7 +1456,7 @@ ${header}
         + "and it shows here.", { open: `<a href="${escapeHtml(copyLink)}">${asText(say("Open it in Brickworks"))}</a>` })}</p>`}
   </section>`}
   ${listsSection(lists)}
-  ${versionsSection(id, versions, version, at)}
+  ${versionsSection(id, versions, version, at, model)}
     </div>
   </div>
   ${model.by ? nextRow("more-by", sayHtml("More by {name}", { name: `<a href="${langAt()}/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>` }),
@@ -1485,14 +1499,14 @@ function mediaStrip(model, picture, photos, small = picture) {
 /// count once there is one, kept on screen as the page scrolls; the one
 /// being read is marked by web/model-page.js, which also counts the
 /// comments as it lists them. Versions only once there are two.
-function pageTabs(model, newest, inLists = 0, parts = null) {
+function pageTabs(model, newest, inLists = 0, parts = null, log = newest > 1) {
   const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${asText(name)}`
     + (Number(n) ? ` <span class="n">${number(n)}</span>` : "") + "</a>";
   return `<nav class="tabs page-tabs" id="page-tabs" aria-label="${asText(say("On this page"))}">${tab("about", say("About"))}`
     + `${parts ? tab("parts", say("Parts"), parts.pieces) : ""}`
     + `${model.library ? "" : `${tab("comments", say("Comments"))}${tab("builds", say("Builds"), model.builds)}${tab("remixes", say("Remixes"), model.remixes)}`}`
     + `${Number(inLists) ? tab("collections", say("Collections"), inLists) : ""}`
-    + `${newest > 1 ? tab("versions", say("Versions"), newest) : ""}</nav>`;
+    + `${log ? tab("versions", say("Log"), newest) : ""}</nav>`;
 }
 
 /// How many rows the Parts list shows before Show all, and each row's
@@ -1664,13 +1678,21 @@ function commentsSection(id, shown, newest, steps) {
   </section>`;
 }
 
-/// What a page says of the model's versions, once it has more than one:
-/// the version shown, what changed in it (worked out from the files, and
-/// part by part on request) and what its owner said, how far a builder of
-/// the one before can carry on, and the others, newest first.
-function versionsSection(id, versions, shown, at = "") {
+/// Whether a model's page keeps a Log: once it has two versions, or one
+/// shared as work in progress. Pure.
+const logged = (versions) => (versions[0]?.n ?? 1) > 1 || versions.some((one) => one.wip);
+
+/// The page's Log (buildlog, 2026-11-23), once it keeps one: the version
+/// shown, what changed in it (worked out from the files, and part by part
+/// on request) and what its owner said, how far a builder of the one before
+/// can carry on; while it is work in progress, that it is, and for its
+/// designer Mark it finished (web/model-page.js shows it to them alone);
+/// then every version, newest first, each with its small picture (the one
+/// kept with it, /m/X/v/N.webp), its date, what changed and its note, work
+/// in progress and the finished one marked, each opening its own page.
+function versionsSection(id, versions, shown, at = "", model = {}) {
   const newest = versions[0]?.n ?? 1;
-  if (newest <= 1 || !shown) return "";
+  if (!logged(versions) || !shown) return "";
   const said = saidOf(shown.n, shown.changes);
   const changes = shown.changes;
   // Each lot's colour as the parts list names it in the page's language.
@@ -1682,19 +1704,40 @@ function versionsSection(id, versions, shown, at = "") {
       ? say("Step 1 is as they were in version {n}: a builder who got that far can carry on.", { n: shown.n - 1 })
       : say("Steps 1–{last} are as they were in version {n}: a builder who got that far can carry on.",
         { last: shown.first - 1, n: shown.n - 1 }))}</p>` : "";
-  const others = versions.filter((one) => one.n !== shown.n).map((one) => {
-    const href = one.n === newest ? `${at}/m/${id}` : `${at}/m/${id}/v/${one.n}`;
+  const building = isWip(versions)
+    ? `<p class="wip-line" role="note"><span class="pill wip">${asText(say("Work in progress"))}</span> `
+      + `${asText(say("Its designer is still building it: each new version comes here, to their followers and to its Talk thread."))} `
+      + `<button type="button" class="cta ghost small" data-finish="${id}" hidden>${asText(say("Mark it finished"))}</button></p>`
+      + `<p class="said finish-said" role="status" hidden></p>` : "";
+  const entries = versions.map((one) => {
+    // Each at its own address for good: the newest's stays right once a
+    // later one comes, as a Talk post's link to it does.
+    const href = `${at}/m/${id}/v/${one.n}`;
     const words = changedOf(one.n, one.changes);
-    return `<li><a href="${href}">${asText(say("Version {n}", { n: one.n }))}</a>${one.n === newest ? asText(say(", the newest")) : ""}, `
-      + `${when(one.at)}${words ? `: ${escapeHtml(words)}` : ""}${one.note ? ` <q>${escapeHtml(one.note)}</q>` : ""}</li>`;
+    const pictured = one.has_thumb || one.has_image || (one.n === newest && model?.has_thumb);
+    // Its time in the address: a version's picture is that version's for good.
+    const stamp = (Date.parse(one.at || "") || 0).toString(36);
+    const marks = [one.wip ? `<span class="pill wip">${asText(say("Work in progress"))}</span>` : "",
+      one.finished_at ? `<span class="pill finished">${asText(say("Finished"))}</span>` : ""].filter(Boolean).join(" ");
+    const here = one.n === shown.n;
+    return `<li class="log-entry${one.wip ? " wip" : ""}"${here ? ' aria-current="true"' : ""}>`
+      + `<a class="log-picture" href="${href}" tabindex="-1" aria-hidden="true">${pictured
+        ? `<img src="/m/${id}/v/${one.n}.webp?at=${stamp}" alt="" width="160" height="120" loading="lazy" decoding="async">` : ""}</a>`
+      + `<div class="log-main"><p class="log-head"><a href="${href}">${asText(say("Version {n}", { n: one.n }))}</a>`
+      + `${one.n === newest ? asText(say(", the newest")) : ""}${here && one.n !== newest ? asText(say(", this one")) : ""}`
+      + ` <span class="when">${when(one.at)}</span>${marks ? ` ${marks}` : ""}</p>`
+      + `${words ? `<p class="log-changed">${escapeHtml(words)}</p>`
+        : one.n === 1 ? `<p class="log-changed">${asText(say("The first version."))}</p>` : ""}`
+      + `${one.note ? `<p class="log-note"><q>${escapeHtml(one.note)}</q></p>` : ""}</div></li>`;
   }).join("");
-  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">${asText(say("Versions"))}</h2>
+  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">${asText(say("Log"))}</h2>
+    ${building}
     <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : asText(say("Version {n}, the first.", { n: shown.n }))}
       <span class="when">${when(shown.at)}</span></p>
     ${shown.note ? `<blockquote class="version-note"><p>${escapeHtml(shown.note)}</p></blockquote>` : ""}
     ${kept}
     ${lots ? `<details class="lots"><summary class="cta ghost small">${asText(say("Part by part"))}</summary><ul>${lots}</ul></details>` : ""}
-    ${others ? `<h3>${asText(shown.n === newest ? say("Earlier versions") : say("The others"))}</h3><ol class="earlier">${others}</ol>` : ""}
+    <h3>${asText(say("Every version, the newest first"))}</h3><ol class="earlier log">${entries}</ol>
   </section>`;
 }
 
@@ -2357,6 +2400,7 @@ async function read(request, response) {
   if (op === "image" || op === "cutout" || op === "thumb") {
     let name = op === "thumb" ? `${id}.webp` : `${id}.png`;
     let has = row && (op === "thumb" ? row.has_thumb : row.has_image);
+    let type = op === "thumb" ? "image/webp" : "image/png";
     // An older version's own picture, kept with it.
     if (row && op !== "thumb" && asked !== null) {
       const versions = await versionsOf(id, row);
@@ -2364,19 +2408,34 @@ async function read(request, response) {
       has = Boolean(one && one.has_image);
       if (one) name = versionFile(id, one.n, versions[0].n, "png");
     }
+    // A version's small picture (/m/X/v/N.webp, the page's Log and Talk's
+    // cards): the one kept with it (supabase/wip.sql has_thumb), else its
+    // big picture, for a version kept before small ones were.
+    const small = op === "thumb" && request.query?.n !== undefined ? Number(request.query.n) : null;
+    if (row && small !== null) {
+      const versions = Number.isSafeInteger(small) && small >= 1 ? await versionsOf(id, row) : [];
+      const one = versions.find((version) => version.n === small);
+      const newest = versions[0]?.n;
+      const kept = one && (one.n === newest ? row.has_thumb : one.has_thumb);
+      has = Boolean(one && (kept || one.has_image));
+      if (one) name = versionFile(id, one.n, newest, kept ? "webp" : "png");
+      if (one && !kept) type = "image/png";
+    }
     // The cut-out its page shows, where its app made one, and the picture
     // itself for a model published before there were any.
     const cut = has && op === "cutout" ? await getFile(name.replace(/[.]png$/, ".cutout.png")) : null;
     const picture = cut || (has ? await getFile(name) : null);
     if (!picture) return response.status(404).setHeader("Cache-Control", "no-store").end("");
-    response.setHeader("Content-Type", op === "thumb" ? "image/webp" : "image/png");
+    response.setHeader("Content-Type", type);
     // A link preview on any site may show it.
     response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     // Kept as briefly as the pages (SHARED_CACHE). The small picture's
     // address says which version it is (?v=), so a browser keeps it a few
     // minutes too; a republish is a new address.
-    response.setHeader("Cache-Control", op === "thumb" && request.query?.v
-      ? "public, max-age=300, s-maxage=600" : SHARED_CACHE);
+    // A version's, at an address that says when it was published (?at=), is
+    // that version's for good: kept long, so the Log costs storage little.
+    response.setHeader("Cache-Control", small !== null && request.query?.at ? "public, max-age=86400, s-maxage=2592000, immutable"
+      : op === "thumb" && request.query?.v ? "public, max-age=300, s-maxage=600" : SHARED_CACHE);
     return response.status(200).end(picture);
   }
 
@@ -3007,18 +3066,29 @@ const weekOf = (week) => ({ builds: Number(week?.builds) || 0, remixes: Number(w
 /// and the small builds' shelf (the Size filter's Small, by Top builds).
 /// Before supabase/discovery.sql is applied there is no pick, and the shelf
 /// is the newest small models. Kept briefly by the CDN, as the list.
+/// The gallery's list asked [query] where it ranks (a shelf, More by, Like
+/// this): gallery_models, which keeps work in progress out of every ranked
+/// sort (supabase/wip.sql), or directory_models before gallery_tabs.sql.
+async function rankedRows(query) {
+  try {
+    return await db("rpc/gallery_models", { method: "POST", body: { query } });
+  } catch (trouble) {
+    if (!/: 404$/.test(String(trouble?.message || ""))) throw trouble;
+    return db("rpc/directory_models", { method: "POST", body: { query } });
+  }
+}
+
 async function shelves(request, response, origin) {
   const tests = testsAsked(request.query || {});
   const mine = await whoseOwn(request, origin);
   const notYet = (trouble) => (/: 404$/.test(String(trouble?.message || "")) ? null : Promise.reject(trouble));
   const [pick, small, ready, challenge, kept] = await Promise.all([
     db("rpc/gallery_pick", { method: "POST", body: { tests } }).catch(notYet),
-    db("rpc/directory_models", { method: "POST", body: { query: {
-      most: SIZES.small.most, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}),
-      ...(mine?.pool ? { pool: mine.account } : {}) } } }),
+    rankedRows({ most: SIZES.small.most, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}),
+      ...(mine?.pool ? { pool: mine.account } : {}) }),
     // What they can build now, every piece in their collection: by Top builds.
-    mine?.pool ? db("rpc/directory_models", { method: "POST", body: { query: {
-      pool: mine.account, buildable: true, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}) } } }) : null,
+    mine?.pool ? rankedRows({ pool: mine.account, buildable: true, sort: "top", size: SHELF + 1,
+      ...(tests ? { tests: true } : {}) }) : null,
     // The monthly challenge open now, or the next (supabase/challenges.sql).
     challengeLine(tests),
     // What the cron chose (supabase/gallery_crons.sql): none before it is applied.
@@ -3101,13 +3171,17 @@ async function signedIn(request) {
 async function mine(request, response, origin) {
   response.setHeader("Cache-Control", "private, no-store");
   const owner = await signedIn(request);
+  // And whether each is work in progress (supabase/wip.sql): the studio's
+  // Share progress then publishes its next version, and Publish finishes it.
+  const wipped = await wipReady();
   const [rows, profile] = await Promise.all([
-    db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred&order=updated_at.desc`),
+    db(`shared_models?owner=eq.${owner}&select=${PUBLIC},barred${wipped ? ",wip_at" : ""}&order=updated_at.desc`),
     db("rpc/feed_who", { method: "POST", body: { account: owner } }).catch(() => null),
   ]);
   const marks = await newestMarks(rows.filter((row) => row.published).map((row) => row.id));
   return response.status(200).json({
-    shared: rows.map((row) => ({ ...row, ...links(origin, row.id), tested: ownerMark(marks.get(row.id)) })),
+    shared: rows.map(({ wip_at: wipAt, ...row }) => ({ ...row, wip: Boolean(wipAt), ...links(origin, row.id),
+      tested: ownerMark(marks.get(row.id)) })),
     // Whom Show who made it credits (src/ui/share_panel.gd): their profile
     // shown in public, {name, handle}, or null with none.
     credit: profile && profile.name ? { name: profile.name, handle: profile.handle } : null,
@@ -3228,6 +3302,12 @@ async function publish(request, response) {
     throw new Refusal("listed is true or false");
   }
   const listed = body.listed === true;
+  if (body.wip !== undefined && typeof body.wip !== "boolean") throw new Refusal("wip is true or false");
+  const wip = body.wip === true;
+  // Whether supabase/wip.sql is here: before it, nothing of work in
+  // progress is read or written, and a publish asking for it is refused.
+  const wipHere = await wipReady();
+  if (wip && !wipHere) throw new Refusal(WIP_NOT_YET, 503);
   const about = saidAbout(body);
   // What its owner says changed in this version, if anything.
   const note = cleanText(body.note, MAX_NOTE) || null;
@@ -3249,6 +3329,7 @@ async function publish(request, response) {
     existing = await ownRow(id);
     if (!existing) throw new Refusal("there is no shared model at that link to update", 404);
     if (existing.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
+    if (wipHere) existing.wip_at = (await db(`shared_models?id=eq.${id}&select=wip_at`))[0]?.wip_at ?? null;
   }
   // 409, not 403: the app answers a 403 (somebody else's link) by
   // publishing at a new link, which here would list it again.
@@ -3351,6 +3432,15 @@ async function publish(request, response) {
     if (picturedBefore) await putFile(`${id}.v${last.n}.png`, picturedBefore, "image/png");
     const cutBefore = picturedBefore ? await getFile(`${id}.cutout.png`) : null;
     if (cutBefore) await putFile(`${id}.v${last.n}.cutout.png`, cutBefore, "image/png");
+    // And its small picture, the card's, for the page's Log and Talk's
+    // cards (supabase/wip.sql has_thumb): kept from wip.sql on.
+    const thumbBefore = wipHere && existing.has_thumb ? await getFile(`${id}.webp`) : null;
+    if (thumbBefore) {
+      await putFile(`${id}.v${last.n}.webp`, thumbBefore, "image/webp");
+      if (!last.implied) {
+        await db(`share_versions?model=eq.${id}&n=eq.${last.n}`, { method: "PATCH", body: { has_thumb: true } });
+      }
+    }
   } else if (existing) {
     // Its versions start again from 1: a clip an unpublish failed to take
     // goes first, as it would have gone there (dropClip).
@@ -3383,6 +3473,11 @@ async function publish(request, response) {
     published: true, updated_at: now, listed, listed_at: listed ? (newlyListed ? now : existing.listed_at) : null,
     remixed_from: remixedFrom, description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     test: isTestAccount(claims) };
+  // Work in progress since its first WIP version, until one is published
+  // without it: that one finishes it (supabase/wip.sql).
+  const wasWip = republish && Boolean(existing?.wip_at);
+  const finished = wasWip && !wip;
+  if (wipHere) row.wip_at = wip ? (wasWip ? existing.wip_at : now) : null;
   if (existing) {
     await db(`shared_models?id=eq.${id}&owner=eq.${owner}`, { method: "PATCH", body: row });
   } else {
@@ -3391,7 +3486,8 @@ async function publish(request, response) {
   // The version itself, after its model's row (it is that row's).
   const first = n === 1 ? null : changes ? changes.first : 1;
   await db("share_versions", { method: "POST", body: { model: id, n, at: now, note, parts, steps, bytes,
-    has_image: Boolean(picture), changes, first_changed: first, remixed_from_version: remixedFromVersion } });
+    has_image: Boolean(picture), changes, first_changed: first, remixed_from_version: remixedFromVersion,
+    ...(wipHere ? { wip, finished_at: finished ? now : null, has_thumb: Boolean(thumb) } : {}) } });
   // What the app found of this version, kept with it as the app's finding.
   // One that cannot be kept, or a table not there yet, never stops the
   // publish: the version is then untested, and the answer says why.
@@ -3431,8 +3527,16 @@ async function publish(request, response) {
   }
 
   const origin = originOf(request);
+  // A work in progress, or its finish, is one post in the model's Talk
+  // thread, as its designer (api/_wip.js): never in the way of the publish.
+  let talk = null;
+  if (wipHere && (wip || finished)) {
+    const profile = await db("rpc/feed_who", { method: "POST", body: { account: owner } }).catch(() => null);
+    talk = await postVersion(owner, { id, name }, { n, note, changes, kind: wip ? "wip" : "finished", origin, profile });
+  }
   return response.status(existing ? 200 : 201).json({
     id, name, author, parts, bytes, published: true, updated: Boolean(existing),
+    wip, finished, talk,
     listed, remixed_from: remixedFrom, remixed_from_version: remixedFromVersion, gallery: `${origin}/gallery`,
     description, tags, kind, licence, steps, own_steps: ownSteps, technic,
     version: n, note, changes: readChanges(changes), said: saidOf(n, changes), first_changed: first,
@@ -3509,7 +3613,8 @@ async function unpublish(request, response) {
   // version's, and then the versions themselves.
   const versions = await db(`share_versions?model=eq.${id}&select=n`);
   await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.cutout.png`, `${id}.webp`,
-    ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`, `${id}.v${one.n}.cutout.png`])]);
+    ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`, `${id}.v${one.n}.cutout.png`,
+      `${id}.v${one.n}.webp`])]);
   await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
   return response.status(200).json({ id, published: false, versions: versions.length });
 }
@@ -3932,6 +4037,7 @@ async function handler(request, response) {
     response.setHeader("Cache-Control", "no-store");
     const op = String(request.query?.op || "");
     if (op === "unpublish") return await unpublish(request, response);
+    if (op === "finish") return response.status(200).json(await finishWip(await signedIn(request), request.body?.id, originOf(request)));
     if (op === "pictures") return await pictures(request, response);
     if (op === "seen") return await seen(request, response);
     if (op === "built") return await built(request, response);

@@ -123,7 +123,8 @@ def test_the_action_bar_says_each_name_and_count_and_never_a_count_of_none() -> 
 
 
 def test_the_page_is_drawn_without_what_comes_next_when_the_database_will_not_say() -> None:
-    said = pages("/m/DesignAbc1", failing="rpc/directory_models")
+    # (More by and Like this are asked of gallery_models: rankedRows.)
+    said = pages("/m/DesignAbc1", failing="rpc/gallery_models")
     if said is None:
         return
     page = said[0]
@@ -180,7 +181,7 @@ def test_the_tabs_say_each_part_and_its_count_never_one_of_none() -> None:
     # Comments are counted as they are listed, in the page (model-page.js).
     # Parts, counted from the file as the app counts it (api/_parts.js): the
     # stand-in's file is three bricks.
-    assert tabs(tower) == ["About", "Parts 3", "Comments", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"]
+    assert tabs(tower) == ["About", "Parts 3", "Comments", "Builds 37", "Remixes 3", "Collections 2", "Log 2"]
     assert tabs(bakery) == ["About", "Parts 3", "Comments", "Builds", "Remixes"]
     for html in (tower, bakery):
         for key in ("about", "comments", "builds", "remixes"):
@@ -322,8 +323,8 @@ def test_a_model_s_page_in_each_language_of_the_site() -> None:
         name = words["{name} — a Brickworks model"].replace("{name}", "Riverside Watchtower")
         assert f"<title>{name}</title>" in html
         assert f'<a href="/{code}/gallery">{words["Gallery"]}</a>' in html
-        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Versions", "Made from it"):
-            # (French writes Versions as English does.)
+        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Log", "Made from it"):
+            # (French writes some as English does.)
             assert f">{words[key]}<" in html and (words[key] == key or f">{key}<" not in html), key
         assert "A three-storey watchtower on a riverbank" in html
         assert day[code] in html and "28 September 2026" not in html

@@ -3300,6 +3300,24 @@
   "replies": "respuestas",
   "That thread is not here": "Ese tema no está aquí",
   "The address may be mistyped, or the thread was removed.": "Puede que la dirección esté mal escrita o que el tema se haya quitado.",
-  "See what people are talking about": "Mira de qué se habla"
+  "See what people are talking about": "Mira de qué se habla",
+  "Its designer is still building it, and shares each version": "Su diseñador aún lo está construyendo y comparte cada versión",
+  "Work in progress": "En curso",
+  "Only a model in the gallery with your name on it can enter: share it again with Show it in the gallery ticked and your name on it. A work in progress enters once it is finished.": "Solo puede participar un modelo de la galería con tu nombre: vuelve a compartirlo con «Mostrarlo en la galería» marcado y tu nombre. Un modelo en curso puede participar cuando esté terminado.",
+  "Marking it finished…": "Marcándolo como terminado…",
+  "It could not be marked finished just now. Try again in a minute.": "No se ha podido marcar como terminado ahora mismo. Vuelve a intentarlo en un minuto.",
+  "It is said in its Talk thread too.": "También se dice en su hilo del foro.",
+  "Finished: version {n} is the finished one, and your followers are told.": "Terminado: la versión {n} es la definitiva, y tus seguidores lo sabrán.",
+  "Log": "Historial",
+  "Its designer is still building it: each new version comes here, to their followers and to its Talk thread.": "Su diseñador aún lo está construyendo: cada versión nueva llega aquí, a sus seguidores y a su hilo del foro.",
+  "Mark it finished": "Marcarlo como terminado",
+  "Finished": "Terminado",
+  ", this one": ", esta",
+  "The first version.": "La primera versión.",
+  "Every version, the newest first": "Todas las versiones, la más reciente primero",
+  "{who} shared work in progress: {name}": "{who} ha compartido un modelo en curso: {name}",
+  "{who} finished {name}: version {n} is the finished one": "{who} ha terminado {name}: la versión {n} es la definitiva",
+  "{who} shared progress on {name}: version {n}": "{who} ha compartido un avance de {name}: versión {n}",
+  "Version {n}: open it": "Versión {n}: ábrela"
  }
 }

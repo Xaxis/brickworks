@@ -6422,6 +6422,48 @@
       "entry": "tools/web/talk_stand_in.mjs",
       "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "work in progress kept and ranked",
+      "entry": "supabase/wip.sql",
+      "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/wip.sql --dry --try=tools/wip_try.sql --table=share_versions   (not applied yet; the lead applies it; tools/sql_compare.mjs for the gallery's queries; python3 tools/minitest.py tests/test_wip.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "work in progress shared by version",
+      "entry": "api/_wip.js",
+      "reach": "the studio: File › Share… then Share progress (src/ui/share_panel.gd); POST /api/share {wip: true} and ?op=finish {id}; a follower's /feed, the model's Show and tell thread in /talk   (godot --headless --path . --script src/dev/wip_probe.gd; tools/web/wip_flow.mjs once wip.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a model's log",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>#versions (the Log tab; /m/<id>/v/<n> each version, /m/<id>/v/<n>.webp its picture; Mark it finished for its owner while it is work in progress)   (tools/web/log_lcp.mjs --base=DIR)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wip probe",
+      "entry": "src/dev/wip_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/wip_probe.gd   (PROBE_SIZE=1280x800 tools/probe.sh wip_probe for shots/wip/)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wip browser flow",
+      "entry": "tools/web/wip_flow.mjs",
+      "reach": "node --env-file=$SCRATCH/flow.env tools/web/wip_flow.mjs --url=http://127.0.0.1:11440 --out=DIR over relay_server.mjs 11440 --static=build/web, once supabase/wip.sql is applied (before, NOT RUN, exit 2); on a preview BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the log's largest paint",
+      "entry": "tools/web/log_lcp.mjs",
+      "reach": "node tools/web/log_lcp.mjs --base=DIR [--rounds=8] --out=DIR   (DIR: git archive of the tree before, its node_modules and assets linked in)",
+      "area": "web"
     }
   ]
 }
