@@ -576,22 +576,32 @@ export function feedCountHeard(ms) {
   });
 }
 
+// The calls on their way: First steps, put off for what a new person
+// pressed, are offered once its call is answered (offerFirstSteps).
+let calling = 0;
+
 /// A call to the site's own API with the sign-in, as JSON: {status, body}.
 /// [keepalive]: sent on even when the page is left before it is answered.
 export async function call(path, { method = "GET", body, keepalive = false } = {}) {
-  const access = await token();
-  const headers = { accept: "application/json" };
-  if (access) headers.authorization = `Bearer ${access}`;
-  if (body !== undefined) headers["content-type"] = "application/json";
-  const reply = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), keepalive });
-  return { status: reply.status, body: await json(reply) };
+  calling += 1;
+  try {
+    const access = await token();
+    const headers = { accept: "application/json" };
+    if (access) headers.authorization = `Bearer ${access}`;
+    if (body !== undefined) headers["content-type"] = "application/json";
+    const reply = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), keepalive });
+    return { status: reply.status, body: await json(reply) };
+  } finally {
+    calling -= 1;
+  }
 }
 
 /// The two steps of signing in, in a dialog the page opens over itself:
 /// an address, then the code sent to it. Resolves true once signed in,
 /// false when the person closes it. [why]: what signing in is for here (a
-/// like, a comment), which the page does once it resolves; with none, it
-/// is the page's own Sign in, and First steps may end at the feed.
+/// like, a comment), which the page does once it resolves, First steps
+/// offered after it; with none, it is the page's own Sign in, and First
+/// steps come at once and may end at the feed.
 ///
 /// signinux (2026-11-13), as the best sign-ins set out a second way in
 /// (Vercel, Linear, Notion, Figma): the email and orangecheck are two equal
@@ -1047,8 +1057,9 @@ async function welcomeIfDue() {
 /// deleted for an answer under 13 (signed out here, the page to carry on as
 /// it is for nobody), or null when there was nothing to ask or it was put
 /// off. Answered 13 or over, this was a first sign-in, and First steps are
-/// offered before the page carries on ([pending]: it has something to do
-/// once signed in, so they end back on the page). A browser told before is
+/// offered: at once on a page with nothing pressed, and where it has
+/// something to do once signed in ([pending]: a like, a follow), after it
+/// has done it, in a snackbar (offerFirstSteps). A browser told before is
 /// not asked: the new account goes as an answer under 13 does. While the
 /// beta is open, a new account is welcomed to it first, asked once whether
 /// to join its testers (betajoin, 2026-11-09), never before the age
@@ -1056,15 +1067,78 @@ async function welcomeIfDue() {
 export async function askAgeIfAsked({ pending = false } = {}) {
   const now = await age();
   if (!now || !now.ask) {
-    await welcomeIfDue();
+    // The welcome waits for a page with nothing pressed (the profile's,
+    // the settings', which ask this as they open).
+    if (!pending) await welcomeIfDue();
     return now;
   }
   const kept = refusedHere() ? await refuseAgain() : await askAge();
   if (kept && kept.over_13 === true) {
-    await welcomeIfDue();
-    await import("/first-steps.js").then((steps) => steps.firstSteps({ pending })).catch(() => null);
+    if (pending) {
+      keepStepsDue(email());
+      offerFirstSteps().catch(() => null);
+    } else {
+      await welcomeIfDue();
+      await import("/first-steps.js").then((steps) => steps.firstSteps()).catch(() => null);
+    }
   }
   return kept;
+}
+
+// First steps put off (checkdrift, 2026-11-23): a new account that signed
+// in to do something (a like, a follow, a comment) is asked its age, which
+// must come first, and then what it pressed is done; First steps opened
+// over the page instead and the like waited behind them, never made for
+// whoever closed the window there. Kept for the address until offered, in
+// a snackbar that covers nothing, once the page has done it (its calls
+// answered, no dialog open), or on the next page this browser opens if
+// this one went (the app's sign-in on /profile goes back to the app at
+// once).
+const STEPS_DUE = "brickworks.first_steps_due";
+// A moment for the page to start what was pressed; then quiet for one
+// look in a row, and offered regardless after the longest wait.
+const STEPS_LATER_MS = 1000;
+const STEPS_QUIET_MS = 250;
+const STEPS_LONGEST_MS = 20000;
+function stepsDue() {
+  try {
+    return localStorage.getItem(STEPS_DUE) || "";
+  } catch {
+    return "";
+  }
+}
+function keepStepsDue(address) {
+  try {
+    if (address) localStorage.setItem(STEPS_DUE, address);
+    else localStorage.removeItem(STEPS_DUE);
+  } catch {
+    // A browser that keeps nothing offers them on this page alone.
+  }
+}
+
+/// First steps offered as a snackbar (web/toast.js): "Welcome to
+/// Brickworks" and First steps, which opens the beta's welcome where it is
+/// due and then First steps, ending back on the page. Once, for the
+/// address they were kept for, and only while it is signed in here.
+async function offerFirstSteps() {
+  const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+  await pause(STEPS_LATER_MS);
+  const giveUp = Date.now() + STEPS_LONGEST_MS;
+  while ((calling > 0 || document.querySelector("dialog[open]")) && Date.now() < giveUp) await pause(STEPS_QUIET_MS);
+  const address = stepsDue();
+  if (!address || !signedIn() || address !== email()) return;
+  keepStepsDue("");
+  const { toast } = await import("/toast.js");
+  toast(say("Welcome to Brickworks"), { action: { label: say("First steps"), run: async () => {
+    await age().catch(() => null);
+    await welcomeIfDue();
+    await import("/first-steps.js").then((steps) => steps.firstSteps({ pending: true })).catch(() => null);
+  } } });
+}
+if (stepsDue()) {
+  const later = () => offerFirstSteps().catch(() => null);
+  if (document.readyState === "complete") later();
+  else addEventListener("load", later, { once: true });
 }
 
 /// What somebody under 13 is told, as paragraphs: the server's words, and
