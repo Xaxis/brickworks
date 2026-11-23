@@ -785,6 +785,15 @@ func _gears() -> void:
 	await _run_command("joint_marks", "p13_07_joints", "View, Connection points", 30)
 	await _run_command("joint_marks", "", "", 10)
 	await _run_command("simulate", "p13_08_simulate", "Tools, Simulate mechanism", 90)
+	var simulate: Variant = _main.get("_simulate")
+	var play: Variant = (simulate as Node).get("_play") if simulate is Node else null
+	var driver_words: Variant = (simulate as Node).get("_driver") if simulate is Node else null
+	var play_shown: bool = play is Control and (play as Control).is_visible_in_tree()
+	var none_turns: bool = driver_words is Label \
+		and (driver_words as Label).text.begins_with("Nothing here")
+	_check14("Simulate: Play %s while it says %s" % ["shown" if play_shown else "out of sight",
+		(driver_words as Label).text if driver_words is Label else "?"],
+		simulate is Node and (not play_shown or not none_turns))
 	await _close_all()
 
 
@@ -882,9 +891,18 @@ func _leftovers() -> void:
 		% [had, _world.bricks().size(), copies.size(), str(_builder.is_carrying()), _bar.status_text().left(80)],
 		not _builder.is_carrying() and _world.bricks().size() == had + 8 and copies.size() == 8)
 	_check14("...seated: none of the copy floats (%d)" % floating.size(), floating.is_empty())
+	# Straight after, "2x" and Enter: a row of copies a step apart.
+	var one_copy: int = _world.bricks().size()
+	await _type("2x")
+	await _key(KEY_ENTER)
+	await _frames(20)
+	await _step("x14_a_row", "Duplicate, then 2x and Enter: a row")
+	_check14("...then 2x and Enter makes a row: two more copies (%d to %d parts)"
+		% [one_copy, _world.bricks().size()], _world.bricks().size() == one_copy + 8)
+	# The row and the copy it began from are one step, as after a clone.
 	_builder.undo()
 	await _frames(10)
-	_check14("...and one undo takes it back (%d parts)" % _world.bricks().size(),
+	_check14("...and one undo takes the copy and its row back (%d parts)" % _world.bricks().size(),
 		_world.bricks().size() == had)
 	await _close_all()
 	# (b) Instructions: the dialog asks for a PDF, and a PDF is what is written.

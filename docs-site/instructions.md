@@ -99,7 +99,7 @@ ui:find a step by what it places
 
 ## The booklet {#booklet}
 
-**Build › Instructions…** ([[Alt+B]], or **Instructions** on the toolbar or the timeline, and in **File › Export** beside the other files a model is written as) lays the booklet out from the steps and opens it in its own tab. In the desktop app it first asks where to save it, then opens it in your browser, to print or save as a PDF there.
+**Build › Instructions…** ([[Alt+B]], or **Instructions** on the toolbar or the timeline, and in **File › Export** beside the other files a model is written as) lays the booklet out from the steps and opens it in its own tab. In the desktop app it first asks where to save it, a PDF first: name it `.pdf` and the PDF is written there and opens in your PDF reader; choose **Web page** as the type and the booklet opens in your browser, to print or save as a PDF there.
 
 To change how a step is printed, the paper, the cover or the layout of a page, see [Booklet layout](/docs/booklet-layout).
 

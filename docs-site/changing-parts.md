@@ -15,7 +15,7 @@ Everything here works on the selection: click a part, or see [Selecting and edit
 
 ## Copy, paste and duplicate {#copy}
 
-Select, then [[Ctrl+C]] and [[Ctrl+V]], or [[Ctrl+D]] to duplicate; [[Ctrl+X]] cuts. The copy is in hand: a click puts it down, [[R]] turns it and [[Esc]] puts it away. After [[Ctrl+D]], or a click with the **Clone** tool, another copy stays in hand for the next, so five window bays are five clicks. [[Ctrl]]-drag on a part copies it straight off.
+Select, then [[Ctrl+C]] and [[Ctrl+V]]; [[Ctrl+X]] cuts. The pasted copy is in hand: a click puts it down, [[R]] turns it and [[Esc]] puts it away. [[Ctrl+D]] (**Edit › Duplicate**) puts the copy down at once beside the original, seated on what it stood on and selected, so a drag takes it where it goes; [[Ctrl+D]] again puts another beside that, and one [[Ctrl+Z]] takes a copy back. With the **Clone** tool a click holds a copy, and another stays in hand for the next, so five window bays are five clicks. [[Ctrl]]-drag on a part copies it straight off.
 
 <!-- covers
 ui:copy paste and duplicate
@@ -27,7 +27,7 @@ ui:copy paste and duplicate
 
 A fence, a colonnade, a round tower or a wheel's spokes are copies laid out at once.
 
-- **Straight after a copy:** put a [[Ctrl+D]] copy down one step along, then type `11x` and [[Enter]]: it is one of 11 in a row, each a step apart. `/4` puts three more between the copy and its original. One [[Ctrl+Z]] takes them all back.
+- **Straight after a copy:** press [[Ctrl+D]], or put a **Clone** copy down one step along, then type `11x` and [[Enter]]: it is one of 11 in a row, each a step apart. `/4` puts three more between the copy and its original. One [[Ctrl+Z]] takes them all back.
 - **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row**, **In a grid** of columns, rows and levels, **Round** what it stands on or hangs from, or **Along a hose**. **In all** counts the selection: 16 is a ring of sixteen.
 
 The copies are drawn as you type. One with no room is red and says what is in its way, and nothing goes down until they all fit.
@@ -76,7 +76,7 @@ ui:tool modes
 
 - **Edit › Mirror** ([[Shift+M]]) mirrors the selection, swapping each part for its left- or right-handed twin where there is one.
 - **Edit › Replace with the part in hand** ([[Alt+R]]) swaps every selected part for the one you hold, each where it was.
-- **Edit › Find and replace…** ([[Ctrl+Shift+H]]) finds a part, a colour, or a part in a colour everywhere in the model, inside every sub-model too, in the sub-model you are in and its copies, or in the selection. It lists where they are, with counts and copies (click a row to select them), and every colour the part comes in, flagged when there is more than one. Replace with another part, another colour or both: under Replace with it names the part it will put in ("Puts in: Brick 1 x 2 (3004)"), and it says first that every copy of a sub-model changes with it ("Changes all 4 copies of Wing"), and in how many places the new part won't sit the same (another footprint or other connection points), would hold onto nothing, or has no room and stays as it is. Copies stay copies: where one copy of a sub-model has no room for the new part, or the part is locked in one, every copy keeps it, and the bar says so ("Wing has no room in 1 of its 4 copies, so all 4 stay"). The whole replace is one undo step, and a copy placed by a mirror gets the other hand of a handed part. Your Claude does the same with replace_parts, in one call.
+- **Edit › Find and replace…** ([[Ctrl+Shift+H]]) finds a part, a colour, or a part in a colour everywhere in the model, inside every sub-model too, in the sub-model you are in and its copies, or in the selection. It lists where they are, with counts and copies (click a row to select them), and every colour the part comes in, flagged when there is more than one. Its colour lists show each colour's swatch, the model's most used first. Replace with another part, another colour or both: under Replace with it names the part it will put in ("Puts in: Brick 1 x 2 (3004)"), and it says first that every copy of a sub-model changes with it ("Changes all 4 copies of Wing"), and in how many places the new part won't sit the same (another footprint or other connection points), would hold onto nothing, or has no room and stays as it is. Copies stay copies: where one copy of a sub-model has no room for the new part, or the part is locked in one, every copy keeps it, and the bar says so ("Wing has no room in 1 of its 4 copies, so all 4 stay"). The whole replace is one undo step, and a copy placed by a mirror gets the other hand of a handed part. Your Claude does the same with replace_parts, in one call.
 - [[C]] paints the selection in the current colour; the **Paint** tool paints each part you click.
 
 <!-- covers
@@ -119,7 +119,7 @@ ui:hide and show only
 
 ## Group parts into a sub-assembly {#sub-assemblies}
 
-Select some parts and press [[Ctrl+G]] (**Build › Make a sub-assembly…**) to group and name them. A click then takes it whole; [[Enter]] or a double-click edits inside it and [[Esc]] leaves. [[F2]] renames it and **Ungroup** ([[Ctrl+Shift+G]]) takes it apart. Its [[Ctrl+D]] copies follow it, change one and they all change, until **Build › Make this copy unique**. The parts bin searched for its name says so, and that **Edit › Duplicate** puts another down.
+Select some parts and press [[Ctrl+G]] (**Build › Make a sub-assembly…**) to group and name them. A click then takes it whole; [[Enter]] or a double-click edits inside it and [[Esc]] leaves. [[F2]] renames it and **Ungroup** ([[Ctrl+Shift+G]]) takes it apart. Its [[Ctrl+D]] copies follow it, change one and they all change, until **Build › Make this copy unique**. Search the parts bin for its name and it comes first, as a row of its own: click it and a copy is in hand, each click puts one down.
 
 A change is made in every copy or in none. If a part it would change is locked in one copy, or another copy has no room for it (a part put there by hand would have none), nothing changes and the bar says why: "Locked in one copy of Sill: Plate 1 x 2. Unlock it, or use Build › Make this copy unique", or "No room in Sill (copy 2): Plate 1 x 1 is in the way there". Unlock the part, move what is in the way, or use **Build › Make this copy unique** to change that copy alone. A copy's own parts are never in its way, and nor is a part of the model it already stood in (sets put parts through each other), unless the change would push it in deeper.
 

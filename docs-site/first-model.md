@@ -38,7 +38,7 @@ More ways to place a part, exactly or sideways: [Placing parts](/docs/placing-pa
 
 ## 3. Change it {#change}
 
-Click a part to select it. Drag it to carry it somewhere else, press [[Delete]] to take it away, [[C]] to paint it in the current colour, or [[Ctrl+D]] to duplicate it. [[Ctrl+Z]] undoes anything, and **Edit › History** goes back several steps at once. See [Moving and changing parts](/docs/changing-parts).
+Click a part to select it. Drag it to carry it somewhere else, press [[Delete]] to take it away, [[C]] to paint it in the current colour, or [[Ctrl+D]] to put a copy down beside it. [[Ctrl+Z]] undoes anything, and **Edit › History** goes back several steps at once. See [Moving and changing parts](/docs/changing-parts).
 
 ## 4. Make a step {#step}
 

@@ -92,7 +92,7 @@ ui:rename or delete saved models
 
 Every save is also kept as a version: the last 20 of each model. A save that changes nothing keeps no copy.
 
-1. Choose **File › Versions…**. The saves of the model on the baseplate are listed newest first, each with when it was saved and how many parts it has.
+1. Choose **File › Versions…**. The saves of the model on the baseplate are listed newest first, each with when it was saved (today's to the second, yesterday's as yesterday, last week's with how many days ago) and how many parts it has, more or fewer than the save before it.
 2. Press **Compare** to see what changed since that save, or **Open** to put that save on the baseplate in place of what is there. Save it then, and it is the newest again.
 
 If the model has changes you have not saved, Versions says so: **Save it now** keeps them as a version before you open another.

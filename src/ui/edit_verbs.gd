@@ -857,6 +857,9 @@ func duplicate_beside() -> int:
 	var parts: Array = Carry.gather(world, library, alive)
 	if parts.is_empty():
 		return 0
+	var before: Array = []
+	for item: Dictionary in parts:
+		before.append(item["was"] if item.get("was") is Transform3D else Transform3D.IDENTITY)
 	var put: int = builder.put_copy_beside(parts, _level_right(),
 		Assemblies.lines_held(world, parts), Assemblies.frames_held(world, parts),
 		builder.held_carry.call(parts) if builder.held_carry.is_valid() else [])
@@ -867,6 +870,16 @@ func duplicate_beside() -> int:
 		return held
 	edited.call()
 	aim_again.call()
+	# Straight after, "5x" makes it a row of copies a step apart, as after a
+	# clone put down by hand (_note_copy, Pattern).
+	var ids: Array = builder.selection.keys()
+	var now: Array = []
+	for brick_id: int in ids:
+		now.append(world.get_brick(brick_id).transform)
+	var step: Variant = Later.script(&"Pattern").step_between(before, now) \
+		if before.size() == now.size() else null
+	_copied = {} if step == null else {"ids": ids, "at": now, "step": step,
+		"depth": builder.history_depth()}
 	say.call(Keymap.filled("a copy of %s put beside it, selected: drag it where it goes; {duplicate|puts another}; {undo|takes it back}")
 		% _parts(parts.size()))
 	return parts.size()
@@ -1669,6 +1682,12 @@ func _begin_typing() -> bool:
 	if builder.is_holding_figure() or (measure != null and measure.active) \
 			or (_connect_tool != null and _connect_tool.stage == "point"):
 		return false
+	# Straight after Edit, Duplicate put its copy beside the original, a
+	# number is copies ("5x": a row a step apart), as after a clone put down
+	# by hand (duplicate_beside).
+	if not builder.is_carrying() and not _copied.is_empty() \
+			and int(_copied["depth"]) == builder.history_depth():
+		return true
 	var armed: Dictionary = _armed
 	_armed = {}
 	_typed_was = {}

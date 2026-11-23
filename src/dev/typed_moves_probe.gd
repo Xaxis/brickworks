@@ -168,18 +168,18 @@ func _clones() -> void:
 	_check("Esc lets go of the copy, and the tool goes back to Select",
 		not _builder.is_carrying() and _verbs.mode == "select")
 
-	# Ctrl-D, the same: a key and five clicks.
+	# A held copy (the Clone tool's), the same: one act and five clicks.
 	_main.call("clear_model")
 	_put("3004", 4, Vector3(-150, 24, 10))
 	await _frames(4)
 	_select_only(_model().map(func(b: BrickWorld.Brick) -> int: return b.id))
 	_count_from()
 	start = _count()
-	await _key(KEY_D, true)
+	_verbs.duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
 	_acts["key"] = int(_acts["key"]) + 1
 	for spot: Vector2 in spots:
 		await _act_click(spot)
-	_check("Ctrl-D and five clicks: five copies (%d parts) in %d actions, still holding one"
+	_check("a held copy and five clicks: five copies (%d parts) in %d actions, still holding one"
 		% [_count(), _total()], _count() == start + 5 and _total() <= 6
 		and _builder.is_carrying())
 	await _right_click(_screen(Vector3(0, 0, 160)))
@@ -194,7 +194,7 @@ func _clones() -> void:
 	_check("a paste still goes once", not _builder.is_carrying())
 	# And another tool ends a clone's run.
 	_select_only([_model()[0].id])
-	await _key(KEY_D, true)
+	_verbs.duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
 	await _click((buttons["mode_move"] as Button).get_global_rect().get_center())
 	_check("choosing another tool puts the clone's copy away",
 		not _builder.is_carrying() and _verbs.mode == "move")
@@ -409,14 +409,14 @@ func _typed() -> void:
 		and not BrickLattice.is_square_to_grid(put.transform.basis))
 	await _key(KEY_ESCAPE)
 
-	# A copy in hand: Ctrl-D, then a number.
+	# A copy in hand: the Clone tool's, then a number.
 	_verbs.set_mode("select")
 	_builder.clear_selection()
 	_main.call("clear_model")
 	_put("3001", 4, Vector3(-60, 24, 20))
 	await _frames(3)
 	_select_only([_model()[0].id])
-	await _key(KEY_D, true)
+	_verbs.duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
 	var there: Vector2 = _screen(Vector3(60, 0, 20))
 	await _move(there)
 	await _move(there + Vector2(1, 0))
@@ -424,7 +424,7 @@ func _typed() -> void:
 	await _type("-2z")
 	await _key(KEY_ENTER)
 	var copy: BrickWorld.Brick = _newest()
-	_check("Ctrl-D, -2z, Enter: the copy 2 studs back of its ghost (%s, the ghost at %s), another in hand"
+	_check("a held copy, -2z, Enter: the copy 2 studs back of its ghost (%s, the ghost at %s), another in hand"
 		% [copy.transform.origin if copy != null else null, would], copy != null
 		and copy.transform.origin.is_equal_approx(would + Vector3(0, 0, -40))
 		and _builder.is_carrying())

@@ -16496,3 +16496,79 @@ msgid "Model name or designer"
 msgstr "Modellname oder Designer"
 msgid "“%s” is a sub-assembly of this model: select it, and Edit, Duplicate puts another down"
 msgstr "„%s“ ist eine Baugruppe dieses Modells: Wähle sie aus, und Bearbeiten, Duplizieren setzt eine weitere ab"
+
+# ux14: Duplicate beside, the PDF asked for, the bin's own sub-assembly, versions
+msgid "Put a copy of the selection down beside it, selected to move on"
+msgstr "Eine Kopie der Auswahl daneben absetzen, ausgewählt zum Weiterbewegen"
+
+msgid "a copy of %s put beside it, selected: drag it where it goes"
+msgstr "eine Kopie von %s daneben abgesetzt, ausgewählt: zieh sie dorthin, wo sie hingehört"
+
+msgid "%s puts another"
+msgstr "%s setzt eine weitere ab"
+
+msgid "no room beside it for a copy: holding one"
+msgstr "kein Platz daneben für eine Kopie: eine ist in der Hand"
+
+msgid "Press %s to put a copy beside the selected part."
+msgstr "Drücke %s, um eine Kopie neben das ausgewählte Teil zu setzen."
+
+msgid "Save the instructions as a PDF, or as a web page to read and print in your browser"
+msgstr "Die Anleitung als PDF speichern, oder als Webseite zum Lesen und Drucken im Browser"
+
+msgid "the instructions are saved as a PDF and open in your PDF reader, %d steps: %s"
+msgstr "die Anleitung ist als PDF gespeichert und in deinem PDF-Programm geöffnet, %d Schritte: %s"
+
+msgid "the instructions are saved as a PDF, %d steps: %s"
+msgstr "die Anleitung ist als PDF gespeichert, %d Schritte: %s"
+
+msgid "could not write the PDF %s"
+msgstr "das PDF %s konnte nicht geschrieben werden"
+
+msgid "duplicated %s"
+msgstr "%s dupliziert"
+
+msgid "Sign in or make an account with your email: a link needs one, a look at it does not"
+msgstr "Melde dich an oder lege ein Konto mit deiner E-Mail an: ein Link braucht eins, ein Blick darauf nicht"
+
+msgid "“%s”, this model's sub-assembly: put another down"
+msgstr "„%s“, eine Baugruppe dieses Modells: eine weitere absetzen"
+
+msgid "A copy of “%s” in hand: each click puts one down, Esc stops."
+msgstr "Eine Kopie von „%s“ in der Hand: jeder Klick setzt eine ab, Esc hört auf."
+
+msgid "Each is a copy of it, and an edit inside one changes them all"
+msgstr "Jede ist eine Kopie davon, und eine Änderung in einer ändert alle"
+
+msgid "“%s” is a sub-assembly of this model: the row above puts another down"
+msgstr "„%s“ ist eine Baugruppe dieses Modells: die Zeile darüber setzt eine weitere ab"
+
+msgid "“%s” is not in this model now"
+msgstr "„%s“ ist jetzt nicht in diesem Modell"
+
+msgid "%d parts, %d more than the save before"
+msgstr "%d Teile, %d mehr als die Sicherung davor"
+
+msgid "%d parts, %d fewer than the save before"
+msgstr "%d Teile, %d weniger als die Sicherung davor"
+
+msgid "%d parts, as many as the save before"
+msgstr "%d Teile, so viele wie die Sicherung davor"
+
+msgid "%d part, %d more than the save before"
+msgstr "%d Teil, %d mehr als die Sicherung davor"
+
+msgid "%d part, %d fewer than the save before"
+msgstr "%d Teil, %d weniger als die Sicherung davor"
+
+msgid "%d part, as many as the save before"
+msgstr "%d Teil, so viele wie die Sicherung davor"
+
+msgid "Yesterday at %s"
+msgstr "Gestern um %s"
+
+msgid "yesterday at %s"
+msgstr "gestern um %s"
+
+msgid "%s at %s, %d days ago"
+msgstr "%s um %s, vor %d Tagen"

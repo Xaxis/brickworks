@@ -7365,11 +7365,10 @@ const BOOKLET_PAGES := "user://booklets"
 func _booklet_pdf_said(pdf: String, wanted: String, steps: int) -> String:
 	if pdf.is_empty():
 		return "could not write the PDF %s" % wanted
-	var pages: String = "%d step%s" % [steps, "" if steps == 1 else "s"]
 	if Later.script(&"BookletMaker").open_when_written and SaveTo.open(pdf):
-		return "the instructions are saved as a PDF and open in your PDF reader, %s: %s%s" % [pages,
-			pdf, _pdf_missed]
-	return "the instructions are saved as a PDF, %s: %s%s" % [pages, pdf, _pdf_missed]
+		return "the instructions are saved as a PDF and open in your PDF reader, %d steps: %s%s" % [
+			steps, pdf, _pdf_missed]
+	return "the instructions are saved as a PDF, %d steps: %s%s" % [steps, pdf, _pdf_missed]
 
 
 ## BookletMaker.warm, its script compiled on a worker first, the frames

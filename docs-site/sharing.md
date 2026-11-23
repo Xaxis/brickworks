@@ -9,7 +9,7 @@ nav: Sharing a model
 description: Publish a model at a link anyone can open in 3D, step through and build, list it in the gallery, update it with new versions, or take it down.
 ---
 
-Sharing gives a model a link anyone can open with no account: the model in 3D, its building steps, the booklet and the parts list. It is **File › Share…**, or **Share** on the toolbar, once there are parts on the baseplate. You need to be signed in.
+Sharing gives a model a link anyone can open with no account: the model in 3D, its building steps, the booklet and the parts list. It is **File › Share…**, or **Share** on the toolbar, once there are parts on the baseplate. You need to be signed in: signed out, the panel has **Sign in** beside **Publish**, and on a phone the greyed Share row in **More** says why.
 
 ## Share a model {#share}
 
