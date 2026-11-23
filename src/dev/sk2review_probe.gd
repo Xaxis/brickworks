@@ -2,13 +2,15 @@
 ## lines are its steps) and of its merge with wholekeep. A FAIL is a finding
 ## reproduced; each case says what it holds.
 ##
-##   drag    a brick of the station's first steps dragged (picked up and put
-##           down, as the mouse moves a part) onto a brick of a later step:
-##           in the step of what it now rests on, as a moved part is
+##   drag    a brick of the yard's first step dragged (picked up and put
+##           down, as the mouse moves a part) onto the top of its step 5: in
+##           the step of what it now rests on, as a moved part is
 ##           (AuthorSteps.follow_saved), not in the air from its old step
-##   pair    two stacked bricks moved together onto a later step's brick by a
+##   pair    two stacked bricks of the yard moved together onto that top by a
 ##           typed move, the upper one selected first, then the lower first:
 ##           the upper never in a step before the one it rests on
+##           (the yard, YARD, since keepfix: the station's search for such
+##           bricks found none, "0 tried", and each case asserts its count)
 ##   stack   ten bricks put one at a time each on the last, on the station's
 ##           top: how many steps they are in, held and as Plan steps plans them
 ##   mpd     an MPD of the app's own (three sections, a sub-model placed twice
@@ -171,174 +173,189 @@ func _asked(name: String) -> bool:
 # -- drag ----------------------------------------------------------------------
 
 
+## A yard of the app's own that opens in its saved steps (steps_own): a
+## column of five red 2 x 4 bricks, one a step (steps 1 to 5); beside it a
+## blue 2 x 4 on the floor in step 1, and a green 2 x 4 in step 1 with
+## another on it in step 2. The drag, the pair and the redo move these, by
+## colour and place, onto the column's top: what the station's search found
+## none of in sk2review's and sk2fix's runs ("0 tried"), so nothing was
+## moved and neither FIX FIRST 1 nor FIX 3 was proven (keepfix).
+const YARD := """0 Yard
+0 Name: sk_yard.ldr
+0 Author: Brickworks
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 120 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 240 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 240 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -96 0 1 0 0 0 1 0 0 0 1 3001.dat
+"""
+
+
+## The yard opened ([constant YARD]): {"lone": the blue brick, "lower" and
+## "upper": the green two, "top": the column's top}, ids; {} where it did not
+## open so, said as a FAIL.
+func _yard() -> Dictionary:
+	var path: String = "user://sk2r_yard.ldr"
+	_write(path, YARD)
+	await _open(path)
+	var red: Array = []
+	var green: Array = []
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		match brick.color_code:
+			1:
+				out["lone"] = brick.id
+			2:
+				green.append(brick)
+			4:
+				red.append(brick)
+	var by_height := func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.y < b.transform.origin.y
+	red.sort_custom(by_height)
+	green.sort_custom(by_height)
+	if red.size() == 5 and green.size() == 2:
+		out["top"] = (red[4] as BrickWorld.Brick).id
+		out["lower"] = (green[0] as BrickWorld.Brick).id
+		out["upper"] = (green[1] as BrickWorld.Brick).id
+	var steps: Array = [int(_on_model_at(_plan()).get(int(out.get("lone", 0)), -1)),
+		int(_on_model_at(_plan()).get(int(out.get("top", 0)), -1))]
+	if not _check("yard: opens in its saved steps (%s), the blue brick in step %d, the column's top in step %d"
+			% [_own_steps(), steps[0] + 1, steps[1] + 1], _own_steps() and out.size() == 4
+			and steps == [0, 4]):
+		return {}
+	return out
+
+
+## [param id] picked up and put down [param by] further, as the mouse drags a
+## part (Builder.lift_selection, Carry.show_moved, Builder.place): the id it
+## is put down as, or a word for the stage that refused it.
+func _dragged(id: int, by: Vector3) -> Variant:
+	_builder.clear_selection()
+	_builder.selection[id] = true
+	if _builder.lift_selection() == 0:
+		return "not lifted"
+	var carry: Carry = _builder.carrying
+	carry.stand_where_lifted(_builder.lattice, _builder)
+	carry.pin()
+	if not carry.show_moved(Transform3D(Basis.IDENTITY, by), _builder.lattice, _builder):
+		_builder.cancel_carry()
+		await _frames(1)
+		return "not shown there"
+	if _builder.place() == 0:
+		_builder.cancel_carry()
+		await _frames(1)
+		return "not put down"
+	await _edited()
+	var put: Array = _put_ids(_builder.last_step())
+	if put.size() != 1:
+		return "%d put down" % put.size()
+	return int(put[0])
+
+
 func _drag() -> void:
-	print("\n== drag (station): a brick of the first steps dragged onto one of a later step")
-	await _open(STATION)
-	_check("drag: the station opens in its saved steps (steps_own)", _own_steps())
-	var plan: Array = _plan()
-	var at: Dictionary = _on_model_at(plan)
-	var text_before: String = _store.to_text(_store.title, true)
-	var air_before: Array = await _air(text_before)
-	var tries: int = 0
-	var done: bool = false
-	for pair: Array in _early_onto_late(at):
-		var brick: BrickWorld.Brick = _world.get_brick(int(pair[0]))
-		var under: BrickWorld.Brick = _world.get_brick(int(pair[1]))
-		if brick == null or under == null:
-			continue
-		tries += 1
-		if tries > 60:
-			break
-		var from: Transform3D = brick.transform
-		var to := Vector3(under.transform.origin + Vector3(0.0, _rise(brick), 0.0))
-		var part: String = brick.part_id
-		var was_shown: int = int(at[brick.id])
-		var under_shown: int = int(at[under.id])
-		var under_id: int = under.id
+	print("\n== drag (yard): a brick of the first step dragged onto the top of step 5")
+	var yard: Dictionary = await _yard()
+	if yard.is_empty():
+		return
+	var at: Dictionary = _on_model_at(_plan())
+	var brick: BrickWorld.Brick = _world.get_brick(int(yard["lone"]))
+	var under: BrickWorld.Brick = _world.get_brick(int(yard["top"]))
+	var from: Transform3D = brick.transform
+	var by: Vector3 = under.transform.origin + Vector3(0.0, _rise(brick), 0.0) - from.origin
+	var air_before: Array = await _air(_store.to_text(_store.title, true))
+	var tried: int = 1
+	var put: Variant = await _dragged(brick.id, by)
+	_check("drag: %d tried, the brick dragged onto the top (%s)" % [tried, put], put is int)
+	if not put is int:
+		return
+	var now: Dictionary = _on_model_at(_plan())
+	var rests: Array = _rests(int(put)).map(func(b: BrickWorld.Brick) -> int: return b.id)
+	var shown: int = int(now.get(int(put), -1))
+	var support: int = int(now.get(under.id, -1))
+	_check("drag: shown in step %d, on the model no earlier than what it rests on (step %d; it rests on it: %s)"
+		% [shown + 1, support + 1, rests.has(under.id)], shown >= support and support == int(at[under.id])
+		and rests.has(under.id))
+	var text_after: String = _store.to_text(_store.title, true)
+	var air_after: Array = await _air(text_after)
+	_check("drag: the share's steps test, parts put down in the air: %d before, %d after"
+		% [int(air_before[0]), int(air_after[0])], int(air_after[0]) >= 0
+		and int(air_after[0]) <= int(air_before[0]))
+	_keep("drag_yard.ldr", text_after)
+	# The same act as a typed move: followed (stepkeep's C), the control.
+	_builder.undo()
+	await _frames(2)
+	var again: BrickWorld.Brick = _brick_at(brick.part_id, from)
+	if _check("drag: undone, the brick back where it was", again != null):
 		_builder.clear_selection()
-		_builder.selection[brick.id] = true
-		if _builder.lift_selection() == 0:
-			continue
-		var carry: Carry = _builder.carrying
-		carry.stand_where_lifted(_builder.lattice, _builder)
-		carry.pin()
-		if not carry.show_moved(Transform3D(Basis.IDENTITY, to - from.origin), _builder.lattice,
-				_builder):
-			_builder.cancel_carry()
-			await _frames(1)
-			continue
-		if _builder.place() == 0:
-			_builder.cancel_carry()
-			await _frames(1)
-			continue
-		await _edited()
-		var put: Array = _put_ids(_builder.last_step())
-		if put.size() != 1:
-			print("  (the drag put down %d parts)" % put.size())
+		_builder.selection[again.id] = true
+		if _builder.move_selection_by(by) > 0:
+			await _edited()
+			var typed: Dictionary = _on_model_at(_plan())
+			print("  control: the same move typed: shown in step %d (support %d)"
+				% [int(typed.get(again.id, -1)) + 1, int(typed.get(under.id, -1)) + 1])
 			_builder.undo()
 			await _frames(2)
-			continue
-		var after: Array = _plan()
-		var now: Dictionary = _on_model_at(after)
-		var put_id: int = int(put[0])
-		var rests: Array = _rests(put_id).map(func(b: BrickWorld.Brick) -> int: return b.id)
-		print("  dragged a %s of step %d onto the %s of step %d (it rests on %s)" % [part,
-			was_shown + 1, _world.get_brick(under_id).part_id, under_shown + 1, str(rests)])
-		var shown: int = int(now.get(put_id, -1))
-		var support: int = int(now.get(under_id, -1))
-		_check("drag: shown in step %d, on the model no earlier than what it rests on (step %d): not in the air from step %d to %d"
-			% [shown + 1, support + 1, shown + 1, support], shown >= support and rests.has(under_id))
-		var text_after: String = _store.to_text(_store.title, true)
-		var air_after: Array = await _air(text_after)
-		_check("drag: the share's steps test, parts put down in the air: %d before, %d after"
-			% [int(air_before[0]), int(air_after[0])], int(air_after[0]) <= int(air_before[0]))
-		_keep("drag_station.ldr", text_after)
-		# The same act as a typed move: followed (stepkeep's C).
-		_builder.undo()
-		await _frames(2)
-		var again: BrickWorld.Brick = _brick_at(part, from)
-		if again != null:
-			_builder.clear_selection()
-			_builder.selection[again.id] = true
-			if _builder.move_selection_by(to - from.origin) > 0:
-				await _edited()
-				var typed: Dictionary = _on_model_at(_plan())
-				print("  control: the same move typed: shown in step %d (support %d)"
-					% [int(typed.get(again.id, -1)) + 1, int(typed.get(under_id, -1)) + 1])
-				_builder.undo()
-				await _frames(2)
-		done = true
-		break
-	_check("drag: a brick of the first steps that can be dragged onto one of a later step (%d tried)"
-		% tries, done)
-
-
-## [brick id, under id]: a brick or plate of the main model's own early steps,
-## and a top one of a later step with nothing on it, latest first.
-func _early_onto_late(at: Dictionary) -> Array:
-	var stacks: Array = _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
-		return _stack(brick) and at.has(brick.id) and Assemblies.path_of(brick).is_empty())
-	var tops: Array = stacks.filter(func(brick: BrickWorld.Brick) -> bool:
-		return _above(brick.id).is_empty())
-	tops.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
-		return int(at[a.id]) > int(at[b.id]))
-	var early: Array = stacks.duplicate()
-	early.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
-		return int(at[a.id]) < int(at[b.id]))
-	var out: Array = []
-	for under: BrickWorld.Brick in tops.slice(0, 12):
-		for brick: BrickWorld.Brick in early.slice(0, 12):
-			if int(at[brick.id]) + 3 <= int(at[under.id]) and brick.id != under.id:
-				out.append([brick.id, under.id])
-	return out
 
 
 # -- pair ----------------------------------------------------------------------
 
 
 func _pair() -> void:
-	print("\n== pair (station): two stacked bricks moved together onto a later step's brick")
-	await _open(STATION)
-	var plan: Array = _plan()
-	var at: Dictionary = _on_model_at(plan)
-	var stacks: Array = _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
-		return _stack(brick) and at.has(brick.id) and Assemblies.path_of(brick).is_empty())
-	stacks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
-		return int(at[a.id]) < int(at[b.id]))
-	var tops: Array = stacks.filter(func(brick: BrickWorld.Brick) -> bool:
-		return _above(brick.id).is_empty())
-	tops.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
-		return int(at[a.id]) > int(at[b.id]))
-	var found: bool = false
-	var tries: int = 0
-	for lower: BrickWorld.Brick in stacks.slice(0, 60):
-		for upper_id: int in _above(lower.id):
-			var upper: BrickWorld.Brick = _world.get_brick(upper_id)
-			if upper == null or not stacks.has(upper) or _rests(upper_id).size() != 1:
-				continue
-			if not _above(upper_id).is_empty():
-				continue
-			for under: BrickWorld.Brick in tops.slice(0, 10):
-				if under == upper or int(at[under.id]) <= int(at[upper.id]) + 2:
-					continue
-				tries += 1
-				if tries > 200:
-					break
-				var by: Vector3 = under.transform.origin + Vector3(0.0, _rise(lower), 0.0) \
-					- lower.transform.origin
-				var steps_before: Array = [upper.step, lower.step]
-				for upper_first: bool in [true, false]:
-					_builder.clear_selection()
-					if upper_first:
-						_builder.selection[upper.id] = true
-						_builder.selection[lower.id] = true
-					else:
-						_builder.selection[lower.id] = true
-						_builder.selection[upper.id] = true
-					if _builder.move_selection_by(by) == 0:
-						break
-					await _edited()
-					var now: Dictionary = _on_model_at(_plan())
-					var up_at: int = int(now.get(upper.id, -1))
-					var low_at: int = int(now.get(lower.id, -1))
-					print("  a %s (step %d) on a %s (step %d) moved onto the %s of step %d, %s first"
-						% [upper.part_id, int(at[upper.id]) + 1, lower.part_id, int(at[lower.id]) + 1,
-						under.part_id, int(at[under.id]) + 1, "the upper" if upper_first else "the lower"])
-					_check("pair, %s first: the upper in step %d, the lower it rests on in step %d: never before it"
-						% ["upper" if upper_first else "lower", up_at + 1, low_at + 1], up_at >= low_at)
-					found = true
-					_builder.undo()
-					await _frames(2)
-					_check("pair: undone, both back in their steps (%s)" % str([upper.step, lower.step]),
-						[upper.step, lower.step] == steps_before)
-				if found:
-					break
-			if found or tries > 200:
-				break
-		if found or tries > 200:
-			break
-	_check("pair: two stacked bricks that move together onto a later step's top (%d tried)" % tries,
-		found)
+	print("\n== pair (yard): two stacked bricks moved together onto the top of step 5")
+	var tried: int = 0
+	for upper_first: bool in [true, false]:
+		var yard: Dictionary = await _yard()
+		if yard.is_empty():
+			return
+		var at: Dictionary = _on_model_at(_plan())
+		var lower: BrickWorld.Brick = _world.get_brick(int(yard["lower"]))
+		var upper: BrickWorld.Brick = _world.get_brick(int(yard["upper"]))
+		var under: BrickWorld.Brick = _world.get_brick(int(yard["top"]))
+		if not _check("pair: the upper green rests on the lower alone (%s)" % str(_rests(upper.id).map(
+				func(b: BrickWorld.Brick) -> int: return b.id)), _rests(upper.id).size() == 1
+				and (_rests(upper.id)[0] as BrickWorld.Brick).id == lower.id):
+			return
+		var by: Vector3 = under.transform.origin + Vector3(0.0, _rise(lower), 0.0) \
+			- lower.transform.origin
+		var steps_before: Array = [upper.step, lower.step]
+		_builder.clear_selection()
+		if upper_first:
+			_builder.selection[upper.id] = true
+			_builder.selection[lower.id] = true
+		else:
+			_builder.selection[lower.id] = true
+			_builder.selection[upper.id] = true
+		var moved: int = _builder.move_selection_by(by)
+		tried += 1
+		if not _check("pair, %s first: both moved onto the top (%d)" % ["upper" if upper_first
+				else "lower", moved], moved == 2):
+			continue
+		await _edited()
+		var now: Dictionary = _on_model_at(_plan())
+		var up_at: int = int(now.get(upper.id, -1))
+		var low_at: int = int(now.get(lower.id, -1))
+		var top_at: int = int(now.get(under.id, -1))
+		print("  a %s (step %d) on a %s (step %d) moved onto the %s of step %d, %s first"
+			% [upper.part_id, int(at[upper.id]) + 1, lower.part_id, int(at[lower.id]) + 1,
+			under.part_id, int(at[under.id]) + 1, "the upper" if upper_first else "the lower"])
+		_check("pair, %s first: the lower in step %d, on the top of step %d; the upper in step %d: never before what it rests on"
+			% ["upper" if upper_first else "lower", low_at + 1, top_at + 1, up_at + 1],
+			low_at >= top_at and up_at >= low_at and top_at == int(at[under.id]))
+		_builder.undo()
+		await _frames(2)
+		_check("pair: undone, both back in their steps (%s)" % str([upper.step, lower.step]),
+			[upper.step, lower.step] == steps_before)
+	_check("pair: %d of 2 tried (the upper selected first, then the lower)" % tried, tried == 2)
 
 
 # -- stack ---------------------------------------------------------------------
@@ -636,64 +653,43 @@ const ORTHANC := "res://models/orthanc.ldr"
 ## byte as before; redone, byte for byte as done, the dragged part in the
 ## step it was followed into.
 func _redo() -> void:
-	print("\n== redo (station): a drag and a stack undone and redone")
-	await _open(STATION)
-	var text0: String = _store.to_text(_store.title, true)
-	var at: Dictionary = _on_model_at(_plan())
-	var done: bool = false
-	for pair: Array in _early_onto_late(at):
-		var brick: BrickWorld.Brick = _world.get_brick(int(pair[0]))
-		var under: BrickWorld.Brick = _world.get_brick(int(pair[1]))
-		if brick == null or under == null:
-			continue
+	print("\n== redo (yard, station): a drag and a stack undone and redone")
+	var yard: Dictionary = await _yard()
+	if not yard.is_empty():
+		var yard_text0: String = _store.to_text(_store.title, true)
+		var brick: BrickWorld.Brick = _world.get_brick(int(yard["lone"]))
+		var under: BrickWorld.Brick = _world.get_brick(int(yard["top"]))
 		var from: Transform3D = brick.transform
 		var to := Vector3(under.transform.origin + Vector3(0.0, _rise(brick), 0.0))
 		var part: String = brick.part_id
 		var was_step: int = brick.step
 		var under_step: int = under.step
-		_builder.clear_selection()
-		_builder.selection[brick.id] = true
-		if _builder.lift_selection() == 0:
-			continue
-		var carry: Carry = _builder.carrying
-		carry.stand_where_lifted(_builder.lattice, _builder)
-		carry.pin()
-		if not carry.show_moved(Transform3D(Basis.IDENTITY, to - from.origin), _builder.lattice,
-				_builder) or _builder.place() == 0:
-			_builder.cancel_carry()
-			await _frames(1)
-			continue
-		await _edited()
-		var put: Array = _put_ids(_builder.last_step())
-		if put.size() != 1:
+		var put: Variant = await _dragged(brick.id, to - from.origin)
+		if _check("redo: 1 tried, the brick dragged onto the top (%s)" % put, put is int):
+			var moved: BrickWorld.Brick = _world.get_brick(int(put))
+			var followed: int = moved.step
+			var text1: String = _store.to_text(_store.title, true)
+			_check("redo: dragged from step %d onto a part of step %d, in step %d" % [was_step,
+				under_step, followed], followed == under_step)
 			_builder.undo()
 			await _frames(2)
-			continue
-		var moved: BrickWorld.Brick = _world.get_brick(int(put[0]))
-		var followed: int = moved.step
-		var text1: String = _store.to_text(_store.title, true)
-		_check("redo: dragged from step %d onto a part of step %d, in step %d" % [was_step,
-			under_step, followed], followed == under_step)
-		_builder.undo()
-		await _frames(2)
-		var back: BrickWorld.Brick = _brick_at(part, from)
-		_check("redo: the drag undone, the part back in step %d (%s), the save byte for byte"
-			% [was_step, back.step if back != null else -1], back != null and back.step == was_step
-			and _store.to_text(_store.title, true) == text0)
-		_builder.redo()
-		await _frames(2)
-		var again: BrickWorld.Brick = _brick_at(part, Transform3D(from.basis, to))
-		var text2: String = _store.to_text(_store.title, true)
-		_check("redo: the drag redone, the part in step %d (%s), the save byte for byte"
-			% [followed, again.step if again != null else -1], again != null
-			and again.step == followed and text2 == text1)
-		if text2 != text1:
-			_first_diff(text1, text2)
-		_builder.undo()
-		await _frames(2)
-		done = true
-		break
-	_check("redo: a part of the first steps dragged onto a later one", done)
+			var back: BrickWorld.Brick = _brick_at(part, from)
+			_check("redo: the drag undone, the part back in step %d (%s), the save byte for byte"
+				% [was_step, back.step if back != null else -1], back != null and back.step == was_step
+				and _store.to_text(_store.title, true) == yard_text0)
+			_builder.redo()
+			await _frames(2)
+			var again: BrickWorld.Brick = _brick_at(part, Transform3D(from.basis, to))
+			var text2: String = _store.to_text(_store.title, true)
+			_check("redo: the drag redone, the part in step %d (%s), the save byte for byte"
+				% [followed, again.step if again != null else -1], again != null
+				and again.step == followed and text2 == text1)
+			if text2 != text1:
+				_first_diff(text1, text2)
+			_builder.undo()
+			await _frames(2)
+	await _open(STATION)
+	var text0: String = _store.to_text(_store.title, true)
 	var top: BrickWorld.Brick = _top_of(func(brick: BrickWorld.Brick) -> bool:
 		return Assemblies.path_of(brick).is_empty())
 	var on: BrickWorld.Brick = top

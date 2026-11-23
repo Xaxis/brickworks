@@ -143,6 +143,7 @@ func _restep(path: String, into: String) -> void:
 			print("  back: line %d (%s), moved for nothing" % [line + 1, file.lines[line].strip_edges()])
 		else:
 			file.block[line] = to
+	now = await _unhide(path, file, now)
 	var made: String = file.text()
 	now = await _measure(made)
 	print("  %d passes; %d lines moved, %d STEP lines before, %d after" % [passes,
@@ -202,6 +203,8 @@ func _restep(path: String, into: String) -> void:
 		% [path, now["floats"].size(), first["floats"].size(), unheld, cut_off, passes, PASSES,
 		now["hidden"].size(), first["hidden"].size()], passes < PASSES and unheld == 0 and cut_off == 0
 		and now["floats"].size() <= first["floats"].size() and now["hidden"].size() <= first["hidden"].size())
+	_check("%s: no part hidden behind what is built before it (%d; was %d)" % [path,
+		now["hidden"].size(), first["hidden"].size()], (now["hidden"] as Array).is_empty())
 	var others: Array = Restepped.other_changes(text, made)
 	_check("%s: every other line the file's, in its section (%d changed: %s)" % [path, others.size(),
 		others.slice(0, 3)], others.is_empty())
@@ -209,6 +212,93 @@ func _restep(path: String, into: String) -> void:
 	written.store_string(made)
 	written.close()
 	await _reopened(path, into, made, now)
+
+
+## Each part (or copy) the steps test finds hidden behind what its section
+## built before it (Tested's Sight: no tenth of it in sight from any side,
+## the model turned over too) moved earlier in its own section, to the latest
+## step before its own where it is in sight and not in the air, found by
+## halves: a part comes into sight only earlier, and goes in the air only
+## earlier. Kept only where no more parts are in the air or hidden for it.
+## The castle's two floor plates of its steps 341 and 342 went down inside
+## walls already built, so the castle was never Tested (keepfix). The
+## measure of [param file] as it is left.
+func _unhide(path: String, file: Restepped, now: Dictionary) -> Dictionary:
+	var asked: Dictionary = {}          # line -> true, each tried once
+	while true:
+		# The lines [param now] read, as the text it measured maps them.
+		file.text()
+		var line: int = -1
+		var number: int = -1
+		for hidden_at: Array in now["hidden"]:
+			var at: int = _hidden_line(now, int(hidden_at[0]), int(hidden_at[1]), file)
+			if not asked.has(at):
+				line = at
+				number = int(hidden_at[0])
+				break
+		if line < 0 and number < 0:
+			break
+		asked[line] = true
+		if line < 0 or not file.block.has(line) or int(file.block[line]) == 0:
+			print("  hidden: step %d, its line %s, left" % [number,
+				"not read back" if line < 0 else "in its section's first step"])
+			continue
+		var own: int = int(file.block[line])
+		var lo: int = 0
+		var hi: int = own - 1
+		var best: int = -1
+		var best_measure: Dictionary = {}
+		while lo <= hi:
+			var mid: int = (lo + hi) / 2
+			file.block[line] = mid
+			var tried: Dictionary = await _measure(file.text())
+			var flags: Array = _flags_of(tried, line, file)
+			if bool(flags[0]):
+				hi = mid - 1
+				continue
+			lo = mid + 1
+			if not bool(flags[1]) and (tried["floats"] as Array).size() <= (now["floats"] as Array).size() \
+					and (tried["hidden"] as Array).size() < (now["hidden"] as Array).size():
+				best = mid
+				best_measure = tried
+		if best < 0:
+			file.block[line] = own
+			print("  hidden: line %d (%s, %s step %d), in sight in no earlier step where it is held"
+				% [line + 1, file.lines[line].strip_edges(), file.section_name(line), own + 1])
+			continue
+		file.block[line] = best
+		now = best_measure
+		print("  hidden: line %d (%s, %s) from step %d to %d, in sight there; now %d in the air, %d hidden"
+			% [line + 1, file.lines[line].strip_edges(), file.section_name(line), own + 1, best + 1,
+			(now["floats"] as Array).size(), (now["hidden"] as Array).size()])
+	# The measure of the file as written now (the text the lines map to).
+	return await _measure(file.text())
+
+
+## The line of the file placing what step [param number] hid, whose first
+## part is [param id]: in the section whose steps put it down. -1 for none.
+func _hidden_line(measured: Dictionary, number: int, id: int, file: Restepped) -> int:
+	for entry: Array in measured["took"].get(number, []):
+		if not (entry[1] as PackedInt64Array).has(id):
+			continue
+		var section: String = entry[0]
+		var depth: int = 0 if section.is_empty() else section.split("/").size()
+		return _at_depth(measured, id, depth, file)
+	return -1
+
+
+## Whether what file line [param line] places is [hidden, in the air] in
+## [param measured] (a measure of [param file]'s text as last written).
+static func _flags_of(measured: Dictionary, line: int, file: Restepped) -> Array:
+	var out: Array = [false, false]
+	for n: int in 2:
+		for entry: Array in measured["hidden" if n == 0 else "floats"]:
+			for id: int in _thing_of(measured, int(entry[0]), int(entry[1])):
+				var lines: PackedStringArray = str(measured["origin"].get(id, "")).split("/")
+				for depth: int in lines.size():
+					if _at_depth(measured, id, depth, file) == line:
+						out[n] = true
+	return out
 
 
 ## Opened as File > Open opens it: its steps its own (BrickWorld.steps_own),

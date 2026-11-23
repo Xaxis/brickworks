@@ -502,7 +502,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   placed by its line after `0 !BRICKWORKS BUILT`, which says the step each
   of its section's steps is built in, where all its parts go on in one of
   them; one built across two or more is written after IN lines, as every
-  other reader builds a sub-model whole at its line's step: `steps_kept`),
+  other reader builds a sub-model whole at its line's step: `steps_kept`,
+  but one the file itself placed after a BUILT line stays its section, and
+  the app's COPY and BUILT lines go back where the file had them among its
+  comments; unedited, every line in its section in order, and the file
+  opened and saved byte for byte: wholekeep's `built, none`, keepfix),
   `wkreview` (wholekeep's review repros, wkfix: a part taken off takes its
   TEXMAP NEXT, INVERTNEXT and GROUP_NXT with it; LPub's MULTI_STEP stays
   round its steps; a head line said twice is written twice; a FALLBACK

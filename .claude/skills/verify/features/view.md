@@ -1785,7 +1785,9 @@ picture the assistant is shown.
   up by what holds what (`AuthorSteps._bottom_up`; F3); a part taken off
   leaves its step, an emptied step gone. **Check:** `tools/probe.sh
   sk2review_probe` (headless; `SK2R_ONLY=drag,pair,stack,hand,looks`, the
-  review's repros: each FAIL is a finding back). A person's step edit makes them theirs
+  review's repros: each FAIL is a finding back; drag, pair and redo move
+  the yard's bricks, `YARD`, and say how many were tried, since the
+  station's search found none, keepfix). A person's step edit makes them theirs
   (`AuthorSteps.ensure`, undo `stepsown`): saved with `AUTHORED_STEPS`, as a
   worked-out model's first step edit always has; so does a model put in with
   its author's steps (`Builder._bring_steps`; ic3 clash, menu), and a
@@ -1801,7 +1803,9 @@ picture the assistant is shown.
   and a sub-model's placing line, until no move holds more: every other
   line kept, the same FILE sections; what is left is held in its own file
   only by parts in the air with it, and they by another sub-model's (the
-  sports car's 23). `Instructions.plan(...,
+  sports car's 23). A part hidden behind what its section built before it
+  goes earlier, to the latest step where it is in sight and held (`_unhide`,
+  by halves; the castle's two floor plates, so it is Tested, keepfix). `Instructions.plan(...,
   authored=true)` groups by those steps (`_authored_plan`; on Timeline and a
   share, `plan_paced`, what holds what is read a slice at a time, as for a
   worked-out plan: in one go the Wizard's Tower's own steps held a frame for

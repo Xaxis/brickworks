@@ -4175,7 +4175,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# written as that section, placed by its line (LdrModel.built_sections):
 	# its sub-model's own lines in it, by the steps the save writes.
 	var sectioned: Dictionary = LdrModel.built_sections(placements, instances, unit_steps,
-		world.section_files, steps) if not instances.is_empty() else {}
+		world.section_files, steps, world.kept_lines) if not instances.is_empty() else {}
 	var units_written: Dictionary = sectioned.get("units", unit_steps)
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
 		unit_steps, known, steps, tree.lines_written(world, instances, back, units_written),

@@ -584,9 +584,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 					and word == _COPY_WORD:
 				copy_next = copy_number(tokens[3])
 				copies_next = copies_said(tokens.slice(4))
+				keep.app_line()
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
 					and word == _BUILT_WORD:
 				built_next = built_said(tokens.slice(3))
+				keep.app_line()
 			elif not within.is_empty() and _kept_within(keyword, tokens):
 				# In an IN block: the lines of the copy it names, its
 				# definition's own (within_lines), never this section's.
@@ -696,6 +698,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			copy_next = 0
 			copies_next = {}
 			built_next = {}
+			keep.app_at = -1
 			keep.carry(raw, false, false, false)
 			continue
 		var read := Placement.new(part_id, color, at, step)
@@ -705,6 +708,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		read.within = within
 		read.built = built_next
 		read.reference = _key(named)
+		if not built_next.is_empty():
+			# A section the file builds in its parent's steps (BUILT_META):
+			# written so again however many of them it is built in
+			# (built_sections), as the file has it.
+			(keep.out["built"] as Dictionary)[read.reference] = true
 		copy_next = 0
 		copies_next = {}
 		built_next = {}
@@ -1898,8 +1906,18 @@ static func write_tree(
 ## is. Its "units" are the steps the save writes (Assemblies.lines_written
 ## and lines_within write each sub-model's own lines by them: in its section,
 ## in its coordinates), and the whole goes to write_tree's [param sectioned].
+## [param kept]: the file's kept lines ([member kept_lines]), whose "built"
+## names each section the file itself placed after a BUILT_META line.
 static func built_sections(placements: Array, instances: Dictionary, unit_steps: Dictionary,
-		files: Dictionary, steps: Dictionary = {}) -> Dictionary:
+		files: Dictionary, steps: Dictionary = {}, kept: Dictionary = {}) -> Dictionary:
+	# The definitions whose section the file built in its parent's steps
+	# itself: kept so in however many of them (_built_in).
+	var built_read: Dictionary = {}
+	var read_so: Dictionary = kept.get("built", {})
+	if not read_so.is_empty():
+		for def: Variant in files:
+			if read_so.has(_key(str(files[def]))):
+				built_read[str(def)] = true
 	var by_def: Dictionary = {}      ## def -> its copies
 	var refused: Dictionary = {}     ## def -> true
 	var of_sections: bool = false    ## the file had a sub-model as a section
@@ -1922,7 +1940,8 @@ static func built_sections(placements: Array, instances: Dictionary, unit_steps:
 					chosen[path] = true
 		if chosen.is_empty():
 			return {}
-		var made: Dictionary = _built_in(placements, instances, unit_steps, chosen, steps)
+		var made: Dictionary = _built_in(placements, instances, unit_steps, chosen, steps,
+			built_read)
 		if (made["refused"] as Dictionary).is_empty():
 			return made
 		refused.merge(made["refused"])
@@ -1941,8 +1960,10 @@ static func built_sections(placements: Array, instances: Dictionary, unit_steps:
 ## "refused": the definitions of the copies that are not part for part their
 ## written copy, {} where none is}. Steps of a section are numbered as it is
 ## read again: 0, 1, 2... in order, the model's own by its STEP lines.
+## [param built_read]: the definitions the file itself wrote so (BUILT_META),
+## kept so in any number of the model's steps.
 static func _built_in(placements: Array, instances: Dictionary, unit_steps: Dictionary,
-		chosen: Dictionary, steps: Dictionary) -> Dictionary:
+		chosen: Dictionary, steps: Dictionary, built_read: Dictionary = {}) -> Dictionary:
 	var units: Dictionary = unit_steps.duplicate()
 	for path: String in chosen:
 		units[path] = 0
@@ -1980,9 +2001,14 @@ static func _built_in(placements: Array, instances: Dictionary, unit_steps: Dict
 		# castle's towers, a course of each in turn, went up whole at their
 		# first courses, 2,166 of its 2,497 parts in another step and 328 steps
 		# with nothing in them (wkreview F3). Its section is kept where its
-		# parts all go on in one step, which every reader builds alike.
-		if span.size() != 1:
-			refused[str((instances[path] as Dictionary)["def"])] = true
+		# parts all go on in one step, which every reader builds alike. And
+		# where the file itself built it so (a BUILT_META line before its
+		# line): other readers read the file as they did, and a save that
+		# wrote it after IN lines took it out of the section the file had it
+		# in, its comments with it, unedited (keepfix: wholekeep's built).
+		var def: String = str((instances[path] as Dictionary)["def"])
+		if span.is_empty() or span.size() > 1 and not built_read.has(def):
+			refused[def] = true
 	if not refused.is_empty():
 		return {"refused": refused}
 	# The model's own steps as its section is written and read again: those of
@@ -2534,12 +2560,22 @@ static func _write_one(placements: Array, title: String, author_name: String,
 		# GROUP_NXT and its line, the group was said of a line of the app's,
 		# and a comment no longer stood over its line (wkreview frame); a
 		# block opened again, above them too, so they are inside it as the
-		# file had them.
+		# file had them. But where the file had them itself, as many of its
+		# kept lines below them as it had ("app_after"): a comment the file
+		# had over its BUILT_META line went under it at every whole save, so
+		# an unedited one changed the file (keepfix).
 		var text: String = str(item[3])
 		var split_at: int = text.rfind("\n")
+		var app_lines: String = ""
 		if split_at >= 0:
-			lines.append(text.substr(0, split_at))
+			app_lines = text.substr(0, split_at)
 			text = text.substr(split_at + 1)
+		var app_after: Dictionary = carried.get("app_after", {})
+		var app_cut: int = -1
+		if not app_lines.is_empty() and anchor >= 0 and app_after.has(anchor):
+			app_cut = clampi(above.size() - int(app_after[anchor]), 0, above.size())
+		elif not app_lines.is_empty():
+			lines.append(app_lines)
 		var swap: Array = []
 		if int(item[1]) == 1 and (carried.get("said", {}) as Dictionary).has(anchor):
 			var placement: Placement = placements[int(item[2])]
@@ -2549,7 +2585,12 @@ static func _write_one(placements: Array, title: String, author_name: String,
 					placement.part_id + ".dat"]
 		if (carried.get("open_before", {}) as Dictionary).has(anchor):
 			lines.append_array(_kept_moved([carried["open_before"][anchor]], was, item[6]))
-		lines.append_array(_kept_moved(above, was, item[6], swap))
+		if app_cut >= 0:
+			lines.append_array(_kept_moved(above.slice(0, app_cut), was, item[6], swap))
+			lines.append(app_lines)
+			lines.append_array(_kept_moved(above.slice(app_cut), was, item[6], swap))
+		else:
+			lines.append_array(_kept_moved(above, was, item[6], swap))
 		lines.append(text)
 		if anchor >= 0 and carried.has("after"):
 			var below: Array = (carried["after"] as Dictionary).get(anchor, [])
@@ -2963,9 +3004,12 @@ var kept_lines: Dictionary = {}
 ## What [method parse] keeps as it reads ([member kept_lines]).
 class _Keeper extends RefCounted:
 	var out: Dictionary = {"before": {}, "after": {}, "head": {}, "end": {}, "order": {},
-		"covers": {}, "stepped": {}}
+		"covers": {}, "stepped": {}, "app_after": {}, "built": {}}
 	var key: String = "\n"
 	var pending: Array = []
+	## Where in [member pending] the app's own lines of the next reference
+	## began (a COPY_META or BUILT_META line), -1 for none read yet.
+	var app_at: int = -1
 	## Whether no placing line or STEP has been read in the section yet, and
 	## where in [member pending] its head ends (-1: all of it so far).
 	var head_open: bool = true
@@ -2988,6 +3032,15 @@ class _Keeper extends RefCounted:
 			return
 		_join(out["end"], key, pending)
 		pending = []
+		app_at = -1
+
+	## A line of the app's own that says what the next reference is (which
+	## copy, the steps it is built in), read and not kept: where it stood
+	## among the kept lines above that reference ("app_after"), so a whole
+	## write puts it back there and not above a comment the file had over it.
+	func app_line() -> void:
+		if app_at < 0:
+			app_at = pending.size()
 
 	func blank() -> void:
 		if head_open and head_cut < 0:
@@ -3011,6 +3064,7 @@ class _Keeper extends RefCounted:
 			if not inside.is_empty() and int(inside[inside.size() - 1]) == last:
 				_join(out["after"], last, pending)
 				pending = []
+				app_at = -1
 
 	## A placing line, line [param index] of the file.
 	func anchor(index: int) -> void:
@@ -3019,7 +3073,13 @@ class _Keeper extends RefCounted:
 			if cut > 0:
 				_join(out["head"], key, pending.slice(0, cut))
 			pending = pending.slice(cut)
+			if app_at >= 0:
+				app_at = maxi(app_at - cut, 0)
 			head_open = false
+		if app_at >= 0:
+			# How many kept lines stood between the app's lines and this one.
+			(out["app_after"] as Dictionary)[index] = pending.size() - app_at
+			app_at = -1
 		if not pending.is_empty():
 			_join(out["before"], index, pending)
 			pending = []
@@ -3038,11 +3098,13 @@ class _Keeper extends RefCounted:
 			if not pending.is_empty():
 				_join(out["head"], key, pending)
 				pending = []
+			app_at = -1
 			head_open = false
 			return
 		if last >= 0 and not pending.is_empty():
 			_join(out["after"], last, pending)
 			pending = []
+			app_at = -1
 
 	## Every line kept of section [param section], dropped: a part's, a
 	## flexible part's skin, written as the file has them by other means.
@@ -3137,7 +3199,8 @@ static func _header_kept(line: String) -> bool:
 static func kept_for(kept: Dictionary, present: Dictionary, written: Dictionary,
 		elsewhere: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"before": {}, "after": {}, "head": {}, "end": {}, "block_of": {},
-		"at": kept.get("at", {}), "said": kept.get("said", {}), "stepped": kept.get("stepped", {})}
+		"at": kept.get("at", {}), "said": kept.get("said", {}), "stepped": kept.get("stepped", {}),
+		"app_after": kept.get("app_after", {})}
 	if kept.is_empty():
 		return out
 	var before: Dictionary = kept["before"]

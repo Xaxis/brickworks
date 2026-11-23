@@ -312,21 +312,37 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 	# none empty (on pre261 + wholekeep a part put down took the castle from
 	# 59 to 393, 328 of them empty). On pre261 its whole save plans it again
 	# (stepkeep2's fix): said, not held.
+	# A part put down on the floor (nothing of the model under it) goes in a
+	# new last step of its own (AuthorSteps.follow_saved): one step more,
+	# never 334 (keepfix).
 	if name == "castle" and edit in ["part", "move"]:
 		var had: Vector2i = _steps_shown(text)
 		var shown: Vector2i = _steps_shown(saved)
-		var said: String = "%s: the model's section shows %d steps, %d empty (the file: %d, %d empty)" \
-			% [what, shown.x, shown.y, had.x, had.y]
+		var more: int = 1 if edit == "part" else 0
+		var said: String = "%s: the model's section shows %d steps, %d empty (the file: %d, %d empty; %d more at most)" \
+			% [what, shown.x, shown.y, had.x, had.y, more]
 		if spread.is_empty():
-			_check(said, shown == had)
+			_check(said, shown.x >= had.x and shown.x <= had.x + more and shown.y == had.y)
 		else:
 			print("  NOTE  %s; planned again at the save (pre261: stepkeep2)" % said)
 	if name == "castle" and edit in ["part", "move"] and spread.is_empty():
 		var changes: Array = _changes(text, saved)
 		var other: Array = changes.filter(func(c: String) -> bool: return c.substr(2) != "0 STEP")
 		print("  STEP lines changed: %d" % (changes.size() - other.size()))
-		if not _check("%s: the part's lines changed and the floor's, no more but STEP lines (%d)"
-				% [what, other.size()], other.size() <= 3):
+		# The app's own lines a whole write writes aside: the model's title
+		# (the probe saves it as "model"), the floor it pins, and the COPY
+		# line pre261 writes on each sectioned copy's line (copyfaults2),
+		# none of which a reader takes a part from. What is left is the
+		# part's: its line put down, or its line moved (two).
+		var title: String = str((_section_lines(text).values()[0] as Array)[0])
+		var own: Array = other.filter(func(c: String) -> bool:
+			var line: String = c.substr(2)
+			return line == "0 model" or line == title or line.begins_with("0 !BRICKWORKS FLOOR") \
+				or line.begins_with("0 !BRICKWORKS COPY "))
+		other = other.filter(func(c: String) -> bool: return not own.has(c))
+		print("  the app's own lines changed: %d (title, floor, COPY)" % own.size())
+		if not _check("%s: the part's lines changed, no more but STEP lines and the app's own (%d)"
+				% [what, other.size()], other.size() <= (1 if edit == "part" else 2)):
 			print("      " + "\n      ".join(other.slice(0, 24)))
 	if not _check("%s: the file's structure kept: %d lost%s" % [what, lost.size(),
 			"" if lost.is_empty() else "\n      " + "\n      ".join(lost.slice(0, 14))],
@@ -334,6 +350,16 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 		print("    | " + "\n    | ".join(Array(saved.split("\n")).slice(0, 120).map(
 			func(line: String) -> String: return line.left(120))))
 	_summary.append([what, written, str(lost.size()), _kinds(lost)])
+	if edit == "none":
+		# Unedited: every line the file had, in its section, in the file's
+		# order, the app's own lines aside (the title the probe names, the
+		# floor it pins). A comment over a BUILT line went under it, and a
+		# BUILT section was written after IN lines, at every whole save
+		# (keepfix: wholekeep's built, on wkfix).
+		var off: Array = _out_of_order(text, saved)
+		_check("%s: unedited, every line of the file in its section in its order%s" % [what,
+			"" if off.is_empty() else ": " + str(off.slice(0, 4))], off.is_empty())
+		await _saved_as_opened(what, text)
 	await _open(saved)
 	var now: Dictionary = _state()
 	# A part or copy put down in no step comes back in the step a save put it in.
@@ -350,6 +376,12 @@ func _case(name: String, text: String, edit: String, planned: bool) -> void:
 		else ": %s, %s against %s, %s" % [str(now["tree"]),
 		str(now["units"]), str(edited["tree"]), str(edited["units"])]), units_same)
 	var again: String = _store.to_text("model", true)
+	if spread.is_empty():
+		# The steps it was saved in, opened again: the same count, none empty.
+		var once: Vector2i = _steps_shown(saved)
+		var reopened: Vector2i = _steps_shown(again)
+		_check("...opened again and saved, the model's section in the same steps (%d, %d empty; saved %d, %d)"
+			% [reopened.x, reopened.y, once.x, once.y], reopened == once)
 	var twice: Array = _lost(after, _structure(again), {"spread": _spread()})
 	_check("...saved again: %d more lost%s" % [twice.size(), "" if twice.is_empty()
 		else ": " + str(twice[0])], twice.is_empty())
@@ -996,10 +1028,15 @@ func _spread() -> Dictionary:
 				out[step] = true
 		return out
 	var defs: Dictionary = {}
+	# But a section the file itself placed after a BUILT line: kept so
+	# (keepfix), as other readers read the file already.
+	var built_read: Dictionary = _world.kept_lines.get("built", {})
 	for path: String in copies:
+		var def: String = Assemblies.definition(Assemblies.leaf(path))
 		if int(_world.unit_steps.get(path, -1)) == AuthorSteps.IN_PARENT \
-				and _home(path).is_empty() and (span.call(path, span) as Dictionary).size() > 1:
-			defs[Assemblies.definition(Assemblies.leaf(path))] = true
+				and _home(path).is_empty() and (span.call(path, span) as Dictionary).size() > 1 \
+				and not built_read.has(str(_world.section_files.get(def, def + ".ldr")).to_lower()):
+			defs[def] = true
 	var out: Dictionary = {}
 	for path: String in copies:
 		var at: String = path
@@ -1126,6 +1163,80 @@ func _step_holding(brick_id: int) -> Instructions.Step:
 func _back_to(depth: int) -> void:
 	while _builder.history_depth() > depth:
 		_builder.undo()
+
+
+## The lines of [param text] not in [param saved]'s same section in the same
+## order (each section's lines a subsequence of the saved one's), but the
+## app's own a whole write writes itself: the model's title (the probe's
+## "model"), its Name and Author, the floor it pins. "section: line" each.
+static func _out_of_order(text: String, saved: String) -> Array:
+	var had: Dictionary = _section_lines(text)
+	var now: Dictionary = _section_lines(saved)
+	var out: Array = []
+	for section: String in had:
+		var mine: Array = had[section]
+		var theirs: Array = now.get(section, [])
+		var at: int = 0
+		for n: int in mine.size():
+			var line: String = mine[n]
+			if section == had.keys()[0] and n == 0 or line.begins_with("0 !BRICKWORKS FLOOR") \
+					or line.begins_with("0 Name:") or line.begins_with("0 Author:"):
+				continue
+			var found: int = theirs.find(line, at)
+			if found < 0:
+				out.append("%s: %s" % [section, line])
+			else:
+				at = found + 1
+	return out
+
+
+## Each section's lines, by its FILE line ("" for a file with none), blank
+## lines and the FILE and NOFILE lines aside.
+static func _section_lines(text: String) -> Dictionary:
+	var out: Dictionary = {}
+	var section: String = ""
+	for raw: String in text.replace("\r", "").split("\n"):
+		var line: String = raw.strip_edges()
+		if line.is_empty() or line == "0 NOFILE":
+			continue
+		if line.begins_with("0 FILE "):
+			section = line.substr(7).to_lower()
+			continue
+		(out.get_or_add(section, []) as Array).append(line)
+	return out
+
+
+## [param text] as a file of the app's folder, opened as File > Open opens it
+## and saved by Save, unedited: the file to the byte (an open from a path
+## keeps its bytes for the save, ModelStore._keep_moment).
+func _saved_as_opened(what: String, text: String) -> void:
+	_main.call("clear_model")
+	await _frames(4)
+	var name: String = "wk %s" % what.validate_filename().replace(",", "")
+	var called: String = ModelStore._title_of(LdrModel.parse(text, name + ".ldr"), name + ".ldr")
+	_forget(called)
+	var own: FileAccess = FileAccess.open(ModelStore.saved_path(called), FileAccess.WRITE)
+	own.store_string(text)
+	own.close()
+	var bar: ModelBar = _main.get("_bar")
+	var placed: int = await bar.open_with_progress(ModelStore.saved_path(called))
+	bar.opened.emit(placed)
+	await _frames(10)
+	called = _store.title
+	_store.save_as(called)
+	var again: String = FileAccess.get_file_as_string(ModelStore.saved_path(called))
+	_check("%s: opened from its file and saved unedited, byte for byte (%d bytes, %d saved)"
+		% [what, text.to_utf8_buffer().size(), again.to_utf8_buffer().size()], again == text)
+	_forget(called)
+
+
+func _forget(name: String) -> void:
+	DirAccess.remove_absolute(ModelStore.saved_path(name))
+	var folder: String = ModelVersions.folder(ModelStore._safe_name(name))
+	if DirAccess.dir_exists_absolute(folder):
+		for file: String in DirAccess.get_files_at(folder):
+			DirAccess.remove_absolute(folder + file)
+		DirAccess.remove_absolute(folder)
 
 
 func _open(text: String) -> void:
