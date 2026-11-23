@@ -50,8 +50,8 @@
    web/theme.js, before the first frame) the band gives way to Share a
    build and the feed's tabs, For you, Following and New. Laid out so a
    phone's first post starts within 600 px and a laptop's first row of
-   pictures is in its first screen. */
-.home-band { padding: clamp(20px, 3vw, 40px) 0 var(--s-4); }
+   pictures is whole in its first screen, above the beta bar. */
+.home-band { padding: clamp(16px, 2vw, 24px) 0 var(--s-4); }
 :root[data-signed="in"] .home-band { display: none; }
 /* The line at --t-h1, a page title's size. */
 .home-words h1 {
@@ -59,6 +59,9 @@
 	text-wrap: balance;
 }
 .home-words .lede { margin: 0 0 var(--s-4); max-width: 60ch; }
+/* A laptop's band: the line and the sentence each one line, so the feed's
+   first row of pictures is whole on the first screen, over the beta bar. */
+@media (width >= 900px) { .home-words h1, .home-words .lede { max-width: none; } }
 /* The search and Start building in a row, the search taking what is left;
    on a phone one over the other, each the whole width. Both at the 44 px
    every field and button is (docs/DESIGN_SYSTEM.md). */

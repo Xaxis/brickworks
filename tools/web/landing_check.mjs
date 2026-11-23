@@ -147,10 +147,14 @@ async function firstScreen(label, width, height, theme) {
     .then(() => true, () => false);
   await page.waitForTimeout(1000);
   const seen = await page.evaluate(() => {
+    // The window down to the beta bar, docked at its foot (site.css): what
+    // is under the bar is not seen.
+    const bar = document.querySelector("#beta-bar.shown");
+    const foot = bar ? Math.min(innerHeight, bar.getBoundingClientRect().top) : innerHeight;
     const whole = (el) => {
       if (!el) return false;
       const r = el.getBoundingClientRect();
-      return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth;
+      return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= foot && r.left >= 0 && r.right <= innerWidth;
     };
     const stream = document.getElementById("stream");
     const posts = [...(stream?.querySelectorAll(":scope > .post:not(.skeleton)") || [])];

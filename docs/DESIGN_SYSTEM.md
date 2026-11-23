@@ -772,9 +772,11 @@ is on the page, `hidden`, for the script to show.
   with `.moves` arrows in your order, and `dialog.lists-dialog` for New
   list, Edit and Add sets.
 - **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
-  `web/theme.js` on every page while the beta is open): a floating pill
-  at the foot of the window, bottom left (centred under 600 px), above
-  the page and moving nothing in it: an accent `.badge` to /beta, a
+  `web/theme.js` on every page while the beta is open): docked at the
+  foot of the window, the whole width, its buttons centred, the page's
+  end given its height (`--betabar-h`) so it is never over what the page
+  says (floating, it covered the home's first post; hero3d, 2026-11-23),
+  moving nothing as it comes: an accent `.badge` to /beta, a
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
   hides it in this browser until it is shown again (bugbar, 2026-11-13;

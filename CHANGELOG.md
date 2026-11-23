@@ -239,6 +239,11 @@ whole cycle.
 
 ### Fixed
 
+- **The beta bar no longer covers the page.** It sits along the bottom of the
+  window, and every page leaves room for it at its end. The home page's top
+  is shorter too, so the first row of builds shows whole on a laptop, and its
+  search's "Search the gallery for" rows always carry everything you typed.
+
 - With the bin, Stress and the assistant open at 1280 × 720, the timeline's
   Done and Instructions, Account and the status bar were past the window's
   edge. They stay inside it now, and the model keeps 400 px. Cut away's

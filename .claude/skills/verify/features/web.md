@@ -5311,7 +5311,9 @@ plan with Claude as the client.
   2026-11-09, the owner's "elegantly update the homepage to advertise the
   beta testing period". While BRICKWORKS_BETA is open, every page (the
   server's /m/, /u/, /c/ too, by theme.js; never an embed or the consent
-  page) has a floating bar at the foot: Open beta (to /beta), Report a bug
+  page) has a bar docked at the window's foot, the whole width, the page's
+  end clear of it (body padding `--betabar-h`; hero3d, 2026-11-23: floating,
+  it covered the home's first post): Open beta (to /beta), Report a bug
   (`window.brickworksReportBug({source: "site", from})` of web/bugreport.js,
   loaded on the first press; without it Send feedback's dialog as a bug),
   and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
