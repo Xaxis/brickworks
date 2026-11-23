@@ -1652,15 +1652,101 @@ shot. Each stage has:
   horizon, and past it is the room: the lighting's HDRI, or the window's.
 - **The camera.** The white card where the model stands is still metered
   for exposure (`_meter_card`, at the 60th percentile on a textured
-  stage). Its colour is read too (`_floor_colour`), for a white balance
-  (`balance`, the share of the card's cast taken out). A camera's tone
-  curve (`tone`) bends the encoded picture by an S through 0, a half and
-  1, in the resolve (`camera_tone`).
+  stage). Its colour is read too (`_floor_colour`; the card is drawn
+  white, so this is the light's colour, not the surface's), for a white
+  balance (`balance`, the share of the card's cast taken out). A camera's
+  tone curve (`tone`) bends the encoded picture by an S through 0, a half
+  and 1, in the resolve (`camera_tone`). Both apply to every photographic
+  product picture, staged or not (`PRODUCT_TONE` 0.5, `PRODUCT_BALANCE` 1).
 
-With no stage, every new buffer field is zero or one and no random number
-is drawn, so a render is pixel-identical to photoreal6's. Only Best on the
-desktop draws a stage. Compatibility and the web draw its colour alone,
-and the web export leaves `assets/surfaces/` out.
+With no stage and tone and balance 0, every new buffer field is zero or one
+and no random number is drawn, so a render is pixel-identical to
+photoreal6's. Only Best on the desktop draws a stage, a tone curve or a
+white balance. Compatibility and the web draw a stage's colour alone, and
+the web export leaves `assets/surfaces/` out.
+
+**What the judge said.** Seven trees, two draws each, judged solo (two
+rounds of two trials, the photographs in the pool) in three runs, each run
+with photoreal6's kept tree (p6) beside them:
+
+- **A**: the stages (paper, desk, leather, white) with each shot's own
+  fitted key.
+- **B**: A with the camera (tone 0.5, balance 1).
+- **C**: B with the camera's finish (sharpen 0.6, JPEG 90) on the sets too.
+- **D**: photoreal6's staging with the tone curve alone.
+- **E**: photoreal6's staging with the tone curve and white balance.
+- **F**: E with LDraw's raised logo (`p/logo5.dat`) baked into a height map
+  in place of the drawn strokes (4076cfbd9, taken out at c16955560).
+
+| run | tree | close-ups, per round | sets, per round | called a photograph |
+|---|---|---|---|---|
+| 1 | p6 | 0.363 0.323 | 0.131 0.136 | 13 of 80 |
+| 1 | A | 0.326 0.323 | 0.131 0.133 | 12 of 80 |
+| 1 | B | 0.366 0.355 | 0.121 0.118 | 16 of 80 |
+| 1 | C | 0.395 0.365 | 0.116 0.119 | 18 of 80 |
+| 2 | p6 | 0.340 0.310 | 0.141 0.144 | 11 of 80 |
+| 2 | B | 0.368 0.375 | 0.123 0.131 | 16 of 80 |
+| 2 | D | 0.341 0.335 | 0.151 0.147 | 15 of 80 |
+| 2 | E | 0.344 0.379 | 0.136 0.161 | 15 of 80 |
+| 3 | p6 | 0.327 0.343 | 0.145 0.134 | 12 of 80 |
+| 3 | E | 0.360 0.363 | 0.140 0.158 | 16 of 80 |
+| 3 | F | 0.335 0.331 | 0.139 0.156 | 16 of 80 |
+
+- **The judge's noise.** B's and C's close-ups were the same pictures, byte
+  for byte, and scored 0.366 and 0.355 in one tree, 0.395 and 0.365 in the
+  other. So a close-up round moves about 0.03 by the judge alone.
+- **The light and the surface (A) did not gain.** Close-ups fell 0.02 and
+  the sets held. Per shot it went both ways: the grey 1x3 on the desk rose
+  from 0.31 to 0.47, and the red slope on white fell from 0.47 to 0.23 (the
+  judge: "almost no contact shadow, the brick appears to float"). The
+  black 2x4 on leather fell from 0.21 to 0.09. On paper the sets drew a
+  horizon where the photographs' sweep has none ("a visible floor/backdrop
+  horizon line"). So a stage stays a choice and is not the default. The
+  bench's shots ask for none. Its key keeps the fitted rule (below).
+- **The camera gained, in every run.** The tone curve and white balance
+  lifted the close-ups over the same tree without them: B over A by 0.036
+  (run 1), E over p6 by 0.037 (run 2) and 0.027 (run 3). In runs 2 and 3,
+  E's lowest close-up round is above p6's highest. They cost the sets
+  nothing: E's sets are 0.006 and 0.009 above p6's. The red slope rose
+  from 0.44 to 0.47 without them to 0.64 to 0.68 with them, in all five
+  toned trees. The tone curve alone (D) gained 0.013, within the noise.
+  So both are the product look's own (`PRODUCT_TONE` 0.5,
+  `PRODUCT_BALANCE` 1). The tent's faces stayed within ΔE2000 2.7 of their
+  photographs (E: green 2.7, red 1.6, blue 2.6, the slope 2.1).
+- **The camera's finish stays off (step 5).** On the sets (C over B) it
+  moved them by 0.002. photoreal6 found no gain on the close-ups either.
+  So `PRODUCT_SHARPEN` and `PRODUCT_JPEG` stay 0: no gain, so no default.
+- **The logo (step 4) was not the letters' shapes.** LDraw's own raised
+  letters, judged beside the same tree with the drawn strokes, scored the
+  close-ups 0.025 to 0.03 lower in both rounds. The judge named the logos
+  in 44 verdicts of 80 against 40. Its words were the same: "identical on
+  every stud", "mirrored", "rotated inconsistently". So the bake was taken
+  out. What gives the logo away is that every stud's is the same, and the
+  angle it is seen at, not the letters' outlines.
+
+**The fitted key (step 1).** For each shot, the staged key was turned
+round the model (8 ways), raised (15, 40, 65 degrees), moved (2.5 or 6
+radii) and brightened (half, 1 or 2 times the tent's key): 96 small draws
+each, scored against the photograph by `tools/photoreal/fit_light.py`
+(the correlation of their logged lightness, blurred a little):
+
+| shot | turn | rise | far | share | score |
+|---|---|---|---|---|---|
+| black_2x4 | 225 | 40 | 2.5 | 2 | 0.746 |
+| red_slope_2x4 | 0 | 40 | 2.5 | 2 | 0.962 |
+| grey_1x3 | 225 | 65 | 6 | 0.5 | 0.945 |
+| trans_round_1x1 | 270 | 40 | 6 | 2 | 0.751 |
+| three_2x2_top | 90 | 15 | 2.5 | 0.5 | 0.979 |
+| green_plate_macro | 270 | 15 | 6 | 2 | 0.486 |
+| set_6512 | 135 | 15 | 2.5 | 2 | 0.832 |
+| set_6532 | 90 | 65 | 2.5 | 2 | 0.822 |
+| set_6657 | 225 | 65 | 6 | 0.5 | 0.928 |
+| set_6660 | 270 | 40 | 6 | 0.5 | 0.929 |
+
+The rule is the median of each: rise 40 degrees, 4 radii away (4.25), at
+twice the tent's key (`STAGE_KEY_RISE`, `STAGE_KEY_FAR`,
+`STAGE_KEY_SHARE`). The turn is the rig's, as before: where a photograph's
+key stood depends on the shot, not on a rule.
 
 ## 6. Web and desktop
 

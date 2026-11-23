@@ -3176,7 +3176,10 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 		# A staged key falls off across the card (photoreal7): it is read
 		# round the model, not where the light is nearest.
 		var card: float = _open_floor(seen, 0.9 if _stage_of(settings).is_empty() else 0.6)
-		_card_colour = _floor_colour(seen, card)
+		# Its colour from the second, exposed as metered: once, to keep the
+		# frame short (a quarter of its pixels, about 2 ms).
+		if round == 1:
+			_card_colour = _floor_colour(seen, card)
 		if card <= 0.0005:
 			break
 		var light: float = _untoned(card, tonemapper, white, contrast) / (exposure * scale * DIM)
@@ -3213,8 +3216,9 @@ static func _floor_colour(image: Image, level: float) -> Color:
 	var sum := Vector3.ZERO
 	if image == null or level <= 0.0:
 		return Color(1, 1, 1)
-	for y: int in image.get_height():
-		for x: int in image.get_width():
+	# Every other pixel each way: the card's colour is the same across it.
+	for y: int in range(0, image.get_height(), 2):
+		for x: int in range(0, image.get_width(), 2):
 			var c: Color = image.get_pixel(x, y)
 			var seen: float = Color(c.r, c.g, c.b).get_luminance()
 			if c.a < 0.1 and absf(seen - level) < level * 0.15:
