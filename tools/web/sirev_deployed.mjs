@@ -220,7 +220,7 @@ try {
     const { context, page } = await fresh();
     await page.goto(`${site}/faq`, { waitUntil: "load", timeout: 120000 });
     const other = await context.newPage();
-    await other.goto(`${site}/collections`, { waitUntil: "load", timeout: 120000 });
+    await other.goto(`${site}/gallery-lists`, { waitUntil: "load", timeout: 120000 });
     await other.evaluate(() => { window.__kept = 1; });
     await headerSignIn(page);
     await codeIn(page);

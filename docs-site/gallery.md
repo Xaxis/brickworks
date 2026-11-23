@@ -16,7 +16,7 @@ api:GET/POST /api/share
 lib:directory
 -->
 
-![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Collections and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
+![The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Lists and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.](/docs/img/gallery-top.webp "The gallery's front: Top, all time.")
 
 ## Find a model {#find}
 
@@ -49,7 +49,7 @@ lib:Top builds and this week's pick
 
 ## The tabs {#tabs}
 
-The tabs are **Top**, **New**, **Following** (signed in: what the people you follow made), **Builds** ([photos of real builds](#builds)), **Collections** (the [directory of collections](/docs/collections#directory)) and **Sets** (every [real LEGO® set](/docs/ldraw-library#website)). A tab keeps the search's words, and has an address of its own (`/builds`, `/collections`, `/library`) to reload or send.
+The tabs are **Top**, **New**, **Following** (signed in: what the people you follow made), **Builds** ([photos of real builds](#builds)), **Lists** (the [directory of public lists](/docs/lists#directory)) and **Sets** (every [real LEGO® set](/docs/ldraw-library#website)). A tab keeps the search's words, and has an address of its own (`/builds`, `/gallery-lists`, `/library`) to reload or send.
 
 ## More than 24 {#pages}
 
@@ -80,7 +80,7 @@ lib:the gallery's daily choice
 
 Every model is a card, the same everywhere on the site: its picture, its name, its designer (press to open [their page](#designer)), its part count, and how many liked, built and commented on it once there are any. The heart on the picture likes it. **✓ Tested** says it passed [Brickworks' four tests](/docs/sharing#tested). A card says *Moves: steering, boom* when something on it moves, which anybody can move on its page, and *Won* with a challenge's name when it won one.
 
-Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/collections#own)). Only you see it, and the gallery counts it for the whole page at once.
+Signed in with [your collection](/docs/collection), a card also says how much of the model you have: **You have 87%** from half its parts up, **✓ You have every part** when you have them all, and nothing under half. Parts are matched by part, colour and how many, each set counting as many times as you own it (**You own** on [its page](/docs/lists#own)). Only you see it, and the gallery counts it for the whole page at once.
 
 ![Four gallery cards seen signed in with a collection: the sports car says You have 73%, the corner shop You have every part with a check, the barn owl You have 64%, and the fire station, under half, says nothing of it.](/docs/img/gallery-owned.webp "What you have of each model, on its card.")
 
@@ -102,7 +102,7 @@ lib:builds in the gallery
 
 ## A designer's page {#designer}
 
-`/u/<handle>` is a designer's page: their models in Top builds order, **Start with their most built** with **Build it**, their numbers (builds finished, remixes, models, likes, followers) and what their models won, and the tabs **Models**, **Builds**, **Collections** and, if they chose to show them, **Likes**. **Follow** puts what they make in [your feed](/docs/profiles#feed). Brickworks' own page, [brickworks.diy/u/brickworks](/u/brickworks), shares the house's models.
+`/u/<handle>` is a designer's page: their models in Top builds order, **Start with their most built** with **Build it**, their numbers (builds finished, remixes, models, likes, followers) and what their models won, and the tabs **Models**, **Builds**, **Lists** and, if they chose to show them, **Likes**. **Follow** puts what they make in [your feed](/docs/profiles#feed). Brickworks' own page, [brickworks.diy/u/brickworks](/u/brickworks), shares the house's models.
 
 <!-- covers
 ui:a designer's page

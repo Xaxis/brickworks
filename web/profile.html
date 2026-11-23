@@ -10,7 +10,7 @@
   as /u/<handle> draws it (banner, avatar, name, handle, words, links, one
   row of numbers, the pinned models) with Edit profile, Settings and Share;
   then tabs: Models and Builds as everybody sees them, and Saved
-  (favourites, collections, whom you follow), Sets (what you own and what
+  (the models you saved, your lists, whom you follow), Sets (what you own and what
   it builds), Insights (how your models are doing) and Achievements (your
   level on each track and the way to the next), which only you see.
   Edit profile opens a dialog of everything the profile shows; it saves
@@ -43,14 +43,14 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Your Brickworks account">
-<meta property="og:description" content="Publish your models, keep favourites, follow designers and post photos of what you build.">
+<meta property="og:description" content="Publish your models, save what you like, follow designers and post photos of what you build.">
 <meta property="og:url" content="https://brickworks.diy/profile">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Your Brickworks account">
-<meta name="twitter:description" content="Publish your models, keep favourites, follow designers and post photos of what you build.">
+<meta name="twitter:description" content="Publish your models, save what you like, follow designers and post photos of what you build.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
@@ -163,7 +163,7 @@
 			<div class="page-head">
 				<p class="eyebrow">Account</p>
 				<h1>Your Brickworks account</h1>
-				<p class="lede">Publish your models, keep favourites, follow designers and post photos of
+				<p class="lede">Publish your models, save what you like, follow designers and post photos of
 					what you build. We email you a code to sign in: no password.</p>
 			</div>
 			<div class="actions"><button class="cta big" id="sign-in" type="button">Sign in</button></div>
@@ -270,19 +270,20 @@
 				<div class="tab-panel" data-panel="saved" hidden>
 					<p class="private">Only you see this tab.</p>
 					<section id="favourites-part" aria-labelledby="favourites-h">
-						<h2 id="favourites-h">Favourites</h2>
-						<p class="lead">Press Save on any model’s page and tick Favourites to keep it here.</p>
+						<h2 id="favourites-h">Saved</h2>
+						<p class="lead">Press Save on any model, on its card or its page, to keep it here.</p>
 						<div class="models compact" id="favourites"></div>
 						<p class="state" id="no-favourites" hidden>Nothing yet.</p>
 					</section>
 
 					<section id="lists-part" aria-labelledby="lists-h">
-						<h2 id="lists-h">Collections</h2>
-						<p class="lead">Named lists of models. A public one has a page of its own and is on your
-							profile; a private one only you see. Add a model to one with Save, on its page.</p>
+						<h2 id="lists-h">Lists</h2>
+						<p class="lead">Your lists of sets and models. A public one has a page of its own and is on your
+							profile; one shared by its link opens only by that link; a private one only you see. Add to one
+							with the arrow beside Save or Own, and choose who sees each on <a href="/lists">Your lists</a>.</p>
 						<form class="collect-new" id="new-list">
-							<label class="visually-hidden" for="new-name">A new collection’s name</label>
-							<input id="new-name" maxlength="80" placeholder="A new collection’s name">
+							<label class="visually-hidden" for="new-name">A new list’s name</label>
+							<input id="new-name" maxlength="80" placeholder="A new list’s name">
 							<button class="cta ghost" type="submit">Make it</button>
 						</form>
 						<div class="lists-mine" id="lists"></div>
@@ -432,7 +433,7 @@
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenge</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

@@ -1189,10 +1189,11 @@ plan with Claude as the client.
   2026-10-22, docs/SOCIAL.md U4): on `/m/<id>`, `#marks.action-bar`, the
   kit's icon buttons drawn by the server: Like (`[data-mark="like"]`,
   aria-pressed, its count beside it and in its label, "Like, 96 likes"),
-  Save (`[data-mark="save"]`, aria-expanded: `#save-panel` opens your lists,
-  Favourites first as `label[data-list="favourites"]`, ticked when it is a
-  favourite, then each collection, and a new one named and made with the
-  model in it; `data-on` and the label "Saved" while it is in any),
+  Save (since lists2a the card's control, `web/card.js` `keepHtml`
+  `.keep[data-keep="model:<id>"]`, one in the bar: `[data-keep-main]` keeps
+  it in Saved at a tap, `[data-keep-more]` opens the same `dialog.keep-panel`
+  a card opens, Saved first, then each list saying who sees it; the same
+  `POST op=keep`; no `#save-panel` and no `[data-mark="save"]` any more),
   Share (`[data-share]`: `navigator.share` with the page's address where
   the browser has it, else the address copied and the toast "Link
   copied"), Comment (`[data-mark="comment"]`, its count set once the
@@ -2323,15 +2324,17 @@ plan with Claude as the client.
   `collection_follows`, read by no key; `list_rows` in `follow_rows`, so a
   model put in a followed collection is in the feed (kind `collection`,
   `feedSaid`'s `list`) and the avatar's count; `model_lists`, the public
-  collections a model is in, on its page as "In N collections", a tab and
-  `#collections` (`listsOf`, `listCardHtml` with covers by `coversOf`). The
-  collection's page `/c/X` (`api/people.js` `listPage`): its cover
+  lists a model is in, on its page as "In N lists" (Collections until
+  lists2a), a tab "Lists N" and `#collections` (`listsOf`, `listCardHtml`
+  with covers by `coversOf`). The list's page `/c/X` (`api/people.js`
+  `listPage`; with `?link=<key>` a list shared by its link, below): its cover
   (`mosaicHtml`), Follow (`web/follow.js` `followButton` with
   `data-follow-list`), its counts, Share (`web/person.js`), More.
 - `collections directory` (`supabase/collection_directory.sql`,
   `api/_lists.js` `directoryOf`, `api/people.js` `collections`,
-  `web/collections.js`, W12): the gallery's Collections tab, `/collections`
-  (`?sort=followed`, `?q=`, `?page=N`, `?tests=1`), switched in place
+  `web/collections.js`, W12): the gallery's Lists tab (Collections until
+  lists2a), `/gallery-lists` (`?sort=followed`, `?q=`, `?page=N`,
+  `?tests=1`; `data-tab="collections"` inside the page still), switched in place
   (`ui:gallery page`): the public collections with a model in the gallery
   whose owner may be followed, 24 a page from `GET
   /api/people?op=collections` (`{ready, searched, total, pages,
@@ -2346,9 +2349,13 @@ plan with Claude as the client.
   description, the owner's handle or name; where it is not there (the
   design stand-in) every one is listed and `#found-said` says collections
   cannot be searched yet (`searched: false`). Follow by `web/follow.js`, the cards' states in one
-  `GET ?op=list_follows&ids=A,B` (48 at most). `web/collections.html` is
+  `GET ?op=list_follows&ids=A,B` (48 at most). `web/gallery-lists.html` is
   the gallery's copy (`cli:browse pages`); linked from every page's footer.
-  `tests/test_collections_tab.py`.
+  `/collections`, `/collections.html`, `/collections/` and `/<de|fr|es>/collections`
+  go to `GET /api/people?op=moved&to=gallery-lists[&lang=]` (`tools/deploy.sh`),
+  a 301 to `/[lang/]gallery-lists` with every query kept (no database
+  asked), so every old link lands; `/docs/collections` is a 308 to
+  `/docs/lists` (`docs-site/_moved.json`). `tests/test_collections_tab.py`.
 - `collections browser flow` (`tools/web/collections_flow.mjs`, preview
   check `[collections]`): below, under "The collections directory".
 - `your sets and lists` (`api/_mylists.js`, `supabase/lists.sql` applied
@@ -2368,6 +2375,28 @@ plan with Claude as the client.
   `?op=owned_choice {shows}`; `POST /api/collection {op: "own", set, was,
   qty}` (the hand copies of one set made qty, held to `was`; a 409 says
   `owned`). `POST /api/admin?op=list_down&id=` (docs/ADMIN.md).
+  Shared by a link (lists2a, `supabase/lists_link.sql`, its dry run
+  `bench/results/lists2a-2026-11-23/lists_link_dry.txt`):
+  `model_collections.link` (22 characters, `newLink`, 16 random bytes) and
+  `link_at`; the trigger `model_collections_link_guard` clears the key on a
+  public or taken-down list. Each list said has `visibility` (`public`,
+  `link`, `private`) and `link` (its URL, or null). `POST ?op=list_link
+  {id|"want", on}` (owner only, 404 to anybody else; may_act; the age rule
+  as for public; 503 before the SQL) makes a new key (on) or takes it away
+  (off): the page `/c/X?link=<key>` (and `list_items&link=`, `list_csv`,
+  Report it) opens it for anybody with the key, answered `private,
+  no-store` with `X-Robots-Tag: noindex, nofollow`, no Follow, no other
+  languages, no structured data; without the key or with another, 404. It
+  is private to every reader that lists lists (profile, directory and its
+  search, sitemap, a model's or set's In N lists). `POST ?op=import_preview
+  {into: "owned"|"want"|<id>, sets}` (`previewSets`): `{matched, already,
+  missing, counts}`, nothing written; for the sets you own `POST
+  /api/collection {..., preview: true}` answers `{preview: {matched,
+  already, missing, gone, lots, left_out, wanted}, written: false}` and `{...,
+  as_shown: true}` brings in only what that showed (`asShown`). Typed
+  numbers and files are read by `web/set_numbers.js` (`setNumbersIn`,
+  `kindOf`). `tests/test_lists_import.py` holds both previews to three real
+  files in `tests/fixtures/lists/`.
 - `own want and save` (`web/keep.js`, `web/card.js` `keepHtml`,
   `api/_sets.js` `keepBarHtml`): `.keep` over a card's picture's foot on
   every set card (`/library`, a profile's Sets tab, a list) and gallery
@@ -2384,7 +2413,12 @@ plan with Claude as the client.
 - `your lists page` (`web/lists.html`, `web/lists.js`, the account menu's
   Your lists): `?list=owned|want|saved|<id>`; `nav.lists-rail` from 900
   px, `#pick` below; `#view-h`, `#view-meta`, `#share`, `#edit`,
-  `#import` (Add sets), `#download`; `#order` Newest first · Your order
+  `#unshare` (Stop sharing, a link-only list), `#import` (Add sets: the
+  inputs, then See what it adds, `details.import-group` with
+  `[data-import-count="matched|already|missing|gone|lots|wanted"]`, Add N
+  sets, Back, Cancel), `#download`; Edit and a new list's
+  `fieldset.who-sees` radios `private`, `link`, `public`; Share on a
+  private list asks first, Anyone with the link chosen; `#order` Newest first · Your order
   (`.moves` arrows, drag); `#select` then `#bulk` Copy to, Move to, Take
   out; `#shows-owned` (I own: Show on my profile); `dialog.lists-dialog`
   for New list, Edit (Delete list with a nine-second Undo) and Add sets.
@@ -7973,7 +8007,7 @@ ways, counted on his avatar; the tower's page "In 1 collection" and
 cover the tower; let go, Follow again with no count and nothing in his
 feed; made private, its page 404 and no collection on the tower's page.
 
-### The gallery, one page to browse (/gallery, /builds, /collections, /library)
+### The gallery, one page to browse (/gallery, /builds, /gallery-lists, /library)
 
 The copies and their words first (`tools/browse_pages.py --check`,
 `tests/test_browse_pages.py`, `tools/site_lang.py --check`). Then on a
@@ -7998,7 +8032,7 @@ every tab reachable whole, nothing sideways. Pictures
 `<tab>_<width>_<lang>.png` and `_scrolled.png` in `--out`; look at them.
 Against brickworks.diy before this change it fails (a tab was a page).
 
-### The collections directory (/collections)
+### The gallery's Lists (/gallery-lists; /collections until lists2a)
 
 The SQL first, in a rolled-back transaction (Ada's and Bob's public ones
 in both orders; the private, the empty and a barred owner's never; a test
@@ -8019,15 +8053,19 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --u
 ```
 
 It passes when it ends "collections: public ones as cards ..." with no
-FAIL: Ada's tower in her public collection and her private one; a
-visitor's `/collections?tests=1` lists the public one as a card (name,
+FAIL: Ada's tower in her public list and her private one; a
+visitor's `/gallery-lists?tests=1` lists the public one as a card (name,
 Ada's avatar and link, "1 model", the tower's picture as its cover, linked
-to `/c/<id>`, Follow) and never the private one; `/collections` without
-tests no test account's; the gallery's tab and the footer link to it; Bob
+to `/c/<id>`, Follow) and never the private one; without
+tests no test account's; the gallery's tab "Lists" and the footer link to it; Bob
 at 390 px dark presses Follow on the card, Following and "1 follower",
 the API agreeing, one batched request answering for the cards; Most
 followed, pressed in place, lists it; 390 and 1280 px in both themes with nothing
-sideways; made private, gone.
+sideways; made private, gone; then every old address (`/collections`, with
+`/`, `.html`, a query, `/de/`, `/fr/`, `/es/`) a 301 to `/gallery-lists` with
+its query, `/docs/collections` to `/docs/lists`, and every link to
+`/collections` crawled from the sitemap's own pages and every docs page
+landing on Lists (none should be left).
 
 ### Your sets and lists (/lists, Own, Want and Save on every card)
 
@@ -8059,6 +8097,24 @@ it, with its numbers, a theme filter and a search; a Rebrickable CSV makes
 Galaxy Explorer owned; Download CSV holds both; at 430 px with touch in
 both themes the panel is a sheet at the foot and How many goes to 2 and
 back; nothing sideways and no script errors. 21 pictures, each looked at.
+
+And lists2a's, in the same run (`supabase/lists_link.sql` applied first):
+the tower's page has one Save, the card's, its arrow opening the same
+panel as the card (rows equal, Saved and the list ticked), both presses by
+`op=keep` alone; Share on the private list asks with Anyone with the link
+chosen and Public, its sheet's link `/c/<id>?link=<22>`, the rail saying
+"by its link" and Stop sharing shown; Bob and a visitor open the link
+(200, "Shared with you by its link", robots noindex, two cards, no Follow,
+no hreflang), `Cache-Control` no-store and `X-Robots-Tag` noindex; without
+its key, with another key, and `list_items` without it, 404; absent from
+her profile's page and answer, the directory, its search and the sitemap;
+Stop sharing, and the next request for the link is 404; shared again a new
+key opens it and the old stays 404; Bob's `list_link` 404. Add sets on I
+own with a three-row Rebrickable CSV shows 1 to add, 1 already there, 1
+not found and "Add 1 set"; Cancel leaves the collection row as it was; Add
+brings in Galaxy Explorer and leaves King's Castle at 1; a list's own Add
+sets, typed, shows the same three, Cancel writes nothing, Add puts in only
+Galaxy Explorer.
 
 ### What you own and lack (a card's share, What you're missing, You own)
 

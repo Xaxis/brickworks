@@ -1,11 +1,11 @@
 // A shared model's page, /m/<id> (the directory, 2026-10-13): its action
-// bar (2026-10-22, docs/SOCIAL.md U4): Like, Save (your favourites and your
-// collections, in one list), Share, Comment, I built it and More, Like and
-// Save asking to sign in first when this browser is not (web/account.js),
-// each a call to /api/people. What the page shows without it — the
-// counts, the way into the viewer — needs none of this.
+// bar (2026-10-22, docs/SOCIAL.md U4): Like, Save (Saved and your lists:
+// web/keep.js's, the card's, lists2a), Share, Comment, I built it and More,
+// Like and Save asking to sign in first when this browser is not
+// (web/account.js), each a call to /api/people. What the page shows
+// without it — the counts, the way into the viewer — needs none of this.
 //
-// Every name shown here (a collection's) is put on the page as text.
+// Every name shown here (a list's, a person's) is put on the page as text.
 //
 // And its comments (2026-10-18, api/_comments.js), as threads (2026-10-22,
 // docs/SOCIAL.md U8): the newest comment first and its replies under it,
@@ -27,6 +27,8 @@ import { avatarHtml } from "/kit.js";
 import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, setPhoto, sharpPhotos, themeSaid,
   told } from "/card.js";
 import { wireShare } from "/share-sheet.js";
+// Save and your lists, as on every card (api/share.js actionBar, lists2a).
+import "/keep.js";
 import { start3d } from "/start3d.js";
 import { guardPhoneOpens } from "/phone-warn.js";
 
@@ -1749,62 +1751,27 @@ function tabCount(tab, n) {
   shown.textContent = number(value);
 }
 
-/// The action bar (api/share.js actionBar): Like; Save, which opens your
-/// lists, Favourites first (docs/SOCIAL.md D2); Share, which opens its sheet
+/// The action bar (api/share.js actionBar): Like; Save and its lists,
+/// which are a card's (web/keep.js: Save at a tap, the arrow beside it the
+/// panel of your lists, lists2a); Share, which opens its sheet
 /// (web/share-sheet.js); Comment and I built it, which go to their sections; and
-/// More: Report it, Takedown requests, and the owner's own. Like and Save
-/// ask to sign in first when this browser is not.
+/// More: Report it, Takedown requests, and the owner's own. Like asks to
+/// sign in first when this browser is not, as Save does.
 function start() {
   const like = marks.querySelector('[data-mark="like"]');
-  const save = marks.querySelector('[data-mark="save"]');
   const share = marks.querySelector("[data-share]");
   const comment = marks.querySelector('[data-mark="comment"]');
   const built = marks.querySelector('[data-mark="built"]');
-  const panel = document.getElementById("save-panel");
-  const lists = panel.querySelector(".collect-list");
-  const make = panel.querySelector("form.collect-new");
   const said = document.querySelector(".marks-said");
   let state = null;
 
   const tell = (text) => { said.textContent = text; };
 
-  /// One of Save's lists: a box to tick, its name, and who sees it.
-  function listRow(name, where, has, change, key) {
-    const row = document.createElement("label");
-    row.dataset.list = key;
-    const box = document.createElement("input");
-    box.type = "checkbox";
-    box.checked = Boolean(has);
-    // The lists are drawn again once it is kept: the same list's box keeps
-    // the keyboard's focus.
-    box.addEventListener("change", async () => {
-      const focused = document.activeElement === box;
-      await change(box);
-      if (focused) [...lists.querySelectorAll("label[data-list]")].find((one) => one.dataset.list === key)?.querySelector("input")?.focus();
-    });
-    const words = document.createElement("span");
-    words.textContent = String(name);
-    const who = document.createElement("small");
-    who.textContent = where;
-    row.append(box, words, who);
-    return row;
-  }
-
   function draw() {
     like.setAttribute("aria-pressed", String(Boolean(state && state.liked)));
-    const saved = Boolean(state && (state.favourite || (state.collections || []).some((list) => list.has)));
-    save.toggleAttribute("data-on", saved);
-    save.setAttribute("aria-label", saved ? say("Saved") : say("Save"));
-    lists.replaceChildren();
-    if (!state) return;
-    lists.append(listRow(say("Favourites"), say("only you"), state.favourite, keep, "favourites"));
-    for (const list of state.collections || []) {
-      lists.append(listRow(list.name, list.public ? say("public") : say("only you"), list.has, (box) => put(list, box), list.id));
-    }
   }
 
-  // Each read of how it stands, and each change made here (a like, a
-  // list), counted: a read asked before the latest of them answers what
+  // Each read of how it stands, and each like made here, counted: a read asked before the latest of them answers what
   // was, and is dropped (sifix, 2026-11-15: a read still out when Like was
   // pressed drew it unpressed after it went through).
   let asked = 0;
@@ -1851,64 +1818,6 @@ function start() {
     state.liked = answer.body.liked;
     setCount(like, answer.body.likes, say("Like"), "like");
     draw();
-  });
-
-  save.addEventListener("click", async () => {
-    if (!(await ready("Sign in to save it: we email you a code, no password."))) return;
-    panel.hidden = !panel.hidden;
-    save.setAttribute("aria-expanded", String(!panel.hidden));
-    if (!panel.hidden) lists.querySelector("input")?.focus();
-  });
-  // Escape closes your lists, back on Save, as a menu closes.
-  panel.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || panel.hidden) return;
-    event.preventDefault();
-    panel.hidden = true;
-    save.setAttribute("aria-expanded", "false");
-    save.focus();
-  });
-
-  async function keep(box) {
-    asked += 1;
-    box.disabled = true;
-    const answer = await call(`/api/people?op=favourite&id=${id}`, { method: "POST", body: { on: box.checked } });
-    box.disabled = false;
-    if (answer.status !== 200) {
-      box.checked = !box.checked;
-      return tell(told(answer.body.error, say("That did not work just now.")));
-    }
-    state.favourite = answer.body.favourite;
-    tell(state.favourite ? say("Saved to your favourites, on your account page.") : say("Out of your favourites."));
-    draw();
-  }
-
-  async function put(list, box) {
-    asked += 1;
-    box.disabled = true;
-    const answer = await call("/api/people?op=collect", { method: "POST",
-      body: { collection: list.id, model: id, on: box.checked } });
-    box.disabled = false;
-    if (answer.status !== 200) {
-      box.checked = !box.checked;
-      return tell(told(answer.body.error, say("That did not work just now.")));
-    }
-    list.has = box.checked;
-    tell(box.checked ? say("Saved to {name}.", { name: list.name }) : say("Out of {name}.", { name: list.name }));
-    draw();
-  }
-
-  make.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const field = make.querySelector("input");
-    const name = field.value.trim();
-    if (!name || !(await ready("Sign in to make a collection: we email you a code."))) return;
-    const made = await call("/api/people?op=collection", { method: "POST", body: { name, public: false } });
-    if (made.status !== 200) return tell(told(made.body.error, say("That did not work just now.")));
-    const list = { id: made.body.id, name: made.body.name, public: made.body.public, has: false };
-    const box = { checked: true, disabled: false };
-    await put(list, box);
-    field.value = "";
-    await load();
   });
 
   const sheet = document.getElementById("share-sheet");
@@ -1975,7 +1884,7 @@ function commentsSaid(state, setOpen) {
 // ---------------------------------------------------------------------------
 // This month's challenge (api/_challenges.js): asked only with the sign-in,
 // and answered only to the model's own designer, so nobody else is shown
-// anything here. A line under Like and Favourite: Enter this month's
+// anything here. A line under Like and Save: Enter this month's
 // challenge, which opens a dialog with its rules and a choice of how it was
 // built; or that it is in, with Take it out.
 async function challengeEntry() {

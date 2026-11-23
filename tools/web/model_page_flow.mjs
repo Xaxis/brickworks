@@ -30,8 +30,9 @@
 //      Escape closes it, back on Share. Where the browser has a share
 //      sheet of its own (navigator.share), the sheet offers it too, given
 //      the link, and nothing copied.
-//   4. Save, signed out, asks to sign in; signed in, it opens the lists,
-//      Favourites first and ticked when it is a favourite.
+//   4. Save, signed out, asks to sign in; signed in, its arrow opens the
+//      card's panel (web/keep.js, lists2a: one Save on the card and the
+//      page), Saved first and ticked when it is saved.
 //   5. More holds Report it and Takedown requests (the embed code is in
 //      Share's sheet).
 //   6. More by and Similar models show only with three cards or more, six
@@ -60,9 +61,9 @@
 //      viewer); the box shown to everybody, and Reply on each comment
 //      opening a box under its thread; signed out, sending asks to sign
 //      in and keeps what was typed; signed in, the reply goes.
-//  14. In N collections (docs/SOCIAL.md U11): a pill among its facts, and a
-//      tab, both going to its Collections part, a card for each public
-//      collection it is in; none when it is in none. The watchtower is in
+//  14. In N lists (docs/SOCIAL.md U11; collections until lists2a): a pill
+//      among its facts, and a tab, both going to its Lists part, a card for
+//      each public list it is in; none when it is in none. The watchtower is in
 //      two (Robin's and Sam's public ones), the dusk in one.
 //  15. The embed (/m/<id>/embed) in the theme its viewer chose: light
 //      chosen on a dark computer is light, dark chosen on a light one dark,
@@ -156,9 +157,9 @@ const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { 
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
   { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
-    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"], thumbs: 3, threads: true, lists: 2 },
+    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Lists 2", "Versions 2"], thumbs: 3, threads: true, lists: 2 },
   { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
-    tabs: ["About", "Parts 3", "Comments 1", "Builds 3", "Remixes", "Collections 1"], thumbs: 0, lists: 1 },
+    tabs: ["About", "Parts 3", "Comments 1", "Builds 3", "Remixes", "Lists 1"], thumbs: 0, lists: 1 },
   // Signed in, Sam's own: More has the owner's own in place of Report it.
   { name: "bakery", path: "/m/SamModel02", by: 0, like: 0, gallery: true, favourite: false, designer: null,
     tabs: ["About", "Parts 3", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true, lists: 0 },
@@ -759,9 +760,9 @@ try {
             const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
             // On a deployment its own model's: in this order, each there or
             // not as the model has it (Comments where they are open,
-            // Collections once it is in one, Versions with two), and About,
+            // Lists once it is in one, Versions with two), and About,
             // Parts, Builds and Remixes always.
-            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Collections", "Versions"];
+            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Lists", "Versions"];
             const ordered = tabNames.every((n, k) => ORDER.includes(n) && (k === 0 || ORDER.indexOf(tabNames[k - 1]) < ORDER.indexOf(n)));
             check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
               : ordered && ["About", "Parts", "Builds", "Remixes"].every((n) => tabNames.includes(n)));
@@ -965,26 +966,31 @@ try {
             if (out) await page.screenshot({ path: path.join(out, `${stem}_more.png`) });
             await page.keyboard.press("Escape");
 
-            // 14. In N collections: the pill and the tab, to a card each.
+            // 14. In N lists: the pill and the tab, to a card each.
             const lists = await page.evaluate(() => ({
               pill: document.querySelector('.facts a[href="#collections"]')?.textContent || "",
               tab: (document.querySelector('#page-tabs a[data-tab="collections"]')?.textContent || "").replace(/\s+/g, " ").trim(),
               cards: [...document.querySelectorAll("#collections .list-card")].map((card) => card.getAttribute("href")) }));
-            const n = one.lists ?? Number((/^In (\d+) collections?$/.exec(lists.pill) || [])[1] || 0);
-            check(`${label}: "${lists.pill || "no collections"}", ${lists.cards.length} cards (${lists.cards.join(" ")})`,
-              n ? lists.pill === `In ${n} collection${n === 1 ? "" : "s"}` && lists.tab === `Collections ${n}`
+            const n = one.lists ?? Number((/^In (\d+) lists?$/.exec(lists.pill) || [])[1] || 0);
+            check(`${label}: "${lists.pill || "in no list"}", ${lists.cards.length} cards (${lists.cards.join(" ")})`,
+              n ? lists.pill === `In ${n} list${n === 1 ? "" : "s"}` && lists.tab === `Lists ${n}`
                 && lists.cards.length === Math.min(n, 12) && lists.cards.every((href) => /^\/c\/[A-Za-z0-9]{10}$/.test(href))
                 : !lists.pill && !lists.tab && lists.cards.length === 0);
             if (n) {
               await page.click('.facts a[href="#collections"]');
               await settled(page);
               const at = await page.evaluate(() => Math.round(document.getElementById("collections").getBoundingClientRect().top));
-              check(`${label}: the pill brings its collections into view (${at} px down)`, at >= 0 && at < 300);
+              check(`${label}: the pill brings its lists into view (${at} px down)`, at >= 0 && at < 300);
               await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
             }
 
-            // 4. Save.
-            await page.click('#marks [data-mark="save"]');
+            // 4. Save: the card's control (web/keep.js), Saved at a tap and
+            // its arrow for the panel.
+            const keepAt = `#marks .keep[data-keep="model:${(/\/m\/([A-Za-z0-9]{10})/.exec(new URL(page.url()).pathname) || [])[1]}"]`;
+            check(`${label}: one Save in its bar, the card's, and no panel of its own`, await page.evaluate((at) =>
+              document.querySelectorAll("#marks .keep").length === 1 && Boolean(document.querySelector(at))
+              && !document.getElementById("save-panel") && !document.querySelector('#marks [data-mark="save"]'), keepAt));
+            await page.click(`${keepAt} ${signedIn ? "[data-keep-more]" : "[data-keep-main]"}`);
             if (!signedIn) {
               const asked = await until(page, () => document.querySelector("dialog.sign-in[open]"), null, 6000);
               check(`${label}: Save asks to sign in`, asked);
@@ -993,15 +999,16 @@ try {
               check(`${label}: Like asks to sign in`, await until(page, () => document.querySelector("dialog.sign-in[open]"), null, 6000));
               await page.keyboard.press("Escape");
             } else {
-              const opened = await until(page, () => !document.getElementById("save-panel")?.hidden
-                && document.querySelectorAll("#save-panel .collect-list label").length > 1, null, 6000);
-              const lists = await page.evaluate(() => [...document.querySelectorAll("#save-panel .collect-list label")]
-                .map((row) => ({ name: row.querySelector("span").textContent, on: row.querySelector("input").checked })));
-              const save = await page.evaluate(() => document.querySelector('#marks [data-mark="save"]').getAttribute("aria-expanded"));
-              check(`${label}: Save opens the lists, Favourites first${one.favourite === null ? "" : `, ${one.favourite ? "ticked" : "not ticked"}`}: `
+              const opened = await until(page, () => document.querySelector("dialog.keep-panel[open]")
+                && document.querySelectorAll("dialog.keep-panel .keep-row").length > 1, null, 6000);
+              const lists = await page.evaluate(() => [...document.querySelectorAll("dialog.keep-panel .keep-row")]
+                .map((row) => ({ name: row.querySelector(".keep-name")?.textContent || "", on: Boolean(row.querySelector("input")?.checked) })));
+              const save = await page.evaluate((at) => document.querySelector(`${at} [data-keep-more]`)?.getAttribute("aria-expanded"), keepAt);
+              check(`${label}: Save's arrow opens your lists, Saved first${one.favourite === null ? "" : `, ${one.favourite ? "ticked" : "not ticked"}`}: `
                 + lists.map((l) => `${l.name}${l.on ? " ✓" : ""}`).join(", "),
-              opened && save === "true" && lists[0]?.name === "Favourites" && (one.favourite === null || lists[0].on === one.favourite));
+              opened && save === "true" && lists[0]?.name === "Saved" && (one.favourite === null || lists[0].on === one.favourite));
               if (out) await page.screenshot({ path: path.join(out, `${stem}_save.png`) });
+              await page.keyboard.press("Escape");
             }
 
             // 3b. A browser with a share sheet of its own, a phone's: the

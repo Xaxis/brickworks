@@ -78,7 +78,7 @@ ui:what is counted page
 
 Signed in with orangecheck, it first emails a code to the account's address: type it and press **Delete my account** again. An account made with orangecheck alone has **Sign in with orangecheck to delete** instead.
 
-It cannot be undone. Your models come out of the gallery and their links stop working; your profile, favourites, collections, comments, follows, photos, the sets you own and every AI app's connection are deleted with the account.
+It cannot be undone. Your models come out of the gallery and their links stop working; your profile, saved models, lists (public, shared by a link or private), comments, follows, photos, the sets you own and every AI app's connection are deleted with the account.
 
 <!-- covers
 lib:an account's deletion

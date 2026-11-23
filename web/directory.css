@@ -155,16 +155,16 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .shared-by .said:empty { display: none; }
 
 /* The action bar (web/model-page.js): the kit's icon buttons in a row,
-   More at its end; Save's lists open under it and push the page down. */
+   More at its end. Save is a card's split control (web/card.js keepHtml,
+   web/keep.js, lists2a): drawn here as the bar's own buttons are, on no
+   ground, with the bar's edge and height; its lists open in keep.js's
+   panel, as from any card. */
 .action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); margin: 0; }
 .action-bar .more-menu { margin-left: auto; }
 /* On a phone, one row across the column, More at its end. */
 @media (width < 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
-.save-panel {
-	margin-top: 10px; max-width: 420px; padding: 12px; border-radius: var(--r-3);
-	border: 1px solid var(--line); background: var(--panel); display: grid; gap: 8px;
-}
-.save-panel .save-head { margin: 0; font-size: var(--t-small); font-weight: 600; color: var(--ink-soft); }
+.action-bar > .keep { border-color: var(--line); background: transparent; box-shadow: none; }
+.action-bar > .keep > button { min-height: calc(var(--control-h) - 2px); }
 .marks-said { margin: 6px 0 0; }
 .marks-said:empty { display: none; }
 
@@ -260,12 +260,7 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 
 .gone { padding: clamp(56px, 10vw, 110px) 0; }
 
-/* Save's lists (model-page.js): Favourites first, then each collection,
-   and a new one's name. */
-.collect-list { display: grid; gap: 4px; max-height: 240px; overflow: auto; }
-.collect-list label { display: flex; gap: 8px; align-items: center; font-size: var(--t-small); min-height: 34px; cursor: pointer; }
-.collect-list label span { flex: 1; overflow-wrap: anywhere; }
-.collect-list small { color: var(--ink-faint); }
+/* A new list's name on your account (web/profile.js). */
 .collect-new { display: flex; gap: 6px; }
 /* A name box beside its buttons: room for ten letters, then whatever is left;
    it never pushes its row past a phone's edge. */

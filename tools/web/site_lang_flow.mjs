@@ -115,8 +115,9 @@
 //                (planted, as server's are); and /challenge?id=N's head:
 //                its title and words, canonical /de/challenge?id=N and the
 //                alternates;
-//   collections  /collections and a collection's /c/<id>: titles, tabs,
-//                alternates and every card and link in the language;
+//   collections  the gallery's Lists, /gallery-lists (/collections until
+//                lists2a), and a list's /c/<id>: titles, tabs, alternates
+//                and every card and link in the language;
 //   account      your own /profile, each of its tabs and Edit profile, and
 //                /settings: the deployment's pages, signed in only in the
 //                browser, every call they make (its Supabase's too)
@@ -1083,7 +1084,7 @@ async function profileSaid(browser, code, width, handle) {
         .filter((url) => url.origin === location.origin && /^(?:\/[a-z]{2})?\/m\/[A-Za-z0-9]{10}$/.test(url.pathname))
         .map((url) => url.pathname),
     }));
-    const tabs = ["Models", "Builds", "Collections", "Likes"].map((word) => script(code, word));
+    const tabs = ["Models", "Builds", "Lists", "Sets", "Likes"].map((word) => script(code, word));
     check(chrome.edit === script(code, "Edit profile") && chrome.tabs.length && chrome.tabs.every((word) => tabs.includes(word)),
       `${where}: "${chrome.edit}", its tabs ${chrome.tabs.join(" / ")}`);
     const wrong = chrome.models.filter((at) => !at.startsWith(`${lang}/m/`));
@@ -1500,17 +1501,16 @@ async function challengeSaid(browser, code, width, past) {
   }
 }
 
-/// Every collection in [code], from /collections (the gallery's
-/// Collections tab), and one of them, from /c/[id]: in the language, but
-/// their names and who made them; the collection's people and models each
-/// linked in it.
+/// Every public list in [code], from /gallery-lists (the gallery's Lists
+/// tab), and one of them, from /c/[id]: in the language, but their names
+/// and who made them; the list's people and models each linked in it.
 async function collectionsSaid(browser, code, width, id) {
   const context = await newContext(browser, code, width);
   const tab = await context.newPage();
   const lang = code === "en" ? "" : `/${code}`;
   let where = `${code} collections ${width}`;
   try {
-    const said = await copyOpened(tab, code, "/collections", where);
+    const said = await copyOpened(tab, code, "/gallery-lists", where);
     await tab.waitForFunction(() => ["ready", "none"].includes(document.documentElement.dataset.collections), null, { timeout: 30000 });
     const chrome = await tab.evaluate(() => {
       const marked = document.querySelector('#tabs [aria-current="page"]');
@@ -1520,12 +1520,12 @@ async function collectionsSaid(browser, code, width, id) {
     });
     const { marked } = chrome;
     const orders = ["Recently added to", "Most followed"].map((word) => page(code, word));
-    check(said.title === script(code, "Collections — the Brickworks gallery") && chrome.title === said.title
-      && JSON.stringify(chrome.orders) === JSON.stringify(orders) && marked[0] === page(code, "Collections")
-      && marked[1] === `${lang}/collections`,
+    check(said.title === script(code, "Lists — the Brickworks gallery") && chrome.title === said.title
+      && JSON.stringify(chrome.orders) === JSON.stringify(orders) && marked[0] === page(code, "Lists")
+      && marked[1] === `${lang}/gallery-lists`,
       `${where}: "${said.title}", its tab "${marked[0]}" ${marked[1]}, its orders ${chrome.orders.map((text) => `"${text}"`).join(", ")}`);
     const away = chrome.lists.filter((to) => !to.startsWith(`${lang}/c/`));
-    check(chrome.lists.length && !away.length, `${where}: ${chrome.lists.length} collections open in ${code}${away.length ? `, not: ${away[0]}` : ""}`);
+    check(chrome.lists.length && !away.length, `${where}: ${chrome.lists.length} lists open in ${code}${away.length ? `, not: ${away[0]}` : ""}`);
     await copyRead(tab, code, width, where, "collections", THEIRS_COLLECTIONS);
     where = `${code} collection ${width}`;
     const list = await copyOpened(tab, code, `/c/${id}`, where);
@@ -1535,10 +1535,10 @@ async function collectionsSaid(browser, code, width, id) {
       who: document.querySelector(".list-head .handle a")?.textContent.trim() || "",
       links: [...document.querySelectorAll("main a[href]")].map((a) => new URL(a.href, location.href))
         .filter((url) => url.origin === location.origin && /^(?:\/[a-z]{2})?\/[mu]\//.test(url.pathname)).map((url) => url.pathname) }));
-    const collected = script(code, "Collected by {who} · updated {when}", { who: shown.who, when: "" });
+    const collected = script(code, "Made by {who} · updated {when}", { who: shown.who, when: "" });
     const wrong = shown.links.filter((to) => !to.startsWith(`${lang}/`) || !/^\/(?:[a-z]{2}\/)?[mu]\//.test(to) || (code !== "en" && !to.startsWith(`/${code}/`)));
-    check(list.title === script(code, "{name} — a collection in the Brickworks gallery", { name: shown.name })
-      && shown.eyebrow === script(code, "Collection") && shown.by.startsWith(collected.trim()) && shown.links.length && !wrong.length,
+    check(list.title === script(code, "{name} — a list on Brickworks", { name: shown.name })
+      && shown.eyebrow === script(code, "List") && shown.by.startsWith(collected.trim()) && shown.links.length && !wrong.length,
       `${where}: "${list.title}", "${shown.eyebrow}", "${shown.by}", ${shown.links.length} links to its people and models in ${code}`
       + `${wrong.length ? `, not: ${wrong[0]}` : ""}`);
     await copyRead(tab, code, width, where, "collection", THEIRS_LIST);

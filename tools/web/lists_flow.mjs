@@ -30,6 +30,19 @@
 //      the copy with its source and missing parts; a list that already held
 //      an item adds nothing; an item taken out goes back to its place.
 //
+// And lists2a (docs/LISTS.md section 5), on the same accounts:
+//   4b. One Save: a model's page has the card's control, one panel, the
+//      same op=keep; no panel of its own.
+//   5b. Shared by its link (supabase/lists_link.sql applied): Share on a
+//      private list asks, Anyone with the link chosen; the link opens it for
+//      Bob and a visitor, kept by no cache and no search engine; without
+//      its key or with another, 404; absent from her profile, the
+//      directory, its search and the sitemap; Stop sharing, and the next
+//      request for the link is a 404; shared again, a new key.
+//   7. Add sets shows what it adds first: to add, already there and not
+//      found, counted as this flow reckons them; Cancel writes nothing, Add
+//      writes what it showed; a list's own Add sets the same.
+//
 // Pictures of every step in --out, light and dark at both widths.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -277,6 +290,41 @@ try {
   const dot = await page.evaluate((s) => document.querySelector(`${s} [data-keep-more]`)?.hasAttribute("data-in"), card);
   check(`its card marks it as in a list: ${dot}`, dot === true);
 
+  // --- 4b. One Save: the model's page has the card's (lists2a) ----------------
+  console.log("the model's page: Save is the card's, one panel");
+  const keepPosts = [];
+  const heard = (request) => {
+    if (request.method() === "POST" && /\/api\/people\?op=/.test(request.url())) keepPosts.push(new URL(request.url()).searchParams.get("op"));
+  };
+  page.on("request", heard);
+  await visit(page, `/m/${tower}`);
+  const onPage = `.action-bar .keep[data-keep="model:${tower}"]`;
+  await page.waitForSelector(`${onPage} [data-keep-main]`, { timeout: 60000 });
+  const one = await page.evaluate((id) => ({ keeps: document.querySelectorAll(`.action-bar .keep[data-keep="model:${id}"]`).length,
+    panel: Boolean(document.getElementById("save-panel")), marks: document.querySelectorAll('.action-bar [data-mark="save"]').length }), tower);
+  check(`its bar has one Save, the card's (${one.keeps}), and no panel of its own (${one.panel ? "there" : "none"}, ${one.marks} old buttons)`,
+    one.keeps === 1 && !one.panel && one.marks === 0);
+  await page.click(`${onPage} [data-keep-main]`);
+  const savedNow = await untilApi(async () => ((await keeps(ada, "", tower)).body.models?.[tower]?.saved ? true : null), "saved");
+  check(`Save keeps it in Saved: ${savedNow ? "yes" : "no"}, pressed ${await pressed(page, `${onPage} [data-keep-main]`)}`,
+    savedNow === true && (await pressed(page, `${onPage} [data-keep-main]`)) === "true");
+  await page.click(`${onPage} [data-keep-more]`);
+  await page.waitForSelector(`dialog.keep-panel[open] [data-keep-list="${listId}"] input`, { timeout: 15000 });
+  const pageRows = await page.evaluate(() => [...document.querySelectorAll("dialog.keep-panel .keep-row")]
+    .map((row) => row.querySelector(".keep-name")?.textContent));
+  const ticks = await page.evaluate((id) => ({ saved: document.querySelector("dialog.keep-panel .keep-row input")?.checked,
+    list: document.querySelector(`dialog.keep-panel [data-keep-list="${id}"] input`)?.checked,
+    panels: document.querySelectorAll("dialog.keep-panel").length }), listId);
+  check(`its arrow opens the card's panel (${pageRows.join(" · ")}), Saved and "${LIST}" ticked, one panel in the page`,
+    pageRows.join("|") === modelRows.join("|") && ticks.saved === true && ticks.list === true && ticks.panels === 1);
+  await shot(page, "05b_model-page-save-1280-light.png");
+  await page.keyboard.press("Escape");
+  await page.click(`${onPage} [data-keep-main]`);
+  const letGo = await untilApi(async () => ((await keeps(ada, "", tower)).body.models?.[tower]?.saved === false ? true : null), "let go");
+  page.off("request", heard);
+  check(`pressed again it is let go (${letGo ? "yes" : "no"}); both went by op=keep alone: ${keepPosts.join(", ")}`,
+    letGo === true && keepPosts.length >= 2 && keepPosts.every((op) => op === "keep"));
+
   // --- 5. /lists ---------------------------------------------------------------
   console.log("/lists: her list, its order, public and private");
   await page.goto(`${site}/lists?list=${listId}`, { waitUntil: "load" });
@@ -316,8 +364,8 @@ try {
 
   // Public: a page Bob and a visitor see, with its social card, and Share.
   await page.click("#edit");
-  await page.waitForSelector("dialog.lists-dialog[open]");
-  await page.check('dialog.lists-dialog input[name="public"]');
+  await page.waitForSelector("dialog.lists-dialog[open] fieldset.who-sees");
+  await page.check('dialog.lists-dialog fieldset.who-sees input[value="public"]');
   await page.click('dialog.lists-dialog button[type="submit"]');
   const made = await untilApi(async () => ((await api(`/api/people?op=list_items&id=${listId}`)).status === 200 ? true : null), "public");
   check(`made public: a visitor's list_items ${made ? "200" : "refused"}`, made === true);
@@ -344,8 +392,8 @@ try {
   }
   // Private again: absent to Bob and to a visitor.
   await page.click("#edit");
-  await page.waitForSelector("dialog.lists-dialog[open]");
-  await page.uncheck('dialog.lists-dialog input[name="public"]');
+  await page.waitForSelector("dialog.lists-dialog[open] fieldset.who-sees");
+  await page.check('dialog.lists-dialog fieldset.who-sees input[value="private"]');
   await page.click('dialog.lists-dialog button[type="submit"]');
   await untilApi(async () => ((await api(`/api/people?op=list_items&id=${listId}`)).status === 404 ? true : null), "private");
   for (const [who, token] of [["Bob", bob.access_token], ["a visitor", null]]) {
@@ -357,6 +405,89 @@ try {
   const directory = await api("/api/people?op=collections&tests=1&q=" + encodeURIComponent(LIST));
   check(`not in the directory: ${(directory.body.collections || []).some((one) => one.id === listId) ? "listed" : "absent"}`,
     !(directory.body.collections || []).some((one) => one.id === listId));
+
+  // --- 5b. Shared by its link (lists2a) -----------------------------------------
+  console.log("shared by its link: by the link alone, nowhere else, and Stop sharing ends it");
+  await page.goto(`${site}/lists?list=${listId}`, { waitUntil: "load" });
+  await page.waitForSelector("#share:not([hidden])", { timeout: 30000 });
+  await page.click("#share");
+  await page.waitForSelector("dialog.lists-dialog[open] fieldset.who-sees", { timeout: 15000 });
+  const asked = await page.evaluate(() => ({
+    choices: [...document.querySelectorAll("dialog.lists-dialog[open] fieldset.who-sees label")].filter((one) => !one.hidden)
+      .map((one) => one.querySelector("input").value),
+    chosen: document.querySelector("dialog.lists-dialog[open] fieldset.who-sees input:checked")?.value || "" }));
+  check(`Share on a private list asks who may open it: ${asked.choices.join(", ")}, ${asked.chosen} chosen`,
+    asked.choices.join(",") === "link,public" && asked.chosen === "link");
+  await shot(page, "09b_share-who-1280-light.png");
+  await page.click('dialog.lists-dialog[open] button[type="submit"]');
+  const linkUrl = await until(page, () => document.querySelector("#share-sheet[open] #share-link")?.value || null, "the link's sheet", 20)
+    .catch(() => "");
+  const key = new URL(linkUrl || "http://x/").searchParams.get("link") || "";
+  if (!check(`its sheet gives its link: ${linkUrl || "none"}`, linkUrl.includes(`/c/${listId}?link=`) && /^[A-Za-z0-9_-]{22}$/.test(key))) {
+    const tried = await api("/api/people?op=list_link", { method: "POST", token: ada.access_token, body: { id: listId, on: true } });
+    console.log(`  --    op=list_link answers ${tried.status}: ${tried.text.slice(0, 160)} (503: supabase/lists_link.sql not applied)`);
+  }
+  await shot(page, "09c_share-link-sheet-1280-light.png");
+  await page.keyboard.press("Escape");
+  const rail = await page.evaluate((id) => document.querySelector(`#rail a[data-rail="${id}"] .rail-note`)?.textContent || "", listId);
+  const unshareShown = await page.isVisible("#unshare");
+  check(`the rail says "${rail}", and Stop sharing is there: ${unshareShown}`, /by its link/.test(rail) && unshareShown);
+  const byLink = `/c/${listId}?link=${key}&tests=1`;
+  for (const [who, as] of [["Bob", bob], ["a visitor", null]]) {
+    const other = await context({ as });
+    const seen = await other.newPage();
+    listen(seen, `${who} by link`);
+    const opened = await seen.goto(`${site}${byLink}`, { waitUntil: "load" });
+    const said = await seen.evaluate(() => ({ h: document.querySelector("h1")?.textContent || "",
+      note: document.querySelector(".list-head .note, .by-link")?.textContent || document.body.textContent.match(/Shared with you by its link[^.]*\./)?.[0] || "",
+      robots: document.querySelector('meta[name="robots"]')?.content || "", follow: document.querySelectorAll("[data-follow-list]:not([hidden])").length,
+      alternates: document.querySelectorAll('link[rel="alternate"][hreflang]').length, cards: document.querySelectorAll(".models .model").length }));
+    check(`${who} opens its link (${opened.status()}): "${said.h}", "${said.note.trim().slice(0, 60)}", robots "${said.robots}", `
+      + `${said.cards} cards, no Follow (${said.follow}), no other languages (${said.alternates})`, opened.status() === 200 && said.h === LIST
+      && /Shared with you by its link/.test(said.note) && /noindex/.test(said.robots) && said.cards === 2 && said.follow === 0 && said.alternates === 0);
+    if (who === "a visitor") await shot(seen, "09d_list-by-link-visitor-1280-light.png");
+    await other.close();
+  }
+  const raw = await fetch(`${site}${byLink}`, { headers });
+  check(`its page is kept by no cache and no search engine: "${raw.headers.get("cache-control")}", "${raw.headers.get("x-robots-tag")}"`,
+    raw.status === 200 && /no-store/.test(raw.headers.get("cache-control") || "") && /noindex/.test(raw.headers.get("x-robots-tag") || ""));
+  const otherKey = (key.slice(0, 21) + (key.endsWith("A") ? "B" : "A"));
+  for (const [what, where] of [["without its key", `/c/${listId}?tests=1`], ["with another key", `/c/${listId}?link=${otherKey}&tests=1`],
+    ["list_items without its key", `/api/people?op=list_items&id=${listId}`]]) {
+    const answer = await api(where, { token: bob.access_token });
+    check(`${what}: ${answer.status}, its name nowhere`, answer.status === 404 && !answer.text.includes(LIST));
+  }
+  const itemsByLink = await api(`/api/people?op=list_items&id=${listId}&link=${key}&tests=1`);
+  check(`list_items with its key: ${itemsByLink.status}, ${(itemsByLink.body.items || []).length} items`,
+    itemsByLink.status === 200 && (itemsByLink.body.items || []).length === 2);
+  const profileHtml = await api(`/u/${ADA}?tab=lists&tests=1`);
+  const profileJson = await api(`/api/people?op=profile&handle=${ADA}&tests=1`);
+  const everyList = await api("/api/people?op=collections&tests=1");
+  const searched = await api(`/api/people?op=collections&tests=1&q=${encodeURIComponent(LIST)}`);
+  const sitemap = await api("/sitemap.xml");
+  const nowhere = {
+    profile: profileHtml.status === 200 && !profileHtml.text.includes(listId) && !profileHtml.text.includes(LIST),
+    "its profile's answer": profileJson.status === 200 && !JSON.stringify(profileJson.body).includes(listId),
+    directory: everyList.status === 200 && !(everyList.body.collections || []).some((one) => one.id === listId),
+    search: searched.status === 200 && !(searched.body.collections || []).some((one) => one.id === listId),
+    sitemap: sitemap.status === 200 && sitemap.text.includes("<urlset") && !sitemap.text.includes(`/c/${listId}`),
+  };
+  for (const [where, absent] of Object.entries(nowhere)) check(`shared by its link, it is not in the ${where}`, absent);
+  await page.click("#unshare");
+  const stopped = await toastSays(page).catch(() => "");
+  const gone = await api(byLink);
+  check(`Stop sharing ("${stopped.slice(0, 60)}"): the next request for its link is ${gone.status}, its name nowhere`,
+    /Stopped sharing/.test(stopped) && gone.status === 404 && !gone.text.includes(LIST));
+  const again = await api("/api/people?op=list_link", { method: "POST", token: ada.access_token, body: { id: listId, on: true } });
+  const newKey = new URL(again.body.link || "http://x/").searchParams.get("link") || "";
+  const oldAgain = await api(byLink);
+  const newOpens = await api(`/c/${listId}?link=${newKey}&tests=1`);
+  check(`shared again: a new key (${newKey !== key ? "new" : "the same"}), the old link ${oldAgain.status}, the new ${newOpens.status}`,
+    again.status === 200 && again.body.visibility === "link" && /^[A-Za-z0-9_-]{22}$/.test(newKey) && newKey !== key
+    && oldAgain.status === 404 && newOpens.status === 200);
+  const off = await api("/api/people?op=list_link", { method: "POST", token: ada.access_token, body: { id: listId, on: false } });
+  const bobTries = await api("/api/people?op=list_link", { method: "POST", token: bob.access_token, body: { id: listId, on: true } });
+  check(`only its owner shares it: Bob's list_link ${bobTries.status}; hers off again ${off.status}`, bobTries.status === 404 && off.status === 200);
 
   // --- 6. The profile's Sets tab ----------------------------------------------
   console.log("her profile shows the sets she owns once she chooses");
@@ -387,21 +518,76 @@ try {
   check(`its theme filter keeps it: ${themed.text.includes(`set:${SET}`) ? "yes" : "no"}`, themed.text.includes(`set:${SET}`));
 
   // --- 7. A Rebrickable CSV in, a CSV out ------------------------------------------
-  console.log("a small Rebrickable CSV brought in, and the sets she owns downloaded");
-  await page.goto(`${site}/lists`, { waitUntil: "load" });
-  await page.waitForSelector("#import:not([hidden])", { timeout: 30000 });
-  await page.click("#import");
-  await page.waitForSelector("dialog.lists-dialog[open] input[type=file]");
-  await page.setInputFiles("dialog.lists-dialog input[type=file]", { name: "rebrickable_sets.csv", mimeType: "text/csv",
-    buffer: Buffer.from(`Set Number,Quantity,Includes Spares\n${IMPORTED},1,True\n`) });
-  await shot(page, "12_import-1280-light.png");
-  await page.click('dialog.lists-dialog button[type="submit"]');
+  console.log("a small Rebrickable CSV shown, cancelled, then brought in; the sets she owns downloaded");
+  // What it should show, reckoned here: Galaxy Explorer to add, King's
+  // Castle (hers since step 2) already there, 99999-1 no set at all.
+  const CSV = `Set Number,Quantity,Includes Spares\n${IMPORTED},1,True\n${SET},1,True\n99999-1,1,True\n`;
+  const reckoned = { matched: 1, already: 1, missing: 1 };
+  const rowBefore = JSON.stringify(((await api("/api/collection", { token: ada.access_token })).body.sets || []));
+  const bring = async () => {
+    await page.goto(`${site}/lists`, { waitUntil: "load" });
+    await page.waitForSelector("#import:not([hidden])", { timeout: 30000 });
+    await page.click("#import");
+    await page.waitForSelector("dialog.lists-dialog[open] input[type=file]");
+    await page.setInputFiles("dialog.lists-dialog input[type=file]", { name: "rebrickable_sets.csv", mimeType: "text/csv",
+      buffer: Buffer.from(CSV) });
+    await page.click('dialog.lists-dialog button[type="submit"]');
+    await page.waitForSelector('dialog.lists-dialog[open] [data-import-count="matched"]', { timeout: 30000 });
+    return page.evaluate(() => Object.fromEntries([...document.querySelectorAll("dialog.lists-dialog[open] [data-import-count]")]
+      .map((one) => [one.dataset.importCount, Number(one.textContent.replace(/\D/g, "")) || 0])));
+  };
+  const counts = await bring();
+  const button = await page.evaluate(() => document.querySelector('dialog.lists-dialog[open] button[type="submit"]')?.textContent || "");
+  check(`its preview before anything is written: ${JSON.stringify(counts)}, "${button}" (reckoned ${JSON.stringify(reckoned)})`,
+    counts.matched === reckoned.matched && counts.already === reckoned.already && counts.missing === reckoned.missing && /Add 1 set/.test(button));
+  await shot(page, "12_import-preview-1280-light.png");
+  await page.locator("dialog.lists-dialog[open] .actions button", { hasText: "Cancel" }).first().click();
+  await until(page, () => !document.querySelector("dialog.lists-dialog[open]"), "cancelled", 15).catch(() => null);
+  await page.waitForTimeout(1500);
+  const rowAfterCancel = JSON.stringify(((await api("/api/collection", { token: ada.access_token })).body.sets || []));
+  check(`Cancel wrote nothing: ${IMPORTED} owned ${await ownedOf(ada, IMPORTED)}, the sets the same (${rowAfterCancel === rowBefore})`,
+    rowAfterCancel === rowBefore && (await ownedOf(ada, IMPORTED)) === 0);
+  await bring();
+  await page.click('dialog.lists-dialog[open] button[type="submit"]');
   await until(page, () => !document.querySelector("dialog.lists-dialog[open]"), "imported", 60);
+  check(`Add wrote what it showed: King's Castle still ${await ownedOf(ada, SET)} (already there, left as it was)`,
+    (await ownedOf(ada, SET)) === 1);
   const importedOwned = await untilApi(async () => ((await ownedOf(ada, IMPORTED)) === 1 ? 1 : null), "imported");
   await page.waitForSelector(`#items .model[data-key="set:${IMPORTED}"]`, { timeout: 30000 }).catch(() => null);
   const shownNow = await page.evaluate(() => [...document.querySelectorAll("#items .model[data-key]")].map((one) => one.dataset.key));
   check(`${IMPORTED} owned (${importedOwned ?? 0}) and on the page: ${shownNow.join(", ")}`, importedOwned === 1
     && shownNow.includes(`set:${IMPORTED}`) && shownNow.includes(`set:${SET}`));
+  // A list's own Add sets: typed, shown, Cancel, then Add.
+  await page.goto(`${site}/lists?list=${listId}`, { waitUntil: "load" });
+  await page.waitForSelector("#import:not([hidden])", { timeout: 30000 });
+  const listBefore = (await api(`/api/people?op=list_items&id=${listId}`, { token: ada.access_token })).body.items?.map((one) => one.key) || [];
+  const typedIn = async () => {
+    await page.click("#import");
+    await page.waitForSelector("dialog.lists-dialog[open] textarea");
+    await page.fill("dialog.lists-dialog[open] textarea", `${SET}, ${IMPORTED.replace(/-1$/, "")} 99999`);
+    await page.click('dialog.lists-dialog button[type="submit"]');
+    await page.waitForSelector('dialog.lists-dialog[open] [data-import-count="matched"]', { timeout: 30000 });
+    return page.evaluate(() => Object.fromEntries([...document.querySelectorAll("dialog.lists-dialog[open] [data-import-count]")]
+      .map((one) => [one.dataset.importCount, Number(one.textContent.replace(/\D/g, "")) || 0])));
+  };
+  const listCounts = await typedIn();
+  check(`a list's Add sets shows ${JSON.stringify(listCounts)} (reckoned 1 to add, 1 there, 1 not found)`,
+    listCounts.matched === 1 && listCounts.already === 1 && listCounts.missing === 1);
+  await page.locator("dialog.lists-dialog[open] .actions button", { hasText: "Cancel" }).first().click();
+  await page.waitForTimeout(1200);
+  const listAfterCancel = (await api(`/api/people?op=list_items&id=${listId}`, { token: ada.access_token })).body.items?.map((one) => one.key) || [];
+  check(`Cancel wrote nothing to the list: ${listAfterCancel.join(", ")}`, listAfterCancel.join() === listBefore.join());
+  await typedIn();
+  await page.click('dialog.lists-dialog button[type="submit"]');
+  await until(page, () => !document.querySelector("dialog.lists-dialog[open]"), "added", 60);
+  const listAdded = await untilApi(async () => {
+    const keys = (await api(`/api/people?op=list_items&id=${listId}`, { token: ada.access_token })).body.items?.map((one) => one.key) || [];
+    return keys.includes(`set:${IMPORTED}`) ? keys : null;
+  }, "added to the list");
+  check(`Add put Galaxy Explorer in, and only it: ${listAdded?.join(", ") || "nothing"}`,
+    Boolean(listAdded) && listAdded.length === listBefore.length + 1);
+  await page.goto(`${site}/lists`, { waitUntil: "load" });
+  await page.waitForSelector("#download:not([hidden])", { timeout: 30000 });
   const download = page.waitForEvent("download", { timeout: 30000 });
   await page.click("#download");
   const file = await download;

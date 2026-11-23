@@ -1082,7 +1082,11 @@ behind it, an address that is not one held back, Email me a code moving on (the
 deployment really sends it, to a Resend test address), a wrong code refused, the
 minted code signing in, the session kept in the browser, a reload still signed
 in, `/admin` refusing the account, Account then Sign out bringing the
-screen back with the session gone, and no security-policy refusals. `--master`
+screen back with the session gone, and no security-policy refusals; then the
+throwaway shares a model with a clip and a list shared by its link alone
+(opening by the link, 200) and deletes its account: the clip gone from
+storage, the list's row gone from `model_collections` and its link a 404
+(lists2a). `--master`
 also signs the owner's account in (no email sent) and checks the admin page
 lists the accounts.
 

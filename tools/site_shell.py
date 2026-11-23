@@ -51,7 +51,7 @@ STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # mark; your settings are part of your account; the gallery's tabs at
 # their own addresses (tools/browse_pages.py) are the gallery.
 OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "library.html": "/gallery",
-       "collections.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
+       "gallery-lists.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
        "settings.html": "/profile", "plans.html": "/plans", "share-model.html": "/gallery"}
 
 

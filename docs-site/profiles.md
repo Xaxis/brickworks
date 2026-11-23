@@ -14,7 +14,7 @@ Your profile is your page on the site: your models, your builds and what you hav
 1. Open [brickworks.diy/profile](/profile). The first time, **Make your profile**: a name and a handle (3 to 24 lower-case letters, digits and dashes), then **Make my profile**. Your public page is then `/u/<handle>`.
 2. **Edit profile** sets your **Name**, **Handle**, **About you**, up to two links, **Across the top** (a model's picture for the banner) and up to three models **Pinned above the rest, in this order**. **Save** keeps them.
 
-Its tabs are **Models**, **Builds**, **Likes** (only when you chose to show them, in [Settings › Privacy](#settings)), **Saved** (your Favourites and [collections](/docs/collections)), **Sets**, **Insights** and **Achievements**. Saved, Sets and Achievements say *Only you see this tab.*
+Its tabs are **Models**, **Builds**, **Likes** (only when you chose to show them, in [Settings › Privacy](#settings)), **Saved** (the models you saved and [your lists](/docs/lists)), **Sets**, **Insights** and **Achievements**. Saved, Sets and Achievements say *Only you see this tab.*
 
 ![Your profile, signed in: the banner, your avatar, name and handle with Edit profile, Settings and Share, your numbers and achievements, and the tabs Models, Builds, Saved, Sets, Insights and Achievements over your models' cards.](/docs/img/profile-page.webp "brickworks.diy/profile, signed in.")
 
@@ -89,7 +89,7 @@ lib:blocking a person
 
 ## Your feed {#feed}
 
-[brickworks.diy/feed](/feed) is what the people you follow made, newest first: new models, new versions, photos of builds, and models added to collections you follow. With nothing new it shows **Latest on Brickworks** and designers to follow. In the app, **Account** says how many posts are new (*Account · 3*), with **Open your feed**.
+[brickworks.diy/feed](/feed) is what the people you follow made, newest first: new models, new versions, photos of builds, and models added to lists you follow. With nothing new it shows **Latest on Brickworks** and designers to follow. In the app, **Account** says how many posts are new (*Account · 3*), with **Open your feed**.
 
 <!-- covers
 ui:your feed page
