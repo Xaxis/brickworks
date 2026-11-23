@@ -162,6 +162,11 @@ whole cycle.
   take them back. Tell it what a set is missing and it marks one count a
   part for all your copies, says each change as it was and as it is, and
   makes a big set whole again in one call.
+- **The site's owner sees whether people go round the loop.** The owner's
+  console counts, a day at a time, how many people discovered something,
+  opened a model, changed one, shared, heard back from somebody and came
+  back, each against the days just before. It reads only what the site
+  counts already: nothing more is kept about anybody.
 
 ### Changed
 

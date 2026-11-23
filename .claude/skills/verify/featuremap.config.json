@@ -5563,6 +5563,27 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "the loop's read",
+      "entry": "api/_loop.js",
+      "reach": "python3 tools/minitest.py tests/test_loop.py   (GET /api/admin?op=loop 401 signed out, 404 to anybody else, the same from, to, plan, device, lang, signed and tests as op=analytics; before supabase/loop_funnel.sql {ready: false}; its accounts hashed as the counter's, the checks' and the test pool's only on ?tests=1; tests/fixtures/insights/loop_check.mjs: 12 people stopped at known steps, two back, the owner, the checks' account and the test pool beside them, each step, Stopped here, Built, the kept shares, the heard-back kinds and every LOOP name equal to the hand count, the filters, a sampled visit at its weight, no VIEW_SECRET, a made-up name no step, 400 days at most, nothing left behind, --load=500 timed under 1 s over 90 days; LOOP's names all kept (python3 tools/insights_names.py --check); dry run tools/loop_funnel_try.sql; docs/ANALYTICS.md The loop)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the loop as JSON",
+      "entry": "tools/loop_read.mjs",
+      "reach": "node tools/loop_read.mjs [--days=30 | --from=YYYY-MM-DD --to=YYYY-MM-DD] [--plan=all] [--tests] [--port=11390] [--out=FILE]   (the console's ?op=loop run by a local tools/web/relay_server.mjs against the live database, MASTER_EMAIL the checks' shared account (never the owner's), given only SUPABASE_URL, SUPABASE_SECRET_KEY and SUPABASE_PUBLISHABLE_KEY; says what a read without VIEW_SECRET cannot know; {ready: false} before supabase/loop_funnel.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the loop's card check",
+      "entry": "tools/web/loop_card_check.mjs",
+      "reach": "node tests/fixtures/insights/loop_check.mjs --card=OUT/card_loop.json, then heavy node tools/web/loop_card_check.mjs --card=OUT/card_loop.json --out=OUT [--port=11391]   (locally, the console and api/admin.js on a relay against the live database, MASTER_EMAIL the checks' shared account: the live ?op=loop says not measured before supabase/loop_funnel.sql; the fixture's read at 1280 and 390, light and dark, six steps, a legend of two, the table's numbers the read's, Built and within 30 beside, each step's names; Tab reaches the chart in one stop, arrows, Home and End; Definitions' rules; pictures in OUT; ends loop_card: all ok)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "the counter and its ask",
       "entry": "web/tally.js",
@@ -5573,7 +5594,7 @@
       "kind": "ui",
       "label": "the owner's Analytics",
       "entry": "web/admin-analytics.js",
-      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
+      "reach": "<deployment>/admin?tests=1#analytics/overview, funnels, retention, pages, studio, sources, speed, errors, claude, definitions as the owner: sparklines, the funnel, the loop (each step this range against the one before as a dumbbell and a table, Built beside, each step's names; ?op=loop), retention by week, the studio's tools, panels and never pressed (leaving out controls whose tool or command was used), sources and the desk's campaigns, load and frames by device, errors, Claude's tools, each number's name linking to its definition, sampled and turned-away visits said; each chart one Tab stop with arrow keys; the tab strip keeps the open tab in view at 390; filters by days, plan, device, language, signed in; before supabase/analytics.sql it says so (docs/ANALYTICS.md)",
       "area": "web"
     },
     {
