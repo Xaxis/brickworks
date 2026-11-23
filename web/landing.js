@@ -835,14 +835,15 @@ near("sets", sets);
 // hero3d, three.js and all, which a post's 3D turn uses too): asked for only
 // once the page is in (its load), the browser idle and the hero on the
 // screen, on a device that draws in 3D and has not asked to save data. One
-// that draws the finished mark slower than SLOW ms a frame (under 20 a
-// second: software, an old phone) keeps the poster. Any trouble on the way
-// keeps it too; a check that must turn it on a slow
+// that draws the finished mark slower than SLOW ms a frame keeps the poster
+// (software, an old phone): the assembly's middle frame takes about four
+// fifths of that, so whoever sees it move sees 30 frames a second or more.
+// Any trouble on the way keeps it too; a check that must turn it on a slow
 // machine says otherwise in sessionStorage "brickworks.hero.slow" (ms).
 // Signed in, the band is not shown and none of it is asked for. <html data-hero>: what it came to (poster, loading,
 // 3d, kept-slow, kept-failed), which tools/web/hero_check.mjs reads.
 const heroStage = document.getElementById("hero-stage");
-const SLOW = (() => { try { return Number(sessionStorage.getItem("brickworks.hero.slow")) || 50; } catch { return 50; } })();
+const SLOW = (() => { try { return Number(sessionStorage.getItem("brickworks.hero.slow")) || 40; } catch { return 40; } })();
 function heroCan() {
   if (navigator.connection?.saveData || (navigator.hardwareConcurrency || 4) < 4 || (navigator.deviceMemory || 4) < 2) return false;
   try {

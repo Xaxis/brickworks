@@ -15,6 +15,7 @@ import { langAt, number, told } from "/card.js";
 import { replyInCard, wireComposer } from "/composer.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
+import { ask, tell as tellOver } from "/kit.js";
 
 const root = document.querySelector("[data-talk]");
 const TESTS = new URLSearchParams(location.search).get("tests") === "1";
@@ -142,7 +143,7 @@ async function load() {
   mine = new Map((got.body.mine || []).map((one) => [Number(one.id), String(one.body)]));
   $("[data-blocked-some]").hidden = got.body.blocked_some !== true;
   wireActs();
-  const follow = $("[data-follow]");
+  const follow = $("[data-talk-follow]");
   if (follow) {
     follow.hidden = false;
     follow.setAttribute("aria-pressed", String(got.body.thread?.following === true));
@@ -231,9 +232,13 @@ function edit(post) {
 async function remove(post) {
   const id = Number(post.dataset.post);
   const first = post === $("#talk-posts > li");
-  if (!confirm(first ? say("Remove your post? It starts the thread, so the whole thread goes with it.") : say("Remove your post?"))) return;
+  if (!(await ask({ title: say("Remove your post?"), body: first ? say("It starts the thread, so the whole thread goes with it.") : "",
+    yes: say("Remove"), no: say("Cancel"), danger: true }))) return;
   const done = await call(asked("op=talk_change"), { method: "POST", body: { post: id, what: "remove" } });
-  if (done.status !== 200) return alert(told(done.body?.error, say("That did not work just now. Try again in a minute.")));
+  if (done.status !== 200) {
+    return tellOver({ title: say("Your post was not removed"),
+      body: told(done.body?.error, say("That did not work just now. Try again in a minute.")) });
+  }
   if (done.body.thread_removed) {
     location.href = `${langAt()}/talk${TESTS ? "?tests=1" : ""}`;
     return;
@@ -317,13 +322,13 @@ function threadPage() {
       },
     });
   }
-  const follow = $("[data-follow]");
+  const follow = $("[data-talk-follow]");
   follow?.addEventListener("click", async () => {
     const on = follow.getAttribute("aria-pressed") !== "true";
     follow.disabled = true;
     const done = await call(asked("op=talk_follow"), { method: "POST", body: { thread, on } });
     follow.disabled = false;
-    const said = $("[data-follow-said]");
+    const said = $("[data-talk-follow-said]");
     if (done.status !== 200) {
       said.hidden = false;
       said.textContent = told(done.body?.error, say("That did not work just now. Try again in a minute."));

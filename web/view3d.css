@@ -35,6 +35,8 @@
 /* On a phone a model's page has a square picture (directory.css), and the
    view is its shape too. */
 @media (width < 600px) { .model-page .view3d { aspect-ratio: 1 / 1; } }
+/* From 900 px 16:10, the picture's own shape there (directory.css, pagekit). */
+@media (width >= 900px) { .model-page .view3d { aspect-ratio: 16 / 10; } }
 :is(.model-page, .embed, .showcase, .turns) .view3d.shown {
 	border-color: var(--line); background: var(--picture-ground); pointer-events: auto;
 	transition: background-color 160ms var(--ease);
@@ -119,6 +121,8 @@ html.view3d-full { overflow: hidden; }
 .model-page .room-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* On a phone the picture is square (directory.css), and so is all of it. */
 @media (width < 600px) { .model-page .room-over { aspect-ratio: 1 / 1; } }
+@media (width >= 900px) { .model-page .room-over { aspect-ratio: 4 / 3; } }
+@media (width >= 1600px) { .model-page .room-over { aspect-ratio: 16 / 10; } }
 
 /* Comments on a part (partpins; tools/viewer/inline.js). A part is
    pressed and held by touch, or right-clicked, for its menu: so the

@@ -281,7 +281,7 @@ func _fill(said: Dictionary) -> void:
 	if not str(said["page"]).is_empty():
 		_page = ReloadOffer.button("See the challenge", false)
 		_page.tooltip_text = str(said["page"]).trim_prefix("https://")
-		_page.pressed.connect(func() -> void: OS.shell_open(str(said["page"])))
+		_page.pressed.connect(func() -> void: Outside.open_link(str(said["page"])))
 		buttons.add_child(_page)
 	if for_a_finger.is_valid():
 		for_a_finger.call(self)

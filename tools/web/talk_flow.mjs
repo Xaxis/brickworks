@@ -21,9 +21,10 @@
 //      opening the composer in the row (web/composer.js), Enter a new line,
 //      Ctrl+Enter asking to sign in, the list not left.
 //   2. Ann shares a model; its page offers her a Show and tell thread about
-//      it; she starts one there with a step of it and @Bea in her words: the
-//      thread shows the model's card, the step's, Bea's name as a link, and
-//      its JSON-LD (DiscussionForumPosting). The model's page links to it.
+//      it (in its Comments tab, chosen); she starts one there with a step of
+//      it and @Bea in her words: the thread shows the model's card, the
+//      step's, Bea's name as a link, and its JSON-LD
+//      (DiscussionForumPosting). The model's page links to it.
 //   3. Bea is told she was mentioned; she answers, and Ann is told of the
 //      reply, on her Notifications page too.
 //   4. Search finds the thread by a word of it, and says when nothing does.
@@ -51,6 +52,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -134,7 +136,7 @@ async function open(pathname, { who = null, phone = false } = {}) {
   page.on("console", (m) => {
     if (/SCRIPT ERROR|Content Security Policy|Refused to/.test(m.text())) errors.push(`${pathname}: ${m.text().slice(0, 220)}`);
   });
-  page.on("dialog", (dialog) => dialog.accept());
+  await answerAsks(page);
   await page.goto(`${site}${pathname}`, { waitUntil: "domcontentloaded", timeout: 120000 });
   return page;
 }
@@ -260,6 +262,8 @@ try {
     return place && !place.hidden && place.querySelector("a") ? place.querySelector("a").getAttribute("href") : null;
   }, "the model page's Talk offer", 60);
   check(`her model's page offers a Show and tell thread: ${offer}`, /\/talk\/new\?model=/.test(offer));
+  // The offer is in the Comments tab's panel, shown once that tab is chosen.
+  await annModel.click('#page-tabs [data-tab="comments"]');
   await annModel.click("#talk-about a");
   await until(annModel, () => document.querySelector("[data-start-form]") && !document.querySelector("[data-start-form]").hidden, "the start form");
   check("the form starts in Show and tell, about her model", await annModel.evaluate(() =>
@@ -403,13 +407,29 @@ try {
   check("a visitor no longer sees it; Bea sees it hidden", !after.includes(Number(beaPost.id)) && beaSees?.hidden === true);
 
   console.log("8. The month's challenge has its thread");
-  const challenges = await open("/talk/b/challenges?tests=1");
-  const challengeRows = await textOf(challenges, "#talk-list .talk-row");
-  check(`a thread in Challenges, by Brickworks: ${challengeRows[0]?.slice(0, 80)}`, challengeRows.some((one) => /Brickworks started it/.test(one)));
-  const challengePath = await challenges.evaluate(() => document.querySelector("#talk-list .talk-row-title a")?.getAttribute("href"));
-  await challenges.goto(`${site}${challengePath}`);
-  check("its thread leads to the challenge", await challenges.evaluate(() => Boolean(document.querySelector(".talk-challenge a[href*='/challenge'], #talk-posts a[href*='/challenge']"))));
-  await challenges.context().close();
+  // The month's challenge the checks' pool is shown is the real one when the
+  // pool has none of its own (api/_challenges.js challenge_page), and only a
+  // challenge's own pool has its thread (supabase talk_ensure): so the thread
+  // is looked for on that challenge's board, by its title. rel-m320 looked
+  // in the checks' pool for the real month's thread, found no row, and went
+  // to "...undefined/".
+  const month = (await api("/api/people?op=challenge&tests=1")).body?.challenge || null;
+  if (!month) {
+    console.log("  note  no month's challenge is open, so none has a thread to look for");
+  } else {
+    const challenges = await open(`/talk/b/challenges${month.test ? "?tests=1" : ""}`);
+    const rows = await challenges.evaluate(() => [...document.querySelectorAll("#talk-list .talk-row")].map((row) => ({
+      title: row.querySelector(".talk-row-title")?.textContent.replace(/\s+/g, " ").trim() || "",
+      said: row.textContent.replace(/\s+/g, " ").trim(), href: row.querySelector(".talk-row-title a")?.getAttribute("href") || "" })));
+    const its = rows.find((one) => one.title === month.title && /Brickworks started it/.test(one.said));
+    check(`"${month.title}" (${month.test ? "the checks' pool" : "the real one"}) has its thread in Challenges, by Brickworks: `
+      + `${its ? its.href : `not among ${rows.length} threads`}`, Boolean(its?.href));
+    if (its?.href) {
+      await challenges.goto(new URL(its.href, site).href);
+      check("its thread leads to the challenge", await challenges.evaluate(() => Boolean(document.querySelector(".talk-challenge a[href*='/challenge'], #talk-posts a[href*='/challenge']"))));
+    }
+    await challenges.context().close();
+  }
 
   console.log("8b. Cy replies from a row of Show and tell, without leaving the list");
   const list = await open("/talk/b/show?tests=1", { who: people.cy });

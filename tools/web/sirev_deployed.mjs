@@ -13,7 +13,8 @@
 // admin   /admin's bar has Sign in, signed in there in place, still on /admin.
 // tabs    a sign-in in one tab is the other's avatar; a sign-out reaches it.
 // consent the connector's sign-in page: boxes, a wrong code, Allow.
-// scroll  signed in from the header, the page stays where it was scrolled.
+// scroll  signed in from the header, the page stays where it was scrolled
+//         (a model's, on its Comments tab, scrolled to them).
 import { launch } from "./browser.mjs";
 import { mintCode, mintSession, deleteAccount } from "./session.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -131,7 +132,8 @@ try {
   const pages = [
     ["/gallery", async (p) => { await p.locator("#q").fill("castle tower"); }, (p) => p.evaluate(() => ({ q: document.querySelector("#q")?.value,
       tabs: [...document.querySelectorAll("[role=tab], .tabs a, .tabs button")].map((t) => t.textContent.trim()).filter(Boolean).slice(0, 8) }))],
-    ["MODEL", async (p) => { await p.locator("form.comment-new textarea").fill("half a comment"); },
+    // A model's comment box is on its Comments tab (pagekit), chosen first.
+    ["MODEL", async (p) => { await p.click('#page-tabs [data-tab="comments"]'); await p.locator("form.comment-new textarea").fill("half a comment"); },
       (p) => p.evaluate(() => ({ comment: document.querySelector("form.comment-new textarea")?.value,
         send: document.querySelector("form.comment-new button[type=submit]")?.textContent }))],
     ["/lists", null, (p) => p.evaluate(() => ({ lists: document.documentElement.dataset.lists, signedOutShown: !document.getElementById("signed-out")?.hidden }))],
@@ -220,7 +222,7 @@ try {
     const { context, page } = await fresh();
     await page.goto(`${site}/faq`, { waitUntil: "load", timeout: 120000 });
     const other = await context.newPage();
-    await other.goto(`${site}/collections`, { waitUntil: "load", timeout: 120000 });
+    await other.goto(`${site}/gallery-lists`, { waitUntil: "load", timeout: 120000 });
     await other.evaluate(() => { window.__kept = 1; });
     await headerSignIn(page);
     await codeIn(page);
@@ -278,6 +280,8 @@ try {
       const model = await page.evaluate(() => new URL(document.querySelector('a[href*="/m/"]').href).pathname);
       await page.goto(`${site}${model}`, { waitUntil: "load", timeout: 120000 });
       await page.waitForTimeout(3000);
+      // Its comments are a tab's panel (pagekit): shown, then scrolled to.
+      await page.click('#page-tabs [data-tab="comments"]');
       await page.evaluate(() => { window.__kept = 1; document.getElementById("comments")?.scrollIntoView({ block: "start" }); });
       await page.waitForTimeout(800);
       const y0 = await page.evaluate(() => Math.round(scrollY));

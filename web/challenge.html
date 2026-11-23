@@ -141,7 +141,7 @@
 			<div class="challenge-top">
 				<div class="challenge-words">
 					<p class="challenge-status"><span class="badge" id="status" hidden></span><span class="eyebrow" id="eyebrow">Monthly challenge</span></p>
-					<h1 id="title">This month’s challenge</h1>
+					<h1 class="obj-title" id="title">This month’s challenge</h1>
 					<p class="lede" id="brief"><span class="bone wide"></span><span class="bone"></span></p>
 					<p class="judge" id="judge" hidden></p>
 					<div class="rules-box" id="rules-part" hidden>
@@ -199,10 +199,20 @@
 			<div class="models turns" id="stack-card"></div>
 		</section>
 
+		<!-- Its parts as tabs (pagekit, web/tabs.js): the entries (the winners
+		     first once it ends), how it works and what comes next, the past
+		     challenges; a tab shown once its part has something (challenge.js). -->
+		<div class="obj-panels">
+		<div class="tabs obj-tabs" id="page-tabs" role="tablist" aria-label="The challenge">
+			<a href="#entries-part" role="tab" id="tab-entries-part" aria-controls="entries-part" data-tab="entries-part" data-also="entries winners" aria-selected="true" hidden>Entries</a>
+			<a href="#how-part" role="tab" id="tab-how-part" aria-controls="how-part" data-tab="how-part" data-also="how next" aria-selected="false" hidden>How it works</a>
+			<a href="#past-part" role="tab" id="tab-past-part" aria-controls="past-part" data-tab="past-part" data-also="past" aria-selected="false" hidden>Past challenges</a>
+		</div>
+		<div id="entries-part" role="tabpanel" aria-labelledby="tab-entries-part" tabindex="0">
 		<!-- A quick build's entries: every one, newest first, each turning in 3D on a tap. -->
 		<section id="prompt-entries" class="challenge-part" aria-labelledby="prompt-entries-h" hidden>
 			<div class="entries-head">
-				<h2 id="prompt-entries-h">Entries</h2>
+				<h2 class="visually-hidden" id="prompt-entries-h">Entries</h2>
 				<p class="note" id="prompt-count"></p>
 			</div>
 			<div class="models turns" id="prompt-cards"></div>
@@ -210,17 +220,6 @@
 				<p>Nobody has published one yet. Be the first: Start opens the template in the studio.</p>
 				<a class="cta" id="prompt-empty-start" href="/app">Start</a>
 			</div>
-		</section>
-
-		<!-- How a quick build works: no rules, no vote, one publish. -->
-		<section id="prompt-how" class="challenge-part" aria-labelledby="prompt-how-h" hidden>
-			<h2 id="prompt-how-h">How it works</h2>
-			<ol class="steps">
-				<li><h3>Start</h3><p>Start opens the template in the studio as a copy of your own: the plate and the brief.</p></li>
-				<li><h3>Build</h3><p>Build on it, by hand or with the assistant. There are no rules but the brief, and no vote.</p></li>
-				<li><h3>Publish</h3><p>Publish it in the gallery before the week ends, and it is entered: the publish dialog says so, and one tap keeps it out.</p></li>
-			</ol>
-			<p class="note">When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.</p>
 		</section>
 
 		<!-- Once it ends: who won, one in each group, before everything else. -->
@@ -232,7 +231,7 @@
 		<!-- The entries: the two groups as tabs, each with its count, a sort, and the gallery's cards. -->
 		<section id="entries" class="challenge-part" aria-labelledby="entries-h" hidden>
 			<div class="entries-head">
-				<h2 id="entries-h">Entries</h2>
+				<h2 class="visually-hidden" id="entries-h">Entries</h2>
 				<div class="segmented" id="sort" role="group" aria-label="Sort the entries" hidden></div>
 			</div>
 			<div class="tabs" id="group-tabs" role="tablist" aria-label="Groups"></div>
@@ -252,9 +251,22 @@
 			<p class="said" id="said" role="status"></p>
 		</section>
 
+		</div>
+		<div id="how-part" role="tabpanel" aria-labelledby="tab-how-part" tabindex="0" hidden>
+		<!-- How a quick build works: no rules, no vote, one publish. -->
+		<section id="prompt-how" class="challenge-part" aria-labelledby="prompt-how-h" hidden>
+			<h2 class="visually-hidden" id="prompt-how-h">How it works</h2>
+			<ol class="steps">
+				<li><h3>Start</h3><p>Start opens the template in the studio as a copy of your own: the plate and the brief.</p></li>
+				<li><h3>Build</h3><p>Build on it, by hand or with the assistant. There are no rules but the brief, and no vote.</p></li>
+				<li><h3>Publish</h3><p>Publish it in the gallery before the week ends, and it is entered: the publish dialog says so, and one tap keeps it out.</p></li>
+			</ol>
+			<p class="note">When the week ends, every entry is stacked into one model, credited to its makers, that anyone can turn and build. Enter every week to keep your streak on your profile.</p>
+		</section>
+
 		<!-- How it works: entering in three steps; voting and the rules folded. -->
 		<section id="how" class="challenge-part" aria-labelledby="how-h" hidden>
-			<h2 id="how-h">How it works</h2>
+			<h2 class="visually-hidden" id="how-h">How it works</h2>
 			<ol class="steps">
 				<li><h3>Build it</h3><p>Build to the brief in the app, by hand or with the assistant, keeping the rules.</p></li>
 				<li><h3>Share it in the gallery</h3><p>Share it with your name on it and Show it in the gallery ticked.</p></li>
@@ -293,10 +305,14 @@
 			</article>
 		</section>
 
+		</div>
+		<div id="past-part" role="tabpanel" aria-labelledby="tab-past-part" tabindex="0" hidden>
 		<section id="past" class="challenge-part" aria-labelledby="past-h" hidden>
-			<h2 id="past-h">Past challenges</h2>
+			<h2 class="visually-hidden" id="past-h">Past challenges</h2>
 			<div class="models past-grid" id="past-list"></div>
 		</section>
+		</div>
+		</div>
 	</div>
 </main>
 
@@ -339,7 +355,7 @@
 						<li><a href="/talk">Talk</a></li>
 						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenges</a></li>
-						<li><a href="/collections">Collections</a></li>
+						<li><a href="/gallery-lists">Lists</a></li>
 					</ul>
 				</div>
 				<div>

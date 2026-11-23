@@ -115,8 +115,9 @@
 //                (planted, as server's are); and /challenge?id=N's head:
 //                its title and words, canonical /de/challenge?id=N and the
 //                alternates;
-//   collections  /collections and a collection's /c/<id>: titles, tabs,
-//                alternates and every card and link in the language;
+//   collections  the gallery's Lists, /gallery-lists (/collections until
+//                lists2a), and a list's /c/<id>: titles, tabs, alternates
+//                and every card and link in the language;
 //   account      your own /profile, each of its tabs and Edit profile, and
 //                /settings: the deployment's pages, signed in only in the
 //                browser, every call they make (its Supabase's too)
@@ -402,6 +403,7 @@ async function modelSaid(browser, code, width, at) {
       url: new URL(document.querySelector('meta[property="og:url"]')?.content || location.href).pathname,
       tabs: [...document.querySelectorAll("#page-tabs a")].map((a) => a.firstChild.textContent.trim()),
       actions: [...document.querySelectorAll(".side .actions a")].map((a) => a.textContent.trim()),
+      more: [...document.querySelectorAll("#more .menu-list > a")].map((a) => a.textContent.trim()),
       heads: [...document.querySelectorAll(".rest section > h2")].map((h) => h.textContent.trim()),
     }));
     check(said.title === script(code, "{name} — a Brickworks model", { name: said.name }), `${where}: its title says "${said.title}"`);
@@ -411,14 +413,16 @@ async function modelSaid(browser, code, width, at) {
     const lang = code === "en" ? "" : `/${code}`;
     check(said.crumbs[0]?.[0] === script(code, "Gallery") && said.crumbs[0]?.[1] === `${lang}/gallery`,
       `${where}: its crumbs, ${said.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
-    const tabs = ["About", "Parts", "Comments", "Builds", "Remixes"].map((word) => script(code, word));
-    const actions = ["Build it", "Open in Brickworks", "Download"].map((word) => script(code, word));
-    check(tabs.every((word) => said.tabs.includes(word)) && actions.every((word) => said.actions.includes(word)),
-      `${where}: its tabs ${said.tabs.join(" / ")}; ${said.actions.map((text) => `"${text}"`).join(", ")}`);
-    // The comments drawn by its script: the Reply under each and a step's
-    // pill in the language, each date as the language writes it.
-    await tab.locator("#comments").scrollIntoViewIfNeeded();
-    await tab.waitForFunction(() => !document.getElementById("comments")?.hidden
+    // Its tabs in order (pagekit), its two actions, and Download first in More.
+    const tabs = ["Overview", "Comments", "Parts", "Builds", "Remixes"].map((word) => script(code, word));
+    const actions = ["Build it", "Open in the studio"].map((word) => script(code, word));
+    check(JSON.stringify(said.tabs.slice(0, tabs.length)) === JSON.stringify(tabs) && actions.every((word) => said.actions.includes(word))
+      && said.more[0] === script(code, "Download"),
+      `${where}: its tabs ${said.tabs.join(" / ")}; ${said.actions.map((text) => `"${text}"`).join(", ")}; More: ${said.more.join(", ")}`);
+    // The comments drawn by its script, in their tab: the Reply under each
+    // and a step's pill in the language, each date as the language writes it.
+    await tab.click('#page-tabs [data-tab="comments"]');
+    await tab.waitForFunction(() => !document.querySelector("#comments .comments-body")?.hidden
       && document.querySelector("#comments .comment-list li"), null, { timeout: 30000 });
     const chrome = await tab.evaluate(() => ({
       reply: document.querySelector("#comments button[data-reply]")?.textContent.trim() || "",
@@ -906,17 +910,22 @@ async function signingIn(browser, code, width, where) {
   }
 }
 
-// The app's loading page, before the engine has started.
+// The app's loading page, before the engine has started: its tip's label,
+// and a first visit's first tip on a computer (src/boot/shell.html bootTips).
 const LOADER = {
-  en: { tagline: "Every brick, at the size it really is.", of: "of", legal: "LEGO® is a trademark of the LEGO Group of companies" },
-  de: { tagline: "Jeder Stein, in seiner wahren Größe.", of: "von", legal: "LEGO® ist eine Marke der LEGO Unternehmensgruppe" },
-  fr: { tagline: "Chaque brique, à sa vraie taille.", of: "sur", legal: "LEGO® est une marque du groupe de sociétés LEGO" },
-  es: { tagline: "Cada ladrillo, a su tamaño real.", of: "de", legal: "LEGO® es una marca del grupo de empresas LEGO" },
+  en: { tagline: "Tip: Press F1 for every key and click Brickworks answers to, with a box to search them.", of: "of",
+    legal: "LEGO® is a trademark of the LEGO Group of companies" },
+  de: { tagline: "Tipp: Drücke F1 für jede Taste und jeden Klick, die Brickworks versteht, mit einem Suchfeld dazu.", of: "von",
+    legal: "LEGO® ist eine Marke der LEGO Unternehmensgruppe" },
+  fr: { tagline: "Astuce: Appuyez sur F1 pour voir chaque touche et chaque clic que Brickworks comprend, avec un champ pour les chercher.",
+    of: "sur", legal: "LEGO® est une marque du groupe de sociétés LEGO" },
+  es: { tagline: "Consejo: Pulsa F1 para ver cada tecla y cada clic que entiende Brickworks, con un cuadro para buscarlos.", of: "de",
+    legal: "LEGO® es una marca del grupo de empresas LEGO" },
 };
 async function loader(browser) {
   const read = async (tab) => tab.evaluate(() => ({
     lang: document.documentElement.lang,
-    tagline: document.querySelector("#boot .tagline")?.textContent.trim(),
+    tagline: `${document.getElementById("tip-label")?.textContent.trim()}: ${document.getElementById("tip-text")?.textContent.trim()}`,
     of: document.getElementById("count-of")?.textContent.trim(),
     legal: document.getElementById("legal")?.textContent.replace(/\s+/g, " ").trim(),
     links: document.querySelectorAll("#legal a").length,
@@ -927,7 +936,7 @@ async function loader(browser) {
       const tab = await context.newPage();
       try {
         await tab.goto(`${app}${code === "en" ? "" : `?lang=${code}`}`, { waitUntil: "domcontentloaded" });
-        await tab.waitForSelector("#boot .tagline", { state: "attached" });
+        await tab.waitForSelector("#tip-text", { state: "attached" });
         const said = await read(tab);
         const want = LOADER[code];
         check(said.tagline === want.tagline && said.of === want.of && said.legal.includes(want.legal) && said.links === 2,
@@ -946,7 +955,7 @@ async function loader(browser) {
   const tab = await context.newPage();
   try {
     await tab.goto(app, { waitUntil: "domcontentloaded" });
-    await tab.waitForSelector("#boot .tagline", { state: "attached" });
+    await tab.waitForSelector("#tip-text", { state: "attached" });
     const said = await read(tab);
     check(said.lang === "es" && said.tagline === LOADER.es.tagline, `the loading page with Spanish kept says "${said.tagline}"`);
   } catch (trouble) {
@@ -1083,7 +1092,7 @@ async function profileSaid(browser, code, width, handle) {
         .filter((url) => url.origin === location.origin && /^(?:\/[a-z]{2})?\/m\/[A-Za-z0-9]{10}$/.test(url.pathname))
         .map((url) => url.pathname),
     }));
-    const tabs = ["Models", "Builds", "Collections", "Likes"].map((word) => script(code, word));
+    const tabs = ["Models", "Builds", "Lists", "Sets", "Likes"].map((word) => script(code, word));
     check(chrome.edit === script(code, "Edit profile") && chrome.tabs.length && chrome.tabs.every((word) => tabs.includes(word)),
       `${where}: "${chrome.edit}", its tabs ${chrome.tabs.join(" / ")}`);
     const wrong = chrome.models.filter((at) => !at.startsWith(`${lang}/m/`));
@@ -1503,17 +1512,16 @@ async function challengeSaid(browser, code, width, past) {
   }
 }
 
-/// Every collection in [code], from /collections (the gallery's
-/// Collections tab), and one of them, from /c/[id]: in the language, but
-/// their names and who made them; the collection's people and models each
-/// linked in it.
+/// Every public list in [code], from /gallery-lists (the gallery's Lists
+/// tab), and one of them, from /c/[id]: in the language, but their names
+/// and who made them; the list's people and models each linked in it.
 async function collectionsSaid(browser, code, width, id) {
   const context = await newContext(browser, code, width);
   const tab = await context.newPage();
   const lang = code === "en" ? "" : `/${code}`;
   let where = `${code} collections ${width}`;
   try {
-    const said = await copyOpened(tab, code, "/collections", where);
+    const said = await copyOpened(tab, code, "/gallery-lists", where);
     await tab.waitForFunction(() => ["ready", "none"].includes(document.documentElement.dataset.collections), null, { timeout: 30000 });
     const chrome = await tab.evaluate(() => {
       const marked = document.querySelector('#tabs [aria-current="page"]');
@@ -1523,12 +1531,12 @@ async function collectionsSaid(browser, code, width, id) {
     });
     const { marked } = chrome;
     const orders = ["Recently added to", "Most followed"].map((word) => page(code, word));
-    check(said.title === script(code, "Collections — the Brickworks gallery") && chrome.title === said.title
-      && JSON.stringify(chrome.orders) === JSON.stringify(orders) && marked[0] === page(code, "Collections")
-      && marked[1] === `${lang}/collections`,
+    check(said.title === script(code, "Lists — the Brickworks gallery") && chrome.title === said.title
+      && JSON.stringify(chrome.orders) === JSON.stringify(orders) && marked[0] === page(code, "Lists")
+      && marked[1] === `${lang}/gallery-lists`,
       `${where}: "${said.title}", its tab "${marked[0]}" ${marked[1]}, its orders ${chrome.orders.map((text) => `"${text}"`).join(", ")}`);
     const away = chrome.lists.filter((to) => !to.startsWith(`${lang}/c/`));
-    check(chrome.lists.length && !away.length, `${where}: ${chrome.lists.length} collections open in ${code}${away.length ? `, not: ${away[0]}` : ""}`);
+    check(chrome.lists.length && !away.length, `${where}: ${chrome.lists.length} lists open in ${code}${away.length ? `, not: ${away[0]}` : ""}`);
     await copyRead(tab, code, width, where, "collections", THEIRS_COLLECTIONS);
     where = `${code} collection ${width}`;
     const list = await copyOpened(tab, code, `/c/${id}`, where);
@@ -1538,10 +1546,10 @@ async function collectionsSaid(browser, code, width, id) {
       who: document.querySelector(".list-head .handle a")?.textContent.trim() || "",
       links: [...document.querySelectorAll("main a[href]")].map((a) => new URL(a.href, location.href))
         .filter((url) => url.origin === location.origin && /^(?:\/[a-z]{2})?\/[mu]\//.test(url.pathname)).map((url) => url.pathname) }));
-    const collected = script(code, "Collected by {who} · updated {when}", { who: shown.who, when: "" });
+    const collected = script(code, "Made by {who} · updated {when}", { who: shown.who, when: "" });
     const wrong = shown.links.filter((to) => !to.startsWith(`${lang}/`) || !/^\/(?:[a-z]{2}\/)?[mu]\//.test(to) || (code !== "en" && !to.startsWith(`/${code}/`)));
-    check(list.title === script(code, "{name} — a collection in the Brickworks gallery", { name: shown.name })
-      && shown.eyebrow === script(code, "Collection") && shown.by.startsWith(collected.trim()) && shown.links.length && !wrong.length,
+    check(list.title === script(code, "{name} — a list on Brickworks", { name: shown.name })
+      && shown.eyebrow === script(code, "List") && shown.by.startsWith(collected.trim()) && shown.links.length && !wrong.length,
       `${where}: "${list.title}", "${shown.eyebrow}", "${shown.by}", ${shown.links.length} links to its people and models in ${code}`
       + `${wrong.length ? `, not: ${wrong[0]}` : ""}`);
     await copyRead(tab, code, width, where, "collection", THEIRS_LIST);

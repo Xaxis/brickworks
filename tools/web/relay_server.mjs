@@ -29,7 +29,8 @@
 // With --static=DIR it also serves a web export from DIR, with the two
 // headers the threaded build needs, so a local build talks to these same
 // functions as it would on Vercel: tools/web/freeze_check.mjs drives one
-// over the connector this way.
+// over the connector this way. The export is at / and, as on a deployment,
+// at /app (its address kept).
 //
 //   node tools/web/relay_server.mjs 8790 --static=build/web
 //
@@ -100,6 +101,7 @@
 // a person's Notifications joined with their Talk (tools/web/talk_stand_in.mjs),
 // for tools/web/talk_flow.mjs.
 import http from "node:http";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { Readable } from "node:stream";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
@@ -255,7 +257,9 @@ const MAPPED = [
 ];
 // And the site's pages at their bare names, as deploy.sh serves them.
 const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"], [/^\/gallery\/?$/, "gallery.html"],
-  [/^\/profile\/?$/, "profile.html"], [/^\/settings\/?$/, "settings.html"]];
+  [/^\/profile\/?$/, "profile.html"], [/^\/settings\/?$/, "settings.html"],
+  // A build being watched (buildlive), its name read by the page itself.
+  [/^\/live\/[A-Za-z0-9]{12}\/?$/, "live.html"]];
 // .mjs as the host serves it: a module script, which a browser refuses as
 // anything else (orangecheck's button, web/oc-button.mjs).
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", mjs: "text/javascript", svg: "image/svg+xml",
@@ -299,6 +303,7 @@ function page(pathname) {
   if (lang) {
     const rest = (lang[2] || "/").replace(/\/$/, "") || "/";
     const copy = rest === "/" ? "index.html" : rest === "/oauth/authorize" ? "oauth/authorize.html"
+      : /^\/live\/[A-Za-z0-9]{12}$/.test(rest) ? "live.html"
       : /^\/[a-z0-9_-]+\.[a-z]+$/.test(rest) ? rest.slice(1) : `${rest.slice(1)}.html`;
     if (!/^(?:oauth\/)?[a-z0-9_-]+\.[a-z]+$/.test(copy)) return null;
     const file = new URL(`${lang[1]}/${copy}`, web);
@@ -316,8 +321,37 @@ function page(pathname) {
   return { body: readFileSync(file), type: TYPES[name.split(".").pop()] || "application/octet-stream" };
 }
 
+// --egress: what each op read from Supabase, in bytes (bodies and their
+// headers, held tables' answers too, as the project would have sent them),
+// at /__egress, for tools/web/live_flow.mjs's bytes per watcher-minute.
+// Installed last, over every held table, so it counts what the handlers ask.
+const egress = process.argv.includes("--egress") ? {} : null;
+const asking = new AsyncLocalStorage();
+if (egress) {
+  const inner = globalThis.fetch;
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  globalThis.fetch = async (input, init) => {
+    const reply = await inner(input, init);
+    const address = String(input?.url || input);
+    if (base && address.startsWith(base)) {
+      const body = await reply.clone().arrayBuffer().catch(() => new ArrayBuffer(0));
+      let head = 0;
+      reply.headers.forEach((value, name) => { head += name.length + value.length + 4; });
+      const one = (egress[asking.getStore() || "other"] ||= { calls: 0, bytes: 0, sent: 0 });
+      one.calls += 1;
+      one.bytes += body.byteLength + head;
+      one.sent += String(init?.body || "").length;
+    }
+    return reply;
+  };
+}
+
 http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
+  if (egress && url.pathname === "/__egress") {
+    outgoing.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    return outgoing.end(JSON.stringify(egress));
+  }
   if (arrivals && url.pathname === "/__arrived") {
     const since = Number(url.searchParams.get("since") || 0);
     outgoing.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
@@ -433,12 +467,16 @@ http.createServer(async (incoming, outgoing) => {
     handler = await route("people");
     Object.assign(query, { op: "challenge", picture: "1" });
   }
-  // The app is at /app, which the deployment sends on to the build with
-  // its query (?view=<id>, ?copy=<id>) intact.
-  if (site && /^\/app\/?$/.test(url.pathname)) {
-    outgoing.writeHead(302, { location: `/${url.search}` });
+  // The app is at /app, which the deployment answers with the build's page,
+  // the address kept with its query (?view=<id>, ?copy=<id>): deploy.sh's
+  // route. Sent on to / here, the app's own sign-in screen sent the site
+  // then=/?copy=…, which /profile rightly follows only to /app, and the
+  // person was left on /profile (fmfin, 2026-11-23).
+  if (site && url.pathname === "/app/") {
+    outgoing.writeHead(302, { location: `/app${url.search}` });
     return outgoing.end();
   }
+  if (site && url.pathname === "/app" && serveFile("/index.html", outgoing)) return;
   if (!handler && !found && !mapped && serveFile(url.pathname, outgoing)) return;
   if (!handler) {
     const file = incoming.method === "GET" ? page(url.pathname) : null;
@@ -515,7 +553,7 @@ http.createServer(async (incoming, outgoing) => {
     get destroyed() { return outgoing.destroyed; },
   };
   try {
-    await handler(request, response);
+    await asking.run(String(url.searchParams.get("op") || url.pathname), () => handler(request, response));
   } catch (trouble) {
     // Thrown after it began answering (headers sent): the answer ends there,
     // as Vercel ends it, and the server goes on serving everyone else.

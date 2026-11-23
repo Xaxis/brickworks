@@ -90,11 +90,28 @@ sized its own titles, from 26 to 74 px. Now:
   for the app, `assets/ui/mark.svg` (the app reads nothing under web/).
   Change the mark in `web/icon.svg`, run the script, commit what it wrote;
   `tests/test_mark.py` and `tests/test_boot_splash.py` fail on a copy that
-  drifted. In the app the mark opens the app's own menu, first in the menu
-  bar where its name in words was (`ModelBar.mark`: About, the website, the
-  docs, your account, and in a browser Back to brickworks.diy), where a CAD
-  program keeps its logo's menu. It is never drawn on the model, a render
-  or an export.
+  drifted. In the app it heads **the app's header**
+  (appchrome, 2026-11-23, `src/ui/app_header.gd`), the site's own: the mark
+  at 26 px and the name at 18 px bold at the left, the app's menu and
+  Account at the right, 60 px and a line on the site's `--bg`, in every mode
+  of the app (the studio, a shared model's viewer, Build it's step player,
+  the page laid out by hand); what a mode adds goes under it, never in its
+  place. The owner found Build it's view with no mark in its header ("it
+  seems obvious that you should build a cohesive consistent view in that
+  regard when using the app"). In a browser the mark is the way home, as
+  the site's is, and the app's menu is **Menu** beside Account (About, the
+  website, the docs, your account, Back to brickworks.diy); the desktop app
+  keeps that menu on the mark, where a CAD program keeps its logo's menu. A
+  phone's top bar is the same header with its tools in it, Menu at the
+  right holding Account, as the site's phone header does. What came into
+  the feed is a count over Account's corner, as the site draws it, never in
+  its words: written in, it widened Account as it came and moved Menu from
+  under the pointer. Where a window is too narrow for the studio's menus
+  and the header at full size on one line, the header takes fewer points,
+  the same in every mode.
+  `tests/test_app_header.py` fails when its numbers and site.css's part, and
+  `src/dev/appchrome_probe.gd` compares the header across the modes. It is
+  never drawn on the model, a render or an export.
 - **Four breakpoints** (2026-10-26): **600, 900, 1200 and 1600 px**, and
   no others, in `site.css`, `directory.css` and a page's own `<style>`.
   Under 600 is a phone, 600 to 900 a tablet, 900 to 1200 a laptop, 1200
@@ -281,6 +298,35 @@ is on the page, `hidden`, for the script to show.
   keeps the keyboard in it (Tab from the last control comes round to the
   first) and, closed, gives the focus back to what opened it, or to the
   More menu's button when what opened it was folded away with the menu.
+- **Ask** (`web/kit.js` `ask` and `tell`, `dialog.ask`; dialogkit,
+  2026-11-23): the question before an act and the word after one, on the
+  site and in /admin (`admin-kit.js` passes it on), never the browser's
+  `confirm()`, `alert()` or `prompt()`, which looked like another program's
+  and asked in its words (the owner found them in /admin). `await ask({
+  title, body, yes, no, danger })` answers true or false: the title the
+  question ("Delete this account and everything in it, for good?"), the
+  body a line of what it does, `yes` the act's own words ("Delete my
+  account", never OK), `no` Cancel. The site's dialog, as above: an
+  `alertdialog` named by its title and described by its line, over the
+  scrim, rising in over `--motion-open`, the answer first. `danger` (it
+  cannot be undone, or it takes something from somebody) makes the answer
+  `.cta.ghost.danger` and puts the focus on Cancel, the safe choice; else
+  the answer is the yellow `.cta` and has the focus. Escape and a press on
+  the scrim answer no; Enter answers whatever button has the focus, so it
+  confirms only from the answer. Closed, the focus goes back to the button
+  that asked, once that button is let go (an act's button is held while it
+  runs); an ask over /admin's sheet gives it back in the sheet. On a phone
+  (under 600 px) it is a sheet from the window's foot, the buttons stacked
+  its width, Cancel last, under the thumb. `tell({ title, body })` is the
+  same with one OK, for what went wrong after an act (Talk's Remove). Words
+  through `say()`, each with its de/fr/es entry. No `prompt()` was ever on
+  the site, so there is no field for one: a question that needs words is a
+  form on the page or in a dialog of its own. `tools/check.sh` (and its
+  `--lists`) fails naming the file and line of any bare `confirm(`,
+  `alert(` or `prompt(` in web/ or api/; `tools/web/ask_flow.mjs` drives
+  the ask with the mouse, the keyboard alone and a screen reader's tree;
+  other flows answer it with `tools/web/asks.mjs` `answerAsks` where they
+  accepted a confirm.
 - **Sheet**: `dialog.sheet`, a dialog at the window's right edge, the
   window's height, holding one row of a list whole over the list it came
   from (/admin's account and an act of its audit; Stripe's, Supabase
@@ -415,8 +461,9 @@ is on the page, `hidden`, for the script to show.
   `load(n)` answering `{ items, more, pages, total }`, and `start()`; a
   card put in later fires `pager:drawn` on the list (`web/follow.js` wires
   a collection's Follow on it). Not for shelves (`.models.scroller`).
-- **Width**: one for every page, `.wrap`: the window less its 16 px
-  gutters, up to `--page-wide` (1,600 px), the header's and the footer's
+- **Width**: one for every page, `.wrap`: the window less its
+  `--gutter` (16 px on a phone, 24 from 600 px, 32 from 1200 px;
+  sitepolish), up to `--page-wide` (1,600 px), the header's and the footer's
   too, so every page's edges are the gallery's and the header's (homefix,
   2026-11-23, the owner: Talk "does not have the same page width as the
   other pages"; a page of words had kept a narrower `--page`, 1,140 px,
@@ -429,9 +476,15 @@ is on the page, `hidden`, for the script to show.
   fails any page width set but `.wrap`'s, and Talk's pages off `.wrap`. A
   model's page: from 1200 px its column is 480 px, room for its action
   bar in one row inside the panel it is from 900 px (site357), and its
-  picture the rest; on a phone (under 600 px) its picture is square, the model drawn
-  as large as its width lets it (`web/model-page.js` `fitPicture`, by
-  transform alone, so nothing shifts).
+  picture the rest; on a phone (under 600 px) its picture is square, and
+  from 900 px 4:3 (16:10 from 1600 px, so it stays on a 900 px tall
+  window's first screen), as tall as the column beside it, where it was
+  the picture's own 1200 x 630 and 380 px tall beside a column of 560
+  (sitepolish); in each the model is drawn as large as its width lets it
+  (`web/model-page.js` `fitPicture`, by transform alone, so nothing
+  shifts); between 600 and 900 px the frame is the picture's own shape.
+  Its facts are one quiet line of words, a dot between two on a line,
+  those that lead somewhere links, not pills.
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
@@ -450,7 +503,14 @@ is on the page, `hidden`, for the script to show.
   /feed, /notifications, /admin and the 404. Before, each opened on a bare
   title of its own making and read as another product beside the new home
   and pricing.
-- **Empty**: `.state`, a dashed box for what has nothing yet.
+- **Empty**: `.state`, a dashed box for what has nothing yet: a quiet
+  panel on `--bg-soft`, its words and its way on (`.actions`) in the middle
+  (sitepolish, 2026-11-23: a faint line round words in its corner read as a
+  placeholder nobody finished). One laid out as a row (`.feed-ask`,
+  `.share-drop`) keeps its start.
+- **Gate**: `.gate`, what a page that is yours alone says signed out
+  (Settings, Notifications): its lede and Sign in, on a panel where the
+  page's own would be.
 - **Segmented**: `.segmented`, a few buttons in a row, the chosen one
   `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field
   (its buttons 36 px); under 600 px its buttons are a finger's 44.
@@ -647,13 +707,68 @@ is on the page, `hidden`, for the script to show.
   as the model's page's is. Every link opens a tab of its own
   (`<base target="_blank">`), the 3D view's Open in the app too: the app
   cannot run in a frame.
+- **An object's page** (pagekit, 2026-11-23, the owner on a model's page:
+  "the comments section should be the second subtab ... drastically
+  improve the ui/ux patterns ... across the entire site so everything looks
+  far more organized and intuitive"): a model's, a set's, an LDraw
+  model's, a profile, a collection, a challenge and a Talk thread are one
+  pattern, the way Printables and MakerWorld lay theirs out.
+  - Layout: `.obj-layout`, a grid of the page's main part and its aside.
+  - The aside: `.obj-aside`, a `--panel` card at 360 px (380 px from
+    1200 px), sticky under the header at 900 px and up, and the page's
+    head under 900 px. It holds:
+    - the title, `h1.obj-title`: 24 to 30 px, two lines at most, the
+      whole name in its `title` when long;
+    - who made it;
+    - ONE primary `.cta` and, at most, one `.cta.ghost` second;
+    - Download and the rest in More;
+    - a social row of icon buttons (Like, Save, Share);
+    - one quiet line of facts, `.obj-facts`, dot-separated.
+  - Its parts are tabs (`api/_tabs.js` `tabsHtml`, `web/tabs.js`
+    `startTabs`):
+    - The row is `.tabs.obj-tabs[role=tablist]` of `a[role=tab]`, each
+      `href="#key"`, with its count in `.n` once there is one.
+    - Each panel is `[role=tabpanel]`, labelled by its tab, `tabindex=0`
+      and `hidden` unless chosen, all in `.obj-panels`.
+    - Only the chosen tab's panel shows.
+    - A press, the arrow keys, Home and End choose a tab, and focus
+      follows.
+    - The address carries the key (`history.pushState`, none for the
+      first tab), so a link to `#comments` opens on Comments and Back
+      goes to the tab before.
+    - A link to anything inside a panel (`#comment-12`, a fact's
+      `#versions`) chooses that panel's tab. An address naming no tab
+      (Skip to content's `#main`) leaves the tabs as they are.
+    - With no script, site.css shows the panel the address names
+      (`:target`).
+  - An empty tab is one line, `.obj-empty`, with its way in, never a
+    block of its own.
+  - A profile's tabs are pages (`?tab=`), so they are a `nav` styled
+    `.obj-tabs`, not a tablist.
 - **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
-  `.media`, the picture and under it `.media-strip.scroller`, a row of
-  thumbnails, the one shown large `aria-current` and edged
-  in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
-  and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
-  sticky under the header, with a ground of its own only once stuck. The
-  Its Parts (`.parts`, docs/SOCIAL.md, site278): the count in a `.note` ("N parts in M lots"),
+  an object's page (above).
+  - `.media`: the picture, 16:10 on a laptop, so the tabs under it are on
+    an 800 px window's first screen. Under it, `.media-strip.scroller`, a
+    row of thumbnails; the one shown large is `aria-current` and edged in
+    `--accent-edge`.
+  - `.side`: its aside, sticky beside the picture.
+    - The title; the designer with Follow.
+    - Build it, then Open in the studio with its second half, With your
+      Claude.
+    - The action bar `#marks` of Like, Save, Share and More (Download
+      first in More).
+    - Its facts as pills, and the lines of what it came from.
+  - `#page-tabs`, its tabs in order:
+    - Overview: its words, tags and licence, and the public collections
+      it is in;
+    - Comments;
+    - Parts;
+    - Builds;
+    - Remixes;
+    - Versions, once there are two.
+  - Comment and I built it are no longer buttons: their tabs carry those
+    counts.
+  - Its Parts (`.parts`, docs/SOCIAL.md, site278): the count in a `.note` ("N parts in M lots"),
   `.parts-bar` (a `.segmented` Colour · Kind, then the shops' lists as
   `.cta.ghost.small` links that download), and `ul.lot-list`, a row a
   colour or kind (`li.group`: its swatch, name and count) over a row a lot
@@ -661,12 +776,11 @@ is on the page, `hidden`, for the script to show.
   name and `.meta`, number and colour, each one line that ends in an
   ellipsis; `.qty`), every row 60 px so the space the list takes is kept
   before it comes; a colour's swatch is an inline `svg.swatch` filled with
-  the brick's own colour, which is the model's, not the site's. Download is
-  a `.cta.ghost` in the column's actions: Build it across the column, Open
-  in Brickworks and Download sharing the row under it. The
+  the brick's own colour, which is the model's, not the site's. The
   public collections it is in (docs/SOCIAL.md U11) are a fact `a.pill`
-  ("In 2 collections"), a tab and `.in-lists`, a `.list-cards` of their
-  covers, each saying whose; none of the three while it is in none. Its
+  ("In 2 collections") and `.in-lists` at the end of Overview, a
+  `.list-cards` of their covers, each saying whose; neither while it is in
+  none. Its
   comments (docs/SOCIAL.md U8) are threads: each comment a `--panel` card
   with its writer's 40 px avatar beside it, Designer (`.pill`) on the
   owner's and its step as `a.pill`, then `.replies` under a 2 px `--line`
@@ -696,10 +810,10 @@ is on the page, `hidden`, for the script to show.
   nothing else.
 - **An LDraw set's page** (`/library/<id>`, library333) is a model's page,
   drawn by the same `sharePage`: its `.crumbs` the LDraw library and its
-  theme; Open in Brickworks the column's `.cta` (the app opens it as its
-  Library does) and Download beside it; an action bar of Share and More
-  alone, its sheet with no embed; its facts as pills, the theme and year
-  `a.pill` links back to the shelf; About and Parts its only tabs; more of
+  theme; Open in the studio the column's `.cta` (the app opens it as its
+  Library does); an action bar of Share and More alone (Download first in
+  More), its sheet with no embed; its facts as pills, the theme and year
+  `a.pill` links back to the shelf; Overview and Parts its only tabs; more of
   its theme as `.models.scroller`. `/library` is the gallery on its Sets
   tab (below): Filters and a `.pills.scroller` of themes its bar of filters.
 - **A page to browse**: the gallery, one page (browse, 2026-11-02, the
@@ -758,7 +872,10 @@ is on the page, `hidden`, for the script to show.
   then a check (a filled bookmark for Save), the accent edge when
   pressed (`aria-pressed`; the words never change, so a voice names what
   it sees), ×N when more than one is owned; the chevron opens the lists,
-  with a dot when the thing is in one. In a compact grid only the icons.
+  with a dot when the thing is in one. In a compact grid, and in a phone's
+  two to a row, only the icons. With a mouse it comes over the picture as
+  the pointer or the keyboard reaches the card, and stays while the thing
+  is kept or in a list (sitepolish); on a touch screen it is always there.
   Every keep is in a toast with Undo. A set's page has the same as `.keep-bar`, three ghost `.cta`s: Own,
   Want, Add to a list.
 - **A thing's lists**: `dialog.keep-panel`, a popover by the button that
@@ -861,7 +978,11 @@ is on the page, `hidden`, for the script to show.
   none) and `.acts` (Follow as on a person's page, `.cta.ghost.follow`
   with `data-follow-list`, its words in `.said`; Share; More with Report
   it); on a phone the cover across the top at 2:1. Then its models as
-  `.models`, or a `.state`.
+  `.models`, or a `.state`. Since pagekit (2026-11-23) an object's page:
+  `.list-head` is its `.obj-aside` (the cover over its name, whose, its
+  words, numbers, then Follow as the one `.cta`, Share and More, with
+  Download as CSV first in More), its models `.obj-main`; on a phone the
+  aside heads the page, the cover 112 px beside its name.
 - **Achievements** (`web/card.js` `awardsHtml`, `levelName`, docs/SOCIAL.md
   U13 and section 7): `ul.pills.awards` after a person's `.numbers`, the
   two in one `.standing` row that wraps (beside them on a laptop, under
@@ -900,7 +1021,11 @@ is on the page, `hidden`, for the script to show.
   gallery's cards in `.models` with each card's vote line at its foot (a
   `.badge` Winner, Your vote, Your entry, or `.cta.ghost.small` Vote, asked
   once in a `dialog.report`); How it works as three `ol.steps` and two
-  `details.qa`; Coming next and Past challenges.
+  `details.qa`; Coming next and Past challenges. Under the head its parts
+  are an object page's tabs (pagekit): Entries (the winners first once it
+  ends), How it works (with Coming next) and Past challenges, each tab
+  shown once its part has something; each part's `h2` kept for a screen
+  reader only, the tab naming it.
 - **A challenge, between months** (`/challenge`, docs/SOCIAL.md U12):
   under the one shown, Coming next (`#next`, a `.next-one` panel: an
   `.accent` badge of the day it opens, its theme and days) and Past

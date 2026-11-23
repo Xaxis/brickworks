@@ -293,12 +293,15 @@ export function pager({ list, load = null, href = null, param = "page", size = 0
     requestAnimationFrame(() => { told.textContent = words; });
   }
 
-  /// The address saying what is shown, kept with what Back needs.
+  /// The address saying what is shown, kept with what Back needs, and the
+  /// key it had (a tab's, web/tabs.js: a challenge's #how-part was lost
+  /// each time its entries drew).
   function keep(extra = {}) {
     const kept = history.state && typeof history.state === "object" ? history.state : {};
     const pagers = { ...(kept.pagers || {}), [id]: { ...((kept.pagers || {})[id] || {}), first: state.first,
       last: state.last, ...extra } };
-    history.replaceState({ ...kept, pagers }, "", at(state.last));
+    const to = at(state.last);
+    history.replaceState({ ...kept, pagers }, "", to.includes("#") ? to : to + location.hash);
   }
 
   /// Page [n], asked ahead or now.

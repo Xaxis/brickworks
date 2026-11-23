@@ -18,7 +18,7 @@
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
 import { askToSignIn, email as signedInAs, signedIn } from "/account.js";
-import { $, TESTS, act, adminJson, ago, cell, count, day, emptyRow, make, post, resort, rowAct, say, segmented, sift, sortable, timeCell,
+import { $, TESTS, act, adminJson, ago, ask, cell, count, day, emptyRow, make, post, resort, rowAct, say, segmented, sift, sortable, timeCell,
   when }
   from "/admin-kit.js";
 import { keepInView, loadReport, whenChanged as galleryChanged } from "/admin-gallery.js";
@@ -623,11 +623,11 @@ async function person(account, again = false, told = "") {
       reason.name = "reason";
       reason.maxLength = 200;
       const form = make("form", "console-form", make("label", "", "Why ", make("small", "", "for you; kept with it"), reason));
-      form.append(make("div", "row", act("Take out the account", () => (confirm(`Take every model of ${one.email} out of the gallery, `
-        + "and keep them out? Their profile and public collections go too.")
-        ? post({ op: "bar", account }, said, "The account is out.", { body: { reason: reason.value },
-          after: () => afterPerson(account, "The account is out: none of its models is listed.") })
-        : Promise.resolve(false)), "cta ghost small")));
+      form.append(make("div", "row", act("Take out the account", async () => (await ask({
+        title: `Take every model of ${one.email} out of the gallery?`,
+        body: "They are kept out, and their profile and public lists go too.", yes: "Take out the account", danger: true }))
+        && post({ op: "bar", account }, said, "The account is out.", { body: { reason: reason.value },
+          after: () => afterPerson(account, "The account is out: none of its models is listed.") }), "cta ghost small")));
       form.addEventListener("submit", (event) => event.preventDefault());
       doing.append(form);
     }
@@ -722,11 +722,12 @@ function dataActs(one, account) {
     }
   }, "cta ghost small"));
   if (!one.owner) {
-    row.append(act("Sign out everywhere", () => (confirm(`Sign ${one.email || "this account"} out on every device, and end every `
-      + "Claude it let in? A page it has open keeps working until its sign-in would renew, within the hour; then it asks to sign in.")
-      ? post({ op: "sign_out", account }, said, (a) => `Signed out: ${a.sessions ?? 0} ${a.sessions === 1 ? "sign-in" : "sign-ins"} ended, `
-        + `${a.claudes ?? 0} ${a.claudes === 1 ? "Claude" : "Claudes"} let go.`, { after: () => { loaded.delete("audit"); } })
-      : Promise.resolve(false)), "cta ghost small"));
+    row.append(act("Sign out everywhere", async () => (await ask({
+      title: `Sign ${one.email || "this account"} out on every device, and end every Claude it let in?`,
+      body: "A page it has open keeps working until its sign-in would renew, within the hour; then it asks to sign in.",
+      yes: "Sign out everywhere", danger: true }))
+      && post({ op: "sign_out", account }, said, (a) => `Signed out: ${a.sessions ?? 0} ${a.sessions === 1 ? "sign-in" : "sign-ins"} ended, `
+        + `${a.claudes ?? 0} ${a.claudes === 1 ? "Claude" : "Claudes"} let go.`, { after: () => { loaded.delete("audit"); } }), "cta ghost small"));
   }
   box.append(row, said);
   if (one.owner) {
@@ -753,7 +754,7 @@ function dataActs(one, account) {
   done.setAttribute("role", "status");
   form.append(
     make("p", "", "Only at its person's request. Its models come out of the gallery and their links stop working; its profile, "
-      + "favourites, lists, comments, follows, photos, the sets it owns and its AI apps' connections are deleted with it, exactly as "
+      + "saved models, lists, comments, follows, photos, the sets it owns and its AI apps' connections are deleted with it, exactly as "
       + "when they delete it themselves. "),
     make("p", "", make("b", "", "This is irreversible: nothing of it can be brought back.")),
     make("label", "", `Type ${one.email || "its address"} to confirm`, typed),

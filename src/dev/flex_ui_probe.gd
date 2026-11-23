@@ -1,5 +1,5 @@
 ## Laying a hose and a chain by hand, the way a person does it, in the real
-## scene: Make, Hose, tube or chain…, a click on one pin hole and on
+## scene: Make, Cable, hose or chain…, a click on one pin hole and on
 ## another, a bend added and dragged, undone and done again; a chain put
 ## round two gears with two clicks; saved, reopened and reshaped from the
 ## pieces alone.
@@ -81,7 +81,7 @@ func _run() -> void:
 
 func _a_hose() -> void:
 	print("  a pneumatic tube between two pin holes")
-	_check("Build has Hose, tube or chain…", _shell.menu_id("flex") >= 0 and _shell.can("flex"))
+	_check("Make has Cable, hose or chain…", _shell.menu_id("flex") >= 0 and _shell.can("flex"))
 	_shell.run("flex")
 	await _frames(3)
 	_check("it opens the tool and its panel, asking for the first end (%s)" % _flex._told.text,

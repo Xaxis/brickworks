@@ -50,6 +50,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -319,7 +320,7 @@ try {
   const adminContext = await context({ as: master, width: 1280, height: 900 });
   const admin = await adminContext.newPage();
   listen(admin, "admin");
-  admin.on("dialog", (dialog) => dialog.accept());
+  await answerAsks(admin);
   await admin.goto(`${site}/admin#gallery/listed`, { waitUntil: "load" });
   await until(admin, () => document.querySelectorAll("#gallery tr[data-model]").length > 0, "the console's gallery", 60);
   const button = admin.locator(`#gallery tr:has(a[href="/m/${ids.shed}"]) button`, { hasText: "Make it the pick" });

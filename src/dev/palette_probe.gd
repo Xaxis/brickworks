@@ -423,9 +423,12 @@ func _part_menu() -> void:
 	await _from_menu(red, "select_colour")
 	_check("Select the same colour takes the two red (%d)" % _builder.selection.size(),
 		_builder.selection.size() == 2)
+	var before: int = _world.brick_count()
 	await _from_menu(red, "duplicate")
-	_check("Duplicate puts a copy in hand", _builder.is_carrying())
-	(_main.get("_verbs") as EditVerbs).put_away()
+	# ux14: beside the selection at once, seated, nothing in hand.
+	_check("Duplicate puts a copy beside it (%d to %d parts)" % [before, _world.brick_count()],
+		not _builder.is_carrying() and _world.brick_count() > before)
+	_builder.undo()
 	await _frames(4)
 	# The blue brick, with nothing on it, for what changes the part clicked.
 	var blue: int = _brick_of("3001", 1)

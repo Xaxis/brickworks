@@ -781,6 +781,32 @@ async function push() {
     // check's own account is taken (api/_push.js live), and brickworks.diy's
     // take leaves a check's account alone, so this deploy's code sends.
     const knock = () => api("/api/people?op=push_send", { method: "POST", token: ada.access_token });
+    // What is pushed is chosen a kind at a time, once the file is applied
+    // (supabase/notification_prefs.sql; inbox, 2026-11-23): a device turned
+    // on hears replies and mentions, and a comment on her model only once
+    // she ticks it in Settings' grid, on this page.
+    const chosen = (await api("/api/people?op=notification_prefs", { token: ada.access_token })).body || {};
+    note(`supabase/notification_prefs.sql ${chosen.ready === true ? "applied: pushed as chosen" : "not applied: everything pushed"}`);
+    if (chosen.ready === true) {
+      await until(page, () => document.querySelector('#kinds input[data-channel="push"]')?.disabled === false, "the grid enabled", 30);
+      const ticked = await page.evaluate(() => [...document.querySelectorAll('#kinds input[data-channel="push"]')]
+        .filter((box) => box.checked).map((box) => box.closest("tr").dataset.notice).join(","));
+      check(`pushed by default: ${ticked}`, ticked === "reply,mention");
+      const tb = Date.now();
+      const early = await api("/api/people?op=comment", { method: "POST", token: bob.access_token,
+        body: { model: tower.body.id, version: 1, body: `Before comments are pushed ${rand}` } });
+      await knock();
+      await page.waitForTimeout(Math.max(0, 20000 - (Date.now() - tb)));
+      const none = await shownOn(page).catch(() => []);
+      check(`a comment (${early.status}) before comments are pushed: nothing shown in 20 s (${none.length})`,
+        early.status === 201 && none.length === 0);
+      await page.click('#kinds tr[data-notice="comment"] input[data-channel="push"]');
+      const said = await until(page, () => /^On:/.test(document.getElementById("mail-said")?.textContent || "")
+        && document.getElementById("mail-said").textContent, "comments pushed, said", 15).catch(() => "");
+      const pushedNow = (await api("/api/people?op=notification_prefs", { token: ada.access_token })).body?.push || [];
+      check(`ticked in the grid: "${said}", pushed now ${pushedNow.join(",")}`, Boolean(said) && pushedNow.includes("comment"));
+      await clearShown(page);
+    }
     const t0 = Date.now();
     const comment = await api("/api/people?op=comment", { method: "POST", token: bob.access_token,
       body: { model: tower.body.id, version: 1, body: `Lovely stairs ${rand}` } });
@@ -1012,10 +1038,11 @@ async function lookAt() {
           || document.getElementById("push-on")?.disabled === false, "Settings drawn", 45);
         await page.evaluate(() => document.getElementById("email-part").scrollIntoView());
         const parts = await page.evaluate(() => ({ h2: document.querySelector("#email-part h2")?.textContent,
-          h3: [...document.querySelectorAll("#email-part h3")].map((one) => one.textContent),
+          h3: [...document.querySelectorAll("#email-part h3")].filter((one) => !one.closest("[hidden]")).map((one) => one.textContent),
           toc: [...document.querySelectorAll("a[href='#email-part']")].map((one) => one.textContent.trim()) }));
         check(`${width} ${theme}: Settings › ${parts.h2} [${parts.h3.join(", ")}], its contents entry "${parts.toc.join("/")}", nothing sideways`,
-          parts.h2 === "Notifications" && parts.h3.join(",") === "On this device,By email" && !(await sideways(page)));
+          parts.h2 === "Notifications" && /^On this device,What you hear of, and where,(Your feed by email,)?Muted models$/.test(parts.h3.join(","))
+          && !(await sideways(page)));
         await shot(page, `settings-${width}-${theme}.png`);
         await page.goto(`${site}/offline`, { waitUntil: "load" });
         check(`${width} ${theme}: the offline page, nothing sideways`, !(await sideways(page)));

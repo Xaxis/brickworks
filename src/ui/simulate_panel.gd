@@ -163,6 +163,10 @@ var _port_sims: Dictionary = {}
 var _port_curves: Dictionary = {}
 var _preparing: bool = false
 var _program_rows: VBoxContainer
+## What acts on a mechanism: the periods, Play and its speed, the slider,
+## Program and Record. Out of sight while nothing turns (ux14's walk, p13:
+## two gears on the baseplate, and a column of controls that did nothing).
+var _drive_rows: Array[Control] = []
 var _program_box: TextEdit
 var _run: Button
 var _program_said: Label
@@ -251,6 +255,7 @@ func read() -> void:
 		how = "it turns the most"
 	job.end()
 	_reading = false
+	_show_driving(body >= 0)
 	if body < 0:
 		_driver.text = "Nothing here turns on an axle, a pin or a turntable."
 		_readout.text = ("Build a gear train: gears on axles through Technic holes, meshing at "
@@ -263,6 +268,14 @@ func read() -> void:
 	# ran before this reading or its plug was put back just now.
 	if running >= 0 and sim != null and sim.driver == running:
 		play()
+
+
+## The controls that act on a mechanism shown, or put away while nothing
+## turns ([member _drive_rows]): what is left says why, and what to build.
+func _show_driving(shown: bool) -> void:
+	for control: Control in _drive_rows:
+		if is_instance_valid(control):
+			control.visible = shown
 
 
 ## The model's cables read again (Wiring), the switches as they were worked
@@ -1497,7 +1510,8 @@ func _build() -> void:
 	legend.text = ("Tinted by speed, blue slow to orange fast; the driver white; red, the meshes "
 		+ "that lock it or the parts that meet; amber, free; violet, floating. The model itself "
 		+ "does not move.")
-	column.add_child(HSeparator.new())
+	var rule := HSeparator.new()
+	column.add_child(rule)
 	var playing := HBoxContainer.new()
 	playing.add_theme_constant_override("separation", 6)
 	column.add_child(playing)
@@ -1555,6 +1569,8 @@ func _build() -> void:
 	_frame.visible = false
 	column.add_child(_frame)
 	_status = _words(column, 11, 0.8)
+	_drive_rows.assign([_reference, legend, rule, playing, _scrub, _at, _program_rows, _weighed,
+		recording])
 	if Phone.on():
 		_for_a_finger(column, playing)
 
@@ -1657,7 +1673,7 @@ func _show_power() -> void:
 	var lines: PackedStringArray = wiring.motor_lines()
 	if not wiring.has_power() and not wiring.motors.is_empty():
 		lines.append(tr("Nothing here gives a motor power, so Play turns it by hand: add a battery box "
-			+ "or a hub and lay its cable (Make, Hose, tube or chain…, Power Functions cable)."))
+			+ "or a hub and lay its cable (Make, Cable, hose or chain…, Power Functions cable)."))
 	_power_said.text = "\n".join(lines)
 
 

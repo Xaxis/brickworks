@@ -141,8 +141,8 @@ func _copies_follow() -> void:
 	print("  a mirrored copy that follows")
 	var wing: PackedInt64Array = _tree.ids_under("Wing#1")
 	_select_only(Array(wing))
-	await _key(KEY_D, true)
-	_check("Ctrl-D holds a copy of the wing", _builder.is_carrying())
+	_verbs.duplicate_selection()  # Ctrl+D puts its copy down beside the original since ux14; the Clone tool holds one.
+	_check("the Clone tool holds a copy of the wing", _builder.is_carrying())
 	# On the right if the panels leave it clear, else in front, nearer the
 	# bottom of the window, where nothing covers the model.
 	var spot: Vector2 = _clear_spot([Vector3(120, 0, -40), Vector3(120, 0, 40),

@@ -378,6 +378,14 @@ func _drag_and_look(which: int, shift: bool, what: String, state: String) -> voi
 
 
 func _wheel_and_keys() -> void:
+	# From the app's own tilt, looking down on the model. The drags before
+	# leave the eye on the floor rule's line (CadCamera.FLOOR_CLEAR, 8 LDU
+	# over the floor) looking 0.6° up, and the slide below then put the
+	# pointer over open sky: no ground under it, so no ghost, and the
+	# pointer rightly says what a drag there does (orbit), as the probe
+	# found from 7bc950bd2 on. Before it the eye went under the floor and
+	# the ghost stood on the ground seen from below, which was the pass.
+	_camera.set_view("default")
 	await _settle()
 	await _move_to(_middle)
 	_press(MOUSE_BUTTON_WHEEL_UP, _middle, true)
@@ -394,6 +402,12 @@ func _wheel_and_keys() -> void:
 	_press(MOUSE_BUTTON_WHEEL_UP, _middle, false, true)
 	await _expect("shift and the wheel", "hand")
 	await _key_down(KEY_SHIFT, false)
+	# What the next two ask stands only over somewhere a click puts it down.
+	var ray_from: Vector3 = _camera.ray_origin(_middle)
+	var ray_way: Vector3 = _camera.ray_normal(_middle)
+	_check("...slid, the pointer is still over the model or the floor",
+		_builder.lattice.raycast(ray_from, ray_way).is_valid()
+		or (ray_from.y > 0.0 and ray_way.y < 0.0))
 	await _expect("...and back", "place")
 
 	await _key_down(KEY_RIGHT, true)
@@ -711,18 +725,18 @@ func _the_way_back() -> void:
 	_check("Escape closes the controls", not controls.visible)
 	await _expect("...and with the pointer not moved, it places again", "place")
 
-	# Done, which puts a pointing hand under the pointer and then takes
+	# Close, which puts a pointing hand under the pointer and then takes
 	# the whole panel away.
 	await _key_tap(KEY_COMMA)
-	var done: Button = _button_called(controls, "Done")
+	var done: Button = _button_called(controls, "Close")
 	if done != null:
 		await _move_to(_centre(done))
-		await _expect_shape("over Done", DisplayServer.CURSOR_POINTING_HAND)
+		await _expect_shape("over Close", DisplayServer.CURSOR_POINTING_HAND)
 		_press(MOUSE_BUTTON_LEFT, _centre(done), true)
 		await _frames(1)
 		_press(MOUSE_BUTTON_LEFT, _centre(done), false)
 		await _frames(4)
-		_check("Done closes the controls", not controls.visible)
+		_check("Close closes the controls", not controls.visible)
 		# Not "place" necessarily: Done sits over the model, and the
 		# pointer is wherever Done was. Whatever is there, it is not the
 		# hand of a button that has gone.

@@ -29,6 +29,9 @@ export async function serveDir(dir) {
   const server = createServer(async (request, response) => {
     let path = decodeURIComponent(new URL(request.url, "http://x").pathname);
     if (path.endsWith("/")) path += "index.html";
+    // A watch page's address is its one file, as deploy.sh routes it (buildlive).
+    const watch = /^(\/(?:de|fr|es))?\/live\/[A-Za-z0-9]{12}\/?$/.exec(path);
+    if (watch) path = `${watch[1] || ""}/live.html`;
     const file = normalize(join(root, path));
     if (!file.startsWith(root)) { response.writeHead(403).end(); return; }
     for (const candidate of [file, file + ".html"]) {

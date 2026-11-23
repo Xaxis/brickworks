@@ -55,6 +55,9 @@ our CAD, turning in the page, that opens in the studio.
   bricks drawn dark, as the gap between real bricks reads. The ground's
   shadow fades out by 235 LDU round the mark, so it ends softly inside the
   picture. Transparent, on the page's own background, light or dark.
+  While bricks fly it draws 0.7 of the pixels across, the studs of a brick
+  in the air with 8 sides (the part's own has 16) and none under a brick
+  leaving: in software the studs in the air were a quarter of a frame.
 - **Alive.** Once a visit (sessionStorage) it assembles in about 2.5 s,
   from the poster's own picture: the finished mark's bricks leave up and
   out of the picture, the top course first, then come down from over its
@@ -73,7 +76,9 @@ our CAD, turning in the page, that opens in the studio.
   code). `web/landing.js` asks for the viewer only after the page's load,
   at idle, with the hero on the screen, on a device with WebGL 2, four
   cores and not saving data; a device that draws the finished mark slower
-  than 50 ms a frame keeps the poster, as does any trouble. The 3D fades in
+  than 40 ms a frame keeps the poster (the assembly's middle frame takes
+  about four fifths of that, so it is seen at 30 frames a second or more),
+  as does any trouble. The 3D fades in
   over the poster, the same drawing, so nothing moves (CLS 0).
 
 `tools/web/hero_check.mjs` proves it at both sizes, light and dark: the

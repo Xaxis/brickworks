@@ -1273,13 +1273,6 @@
     },
     {
       "kind": "cli",
-      "label": "sharelink probe",
-      "entry": "src/dev/sharelink_probe.gd",
-      "reach": "tools/probe.sh sharelink_probe   (headless: /app?share opens the share panel for the model on the baseplate once signed in, kept while signed out, once; never toggled shut)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "share browser flow",
       "entry": "tools/web/share_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --out=shots/share_web   (with .env sourced)",
@@ -1317,7 +1310,7 @@
       "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Hose, tube or chain…, click two pin holes or two gears; Make, Reshape the hose or chain)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Cable, hose or chain…, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building"
     },
     {
@@ -1576,7 +1569,7 @@
       "kind": "ui",
       "label": "gallery page",
       "entry": "web/gallery.html",
-      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Collections and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
+      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Lists (/gallery-lists) and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web"
     },
     {
@@ -1674,7 +1667,7 @@
       "kind": "ui",
       "label": "profile and collection pages",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
+      "reach": "https://brickworks.diy/u/<handle> (?tab=builds or lists (?tab=collections lands on lists), ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web"
     },
     {
@@ -3018,14 +3011,28 @@
       "kind": "ui",
       "label": "model page action bar",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the share sheet with its link, Post it to each network and the embed code, Comment, I built it, More: Report it; Like and Save sign in on the way)",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: the card's control, Saved and your lists in one panel (web/keep.js), Share: the share sheet with its link, Post it to each network and the embed code, More: Download first, Report it; Like and Save sign in on the way; Comment and I built it are its tabs' counts since pagekit)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "change a model with your Claude",
+      "entry": "web/model-page.js",
+      "reach": "https://brickworks.diy/m/<id>   (Open in the studio's second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "claudelink bench",
+      "entry": "tools/bench/claudelink.py",
+      "reach": "heavy python3 tools/bench/claudelink.py --out=DIR   (3 gallery models x a recolour, a part added and a stand with a nameplate: a Claude Code session given only the page's copied message (tools/web/claude_copy.mjs) through the relay with --instructions none, the tab src/dev/claudelink_tab.gd publishing as the person; remixed_from, the remix's page, the change, 12 calls or fewer, no tool or part there is not; DIR/SUMMARY.txt)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "model page pictures and tabs",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs About, Comments, Builds, Remixes, Versions, kept on screen)",
+      "reach": "https://brickworks.diy/m/<id>   (the strip under the picture: the published picture, its owner's photos, photos of real builds, one chosen shown large; Add a picture for its owner; the tabs Overview, Comments, Parts, Builds, Remixes, Versions: one panel shown, its key in the address, arrow keys, Back)",
       "area": "web"
     },
     {
@@ -3522,7 +3529,7 @@
       "kind": "ui",
       "label": "collections directory",
       "entry": "web/collections.js",
-      "reach": "https://brickworks.diy/collections  (?sort=followed, ?q=, ?page=N, ?tests=1; the gallery's Collections tab, switched in place: web/collections.js reads /api/people?op=collections a page at a time, each card web/card.js collectionCardHtml; supabase/collection_directory.sql, its search supabase/collection_search.sql; web/collections.html written by tools/browse_pages.py; linked from the footer)",
+      "reach": "https://brickworks.diy/gallery-lists  (/collections, its forms and languages, a 301 here with its query: api/people.js op=moved; ?sort=followed, ?q=, ?page=N, ?tests=1; the gallery's Lists tab, switched in place: web/collections.js reads /api/people?op=collections a page at a time, each card web/card.js collectionCardHtml; supabase/collection_directory.sql, its search supabase/collection_search.sql; web/collections.html written by tools/browse_pages.py; linked from the footer)",
       "area": "web"
     },
     {
@@ -3912,6 +3919,13 @@
     },
     {
       "kind": "cli",
+      "label": "set3d browser flow",
+      "entry": "tools/web/set3d_flow.mjs",
+      "reach": "node --env-file=.env tools/web/set3d_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--langs=de,fr,es] [--store-log=FILE]   (set3d: ten modelled sets, 30 to 9,092 parts, turned in 3D on their own pages at 1280 and 390 in both themes, no 3D code before View in 3D, the frame, keys or a swipe, full screen, the named stage; two catalogue-only sets saying they have no 3D model; no WebGL keeping the picture; de/fr/es; what each view cost and read from storage)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "set parts probe",
       "entry": "src/dev/set_parts_probe.gd",
       "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
@@ -3942,7 +3956,7 @@
       "kind": "ui",
       "label": "a list's pages",
       "entry": "web/pager.js",
-      "reach": "every list's foot: /gallery, /library, /u/<handle> (Models, Likes), /c/<id>, /collections, /challenge (each group); Show more, the count, the numbered links, ?page=N with Show earlier; all at once on /_kit",
+      "reach": "every list's foot: /gallery, /library, /u/<handle> (Models, Likes), /c/<id>, /gallery-lists, /challenge (each group); Show more, the count, the numbered links, ?page=N with Show earlier; all at once on /_kit",
       "area": "web"
     },
     {
@@ -3963,7 +3977,7 @@
       "kind": "ui",
       "label": "the app menu",
       "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Back to brickworks.diy too)",
+      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Menu at the header's right opens it, Back to brickworks.diy too, and the mark goes home)",
       "area": "building"
     },
     {
@@ -3977,7 +3991,7 @@
       "kind": "cli",
       "label": "app menu in a browser",
       "entry": "tools/web/app_menu_flow.mjs",
-      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, its rows, About, Back to brickworks.diy landing on the site)",
+      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, Menu's rows, About, the mark landing on the site)",
       "area": "building"
     },
     {
@@ -4278,7 +4292,7 @@
       "kind": "ui",
       "label": "bands and springs by hand",
       "entry": "src/assembly/bands.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain…, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Cable, hose or chain…, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
       "area": "building"
     },
     {
@@ -4436,6 +4450,41 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "photoreal probe",
+      "entry": "src/dev/photoreal_probe.gd",
+      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --draw=N --car --turns=0,90 --lighting=window,daylight --raw --cycles --fit --without=dust,age --shots=PATH]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car; --turns and --lighting sweep the light; --raw writes each picture's light before its curve as .exr; --fit fits each set's camera to its photograph's outline from shots/photoreal/masks/ (photoreal.py masks), writing NAME_fit.json and the two outlines over each other; --without zeroes a shot's camera and wear settings to measure each; --draw=N another draw (the tracer's seed); --cycles also writes each shot's scene for Cycles, NAME/<shot>.cycles.ldr and .cycles.json)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "photoreal judge",
+      "entry": "tools/bench/photoreal.py",
+      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; colour NAME --out DIR; gloss NAME; camera NAME; masks; tally FILE...; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR; solo A=DIR B=DIR --name N --trials 2 --rounds 3 --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons; solo shows every photograph and render ALONE, shuffled, and writes solo_N.json with the share called a photograph and the mean probability, photographs and each label's renders apart, per round; tally groups the tells; camera measures sensor noise; masks writes the set photographs' outlines; colour writes each close-up face's CIEDE2000 from its photograph's)",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "staged product photographs",
+      "entry": "src/render/studio_render.gd",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --stage=wood  (photoreal7, docs/RENDERING.md 5k: Render's Background choice StudioRender.STAGES at Best, Product; a near key (scene.near, falling off with distance), the surface lit with its grain or Poly Haven tile (binding 11, assets/surfaces/), the room past a table; the white card's colour as the white balance and a camera tone curve where asked; no stage draws pixel-identical to before)",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "no two parts alike",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal8, docs/RENDERING.md 5l: at Best in the Product look, path traced, each part its own: its colour batch turned in Oklab (batch, path_tracer.glsl batch_of), its polish and wear by how much it was handled (handling, handled_of, print_of; 0 unless asked), each stud's logo and top (studs, the instance's info.w to stud_logo), its seat as LEGO's play lets it sit (play, PathTracer._seated); seeded by the part's place, the model untouched; all four 0 (--without=batch,handling,studs,play) draws photoreal7's pictures byte for byte)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "photoreal cycles",
+      "entry": "tools/photoreal/cycles/render.py",
+      "reach": "heavy tools/photoreal/cycles/tree.sh SCENES PNG_DIR EXR_DIR DRAW [--samples 1024 --sss 0 --studs Normal --resolution Normal --gap 0]   (photoreal6, docs/RENDERING.md 5j; a bench tool on this box, never the app's: Blender 5.2.4 in ~/.local/opt with ldr_tools_blender 0.5.3 draws each shot's scene from photoreal_probe --cycles in Cycles on the CPU, the tent or place, key, sweep as a shadow catcher and the white card's exposure as our tracer drew them; finish.py gives it our camera's finish into PNG_DIR/<shot>.png; camera_pipeline.py FROM TO puts a tree through sharpening and the photographs' JPEG; decide.py SOLO_JSON tables a solo run's trees over their draws)",
+      "area": "view"
+    },
+    {
       "kind": "ui",
       "label": "interface languages",
       "entry": "src/ui/language.gd",
@@ -4474,7 +4523,7 @@
       "kind": "cli",
       "label": "browse pages",
       "entry": "tools/browse_pages.py",
-      "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/collections.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
+      "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/gallery-lists.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
       "area": "web"
     },
     {
@@ -5580,14 +5629,14 @@
       "kind": "ui",
       "label": "own want and save",
       "entry": "web/keep.js",
-      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
+      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron), /m/<id> (the model page's Save beside Like: the card's control, one panel, since lists2a): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
       "area": "web"
     },
     {
       "kind": "ui",
       "label": "your lists page",
       "entry": "web/lists.html",
-      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share, Edit, Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
+      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share (a private list asks: Anyone with the link, chosen, or Public), Stop sharing (a link-only list: its link a 404 from the next request), Edit (Who sees it: Only you, Anyone with the link, Public), Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers; See what it adds first: to add, already there, not found, nothing written until Add), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
       "area": "web"
     },
     {
@@ -6138,20 +6187,6 @@
     },
     {
       "kind": "cli",
-      "label": "photoreal probe",
-      "entry": "src/dev/photoreal_probe.gd",
-      "reach": "tools/probe.sh photoreal [-- --tag=NAME --only=a,b --samples=N --draw=N --car --turns=0,90 --lighting=window,daylight --raw --cycles --fit --without=dust,age --shots=PATH]   (windowed, on the GPU: six real bricks and four real sets drawn at Best, Product, as each photograph in tools/photoreal/ was taken, each path traced at its size into shots/photoreal/NAME/, then the car at Best, Product, 1280x720, three runs, the median at most 8.4 s; --car only the car; --turns and --lighting sweep the light; --raw writes each picture's light before its curve as .exr; --fit fits each set's camera to its photograph's outline from shots/photoreal/masks/ (photoreal.py masks), writing NAME_fit.json and the two outlines over each other; --without zeroes a shot's camera and wear settings to measure each; --draw=N another draw (the tracer's seed); --cycles also writes each shot's scene for Cycles, NAME/<shot>.cycles.ldr and .cycles.json)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "photoreal judge",
-      "entry": "tools/bench/photoreal.py",
-      "reach": "python3 tools/bench/photoreal.py pairs NAME; compare BEFORE AFTER --out DIR; colour NAME --out DIR; gloss NAME; camera NAME; masks; tally FILE...; env -u ANTHROPIC_API_KEY python3 tools/bench/photoreal.py judge NAME --out DIR; solo A=DIR B=DIR --name N --trials 2 --rounds 3 --out DIR   (a blind judge on the Claude subscription shown each render beside its real photograph, both orders, asked which is the photograph and why; writes judge_NAME.json with the pick rate and its reasons; solo shows every photograph and render ALONE, shuffled, and writes solo_N.json with the share called a photograph and the mean probability, photographs and each label's renders apart, per round; tally groups the tells; camera measures sensor noise; masks writes the set photographs' outlines; colour writes each close-up face's CIEDE2000 from its photograph's)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
       "label": "photostep bench",
       "entry": "src/dev/photostep_bench.gd",
       "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a -s '-screen 0 1400x1000x24' godot --path . --resolution 1280x960 --script src/dev/photostep_bench.gd -- --pictures=DIR [--sets=7638-1,42004-1,31009-1,10179-1] [--samples=N]   (windowed, on the GPU: each library set paged as Build mode pages it, three main-line steps N a set chosen by rule; for each, five builds drawn at Best, Product look, from one hand-held camera never the booklet's: N right, a new part missing, one moved a stud, one the wrong colour, and N-1; each with a Good mask, and steps N-1, N and N+1 at Good from four corners and the top; the truth in DIR/cases.json; a set drawn already is skipped)",
@@ -6193,62 +6228,6 @@
       "area": "building"
     },
     {
-      "kind": "lib",
-      "label": "judges and a fan vote and honours",
-      "entry": "supabase/challenge_rounds.sql",
-      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_rounds.sql --dry --try=tools/challenge_rounds_try.sql --table=challenge_shortlist   (after challenges.sql and challenge_year.sql; then the challenges browser flow's part 7 once it is applied)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "the home page's feed",
-      "entry": "web/home-feed.js",
-      "reach": "https://brickworks.diy/   (#stream: builds, Talk threads with their latest reply, the month's challenge with its entries, Try it here, builders to follow, photos of builds, each a post (web/home-feed.js postHtml), the first six in the page as served (tools/web/home_shelf.mjs), the rest after with nothing moving; on each build Like, Add a comment, Follow (asking a visitor to sign in on the spot), Share, 3D, Open in the studio, Remix, Build it, Parts; node tools/web/homefeed_check.mjs --url=... [--signed-in] [--try-start], node tools/web/landing_check.mjs --url=...)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "saying something in place",
-      "entry": "web/composer.js",
-      "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "the home page's search",
-      "entry": "web/home-find.js",
-      "reach": "https://brickworks.diy/   (#find-q: type 2 letters for models, builders and sets from GET /api/share?op=list&q= and op=library&q=, then the gallery's and the sets' own search; arrows, Enter, Escape; \"/\" puts the cursor in it; node tools/web/landing_check.mjs)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "home shelf at deploy",
-      "entry": "tools/web/home_shelf.mjs",
-      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: the feed's first six posts written into OUT/index.html and each language's copy, their pictures copied to OUT/img/home/; web/_home.json when an answer cannot be read; python3 tools/minitest.py tests/test_home_shelf.py)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "this month's challenge on the home page",
-      "entry": "web/landing.js",
-      "reach": "https://brickworks.diy/   (#challenge, a post of the feed, third at the latest: its name, brief, days and up to four entries written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves; This week's pick is the feed's first post, marked Week's pick)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "challenge home check",
-      "entry": "tools/web/challengehome_check.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge third in the feed at the latest and the pick its first post at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "homefeed check",
-      "entry": "tools/web/homefeed_check.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/homefeed_check.mjs --url=<preview or a site served here> --out=DIR [--signed-in] [--try-start]   (the feed's posts as served, Like/comment/Follow asking to sign in on the spot, 3D, Try it here; --signed-in throwaways Ann and Bea: the tabs, a like, a comment, a follow, a visitor signing in from a like; --try-start the studio in the post on the engine without threads, on a deployment with homefeed's deploy.sh)",
-      "area": "web"
-    },
-    {
       "kind": "cli",
       "label": "smalls12 probe",
       "entry": "src/dev/smalls12_probe.gd",
@@ -6288,6 +6267,27 @@
       "label": "designer period browser flow",
       "entry": "tools/web/designer_period_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/designer_period_flow.mjs --url=<preview> --out=DIR   (preview check [designer_period]; ends \"(before the file)\" until designer_period_2.sql is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "judges and a fan vote and honours",
+      "entry": "supabase/challenge_rounds.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/challenge_rounds.sql --dry --try=tools/challenge_rounds_try.sql --table=challenge_shortlist   (after challenges.sql and challenge_year.sql; then the challenges browser flow's part 7 once it is applied)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "this month's challenge on the home page",
+      "entry": "web/landing.js",
+      "reach": "https://brickworks.diy/   (#challenge, a post of the feed, third at the latest: its name, brief, days and up to four entries written in at the deploy (tools/web/home_shelf.mjs), its days left, or its round, from GET /api/share?op=shelves; This week's pick is the feed's first post, marked Week's pick)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "challenge home check",
+      "entry": "tools/web/challengehome_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challengehome_check.mjs --url=<preview> --out=DIR [--admin]   (read only: the home page's challenge third in the feed at the latest and the pick its first post at 390 and 1280, /challenge's layout shift at 390, 768 and 1280, /challenge.png; --admin the owner's How it runs panel as MASTER_EMAIL)",
       "area": "web"
     },
     {
@@ -6443,41 +6443,6 @@
       "entry": "tools/web/talk_stand_in.mjs",
       "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/relay.env tools/web/relay_server.mjs 11170 --hold=talk (tests/fixtures/talk/world.mjs; /__held/talk)",
       "area": "web"
-    },
-    {
-      "kind": "lib",
-      "label": "staged product photographs",
-      "entry": "src/render/studio_render.gd",
-      "reach": "tools/probe.sh photoreal_probe -- --tag=T --stage=wood  (photoreal7, docs/RENDERING.md 5k: Render's Background choice StudioRender.STAGES at Best, Product; a near key (scene.near, falling off with distance), the surface lit with its grain or Poly Haven tile (binding 11, assets/surfaces/), the room past a table; the white card's colour as the white balance and a camera tone curve where asked; no stage draws pixel-identical to before)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "photoreal cycles",
-      "entry": "tools/photoreal/cycles/render.py",
-      "reach": "heavy tools/photoreal/cycles/tree.sh SCENES PNG_DIR EXR_DIR DRAW [--samples 1024 --sss 0 --studs Normal --resolution Normal --gap 0]   (photoreal6, docs/RENDERING.md 5j; a bench tool on this box, never the app's: Blender 5.2.4 in ~/.local/opt with ldr_tools_blender 0.5.3 draws each shot's scene from photoreal_probe --cycles in Cycles on the CPU, the tent or place, key, sweep as a shadow catcher and the white card's exposure as our tracer drew them; finish.py gives it our camera's finish into PNG_DIR/<shot>.png; camera_pipeline.py FROM TO puts a tree through sharpening and the photographs' JPEG; decide.py SOLO_JSON tables a solo run's trees over their draws)",
-      "area": "view"
-    },
-    {
-      "kind": "ui",
-      "label": "change a model with your Claude",
-      "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Open in Brickworks' second half, With your Claude: What should it change? (optional), Copy for Claude copies a message naming the model's link and open_model link=<id>, Share to Claude on a phone with a share sheet, No connector yet? Connect Claude keeps the message for /docs/connect; api/share.js claudePanel, web/docs.js shows the kept message; the model page browser flow's 19, and tools/bench/claudelink.py: nine sessions given only the message, through the relay with no instructions, publish remixes credited to the original)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "claudelink bench",
-      "entry": "tools/bench/claudelink.py",
-      "reach": "heavy python3 tools/bench/claudelink.py --out=DIR   (3 gallery models x a recolour, a part added and a stand with a nameplate: a Claude Code session given only the page's copied message (tools/web/claude_copy.mjs) through the relay with --instructions none, the tab src/dev/claudelink_tab.gd publishing as the person; remixed_from, the remix's page, the change, 12 calls or fewer, no tool or part there is not; DIR/SUMMARY.txt)",
-      "area": "web"
-    },
-    {
-      "kind": "lib",
-      "label": "no two parts alike",
-      "entry": "src/render/path_tracer.glsl",
-      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal8, docs/RENDERING.md 5l: at Best in the Product look, path traced, each part its own: its colour batch turned in Oklab (batch, path_tracer.glsl batch_of), its polish and wear by how much it was handled (handling, handled_of, print_of; 0 unless asked), each stud's logo and top (studs, the instance's info.w to stud_logo), its seat as LEGO's play lets it sit (play, PathTracer._seated); seeded by the part's place, the model untouched; all four 0 (--without=batch,handling,studs,play) draws photoreal7's pictures byte for byte)",
-      "area": "view"
     },
     {
       "kind": "lib",
@@ -6830,6 +6795,41 @@
       "area": "web"
     },
     {
+      "kind": "cli",
+      "label": "sharelink probe",
+      "entry": "src/dev/sharelink_probe.gd",
+      "reach": "tools/probe.sh sharelink_probe   (headless: /app?share opens the share panel for the model on the baseplate once signed in, kept while signed out, once; never toggled shut)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the home page's feed",
+      "entry": "web/home-feed.js",
+      "reach": "https://brickworks.diy/   (#stream: builds, Talk threads with their latest reply, the month's challenge with its entries, Try it here, builders to follow, photos of builds, each a post (web/home-feed.js postHtml), the first six in the page as served (tools/web/home_shelf.mjs), the rest after with nothing moving; on each build Like, Add a comment, Follow (asking a visitor to sign in on the spot), Share, 3D, Open in the studio, Remix, Build it, Parts; node tools/web/homefeed_check.mjs --url=... [--signed-in] [--try-start], node tools/web/landing_check.mjs --url=...)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the home page's search",
+      "entry": "web/home-find.js",
+      "reach": "https://brickworks.diy/   (#find-q: type 2 letters for models, builders and sets from GET /api/share?op=list&q= and op=library&q=, then the gallery's and the sets' own search; arrows, Enter, Escape; \"/\" puts the cursor in it; node tools/web/landing_check.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "home shelf at deploy",
+      "entry": "tools/web/home_shelf.mjs",
+      "reach": "node tools/web/home_shelf.mjs OUT [--from=https://brickworks.diy] [--save] [--offline]   (after tools/site.py OUT, as tools/deploy.sh runs it: the feed's first six posts written into OUT/index.html and each language's copy, their pictures copied to OUT/img/home/; web/_home.json when an answer cannot be read; python3 tools/minitest.py tests/test_home_shelf.py)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "homefeed check",
+      "entry": "tools/web/homefeed_check.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/homefeed_check.mjs --url=<preview or a site served here> --out=DIR [--signed-in] [--try-start]   (the feed's posts as served, Like/comment/Follow asking to sign in on the spot, 3D, Try it here; --signed-in throwaways Ann and Bea: the tabs, a like, a comment, a follow, a visitor signing in from a like; --try-start the studio in the post on the engine without threads, on a deployment with homefeed's deploy.sh)",
+      "area": "web"
+    },
+    {
       "kind": "lib",
       "label": "where hands leave their marks",
       "entry": "src/render/path_tracer.glsl",
@@ -6842,6 +6842,209 @@
       "entry": "src/render/path_tracer.glsl",
       "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal10, docs/RENDERING.md 5n: at Best in the Product look, path traced on a backdrop, the stage matched to each photograph by measure: the table's own relief and colour (RenderSettings.table with surface 1 a desk, 2 a leather pad, 3 a stone counter; path_tracer.glsl table_height, table_normal, table_paper, the relief also in the denoiser's guide), the light falling off across it from a lamp that stands near (table_light, the model's radii, toward the staged key; table_falloff) and the shade tinted towards daylight's fill by as much of the light as the model keeps from it (fill; shadow_marked); each 0 unless asked (StudioRender.PRODUCT_TABLE, _TABLE_LIGHT, _FILL), drawn by the shader's marks version so a picture without them is the plain version's, byte for byte photoreal9's (--shots= photoreal9's shots file); the bench's shots keep the tables on black_2x4, grey_1x3 and green_plate_macro)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "open in brickworks for a stranger",
+      "entry": "src/net/asked_copy.gd",
+      "reach": "https://brickworks.diy/m/<id> signed out: Open in Brickworks (/app?copy=<id>): that model on the baseplate behind the sign-in screen (Sign in to make it yours), never the example car; signed in by the code, by orangecheck through /profile?then=/app?copy=<id>, or in another tab, its copy saved in your models under its name, credited, framed; a reload or a second tab on the same link opens that copy, never a second",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a copy's first acts",
+      "entry": "src/ui/first_acts.gd",
+      "reach": "a copy just made by Open in Brickworks: Recolour a part (the Paint tool), Add a part (the parts, search ready) and Build it (the timeline from step 1) along the top of the model, once a person on a device; gone at the first edit, Escape or ×",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "firstminute browser flow",
+      "entry": "tools/web/firstminute_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; BW_BYPASS=$VERCEL_BYPASS node tools/web/firstminute_flow.mjs --url=<preview> --out=DIR [--ways=code,returning,reload,profile,tab2] [--sizes=1280,390] [--before]   (a stranger from a gallery model's Open in Brickworks to a saved change, timed, pictures and results.json; or --url=http://127.0.0.1:PORT on relay_server.mjs --static=<export>)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "firstminute probe",
+      "entry": "src/dev/firstminute_probe.gd",
+      "reach": "tools/probe.sh firstminute_probe   (windowed: the asked-for model behind the sign-in screen, its copy saved once signed in, the three acts and what each does, put away by an edit and Escape, no second copy, a reload mid sign-in; pictures in shots/firstminute/)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the loading page",
+      "entry": "src/boot/shell.html",
+      "reach": "<deployment>/app while the app loads (#boot): our mark, the cube with its corner cut, built in CSS 3D bricks as the engine's files come (#wall, bootWall: 40 bricks, each flying in, #laid of #total), turning slowly, the name under it; a tip under that every 5 s (#tip, bootTips, window.brickworksTips): a computer's keys or a touch screen's gestures, en/de/fr/es, waiting under the pointer, the next visit at the next (localStorage brickworks.tip); dark or light by the system or the site's kept brickworks.theme; reduced motion: the mark finished and still. heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>]",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "loading page browser flow",
+      "entry": "tools/web/bootlook_flow.mjs",
+      "reach": "heavy node tools/web/bootlook_flow.mjs --dir=<build> --out=DIR [--base=<build>] [--port=11651] [--only=pictures|checks]   (pictures at 1280x800 and 390x844 touch, dark and light, early/mid/late in a 2.5 Mbps load, the mark caught being built; layout shifts 0; every tip in en/de/fr/es on a computer and a phone on page.clock: fits, new, in the language, heard once; hover waits; the next visit's first; reduced motion: the mark finished, nothing moving; the theme kept; the app up behind it, the mark complete; no new address against --base). A build to flow: python3 tools/web/shell_arm.py BASE OUT, an export's engine and packs behind this checkout's page",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "what you hear of and where",
+      "entry": "supabase/notification_prefs.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/notification_prefs.sql --dry --try=tools/notification_prefs_try.sql --table=notification_prefs   (and --try=tools/notification_prefs_matrix_try.sql: each of the 11 kinds on and off on each channel; tests/test_inbox.py; then the inbox browser flow)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "what you hear of in settings",
+      "entry": "web/settings.js",
+      "reach": "https://brickworks.diy/settings#kinds-part signed in: a row a kind (11), a box each for Here, Push and Email (44 px), Muted models with Unmute (#muted-part); before supabase/notification_prefs.sql every box but email's not to be ticked, said so",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "mute a model's notifications",
+      "entry": "web/notifications.js",
+      "reach": "https://brickworks.diy/notifications signed in: a model's group, More › Mute this model (Undo in the toast); or the model's page, More › Mute notifications (web/model-page.js muteItem); unmute in Settings › Muted models",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "notifications done",
+      "entry": "web/notifications.html",
+      "reach": "https://brickworks.diy/notifications signed in: each group's Done (check icon) and Mark all done, Undo in the toast; Inbox and Done (?view=done)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the account menu's newest five",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar's menu, as it opens, shows /notifications' first five (op=notifications&most=5, marks nothing seen) with their pictures, each opening its place; at 390 px under Menu",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "inbox browser flow",
+      "entry": "tools/web/inbox_flow.mjs",
+      "reach": "node --env-file=.env tools/web/inbox_flow.mjs --url=<relay or preview> --out=DIR   (BW_BYPASS=$VERCEL_BYPASS for a preview; checks before and after supabase/notification_prefs.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "wirekeep probe",
+      "entry": "src/dev/wirekeep_probe.gd",
+      "reach": "tools/probe.sh wirekeep_probe   (headless: a model opened again saves what it saved; a sub-model made in a model whose battery box is set 70 LDU into the ground saved, opened stood up and saved, and again, byte for byte, every part where it stood; one made while lifted; 42042's LDCad cable in a model of the app's own, its reference as the file had it; -- --files=DIR keeps every file written)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "sethub browser flow",
+      "entry": "tools/web/sethub_flow.mjs",
+      "reach": "node --env-file=.env tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--publish]   (sethub: a modelled set's Build it at its first step and Make your own version under its name, Versions of this set before Built from this set with each card said changed or as it is, or none said with Make your own version, the first screen unmoved; a set with no model offering neither; de/fr/es; --versions=FILE answers the row from a set_versions dry run; --publish, once supabase/set_versions.sql is applied, this run's own account publishes a changed version of 346-2 and it is among its versions through the CDN within 60 s, its card first on the page)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a set's versions",
+      "entry": "supabase/set_versions.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/set_versions.sql --dry --try=tools/set_versions_try.sql --table=model_alt_sets   (sethub: set_versions(set, tests), the gallery's copies of a set's own LDraw model (model_alt_sets role own), changed first, a work in progress and an alternate never; read by api/_bases.js setVersions into ?op=set_based's versions)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "one header in every mode",
+      "entry": "src/ui/app_header.gd",
+      "reach": "godot --path .  (the studio, a shared model's viewer /app?view=ID, Build it /app?view=ID&build, Booklet, Lay out page: the same header, the mark at the left, the app's menu and Account at the right, 61 points on the site's ground; Build it's bar and the page editor under it; on the web the mark goes to /)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "appchrome probe",
+      "entry": "src/dev/appchrome_probe.gd",
+      "reach": "tools/probe.sh appchrome_probe; PROBE_SIZE=390x844 tools/probe.sh appchrome_probe   (the desktop's and the web's header in the studio, the viewer, Build it, after Close, Lay out page and after Done: one rect, mark and right controls; pictures in shots/appchrome/)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "an object's page and its tabs",
+      "entry": "web/tabs.js",
+      "reach": "https://brickworks.diy/m/<id>, /library/set/<id>, /library/omr-<id>, /u/<handle>, /c/<id>, /challenge, /talk/t/<n>   (pagekit: the sticky aside with the title, one main action, the social row and the facts; real tabs from api/_tabs.js, web/tabs.js: one panel shown, #key in the address, arrow keys, Back, a link inside a panel chooses its tab; bench/results/pagekit-2026-11-23/tabs_check.mjs and the model page browser flow's 8)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the studio's first screen",
+      "entry": "src/ui/studio_start.gd",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "studiostart browser flow",
+      "entry": "tools/web/studiostart_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11750 --static=build/web --hold=pins & node tools/web/studiostart_flow.mjs --url=http://127.0.0.1:11750 --out=DIR   (or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>: two throwaway accounts; before and after pictures at 1280 and 390, dark and light; three real things within the studio's open time + 1 s, never the example car; the pin pressed lit within 1 s; a pin written meanwhile shown within 60 s; a gallery model as a copy; summary.json)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "studio start probe",
+      "entry": "src/dev/studio_start_probe.gd",
+      "reach": "tools/probe.sh studio_start_probe -- --pictures=DIR   (windowed, PROBE_SIZE=390x844 too: the first screen opened once signed in, its lists from a stand-in server, the pin pressed lit within 1 s, a pin written meanwhile shown within a minute unasked, Escape, a gallery model as a copy)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "watching a build live",
+      "entry": "web/live.js",
+      "reach": "<deployment>/live/<watch>   (a Build together session its designer opened to watchers: GET /api/together?op=watching&w=, each change on the show's Realtime channel signed by the relay (Ed25519), a gap read back by POST ?op=watch_ops; signed in: POST ?op=watch_say, watch_ask, watch_seat; web/live.html, the 3D view web/live3d.js from tools/viewer/live.js)",
+      "area": "together"
+    },
+    {
+      "kind": "ui",
+      "label": "building now listed",
+      "entry": "web/live-now.js",
+      "reach": "https://brickworks.diy/ and /u/<handle>   ([data-live-now], first in the home's feed and on the designer's profile while a build is open to watchers: GET /api/together?op=live[&handle=], the CDN's 4 s; nothing shows while nothing is being built)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "live flow",
+      "entry": "tools/web/live_flow.mjs",
+      "reach": "node --env-file=FLOW_ENV tools/web/relay_server.mjs 11800 --static=build/web --egress --hold=together_sessions,together_people,together_ops,together_snapshot_parts,together_watch,together_watchers, then node --env-file=FLOW_ENV tools/web/live_flow.mjs --url=http://127.0.0.1:11800 --out=DIR [--watchers=10] [--parts=20]   (FLOW_ENV: the SUPABASE_* and PARTS_URL lines of .env)",
+      "area": "together"
+    },
+    {
+      "kind": "lib",
+      "label": "the gallery's card as a photograph",
+      "entry": "src/render/card_photo.gd",
+      "reach": "File › Share… › Publish where the graphics card traces rays: the card (/m/<id>.webp, the gallery's and the home feed's) path traced on photoreal10's measured desk, frames averaged on the same desk in a browser within 2.5 s (CardPhoto, src/ui/share_panel.gd _pictures); a phone keeps the cut-out",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card probe",
+      "entry": "src/dev/card_probe.gd",
+      "reach": "~/.claude/claude-core/bin/gpu xvfb-run -a -s '-screen 0 1600x900x24' godot --path . --resolution 1400x900 --script src/dev/card_probe.gd -- --pictures=DIR [--only=1,6] [--looks=LOOKS.json]",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "card judge",
+      "entry": "tools/bench/cardlook.py",
+      "reach": "python3 tools/bench/cardlook.py sheet DIR --looks new  |  python3 tools/bench/cardlook.py judge DIR --look new --out OUT",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "moulded edges",
+      "entry": "src/render/path_tracer.glsl",
+      "reach": "tools/probe.sh photoreal_probe -- --tag=T --shots=FILE  (photoreal13, docs/RENDERING.md 5q: at Best in the Product look, path traced, each edge's rounding straying along it, each part its own way, with a nick here and there, and a slope's face rounded into the part's ends (RenderSettings.edge, StudioRender.PRODUCT_EDGE 1; path_tracer.glsl edge_round, bevelled; PathTracer.edge in each part's info.w, the byte above studs'); --without=edge draws photoreal10's pictures)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "saying something in place",
+      "entry": "web/composer.js",
+      "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",
+      "area": "web"
     }
   ]
 }

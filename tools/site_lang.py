@@ -7,7 +7,7 @@
 
 The landing page, the download page and the pages a visitor goes on to
 from them (the plans, the FAQ, the comparison, the gallery and its tabs'
-own addresses, the sets, the builds and the collections (tools/browse_pages.py),
+own addresses, the sets, the builds and the lists (tools/browse_pages.py),
 this month's challenge, your own profile and your settings; the
 account menu's feed, notifications, builds, feedback and beta pages; the
 footer's terms, privacy, guidelines, takedown and changelog; the page not
@@ -64,7 +64,7 @@ A word of those scripts (SAID_ALL, or the functions of one named there)
 with a capital in it that is not said through say() fails the check, so
 none comes back in English; so does an answer's error or why_not shown as
 the server wrote it, not through told() or say() (untold); and a link to a
-page with copies written as English's (/u/..., /c/..., /collections,
+page with copies written as English's (/u/..., /c/..., /gallery-lists,
 /profile, /settings, /challenge and the rest of PAGES), in those or in
 any other script a copy loads, which leaves the visitor's language for
 English (unled: ${at}/u/ or ${langAt()}/profile).
@@ -102,20 +102,20 @@ SITE = "https://brickworks.diy"
 LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 # The pages, by their file, and where each is: / and /download in English.
 PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
-         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "collections.html": "collections",
+         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "gallery-lists.html": "gallery-lists",
          "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
          "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds", "lists.html": "lists",
          "feedback.html": "feedback", "share-model.html": "share-model", "beta.html": "beta", "terms.html": "terms",
          "privacy.html": "privacy", "counting.html": "counting", "guidelines.html": "guidelines", "takedown.html": "takedown",
          "changelog.html": "changelog", "404.html": "404", "authorize.html": "oauth/authorize",
-         "offline.html": "offline"}
+         "offline.html": "offline", "live.html": "live"}
 # The page not found has no address of its own: it answers every address
 # there is nothing at, its copy any such address in the language (/de/<it>,
 # web/theme.js); and the connector's consent page is only ever opened by an
 # app asking. Neither is a page a search engine lists (no canonical).
 # The offline page is shown only by the site's service worker, in place of
 # a page it could not reach (web/sw.js), and never listed either.
-UNLISTED = {"404.html", "authorize.html", "offline.html"}
+UNLISTED = {"404.html", "authorize.html", "offline.html", "live.html"}
 # The site's rules, each copy opening with one line in its language: the
 # English text binds, and a link to it (?lang=en keeps it English,
 # web/theme.js). Every heading, list, link and date is the English's.
@@ -142,6 +142,8 @@ API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES"
              "api/_tested.js": ("SAID", "FAILED"), "api/_trust.js": ("TOO_YOUNG",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL", "TRACKS"),
              "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE"),
              "api/_feedback.js": ("THANKS",),
+             # What a watch page is told when a line or an ask is refused (buildlive).
+             "api/together.js": ("WATCH_WORDS",),
              "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
              "web/oc-connect-consent.mjs": ("CONNECT_CONSENT_LABEL", "CONNECT_CONSENT_BLURB")}
 # Those each of whose words is said, in a list or not, but a link's (href).
@@ -203,6 +205,8 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/start3d.js": (), "web/phone-warn.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
             "web/embed.js": (), "tools/viewer/inline.js": (),
+            # Building now: a build's watch page, and its listing (buildlive).
+            "web/live.js": (), "web/live-now.js": (),
             # What a remix changed, under its credit and in its Remixes tab (remixdiff).
             "api/_remix.js": ("changedLineHtml", "nodeLine", "nodeHtml", "treeHtml"), "api/_remix_changes.js": ("changeLine",),
             # In your room (APP_UX5 #13, arview).
@@ -566,8 +570,9 @@ def untold(script: str) -> list[str]:
 
 
 # A link to a page with copies, written as English's: a literal that starts
-# /u/ or /c/ (a profile, a collection), or is one of the pages (/collections,
-# /challenge, /profile?edit=1).
+# /u/ or /c/ (a profile, a list), or is one of the pages (/gallery-lists,
+# /challenge, /profile?edit=1), or the address the gallery's lists had
+# (/collections, which redirects).
 LED = re.compile(r"(?<![\w}])[`\"'](?:/[uc]/|/(?:collections|" + "|".join(where for where in PAGES.values() if where)
                  + r")(?=[`\"'?#$]))")
 

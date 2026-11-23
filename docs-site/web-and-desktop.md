@@ -12,18 +12,29 @@ description: Open Brickworks in a browser on a computer, a tablet or a phone, si
 Brickworks is a web app: open [brickworks.diy/app](/app) and build. Nothing is installed, and the same model opens on any computer, tablet or phone you sign in on.
 
 ## Open it in a browser {#web-app}
+<!-- covers
+ui:one header in every mode
+-->
 
 Open [brickworks.diy/app](/app) in a recent browser on a computer, a tablet or a phone: it needs WebGL 2 and WebAssembly threads, and nothing else.
 
+While it loads, bricks fly in and build the Brickworks mark, the cube with one corner cut away: a brick for each share of the app that has arrived, so the mark complete is the app ready, and the count under the name says how many are laid. Under that, a tip about Brickworks changes every five seconds, a key on a computer or a gesture on a touch screen; point at a tip to keep it, and your next visit starts with the next one. A first visit on a phone also says about how long it has to go. With reduced motion the mark stands finished and still.
+
+![The page Brickworks shows while it loads: the Brickworks mark built of bricks, a cube with one corner cut away, yellow on top, red and blue sides and the cut a shade darker, seen from above its cut corner; under it Brickworks, 40 of 40 bricks, then a card: Tip, Press F1 for every key and click Brickworks answers to.](/docs/img/web-and-desktop-loading.webp "While it loads: our mark builds itself in bricks as the app arrives, with a tip under it.")
+
+<!-- covers
+ui:the loading page
+-->
+
 ![The Brickworks menu open under the mark at the far left of the menu bar: About Brickworks, Send feedback, Find a command with its key Ctrl+/, Brickworks website, Documentation and Account.](/docs/img/web-and-desktop-menu.webp "The Brickworks menu, at the far left of the menu bar.")
 
-The Brickworks mark at the far left of the menu bar opens the app's own menu: **About Brickworks**, **Send feedback…**, **Find a command…** ([[Ctrl+/]]), **Brickworks website**, **Documentation**, **Account…** and **Back to brickworks.diy**; a beta tester's has **Beta hub** too.
+Every part of the app has the same header as the site: the Brickworks mark at the left, the app's menu and **Account** at the right, whether you are in the studio, looking at a shared model, building one with **Build it** or laying out a booklet page. In a browser the mark takes you to the home page, as the site's does, and **Menu** opens the app's own menu: **About Brickworks**, **Send feedback…**, **Find a command…** ([[Ctrl+/]]), **Brickworks website**, **Documentation**, **Account…** and **Back to brickworks.diy**; a beta tester's has **Beta hub** too. In the desktop app the mark opens that menu.
 
 ## Add it to your home screen {#install}
 
 brickworks.diy can be installed from your browser, so it opens in a window of its own from your home screen, dock or Start menu, and can show your [notifications](/docs/profiles#settings) as the device's own. From your second visit a card at the foot of the page offers **Install**, which is your browser's own dialog; **No thanks** is kept in that browser, and **Settings › Notifications** still has **Install Brickworks** while the browser offers it. Chrome and Edge also have their own install button in the address bar.
 
-On an iPhone or iPad, Safari has no install button a site can show: it installs only by **Share**, then **Add to Home Screen**, and the card says so. Opened from the Home Screen (iOS and iPadOS 16.4 or later), Brickworks can show notifications; in a Safari tab it cannot. It opens in the studio: to turn them on, open its menu, **Back to brickworks.diy**, then **Menu › Settings › Notifications**. Offline, it opens on a page that says so, and goes on by itself once you are back online.
+On an iPhone or iPad, Safari has no install button a site can show: it installs only by **Share**, then **Add to Home Screen**, and the card says so. Opened from the Home Screen (iOS and iPadOS 16.4 or later), Brickworks can show notifications; in a Safari tab it cannot. It opens in the studio: to turn them on, press the Brickworks mark at the top left for the home page, then **Menu › Settings › Notifications**. Offline, it opens on a page that says so, and goes on by itself once you are back online.
 
 Without a connection, a page of the site you open says **You're offline.**, and opens the page you asked for by itself once you are back. Nothing else is kept: every page, the app and your models come from the network, so you always get the newest Brickworks. The app needs a connection to open.
 
@@ -49,14 +60,14 @@ Saved models are kept in your browser and privately with your account, so **File
 
 ## On a tablet or a phone {#phone}
 
-![Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate with a note that it opened, and one row of tools along the foot.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
+![Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate with a note that it opened, and one row of tools along the foot, each with its word under its picture.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
 
 On a touch screen the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, in sheets over it. A browser window as small as a phone gets this layout too, whatever you point with.
 
 - **Tap** selects, or puts down the part in hand; **hold** on a part removes it.
 - **Drag** turns the view, and so do two fingers; **pinch** zooms. Two fingers turned about each other turn the model round as far as they turn, as a map does.
 - On a phone, **tap with two fingers** to undo and **with three** to redo, as the buttons along the top do, each saying what it took back. A tap is quick and still: fingers that turn, slide or pinch the view never undo. **Double-tap** a part to select it and turn it a quarter turn, as **Turn** does, in one undo step; a locked part, or a tap on nothing, does nothing. The keys sheet lists all three first.
-- The Brickworks mark along the top opens the same menu as on a computer. With the assistant on, its button sits beside the model's name.
+- The Brickworks mark along the top takes you to the home page, and **Menu** at the right opens the same menu as on a computer, **Account…** in it. With the assistant on, its button sits beside the model's name.
 - In the parts sheet the search and the chips scroll with the parts, and the count, **Prints** and **List** stay at its foot, whichever way the phone is held.
 - **Motions** keeps **New motion** in its header, in sight however far its list is scrolled, and puts **Record** beside the motion's name, and each joint's keys are a fingertip tall. **Simulate** puts **Play** and the cycle's slider under its title. A part swung on its joint while recording opens nothing over the panel.
 - The booklet's **Lay out the page…** gives its buttons, an item's corner, the knob and an arrow's ends a fingertip each. A tap in the words field keeps its words selected to type over.

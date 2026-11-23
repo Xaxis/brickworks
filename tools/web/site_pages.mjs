@@ -40,14 +40,15 @@ export function sitePages({ remote = "" } = {}) {
     { name: "builds", path: "/builds",
       ready: (page) => until(page, () => ["ready", "none"].includes(document.documentElement.dataset.builds)) },
     { name: "model", path: `/m/${stand.MODEL_ID}`,
-      // The comments listed (Comment's count), and signed out Report it made
-      // live in More. On a deployment the page is its own model, whose
-      // comments the stand-in answering the API has none of: there, the
-      // comments asked and either listed or said why not.
+      // The comments listed (in their tab, unseen until it is chosen:
+      // pagekit), and signed out Report it made live in More. On a
+      // deployment the page is its own model, whose comments the stand-in
+      // answering the API has none of: there, the comments asked and either
+      // listed or said why not.
       ready: (page, { signedIn }) => until(page, signedIn
-        ? (remote ? () => !document.getElementById("comments")?.hidden
+        ? (remote ? () => !document.querySelector("#comments .comments-body")?.hidden
           || Boolean(document.querySelector("#comments .comments-said")?.textContent)
-          : () => !document.getElementById("comments")?.hidden)
+          : () => !document.querySelector("#comments .comments-body")?.hidden)
         : () => !document.querySelector('[data-report="this model"]')?.hidden),
       open: async (page, { signedIn, judge }) => {
         // Share's sheet (web/model-page.js, docs/SOCIAL.md U14): the link and
@@ -74,10 +75,19 @@ export function sitePages({ remote = "" } = {}) {
           const opened = await until(page, () => document.querySelector("dialog.report[open]"));
           return [[opened ? "report" : "report (missing)", "dialog.report"]];
         }
-        // Save: your lists, Favourites first (web/model-page.js).
-        await page.click('#marks [data-mark="save"]');
-        const saved = await until(page, () => !document.getElementById("save-panel")?.hidden);
-        const states = [[saved ? "save" : "save (missing)", ".side"]];
+        // Save: the card's control (web/keep.js, lists2a), its arrow's
+        // panel of your lists, Saved first; judged open, then closed.
+        await page.click("#marks .keep [data-keep-more]");
+        const saved = await until(page, () => document.querySelector("dialog.keep-panel[open]"));
+        await page.waitForTimeout(200);
+        await judge(saved ? "save" : "save (missing)", "dialog.keep-panel");
+        if (saved) {
+          await page.keyboard.press("Escape");
+          await until(page, () => !document.querySelector("dialog.keep-panel[open]"));
+        }
+        const states = [];
+        // Add a photo is in the Builds tab (pagekit): chosen first.
+        await page.click('#page-tabs [data-tab="builds"]');
         const add = page.locator("[data-add-build]");
         if (await add.isVisible().catch(() => false)) {
           await add.click();
@@ -111,7 +121,7 @@ export function sitePages({ remote = "" } = {}) {
     // somebody with nothing yet, whose tabs say what goes there. Its More
     // menu open. Here only: the stand-in's people.
     { name: "person-builds", path: `/u/${stand.HANDLE}?tab=builds`, local: true },
-    { name: "person-lists", path: `/u/${stand.HANDLE}?tab=collections`, local: true,
+    { name: "person-lists", path: `/u/${stand.HANDLE}?tab=lists`, local: true,
       open: async (page) => {
         await page.click(".profile-head .more-menu summary");
         const opened = await until(page, () => document.querySelector(".profile-head .more-menu[open]"));
@@ -133,13 +143,14 @@ export function sitePages({ remote = "" } = {}) {
         const opened = await until(page, () => document.querySelector(".list-head .more-menu[open]"));
         return [[opened ? "more" : "more (missing)", ".list-head .more-menu"]];
       } },
-    // The gallery's Collections tab (/collections, web/collections.js,
-    // walk256 W12): their cards, each with Follow once signed in.
-    { name: "collections", path: "/collections",
+    // The gallery's Lists tab (/gallery-lists, web/collections.js, walk256
+    // W12; Collections at /collections until lists2a): their cards, each
+    // with Follow once signed in.
+    { name: "collections", path: "/gallery-lists",
       ready: (page, { signedIn }) => until(page, signedIn && !remote
         ? () => [...document.querySelectorAll("button[data-follow-list]")].some((button) => !button.hidden)
         : () => ["ready", "none"].includes(document.documentElement.dataset.collections)) },
-    { name: "collections-followed", path: "/collections?sort=followed", local: true,
+    { name: "collections-followed", path: "/gallery-lists?sort=followed", local: true,
       ready: (page) => until(page, () => ["ready", "none"].includes(document.documentElement.dataset.collections)) },
     { name: "challenge", path: "/challenge",
       ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },

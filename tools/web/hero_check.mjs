@@ -230,7 +230,7 @@ for (const [label, width, height] of [["laptop", 1280, 800], ["phone", 390, 844]
     if (moved > 0) problems.push(`${where}: the page moved ${moved.toFixed(4)} (${shifts.map((e) => `${e.value.toFixed(4)}@${e.at}`).join(", ")})`);
     const paints = await page.evaluate(() => window.__paints || {});
     const took = await page.evaluate(() => window.brickworksHero?.took ?? -1);
-    said(`${where}: the finished mark drawn in ${took} ms (over 50, a device this slow keeps the poster: web/landing.js SLOW)`);
+    said(`${where}: the finished mark drawn in ${took} ms (over 40, a device this slow keeps the poster: web/landing.js SLOW)`);
     said(`${where}: poster at first paint, stage ${first.stage?.join(",")}; first paint ${paints["first-contentful-paint"]} ms, `
       + `LCP ${paints.lcp?.at} ms (${paints.lcp?.what}), load ${loadedAt} ms, viewer asked ${Math.round(askedAt)} ms; moved ${moved.toFixed(4)}; `
       + `${s.hero}; label "${named.label.slice(0, 40)}…"; open ${named.open}`);

@@ -19,9 +19,10 @@
 //      they were red, published again with a note: version 2, which says
 //      2 parts added and 2 removed in step 3, and that step 3 is the first
 //      that changed.
-//   2. A browser that never signed in: the link's page says what changed
-//      and what the owner said, and names version 1 at /m/<id>/v/1, which
-//      still has the old model, says it is older and links to the newest.
+//   2. A browser that never signed in: the link's page, on its Versions
+//      tab, says what changed and what the owner said, and names version 1
+//      at /m/<id>/v/1, which still has the old model, says it is older and
+//      links to the newest.
 //      Its viewer opens version 1 and says so.
 //   3. Builders who were building version 1 on this device: one parked at
 //      step 2 opens the link on step 2 with nothing to tell, kept on
@@ -231,6 +232,8 @@ try {
     page.lots.join("|") === "Added 2 × 3001 in Blue|Removed 2 × 3001 in Red");
   check(`...how far a builder can carry on: "${page.kept.replace(/\s+/g, " ").trim()}"`, /Steps 1–2 are as they were/.test(page.kept));
   check(`...and names version 1 at its own address (${page.earlier.join(", ")})`, page.earlier.includes(`/m/${id}/v/1`));
+  // Only the chosen tab's panel shows (pagekit): Versions chosen, for the picture.
+  await visitor.click('#page-tabs [data-tab="versions"]');
   await visitor.evaluate(() => document.querySelector(".versions")?.scrollIntoView());
   await shot(visitor, "1_page_says_what_changed.png");
 

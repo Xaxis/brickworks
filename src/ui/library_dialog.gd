@@ -73,6 +73,8 @@ var _grid: GridContainer
 var _page_words: Label
 var _previous: Button
 var _next: Button
+## The row of Previous, the page and Next (ux14).
+var _foot: Control
 var _typing: Timer
 ## Said where the covers would be when the words typed find nothing.
 var _none: VBoxContainer
@@ -228,7 +230,9 @@ func _build() -> void:
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(8, 0)
 	header.add_child(gap)
-	for shelf: Array in [["sets", "LDraw sets"], ["community", "Community"]]:
+	# The second shelf is the gallery the site names so (brickworks.diy/gallery),
+	# where a remix begins: called Community here, it was one place by two names (ux12).
+	for shelf: Array in [["sets", "LDraw sets"], ["community", "Gallery"]]:
 		var tab := Button.new()
 		tab.text = shelf[1]
 		tab.toggle_mode = true
@@ -258,7 +262,8 @@ func _build() -> void:
 	var fill := Control.new()
 	fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(fill)
-	var done := _button(header, "Done", close, "library_done")
+	# Close, as every window and panel of the app closes (Look.CLOSE).
+	var done := _button(header, "Close", close, "library_done")
 	done.focus_mode = Control.FOCUS_NONE
 
 	# The search and the filters first, the shelf's note after them.
@@ -271,6 +276,7 @@ func _build() -> void:
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.add_theme_font_size_override("font_size", 12)
 	_search.clear_button_enabled = true
+	_search.resized.connect(_fit_search_words)
 	# Edged as the buttons beside it are (Look.OUTLINE), inside the same box.
 	var engine := ThemeDB.get_default_theme().get_stylebox("normal", "LineEdit") as StyleBoxFlat
 	var edged: StyleBoxFlat = engine.duplicate() if engine != null else StyleBoxFlat.new()
@@ -371,24 +377,36 @@ func _build() -> void:
 	_elsewhere = _button(ways, "", func() -> void: _show("community" if _source == "sets" else "sets"),
 		"library_search_elsewhere")
 
+	# The pages' row, in the middle and only when there is more than one
+	# page: greyed Previous and Next round "Page 1 of 1" were three words of
+	# nothing to press, squeezed against the trademark line on a phone
+	# (ux13, left 4).
 	var foot := HFlowContainer.new()
+	foot.alignment = FlowContainer.ALIGNMENT_CENTER
 	foot.add_theme_constant_override("h_separation", 8)
 	foot.add_theme_constant_override("v_separation", 4)
 	column.add_child(foot)
+	_foot = foot
 	_previous = _button(foot, "‹ Previous", func() -> void: _turn(-1), "library_previous")
 	_page_words = Label.new()
 	_page_words.add_theme_font_size_override("font_size", 12)
 	_page_words.modulate = Color(1, 1, 1, 0.7)
 	foot.add_child(_page_words)
 	_next = _button(foot, "Next ›", func() -> void: _turn(1), "library_next")
+	# Under the pages' row, as wide as the panel: beside it, on a phone, it
+	# was a column a third of the width wrapped to six lines, and the cards
+	# above lost that height (ux12, the fan's walk at 390).
 	var mark := Label.new()
 	mark.text = DISCLAIMER
 	mark.add_theme_font_size_override("font_size", 10)
 	mark.modulate = Color(1, 1, 1, 0.45)
 	mark.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mark.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mark.custom_minimum_size = Vector2(200, 0)
-	foot.add_child(mark)
+	# Clear of the pages' row above it.
+	var clear := Control.new()
+	clear.custom_minimum_size = Vector2(0, 6)
+	column.add_child(clear)
+	column.add_child(mark)
 
 
 func _choice(row: Container, named: String, tip: String) -> OptionButton:
@@ -420,6 +438,35 @@ func _button(row: Container, text: String, action: Callable, named: String = "",
 
 # --- the shelves --------------------------------------------------------
 
+## What the search says it takes, longest first: the first that fits the
+## field whole, in the language drawn. ux12's "Set number or name, theme,
+## designer" needed 459 points of a phone's 348 and was cut again (ux13's
+## walk); each shorter one keeps the set number first.
+const SEARCH_WORDS := {
+	"sets": ["Set number or name, theme, designer", "Set number or name", "Set number"],
+	"community": ["Model name, designer or tag", "Model name or designer", "Model name"],
+}
+
+
+## The search's words fitted to its width ([constant SEARCH_WORDS]), as the
+## shelf changes and as the field is laid out.
+func _fit_search_words() -> void:
+	if _search == null:
+		return
+	var choices: Array = SEARCH_WORDS["sets" if _source == "sets" else "community"]
+	var font: Font = _search.get_theme_font("font")
+	var size: int = _search.get_theme_font_size("font_size")
+	var room: float = _search.size.x - _search.get_theme_stylebox("normal").get_minimum_size().x \
+		- (_search.right_icon.get_width() if _search.right_icon != null else 0)
+	var chosen: String = choices.back()
+	for words: String in choices:
+		if font == null or room <= 0.0 or font.get_string_size(_search.tr(words),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, size).x <= room:
+			chosen = words
+			break
+	if _search.placeholder_text != chosen:
+		_search.placeholder_text = chosen
+
 func _show(source: String) -> void:
 	_source = source
 	for name: String in _tabs:
@@ -430,14 +477,15 @@ func _show(source: String) -> void:
 	for control: Control in _community_row:
 		control.visible = not sets
 	# What each shelf's words are matched against: ModelLibrary.search, and
-	# the gallery's directory_words (supabase/directory.sql).
-	_search.placeholder_text = "Search sets by name, set number, theme or designer" if sets \
-		else "Search models by name, designer or tag"
-	_search.accessibility_name = "Search the LDraw sets" if sets else "Search the community's models"
+	# the gallery's directory_words (supabase/directory.sql). Short, the set
+	# number first: a phone's field beside Any theme showed "Search sets by
+	# na", and a fan with a set's number never read that it takes one (ux12).
+	_fit_search_words()
+	_search.accessibility_name = "Search the LDraw sets" if sets else "Search the gallery's models"
 	_note.text = ("Models of real LEGO® sets from LDraw's Official Model Repository, each made by "
 		+ "the LDraw member credited and free to use under its licence. Open puts one in a new %s; "
 		+ "the model here stays as it is.") % _tab_word() if sets else ("Models people built in "
-		+ "Brickworks and shared. Open copies one into your models in a new %s, as Open in "
+		+ "Brickworks and shared in its gallery. Open copies one into your models in a new %s, as Open in "
 		+ "Brickworks on its page does: credit its designer and keep to its licence.") % _tab_word()
 	_sort.clear()
 	if sets:
@@ -560,6 +608,7 @@ func _fill() -> void:
 	_previous.disabled = _page <= 1
 	_next.disabled = not (_page < _pages or _more)
 	_page_words.text = ("Page %d of %d" % [_page, _pages]) if _source == "sets" else "Page %d" % _page
+	_foot.visible = _page > 1 or _page < _pages or _more
 	_say(str(found.get("said", "")))
 	# Words that found nothing: said where the covers would be. With no
 	# words, the filters alone, the status line says it as it did.
@@ -589,7 +638,7 @@ func _say_none(words: String) -> void:
 		_none_hint.text += " Searched only within the filters chosen: %s." % " · ".join(filtering)
 	_let_go.visible = not filtering.is_empty()
 	_let_go.text = "Any theme, year and size" if sets else "Any kind and size"
-	_elsewhere.text = "Search Community for %s" % quoted if sets else "Search LDraw sets for %s" % quoted
+	_elsewhere.text = "Search the gallery for %s" % quoted if sets else "Search LDraw sets for %s" % quoted
 	_say(_none_words.text + ".")
 
 

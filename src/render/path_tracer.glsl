@@ -1998,6 +1998,31 @@ vec3 normal_at(uint v) {
 
 const float ROUND = 0.6;
 
+// How far each edge's rounding strays (photoreal13, PathTracer.edge in the
+// instance's info.w's second byte, in hundredths; 0 for none), and the part's
+// own number (info.z).
+float edge_amount = 0.0;
+uint part_key = 0u;
+
+float wave_noise(vec3 p);
+
+// The edge's rounding where it is hit (photoreal13): a moulded edge is
+// rounded by a tool, 0.1 to 0.3 mm, and a judge saw ours as "razor-sharp,
+// perfectly uniform bevels": the same radius along every edge of every
+// part, so the line of light it catches is ruled. A real edge's radius
+// strays along it, each part its own way, and here and there a nick, where
+// it was knocked, widens it for a millimetre and the line of light breaks.
+float edge_round(vec3 at) {
+	if (edge_amount <= 0.0) {
+		return ROUND;
+	}
+	vec3 own = vec3(float(part_key & 1023u) * 0.731, float((part_key >> 10) & 1023u) * 0.377, 3.1);
+	float along = wave_noise(at * 0.3 + own);
+	float nick = smoothstep(0.55, 0.85, wave_noise(at * 1.7 + own * 1.9));
+	float r = ROUND * (1.0 + edge_amount * (0.5 * along + 1.0 * nick));
+	return clamp(r, 0.15, 2.0);
+}
+
 vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
 	vec3 size = high - low;
 	if (size.x <= 0.0 || size.y <= 0.0 || size.z <= 0.0) {
@@ -2006,6 +2031,27 @@ vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
 	vec3 across = abs(n);
 	float most = max(across.x, max(across.y, across.z));
 	if (most < 0.97) {
+		if (edge_amount > 0.0) {
+			// A slope's face is rounded where it meets the part's ends too
+			// (photoreal13): red_slope_2x4's photograph shows the line of light
+			// along that edge, and ours was a ruled corner. Towards each side of
+			// the box the face runs into (an axis it lies along), as bevelled
+			// rounds a box's own faces.
+			if (any(greaterThan(at, high + 0.06)) || any(lessThan(at, low - 0.06))) {
+				return n;
+			}
+			float round_here = edge_round(at);
+			vec3 add = vec3(0.0);
+			for (int k = 0; k < 3; k++) {
+				if (across[k] < 0.25) {
+					add[k] += max(round_here - (high[k] - at[k]), 0.0)
+						- max(round_here - (at[k] - low[k]), 0.0);
+				}
+			}
+			if (dot(add, add) > 0.0) {
+				return normalize(n * round_here + add);
+			}
+		}
 		return n;
 	}
 	vec3 axis = step(vec3(most - 0.0001), across);
@@ -2017,19 +2063,19 @@ vec3 bevelled(vec3 at, vec3 n, vec3 low, vec3 high) {
 			|| any(greaterThan(out_of, vec3(slack)))) {
 		return n;
 	}
-	vec3 q = max(min(abs(p), half_size) - (half_size - vec3(ROUND)), vec3(0.0));
-	q = mix(q, vec3(ROUND), axis);
+	float round_here = edge_round(at);
+	vec3 q = max(min(abs(p), half_size) - (half_size - vec3(round_here)), vec3(0.0));
+	q = mix(q, vec3(round_here), axis);
 	return normalize(sign(p) * q);
 }
 
 // The number of the part being hit, for each stud's own logo.
 uint part_number = 0u;
 // How far each stud's logo strays from the next (photoreal8, PathTracer.studs
-// in the instance's info.w, 0 to 255 of 1), the part's own number (info.z),
-// and the grime found by the letters of the stud just hit, for the raygen's
-// surface_of (as a negative hit.unused).
+// in the instance's info.w's lowest byte, 0 to 255 of 1), the part's own
+// number (info.z, part_key above), and the grime found by the letters of
+// the stud just hit, for the raygen's surface_of (as a negative hit.unused).
 float stud_variety = 0.0;
-uint part_key = 0u;
 float logo_grime = 0.0;
 
 // A stud's own number from 0 to 1 by its place on its part and the part's own
@@ -2271,7 +2317,9 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 void main() {
 	uint which = gl_InstanceCustomIndexEXT;
 	part_number = which;
-	stud_variety = float(instances[which].info.w) / 255.0;
+	uint codes = instances[which].info.w;
+	stud_variety = float(codes & 255u) / 255.0;
+	edge_amount = float((codes >> 8) & 255u) / 100.0;
 	part_key = instances[which].info.z;
 	logo_grime = 0.0;
 	uvec4 mesh = meshes[instances[which].info.x];

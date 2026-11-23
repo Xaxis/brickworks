@@ -161,13 +161,22 @@ print(json.dumps({"scripts": len(c), "of": len(every), "bytes": sum(len(every[p]
 }
 
 async function serve(arm, port) {
+  // A server left on the port by a run that crashed answers for this one,
+  // whose own dies unbound, so the run would time what that one serves
+  // (bootlook2, 2026-11-23: two left from a crash an hour before).
+  if (await fetch(`http://127.0.0.1:${port}/`).then(async (r) => { await r.arrayBuffer(); return true; }).catch(() => false)) {
+    throw new Error(`port ${port} is already served: stop what holds it, or give --port another`);
+  }
   const parts = [join(arm.root || "", "assets/generated/parts"), join(ROOT, "assets/generated/parts")].find((p) => existsSync(p));
   const child = spawn("python3", [join(ROOT, "tools/web/serve.py"), arm.folder, String(port), "--parts", parts, "--delay", "0",
     "--accounts", "--compressed", "--cached"], { cwd: arm.root || ROOT, stdio: ["ignore", "ignore", "pipe"] });
   let said = "";
   child.stderr.on("data", (d) => { said = (said + d).slice(-2000); });
   for (let i = 0; i < 60; i++) {
-    const up = await fetch(`http://127.0.0.1:${port}/index.html`).then((r) => r.ok).catch(() => false);
+    // Read to its end: the page left unread, then closed by serve.py, threw
+    // inside node 24's fetch and ended the whole run (bootlook2, 2026-11-23).
+    const up = await fetch(`http://127.0.0.1:${port}/index.html`).then(async (r) => { await r.arrayBuffer(); return r.ok; })
+      .catch(() => false);
     if (up) return child;
     if (child.exitCode !== null) break;
     await new Promise((r) => setTimeout(r, 500));

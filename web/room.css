@@ -27,3 +27,5 @@
 .model-page .room .room-place { position: absolute; right: var(--s-3); bottom: var(--s-3); }
 /* On a phone the picture is square (directory.css), and so is this. */
 @media (width < 600px) { .model-page .room { aspect-ratio: 1 / 1; } }
+@media (width >= 900px) { .model-page .room { aspect-ratio: 4 / 3; } }
+@media (width >= 1600px) { .model-page .room { aspect-ratio: 16 / 10; } }

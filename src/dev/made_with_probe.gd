@@ -22,6 +22,10 @@
 ## without it says nothing; named as a design stands, it keeps what it was;
 ## cleared, it is hand-built again.
 ##
+## And Share's one box (2026-11-23): none for a hand-built model, Say it was
+## made with the assistant (or with Brickify) unticked for the others, sent
+## as made_with_shown as it is left.
+##
 ## On base (rel-m164, 87d93fad) there is no made_with: every check fails.
 extends SceneTree
 
@@ -146,6 +150,39 @@ func _run() -> void:
 		% _store.made_with)
 	_main.call("clear_model")
 	_ok(_store.made_with == "hand", "and begun empty again, hand-built (%s)" % _store.made_with)
+
+	# How it was made is its owner's to say (the owner, 2026-11-23;
+	# supabase/made_with_shown.sql): Share offers one box, unticked, for a
+	# model made with the assistant or Brickify, and sends what it says.
+	print("
+saying how it was made, in Share")
+	var panel: SharePanel = _main.get("_share_panel") as SharePanel
+	panel.visible = false
+	panel.open()
+	await process_frame
+	_ok(not panel.controls_by_name().has("share_say_made") and not panel.made_fields().has("made_with_shown"),
+		"a hand-built model: no box, and nothing sent of it (%s)" % panel.made_fields())
+	panel.visible = false
+	_store.laid_by("assistant")
+	panel.open()
+	await process_frame
+	var box: CheckBox = panel.controls_by_name().get("share_say_made") as CheckBox
+	var fields: Dictionary = panel.made_fields()
+	_ok(box != null and box.text == "Say it was made with the assistant" and not box.button_pressed
+		and fields.get("made_with_shown") == false and fields.get("made_with") == "assistant",
+		"made with the assistant: Say it was made with the assistant, unticked, sent as not shown (%s)" % fields)
+	if box != null:
+		box.button_pressed = true
+	_ok(panel.made_fields().get("made_with_shown") == true, "...ticked, sent as shown (%s)" % panel.made_fields())
+	panel.visible = false
+	_main.call("clear_model")
+	_store.laid_by("brickify")
+	panel.open()
+	await process_frame
+	box = panel.controls_by_name().get("share_say_made") as CheckBox
+	_ok(box != null and box.text == "Say it was made with Brickify" and not box.button_pressed,
+		"Brickify's: Say it was made with Brickify, unticked again on a model with no link")
+	panel.visible = false
 	_finish()
 
 

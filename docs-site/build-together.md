@@ -7,6 +7,7 @@ rules:
   - The chat, and comments in a session, are for people 13 and over.
   - Comments pinned to parts are kept in the model's file.
   - Someone in a session can send the others only words and parts.
+  - A session opened to watchers has a page of its own, /live/<watch>; a watcher sees each part land and chats, and never changes the model. Only the designer gives a watcher who asked to build a seat.
   - Starting or joining a session is the person's own: an assistant sends them to File › Build together…, where they start one and send its link; no tool opens one, and it never says one cannot be had.
 title: Build together
 nav: Build together
@@ -55,9 +56,27 @@ Select a part, then **File › Comments…** (or right-click the part, **Comment
 
 Comments are kept in the model's file, so saving, opening and sharing by link keep them; a shared model's page does not show them. In a session everyone 13 and over sees them as they are pinned.
 
+### Open it to watchers {#watch}
+
+**Open to watchers**, at the end of the row with End the session, gives the session a page anyone can watch, at `/live/<name>`. **Copy watch link** to send it. While you build it is listed first on the home page, under *Building now*, and on your profile. The panel says how many are watching.
+
+![A build being watched at /live/<name>: Building now over its title and its designer, how many watch with Ask to build and Copy link, the model in 3D as it stands, and the chat beside it with who is building.](/docs/img/live-watch.webp "Watching a build: each part lands as it is put down.")
+
+![Building now, first in the home page's feed: a card for each build open to watchers, with Live on it, its title, who is building it and how many watch.](/docs/img/live-listing.webp "Building now, on the home page.")
+
+- Watchers see each part land in 3D as you put it down, and the chat beside it. Signed in, anyone 13 or over can chat with you there; you read their lines in the panel's chat as you read your builders'.
+- **Ask to build** on the watch page asks you for a seat. The panel shows *Wren asks to build* with **Give a seat**. Once you give one, their page offers **Build with them now**, which opens the session in their studio. **Remove** takes them out again.
+- Nothing a watcher does changes the model. Their page has no way to, and the server refuses it.
+- **Close to watchers** closes the page (it says so) and takes the build off the lists; the session goes on.
+
+<!-- covers
+ui:watching a build live
+ui:building now listed
+-->
+
 ### End it {#end}
 
-**End the session** (you started it) or **Leave** (you joined). The model stays yours.
+**End the session** (you started it) or **Leave** (you joined). The model stays yours. If the session was open to watchers and the model is shared, ending it keeps where it got to as a version in the model's log, as **Share progress** does.
 
 > [!NOTE]
 > The desktop app is coming soon. It will join a session by the same link, or with `--together=<secret>` at start-up.

@@ -42,6 +42,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { answerAsks } from "./asks.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -101,7 +102,7 @@ async function open(pathname, { width = 1280, theme = "light", session = null, l
     }, session);
   }
   const page = await context.newPage();
-  page.on("dialog", (dialog) => dialog.accept().catch(() => {}));
+  await answerAsks(page);
   listen(page, label);
   await page.goto(site + pathname, { waitUntil: "load", timeout: 60000 });
   return { page, context };

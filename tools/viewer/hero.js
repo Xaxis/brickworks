@@ -24,7 +24,7 @@
 // covers, drawn as one instanced stud only where nothing sits on them, so
 // the finished mark is ~8,000 triangles a phone draws at its frame rate.
 import {
-  CanvasTexture, Color, DirectionalLight, HemisphereLight, InstancedMesh, Matrix4, Mesh,
+  BufferAttribute, BufferGeometry, CanvasTexture, Color, DirectionalLight, HemisphereLight, InstancedMesh, Matrix4, Mesh,
   MeshBasicMaterial, MeshStandardMaterial, NeutralToneMapping, PCFShadowMap, PerspectiveCamera, PlaneGeometry,
   Quaternion, Raycaster, Scene, ShadowMaterial, SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
 } from "three";
@@ -150,7 +150,19 @@ export async function hero3d(stage, given = {}) {
   canvas.className = "hero-canvas";
   canvas.setAttribute("aria-hidden", "true");
   const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: Boolean(given.keep) });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  // The screen's own pixels, at most two a CSS pixel; while the bricks fly
+  // (the assembly, after the first moment and up to the last landing) 0.7
+  // of that across, half the pixels to shade, where nothing is still
+  // enough to be looked at closely.
+  const sharp = Math.min(window.devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(sharp);
+  let flying = false;
+  const fly = (on) => {
+    if (on === flying) return;
+    flying = on;
+    renderer.setPixelRatio(on ? sharp * 0.7 : sharp);
+    renderer.setSize(Math.max(1, stage.clientWidth), Math.max(1, stage.clientHeight), false);
+  };
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = NeutralToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -198,7 +210,10 @@ export async function hero3d(stage, given = {}) {
       .replace("void main() {", "varying vec2 vGround;\nvoid main() {")
       .replace("opacity * ( 1.0 - getShadowMask() )", "opacity * ( 1.0 - getShadowMask() ) * ( 1.0 - smoothstep( 150.0, 235.0, length( vGround ) ) )");
   };
-  const ground = new Mesh(new PlaneGeometry(1400, 1400), groundShade);
+  // As wide as the shadow reaches (it is gone at 235 LDU): every pixel of
+  // it is a look in the key's shadow, a seventh of a frame over the whole
+  // picture.
+  const ground = new Mesh(new PlaneGeometry(480, 480), groundShade);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   scene.add(ground);
@@ -237,6 +252,14 @@ export async function hero3d(stage, given = {}) {
   studs.receiveShadow = true;
   studs.frustumCulled = false;
   scene.add(studs);
+  // The studs of bricks in the air, each a third of a stud's triangles: a
+  // quarter of the assembly's frame went on them, a few pixels each as
+  // they fall.
+  const flyingStuds = new InstancedMesh(roughStud(), studs.material, studTotal);
+  flyingStuds.receiveShadow = true;
+  flyingStuds.frustumCulled = false;
+  flyingStuds.count = 0;
+  scene.add(flyingStuds);
 
   // Each brick's rest, and how it is now: how far over its rest (fall, lift)
   // and how much of it shows.
@@ -278,19 +301,23 @@ export async function hero3d(stage, given = {}) {
     // Each stud on a brick that has come, where nothing has come down on it
     // yet, or what is on it is lifted.
     let k = 0;
+    let q = 0;
     for (let t = 0; t < studTotal; t++) {
       const i = s.studs[t * 5];
       const cover = s.studs[t * 5 + 4];
       if (!come[i]) continue;
       if (cover >= 0 && landed[cover] && lift[cover] < 0.5) continue;
       p.set(s.studs[t * 5 + 1], s.studs[t * 5 + 2] + over[i] + lift[i], s.studs[t * 5 + 3]);
-      studs.setMatrixAt(k, matrix.compose(p, turn[i], one));
-      studs.setColorAt(k, colours[d.colour[i]]);
-      k += 1;
+      const into = landed[i] ? studs : flyingStuds;
+      const at = landed[i] ? k++ : q++;
+      into.setMatrixAt(at, matrix.compose(p, turn[i], one));
+      into.setColorAt(at, colours[d.colour[i]]);
     }
-    studs.count = k;
-    studs.instanceMatrix.needsUpdate = true;
-    if (studs.instanceColor) studs.instanceColor.needsUpdate = true;
+    for (const [m, count] of [[studs, k], [flyingStuds, q]]) {
+      m.count = count;
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    }
   }
   let placedColours = false;
 
@@ -432,14 +459,17 @@ export async function hero3d(stage, given = {}) {
   const falls = (i) => Math.max(0.22, FALL * Math.sqrt(highs[i] / highest));
   function assemble(time) {
     const t = time - assembly.from;
+    fly(t > 0.12);
     let done = true;
     for (let i = 0; i < n; i++) {
       const high = highs[i];
       if (t < gone) {
-        // Away, up and out of the picture.
+        // Away, up and out of the picture. What was under a brick leaving
+        // keeps its studs hidden: in the moment before it leaves too they
+        // are not seen, and drawing every stud at once halved the frames.
         const u = clamp((t - leaves(i)) / UP, 0, 1);
         come[i] = u < 1 ? 1 : 0;
-        landed[i] = u > 0 ? 0 : 1;
+        landed[i] = 1;
         over[i] = high * u * u;
         done = false;
         continue;
@@ -463,6 +493,8 @@ export async function hero3d(stage, given = {}) {
     place();
     if (done) {
       assembly = null;
+      fly(false);
+      studs.castShadow = true;
       stage.classList.remove("assembling");
       markTime("built");
       state.state = "ready";
@@ -582,6 +614,9 @@ export async function hero3d(stage, given = {}) {
     // It starts as the poster is, built, and comes apart from there.
     assembly = { from: performance.now() / 1000 + 0.25 };
     measureHighs();
+    // The studs' own shadows, a texel of the key's, wait for it built: in
+    // the air every stud's would be drawn twice a frame.
+    studs.castShadow = false;
     stage.classList.add("assembling");
     state.state = "assembling";
     let last = 0;
@@ -619,6 +654,45 @@ export async function hero3d(stage, given = {}) {
 
 // A soft dark under the whole model, where the key's shadow is too sharp to
 // say it stands on something.
+/// A stud as eight sides and a top (24 triangles; the part's own has 48),
+/// in its file's place: radius 6, 4 high, on y 0.
+function roughStud(sides = 8) {
+  const position = [0, 4, 0];
+  const normal = [0, 1, 0];
+  for (let k = 0; k < sides; k++) {
+    const a = (k / sides) * Math.PI * 2;
+    const c = Math.cos(a);
+    const z = Math.sin(a);
+    position.push(6 * c, 4, 6 * z, 6 * c, 4, 6 * z, 6 * c, 0, 6 * z);
+    normal.push(0, 1, 0, c, 0, z, c, 0, z);
+  }
+  const index = [];
+  // Each triangle turned to face the way its normal does.
+  const v = (n) => position.slice(n * 3, n * 3 + 3);
+  const add = (a, b, c, out) => {
+    const [p, q, r] = [v(a), v(b), v(c)];
+    const u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+    const w = [r[0] - p[0], r[1] - p[1], r[2] - p[2]];
+    const n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+    index.push(...(n[0] * out[0] + n[1] * out[1] + n[2] * out[2] >= 0 ? [a, b, c] : [a, c, b]));
+  };
+  for (let k = 0; k < sides; k++) {
+    const j = (k + 1) % sides;
+    const [top, sideTop, sideLow] = [1 + k * 3, 2 + k * 3, 3 + k * 3];
+    const [top2, sideTop2, sideLow2] = [1 + j * 3, 2 + j * 3, 3 + j * 3];
+    add(0, top, top2, [0, 1, 0]);
+    const a = ((k + 0.5) / sides) * Math.PI * 2;
+    const out = [Math.cos(a), 0, Math.sin(a)];
+    add(sideTop, sideLow, sideLow2, out);
+    add(sideTop, sideLow2, sideTop2, out);
+  }
+  const g = new BufferGeometry();
+  g.setAttribute("position", new BufferAttribute(new Float32Array(position), 3));
+  g.setAttribute("normal", new BufferAttribute(new Float32Array(normal), 3));
+  g.setIndex(index);
+  return g;
+}
+
 function softShadow() {
   const c = document.createElement("canvas");
   c.width = c.height = 128;

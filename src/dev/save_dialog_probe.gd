@@ -380,10 +380,14 @@ func _instructions() -> void:
 	if not _check("Instructions asks where to save the booklet", dialog != null):
 		return
 	_check("...before it is drawn", not BookletMaker.busy)
-	_check("...named after the model (%s)" % dialog.current_file,
-		dialog.current_file == _bar.model_name().to_snake_case() + "_instructions.html")
+	# ux14: asked for a PDF first, a web page the other kind it lists.
+	_check("...named after the model, a PDF (%s)" % dialog.current_file,
+		dialog.current_file == _bar.model_name().to_snake_case() + "_instructions.pdf")
+	_check("...a PDF or a web page, in that order (%s)" % ", ".join(dialog.filters),
+		dialog.filters.size() == 2 and str(dialog.filters[0]).begins_with("*.pdf")
+		and str(dialog.filters[1]).begins_with("*.html"))
 	_check("...its title saying what it is (%s)" % dialog.title,
-		dialog.title == "Save the instructions")
+		dialog.title == "Save the instructions as a PDF, or as a web page to read and print in your browser")
 	await _shot("06_instructions_dialog")
 	var path: String = _out.path_join("tug booklet.html")
 	await _answer(dialog, path)
@@ -432,6 +436,26 @@ func _instructions() -> void:
 		_pages_in(path) > 0 and _pdf_pages(pdf) == _pages_in(path))
 	await _frames(3)
 	await _shot("08_status_opened")
+
+	# ux14: a PDF chosen is what is written, where it was chosen, and opened.
+	print("\n  Instructions, as a PDF")
+	_opened.clear()
+	dialog = await _dialog_after("instructions")
+	if dialog == null:
+		_check("Instructions asks a third time", false)
+		return
+	var wanted: String = _out.path_join("tug booklet 3.pdf")
+	await _answer(dialog, wanted)
+	said = await _said(["no browser", "the booklet", "the instructions", "wrote", "could not",
+		"stopped", "nothing"], 400.0)
+	_check("a PDF chosen: the PDF is where it was chosen, and no page beside it (%d pages)"
+		% _pdf_pages(wanted), _pdf_pages(wanted) > 0
+		and not FileAccess.file_exists(wanted.get_basename() + ".html"))
+	_check("...opened in the PDF reader, not the page in a browser (%s)" % str(_opened),
+		_opened == ["file://" + wanted])
+	_check("...and the line says so (%s)" % said,
+		said.begins_with("the instructions are saved as a PDF and open in your PDF reader")
+		and said.contains(wanted))
 
 
 # -- helpers ---------------------------------------------------------------------

@@ -17,12 +17,12 @@
 //     and links (https, rel="ugc nofollow"), one row of numbers with no
 //     count of none, Follow, Share and More; at 390 px the avatar, the
 //     name, the numbers and Follow on the first screen;
-//   the models they pinned, in their order, above the tabs; a banner of
+//   the models they pinned, in their order, first in the Models tab; a banner of
 //     one of their models' pictures when they chose one, the one with
 //     nothing behind the model (/m/<id>.cutout.png, the picture itself for
 //     a model published before) on the theme's own ground, as a card's
 //     picture is: no light box in the dark;
-//   the tabs, Models · Builds · Collections, one shown, each with its count
+//   the tabs, Models · Lists · Builds, one shown, each with its count
 //     once there is one, and what goes there said when it has nothing;
 //   every model reached: a person with 60 has three pages, Show more
 //     brings each (web/pager.js), and with no script each is a page of its
@@ -149,7 +149,7 @@ const drawn = (page) => page.evaluate(() => {
     builds: document.querySelectorAll(".tab-panel figure.build").length,
     lists: [...document.querySelectorAll(".list-card")].map((card) => ({ id: card.dataset.id,
       pictures: card.querySelectorAll(".mosaic img").length, name: card.querySelector("b")?.textContent || "" })),
-    empty: document.querySelector(".tab-panel .state")?.textContent.replace(/\s+/g, " ").trim() || "",
+    empty: document.querySelector(".tab-panel .obj-empty, .tab-panel .state")?.textContent.replace(/\s+/g, " ").trim() || "",
     more: document.querySelector("nav.pager:not([hidden]) .pager-more:not([hidden])")?.getAttribute("href") || "",
     follows: [...document.querySelectorAll(".follows a")].map((a) => a.getAttribute("href")),
     awards: [...document.querySelectorAll(".profile .awards li")].map((li) => ({ id: li.dataset.award,
@@ -182,7 +182,7 @@ function headHolds(said, label, { name, handle, phone, pictured = false, likes =
     zeros.length === 0);
   check(`${label}: tabs ${said.tabs.map((one) => `${one.tab}${one.n ? ` ${one.n}` : ""}${one.current ? "*" : ""}`).join(" · ")}`,
     // Likes too where they chose to show them (Robin, here: supabase/avatars.sql).
-    said.tabs.map((one) => one.tab).join(",") === `models,builds,collections${likes ? ",likes" : ""}`
+    said.tabs.map((one) => one.tab).join(",") === `models,lists,builds${likes ? ",likes" : ""}`
     && said.tabs.filter((one) => one.current).length === 1
       && said.tabs.every((one) => one.n !== "0"));
   check(`${label}: every link https and ugc nofollow`, said.links.every((one) => /^https:\/\//.test(one.href)
@@ -317,16 +317,16 @@ async function local() {
       let said = await drawn(page);
       const loaded = await page.evaluate(() => [...document.querySelectorAll(".tab-panel figure.build img")].every((img) => img.naturalWidth > 0));
       check(`builds ${width} ${theme}: the Builds tab, ${said.builds} photos in columns, loaded`, said.panel === "builds"
-        && said.tabs.find((one) => one.current)?.tab === "builds" && said.builds === Number(said.tabs[1].n) && said.builds > 0 && loaded);
+        && said.tabs.find((one) => one.current)?.tab === "builds" && said.builds === Number(said.tabs.find((one) => one.tab === "builds")?.n) && said.builds > 0 && loaded);
       check(`builds ${width} ${theme}: nothing sideways`, !said.sideways);
       await shot(page, `robin-builds_${width}_${theme}.png`);
-      await page.click('.profile .tabs a[data-tab="collections"]');
+      await page.click('.profile .tabs a[data-tab="lists"]');
       await page.waitForLoadState("load");
       said = await drawn(page);
-      check(`collections ${width} ${theme}: ${said.lists.map((one) => `"${one.name}" (${one.pictures} pictures)`).join(", ")}`,
-        said.panel === "collections" && said.lists.length === 2 && said.lists[0].pictures === 3 && said.lists[1].pictures === 2);
-      check(`collections ${width} ${theme}: nothing sideways`, !said.sideways);
-      await shot(page, `robin-collections_${width}_${theme}.png`);
+      check(`lists ${width} ${theme}: ${said.lists.map((one) => `"${one.name}" (${one.pictures} pictures)`).join(", ")}`,
+        said.panel === "lists" && said.lists.length === 2 && said.lists[0].pictures === 3 && said.lists[1].pictures === 2);
+      check(`lists ${width} ${theme}: nothing sideways`, !said.sideways);
+      await shot(page, `robin-lists_${width}_${theme}.png`);
       await context.close();
     }
   }
@@ -353,10 +353,10 @@ async function local() {
       check(`new ${width} ${theme}: no numbers, no achievements, Models says what goes there: "${said.empty.slice(0, 50)}…"`,
         said.numbers.every((one) => !one.shown) && said.awards.length === 0 && /^Nothing in the gallery yet\./.test(said.empty));
       await shot(alex.page, `new_${width}_${theme}.png`);
-      await alex.page.click('.profile .tabs a[data-tab="collections"]');
+      await alex.page.click('.profile .tabs a[data-tab="lists"]');
       await alex.page.waitForLoadState("load");
       said = await drawn(alex.page);
-      check(`new ${width} ${theme}: Collections says what goes there`, /^No collections yet\./.test(said.empty));
+      check(`new ${width} ${theme}: Lists says what goes there`, /^No lists yet\./.test(said.empty));
       await alex.context.close();
     }
   }

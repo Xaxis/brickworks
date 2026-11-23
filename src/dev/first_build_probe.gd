@@ -245,10 +245,10 @@ func _walk() -> void:
 		not _world.get_brick(first_id).transform.origin.is_equal_approx(was) and _step_is("copy"))
 
 	# Copied.
+	# ux14: Duplicate puts the copy beside it at once, seated, as Studio's does.
 	await _key_of("duplicate")
-	_check("%s holds a copy of it" % Keymap.written("duplicate"),
-		_builder.is_carrying() and _step_is("copy"))
-	await _click(_on_baseplate(Vector3(100, 0, -60)))
+	_check("%s puts a copy beside it (%d parts), nothing in hand" % [Keymap.written("duplicate"),
+		_parts()], not _builder.is_carrying() and _parts() == 5)
 	_check("put down (%d parts): it moves on to Turn the view, framing the view cube" % _parts(),
 		_parts() == 5 and _step_is("view")
 		and _lit().encloses((_main.get("_gizmo") as Control).get_global_rect()))

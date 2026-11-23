@@ -15,7 +15,8 @@
 ## Here each edit, as a person makes it (the menu's command on the
 ## selection, the naming dialog) and as a session does over MCP
 ## (make_unique, make_sections), on:
-## - the castle (models/castle.ldr), its steps made its own by one step
+## - the castle (models/castle.ldr, its STEP lines taken out: since stepkeep2
+##   they are its steps when it opens), its steps made its own by one step
 ##   edit over MCP, every tower and wall built in the castle's steps: a
 ##   tower renamed, one taken apart, two made a sub-assembly, the model's
 ##   sections made; and with a second north-east tower, one made unique;
@@ -31,7 +32,7 @@
 ## and the same tree.
 ##
 ## And a model of the app's own nobody gave steps ("0 Author: Brickworks",
-## no AUTHORED_STEPS): a nested file and 7140-1 with its steps taken out.
+## no AUTHORED_STEPS): a nested file and 7140-1, each with its steps taken out.
 ## Its steps are worked out, and a save writes them as its 0 STEP lines.
 ## A sub-model dragged into another in the tree, saved and opened again,
 ## had 4 of its 8 parts in other steps (tdcheck, 2026-11-11): opened, the
@@ -98,7 +99,12 @@ func _run() -> void:
 	_assemblies = _shell.assemblies
 	_socket = (_main.get("_connector") as ClaudeConnector).rpc
 	var only: String = OS.get_environment("UNIT_STEPS_ONLY")
-	var castle: String = FileAccess.get_file_as_string(CASTLE)
+	# The castle and the nested model as a model nobody gave steps: since
+	# stepkeep2 the STEP lines of a file Brickworks saved are its steps when
+	# it opens (the castle's ten sub-models built whole), and these edits are
+	# of a model whose first step edit builds its towers and walls in its own
+	# steps, as an open worked them out up to then.
+	var castle: String = _as_own(FileAccess.get_file_as_string(CASTLE))
 	var authored: String = FileAccess.get_file_as_string(AUTHORED)
 	if only.is_empty() or "castle".contains(only):
 		await _castle(castle)
@@ -109,7 +115,7 @@ func _run() -> void:
 	if only.is_empty() or "siblings".contains(only):
 		await _siblings(castle, authored)
 	if only.is_empty() or "own".contains(only):
-		await _own(FileAccess.get_file_as_string(NESTED), _as_own(authored))
+		await _own(_as_own(FileAccess.get_file_as_string(NESTED)), _as_own(authored))
 	if _failures == 0:
 		print("unit_steps probe: all checks passed")
 	else:
@@ -826,6 +832,11 @@ func _own(nested: String, set_text: String) -> void:
 	# A file of the app's own is one it wrote: the set as it saves it.
 	var own: String = _store.to_text(name, true)
 	await _round_trip(name, own, "set_same")
+	# Its save's steps taken out again for the edits: since stepkeep2 a save
+	# of the app's own opens in the steps it wrote, and these are of a model
+	# nobody gave steps.
+	own = _as_own(own)
+	await _open(own, name)
 	var at: Dictionary = {}
 	for path: String in _assemblies.paths():
 		var kind: String = Assemblies.definition(Assemblies.leaf(path))

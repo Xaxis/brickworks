@@ -45,7 +45,7 @@ ui:snap and turn step
 
 With a part or a copy in hand, type a number. A small field opens at the pointer and a ghost shows where the number puts the part, red where there is no room. [[Enter]] puts it down; [[Esc]] closes the field.
 
-- **3x** is 3 studs along x, **-2z** 2 studs back, **2py** 2 plates up. **b** is a brick, **l** an LDraw unit and **mm** a millimetre: **-14ly** is 14 LDU down. With no unit, a number is studs.
+- **3x** is 3 studs along x, **-2z** 2 studs back, **2py** 2 plates up. The axis can come first, **x 3**: with something lifted or copied in hand, [[X]], [[Y]] or [[Z]] opens the field too. **b** is a brick, **l** an LDraw unit and **mm** a millimetre: **-14ly** is 14 LDU down. With no unit, a number is studs.
 - A number alone goes the way the ghost last went: **3** after moving it right is 3 studs right.
 - **30r** turns it 30° and **30t** tilts it forwards. Straight after [[R]] or [[T]], a number alone is that turn, on a part in hand or a selection.
 - Several at once: **2x-1py**. Sums work too: **40/2+1lx**.
@@ -59,7 +59,7 @@ ui:type a number while moving
 - Aim at the underside of an overhang and the part goes beneath it.
 - Tip a plate with [[T]] and aim at a side stud, on a headlight brick or a bracket, and it goes on sideways, studs out. Parts with studs on their sides are read at their real width.
 - A 4740 dish, or a small part with one tube under it, goes onto a single stud, as its sets have it. A cone put on a stud sits at the stud's stop.
-- A model opened from a file with parts a fraction off their studs can have them squared up with **Tools › Seat parts on their studs**.
+- A model opened from a file with parts a fraction off their studs can have them squared up with **Tools › Seat parts on their studs**. A part too far from any stud to seat, floating in the air, is selected and said, to move by hand.
 
 <!-- covers
 ui:place under a part and on side studs

@@ -83,6 +83,16 @@ const check = (what, ok) => {
 const errors = [];
 const browser = await launch({ signedOut: true });
 
+/// [selector] scrolled to the middle of the window at once, as a person
+/// scrolls to what they mean to press; the page's place then.
+async function centre(page, selector) {
+  await page.waitForSelector(selector, { state: "attached", timeout: 30000 });
+  return page.evaluate((wanted) => {
+    document.querySelector(wanted)?.scrollIntoView({ block: "center", behavior: "instant" });
+    return Math.round(scrollY);
+  }, selector);
+}
+
 async function open(where, { width = 1280, height = 800, session = null, theme = "light" } = {}) {
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height }, colorScheme: theme, extraHTTPHeaders: headers,
@@ -229,16 +239,26 @@ try {
     const closed = await until(page, (s) => (document.querySelector(`${s} form.composer`)?.hidden
       && document.activeElement?.matches(".post-say") ? true : null), null, 5, said);
     check(`   Escape closes it, the focus back on Add a comment (${Boolean(closed)})`, Boolean(closed));
+    // Follow is in the post's head, above its picture: brought to the middle
+    // first, as a person scrolls to it, and the page's place read there. The
+    // mark read before Like was 300 px off by then on a phone, with Follow
+    // under the sticky header, and the click's own scrolling to reach it
+    // read as the page jumping (rel-m320: 485 then 191).
+    const followAt = await centre(page, `#stream > .post.build[data-id="${id}"] button[data-follow]`);
     await page.click(`#stream > .post.build[data-id="${id}"] button[data-follow]`);
     const followAsks = await dialogOpen(page);
     await closeDialog(page);
     const still = await page.evaluate(() => Math.round(scrollY));
-    check(`   Follow asks to sign in (${Boolean(followAsks)}); the page stayed where it was (${at} then ${still})`,
-      Boolean(followAsks) && Math.abs(still - at) <= 2);
+    check(`   Follow asks to sign in (${Boolean(followAsks)}); the page stayed where it was (${followAt} then ${still})`,
+      Boolean(followAsks) && Math.abs(still - followAt) <= 2);
 
     // --- 5. 3D ----------------------------------------------------------------
     const before3d = asked.filter((url) => /\/viewer3d\.js|\/scene\.json/.test(url)).length;
-    await page.click(`#stream > .post.build[data-id="${id}"] [data-turn]`);
+    // The picture's 3D button, at its foot (web/home-feed.js, the card's
+    // .turn): brought to the middle first, where neither the sticky header
+    // nor the beta bar at the window's foot is over it.
+    await centre(page, `#stream > .post.build[data-id="${id}"] .post-pic button.turn[data-turn]`);
+    await page.click(`#stream > .post.build[data-id="${id}"] .post-pic button.turn[data-turn]`);
     const turned = await until(page, () => (window.brickworks3d?.state === "ready" ? document.documentElement.dataset.feedTurn || "?" : null),
       null, 60);
     const canvas = await page.evaluate(() => Boolean(document.querySelector("#stream .post-pic .view3d.shown canvas")));
