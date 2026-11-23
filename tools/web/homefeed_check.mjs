@@ -366,12 +366,13 @@ try {
     // At once, before the server has answered: the line, marked as going.
     const pendingLine = await until(page, (s) => document.querySelector(`${s} .said-line.pending`)?.textContent || null, null, 5, sel);
     const listed = await until(page, (s) => (!document.querySelector(`${s} .said-line.pending`)
-      && /Posted/.test(document.querySelector(`${s} .composer-said`)?.textContent || "")
+      && (/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
       ? [...document.querySelectorAll(`${s} .said-lines li`)].map((li) => li.textContent).join(" | ") : null), null, 30, sel);
     const comments = await api(`/api/people?op=comments&id=${modelId}`);
     const counted = await page.evaluate((s) => document.querySelector(`${s} .post-acts [data-say] .n`)?.textContent || "", sel);
-    check(`   a comment in place: at once "${pendingLine}", then "${listed}"; on the model too (${(comments.body.comments || []).length}); its count ${counted}`,
-      String(listed).includes(`Lovely tower ${rand}`) && (comments.body.comments || []).some((one) => one.body === `Lovely tower ${rand}`)
+    const folded = await page.evaluate((s) => document.activeElement?.matches(`${s} [data-say]`) && !document.querySelector(`${s} .composer-said`)?.textContent, sel);
+    check(`   a comment in place: at once "${pendingLine}", then "${listed}"; on the model too (${(comments.body.comments || []).length}); its count ${counted}; the box folded, focus on Add a comment (${folded})`,
+      folded && String(listed).includes(`Lovely tower ${rand}`) && (comments.body.comments || []).some((one) => one.body === `Lovely tower ${rand}`)
       && counted === "1");
     await shot(page, "commented.png");
     // Ann's thread, as a post of the feed: Reply opens the composer there,
@@ -384,7 +385,7 @@ try {
       await until(page, (s) => document.activeElement?.matches(`${s} form.composer textarea`) || null, "the reply's box", 10, tsel);
       await page.keyboard.type(`Try a 1 x 2 plate under it ${rand}`);
       await page.keyboard.press("Control+Enter");
-      const replied = await until(page, (s) => (/Posted/.test(document.querySelector(`${s} .composer-said`)?.textContent || "")
+      const replied = await until(page, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
         ? [...document.querySelectorAll(`${s} .said-lines li`)].map((li) => li.textContent).join(" | ") : null), null, 30, tsel);
       const thread = await api(`/api/people?op=talk_thread&id=${threadId}&tests=1`);
       const tally = await page.evaluate((s) => document.querySelector(`${s} [data-replies]`)?.textContent.trim() || "", tsel);
@@ -429,7 +430,7 @@ try {
         await vp.selectOption("#age-year", "1990");
         await vp.click("#age-go");
       }
-      const went = await until(vp, (s) => (/Posted/.test(document.querySelector(`${s} .composer-said`)?.textContent || "")
+      const went = await until(vp, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
         && !document.querySelector(`${s} .said-line.pending`) ? document.querySelector(`${s} .said-lines`)?.textContent || "" : null), null, 40, sel);
       const nowY = await vp.evaluate(() => Math.round(scrollY));
       const heardIt = await api(`/api/people?op=comments&id=${modelId}`);

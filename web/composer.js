@@ -190,6 +190,20 @@ function addLine(lines, html, { first = false } = {}) {
 /// Who is signed in here, as a pending line names them.
 const YOU = () => ({ name: say("You") });
 
+/// [words] read aloud from [place], not shown: once a post lands its box
+/// folds away, and the new line in the card is what a person sees.
+function heard(place, words) {
+  let status = place.querySelector(":scope > .said-heard");
+  if (!status) {
+    status = document.createElement("p");
+    status.className = "said-heard visually-hidden";
+    status.setAttribute("role", "status");
+    place.append(status);
+  }
+  status.textContent = "";
+  requestAnimationFrame(() => { status.textContent = words; });
+}
+
 /// The room a card or a row says things in, made where it has none:
 /// {room, lines}.
 function roomIn(place, { label, before = null }) {
@@ -341,7 +355,11 @@ export async function commentsInCard(post, id, { opener = null, all = false, tes
       }
     },
     failed: (shown) => shown?.remove(),
-    done: () => tell(say("Posted: your comment is under it.")),
+    done: () => {
+      tell("");
+      close();
+      heard(talk, say("Posted."));
+    },
   });
   field.focus();
   // Signed in, what they may do is asked now; signed out, once they post.
@@ -428,9 +446,13 @@ export async function replyInCard(card, thread, { opener = null, tests = "", lan
       }
     },
     failed: (shown) => shown?.remove(),
-    done: (made) => tell(made?.mentions?.length
-      ? say("Posted. {names} will hear of it.", { names: made.mentions.map((one) => `@${one.handle}`).join(", ") })
-      : say("Posted: your reply is in the thread.")),
+    done: (made) => {
+      tell("");
+      close();
+      heard(words, made?.mentions?.length
+        ? say("Posted. {names} will hear of it.", { names: made.mentions.map((one) => `@${one.handle}`).join(", ") })
+        : say("Posted."));
+    },
   });
   field.focus();
   if (signedIn()) {

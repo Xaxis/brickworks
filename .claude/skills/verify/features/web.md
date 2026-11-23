@@ -2804,7 +2804,9 @@ plan with Claude as the client.
   (under 13, barred, comments off, a locked thread) is told why in the
   server's words, and no box. In a card the line shows at once (`.pending`),
   then the server's; refused, it goes and the words are back in the box;
-  `role=status` says what happened. Prove it with
+  posted, the box empties and folds back to the button that opened it, the
+  focus on it, and a hidden `.said-heard` (`role=status`) says "Posted."
+  (the new line is the proof; no visible Posted line). Prove it with
   `tools/web/homefeed_check.mjs --url=<relay or preview> --signed-in`
   (4, 8, 9), `tools/web/talk_flow.mjs` (1, 8b) and
   `tools/web/comments_flow.mjs`.

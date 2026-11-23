@@ -47,6 +47,7 @@ The box is the same wherever you say something on Brickworks: in a post of the f
 
 - [[Enter]] starts a new line; it never posts. [[Ctrl]]+[[Enter]] (on a Mac [[Cmd]]+[[Enter]]) or **Post** posts it, once however often you press.
 - [[Esc]] closes a box opened in a post or a row, and you are back on the button that opened it.
+- Once it posts, your words show in the post or the row at once, and a box opened there folds away again.
 - Under the box are the [community guidelines](/guidelines), and near the most a post takes, how many characters are left.
 - Signed out, **Post** asks you to sign in with a code by email; once you are in it posts what you wrote, from the same place.
 - If you cannot post there (under 13, comments turned off, a locked thread), the box says why instead.

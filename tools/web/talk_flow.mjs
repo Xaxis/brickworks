@@ -420,7 +420,7 @@ try {
     await until(list, (r) => document.activeElement?.matches(`${r} form.composer textarea`) || null, "the row's box", 10, row);
     await list.keyboard.type(`From the list ${rand}`);
     await list.keyboard.press("Control+Enter");
-    const rowSaid = await until(list, (r) => (/Posted/.test(document.querySelector(`${r} .composer-said`)?.textContent || "")
+    const rowSaid = await until(list, (r) => ((/Posted/.test(document.querySelector(`${r} .said-heard`)?.textContent || "") && document.querySelector(`${r} form.composer`)?.hidden === true)
       && !document.querySelector(`${r} .said-line.pending`) ? document.querySelector(`${r} .said-lines`)?.textContent || "" : null), "Posted in the row", 30, row);
     const nowCounted = Number(await list.evaluate((r) => document.querySelector(`${r} [data-replies]`)?.dataset.replies || "0", row));
     const cyPosts = (await postsOf(thread, people.cy)).filter((one) => one.mine && one.body === `From the list ${rand}`);
