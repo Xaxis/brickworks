@@ -73,6 +73,9 @@ var asked: Dictionary = {}
 ## its steps began (milliseconds in, then the render's words), for the bench.
 var last_ms: float = 0.0
 var steps: PackedStringArray = PackedStringArray()
+## How many frames the last card took: on a box drawing through software's
+## copy of the window (a probe's Xvfb), each costs that copy's time as well.
+var frames: int = 0
 ## The longest frame of the last card's and what it was doing (StudioRender's).
 var worst_frame_ms: float = 0.0
 var worst_step: String = ""
@@ -155,7 +158,10 @@ func take(size: Vector2i) -> Image:
 	render.look = look
 	render.rig_lights = rig_lights
 	add_child(render)
-	steps.clear()
+	# A new list, not cleared: the bench keeps the last one (a packed array
+	# is shared, and a cleared one had every card's steps say the last's).
+	steps = PackedStringArray()
+	var first_frame: int = Engine.get_frames_drawn()
 	render.progress.connect(func(_fraction: float, words: String) -> void:
 		if steps.is_empty() or not steps[-1].ends_with(" " + words):
 			steps.append("%d %s" % [(Time.get_ticks_usec() - began) / 1000, words]))
@@ -164,6 +170,7 @@ func take(size: Vector2i) -> Image:
 			if is_instance_valid(render):
 				render.cancel())
 	var image: Image = await render.render(world, settings(size))
+	frames = Engine.get_frames_drawn() - first_frame
 	worst_frame_ms = render.worst_frame_ms
 	worst_step = render.worst_step
 	render.queue_free()
