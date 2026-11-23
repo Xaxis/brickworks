@@ -17316,3 +17316,217 @@ msgstr "%s. Compartir progreso guarda hasta dónde llegó como una versión en e
 
 msgid "%s. Sharing its progress as a version in the model's log."
 msgstr "%s. Compartiendo su progreso como una versión en el historial del modelo."
+
+# A change a remixer sent back, in Compare and Share (suggestedit).
+msgid "Compare: a change sent to you"
+msgstr "Comparar: un cambio para ti"
+
+msgid "Stop comparing: your model as it was, the change still waiting for you (Esc)"
+msgstr "Dejar de comparar: tu modelo como estaba, el cambio sigue esperándote (Esc)"
+
+msgid "Added: a green ghost where it goes"
+msgstr "Añadida: un fantasma verde donde va"
+
+msgid "Taken away: red"
+msgstr "Quitada: en rojo"
+
+msgid "Moved: amber, a faint ghost where it goes"
+msgstr "Movida: en ámbar, un fantasma tenue donde va"
+
+msgid "Recoloured: violet"
+msgstr "Recoloreada: en violeta"
+
+msgid "Take all"
+msgstr "Tomar todo"
+
+msgid "Take the ticked"
+msgstr "Tomar las marcadas"
+
+msgid "Take the %d ticked"
+msgstr "Tomar las %d marcadas"
+
+msgid "All of the change taken into your model, opened for you to look at and publish as its next version"
+msgstr "Todo el cambio tomado en tu modelo, abierto para que lo mires y lo publiques como su próxima versión"
+
+msgid "Only the changes ticked taken into your model, opened for you to look at and publish as its next version"
+msgstr "Solo los cambios marcados tomados en tu modelo, abierto para que lo mires y lo publiques como su próxima versión"
+
+msgid "Decline"
+msgstr "Rechazar"
+
+msgid "Say no to this change: nothing of it is taken, and it leaves your notifications"
+msgstr "Rechazar este cambio: no se toma nada de él y sale de tus notificaciones"
+
+msgid "Tick or untick every change of this kind"
+msgstr "Marcar o desmarcar cada cambio de este tipo"
+
+msgid "Frame it in the view"
+msgstr "Encuadrarlo en la vista"
+
+msgid "Take this change, or leave it"
+msgstr "Tomar este cambio, o dejarlo"
+
+msgid "Added: %s in %s, step %d"
+msgstr "Añadida: %s en %s, paso %d"
+
+msgid "Taken away: %s in %s, step %d"
+msgstr "Quitada: %s en %s, paso %d"
+
+msgid "%s: %s in %s, step %d"
+msgstr "%s: %s en %s, paso %d"
+
+msgid "%s: %s in %s, step %d (from step %d)"
+msgstr "%s: %s en %s, paso %d (desde el paso %d)"
+
+msgid "Recoloured %s to %s: %s, step %d"
+msgstr "Recoloreada de %s a %s: %s, paso %d"
+
+msgid "Swapped %s for %s in %s, step %d"
+msgstr "%s cambiada por %s en %s, paso %d"
+
+msgid "To step %d from step %d: %s in %s"
+msgstr "Al paso %d desde el paso %d: %s en %s"
+
+msgid "in sub-model “%s”"
+msgstr "en el submodelo «%s»"
+
+msgid "…and %d more changes, which Take all takes."
+msgstr "…y %d cambios más, que Tomar todo toma."
+
+msgid "Your model is already as the remix has it."
+msgstr "Tu modelo ya está como lo tiene el remix."
+
+msgid "%s, against your version %d."
+msgstr "%s, frente a tu versión %d."
+
+msgid "Taking it into your model…"
+msgstr "Tomándolo en tu modelo…"
+
+msgid "Saying no to it…"
+msgstr "Rechazándolo…"
+
+msgid "Moved"
+msgstr "Movida"
+
+msgid "Turned"
+msgstr "Girada"
+
+msgid "Moved %s"
+msgstr "Movida %s"
+
+msgid "Moved %s and turned"
+msgstr "Movida %s y girada"
+
+msgid "1 stud and 1 plate"
+msgstr "1 espiga y 1 placa"
+
+msgid "1 stud and %s plates"
+msgstr "1 espiga y %s placas"
+
+msgid "%s studs and 1 plate"
+msgstr "%s espigas y 1 placa"
+
+msgid "%s studs and %s plates"
+msgstr "%s espigas y %s placas"
+
+msgid "A remixer"
+msgstr "Alguien que lo remezcló"
+
+msgid "%s's change from their remix “%s”"
+msgstr "El cambio de %s de su remix «%s»"
+
+msgid "%d added"
+msgstr "%d añadidas"
+
+msgid "%d taken away"
+msgstr "%d quitadas"
+
+msgid "%d moved"
+msgstr "%d movidas"
+
+msgid "%d recoloured"
+msgstr "%d recoloreadas"
+
+msgid "%d swapped"
+msgstr "%d cambiadas"
+
+msgid "%d to another step"
+msgstr "%d a otro paso"
+
+msgid "no change"
+msgstr "ningún cambio"
+
+msgid "%s's change"
+msgstr "El cambio de %s"
+
+msgid "Part of %s's change"
+msgstr "Parte del cambio de %s"
+
+msgid "With %s's change from their remix “%s”: %s."
+msgstr "Con el cambio de %s de su remix «%s»: %s."
+
+msgid "With part of %s's change from their remix “%s”: %s."
+msgstr "Con parte del cambio de %s de su remix «%s»: %s."
+
+msgid "opening the change sent to you…"
+msgstr "abriendo el cambio que te enviaron…"
+
+msgid "sign in to Brickworks to see the change sent to you"
+msgstr "inicia sesión en Brickworks para ver el cambio que te enviaron"
+
+msgid "could not open the change: %s"
+msgstr "no se pudo abrir el cambio: %s"
+
+msgid "your change from “%s” waits for its designer to look at it"
+msgstr "tu cambio de «%s» espera a que su diseñador lo mire"
+
+msgid "that change was taken already"
+msgstr "ese cambio ya se tomó"
+
+msgid "that change was declined already"
+msgstr "ese cambio ya se rechazó"
+
+msgid "could not open your model"
+msgstr "no se pudo abrir tu modelo"
+
+msgid "could not open “%s”: %s"
+msgstr "no se pudo abrir «%s»: %s"
+
+msgid "opening “%s” — %d parts on their way…"
+msgstr "abriendo «%s» — %d piezas en camino…"
+
+msgid "Sign in to Brickworks to take it."
+msgstr "Inicia sesión en Brickworks para tomarlo."
+
+msgid "Brickworks could not take it just now."
+msgstr "Brickworks no pudo tomarlo ahora."
+
+msgid "Could not open your model with it taken in."
+msgstr "No se pudo abrir tu modelo con el cambio tomado."
+
+msgid "%s is in “%s” now: publish it from Share as version %d, and its page credits them"
+msgstr "%s está ahora en «%s»: publícalo desde Compartir como versión %d, y su página da el crédito"
+
+msgid "Sign in to Brickworks to say no to it."
+msgstr "Inicia sesión en Brickworks para rechazarlo."
+
+msgid "Brickworks could not say no to it just now."
+msgstr "Brickworks no pudo rechazarlo ahora."
+
+msgid "declined %s; your model is as it was"
+msgstr "%s rechazado; tu modelo está como estaba"
+
+msgid "Brickworks did not answer"
+msgstr "Brickworks no respondió"
+
+msgid "Shared model"
+msgstr "Modelo compartido"
+
+msgid "%s is in this model: publish it as version %d, and its page credits them."
+msgstr "%s está en este modelo: publícalo como versión %d, y su página da el crédito."
+
+msgid "It credits %s on its page and in Versions."
+msgstr "Su página da el crédito a %s, también en Versiones."
+
+msgid "Not marked as taking %s's change: %s."
+msgstr "No marcado como que toma el cambio de %s: %s."
