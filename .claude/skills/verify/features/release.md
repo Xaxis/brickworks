@@ -297,7 +297,10 @@ that offers each system its own build. The cycle and its cadence are
   one; `--probes "a b"` names exactly those; `--probes none --why "..."`
   runs none and the log and status say why; `--probes ""` is refused.
   `--plan` prints the lean list, the files that differ from live and how
-  many were carried, and stages nothing. `TRAIN_REHEARSE=1` at the stage
+  many were carried, and stages nothing. `--gate-ok "tests/a.py ..."` (kept in `TAG.train/gate_ok`)
+  ships past the Python suite's failures in those files only. A check that
+  cannot run on brickworks.diy (`lean.py never-live`) holds at once for the
+  lead's `--accept`, with no run there. `TRAIN_REHEARSE=1` at the stage
   runs the whole path on the preview and ends where main would move, its
   result saying how long from its merge; main and the domain untouched.
   tools/release/README.md has the

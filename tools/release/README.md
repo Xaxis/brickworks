@@ -89,6 +89,18 @@ the longest went from 32 to 23 minutes at a unit's priority (fastship,
 2026-11-23). What still names most checks is a hub file: `api/_talk.js`
 reaches 78, `web/site.css` and `web/follow.js` 73, `api/share.js` 65.
 
+**Nothing waits on what cannot answer.** A train staged `--after` the
+release before makes its live database mark only once that one serves (and
+no hold stops it): rel-m320's mark, made as it began to wait, held
+rel-m319's runs on brickworks.diy behind it while it waited for rel-m319. A
+check that failed on the preview and cannot run on brickworks.diy (`NEVER_LIVE`
+in ship.sh, or a script that refuses it given the check's options: `lean.py
+never-live`) is not sent there: the release holds at once for the lead, who
+ships past it with `reship TAG --accept NAME "why"`. The Python suite's
+failures the lead judged are named at the stage (`--gate-ok "tests/a.py
+..."`, kept in `TAG.train/gate_ok` for its reships, or `SHIP_GATE_OK`):
+failures only in those files ship, logged; any other holds.
+
 **Nothing made twice.** A reship whose fix touched only `tools/web` (but
 the files the build runs: `deploy_reads.sh`), `tools/release` or `tests/`
 reuses the preview. A reship whose fix changed no app file ships on the
