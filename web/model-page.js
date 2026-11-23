@@ -20,12 +20,23 @@
 // words; an @handle the server told (docs/SOCIAL.md section 7, item 6) is
 // a link to that profile, and typing @ in a box offers the people on the
 // page (pickMentions).
+//
+// And comments on a part (partpins, 2026-11-23, supabase/comment_pins.sql):
+// where the comments say pins can be written, a part pressed in the 3D view
+// (its menu's Comment on this part) puts "On the 2 × 4 brick" over the box,
+// with Cancel, and the comment sent is a pin on it. Each pin says the part
+// and step it is on as a button that opens the 3D view and turns it there,
+// numbered oldest first, as its dot and the studio's list number it; on
+// this version where the 3D view placed it (web/card.js pinPlace), "moved
+// since" where its part moved, and "on version N", pressable no more, where
+// it is on no part of this one. A pin its designer resolved is folded away
+// under Resolved; its designer may resolve one here too.
 import { askToSignIn, call, email, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
 import { avatarHtml } from "/kit.js";
-import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, setPhoto, sharpPhotos, themeSaid,
-  told } from "/card.js";
+import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, pinPart, pinSaid, rulesSaid, say, setPhoto,
+  sharpPhotos, themeSaid, told } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 import { guardPhoneOpens } from "/phone-warn.js";
@@ -64,6 +75,23 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 // many its designer's page shows, "not-open" before model_bases.sql
 // (tools/web/based_on_flow.mjs reads it).
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
+// Comments on a part (partpins): the comments and the model in 3D, each
+// told of the other through this. The comments say which pins there are,
+// numbered (pins), and whether a part may be commented on (open); the 3D
+// view says where each is on this version (placed), which part was asked
+// for (wanted) and which dot was pressed (pressed). [view] is start3d's.
+const pinBridge = { pins: [], open: false, view: null, wanted: null, placed: null, pressed: null, name: null };
+const pinHooks = {
+  pins: () => pinBridge.pins,
+  mayPin: () => pinBridge.open,
+  pinWanted: (part) => pinBridge.wanted?.(part),
+  placed: (list) => pinBridge.placed?.(list),
+  pinPressed: (id) => pinBridge.pressed?.(id) || "",
+  partName: (part, colour) => pinBridge.name?.(part, colour) || "",
+};
+// The Parts list's lots, for a pin's part's name: asked for by the list
+// (startParts), whose one request this shares.
+let partLots = null;
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 // Its photos of real builds, the whole one where a copy would be drawn
@@ -83,7 +111,9 @@ if (frame) startPicture(frame);
 // on the picture or the first drag across it (web/start3d.js, as the embed
 // has it). Drawn by /viewer3d.js (tools/viewer/inline.js), asked for only
 // then.
-const close3d = frame && frame.dataset.scene ? start3d(frame).close : null;
+const view3d = frame && frame.dataset.scene ? start3d(frame, pinHooks) : null;
+const close3d = view3d ? view3d.close : null;
+pinBridge.view = view3d;
 // A model too big for a phone said so before the studio opens it (phonetruth).
 guardPhoneOpens();
 // In your room (APP_UX5 #13, arview): where this browser can place a model
@@ -592,6 +622,7 @@ function startParts(section) {
       });
     return asked;
   };
+  partLots = () => Promise.resolve(load()).then(() => lots);
   for (const choice of choices) {
     choice.addEventListener("click", () => {
       group = choice.dataset.group;
@@ -638,6 +669,31 @@ function startComments(section) {
   const why = section.querySelector(".comment-why");
   const said = section.querySelector(".comments-said");
   let state = null;
+  // Comments on a part: the part pressed in 3D that the box is on ({part,
+  // colour, at, turn, name}, the 3D view's), each pin's number, where the 3D
+  // view placed each (id -> {index, moved}, or null for on no part here;
+  // none until it has), and the Parts list's lots for their names.
+  let aiming = null;
+  let pinNumber = new Map();
+  let placed = new Map();
+  let lots = null;
+  let lotsAsked = false;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const chip = document.createElement("p");
+  chip.className = "comment-part";
+  chip.hidden = true;
+  chip.setAttribute("aria-live", "polite");
+  form.querySelector(".comment-on")?.after(chip);
+  // Resolved pins, folded away under the list.
+  const fold = document.createElement("details");
+  fold.className = "comments-resolved";
+  fold.hidden = true;
+  const foldSaid = document.createElement("summary");
+  foldSaid.className = "pill";
+  const foldList = document.createElement("ol");
+  foldList.className = "comment-list";
+  fold.append(foldSaid, foldList);
+  list.after(fold);
   // The thread whose reply box is open, and what was typed in it, kept
   // across a sign-in and a redraw.
   let replying = null;
@@ -673,7 +729,10 @@ function startComments(section) {
     // Not open on this deployment yet (comments.sql): nothing to show.
     hold?.remove();
     section.hidden = state.ready === false;
+    pinsOf();
     draw();
+    // The 3D view, if open, places them again.
+    pinBridge.view?.pinsChanged();
     commentsSaid(state, setOpen);
     talkAbout(state.you?.owner === true);
   }
@@ -741,6 +800,123 @@ function startComments(section) {
   /// sending signs them in first. Whether they may then is the server's.
   const mayTry = () => state.you?.may_write || (!state.you?.signed_in && state.open);
 
+  /// The pins in the answer, numbered oldest first, resolved ones too, as
+  /// the studio numbers them (src/ui/part_pins.gd), for the 3D view; and,
+  /// once the page has loaded, their parts' names asked for.
+  function pinsOf() {
+    const order = (a, b) => (Date.parse(a.at) - Date.parse(b.at)) || (a.id - b.id);
+    const pinned = state.pins === true ? (state.comments || []).filter((one) => one.pin && !one.parent).sort(order) : [];
+    pinNumber = new Map(pinned.map((one, k) => [one.id, k + 1]));
+    pinBridge.pins = pinned.map((one) => ({ id: one.id, n: pinNumber.get(one.id), pin: one.pin, resolved: Boolean(one.resolved),
+      version: one.version }));
+    pinBridge.open = state.pins === true && Boolean(state.open) && Boolean(mayTry());
+    if (pinned.length && !lotsAsked && partLots) {
+      lotsAsked = true;
+      const ask = () => partLots().then((got) => {
+        lots = Array.isArray(got) ? got : null;
+        if (lots) draw();
+      });
+      if (document.readyState === "complete") ask();
+      else addEventListener("load", ask, { once: true });
+    }
+  }
+
+  /// A part's name in the page's language, from the Parts list: of its
+  /// number in its colour, else in any; "" while it is not known.
+  function nameOf(part, colour) {
+    if (!lots) return "";
+    const want = pinPart(part);
+    const found = lots.find((lot) => pinPart(lot.part) === want && Number(lot.colour) === Number(colour))
+      || lots.find((lot) => pinPart(lot.part) === want);
+    return found ? found.said || found.name || "" : "";
+  }
+  const capital = (words) => words.charAt(0).toLocaleUpperCase(globalThis.brickworksLang?.code || "en") + words.slice(1);
+
+  /// A part pressed in 3D (its menu's Comment on this part): the box is on
+  /// it, said over it, and in reach.
+  function aim(part) {
+    if (!pinBridge.open) return;
+    aiming = part;
+    drawChip();
+    form.hidden = false;
+    form.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+    box.focus({ preventScroll: true });
+  }
+  function unaim(focus) {
+    aiming = null;
+    drawChip();
+    pinBridge.view?.light(-1);
+    if (focus) box.focus();
+  }
+  function drawChip() {
+    chip.replaceChildren();
+    chip.hidden = !aiming;
+    if (!aiming) return;
+    const tag = document.createElement("span");
+    tag.className = "pill pin";
+    tag.textContent = capital(pinSaid(nameOf(aiming.part, aiming.colour) || aiming.name || "", null));
+    const cancel = button(say("Cancel"), () => unaim(true));
+    cancel.setAttribute("aria-label", say("Cancel: comment on the whole model"));
+    chip.append(tag, " ", cancel);
+  }
+  pinBridge.wanted = aim;
+  pinBridge.name = nameOf;
+  pinBridge.placed = (where) => {
+    placed = new Map(where.map((one) => [one.id, one.index >= 0 ? { index: one.index, moved: one.moved } : null]));
+    draw();
+  };
+  // A dot pressed in 3D: its comment marked, and a line of it for the view
+  // to show.
+  pinBridge.pressed = (id) => {
+    for (const marked of section.querySelectorAll("li.comment.asked")) marked.classList.remove("asked");
+    document.getElementById(`comment-${id}`)?.classList.add("asked");
+    const one = (state?.comments || []).find((comment) => comment.id === id);
+    if (!one) return "";
+    const letters = [...one.body];
+    return `${number(pinNumber.get(id) || 0)}. ${one.by || say("A builder")}: ${letters.length > 90 ? `${letters.slice(0, 90).join("")}…` : one.body}`;
+  };
+
+  /// A pin's line: its number, and the part and step it is on, as the 3D
+  /// view placed it on this version (before it has, on its own version as
+  /// it was made); pressed, the 3D view turned to it. Words alone where it
+  /// is on no part of this one, or there is no 3D view.
+  function pinLine(one) {
+    const line = document.createElement("p");
+    line.className = "comment-pin";
+    const n = pinNumber.get(one.id) || 0;
+    const badge = document.createElement("span");
+    badge.className = "pin-n";
+    badge.setAttribute("aria-hidden", "true");
+    badge.textContent = number(n);
+    const here = one.version === version;
+    const where = placed.get(one.id);
+    const name = nameOf(one.pin.part, one.pin.colour);
+    const words = where || (where === undefined && here)
+      ? `${pinSaid(name, here ? one.step : one.on_step ?? null)}${where?.moved ? ` ${say("(moved since)")}` : ""}`
+      : say("{where}, on version {version}", { where: pinSaid(name, one.step), version: number(one.version) });
+    if (where === null || !pinBridge.view) {
+      const plain = document.createElement("span");
+      plain.textContent = words;
+      line.classList.toggle("gone", where === null);
+      line.append(badge, plain);
+      return line;
+    }
+    const go = button(words, (event) => {
+      frame?.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+      pinBridge.view.showPin(one.id, event.detail === 0 ? "key" : event.pointerType || "mouse");
+    }, "link pin-go");
+    go.setAttribute("aria-label", say("Pin {n}, {where}: show it in 3D", { n: number(n), where: words }));
+    line.append(badge, go);
+    return line;
+  }
+
+  async function resolve(one) {
+    const answer = await call("/api/people?op=pin_resolve", { method: "POST", body: { id: one.id, resolved: !one.resolved } });
+    if (answer.status !== 200) return tell(told(answer.body.error, say("That did not work just now.")));
+    tell(one.resolved ? say("Open again.") : say("Resolved: folded away under Resolved."));
+    await load();
+  }
+
   /// One comment or reply: the avatar, who (a link to their page), the
   /// Designer pill on the model's owner's, the step as a pill that opens
   /// the viewer there, when, the words, and what the reader may do.
@@ -766,8 +942,16 @@ function startComments(section) {
       tag.textContent = say("Designer");
       head.append(" ", tag);
     }
-    // A reply is on its comment's step: said once, on the comment.
-    if (one.step && !reply) {
+    const pinned = Boolean(one.pin) && !reply && pinNumber.has(one.id);
+    if (pinned && one.resolved) {
+      const tag = document.createElement("span");
+      tag.className = "pill resolved";
+      tag.textContent = say("Resolved");
+      head.append(" ", tag);
+    }
+    // A reply is on its comment's step: said once, on the comment; a
+    // pin's, on its line.
+    if (one.step && !reply && !pinned) {
       const pill = document.createElement("a");
       pill.className = "pill step";
       const here = one.on_step !== null && one.on_step !== undefined;
@@ -805,7 +989,9 @@ function startComments(section) {
       link.textContent = piece.at;
       words.append(link);
     }
-    main.append(head, words);
+    main.append(head);
+    if (pinned) main.append(pinLine(one));
+    main.append(words);
     if (one.hidden) {
       const note = document.createElement("p");
       note.className = "note";
@@ -827,6 +1013,7 @@ function startComments(section) {
       answer.setAttribute("aria-label", one.by ? say("Reply to {name}", { name: one.by }) : say("Reply to a builder"));
       acts.append(answer);
     }
+    if (state.you?.owner && pinned) acts.append(button(one.resolved ? say("Open it again") : say("Resolve"), () => resolve(one)));
     if (state.you?.owner) {
       acts.append(button(one.hidden ? say("Show it") : say("Hide it"), () => change(one, one.hidden ? "show" : "hide")));
     }
@@ -875,10 +1062,17 @@ function startComments(section) {
     // A person on the keyboard pressed something in a comment (Hide it,
     // Show it): the same comment's button keeps the focus once it is drawn
     // again, else the comment, else the list's heading, never the body.
-    const at = list.contains(document.activeElement) ? document.activeElement : null;
+    const within = (element) => list.contains(element) || fold.contains(element);
+    const at = within(document.activeElement) && document.activeElement !== foldSaid ? document.activeElement : null;
     const where = at && { comment: at.closest("li.comment")?.id, words: at.localName === "button" ? at.textContent : "" };
-    list.replaceChildren(...threads.map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
-    if (where && !list.contains(document.activeElement) && !document.querySelector("form.reply-new")) {
+    // A pin its designer resolved, folded away under Resolved.
+    const done = (one) => Boolean(one.pin && one.resolved && pinNumber.has(one.id));
+    const folded = threads.filter(done);
+    list.replaceChildren(...threads.filter((one) => !done(one)).map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
+    foldList.replaceChildren(...folded.map((one) => item(one, false, (under.get(one.id) || []).sort(order))));
+    foldSaid.textContent = say("Resolved ({n})", { n: number(folded.length) });
+    fold.hidden = folded.length === 0;
+    if (where && !within(document.activeElement) && !document.querySelector("form.reply-new")) {
       const again = where.comment && document.getElementById(where.comment);
       const pressed = again && [...again.querySelectorAll(":scope > .comment-main > .comment-acts button")]
         .find((one) => one.textContent === where.words);
@@ -928,6 +1122,7 @@ function startComments(section) {
     const named = /^#comment-\d+$/.test(location.hash) ? document.getElementById(location.hash.slice(1)) : null;
     if (named && !draw.shown) {
       draw.shown = true;
+      if (fold.contains(named)) fold.open = true;
       named.classList.add("asked");
       named.scrollIntoView({ block: "center" });
     }
@@ -1049,12 +1244,15 @@ function startComments(section) {
     send.disabled = true;
     tell(say("Adding it…"));
     const at = step.value === "" ? null : Number(step.value);
-    const answer = await call("/api/people?op=comment", { method: "POST",
-      body: { model, version, step: at, body: text } });
+    // On the part pressed in 3D: a pin, the part as the 3D view had it.
+    const part = aiming && { part: aiming.part, colour: aiming.colour, at: aiming.at, turn: aiming.turn };
+    const answer = await call(part ? "/api/people?op=pin" : "/api/people?op=comment", { method: "POST",
+      body: { model, version, step: at, body: text, ...(part ? { part } : {}) } });
     send.disabled = false;
     if (answer.status !== 201) return tell(told(answer.body.error, say("That did not go just now. Try again in a minute.")));
     box.value = "";
     left.textContent = "";
+    if (part) unaim(false);
     tell(at ? say("Added, on step {n}.", { n: at }) : say("Added."));
     await load();
   });

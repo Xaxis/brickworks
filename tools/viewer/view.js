@@ -114,7 +114,7 @@ export class View {
     this.stage = stage;
     this.d = d;
     this.o = { still: false, spin: true, fov: 35, from: CORNER, errors: [], mark: () => {}, touchAction: () => "pan-y", lost: () => {},
-      shapeOf: () => Promise.resolve(null), ...given };
+      shapeOf: () => Promise.resolve(null), drawn: () => {}, ...given };
     this.from = new Vector3(...this.o.from).normalize();
     this.marked = new Set();
     this.scene = new Scene();
@@ -465,6 +465,8 @@ export class View {
   }
   draw() {
     this.renderer.render(this.scene, this.camera);
+    // What is drawn over it follows it (inline.js, a pin's dot).
+    this.o.drawn();
     if (this.loaded > 0) this.once("first3d");
     if (this.loaded >= this.meshesWanted && this.meshesWanted > 0) this.once("complete3d");
   }
@@ -592,6 +594,79 @@ export class View {
       if (i !== undefined && !(this.d.flags[i] & SCENERY)) return i;
     }
     return -1;
+  }
+
+  // The brick nearest the middle of the stage, for the keys (a part
+  // commented on from them): the one there, else the first found on rings
+  // round it, or -1.
+  pickNearMiddle() {
+    if (!this.renderer) return -1;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const most = Math.min(rect.width, rect.height) / 2;
+    for (const ring of [0, 0.06, 0.12, 0.2, 0.3, 0.42]) {
+      for (let k = 0; k < (ring ? 12 : 1); k++) {
+        const i = this.pick(x + Math.cos((k * Math.PI) / 6) * ring * most, y + Math.sin((k * Math.PI) / 6) * ring * most);
+        if (i >= 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  // The middle of brick [i]'s part, in the scene: its box's middle, turned
+  // and put where the brick is.
+  centreOf(i) {
+    const d = this.d;
+    const b = d.meshes[d.mesh[i]]?.bounds;
+    const centre = b && b.length === 6 && b.every(Number.isFinite)
+      ? new Vector3((b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2) : new Vector3();
+    centre.applyQuaternion(new Quaternion(d.turn[i * 4], d.turn[i * 4 + 1], d.turn[i * 4 + 2], d.turn[i * 4 + 3]));
+    return centre.add(new Vector3(d.position[i * 3], d.position[i * 3 + 1], d.position[i * 3 + 2]));
+  }
+
+  // Where [point] of the scene is on the page, {x, y} in its pixels (as a
+  // pointer's clientX and clientY), or null where it is behind the camera
+  // or off the stage. [rect] the canvas's, where the caller has it.
+  onPage(point, rect = this.renderer?.domElement.getBoundingClientRect()) {
+    if (!this.renderer || !rect) return null;
+    const v = point.clone().project(this.camera);
+    if (!(v.z > -1 && v.z < 1) || Math.abs(v.x) > 1 || Math.abs(v.y) > 1) return null;
+    return { x: rect.left + ((v.x + 1) / 2) * rect.width, y: rect.top + ((1 - v.y) / 2) * rect.height };
+  }
+
+  // The camera turned to brick [i] (a pin's part): it in the middle, near
+  // enough to see it among the parts round it, looked at from where the
+  // camera was looking; a short glide there, none for a person who asks
+  // for less motion.
+  frameOn(i) {
+    if (!this.controls) return;
+    const d = this.d;
+    const b = d.meshes[d.mesh[i]]?.bounds;
+    const size = b && b.length === 6 && b.every(Number.isFinite) ? Math.hypot(b[3] - b[0], b[4] - b[1], b[5] - b[2]) / 2 : 20;
+    const centre = this.centreOf(i);
+    const back = this.camera.position.clone().sub(this.controls.target).normalize();
+    const was = this.camera.position.distanceTo(this.controls.target);
+    const distance = Math.min(this.controls.maxDistance, Math.max(this.controls.minDistance, size * 9, 90));
+    const from = this.controls.target.clone();
+    this.halt();
+    this.interacted = true;
+    this.controls.autoRotate = false;
+    const put = (share) => {
+      this.controls.target.lerpVectors(from, centre, share);
+      this.camera.position.copy(this.controls.target).addScaledVector(back, was + (distance - was) * share);
+      this.controls.update();
+      this.render();
+    };
+    if (this.o.still) { put(1); return; }
+    const began = performance.now();
+    const glide = () => {
+      if (!this.controls) return;
+      const t = Math.min(1, (performance.now() - began) / 450);
+      put(1 - (1 - t) ** 3);
+      if (t < 1) requestAnimationFrame(glide);
+    };
+    requestAnimationFrame(glide);
   }
 
   // Lines round each of [which]'s parts: the picked part, or what a step adds.

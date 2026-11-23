@@ -57,6 +57,7 @@
         "tests/test_library.py",
         "tests/test_library_site.py",
         "tests/test_model_page.py",
+        "tests/test_partpins.py",
         "tests/test_refresh_catalogue.py",
         "tests/test_release.py",
         "tests/test_row_cap.py",
@@ -2448,6 +2449,22 @@
       "tests": []
     },
     {
+      "id": "cli:partpins browser flow",
+      "kind": "cli",
+      "entry": "tools/web/partpins_flow.mjs",
+      "reach": "node --env-file=.env tools/web/relay_server.mjs 11400 --static=web --hold=pins, then node --env-file=.env tools/web/partpins_flow.mjs --url=http://127.0.0.1:11400 --out=DIR   (preview_checks.sh partpins: the pick at 1280 and 390, pins on the page, a new version, Resolve, a block)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:partpins probe",
+      "kind": "cli",
+      "entry": "src/dev/partpins_probe.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/partpins_probe.gd -- --pictures=DIR",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:partplaces api test",
       "kind": "cli",
       "entry": "tools/web/partplaces_api.mjs",
@@ -2617,6 +2634,14 @@
       "kind": "cli",
       "entry": "tools/web/picture_themes.mjs",
       "reach": "node tools/web/picture_themes.mjs --url=<site> --id=<model> [--tests] [--old] --out=DIR   (a model's card and page at 390 and 1280 in each theme, a corner of each measured; share_flow runs it on its model)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:pin version pairs",
+      "kind": "cli",
+      "entry": "tools/pin_pairs.mjs",
+      "reach": "node tools/pin_pairs.mjs [--check]   (writes tests/fixtures/pins/pairs.json)",
       "area": "web",
       "tests": []
     },
@@ -2808,6 +2833,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_partpins.py",
         "tests/test_release_train.py"
       ]
     },
@@ -2997,6 +3023,7 @@
         "tests/test_console3.py",
         "tests/test_elements.py",
         "tests/test_insights.py",
+        "tests/test_partpins.py",
         "tests/test_release.py"
       ]
     },
@@ -4313,6 +4340,14 @@
       "kind": "lib",
       "entry": "api/_comments.js",
       "reach": "cat supabase/trust.sql supabase/comments.sql > /tmp/tc.sql; PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs /tmp/tc.sql --dry --try=tools/comments_trial.sql --table=model_comments   (.env sourced; then the comments browser flow)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:comments pinned to parts",
+      "kind": "lib",
+      "entry": "supabase/comment_pins.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/comment_pins.sql --dry --try=tools/comment_pins_try.sql --table=model_comments   (after replies.sql; api/_comments.js addPin / resolvePin / pinnedAmong, web/card.js pinPlace; the rule on 100 version pairs and the promises in tests/test_partpins.py)",
       "area": "web",
       "tests": []
     },
@@ -6012,6 +6047,14 @@
       "tests": []
     },
     {
+      "id": "ui:comment on a part in 3D",
+      "kind": "ui",
+      "entry": "tools/viewer/inline.js",
+      "reach": "https://brickworks.diy/m/<id>: View in 3D, then a right click, a long press or Shift+F10 on a part, Comment on this part; the comment's line turns the view to it (web/model-page.js, web/start3d.js, tools/viewer/view.js dots); in the app's viewer /app?view=<id> the same (src/ui/part_pins.gd)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:comment threads on a model page",
       "kind": "ui",
       "entry": "web/model-page.js",
@@ -6024,6 +6067,14 @@
       "kind": "ui",
       "entry": "src/ui/step_comments.gd",
       "reach": "/app?view=<id> (the count above the timeline) and Build it (the count in the top bar); /m/<id> (Comments)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:comments on parts in the studio",
+      "kind": "ui",
+      "entry": "src/ui/part_pins_panel.gd",
+      "reach": "godot --path .  (open a model you published: the notice N comments on parts of this model, Show; each pin lights and frames its part, Resolve)",
       "area": "web",
       "tests": []
     },
@@ -6182,6 +6233,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_partpins.py",
         "tests/test_release_train.py"
       ]
     },
@@ -6421,6 +6473,7 @@
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_insights.py",
+        "tests/test_partpins.py",
         "tests/test_release_train.py"
       ]
     },

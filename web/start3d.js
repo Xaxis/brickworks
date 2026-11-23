@@ -18,8 +18,11 @@ const say = (words, values = {}) => (globalThis.brickworksLang ? globalThis.bric
 /// still the app's, as a link is. Until three.js and the model come, the
 /// frame says so and how far it has got; nothing moves, since the view is
 /// the picture's own shape over it (web/view3d.css .view3d). {open(how),
-/// close()} for the page.
-export function start3d(big) {
+/// close(), pinsChanged(), showPin(id, how), light(index)} for the page.
+/// [pins], a model's page's alone: what its comments on a part tell the
+/// view and hear from it (tools/viewer/inline.js open3d: pins, mayPin,
+/// pinWanted, placed, pinPressed, partName), handed on as they are.
+export function start3d(big, pins = {}) {
   // The model's name, from the picture's label as its page wrote it.
   const label = big.getAttribute("aria-label") || "";
   const [before, after = ""] = say("View {name} in 3D").split("{name}");
@@ -57,7 +60,7 @@ export function start3d(big) {
     big.after(shell);
     const closed = () => { big.focus({ preventScroll: true }); };
     viewing = import("/viewer3d.js")
-      .then((made) => made.open3d(shell, { scene: big.dataset.scene, name, app: big.getAttribute("href"), how,
+      .then((made) => made.open3d(shell, { ...pins, scene: big.dataset.scene, name, app: big.getAttribute("href"), how,
         look: big.dataset.scene.startsWith("/library/") ? "corner" : "app", timings: { asked }, closed }))
       .catch(() => {
         // Not even the code came: said, and asked again on the next try.
@@ -96,7 +99,19 @@ export function start3d(big) {
     }
   });
   for (const kind of ["pointerup", "pointercancel"]) big.addEventListener(kind, () => { from = null; });
-  return { open, close: () => viewing && viewing.then((view) => view && view.close()) };
+  const later = (run) => viewing && viewing.then((view) => view && run(view));
+  return {
+    open,
+    close: () => later((view) => view.close()),
+    pinsChanged: () => later((view) => view.pinsChanged?.()),
+    // A comment's pin pressed on the page: the view opened, if it is not,
+    // and turned to its part once it is placed.
+    showPin: (id, how = "mouse") => {
+      if (!shell || shell.hidden) open(how);
+      later((view) => view.showPin?.(id));
+    },
+    light: (index) => later((view) => view.light?.(index)),
+  };
 }
 
 /// Whether [img] is opaque at its four corners: a picture drawn on a ground

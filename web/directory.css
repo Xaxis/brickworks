@@ -527,6 +527,25 @@ dialog.bases-dialog .set-chosen[hidden] { display: none; }
 :is(.model-page, .talk-page) .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 :is(.model-page, .talk-page) .comment-new .note, .model-page .comment-why .note { margin: 0; }
 :is(.model-page, .talk-page) .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
+/* A comment on a part (partpins, web/model-page.js): its number, as its
+   dot in 3D has it, and the part and step it is on, a link that turns the
+   3D view there; words alone on a part not in this version. The box on a
+   part says which over it, a pill with Cancel. Pins resolved fold away
+   under the list, a pill to open them. */
+.model-page .comment-pin { margin: 0 0 4px; display: flex; align-items: baseline; gap: 8px; font-size: var(--t-small); color: var(--ink-soft); }
+.model-page .comment-pin .pin-n {
+	flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums;
+	align-self: center;
+}
+.model-page .comment-pin.gone .pin-n { background: var(--line-strong); color: var(--ink); }
+.model-page .comment-pin .pin-go { color: var(--ink); text-align: left; }
+.model-page .comment-part { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.model-page .comment-part[hidden] { display: none; }
+.model-page .comment-part .pill.pin { color: var(--ink); border-color: var(--accent-edge); white-space: normal; }
+.model-page .comments-resolved { margin-top: 12px; }
+.model-page .comments-resolved[hidden] { display: none; }
+.model-page .comments-resolved > .comment-list { opacity: 0.85; }
 @media (width < 600px) {
 	:is(.model-page, .talk-page) .comment { gap: 10px; padding: 10px 12px; }
 	.model-page .replies { padding-left: 10px; }

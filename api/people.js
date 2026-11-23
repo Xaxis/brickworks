@@ -65,11 +65,14 @@
 //                                 owner who asked for one. Needs no secret:
 //                                 it can send nothing else
 //   GET  ?op=comments&id=X&v=N    the comments on a model, and on its steps
-//   POST ?op=comment, reply, comment_change, comments_open&id=X, mail
-//                                 (session) a comment or a reply written, changed,
-//                                 hidden or removed; comments on a model
-//                                 turned on or off; the comments' email
-//                                 chosen (api/_comments.js)
+//   POST ?op=comment, reply, pin, comment_change, comments_open&id=X, mail
+//                                 (session) a comment, a reply or a comment on a
+//                                 part (a pin) written, changed, hidden or
+//                                 removed; comments on a model turned on or
+//                                 off; the comments' email chosen
+//                                 (api/_comments.js)
+//   POST ?op=pin_resolve          (session) a pin's model's owner done with it,
+//                                 or not (supabase/comment_pins.sql)
 //   GET  ?op=photos&id=X          the photos of real builds of model X that
 //                                 may be shown; with the session, also the
 //                                 caller's own on it, and for its owner the
@@ -240,7 +243,8 @@ import {
   startPhoto,
 } from "./_builds.js";
 import {
-  addComment, addReply, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
+  addComment, addPin, addReply, changeComment, chooseMail, commentModel, listComments, mailChoice, resolvePin,
+  sendCommentDigests,
   setCommentsOpen,
 } from "./_comments.js";
 import { chooseNews, newsOf, newsUnsubscribe } from "./_announce.js";
@@ -2049,6 +2053,8 @@ async function handler(request, response) {
       if (op === "digest") return await knock(request, response);
       if (op === "comment") return await addComment(request, response, { origin: originOf(request) });
       if (op === "reply") return await addReply(request, response, { origin: originOf(request) });
+      if (op === "pin") return await addPin(request, response, { origin: originOf(request) });
+      if (op === "pin_resolve") return await resolvePin(request, response);
       if (op === "comment_change") return await changeComment(request, response);
       if (op === "comments_open") return await setCommentsOpen(request, response);
       if (op === "mail") return await chooseMail(request, response);

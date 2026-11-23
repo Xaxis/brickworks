@@ -229,7 +229,7 @@ def build() -> dict:
             "panel": sorted(panels()),
             "press": sorted(press),
             "command": sorted(command_names),
-            "run": sorted({"simulate", "render", "booklet", "together"} | {f"render_{k}" for k in render_kinds}),
+            "run": sorted({"simulate", "render", "booklet", "together", "pin_resolved"} | {f"render_{k}" for k in render_kinds}),
             "milestone": ["first_part", "first_save", "studio"],
             "part": ["placed"],
             "save": ["model"],

@@ -16415,3 +16415,109 @@ msgstr "Sur un sous-main en cuir"
 
 msgid "On terrazzo"
 msgstr "Sur du terrazzo"
+
+# Comments on a part of a shared model (partpins): the viewer's menu on a part and the box's line, a pin's line where it is, and the studio's notice and list (PartPins, PartPinsPanel).
+msgid "Comment on this part"
+msgstr "Commenter cette pièce"
+
+msgid "Say something about this part, for its builder and everyone who looks at it"
+msgstr "Dites quelque chose sur cette pièce, pour son constructeur et tous ceux qui la regardent"
+
+msgid "Write a comment on the step instead of on this part"
+msgstr "Écrire un commentaire sur l'étape plutôt que sur cette pièce"
+
+msgid "Add your comment on this part"
+msgstr "Ajouter votre commentaire sur cette pièce"
+
+msgid "Resolved (%d)"
+msgstr "Résolus (%d)"
+
+msgid "Hide resolved"
+msgstr "Masquer les résolus"
+
+msgid "The comments on parts its builder has dealt with"
+msgstr "Les commentaires sur des pièces dont son constructeur s'est occupé"
+
+msgid "Turn the view to its part, lit"
+msgstr "Tourner la vue vers sa pièce, mise en évidence"
+
+msgid "On the %s, step %d"
+msgstr "Sur la pièce %s, étape %d"
+
+msgid "On the %s"
+msgstr "Sur la pièce %s"
+
+msgid "On a part, step %d"
+msgstr "Sur une pièce, étape %d"
+
+msgid "On a part"
+msgstr "Sur une pièce"
+
+msgid "On the %s, step %d, moved since"
+msgstr "Sur la pièce %s, étape %d, déplacée depuis"
+
+msgid "On the %s, moved since"
+msgstr "Sur la pièce %s, déplacée depuis"
+
+msgid "On a part, step %d, moved since"
+msgstr "Sur une pièce, étape %d, déplacée depuis"
+
+msgid "On a part, moved since"
+msgstr "Sur une pièce, déplacée depuis"
+
+msgid "On version %d"
+msgstr "Sur la version %d"
+
+msgid "1 comment on a part of this model"
+msgstr "1 commentaire sur une pièce de ce modèle"
+
+msgid "%d comments on parts of this model"
+msgstr "%d commentaires sur des pièces de ce modèle"
+
+msgid "List them, and see each one's part"
+msgstr "Les lister, et voir la pièce de chacun"
+
+msgid "Comments on parts"
+msgstr "Commentaires sur des pièces"
+
+msgid "Put the list away: the comments stay on their parts"
+msgstr "Ranger la liste : les commentaires restent sur leurs pièces"
+
+msgid "What people said about parts of this model on brickworks.diy, each numbered as its dot on the model. Press where one is to select its part."
+msgstr "Ce que d'autres ont dit sur des pièces de ce modèle sur brickworks.diy, chacun numéroté comme son point sur le modèle. Appuyez sur l'endroit d'un commentaire pour sélectionner sa pièce."
+
+msgid "No open comments on parts."
+msgstr "Aucun commentaire ouvert sur des pièces."
+
+msgid "No comments on parts of this model yet."
+msgstr "Pas encore de commentaires sur des pièces de ce modèle."
+
+msgid "The comments you have dealt with: still on the site, folded away"
+msgstr "Les commentaires dont vous vous êtes occupé : toujours sur le site, repliés"
+
+msgid "Select its part, and turn the view to it"
+msgstr "Sélectionner sa pièce, et tourner la vue vers elle"
+
+msgid "Not on a part of the model as it is now: its part was changed or taken off since"
+msgstr "Sur aucune pièce du modèle tel qu'il est : sa pièce a été changée ou retirée depuis"
+
+msgid "Reopen"
+msgstr "Rouvrir"
+
+msgid "Back on its part, open, on the site too"
+msgstr "De retour sur sa pièce, ouvert, sur le site aussi"
+
+msgid "Done with it: folded away as resolved, here and on the site"
+msgstr "Terminé : replié comme résolu, ici et sur le site"
+
+msgid "Sign in again to resolve comments."
+msgstr "Reconnectez-vous pour résoudre des commentaires."
+
+msgid "A builder"
+msgstr "Un constructeur"
+
+msgid "hidden from others"
+msgstr "masqué aux autres"
+
+msgid "Brickworks could not take that just now. Try again in a minute."
+msgstr "Brickworks n'a pas pu le prendre pour l'instant. Réessayez dans une minute."
