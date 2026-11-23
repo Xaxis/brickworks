@@ -382,8 +382,33 @@ async function install() {
 async function offline() {
   console.log("offline: the network cut");
   const made = await context({ width: 1280, height: 900 });
-  const page = await made.newPage();
+  let page = await made.newPage();
   listen(page, "offline");
+  // The network cut as a device's is, for its pages and its worker alike.
+  // Playwright's setOffline cuts the requests of both, but says it to the
+  // pages by a DevTools call Chromium has deprecated: a page that loaded
+  // after the cut read navigator.onLine true (browser.mjs's own DevTools
+  // session on each page undoes it), so it never heard the network come
+  // back; and each navigation flickered online and offline again in the page
+  // being left, whose offline page (web/push.js) reloaded itself on the
+  // flicker and took the tab back from the next address (/de/library showed
+  // /library's offline page, /library /app's: m319home, 2026-11-23). So the
+  // pages are told it by Chromium's own call for it (overrideNetworkState),
+  // each address is opened in a tab of its own, as a page not seen before,
+  // and the network comes back for the worker before the page hears it.
+  const sayOffline = async (tab, offline) => {
+    tab.devtools ||= await made.newCDPSession(tab);
+    await tab.devtools.send("Network.overrideNetworkState", { offline, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+  };
+  const openOffline = async (address) => {
+    await page.close();
+    page = await made.newPage();
+    listen(page, "offline");
+    await sayOffline(page, true);
+    const gone = await page.goto(`${site}${address}`, { waitUntil: "load" }).then(() => "",
+      (trouble) => ` (the goto: ${String(trouble.message || trouble).split("\n")[0].slice(0, 120)})`);
+    return { ...(await offlineShown(page)), gone };
+  };
   try {
     await page.goto(`${site}/gallery`, { waitUntil: "load" });
     await controlled(page);
@@ -394,18 +419,16 @@ async function offline() {
     await page.goto(`${site}/de/gallery`, { waitUntil: "load" });
     await until(page, async () => Boolean(await caches.match("/de/offline")), "the German offline page kept", 30);
     await made.setOffline(true);
-    await made.route("**/*", (route) => route.abort("internetdisconnected"));
-    await page.goto(`${site}/library`, { waitUntil: "load" }).catch(() => null);
-    const en = await offlineShown(page);
-    check(`/library, offline: the offline page in ${en.lang}: "${en.h1}"`, en.offline && en.at === "/library" && en.lang === "en" && en.h1 === "You’re offline.");
+    const en = await openOffline("/library");
+    check(`/library, offline: the offline page in ${en.lang}: "${en.h1}"${en.gone}`, en.offline && en.at === "/library" && en.lang === "en" && en.h1 === "You’re offline.");
     await shot(page, "offline_cut-1280-dark.png");
-    await page.goto(`${site}/de/library`, { waitUntil: "load" }).catch(() => null);
-    const de = await offlineShown(page);
-    check(`/de/library, offline: the offline page in ${de.lang}: "${de.h1}"`, de.offline && de.lang === "de" && de.h1 === "Du bist offline.");
+    const de = await openOffline("/de/library");
+    check(`/de/library, offline: the offline page in ${de.lang}: "${de.h1}" at ${de.at}${de.gone}`,
+      de.offline && de.at === "/de/library" && de.lang === "de" && de.h1 === "Du bist offline.");
     // Where the installed app opens: the site's offline page, not the browser's.
-    await page.goto(`${site}/app`, { waitUntil: "load" }).catch(() => null);
-    const app = await offlineShown(page);
-    check(`/app, offline (the installed app's start): the offline page: "${app.h1}" at ${app.at}`, app.offline && app.at === "/app" && app.h1 === "You’re offline.");
+    const app = await openOffline("/app");
+    check(`/app, offline (the installed app's start): the offline page: "${app.h1}" at ${app.at}${app.gone}`,
+      app.offline && app.at === "/app" && app.h1 === "You’re offline.");
     await shot(page, "offline_app-1280-dark.png");
     // The offline page hears the network come back through web/push.js,
     // which theme.js asks for only after the load: the network came back
@@ -413,14 +436,33 @@ async function offline() {
     // reloaded it (here and on hsfix's local run). So the network comes
     // back once push.js has run, which writes this visit first thing.
     await page.evaluate(() => localStorage.removeItem("brickworks.visits"));
-    await page.goto(`${site}/library`, { waitUntil: "load" }).catch(() => null);
+    await openOffline("/library");
     await until(page, () => document.documentElement.hasAttribute("data-offline") && Boolean(localStorage.getItem("brickworks.visits")),
       "the offline page listening (push.js run)", 30);
-    await made.unroute("**/*");
+    // What happens once it is back, said if it fails: whether the page heard
+    // the network return (online, kept in sessionStorage across a reload),
+    // and each page the tab then showed.
+    await page.evaluate(() => addEventListener("online", () => sessionStorage.setItem("flow.online", String(Date.now()))));
+    const shown = [];
+    page.on("response", (response) => {
+      if (response.request().isNavigationRequest() && response.frame() === page.mainFrame()) {
+        shown.push(`${response.status()} ${response.url().replace(site, "")}${response.fromServiceWorker() ? " (worker)" : ""}`);
+      }
+    });
+    page.on("requestfailed", (request) => {
+      if (request.isNavigationRequest()) shown.push(`failed ${request.url().replace(site, "")}: ${request.failure()?.errorText}`);
+    });
     await made.setOffline(false);
+    await sayOffline(page, false);
     await until(page, () => !document.documentElement.hasAttribute("data-offline") && location.pathname === "/library"
-      && document.readyState === "complete", "the page asked for, once the network is back", 30);
-    check("the network back: /library itself, by itself", true);
+      && document.readyState === "complete", "the page asked for, once the network is back", 30).catch(async (trouble) => {
+      const state = await page.evaluate(() => ({ at: location.href, offline: document.documentElement.hasAttribute("data-offline"),
+        ready: document.readyState, onLine: navigator.onLine, heard: sessionStorage.getItem("flow.online"),
+        h1: document.querySelector("h1")?.textContent.trim() || "" })).catch((e) => ({ trouble: String(e).split("\n")[0] }));
+      note(`the network back: ${JSON.stringify(state).replace(site, "")}; the tab showed ${shown.join(", ") || "nothing new"}`);
+      throw trouble;
+    });
+    check(`the network back: /library itself, by itself (${shown.join(", ")})`, true);
   } catch (trouble) {
     check(`offline: ${trouble.message}`, false);
   }
