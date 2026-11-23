@@ -1131,12 +1131,12 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.person-card .person-id { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; }
 	.person-card .person-id .avatar.huge { width: 72px; height: 72px; font-size: var(--t-h2); }
 	.person-card .standing { border-top: 0; padding-top: 0; }
-	/* Its badges one row that scrolls on its own, not a third of a
-	   phone's first screen. */
-	.person-card .pills.awards { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-	.person-card .pills.awards::-webkit-scrollbar { display: none; }
-	.person-card .pills.awards > li { flex: 0 0 auto; }
 }
+/* Its badges one row that scrolls on its own on a phone, not a third of
+   its first screen: the kit's row (.pills.scroller.inset, web/card.js
+   awardsHtml), which the keyboard reaches while it overflows; beside the
+   page, where the aside has the room, they wrap. */
+@media (width >= 900px) { .person-card .pills.awards { flex-wrap: wrap; } }
 
 /* A collection's page as an object's page: its cover, name, whose, words,
    numbers and actions in the aside, what is in it beside them. */

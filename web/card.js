@@ -320,11 +320,13 @@ const countHtml = (n, zero) => (n ? `<span class="n" aria-hidden="true">${escape
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
 /// name, what it means on hover; a challenge won is a link to the model that
 /// won it. [awards] as api/people.js achievementsOf makes them: [{id, name,
-/// said, model?, level?}]. "" when there is none.
-export function awardsHtml(awards, { id = "" } = {}) {
+/// said, model?, level?}]. "" when there is none. [row]: the kit's row that
+/// scrolls where it has no room (a profile's head on a phone: web/scroller.js
+/// gives it the keyboard while it overflows, its fade and its bar).
+export function awardsHtml(awards, { id = "", row = false } = {}) {
   const shown = (awards || []).filter((one) => one && one.name);
   if (!shown.length) return "";
-  return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="${escapeHtml(say("Achievements"))}">${shown.map((one) => {
+  return `<ul class="pills awards${row ? " scroller inset" : ""}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="${escapeHtml(say("Achievements"))}">${shown.map((one) => {
     const inside = `${iconHtml("award")}${escapeHtml(one.name)}`;
     const said = one.said ? ` title="${escapeHtml(one.said)}"` : "";
     const level = Number(one.level) > 0 ? ` data-level="${Number(one.level)}"` : "";
