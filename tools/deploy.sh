@@ -22,10 +22,16 @@
 #                                   api/_beta.js), for tools/web/beta_flow.mjs
 #   tools/deploy.sh --no-export     deploy what is already in build/web
 #   tools/deploy.sh --no-check      skip the browser proof (not advised)
+#   tools/deploy.sh --no-fit        skip the fit check alone (tools/web/fit_check.mjs): for the
+#                                   web lane, whose app is byte for byte the export
+#                                   brickworks.diy already serves, which passed it there
+#                                   (tools/release/ship.sh); the app's start and the landing
+#                                   page are still proved
 #   tools/deploy.sh --dir=DIR       deploy a build from elsewhere (a kept build: build/kept/<id>/web);
 #                                   implies --no-export
 #
 # Needs VERCEL_TOKEN, from .env here or from the environment (CI). Never commit it.
+# DEPLOY_TIMES=1 says each step's seconds as it ends, the export's too.
 #
 # The build goes under /b/<sha>/ and /app serves its page, so every file can be
 # cached forever and a player who comes back after a deploy can never end up
@@ -40,7 +46,7 @@ set -uo pipefail
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-prod=0; unit=0; stand_in=0; billing_test=0; beta_open=0; do_export=1; do_check=1; dir=build/web; promote=""
+prod=0; unit=0; stand_in=0; billing_test=0; beta_open=0; do_export=1; do_check=1; do_fit=1; dir=build/web; promote=""
 for a in "$@"; do
   case "$a" in
     --prod) prod=1 ;;
@@ -51,6 +57,7 @@ for a in "$@"; do
     --beta-open) beta_open=1 ;;
     --no-export) do_export=0 ;;
     --no-check) do_check=0 ;;
+    --no-fit) do_fit=0 ;;
     --dir=*) dir="${a#--dir=}"; do_export=0 ;;
     *) echo "deploy: unknown option $a"; exit 2 ;;
   esac
@@ -69,6 +76,16 @@ if { [ "$prod" = 1 ] || [ -n "$promote" ]; } && [ -z "${SHIP_DEPLOY:-}" ] && [ -
   echo "deploy: production is the release train's (tools/release/ship.sh); a web change ships on a train. By hand: PROD_BY_HAND=\"why\" tools/deploy.sh $*"
   exit 2
 fi
+
+# Each step's seconds as it ends, with DEPLOY_TIMES=1: since SINCE (an
+# $EPOCHREALTIME) or the step before.
+step_at=$EPOCHREALTIME
+took() {
+  [ "${DEPLOY_TIMES:-}" = 1 ] || return 0
+  local now=$EPOCHREALTIME
+  awk -v a="$now" -v b="${2:-$step_at}" -v n="$1" 'BEGIN { printf "deploy time: %s %.1f s\n", n, a - b }'
+  step_at=$now
+}
 
 [ -f .env ] && set -a && . ./.env && set +a
 # A test key only, by its shape (api/_billing.js KEYS): a live key never
@@ -153,10 +170,12 @@ if ! python3 tools/storage_parts.py >/tmp/deploy_storage_$$.log 2>&1; then
   echo "deploy FAILED: could not put the part meshes in object storage"; rm -f /tmp/deploy_storage_$$.log; exit 1
 fi
 tail -2 /tmp/deploy_storage_$$.log | sed 's/^/  /'; rm -f /tmp/deploy_storage_$$.log
+took "part meshes in storage"
 # Project and org come from .vercel/project.json, written by `vercel link`.
 
 if [ "$do_export" = 1 ]; then
   tools/export.sh web || exit 1
+  took "export"
 fi
 [ -f "$dir/index.html" ] || { echo "deploy FAILED: no build in $dir (tools/export.sh web)"; exit 1; }
 
@@ -708,6 +727,7 @@ fi
 files=$(find .vercel/output -type f | wc -l | tr -d ' ')
 echo "deploy: $files files"
 [ "$files" -le 15000 ] || { echo "deploy FAILED: $files files, past the 15,000 Vercel takes"; exit 1; }
+took "the deployment put together"
 echo "deploy $sha -> vercel ($([ "$prod" = 1 ] && echo "production, after checking" || echo preview))"
 log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # Always uploaded unpromoted, even when the domain is the destination.
@@ -795,6 +815,7 @@ if [ $code -ne 0 ] || [ -z "$url" ]; then
   tail -20 "$log"; echo "deploy FAILED"; rm -f "$log"; exit 1
 fi
 echo "deploy ok $url"
+took "upload"
 
 if [ "$do_check" = 1 ]; then
   # The same proof a local build gets, against what the host actually serves:
@@ -805,6 +826,39 @@ if [ "$do_check" = 1 ]; then
     npx --prefix tools/web playwright install chromium-headless-shell >/dev/null 2>&1 || true
   fi
   mkdir -p shots
+  # The three run side by side, each in a browser of its own, and are read
+  # in the order they ran in one after another, with the same gates and
+  # words: the first that fails is the one said. One after another they
+  # were five of a release's eleven minutes (fastship, 2026-11-23).
+  checks="$(mktemp -d "${TMPDIR:-/tmp}/brickworks-checks.XXXXXX")"
+  running=(); declare -A pid_of=()
+  # Stops whichever checks still run (their browsers with them), for a gate
+  # already failed or a deploy stopped.
+  stop_checks() {
+    local p
+    for p in ${running[@]+"${running[@]}"}; do
+      pkill -TERM -P "$p" 2>/dev/null; kill -TERM "$p" 2>/dev/null
+    done
+    wait 2>/dev/null; running=(); rm -rf "$checks"
+  }
+  trap 'stop_checks; exit 143' TERM INT HUP
+  # run_check NAME CMD...: CMD in the background, its words kept to be said
+  # in turn, and its seconds with DEPLOY_TIMES=1.
+  run_check() {
+    local name=$1; shift
+    ( since=$EPOCHREALTIME; "$@"; code=$?; took "check: $name" "$since"; exit $code ) \
+      >"$checks/$name.log" 2>&1 </dev/null &
+    running+=($!); pid_of[$name]=$!
+  }
+  # The status first, then the page in a browser, as before.
+  landing_page() {
+    local code
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+      ${VERCEL_BYPASS:+-H "x-vercel-protection-bypass: $VERCEL_BYPASS"} "$url/")
+    echo "$code" > "$checks/landing.code"
+    [ "$code" = "200" ] || return 1
+    VERCEL_BYPASS="${VERCEL_BYPASS:-}" node tools/web/landing_check.mjs --url="$url/"
+  }
   # tools/web/check.mjs, with the arguments it actually takes. This said
   # web.mjs and passed --play --reload, none of which exist, so the proof
   # at the end of every deploy was a MODULE_NOT_FOUND printed under a
@@ -813,39 +867,47 @@ if [ "$do_check" = 1 ]; then
   # /app, not /. The root is the landing page now, and pointing the
   # check at it meant waiting two minutes for a canvas that was never
   # going to appear on a page of prose.
-  node tools/web/check.mjs --url="$url/app" --out=shots/deploy.png \
-      ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"} || {
-    echo "deploy FAILED: the build does not run at $url/app"; exit 1; }
+  run_check app node tools/web/check.mjs --url="$url/app" --out=shots/deploy.png \
+      ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"}
   # And that it fits the page. At two device pixels to the point the
   # toolbar ran off at "He…" and the assistant was off the page, on every
   # Retina screen, while every check here passed at one.
-  # It says 2 when the app did not start at a size, which on a loaded
-  # machine is not the layout.
-  node tools/web/fit_check.mjs --url="$url/app" --quick --out=shots/fit \
+  [ "$do_fit" = 1 ] && run_check fit node tools/web/fit_check.mjs --url="$url/app" --quick --out=shots/fit \
       ${VERCEL_BYPASS:+--bypass="$VERCEL_BYPASS"}
-  case $? in
-    0) ;;
-    2) echo "deploy FAILED: the app did not start at every size at $url/app"; exit 1 ;;
-    *) echo "deploy FAILED: the app does not fit the page at $url/app"; exit 1 ;;
-  esac
-
   # The landing page is what most people meet first, so a deploy that
   # serves the app but not the page is still a broken deploy.
-  landing=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
-    ${VERCEL_BYPASS:+-H "x-vercel-protection-bypass: $VERCEL_BYPASS"} "$url/")
+  run_check landing landing_page
+
+  wait "${pid_of[app]}"; code=$?; cat "$checks/app.log"
+  [ $code -eq 0 ] || { stop_checks; echo "deploy FAILED: the build does not run at $url/app"; exit 1; }
+  # It says 2 when the app did not start at a size, which on a loaded
+  # machine is not the layout.
+  if [ "$do_fit" = 1 ]; then
+    wait "${pid_of[fit]}"; code=$?; cat "$checks/fit.log"
+    case $code in
+      0) ;;
+      2) stop_checks; echo "deploy FAILED: the app did not start at every size at $url/app"; exit 1 ;;
+      *) stop_checks; echo "deploy FAILED: the app does not fit the page at $url/app"; exit 1 ;;
+    esac
+  else
+    echo "deploy: no fit check (--no-fit)"
+  fi
+  wait "${pid_of[landing]}"; code=$?; cat "$checks/landing.log"
+  landing=$(cat "$checks/landing.code" 2>/dev/null)
   if [ "$landing" != "200" ]; then
-    echo "deploy FAILED: the landing page answers $landing at $url/"; exit 1
+    stop_checks; echo "deploy FAILED: the landing page answers $landing at $url/"; exit 1
   fi
   # A status code cannot see a page that renders wrong. This one loads it
   # in a browser at phone width and at laptop width: the page had been
   # scrolling sideways on every phone for as long as it has existed,
   # because five header links are 405px in a 358px bar and nothing
   # wrapped them, and a 200 said nothing about it.
-  if ! VERCEL_BYPASS="${VERCEL_BYPASS:-}" node tools/web/landing_check.mjs \
-      --url="$url/"; then
-    echo "deploy FAILED: the landing page does not hold together at $url/"
+  if [ $code -ne 0 ]; then
+    stop_checks; echo "deploy FAILED: the landing page does not hold together at $url/"
     exit 1
   fi
+  stop_checks; trap - TERM INT HUP
+  took "checks, side by side"
   echo "deploy: landing page ok, app runs"
 fi
 if [ "$prod" = 1 ]; then

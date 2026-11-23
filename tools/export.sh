@@ -8,8 +8,11 @@
 #   tools/export.sh windows         build/windows/Brickworks.exe
 #   tools/export.sh desktop         all three of those
 #   tools/export.sh all             the web builds and all three desktops
-# Add --debug for a debug template. Web builds get .br and .gz siblings of the
-# big files so a server can send them precompressed (tools/web.sh does).
+# Add --debug for a debug template. Web builds get a .br sibling of each big
+# file, sent as it is (tools/deploy.sh; tools/web/serve.py --compressed). No
+# .gz: nothing sends one (Vercel compresses on its own, deploy.sh never
+# uploaded them), and making them took CPU from every export (fastship).
+# DEPLOY_TIMES=1 says each step's seconds as it ends (tools/deploy.sh).
 #
 # --config=NAME makes the build from a master configuration (configs/NAME.json,
 # docs/DEV.md). Every build is stamped, with a configuration or without one: the
@@ -39,26 +42,41 @@ need() {
   fi
 }
 
-# brotli, or node, which has it built in.
+# Node, which has brotli built in, or the brotli command.
 #
 # The command is not on every machine and on Ubuntu it cannot be put
 # there without a password. Node is already needed to prove a deploy, so
-# falling back to it costs nothing and the build still ships its .br
-# files — which are not optional: the wasm is 40 MB raw and 9 MB
-# compressed, and a visitor downloads whichever one is there.
+# it costs nothing and the build still ships its .br files — which are
+# not optional: the wasm is 40 MB raw and 9 MB compressed, and a visitor
+# downloads whichever one is there.
 #
 # Quality 11 with the largest window a browser takes (24): these are the
 # bytes a visitor waits for, since deploy.sh serves them as they are rather
 # than letting Vercel compress on the fly, which sent the wasm as 9.6 MB
 # and the pack as 21 MB where 11 makes 6.9 and 15 (load250, 2026-10-24).
-# About two minutes for the wasm, the files in parallel.
-if command -v brotli >/dev/null 2>&1; then
+# About two minutes for the wasm, the files in parallel. So each output is
+# kept by its input's bytes (tools/web/brotli.mjs --cache) in BROTLI_CACHE,
+# shared by every worktree: the engine and most packs are the same bytes
+# export after export, and only what changed is compressed again.
+# BROTLI_CACHE= (empty) keeps nothing.
+BROTLI_CACHE="${BROTLI_CACHE-${XDG_CACHE_HOME:-$HOME/.cache}/brickworks/brotli}"
+if command -v node >/dev/null 2>&1; then
+  squash() { node tools/web/brotli.mjs ${BROTLI_CACHE:+"--cache=$BROTLI_CACHE"} "$1" "$1.br"; }
+elif command -v brotli >/dev/null 2>&1; then
   squash() { brotli -f -q 11 -w 24 -o "$1.br" "$1"; }
-elif command -v node >/dev/null 2>&1; then
-  squash() { node tools/web/brotli.mjs "$1" "$1.br"; }
 else
   squash() { echo "export FAILED: neither brotli nor node is on PATH"; return 1; }
 fi
+
+# Each step's seconds as it ends, with DEPLOY_TIMES=1: since SINCE (an
+# $EPOCHREALTIME) or the step before.
+step_at=$EPOCHREALTIME
+took() {
+  [ "${DEPLOY_TIMES:-}" = 1 ] || return 0
+  local now=$EPOCHREALTIME
+  awk -v a="$now" -v b="${2:-$step_at}" -v n="$1" 'BEGIN { printf "export time: %s %.1f s\n", n, a - b }'
+  step_at=$now
+}
 
 human() { awk -v b="$1" 'BEGIN { if (b >= 1048576) printf "%.1f MB", b / 1048576; else printf "%.0f KB", b / 1024 }'; }
 bytes() { stat -c %s "$1" 2>/dev/null || stat -f %z "$1" 2>/dev/null || echo 0; }
@@ -98,26 +116,26 @@ export_one() {
 
 # Precompressed siblings: the wasm is ~40 MB raw and ~9 MB as brotli.
 compress_web() {
-  local dir="$1" pids=() f p
+  local dir="$1" pids=() f p since=$EPOCHREALTIME
   for f in "$dir"/*.wasm "$dir"/*.pck "$dir"/*.bin "$dir"/*.js "$dir"/*.html; do
     [ -f "$f" ] || continue
     squash "$f" & pids+=($!)
-    gzip -9 -k -f "$f" & pids+=($!)
   done
   for p in "${pids[@]}"; do
     wait "$p" || { echo "export FAILED: compressing $dir"; return 1; }
   done
   for f in "$dir/index.wasm" "$dir/index.pck" "$dir/index.data.pck" "$dir/index.parts.bin" \
       "$dir/index.primitives.bin" "$dir/index.hdri.bin" "$dir/index.fonts.bin" "$dir/index.js"; do
-    [ -f "$f.br" ] && [ -f "$f.gz" ] || { echo "export FAILED: no .br/.gz beside $f"; return 1; }
+    [ -f "$f.br" ] || { echo "export FAILED: no .br beside $f"; return 1; }
   done
+  took "brotli of $dir" "$since"
 }
 
 report_web() {
   local dir="$1"
   local wasm="$dir/index.wasm" pck="$dir/index.pck"
-  printf "  wasm %-9s br %-9s gz %s\n" "$(human "$(bytes "$wasm")")" "$(human "$(bytes "$wasm.br")")" "$(human "$(bytes "$wasm.gz")")"
-  printf "  pck  %-9s br %-9s gz %s\n" "$(human "$(bytes "$pck")")" "$(human "$(bytes "$pck.br")")" "$(human "$(bytes "$pck.gz")")"
+  printf "  wasm %-9s br %s\n" "$(human "$(bytes "$wasm")")" "$(human "$(bytes "$wasm.br")")"
+  printf "  pck  %-9s br %s\n" "$(human "$(bytes "$pck")")" "$(human "$(bytes "$pck.br")")"
   local f
   for f in "data.pck:what the start reads, fetched while the scripts compile" \
       "parts.bin:parts fetched after the start" \
@@ -129,14 +147,19 @@ report_web() {
   done
   local total=0
   for f in "$dir"/*; do
-    case "$f" in *.br|*.gz|*/index.*.bin|*/index.data.pck) continue ;; esac
+    case "$f" in *.br|*/index.*.bin|*/index.data.pck) continue ;; esac
     if [ -f "$f.br" ]; then total=$(( total + $(bytes "$f.br") )); else total=$(( total + $(bytes "$f") )); fi
   done
   printf "  over the wire before the engine starts (brotli where it helps): %s\n" "$(human $total)"
 }
 
+# build_web PRESET DIR [STEP...]: the export, and then its compressing in
+# the background while the knowledge, the part names and STEP (the engine
+# without threads: build_engine's arguments) go on, none of which reads a
+# .br. Compressing after each in turn was half of a release's export
+# (fastship, 2026-11-23).
 build_web() {
-  local preset="$1" dir="$2"
+  local preset="$1" dir="$2" squashing ok=1; shift 2
   export_one "$preset" "$dir/index.html" || return 1
   # The engine's Emscripten 4.0.20 signals a worker that its call to the main
   # thread is done after letting go of the call's lock, which can freeze the
@@ -152,7 +175,20 @@ build_web() {
   # the rest the start reads beside it, LDraw's primitives and Studio's
   # light fetched when wanted (tools/web/pck_split.py, webload).
   python3 tools/web/pck_split.py "$dir" || { echo "export FAILED: splitting $dir/index.pck"; return 1; }
-  compress_web "$dir" || return 1
+  took "$preset: mend, split"
+  compress_web "$dir" & squashing=$!
+  build_rest "$dir" "$@" || ok=0
+  # Waited for whatever the rest did, so a failure there never leaves the
+  # compressing writing into a build the next export removes.
+  wait "$squashing" || ok=0
+  [ "$ok" = 1 ] || return 1
+  report_web "$dir"
+}
+
+# What build_web does beside the compressing: the knowledge and the part
+# names beside DIR, then STEP.
+build_rest() {
+  local dir="$1"; shift
   # The real-set index beside the build, not in the pack every visitor
   # waits for: the app fetches it the first time a design asks for a
   # technique (src/ai/real_snippets.gd), our own scored designs when a
@@ -171,7 +207,8 @@ build_web() {
   godot --headless --path . --script src/dev/write_part_names.gd -- --out="$dir/part_names" > "$dir/part_names/log.txt" 2>&1 \
     || { echo "export FAILED: no part names (src/dev/write_part_names.gd: $dir/part_names/log.txt)"; return 1; }
   grep -E '^part_names' "$dir/part_names/log.txt"
-  report_web "$dir"
+  took "knowledge, part names"
+  [ $# -eq 0 ] || build_engine "$@"
 }
 
 # The engine without threads beside the threaded build, for iPhones and
@@ -185,6 +222,7 @@ build_web() {
 build_engine() {
   local preset="$1" dir="$2" from="$3" f
   export_one "$preset" "$dir/index.html" || return 1
+  took "$preset: export"
   python3 tools/web/wasm_proxy_fix.py "$dir/index.wasm" || { echo "export FAILED: $dir/index.wasm not mended"; return 1; }
   cp assets/web/later.bin "$dir/index.parts.bin" || { echo "export FAILED: no assets/web/later.bin (tools/web_pack.py)"; return 1; }
   python3 tools/web/pck_split.py "$dir" || { echo "export FAILED: splitting $dir/index.pck"; return 1; }
@@ -205,6 +243,7 @@ build_engine() {
   [ "$same" -ge 6 ] || { echo "export FAILED: only $same of the packs to hold equal in $from"; return 1; }
   printf "  engine without threads: wasm %s br %s; its %d packs the same as %s's, byte for byte\n" \
     "$(human "$(bytes "$dir/index.wasm")")" "$(human "$(bytes "$dir/index.wasm.br")")" "$same" "$from"
+  took "$preset: mend, split, brotli, held to $from"
 }
 
 build_mac() {
@@ -230,10 +269,7 @@ build_windows() {
     "$(human "$(bytes build/windows/Brickworks.pck)")"
 }
 
-case "$target" in
-  web|web-nothreads|all) need godot python3 bc gzip ;;
-  *) need godot python3 bc ;;
-esac
+need godot python3 bc
 case "$target" in
   web|web-nothreads|mac|linux|windows|win|desktop|all) ;;
   *) echo "export: unknown target '$target' — try web, mac, linux, windows, desktop or all"; exit 2 ;;
@@ -241,7 +277,8 @@ esac
 mkdir -p build && touch build/.gdignore
 case "$target" in
   web|web-nothreads|all)
-    python3 tools/web_pack.py || { echo "export FAILED: web pack"; exit 1; } ;;
+    python3 tools/web_pack.py || { echo "export FAILED: web pack"; exit 1; }
+    took "web pack" ;;
 esac
 # Every LDraw primitive goes in every build (PartForge.SHIPPED: 10 MB of text,
 # about 1 MB over the wire): what LDCad draws a flexible part's skin with,
@@ -253,6 +290,7 @@ esac
 rm -rf assets/ldraw/p && cp -R vendor/ldraw/p assets/ldraw/p \
   || { echo "export FAILED: could not copy the LDraw primitives"; exit 1; }
 godot --headless --import >/dev/null 2>&1 || true
+took "primitives, import"
 # The parts bin's All in order for the web pack's catalogue, worked out here
 # once rather than on every first visit (src/dev/write_all_order.gd, webload);
 # and the catalogue as columns, which the web build reads in the JSON's
@@ -269,10 +307,11 @@ case "$target" in
     # load of all of it held every parse at once, the page's whole 432 MB of
     # Wasm at the start (webstart12).
     python3 tools/web/start_closure.py --order > assets/web/first_order.txt \
-      && [ -s assets/web/first_order.txt ] || { echo "export FAILED: no assets/web/first_order.txt (tools/web/start_closure.py --order)"; exit 1; } ;;
+      && [ -s assets/web/first_order.txt ] || { echo "export FAILED: no assets/web/first_order.txt (tools/web/start_closure.py --order)"; exit 1; }
+    took "all order, catalogue, first order" ;;
 esac
 case "$target" in
-  web) build_web "Web" build/web && build_engine "Web (no threads)" build/web-nothreads build/web ;;
+  web) build_web "Web" build/web "Web (no threads)" build/web-nothreads build/web ;;
   web-nothreads) build_web "Web (no threads)" build/web-nothreads ;;
   mac) build_mac ;;
   linux) build_linux ;;
