@@ -413,6 +413,14 @@ export const langAt = () => {
   return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
 
+/// A link into the app with [query], in the page's language as theme.js
+/// carries it into the links a page is served with: a link drawn later,
+/// a card's or the pick's, is not among those (sitebold, 2026-11-23).
+export const appAt = (query) => {
+  const code = langAt().slice(1);
+  return `/app?${query}${code ? `&lang=${code}` : ""}`;
+};
+
 /// The tags that say a model was made with the assistant or Brickify, as
 /// the guidelines ask a designer to tag it (web/guidelines.html), read for
 /// a model whose app did not say (docs/SOCIAL.md D7). The gallery's "With
@@ -626,7 +634,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
   const doing = social ? `<div class="social">${liked}${iconLinkHtml({ icon: "comment", href: `${langAt()}/m/${id}#comments`,
     name: say("Comments on {name}", { name: model.name }), count: model.comments, one: "comment" })}`
-    + `${iconLinkHtml({ icon: "remix", href: `/app?copy=${id}`, name: say("Remix {name} in the studio", { name: model.name }),
+    + `${iconLinkHtml({ icon: "remix", href: appAt(`copy=${id}`), name: say("Remix {name} in the studio", { name: model.name }),
       count: model.remixes, one: "remix", many: "remixes", attrs: `title="${escapeHtml(say("Remix it: a copy of your own to change, in the studio"))}"` })}`
     + `${tallyHtml("build", model.builds, "built", "built")}</div>` : "";
   // Own (a set) or Save (a model) and your lists, over the picture's foot.

@@ -41,7 +41,7 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { counted, iconButtonHtml, langAt, likeName, modelCard, number, say, sayIn, themeSaid } from "/card.js";
+import { appAt, counted, iconButtonHtml, langAt, likeName, modelCard, number, say, sayIn, themeSaid } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 // The pick's picture turning in 3D under a resting mouse.
@@ -331,10 +331,10 @@ export function modelsList(page) {
       const id = String(pick.model.id);
       const go = document.createElement("p");
       go.className = "pick-go";
-      const build = Object.assign(document.createElement("a"), { className: "cta", href: `/app?view=${id}&build`,
+      const build = Object.assign(document.createElement("a"), { className: "cta", href: appAt(`view=${id}&build`),
         textContent: say("Build it") });
       build.title = say("Build it with real bricks, one step at a time from step 1: no account needed");
-      const open = Object.assign(document.createElement("a"), { className: "cta ghost", href: `/app?copy=${id}`,
+      const open = Object.assign(document.createElement("a"), { className: "cta ghost", href: appAt(`copy=${id}`),
         textContent: say("Open in Brickworks") });
       open.title = say("Copy it into your own models, to change and make yours");
       go.append(build, open);
