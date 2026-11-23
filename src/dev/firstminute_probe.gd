@@ -218,10 +218,11 @@ func _run() -> void:
 	_ok(gate.visible and not acts.visible, "behind the question, nothing offered yet")
 	account.age_ask = false
 	account.changed.emit()
-	for _n: int in 120:
+	# By the clock: the app looks again every 0.25 s, and frames here are
+	# not paced.
+	var asked_at: int = Time.get_ticks_msec()
+	while not acts.visible and Time.get_ticks_msec() - asked_at < 5000:
 		await process_frame
-		if acts.visible:
-			break
 	_ok(acts.visible and _text_on(acts).contains("“%s”" % kept),
 		"the question answered, the acts offered on the copy: %s" % _text_on(acts))
 	_ok(store.title == kept and _saved_like() == copies, "...the copy made, not another: %s" % [_saved_like()])
