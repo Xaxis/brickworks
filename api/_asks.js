@@ -25,6 +25,23 @@
 //
 // Until talk_asks.sql is applied asksReady() is false: nothing reads the
 // columns, an ask is refused in words and a part sent with a reply too.
+//
+// And on a set's page (hubask, 2026-11-24, supabase/set_asks.sql): the
+// same ask about a LEGO® set at a step, its step drawn from a version of
+// the set published as LDraw's model is (setDrawing: the steps the app
+// carried in that file, as Build it plays them), or from LDraw's file;
+// every builder of a version is told once, as a mention. api/_talk.js
+// answers these:
+//
+//   GET  ?op=talk_set_asks&set=N  the set's asks, newest first, each saying
+//                           whether a builder answered it, and what a step
+//                           is drawn from ({drawn: {model, version, steps}}
+//                           or null), for the page's step picker
+//   POST ?op=talk_set_ask   (session) {set, library, step?, title, body}: a
+//                           Help thread about that step of the set
+//
+// Until set_asks.sql is applied setAsksReady() is false: the page offers
+// no ask, and one sent is refused in words.
 
 import { db } from "./_db.js";
 import { escapeHtml, Unacceptable, asText } from "./_directory.js";
@@ -34,6 +51,10 @@ import { COLOUR_NAMES } from "./_colours.js";
 
 const NOT_THERE = /: 404$/;
 const READY_MS = 5 * 60 * 1000;
+/// A set's number as model_alt_sets keeps it, and LDraw's model's id in the
+/// library (api/_library.js SET_ID).
+export const SET = /^[a-z0-9][a-z0-9.-]{0,29}$/;
+export const LIBRARY = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
 export const MOST_PARTS = 12;
 /// How often the studio asks for answers while a model with an ask is open.
 export const ASK_EVERY_S = 20;
@@ -48,7 +69,9 @@ export const ASK_WORDS = {
   no_part: [409, "That part is not in that version of the model: publish it again and ask."],
   not_ask: [409, "Answers on a part are for a thread asked from the studio."],
   pin: [400, "Press a part of the model in 3D to answer on it."],
+  set: [404, "That set has no LDraw model to ask about."],
 };
+export const SET_NOT_YET = "Asking a set's builders is not open on Brickworks yet: start a thread in Help and paste the set's link.";
 
 export function askRefused(code) {
   const [status, words] = ASK_WORDS[code] || [400, "That could not be done."];
@@ -74,9 +97,29 @@ export async function asksReady(now = Date.now()) {
   return yes;
 }
 
+let setReadiness = { at: -Infinity, yes: false };
+
+/// Whether supabase/set_asks.sql is applied here: talk_set_asks answers.
+/// Asked as asksReady asks.
+export async function setAsksReady(now = Date.now()) {
+  if (now - setReadiness.at < READY_MS) return setReadiness.yes;
+  let yes = false;
+  let kept = now;
+  try {
+    await db("rpc/talk_set_asks", { method: "POST", body: { p_set: "0-0", p_tests: false, viewer: null }, seconds: 5 });
+    yes = true;
+  } catch (trouble) {
+    if (!NOT_THERE.test(String(trouble?.message || ""))) kept = now - READY_MS + 30000;
+  }
+  setReadiness = { at: kept, yes };
+  return yes;
+}
+
 /// For tests: forget what was found.
 export function forgetReadiness() {
   readiness = { at: -Infinity, yes: false };
+  setReadiness = { at: -Infinity, yes: false };
+  drawings.clear();
 }
 
 /// A kept part as a page gets it: pinShown's, with the name it was asked
@@ -94,6 +137,13 @@ export function askShown(given) {
   if (!given || typeof given !== "object" || !Number.isInteger(Number(given.version))) return null;
   const model = /^[A-Za-z0-9]{10}$/.test(String(given.model || "")) ? String(given.model) : null;
   const step = Number.isInteger(given.step) && given.step > 0 ? given.step : null;
+  // A set's (set_asks.sql): {set, library, drawn, version, step, ...}.
+  if (SET.test(String(given.set || "")) && LIBRARY.test(String(given.library || ""))) {
+    const drawn = /^[A-Za-z0-9]{10}$/.test(String(given.drawn || "")) ? String(given.drawn) : null;
+    return { model: null, set: String(given.set), library: String(given.library), drawn, version: Number(given.version), step,
+      name: "", has_image: drawn !== null && given.has_image === true,
+      newest: drawn && Number.isInteger(given.newest) ? given.newest : null, parts: [] };
+  }
   return { model, version: Number(given.version), step, name: model ? String(given.name || "") : "",
     has_image: given.has_image === true, newest: Number.isInteger(given.newest) ? given.newest : null,
     parts: (Array.isArray(given.parts) ? given.parts : []).map(partShown).filter(Boolean).slice(0, MOST_PARTS) };
@@ -130,6 +180,63 @@ export async function placesAsked(model, version, given) {
     out.push({ ...pin, name: await nameOf(pin.part) });
   }
   return out;
+}
+
+/// The parts [given] says were pressed in the 3D view of [ask] (askShown's):
+/// in the asked model's version, the version a set's step is drawn from, or
+/// LDraw's file of the set; [place] or a refusal, as placesAsked's.
+export async function placesOnAsk(ask, given) {
+  if (ask?.model) return placesAsked(ask.model, ask.version, given);
+  if (!ask?.set) throw askRefused("not_ask");
+  if (ask.drawn) return placesAsked(ask.drawn, ask.version, given);
+  if (given === undefined || given === null) return [];
+  if (!Array.isArray(given) || given.length > MOST_PARTS) throw askRefused("parts");
+  const cleaned = given.map((one) => cleanPart(one));
+  const wrong = cleaned.find((one) => one.trouble);
+  if (wrong) throw new Unacceptable(wrong.trouble);
+  const [{ librarySet }, { storeFile }, { placesOf }] = await Promise.all([import("./_library.js"), import("./_omr_credit.js"),
+    import("./_parts.js")]);
+  const entry = await librarySet(ask.library);
+  const text = entry ? await storeFile(entry).catch(() => null) : null;
+  if (!text) throw askRefused("set");
+  const places = placesOf(text);
+  const out = [];
+  for (const { part } of cleaned) {
+    const pin = pinFrom(places, part);
+    if (!pin) throw askRefused("no_part");
+    out.push({ ...pin, name: await nameOf(pin.part) });
+  }
+  return out;
+}
+
+/// What a set's ask draws its step from, for each set asked lately: the
+/// newest version of it published as LDraw's model is (set_versions:
+/// unchanged, its steps carried) with its steps, or null (LDraw's file).
+const drawings = new Map();
+const DRAWING_MS = 60 * 1000;
+
+/// What set [set]'s step is drawn from in [tests]'s pool: {model, version,
+/// steps}, a version of it whose file carries the steps the app plays
+/// (share_versions.steps), or null for none: then LDraw's own file, whose
+/// steps the 3D view draws where it carries them and whole where not.
+export async function setDrawing(set, tests = false, now = Date.now()) {
+  const key = `${set}:${tests ? 1 : 0}`;
+  const kept = drawings.get(key);
+  if (kept && now - kept.at < DRAWING_MS) return kept.drawing;
+  const cards = await db("rpc/set_versions", { method: "POST", body: { set_number: set, tests } }).catch(() => null);
+  let drawing = null;
+  for (const card of (Array.isArray(cards) ? cards : []).filter((one) => one?.changed === false && /^[A-Za-z0-9]{10}$/.test(String(one.id || ""))).slice(0, 3)) {
+    const [newest] = await db(`share_versions?model=eq.${card.id}&select=n,steps&order=n.desc&limit=1`).catch(() => []);
+    if (Number(newest?.steps) > 0) {
+      drawing = { model: card.id, version: Number(newest.n) || 1, steps: Number(newest.steps) };
+      break;
+    }
+  }
+  if (cards !== null) {
+    drawings.set(key, { at: now, drawing });
+    if (drawings.size > 200) drawings.delete(drawings.keys().next().value);
+  }
+  return drawing;
 }
 
 /// The ask of thread [id] (talk_asks_of's), or null: none, or the file not
@@ -184,6 +291,11 @@ export async function asksOn(model, viewer) {
 
 /// The address of [ask]'s scene: the asked version at the asked step.
 export function askScene(ask) {
+  if (ask?.set) {
+    const step = ask.step ? `?step=${ask.step}` : "";
+    if (!ask.drawn) return `/library/${ask.library}/scene.json${step}`;
+    return `${ask.newest && ask.version === ask.newest ? `/m/${ask.drawn}` : `/m/${ask.drawn}/v/${ask.version}`}/scene.json${step}`;
+  }
   if (!ask?.model) return "";
   const at = ask.newest && ask.version === ask.newest ? `/m/${ask.model}` : `/m/${ask.model}/v/${ask.version}`;
   return `${at}/scene.json${ask.step ? `?step=${ask.step}` : ""}`;
@@ -205,6 +317,11 @@ const chipWords = (part) => {
 /// and its thread's link preview. "" when it has none: then a plain frame,
 /// never the site's share card.
 export function askPicture(ask) {
+  // A set's: the version its step is drawn from, else LDraw's model's.
+  if (ask?.set) {
+    if (!ask.drawn || !ask.has_image) return `/library/${ask.library}.webp`;
+    return ask.newest && ask.version !== ask.newest ? `/m/${ask.drawn}/v/${ask.version}.png` : `/m/${ask.drawn}.png`;
+  }
   if (!ask?.model || !ask.has_image) return "";
   return ask.newest && ask.version !== ask.newest ? `/m/${ask.model}/v/${ask.version}.png` : `/m/${ask.model}.png`;
 }
@@ -215,6 +332,7 @@ export function askPicture(ask) {
 export function askHtml(ask) {
   if (!ask) return "";
   const at = langAt();
+  if (ask.set) return setAskHtml(ask, at);
   if (!ask.model) {
     return `<section class="talk-ask gone" data-ask><p class="note">${asText(say("This was asked about a model that is not shared any more."))}</p></section>`;
   }
@@ -233,6 +351,35 @@ export function askHtml(ask) {
 ${parts ? `<p class="note">${asText(say("The parts asked about, lit in 3D:"))}</p><ul class="talk-ask-parts">${parts}</ul>` : ""}
 <p class="note">${asText(say("Answer on a part: open the 3D, then right-click a part, or touch and hold it."))}</p>
 <p><a class="cta ghost small" href="${viewer}">${asText(ask.step ? say("Open step {step} in the viewer", { step: number(ask.step) }) : say("Open it in the viewer"))}</a></p></div>
+</section>`;
+}
+
+/// Where a set's ask opens in the studio: the version its step is drawn
+/// from at that step (Build it there), else LDraw's model at its first.
+export function setAskViewer(ask) {
+  if (!ask.drawn) return `/app?new=1&library=${encodeURIComponent(ask.library)}&build`;
+  const older = ask.newest && ask.version !== ask.newest ? `&v=${ask.version}` : "";
+  return `/app?view=${ask.drawn}${older}${ask.step ? `&step=${ask.step}` : ""}`;
+}
+
+/// A set's ask at the top of its thread (set_asks.sql): the set in 3D at the
+/// asked step, as askHtml draws a model's, and the way back to the set's
+/// page, where its builders are.
+function setAskHtml(ask, at) {
+  const set = escapeHtml(ask.set);
+  const hub = `${at}/library/set/${set}`;
+  const viewer = setAskViewer(ask);
+  const name = say("LEGO® set {set}", { set: ask.set });
+  const where = ask.step ? say("Step {step} of LEGO® set {set}", { step: number(ask.step), set: ask.set }) : name;
+  const open = !ask.drawn ? say("Build it in the studio")
+    : ask.step ? say("Open step {step} in the viewer", { step: number(ask.step) }) : say("Open it in the viewer");
+  return `<section class="talk-ask" data-ask data-set="${set}" data-version="${ask.version}"${ask.step ? ` data-step="${ask.step}"` : ""}>
+<div class="talk-ask-frame"><a class="picture" href="${escapeHtml(viewer)}" data-scene="${escapeHtml(askScene(ask))}" aria-label="${asText(say("View {name} in 3D", { name }))}">`
+    + `<img src="${escapeHtml(askPicture(ask))}" alt="" width="1200" height="630">`
+    + `<span class="go">${asText(ask.step ? say("See step {step} in 3D", { step: number(ask.step) }) : say("See it in 3D"))}</span></a></div>
+<div class="talk-ask-about"><p class="talk-ask-where"><small>${asText(say("Asked on the set's page, of everybody who built it"))}</small> <a href="${hub}#asks">${escapeHtml(where)}</a></p>
+<p class="note">${asText(say("Answer on a part: open the 3D, then right-click a part, or touch and hold it."))}</p>
+<p><a class="cta ghost small" href="${escapeHtml(viewer)}">${asText(open)}</a> <a class="cta ghost small" href="${hub}#versions">${asText(say("Its versions"))}</a></p></div>
 </section>`;
 }
 

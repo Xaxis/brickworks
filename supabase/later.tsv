@@ -115,3 +115,6 @@ gallery_tabs.sql	gallery_models	search_shown.sql	t not in ('ai-designed', 'brick
 made_with.sql	gallery_models	search_shown.sql	t not in ('ai-designed', 'brickify')
 made_with_shown.sql	gallery_models	search_shown.sql	t not in ('ai-designed', 'brickify')
 wip.sql	gallery_models	search_shown.sql	t not in ('ai-designed', 'brickify')
+talk.sql	talk_notice_rows	set_asks.sql	public.talk_ask_heard h
+talk_asks.sql	talk_ask_as	set_asks.sql	'library', t.ask_library
+talk_asks.sql	talk_pin_reply	set_asks.sql	t.ask_set is not null

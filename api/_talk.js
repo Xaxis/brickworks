@@ -45,7 +45,7 @@
 // month's challenge opens its own thread (talk_ensure); and the talk under
 // the gallery's models is shown beside the threads.
 
-import { bearer, verify } from "./_auth.js";
+import { bearer, isTestAccount, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { sayBeta } from "./_settings.js";
 import {
@@ -61,7 +61,8 @@ import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } fr
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
 import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, pageHeadHtml, say } from "./_card.js";
 import {
-  ASK_EVERY_S, NOT_YET as ASKS_NOT_YET, askHtml, askOf, askPicture, askRefused, asksOn, asksReady, pinLineHtml, placesAsked, withAsks,
+  ASK_EVERY_S, LIBRARY, NOT_YET as ASKS_NOT_YET, SET, SET_NOT_YET, askHtml, askOf, askPicture, askRefused, asksOn, asksReady,
+  pinLineHtml, placesAsked, placesOnAsk, setAsksReady, setDrawing, withAsks,
 } from "./_asks.js";
 
 export const BOARDS = ["show", "help", "ideas", "challenges", "news"];
@@ -928,14 +929,14 @@ export function threadPageHtml({ page, found, hosts, tests, now = Date.now() }) 
 ${model}
 </aside>
 <div class="obj-main talk-thread-main">
-${askHtml(thread.ask)}${thread.ask?.model ? `<script type="application/json" id="talk-ask-data">${askData(page)}</script>` : ""}
+${askHtml(thread.ask)}${thread.ask?.model || thread.ask?.set ? `<script type="application/json" id="talk-ask-data">${askData(page)}</script>` : ""}
 <ol class="comment-list talk-posts" id="talk-posts">${postsHtml(page, { found, hosts, now })}</ol>
 <p class="note" data-blocked-some hidden>${asText(say("Some posts here are by people you blocked, so they are not shown."))}</p>
 <section class="talk-reply" id="reply" aria-labelledby="talk-reply-title">
 <h2 id="talk-reply-title">${asText(say("Reply"))}</h2>
 ${thread.locked ? `<p class="note">${asText(say("This thread is locked: it takes no new posts."))}</p>` : `<form class="comment-new talk-form" data-reply-form hidden>
 <p class="talk-answering" data-answering hidden><span></span> <button type="button" class="cta ghost small" data-act="unanswer">${asText(say("Not an answer to them"))}</button></p>
-${thread.ask?.model ? `<p class="talk-answering talk-on-part-chosen" data-on-part hidden><span></span> <button type="button" class="cta ghost small" data-act="off-part">${asText(say("Not on a part"))}</button></p>` : ""}
+${thread.ask?.model || thread.ask?.set ? `<p class="talk-answering talk-on-part-chosen" data-on-part hidden><span></span> <button type="button" class="cta ghost small" data-act="off-part">${asText(say("Not on a part"))}</button></p>` : ""}
 <label for="talk-reply-words">${asText(say("Your reply"))}</label>
 <textarea id="talk-reply-words" name="body" rows="5" required data-most="4000"></textarea>
 <p class="note">${asText(say("Plain text. A link to a model, a step, a set or a challenge on Brickworks shows as a card; @handle tells somebody."))}</p>
@@ -1350,8 +1351,8 @@ export async function talkReply(request, response, { origin }) {
   if (body.part !== undefined && body.part !== null) {
     if (!(await asksReady())) throw new Unacceptable(ASKS_NOT_YET, 503);
     const ask = await askOf(thread);
-    if (!ask?.model) throw askRefused("not_ask");
-    [pin] = await placesAsked(ask.model, ask.version, [body.part]);
+    if (!ask?.model && !ask?.set) throw askRefused("not_ask");
+    [pin] = await placesOnAsk(ask, [body.part]);
   }
   const photo = body.photo ? await keepPhoto(who, String(body.photo)) : null;
   const made = await call(pin ? "talk_pin_reply" : "talk_reply", { account: who, p_thread: thread, p_said: words.text,
@@ -1424,6 +1425,68 @@ export async function talkAsks(request, response) {
   const asks = await asksOn(model, who);
   if (asks === null) throw askRefused("model");
   return response.status(200).json({ asks, open: true, every: ASK_EVERY_S });
+}
+
+/// GET ?op=talk_set_asks&set=N: set N's asks (supabase/set_asks.sql), the
+/// newest first, as the reader may see them, each saying whether a builder
+/// other than its asker answered it; and what its page's step picker offers,
+/// the version a step is drawn from ({drawn: {model, version, steps}}, or
+/// null for LDraw's file, any step). {open: false} until the file is applied.
+export async function talkSetAsks(request, response) {
+  const query = request.query || {};
+  const set = String(query.set || "").trim().toLowerCase();
+  if (!SET.test(set)) throw new Unacceptable("name the set: ?set=<its number>");
+  const tests = testsAsked(query);
+  const viewer = await reader(request).catch(() => null);
+  // Signed out, the same for everybody: kept 20 s, as the set's versions are.
+  response.setHeader("Cache-Control", viewer ? "private, no-store" : "public, max-age=0, s-maxage=20, stale-while-revalidate=60");
+  if (!(await asksReady()) || !(await setAsksReady())) return response.status(200).json({ asks: [], open: false, drawn: null });
+  const [rows, drawn] = await Promise.all([call("talk_set_asks", { p_set: set, p_tests: tests, viewer }, () => []),
+    setDrawing(set, tests)]);
+  const asks = (Array.isArray(rows) ? rows : []).filter((one) => Number(one?.id) > 0).map((one) => ({
+    thread: Number(one.id), title: String(one.title || ""), at: one.at, last_at: one.last_at, by: one.by || null,
+    replies: Number(one.replies) || 0, step: Number.isInteger(one.step) && one.step > 0 ? one.step : null,
+    answered: one.answered === true, locked: one.locked === true, mine: one.mine === true, path: `/talk/t/${Number(one.id)}` }));
+  return response.status(200).json({ asks, open: true, drawn });
+}
+
+/// POST ?op=talk_set_ask: a Help thread about a step of a set, asked on its
+/// page, every builder of a version of it told (api/_asks.js,
+/// supabase/set_asks.sql): {set, library (LDraw's model of it, as its page
+/// has it), step?, title, body}.
+export async function talkSetAsk(request, response, { origin }) {
+  response.setHeader("Cache-Control", "no-store");
+  const claims = await verify(bearer(request), request);
+  const who = claims.sub;
+  const body = bodyOf(request);
+  const set = String(body.set || "").trim().toLowerCase();
+  const library = String(body.library || "");
+  if (!SET.test(set) || !LIBRARY.test(library)) throw askRefused("set");
+  const step = body.step === undefined || body.step === null || body.step === "" ? null : Number(body.step);
+  if (step !== null && (!Number.isInteger(step) || step < 1 || step > 200000)) throw askRefused("step");
+  const title = cleanTitle(body.title);
+  if (title.trouble) throw new Unacceptable(title.trouble);
+  const words = cleanPost(body.body);
+  if (words.trouble) throw new Unacceptable(words.trouble);
+  if (!(await asksReady()) || !(await setAsksReady())) throw new Unacceptable(SET_NOT_YET, 503);
+  await mayWrite(who);
+  // LDraw's model of this very set, as its page opens it.
+  const { librarySet } = await import("./_library.js");
+  const entry = await librarySet(library);
+  if (!entry || String(entry.set || "").toLowerCase() !== set || entry.alternate_of) throw askRefused("set");
+  // The step drawn as the set's page offered it: from a version of it, or
+  // LDraw's file. A step past a drawn version's last is no step of it.
+  const drawn = await setDrawing(set, isTestAccount(claims));
+  if (drawn && step !== null && step > drawn.steps) throw askRefused("step");
+  const made = await call("talk_set_ask", { account: who, p_set: set, p_library: library, p_drawn: drawn ? drawn.model : null,
+    p_version: drawn ? drawn.version : 1, p_step: step, p_title: title.text, p_said: words.text, p_photo: null }, notYet);
+  if (made?.refused) throw made.refused in WORDS ? refused(made.refused) : askRefused(made.refused);
+  const post = made.post;
+  const mentions = await mention(who, post.id, words.text);
+  if (mentions.length) post.mentions = mentions;
+  const path = threadPath(made.thread);
+  return response.status(201).json({ thread: made.thread, post, ask: made.ask, heard: Number(made.heard) || 0, path,
+    url: `${origin}${path}` });
 }
 
 /// POST ?op=talk_change: its author edits a post or removes it.

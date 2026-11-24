@@ -161,6 +161,27 @@
 .model-page .alt-short { color: var(--ink-soft); }
 .set-page .built-empty p { margin: 0 0 10px; }
 .set-page .built-empty p.note { color: var(--ink-soft); }
+/* Ask the builders (hubask, web/set-page.js): a model's Comments' box, the
+   asked step in 3D in it as its thread draws it (16:10, square on a
+   phone, as .talk-ask's), and what was asked here, Answered in green. */
+.set-page .set-asks-lede { margin: 0 0 4px; color: var(--ink-soft); }
+.set-page .set-ask-form { max-width: 80ch; }
+.set-page .set-ask-form label[for="set-ask-words"] { font-weight: 600; }
+.set-page .set-ask-frame { position: relative; }
+.set-page .set-ask-frame .picture { display: block; position: relative; aspect-ratio: 16 / 10; border-radius: var(--r-3); overflow: hidden;
+  background: var(--panel-hi); border: 1px solid var(--line); }
+.set-page .set-ask-frame .picture img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.set-page .set-ask-frame .view3d { aspect-ratio: 16 / 10; }
+@media (width < 600px) { .set-page .set-ask-frame .picture, .set-page .set-ask-frame .view3d { aspect-ratio: 1 / 1; } }
+.set-page .set-asks-asked { margin-top: var(--s-5); max-width: 80ch; }
+.set-page .set-asks-asked h3 { margin: 0 0 8px; }
+.set-page .set-asks-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.set-page .set-ask-row { padding: 10px 0; border-top: 1px solid var(--line); }
+.set-page .set-ask-row:last-child { border-bottom: 1px solid var(--line); }
+.set-page .set-ask-title { font-weight: 600; overflow-wrap: anywhere; display: inline-block; min-height: 24px; }
+.set-page .set-ask-meta { margin: 4px 0 0; color: var(--ink-soft); font-size: var(--t-small); }
+.set-page .set-ask-state { margin-right: 6px; }
+.set-page .set-ask-state.answered { color: var(--green); border-color: var(--green); font-weight: 600; }
 dialog.bases-dialog { width: min(480px, calc(100vw - 32px)); }
 dialog.bases-dialog .bases-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 12px; }
 /* Each row boxed, over the report dialog's bare fieldsets (below); its

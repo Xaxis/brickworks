@@ -32,10 +32,22 @@
 // it has, "broken" when they could not be read (tools/web/sethub_flow.mjs);
 // and on <html data-lists> how many public lists it is in (ownedparts).
 //
+// And Ask the builders (hubask, supabase/set_asks.sql), the second tab, for
+// a set LDraw modelled: a question about a step of it, the step picked as a
+// model's Comments pick one and seen in 3D before it is asked, asked in
+// Talk's Help (api/_talk.js talkSetAsk), where its thread draws that step in
+// 3D and an answer can be on a part; everybody who published a version of
+// it hears of it. Under the box, what was asked here, newest first, each
+// saying Answered or Open. The page says on <html data-asks> how many it
+// lists, "closed" before set_asks.sql is applied, "broken" when they could
+// not be read (tools/web/hubask_flow.mjs).
+//
 // Every word in the page's language (web/card.js say: /de/library/set/<n>
 // carries its copy's words), its numbers as the language writes them.
-import { call, signedIn } from "/account.js";
-import { altCardSaid, appAt, counted, langAt, modelCard, number, pictureOf, say } from "/card.js";
+import { askToSignIn, call, nameFirst, signedIn } from "/account.js";
+import { altCardSaid, appAt, counted, langAt, modelCard, number, pictureOf, say, told } from "/card.js";
+import { ago } from "/kit.js";
+import { start3d } from "/start3d.js";
 
 const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 // A list's link (api/_mylists.js): ten letters and digits.
@@ -44,6 +56,8 @@ const owned = document.getElementById("owned");
 if (owned && SET.test(owned.dataset.set || "") && signedIn()) start(owned);
 const page = document.querySelector("article.set-page");
 if (page && SET.test(page.dataset.set || "")) builtFrom(page);
+const asks = document.getElementById("asks");
+if (asks && SET.test(asks.dataset.set || "")) startAsks(asks);
 
 /// Built from this set: the models counted or said to be built from it, put
 /// before More <theme> (#similar), or at the page's end; each card says how
@@ -184,6 +198,280 @@ function versionsOf(article, versions, before) {
   document.documentElement.dataset.versions = String(shown.length);
   // From a version's own page ("A version of LEGO® set …"): the row it is in.
   if (location.hash === "#versions") section.scrollIntoView({ block: "start" });
+}
+
+/// The sign-in's reason, said over its dialog (web/account.js).
+const ASK_WHY = "Sign in to ask: we email you a code, no password. Anyone can read Talk.";
+/// The most a question may be, as Talk takes a post (api/_talk.js).
+const MOST_WORDS = 4000;
+const MOST_TITLE = 100;
+
+/// Ask the builders: the box and the questions asked here, in [section]
+/// (api/_sets.js asksHtml), from ?op=talk_set_asks.
+async function startAsks(section) {
+  const set = section.dataset.set;
+  const library = section.dataset.library || "";
+  const tests = new URLSearchParams(location.search).get("tests") === "1";
+  const body = section.querySelector(".set-asks-body");
+  const address = `/api/people?op=talk_set_asks&set=${encodeURIComponent(set)}${tests ? "&tests=1" : ""}`;
+  const rowsOf = (said) => (Array.isArray(said?.asks) ? said.asks : []).filter((one) => one && Number(one.thread) > 0);
+  const reply = await call(address).catch(() => null);
+  section.setAttribute("aria-busy", "false");
+  if (!reply || reply.status !== 200 || !reply.body || typeof reply.body !== "object") {
+    document.documentElement.dataset.asks = "broken";
+    body.replaceChildren(note(say("The questions asked here could not be read just now. Try again in a minute.")));
+    return;
+  }
+  const at = langAt();
+  if (reply.body.open !== true) {
+    // Before set_asks.sql: Talk's Help, with the way there.
+    document.documentElement.dataset.asks = "closed";
+    const go = document.createElement("a");
+    go.className = "cta ghost";
+    go.href = `${at}/talk/new?board=help${tests ? "&tests=1" : ""}`;
+    go.textContent = say("Ask in Talk's Help");
+    body.replaceChildren(note(say("Asking a set's builders is not open on Brickworks yet: start a thread in Help and paste the set's link.")), go);
+    return;
+  }
+  const drawn = reply.body.drawn && ID.test(String(reply.body.drawn.model || "")) && Number(reply.body.drawn.steps) > 0
+    ? { model: reply.body.drawn.model, steps: Number(reply.body.drawn.steps) } : null;
+  const listed = rowsOf(reply.body);
+  // The list read again, as after an ask whose answer was lost.
+  let list = askList(listed, tests);
+  const relist = async () => {
+    const again = await call(address).catch(() => null);
+    if (!again || again.status !== 200) return;
+    const fresh = askList(rowsOf(again.body), tests);
+    list.replaceWith(fresh);
+    list = fresh;
+  };
+  body.replaceChildren(askForm({ set, library, drawn, tests, relist }), list);
+  document.documentElement.dataset.asks = String(listed.length);
+  const tab = document.getElementById("tab-asks");
+  if (tab && listed.length && !tab.querySelector(".n")) {
+    const n = document.createElement("span");
+    n.className = "n";
+    n.textContent = number(listed.length);
+    tab.append(" ", n);
+  }
+}
+
+/// A paragraph of the page's quieter words.
+function note(words) {
+  const line = document.createElement("p");
+  line.className = "note";
+  line.textContent = words;
+  return line;
+}
+
+/// Where the asked step is drawn from (api/_asks.js askScene, as its thread
+/// will draw it): the version the server offered, else LDraw's file.
+const sceneAt = ({ library, drawn }, step) => `${drawn ? `/m/${drawn.model}` : `/library/${library}`}/scene.json${step ? `?step=${step}` : ""}`;
+
+/// A question's thread title: its first line, cut short; one too short for
+/// Talk said as help with the set and its step.
+function titleOf(words, set, step) {
+  let first = words.trim().split("\n")[0].trim();
+  if (first.length > MOST_TITLE) first = `${first.slice(0, MOST_TITLE - 1).trim()}…`;
+  if (first.length >= 3) return first;
+  return step ? say("Help with step {step} of LEGO® set {set}", { step: number(step), set }) : say("Help with LEGO® set {set}", { set });
+}
+
+/// The box: the step (the whole set, or one of the drawn version's, as a
+/// model's Comments pick one; a number where there is no such version),
+/// that step in 3D, the question, and Ask the builders. Signed out, it
+/// asks to sign in as it sends, what was typed kept; then a name first,
+/// once (web/account.js nameFirst); then the thread, where the step is
+/// drawn and every builder of a version was told.
+function askForm(at) {
+  const { set, library, drawn, tests, relist } = at;
+  const form = document.createElement("form");
+  form.className = "comment-new set-ask-form";
+  form.noValidate = true;
+  const on = document.createElement("div");
+  on.className = "comment-on";
+  const label = document.createElement("label");
+  label.htmlFor = "set-ask-step";
+  label.textContent = say("On");
+  let picker;
+  if (drawn && drawn.steps <= 1000) {
+    picker = document.createElement("select");
+    picker.add(new Option(say("the whole set"), ""));
+    for (let n = 1; n <= drawn.steps; n += 1) picker.add(new Option(say("step {n}", { n: number(n) }), String(n)));
+  } else {
+    picker = document.createElement("input");
+    picker.type = "number";
+    picker.min = "1";
+    if (drawn) picker.max = String(drawn.steps);
+    picker.inputMode = "numeric";
+    picker.placeholder = say("the whole set");
+  }
+  picker.id = "set-ask-step";
+  picker.dataset.askStep = "";
+  const how = document.createElement("span");
+  how.className = "note";
+  how.textContent = say("as Build it numbers its steps");
+  on.append(label, " ", picker, " ", how);
+  // The step in 3D, as its thread will draw it, before it is asked.
+  const frame = document.createElement("div");
+  frame.className = "set-ask-frame";
+  let view = null;
+  const stepNow = () => {
+    const n = Number(picker.value);
+    return Number.isInteger(n) && n >= 1 && (!drawn || n <= drawn.steps) ? n : null;
+  };
+  const drawFrame = () => {
+    const step = stepNow();
+    // The 3D already open stays open, at the step now picked.
+    const was = frame.querySelector(".view3d:not([hidden])");
+    const how = was ? was.dataset.how || "mouse" : "";
+    if (view) view.close();
+    view = null;
+    const big = document.createElement("a");
+    big.className = "picture set-ask-picture";
+    big.href = drawn ? `/app?view=${drawn.model}${step ? `&step=${step}` : ""}` : `/app?new=1&library=${encodeURIComponent(library)}&build`;
+    big.dataset.scene = sceneAt(at, step);
+    big.setAttribute("aria-label", say("View {name} in 3D", { name: step ? say("Step {step} of LEGO® set {set}", { step: number(step), set })
+      : say("LEGO® set {set}", { set }) }));
+    const img = document.createElement("img");
+    img.src = `/library/${library}.webp`;
+    img.alt = "";
+    img.width = 1200;
+    img.height = 630;
+    img.loading = "lazy";
+    const go = document.createElement("span");
+    go.className = "go";
+    go.textContent = step ? say("See step {step} in 3D", { step: number(step) }) : say("See it in 3D");
+    big.append(img, go);
+    frame.replaceChildren(big);
+    view = start3d(big, { margin: 0.08 });
+    frame.dataset.step = String(step || "");
+    if (how) view.open(how);
+  };
+  // A step asked for in the address (?step=N, as the app's step player
+  // links here), picked at the start.
+  const asked = Number(new URLSearchParams(location.search).get("step"));
+  if (Number.isInteger(asked) && asked >= 1 && (!drawn || asked <= drawn.steps)) picker.value = String(asked);
+  drawFrame();
+  picker.addEventListener("change", drawFrame);
+  const wordsLabel = document.createElement("label");
+  wordsLabel.htmlFor = "set-ask-words";
+  wordsLabel.textContent = say("Your question");
+  const field = document.createElement("textarea");
+  field.id = "set-ask-words";
+  field.rows = 4;
+  field.placeholder = say("Which way round does the hinge go at this step? Say what you tried.");
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const send = document.createElement("button");
+  send.type = "submit";
+  send.className = "cta";
+  send.textContent = say("Ask the builders");
+  const said = document.createElement("span");
+  said.className = "said";
+  said.setAttribute("role", "status");
+  actions.append(send, said);
+  const who = note(say("Everybody who published a version of this set hears of it, and anybody in Talk can answer."));
+  form.append(on, frame, wordsLabel, field, actions, who);
+  const tell = (words) => { said.textContent = words; };
+  let busy = false;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    // Enter and a press at once ask once: busy before anything is awaited.
+    if (busy) return;
+    busy = true;
+    send.disabled = true;
+    try {
+      const words = field.value.trim();
+      if (words.length < 3) {
+        tell(say("Say what you want to ask first."));
+        field.focus();
+        return;
+      }
+      // Over the most is said, never cut: the words stay as typed. Counted
+      // as the server counts them, by character, not by UTF-16 unit.
+      const length = [...words].length;
+      if (length > MOST_WORDS) {
+        tell(say("That is {n} characters: at most {most}, please.", { n: number(length), most: number(MOST_WORDS) }));
+        return;
+      }
+      // A step typed that is none of the set's is said, never asked as the whole set.
+      const step = stepNow();
+      if (picker.value.trim() !== "" && step === null) {
+        tell(drawn ? say("Pick a step from 1 to {n}.", { n: number(drawn.steps) }) : say("A step is a whole number from 1."));
+        picker.focus();
+        return;
+      }
+      if (!signedIn() && !(await askToSignIn(ASK_WHY, { later: true }))) return;
+      await nameFirst();
+      tell(say("Asking…"));
+      const done = await call(`/api/people?op=talk_set_ask${tests ? "&tests=1" : ""}`, { method: "POST",
+        body: { set, library, step, title: titleOf(words, set, step), body: words } }).catch(() => null);
+      // No answer, or a server's failure with no words: it may have been
+      // asked all the same, so the list is read again before another try.
+      if (!done || (done.status >= 500 && !done.body?.error)) {
+        tell(say("That may not have gone. Look for it in the list below before you ask again."));
+        await relist();
+        return;
+      }
+      if (done.status !== 201 || !done.body?.path) {
+        tell(told(done.body?.error, say("That did not go just now. Try again in a minute.")));
+        return;
+      }
+      const heard = Number(done.body.heard) || 0;
+      tell(heard === 1 ? say("Asked: 1 builder will hear of it.")
+        : heard ? say("Asked: {n} builders will hear of it.", { n: number(heard) }) : say("Asked."));
+      document.documentElement.dataset.asked = String(Number(done.body.thread?.id) || "");
+      location.href = `${langAt()}${done.body.path}${tests ? "?tests=1" : ""}`;
+    } finally {
+      busy = false;
+      send.disabled = false;
+    }
+  });
+  return form;
+}
+
+/// What was asked here, newest first: each its question (a link to its
+/// thread), Answered or Open, its step, who asked, its replies and when.
+function askList(listed, tests) {
+  const wrap = document.createElement("div");
+  wrap.className = "set-asks-asked";
+  const heading = document.createElement("h3");
+  heading.textContent = say("Asked here");
+  wrap.append(heading);
+  if (!listed.length) {
+    wrap.append(note(say("Nobody has asked about this set yet.")));
+    return wrap;
+  }
+  const list = document.createElement("ol");
+  list.className = "set-asks-list";
+  const at = langAt();
+  for (const one of listed) {
+    const item = document.createElement("li");
+    item.className = "set-ask-row";
+    item.dataset.thread = String(Number(one.thread));
+    item.dataset.answered = String(one.answered === true);
+    const link = document.createElement("a");
+    link.className = "set-ask-title";
+    link.href = `${at}/talk/t/${Number(one.thread)}${tests ? "?tests=1" : ""}`;
+    link.textContent = String(one.title || "");
+    const meta = document.createElement("p");
+    meta.className = "set-ask-meta";
+    const state = document.createElement("span");
+    state.className = `pill set-ask-state${one.answered ? " answered" : ""}`;
+    state.textContent = one.answered ? say("Answered") : say("Open");
+    const bits = [
+      one.step ? say("Step {n}", { n: number(one.step) }) : say("The whole set"),
+      one.by && typeof one.by.name === "string" && one.by.name ? one.by.name : say("A builder"),
+      one.replies === 1 ? say("1 reply") : say("{n} replies", { n: number(Number(one.replies) || 0) }),
+      ago(one.at),
+    ].filter(Boolean);
+    meta.append(state, ` ${bits.join(" · ")}`);
+    item.append(link, meta);
+    list.append(item);
+  }
+  wrap.append(list);
+  return wrap;
 }
 
 /// Parts you own: how much of the set their collection holds, and what they

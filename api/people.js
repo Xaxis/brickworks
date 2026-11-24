@@ -185,6 +185,11 @@
 //                                 parts, for its studio (api/_asks.js)
 //   POST ?op=talk_ask           (session) Ask the builders: a Help thread about
 //                                 the open step of a shared model (api/_asks.js)
+//   GET  ?op=talk_set_asks      a set's asks, newest first, answered or not,
+//                                 and what its step picker offers (api/_asks.js)
+//   POST ?op=talk_set_ask       (session) Ask the builders on a set's page: a
+//                                 Help thread about a step of the set, its
+//                                 versions' builders told (supabase/set_asks.sql)
 //   POST ?op=talk_start, talk_reply, talk_change, talk_follow, talk_read,
 //        talk_photo_start         (session) a thread started, a post written,
 //                                 edited or removed, a thread followed or
@@ -307,7 +312,7 @@ import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, challengeRule
 import { promptOfAnswer } from "./_prompts.js";
 import {
   reportPost, talkAsk, talkAsks, talkChange, talkFollow, talkLatest, talkList, talkModel, talkPage, talkPhoto, talkPhotoStart, talkRead,
-  talkReply, talkRss, talkStart, talkThread,
+  talkReply, talkRss, talkSetAsk, talkSetAsks, talkStart, talkThread,
 } from "./_talk.js";
 import { pushChoose, pushSend, pushState } from "./_push.js";
 
@@ -2137,6 +2142,7 @@ async function handler(request, response) {
       if (op === "talk_model") return await talkModel(request, response);
       if (op === "talk_photo") return await talkPhoto(request, response);
       if (op === "talk_asks") return await talkAsks(request, response);
+      if (op === "talk_set_asks") return await talkSetAsks(request, response);
       // This device's pushes (api/_push.js).
       if (op === "push") return await pushState(request, response);
     } else if (request.method === "POST") {
@@ -2186,6 +2192,7 @@ async function handler(request, response) {
       if (op === "talk_start") return await talkStart(request, response, { origin: originOf(request) });
       if (op === "talk_reply") return await talkReply(request, response, { origin: originOf(request) });
       if (op === "talk_ask") return await talkAsk(request, response, { origin: originOf(request) });
+      if (op === "talk_set_ask") return await talkSetAsk(request, response, { origin: originOf(request) });
       if (op === "talk_change") return await talkChange(request, response, { origin: originOf(request) });
       if (op === "talk_follow") return await talkFollow(request, response);
       if (op === "talk_read") return await talkRead(request, response);
