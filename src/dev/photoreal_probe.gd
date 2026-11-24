@@ -38,7 +38,8 @@
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
 ##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, the parts'
 ##                      batch, handling, studs and play (photoreal8), its edges'
-##                      rounding (edge, photoreal13), and the
+##                      rounding (edge, photoreal13), moulded ABS's own
+##                      unevenness (peel, sink, polish, scuff: photoreal15), and the
 ##                      camera's tone and balance) at 0, and its
 ##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
 ##   -- --draw=N        the tracer's seed (default 1): another draw of the same
@@ -473,7 +474,8 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 	for key: String in ["grain", "vignette", "aberration", "softness", "sharpen", "jpeg", "age",
 			"dust", "paper", "seating", "tone", "balance", "batch", "handling", "studs", "play",
 			"rubbed", "table", "table_light", "fill", "edge", "source", "source_rise", "source_turn",
-			"source_wide", "source_tall", "source_fall", "source_key", "source_spill"]:
+			"source_wide", "source_tall", "source_fall", "source_key", "source_spill",
+			"peel", "sink", "polish", "scuff"]:
 		if key in without:
 			settings.set(key, 0.0)
 		elif shot.has(key):

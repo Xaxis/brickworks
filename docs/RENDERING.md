@@ -2340,7 +2340,158 @@ do not have. So `StudioRender.PRODUCT_SOURCE` is 0: off in the app, the
 photo bench asks for it (`SOURCE_LEVEL` 128 on a table) until its judge
 keeps it, and a person's Render on a table draws as it did before
 photoreal14, byte for byte. The light-and-shadow tell is named on 94% of
-the fixed tree's verdicts.
+the fixed tree's verdicts. (That judge kept one blind name a picture, and
+its "0.012 and 0.022" was one draw of it. Judged again by the fixed judge,
+the source lifted every table close-up in every draw and is on: 5t.)
+
+## 5s. The moulded skin's breakup, measured then judged (photoreal15)
+
+The judge names "uniform colour and gloss" on nearly every verdict, and in
+the close-up photographs a top's highlight is broken and wobbly where ours
+is ruled. photoreal15 added four levers for moulded ABS's own unevenness,
+render-only, seeded by the part, in the tracer's marks version only (the
+plain version draws every default picture, byte for byte as before):
+`peel`, an orange-peel waviness of the skin (two octaves of noise on the
+normal, cells of 2.5 LDU, path_tracer.glsl `peeled`); `sink`, a dip just
+off each stud's foot and over each tube (`sunk`); `polish`, sharper tops
+than satin sides (`polish_split`); `scuff`, a few hairlines and pits
+(`sparse_scuffs`). Each is `RenderSettings.peel` and so on, and
+`StudioRender.PRODUCT_*` 0.
+
+**Measured first** (tools/photoreal/breakup_measure.py, boxes and lines in
+shots.json `breakup`; bench/results/photoreal15-2026-11-23/
+measure_table.txt): a face's mottle in stops once its plane and broad
+shading are taken out, a highlight line's or a mirrored outline's wobble in
+pixels, the dip by a stud's foot. Tolerances, set first: mottle within 30%,
+wobble within 0.5 px, dip within 0.2 stops.
+
+| close-up | photograph | off | peel 0.5 | peel 1 |
+|---|---|---|---|---|
+| three_2x2 green top mottle | 0.026 | 0.022 | 0.034 | 0.051 |
+| three_2x2 blue top mottle | 0.022 | 0.018 | 0.025 | 0.043 |
+| red_slope end mottle | 0.034 | 0.029 | 0.030 | 0.035 |
+| red_slope top strip mottle | 0.138 | 0.012 | 0.021 | 0.046 |
+| black_2x4 mirrored stud outline | 2.13 px | 0.24 | 0.24 | 0.26 |
+| green_plate top mottle | 0.34 | 0.04 | 0.04 | - |
+| green_plate dip by a stud | -0.76 | -0.07 | -0.07 | - |
+
+Peel at 0.5 fits the tent's tops; above it they turn blotchy. The
+photographs' large numbers are not the skin: wear, dust and the room each
+top mirrors. No lever reaches them without spoiling the tent, so those
+shots were reported, not fitted. Sink moved no measure (the dip -0.07 at
+any depth) and polish moved its one target the wrong way, so neither was
+judged.
+
+**Judged** (solo, 2 rounds of 2 trials, draws 11 and 12, the photographs in
+the pool, from a locked snapshot of 714695819; bench/results/
+photoreal15-2026-11-23/solo_p15pool):
+
+| arm | called a photograph | mean p | draw 11 | draw 12 | close-ups, rounds 1 and 2 |
+|---|---|---|---|---|---|
+| off | 21 of 80 | 0.280 | 0.263 | 0.296 | 0.417, 0.424 |
+| peel 0.5 | 16 of 80 | 0.255 | 0.258 | 0.252 | 0.378, 0.367 |
+| scuff 2 | 12 of 80 | 0.227 | 0.225 | 0.228 | 0.315, 0.349 |
+| peel and scuff | 16 of 80 | 0.255 | 0.265 | 0.246 | 0.382, 0.368 |
+| photoreal14's source on the tables | 24 of 80 | 0.317 | 0.366 | 0.269 | 0.482, 0.483 |
+| the source, peel and scuff | 30 of 80 | 0.363 | 0.382 | 0.344 | 0.568, 0.545 |
+
+Every lever lost to the off arm: peel by 0.044 a round in draw 12, scuff
+by 0.03 to 0.08 in every round and draw (red_slope's hairlines read as
+render marks). With the source on, peel and scuff led the source alone by
+0.026 and 0.006 in draw 11, under the 0.03 a default needs; their draw-12
+lead came from grey_1x3, whose two pictures differ in 2,034 pixels of
+786,432. So all four stay at 0, and a person's Render draws as before.
+
+**The judge's noise is the picture's name.** The off arm and the source arm
+share seven byte-identical pictures a draw (the tent and the sets). Repeats
+of one picture agree within 0.024; byte-identical twins under two blind
+names differ by up to 0.37 (three_2x2_top in draw 12: 0.66 and 0.28). So a
+pool's rounds repeat each verdict rather than adding new ones, and an arm's
+mean over ten shots carries about 0.024 of noise from the names alone. A
+lever worth keeping has to lead across draws and shots, not rounds.
+
+## 5t. A judge whose noise is measured, and the levers judged again (photoreal16)
+
+**A blind name is a seed.** photoreal15's fourteen twin pairs were asked
+again an hour later, six more times each, at their own paths in their own
+folder. Every old gap came back (old gap against new, r 0.99):
+three_2x2_top in draw 12 scored 0.65 under one name and 0.29 under the
+other, ten verdicts each, with the same bytes in the same folder. The judge
+reads one picture two ways ("small flaws, a real photograph" near 0.65,
+"garbled logos, a render" near 0.3), and the exact prompt, of which the
+file name is a part, settles which. Most names leave both open; some lock
+one. Position and neighbours played no part. Ten pictures under eight fresh
+names, three times each, shuffled into one pool, showed no pull from a
+verdict's place in the pool (r +0.01 against what is left once its name's
+mean is taken out) or from the verdict asked just before it (r +0.04). The
+judge only ever opened its own file. The old judge kept one name a picture
+for every round, so its rounds repeated one draw. It also ran inside the
+checkout, so each verdict's context held a path naming the unit, "solo"
+and "blind", and main's newest commits.
+
+**The fix** (`tools/bench/photoreal.py`, `_fresh`): every verdict, solo or
+paired, photograph or render, sees its picture under a fresh random name,
+alone in a fresh folder in the system's temporary folder, outside any
+checkout, and the copy is taken away after. Rounds are shuffled as before.
+An arm is scored as the mean over its shots of each shot's mean verdict,
+with a bootstrap 95% interval (the shots drawn again, then each picture's
+verdicts). Against a base it is scored shot by shot, a picture the same in
+both arms counting as one. Any byte-identical twins give the judge's own
+noise (`score`; several pools' verdicts add up).
+
+**Measured** (two pools from a locked snapshot of 8df1b3205, draws 11 to
+14, 2 rounds of 2 trials each, the photographs in; the off arm asked twice
+under two labels; 1,680 verdicts, 0 errors;
+bench/results/photoreal16-2026-11-23/solo_p16pool and solo_p16pool2):
+
+| twins | difference (95%) | tells apart at 95% |
+|---|---|---|
+| off and its twin, first pool (4 verdicts a picture) | +0.017 (+0.001 to +0.046) | 0.023 |
+| the second pool | -0.001 (-0.019 to +0.014) | 0.016 |
+| both (8 verdicts a picture, 40 pictures) | +0.008 (-0.001 to +0.023) | 0.012 |
+
+The first pool's twin interval missed 0 by 0.001. One shot carried it:
+three_2x2_top, whose verdicts split 0.3 and 0.65 within a picture. Drawn
+from the pools' own verdicts, the same interval holds 0 for 98.7% of 300
+simulated twin pairs. The second pool held 0, and so did both together.
+With fresh names an arm's mean repeats between pools: off 0.298 and 0.292,
+the source's lead +0.104 and +0.107. The old judge's twin gaps had a
+spread (sd) of 0.099, and the same pictures moved by 0.095 a picture (sd)
+between the old judge and the new.
+
+**The levers judged again** (both pools; against off, shot by shot):
+
+| arm | mean (95%) | against off, all shots | close-ups | the shots it changes |
+|---|---|---|---|---|
+| off | 0.295 (0.116 to 0.512) | | | |
+| the source on tables (photoreal14) | 0.400 (0.185 to 0.619) | +0.106 (+0.000 to +0.259) | +0.176 (+0.006 to +0.409) | +0.352 (+0.043 to +0.690), 12 pictures of 12 ahead |
+| peel 0.5 | 0.253 (0.088 to 0.476) | -0.042 (-0.127 to +0.008) | -0.074 | three_2x2_top -0.36 to -0.46 in every draw |
+| source, peel and scuff | 0.384 (0.157 to 0.619) | +0.089 (-0.061 to +0.265) | +0.145 | three_2x2_top -0.32 to -0.39 in every draw |
+
+The source changes only the three table close-ups and lifts every one in
+every draw: grey_1x3 from 0.12 to 0.82, black_2x4 from 0.28 to 0.61,
+green_plate from 0.87 to 0.91. Over all ten shots its interval starts at
+0.000 only because a resample of ten shots draws none of those three 2.8%
+of the time, and there the two arms are the same pictures. So the source
+is kept: `StudioRender.PRODUCT_SOURCE` is `SOURCE_LEVEL` (128) on a table
+under the studio's light, and none in the tent. Peel turns the top-down
+three_2x2 from "real" to "render" in every draw, and it drags the
+source-peel-scuff arm below the source alone, so both stay at 0. With
+peel and scuff added to the source, black_2x4 rose to 0.78 (0.61 with the
+source alone, and peel alone lowers it), so the source with scuff and
+without peel is the next arm worth judging.
+
+**The design ladder's realset screen is built the same way, and is left as
+it is.** realset.shown copies a model's views into one folder per set,
+bench/results/blind/<set>/, under a name fixed by the model's key
+(pairwise.opaque). The judge runs in that folder, inside the checkout.
+realset.ask keeps each ordered pair's verdict on disk under its two names
+and reads it back, so asking again repeats it. Both orders are asked, so
+position is balanced, but a set's side carries one name in every
+comparison of that set, and each rung one more. A design's place on a
+ladder is therefore one draw of each pair of names. Fresh names for every
+ask, and a folder outside the checkout, would make its verdicts samples
+(tools/design_ladder.py, place_one and order; realset.ask and shown).
 
 ## 6. Web and desktop
 

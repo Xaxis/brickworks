@@ -181,13 +181,14 @@ const PRODUCT_EDGE := 1.0
 ## The large source the glossy tops mirror (photoreal14, RenderSettings
 ## source and source_*; path_tracer.glsl's source_light): a bright window
 ## behind the model with the table's own key nearly gone, as a photograph by
-## a window has it. Off in the app (PRODUCT_SOURCE 0) and asked for only by
-## the photo bench (SOURCE_LEVEL, on a table) until its judge keeps it. With
-## the table mirroring it, it was called a photograph 28 times of 80 against
-## 19; once the table only took its light and kept its own colour
-## (photoreal14b), it led by 0.012 and 0.022 a draw (18 of 80 against 16),
-## under the 0.03 a default needs. In the tent it lost the red slope, so the
-## seamless never has one. Its
+## a window has it. On a table under the studio's light by default
+## (PRODUCT_SOURCE, at SOURCE_LEVEL): judged by the fixed judge (photoreal16,
+## a fresh blind name a verdict; docs/RENDERING.md 5t) it lifted every table
+## close-up in every draw, 12 pictures of 12 (the grey brick 0.12 to 0.82, the
+## black 0.28 to 0.61), +0.35 over the shots it changes (95%: +0.04 to
+## +0.69). photoreal14b's "led by 0.012 and 0.022" was the old judge, whose
+## kept names froze one draw a picture. In the tent it lost the red slope, so
+## the seamless never has one. Its
 ## light in the sky's units; where its middle stands
 ## (round from straight behind the model as the camera sees it, in degrees;
 ## and up, where a flat top mirrors it: as high as the camera looks down,
@@ -195,8 +196,8 @@ const PRODUCT_EDGE := 1.0
 ## the floor); how big it is seen from the model (degrees), how soft its
 ## edges are (a share of its half size), how much darker its edges are than
 ## its middle, and how much of a staged table's near key stays beside it.
-const PRODUCT_SOURCE := 0.0
 const SOURCE_LEVEL := 128.0
+const PRODUCT_SOURCE := SOURCE_LEVEL
 const SOURCE_RISE_LOW := 15.0
 const SOURCE_RISE_HIGH := 65.0
 const SOURCE_TURN := 0.0
@@ -209,6 +210,13 @@ const SOURCE_KEY := 0.05
 ## source_spill): none. It is lit by it as the white card is, so it keeps its
 ## own colour; mirrored whole, its glare drew wood and terrazzo nearly white.
 const SOURCE_SPILL := 0.0
+## Moulded ABS's own unevenness (photoreal15, RenderSettings peel, sink,
+## polish and scuff; path_tracer.glsl's peeled, sunk, polish_split and
+## sparse_scuffs): each 0 unless asked until the photo bench's judge keeps it.
+const PRODUCT_PEEL := 0.0
+const PRODUCT_SINK := 0.0
+const PRODUCT_POLISH := 0.0
+const PRODUCT_SCUFF := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2669,6 +2677,9 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
 	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
+	var breakup: Array = _breakup(settings)
+	_tracer.peel = float(breakup[2])
+	_tracer.sink = float(breakup[3])
 	_tracer.marked = _tracer.product and (_own(settings.rubbed, PRODUCT_RUBBED) > 0.0
 		or not _matched(settings).is_empty())
 	# The product look's picture has the samples' grain taken out
@@ -3085,11 +3096,16 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([key_way.x, key_way.y, key_way.z, 0.0])
 	# The large source (photoreal14), read only by the shader's marks version.
 	data.append_array(_source_rows(settings, shot))
+	# Moulded ABS's own unevenness (photoreal15): the polish split and the
+	# scuffs, read only by the marks version (the peel and the sink go with
+	# each part's record).
+	var breakup: Array = _breakup(settings) if worn else [0.0, 0.0, 0.0, 0.0]
+	data.append_array([float(breakup[0]), float(breakup[1]), float(breakup[2]), float(breakup[3])])
 	return data
 
 
 ## How bright the large source (photoreal14) that [param settings] ask for
-## is, in the sky's units: 0 for none. Where nobody asks, PRODUCT_SOURCE (0) on a
+## is, in the sky's units: 0 for none. Where nobody asks, PRODUCT_SOURCE on a
 ## table under the studio's light, and none elsewhere. Only where the
 ## product look is drawn as a camera draws (on a backdrop).
 func _source_level(settings: RenderSettings) -> float:
@@ -3157,7 +3173,22 @@ func _matched(settings: RenderSettings) -> Dictionary:
 	# The large source (photoreal14) is drawn by the same version.
 	if _source_level(settings) > 0.0:
 		out["source"] = _source_level(settings)
+	# So is moulded ABS's own unevenness (photoreal15).
+	var breakup: Array = _breakup(settings)
+	for i: int in 4:
+		if float(breakup[i]) > 0.0:
+			out[["polish", "scuff", "peel", "sink"][i]] = breakup[i]
 	return out
+
+
+## Moulded ABS's own unevenness (photoreal15) that [param settings] ask for,
+## as the shader's breakup row reads it: the polish split, the scuffs, the
+## peel and the sink, each 0 for none. Only in the product look.
+func _breakup(settings: RenderSettings) -> Array:
+	if settings.look != "product":
+		return [0.0, 0.0, 0.0, 0.0]
+	return [maxf(_own(settings.polish, PRODUCT_POLISH), 0.0), maxf(_own(settings.scuff, PRODUCT_SCUFF), 0.0),
+		maxf(_own(settings.peel, PRODUCT_PEEL), 0.0), maxf(_own(settings.sink, PRODUCT_SINK), 0.0)]
 
 
 ## Which way the staged key stands from the model (_stage_key's), for the
