@@ -368,22 +368,32 @@ geometry in front of them.
   JS, the first time it is asked and as the version is published
   (`afterAnswer`), and kept as `X.lotsN.png` beside the model, so a later ask
   reads that one file (deleted with the model's files at a take-down). The
-  share answer names it (`lot_pictures`); the page fetches it beside the model
-  while the engine starts (`src/boot/shell.html`, `window.brickworksLots`) and
-  the app takes it as it opens the link (`_view_shared`, and the two copy
-  paths), so Build it's step, the studio's step bar, the part-step card and
-  the parts list show each lot at once (`peek` finds it), and `PartThumbnails`
-  draws live only what the file lacks. Before, step 1 of Survey Ship at 390
+  share answer names it (`lot_pictures`, and the model page's `parts.json`
+  too, whose Parts list then shows each lot from it, `web/part-pictures.js`);
+  the page fetches it beside the model while the engine starts and reads it
+  there too, on the browser's own threads (`src/boot/shell.html`,
+  `window.brickworksLots` {bytes, pixels, width, height}), and the app takes
+  the pixels as they are as it opens the link (`_view_shared`, and the two
+  copy paths), no frame waited on: waiting on frames for the fetch and a
+  read of its own, it took the file 5-10 s after asking at load 70. Where
+  the page has no pixels the file is read on a worker. So Build it's step,
+  the studio's step bar, the part-step card and the parts list show each lot
+  at once (`peek` finds it), and `PartThumbnails` draws live only what the
+  file lacks; a file that comes after a page was laid gives its waiting
+  tiles theirs at once (`take_sheet_image`), even one being drawn.
+  The booklet draws its parts in its own page pictures at print size, so it
+  does not take these 96 px squares. Before, step 1 of Survey Ship at 390
   showed counts over empty boxes for 8.5 s (billbuilds). Tiles still waiting
   show their part's shape (`ThumbTile.sketch_for`, PartSketch), never an empty
   box. Check: `node tools/web/lot_pictures_try.mjs MODEL.ldr OUT.png` then
   `godot --headless --path . --script src/dev/lot_pictures_test.gd --
   --sheet=OUT.png` (11 checks: index, every lot to hand at once, each its own
   square, a broken file refused); in a browser, `brickworksShare.build`'s
-  `lot_pictures` ({url, lots, ms, from: page|asked}), `pictures_drawn_here`
-  and `pictures_from_file`, and `pictures_ms` near 0 on step 1
+  `lot_pictures` ({url, lots, ms, from: "page, read"|page|asked}),
+  `pictures_drawn_here`, `pictures_from_file`, and `pictures_laid` [n, of]:
+  n == of means every picture was drawn in the step's own first frame
   (bench/results/partpics-2026-11-24/pair.mjs times it against another
-  deployment at the same moment).
+  deployment at the same moment, by WebGL fences).
 - `palette`: every colour can be chosen by hand, grouped by kind of plastic
   (solid; transparent; chrome, metallic, pearl; glitter, opal, speckle, glow,
   rubber, fabric), greys first and then round the colour wheel. What sets are
