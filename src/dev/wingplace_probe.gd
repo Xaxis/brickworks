@@ -348,15 +348,21 @@ func _big() -> void:
 			var count: int = _count()
 			var told: String = _told(false)
 			var others: Dictionary = {}
-			for other: String in _tree.copies_of(most):
+			for other: String in Array(_tree.copies_of(most)) + [most]:
 				for brick_id: int in _tree.ids_under(other):
 					others[brick_id] = true
-			await _click(at)
+			# The click as _click makes it, the ghost read just before the press.
+			await _move(at)
+			var pressed_on: Vector3 = (_builder.get("_ghost_transform") as Transform3D).origin
+			_button(at, true)
+			await _frames(2)
+			_button(at, false)
+			await _frames(4)
 			await _frames(3)
 			var put: int = _count() - count
-			# Where the follow laid the twins, to set beside where the ask laid them.
-			var laid_words: String = ""
-			for other: String in _tree.copies_of(most):
+			# Where the click and the follow put them, beside where the ask laid them.
+			var laid_words: String = " (ghost at the press %s)" % str(pressed_on.snappedf(0.1))
+			for other: String in Array(_tree.copies_of(most)) + [most]:
 				for brick_id: int in _tree.ids_under(other):
 					if not others.has(brick_id):
 						var b: BrickWorld.Brick = _world.get_brick(brick_id)
@@ -364,7 +370,8 @@ func _big() -> void:
 			if fits:
 				greens += 1
 				if put != 1 + twins and told_wrong.size() < 6:
-					told_wrong.append("green took %d (\"%s\")\n        %s" % [put, _tree.refused, told])
+					told_wrong.append("green took %d (\"%s\")\n        %s\n        the click:%s"
+						% [put, _tree.refused, told, laid_words])
 			else:
 				reds += 1
 				if (put != 0 or _tree.refused != words) and told_wrong.size() < 6:
@@ -399,6 +406,20 @@ func _told(carried: bool) -> String:
 			str((i[1] as Transform3D).origin.snappedf(0.1))]))]
 	var copies: Array = _tree.call("_copies_laid")
 	words += "%d copies fit:" % copies.size()
+	if copies.is_empty():
+		# Why none: each copy as _copies_laid reads it.
+		var then: Dictionary = _tree.get("_copies_then")
+		var source: Array = _tree.call("_read_then", _tree.entered)
+		words += " (in %s, %d then [%s], %d parts:" % [_tree.entered, then.size(),
+			", ".join(then.keys().map(func(k: int) -> String: return "%d %s" % [k,
+				"null" if then[k] == null else str((then[k] as Dictionary).get("group", "?"))])),
+			source.size()]
+		for other: String in _tree.copies_of(_tree.entered):
+			var twin: Array = _tree.call("_read_then", other)
+			var fit: Dictionary = _tree.best_match(source, twin) if not twin.is_empty() else {"score": -1}
+			words += " %s %d parts score %s laid on %d;" % [other, twin.size(), fit["score"],
+				(_tree.call("_laid_on", source, twin, fit) as Dictionary).size() if fit.has("at") else -1]
+		words += ")"
 	for copy: Array in copies:
 		var fit: Dictionary = copy[1]
 		words += " %s (mirrored %s, round %s)" % [copy[0], fit.get("mirrored", "?"), copy[3]]
