@@ -983,17 +983,22 @@ try {
       }
       return { status: 200, body: await ensureOrangecheck(claims, (await codeOf(claims)).emailed) };
     };
+    // Every fresh session's /api/account in this check asks Connect too,
+    // after its answer and in this process: so each count here is the
+    // account's own.
     const carol = await mintSession(carolEmail, { age: true });
+    const carols = () => ochk.connect.filter((one) => one.path === "/api/connect/provision" && one.body?.user_id === carol.kept.user_id);
     const key = process.env.OC_CONNECT_KEY;
     delete process.env.OC_CONNECT_KEY;
     const noKey = await asked(carol.access_token);
     process.env.OC_CONNECT_KEY = key;
     check("Connect: without the Connect key, nothing is asked of orangecheck, and it says so", noKey.body.made === false
-      && noKey.body.reason === "not_here" && ochk.connect.length === 0, `${noKey.status} ${JSON.stringify(noKey.body)}`);
+      && noKey.body.reason === "not_here" && carols().length === 0, `${noKey.status} ${JSON.stringify(noKey.body)}`);
+    const calls = ochk.connect.length;
     const nobody = await asked("not.a.token");
-    check("Connect: without a sign-in, refused, and no call", nobody.status === 401 && ochk.connect.length === 0, `${nobody.status}`);
+    check("Connect: without a sign-in, refused, and no call", nobody.status === 401 && ochk.connect.length === calls, `${nobody.status}`);
     const ticked = await asked(carol.access_token);
-    const call1 = ochk.connect.filter((one) => one.path === "/api/connect/provision");
+    const call1 = carols();
     check("Connect: a sign-in asks orangecheck once, with consent, the account's id and address, the Connect key, and nowhere else",
       ticked.status === 200 && ticked.body.made === true && call1.length === 1 && call1[0].body.consent === true
       && call1[0].body.user_id === carol.kept.user_id && call1[0].body.email === carolEmail && call1[0].key && call1[0].redirect === "error"
@@ -1002,7 +1007,7 @@ try {
     check("Connect: the id orangecheck made is kept with the account", row?.did === ticked.body.did && Boolean(row?.made_at), JSON.stringify(row));
     const twice = await asked(carol.access_token);
     check("Connect: asked again, the account it made is the one it has: no second call", twice.body.made === false
-      && twice.body.reason === "has_one" && ochk.connect.filter((one) => one.path === "/api/connect/provision").length === 1, JSON.stringify(twice.body));
+      && twice.body.reason === "has_one" && carols().length === 1, JSON.stringify(twice.body));
     // orangecheck refusing or down: answered, never thrown, and the
     // sign-in it followed goes on. Each its own account: an ask is claimed
     // for a minute (supabase/sign_in_ways.sql oc_connect_claim).
@@ -1422,7 +1427,11 @@ try {
       theirs.add(body.user_id);
       return [200, { ok: true, did_oc: didOf(`${body.user_id}:held`), is_new: true }];
     };
-    const again = await ticks(gil.access_token);
+    // Connect's answer while the mark stands, as a sign-in's ask past the
+    // minute would get it (oc_connect_claim holds one within the minute
+    // of oc_connect_asked above, so the ask itself is made here).
+    const { provision } = await import("../../api/_oc.js");
+    const again = { status: 200, body: await provision(gil.kept.user_id, { email, verified: false }) };
     ochk.provision = provisionWas;
     ochk.remove = removeWas;
     check("Connect, L2: a tick within 15 minutes of a deletion that was held deletes what orangecheck made, and says so", held.status === 503
