@@ -114,6 +114,90 @@
    "features": [
     "ui:make a part"
    ]
+  },
+  {
+   "id": "figures-own-part",
+   "source": "app",
+   "setup": [
+    {
+     "run": "part_maker",
+     "after": 90
+    },
+    {
+     "call": "_elements.own_part",
+     "after": 10
+    },
+    {
+     "call": "_elements._own.open_file",
+     "args": [
+      "res://tests/fixtures/own_parts/lego-goblet.stl",
+      false
+     ],
+     "after": 10
+    },
+    {
+     "until": "_elements._own._reading",
+     "is": -1,
+     "frames": 1200
+    },
+    {
+     "frames": 120
+    }
+   ],
+   "crop": "_elements._own",
+   "pad": 0,
+   "settle": 60,
+   "alt": "A goblet brought in from an STL file, beside a 1 x 1 brick for its size: its longest side in mm, the turn buttons, This is hair, and one button for each connector to put on it.",
+   "caption": "Make a part… › From a 3D file…: a goblet from an STL, beside a 1 x 1 brick.",
+   "features": [
+    "ui:own part from a 3D file"
+   ]
+  },
+  {
+   "id": "figures-own-hair",
+   "source": "app",
+   "setup": [
+    {
+     "run": "minifig",
+     "after": 240
+    },
+    {
+     "call": "_figures._choose_slot",
+     "args": [
+      "headwear"
+     ],
+     "after": 30
+    },
+    {
+     "call": "_figures.own_editor",
+     "after": 10
+    },
+    {
+     "call": "_figures._own_editor.open_file",
+     "args": [
+      "res://tests/fixtures/own_parts/wig_67.stl",
+      true
+     ],
+     "after": 10
+    },
+    {
+     "until": "_figures._own_editor._reading",
+     "is": -1,
+     "frames": 1800
+    },
+    {
+     "frames": 120
+    }
+   ],
+   "crop": "_figures._own_editor",
+   "pad": 0,
+   "settle": 60,
+   "alt": "Hair brought in from an STL file, seated on a minifigure's head: Your own hair, Seated on a minifigure's head, and Wear it.",
+   "caption": "Headgear › Your own…: hair from an STL, seated on the head.",
+   "features": [
+    "ui:own part from a 3D file",
+    "lib:parts from 3D files"
+   ]
   }
  ]
 }

@@ -17484,3 +17484,264 @@ msgstr "%s sélectionné, %d pièces"
 
 msgid "hold, then Edit inside, to change one"
 msgstr "maintenez, puis Modifier dedans, pour en changer une"
+
+msgid "From a 3D file…"
+msgstr "Depuis un fichier 3D…"
+
+msgid "Or your own shape"
+msgstr "Ou votre propre forme"
+
+msgid "Your own…"
+msgstr "La vôtre…"
+
+msgid "Wear it"
+msgstr "La mettre"
+
+msgid "Anti-stud"
+msgstr "Anti-tenon"
+
+msgid "Bar hole"
+msgstr "Trou de barre"
+
+msgid "Pin hole"
+msgstr "Trou de goupille"
+
+msgid "Hair socket"
+msgstr "Logement des cheveux"
+
+msgid "A stud where you click, facing out of the surface"
+msgstr "Un tenon là où vous cliquez, tourné vers l'extérieur de la surface"
+
+msgid "A place a stud fits into, where you click: under the part, for it to sit on a stud"
+msgstr "Un endroit où entre un tenon, là où vous cliquez : sous la pièce, pour qu'elle tienne sur un tenon"
+
+msgid "A bar a hand or a clip holds: on a thin stem it runs along the stem, elsewhere it stands out"
+msgstr "Une barre que tient une main ou un clip : sur une tige fine, elle suit la tige ; ailleurs, elle dépasse"
+
+msgid "A hole a bar fits into, going into the part where you click"
+msgstr "Un trou où entre une barre, dans la pièce, là où vous cliquez"
+
+msgid "A Technic pin hole where you click, facing out of the surface"
+msgstr "Un trou de goupille Technic là où vous cliquez, tourné vers l'extérieur de la surface"
+
+msgid "Under the crown of a hair piece: where the head's stud goes in"
+msgstr "Sous le sommet d'une coiffure : là où entre le tenon de la tête"
+
+msgid "Click a connector to take it off"
+msgstr "Cliquez sur une liaison pour la retirer"
+
+msgid "Your own hair from a 3D file"
+msgstr "Vos propres cheveux depuis un fichier 3D"
+
+msgid "A part from a 3D file"
+msgstr "Une pièce depuis un fichier 3D"
+
+msgid "Choose an STL or an OBJ file."
+msgstr "Choisissez un fichier STL ou OBJ."
+
+msgid "That file could not be read."
+msgstr "Ce fichier n'a pas pu être lu."
+
+msgid "Your own hair: %s"
+msgstr "Vos propres cheveux : %s"
+
+msgid "A part from %s"
+msgstr "Une pièce depuis %s"
+
+msgid "Choose file…"
+msgstr "Choisir un fichier…"
+
+msgid "Bring in another STL or OBJ file"
+msgstr "Importer un autre fichier STL ou OBJ"
+
+msgid "Back without making a part (Escape)"
+msgstr "Revenir sans créer de pièce (Échap)"
+
+msgid "Size: the longest side"
+msgstr "Taille : le plus grand côté"
+
+msgid "The longest side"
+msgstr "Le plus grand côté"
+
+msgid "Size in"
+msgstr "Taille en"
+
+msgid "A quarter turn about the upright, to face it the other way"
+msgstr "Un quart de tour autour de la verticale, pour l'orienter autrement"
+
+msgid "Tip forward"
+msgstr "Basculer en avant"
+
+msgid "A quarter turn forward, if it came in lying down"
+msgstr "Un quart de tour en avant, si elle est arrivée couchée"
+
+msgid "Tip sideways"
+msgstr "Basculer sur le côté"
+
+msgid "A quarter turn sideways"
+msgstr "Un quart de tour sur le côté"
+
+msgid "This is hair"
+msgstr "Ce sont des cheveux"
+
+msgid "Seat it on a minifigure's head: the inside of its crown on the head's stud, sized like a hair piece if it is not one already"
+msgstr "La poser sur la tête d'une minifigurine : l'intérieur du sommet sur le tenon de la tête, à la taille d'une coiffure si elle ne l'a pas déjà"
+
+msgid "Put on it, one click each"
+msgstr "À poser dessus, un clic chacun"
+
+msgid "My shape"
+msgstr "Ma forme"
+
+msgid "Make the part, keep it with your parts, and carry it in every model that uses it"
+msgstr "Créer la pièce, la garder avec vos pièces, et l'emporter dans chaque modèle qui l'utilise"
+
+msgid "The part, and a 1 x 1 brick for its size"
+msgstr "La pièce, et une brique 1 x 1 pour sa taille"
+
+msgid "Seated on a minifigure's head."
+msgstr "Posée sur la tête d'une minifigurine."
+
+msgid "The head goes into it in places (%d%%): make it a little larger, or put the hair socket by hand."
+msgstr "La tête la traverse par endroits (%d %%) : agrandissez-la un peu, ou placez le logement des cheveux à la main."
+
+msgid "Click the inside of the hair, under its crown, from below: the head's stud goes in there."
+msgstr "Cliquez l'intérieur des cheveux, sous le sommet, par en dessous : le tenon de la tête entre là."
+
+msgid "Choose what to put on it first."
+msgstr "Choisissez d'abord quoi poser dessus."
+
+msgid "There is no connector there to take off."
+msgstr "Il n'y a pas de liaison à retirer là."
+
+msgid "That is beside the part: click on it."
+msgstr "C'est à côté de la pièce : cliquez dessus."
+
+msgid "It could not be made: %s."
+msgstr "Elle n'a pas pu être créée : %s."
+
+msgid "Bring in an STL or OBJ file as a part: sized, turned upright, and given studs, anti-studs, bars or holes where you click"
+msgstr "Importer un fichier STL ou OBJ comme pièce : mis à la taille, redressé, et doté de tenons, d'anti-tenons, de barres ou de trous là où vous cliquez"
+
+msgid "Your own hair from a 3D file, an STL or an OBJ: seated on the head, its socket on the head's stud"
+msgstr "Vos propres cheveux depuis un fichier 3D, STL ou OBJ : posés sur la tête, leur logement sur le tenon de la tête"
+
+msgid "%s is not a 3D file this can make a part from: choose an %s file."
+msgstr "%s n'est pas un fichier 3D dont on peut faire une pièce ici : choisissez un fichier %s."
+
+msgid "%s has %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s a %s triangles. Une pièce peut en avoir au plus %s : réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
+
+msgid "%s has no size: its points are all in one place, on one line or one flat sheet."
+msgstr "%s n'a pas de taille : ses points sont tous au même endroit, sur une ligne ou sur une feuille plate."
+
+msgid "%s has no surfaces with any size to them."
+msgstr "%s n'a aucune surface d'une taille quelconque."
+
+msgid "Simplified from %s triangles to %s; no point of it moved more than %s of its size."
+msgstr "Simplifiée de %s triangles à %s ; aucun point n'a bougé de plus de %s de sa taille."
+
+msgid "Point at the part to put a %s on it."
+msgstr "Visez la pièce pour y poser : %s."
+
+msgid "A hair socket goes under the crown: point at the inside of the hair, from below."
+msgstr "Un logement des cheveux va sous le sommet : visez l'intérieur des cheveux, par en dessous."
+
+msgid "%s x %s x %s LDU (%s x %s x %s mm, %s x %s x %s studs)"
+msgstr "%s x %s x %s LDU (%s x %s x %s mm, %s x %s x %s tenons)"
+
+msgid "no connectors yet"
+msgstr "pas encore de liaisons"
+
+msgid "%d triangles"
+msgstr "%d triangles"
+
+msgid "%d triangle"
+msgstr "%d triangle"
+
+msgid "%d connectors"
+msgstr "%d liaisons"
+
+msgid "%d connector"
+msgstr "%d liaison"
+
+msgid "%d edges"
+msgstr "%d arêtes"
+
+msgid "%d edge"
+msgstr "%d arête"
+
+msgid "LDU"
+msgstr "LDU"
+
+msgid "mm"
+msgstr "mm"
+
+msgid "%s is not a closed shape: %s of its surface border a hole. A part has to be solid to be moulded. Close it in your 3D program (in Blender: select all, then Mesh > Clean Up > Fill Holes) and bring it in again."
+msgstr "%s n'est pas une forme fermée : %s de sa surface bordent un trou. Une pièce doit être pleine pour être moulée. Fermez-la dans votre logiciel 3D (dans Blender : tout sélectionner, puis Mesh > Clean Up > Fill Holes) et importez-la à nouveau."
+
+msgid "%s has %s triangles; a part keeps at most %s, and made that simple its surface would move by up to %s of its size. Reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s a %s triangles ; une pièce en garde au plus %s, et ainsi simplifiée sa surface bougerait jusqu'à %s de sa taille. Réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
+
+msgid "more than %s"
+msgstr "plus de %s"
+
+msgid "Making the part…"
+msgstr "Création de la pièce…"
+
+msgid "its name has %d letters, and a part's may have at most %d"
+msgstr "son nom a %d caractères, et celui d'une pièce en a au plus %d"
+
+msgid " (which %s stands in for)"
+msgstr " (que %s remplace)"
+
+msgid "Millimetres"
+msgstr "Millimètres"
+
+msgid "Centimetres"
+msgstr "Centimètres"
+
+msgid "Metres"
+msgstr "Mètres"
+
+msgid "Inches"
+msgstr "Pouces"
+
+msgid "Read the file as measured in millimetres"
+msgstr "Lire le fichier comme mesuré en millimètres"
+
+msgid "Read the file as measured in centimetres"
+msgstr "Lire le fichier comme mesuré en centimètres"
+
+msgid "Read the file as measured in metres"
+msgstr "Lire le fichier comme mesuré en mètres"
+
+msgid "Read the file as measured in inches"
+msgstr "Lire le fichier comme mesuré en pouces"
+
+msgid "%s does not say what it is measured in, and read as millimetres it is %s mm long, no part's size. What is it measured in?"
+msgstr "%s ne dit pas en quoi il est mesuré, et lu en millimètres il fait %s mm de long, la taille d'aucune pièce. En quoi est-il mesuré ?"
+
+msgid "say what its file is measured in first"
+msgstr "dites d'abord en quoi son fichier est mesuré"
+
+msgid "it is %s mm long, and a part may be at most %d mm (%d studs): make it smaller"
+msgstr "il fait %s mm de long, et une pièce peut faire au plus %d mm (%d tenons) : rendez-la plus petite"
+
+msgid "%s has a corner whose place is not a number, so it is damaged: export it again from your 3D program."
+msgstr "%s a un coin dont la place n'est pas un nombre, il est donc endommagé : exportez-le à nouveau depuis votre logiciel 3D."
+
+msgid "%s has a corner too far from the rest to be read, so it is damaged: export it again from your 3D program."
+msgstr "%s a un coin trop loin du reste pour être lu, il est donc endommagé : exportez-le à nouveau depuis votre logiciel 3D."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program."
+msgstr "%s fait %s, et un fichier d'au plus %s peut être importé ici : réduisez-le dans votre logiciel 3D."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program"
+msgstr "%s fait %s, et un fichier d'au plus %s peut être importé ici : réduisez-le dans votre logiciel 3D"
+
+msgid "%s are more than a sub-assembly can keep: keep part of it"
+msgstr "%s, c'est plus qu'un sous-ensemble ne peut garder : gardez-en une partie"
+
+msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
+msgstr "le presse-papiers place plus de pièces qu'on ne peut en coller d'un coup : copiez-en moins"

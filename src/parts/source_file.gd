@@ -255,6 +255,109 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 	return out
 
 
+## [param text], this file written with the change, with the files of the
+## parts made here that it places and has not got ([param files], name ->
+## text, or bytes for a print's picture: CustomParts.sources_for, as a model
+## of the app's own carries them): each part's text a FILE section after the
+## file's own, and each picture a !DATA one, the line ends the file's. Up to
+## moulds2 a part made here, put into someone else's file (a set, an .mpd
+## from anyone) and saved, was placed in it with no file to say what it is:
+## on any other computer, or for anyone the file was shared with, it was
+## gone without a word (mouldreview). A file of no FILE line is put in one
+## first ([method _as_sections]), or the first part carried would be read as
+## its model.
+##
+## And a part's section the file has as a copy of [param files]' cut short
+## (cut off, inside a face line or after its header: CustomParts.cut_short),
+## which the window draws whole, is written whole: a model saved here carries
+## what it draws. It was kept as it was, and on any other computer the part
+## was not built (mouldreview2 finding 5). Never a section of other text: it
+## is another part, given a name of its own when the file was read
+## (CustomParts.own_names), and up to moulds4 this wrote the person's own part
+## over another's of the same id (mouldreview3). A section the model was drawn
+## from is its text already, and is not touched.
+func parts_carried_into(text: String, files: Dictionary) -> String:
+	if files.is_empty():
+		return text
+	var have: Dictionary = {}
+	var sectioned: bool = false
+	var lines: PackedStringArray = text.split("\n")
+	# Each FILE section's first and last body lines, by its name's key: the
+	# first of a name only (a later one of a name is read as nothing).
+	var spans: Dictionary = {}
+	var seen: Dictionary = {}
+	var open_key: String = ""
+	for n: int in lines.size():
+		var word: String = LdrModel.section_word(lines[n])
+		if word.is_empty():
+			continue
+		if not open_key.is_empty():
+			(spans[open_key] as Array).append(n)
+			open_key = ""
+		if word == "FILE" or word == "!DATA":
+			var key: String = LdrModel._key(" ".join(LdrModel._fields(lines[n].strip_edges()).slice(2)))
+			if word == "FILE" and not seen.has(key):
+				seen[key] = true
+				spans[key] = [n + 1]
+				open_key = key
+				# And by its name without a folder, as a reader finds a part
+				# ("parts/x.dat" is x: LdrModel._by_bare_name), unless a
+				# section of that name is the file's own.
+				if key.get_file() != key and not seen.has(key.get_file()):
+					spans[key.get_file()] = spans[key]
+			have[key] = true
+			have[key.get_file()] = true
+			sectioned = sectioned or word == "FILE"
+	if not open_key.is_empty():
+		(spans[open_key] as Array).append(lines.size())
+	var mended: bool = false
+	var eol_now: String = "\r" if text.get_slice("\n", 0).ends_with("\r") else ""
+	# From the last section to the first, so the lines of those before stay put.
+	var mends: Array = []
+	var mending: Dictionary = {}
+	for name: Variant in files:
+		var key: String = LdrModel._key(str(name))
+		if not spans.has(key) or not files[name] is String:
+			continue
+		var span: Array = spans[key]
+		if span.size() < 2 or mending.has(int(span[0])):
+			continue
+		var body: String = "\n".join(lines.slice(int(span[0]), int(span[1])))
+		if CustomParts.cut_short(body, str(files[name])):
+			mending[int(span[0])] = true
+			mends.append([int(span[0]), int(span[1]), str(files[name])])
+	mends.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) > int(b[0]))
+	var ended: bool = text.ends_with("\n")
+	for mend: Array in mends:
+		var given: PackedStringArray = str(mend[2]).replace("\r", "").strip_edges().split("\n")
+		if not eol_now.is_empty():
+			for n: int in given.size():
+				given[n] += eol_now
+		var rebuilt := PackedStringArray()
+		rebuilt.append_array(lines.slice(0, int(mend[0])))
+		rebuilt.append_array(given)
+		rebuilt.append_array(lines.slice(int(mend[1])))
+		lines = rebuilt
+		mended = true
+	if mended:
+		text = "\n".join(lines)
+		if ended and not text.ends_with("\n"):
+			text += eol_now + "\n"
+	var names: Array = files.keys().filter(func(name: Variant) -> bool:
+		return not have.has(LdrModel._key(str(name))))
+	if names.is_empty():
+		return text
+	var missing: Dictionary = {}
+	for name: Variant in names:
+		missing[name] = files[name]
+	var added: String = LdrModel.carried_text(missing).replace("\r\n", "\n")
+	var eol: String = "\r" if text.get_slice("\n", 0).ends_with("\r") else ""
+	var out: String = text if sectioned else _as_sections(text)
+	if not out.ends_with("\n"):
+		out += eol + "\n"
+	return out + (added.replace("\n", "\r\n") if not eol.is_empty() else added)
+
+
 ## Of [param parts], what the app cannot show and what is on its way (as
 ## [member not_shown] holds them, in the file's coordinates), those a model
 ## written whole writes with the parts it shows, each in its own step and its
@@ -1171,10 +1274,11 @@ func _fresh_lines(plan: Plan, frames: Dictionary, dead_copies: Dictionary,
 		var frame: Transform3D = frames.get(brick.unit, Transform3D.IDENTITY)
 		if frame.basis.determinant() < 0.0:
 			return {"": "a new part in a mirrored copy"}
-		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
-		if CustomParts.is_skin(brick.part_id) or info != null and info.custom \
-				and not sections.has(_carried_as(brick.part_id)):
-			return {"": "a new part made here the file does not carry"}
+		# A part made here the file has not got is carried after the patch
+		# (parts_carried_into), as after a write; a skin built from this
+		# file is no file of its own here, and only the whole write carries it.
+		if CustomParts.is_skin(brick.part_id):
+			return {"": "a new piece of a flexible part"}
 		var section: String = _section_of(brick.unit)
 		var local: Transform3D = frame.affine_inverse() * (entry[1] as Transform3D)
 		var colour: String = "16" if placing and not brick.unit.is_empty() \

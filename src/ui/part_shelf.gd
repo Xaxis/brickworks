@@ -244,20 +244,36 @@ static func keep_parts(id: String, pairs: Array) -> int:
 
 
 ## A sub-assembly kept in the palette: [param ldraw], its parts as LDraw lines
-## (Carry.as_ldraw), [param count] of them, called [param name]. Returns its
-## entry's id, or "" with no such palette or nothing in it.
-static func keep_assembly(id: String, name: String, ldraw: String, count: int) -> String:
+## (Carry.as_ldraw), [param count] of them, called [param name], and [param
+## made], the parts made here it places (Carry.made_text), kept beside its
+## lines as "made" and never in them: whatever reads the lines (the bin, a
+## session's palettes tool) reads placements only. Returns its entry's id,
+## or "" with no such palette, nothing in it, or more lines than a
+## sub-assembly is read back with (Carry.MOST_PLACING: the caller says so
+## first, [method too_big]).
+static func keep_assembly(id: String, name: String, ldraw: String, count: int,
+		made: String = "") -> String:
 	_load_palettes(true)
 	var one: Dictionary = palette(id)
-	if one.is_empty() or count <= 0 or not ldraw.contains("1 "):
+	if one.is_empty() or count <= 0 or not ldraw.contains("1 ") or too_big(ldraw):
 		return ""
 	var entry_id: String = _new_id()
 	var named: String = clean_name(name)
-	(one["entries"] as Array).append({"id": entry_id,
+	var entry: Dictionary = {"id": entry_id,
 		"name": named if not named.is_empty() else "Sub-assembly",
-		"named": _now(), "ldraw": ldraw, "count": count})
+		"named": _now(), "ldraw": ldraw, "count": count}
+	if not made.strip_edges().is_empty():
+		entry["made"] = made
+	(one["entries"] as Array).append(entry)
 	_changed()
 	return entry_id
+
+
+## Whether a sub-assembly of [param ldraw]'s lines is past what one is read
+## back with (Carry.MOST_PLACING), so is not kept: said when it is asked,
+## never found when it is put down.
+static func too_big(ldraw: String) -> bool:
+	return ldraw.length() > Carry.MOST_PLACING
 
 
 ## A sub-assembly's new name.
@@ -475,6 +491,9 @@ static func _entry_read(entry: Variant) -> Dictionary:
 	out["named"] = int(given.get("named", 0))
 	out["ldraw"] = ldraw
 	out["count"] = count
+	# Its made parts' table (keep_assembly), text or nothing.
+	if out.has("made") and not out["made"] is String:
+		out.erase("made")
 	return out
 
 

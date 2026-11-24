@@ -39,6 +39,9 @@ extends RefCounted
 const PRINTED_BY := "0 // Printed by Brickworks:"
 ## And the line a sculpted part's file says what it was moulded from in.
 const MOULDED_BY := "0 // Moulded by Brickworks:"
+## And a part brought in from a 3D file (MeshPart): from= says the part it is
+## worn as, for a hair piece 3901.
+const IMPORTED_BY := "0 // Imported by Brickworks:"
 const AUTHOR := "Brickworks print designer"
 ## How finely a print is drawn: ten pixels to the LDU, 25 to the
 ## millimetre, more than a pad print holds. And no side longer than this,
@@ -597,16 +600,21 @@ static func id_for(base: String, tag: String) -> String:
 	return "bw-%s-p%s" % [source.left(10), tag]
 
 
-## Six hex digits from everything that makes a print what it is.
+## A tag of everything that makes a part made in the app what it is: a
+## print's part, title and pictures, a sticker's, a made part's whole text
+## (CustomParts.named). CustomParts.TAG_DIGITS hex digits of their SHA-256,
+## each thing's length before it, so ["ab", "c"] is not ["a", "bc"]. Up to
+## moulds4 six digits (24 bits) of an MD5 of them run together.
 static func tag_of(things: Array) -> String:
 	var hashing := HashingContext.new()
-	hashing.start(HashingContext.HASH_MD5)
+	hashing.start(HashingContext.HASH_SHA256)
 	for thing: Variant in things:
-		if thing is PackedByteArray:
-			hashing.update(thing)
-		else:
-			hashing.update(str(thing).to_utf8_buffer())
-	return hashing.finish().hex_encode().left(6)
+		var bytes: PackedByteArray = thing if thing is PackedByteArray \
+			else str(thing).to_utf8_buffer()
+		hashing.update(("%d:" % bytes.size()).to_ascii_buffer())
+		if not bytes.is_empty():
+			hashing.update(bytes)
+	return hashing.finish().hex_encode().left(CustomParts.TAG_DIGITS)
 
 
 ## The picture's file name for an area of a print.
@@ -781,7 +789,7 @@ const STUDIO_BIN := "From Studio"
 static func base_in(text: String) -> String:
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
-		for lead: String in [PRINTED_BY, MOULDED_BY]:
+		for lead: String in [PRINTED_BY, MOULDED_BY, IMPORTED_BY]:
 			if line.begins_with(lead):
 				for word: String in line.substr(lead.length()).split(" ", false):
 					if word.begins_with("from="):
@@ -790,13 +798,20 @@ static func base_in(text: String) -> String:
 
 
 ## What a print or mould made here is called, said as the builder says
-## it: "print: Captain", "mould: Quiff".
+## it: "print: Captain", "mould: Quiff", "shape: Mohawk" (one's own 3D file).
 static func made_title(name: String) -> String:
-	for kind: String in ["Print", "Mould"]:
-		var lead: String = ", Custom %s " % kind
-		if name.contains(lead):
-			return "%s: %s" % [kind.to_lower(), name.get_slice(lead, 1)]
-	return name
+	# The lead the part's own text put first: one a title holds is after it
+	# ("Minifig Hair, Custom Shape Pirate, Custom Print Hat" is a shape).
+	var first: String = ""
+	var at: int = -1
+	for kind: String in ["Print", "Mould", "Shape"]:
+		var found: int = name.find(", Custom %s " % kind)
+		if found >= 0 and (at < 0 or found < at):
+			first = kind
+			at = found
+	if at < 0:
+		return name
+	return "%s: %s" % [first.to_lower(), name.substr(at + (", Custom %s " % first).length())]
 
 
 ## The part a figure should treat this one as: a print's or mould's plain

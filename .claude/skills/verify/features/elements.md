@@ -64,8 +64,16 @@ connectors and collision the library's own parts have.
   part: a made 61252 aimed with its clip in over a 2 x 4 stood on its
   ring 1.448 LDU up (pre261); now it goes where 61252 goes, its plate on
   the stud.
-  Named `bw-<shape>`, never an LDraw `u`/`t` number (those are assigned by
-  the Parts Library admin).
+  Named `bw-<shape>-<tag>`, never an LDraw `u`/`t` number (those are
+  assigned by the Parts Library admin): the tag is 20 hex digits (80 bits) of
+  the SHA-256 of its whole text, the id left out (`CustomParts.named`,
+  `TAG_DIGITS`), so one text is one id for everyone and any change (a title)
+  is another. Every kind of made part is named so (a change, a part from a 3D
+  file, a mould; a print's and a sticker's tag is of everything they are made
+  of). `made_ids_probe --made-stage=ids`: 180 cut boxes of a 3001 make 180
+  ids, and each kind as many ids as texts. `made_second_probe`: a person's
+  second cut, print and mould that pre261's short tags named alike keeps the
+  first in their library and in its kept folder.
 - `build a part in the app` (`PartForge`): tools/build_meshes.py's
   conversion, step for step, in GDScript — flatten with BFC, crease-aware
   normals, per-colour surfaces, connectors from primitives, voxelise, remove
@@ -115,9 +123,13 @@ connectors and collision the library's own parts have.
   surface there, so the winding still counts it inside once. Measured from
   the cover's extent (`extent_of`, carried through size changes), not the
   cells': a stud's inside reads as plastic. Named
-  `bw-<part>-<change>` (`bw-3700-l6`, `bw-3062b-s0`, `bw-3003-c<tag>`), its
-  header the change (`0 // Modified by Brickworks: from=3700 length=6 …`) and
-  the LDraw part it came from, CC BY 4.0.
+  `bw-<part>-<change>-<tag>` (`bw-3700-l6-…`, `bw-3062b-s0-…`, `bw-3003-c-…`
+  for a cut), its tag of its whole text as above; its header the change
+  (`0 // Modified by Brickworks: from=3700 length=6 …`) and the LDraw part it
+  came from, CC BY 4.0. Up to moulds4 a cut was a 12-bit tag and the name cut
+  to 21 characters: 180 cut boxes of a 3001 had 174 names (mouldreview3).
+  `element_files_probe` holds `tests/fixtures/elements/modified/` (kept under
+  the names' starts) byte for byte against `PartEditor.make_dat`.
 - `make a part` (`ElementDialog`): **Make a part…** in the parts bin. A
   button for each of the ten families (all on show, one press each), sizes
   (two to a row), LEGO's four named angles for a slope, studs on or off,
@@ -179,7 +191,7 @@ connectors and collision the library's own parts have.
   plate from a carried subpart and primitive and stands a brick on it; on
   3a39926 the plate is not built. A file cannot redefine a
   LEGO part: an embedded `3001.dat` is ignored. The same shape under another
-  name is another part (`bw-b2x7x3-2`). The parts list says "(custom
+  name is another part (another tag). The parts list says "(custom
   element)" and gives no element number. A print drawn in the figure builder
   (minifig.md, `custom prints`) is a made part with pictures: they are kept
   beside its `.dat` (`<id>-<area>.png`), built with it by `PartPrints.build`,
@@ -190,6 +202,22 @@ connectors and collision the library's own parts have.
   written with its own text only, 3315-1 saved whole came back with 5 of its
   parts unbuilt and the model 28 LDU higher (docs/CADTASK.md, 2026-10-16).
   `fidelity_probe` saves 3315-1 whole and opens it as the same model.
+  Text coming into the app (a file opened, a paste, a kept sub-assembly, a
+  file put in, a session's palette) never redefines a made part this window
+  has (`CustomParts.take_into` with `redefine = false`; `_made_here`), and
+  never loses one of another's: a `bw-` section whose text, or a picture it
+  names, differs from the library's part of that id (an older app named two
+  people's parts alike) is given a name of its own before the text is read
+  (`CustomParts.own_names`: the id and a tag of the file's text, its FILE,
+  Name and placing lines and its pictures' !DATA and TEXMAP lines), opened,
+  kept and saved as theirs beside the person's own. A copy of the library's
+  cut short (cut off, inside a face line, its header alone: `cut_short`)
+  keeps its name, is drawn whole and written back whole on save
+  (`SourceFile.parts_carried_into`, which mends nothing else; minifig.md,
+  `parts from 3D files`). `made_ids_probe --made-stage=collide`
+  (mouldreview3's collide stage on an older app's files) holds every way in.
+  An empty FILE section is an empty sub-model by LDraw's rule, and is kept
+  as one.
 - `build custom parts` (`tools/build_custom.py`): the Python pipeline for just
   the given parts — `.dat` files, or the parts embedded in an `.mpd` — in
   seconds rather than the full build's ninety minutes. `--out DIR` writes

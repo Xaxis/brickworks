@@ -250,6 +250,9 @@ func _kept(input: Dictionary, name: String) -> String:
 	var held: Array = Carry.gather(world, library, assembly_ids) if not assembly_ids.is_empty() else []
 	if not assembly_ids.is_empty() and held.is_empty():
 		return "The sub-assembly's parts have no shapes here yet. Nothing changed."
+	if PartShelf.too_big(Carry.as_ldraw(held)):
+		return ("%s are more than a sub-assembly keeps: keep part of it. Nothing changed."
+			% Counted.of(held.size(), "part"))
 	var assembly_name: String = wanted_assembly if not wanted_assembly.is_empty() \
 		else _assembly_named(assembly_ids)
 	# Given nothing, make makes an empty palette, as New palette does.
@@ -263,7 +266,7 @@ func _kept(input: Dictionary, name: String) -> String:
 	var kept_assembly: String = ""
 	if not held.is_empty():
 		var entry_id: String = PartShelf.keep_assembly(id, assembly_name, Carry.as_ldraw(held),
-			held.size())
+			held.size(), Carry.made_text(held, library))
 		if not entry_id.is_empty():
 			kept_assembly = str(_entry_of(PartShelf.palette(id), entry_id).get("name", ""))
 	one = PartShelf.palette(id)
@@ -454,8 +457,11 @@ func _placed(input: Dictionary, name: String) -> String:
 	var builder: Builder = app.get("_builder")
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
+	# The parts made here it places, from its table, before its lines are
+	# read: a line names one of them, and its shape is waited for below.
+	var lines: String = Carry.kept_lines(entry, library)
 	var ids := PackedStringArray()
-	for line: String in str(entry["ldraw"]).split("\n", false):
+	for line: String in lines.split("\n", false):
 		var bits: PackedStringArray = line.strip_edges().split(" ", false)
 		if bits.size() >= 15 and bits[0] == "1":
 			var part: String = library.resolve(bits[14].trim_suffix(".dat"))
@@ -465,7 +471,7 @@ func _placed(input: Dictionary, name: String) -> String:
 		return "The sub-assembly's parts did not load, so it was not put down. Nothing changed."
 	# Read as the bin reads it once its shapes are here: framed about the
 	# point it turns round (Carry.from_ldraw).
-	var parts: Array = Carry.from_ldraw(str(entry["ldraw"]), library)
+	var parts: Array = Carry.from_ldraw(lines, library)
 	if parts.is_empty():
 		return "The sub-assembly's parts did not load, so it was not put down. Nothing changed."
 	var pivot: Vector3 = parts[0].get("pivot", Vector3.ZERO)

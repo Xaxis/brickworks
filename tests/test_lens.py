@@ -10,8 +10,8 @@ ray from the screen is ``CadCamera.ray_origin`` and ``ray_normal``, and the
 engine's own are kept out of the app.
 
 ``unproject_position`` is exact (it is the projection matrix itself) and is
-allowed.  The one camera with a lens of its own, never shifted, is the
-minifigure mould editor's.
+allowed.  The cameras with a lens of their own, never shifted, are the
+minifigure mould editor's and the own-part panel's.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ ENGINE_RAYS = re.compile(r"\.(project_ray_origin|project_ray_normal|project_posi
 # Files whose cameras are their own and centred on their own viewport, and
 # the probe that calls the engine's rays to show they miss through the
 # shifted lens (so that its check of ray_normal is known to be able to fail).
-OWN_LENS = {"src/minifig/mould_editor.gd", "src/dev/camera_probe.gd"}
+OWN_LENS = {"src/minifig/mould_editor.gd", "src/ui/mesh_part_dialog.gd", "src/dev/camera_probe.gd"}
 
 
 def test_no_ray_from_the_screen_skips_the_lens():

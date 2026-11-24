@@ -47,7 +47,7 @@ ui:LEGO Art designed by Claude
 
 ![The Brickify panel for a fox model: the model turning in its preview, Size 24 studs, Scale, Up, what it comes to in studs, bricks and centimetres, Hollow, A stand where it needs one, Surface, Colour and Brickify.](/docs/img/art-brickify.webp "Make › Brickify a 3D model… (Ctrl+I): its choices, and what they come to.")
 
-1. **Make › Brickify a 3D model…** ([[Ctrl+I]]) or **File › Import › 3D model to brickify**, and choose a sculpt, a scan or any 3D file: OBJ, STL, PLY, 3MF, VOX, FBX, glTF or GLB.
+1. **Make › Brickify a 3D model…** ([[Ctrl+I]]) or **File › Import › 3D model to brickify**, and choose a sculpt, a scan or any 3D file: OBJ, STL, PLY, 3MF, VOX, FBX, glTF or GLB, of up to 96 MB (32 MB in a browser).
 2. Set its **Size**, 6 to 64 studs along its longest side, and which way is **Up** if it lies on its side. The panel says what it comes to in studs, bricks and centimetres.
 3. Choose **Hollow** or solid; **A stand where it needs one** (on unless you untick it) for a model that would tip; **Surface**, **Smooth** (slopes, curves, tiles and studs sideways) or **Plain bricks and plates**; and **Colour**: its own, one colour, or its own in at most so many (1 to 12). **Lay it from my collection** uses the parts you own first.
 4. **Brickify**.

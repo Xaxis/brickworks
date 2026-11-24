@@ -18,6 +18,7 @@ const PANELS := {
 	"ElementDialog": "/docs/figures-and-prints#make-a-part",
 	"HiddenColoursPanel": "/docs/joints-and-mechanisms#hidden-colours",
 	"LibraryDialog": "/docs/saving-and-files#library",
+	"MeshPartDialog": "/docs/figures-and-prints#own-part",
 	"MinifigDialog": "/docs/figures-and-prints#minifig",
 	"MosaicDialog": "/docs/art-and-brickify#mosaic",
 	"MouldEditor": "/docs/figures-and-prints#mould",

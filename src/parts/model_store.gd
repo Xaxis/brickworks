@@ -1744,6 +1744,14 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	if model == null:
 		out.append({"placed": 0, "missing": 0, "error": "that is not an LDraw file"})
 		return
+	# A part made in the app it carries as other text than this library's
+	# part of its name is someone else's: opened, kept and saved under a name
+	# of its own, the person's own untouched (CustomParts.own_names). The
+	# file is kept (SourceFile) as renamed, so a save writes it so.
+	var owned: Dictionary = CustomParts.own_names(library, text, model, name)
+	text = owned["text"]
+	model = owned["model"]
+	renamed = owned["names"]
 	# Parts the file brought with it, made here or somewhere else, join
 	# the library before anything asks whether the library has them: with a
 	# job, built over frames, after any worker reading the library has
@@ -2663,6 +2671,11 @@ func _await_geometry(waiting: Dictionary, job: Working.Job) -> void:
 ## says it).
 var open_phases: Dictionary = {}
 var _phase_at: int = 0
+## The parts made in the app the last model opened carried as someone
+## else's under a name a part here has, each old id -> the name it was
+## opened under (CustomParts.own_names): what Build together's joiner reads
+## the session's older names by (Together._lay_snapshot).
+var renamed: Dictionary = {}
 
 
 func _phase(name: String) -> void:
@@ -3288,7 +3301,14 @@ func _source_asked(title_now: String) -> Dictionary:
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"looks": _looks_with_loose(world, world.step_looks.duplicate(true), loose),
-		"authored": AuthorSteps.any(world, scenery)}.merged(_metas_asked(source))
+		"authored": AuthorSteps.any(world, scenery),
+		# The files of the parts made here it places, which the file is
+		# written carrying where it has not got them (SourceFile
+		# .parts_carried_into), as a model of the app's own does
+		# ([method _text_into]). Read here: the library is this thread's.
+		# Never a flexible part's skin: the file's own lines are the part
+		# (a rope's sub-model), and the skin only how the app draws them.
+		"carry": _files_carried(false)}.merged(_metas_asked(source))
 	# A model put into it whole (held_from) is grafted into the patch of the
 	# file's own parts: its sections as the model written whole has them
 	# (SourceFile.grafted). Written whole here, on this thread.
@@ -3428,12 +3448,12 @@ static func _source_written(asked: Dictionary) -> Variant:
 			var kept: String = Motions.moved_into(patched, asked.get("moved", Transform3D.IDENTITY))
 			if grafts.is_empty():
 				asked["whole"] = ""
-				return kept
+				return source.parts_carried_into(kept, asked.get("carry", {}))
 			var grafted: String = source.grafted(kept, plan, grafts["roots"], grafts["whole"],
 				grafts["steps_now"], library.parts)
 			if not grafted.begins_with("why: "):
 				asked["whole"] = ""
-				return grafted
+				return source.parts_carried_into(grafted, asked.get("carry", {}))
 			why = grafted.trim_prefix("why: ")
 	asked["whole"] = why
 	_said_whole(source, why)
@@ -3446,7 +3466,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 		asked.get("moved", Transform3D.IDENTITY)))
 	if not asked.get("drops_said", false):
 		asked["drops"] = source.left_out_of(kept)
-	return kept
+	return source.parts_carried_into(kept, asked.get("carry", {}))
 
 
 ## [param kept], the file with the change, and what else the app keeps in
@@ -4687,13 +4707,18 @@ func names_held() -> Array:
 
 ## The part files a whole write of this model carries ([method _text_into]),
 ## by name -> text: those of the parts made here or carried by the file, on
-## the baseplate or held (CustomParts.sources_for).
-func _files_carried() -> Dictionary:
+## the baseplate or held (CustomParts.sources_for). With [param skins] false,
+## not a flexible part's skin.
+func _files_carried(skins: bool = true) -> Dictionary:
 	var used: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		used[brick.part_id] = true
 	for placement: LdrModel.Placement in _held_placements():
 		used[placement.part_id] = true
+	if not skins:
+		for part_id: String in used.keys():
+			if CustomParts.is_skin(part_id):
+				used.erase(part_id)
 	return _part_files(used.keys())
 
 
@@ -4757,6 +4782,13 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 		carried[LdrModel._key(name)] = _plain_section(str(files_here[name]))
 	var shares: Callable = func(name: String, content: String) -> bool:
 		return carried.get(LdrModel._key(name), null) == _plain_section(content)
+	# A part made in the app it carries as other text than the library's of
+	# its name comes in under a name of its own (CustomParts.own_names), as an
+	# open's does, before its sections are named apart from the model's: up
+	# to then IntoModel took it for a sub-model of the same name as one here
+	# and called it "<id>_2", another name each time.
+	if text.findn("FILE bw-") >= 0:
+		text = CustomParts.own_names(library, text, LdrModel.parse(text, file_name), file_name)["text"]
 	var named: Dictionary = IntoModel.renamed(text, file_name, Assemblies.names_in(world),
 		called, shares)
 	if not str(named["error"]).is_empty():
@@ -4766,14 +4798,18 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	if model == null or model.main == null:
 		out["error"] = "that is not an LDraw file"
 		return out
-	# The parts it carries join the library first, as an open's do.
+	# And one its sections' names gave it (a FILE line not found above).
+	model = CustomParts.own_names(library, str(named["text"]), model, str(named["file"]))["model"]
+	# The parts it carries join the library first, as an open's do; but one
+	# the library has already is drawn as the model open draws it, never by
+	# the file put into it (as a paste: Carry.from_ldraw).
 	var took: Array = []
 	if job != null:
 		if CustomParts.carries_any(model):
 			await CustomParts.readers_done(library)
-		await CustomParts.take_into(took, library, model, job)
+		await CustomParts.take_into(took, library, model, job, false)
 	else:
-		CustomParts.take_into(took, library, model, null)
+		CustomParts.take_into(took, library, model, null, false)
 	var flattened: Array = model.flatten(library.parts)
 	var authored: bool = model.steps_are_authored()
 	_as_placed(flattened, library, authored)
