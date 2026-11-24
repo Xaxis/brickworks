@@ -586,7 +586,8 @@ func _choose(path: String) -> void:
 		assemblies.enter(Assemblies.parent_of(path))
 	var builder: Builder = shell.builder
 	builder.selection.clear()
-	for brick_id: int in assemblies.ids_under(path):
+	# At a step of the timeline, the row's parts on so far (Builder.shown_only).
+	for brick_id: int in builder.shown_only(assemblies.ids_under(path)):
 		if not builder.lattice.unseen.has(brick_id):
 			builder.selection[brick_id] = true
 	builder.selection_changed.emit(builder.selection.size())
@@ -602,7 +603,7 @@ func _select_suggestion(number: int) -> void:
 			assemblies.enter("")
 		builder.selection.clear()
 		for brick_id: int in made.ids:
-			if not builder.lattice.unseen.has(brick_id):
+			if not builder.lattice.unseen.has(brick_id) and not builder.is_ahead(brick_id):
 				builder.selection[brick_id] = true
 		builder.selection_changed.emit(builder.selection.size())
 		shell.bar.say(made.said())
