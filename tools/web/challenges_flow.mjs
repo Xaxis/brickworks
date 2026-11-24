@@ -200,6 +200,15 @@ async function api(pathname, { method = "GET", token, body, extra = {} } = {}, a
   return said;
 }
 
+// /challenge drawn from its answer: after five seconds without one the page
+// marks itself "loading" to show its head (challenge.js), and read then it
+// holds no round at all (Ed's fan vote at 390, nightreds unit preview 3,
+// 2026-11-24).
+const drawnChallenge = () => {
+  const state = document.documentElement.dataset.challenge;
+  return state && state !== "loading" ? state : null;
+};
+
 async function until(page, test, what, seconds = 30, arg = null) {
   const end = Date.now() + seconds * 1000;
   for (;;) {
@@ -714,7 +723,7 @@ try {
     const page = await visitor.newPage();
     listen(page, `winners at ${width} px`);
     await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
-    await until(page, () => document.documentElement.dataset.challenge, "the challenge drawn");
+    await until(page, drawnChallenge, "the challenge drawn");
     if (year) {
       // The hub shows the first theme now (or the real one open), and this
       // one under Past challenges with its winners; its name opens its own page.
@@ -971,7 +980,7 @@ try {
         const page = await made.newPage();
         listen(page, `${label} at ${width} px`);
         await page.goto(`${site}/challenge?id=${ids.rounds}&tests=1`, { waitUntil: "load" });
-        await until(page, () => document.documentElement.dataset.challenge, `${label}: drawn`);
+        await until(page, drawnChallenge, `${label}: drawn`);
         await pictures(page);
         const seen = await page.evaluate(() => ({
           status: document.getElementById("status")?.textContent || "", clock: document.getElementById("clock-h")?.textContent || "",
