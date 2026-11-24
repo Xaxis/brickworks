@@ -1994,7 +1994,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `select_in`, `select_alike` and `EditVerbs.select_found` leave them out
   (`Builder.shown_only`), `Builder._living_selection` drops any before an
   edit, and `Builder.keep_shown` lets go of them when a step back takes them
-  off. So a colour, Delete, a move, a turn, Mirror, Replace, Cut, Copy and
+  off, and puts them back when a step on or the timeline put away shows them
+  again, unless the selection was changed in between. So a colour, Delete, a move, a turn, Mirror, Replace, Cut, Copy and
   Ctrl-G reach only what is on show. A sub-assembly taken whole is its parts
   on so far and says so ("House selected, 56 of its 149 parts on at this step
   — double-click edits inside…"; a phone's line the same before "hold, then
@@ -2011,7 +2012,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   nothing is ahead and nothing changes. Probe: `PROBE_SIZE=1280x720
   tools/probe.sh stepedit_probe` (346-2 at step 5: the house clicked and
   painted, Select all and Delete, a session's edit refused and then made,
-  each undone exactly, saved and opened again part by part), and at
+  each undone exactly, saved and opened again part by part; a step back and
+  on, and the timeline put away, the selection let go of and put back), and at
   `390x844` by a tap.
 - `model tree`: at the top of the right-hand column, over the properties
   (View, Panels, Model tree, or its header) lists the

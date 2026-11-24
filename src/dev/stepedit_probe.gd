@@ -24,7 +24,10 @@
 ##      replace_parts) that names a part of a later step is refused before
 ##      anything changes, says which, and offers all_steps; one of a part on
 ##      show is made and undone exactly; all_steps: true makes it, saved and
-##      opened again part by part.
+##      opened again part by part;
+##   D. a step back lets go of the selected parts it takes off, a step on
+##      puts the same parts back, and so does the timeline put away; after
+##      Select nothing a step on brings none back.
 ## Pictures in shots/stepedit/. Exits non-zero when a check fails.
 extends "res://src/dev/grabselect_probe.gd"
 
@@ -88,6 +91,7 @@ func _run() -> void:
 	await _paint_the_house()
 	await _select_all_and_delete()
 	await _a_sessions_edit()
+	await _step_back_and_on()
 	print("\nstepedit_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
 
@@ -274,6 +278,55 @@ func _a_sessions_edit() -> void:
 
 
 ## 346-2 opened from its file, the timeline in its author's steps, at step 5.
+# -- D. a step back and on again ----------------------------------------------
+
+
+## A step back lets go of the selected parts it takes off, a step on puts
+## them back, and so does the timeline put away; a selection changed in
+## between keeps its own (Builder.keep_shown).
+func _step_back_and_on() -> void:
+	print("\nD. a step back and on again, and the timeline put away")
+	if not await _at_step_5():
+		return
+	_shell.run("select_all")
+	await _frames(4)
+	var at_5: Dictionary = _builder.selection.duplicate()
+	_steps.step_back()
+	await _frames(6)
+	var held: Array = _builder.selection.keys()
+	_check("a step back lets go of the parts it takes off (%d of %d still selected, %d not on show)"
+		% [held.size(), at_5.size(), held.filter(_ahead).size()],
+		held.size() < at_5.size() and held.size() > 0 and held.filter(_ahead).is_empty())
+	_steps.step_forward()
+	await _frames(6)
+	_check("...a step on puts them back (%d of %d, the same parts)" % [_builder.selection.size(),
+		at_5.size()], _same(_builder.selection, at_5))
+	_steps.to_start()
+	await _frames(6)
+	var at_start: int = _builder.selection.size()
+	_steps.stop()
+	await _frames(6)
+	_check("...and the timeline put away puts back every one (%d at its start, %d after, of %d)"
+		% [at_start, _builder.selection.size(), at_5.size()],
+		at_start < at_5.size() and _same(_builder.selection, at_5))
+	if not await _at_step_5(false):
+		return
+	_shell.run("select_all")
+	await _frames(4)
+	_steps.step_back()
+	await _frames(6)
+	_shell.run("select_none")
+	await _frames(4)
+	_steps.step_forward()
+	await _frames(6)
+	_check("a selection changed after the step back keeps its own (%d selected after Select nothing and a step on)"
+		% _builder.selection.size(), _builder.selection.is_empty())
+
+
+func _same(a: Dictionary, b: Dictionary) -> bool:
+	return a.size() == b.size() and a.keys().all(func(id: int) -> bool: return b.has(id))
+
+
 func _at_step_5(fresh: bool = true) -> bool:
 	if fresh:
 		if _steps.is_playing_back():

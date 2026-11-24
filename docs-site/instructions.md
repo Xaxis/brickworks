@@ -74,7 +74,7 @@ ui:build animation
 
 ### Editing at a step {#edit-at-step}
 
-While the timeline shows a step, what you change is what you see, as in Studio and LDCad. A click, a box or a tap takes only parts that are on the model at this step, never one of a later step. A sub-assembly, taken whole by a click, is the parts of it on so far: the line along the top says so, "House selected, 56 of its 149 parts on at this step". A colour, **Delete**, a move, a turn, **Mirror**, **Replace**, **Cut** and **Copy**, and a new sub-assembly then change those parts alone. The parts of later steps stay as they are, and each change is one Undo.
+While the timeline shows a step, what you change is what you see, as in Studio and LDCad. A click, a box or a tap takes only parts that are on the model at this step, never one of a later step. A sub-assembly, taken whole by a click, is the parts of it on so far: the line along the top says so, "House selected, 56 of its 149 parts on at this step". A colour, **Delete**, a move, a turn, **Mirror**, **Replace**, **Cut** and **Copy**, and a new sub-assembly then change those parts alone. The parts of later steps stay as they are, and each change is one Undo. A step back lets go of the selected parts it takes off; a step on, or **Done**, puts them back.
 
 **Select all** at a step takes the parts on so far, and says how many in later steps it left out. Press it again to take every step: the timeline goes to its end, the whole model on show, and everything is selected. **Find and replace** leaves out parts of later steps too, and counts them. Go to the timeline's last step, or put it away with **Done**, to change the whole model.
 

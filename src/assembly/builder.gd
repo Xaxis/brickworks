@@ -136,6 +136,7 @@ func _init() -> void:
 	# _ready means a Builder is usable the moment it exists — which the
 	# headless checks rely on.
 	lattice = BrickLattice.new()
+	selection_changed.connect(_selection_changed_elsewhere)
 
 
 func _ready() -> void:
@@ -452,6 +453,7 @@ func forget_history() -> void:
 	if not selection.is_empty():
 		selection.clear()
 		selection_changed.emit(0)
+	_let_go.clear()
 	# A selection picked up to move has no way back once the model it
 	# came off is gone.
 	if carrying != null and carrying.lifted:
@@ -1018,19 +1020,48 @@ func in_every_step(edit: Callable) -> Variant:
 
 
 ## The selection let go of what the timeline no longer shows: a step back
-## from the one it was made at. How many went.
+## from the one it was made at, or the timeline opened on its first step.
+## What it let go of comes back when the timeline shows it again or is put
+## away, unless the selection was changed in between: parts selected, a look
+## at the steps, and they are still selected after. How many went.
 func keep_shown() -> int:
-	if lattice == null or lattice.ahead.is_empty() or selection.is_empty():
+	if lattice == null:
 		return 0
 	var gone: Array = []
-	for brick_id: int in selection:
-		if lattice.ahead.has(brick_id):
-			gone.append(brick_id)
+	if not lattice.ahead.is_empty():
+		for brick_id: int in selection:
+			if lattice.ahead.has(brick_id):
+				gone.append(brick_id)
+	var back: Array = []
+	for brick_id: int in _let_go:
+		if not lattice.ahead.has(brick_id) and world.get_brick(brick_id) != null \
+				and not locked.has(brick_id) and not lattice.unseen.has(brick_id):
+			back.append(brick_id)
+	if gone.is_empty() and back.is_empty():
+		return 0
 	for brick_id: int in gone:
 		selection.erase(brick_id)
-	if not gone.is_empty():
-		selection_changed.emit(selection.size())
+		_let_go[brick_id] = true
+	for brick_id: int in back:
+		_let_go.erase(brick_id)
+		selection[brick_id] = true
+	_keeping = true
+	selection_changed.emit(selection.size())
+	_keeping = false
 	return gone.size()
+
+
+## The parts keep_shown let go of, to put back; and whether it is keep_shown
+## saying the selection changed, which keeps them.
+var _let_go: Dictionary = {}
+var _keeping: bool = false
+
+
+## Any other change to the selection is the person's or a tool's: what a
+## step back let go of stays let go.
+func _selection_changed_elsewhere(_count: int) -> void:
+	if not _keeping:
+		_let_go.clear()
 
 
 ## Add the brick under the cursor to the selection, or take it out.
@@ -1108,6 +1139,8 @@ func select_in(box: Rect2, where: Callable, touching: bool,
 
 
 func clear_selection() -> void:
+	# Let go of on purpose, with or without parts on show (keep_shown).
+	_let_go.clear()
 	if selection.is_empty():
 		return
 	selection.clear()
