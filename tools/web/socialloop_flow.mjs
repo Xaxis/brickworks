@@ -148,10 +148,11 @@ async function fanWalk(fan, id, { phone }) {
   check(`${w}: nothing posted while it is open`, !sentEarly);
   await shot(page, `${w}_1_ask_before_comment`);
   await page.click("#first-skip");
-  let drawn = await until(page, async () => {
-    const all = [...document.querySelectorAll("#comments .comment-list li.comment .comment-body")].map((one) => one.textContent.trim());
-    return all.length ? all : null;
-  }, `${w}: the skipped comment`, 30).then(() => commentsDrawn(page));
+  // This comment, as the server has it (its id): the other width's fan's
+  // comments are on the page already.
+  let drawn = await until(page, async (body) => [...document.querySelectorAll("#comments .comment-list li.comment[id^='comment-']")]
+    .some((one) => one.querySelector(".comment-body")?.textContent.trim() === body) || null,
+  `${w}: the skipped comment`, 30, first).then(() => commentsDrawn(page));
   const skipped = drawn.find((one) => one.body === first);
   check(`${w}: Skip, and the comment goes, as "${skipped?.who}" with no link`, Boolean(skipped) && skipped.who === "A builder" && !skipped.linked);
   check(`${w}: ...and the ask is closed`, !(await askDrawn(page)).open);
@@ -234,7 +235,7 @@ async function replyWalk(dana, id, fanComment, fanName, { phone }) {
     const row = [...document.querySelectorAll(".notice .lines > li")].find((li) => li.querySelector(`.said-line[data-line="${n}"]`));
     if (!row) return null;
     return { pill: row.querySelector(".pill.answered")?.textContent || "", see: row.querySelector(".said-see")?.getAttribute("href") || "",
-      line: row.querySelector(`.said-line[data-line="${n}"] span`)?.textContent || "", open: !row.querySelector("form.composer")?.hidden,
+      line: row.querySelector(`.said-line[data-line="${n}"] p > span[lang]`)?.textContent || "", open: !row.querySelector("form.composer")?.hidden,
       focus: document.activeElement?.matches(".notice-acts button") || false, read: !row.closest(".notice")?.classList.contains("unread") };
   }, `${w}: answered`, 20, replyId).catch(() => ({}));
   check(`${w}: the line says "${said.pill}", the reply under it, the way to it (${said.see})`,
@@ -255,10 +256,13 @@ async function replyWalk(dana, id, fanComment, fanName, { phone }) {
     const li = document.getElementById(`comment-${n}`);
     return li && li.offsetParent ? { reply: li.classList.contains("reply"), under: Number(li.parentElement?.closest("li.comment")?.id.replace("comment-", "")) || 0,
       body: li.querySelector(".comment-body")?.textContent.trim() || "", by: li.querySelector(".comment-head a, .comment-head b")?.textContent.trim() || "",
-      asked: li.classList.contains("asked") } : null;
+      asked: li.classList.contains("asked"),
+      // One press, one reply: the same words twice under it would be a second send.
+      copies: [...(li.parentElement?.closest("li.comment")?.querySelectorAll("li.comment .comment-body") || [])]
+        .filter((one) => one.textContent.trim() === li.querySelector(".comment-body")?.textContent.trim()).length } : null;
   }, `${w}: the reply on the model's page`, 30, replyId).catch(() => ({}));
-  check(`${w}: the reply is on the model's page at once, under ${fanName}'s comment, by "${there.by}", ringed`,
-    there.reply === true && there.under === fanComment && there.body === words && there.by === "Dana Loop");
+  check(`${w}: the reply is on the model's page at once, under ${fanName}'s comment, by "${there.by}", once (${there.copies})`,
+    there.reply === true && there.under === fanComment && there.body === words && there.by === "Dana Loop" && there.copies === 1);
   await page.locator(`#comment-${replyId}`).scrollIntoViewIfNeeded().catch(() => null);
   await shot(page, `${w}_8_reply_on_model_page`);
   const wide = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);

@@ -850,10 +850,20 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .lines > li > :is(.said-room, .notice-acts, .composer) { margin-left: calc(24px + var(--s-2)); }
 .notice .lines > li > .said-room { min-height: 0; margin-top: var(--s-1); }
 .notice .lines > li > .said-room:not(:has(.said-line)) { display: none; }
+.notice .said-line { align-items: flex-start; }
 .notice .said-line p { white-space: normal; }
 .notice .said-see { color: var(--ink-soft); font-weight: 600; }
 .notice .notice-acts { margin-top: 2px; }
 .notice .lines > li > .composer { margin-top: var(--s-1); }
+/* On a phone the lines run under Done and More too: a group's words were
+   the column left between the picture and its two 44 px buttons, some
+   150 px, a reply typed or shown there a word a line. Its name stays
+   beside the buttons. */
+@media (width < 600px) {
+	.notice > .row-body { display: contents; }
+	.notice > .row-body > .row-title { grid-column: 2; grid-row: 1; align-self: center; }
+	.notice > .row-body > :not(.row-title) { grid-column: 2 / -1; min-width: 0; }
+}
 .notice .lines .avatar.small, .notice .lines .icon { margin-top: 1px; }
 .notice .lines .icon { width: 24px; color: var(--ink-soft); }
 .notice .what { min-width: 0; font-size: var(--t-small); line-height: 1.45; overflow-wrap: anywhere; }
