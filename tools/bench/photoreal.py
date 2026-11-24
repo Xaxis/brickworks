@@ -22,10 +22,13 @@ reasons, the things it names in the render that give it away, are the gap list.
         each close-up's highlights and shading, photograph against render (photoreal3)
     tools/bench/photoreal.py judge TAG [--out DIR] [--model opus] [--jobs 4] [--only a,b]
         the blind judge, both orders; DIR/judge_TAG.json and a summary printed
-    tools/bench/photoreal.py solo LABEL=DIR ... --name NAME [--trials 2] [--rounds 3] [--out DIR]
-        the solo judge (photoreal4): every photograph and render alone, shuffled in one pool;
-        the share called a photograph and the mean probability, photographs and each label's
-        renders apart, per round and over all; DIR/solo_NAME.json
+    tools/bench/photoreal.py solo LABEL=DIR ... --name NAME [--trials 2] [--rounds 3] [--base LABEL] [--out DIR]
+        the solo judge (photoreal4): every photograph and render alone, shuffled in one pool,
+        each verdict under a fresh name (photoreal16); each label's mean over its shots with a
+        bootstrap 95% interval, its difference from --base shot by shot, and the noise of any
+        byte-identical twins; a LABEL may be given once a draw; DIR/solo_NAME.json
+    tools/bench/photoreal.py score FILE [--base LABEL] [--merge-draws]
+        those scores again from a solo_NAME.json
     tools/bench/photoreal.py camera TAG
         each shot's sensor noise, photograph against render, in 8-bit levels (photoreal4)
     tools/bench/photoreal.py masks [--only a,b]
@@ -40,8 +43,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
+import random
+import secrets
+import shutil
+import statistics
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -395,6 +404,40 @@ def _opaque(words: str) -> str:
     return hashlib.sha256(f"photoreal:{words}".encode()).hexdigest()[:10]
 
 
+def _jpeg(image: Image.Image) -> bytes:
+    """A picture as the judge is shown it: JPEG at 92, whatever it was drawn as."""
+    held = io.BytesIO()
+    image.save(held, format="JPEG", quality=92)
+    return held.getvalue()
+
+
+def _judge_root() -> Path:
+    """Where each verdict's folder is made: the system's temporary folder, never a checkout. The
+    judge runs in its picture's folder, and Claude Code puts that folder's path and, in a checkout,
+    its branch, status and latest commits into the judge's context (photoreal16): every pool written
+    under bench/results/ showed the judge a path naming the unit, "solo" and "blind", and main's
+    newest commit messages, which change from one pool to the next."""
+    root = Path(tempfile.gettempdir()).resolve()
+    if any((folder / ".git").exists() for folder in (root, *root.parents)):
+        raise SystemExit(f"the judge's folders would sit in a checkout ({root}): set TMPDIR outside one")
+    return root
+
+
+def _fresh(pictures: list[bytes]) -> list[Path]:
+    """One verdict's pictures under fresh random names, alone in a fresh random folder (photoreal16).
+    A blind name is a seed, not a blindfold: photoreal15's byte-identical twins, asked again an hour
+    later at their own paths, came back with their old gaps (r 0.99 over 14 pairs), three_2x2_top at
+    0.65 under one name and 0.29 under the other over ten verdicts each (RENDERING.md 5t). A name
+    kept for every round repeats one draw of the judge; a name new to every verdict samples it."""
+    folder = Path(tempfile.mkdtemp(prefix="", dir=_judge_root()))
+    found = []
+    for data in pictures:
+        path = folder / f"{secrets.token_hex(5)}.jpg"
+        path.write_bytes(data)
+        found.append(path)
+    return found
+
+
 def prompt(a: Path, b: Path) -> str:
     return "\n".join([
         "You are shown two pictures, A and B, of the same LEGO® bricks. One is a photograph "
@@ -418,7 +461,16 @@ def prompt(a: Path, b: Path) -> str:
     ])
 
 
-def _ask(where: Path, first: Path, second: Path, real_is: str, model: str) -> dict:
+def _ask(first_data: bytes, second_data: bytes, real_is: str, model: str) -> dict:
+    """One paired verdict, the two pictures under fresh names in a fresh folder of their own."""
+    first, second = _fresh([first_data, second_data])
+    try:
+        return _ask_in(first.parent, first, second, real_is, model)
+    finally:
+        shutil.rmtree(first.parent, ignore_errors=True)
+
+
+def _ask_in(where: Path, first: Path, second: Path, real_is: str, model: str) -> dict:
     text = prompt(first, second)
     error = ""
     for _attempt in (1, 2):
@@ -455,30 +507,22 @@ def _ask(where: Path, first: Path, second: Path, real_is: str, model: str) -> di
 
 def judge_tag(tag: str, out: Path, model: str, jobs: int, only: list[str] | None) -> int:
     out.mkdir(parents=True, exist_ok=True)
-    # The judge's copies go beside its verdicts, never into the checkout it
-    # runs in: a checkout's bench/ is not left out of the web export, and a
-    # unit's preview packed photoreal1's first copies into the app. The
-    # .gdignore keeps Godot from importing them when DIR is in a checkout.
-    (out / "blind").mkdir(parents=True, exist_ok=True)
-    (out / "blind" / ".gdignore").touch()
-    blind = out / "blind" / _opaque(f"tag:{tag}")
-    blind.mkdir(parents=True, exist_ok=True)
+    # Each ask's two pictures are written under fresh names in a fresh folder outside any
+    # checkout (_fresh, photoreal16) and taken away after its verdict: a name kept per tag would
+    # make a rerun of one tag repeat its verdicts, as the solo judge's kept names did.
     asks = []
     for shot in shots(only):
         drawn = render_of(shot, tag)
         if drawn is None:
             print(f"  {shot['name']}: no render, left out")
             continue
-        real = blind / f"{_opaque(tag + shot['name'] + 'p')}.jpg"
-        fake = blind / f"{_opaque(tag + shot['name'] + 'r')}.jpg"
-        photo_of(shot).save(real, quality=92)
-        drawn.save(fake, quality=92)
+        real, fake = _jpeg(photo_of(shot)), _jpeg(drawn)
         asks.append((shot, real, fake, "A"))
         asks.append((shot, fake, real, "B"))
 
     def run(item: tuple) -> tuple[dict, dict]:
         shot, first, second, real_is = item
-        return shot, _ask(blind, first, second, real_is, model)
+        return shot, _ask(first, second, real_is, model)
 
     with ThreadPoolExecutor(max_workers=jobs) as pool:
         answers = list(pool.map(run, asks))
@@ -624,27 +668,38 @@ def solo_summary(verdicts: list[dict]) -> dict:
 
 
 def solo(given: list[str], out: Path, name: str, model: str, jobs: int, trials: int, rounds: int,
-         seed: int, only: list[str] | None, photos: bool = True) -> int:
+         seed: int, only: list[str] | None, photos: bool = True, base: str | None = None) -> int:
     """The solo judge: every photograph and every render of each LABEL=DIR in one pool, each
     shown ALONE, `trials` times a round in an order shuffled by the round, for `rounds` rounds.
-    out/solo_NAME.json holds every verdict and each round's summary, and the spread over rounds."""
-    import random
+    A LABEL given with several DIRs (one a draw) is one arm over all of them.
+
+    Every verdict is its own sample (photoreal16): the picture is written under a fresh random
+    name in a fresh folder outside any checkout (_fresh), asked, and taken away, so no two verdicts
+    share a name and no pool shares a context. Each label is scored by score(): the mean over its
+    shots of each shot's pictures' mean verdict, with a bootstrap 95% interval over shots and
+    verdicts, and its difference from `base` shot by shot. out/solo_NAME.json holds every verdict
+    (its picture's hash, the name it was shown under, its place in the round) and the scores;
+    out/masters/ each picture the judge was shown, by its hash."""
     out.mkdir(parents=True, exist_ok=True)
-    (out / "blind").mkdir(parents=True, exist_ok=True)
-    (out / "blind" / ".gdignore").touch()
-    blind = out / "blind" / _opaque(f"solo:{name}")
-    blind.mkdir(parents=True, exist_ok=True)
+    masters = out / "masters"
+    masters.mkdir(parents=True, exist_ok=True)
+    (masters / ".gdignore").touch()
     drawn = _drawn_dirs(given)
     pool = []
+
+    def add(who: str, shot: dict, draw: str, data: bytes) -> None:
+        picture = hashlib.sha256(data).hexdigest()[:12]
+        (masters / f"{picture}.jpg").write_bytes(data)
+        pool.append({"who": who, "shot": shot["name"], "kind": shot["kind"], "draw": draw,
+                     "picture": picture, "data": data})
+
     for shot in shots(only):
         size = tuple(shot["size"])
-        picture = blind / f"{_opaque('solo photo ' + shot['name'])}.jpg"
-        photo_of(shot).save(picture, quality=92)
         if photos:
             # A set picture that is itself a render (6512's, photoreal4) is asked as the others
             # are, and counted apart: it is no photograph.
-            who = "reference render" if shot.get("photo_is_render") else "photo"
-            pool.append({"who": who, "shot": shot["name"], "kind": shot["kind"], "file": picture})
+            add("reference render" if shot.get("photo_is_render") else "photo", shot, "photo",
+                _jpeg(photo_of(shot)))
         for label, where in drawn:
             path = where / f"{shot['name']}.png"
             if not path.exists():
@@ -652,18 +707,25 @@ def solo(given: list[str], out: Path, name: str, model: str, jobs: int, trials: 
                 continue
             image = Image.open(path).convert("RGB")
             image = image if image.size == size else image.resize(size, Image.LANCZOS)
-            picture = blind / f"{_opaque(f'solo render {label} {where} ' + shot['name'])}.jpg"
-            image.save(picture, quality=92)
-            pool.append({"who": label, "shot": shot["name"], "kind": shot["kind"], "file": picture})
-    record: dict = {"name": name, "prompt": SOLO_PROMPT_VERSION, "model": model, "trials": trials,
-                    "drawn": {label: str(where) for label, where in drawn}, "rounds": []}
+            add(label, shot, where.name, _jpeg(image))
+    record: dict = {"name": name, "prompt": SOLO_PROMPT_VERSION, "blind": "fresh name and folder a verdict",
+                    "model": model, "trials": trials, "base": base,
+                    "drawn": [[label, str(where)] for label, where in drawn], "rounds": []}
+
+    def ask(position: int, item: dict) -> dict:
+        (picture,) = _fresh([item["data"]])
+        try:
+            answer = _ask_solo(picture.parent, picture, model)
+        finally:
+            shutil.rmtree(picture.parent, ignore_errors=True)
+        return {**{k: v for k, v in item.items() if k != "data"}, "name": picture.name,
+                "position": position, **answer}
+
     for number in range(1, rounds + 1):
         asks = [item for item in pool for _n in range(trials)]
         random.Random(seed * 1000 + number).shuffle(asks)
         with ThreadPoolExecutor(max_workers=jobs) as threads:
-            answers = list(threads.map(lambda item: _ask_solo(blind, item["file"], model), asks))
-        verdicts = [{**{k: v for k, v in item.items() if k != "file"}, "file": item["file"].name,
-                     **answer} for item, answer in zip(asks, answers)]
+            verdicts = list(threads.map(ask, range(len(asks)), asks))
         summary = solo_summary(verdicts)
         record["rounds"].append({"round": number, "summary": summary, "verdicts": verdicts})
         (out / f"solo_{name}.json").write_text(json.dumps(record, indent=1, ensure_ascii=False))
@@ -671,14 +733,146 @@ def solo(given: list[str], out: Path, name: str, model: str, jobs: int, trials: 
         print(f"round {number}: " + "; ".join(
             f"{who} {s['all'].get('share_photograph', '-')} called a photograph, "
             f"p {s['all'].get('mean_p_photo', '-')}" for who, s in summary.items())
-            + (f" ({errors} without a verdict)" if errors else ""))
-    record["overall"] = solo_summary([v for r in record["rounds"] for v in r["verdicts"]])
-    record["spread"] = {who: {f: [min(r["summary"][who]["all"].get(f, 0) for r in record["rounds"]),
-                                  max(r["summary"][who]["all"].get(f, 0) for r in record["rounds"])]
-                              for f in ("share_photograph", "mean_p_photo")}
-                        for who in record["overall"]}
+            + (f" ({errors} without a verdict)" if errors else ""), flush=True)
+    every = [v for r in record["rounds"] for v in r["verdicts"]]
+    record["overall"] = solo_summary(every)
+    record["scores"] = score(every, base)
     (out / f"solo_{name}.json").write_text(json.dumps(record, indent=1, ensure_ascii=False))
-    print(json.dumps({"overall": record["overall"], "spread": record["spread"]}, indent=1))
+    print(score_table(record["scores"]))
+    return 0
+
+
+def _pictures(verdicts: list[dict], who: str, kind: str | None = None) -> dict[str, dict[str, list[float]]]:
+    """One label's verdicts as shot -> picture -> each verdict's probability. A picture is its
+    bytes' hash (photoreal16); an older pool's, its blind file's name."""
+    found: dict[str, dict[str, list[float]]] = {}
+    for v in verdicts:
+        if v.get("who") != who or "error" in v or (kind and v.get("kind") != kind):
+            continue
+        picture = v.get("picture") or f"{v.get('draw', '')}/{v.get('file', '')}"
+        found.setdefault(v["shot"], {}).setdefault(picture, []).append(float(v["p_photo"]))
+    return found
+
+
+def _mean(groups: dict[str, dict[str, list[float]]], shots_in: list[str],
+          rng: random.Random | None = None, memo: dict | None = None) -> float:
+    """The mean over shots of each shot's pictures' mean verdict; with `rng`, each picture's
+    verdicts drawn again with replacement, once for each time its shot was drawn (`memo` keeps
+    that draw, so two labels sharing it draw a picture they share alike)."""
+    total = 0.0
+    for place, shot in enumerate(shots_in):
+        means = []
+        for picture, ps in groups[shot].items():
+            if rng is None:
+                means.append(statistics.fmean(ps))
+                continue
+            if (place, picture) not in memo:
+                memo[(place, picture)] = statistics.fmean(rng.choices(ps, k=len(ps)))
+            means.append(memo[(place, picture)])
+        total += statistics.fmean(means)
+    return total / len(shots_in)
+
+
+def interval(a: dict, b: dict | None = None, boot: int = 2000, seed: int = 1, shared: bool = False) -> dict:
+    """A label's score with a bootstrap 95% interval (photoreal16): the shots drawn again with
+    replacement, then each picture's verdicts. With `b`, a minus b over the shots both have, the
+    same shots drawn for both (a paired difference); `shared`, a picture both hold under one key
+    is drawn alike for both. Every verdict under its own fresh name is an independent sample of
+    the judge, so drawing verdicts again is drawing names again."""
+    shots_in = sorted(set(a) & set(b)) if b is not None else sorted(a)
+    if not shots_in:
+        return {}
+    point = _mean(a, shots_in) - (_mean(b, shots_in) if b is not None else 0.0)
+    rng = random.Random(seed)
+    found = []
+    for _ in range(boot):
+        chosen = rng.choices(shots_in, k=len(shots_in))
+        memo: dict = {}
+        x = _mean(a, chosen, rng, memo)
+        if b is not None:
+            x -= _mean(b, chosen, rng, memo if shared else {})
+        found.append(x)
+    found.sort()
+    return {"mean": round(point, 4), "low": round(found[round(0.025 * (boot - 1))], 4),
+            "high": round(found[round(0.975 * (boot - 1))], 4), "shots": len(shots_in),
+            "verdicts": sum(len(ps) for s in shots_in for ps in a[s].values())}
+
+
+def _against(verdicts: list[dict], one: str, two: str, kind: str | None = None) -> dict:
+    """one minus two shot by shot. A picture byte for byte the same in both arms is one picture:
+    both arms' verdicts on it are pooled and it adds nothing to the difference but its weight."""
+    a, b = _pictures(verdicts, one, kind), _pictures(verdicts, two, kind)
+    for shot in set(a) & set(b):
+        for picture in set(a[shot]) & set(b[shot]):
+            a[shot][picture] = b[shot][picture] = a[shot][picture] + b[shot][picture]
+    return interval(a, b, shared=True)
+
+
+def score(verdicts: list[dict], base: str | None = None) -> dict:
+    """Each label's score and interval (all shots, close-ups, sets); each label's difference from
+    `base` (default: the first label that is not a photograph) shot by shot; and every two labels
+    that share byte-identical pictures ("twins"), their difference on those pictures alone, each
+    label's own verdicts apart: the judge's own noise. Its interval's half-width is the smallest
+    difference between two arms the pool tells apart at 95%."""
+    labels = sorted({v["who"] for v in verdicts if "error" not in v}, key=lambda w: (w != "photo", w))
+    renders = [w for w in labels if w not in ("photo", "reference render")]
+    base = base if base in labels else (renders[0] if renders else None)
+    out: dict = {"base": base, "labels": {}, "twins": []}
+    for who in labels:
+        row = {kind: interval(_pictures(verdicts, who, k)) for kind, k in
+               (("all", None), ("closeups", "closeup"), ("sets", "set"))}
+        if base and who != base and who in renders:
+            row["vs_base"] = _against(verdicts, who, base)
+            row["vs_base_closeups"] = _against(verdicts, who, base, "closeup")
+        out["labels"][who] = row
+    hashes = {w: {v.get("picture") for v in verdicts if v.get("who") == w and v.get("picture")} for w in renders}
+    for i, one in enumerate(renders):
+        for two in renders[i + 1:]:
+            same = hashes[one] & hashes[two]
+            if not same:
+                continue
+            a = {s: {p: ps for p, ps in g.items() if p in same} for s, g in _pictures(verdicts, one).items()}
+            b = {s: {p: ps for p, ps in g.items() if p in same} for s, g in _pictures(verdicts, two).items()}
+            found = interval({s: g for s, g in a.items() if g}, {s: g for s, g in b.items() if g})
+            found.update({"a": one, "b": two, "pictures": len(same),
+                          "half_width": round((found["high"] - found["low"]) / 2, 4)})
+            out["twins"].append(found)
+    return out
+
+
+def score_table(scores: dict) -> str:
+    """score()'s numbers as a table to read."""
+    def span(row: dict) -> str:
+        return f"{row['mean']:+.3f} ({row['low']:+.3f} .. {row['high']:+.3f})" if row else "-"
+
+    lines = [f"{'label':18s} {'verdicts':>8s}  {'all shots, 95%':27s}  {'close-ups':27s}  sets",
+             ]
+    for who, row in scores["labels"].items():
+        lines.append(f"{who:18s} {row['all'].get('verdicts', 0):8d}  {span(row['all']):27s}  "
+                     f"{span(row['closeups']):27s}  {span(row['sets'])}")
+    if scores["base"]:
+        lines.append(f"\nagainst {scores['base']}, shot by shot (kept only if the interval is above 0):")
+        for who, row in scores["labels"].items():
+            if "vs_base" in row:
+                lines.append(f"  {who:18s} all {span(row['vs_base'])}   close-ups {span(row['vs_base_closeups'])}")
+    for twin in scores["twins"]:
+        lines.append(f"\ntwins {twin['a']} and {twin['b']}, {twin['pictures']} byte-identical pictures on "
+                     f"{twin['shots']} shots: {span(twin)}; the pool tells apart a difference of "
+                     f"{twin['half_width']:.3f} at 95%")
+    return "\n".join(lines)
+
+
+def score_file(path: Path, base: str | None, merge_draws: bool) -> int:
+    """score() of a solo_NAME.json; with merge_draws, labels named ARM_dN are one arm, draw dN."""
+    import re
+    record = json.loads(path.read_text())
+    verdicts = [dict(v) for r in record["rounds"] for v in r["verdicts"]]
+    if merge_draws:
+        for v in verdicts:
+            found = re.fullmatch(r"(.+)_(d\d+)", v["who"])
+            if found:
+                v["who"], v["draw"] = found.group(1), found.group(2)
+    print(score_table(score(verdicts, base)))
     return 0
 
 
@@ -788,6 +982,12 @@ def main() -> int:
     s.add_argument("--only", default="")
     s.add_argument("--no-photos", action="store_true",
                    help="renders alone, for a quick look at one change (the photographs are not asked)")
+    s.add_argument("--base", default=None, help="the label every other is scored against (default the first)")
+    o = sub.add_parser("score")
+    o.add_argument("file", type=Path)
+    o.add_argument("--base", default=None)
+    o.add_argument("--merge-draws", action="store_true",
+                   help="labels named ARM_dN (an older pool's) are one arm, draw dN")
     t = sub.add_parser("tally")
     t.add_argument("files", nargs="+", type=Path)
     n = sub.add_parser("camera")
@@ -799,6 +999,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.what == "tally":
         return tally(args.files)
+    if args.what == "score":
+        return score_file(args.file, args.base, args.merge_draws)
     if args.what == "camera":
         return camera(args.tag, args.drawn)
     if args.what == "masks":
@@ -814,7 +1016,7 @@ def main() -> int:
         return gloss(args.tag, out, args.drawn)
     if args.what == "solo":
         return solo(args.drawn, out, args.name, args.model, args.jobs, args.trials, args.rounds,
-                    args.seed, [x for x in args.only.split(",") if x], not args.no_photos)
+                    args.seed, [x for x in args.only.split(",") if x], not args.no_photos, args.base)
     return judge_tag(args.tag, out, args.model, args.jobs, [s for s in args.only.split(",") if s])
 
 

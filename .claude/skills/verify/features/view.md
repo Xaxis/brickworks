@@ -3923,14 +3923,28 @@ picture the assistant is shown.
   --out DIR [--jobs 4]` shows a blind judge (Claude Code on the
   subscription, `judge.call`) the photograph and the render under opaque
   names, both as JPEG at 92, in both orders, and asks which is the
-  photograph of real bricks and what gives the render away; its copies go
-  in `DIR/blind/` (a `.gdignore` in it: a checkout's `bench/` is not left
-  out of the web export), and it writes
+  photograph of real bricks and what gives the render away; each ask's
+  copies are written under fresh random names in a fresh folder in the
+  system's temporary folder (never a checkout, whose branch and commits
+  Claude Code would show the judge) and taken away after its verdict
+  (photoreal16: a blind name is a seed, byte-identical twins under two
+  kept names scored 0.65 and 0.29 over ten verdicts each), and it writes
   `judge_TAG.json` (each verdict, its confidence, reason and tells; the
   pick rate and mean confidence for close-ups, sets and all). A render as
   real as the photograph is picked half the time; the bar is a lower pick
   rate after than before, judged the same day against a before drawn from
-  a locked tree. `colour TAG [--out DIR]` measures each close-up's faces
+  a locked tree.
+  `solo LABEL=DIR ... --name N --base LABEL --trials T --rounds R --out DIR`
+  asks every picture alone, each verdict under its own fresh name and
+  folder (the pictures it showed are kept in `DIR/masters/` by their
+  bytes' hash); a LABEL given once a draw is one arm. It ends with
+  `score`'s table, also `photoreal.py score SOLO_JSON [--base L]
+  [--merge-draws]`: each label's mean over its shots with a bootstrap 95%
+  interval (shots, then verdicts, drawn again), each label against the
+  base shot by shot (a picture the same in both arms counts as one), and
+  every two labels sharing byte-identical pictures as twins, whose
+  interval's half-width is the smallest difference the pool tells apart.
+  Keep a lever only if its interval against the base is above 0. `colour TAG [--out DIR]` measures each close-up's faces
   (shots.json's `faces`, the photograph's box and the render's) as the
   trimmed mean of their CIELAB and prints and writes (`colour_TAG.json`)
   each face's CIEDE2000 from its photograph's; the bar is 5 on every main
