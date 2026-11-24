@@ -3,7 +3,7 @@
 #
 #   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..." | --probes all | --probes none --why "..."]
 #                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]... [--web | --full]
-#                             [--every-check] [--gate-ok "tests/a.py ..."] [--plan]
+#                             [--every-check | --only-checks] [--gate-ok "tests/a.py ..."] [--plan]
 #   train.sh status [TAG...]
 #   train.sh hold TAG [REASON]          train.sh release TAG
 #   train.sh reship TAG [--probes "..."] [--accept CHECK "REASON"]... [CHECK...]
@@ -131,7 +131,7 @@ suite_names() { sed -E 's/(^|[[:space:]])#.*//' | awk 'NF { split($1, p, ":"); p
 stage() {
   [ $# -ge 2 ] || usage
   local tag=$1 branch=$2 after="" checks="" probes="" named_probes="" said="" units="" title="" accepts="" pid gate_ok=""
-  local lane="" plan="" every=""
+  local lane="" plan="" every="" only=""
   shift 2
   case "$tag" in ""|*[!A-Za-z0-9._-]*) echo "train: '$tag' is not a tag"; exit 2 ;; esac
   while [ $# -gt 0 ]; do
@@ -140,6 +140,11 @@ stage() {
         lane=${1#--}; shift; continue ;;
       --plan) plan=1; shift; continue ;;
       --every-check) every=1; shift; continue ;;
+      # Exactly the checks named, at staging and at the ship: lean.py named 96
+      # and 107 for rel-m326's and rel-m327's fixes, and the lead's trim of
+      # TAG.train/checks was read again and widened once the merge was made, so
+      # the lead stopped each train and ran the proving checks by hand (2026-11-23).
+      --only-checks) only=1; shift; continue ;;
     esac
     [ $# -ge 2 ] || { echo "train: $1 wants a value"; exit 2; }
     case "$1" in
@@ -158,6 +163,7 @@ stage() {
   fi
   local all_probes=""
   [ "$probes" = all ] && { all_probes=1; named_probes=""; probes=""; }
+  [ -z "$every" ] || [ -z "$only" ] || { echo "train: --every-check or --only-checks, not both"; exit 2; }
   if [ "$probes" = none ]; then
     [ -n "${said//[[:space:]]/}" ] || { echo "train: --probes none wants --why \"the reason\", which its log says"; exit 2; }
     probes=""; said="none: $said"
@@ -294,6 +300,7 @@ stage() {
     [ "$windowed" = 0 ] || said+=" ($windowed windowed left to the suite)"
   fi
   local named_checks=$checks
+  [ -z "$only" ] || flows=""
   for name in $flows; do case " $checks " in *" $name "*) ;; *) added+=" $name" ;; esac; done
   local -a named=()
   read -r -a named <<< "$checks$added"
@@ -322,7 +329,7 @@ stage() {
   # and whether it carries proof over (every: --every-check), and whether
   # the probes were named (lean_now leaves those as they are).
   echo "$gate_ok" > "$SPEC/gate_ok"
-  echo "$named_checks" > "$SPEC/named"; echo "${every:+every}" > "$SPEC/lean"; echo "$checks" > "$SPEC/checks.planned"
+  echo "$named_checks" > "$SPEC/named"; echo "${every:+every}${only:+only}" > "$SPEC/lean"; echo "$checks" > "$SPEC/checks.planned"
   if [ -n "$probes_by_lean" ] && [ "${said:0:20}" != "none: the web lane, " ]; then echo lean > "$SPEC/probes.lean"; else echo named > "$SPEC/probes.lean"; fi
   echo "$said" > "$SPEC/probes.why"
   echo "$why_lane" > "$SPEC/lane"
@@ -346,7 +353,8 @@ stage() {
   echo "  spec $SPEC/ (editable until it ships), log $RO/${tag}_train.out"
   # Each said alone: ${x:-...} is x itself once x is set, which put the
   # checks added after the line that added them (2026-11-04).
-  if [ -n "$added" ]; then added="adds$added to the checks named"; else added="adds no check to those named"; fi
+  if [ -n "$only" ]; then added="adds none: exactly those named (--only-checks), at the ship too"
+  elif [ -n "$added" ]; then added="adds$added to the checks named"; else added="adds no check to those named"; fi
   echo "  $told against the build brickworks.diy serves ($live_sha): ${#files[@]} files differ, ${reached_n:-0} checks reached, ${carried_n:-0} carried; $added"
   echo "  lane: $why_lane"
   if [ -n "$named_probes" ] && [ -n "$probes" ]; then echo "  probes: $said: $probes"; else echo "  probes: $said"; fi
@@ -810,12 +818,16 @@ lean_now() {
   git -C "$R" rev-parse -q --verify "$live^{commit}" >/dev/null 2>&1 || live=$(git -C "$R" rev-parse origin/main)
   head=$(git -C "$W" rev-parse HEAD)
   [ "$(cat "$SPEC/lean" 2>/dev/null)" = every ] && every=1
-  # site, and frames when the app is its own, ship.sh adds whatever is named.
-  out=$(python3 "$HERE/lean.py" checks --live "$live" --head "$head" --tree "$W" --named "${named[*]}" \
-    ${every:+--every} 2>&1) || { echo "$out" | tail -3; stop "lean.py could not choose the checks"; }
-  echo "$out" > "$RO/${TAG}_lean.out"
-  sed -n 's/^checks: //p' <<< "$out" > "$SPEC/checks"
-  say "checks, for what it changes against ${live:0:9} (lean.py, ${TAG}_lean.out): $(sed -n 's/^reached (\([0-9]*\)).*/\1/p' <<< "$out") reached, $(grep -c '^carried ' <<< "$out") carried: $(cat "$SPEC/checks")"
+  if [ "$(cat "$SPEC/lean" 2>/dev/null)" = only ]; then
+    say "checks: exactly those named (--only-checks): $(cat "$SPEC/checks")"
+  else
+    # site, and frames when the app is its own, ship.sh adds whatever is named.
+    out=$(python3 "$HERE/lean.py" checks --live "$live" --head "$head" --tree "$W" --named "${named[*]}" \
+      ${every:+--every} 2>&1) || { echo "$out" | tail -3; stop "lean.py could not choose the checks"; }
+    echo "$out" > "$RO/${TAG}_lean.out"
+    sed -n 's/^checks: //p' <<< "$out" > "$SPEC/checks"
+    say "checks, for what it changes against ${live:0:9} (lean.py, ${TAG}_lean.out): $(sed -n 's/^reached (\([0-9]*\)).*/\1/p' <<< "$out") reached, $(grep -c '^carried ' <<< "$out") carried: $(cat "$SPEC/checks")"
+  fi
   web_lane && return
   [ "$(cat "$SPEC/probes.lean" 2>/dev/null)" = lean ] || return 0
   out=$(python3 "$HERE/lean.py" probes --live "$live" --head "$head" --tree "$W" 2>&1) \
