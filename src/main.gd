@@ -3097,6 +3097,9 @@ func _on_account_changed() -> void:
 	if _shell != null:
 		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
 	_offer_reports()
+	# Signed out, or in as somebody else: the copy made before goes.
+	if _verbs != null:
+		_verbs.account_changed()
 	# A viewer is nobody's session: no connector, ever.
 	if not _viewing.is_empty():
 		return
@@ -7367,6 +7370,8 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	# A copy is the account's that made it (EditVerbs.account_changed).
+	_verbs.account = func() -> String: return _account.user_id if _account != null else ""
 	add_child(_verbs)
 	# A double-click in the bin replaces the selection, or puts a fit on it.
 	_bin.verbs = _verbs
@@ -7643,8 +7648,20 @@ func _build_ui() -> void:
 		_outline.show_selection(_builder.selection)
 		_tell_bin_selection()
 		_look_under_again()
+		var whole: String = _verbs.assemblies.selected_assembly() \
+			if count > 1 and _phone == null and _verbs != null and _verbs.assemblies != null else ""
 		if count == 0:
 			_bar.say("")
+		elif not whole.is_empty():
+			# A click took a sub-assembly whole: which, and the way to one
+			# of its parts, as a phone's line says (PhoneShell.hint, in a
+			# finger's words: hold, then Edit inside; a phone's double tap
+			# turns, so it is left to say it, never "double-tap"). "149
+			# selected — … C paints" at a set's fifth step, its house taken
+			# whole, said neither, and a colour then painted 149 parts
+			# (appwalk).
+			_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
+				% [Assemblies.label(whole), count])
 		else:
 			_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
 				% count))
@@ -8484,6 +8501,7 @@ func _make_simulate() -> void:
 	simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_seat_tool_panel(simulate)
+	simulate.held_by_hand = func() -> bool: return _grab_drag != null and _grab_drag.is_grabbing()
 	_builder.selection_changed.connect(Callable(simulate, &"_on_selection"))
 	# A click on a battery box, a receiver or a hub works its switch, the
 	# part under the pointer, wherever it is in the model (F3).
@@ -11666,7 +11684,11 @@ func _still_bare() -> bool:
 ## The first screen, once a tab, when it is due: the studio up, nobody's
 ## sign-in screen over it, and an account with a model (here, or the
 ## account's once it has said). An account with none gets the example car,
-## as a first visit does, and Build your first model (FirstBuild).
+## as a first visit does, and Build your first model (FirstBuild); where
+## that has no room (a phone, a window a phone's width), this screen over
+## the car, welcoming, New model its strong button. A phone's first visit
+## had the car and nothing else: no offer, and New three taps away in More,
+## File (appwalk's first-timer, 2026-11-24).
 func _maybe_start() -> void:
 	if _start_decided or not _first_open_done or not _built or _gated() or not _start_wanted():
 		return
@@ -11684,6 +11706,11 @@ func _maybe_start() -> void:
 			_sample_untouched = _open(SAMPLE_MODEL) > 0
 			_lay_baseplate()
 			_camera.frame(_built_bounds())
+		# The car opened here, or in _ready when the sign-in came after
+		# the studio started, and not touched since.
+		if _sample_untouched and _shell != null and _shell.first_build != null \
+				and not _shell.first_build.fits_here():
+			_studio_start_now().call("open", saved, false, true)
 		return
 	_start_decided = true
 	_studio_start_now().call("open", saved, saved.is_empty())
@@ -11892,6 +11919,15 @@ func _grab_on_joint(brick_id: int) -> bool:
 	if not _grab_drag.press(brick_id, _press_at, selected, chained):
 		return false
 	_builder.hide_preview()
+	# Taken hold of, it is the part being worked on: selected, as a carried
+	# part is (EditVerbs.drag_start), and still so once let go. Only now, so
+	# what the grab moves is what the press chose. Left unselected, a phone's
+	# Turn, Colour and Delete stayed greyed after a drag on the car's
+	# headlight, which turns on its one stud where a brick on two is carried
+	# (appwalk; phonedrag's "a dragged part ends unselected"). A second finger
+	# puts the selection back as it was (_second_finger).
+	if _grab_drag.is_grabbing() and not _builder.selection.has(brick_id):
+		_builder.select_brick(brick_id, false)
 	return true
 
 

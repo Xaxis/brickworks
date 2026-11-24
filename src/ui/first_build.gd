@@ -380,11 +380,18 @@ func _wanted() -> bool:
 	if not (offered_for_probe or bool(shell.app.call("_gate_wanted"))):
 		return false
 	# Not a shared model's viewer, a model opened from a link, or a phone or
-	# a window a phone's width, whose finger has none of the keys the steps
-	# name and whose strip has no room for the line.
+	# a window a phone's width (fits_here).
 	for opened: String in ["_viewing", "_copying", "_from_library"]:
 		if not str(shell.app.get(opened)).is_empty():
 			return false
+	return fits_here()
+
+
+## Whether it can be offered in this window at all: not on a phone or in a
+## window a phone's width, whose finger has none of the keys the steps name
+## and whose strip has no room for the line. Where it cannot, the studio's
+## first screen welcomes a first visit instead (Main._maybe_start).
+func fits_here() -> bool:
 	return shell.app.get("_phone") == null and str(shell.app.get("_columns")) != "drawers"
 
 

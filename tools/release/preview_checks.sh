@@ -58,6 +58,7 @@ declare -A CMD=(
   # itself. A throwaway at a Resend test address, its code minted.
   [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
   # local only: made_shown_flow.mjs. It runs a local relay against production's functions with throwaway accounts (aiprivate); model_page and gallery carry what a stranger sees.
+  # local only: pastereview_flow.mjs. Two tabs of a local web export on a local relay, throwaway accounts (pastereview, appfix).
   # local only: remix_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (remixdiff).
   # local only: postkit_flow.mjs. Every call it makes is answered by design_stand_in.mjs on this machine (postkit).
   # local only: set3d_flow.mjs. It turns ten sets of up to 9,092 parts in 3D at two widths and both themes,
@@ -606,6 +607,9 @@ declare -A CMD=(
   # File > New tab: a second tab on an empty model of its own, kept across
   # a reload, the first tab untouched (src/parts/tab_session.gd).
   [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"
+  # Copied in one tab, pasted in another: the newest copy in any of the
+  # site's tabs, kept in its localStorage (EditVerbs.SHARED_COPY, appwalk).
+  [tabpaste]="tools/web/tabpaste_flow.mjs --url=$P/app --out=$S/${TAG}_tabpaste"
   # File > Library…: an LDraw set and a community model each opened in a tab
   # of its own, the first tab untouched; the library and the gallery played
   # from tests/fixtures/library by Playwright's route (src/ui/library_dialog.gd).

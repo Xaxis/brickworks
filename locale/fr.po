@@ -17131,6 +17131,9 @@ msgstr "Bon retour"
 msgid "Pick up where you left off, or see what came back from other builders."
 msgstr "Reprenez là où vous en étiez, ou voyez ce que les autres constructeurs vous ont répondu."
 
+msgid "Start a model of your own: New model, this week's quick build or one from the gallery. The example car is behind this."
+msgstr "Commencez un modèle à vous : Nouveau modèle, la construction rapide de la semaine ou un modèle de la galerie. La voiture d'exemple est derrière."
+
 msgid "New model"
 msgstr "Nouveau modèle"
 
@@ -17765,3 +17768,21 @@ msgstr "« %1$s » n'a pas pu être copié : %2$s. Il est conservé tel qu'il a 
 
 msgid "“%s” could not be copied: %s. Nothing was saved."
 msgstr "« %1$s » n'a pas pu être copié : %2$s. Rien n'a été enregistré."
+
+msgid "fetching 1 part to paste"
+msgstr "récupération d'1 pièce à coller"
+
+msgid "fetching %d parts to paste"
+msgstr "récupération de %d pièces à coller"
+
+msgid "could not paste: 1 part did not load"
+msgstr "collage impossible : 1 pièce ne s'est pas chargée"
+
+msgid "could not paste: %d parts did not load"
+msgstr "collage impossible : %d pièces ne se sont pas chargées"
+
+msgid "paste again to try again"
+msgstr "collez à nouveau pour réessayer"
+
+msgid "paste stopped"
+msgstr "collage arrêté"

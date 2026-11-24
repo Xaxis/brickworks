@@ -542,6 +542,10 @@ export function signOut() {
     sessionStorage.removeItem(ACCESS);
     // Who the header's avatar was (web/follow.js).
     localStorage.removeItem("brickworks.me");
+    // The studio's copy, kept for its other tabs (src/ui/edit_verbs.gd
+    // SHARED_COPY): the next account in this browser pasted it, and the
+    // parts this one made with it (pastereview F2).
+    localStorage.removeItem("brickworks.clipboard");
   } catch {
     // Nothing kept, nothing to forget.
   }

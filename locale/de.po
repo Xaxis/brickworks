@@ -17131,6 +17131,9 @@ msgstr "Willkommen zurück"
 msgid "Pick up where you left off, or see what came back from other builders."
 msgstr "Mach dort weiter, wo du aufgehört hast, oder sieh, was von anderen Baumeistern zurückkam."
 
+msgid "Start a model of your own: New model, this week's quick build or one from the gallery. The example car is behind this."
+msgstr "Fang ein eigenes Modell an: Neues Modell, der Schnellbau dieser Woche oder eines aus der Galerie. Das Beispielauto steht dahinter."
+
 msgid "New model"
 msgstr "Neues Modell"
 
@@ -17765,3 +17768,21 @@ msgstr "„%1$s“ konnte nicht kopiert werden: %2$s. Es wird so aufbewahrt, wie
 
 msgid "“%s” could not be copied: %s. Nothing was saved."
 msgstr "„%1$s“ konnte nicht kopiert werden: %2$s. Es wurde nichts gespeichert."
+
+msgid "fetching 1 part to paste"
+msgstr "1 Teil zum Einfügen wird geladen"
+
+msgid "fetching %d parts to paste"
+msgstr "%d Teile zum Einfügen werden geladen"
+
+msgid "could not paste: 1 part did not load"
+msgstr "Einfügen nicht möglich: 1 Teil wurde nicht geladen"
+
+msgid "could not paste: %d parts did not load"
+msgstr "Einfügen nicht möglich: %d Teile wurden nicht geladen"
+
+msgid "paste again to try again"
+msgstr "füge noch einmal ein, um es erneut zu versuchen"
+
+msgid "paste stopped"
+msgstr "Einfügen abgebrochen"

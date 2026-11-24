@@ -7036,7 +7036,7 @@
       "kind": "ui",
       "label": "the studio's first screen",
       "entry": "src/ui/studio_start.gd",
-      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start)",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start). An account with nothing saved gets the example car, and on a phone or a window a phone's width (no room for Build your first model, FirstBuild.fits_here) this screen over it: Welcome to Brickworks, New model its strong button",
       "area": "web"
     },
     {
@@ -7184,6 +7184,48 @@
       "label": "flow models probe",
       "entry": "src/dev/flow_models_probe.gd",
       "reach": "godot --headless --path . --script src/dev/flow_models_probe.gd   (the browser flows' models in tests/fixtures/flow_models, each what the app writes and finds today whatever the run's token; -- --write writes them again, to commit)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "grabselect probe",
+      "entry": "src/dev/grabselect_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh grabselect_probe   (by finger; PROBE_SIZE=1280x720 by the mouse)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "paste from another tab",
+      "entry": "tools/web/tabpaste_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 11803 --static=build/web, then node tools/web/tabpaste_flow.mjs --url=http://127.0.0.1:11803/app --out=shots/tabpaste   (with .env sourced)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "pastereview probe",
+      "entry": "src/dev/pastereview_probe.gd",
+      "reach": "tools/probe.sh pastereview_probe   (headless: a paste in another tab, the copy kept whole, against the same tab's, part by part and by sub-assembly, undone, saved and reopened; a copy another account made or one after a sign-out pastes nothing; a part that can't be had puts nothing down)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "pastereview flow",
+      "entry": "tools/web/pastereview_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 11821 --static=build/web, then node tools/web/pastereview_flow.mjs --url=http://127.0.0.1:11821/app --out=shots/pastereview --width=1280|390 --model=bench/results/pastereview-2026-11-24/pr_fixture.ldr --unpacked=30365,4854,30360,4855,30356   (with .env sourced; parts the other tab hasn't fetched, a slow line, another account, a sign-out)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simgrab probe",
+      "entry": "src/dev/simgrab_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh simgrab_probe   (windowed: Simulate open on the orrery, a part of another drivable body dragged on its joint; Simulate's driver stays)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "firststart probe",
+      "entry": "src/dev/firststart_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh firststart_probe -- --pictures=DIR   (windowed; an account with nothing saved: on a phone the first screen over the example car, Welcome to Brickworks, New model strong, one press an empty baseplate with nothing asked; PROBE_SIZE=1280x800: the car and no first screen, Build your first model has room)",
       "area": "web"
     }
   ]

@@ -41,6 +41,10 @@ const TYPED_WAIT := 0.45
 const SEARCH_MOST := 100
 ## A file's head read for its link: its metas come before its first part.
 const HEAD_LINES := 400
+## The line under the title for somebody back, and for somebody here the
+## first time ([method open]'s first).
+const BACK_LEAD := "Pick up where you left off, or see what came back from other builders."
+const FIRST_LEAD := "Start a model of your own: New model, this week's quick build or one from the gallery. The example car is behind this."
 
 ## Who, and what everything is asked through (Main sets them).
 var shared: SharedModels
@@ -56,6 +60,8 @@ var open_saved: Callable = Callable()
 var copy: Callable = Callable()
 var came_wanted: Callable = Callable()
 var begin_new: Callable = Callable()
+## Shown to somebody with no model yet, welcomed (open's first).
+var welcoming: bool = false
 
 ## Put away: by a choice made, or by the person ("closed", "chosen").
 signal closed(how: String)
@@ -86,6 +92,8 @@ var _scrim: ColorRect
 var _card: PanelContainer
 var _scroll: ScrollContainer
 var _title: Label
+## The line under the title: what the screen is for, to whom it is shown.
+var _lead: Label
 var _close: Button
 var _new: Button
 var _continue: GridContainer
@@ -195,8 +203,8 @@ func _ready() -> void:
 	column.add_child(_under_head)
 	_title = _label("Welcome back", 21, Color(0.97, 0.97, 0.98))
 	_titles.add_child(_title)
-	_titles.add_child(_label("Pick up where you left off, or see what came back from other builders.", 13,
-		Look.GREYED, true))
+	_lead = _label(BACK_LEAD, 13, Look.GREYED, true)
+	_titles.add_child(_lead)
 	_new = _button("New model", false)
 	_new.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_new.tooltip_text = "An empty baseplate"
@@ -290,8 +298,10 @@ func _ready() -> void:
 ## Shown, with [param saved] (ModelStore.Entry, newest first) in Continue,
 ## and what the server says asked for at once. [param bringing]: the
 ## account's models are on their way to this device (CloudModels), and
-## set_models lists them when they are here.
-func open(saved: Array, bringing: bool = false) -> void:
+## set_models lists them when they are here. [param first]: somebody with
+## no model yet, where Build your first model has no room (Main
+## ._maybe_start): welcomed, and New model the screen's strong button.
+func open(saved: Array, bringing: bool = false, first: bool = false) -> void:
 	shown_ms = Time.get_ticks_msec()
 	filled_ms = -1
 	visible = true
@@ -300,7 +310,10 @@ func open(saved: Array, bringing: bool = false) -> void:
 	_bringing = bringing
 	_lay()
 	set_models(saved)
-	_title.text = "Welcome back"
+	welcoming = first
+	_title.text = "Welcome to Brickworks" if first else "Welcome back"
+	_lead.text = FIRST_LEAD if first else BACK_LEAD
+	_face(_new, first)
 	var now: int = Time.get_ticks_msec()
 	if asked == "ok" and now - _asked_ms < FRESH_MS:
 		_fill_prompt()
@@ -817,6 +830,16 @@ func _button(words: String, main: bool) -> Button:
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.custom_minimum_size = Vector2(36, 34)
 	button.add_theme_font_size_override("font_size", 13)
+	_face(button, main)
+	button.add_theme_color_override("font_color", Color.WHITE)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	return button
+
+
+## [param button] filled in the screen's one strong colour ([param main]),
+## or in its quiet one.
+func _face(button: Button, main: bool) -> void:
 	for state: String in ["normal", "hover", "pressed", "disabled"]:
 		var face := StyleBoxFlat.new()
 		var base: Color = Look.STRONG if main else Color(1, 1, 1, 0.08)
@@ -828,10 +851,6 @@ func _button(words: String, main: bool) -> Button:
 		face.content_margin_top = 6
 		face.content_margin_bottom = 6
 		button.add_theme_stylebox_override(state, face)
-	button.add_theme_color_override("font_color", Color.WHITE)
-	button.add_theme_color_override("font_hover_color", Color.WHITE)
-	button.add_theme_color_override("font_pressed_color", Color.WHITE)
-	return button
 
 
 func _section(words: String) -> Label:
@@ -888,7 +907,8 @@ func page_state() -> Dictionary:
 				"comment": int(item.get("comment", 0)) if item.get("comment") is float or item.get("comment") is int else 0,
 				"model": str(item.get("model", ""))})
 	var prompt: Variant = answer.get("prompt")
-	return {"shown": visible, "continue": models.size(), "came": mini(came.size(), CAME_MOST), "pins": pins,
+	return {"shown": visible, "welcoming": welcoming, "title": _title.text if _title != null else "",
+		"continue": models.size(), "came": mini(came.size(), CAME_MOST), "pins": pins,
 		"prompt": str((prompt as Dictionary).get("title", "")) if prompt is Dictionary else "",
 		"found": found.size(), "found_for": found_for,
 		"found_title": _found_title.text if _found_title != null else "", "real": real_items(), "asked": asked,
