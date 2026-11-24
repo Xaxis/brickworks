@@ -63,7 +63,9 @@ func _run() -> void:
 	var world: BrickWorld = _main.get("_world")
 	var store: ModelStore = _main.get("_store")
 	var shell: Shell = _main.get("_shell")
-	var room: bool = shell.first_build.fits_here()
+	# Called by name, so the probe runs on a build from before fits_here too.
+	var room: bool = bool(shell.first_build.call("fits_here")) if shell.first_build.has_method("fits_here") \
+		else not phone
 	var start: Control = _main.get("_studio_start")
 	var shown: bool = start != null and start.visible
 	await _picture("firststart_%s_first.png" % size)
