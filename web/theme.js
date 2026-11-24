@@ -161,7 +161,7 @@
   }
 })();
 
-// The beta's strip at every page's top (betabar.js, betahome), its room
+// The beta (betahome): its strip at every page's top (betabar.js), its room
 // (<html data-betabar>, site.css) decided here before the first frame and
 // never taken back but by the person (pagebar): as the page's own
 // <meta name="brickworks-beta"> says (api/_settings.js), unless what this
@@ -287,7 +287,7 @@ window.brickworksCountingNo = (driven = true) => {
   }
 })();
 
-// A visit the owner's social desk brought (api/_social.js, socialdesk):
+// A visit a post from the owner's social desk brought (api/_social.js, socialdesk):
 // utm_campaign=bw-<send id>, told once with a nonce and nothing else of the
 // visitor, then taken out of the address. A count, so it keeps to /counting
 // (inreview L2); a check's driven browser is told, as the desk's flow lands.
