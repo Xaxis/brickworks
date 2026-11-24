@@ -7113,7 +7113,21 @@
       "kind": "ui",
       "label": "a minifig of your own as your avatar",
       "entry": "web/minifig-maker.js",
-      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig   (dialog#minifig-dialog: a face, hair or a hat and its colour, a torso print and colour, legs colour, background, Surprise me, the minifig at its sizes on a light and a dark page; Save sends the PNG and its recipe to POST /api/people?op=avatar {picture, type, minifig}; everybody without a picture is shown the minifig made from their handle, web/card.js minifigOf, and GET /api/people?op=avatar&handle=X draws it as a JPEG)",
+      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig   (dialog#minifig-dialog: the figure live in 3D of real parts, web/minifig3d.js built from tools/viewer/minifig.js, drag or arrow keys to turn it, a press on a part opens its tab; tabs Skin, Face, Hair and hats, Torso, Arms and hands, Legs, Accessories, Pose, Background, each searched, tiles drawn from the parts, web/minifig/tiles; web/minifig-parts.js the lists and figureShape; Undo, Redo, Surprise me with a lock a tab, Start from…, the picture at its sizes on a light and a dark page; Save sends a 400 px PNG and its recipe (v 2) to POST /api/people?op=avatar {picture, type, minifig}; a v 1 recipe opens as the same figure, fromLayers; everybody without a picture is shown the minifig made from their handle, web/card.js minifigOf, and GET /api/people?op=avatar&handle=X draws it as a JPEG)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "minifig maker tiles",
+      "entry": "tools/web/minifig_tiles.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/minifig_tiles.mjs --deps=DIR [--only=faces,hair]   (DIR has node_modules/three 0.186.1; writes web/minifig/tiles/<group>-<hash>-b|p.webp and web/minifig/figure.json; run after changing a list in web/minifig-parts.js)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "minifig maker probe",
+      "entry": "tools/web/minifig_maker_probe.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/minifig_maker_probe.mjs [--out=DIR] [--only=1280-light,390-dark]   (the maker on this checkout's files, no sign-in: every tab picked, pose, turn, press a part, Undo/Redo, Surprise me with a lock, Save, a v 1 recipe opens as the same figure, 44 px targets at 390; ends 'N of N passed')",
       "area": "web"
     },
     {
