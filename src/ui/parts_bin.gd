@@ -5803,7 +5803,7 @@ func _entry_picture(entry: Dictionary) -> ThumbTile:
 func _assembly_parts(entry: Dictionary) -> Array:
 	var id: String = str(entry["id"])
 	if not _assembly_items.has(id):
-		_assembly_items[id] = Carry.from_ldraw(str(entry["ldraw"]), library)
+		_assembly_items[id] = Carry.from_kept(entry, library)
 	return _assembly_items[id]
 
 
@@ -5816,9 +5816,9 @@ func _assembly_picture(entry: Dictionary) -> String:
 		for item: Dictionary in _assembly_parts(entry):
 			if not ids.has(str(item["part"])):
 				ids.append(str(item["part"]))
-		var ldraw: String = str(entry["ldraw"])
+		var kept: Dictionary = entry.duplicate()
 		thumbnails.offer_group(id, ids, func(_colour: int) -> Array:
-			return Carry.from_ldraw(ldraw, library))
+			return Carry.from_kept(kept, library))
 	return id
 
 
@@ -5966,7 +5966,7 @@ func _on_assembly(entry_id: String) -> void:
 		_status.text = "“%s” could not be had: its parts did not load" % str(entry["name"])
 		return
 	# Read again now every shape is here: its frame is worked out from them.
-	var parts: Array = Carry.from_ldraw(str(entry["ldraw"]), library)
+	var parts: Array = Carry.from_kept(entry, library)
 	if parts.is_empty():
 		_status.text = "“%s” could not be had: its parts did not load" % str(entry["name"])
 		return
@@ -6081,11 +6081,18 @@ func _on_add(id: int) -> void:
 			var held: Array = Carry.gather(builder.world, library, ids)
 			if held.is_empty():
 				return
-			var ldraw: String = Carry.as_ldraw(held, library)
+			var ldraw: String = Carry.as_ldraw(held)
+			# Too many to read back is said now, not when it is put down.
+			if PartShelf.too_big(ldraw):
+				_say("%s are more than a sub-assembly can keep: keep part of it" %
+					Counted.of(held.size(), "part"))
+				return
+			var made: String = Carry.made_text(held, library)
 			var palette_id: String = _shelf_open
 			_ask_name("Keep as a sub-assembly", "Keep", _assembly_named(bricks),
 				func(given: String) -> void:
-					if PartShelf.keep_assembly(palette_id, given, ldraw, held.size()).is_empty():
+					if PartShelf.keep_assembly(palette_id, given, ldraw, held.size(),
+							made).is_empty():
 						return
 					_say("kept the sub-assembly “%s”, %s, in “%s”" % [PartShelf.clean_name(given)
 						if not PartShelf.clean_name(given).is_empty() else "Sub-assembly",

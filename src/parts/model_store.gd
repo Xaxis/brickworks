@@ -4778,14 +4778,16 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	if model == null or model.main == null:
 		out["error"] = "that is not an LDraw file"
 		return out
-	# The parts it carries join the library first, as an open's do.
+	# The parts it carries join the library first, as an open's do; but one
+	# the library has already is drawn as the model open draws it, never by
+	# the file put into it (as a paste: Carry.from_ldraw).
 	var took: Array = []
 	if job != null:
 		if CustomParts.carries_any(model):
 			await CustomParts.readers_done(library)
-		await CustomParts.take_into(took, library, model, job)
+		await CustomParts.take_into(took, library, model, job, false)
 	else:
-		CustomParts.take_into(took, library, model, null)
+		CustomParts.take_into(took, library, model, null, false)
 	var flattened: Array = model.flatten(library.parts)
 	var authored: bool = model.steps_are_authored()
 	_as_placed(flattened, library, authored)

@@ -126,7 +126,7 @@ func _case(what: String, path: String) -> void:
 	# Copied with a part of the file's, and pasted where the part was never made.
 	var ids: Array = [id] if other == 0 or other == id else [id, other]
 	var held: Array = Carry.gather(_world, _library, ids)
-	var copied: String = Carry.as_ldraw(held, _library)
+	var copied: String = Carry.as_file(held, _library)
 	CustomParts.dir = PROBE_DIR + "elsewhere-%s-copy/" % tag
 	var fresh := PartLibrary.new()
 	fresh.load_catalogue()

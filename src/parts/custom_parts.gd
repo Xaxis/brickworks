@@ -581,8 +581,13 @@ static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 ## (it is then a coroutine), the parts it builds are waited for a frame at a
 ## time and added a slice at a time: 10179-1's seven bent parts, built and
 ## added in the frame that opened it, were 0.3 s of a desktop's.
+##
+## With [param redefine] false (a paste, a kept sub-assembly, a file put into
+## the model open), a part the library has already is drawn as it is: text
+## coming into an open model never draws its parts otherwise ([method
+## _to_build]).
 static func take_into(out: Array, library: PartLibrary, model: LdrModel,
-		pace: Working.Job) -> void:
+		pace: Working.Job, redefine: bool = true) -> void:
 	var added: PackedStringArray = PackedStringArray()
 	var problems: PackedStringArray = PackedStringArray()
 	# The carried parts that could not be built, by id: why, for the open to
@@ -598,7 +603,7 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 	# LDCad's skins first, each on a thread of its own: built while the parts
 	# the file carries are built here, and in the model before it opens.
 	var skins_begun: Array = begin_skins(library, model, problems)
-	wanted = _to_build(library, model)
+	wanted = _to_build(library, model, redefine)
 	var texts: Dictionary = {}
 	for file_name: String in wanted:
 		texts[file_name] = model.embedded_parts[file_name]
@@ -654,7 +659,10 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 
 ## The parts [param model] carries that [method take_from] builds, by file
 ## name: not one of the library's own, and not one built already as it is.
-static func _to_build(library: PartLibrary, model: LdrModel) -> PackedStringArray:
+## Nor, with [param redefine] false, one the library has at all; nor ever a
+## part made here that this person keeps ([method _kept_as_built]).
+static func _to_build(library: PartLibrary, model: LdrModel,
+		redefine: bool = true) -> PackedStringArray:
 	var wanted := PackedStringArray()
 	for file_name: String in model.embedded_parts:
 		var id: String = file_name.get_basename()
@@ -664,6 +672,8 @@ static func _to_build(library: PartLibrary, model: LdrModel) -> PackedStringArra
 			continue
 		if info != null and library.custom_source(id) == text:
 			continue
+		if info != null and (not redefine or _kept_as_built(library, id)):
+			continue
 		# A part Studio drew itself that LDraw has since drawn (bl_5095 is
 		# 5095): the library's, as ModelStore.studio_part reads the name.
 		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
@@ -671,6 +681,23 @@ static func _to_build(library: PartLibrary, model: LdrModel) -> PackedStringArra
 			continue
 		wanted.append(file_name)
 	return wanted
+
+
+## Whether [param id] is a part made here ("bw-", the space no LDraw number is
+## in) that this person keeps in [member dir], built as kept. Its name is a
+## token made from what it is (its shape and connectors, MeshPart.id_for; a
+## mould's sculpting; a print's picture; an element's size), so a file
+## carrying other text under it has a damaged or edited copy: the person's
+## own is drawn, and a model saved here carries the person's own (SourceFile
+## .parts_carried_into). Up to moulds3 the file's text was built over it, and
+## the person's bin and every model they saved that session had the other
+## text (mouldreview, mouldreview2: a copy cut short at 40% drew 2,683 of the
+## goblet's 6,484 triangles).
+static func _kept_as_built(library: PartLibrary, id: String) -> bool:
+	if not id.begins_with("bw-") or not own_name(id + ".dat") \
+			or not FileAccess.file_exists(dir + id + ".dat"):
+		return false
+	return FileAccess.get_file_as_string(dir + id + ".dat") == library.custom_source(id)
 
 
 # -- The library's own files, fetched -----------------------------------------

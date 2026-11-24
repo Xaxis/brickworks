@@ -266,16 +266,81 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 ## gone without a word (mouldreview). A file of no FILE line is put in one
 ## first ([method _as_sections]), or the first part carried would be read as
 ## its model.
+##
+## And a part's section the file has with text other than [param files]' (a
+## section cut short, or empty, or another's copy, for a part this window
+## draws from a whole copy it keeps: CustomParts._kept_as_built, or one a
+## paste could not draw otherwise) is written with the text the model shows:
+## a model saved here carries what it draws. It was kept as it was, and on
+## any other computer the part was not built (mouldreview2 finding 5). A
+## section the model was drawn from is its text already, and is not touched.
 func parts_carried_into(text: String, files: Dictionary) -> String:
 	if files.is_empty():
 		return text
 	var have: Dictionary = {}
 	var sectioned: bool = false
-	for raw: String in text.split("\n"):
-		var word: String = LdrModel.section_word(raw)
+	var lines: PackedStringArray = text.split("\n")
+	# Each FILE section's first and last body lines, by its name's key: the
+	# first of a name only (a later one of a name is read as nothing).
+	var spans: Dictionary = {}
+	var seen: Dictionary = {}
+	var open_key: String = ""
+	for n: int in lines.size():
+		var word: String = LdrModel.section_word(lines[n])
+		if word.is_empty():
+			continue
+		if not open_key.is_empty():
+			(spans[open_key] as Array).append(n)
+			open_key = ""
 		if word == "FILE" or word == "!DATA":
-			have[LdrModel._key(" ".join(LdrModel._fields(raw.strip_edges()).slice(2)))] = true
+			var key: String = LdrModel._key(" ".join(LdrModel._fields(lines[n].strip_edges()).slice(2)))
+			if word == "FILE" and not seen.has(key):
+				seen[key] = true
+				spans[key] = [n + 1]
+				open_key = key
+				# And by its name without a folder, as a reader finds a part
+				# ("parts/x.dat" is x: LdrModel._by_bare_name), unless a
+				# section of that name is the file's own.
+				if key.get_file() != key and not seen.has(key.get_file()):
+					spans[key.get_file()] = spans[key]
+			have[key] = true
+			have[key.get_file()] = true
 			sectioned = sectioned or word == "FILE"
+	if not open_key.is_empty():
+		(spans[open_key] as Array).append(lines.size())
+	var mended: bool = false
+	var eol_now: String = "\r" if text.get_slice("\n", 0).ends_with("\r") else ""
+	# From the last section to the first, so the lines of those before stay put.
+	var mends: Array = []
+	var mending: Dictionary = {}
+	for name: Variant in files:
+		var key: String = LdrModel._key(str(name))
+		if not spans.has(key) or not files[name] is String:
+			continue
+		var span: Array = spans[key]
+		if span.size() < 2 or mending.has(int(span[0])):
+			continue
+		var body: String = "\n".join(lines.slice(int(span[0]), int(span[1])))
+		if _as_read(body) != _as_read(str(files[name])):
+			mending[int(span[0])] = true
+			mends.append([int(span[0]), int(span[1]), str(files[name])])
+	mends.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) > int(b[0]))
+	var ended: bool = text.ends_with("\n")
+	for mend: Array in mends:
+		var given: PackedStringArray = str(mend[2]).replace("\r", "").strip_edges().split("\n")
+		if not eol_now.is_empty():
+			for n: int in given.size():
+				given[n] += eol_now
+		var rebuilt := PackedStringArray()
+		rebuilt.append_array(lines.slice(0, int(mend[0])))
+		rebuilt.append_array(given)
+		rebuilt.append_array(lines.slice(int(mend[1])))
+		lines = rebuilt
+		mended = true
+	if mended:
+		text = "\n".join(lines)
+		if ended and not text.ends_with("\n"):
+			text += eol_now + "\n"
 	var names: Array = files.keys().filter(func(name: Variant) -> bool:
 		return not have.has(LdrModel._key(str(name))))
 	if names.is_empty():
@@ -289,6 +354,17 @@ func parts_carried_into(text: String, files: Dictionary) -> String:
 	if not out.ends_with("\n"):
 		out += eol + "\n"
 	return out + (added.replace("\n", "\r\n") if not eol.is_empty() else added)
+
+
+## A part's text as a reader takes it, to tell two apart: each line's own
+## words, the blank lines and the line ends left out.
+static func _as_read(text: String) -> String:
+	var out := PackedStringArray()
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if not line.is_empty():
+			out.append(line)
+	return "\n".join(out)
 
 
 ## Of [param parts], what the app cannot show and what is on its way (as

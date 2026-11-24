@@ -803,12 +803,24 @@ func _build_ghost() -> void:
 # -- the clipboard as LDraw -------------------------------------------------
 
 
-## The held parts as LDraw lines, which any LDraw tool pastes: LDCad,
-## LeoCAD, a text file. Written where they were in the model, so a paste
-## into another tool puts them where they came from.
-static func as_ldraw(parts: Array, library: PartLibrary = null) -> String:
+## The held parts as LDraw lines, one "1" line each and nothing else: what
+## the bin and a session keep as a sub-assembly, and what they and the edit
+## tools read back. Written where they were in the model, so a paste into
+## another tool puts them where they came from.
+##
+## A part made here is never more than its line in them. Its own text (its
+## triangles: half a megabyte for a part from a 3D file) is a table of its
+## own beside them ([method made_text]), put into a file's text by one
+## writer only, LdrModel.carried_text, where the text leaves for a file or
+## another program ([method as_file]), and lifted out by one reader only,
+## LdrModel.parse with CustomParts.take_into, where text comes in. moulds2
+## put the parts' text after these lines, and every reader of them read the
+## triangles' own "1" lines as parts: a session's palette tool waited on
+## "stud" and "stud4" and put down 0 of 3, and a kept sub-assembly of eight
+## made parts passed the paste reader's cap and was never put down again
+## (mouldreview2).
+static func as_ldraw(parts: Array) -> String:
 	var lines := PackedStringArray()
-	var used: Dictionary = {}
 	for item: Dictionary in parts:
 		var pivot: Vector3 = item.get("pivot", Vector3.ZERO)
 		var at: Transform3D = item["at"]
@@ -817,31 +829,101 @@ static func as_ldraw(parts: Array, library: PartLibrary = null) -> String:
 			("0x%07X" % colour) if LdrModel.is_direct_colour(colour) else str(colour),
 			LdrModel._line_numbers(Transform3D(at.basis, at.origin + pivot)),
 			str(item["part"])])
+	return "\n".join(lines) + "\n"
+
+
+## The table of the parts made here (or carried in by a file) that [param
+## parts] place, as the FILE and !DATA sections a model's file carries them
+## in (LdrModel.carried_text of CustomParts.sources_for): "" when they place
+## none. Kept beside a sub-assembly's lines, never in them.
+static func made_text(parts: Array, library: PartLibrary) -> String:
+	if library == null:
+		return ""
+	var used: Dictionary = {}
+	for item: Dictionary in parts:
 		used[str(item["part"])] = true
-	var text: String = "\n".join(lines) + "\n"
-	# With a [param library], the parts made here go with them, as a model's
-	# file carries them: pasted into LDCad, another tab or another computer,
-	# or kept as a sub-assembly, a part made here was a line naming nothing
-	# there (mouldreview). The parts' lines in a section of their own first,
-	# which a reader takes as the model.
-	var files: Dictionary = CustomParts.sources_for(library, used.keys()) if library != null else {}
-	if files.is_empty():
+	var files: Dictionary = CustomParts.sources_for(library, used.keys())
+	return LdrModel.carried_text(files) if not files.is_empty() else ""
+
+
+## The held parts as a file another program or window reads (the system
+## clipboard): their lines, and the parts made here they place carried after
+## them as a model's file carries them, so a paste into LDCad, another
+## window or another computer has them. The lines first, in a section of
+## their own, which every reader takes as the model.
+static func as_file(parts: Array, library: PartLibrary) -> String:
+	var text: String = as_ldraw(parts)
+	var made: String = made_text(parts, library)
+	if made.is_empty():
 		return text
-	return "0 FILE copied.ldr\n" + text + "0 NOFILE\n" + LdrModel.carried_text(files)
+	return "0 FILE copied.ldr\n" + text + "0 NOFILE\n" + made
 
 
-## Parts read back from LDraw text, if it is any: what another tool put on
-## the clipboard. Empty when the text holds no part lines this library has.
+## The most characters the lines a paste or a sub-assembly places may run to:
+## about fifty thousand parts. Text that places more is not read (a page of
+## anything copied by mistake). What a file carries for its parts after them
+## does not count: eight made parts are four million characters of their own
+## (mouldreview2).
+const MOST_PLACING := 4_000_000
+## The most a paste's whole text may be, its carried parts with it: as much as
+## a 3D file brought in (MeshFile.MAX_BYTES).
+const MOST_PASTED := 96 * 1024 * 1024
+
+
+## How long the part of [param text] that places parts is: up to the end of its
+## first FILE section where it is in sections, else all of it.
+static func placing_length(text: String) -> int:
+	var first: int = 0
+	while first < text.length() and text[first] in " \t\r\n":
+		first += 1
+	if not text.substr(first, 7).to_upper().begins_with("0 FILE"):
+		return text.length()
+	for mark: String in ["\n0 FILE ", "\n0 NOFILE", "\n0 !DATA "]:
+		var at: int = text.findn(mark, first + 1)
+		if at >= 0:
+			return at
+	return text.length()
+
+
+## A kept sub-assembly's made parts ([method made_text], kept beside its
+## lines), taken into [param library] before its lines are read: those the
+## library has not got are built, and one it has is never drawn otherwise by
+## them (CustomParts.take_into's [param redefine]). The ids added.
+static func take_made(made: String, library: PartLibrary) -> PackedStringArray:
+	if made.strip_edges().is_empty() or library == null:
+		return PackedStringArray()
+	var model: LdrModel = LdrModel.parse("0 FILE made.ldr\n0 NOFILE\n" + made, "made")
+	if model == null or model.embedded_parts.is_empty():
+		return PackedStringArray()
+	var out: Array = []
+	CustomParts.take_into(out, library, model, null, false)
+	return PackedStringArray(out[0]["added"])
+
+
+## A kept sub-assembly's parts (a PartShelf entry): its made parts taken
+## first ([method take_made]), then its lines read ([method from_ldraw]).
+static func from_kept(entry: Dictionary, library: PartLibrary) -> Array:
+	take_made(str(entry.get("made", "")), library)
+	return from_ldraw(str(entry.get("ldraw", "")), library)
+
+
+## Parts read back from LDraw text, if it is any: what another tool or window
+## put on the clipboard, or a kept sub-assembly's lines. Empty when the text
+## holds no part lines this library has. The parts it carries (a copy from a
+## window that made them: [method as_file]) are lifted out and taken into the
+## library as an open of a model file takes them, except that a part the
+## library has is never drawn otherwise by a paste: what is open here is
+## drawn as it was (mouldreview2: a pasted copy of my part by another's text
+## replaced mine in the window).
 static func from_ldraw(text: String, from: PartLibrary) -> Array:
-	if not text.contains("1 ") or text.length() > 4_000_000:
+	if not text.contains("1 ") or text.length() > MOST_PASTED \
+			or placing_length(text) > MOST_PLACING:
 		return []
 	var model: LdrModel = LdrModel.parse(text, "clipboard")
 	if model == null:
 		return []
-	# The parts it carries, made elsewhere ([method as_ldraw]), taken into the
-	# library as an open of a model file takes them.
 	if not model.embedded_parts.is_empty():
-		CustomParts.take_from(from, model)
+		CustomParts.take_into([], from, model, null, false)
 	var placed: Array = []
 	for placement: LdrModel.Placement in model.flatten(from.parts):
 		if from.parts.has(placement.part_id):

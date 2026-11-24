@@ -66,7 +66,8 @@ const UNITS: Dictionary = {"LDU": 1.0, "mm": LDU_PER_MM, "studs": STUD}
 ## The longest a part may be, mm: past every one of LEGO's own (a 48 x 48
 ## baseplate is 384 mm), and refused in a sentence before anything is made
 ## ([method size_problem]). A part's cost to build is bounded whatever its
-## size (PartForge.MOST_CELLS); this is the size a part is.
+## size (PartForge.MADE_DENSE_MOST: past it its cover follows its surface);
+## this is the size a part is.
 const MOST_MM := 400.0
 ## The sizes a file's own units are read as millimetres without asking:
 ## from about the smallest of LEGO's elements to the longest a part may be.
