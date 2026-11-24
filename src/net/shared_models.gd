@@ -84,6 +84,12 @@ func fetch(id: String, version: int = 0) -> Dictionary:
 func _asked_early(id: String, version: int = 0) -> Dictionary:
 	if not OS.has_feature("web"):
 		return {}
+	# Read already, as the app was made (early_model): taken now, once.
+	if not _early_read.is_empty():
+		var read: Dictionary = _early_read
+		if str(read["id"]) == id and int(read["version"]) == version:
+			_early_read = {}
+			return {"code": read["code"], "body": read["body"]}
 	var asked: String = "(function(){var p=window.brickworksSharePrefetch;" \
 		+ "return p && p.id===%s && (p.version||0)===%d ? (p.done ? 2 : 1) : 0})()" % [
 			JSON.stringify(id), version]
@@ -100,6 +106,55 @@ func _asked_early(id: String, version: int = 0) -> Dictionary:
 		return {}
 	var json := JSON.new()
 	return {"code": status, "body": json.data if json.parse(text) == OK else null}
+
+
+## The page's answer for a link, read once by [method early_model] and kept
+## for the open's [method fetch] to take: {id, version, code, body}, or {}.
+static var _early_read: Dictionary = {}
+
+
+## [param id]'s model text (at [param version], 0 the newest) as the page
+## fetched it while the engine started (src/boot/shell.html,
+## window.brickworksSharePrefetch), if that answer has come and is the model:
+## "" otherwise. Read now and kept for the open, which takes it as its fetch
+## (the answer is read once): Main asks for the model's parts from it as soon
+## as the catalogue is read, before the studio is made. Asked once the model
+## was opened in the viewer, after the studio's first frames drawn in
+## software, the 38 parts of a 227-part model came 4.7 s after it was
+## opened, 8.3 s after the studio was up (setopen, 2026-11-23).
+static func early_model(id: String, version: int = 0) -> String:
+	if not OS.has_feature("web") or not is_id(id):
+		return ""
+	if _early_read.is_empty():
+		var done: Variant = JavaScriptBridge.eval(("(function(){var p=window.brickworksSharePrefetch;"
+			+ "return p && p.id===%s && (p.version||0)===%d && p.done && p.status===200 ? 1 : 0})()")
+			% [JSON.stringify(id), version], true)
+		if done == null or int(done) != 1:
+			return ""
+		var text: Variant = JavaScriptBridge.eval("window.brickworksSharePrefetch.text", true)
+		JavaScriptBridge.eval("window.brickworksSharePrefetch = null", true)
+		var json := JSON.new()
+		if not text is String or json.parse(text) != OK:
+			return ""
+		_early_read = {"id": id, "version": version, "code": 200, "body": json.data}
+	var read: Dictionary = _early_read
+	if str(read["id"]) != id or int(read["version"]) != version or not read["body"] is Dictionary:
+		return ""
+	return str((read["body"] as Dictionary).get("model", ""))
+
+
+## Whether the page asked for [param id]'s answer (at [param version]) as it
+## loaded and it has not come yet. Its reply is taken in on the page's
+## thread, which the engine's start holds for seconds in one go: one that
+## came over the network meanwhile is not here until the app lets a frame
+## go (diag_v2: asked at 0.2 s, still not here at "ui", 10.8 s).
+static func early_coming(id: String, version: int = 0) -> bool:
+	if not OS.has_feature("web") or not is_id(id) or not _early_read.is_empty():
+		return false
+	var coming: Variant = JavaScriptBridge.eval(("(function(){var p=window.brickworksSharePrefetch;"
+		+ "return p && p.id===%s && (p.version||0)===%d && !p.done ? 1 : 0})()")
+		% [JSON.stringify(id), version], true)
+	return coming != null and int(coming) == 1
 
 
 func publish(token: String, body: Dictionary) -> Dictionary:

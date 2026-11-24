@@ -3208,6 +3208,18 @@ func superseded_ids() -> Dictionary:
 	return old
 
 
+## Whether the index [method current] reads is made, asked without waiting:
+## a worker making it (prepare_search's _offered_ids) holds its lock all the
+## while, and the page's thread spins on a lock. Made by a caller on that
+## thread, it held the app's start 1.4 s (viewopen, 2026-11-24).
+func current_here() -> bool:
+	if not _current_lock.try_lock():
+		return false
+	var here: bool = not _current_of.is_empty()
+	_current_lock.unlock()
+	return here
+
+
 ## Whether LDraw keeps [param info] only for old files: an alias, an
 ## obsolete mould, a "~" part (which LDraw files as not to be used alone).
 static func is_stale(info: PartInfo) -> bool:

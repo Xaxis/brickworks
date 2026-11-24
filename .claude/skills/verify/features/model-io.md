@@ -733,14 +733,42 @@ Whether what you built is still there tomorrow, and still means the same thing.
 - `reload a model saved elsewhere`: when another tab or window saves the model
   this one has open, this one is told and asked (`ReloadOffer`, a strip over the
   model like the seat offer: **Reload it** or **Keep mine**), never saved over
-  in silence. `ModelStore.saved_elsewhere` compares the file of the model's name
-  with what this tab last read or wrote of it (`know`: on open, on every save,
-  and when the name changes), by time and then by its brick lines, so a save of
+  in silence. `ModelStore.saved_elsewhere` compares the saved model this one is
+  (`_known_path`: the file it was opened from or saved to, never one it only
+  shares a name with) with what this tab last read or wrote of it (`know`: on
+  open, on every save), by time and then by its brick lines, so a save of
   the same bricks asks nothing; Main asks once a second
   (`_watch_other_tabs`). Saving over a file changed elsewhere since is refused
   with the reason in the bar (`refused`, `saved_by_another`), and the offer
   comes up; Keep mine takes the other's save as seen, and saving then replaces
   it, as the person chose.
+- `Save writes only into its own file` (viewfix, 2026-11-24, viewreview F1):
+  Save writes unasked only into the saved model the working model is: the one
+  it was opened from or last saved to (`ModelStore._known_path`,
+  `is_own_file`), kept across a reload beside the tab's autosave
+  (`sessions/<tab>/autosave_file.json`, `ModelStore.OWN_FILE`: the name it
+  was written under and the file; an autosave from before it is taken as its
+  name's file, as before). Over any other saved model, Save asks ("“X” is a
+  saved model already, and this is not it…", `ModelBar.ask_name_taken`, the
+  field offering a free name, control `save_name_replace` for **Replace
+  it**); Cancel saves nothing and says so. Before, the working model was its
+  name's file: a link's copy saved as "Train (copy)" behind the sign-in
+  screen came back from a reload as "Train" and Ctrl+S wrote its 30 parts
+  over the person's own 12. Every path that names a working model takes
+  this: a link's copy, a set's version and Make your own version, an
+  example, an import, a file from the computer, New and Clear (no saved
+  model), a name typed in the field, the assistant (`AppTools._save_first`,
+  `command_socket` save_model), a rename elsewhere (`Main._called_now` only
+  for its own file), undo of Clear and of an open (`identity`, `reopen`),
+  and a version opened (`open_version`, its model's file). A save that
+  changes the name marks the autosave due at once (`_autosave_follows`).
+  The desktop's Save as to a file whose name a saved model here has asks
+  too, and with another name given the file chosen is still written, as it
+  is named (`ModelBar.save_to_file`; subexport's se4check 5). Probes that
+  save one name from many files answer the ask (mlattack, metalines,
+  into_kept with `save_as(name, true)`).
+  `src/dev/own_file_probe.gd`; the reviewer's `collide2`, `collide2_all`
+  (bench/results/viewfix-2026-11-24/f1).
 - `open over unsaved work` (2026-10-23, walk180 D6 and A11): every way a
   person opens a model in place of one with changes not saved asks first, as
   New does (`ModelBar.ask_to_replace`): "Save changes to “X”?" with **Save**
@@ -869,20 +897,69 @@ Whether what you built is still there tomorrow, and still means the same thing.
   there when the studio comes up (`ModelLibrary.early_here`), Main opens the
   set in the studio's first frame, so that frame draws it and compiles the
   bricks' shaders with the studio's own. The geometry of its parts this
-  build does not carry is asked for as the studio is made, from where the
-  page heard parts live (`Main._ask_early_set`,
-  `ModelLibrary.early_text`/`early_parts_url`), and read before anything
-  read ahead, in a queue of its own, and kept first (`PartLibrary.want`,
-  `_waited_on_parts`, `_to_read_first`). The open waits for it, 2 s at most,
-  with nothing drawn, under the page's loading screen, which stays up for a
-  set and says how many of its parts have come (`Main._await_early_set`,
+  build does not carry is asked for as soon as the catalogue is read, before
+  the studio is made and its parts bin asks for its own (again once it is
+  made if the page's fetch had not come), from where the page heard parts
+  live (`Main._ask_early_model`, `ModelStore.ask_geometry_in`,
+  `ModelLibrary.early_text`/`early_parts_url`; asked as the studio was made,
+  the bin's read-ahead held the connection and 0 of 346-2's 27 came in the
+  2 s at a load of 130, its green baseplate, fence and tree drawn 5 s after
+  the studio, the grid floor grey where the baseplate goes: viewopen), and
+  read before anything read ahead, in a queue of its own, and kept first
+  (`PartLibrary.want`, `_waited_on_parts`, `_to_read_first`). The open waits
+  for it, 2 s at most, with nothing drawn, under the page's loading screen,
+  which stays up for a model the address opens and says how many of its
+  parts have come (`Main._await_early_model`,
   `window.brickworksBootParts`), each read on the page's idle thread as its
   bytes come (`PartLibrary.read_first_here`: left to the workers, none of
   346-2's 12 came in the 2 s), and comes down once the studio is drawn
-  with the set on it (boot mark `shown`, shell.html's `whenUp`): every part
+  with the model whole on it (`Main._show_whole`: every batch written at
+  once, `BrickWorld.flush_now`, not a slice a frame, and the view framed
+  before that frame; boot mark `shown`, shell.html's `whenUp`): every part
   down in that frame, and the studio never seen still. Waited for with the
   studio showing, it was a frozen studio; not waited for, the last parts came
-  3 to 4 s later. The boot mark `set geometry: N of M, R read here` says how it went.
+  3 to 4 s later. The boot mark `model geometry: N of M, R read here` says how it went.
+  A shared model's link takes the same path (viewopen): Open in the
+  studio (`/app?copy=`), Build it and the viewer (`/app?view=`, `&build`,
+  `&v=`), the page's own fetch of the link's answer
+  (`window.brickworksSharePrefetch`) read once as the app is made
+  (`SharedModels.early_model`, kept for the open's `fetch`), its parts asked
+  for then and waited for under the screen ("Fetching the model's parts: N
+  of M", "Opening the model…"), the viewer's open (`Main._view_shared`) or
+  the copy's (`_open_asked`, after the tab's own autosave is back) drawn
+  whole before the screen lifts. The page takes that answer in on its own
+  thread, which the engine's start holds for seconds in one go, so one that
+  came meanwhile is not seen when the studio is made: the app lets cheap
+  frames go under the screen ("Fetching the model…", the tree paused and
+  nothing drawn, `Main._await_early_link`, `SharedModels.early_coming`,
+  `window.brickworksBootFetching`, 3 s at most, boot mark `link`) until it
+  is in; without that wait `?view=` showed the empty studio in every round
+  (diag_v2). Without the link's answer by then (a slow or failed fetch, a
+  link with no model) it goes as before: the screen lifts on the studio's
+  first frame and the viewer says what it is waiting for. A link and parts
+  still not in `Main.SHOWN_WHOLE_BY_MS` (2 s) after the `ui` mark (a copy's
+  link not come at all in its wait too), or an open that ends past it, lift
+  the screen on the studio first (`Main._lift_if_late`, boot mark `lifted
+  late`) and the model is drawn as it opens, its parts still coming: the screen's
+  6 s bound (`SET_SHOWN_MOST`) cannot lift it while the open holds the
+  page's thread, and a copy stayed under it 14.3 s after `ui` (viewreview
+  F3). The screen lifts
+  in the frame that drew the model (`Main._mark_shown` calls
+  `window.brickworksBootShown`), not at whenUp's next look, which waited out
+  the app's next frame too: 1.0 s at a load of 74. Laid whole before the
+  store listens, the copy is written to the tab's autosave all the same
+  (`Main._asked_opened_now`, a `touch` after `listen`): nothing it heard
+  changed it, the autosave was never written, `ModelStore.written` and
+  `stored` held for a file never written, the address let go of `?copy=`,
+  and a reload then opened the example car (viewopen's `copyreloadkept`
+  case: reload the moment the address lets go). A model of more than
+  `Main.SHOWN_WHOLE_MOST` (1,000) parts is not written in one frame: it
+  goes on a slice a frame as before, the screen lifting on the first. The
+  early ask names parts by their own numbers until the index of parts LDraw
+  makes now is made by the bin's search on a worker
+  (`PartLibrary.current_here`, `Main._ask_early_current`), then asks again
+  by the names the open lays: made on the page's thread it held the start
+  1.4 s.
   Then the screen says "Opening the set…" and is drawn so, a frame before
   the open and the studio's first frame, which hold the page's thread in one
   go (`window.brickworksBootOpening`): the count said there was "0 of 12"
@@ -1850,6 +1927,7 @@ Runtime:
 # takes it back (the "seating an old model" section)
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 godot --headless --path . --script src/dev/store_probe.gd    # survives save and reopen
+godot --headless --path . --script src/dev/own_file_probe.gd # Save goes only into its own file, or asks
 #   also: the build order is written as 0 STEP (a 1 x 1 plate in a step before
 #   the 3 x 3 that hides it), and the autosave skips it
 godot --headless --path . --script src/dev/keeping_probe.gd  # keeps what it was given

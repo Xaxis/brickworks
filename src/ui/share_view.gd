@@ -783,6 +783,12 @@ func arriving(left: int) -> void:
 	_say("Fetching its parts…", "%d still on their way." % left)
 
 
+## The model is on the screen whole with every part here: no card says it
+## is still being opened over it. The buttons wait for [method ready_to_look].
+func drawn() -> void:
+	_card.visible = false
+
+
 ## The model is open: its name and the rest along the top, and what it
 ## was remixed from if it was ([param from]: {id, name, url}).
 func show_model(shown_name: String, shown_author: String, part_count: int, at: String,

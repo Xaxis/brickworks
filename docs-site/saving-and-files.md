@@ -20,6 +20,8 @@ Every model you save is kept in this browser and with your account, so it opens 
 
 **File › Save as…** ([[Ctrl+Shift+S]]) saves a copy under a new name, and you go on working in the copy.
 
+Save writes without asking only into the saved model you opened or last saved this one as, and a reload of the page keeps which one that is. If the model on the baseplate has the name of another of your saved models (a shared model you opened, a set's version, a file from your computer, or a name you typed), Save asks first: save it under the free name it offers, or **Replace it**.
+
 <!-- covers
 ui:name asked at the first save
 lib:save and reopen

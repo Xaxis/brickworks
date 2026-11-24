@@ -1211,6 +1211,17 @@ func is_being_laid() -> bool:
 	return _drawing_held > 0 or laying
 
 
+## Every batch changed so far written now, in one go, however long it takes:
+## for the frame a model is first shown in under the page's own loading
+## screen (Main._show_whole), which nobody waits on drawn a slice at a time.
+## Left to [member rebuilds_in_slices], the batches past the first slice
+## waited for frames of their own, each 1 to 3 s in a browser drawing in
+## software, and the model filled in on the screen.
+func flush_now() -> void:
+	if not _dirty.is_empty():
+		_flush()
+
+
 func _flush() -> void:
 	_rebuild_queued = false
 	if _drawing_held > 0:

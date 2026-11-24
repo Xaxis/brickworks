@@ -17745,3 +17745,23 @@ msgstr "%s, c'est plus qu'un sous-ensemble ne peut garder : gardez-en une partie
 
 msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
 msgstr "le presse-papiers place plus de pièces qu'on ne peut en coller d'un coup : copiez-en moins"
+msgid "“%s” is a saved model already, and this is not it. Save this one under a name of its own, or replace that model with it."
+msgstr "« %s » est déjà un modèle enregistré, et ce n'est pas celui-ci. Enregistrez celui-ci sous un nom à lui, ou remplacez ce modèle par celui-ci."
+
+msgid "Replace it"
+msgstr "Le remplacer"
+
+msgid "“%s” is a saved model already, and this is not it: not saved"
+msgstr "« %s » est déjà un modèle enregistré, et ce n'est pas celui-ci : non enregistré"
+
+msgid "not saved: “%s” is a saved model already"
+msgstr "non enregistré : « %s » est déjà un modèle enregistré"
+
+msgid "could not copy “%s”"
+msgstr "« %s » n'a pas pu être copié"
+
+msgid "“%s” could not be copied: %s. It is kept as it was shared, as “%s” in File › Open, for a later version of Brickworks to open; nothing else was saved."
+msgstr "« %1$s » n'a pas pu être copié : %2$s. Il est conservé tel qu'il a été partagé, sous « %3$s » dans Fichier › Ouvrir, pour qu'une version ultérieure de Brickworks l'ouvre ; rien d'autre n'a été enregistré."
+
+msgid "“%s” could not be copied: %s. Nothing was saved."
+msgstr "« %1$s » n'a pas pu être copié : %2$s. Rien n'a été enregistré."

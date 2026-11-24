@@ -649,7 +649,10 @@ func _open_path(path: String) -> void:
 ## Saved under [param name] and opened again from it: the file's text.
 func _save_reopen(name: String) -> String:
 	await _frames(4)
-	_check("saved as %s" % name, _store.save_as(name))
+	# Cases with one host save under one name: an earlier case's save is
+	# another model, so Save asks before it writes over it (viewfix); the
+	# probe replaces it, as it wrote over it unasked before.
+	_check("saved as %s" % name, _store.save_as(name, true))
 	var text: String = _file(ModelStore.saved_path(name))
 	await _open_path(ModelStore.saved_path(name))
 	return text
