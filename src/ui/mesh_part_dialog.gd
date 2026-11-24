@@ -646,10 +646,14 @@ func _make() -> void:
 		return
 	_busy = true
 	_enable(false)
+	# Another file chosen while this one is made would be what the made
+	# part was said to be (its hair or not).
+	_choose.disabled = true
 	_status.text = "Making the part…"
 	var result: Dictionary = await part.make_built(library, _name.text)
 	_busy = false
 	_enable(true)
+	_choose.disabled = false
 	if not str(result["problem"]).is_empty():
 		_status.text = "It could not be made: %s." % result["problem"]
 		return
