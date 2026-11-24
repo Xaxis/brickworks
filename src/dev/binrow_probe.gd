@@ -161,6 +161,10 @@ func _way_in() -> bool:
 	_check("signed in as a throwaway account, and the screen goes: %s" % (problem
 		if not problem.is_empty() else _email), problem.is_empty() and account.signed_in()
 		and gate != null and not gate.visible)
+	# Nothing saved, laid out for a finger: the studio's first screen over the
+	# car, as a real first visit has it, put away by its ✕ before the parts
+	# sheet is opened; left up, it covered the sheet (binrow_phone, m338reds).
+	await SignInHelper.put_away_first_screen(_main)
 	return account.signed_in()
 
 

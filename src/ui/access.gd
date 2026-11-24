@@ -46,14 +46,27 @@ static func _reach_all(node: Node) -> void:
 
 
 func _on_added(node: Node) -> void:
-	if node is FileDialog:
-		_name_dialog.call_deferred(node)
-	elif node is BaseButton:
-		_within_reach.call_deferred(node)
-	if node is Control and _named_kind(node):
+	var named: bool = node is Control and _named_kind(node)
+	if node is FileDialog or node is BaseButton or named:
 		# After whoever made it has set it up: its tooltip and its label are
 		# set once it was added, in the same call.
-		name_from_words.call_deferred(node)
+		_set_up_later.call_deferred(node, named)
+
+
+## Untyped until checked, as TouchSizing._size_later: a node freed before
+## its call came (a list filled afresh twice in a frame, its first rows
+## freed at once) was put in a BaseButton and a Control on the way in, and
+## the engine said "Cannot convert argument 1 from Object to Object" for
+## each, twice, before is_instance_valid could look (fingertools' dialogs).
+static func _set_up_later(held: Variant, named: bool) -> void:
+	if not is_instance_valid(held):
+		return
+	if held is FileDialog:
+		_name_dialog(held)
+	elif held is BaseButton:
+		_within_reach(held)
+	if named:
+		name_from_words(held)
 
 
 ## After whoever made it has set it up: a focus set once it was added counts.

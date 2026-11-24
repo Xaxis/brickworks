@@ -4,6 +4,8 @@
 ## .fits_here), the studio's first screen comes up over the example car,
 ## welcoming: its title says so, Continue is empty, and New model is its one
 ## strong button; one press of it starts an empty baseplate, nothing asked.
+## Up again, a model opened behind it (File, Open, a file dropped, a
+## session's open_model) puts it away.
 ## A phone's first visit had had the car and nothing else, New three taps
 ## away in More, File. In a desktop's window, the car with no first screen,
 ## as before: Build your first model offers its steps there.
@@ -16,6 +18,9 @@
 ## hold no saved model (tools/probe.sh gives each run its own).
 ## One PASS or FAIL line per check; it exits 1 on any FAIL.
 extends "res://src/dev/studio_start_probe.gd"
+
+## A small model opened while the first screen is up.
+const OPENED := "res://src/dev/fixtures/orrery_two_planets.ldr"
 
 
 func _run() -> void:
@@ -106,4 +111,23 @@ func _run() -> void:
 		and store.title == ModelStore.UNTITLED,
 		"...one press of New model: the screen gone (%s), an empty baseplate (%d parts), nothing asked (%s)"
 		% ["gone" if not start.visible else "still up", world.brick_count() - store.scenery.size(), asked])
+	# Up again, and a model opened behind it as File, Open, a file dropped
+	# or a session's open_model opens one (the open, then the bar's opened):
+	# what the person came to, so the screen goes. It stayed over the model,
+	# still saying the example car was behind it (m338reds).
+	start.call("open", [], false, true)
+	await _settle()
+	var bar: ModelBar = _main.get("_bar")
+	var placed: int = await bar.open_with_progress(ProjectSettings.globalize_path(OPENED))
+	if placed >= 0:
+		bar.opened.emit(placed)
+	for _n: int in 60:
+		await process_frame
+		if not start.visible:
+			break
+	await _settle()
+	await _picture("firststart_%s_opened.png" % size)
+	_check(placed > 0 and not start.visible,
+		"...up again, a model opened behind it (%d parts): the screen goes (%s)"
+		% [placed, "gone" if not start.visible else "still up"])
 	_finish()

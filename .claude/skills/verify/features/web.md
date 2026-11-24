@@ -9911,9 +9911,18 @@ PROBE_SIZE=1280x800 tools/probe.sh firststart_probe -- --pictures=shots/firststa
 It passes when it ends "the studio's first screen: every check passed": at
 390 the car opened, no room for Build your first model, the screen up and
 welcoming with nothing to continue, New model filled in the strong colour, and
-one press of it leaves an empty baseplate with nothing asked; at 1280 the car
+one press of it leaves an empty baseplate with nothing asked; then, put up
+again, a model opened behind it as File, Open or a session's open_model opens
+one puts it away ("...up again, a model opened behind it"); at 1280 the car
 and no screen over it. Before the change the 390 run fails at "...so the first
-screen is over the car".
+screen is over the car". The screen goes on any model opened by the bar's
+`opened` but the account's newest that the app brings back itself
+(`Main._open_theirs`, which Continue is about); before m338reds it stayed over
+the model, still saying the example car was behind it.
+
+A probe that signs a throwaway in on a phone and then works on the car meets
+this screen too, as a real first visit does: it puts it away first with
+`SignInHelper.put_away_first_screen` (carryrest, fingertools, phonepanels).
 ### The site's own ask (where confirm() was)
 
 No network and no account: this checkout's pages, the stand-in's API (Sam,
