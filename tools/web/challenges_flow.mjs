@@ -937,9 +937,15 @@ try {
         }
         await admin.fill('.rounds-form input[name="judge_handle"]', BOB);
         await admin.fill('.rounds-form input[name="cover"]', `${site}/m/${ids.house}`);
+        // Its own note, "Saved: ..." and not one there before: the sheet's
+        // last note can still be the shortlist's "Published.", and read as
+        // saved the vote went before the days did and was refused as not
+        // open yet (nightreds unit preview, 2026-11-24).
+        const before = await admin.evaluate(() => [...document.querySelectorAll("#sheet .note.good")].map((note) => note.textContent));
         await admin.click('.rounds-form button[type="submit"]');
-        const said = await until(admin, () => document.querySelector("#sheet .note.good")?.textContent
-          || document.querySelector(".rounds-form .note.bad, .rounds-form .note[data-bad]")?.textContent, `${label}: saved`, 30);
+        const said = await until(admin, (was) => [...document.querySelectorAll("#sheet .note.good")]
+          .map((note) => note.textContent).find((text) => /^Saved/.test(text) && !was.includes(text))
+          || document.querySelector(".rounds-form .note.bad, .rounds-form .note[data-bad]")?.textContent, `${label}: saved`, 30, before);
         return said;
       };
       const saved = await saveRounds(dayFrom(0), dayFrom(1), "the rounds");
@@ -1010,7 +1016,10 @@ try {
       }
       // The fan vote opens today: only the shortlist has Vote.
       await panel();
-      await saveRounds(dayFrom(-1), dayFrom(0), "the fan vote open");
+      // What the panel said, so a refusal is read here and not as the vote
+      // refused after it (nightreds unit preview, 2026-11-24).
+      const opened = await saveRounds(dayFrom(-1), dayFrom(0), "the fan vote open");
+      check(`the fan vote opened today on the panel: "${opened}"`, /^Saved/.test(String(opened || "")));
       const house = await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.house } });
       check(`a vote for the house, not shortlisted: ${house.status} "${house.body.error}"`, house.status === 422 && house.body.refused === "not_shortlisted");
       const pickBefore = (await api("/api/share?op=shelves&tests=1")).body?.pick?.model?.id || null;

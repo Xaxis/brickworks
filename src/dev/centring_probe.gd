@@ -118,10 +118,10 @@ func _run() -> void:
 		await _clicks(folded)
 		await _picture_centred(folded)
 		await _shot("%dx_%s_folded" % [_ratio, folded])
-	await _under_a_notice()
 
 	await _glides()
 	await _pictures()
+	await _under_a_notice()
 
 	print("")
 	if _failures == 0:
@@ -180,6 +180,15 @@ func _centred(folded: String) -> void:
 ## the whole room, a stack of eleven opened under First steps and the
 ## month's challenge had its top under them (drawn, nightreds 2026-11-24).
 func _under_a_notice() -> void:
+	# A tower taller than it is wide, so Fit is bound by the room's height:
+	# the model above was bound by its width, and its top lay far below any
+	# strip whatever Fit did.
+	_main.call("clear_model")
+	await _frames(3)
+	for level: int in 24:
+		_put("3001", 4 if level % 2 == 0 else 14, Vector3(0, 24 + 24 * level, 0))
+	await _frames(10)
+	await _fit()
 	var notices: Control = _main.get("_notices")
 	var middle_before: Vector2 = _camera.unproject_position((_main.call("_built_bounds") as AABB).get_center())
 	var note := Label.new()
