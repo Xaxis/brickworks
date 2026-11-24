@@ -1300,7 +1300,8 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
         return record
     bench._write_json(record_path, record)
     won = {d: sum(v.winners[d] == ours_key for v in found) for d in DIMS}
-    bench.say(f"{c.number} {c.name}: ours won " + ", ".join(f"{d} {won[d]}/2" for d in DIMS))
+    bench.say(f"{c.number} {c.name}: ours won " + ", ".join(f"{d} {won[d]}/{len(found)}"
+                                                            for d in DIMS))
     return record
 
 
