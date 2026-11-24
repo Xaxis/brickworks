@@ -474,6 +474,7 @@ func _autosaved() -> String:
 	# A picture laid to build over comes back with it: the first thing a
 	# person tracing a plan does, before any part.
 	_begin_as(name if not name.is_empty() else UNTITLED, ReferenceImage.read(text))
+	_bind_restored()
 	left_empty = true
 	return ""
 
@@ -497,6 +498,8 @@ func _restored(text: String, result: Dictionary) -> int:
 		_autosave_is_model = true
 		# Nor is its text a file of the person's: a save works it out.
 		world.outside += 1
+		# Which saved model it is, if any: as the tab kept it.
+		_bind_restored()
 	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
 	if back > 0:
 		return back
@@ -553,13 +556,41 @@ func _keep_unopened(text: String, why: String) -> void:
 	not_restored.emit(unrestored)
 
 
-func save_as(name: String) -> bool:
+## Save the model on the baseplate in the person's models as [param name]:
+## never over a saved model that is not this one unless [param over], the
+## person having chosen to replace it ([method _saved_over_another]).
+## A link's model ([param text], called [param name]) that could not be
+## opened here because none of its parts can be shown in this build, kept in
+## the person's models as it was shared: under a name no saved model has,
+## credited to the link [param remix] (its version [param remix_version],
+## [param credited]) as a copy saved here is, so a later build that has its
+## parts opens it. Its file's name, or "" when it could not be written. Not a
+## save of the model on the baseplate, which goes on being the model it was
+## ([member _known_path] untouched). Kept nowhere, the link's parts were in no
+## file while the example car stood in its place (viewreview F2).
+func keep_unopened_copy(text: String, name: String, remix: String, remix_version: int,
+		credited: Dictionary) -> String:
+	if read_only or count_in(text) <= 0:
+		return ""
+	var kept: String = unused_name(name)
+	var path: String = saved_path(kept)
+	var credited_text: String = with_share(text, "", remix, remix_version, credited)
+	if not NewerBuild.may_write(path) or not _write_saved(path,
+			credited_text if kept == name else retitled(credited_text, kept)):
+		return ""
+	# The account is sent it too (CloudModels), as any save of the person's.
+	kept_save.emit(path)
+	return path.get_file().get_basename()
+
+
+func save_as(name: String, over: bool = false) -> bool:
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
 		return false
 	var path: String = SAVE_DIR + clean + ".ldr"
-	if _saved_over_elsewhere(path, name):
+	if _saved_over_another(path, name, over) or _saved_over_elsewhere(path, name):
 		return false
+	var was: Array = [title, _known_path]
 	# Unedited since its file was read or written: that text, and nothing
 	# worked out. Otherwise pre261's save, as it was.
 	var moment: Array = _moment()
@@ -571,9 +602,25 @@ func save_as(name: String) -> bool:
 		_lights_kept = world.scene_lights
 		_program_kept = world.program
 		_keep_stored(path.get_base_dir(), name, moment)
+		_autosave_follows(was)
 		saved.emit(name)
 		return true
 	return false
+
+
+## The autosave written again at the next frame when a save changed the
+## model's name or the saved model it is: a reload brings it back under the
+## name it was saved as, Saving into that file. A save wrote nothing to it,
+## so a link's copy saved as "Train (copy)" after its autosave was written
+## came back as "Train", and Save wrote it over the person's own Train
+## (viewreview F1, 2026-11-24). No change to the model: nothing else is
+## marked so.
+func _autosave_follows(was: Array) -> void:
+	if was[0] == title and was[1] == _known_path:
+		return
+	_pending = true
+	_autosave_is_model = false
+	_dirty_at = mini(_dirty_at, Time.get_ticks_msec() - AUTOSAVE_DELAY_MS)
 
 
 ## Write the model on the baseplate to [param path] in the person's models
@@ -723,11 +770,24 @@ var views_unread_words: String:
 ## purpose; until 2026-10-13 one tab's Save went over another's in silence,
 ## and on the web the other tab's next autosave deleted it outright (the
 ## page's user:// sync, src/boot/shell.html).
+##
+## The one file Save writes over unasked: the saved model this one was
+## opened from or last saved to, here or in this tab before a reload (the
+## autosave's [constant OWN_FILE]); "" for a model that is no saved model
+## (begun here, a file from elsewhere, a link's copy not saved yet, a set's
+## version, an example). A saved model that merely has its name is another
+## model, and Save asks first ([member taken]). It was the name alone: a
+## link's copy brought back by a reload under the link's name wrote itself
+## over the person's own model of that name (viewreview F1, 2026-11-24).
 var _known_path: String = ""
 var _known_time: int = 0
 var _known_lines: PackedStringArray = PackedStringArray()
 ## Why the last save was not made, in words, or "".
 var refused: String = ""
+## The name the last save was refused because a saved model that is not
+## this one has it ([member _known_path]), or "": the person is asked for
+## another, or whether to replace that model (ModelBar).
+var taken: String = ""
 ## A save was not made because another tab or window saved this model since
 ## this one read it: the person is asked which to keep (Main's ReloadOffer).
 signal saved_by_another(name: String)
@@ -756,10 +816,40 @@ func saved_elsewhere() -> bool:
 	if title == UNTITLED or example or read_only:
 		return false
 	var path: String = saved_path(title)
+	# A saved model of the same name that this is not: never offered over it,
+	# nor taken for its file. Taken so, the next Save wrote over it unasked.
 	if path != _known_path:
-		know(path)
 		return false
 	return _changed_since_known(path)
+
+
+## Whether [param path] is the saved model the model on the baseplate is
+## ([member _known_path]): the one Save writes over unasked.
+func is_own_file(path: String) -> bool:
+	return not path.is_empty() and path == _known_path
+
+
+## The model on the baseplate is no saved model (yet): opened from text,
+## begun, or brought back with nothing to say it is one.
+func _forget_known() -> void:
+	_known_path = ""
+	_known_time = 0
+	_known_lines = PackedStringArray()
+
+
+## The file the model is, as [member _known_path] and what was known of it,
+## for an undo to put back ([method identity], [member opened_over]).
+func _known_now() -> Array:
+	return [_known_path, _known_time, _known_lines]
+
+
+func _know_again(known: Variant) -> void:
+	if known is Array and (known as Array).size() == 3:
+		_known_path = str(known[0])
+		_known_time = int(known[1])
+		_known_lines = known[2]
+	else:
+		_forget_known()
 
 
 func _changed_since_known(path: String) -> bool:
@@ -772,6 +862,24 @@ func _changed_since_known(path: String) -> bool:
 		# Written again as it was: nothing to ask about.
 		_known_time = time
 		return false
+	return true
+
+
+## Refuses, saying why, a save over a saved model that is not this one: one
+## it was not opened from nor saved to, which only has the name it is to be
+## saved under ([member _known_path]); unless the person chose to replace it
+## ([param over]). The person is asked for another name, or whether to
+## replace it ([member taken], ModelBar). Saved anyway, a link's copy called
+## by the link's name went over the person's own model of that name; as did
+## a model from a file, a set's version, an example, or one renamed in its
+## field to a saved model's name.
+func _saved_over_another(path: String, name: String, over: bool) -> bool:
+	taken = ""
+	refused = ""
+	if over or path == _known_path or not FileAccess.file_exists(path):
+		return false
+	taken = name
+	refused = "“%s” is a saved model already, and this is not it: not saved" % name
 	return true
 
 
@@ -815,6 +923,8 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	# Begun empty by the person: the autosave may keep it so.
 	emptied = true
 	example = false
+	# A new model is no saved model, whatever it comes to be called.
+	_forget_known()
 	# New work is not the model that was shared: publishing it must not
 	# replace that one at its link, nor say it was copied from one.
 	share_id = ""
@@ -858,7 +968,7 @@ func identity() -> Dictionary:
 		"bin_sets": bin_sets.duplicate(), "views_kept": _views_kept,
 		"lights_kept": _lights_kept, "program_kept": _program_kept,
 		"reference": reference.duplicate(true),
-		"made_with": made_with, "source": _live_source(),
+		"made_with": made_with, "source": _live_source(), "known": _known_now(),
 		"opened": world != null and world.generation() == _opened_in, "lifted_by": _lifted_by,
 		"awaited": awaited.duplicate() if world != null and world.generation() == _awaited_in
 			else null,
@@ -897,6 +1007,10 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	_views_kept = kept["views_kept"]
 	_lights_kept = kept["lights_kept"]
 	_program_kept = str(kept.get("program_kept", ""))
+	# The saved model it was, if any: an undone clear Saves into its file as
+	# before, not asked as a model that only has its name.
+	if kept.has("known"):
+		_know_again(kept["known"])
 	reference = (kept["reference"] as Dictionary).duplicate(true)
 	made_with = str(kept["made_with"])
 	# Opened from a file, it stands as that file was lifted to (lift), and is
@@ -1472,7 +1586,8 @@ func _set_aside(paced: bool) -> void:
 	if _reopening.is_empty():
 		_drop(undone_over, 0)
 	# An example stays one: put back as it shipped, it is nobody's work to save.
-	into.append({"path": path, "name": title, "example": example})
+	# And the saved model it was, if any: put back, it Saves into that file.
+	into.append({"path": path, "name": title, "example": example, "known": _known_now()})
 	_drop(into, OPENS_KEPT)
 
 
@@ -1580,6 +1695,7 @@ func reopen(again: bool = false, job: Working.Job = null) -> int:
 	stack.erase(entry)
 	DirAccess.remove_absolute(str(entry["path"]))
 	example = bool(entry["example"])
+	_know_again(entry.get("known"))
 	_opened_whole = -1
 	if title != str(entry["name"]):
 		title = str(entry["name"])
@@ -1617,6 +1733,8 @@ func open_version(path: String, called: String = "", job: Working.Job = null) ->
 	if title != name:
 		title = name
 		loaded.emit(title, int(result["placed"]))
+	# A save of that model, opened as it: Save writes into its file.
+	know(saved_path(name))
 	return int(result["placed"])
 
 
@@ -2088,6 +2206,11 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# itself is empty: then it is kept so, as one begun empty is (begin).
 	emptied = flattened.is_empty()
 	title = _title_of(model, name)
+	# Opened from text, it is no saved model, whatever it is called: the opens
+	# of one say which once it is open (_opened_from, open_version, reopen, a
+	# restore's _bind_restored). Left as the last model's file, or taken for
+	# the saved model of its name, Save wrote it over that model.
+	_forget_known()
 	if source != null:
 		source.own_title = title
 		source.said_title = model.main.title if model.main != null else ""
@@ -5201,13 +5324,14 @@ func text_for_file(title: String, doing: String) -> String:
 
 ## [method save_as], its build order worked out a slice at a time
 ## ([method to_text_paced]). False when it was not saved, cancelled too.
-func save_as_paced(name: String, job: Working.Job) -> bool:
+func save_as_paced(name: String, job: Working.Job, over: bool = false) -> bool:
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
 		return false
 	var path: String = SAVE_DIR + clean + ".ldr"
-	if _saved_over_elsewhere(path, name):
+	if _saved_over_another(path, name, over) or _saved_over_elsewhere(path, name):
 		return false
+	var was: Array = [title, _known_path]
 	# Unedited: its file's text, written in this frame, with no order
 	# worked out over frames.
 	var moment: Array = _moment()
@@ -5228,6 +5352,7 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 		# Kept as the moment it was made from: changed while its order was
 		# worked out, the next save works it out again (_kept_now).
 		_keep_stored(path.get_base_dir(), name, moment)
+		_autosave_follows(was)
 		saved.emit(name)
 		return true
 	return false
@@ -5369,7 +5494,63 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
-	return _store(path, _with_bom(text), keep)
+	if not _store(path, _with_bom(text), keep):
+		return false
+	if path == autosave():
+		_keep_own_file(title)
+	return true
+
+
+## Beside this tab's autosave: the name it was last written under and the
+## saved model it is ([member _known_path]), {title, file}, so a reload
+## brings back which file Save writes and not only the name
+## ([method _bind_restored]). A file of its own, not a line in the autosave,
+## so nothing of it reaches a file of the person's.
+const OWN_FILE := "autosave_file.json"
+## What [constant OWN_FILE] was last written with, not written again the same.
+var _own_file_said: String = ""
+
+
+func _keep_own_file(written_title: String) -> void:
+	var said: String = JSON.stringify({"title": written_title,
+		"file": _known_path.trim_prefix(SAVE_DIR) if _known_path.begins_with(SAVE_DIR) else ""})
+	var path: String = TabSession.path(OWN_FILE)
+	if said == _own_file_said and FileAccess.file_exists(path):
+		return
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(said)
+	file.close()
+	_own_file_said = said
+	_tell_page_wrote(path, said.to_utf8_buffer().size())
+
+
+## The saved model the working model just brought back is
+## ([member _known_path]), as [constant OWN_FILE] says it: the file it names
+## when it was written under the name the model came back with; none when it
+## names another (it was written apart from the autosave, and Save asks
+## rather than guess). An autosave from before it was written beside one
+## (2026-11-24) is the saved model of its name, when there is one, as every
+## restore took it then.
+func _bind_restored() -> void:
+	var path: String = TabSession.path(OWN_FILE)
+	if not FileAccess.file_exists(path):
+		_forget_known()
+		if title != UNTITLED and FileAccess.file_exists(saved_path(title)):
+			know(saved_path(title))
+		return
+	var said: String = FileAccess.get_file_as_string(path)
+	_own_file_said = said
+	var reading := JSON.new()
+	var kept: Dictionary = reading.data if reading.parse(said) == OK and reading.data is Dictionary \
+		else {}
+	var file: String = str(kept.get("file", ""))
+	if str(kept.get("title", "")) != title or file.is_empty() or _safe_name(file.get_basename()) \
+			!= file.get_basename():
+		_forget_known()
+		return
+	know(SAVE_DIR + file)
 
 
 ## What a save of the model on the baseplate called [param title] writes,

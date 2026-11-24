@@ -5031,7 +5031,9 @@ func _save_first(store: ModelStore, asked: String) -> String:
 	if file.is_empty():
 		return "save_first takes a file name, such as car.ldr; nothing was saved or opened."
 	var path: String = ModelStore.SAVE_DIR + file
-	if FileAccess.file_exists(path) and path != store.saved_path(store.title):
+	# Its own file only: the saved model of its name is another model unless
+	# this one was opened from it or saved to it (ModelStore.is_own_file).
+	if FileAccess.file_exists(path) and not store.is_own_file(path):
 		return ("There is already a model called %s, and it is not this one: save_first takes "
 			+ "another name. Nothing was saved or opened.") % file
 	if assistant != null:

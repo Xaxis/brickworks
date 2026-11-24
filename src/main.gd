@@ -2050,6 +2050,7 @@ func _ready() -> void:
 	# cube's Fit), told them again (Keymap.tell).
 	Keymap.retell(self)
 	_boot_mark("ui")
+	_ui_at = Time.get_ticks_msec()
 	# The page's fetch of it come since, if it had not then.
 	_ask_early_model()
 
@@ -2063,8 +2064,9 @@ func _ready() -> void:
 			# _show_whole), as a set's own version is: shown at once, the
 			# studio stood empty under "Loading…" while the model was read,
 			# and its last 38 parts filled in 4.7 s after it opened (setopen,
-			# 2026-11-23).
+			# 2026-11-23). Unless that took too long: then the studio first.
 			await _await_early_model()
+			await _lift_if_late()
 		else:
 			await get_tree().process_frame
 			_camera.frame(_built_bounds())
@@ -2110,6 +2112,9 @@ func _ready() -> void:
 			await _await_early_link()
 		if not _copying.is_empty() and _early_asked:
 			await _await_early_model()
+			# Waited for too long to open and draw it whole under the screen
+			# within its bound: the studio first, the copy coming in on it.
+			await _lift_if_late()
 		if not OS.get_cmdline_args().has("--script"):
 			placed = await _store.restore_fetched()
 		# Open in Brickworks (/app?copy=<id>): the model asked for, from the
@@ -4883,7 +4888,7 @@ func _maybe_copy() -> void:
 		var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
 		if not str(result["error"]).is_empty():
 			_set_address("")
-			_bar.say("could not open that model: %s" % result["error"])
+			_not_copied(shared, name, result)
 			return
 		_credit_copy(shared)
 		AskedCopy.mark_shown(_copying)
@@ -4919,6 +4924,32 @@ func _maybe_copy() -> void:
 	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was; %s"
 		% [kept, ModelBar.credit_words(_store.credit)])
 	await _offer_first_acts(kept, person)
+
+
+## A link's model [param name] that did not open here ([param result], its
+## answer [param shared]), said above the model until the person has read
+## it, not in a status line gone in seconds over whatever the baseplate had.
+## One none of whose parts this build can show is kept in their models as it
+## was shared, credited to the link (ModelStore.keep_unopened_copy), as a
+## working model none of whose parts came back is kept: a later build that
+## has them opens it. Nothing on the baseplate is saved as the copy.
+## Before, the example car stood where the copy would be, and the next Save
+## put "Car" among their models while the link's parts were in no file
+## (viewreview F2, 2026-11-24).
+func _not_copied(shared: Dictionary, name: String, result: Dictionary) -> void:
+	var why: String = str(result["error"])
+	var missing: Dictionary = result.get("missing_ids", {})
+	var kept: String = ""
+	if not missing.is_empty() and int(result.get("placed", 0)) == 0:
+		kept = _store.keep_unopened_copy(str(shared.get("model", "")), name, _copying,
+			maxi(int(shared.get("version", 0)), 0), SharedModels.credit_of(shared, _copying))
+	var said: String = ("“%s” could not be copied: %s. It is kept as it was shared, as “%s” in "
+		+ "File › Open, for a later version of Brickworks to open; nothing else was saved.") % [
+			name, why, kept] if not kept.is_empty() \
+		else "“%s” could not be copied: %s. Nothing was saved." % [name, why]
+	_bar.say("could not copy “%s”" % name)
+	if _restore_notice != null:
+		_restore_notice.tell(said)
 
 
 ## The first acts on [param person]'s copy [param kept], offered once the
@@ -5349,6 +5380,11 @@ func _await_early_model() -> void:
 ## than [constant SHOWN_WHOLE_MOST] parts, whose batches written in one frame
 ## would hold the page for seconds: it goes on a slice a frame, as ever.
 func _show_whole() -> void:
+	if _shown_marked:
+		# The studio was shown first (_lift_if_late): framed, and laid a slice
+		# a frame on it, the person able to look meanwhile.
+		_camera.frame(_built_bounds())
+		return
 	if _world.brick_count() <= SHOWN_WHOLE_MOST:
 		_world.flush_now()
 	_camera.frame(_built_bounds())
@@ -5358,6 +5394,34 @@ func _show_whole() -> void:
 
 ## The most parts [method _show_whole] writes in one frame.
 const SHOWN_WHOLE_MOST := 1000
+## When the studio was made ("ui"), in this run's ms: the page's screen is
+## let go of [constant SHOWN_WHOLE_BY_MS] after it at the latest before a
+## shared model's open ([method _lift_if_late]).
+var _ui_at: int = 0
+## The longest after "ui" a shared model (?view=, ?copy=) may still be opened
+## and drawn whole under the page's screen, in ms. The open and the whole
+## model's first frame hold the page's thread in one go, 4 to 10 s in a
+## browser drawing in software at a load of 35 to 100 (viewopen's diag_v5,
+## viewreview's g1 copy), and while they do the screen's own bound
+## (shell.html's SET_SHOWN_MOST, 6 s after "ui") cannot lift it: a copy whose
+## link answered 2.5 s late was under the screen 14.3 s after the studio was
+## made (viewreview F3, 2026-11-24). Its link and parts waited for past this,
+## the studio is shown first and the model comes in on it, as before viewopen.
+const SHOWN_WHOLE_BY_MS := 2000
+
+
+## The page's screen let go of now, in a frame that draws the studio and no
+## model, when a shared model's link and parts took longer than
+## [constant SHOWN_WHOLE_BY_MS] after "ui": the model is opened after it, and
+## laid a slice a frame on the studio, its parts still coming as they come
+## ([method _show_whole] then only frames it). Lifted in the frame the open
+## lays it in, the screen came down only once that frame was drawn.
+func _lift_if_late() -> void:
+	if _shown_marked or Time.get_ticks_msec() - _ui_at <= SHOWN_WHOLE_BY_MS:
+		return
+	_boot_mark("lifted late")
+	_mark_shown()
+	await RenderingServer.frame_post_draw
 
 
 ## The page's loading screen let go of, once ("shown"): for an address that
@@ -6571,7 +6635,11 @@ func _view_hover() -> void:
 ## here or elsewhere, or kept beside the account's as "Castle 2"): so is
 ## the model on the baseplate, when it is that one.
 func _called_now(from: String, to: String) -> void:
-	if _store.title != from or _store.example:
+	# That saved model, not one only called as it is: taken by its name, a
+	# link's copy called by the link's name took the person's renamed model
+	# for its own file, and Save wrote over it (ModelStore._known_path).
+	if _store.title != from or _store.example \
+			or not _store.is_own_file(ModelStore.SAVE_DIR + from + ".ldr"):
 		return
 	_store.title = to
 	_store.know(ModelStore.SAVE_DIR + to + ".ldr")
