@@ -2063,9 +2063,11 @@ func _copies_laid() -> Array:
 	return _copies_kept
 
 
-## A copy's parts as [method _copies_laid] reads them.
+## A copy's parts as [method _copies_laid] reads them: as the follow reads
+## them (made["then"], _content_then), in its order too, as best_match picks
+## the first of fits that score alike, and a symmetric copy has several.
 func _read_then(path: String) -> Array:
-	return content(path) if _copies_then.is_empty() else _content_then(path, _copies_then)
+	return _content_then(path, _copies_then)
 
 
 ## Widens what is a copy's own ([method _copies_laid]'s entry [param copy])

@@ -327,6 +327,7 @@ func _big() -> void:
 			slowest = maxi(slowest, Time.get_ticks_usec() - began)
 			await _move(at)
 			await _frames(2)
+			await _asked()
 			var words: String = _builder.copies_refuse
 			var fits: bool = _builder.can_place()
 			if not fits and words.is_empty():
@@ -334,17 +335,30 @@ func _big() -> void:
 			aims += 1
 			# ...and clicked, as a person would: the follow judges it on the set.
 			var count: int = _count()
+			var told: String = _told(false)
+			var others: Dictionary = {}
+			for other: String in _tree.copies_of(most):
+				for brick_id: int in _tree.ids_under(other):
+					others[brick_id] = true
 			await _click(at)
 			await _frames(3)
 			var put: int = _count() - count
+			# Where the follow laid the twins, to set beside where the ask laid them.
+			var laid_words: String = ""
+			for other: String in _tree.copies_of(most):
+				for brick_id: int in _tree.ids_under(other):
+					if not others.has(brick_id):
+						var b: BrickWorld.Brick = _world.get_brick(brick_id)
+						laid_words += " %s %s at %s;" % [other, b.part_id, str(b.transform.origin.snappedf(0.1))]
 			if fits:
 				greens += 1
 				if put != 1 + twins and told_wrong.size() < 6:
-					told_wrong.append("green took %d (\"%s\")" % [put, _tree.refused])
+					told_wrong.append("green took %d (\"%s\")\n        %s" % [put, _tree.refused, told])
 			else:
 				reds += 1
 				if (put != 0 or _tree.refused != words) and told_wrong.size() < 6:
-					told_wrong.append("red took %d, refused \"%s\", said \"%s\"" % [put, _tree.refused, words])
+					told_wrong.append("red took %d, refused \"%s\", said \"%s\"\n        %s\n        the follow laid:%s"
+						% [put, _tree.refused, words, told, laid_words])
 			if put > 0:
 				await _key(KEY_Z, true)
 				await _frames(2)
@@ -357,6 +371,45 @@ func _big() -> void:
 		% [told_wrong.size(), aims], aims > 0 and told_wrong.is_empty())
 	await _key(KEY_ESCAPE)
 	_tree.enter("")
+
+
+## What the ask saw, for a run read back: the hand, the copies it fits and
+## where it lays each twin, and its answer asked afresh in one go.
+func _told(carried: bool) -> String:
+	if not _tree.has_method("room_in_copies"):
+		return ""
+	var going: Array = _builder.call("_going_down")
+	var words: String = "lifted %s on top %s aimed %s valid %s ask pending %s; hand %s; " % [
+		_builder.carrying.lifted if carried else false, _builder.call("_lift_on_top"),
+		_builder.carrying.is_aimed() if carried else _builder.has_preview(),
+		_builder.carrying.get("_valid") if carried else _builder.get("_ghost_valid"),
+		not (_builder.get("_copies_ask") as Dictionary).is_empty(),
+		str(going.map(func(i: Array) -> String: return "%s at %s" % [i[0],
+			str((i[1] as Transform3D).origin.snappedf(0.1))]))]
+	var copies: Array = _tree.call("_copies_laid")
+	words += "%d copies fit:" % copies.size()
+	for copy: Array in copies:
+		var fit: Dictionary = copy[1]
+		words += " %s (mirrored %s, round %s)" % [copy[0], fit.get("mirrored", "?"), copy[3]]
+		for item: Array in going:
+			var laid: Array = _tree.call("_laid", fit, library_id(str(item[0])), item[1])
+			words += " twin %s at %s" % [laid[0], str((laid[1] as Transform3D).origin.snappedf(0.1))]
+	words += "; asked again: \"%s\"" % str(_tree.call("room_in_copies", {"items": going}, 0))
+	return words
+
+
+## Frames until an ask the aim began is answered (30 at most), as a person's
+## pointer rests a moment before the click.
+func _asked() -> void:
+	for _n: int in 30:
+		var pending: Variant = _builder.get("_copies_ask")
+		if pending == null or (pending as Dictionary).is_empty():
+			return
+		await _frames(1)
+
+
+func library_id(part: String) -> String:
+	return _library.resolve(part)
 
 
 ## Every part of the model by where it is in the tree, its number, colour and
@@ -426,6 +479,7 @@ func _drag_sweep() -> void:
 				await _drag_move(last, next)
 				last = next
 			await _drag_move(last, target + Vector2(1, 0))
+			await _asked()
 			var asked: Variant = _builder.get("copies_refuse")
 			var predicted: String = "" if asked == null else str(asked)
 			var fits: bool = _builder.can_place()
@@ -433,6 +487,7 @@ func _drag_sweep() -> void:
 			var heard: String = _shell.status.fields()["message"]
 			if carried and (fits or not predicted.is_empty()) and _drawn_fits() != fits:
 				drawn_wrong += 1
+			var told: String = _told(carried)
 			await _button(target + Vector2(1, 0), false)
 			await _frames(3)
 			var put: bool = _builder.history_depth() > depth
@@ -441,8 +496,8 @@ func _drag_sweep() -> void:
 				if put and _tree.ids_under("Wing#2").size() == 3:
 					green_put += 1
 				elif wrong.size() < 6:
-					wrong.append("green drag to %s: %s (\"%s\")" % [str(Vector3(x, 0, z)),
-						"moved" if put else "not moved", _tree.refused])
+					wrong.append("green drag to %s: %s (\"%s\")\n        %s" % [str(Vector3(x, 0, z)),
+						"moved" if put else "not moved", _tree.refused, told])
 			elif carried and not predicted.is_empty():
 				red += 1
 				red_put += 1 if put else 0
