@@ -62,7 +62,19 @@ function sayInto(into, said, parts) {
 let commentsLoaded = null;
 const marks = document.getElementById("marks");
 const id = marks && marks.dataset.id;
-if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
+// A photo of a build half posted in this tab: the viewer keeps it while a
+// sign-in takes the page away (src/main.gd _keep_make), and a reload or the
+// site's sign-in coming back lands on the viewer's address, this page, which
+// never read it: the photo was lost and the viewer gone (makes, nightly
+// 2026-11-24). The viewer is opened again where it was, and brings it back.
+const madeKept = (() => {
+  try { return /^[A-Za-z0-9]{10}$/.test(id || "") && JSON.parse(sessionStorage.getItem(`brickworks.make.${id}`) || "null"); }
+  catch { return null; }
+})();
+if (madeKept && madeKept.link === id && madeKept.photo) {
+  const lang = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "";
+  location.replace(`/app?view=${id}${madeKept.where === "build" ? "&build" : ""}${lang}`);
+} else if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
 // A set of the LDraw library (/library/<id>, api/_library.js): its bar is
 // Share and More alone, there being nothing of it to like, save or build.
 else if (marks && /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/.test(id || "")) {
