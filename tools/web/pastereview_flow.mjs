@@ -300,7 +300,11 @@ try {
     gained: (put1b.bricks || 0) - (before1b.bricks || 0), later: (later1b.bricks || 0) - (before1b.bricks || 0), saved: saved1b.hits };
   // B's file had case 1's sub-assembly already: its part written in a
   // definition another copy may share, so at least as often as before.
-  check(`A copied ${oneB?.whole ? `the sub-assembly holding a ${oneB.part} (${count1b} parts)` : `a ${oneB?.part}`} "${copied1b.said}"; `
+  // A model whose only unpacked part on the screen case 1 took (7140-1's one
+  // minifig cap in view) has none left for B to fetch slowly: said, not run.
+  if (!oneB && one?.whole) {
+    note(`1b not run: A shows no other part the web pack lacks (case 1 took its only one, in a sub-assembly)`);
+  } else check(`A copied ${oneB?.whole ? `the sub-assembly holding a ${oneB.part} (${count1b} parts)` : `a ${oneB?.part}`} "${copied1b.said}"; `
     + `B: "${held1b.said}", put down "${put1b.said}": `
     + `+${(put1b.bricks || 0) - (before1b.bricks || 0)} at once, +${(later1b.bricks || 0) - (before1b.bricks || 0)} ${(SLOW_MS + 4000) / 1000} s later, `
     + `in B's autosave ${saved1b.hits} time(s) (want +${count1b} and ${oneB?.whole ? `at least ${Math.max(1, had1b)}, one sub-assembly` : "1"})`,
@@ -344,9 +348,14 @@ try {
   const later2 = await state(b);
   const saved2 = await inAutosave(b, two?.part || "");
   record.case2.later = (later2.bricks || 0) - (before2.bricks || 0);
-  check(`B's autosave places the unpacked ${two?.part} ${saved2.hits} time(s) (want ${had2 ? `at least the ${had2} it had` : "1"}); `
+  // The copy places it [n2] times: once (the fixture's), B's file has it
+  // once; more (7140-1's), in sub-models B's file may write once each, at
+  // least once and at least as often as B had it.
+  const n2 = lines2.filter((l) => l.trim().toLowerCase().endsWith(` ${String(two?.part).toLowerCase()}.dat`)).length;
+  const want2 = had2 === 0 && n2 === 1 ? "1" : `at least ${Math.max(1, had2)}`;
+  check(`B's autosave places the unpacked ${two?.part} ${saved2.hits} time(s) (the copy places it ${n2}; B had ${had2}; want ${want2}); `
     + `+${record.case2.later} parts ${SLOW_MS / 1000} s after the put-down (want +${wanted2})`,
-    (had2 ? saved2.hits >= had2 : saved2.hits === 1) && record.case2.later === wanted2);
+    (want2 === "1" ? saved2.hits === 1 : saved2.hits >= Math.max(1, had2)) && record.case2.later === wanted2);
   await b.unroute("**/*.lbm");
 
   console.log("\n3. B copies a car part; A pastes: the newest copy");
