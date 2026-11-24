@@ -162,7 +162,10 @@ function modellerHtml(model, at) {
   return `<div class="shared-by credit">${avatarHtml({ name })}<div class="names">`
     + `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(name)}</b>`,
       ldraw: page ? `<a href="${escapeHtml(page)}">${asText(say(LDRAW_FROM))}</a>` : asText(say(LDRAW_FROM)) })}</p>`
-    + `<p class="shared-via">${own}</p></div></div>`;
+    // One run of words in the row's flex line (as designerRow's "Shared by"):
+    // bare, its link and the words either side were three items, the colon
+    // after the link wrapping onto a line of its own at 390 (sitewalk2).
+    + `<p class="shared-via"><span>${own}</span></p></div></div>`;
 }
 
 /// LDraw's 3D models of each set (api/_library.js librarySets), by the set's
