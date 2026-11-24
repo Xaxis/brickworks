@@ -71,8 +71,17 @@ tools/web/vendor_orangecheck.sh.
   `email` with `emailVerified: true`, but only when the same request carries
   a fresh Brickworks code's session (amr `otp`, the five minutes linking
   asks) for that very address (`api/_oc.js` `codeOf`, `emailed`): never a
-  password's, an orangecheck session's, a stale code's, or an address the
-  request names, which is never read.
+  password's, an orangecheck session's, Google's or GitHub's (each minted
+  from a one-time link, so amr `otp` too, and told apart by what was
+  written down as it was handed out: `oc_sessions`, `way_sessions`), a
+  stale code's, or an address a request names, which is never read. Since
+  signinreview (2026-11-24, F2 and F11) the account's own address goes
+  every time, with `emailVerified: false` in every other case, so that the
+  account made at a Google or GitHub sign-in, or one whose age was answered
+  after those five minutes, can still be claimed once orangecheck has
+  checked the address itself. Whether ochk.app offers an unchecked
+  address's account to claim after its own sign-in by email is
+  orangecheck's to say, and an open question for them.
 - **Merged accounts.** Every token's `rh` is kept with its did
   (`oc_handles`). A did new here whose token carries `merged_rh` signs in
   to the one account those handles name (`matchMergedUser`, then

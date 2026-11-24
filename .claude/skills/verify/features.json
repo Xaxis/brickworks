@@ -282,6 +282,14 @@
       ]
     },
     {
+      "id": "api:POST /api/otp?op=way_bind",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_bind' -H 'authorization: Bearer <a code's session>'   (410 with no GitHub sign-in waiting; 403 for a session that is not a code's of the last five minutes)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:POST /api/otp?op=way_take",
       "kind": "api",
       "entry": "api/_ways.js",

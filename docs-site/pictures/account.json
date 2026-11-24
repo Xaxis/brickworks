@@ -52,7 +52,7 @@
    ],
    "crop": "dialog.sign-in",
    "pad": 0,
-   "alt": "The site's Sign in to Brickworks dialog: the Email box with Email me a code, then Sign in with Google, Sign in with GitHub and Sign in with orangecheck, and the line Signing in also makes your orangecheck account, with What is that?",
+   "alt": "The site's Sign in to Brickworks dialog: the Email box with Email me a code, then Sign in with Google, Sign in with GitHub and Sign in with orangecheck, and the line Signing in without orangecheck also makes your orangecheck account, with What is that?",
    "caption": "Signing in on the site: a code by email, Google, GitHub or orangecheck.",
    "features": [
     "lib:site sign-in",
