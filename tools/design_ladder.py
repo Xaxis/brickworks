@@ -686,7 +686,7 @@ def _brief(number: str, c: realset.Candidate | None = None) -> str:
 
 def rung_side(number: str, rung: float) -> tuple[str, tuple]:
     key = key_of(number, rung)
-    return key, realset.shown(key, views(number, rung), number)
+    return key, realset.shown(key, views(number, rung))
 
 
 def order(args: argparse.Namespace) -> int:
@@ -733,7 +733,7 @@ def place_one(record: dict, arm_folder: Path, number: str, into: Path, model: st
     pictures = [arm_folder / number / f"views_{v}.png" for v in realset.VIEWS]
     if not all(p.exists() for p in pictures):
         return {"number": number, "place": None, "asked": {}}
-    side = (ours, realset.shown(ours, pictures, number))
+    side = (ours, realset.shown(ours, pictures))
     asked: dict[float, float] = {}
 
     def vs(rung: int) -> float | None:

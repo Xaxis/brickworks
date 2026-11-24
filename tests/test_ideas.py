@@ -114,7 +114,6 @@ def test_a_reply_is_read_on_the_ideas_dimensions_and_the_prompt_asks_them():
 
 def test_compare_judges_both_orders_and_leaves_out_a_changed_brief(tmp_path, monkeypatch):
     monkeypatch.setattr(ideas, "RESULTS", tmp_path)
-    monkeypatch.setattr(realset, "BLIND", tmp_path / "blind")
     both, changed, alone = IDEAS[0], IDEAS[1], IDEAS[2]
     for arm in ("x", "y"):
         for idea in (both, changed, alone):

@@ -284,7 +284,7 @@ def compare(args: argparse.Namespace) -> int:
         if not (_made(x) and _made(y)):
             return (idea, x, y, [])
         shown = [(r["key"], realset.shown(r["key"], [where / idea.id / f"views_{v}.png"
-                                                      for v in VIEWS], idea.id))
+                                                      for v in VIEWS]))
                  for r, where in ((x, a_dir), (y, b_dir))]
         return (idea, x, y, realset.both_orders(idea.brief, idea.id, shown[0], shown[1],
                                                 out / idea.id, args.judge_model,

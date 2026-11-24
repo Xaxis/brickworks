@@ -11,6 +11,9 @@
     python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2]
                                        [--first N] [--jobs 2]
     heavy python3 tools/bench/realset.py reach --which proof --arm m32 [--date D]
+    python3 tools/bench/realset.py judge --arm m32 [--date D] [--per-order 4] [--into twin]
+    python3 tools/bench/realset.py screen --label lev=ARM[@D] --label base=ARM[@D][+ARM@D]
+                                       [--base base] [--draw 16] [--out FILE.txt]
     python3 tools/bench/realset.py run ... --via relay [--instructions none] [--no-claude-code]
 
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
@@ -69,11 +72,16 @@ tuned on, judged blind.
   runs another checkout's app as the arm; the renderer, the check and the
   judge are always this one's.
 - **The comparison** draws the design and the set with the same renderer
-  and cameras, copies both under names that say nothing (bench/results/
-  blind/), and asks the pairwise judge, both orders, which is better on
+  and cameras and asks the pairwise judge, both orders, which is better on
   likeness, surface, colour, technique, creativity and overall. The judge is
-  not told one is a real set. A win rate per dimension has a 95% Wilson
-  interval over subjects, a subject counting the share of its verdicts won.
+  not told one is a real set. Every verdict sees the pictures under fresh
+  random names, alone in a fresh folder outside any checkout, taken away
+  after (design34): a name is a seed, so the old fixed names (bench/results/
+  blind/), read back on every rerun, made each pair one draw of the judge.
+  `--per-order N` asks N each way round; `judge` asks an arm's designs again
+  (`--into twin` as a second label); `screen` scores labels over subjects
+  with a bootstrap 95% interval, paired against a base, and twins' noise.
+  `report` keeps the older Wilson interval over the record's verdicts.
 - **Calibration** first: on the tune half the judge must prefer each set
   over a naive stack of itself (calibrate.naive_stack) or the test means
   nothing.
@@ -104,8 +112,9 @@ tuned on, judged blind.
 
 Everything lands in the main checkout's bench/results/ (git-ignored):
 realset-<date>-<arm>/<set>/ for an arm's designs, realset-sets/<set>/ for
-the set's own pictures, measures and calibration, blind/ for what the judge
-sees, and realset-<date>-<a>-vs-<b>/ for two arms judged head to head.
+the set's own pictures, measures and calibration, each design's judged/
+(fresh-*.json, a verdict a file), and realset-<date>-<a>-vs-<b>/ for two
+arms judged head to head.
 """
 
 from __future__ import annotations
@@ -119,12 +128,14 @@ import math
 import os
 import random
 import re
+import secrets
 import shutil
 import signal
 import socket
 import statistics
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.request
@@ -145,7 +156,10 @@ FILES = ROOT / "vendor" / "omr" / "files"
 INDEX = ROOT / "vendor" / "omr" / "index.json"
 RESULTS = bench.RESULTS
 SETS_DIR = RESULTS / "realset-sets"
-BLIND = RESULTS / "blind"
+# How every verdict since design34 was asked: its pictures under fresh random names, alone in
+# a fresh folder outside any checkout. A verdict file says so; one that does not was asked under
+# the two models' fixed names (bench/results/blind/) and is never read back as a sample.
+FRESH = "fresh names and folder a verdict"
 
 SALT = "brickworks realset 1"
 FEWEST, MOST = 80, 1500
@@ -725,55 +739,88 @@ def parse(reply: dict | str, first: str, second: str,
                             tuple(str(x) for x in looked if isinstance(x, str)))
 
 
-def shown(key: str, views: list[Path], number: str) -> tuple[judge.Picture, ...]:
-    """A model's views copied into the blind folder under a name that says nothing."""
-    where = BLIND / pairwise.opaque(f"realset:{number}")
-    where.mkdir(parents=True, exist_ok=True)
-    code = pairwise.opaque(key)
+def shown(key: str, views: list[Path]) -> tuple[judge.Picture, ...]:
+    """A model's views as the judge is to see them: the files where they are. Each verdict
+    copies them under fresh names of its own (`_fresh`), so nothing here names the model."""
+    return tuple(judge.Picture(Path(source), f"{view} view" + (
+        " (a nearer look at one quarter)" if view == "close" else ""))
+        for view, source in zip(VIEWS, views))
+
+
+def _judge_root() -> Path:
+    """Where each verdict's folder is made: the system's temporary folder, never a checkout.
+    The judge runs in its pictures' folder, and Claude Code puts that folder's path and, in a
+    checkout, its branch, status and newest commits into the judge's context (photoreal16)."""
+    root = Path(tempfile.gettempdir()).resolve()
+    if any((folder / ".git").exists() for folder in (root, *root.parents)):
+        raise SystemExit(f"the judge's folders would sit in a checkout ({root}): set TMPDIR "
+                         "outside one")
+    return root
+
+
+def _fresh(*sides: tuple[judge.Picture, ...]) -> tuple[Path, list[tuple[judge.Picture, ...]]]:
+    """One verdict's pictures under fresh random names, alone in a fresh random folder outside
+    any checkout. A blind name is a seed, not a blindfold (photoreal16): the judge read
+    byte-identical pictures 0.65 under one name and 0.29 under another, over ten verdicts each,
+    and realset kept one name a model and read each pair's verdict back, so asking again
+    repeated one draw. A name new to every verdict samples the judge (design34)."""
+    folder = Path(tempfile.mkdtemp(prefix="", dir=_judge_root()))
     out = []
-    for view, source in zip(VIEWS, views):
-        target = where / f"{code}_{view}.png"
-        if not target.exists() or target.stat().st_size != source.stat().st_size:
-            shutil.copyfile(source, target)
-        out.append(judge.Picture(target, f"{view} view" + (
-            " (a nearer look at one quarter)" if view == "close" else "")))
-    return tuple(out)
+    for side in sides:
+        copied = []
+        for picture in side:
+            target = folder / f"{secrets.token_hex(5)}{picture.path.suffix}"
+            shutil.copyfile(picture.path, target)
+            copied.append(judge.Picture(target, picture.what))
+        out.append(tuple(copied))
+    return folder, out
+
+
+def kept(into: Path, a_key: str, b_key: str) -> list[pairwise.Verdict]:
+    """The fresh verdicts into/ holds on a shown as A and b as B, each asked under names of its
+    own. A verdict asked under the models' fixed names (no "blind" in its file) is not one."""
+    found = []
+    for path in sorted(into.glob("fresh-*.json")) if into.exists() else ():
+        said = json.loads(path.read_text())
+        if said.get("blind") == FRESH and said["first"] == a_key and said["second"] == b_key:
+            found.append(pairwise.Verdict.from_dict(said))
+    return found
 
 
 def ask(brief_text: str, number: str, first: tuple[str, tuple[judge.Picture, ...]],
         second: tuple[str, tuple[judge.Picture, ...]], into: Path, model: str,
         canned: Path | None = None, question: Question = SETS) -> pairwise.Verdict | None:
-    """One ordered pair asked once, or read back from into/."""
+    """One ordered pair asked once, a fresh sample of the judge: the pictures under fresh names
+    in a fresh folder outside the checkout (`_fresh`), taken away after; the verdict kept in
+    into/ under a file name of its own, with the names the judge saw. Never read back here."""
     (a_key, a), (b_key, b) = first, second
-    done = into / f"{pairwise.opaque(a_key)}-{pairwise.opaque(b_key)}.json"
-    if done.exists():
-        return pairwise.Verdict.from_dict(json.loads(done.read_text()))
-    text = prompt(brief_text, a, b, question)
-    where = BLIND / pairwise.opaque(f"realset:{number}")
     error = ""
     for attempt in (1, 2):
-        if canned is not None:
-            reply, seconds = json.loads(canned.read_text()), 0.0
-        else:
-            bench.say(f"judge {number}: {pairwise.opaque(a_key)} v {pairwise.opaque(b_key)} "
-                      f"(attempt {attempt})")
-            try:
-                reply, seconds = judge.call(text, where, [where], model=model,
-                                            schema=question.schema())
-            except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as failed:
-                error = str(failed)
-                continue
+        folder, (a_seen, b_seen) = _fresh(a, b)
+        text = prompt(brief_text, a_seen, b_seen, question)
         try:
+            if canned is not None:
+                reply, seconds = json.loads(canned.read_text()), 0.0
+            else:
+                bench.say(f"judge {number}: {pairwise.opaque(a_key)} v {pairwise.opaque(b_key)} "
+                          f"under fresh names (attempt {attempt})")
+                reply, seconds = judge.call(text, folder, [folder], model=model,
+                                            schema=question.schema())
             verdict = parse(reply, a_key, b_key, question.dims)
-        except ValueError as failed:
+        except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError,
+                ValueError) as failed:
             error = str(failed)
             continue
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
         used = sorted((reply.get("modelUsage") or {}).keys()) if isinstance(reply, dict) else []
         into.mkdir(parents=True, exist_ok=True)
         (into / "prompt_example.txt").write_text(text)
-        bench._write_json(done, {**verdict.as_dict(), "prompt": question.version,
-                                 "model": ", ".join(used) or ("canned" if canned else model),
-                                 "seconds": round(seconds, 1)})
+        bench._write_json(into / f"fresh-{secrets.token_hex(6)}.json", {
+            **verdict.as_dict(), "blind": FRESH, "prompt": question.version,
+            "shown_as": {a_key: [p.path.name for p in a_seen], b_key: [p.path.name for p in b_seen]},
+            "model": ", ".join(used) or ("canned" if canned else model),
+            "seconds": round(seconds, 1)})
         return verdict
     bench.say(f"judge {number}: no readable reply ({error[:160]})")
     return None
@@ -781,10 +828,20 @@ def ask(brief_text: str, number: str, first: tuple[str, tuple[judge.Picture, ...
 
 def both_orders(brief_text: str, number: str, x: tuple[str, tuple[judge.Picture, ...]],
                 y: tuple[str, tuple[judge.Picture, ...]], into: Path, model: str,
-                canned: Path | None = None, question: Question = SETS) -> list[pairwise.Verdict]:
-    found = [ask(brief_text, number, x, y, into, model, canned, question),
-             ask(brief_text, number, y, x, into, model, canned, question)]
-    return [v for v in found if v is not None]
+                canned: Path | None = None, question: Question = SETS,
+                per_order: int = 1) -> list[pairwise.Verdict]:
+    """x and y, `per_order` fresh verdicts each way round. Fresh verdicts into/ already holds
+    count toward them (each was asked under names of its own, so it is a sample, not a name's
+    one answer): a judging stopped part way asks only what is missing."""
+    found: list[pairwise.Verdict] = []
+    for first, second in ((x, y), (y, x)):
+        have = kept(into, first[0], second[0])[:per_order]
+        found += have
+        for _n in range(per_order - len(have)):
+            verdict = ask(brief_text, number, first, second, into, model, canned, question)
+            if verdict is not None:
+                found.append(verdict)
+    return found
 
 
 # -- the set's side -------------------------------------------------------------
@@ -1231,14 +1288,15 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
         bench._write_json(record_path.with_name("unjudged.json"), record)
         return record
     ours_key, set_key = f"{args.arm}:{args.date}:{c.number}", f"set:{c.number}"
-    ours = (ours_key, shown(ours_key, views, c.number))
-    real = (set_key, shown(set_key, [Path(v) for v in the_set["views"]], c.number))
+    ours = (ours_key, shown(ours_key, views))
+    real = (set_key, shown(set_key, [Path(v) for v in the_set["views"]]))
     found = both_orders(subject.brief, c.number, ours, real, out / "judged", args.judge_model,
-                        CANNED_PAIR if args.dry_run else None)
+                        CANNED_PAIR if args.dry_run else None, per_order=args.per_order)
     record["keys"] = {"ours": ours_key, "set": set_key}
     record["verdicts"] = [v.as_dict() for v in found]
-    if len(found) < 2:
-        bench.say(f"{c.number}: {len(found)} of 2 verdicts; run the same command again")
+    if len(found) < 2 * args.per_order:
+        bench.say(f"{c.number}: {len(found)} of {2 * args.per_order} verdicts; run the same "
+                  "command again")
         return record
     bench._write_json(record_path, record)
     won = {d: sum(v.winners[d] == ours_key for v in found) for d in DIMS}
@@ -1317,7 +1375,7 @@ def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
     command = [*([bench.HEAVY] if args.software else []), sys.executable,
                str(Path(__file__).resolve()), "one",
                "--which", args.which, "--arm", args.arm, "--date", args.date,
-               "--judge-model", args.judge_model,
+               "--judge-model", args.judge_model, "--per-order", str(args.per_order),
                "--subjects", ",".join(c.number for c in share),
                "--checkout", str(args.checkout), "--timeout", str(args.timeout),
                *(["--software"] if args.software else []),
@@ -1416,9 +1474,8 @@ def calibrate_half(args: argparse.Namespace) -> int:
             bench.say(f"{c.number}: no pictures of the naive stack")
             return []
         plan = (int(the_set["plan"][0]), int(the_set["plan"][1]))
-        real = (f"set:{c.number}", shown(f"set:{c.number}", [Path(v) for v in the_set["views"]],
-                                         c.number))
-        stack = (f"naive:{c.number}", shown(f"naive:{c.number}", views, c.number))
+        real = (f"set:{c.number}", shown(f"set:{c.number}", [Path(v) for v in the_set["views"]]))
+        stack = (f"naive:{c.number}", shown(f"naive:{c.number}", views))
         return both_orders(brief(c, plan), c.number, real, stack, where / "calibration",
                            args.judge_model, CANNED_PAIR if args.dry_run else None)
 
@@ -1813,11 +1870,9 @@ def compare(args: argparse.Namespace) -> int:
         if not (x.get("keys") and y.get("keys")):
             continue
         xa = (x["keys"]["ours"], shown(x["keys"]["ours"],
-                                       [a_dir / c.number / f"views_{v}.png" for v in VIEWS],
-                                       c.number))
+                                       [a_dir / c.number / f"views_{v}.png" for v in VIEWS]))
         yb = (y["keys"]["ours"], shown(y["keys"]["ours"],
-                                       [b_dir / c.number / f"views_{v}.png" for v in VIEWS],
-                                       c.number))
+                                       [b_dir / c.number / f"views_{v}.png" for v in VIEWS]))
         tasks.append((c, x, y, xa, yb))
 
     def judged(task) -> tuple:
@@ -1843,6 +1898,194 @@ def paired_gap(a: list[float], b: list[float], draws: int = 2000,
     rng = random.Random(seed)
     means = sorted(sum(rng.choice(gaps) for _ in gaps) / len(gaps) for _ in range(draws))
     return (sum(gaps) / len(gaps), means[int(0.025 * (draws - 1))], means[int(0.975 * (draws - 1))])
+
+
+# -- fresh verdicts: an arm judged again, and a screen scored over subjects (design34) ----------
+
+
+def _record_of(folder: Path) -> dict | None:
+    """A design's record, or the one a --no-judge run left; None when neither is there."""
+    for name in ("record.json", "unjudged.json"):
+        if (folder / name).exists():
+            return json.loads((folder / name).read_text())
+    return None
+
+
+def _ours_key(record: dict) -> str:
+    return (record.get("keys") or {}).get("ours") or f"{record['arm']}:{record['date']}:{record['number']}"
+
+
+def fresh_outcomes(folder: Path, dim: str, into: str = "judged") -> list[float] | None:
+    """One design's fresh verdicts against its set on `dim`, 1.0 where it won, both orders:
+    [0.0] when it made no model (the person got nothing), None when there is no record or no
+    fresh verdict yet. Verdicts kept under the fixed names are not read."""
+    record = _record_of(folder)
+    if record is None:
+        return None
+    if not record.get("design", {}).get("model"):
+        return [0.0]
+    ours, real = _ours_key(record), f"set:{record['number']}"
+    said = kept(folder / into, ours, real) + kept(folder / into, real, ours)
+    return [float(v.winners[dim] == ours) for v in said] or None
+
+
+def judge_arm(args: argparse.Namespace) -> int:
+    """Every recorded design of an arm against its set, `--per-order` fresh verdicts each way
+    round, into each subject's `--into` folder (judged; another name, e.g. twin, judges the same
+    designs again as a second label). Fresh verdicts already there count; none is changed."""
+    folder = arm_dir(args.date, args.arm)
+    tasks = []
+    for c in _wanted(args.which, args.subjects, args.first):
+        record = _record_of(folder / c.number)
+        if record is None or not record.get("design", {}).get("model"):
+            continue
+        views = [folder / c.number / f"views_{v}.png" for v in VIEWS]
+        the_set = json.loads((SETS_DIR / c.number / "set.json").read_text())
+        if not all(p.exists() for p in views) or len(the_set.get("views", [])) < len(VIEWS):
+            bench.say(f"{c.number}: missing pictures, not judged")
+            continue
+        ours = _ours_key(record)
+        tasks.append((c, record, (ours, shown(ours, views)),
+                      (f"set:{c.number}", shown(f"set:{c.number}", [Path(v) for v in the_set["views"]]))))
+
+    def judged(task: tuple) -> tuple[str, list[pairwise.Verdict]]:
+        c, record, ours, real = task
+        found = both_orders(record["brief"], c.number, ours, real, folder / c.number / args.into,
+                            args.judge_model, CANNED_PAIR if args.dry_run else None,
+                            per_order=args.per_order)
+        return c.number, found, ours[0]
+
+    with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as workers:
+        for number, found, ours in workers.map(judged, tasks):
+            won = sum(v.winners["overall"] == ours for v in found)
+            print(f"{number}: {len(found)} fresh verdicts in {args.into}/, overall won {won}",
+                  flush=True)
+    return 0
+
+
+def _boot_mean(groups: dict[str, dict[str, list[float]]], subjects: list[str],
+               rng: random.Random | None = None, memo: dict | None = None) -> float:
+    """The mean over subjects of each subject's designs' mean share won; with `rng`, each
+    design's verdicts drawn again with replacement each time its subject is drawn."""
+    total = 0.0
+    for place, subject in enumerate(subjects):
+        means = []
+        for design, outcomes in groups[subject].items():
+            if rng is None:
+                means.append(statistics.fmean(outcomes))
+                continue
+            if (place, design) not in memo:
+                memo[(place, design)] = statistics.fmean(rng.choices(outcomes, k=len(outcomes)))
+            means.append(memo[(place, design)])
+        total += statistics.fmean(means)
+    return total / len(subjects)
+
+
+def interval(a: dict[str, dict[str, list[float]]], b: dict | None = None, boot: int = 2000,
+             seed: int = 1, draw: int = 0) -> dict:
+    """A win rate over subjects with its bootstrap 95% interval (as photoreal16 scores its
+    judge): the subjects drawn again with replacement, then each design's verdicts. With `b`,
+    a minus b over the subjects both have, the same subjects drawn for both (paired), each
+    side's verdicts drawn apart. `draw` subjects a resample, not as many as there are: the
+    interval a screen of that many subjects like these would have."""
+    subjects = sorted(set(a) & set(b)) if b is not None else sorted(a)
+    if not subjects:
+        return {}
+    point = _boot_mean(a, subjects) - (_boot_mean(b, subjects) if b is not None else 0.0)
+    rng = random.Random(seed)
+    found = []
+    for _ in range(boot):
+        chosen = rng.choices(subjects, k=draw or len(subjects))
+        x = _boot_mean(a, chosen, rng, {})
+        if b is not None:
+            x -= _boot_mean(b, chosen, rng, {})
+        found.append(x)
+    found.sort()
+    low, high = found[round(0.025 * (boot - 1))], found[round(0.975 * (boot - 1))]
+    return {"mean": round(point, 4), "low": round(low, 4), "high": round(high, 4),
+            "half_width": round((high - low) / 2, 4), "subjects": len(subjects),
+            "verdicts": sum(len(o) for s in subjects for o in a[s].values())}
+
+
+def _designs(spec: str, date: str) -> list[tuple[Path, str]]:
+    """ARM[@DATE][/INTO] joined by '+': the arm folders a label pools, each with the folder its
+    fresh verdicts are in. Arms of one commit pooled give a subject more than one design."""
+    out = []
+    for one in spec.split("+"):
+        one, _, into = one.partition("/")
+        arm, _, when = one.partition("@")
+        out.append((arm_dir(when or date, arm), into or "judged"))
+    return out
+
+
+def screen_groups(designs: list[tuple[Path, str]], numbers: list[str],
+                  dim: str) -> dict[str, dict[str, list[float]]]:
+    """subject -> design (its arm folder's name) -> its fresh verdicts' outcomes on `dim`."""
+    found: dict[str, dict[str, list[float]]] = {}
+    for folder, into in designs:
+        for number in numbers:
+            got = fresh_outcomes(folder / number, dim, into)
+            if got is not None:
+                found.setdefault(number, {})[folder.name] = got
+    return found
+
+
+def screen(args: argparse.Namespace) -> int:
+    """Labels' win rates against the set with bootstrap 95% intervals over subjects, each one's
+    difference from --base (paired by subject), every pair of labels that judged the same
+    designs (twins: the judge's own noise), and with --draw N the half-width N subjects would
+    give."""
+    labels = dict(spec.split("=", 1) for spec in args.label)
+    numbers = [c.number for c in _wanted(args.which, args.subjects, args.first)]
+    designs = {name: _designs(spec, args.date) for name, spec in labels.items()}
+    base = args.base or next(iter(labels))
+    rows: dict = {"labels": labels, "base": base, "dims": {}}
+
+    def span(x: dict) -> str:
+        return (f"{100 * x['mean']:+5.1f} ({100 * x['low']:+5.1f} .. {100 * x['high']:+5.1f})"
+                if x else "-")
+
+    lines = [f"# Fresh verdicts against the set, {args.which} half: {len(numbers)} subjects asked",
+             "", "Each label's win rate is the mean over subjects of the share of fresh verdicts"
+             " its design(s) won, both orders, with a bootstrap 95% interval over subjects and"
+             " verdicts. A label with no model on a subject counts 0 there.", ""]
+    for dim in args.dims.split(","):
+        groups = {name: screen_groups(d, numbers, dim) for name, d in designs.items()}
+        found = {name: {"all": interval(g)} for name, g in groups.items()}
+        lines += [f"## {dim}", "", f"{'label':10s} {'subjects':>8s} {'verdicts':>8s}  win rate % (95%)"]
+        for name, g in groups.items():
+            row = found[name]["all"]
+            lines.append(f"{name:10s} {row.get('subjects', 0):8d} {row.get('verdicts', 0):8d}  {span(row)}")
+        for name, g in groups.items():
+            if name != base and groups[base]:
+                found[name]["vs_base"] = interval(g, groups[base])
+                lines.append(f"  {name} minus {base}, paired by subject: {span(found[name]['vs_base'])}")
+        names = list(groups)
+        for i, one in enumerate(names):
+            for two in names[i + 1:]:
+                if [f for f, _ in designs[one]] != [f for f, _ in designs[two]]:
+                    continue
+                twin = interval(groups[one], groups[two])
+                found.setdefault("twins", []).append({"a": one, "b": two, **twin})
+                inside = (found[two]["all"]["low"] <= found[one]["all"]["mean"] <= found[two]["all"]["high"]
+                          and found[one]["all"]["low"] <= found[two]["all"]["mean"] <= found[one]["all"]["high"])
+                lines.append(f"  twins {one} and {two} (the same designs, judged apart): "
+                             f"{span(twin)}, {'each inside' if inside else 'NOT each inside'} the "
+                             f"other's interval; tells apart {100 * twin['half_width']:.1f} points")
+        if args.draw:
+            for name, g in groups.items():
+                if name != base and groups[base]:
+                    wide = interval(g, groups[base], draw=args.draw)
+                    lines.append(f"  {name} minus {base} as {args.draw} subjects like these: "
+                                 f"half-width {100 * wide.get('half_width', 0):.1f} points")
+        rows["dims"][dim] = found
+        lines.append("")
+    text = "\n".join(lines)
+    if args.out:
+        Path(args.out).write_text(text + "\n")
+        bench._write_json(Path(args.out).with_suffix(".json"), rows)
+    print(text)
+    return 0
 
 
 def compare_report(arms: list[str], dates: list[str], results: list[tuple], which: str) -> str:
@@ -1898,7 +2141,7 @@ def main(argv: list[str] | None = None) -> int:
     one_.add_argument("--first", type=int, default=0)
     one_.add_argument("--show", action="store_true",
                       help="names and briefs (never for proof while building the tool)")
-    for name in ("run", "one", "calibrate", "report", "compare", "audit", "reach"):
+    for name in ("run", "one", "calibrate", "report", "compare", "audit", "reach", "judge", "screen"):
         p = sub.add_parser(name)
         p.add_argument("--which", choices=HALVES, default="tune")
         p.add_argument("--date", default=f"{datetime.date.today():%Y-%m-%d}")
@@ -1911,8 +2154,23 @@ def main(argv: list[str] | None = None) -> int:
                        help="draw on lavapipe under heavy, not on the GPU (both sides alike)")
         p.add_argument("--dry-run", action="store_true",
                        help="a canned design and canned replies: nothing designed or asked")
-        if name in ("run", "one", "report", "audit", "reach"):
+        if name in ("run", "one", "report", "audit", "reach", "judge"):
             p.add_argument("--arm", required=True, help="this arm's name: m32, a branch's")
+        if name in ("run", "one", "judge"):
+            p.add_argument("--per-order", type=int, default=1,
+                           help="fresh verdicts each way round, each under names of its own")
+        if name == "judge":
+            p.add_argument("--into", default="judged",
+                           help="each subject's folder for them; another name judges the same "
+                           "designs again as a second label (twins)")
+        if name == "screen":
+            p.add_argument("--label", action="append", required=True,
+                           help="NAME=ARM[@DATE][/INTO][+ARM...]: arms pooled as one label")
+            p.add_argument("--base", default="", help="the label the others are paired against")
+            p.add_argument("--dims", default=",".join(DIMS))
+            p.add_argument("--draw", type=int, default=0,
+                           help="also the half-width a screen of N subjects like these gives")
+            p.add_argument("--out", default="", help="FILE.txt for the table, FILE.json beside")
         if name in ("run", "one"):
             p.add_argument("--checkout", type=Path, default=ROOT,
                            help="the checkout whose app designs (this one)")
@@ -1953,6 +2211,10 @@ def main(argv: list[str] | None = None) -> int:
         return run(args)
     if args.what == "calibrate":
         return calibrate_half(args)
+    if args.what == "judge":
+        return judge_arm(args)
+    if args.what == "screen":
+        return screen(args)
     if args.what == "audit":
         return audit_later(args)
     if args.what == "report":
