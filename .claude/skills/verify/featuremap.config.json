@@ -6564,6 +6564,27 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "ask a set's builders",
+      "entry": "supabase/set_asks.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/set_asks.sql --dry --try=tools/set_asks_try.sql --table=talk_threads   (after talk_asks.sql; talk_set_ask tells each version's publisher once (talk_ask_heard): never under 13, kept private, banned, blocked either way or of the other pool; talk_set_asks newest first with answered; talk_notice_rows' talk_mention rows with {ask: {set, step}}; talk_pin_reply and talk_ask_as take a set's ask)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "ask the builders on a set's page",
+      "entry": "web/set-page.js",
+      "reach": "https://brickworks.diy/library/set/346-2#asks: the Ask the builders tab (api/_sets.js asksHtml): the step picker (?step=N picks it), the step in 3D in the box, Ask the builders (POST /api/people?op=talk_set_ask), the asks listed newest first with Answered or Open (GET ?op=talk_set_asks&set=N); the thread at /talk/t/<n> draws the step (api/_asks.js setAskHtml, /m/<version>/scene.json?step=N or /library/<id>/scene.json); a version's publisher's notice (api/_notifications.js noticeSaid)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "hubask browser flow",
+      "entry": "tools/web/hubask_flow.mjs",
+      "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/flow.env tools/web/relay_server.mjs 11870 --hold=talk, then node --env-file=$SCRATCH/flow.env tools/web/hubask_flow.mjs --url=http://127.0.0.1:11870 --out=DIR   (two versions of 346-2 published, the refusals, the hub's ask at step 3 in 3D at 1280 and 390, the thread's 3D, the publishers' notices, an answer on a part, the hub listing it Answered)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "partpins browser flow",
       "entry": "tools/web/partpins_flow.mjs",

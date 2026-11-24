@@ -622,9 +622,11 @@ ${chrome.header}
     </div>
     <div class="rest">
   <div class="obj-panels">
-  ${tabsHtml([{ key: "parts", name: say("Parts"), n: entry.parts }, others.length && { key: "models3d", name: say("In 3D"), n: others.length },
+  ${tabsHtml([{ key: "parts", name: say("Parts"), n: entry.parts }, model && { key: "asks", name: say("Ask the builders") },
+    others.length && { key: "models3d", name: say("In 3D"), n: others.length },
     inside.length && { key: "inside", name: say("Sets packed in it"), n: inside.length }], { label: say("About this set"), extra: "page-tabs" })}
   ${partsHtml}
+  ${model ? asksHtml(entry, model) : ""}
   ${modelsHtml}
   ${insideHtml}
   </div>
@@ -640,6 +642,19 @@ ${chrome.header}
 ${chrome.footer}
 </body>
 </html>`;
+}
+
+/// Ask the builders (hubask, supabase/set_asks.sql): the tab's panel, the
+/// second, as a model's Comments are. Filled by web/set-page.js, which asks
+/// for the set's questions (api/_talk.js talkSetAsks): the box to ask about a
+/// step of LDraw's model of it, the step seen in 3D before it is asked, and
+/// what was asked here, newest first, each saying whether it was answered.
+function asksHtml(entry, model) {
+  return `<section class="set-asks" id="asks"${panelAttrs("asks")} data-set="${escapeHtml(entry.set.toLowerCase())}" `
+    + `data-library="${escapeHtml(model.id)}" aria-busy="true"><h2 class="visually-hidden" id="asks-h">${asText(say("Ask the builders"))}</h2>`
+    + `<p class="note set-asks-lede">${asText(say("Stuck on a step? Ask everybody who built a version of this set. They hear of it, "
+      + "and an answer can point at the part in 3D."))}</p>`
+    + `<div class="set-asks-body"><p class="note set-asks-wait">${asText(say("Getting the questions asked here…"))}</p></div></section>`;
 }
 
 /// The sitemap files of the sets' pages: their number, and each one's URLs

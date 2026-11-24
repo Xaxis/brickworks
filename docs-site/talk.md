@@ -1,5 +1,5 @@
 ---
-ai: Talk at /talk is the builders' forum: boards (Show and tell, Help, Ideas, Challenges, News), threads and replies like a model's comments, Ask the builders from the studio's Share panel (a Help thread with the model in 3D at the asked step, answers pinned to parts that light in the open studio), a pasted model, step, set or challenge link shown as a card, @handle mentions, one photo a post, Follow, search, an RSS feed per board, Report and Block.
+ai: Talk at /talk is the builders' forum: boards (Show and tell, Help, Ideas, Challenges, News), threads and replies like a model's comments, Ask the builders from the studio's Share panel (a Help thread with the model in 3D at the asked step, answers pinned to parts that light in the open studio) and from a set's page (a step of the set, everybody who published a version of it told, the page listing its asks open and answered), a pasted model, step, set or challenge link shown as a card, @handle mentions, one photo a post, Follow, search, an RSS feed per board, Report and Block.
 rules:
   - Links to sites other than Brickworks stay plain words.
   - Three people's reports hide a post until the site's owner looks.
@@ -57,6 +57,19 @@ In the studio, with the model open, each new answer on a part lights that part w
 <!-- covers
 ui:ask the builders from the studio
 lib:ask the builders in talk
+-->
+
+## Ask about a step of a set {#set}
+
+Stuck on a step of a real set's instructions? Ask everybody who built it. On the set's page (search for its number, or go to [brickworks.diy/library/set/346-2](/library/set/346-2) and change the number), open the **Ask the builders** tab. Pick the step under **On**, numbered as **Build it** numbers them, or leave it on *the whole set*: the box shows that step in 3D, so you can check it is the one you mean. Say what you want to know and press **Ask the builders**. If you are signed out, you sign in as it sends, and what you typed is kept.
+
+It starts a thread in Help, as a question from the studio does: the step in 3D at its top for anybody to turn, and answers on a part with their dot on it. Everybody who published a version of that set hears of it in their Notifications, once, as when somebody mentions them: their choices for mentions decide whether it also comes to their phone or by email. Nobody under 13 is told, and nobody you blocked or who blocked you.
+
+Under the box, the page lists what was asked about the set, newest first, each linking its thread: **Answered** once somebody else has replied, **Open** until then.
+
+<!-- covers
+ui:ask the builders on a set's page
+lib:ask a set's builders
 -->
 
 ## A thread {#thread}

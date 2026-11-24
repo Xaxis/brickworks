@@ -290,6 +290,121 @@ def test_a_paired_gap_has_its_interval_round_it():
     assert gap == pytest.approx(0.625) and low <= gap <= high
 
 
+# -- the judge: a fresh name and folder for every verdict (design34) -------------
+
+
+def _views(where: Path, tag: str) -> list[Path]:
+    where.mkdir(parents=True, exist_ok=True)
+    out = []
+    for view in realset.VIEWS:
+        (where / f"views_{view}.png").write_bytes(f"{tag} {view}".encode())
+        out.append(where / f"views_{view}.png")
+    return out
+
+
+def test_every_verdict_sees_fresh_names_in_a_fresh_folder_outside_any_checkout(tmp_path, monkeypatch):
+    # photoreal16: a name kept for every verdict is a seed, and realset read each pair's
+    # verdict back under its two fixed names, so asking again repeated one draw. Each verdict
+    # must see the pictures under names and a folder no other verdict saw, outside the
+    # checkout (whose branch and commits Claude Code puts in the judge's context), gone after.
+    ours = ("ours", realset.shown("ours", _views(tmp_path / "ours", "ours")))
+    real = ("set:1-1", realset.shown("set:1-1", _views(tmp_path / "set", "set")))
+    assert all(p.path.parent == tmp_path / "ours" for p in ours[1])     # shown copies nothing
+    seen = []
+
+    def fake_call(text, cwd, readable, model="opus", timeout=900, schema=None):
+        assert readable == [cwd] and not any((p / ".git").exists() for p in (cwd, *cwd.parents))
+        files = sorted(cwd.iterdir())
+        assert len(files) == 2 * len(realset.VIEWS)
+        for path in files:
+            assert path.name in text and "ours" not in path.name and "set" not in path.name
+        seen.append((cwd, {p.name for p in files}, {p.read_bytes() for p in files}))
+        return json.loads(CANNED.read_text()), 1.0
+
+    monkeypatch.setattr(realset.judge, "call", fake_call)
+    into = tmp_path / "judged"
+    # a verdict kept the old way, under the two fixed names: never read back or counted
+    (into).mkdir()
+    (into / "aaaaaa-bbbbbb.json").write_text(json.dumps(
+        {"first": "ours", "second": "set:1-1", "winners": {d: "ours" for d in realset.DIMS}}))
+    found = realset.both_orders("a lion", "1-1", ours, real, into, "opus", per_order=3)
+    assert len(found) == 6 and len(seen) == 6
+    assert len({cwd for cwd, _, _ in seen}) == 6                      # a folder a verdict
+    assert len(set().union(*(names for _, names, _ in seen))) == 6 * 2 * len(realset.VIEWS)
+    assert all(not cwd.exists() for cwd, _, _ in seen)               # taken away after
+    assert all(contents == seen[0][2] for _, _, contents in seen)    # the same pictures each time
+    files = [json.loads(p.read_text()) for p in into.glob("fresh-*.json")]
+    assert len(files) == 6 and all(f["blind"] == realset.FRESH for f in files)
+    assert {tuple(sorted(f["shown_as"])) for f in files} == {("ours", "set:1-1")}
+    # asked again for 3 a way round: nothing new asked; for 4, one more each way, never a reread
+    assert len(realset.both_orders("a lion", "1-1", ours, real, into, "opus", per_order=3)) == 6
+    assert len(seen) == 6
+    assert len(realset.both_orders("a lion", "1-1", ours, real, into, "opus", per_order=4)) == 8
+    assert len(seen) == 8
+    assert len(realset.kept(into, "ours", "set:1-1")) == 4
+
+
+def test_the_judges_folders_are_refused_inside_a_checkout(tmp_path, monkeypatch):
+    (tmp_path / ".git").mkdir()
+    monkeypatch.setattr(realset.tempfile, "gettempdir", lambda: str(tmp_path / "tmp"))
+    try:
+        realset._judge_root()
+        refused = False
+    except SystemExit:
+        refused = True
+    assert refused
+
+
+def _record(folder: Path, number: str, made: bool, won: list[bool], into: str = "judged") -> None:
+    folder.mkdir(parents=True, exist_ok=True)
+    record = {"number": number, "arm": folder.parent.name, "date": "D", "brief": "b",
+              "design": {"model": "design.ldr"} if made else {}}
+    (folder / "record.json").write_text(json.dumps(record))
+    ours = f"{folder.parent.name}:D:{number}"
+    for i, w in enumerate(won):
+        first, second = (ours, f"set:{number}") if i % 2 == 0 else (f"set:{number}", ours)
+        (folder / into).mkdir(exist_ok=True)
+        (folder / into / f"fresh-{into}{i}.json").write_text(json.dumps(
+            {"first": first, "second": second, "blind": realset.FRESH,
+             "winners": {d: ours if w else f"set:{number}" for d in realset.DIMS}}))
+
+
+def test_a_screen_scores_over_subjects_counts_no_model_as_lost_and_reads_only_fresh(tmp_path):
+    arm = tmp_path / "armx"
+    _record(arm / "1-1", "1-1", True, [True, True, False, False])     # 0.5
+    _record(arm / "2-1", "2-1", True, [True, True, True, True])       # 1.0
+    _record(arm / "3-1", "3-1", False, [])                             # no model: 0
+    (arm / "4-1").mkdir()                                              # nothing recorded: left out
+    (arm / "2-1" / "judged" / "aaaaaa-bbbbbb.json").write_text(json.dumps(
+        {"first": "set:2-1", "second": "armx:D:2-1", "winners": {d: "set:2-1" for d in realset.DIMS}}))
+    groups = realset.screen_groups([(arm, "judged")], ["1-1", "2-1", "3-1", "4-1"], "overall")
+    assert set(groups) == {"1-1", "2-1", "3-1"}
+    assert sorted(groups["1-1"]["armx"]) == [0.0, 0.0, 1.0, 1.0]
+    assert groups["2-1"]["armx"] == [1.0] * 4 and groups["3-1"]["armx"] == [0.0]
+    found = realset.interval(groups)
+    assert found["mean"] == pytest.approx(0.5) and found["low"] < 0.5 < found["high"]
+    assert found["subjects"] == 3
+
+
+def test_a_paired_lift_is_found_and_twins_hold_nothing_between_them():
+    rng = random.Random(5)
+    subjects = [f"{k}-1" for k in range(16)]
+    base = {s: {"b": [float(rng.random() < 0.2 + 0.03 * k) for _ in range(8)]}
+            for k, s in enumerate(subjects)}
+    lifted = {s: {"l": [float(rng.random() < 0.6 + 0.02 * k) for _ in range(8)]}
+              for k, s in enumerate(subjects)}
+    gain = realset.interval(lifted, base)
+    assert gain["mean"] > 0.2 and gain["low"] > 0.05 and gain["subjects"] == 16
+    # the same designs judged twice by the same judge: their difference's interval holds 0
+    twin = {s: {"b": [float(rng.random() < 0.2 + 0.03 * k) for _ in range(8)]}
+            for k, s in enumerate(subjects)}
+    found = realset.interval(base, twin)
+    assert found["low"] < 0 < found["high"] and 0.03 < found["half_width"] < 0.2
+    # drawn as 64 subjects like these, the interval narrows by about half
+    wide = realset.interval(base, twin, draw=64)
+    assert wide["half_width"] < 0.7 * found["half_width"]
+
+
 # -- what the sessions reached --------------------------------------------------
 
 
@@ -481,3 +596,20 @@ def test_a_tab_without_claude_code_finds_every_other_tool_for_as_long_as_it_runs
 def test_a_tab_without_claude_code_on_this_box_finds_every_other_tool(tmp_path):
     _tab_finds_its_tools_for_as_long_as_it_runs(
         {"PATH": os.environ["PATH"], "HOME": str(Path.home())}, tmp_path / "data")
+
+
+def test_a_dry_run_designs_into_a_folder_of_its_own_never_the_real_arms(monkeypatch):
+    # design34: a dry run of d34lev, stopped by a timeout, left a canned 60-part design in
+    # realset-2026-11-24-d34lev/42006-1; the real run after it found design.json there, took
+    # it as made, and the judge was asked about the fixture eight times.
+    ran: list[str] = []
+    monkeypatch.setattr(realset.bench, "classes_current", lambda *a: None)
+    monkeypatch.setattr(realset, "_imported", lambda *a: None)
+    monkeypatch.setattr(realset, "run", lambda args: ran.append(args.arm) or 0)
+    common = ["--which", "tune", "--date", "2026-11-24", "--subjects", "42006-1",
+              "--via", "relay", "--instructions", "none", "--no-claude-code"]
+    realset.main(["run", "--arm", "d34lev", "--dry-run", *common])
+    realset.main(["one", "--arm", "d34lev-dry", "--dry-run", *common])  # as run starts each
+    realset.main(["run", "--arm", "d34lev", *common])
+    assert ran == ["d34lev-dry", "d34lev-dry", "d34lev"]
+    assert realset.arm_dir("2026-11-24", ran[0]) != realset.arm_dir("2026-11-24", ran[2])

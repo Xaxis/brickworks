@@ -2542,7 +2542,10 @@ async function read(request, response) {
   if (op === "set_parts") {
     return setParts(response, id, String(request.query?.as || "json"), testsAsked(request.query || {}), String(request.query?.lang || "en"));
   }
-  if (op === "set_scene" || op === "set_room") return setScene(response, id, testsAsked(request.query || {}), op === "set_room" ? "room" : "scene");
+  if (op === "set_scene" || op === "set_room") {
+    const step = op === "set_scene" && /^[1-9][0-9]{0,5}$/.test(String(request.query?.step || "")) ? Number(request.query.step) : null;
+    return setScene(response, id, testsAsked(request.query || {}), op === "set_room" ? "room" : "scene", step);
+  }
 
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
@@ -2887,8 +2890,11 @@ async function setParts(response, id, as, tests = false, lang = "en") {
 }
 
 /// /library/X/scene.json: its model packed for its page's 3D view, as a
-/// model's is (sceneAnswer); as [kind] "room", /library/X/room.json.
-async function setScene(response, id, tests = false, kind = "scene") {
+/// model's is (sceneAnswer); as [kind] "room", /library/X/room.json. With
+/// [step] (an ask about the set at a step, api/_asks.js), the parts built by
+/// that page where the file carries its steps, else the whole model, said
+/// so (at_step drawn false).
+async function setScene(response, id, tests = false, kind = "scene", step = null) {
   const entry = await librarySet(id, libraryOf(tests));
   if (!entry) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
@@ -2897,7 +2903,7 @@ async function setScene(response, id, tests = false, kind = "scene") {
   if (!text) return response.status(503).setHeader("Cache-Control", "no-store").json({ error: "Its file could not be read just now." });
   response.setHeader("Cache-Control", SET_PAGE_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
-  return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`, kind);
+  return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`, kind, kind === "scene" ? step : null);
 }
 
 // ---------------------------------------------------------------------------

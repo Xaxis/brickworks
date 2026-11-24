@@ -2929,7 +2929,7 @@ python3 tools/minitest.py tests/test_realset.py              # exclusion, halves
 python3 tools/bench/realset.py sample --which tune --show     # never --show the proof half
 python3 tools/bench/realset.py sample --which proof --first 10   # the ten every result before 2026-10-19 ran on
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py calibrate --which tune --jobs 2
-env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1 --audit-later
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1 --audit-later   # into realset-D-dry-dry: a dry run's arm ends in -dry, never the real arm's folder
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --first 10 --arm mine --checkout ../mine --jobs 2 --audit-later
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
 heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
@@ -2972,11 +2972,30 @@ run. `--software` draws on lavapipe and makes each worker one `heavy` job, as ev
 run was before 2026-10-16's technique round: the set drawn
 and checked once into `bench/results/realset-sets/<set>/`, the design by run.py's
 design stage into `realset-<date>-<arm>/<set>/` (brief.json, design.ldr, views,
-audit.jsonl, record.json, judged/), both drawn by `bench_views.gd` and copied to
-`bench/results/blind/<code>/` under hashed names, which is also the judge's
-working folder, so neither a path nor the prompt says which is the set. Each
-stage is skipped when its output is there: the same command resumes.
+audit.jsonl, record.json, judged/), both drawn by `bench_views.gd`. Each verdict
+(design34) copies both models' views under fresh random names into a fresh folder
+in the system's temporary folder (refused inside a checkout), runs the judge there
+and removes it, and keeps the verdict as judged/fresh-<random>.json with the names
+it saw: a name is a seed (photoreal16), and the old fixed names under
+`bench/results/blind/`, read back on every rerun, made each pair one draw.
+Fresh verdicts already in judged/ count toward `--per-order N` (N each way round);
+a file of the old kind is never read back. Each stage is skipped when its output
+is there: the same command resumes.
 `calibrate` judges each tune set against `calibrate.naive_stack` of itself.
+
+```sh
+python3 tools/minitest.py $PWD/tests/test_realset.py   # fresh names a verdict, outside a checkout, gone after; top-up; screen scoring
+python3 tools/bench/realset.py judge --which tune --arm mine --date D --per-order 4 --jobs 8            # fresh verdicts on an arm's designs
+python3 tools/bench/realset.py judge --which tune --arm mine --date D --per-order 4 --into twin --jobs 8  # the same designs again: twins
+python3 tools/bench/realset.py screen --which tune --subjects ... --label lev=mine@D --label base=old@D1+old2@D2 --label twin=old@D1/twin --base base --draw 16 --out FILE.txt
+```
+
+`screen` scores each label as the mean over subjects of the share of fresh verdicts
+its design(s) won (no model counts 0), with a bootstrap 95% interval (subjects, then
+verdicts, drawn again), each label minus the base paired by subject, and any two
+labels on the same designs as twins: their difference must hold 0, and its
+half-width is the judge's own noise. Proves it when the twins hold 0 and each
+twin's mean sits inside the other's interval.
 
 Proves it when: `calibrate` names the set on every dimension of every verdict;
 the dry run writes a record with two verdicts and a report; a real design's log

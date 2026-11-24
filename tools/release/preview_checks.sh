@@ -148,6 +148,13 @@ declare -A CMD=(
   # with it inside 60 s, a block and a report. Five throwaway accounts,
   # deleted after with their model.
   [askhelp]="tools/web/askhelp_flow.mjs --url=$P --out=$S/${TAG}_askhelp"
+  # Ask the builders on a set's page (hubask, supabase/set_asks.sql, docs/
+  # SOCIAL.md section 12): two versions of 346-2 published, an ask about a
+  # step refused signed out, under 13, past the last step and for another
+  # set; asked from the set's page at 1280 with its 3D at that step, the
+  # thread signed out at 1280 and 390, both builders told in Notifications,
+  # an answer on a part. Throwaway accounts, deleted after with their models.
+  [hubask]="tools/web/hubask_flow.mjs --url=$P --out=$S/${TAG}_hubask"
   # The gallery's Builds tab (docs/SOCIAL.md section 7, item 8): /builds
   # lists everybody's photos of real builds newest first, each linking its
   # model's page at the photo and its builder's profile; a photo hidden by

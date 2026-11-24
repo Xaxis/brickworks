@@ -78,7 +78,7 @@ import { promptNow, promptsById } from "./_prompts.js";
 import { withFaces } from "./_faces.js";
 import { scopeOf } from "./_settings.js";
 import { Unacceptable, inLanguage, siteWords, testsAsked } from "./_directory.js";
-import { counted, levelName, pictureOf, say } from "./_card.js";
+import { counted, levelName, number, pictureOf, say } from "./_card.js";
 import { blockCounts, blockedHandles, blockedModels, rowsWithout } from "./_blocks.js";
 import { pinnedAmong } from "./_comments.js";
 
@@ -245,6 +245,15 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
         : row.pinned ? stepped(say("{who} mentioned you in a comment on a part, step {step}"),
           say("{who} mentioned you in a comment on a part"))
           : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
+  }
+  if (row.kind === "talk_mention" && row.ask && typeof row.ask === "object" && /^[a-z0-9][a-z0-9.-]{0,29}$/.test(String(row.ask.set || ""))) {
+    // Asked of everybody who built a version of a set, you among them, on
+    // its page (supabase/set_asks.sql): a mention, as a person chooses it.
+    const set = String(row.ask.set);
+    const step = Number.isInteger(row.ask.step) && row.ask.step > 0 ? row.ask.step : 0;
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240), link: talkLink(row, origin),
+      line: step ? say("{who} asked the builders of LEGO® set {set} about step {step}", { set, step: number(step) })
+        : say("{who} asked the builders of LEGO® set {set}", { set }) };
   }
   if (row.kind === "talk_reply" || row.kind === "talk_mention") {
     // In Talk (supabase/talk.sql): a post in a thread followed, or naming you.

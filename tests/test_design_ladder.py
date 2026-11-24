@@ -341,7 +341,7 @@ def test_a_second_judging_asks_rung_one_afresh(tmp_path, monkeypatch):
         (folder / "1-1" / f"views_{view}.png").write_bytes(b"png")
     monkeypatch.setattr(design_ladder, "views", lambda number, rung: [
         folder / "1-1" / f"views_{v}.png" for v in realset.VIEWS])
-    monkeypatch.setattr(realset, "shown", lambda key, pictures, number: (key,))
+    monkeypatch.setattr(realset, "shown", lambda key, pictures: (key,))
     asked = []
 
     def judged(brief, number, ours, rung_side, into, model):
