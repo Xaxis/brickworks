@@ -2112,8 +2112,11 @@ func _ready() -> void:
 			await _await_early_link()
 		if not _copying.is_empty() and _early_asked:
 			await _await_early_model()
-			# Waited for too long to open and draw it whole under the screen
-			# within its bound: the studio first, the copy coming in on it.
+		# Waited for too long to open and draw it whole under the screen
+		# within its bound: the studio first, the copy coming in on it. So too
+		# when its link had not come in the wait: fetched again and opened
+		# under the screen, a link 4 s late held it 10 s after "ui" (slow4).
+		if not _copying.is_empty():
 			await _lift_if_late()
 		if not OS.get_cmdline_args().has("--script"):
 			placed = await _store.restore_fetched()
