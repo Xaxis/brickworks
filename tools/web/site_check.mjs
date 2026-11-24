@@ -463,10 +463,13 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
     count += 1;
   }
   for (const src of new Set([...pictures, ...styles])) {
-    const key = new URL(src, base + page);
+    const key = new URL(src.replace(/&amp;/g, "&"), base + page);
     if (key.origin !== new URL(base).origin && key.origin !== SITE) continue;
-    const r = await get(key.pathname, "HEAD");
-    if (r.status !== 200) fail(`${page} loads ${key.pathname}, which answers ${r.status}`);
+    // With its query: a person's own picture is /api/people?op=avatar&id=...,
+    // and asked without it the API answers 400 (the home's feed, nightreds
+    // unit preview 3, 2026-11-24).
+    const r = await get(`${key.pathname}${key.search}`, "HEAD");
+    if (r.status !== 200) fail(`${page} loads ${key.pathname}${key.search}, which answers ${r.status}`);
     count += 1;
   }
   ok(`${page}: ${count} links, pictures and files resolve`);
