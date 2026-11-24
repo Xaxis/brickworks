@@ -2411,7 +2411,9 @@ plan with Claude as the client.
   `/notifications`, `ol#groups` of `li.notice` (`data-model`; `.unread`
   edged and dotted in `--accent-edge` until a link in it is followed,
   which posts `notifications_read` with `keepalive`), each `.pic` (4:3) and
-  `h2` name, `ul.lines` (`li[data-kind]`, an avatar for a person, the like
+  `h2` name (both open the newest line's place, a comment at
+  `#comment-N`, as the account menu's entry does; `web/notice-view.js`,
+  sitewalk2), `ul.lines` (`li[data-kind]`, an avatar for a person, the like
   or award icon otherwise, New since the last opening, the time); the
   achievements' group `li.notice[data-achievements]`, "Your achievements",
   the award icon in its `.pic.award`; a challenge's
@@ -2529,8 +2531,11 @@ plan with Claude as the client.
   U10): `web/account.js` `askAgeIfAsked`, once the age question is
   answered 13 or over (a first sign-in, from the dialog or a page that asks
   on load), imports it and opens `dialog.first-steps` at once from a page's
-  own Sign in; signed in to do something (a like, a follow: `pending`),
-  what was pressed is done first and First steps are offered after it in a
+  own Sign in, and from the header's on the home page, `/profile` and
+  `/feed`; signed in to do something (a like, a follow: `pending`), or from
+  the header's on any other page (`askToSignIn`'s `later`, set in
+  `web/follow.js`; sitewalk2: five dialogs stood between the code and Share
+  it), what was pressed is done first and First steps are offered after it in a
   snackbar (`offerFirstSteps`, kept in localStorage
   `brickworks.first_steps_due` until offered, also on the next page if that
   one went; checkdrift 2026-11-23): `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
@@ -6380,7 +6385,13 @@ plan with Claude as the client.
   carried as sections of their own, Studio's own prints left as plain
   parts); no model refused in words with nothing sent; an LDD `.lxf` sent
   to the app (no web path into it yet). Shared as the app shares
-  (`POST /api/share`: the same refusals, 13+ and may_publish): sent
+  (`POST /api/share`: the same refusals, 13+ and may_publish), after the
+  age question and, for an account with no profile (`op=me`), First steps'
+  Make your profile alone (`firstSteps({profileOnly})`; Skip shares it with
+  no name, as before; sitewalk2: a model shared without one had no name or
+  Follow on its page; never for an account under 13, which the publish
+  refuses in its own words; share_model_flow answers the ask and checks the
+  credit): sent
   unlisted, drawn from its own `/m/<id>/scene.json` by `web/viewer3d.js`
   at the app's sizes (1200x630 link picture on its ground and cut-out,
   480x360 WebP card), and put on its version 1 by `POST /api/share?op=pictures`

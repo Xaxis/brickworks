@@ -327,7 +327,9 @@ export function modelsList(page) {
       picked.querySelector(".by").after(why);
       // Featured across the grid's width (sitebold, 2026-11-23): its picture
       // large, turning in 3D under a resting mouse, and the ways into the
-      // studio beside it: Build it from step 1, or a copy of your own.
+      // studio beside it: Build it from step 1, or a copy of your own, in the
+      // model page's own words for the two (api/share.js): "Open in
+      // Brickworks" told a newcomer on Brickworks nothing (sitewalk2).
       const id = String(pick.model.id);
       const go = document.createElement("p");
       go.className = "pick-go";
@@ -335,7 +337,7 @@ export function modelsList(page) {
         textContent: say("Build it") });
       build.title = say("Build it with real bricks, one step at a time from step 1: no account needed");
       const open = Object.assign(document.createElement("a"), { className: "cta ghost", href: appAt(`copy=${id}`),
-        textContent: say("Open in Brickworks") });
+        textContent: say("Open in the studio") });
       open.title = say("Copy it into your own models, to change and make yours");
       go.append(build, open);
       picked.querySelector(".words").append(go);

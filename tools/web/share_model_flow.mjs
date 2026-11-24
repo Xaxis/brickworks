@@ -33,6 +33,9 @@
 //   Author line with an address and its folders are left out, and said; the
 //   form says anyone with the link can download the file. The form is each
 //   file's own, and the focus goes to the progress as the form goes.
+//   The run's account starts with no profile: its first Share it asks for
+//   one before sending anything, and the model's page credits that name
+//   (sitewalk2, 2026-11-24).
 // Pictures of each state at 1280, 768 and 390 in light and dark in --out.
 import { launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -56,6 +59,9 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../.
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const BAR = { desktop: 60, phone: 120 };
+// The name the run's account takes when Share it asks for a profile, and
+// so the name its models' pages credit.
+const PROFILE_NAME = "Share Flow Tester";
 
 const fails = [];
 const ok = (yes, what) => {
@@ -323,6 +329,20 @@ try {
   await choose(page, "wrong_line.ldr");
   await page.waitForSelector("#details:not([hidden])", { timeout: 15000 });
   await page.click("#share");
+  // The run's account has no profile yet, so the first Share it that the
+  // form lets through asks for one, with First steps' own step, before
+  // anything is sent: the model goes out under that name (sitewalk2). Made
+  // here, so every share after this one goes straight on.
+  const profileAsked = await page.waitForSelector("dialog.first-steps[open] #first-name", { timeout: 20000 }).then(() => true).catch(() => false);
+  const askedSays = profileAsked ? (await page.locator("#first-steps-title").textContent().catch(() => "")) || "" : "";
+  ok(profileAsked && /profile/i.test(askedSays) && sent.length === 0,
+    `Share it with no profile asks for one first ("${askedSays.trim()}"), nothing sent yet (${sent.length} POSTs)`);
+  if (profileAsked) {
+    await page.fill("#first-name", PROFILE_NAME);
+    await page.fill("#first-handle", `share-flow-${randomBytes(4).toString("hex")}`);
+    await page.click("#first-make");
+    await page.waitForSelector("dialog.first-steps[open]", { state: "detached", timeout: 20000 }).catch(() => null);
+  }
   await page.waitForSelector("#form-said:not([hidden])", { timeout: 60000 }).catch(() => null);
   const serverSaid = (await page.locator("#form-said").textContent().catch(() => "")) || "";
   ok(serverSaid.trim().length > 10 && await page.locator("#details").isVisible(),
@@ -338,6 +358,8 @@ try {
   if (one.id) { made.push(one.id); await judge(one.id, "three_core_rocket.mpd", rocket); }
   const page3d = one.id ? await deskPage.locator("body").textContent().catch(() => "") : "";
   ok(!one.id || new RegExp(`${expected.steps}\\s+steps`).test(page3d), `three_core_rocket.mpd: its page says ${expected.steps} steps`);
+  const credit = one.id ? (await deskPage.locator(".shared-by").first().textContent().catch(() => "")) || "" : "";
+  ok(!one.id || credit.includes(PROFILE_NAME), `three_core_rocket.mpd: its page credits the sharer's profile ("${credit.trim().replace(/\s+/g, " ")}")`);
   // A Studio 2025 file with a Part Designer part, shared.
   const custom = await shareOne(deskPage, "bay_2025.io", { from: STUDIO_FIXTURES, name: "bay_2025", shotName: "1280_bay", working: true, twice: true });
   if (custom.id) {

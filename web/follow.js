@@ -772,8 +772,14 @@ document.addEventListener("click", (event) => {
   // where it was: the header is sticky, and a plain focus() scrolled the
   // page to its top to show it (sifix, 2026-11-15: 1829 px down at 1280
   // became 1411). The age question, if asked after, gives it back there.
+  // First steps at once only where there is nothing else to do: the home
+  // page, your profile and your feed; on any other page the person came to
+  // do what it is for, and they wait in a snackbar (account.js later).
+  const page = location.pathname.replace(/\/$/, "");
+  const later = ![langAt(), `${langAt()}/profile`, `${langAt()}/feed`].includes(page);
   askToSignIn(undefined, {
     back: () => [...document.querySelectorAll(".site-head .account-btn")].find((one) => one.checkVisibility()),
+    later,
   }).catch(() => { location.href = link.href; });
 });
 
