@@ -9539,8 +9539,13 @@ func _show_notices() -> void:
 	for note: Node in _notices.get_child(0).get_children():
 		any = any or (note as Control).visible
 	# On a phone the drawer down the left takes the screen beside its rail,
-	# and the strip, squeezed beside it, ran off the screen: it waits.
-	_notices.visible = any and not (_phone != null and not Phone.wide() and _bin_dock.is_open())
+	# and the strip, squeezed beside it, ran off the screen: it waits. So
+	# for the assistant's down the right: the month's challenge line kept
+	# its least width in the model's column, and at 150% the assistant's
+	# drawer opened beside it, two thirds off a 390 phone (app_a11y,
+	# nightreds 2026-11-24).
+	var drawer: bool = _bin_dock.is_open() or (_chat_dock != null and _chat_dock.is_open())
+	_notices.visible = any and not (_phone != null and not Phone.wide() and drawer)
 	if _phone != null and any:
 		_for_a_finger(_notices)
 
@@ -12228,7 +12233,9 @@ func _dress_for_phone() -> void:
 	# (_make_chat sizes it then).
 	if _chat_made != null:
 		_touch.size_panel(_chat_made)
-	_chat_dock.toggled.connect(func(_open: bool) -> void: _fit_drawers())
+	_chat_dock.toggled.connect(func(_open: bool) -> void:
+		_show_notices()
+		_fit_drawers())
 	_bin_dock.toggled.connect(Callable(_phone, &"dock_toggled"))
 	_tool_column.visibility_changed.connect(Callable(_phone, &"dock_toggled"))
 	_bin_dock.toggled.connect(func(_open: bool) -> void:
