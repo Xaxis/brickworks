@@ -6364,7 +6364,9 @@ plan with Claude as the client.
   age question and, for an account with no profile (`op=me`), First steps'
   Make your profile alone (`firstSteps({profileOnly})`; Skip shares it with
   no name, as before; sitewalk2: a model shared without one had no name or
-  Follow on its page): sent
+  Follow on its page; never for an account under 13, which the publish
+  refuses in its own words; share_model_flow answers the ask and checks the
+  credit): sent
   unlisted, drawn from its own `/m/<id>/scene.json` by `web/viewer3d.js`
   at the app's sizes (1200x630 link picture on its ground and cut-out,
   480x360 WebP card), and put on its version 1 by `POST /api/share?op=pictures`
