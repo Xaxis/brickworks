@@ -21,7 +21,11 @@
 ##      anchored half of a joint moves the half across it, Grab._from_part);
 ##   3. on a phone, a second finger on the screen while the first turns the
 ##      1 x 1: put back where it was, and the selection as it was before the
-##      press (nothing), as a second finger leaves a carried part (touchfix).
+##      press (nothing), as a second finger leaves a carried part (touchfix);
+##   4. on the desktop's layout, the two made a sub-assembly and a click on the
+##      2 x 4: it takes them whole, and the status line names the sub-assembly
+##      and says a double-click edits inside it, as a phone's line does (a
+##      set's house, 149 parts, was said as "149 selected — … C paints").
 ## Pictures in shots/grabselect/. Exits non-zero when a check fails.
 extends "res://src/dev/twist_probe.gd"
 
@@ -135,6 +139,28 @@ func _run() -> void:
 		await _settle()
 		_check("...it was taken hold of (%s), and is put back, the selection as it was: %s"
 			% [grabbed, _moved(before)], grabbed and _parts() == before)
+
+	if _layout == "desktop":
+		print("\n4. a click on a part of a sub-assembly")
+		await _model()
+		await _go_home()
+		_builder.selection[_base] = true
+		_builder.selection[_small] = true
+		var made: String = _verbs.assemblies.make("Wall")
+		_builder.clear_selection()
+		await _frames(4)
+		var at: Vector2 = _point_on(_base)
+		_button(at, true)
+		await process_frame
+		_button(at, false)
+		await _frames(8)
+		var shell: Variant = _main.get("_shell")
+		var said: String = str(shell.status.message.text)
+		_check("a click on its 2 x 4 takes the sub-assembly %s whole (%d selected) and says which and how to change one: \"%s\""
+			% [made, _builder.selection.size(), said],
+			_builder.selection.size() == 2 and said.begins_with("Wall selected, 2 parts")
+				and said.contains("double-click edits inside"))
+		await _shot2("4_subassembly")
 
 	print("\ngrabselect_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)

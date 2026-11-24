@@ -7384,8 +7384,18 @@ func _build_ui() -> void:
 		_outline.show_selection(_builder.selection)
 		_tell_bin_selection()
 		_look_under_again()
+		var whole: String = _verbs.assemblies.selected_assembly() \
+			if count > 1 and _verbs != null and _verbs.assemblies != null else ""
 		if count == 0:
 			_bar.say("")
+		elif not whole.is_empty():
+			# A click took a sub-assembly whole: which, and the way to one
+			# of its parts, as a phone's line says (PhoneShell). "149
+			# selected — … C paints" at a set's fifth step, its house taken
+			# whole, said neither, and a colour then painted 149 parts
+			# (appwalk).
+			_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
+				% [Assemblies.label(whole), count])
 		else:
 			_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
 				% count))

@@ -1853,7 +1853,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `sub-assemblies`: `Ctrl-G` (Edit or Build, Make a sub-assembly) asks for a
   name and makes the selection a sub-assembly inside the one being edited; a
   click with Select then takes all of it, and every move, turn, hinge, copy,
-  mirror, hide and lock takes it whole. A double-click (or `Enter`) edits inside
+  mirror, hide and lock takes it whole. The status line names it and says a
+  double-click edits inside ("Wall selected, 2 parts — double-click edits
+  inside a sub-assembly", as a phone's line does; `PROBE_SIZE=1280x720
+  tools/probe.sh grabselect_probe` section 4; appwalk: a set's house taken
+  whole at its fifth step was said as "149 selected — … C paints"). A double-click (or `Enter`) edits inside
   it — a banner above the model says which, the model staying where it was
   under the pointer, so a second double-click there goes a level deeper
   (view.md's `centred on the model's column`), a click takes one part, a part put
