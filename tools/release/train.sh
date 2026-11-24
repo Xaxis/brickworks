@@ -72,7 +72,10 @@
 # none is named with --probes and an export is kept; --web asks for it and
 # is refused otherwise, --full never takes it. Its merge is checked again:
 # an app file that differs from the export's tree stops it, to be staged
-# again with --full. The social desk's train ran all 294 probes and its
+# again with --full. Its tree is never imported, so it never names a check
+# that runs the engine from it (preview_checks.sh's ENGINE_CHECKS, together):
+# refused when named, left out and said when lean.py adds one, at staging,
+# once merged and at a reship. The social desk's train ran all 294 probes and its
 # export for a change to web/ and api/ alone, and the lead shipped it by
 # hand instead (fastlane, 2026-11-18). --plan says what a stage would run
 # and stages nothing.

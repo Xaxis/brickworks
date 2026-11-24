@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -96,6 +97,15 @@ def test_the_flows_that_publish_them_run_no_engine_and_read_them() -> None:
     default = re.search(r'args\.sizes \|\| "([0-9,]+)"', (ROOT / "tools/web/share_steps_flow.mjs").read_text()).group(1)
     for n in set(sizes) | set(default.split(",")):
         assert (FIXTURES / ("share_steps_%s.ldr" % n)).exists(), n
+
+
+def test_a_model_written_again_runs_every_flow_that_publishes_it() -> None:
+    """flows_for.py follows imports, and a fixture is read, not imported: a
+    model written again named no check."""
+    out = subprocess.run([sys.executable, str(ROOT / "tools/release/flows_for.py"),
+                          "tests/fixtures/flow_models/comments_v1.ldr"], cwd=ROOT, capture_output=True, text=True,
+                         check=True, timeout=300).stdout
+    assert out.splitlines()[-1] == "checks: comments share_steps tested versions", out
 
 
 def test_engine_checks_are_exactly_the_checks_whose_flows_start_the_engine() -> None:

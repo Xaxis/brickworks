@@ -665,6 +665,10 @@ def main() -> int:
             else:
                 keyed.setdefault(part[1], (part[2], set()))[1].add(path)
     modules = [p for p in files if Path(p).parent == Path("tools/web") and p.endswith(".mjs")]
+    # The models the flows publish are read through flow_models.mjs alone:
+    # one written again is that module changed, for every flow it serves.
+    if any(p.startswith("tests/fixtures/flow_models/") for p in files) and "tools/web/flow_models.mjs" not in modules:
+        modules.append("tools/web/flow_models.mjs")
     scripts = {p: controls(p) for p in files}
     scripts = {p: given for p, given in scripts.items() if any(given)}
     if not wanted and not modules and not scripts and not keyed:
