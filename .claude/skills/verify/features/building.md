@@ -199,7 +199,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   "nothing copied yet"). The tabs keep the clipboard whole
   (`Carry.whole_text`: a `0 !BRICKWORKS CLIPBOARD` line before the copy's
   LDraw, with each part's sub-assembly, group and step, the sub-models' lights
-  and views and the parts the app can't show), so a paste in another tab is
+  and views and the parts the app can't show, as JSON deflated into base64:
+  all of 10030-1 is 472,292 characters of the 5.2 million a browser keeps for
+  the site), so a paste in another tab is
   the same tab's paste; it is the copying account's alone, and a sign-out
   forgets it, in the app (`EditVerbs.account_changed`) and on the site
   (`web/account.js` signOut). A paste whose parts' shapes this tab has not
