@@ -308,15 +308,19 @@ async function share() {
     }
     const age = await askAgeIfAsked({ pending: true });
     if (age && age.refused) return;
-    // Its page heads it with its sharer's name and Follow beside it only
-    // when they have a profile: one shared without went out with no name,
-    // and nobody who liked it could follow them (sitewalk2, 2026-11-24).
-    // First steps' Make your profile first, then; Skip shares it as it is.
-    const me = await call("/api/people?op=me").catch(() => null);
+    // Under their name, as the page promises: its page heads it with the
+    // profile its credit names and Follow beside it (api/share.js puts the
+    // profile's name for any credit sent). This page sent none, so every
+    // model shared from it went out with no name and nobody who liked it
+    // could follow its designer (sitewalk2, 2026-11-24). With no profile,
+    // First steps' Make your profile first; Skip shares it with no name.
+    let me = await call("/api/people?op=me").catch(() => null);
     if (me && me.status === 200 && me.body && !me.body.profile?.handle) {
       await import("/first-steps.js").then((steps) => steps.firstSteps({ pending: true, profileOnly: true })).catch(() => null);
+      me = await call("/api/people?op=me").catch(() => null);
     }
-    await publish(given);
+    const author = me && me.status === 200 ? String(me.body?.profile?.name || "") : "";
+    await publish({ ...given, author });
   } finally {
     busy = false;
     $("share").disabled = false;
@@ -363,7 +367,8 @@ async function publish(given) {
   }
   if (!job.id) {
     step("send");
-    const body = { name: given.name, model, description: given.description || undefined, licence: given.licence, listed: given.listed };
+    const body = { name: given.name, author: given.author || undefined, model, description: given.description || undefined,
+      licence: given.licence, listed: given.listed };
     let first = await send(body);
     // Kept from the gallery (the hour's listings, the age rule for a
     // listing, a model taken out of it): shared by its link all the same.
