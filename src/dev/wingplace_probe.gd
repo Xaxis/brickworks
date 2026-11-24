@@ -286,19 +286,50 @@ func _big() -> void:
 	var slowest: int = 0
 	var aims: int = 0
 	var reds: int = 0
+	var greens: int = 0
+	var told_wrong: Array = []
+	var twins: int = _tree.copies_of(most).size()
 	var size_px: Vector2 = Vector2(root.size)
 	for i: int in 6:
 		for j: int in 6:
 			var at := Vector2(size_px.x * (0.2 + 0.12 * i), size_px.y * (0.2 + 0.12 * j))
+			if not _clickable(at):
+				continue
+			# The aim timed as the app makes it (Main._refresh_preview), then the
+			# pointer moved there, which finds it asked already.
 			began = Time.get_ticks_usec()
-			_builder.update_preview(_camera.project_ray_origin(at), _camera.project_ray_normal(at))
+			_builder.update_preview(_camera.ray_origin(at), _camera.ray_normal(at))
 			slowest = maxi(slowest, Time.get_ticks_usec() - began)
+			await _move(at)
+			await _frames(2)
+			var words: String = _builder.copies_refuse
+			var fits: bool = _builder.can_place()
+			if not fits and words.is_empty():
+				continue
 			aims += 1
-			reds += 0 if _builder.copies_refuse.is_empty() else 1
-			await _frames(1)
-	print("    10179's %s: its copies' fits read in %d us; %d aims, the slowest %d us (the aim's own work with the ask), %d red for a copy"
-		% [most, fits_us, aims, slowest, reds])
+			# ...and clicked, as a person would: the follow judges it on the set.
+			var count: int = _count()
+			await _click(at)
+			await _frames(3)
+			var put: int = _count() - count
+			if fits:
+				greens += 1
+				if put != 1 + twins and told_wrong.size() < 6:
+					told_wrong.append("green took %d (\"%s\")" % [put, _tree.refused])
+			else:
+				reds += 1
+				if (put != 0 or _tree.refused != words) and told_wrong.size() < 6:
+					told_wrong.append("red took %d, refused \"%s\", said \"%s\"" % [put, _tree.refused, words])
+			if put > 0:
+				await _key(KEY_Z, true)
+				await _frames(2)
+	print("    10179's %s: its copies' fits read in %d us; the slowest aim %d us (its own work with the ask); %d places clicked, %d green, %d red for a copy"
+		% [most, fits_us, slowest, aims, greens, reds])
+	for one: String in told_wrong:
+		print("      " + one)
 	_check("...each aim with its ask within a frame's 16 ms (%d us)" % slowest, slowest < 16000)
+	_check("...and on the set the ghost says what the click does: each green put down with its twin, each red refused in its words (%d wrong of %d)"
+		% [told_wrong.size(), aims], aims > 0 and told_wrong.is_empty())
 	await _key(KEY_ESCAPE)
 	_tree.enter("")
 
@@ -349,10 +380,14 @@ func _drag_sweep() -> void:
 			var depth: int = _builder.history_depth()
 			_select_only([brick])
 			await _move(from)
-			await _button(from, true)
+			_button(from, true)
+			await _frames(2)
+			var last: Vector2 = from
 			for k: int in range(1, 7):
-				await _move(from.lerp(target, float(k) / 6.0))
-			await _move(target + Vector2(1, 0))
+				var next: Vector2 = from.lerp(target, float(k) / 6.0)
+				await _drag_move(last, next)
+				last = next
+			await _drag_move(last, target + Vector2(1, 0))
 			var asked: Variant = _builder.get("copies_refuse")
 			var predicted: String = "" if asked == null else str(asked)
 			var fits: bool = _builder.can_place()
@@ -400,6 +435,7 @@ func _drag_sweep() -> void:
 func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 	var box: AABB = _wing_box()
 	var drawn_wrong: int = 0
+	var cut_asked: bool = false
 	var green: int = 0
 	var green_put: int = 0
 	var red: int = 0
@@ -432,6 +468,10 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 				slowest = maxi(slowest, Time.get_ticks_usec() - began)
 			if _drawn_fits() != fits:
 				drawn_wrong += 1
+			# Before the click: a paste refused is let go of.
+			if not fits and not cut_asked:
+				cut_asked = true
+				_cut_short(predicted)
 			var heard: String = _shell.status.fields()["message"]
 			var count: int = _count()
 			await _click(at + Vector2(1, 0))
@@ -458,7 +498,6 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 				if shown.is_empty():
 					shown.append(predicted)
 					await _shot("red_%s" % what.replace(" ", "_"))
-					_cut_short(predicted)
 			if put:
 				await _key(KEY_Z, true)
 				await _frames(2)
@@ -567,6 +606,18 @@ func _move(at: Vector2) -> void:
 	await _frames(3)
 
 
+## A move with the left button held, from [param from]: a drag, as the
+## window hands it over.
+func _drag_move(from: Vector2, at: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = _as_event(at)
+	event.global_position = event.position
+	event.relative = _as_event(at) - _as_event(from)
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	Input.parse_input_event(event)
+	await _frames(3)
+
+
 func _button(at: Vector2, down: bool, twice: bool = false) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
@@ -574,6 +625,7 @@ func _button(at: Vector2, down: bool, twice: bool = false) -> void:
 	event.double_click = twice and down
 	event.position = _as_event(at)
 	event.global_position = event.position
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
 	Input.parse_input_event(event)
 
 
