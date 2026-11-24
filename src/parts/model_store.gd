@@ -5532,13 +5532,17 @@ func _keep_own_file(written_title: String) -> void:
 ## names another (it was written apart from the autosave, and Save asks
 ## rather than guess). An autosave from before it was written beside one
 ## (2026-11-24) is the saved model of its name, when there is one, as every
-## restore took it then.
+## restore took it then, unless the two came from different places: a link's
+## copy (REMIX), a set's version (FROM_SET) or a shared model (SHARE) is not
+## the person's model of that name, and Save asks.
 func _bind_restored() -> void:
 	var path: String = TabSession.path(OWN_FILE)
 	if not FileAccess.file_exists(path):
 		_forget_known()
-		if title != UNTITLED and FileAccess.file_exists(saved_path(title)):
-			know(saved_path(title))
+		var own: String = saved_path(title)
+		if title != UNTITLED and FileAccess.file_exists(own) and _came_from(
+				FileAccess.get_file_as_string(autosave())) == _came_from(FileAccess.get_file_as_string(own)):
+			know(own)
 		return
 	var said: String = FileAccess.get_file_as_string(path)
 	_own_file_said = said
@@ -5551,6 +5555,18 @@ func _bind_restored() -> void:
 		_forget_known()
 		return
 	know(SAVE_DIR + file)
+
+
+## Where a model's text says it came from: its link, the link it was copied
+## from and the set it is a version of, as its head's lines say them.
+static func _came_from(text: String) -> PackedStringArray:
+	var said := PackedStringArray()
+	for line: String in text.left(8192).split("\n", false):
+		var kept: String = line.strip_edges()
+		for meta: String in [SHARE_META, REMIX_META, SET_META]:
+			if kept.begins_with(meta.strip_edges() + " "):
+				said.append(kept)
+	return said
 
 
 ## What a save of the model on the baseplate called [param title] writes,

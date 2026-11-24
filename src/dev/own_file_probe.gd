@@ -117,6 +117,15 @@ func _stores() -> void:
 	var g2: ModelStore = _side()
 	_ok(g2.restore() == 3 and not g2.is_own_file(own) and g2._known_path.is_empty(),
 		"a file named out of the models' folder is not taken")
+	print("...and one from before it, a link's copy (REMIX) under the person's model's name")
+	DirAccess.remove_absolute(TabSession.path(ModelStore.OWN_FILE))
+	var copied: String = _text(OWN, 3).replace("\n\n", "\n%sAbCdEfGhIj\n\n" % ModelStore.REMIX_META)
+	_write(ModelStore.autosave(), copied)
+	var g3: ModelStore = _side()
+	_ok(g3.restore() == 3 and not g3.is_own_file(own) and ModelStore.remix_in(copied) == "AbCdEfGhIj",
+		"it is no saved model: Save asks")
+	_write(ModelStore.autosave(), link_text)
+	DirAccess.remove_absolute(TabSession.path(ModelStore.OWN_FILE))
 
 	print("\nopen, new, clear and its undo, an undone open, a version")
 	var h: ModelStore = _side()
