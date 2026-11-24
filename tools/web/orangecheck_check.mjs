@@ -6,8 +6,9 @@
 // supabase/orangecheck.sql's functions, Supabase's admin API, the session
 // minted and then used against api/account.js. Step 4 (oc225): an
 // orangecheck account merge follows to the same Brickworks account
-// (merged_rh), and orangecheck Connect makes an orangecheck account only at
-// a tick, and deletes it with the Brickworks account. oc237: the desktop's
+// (merged_rh), and orangecheck Connect makes an orangecheck account at a
+// sign-in (until signin3, 2026-11-24, at a tick of a box), and deletes it
+// with the Brickworks account. oc237: the desktop's
 // sign-in (?op=native), a code from orangecheck's authorize page traded
 // for the token, and an account deleted while Connect is still making it
 // one (orangecheck's review, L2).
@@ -963,43 +964,63 @@ try {
   }
 
   // Step 4: orangecheck Connect (me-client 0.39.0+, connectProvision and
-  // connectDelete). A tick of the box under Sign in with orangecheck, after
-  // a sign-in by emailed code, asks orangecheck to make the person an
-  // account; no tick, no call. It never blocks or fails the sign-in.
-  // Deleting the Brickworks account deletes that one first.
+  // connectDelete). Since signin3 (2026-11-24) there is no box: a sign-in's
+  // first word with /api/account asks orangecheck to make the person an
+  // account, once (api/account.js wrapOrangecheck, api/_oc.js
+  // ensureOrangecheck), run here as that word runs it. Nothing asks without
+  // a sign-in, and it never blocks or fails one. Deleting the Brickworks
+  // account deletes that one first.
   {
     const connected = (account) => rpc("oc_connected_of", { account });
+    const { codeOf, ensureOrangecheck } = await import("../../api/_oc.js");
+    const { verify } = await import("../../api/_auth.js");
+    const asked = async (access) => {
+      let claims;
+      try {
+        claims = await verify(access, { headers: {} });
+      } catch (trouble) {
+        return { status: trouble.status || 401, body: { error: trouble.message } };
+      }
+      return { status: 200, body: await ensureOrangecheck(claims, (await codeOf(claims)).emailed) };
+    };
     const carol = await mintSession(carolEmail, { age: true });
-    const asked = (access, body = { consent: true }) => ocRoute({ method: "POST", op: "connect", access, body });
     const key = process.env.OC_CONNECT_KEY;
     delete process.env.OC_CONNECT_KEY;
     const noKey = await asked(carol.access_token);
     process.env.OC_CONNECT_KEY = key;
-    check("Connect: without the Connect key, nothing is asked of orangecheck, and it says so", noKey.status === 503
-      && ochk.connect.length === 0, `${noKey.status} ${noKey.body.error || ""}`);
-    const unticked = await asked(carol.access_token, {});
-    const falsely = await asked(carol.access_token, { consent: "yes" });
-    check("Connect: no tick (consent not true) makes no call", unticked.status === 422 && falsely.status === 422 && ochk.connect.length === 0
-      && (await connected(carol.kept.user_id)) === null, `${unticked.status} ${falsely.status} ${ochk.connect.length}`);
+    check("Connect: without the Connect key, nothing is asked of orangecheck, and it says so", noKey.body.made === false
+      && noKey.body.reason === "not_here" && ochk.connect.length === 0, `${noKey.status} ${JSON.stringify(noKey.body)}`);
     const nobody = await asked("not.a.token");
     check("Connect: without a sign-in, refused, and no call", nobody.status === 401 && ochk.connect.length === 0, `${nobody.status}`);
     const ticked = await asked(carol.access_token);
     const call1 = ochk.connect.filter((one) => one.path === "/api/connect/provision");
-    check("Connect: a tick after a sign-in by code asks orangecheck once, with consent, the account's id and the Connect key, and nowhere else",
+    check("Connect: a sign-in asks orangecheck once, with consent, the account's id and address, the Connect key, and nowhere else",
       ticked.status === 200 && ticked.body.made === true && call1.length === 1 && call1[0].body.consent === true
-      && call1[0].body.user_id === carol.kept.user_id && call1[0].key && call1[0].redirect === "error"
-      && Object.keys(call1[0].body).sort().join(",") === "consent,user_id", `${ticked.status} ${JSON.stringify(ticked.body)} ${call1.length}`);
+      && call1[0].body.user_id === carol.kept.user_id && call1[0].body.email === carolEmail && call1[0].key && call1[0].redirect === "error"
+      && Object.keys(call1[0].body).sort().join(",") === "consent,email,email_verified,user_id", `${ticked.status} ${JSON.stringify(ticked.body)} ${call1.length}`);
     const row = await connected(carol.kept.user_id);
     check("Connect: the id orangecheck made is kept with the account", row?.did === ticked.body.did && Boolean(row?.made_at), JSON.stringify(row));
+    const twice = await asked(carol.access_token);
+    check("Connect: asked again, the account it made is the one it has: no second call", twice.body.made === false
+      && twice.body.reason === "has_one" && ochk.connect.filter((one) => one.path === "/api/connect/provision").length === 1, JSON.stringify(twice.body));
     // orangecheck refusing or down: answered, never thrown, and the
-    // sign-in it followed goes on.
+    // sign-in it followed goes on. Each its own account: an ask is claimed
+    // for a minute (supabase/sign_in_ways.sql oc_connect_claim).
+    const downEmail = `delivered+bw-oc-down-${tag}@resend.dev`;
+    const downOne = await mintSession(downEmail, { age: true });
+    if (downOne.kept.user_id) made.add(downOne.kept.user_id);
     ochk.provision = () => [503, { ok: false }];
-    const down = await asked(carol.access_token);
+    const down = await asked(downOne.access_token);
+    const downAgain = await asked(downOne.access_token);
     check("Connect: orangecheck down, the answer says nothing was made, and the sign-in goes on", down.status === 200 && down.body.made === false
-      && (await whoIs(carol.access_token)).body?.signed_in === true && (await theme(carol.access_token)).status === 200,
+      && (await whoIs(downOne.access_token)).body?.signed_in === true && (await theme(downOne.access_token)).status === 200,
       `${down.status} ${JSON.stringify(down.body)}`);
+    check("Connect: ...and not asked again within the minute", downAgain.body.reason === "asked_just_now", JSON.stringify(downAgain.body));
+    const thrownEmail = `delivered+bw-oc-thrown-${tag}@resend.dev`;
+    const thrownOne = await mintSession(thrownEmail, { age: true });
+    if (thrownOne.kept.user_id) made.add(thrownOne.kept.user_id);
     ochk.provision = () => { throw new Error("orangecheck_check: Connect timed out"); };
-    const thrown = await asked(carol.access_token);
+    const thrown = await asked(thrownOne.access_token);
     check("Connect: and a call that never answers too", thrown.status === 200 && thrown.body.made === false, `${thrown.status} ${JSON.stringify(thrown.body)}`);
     ochk.provision = (body) => [200, { ok: true, did_oc: `did:oc:${createHash("sha256").update(body.user_id).digest("hex").slice(0, 32)}`, is_new: false }];
     // Not for somebody who has orangecheck already: their sign-in gave it.
@@ -1141,7 +1162,7 @@ try {
         wrong.length === 0, wrong.join("; "));
     }
 
-    // Somebody who never ticked the box never waits on orangecheck to leave:
+    // Somebody Connect never made one for never waits on orangecheck to leave:
     // with orangecheck down, and with no Connect key, their account is
     // deleted at once, and nothing is asked of orangecheck (0 calls).
     for (const [how, setUp] of [["orangecheck down", () => { ochk.remove = () => [503, {}]; }],
@@ -1158,7 +1179,7 @@ try {
         process.env.OC_CONNECT_KEY = keyWas;
         ochk.remove = () => [200, { ok: true, result: "deleted" }];
       }
-      check(`Connect: an account that never ticked the box is deleted with ${how}, asking orangecheck nothing (0 calls), and told nothing of it`,
+      check(`Connect: an account Connect never made one for is deleted with ${how}, asking orangecheck nothing (0 calls), and told nothing of it`,
         plainGone.status === 200 && plainGone.body?.deleted === true && ochk.connect.length === before && !plainGone.body?.orangecheck
         && (await adminUser(plain.kept.user_id)).status === 404, `${plainGone.status} ${JSON.stringify(plainGone.body)} ${ochk.connect.length - before} calls`);
       await deleteAccount(email).catch(() => false);
@@ -1167,16 +1188,17 @@ try {
     // orangecheck's answer (2026-10-24): the address goes with email_verified
     // only when the same request carries a fresh emailed code's session for
     // that very address (amr otp, within the five minutes linking asks).
-    // Never for a password or an orangecheck session, a stale code, or an
-    // address the request names. Each refusal is checked beside the one
-    // case that sends it, so none passes by sending no address at all.
+    // Never for a password, Google's, GitHub's or orangecheck's session, or
+    // a stale code: then the account's own address goes as one orangecheck
+    // has still to check (signinreview F2, F11). Each refusal is checked
+    // beside the one case that sends it, so none passes by sending nothing.
     const provisions = () => ochk.connect.filter((one) => one.path === "/api/connect/provision");
-    const sentFor = async (access, body) => {
+    const sentFor = async (access) => {
       const from = provisions().length;
-      const answer = await asked(access, body);
+      const answer = await asked(access);
       return { answer, sent: provisions().slice(from).map((one) => one.body) };
     };
-    const unverified = (one) => one.sent.every((body) => !("email" in body) && !("email_verified" in body));
+    const unchecked = (one, email) => one.sent.length === 1 && one.sent[0].email === email && one.sent[0].email_verified === false;
     const codedEmail = `bw-oc-verified-${tag}@example.invalid`;
     const code = await mintCode(codedEmail);
     const coded = (await redeemCode(codedEmail, code)).body;
@@ -1188,39 +1210,34 @@ try {
       `${fromCode.answer.status} ${JSON.stringify(fromCode.sent)}`);
     const password = await mintSession(pwEmail, { age: true });
     const fromPassword = await sentFor(password.access_token);
-    check("Connect: a password session (a test account's) provisions without email_verified, where a fresh code's has it",
-      verifiedOwn && amrOf(password.access_token)[0] === "password" && fromPassword.sent.length === 1 && unverified(fromPassword),
+    check("Connect: a password session (a test account's) provisions with its address unchecked, where a fresh code's is verified",
+      verifiedOwn && amrOf(password.access_token)[0] === "password" && unchecked(fromPassword, pwEmail),
       `${fromPassword.answer.status} ${JSON.stringify(fromPassword.sent)}`);
-    const other = `bw-oc-someone-else-${tag}@example.invalid`;
-    const fromOther = await sentFor(coded.access_token, { consent: true, email: other, email_verified: true });
-    check("Connect: an address the request names is never sent as verified, only the code's own",
-      verifiedOwn && fromOther.sent.length === 1 && fromOther.sent.every((body) => body.email === codedEmail),
-      `${fromOther.answer.status} ${JSON.stringify(fromOther.sent)}`);
-    // Six minutes on: the same code's session is stale.
+    // Six minutes on: a code's session is stale.
+    const staleEmail = `bw-oc-stale-${tag}@example.invalid`;
+    const staleCode = await mintCode(staleEmail);
+    const staled = (await redeemCode(staleEmail, staleCode)).body;
+    if (staled.user?.id) made.add(staled.user.id);
     const now = Date.now;
     Date.now = () => now() + 6 * 60 * 1000;
     forgetForTests();
     let fromStale;
     try {
-      fromStale = await sentFor(coded.access_token);
+      fromStale = await sentFor(staled.access_token);
     } finally {
       Date.now = now;
       forgetForTests();
     }
-    check("Connect: a code's session past five minutes never provisions with email_verified, where a fresh one does",
-      verifiedOwn && unverified(fromStale), `${fromStale.answer.status} ${JSON.stringify(fromStale.sent)}`);
-    // site-attest's A: counted, not read through every(), which holds of no
-    // calls at all. Refused, fresh: false, and nothing asked of orangecheck.
-    check("Connect: a code's session past five minutes is refused 403, fresh: false, and asks orangecheck nothing (0 calls)",
-      fromStale.answer.status === 403 && fromStale.answer.body?.fresh === false && fromStale.sent.length === 0,
-      `${fromStale.answer.status} ${JSON.stringify(fromStale.answer.body)} ${fromStale.sent.length} calls`);
+    check("Connect: a code's session past five minutes provisions with its address unchecked, where a fresh one's is verified",
+      verifiedOwn && amrOf(staled.access_token)[0] === "otp" && unchecked(fromStale, staleEmail),
+      `${fromStale.answer.status} ${JSON.stringify(fromStale.sent)}`);
     // An orangecheck session of the same account, linked first.
     await rpc("oc_link", { did: `did:oc:${randomBytes(16).toString("hex")}`, account: coded.user?.id });
     const viaOc = await call(handler, { token: token({ did_oc: await rpc("oc_did_of", { account: coded.user?.id }) }).jwt });
     const fromItsOc = await sentFor(viaOc.body.access_token);
     check("Connect: an orangecheck session never provisions with email_verified, where a fresh code does",
       // Answered "has orangecheck" first: what keeps it from sending, said.
-      verifiedOwn && viaOc.status === 200 && viaOc.body.user?.id === coded.user?.id && unverified(fromItsOc)
+      verifiedOwn && viaOc.status === 200 && viaOc.body.user?.id === coded.user?.id && fromItsOc.sent.length === 0
       && fromItsOc.answer.status === 200 && fromItsOc.answer.body?.made === false && fromItsOc.answer.body?.reason === "has_orangecheck",
       `${viaOc.status} ${fromItsOc.answer.status} ${JSON.stringify(fromItsOc.answer.body)} ${JSON.stringify(fromItsOc.sent)}`);
   }
@@ -1240,7 +1257,13 @@ try {
     const provisionWas = ochk.provision;
     const removeWas = ochk.remove;
     const unmade = (body) => (theirs.delete(body.user_id) ? [200, { ok: true, result: "deleted" }] : [404, { ok: false, reason: "unknown_user" }]);
-    const ticks = (access) => ocRoute({ method: "POST", op: "connect", access, body: { consent: true } });
+    // A sign-in's ask of Connect, as api/account.js wrapOrangecheck makes it.
+    const { codeOf, ensureOrangecheck } = await import("../../api/_oc.js");
+    const { verify } = await import("../../api/_auth.js");
+    const ticks = async (access) => {
+      const claims = await verify(access, { headers: {} });
+      return { status: 200, body: await ensureOrangecheck(claims, (await codeOf(claims)).emailed) };
+    };
     for (const how of ["deleted whole", "only marked as going"]) {
       const email = `delivered+bw-oc-l2-${how.split(" ")[0]}-${tag}@resend.dev`;
       const fay = await mintSession(email, { age: true });
@@ -1281,7 +1304,7 @@ try {
     }
     // site-attest's race, step by step (its bw237/l2_race.mjs, on our own
     // SQL): (a) the deletion marks first, before any oc_connected row is
-    // there; (b) a first tick asks, and the row is written; (c) orangecheck
+    // there; (b) a first sign-in asks, and the row is written; (c) orangecheck
     // answers, and the answer is asked to be kept; (d) the deletion goes
     // on, and the account goes, its row with it.
     {

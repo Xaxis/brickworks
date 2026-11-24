@@ -10,18 +10,22 @@
 //
 //   1. The sign-in dialog, signed out, on a page with more to it than the
 //      sign-in (/gallery?sort=new): Sign in with Google and with GitHub,
-//      each with its mark, as tall and wide as Email me a code; no box to
-//      tick; one line that signing in also makes the orangecheck account,
-//      with a link to what that is; nothing sideways.
+//      each with its mark, as tall and wide as Email me a code, each link
+//      with the challenge of a verifier the page keeps; no box to tick; one
+//      line that signing in without orangecheck also makes the orangecheck
+//      account, with a link to what that is; nothing sideways.
 //   2. Sign in with Google: to Google (the stand-in's page, here), and back
 //      to the very page, signed in, the age question answered on the way:
 //      no second account for an address a code signed in before.
 //   3. Sign in with GitHub from /profile?sign-in, a new address: back on
 //      /profile, signed in, asked its age first; answered, its orangecheck
-//      account made.
-//   4. Settings: How you sign in lists the code, Google and GitHub;
-//      Unlink takes Google off and says the code still signs in; the
-//      orangecheck part says the account signing in made.
+//      account made, the address for orangecheck to check.
+//   4. Settings: How you sign in lists the code, Google and GitHub; the
+//      orangecheck part says the account signing in made. Unlink GitHub,
+//      signed in with GitHub: signed out, and asked for a code, in words.
+//   7. Sign in with GitHub to the account a code made: the dialog asks a
+//      code to the address this once; typed, back on the very page signed
+//      in, and GitHub's id kept for the account.
 //   5. A refused sign-in (an address Google has not verified) comes back to
 //      the dialog with words for why.
 //   6. The owner's console (the relay's --owner, a throwaway): Switches,
@@ -31,7 +35,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { launch } from "./browser.mjs";
-import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
+import { deleteAccount, mintCode, mintSession, STORAGE_KEY } from "./session.mjs";
 import { codeFor } from "./ways_stand_in.mjs";
 
 const arg = (name, fallback = "") => (process.argv.find((a) => a.startsWith(`--${name}=`)) || "").slice(name.length + 3) || fallback;
@@ -132,9 +136,11 @@ try {
       looks.google.shown && looks.github.shown && looks.google.mark && looks.github.mark
       && looks.google.words === "Sign in with Google" && looks.github.words === "Sign in with GitHub"
       && looks.google.height === looks.go.height && looks.github.width === looks.go.width
-      && looks.google.href === "/auth/google?then=%2Fgallery%3Fsort%3Dnew", JSON.stringify(looks));
+      && /^\/auth\/google\?then=%2Fgallery%3Fsort%3Dnew&take=[A-Za-z0-9_-]{43}$/.test(looks.google.href || "")
+      && await page.evaluate((href) => Boolean(JSON.parse(localStorage.getItem("bw_way_takes") || "{}")[new URL(href, location.href)
+        .searchParams.get("take")]?.v), looks.google.href), JSON.stringify(looks));
     check(`1. ${width}: no box; one line that signing in makes the orangecheck account, with what that is`,
-      looks.boxes === 0 && looks.lineShown && looks.line === "Signing in also makes your orangecheck account. What is that?"
+      looks.boxes === 0 && looks.lineShown && looks.line === "Signing in without orangecheck also makes your orangecheck account. What is that?"
       && looks.link === "/docs/account#orangecheck", JSON.stringify(looks));
     check(`1. ${width}: nothing sideways`, !(await sideways(page)));
     // Its open animation done before the picture, and still open after it
@@ -151,7 +157,7 @@ try {
   made.push(a);
   const before = await mintSession(a, { age: true });
   {
-    const ctx = await context(1280, { google: { email: a, verified: true } });
+    const ctx = await context(1280, { google: { email: a, verified: true, hd: "resend.dev" } });
     const page = await ctx.newPage();
     listen(page, "google");
     await openDialog(page);
@@ -189,8 +195,8 @@ try {
       && Boolean(kept?.user_id), JSON.stringify({ ...kept, refresh_token: undefined }));
     await page.waitForTimeout(4000);
     const state = await (await fetch(`${site}/__ways/state`)).json();
-    check("3. its age answered over 13: its orangecheck account made, with the address GitHub verified",
-      state.provisions.some((one) => one.user_id === kept?.user_id && one.email === d && one.email_verified === true),
+    check("3. its age answered over 13: its orangecheck account made, with the address, for orangecheck to check",
+      state.provisions.some((one) => one.user_id === kept?.user_id && one.email === d && one.email_verified === false),
       JSON.stringify(state.provisions.slice(-3)));
     await page.keyboard.press("Escape").catch(() => null);
     await shot(page, "github_back_390.png");
@@ -211,13 +217,14 @@ try {
     await hubPage.locator("#ways-part").scrollIntoViewIfNeeded();
     await shot(hubPage, `settings_ways_${width}.png`);
   }
+  // Signed in with GitHub, unlinking it ends this session too (the review's
+  // F2): signed out here, and the sign-in asks for a code, saying why.
   await hubPage.locator("#ways li", { hasText: "GitHub" }).getByRole("button", { name: "Unlink" }).click();
-  await hubPage.waitForFunction(() => /no longer signs you in here/.test(document.getElementById("ways-status")?.textContent || ""), null,
-    { timeout: 30000 }).catch(() => null);
-  const unlinked = await hubPage.locator("#ways-status").textContent();
-  const rowsAfter = await hubPage.locator("#ways li").allTextContents();
-  check("4. Unlink GitHub: said, the code still signs in, and Link again offered", /GitHub no longer signs you in here\. A code we email you still does\./
-    .test(unlinked || "") && rowsAfter.some((row) => /GitHub.*Unlinked.*Link again/.test(row)), `${unlinked} ${JSON.stringify(rowsAfter)}`);
+  await hubPage.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 }).catch(() => null);
+  const unlinked = await hubPage.locator("dialog.sign-in").textContent().catch(() => "");
+  check("4. Unlink GitHub, signed in with it: signed out, asked for a code in words",
+    /GitHub no longer signs you in\. You had signed in here with it, so sign in again with a code we email you\./.test(unlinked || "")
+    && !(await keptOf(hubPage)) && await hubPage.locator("#signed-out").isVisible(), (unlinked || "").slice(0, 200));
   await shot(hubPage, "settings_unlinked_390.png");
   await hubCtx.close();
 
@@ -234,6 +241,45 @@ try {
     check("5. an address Google has not verified: back to the sign-in, with why", /Google gave no verified email address of yours/.test(said || "")
       && !(await keptOf(page)), (said || "").slice(0, 200));
     await shot(page, "refused_390.png");
+    await ctx.close();
+  }
+
+  // 7.
+  for (const width of [1280]) {
+    const ctx = await context(width, { github: { email: a, verified: true } });
+    const page = await ctx.newPage();
+    listen(page, "confirm");
+    await openDialog(page);
+    await page.locator("dialog.sign-in #way-github").click();
+    await page.waitForURL((url) => url.pathname === "/profile" && url.searchParams.get("failed") === "confirm", { timeout: 60000 });
+    await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
+    const said = await page.locator("dialog.sign-in").textContent();
+    check(`7. ${width}: GitHub to the account a code made: no session, the dialog asks a code this once`,
+      /This address has a Brickworks account already\. Sign in with a code we email you this once, and GitHub signs you in from then on\./
+        .test(said || "") && !(await keptOf(page)), (said || "").slice(0, 240));
+    await page.evaluate(() => Promise.all(document.querySelector("dialog.sign-in").getAnimations({ subtree: true })
+      .filter((one) => one.effect?.getTiming?.().iterations !== Infinity).map((one) => one.finished)));
+    await shot(page, `github_confirm_${width}.png`);
+    await page.fill("dialog.sign-in input[type=email]", a);
+    await page.click('dialog.sign-in button[type="submit"]');
+    await page.waitForFunction(() => document.querySelector("dialog.sign-in .code-boxes input")?.checkVisibility(), null, { timeout: 30000 });
+    const typed = await mintCode(a, { welcome: false });
+    await page.fill("dialog.sign-in .code-boxes input:first-child", typed);
+    await page.waitForURL((url) => url.pathname === "/gallery" && url.searchParams.get("sort") === "new", { timeout: 60000 });
+    const kept = await keptOf(page);
+    const held = await (await fetch(`${String(process.env.SUPABASE_URL).replace(/\/+$/, "")}/auth/v1/admin/users/${before.kept.user_id}`, {
+      headers: { apikey: process.env.SUPABASE_SECRET_KEY, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` } })).json();
+    check(`7. ${width}: the code typed: back on the very page, signed in to that account, GitHub's id kept for it`,
+      kept?.user_id === before.kept.user_id && /^\d+$/.test(String(held?.app_metadata?.way_github_id || "")),
+      `${page.url()} ${JSON.stringify({ ...kept, refresh_token: undefined })} ${held?.app_metadata?.way_github_id}`);
+    const again = await context(width, { github: { email: a, verified: true } });
+    const next = await again.newPage();
+    listen(next, "confirm again");
+    await openDialog(next);
+    await next.locator("dialog.sign-in #way-github").click();
+    await next.waitForURL((url) => url.pathname === "/gallery" && url.searchParams.get("sort") === "new", { timeout: 60000 });
+    check(`7. ${width}: and GitHub signs it in from then on`, (await keptOf(next))?.user_id === before.kept.user_id);
+    await again.close();
     await ctx.close();
   }
 

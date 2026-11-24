@@ -31,13 +31,20 @@ const made = new Map();
 const github = new Map();
 let realFetch = null;
 
+/// The GitHub id the stand-in gives [email] when a check names none.
+export function githubId(email) {
+  return 1 + (parseInt(createHash("sha256").update(String(email || "")).digest("hex").slice(0, 12), 16) % 2_000_000_000);
+}
+
 const b64 = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
 const challengeOf = (verifier) => createHash("sha256").update(String(verifier)).digest("base64url");
 const json = (status, value) => new Response(value === null ? null : JSON.stringify(value),
   { status, headers: { "content-type": "application/json" } });
 
 /// The code Google or GitHub would hand back for [who] ({email, verified,
-/// emails?}), at the authorize address the deployment sent the browser to.
+/// emails?, hd?, id?}), at the authorize address the deployment sent the
+/// browser to. hd: the Google Workspace domain Google says the account is
+/// of; id: GitHub's numeric id (by default one drawn from the address).
 export function codeFor(authorize, who) {
   const asked = new URL(authorize);
   return b64({ ...who, client: asked.searchParams.get("client_id"), challenge: asked.searchParams.get("code_challenge"),
@@ -71,7 +78,8 @@ async function answer(where, init) {
     }
     const now = Math.floor(Date.now() / 1000);
     const said = { iss: "https://accounts.google.com", aud: code.client, sub: createHash("sha256").update(code.email).digest("hex").slice(0, 21),
-      email: code.email, email_verified: code.verified !== false, nonce: code.nonce, iat: now, exp: now + 3600 };
+      email: code.email, email_verified: code.verified !== false, nonce: code.nonce, iat: now, exp: now + 3600,
+      ...(code.hd ? { hd: code.hd } : {}) };
     return json(200, { access_token: "ya29.stand-in", expires_in: 3599, scope: "openid email", token_type: "Bearer",
       id_token: `${b64({ alg: "RS256", kid: "stand-in" })}.${b64(said)}.c3RhbmQtaW4` });
   }
@@ -83,12 +91,18 @@ async function answer(where, init) {
       return json(200, { error: "bad_verification_code" });
     }
     const token = `gho_${randomBytes(18).toString("hex")}`;
-    github.set(token, code.emails || [{ email: code.email, primary: true, verified: code.verified !== false, visibility: "private" }]);
+    github.set(token, { emails: code.emails || [{ email: code.email, primary: true, verified: code.verified !== false, visibility: "private" }],
+      id: Number.isSafeInteger(code.id) ? code.id : githubId(code.email || code.emails?.[0]?.email) });
     return json(200, { access_token: token, token_type: "bearer", scope: "user:email" });
   }
   if (url.href === "https://api.github.com/user/emails" && method === "GET") {
     const token = String(new Headers(init?.headers).get("authorization") || "").replace(/^Bearer /, "");
-    return github.has(token) ? json(200, github.get(token)) : json(401, { message: "Bad credentials" });
+    return github.has(token) ? json(200, github.get(token).emails) : json(401, { message: "Bad credentials" });
+  }
+  if (url.href === "https://api.github.com/user" && method === "GET") {
+    const token = String(new Headers(init?.headers).get("authorization") || "").replace(/^Bearer /, "");
+    return github.has(token) ? json(200, { id: github.get(token).id, login: `stand-in-${github.get(token).id}` })
+      : json(401, { message: "Bad credentials" });
   }
   const revoke = /^\/applications\/([^/]+)\/token$/.exec(url.pathname);
   if (url.host === "api.github.com" && revoke && method === "DELETE") {

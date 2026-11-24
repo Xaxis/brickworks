@@ -57,8 +57,8 @@ func _run() -> void:
 		account.state == Account.State.SIGNED_OUT and google.is_visible_in_tree() and github.is_visible_in_tree()
 		and google.text == "Sign in with Google" and github.text == "Sign in with GitHub"
 		and google.icon != null and github.icon != null)
-	_check("...and one line that signing in also makes the orangecheck account, with what that is",
-		made.is_visible_in_tree() and _text_of(made).contains("Signing in also makes your orangecheck account."))
+	_check("...and one line that signing in without orangecheck also makes the orangecheck account, with what that is",
+		made.is_visible_in_tree() and _text_of(made).contains("Signing in without orangecheck also makes your orangecheck account."))
 	if not google.is_visible_in_tree():
 		quit(1)
 		return
@@ -78,9 +78,11 @@ func _run() -> void:
 	var cookie: String = _cookie_named(first["cookies"], "bw_way_google")
 	_check("the deployment sends the browser to Google, with its own sealed cookie (%d)" % int(first["code"]),
 		int(first["code"]) == 302 and authorize.begins_with("https://accounts.google.com/") and not cookie.is_empty())
-	# Google's sign-in page: the code it would hand back for this address.
+	# Google's sign-in page: the code it would hand back for this address,
+	# as a Workspace account of its domain (Google vouches for no other).
 	var asked: Dictionary = _query_of(authorize)
 	var code: String = Marshalls.utf8_to_base64(JSON.stringify({"email": address, "verified": true,
+		"hd": address.get_slice("@", 1),
 		"client": asked.get("client_id", ""), "challenge": asked.get("code_challenge", ""),
 		"nonce": asked.get("nonce", ""), "redirect": asked.get("redirect_uri", "")})) \
 		.replace("+", "-").replace("/", "_").replace("=", "")

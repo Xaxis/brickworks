@@ -299,7 +299,7 @@ if (!preview) {
     const row = await connectedWithin(first.account);
     if (row?.did) appendFileSync(keys, `${new Date().toISOString()} ${site} connect did ${row.did} (${email})\n`);
     check("6. no box, the line said, signed in, and the server made an orangecheck account, kept with ours; the page asked nothing",
-      first.signedIn && first.boxes === 0 && /^Signing in also makes your orangecheck account\./.test(first.line) && first.asks.length === 0
+      first.signedIn && first.boxes === 0 && /^Signing in without orangecheck also makes your orangecheck account\./.test(first.line) && first.asks.length === 0
       && Boolean(row?.did), `${JSON.stringify({ ...first, refresh: undefined })} ${JSON.stringify(row)}`);
     const again = await connectSignIn("again", email);
     await new Promise((done) => setTimeout(done, 5000));

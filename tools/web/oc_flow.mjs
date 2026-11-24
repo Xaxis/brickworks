@@ -223,7 +223,7 @@ try {
           shown: Boolean(made && made.checkVisibility()), words: made?.textContent.trim(), href: link?.getAttribute("href") };
       });
       check(`${width} ${theme}: no box to tick; one line says signing in also makes the orangecheck account, with a link to what that is`,
-        line.box === 0 && line.shown && /^Signing in also makes your orangecheck account\. What is that\?$/.test(line.words || "")
+        line.box === 0 && line.shown && /^Signing in without orangecheck also makes your orangecheck account\. What is that\?$/.test(line.words || "")
         && line.href === "/docs/account#orangecheck", JSON.stringify(line));
       check(`${width} ${theme}: nothing sideways`, !(await sideways(page)));
       // The pointer off the dialog: the click that opened it leaves it over
