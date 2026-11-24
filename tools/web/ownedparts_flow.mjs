@@ -7,9 +7,10 @@
 //
 //   1. Three throwaway accounts keep collections as people do, on the site's
 //      own ops: Ada owns real sets, some twice (op own); Bo owns loose parts
-//      made from the first page's models (every part of the first, 60% of
-//      the second's, 40% of the third's: op lots); Cy owns a set three times
-//      and loose bricks.
+//      made from three of the first page's models with no lot in common,
+//      10 pieces or more each (every part of the first, 60% of the second's
+//      pieces, 40% of the third's: op lots); Cy owns a set three times and
+//      loose bricks.
 //   2. The cards: each one's gallery page of 24 (op=list&mine=1), every
 //      card's share against a count made here from the raw rows (the
 //      collection's row, the sets' inventories, model_needs' rows: read
@@ -223,21 +224,40 @@ try {
   const firstPage = (front.body.models || []).map((one) => one.id);
   check(`the gallery's first page: ${firstPage.length} cards`, firstPage.length === 24);
   const needs = await needsRaw(firstPage);
-  // Bo's loose parts: every part of the first model, 60% of the second's,
-  // 40% of the third's, lot by lot, rounded up.
+  // Bo's loose parts: every part of one model, 60% of a second's pieces,
+  // 40% of a third's. A share given lot by lot, each rounded up, made a
+  // model of mostly single pieces whole at "60%", and a lot two models share
+  // counted for both (11-22 and the nightly 11-24 read "every part" for the
+  // 60% one). So the three are front-page models of 10 pieces or more whose
+  // lots no two share, and each is given its share of its pieces exactly:
+  // whole lots in turn, then part of one.
+  const PART = /^[a-z0-9][a-z0-9._-]{0,40}$/;
+  const keyPart = (key) => key.slice(0, key.lastIndexOf("/"));
+  const bo3 = [];
+  for (const id of firstPage) {
+    const lots = needs.get(id) || new Map();
+    const pieces = [...lots.values()].reduce((sum, n) => sum + n, 0);
+    if (pieces < 10 || [...lots.keys()].some((key) => !PART.test(keyPart(key)))) continue;
+    if (bo3.some((other) => [...lots.keys()].some((key) => (needs.get(other) || new Map()).has(key)))) continue;
+    bo3.push(id);
+    if (bo3.length === 3) break;
+  }
+  check(`three front-page models for Bo, 10 pieces or more, no lot shared: ${bo3.join(", ")}`, bo3.length === 3);
   const loose = new Map();
   const giveOf = (id, share) => {
-    for (const [key, n] of needs.get(id) || []) {
-      const part = key.slice(0, key.lastIndexOf("/"));
-      const colour = Number(key.slice(key.lastIndexOf("/") + 1));
-      const take = Math.ceil(n * share);
-      if (take > 0) loose.set(key, { part, colour, qty: Math.max(loose.get(key)?.qty || 0, take) });
+    const lots = [...(needs.get(id) || new Map())].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    let left = Math.floor(share * lots.reduce((sum, [, n]) => sum + n, 0));
+    for (const [key, n] of lots) {
+      if (left <= 0) break;
+      const take = Math.min(n, left);
+      left -= take;
+      loose.set(key, { part: keyPart(key), colour: Number(key.slice(key.lastIndexOf("/") + 1)), qty: take });
     }
   };
-  giveOf(firstPage[0], 1);
-  giveOf(firstPage[1], 0.6);
-  giveOf(firstPage[2], 0.4);
-  const add = [...loose.values()].filter((lot) => /^[a-z0-9][a-z0-9._-]{0,40}$/.test(lot.part)).slice(0, 2000);
+  giveOf(bo3[0], 1);
+  giveOf(bo3[1], 0.6);
+  giveOf(bo3[2], 0.4);
+  const add = [...loose.values()].slice(0, 2000);
   const lots = await api("/api/collection", { method: "POST", token: who.bo.access_token, body: { op: "lots", id: `lots-${rand}-bo`, add } });
   check(`Bo keeps ${add.length} lots of loose parts: ${lots.status}`, lots.status === 200);
   const cy = await own(who.cy, CY_SET, 3);
@@ -270,7 +290,7 @@ try {
       + `${shown} of them with a line (half or more)`, pages[name].length === 24 && wrong === 0 && lines === pages[name].length);
   }
   const boLine = new Map(findings.cards.filter((one) => one.who === "bo").map((one) => [one.id, one.line]));
-  const boLines = firstPage.slice(0, 3).map((id) => boLine.get(id));
+  const boLines = bo3.map((id) => boLine.get(id));
   check(`Bo's first three: "${boLines[0]}", "${boLines[1]}", "${boLines[2]}" (every part, 60%, under half)`,
     /every part/.test(boLines[0]) && /^You have (5|6)\d%$/.test(boLines[1]) && boLines[2] === "");
   const signedOut = await api("/api/share?op=list&page=1");
@@ -278,7 +298,8 @@ try {
 
   // --- 3. What you're missing, three models ---------------------------------
   console.log("the Parts tab's What you're missing, against the model's list less the raw rows");
-  const picks = [["bo", firstPage[1]], ["ada", pages.ada.slice().sort((a, b) => (b.owned?.have || 0) / (b.owned?.pieces || 1)
+  // Bo's partly owned one: something is missing, so Missing is offered.
+  const picks = [["bo", bo3[1]], ["ada", pages.ada.slice().sort((a, b) => (b.owned?.have || 0) / (b.owned?.pieces || 1)
     - (a.owned?.have || 0) / (a.owned?.pieces || 1))[0]?.id], ["cy", firstPage[3]]];
   const missingOf = {};
   for (const [name, id] of picks) {
@@ -326,7 +347,7 @@ try {
     stranger.status === 401 && (nobody.status === 404 || nobody.status === 410));
 
   // --- 4. In a browser ----------------------------------------------------------
-  const boModel = firstPage[1];
+  const boModel = bo3[1];
   for (const [width, height] of [[1280, 900], [390, 844]]) {
     for (const dark of [false, true]) {
       const theme = dark ? "dark" : "light";
@@ -343,11 +364,18 @@ try {
         id: card.dataset.id, owned: card.dataset.owned || "", line: card.querySelector("small.owned")?.textContent || "" })));
       const expected = new Map(findings.cards.filter((one) => one.who === "bo").map((one) => [one.id, one.line]));
       const drawnWrong = cards.filter((card) => expected.has(card.id) && card.line !== expected.get(card.id));
-      const perCard = asks.filter((url) => cards.some((card) => url.includes(card.id)));
-      findings.requests[`${width}-${theme}`] = { api: asks.length, per_card: perCard.length, asks: asks.map((url) => new URL(url).search) };
+      // An ask for one card is the cost a page must not pay per card. The
+      // Save on every card asks for all of them at once (web/keep.js
+      // askSome, op=keeps&models=<the 24>, since 0c51a2d44 11-13): one ask
+      // naming many cards is the batch, not one a card.
+      const named = (url) => cards.filter((card) => url.includes(card.id)).length;
+      const perCard = asks.filter((url) => named(url) === 1);
+      const batched = asks.filter((url) => named(url) > 1);
+      findings.requests[`${width}-${theme}`] = { api: asks.length, per_card: perCard.length, batched: batched.length,
+        asks: asks.map((url) => new URL(url).search) };
       check(`${cards.length} cards drawn, ${drawnWrong.length} lines not as their numbers say; ${asks.length} API asks, `
-        + `${perCard.length} of them for a card; nothing sideways`, cards.length >= 18 && drawnWrong.length === 0 && perCard.length === 0
-        && !(await sideways(page)));
+        + `${perCard.length} of them for one card, ${batched.length} for many at once; nothing sideways`,
+      cards.length >= 18 && drawnWrong.length === 0 && perCard.length === 0 && !(await sideways(page)));
       if (dark === false || width === 390) await shot(page, `gallery-${width}-${theme}.png`);
       await page.goto(`${site}/m/${boModel}#parts`, { waitUntil: "load" });
       await page.locator("#parts").scrollIntoViewIfNeeded();

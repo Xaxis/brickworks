@@ -25,7 +25,8 @@
 //      banner, her pins in her order, numbers with no count of none), the
 //      tabs Models · Builds · Saved · Sets · Insights, Models open with one
 //      row of her six models (two rows on a phone) and Show more for the
-//      rest; under 2,000 px tall at 1280; at 390 the avatar, name and Edit
+//      rest; at 1280 her head, the tabs and that row with Show more within
+//      two screens; at 390 the avatar, name and Edit
 //      profile on the first screen.
 //   4. Edit profile: the dialog holds everything she set; her name changed
 //      there shows on the page with no reload, and her links, banner, pins
@@ -234,6 +235,13 @@ const profileSaid = (page) => page.evaluate(() => {
       return without;
     })(),
     screen: innerHeight,
+    // Where her work, as it opens, ends on the page: the Models tab's first
+    // row and its Show more (the grid itself once Show more is gone).
+    workEnd: (() => {
+      const paging = document.getElementById("models-paging");
+      const end = paging && !paging.hidden ? paging : document.getElementById("my-models");
+      return end ? Math.round(end.getBoundingClientRect().bottom + scrollY) : 1e9;
+    })(),
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     tabsScroll: (() => {
       const t = document.getElementById("tabs");
@@ -389,7 +397,16 @@ try {
       const all = await until(page, () => document.querySelectorAll("#my-models .model").length === 6
         && document.getElementById("models-paging").hidden);
       check(`${label}: Show more brings the rest, and goes`, all);
-      if (width === 1280) check(`${label}: ${said.height} px tall with its first tab open (under 2,000)`, said.height < 2000);
+      // The bar was 2,000 px for the whole page (10-22): the profile a page,
+      // not a long scroll. The page under her work is the site's footer,
+      // which grew a row (Talk, Lists), and her pins are a third of the row
+      // since sitepolish (5431f4cd9, 11-23): 2,066 px with nothing wrong.
+      // What it was for: her head, the tabs and the first row of her models
+      // with Show more, all within two screens.
+      if (width === 1280) {
+        check(`${label}: her head, tabs and first row of models end at ${said.workEnd} px, within two screens `
+          + `(${2 * said.screen}); the page ${said.height} px with the footer`, said.workEnd <= 2 * said.screen);
+      }
       else {
         const last = Math.max(said.avatar?.bottom ?? 1e9, said.nameBottom, said.editBottom);
         check(`${label}: avatar, name and Edit profile on the first screen (to ${Math.round(last)} of ${said.screen} px), `
@@ -447,7 +464,8 @@ try {
             && after.profile.bio === before.profile.bio && JSON.stringify(after.showcase.links) === JSON.stringify(before.showcase.links)
             && after.showcase.banner === before.showcase.banner && after.showcase.pins.join() === before.showcase.pins.join());
           const publicPage = await (await fetch(`${site}/u/${ADA}?tests=1`, { headers })).text();
-          check("...and on her public page", publicPage.includes("<h1>Ada Renamed</h1>"));
+          // Her page's h1 carries a class since pagekit (3cfdbeabe, 11-23: obj-title).
+          check("...and on her public page", /<h1(?:\s[^>]*)?>Ada Renamed<\/h1>/.test(publicPage));
           // Back as she was, from the same dialog.
           await page.click("#edit");
           await until(page, () => document.querySelector("dialog#edit-dialog[open]"));

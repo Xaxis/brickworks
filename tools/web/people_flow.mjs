@@ -287,7 +287,8 @@ try {
     tab: document.querySelector(".tabs [aria-current=page]")?.dataset.tab || "" }));
   await look.click('.tabs a[data-tab="models"]');
   await look.waitForLoadState("load");
-  state.none = await look.evaluate(() => document.querySelector(".tab-panel .state")?.textContent || "");
+  // An empty tab says so in .obj-empty since pagekit (3cfdbeabe, 11-23).
+  state.none = await look.evaluate(() => document.querySelector(".tab-panel .obj-empty")?.textContent || "");
   check(`/u/${visitorHandle}: their public list (the ${state.tab} tab), and nothing of theirs in the gallery yet`,
     state.tab === "lists" && state.lists.includes(LIST) && /Nothing in the gallery/.test(state.none));
 

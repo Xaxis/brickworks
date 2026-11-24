@@ -457,7 +457,11 @@ try {
       && bobsAfter.body.models[0].id === remix.body.id);
   const asAda = await (await fetch(`${site}/u/${ADA}?tests=1`, { headers: { ...headers, authorization: `Bearer ${ada.access_token}` } })).text();
   const asNobody = await (await fetch(`${site}/u/${ADA}?tests=1`, { headers })).text();
-  check("her page's bytes are the same signed in as hers or not", asAda === asNobody);
+  // Every page says when it was made, to the ms (checkdrift 3e95c8545,
+  // 11-23: <meta name="brickworks-beta" data-at>): that moment is the one
+  // byte two askings may differ by.
+  const unstamped = (html) => html.replace(/(<meta name="brickworks-beta"[^>]*) data-at="\d+"/, "$1");
+  check("her page's bytes are the same signed in as hers or not", unstamped(asAda) === unstamped(asNobody));
   // Vercel's CDN keeps s-maxage for itself and hands a browser what is left
   // (share_probe reads it the same way); on a deployment the CDN answering
   // a second asking is the proof. Only the local relay shows s-maxage.

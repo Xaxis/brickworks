@@ -197,7 +197,9 @@ const cardsOf = (page, id) => page.evaluate(async (model) => Promise.all([...doc
       by: (card.querySelector(".who > span:not(.avatar)") || card.querySelector(".who"))?.textContent.trim() || "",
       said: card.querySelector(".said")?.textContent.trim() || "",
       loaded: Boolean(img && img.complete && img.naturalWidth > 0), alt: img?.alt || "",
-      src: img?.currentSrc || "", natural: [own.naturalWidth, own.naturalHeight] };
+      src: img?.currentSrc || "", natural: [own.naturalWidth, own.naturalHeight],
+      // The screen pixels its box covers, as web/card.js sharpPhotos weighs them.
+      drawn: img ? [img.getBoundingClientRect().width * devicePixelRatio, img.getBoundingClientRect().height * devicePixelRatio] : [0, 0] };
   })), id);
 
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
@@ -324,9 +326,17 @@ try {
     }
     await page.waitForTimeout(400);
     await shot(page, "2_builds_390_dark_out.png");
+    // A phone shows one card a row since sitebold (452500a74, 11-23): a card
+    // 357 px across at 2x covers ~714 screen pixels, more than the copy's
+    // 480, so sharpPhotos (0ab66fdc3) gives it the whole photo. The promise
+    // is a sharp card from the least bytes: the copy where it covers the
+    // box, the whole photo only where it would not.
     const small = await cardsOf(page, id);
-    check(`on the phone too, each card's photo the copy (${small.map((one) => one.natural.join(" x ")).join(", ")})`,
-      small.length === 2 && small.every((one) => one.src.endsWith("&size=card") && one.natural[0] === 480 && one.natural[1] === 360));
+    const sharp = (one) => (one.drawn[0] <= 480 && one.drawn[1] <= 360
+      ? one.src.endsWith("&size=card") && one.natural[0] === 480 && one.natural[1] === 360
+      : !one.src.includes("size=card") && one.natural[0] === PHOTO.width && one.natural[1] === PHOTO.height);
+    check(`on the phone too, each card's photo sharp from the least bytes: ${small.map((one) => `${one.natural.join(" x ")} `
+      + `for a box of ${one.drawn.map(Math.round).join(" x ")} pixels`).join(", ")}`, small.length === 2 && small.every(sharp));
 
     // --- nothing to show ------------------------------------------------------
     console.log("with nothing to show");

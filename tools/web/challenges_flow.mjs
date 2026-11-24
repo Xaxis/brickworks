@@ -731,6 +731,11 @@ try {
         && card.won.length === 2 && card.won[0].id === ids.house && card.won[0].text === `“Challenge House ${rand}” by Ada Challenges, by hand`
         && card.won[1].id === ids.shed && card.won[1].text === `“Challenge Shed ${rand}” by Bob Challenges, with the assistant`
         && pictured.join() === `/m/${ids.house}.png,/m/${ids.shed}.png`);
+      // Past challenges are a tab of their own since pagekit (3cfdbeabe,
+      // 11-23), hidden until chosen: chosen as a person does, before its
+      // pictures are waited for (a hidden panel's lazy pictures never load).
+      await page.click("#tab-past-part");
+      await until(page, () => !document.getElementById("past-part")?.hidden, "the Past challenges tab");
       await pictures(page);
       await page.evaluate(() => document.getElementById("past").scrollIntoView());
       await shot(page, `9a_challenge_past-${width}.png`, false);
