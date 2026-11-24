@@ -100,7 +100,11 @@ export function group(one, i = 0, { acts = null } = {}) {
   if (one.key) item.dataset.key = String(one.key);
   if (one.at) item.dataset.at = String(one.at);
   const told = Number(one.announcement) > 0 || one.announcement === 0;
-  const to = told ? outside(one.link) : here(one.link);
+  // Its name and picture open its newest line's place, as its entry in the
+  // account menu does (follow.js): a comment at the comment, not the
+  // model's Overview with its Comments a tab away (sitewalk2, 2026-11-24).
+  const newest = (one.rows || [])[0]?.link;
+  const to = told ? outside(one.link) : here(newest || one.link);
   if (told) {
     item.dataset.announcement = String(Number(one.announcement) || 0);
     item.id = `announcement-${Number(one.announcement) || 0}`;
