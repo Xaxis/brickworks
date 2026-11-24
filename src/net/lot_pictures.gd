@@ -53,7 +53,15 @@ static func take(body: Dictionary, thumbnails: PartThumbnails, host: Node) -> bo
 			said = {"url": path, "lots": 0, "ms": Time.get_ticks_msec() - began, "from": "failed"}
 			return false
 		bytes = result[3]
-	var lots: int = thumbnails.take_sheet(bytes)
+	# Read on a worker: Orthanc's 226 lots are a 1536 x 1440 picture, 28 ms
+	# to read on a desktop and more in a browser, in the frame the model opens.
+	var index: Dictionary = index_of(bytes)
+	var image: Variant = await WorkerTasks.awaited(func() -> Variant:
+		var read := Image.new()
+		return read if read.load_png_from_buffer(bytes) == OK else null, "read the lot pictures")
+	var lots: int = 0
+	if image is Image and is_instance_valid(thumbnails):
+		lots = thumbnails.take_sheet_image(image, index)
 	said = {"url": path, "lots": lots, "ms": Time.get_ticks_msec() - began, "from": from}
 	return lots > 0
 

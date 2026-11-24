@@ -31,8 +31,10 @@ func _init() -> void:
 		and LotPictures.index_of(PackedByteArray([1, 2, 3])).is_empty())
 	var thumbnails := PartThumbnails.new()
 	_check("nothing is to hand before the file", thumbnails.peek(str(lots[0][0]), int(lots[0][1])) == null)
+	var began: int = Time.get_ticks_usec()
 	var taken: int = thumbnails.take_sheet(bytes)
-	_check("the file is taken: %d lots" % taken, taken == lots.size())
+	_check("the file is taken: %d lots in %.1f ms" % [taken, (Time.get_ticks_usec() - began) / 1000.0],
+		taken == lots.size())
 	var all: bool = true
 	var drawn: int = 0
 	for lot: Variant in lots:

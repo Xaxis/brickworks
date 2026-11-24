@@ -414,14 +414,19 @@ func _has(key: String) -> bool:
 ## could not be read, and nothing changes. Drawn with its print, as the
 ## server draws every part, so it stands for a lot asked either way.
 func take_sheet(bytes: PackedByteArray) -> int:
-	var index: Dictionary = LotPictures.index_of(bytes)
+	var image := Image.new()
+	if image.load_png_from_buffer(bytes) != OK:
+		return 0
+	return take_sheet_image(image, LotPictures.index_of(bytes))
+
+
+## [method take_sheet] for a file read already: [param image] its picture,
+## [param index] its index (LotPictures.index_of).
+func take_sheet_image(image: Image, index: Dictionary) -> int:
 	var tile: int = int(index.get("tile", 0))
 	var across: int = int(index.get("across", 0))
 	var lots: Variant = index.get("lots")
-	if tile <= 0 or across <= 0 or not lots is Array:
-		return 0
-	var image := Image.new()
-	if image.load_png_from_buffer(bytes) != OK or image.get_width() < across * tile:
+	if tile <= 0 or across <= 0 or not lots is Array or image == null or image.get_width() < across * tile:
 		return 0
 	var cells: Dictionary = {}
 	var n: int = 0
