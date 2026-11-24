@@ -2972,6 +2972,21 @@ func _takes_stud(key: int, foot: Vector3, way: Vector3) -> bool:
 		var along: float = gap.dot(hole.axis)
 		if absf(along) <= hole.reach + 1.0 and (gap - hole.axis * along).length() <= 2.0:
 			return true
+	# A socket the part states, facing the stud along its line: a part of
+	# one's own has no exact shape, and its sockets are looked for only on
+	# its bottom. Hair from an STL, drawn with 3901's stud4.dat, had the
+	# head's stud in it, but its bottom was the end of its ponytail: read as
+	# pressed on it, the hair was lodged in the torso and stayed when the
+	# head turned (moulds).
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "tube" or connector.gender != "female":
+			continue
+		if (brick.transform.basis * connector.axis).normalized().dot(way) > -0.95:
+			continue
+		var gap: Vector3 = brick.transform * connector.position - foot
+		var along: float = clampf(gap.dot(way), 0.0, Joints.STUD_REACH)
+		if (gap - way * along).length() <= 1.5:
+			return true
 	return _in_a_hole_exactly(brick, foot, way)
 
 
