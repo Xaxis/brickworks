@@ -597,6 +597,9 @@ declare -A CMD=(
   # File > New tab: a second tab on an empty model of its own, kept across
   # a reload, the first tab untouched (src/parts/tab_session.gd).
   [newtab]="tools/web/newtab_flow.mjs --url=$P/app --out=$S/${TAG}_newtab"
+  # Copied in one tab, pasted in another: the newest copy in any of the
+  # site's tabs, kept in its localStorage (EditVerbs.SHARED_COPY, appwalk).
+  [tabpaste]="tools/web/tabpaste_flow.mjs --url=$P/app --out=$S/${TAG}_tabpaste"
   # File > Library…: an LDraw set and a community model each opened in a tab
   # of its own, the first tab untouched; the library and the gallery played
   # from tests/fixtures/library by Playwright's route (src/ui/library_dialog.gd).

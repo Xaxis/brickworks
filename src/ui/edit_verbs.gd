@@ -760,8 +760,35 @@ func copy() -> int:
 	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) and not OS.has_feature("web"):
 		_put_on_clipboard = Carry.as_file(Carry.clipboard, library)
 		DisplayServer.clipboard_set(_put_on_clipboard)
+	elif OS.has_feature("web"):
+		# In a browser, kept for this site's other tabs instead, each its
+		# own app with its own copy: copied in one, Paste in another found
+		# nothing (appwalk).
+		_put_on_clipboard = Carry.as_file(Carry.clipboard, library)
+		_share_copy(_put_on_clipboard)
 	say.call(Keymap.filled("copied %s — {paste|to paste}") % _parts(count))
 	return count
+
+
+## Where this site's tabs keep the newest copy made in any of them, as LDraw
+## (Carry.as_file): the browser's localStorage, which they all share.
+const SHARED_COPY := "brickworks.clipboard"
+
+
+## [param text] kept as the newest copy for the other tabs. Too big to keep,
+## the copy before it goes, so no tab pastes an older copy as this one.
+static func _share_copy(text: String) -> void:
+	var key: String = JSON.stringify(SHARED_COPY)
+	JavaScriptBridge.eval(("(function(){try{localStorage.setItem(%s,%s)}catch(e){"
+		+ "try{localStorage.removeItem(%s)}catch(f){}}})()") % [key, JSON.stringify(text), key], true)
+
+
+## The newest copy any of this site's tabs made, "" when none.
+static func _shared_copy() -> String:
+	var text: Variant = JavaScriptBridge.eval(
+		"(function(){try{return localStorage.getItem(%s)||''}catch(e){return ''}})()"
+		% JSON.stringify(SHARED_COPY), true)
+	return text if text is String else ""
 
 
 func cut() -> int:
@@ -779,11 +806,13 @@ func cut() -> int:
 ##
 ## LDraw put on the system clipboard by another program is taken in place
 ## of the app's own copy when it is newer: parts copied out of LDCad or a
-## text file paste straight in.
+## text file paste straight in. In a browser, a copy made since in another
+## of the site's tabs is taken first (copy).
 func paste() -> int:
 	var parts: Array = Carry.clipboard
-	var outside: String = ""
-	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) \
+	var outside: String = _shared_copy() if OS.has_feature("web") else ""
+	if (outside.is_empty() or outside == _put_on_clipboard) \
+			and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) \
 			and DisplayServer.clipboard_has():
 		outside = DisplayServer.clipboard_get()
 	if not outside.is_empty() and outside != _put_on_clipboard:

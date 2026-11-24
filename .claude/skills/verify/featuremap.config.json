@@ -5375,6 +5375,20 @@
     },
     {
       "kind": "cli",
+      "label": "grabselect probe",
+      "entry": "src/dev/grabselect_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh grabselect_probe   (by finger; PROBE_SIZE=1280x720 by the mouse)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "paste from another tab",
+      "entry": "tools/web/tabpaste_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 11803 --static=build/web, then node tools/web/tabpaste_flow.mjs --url=http://127.0.0.1:11803/app --out=shots/tabpaste   (with .env sourced)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
       "label": "carryrest probe",
       "entry": "src/dev/carryrest_probe.gd",
       "reach": "tools/probe.sh carryrest_probe   (PROBE_SIZE=1280x720 too; carryrest_phone_probe and carryrest_tablet_probe by finger; --no-gate without an account; CARRYREST_OUT=DIR for its pictures)",

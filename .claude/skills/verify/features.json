@@ -1860,6 +1860,14 @@
       "tests": []
     },
     {
+      "id": "cli:grabselect probe",
+      "kind": "cli",
+      "entry": "src/dev/grabselect_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh grabselect_probe   (by finger; PROBE_SIZE=1280x720 by the mouse)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:handles probe",
       "kind": "cli",
       "entry": "src/dev/handles_probe.gd",
@@ -2780,6 +2788,14 @@
       "entry": "src/dev/partstep_probe.gd",
       "reach": "tools/probe.sh partstep_probe; PROBE_SIZE=1024x768 tools/probe.sh partstep_probe   (the car as a link, Brickognize stubbed on port 10830: told first and nothing sent until agreed, a photo sent once as a JPEG alone, the car's guesses first, the first step that places it with its part outlined, the card's steps and Back, mid-build the next step and the earlier built, every step built at the last, Not it?, a part at a time, none the car has, offline, 44-point targets, the step framed below the card; edit_steps picture_data= refused until agreed=true, then in 1 call; pictures in shots/partstep/)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:paste from another tab",
+      "kind": "cli",
+      "entry": "tools/web/tabpaste_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 11803 --static=build/web, then node tools/web/tabpaste_flow.mjs --url=http://127.0.0.1:11803/app --out=shots/tabpaste   (with .env sourced)",
+      "area": "building",
       "tests": []
     },
     {
