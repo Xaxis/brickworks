@@ -334,7 +334,11 @@ try {
   await phoneAnswer.context().close();
 
   console.log("6. The set's page lists both, newest first, step 3 answered");
-  const listed = await asksOf();
+  // Signed out, the list is the CDN's for 20 s (and served stale for 60 more)
+  // by design (api/_talk.js talkSetAsks), and the first steps asked it a
+  // minute ago: a question of its own asks the server, not that copy.
+  // rel-m332's train read #78 alone, from before #80 was asked.
+  const listed = await api(`/api/people?op=talk_set_asks&set=${SET}&tests=1&fresh=${Date.now()}`, {});
   const rows = (listed.body.asks || []).filter((one) => one.thread === threadId || one.thread === firstThread);
   check(`talk_set_asks: ${listed.status}, ${rows.map((one) => `#${one.thread} step ${one.step} ${one.answered ? "answered" : "open"}`).join(", ")}`,
     listed.status === 200 && rows.length === 2 && rows[0].thread === threadId && rows[0].answered === true

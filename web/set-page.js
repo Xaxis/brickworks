@@ -329,7 +329,10 @@ function askForm(at) {
     view = null;
     const big = document.createElement("a");
     big.className = "picture set-ask-picture";
-    big.href = drawn ? `/app?view=${drawn.model}${step ? `&step=${step}` : ""}` : `/app?new=1&library=${encodeURIComponent(library)}&build`;
+    // In the page's language, as every other link into the app here (appAt):
+    // a German reader's step opened the app in English (rel-m332's site_lang).
+    big.href = drawn ? appAt(`view=${drawn.model}${step ? `&step=${step}` : ""}`)
+      : appAt(`new=1&library=${encodeURIComponent(library)}&build`);
     big.dataset.scene = sceneAt(at, step);
     big.setAttribute("aria-label", say("View {name} in 3D", { name: step ? say("Step {step} of LEGO® set {set}", { step: number(step), set })
       : say("LEGO® set {set}", { set }) }));
