@@ -1250,7 +1250,9 @@ func id_for(title: String) -> String:
 			source += ch
 	if source.is_empty():
 		source = "shape"
-	return "bw-%s-s%s" % [source.left(10), hashing.finish().hex_encode().left(6)]
+	# Joined, not formatted: "%s-s" reads as a key named in words
+	# (tests/test_keys_named.py).
+	return "bw-" + source.left(10) + "-s" + hashing.finish().hex_encode().left(6)
 
 
 ## The part file: its triangles, its connectors, what it was made from.
