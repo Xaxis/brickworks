@@ -17804,3 +17804,24 @@ msgstr "Tout sélectionner une seconde fois prend toutes les étapes"
 
 msgid "%d in later steps left out."
 msgstr "%d des étapes suivantes laissées de côté."
+
+msgid "moved %s"
+msgstr "%s déplacé"
+
+msgid "moving %s"
+msgstr "déplacement de %s"
+
+msgid "%d of them in later steps, not on the screen yet, went with it"
+msgstr "%d d'entre elles, des étapes suivantes, pas encore à l'écran, ont suivi"
+
+msgid "%s more in its other copies"
+msgstr "%s de plus dans ses autres copies"
+
+msgid "%s more in its other copies, in a later step"
+msgstr "%s de plus dans ses autres copies, à une étape suivante"
+
+msgid "Sub-assembly of %d parts, %d on at this step"
+msgstr "Sous-ensemble de %d pièces, %d posées à cette étape"
+
+msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
+msgstr "Sous-ensemble de %d pièces, %d posées à cette étape, %d à l'intérieur"

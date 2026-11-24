@@ -361,16 +361,6 @@ func selected_assembly() -> String:
 	return str(path)
 
 
-## How many parts the assembly at [param path] has in all, where the timeline
-## shows a step with some of them still to come: the "of" in "37 of its 149
-## parts on at this step". 0 when all of it is on show.
-func parts_beyond(path: String) -> int:
-	if not builder.at_a_step():
-		return 0
-	var under: PackedInt64Array = ids_under(path)
-	return under.size() if builder.ahead_of(under) > 0 else 0
-
-
 ## Every other copy of the definition the assembly at ``path`` is a copy
 ## of, anywhere in the model.
 func copies_of(path: String) -> PackedStringArray:

@@ -3759,6 +3759,14 @@
       "tests": []
     },
     {
+      "id": "cli:stepreview probe",
+      "kind": "cli",
+      "entry": "src/dev/stepreview_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepreview_probe   (346-2 at a step: the house nudged, turned and dragged whole, its later parts with it; line and properties counts; print_part, make_unique, move_part on a later part refused; a paint's copies said; a minifig lifted at a step; a step's time; PROBE_SIZE=390x844)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:steps3 probe",
       "kind": "cli",
       "entry": "src/dev/steps3_probe.gd",

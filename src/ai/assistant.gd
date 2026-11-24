@@ -3184,6 +3184,14 @@ func _stop(ok: bool, summary: String) -> void:
 ## What a tool hands back, and what it did for the feature being worked, if
 ## one is (see [method _feature_brief]).
 func _run_tool(block: Dictionary) -> Variant:
+	# all_steps read at the edge into a real bool, or refused before anything
+	# runs: "true" and 1 were script errors in the step gate, which then let
+	# the change through (stepreview F2).
+	var input: Variant = block.get("input", {})
+	if input is Dictionary:
+		var unread: String = Builder.all_steps_read(input)
+		if not unread.is_empty():
+			return unread
 	follow_renumbering()
 	_done_said = ""
 	_judged_said = {}

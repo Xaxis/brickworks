@@ -586,11 +586,14 @@ func _choose(path: String) -> void:
 		assemblies.enter(Assemblies.parent_of(path))
 	var builder: Builder = shell.builder
 	builder.selection.clear()
-	# At a step of the timeline, the row's parts on so far (Builder.shown_only).
-	for brick_id: int in builder.shown_only(assemblies.ids_under(path)):
+	# At a step of the timeline, the row's parts on so far (Builder.shown_only),
+	# the rest held with them for a move to carry (Builder.hold_unseen).
+	var whole: PackedInt64Array = assemblies.ids_under(path)
+	for brick_id: int in builder.shown_only(whole):
 		if not builder.lattice.unseen.has(brick_id):
 			builder.selection[brick_id] = true
 	builder.selection_changed.emit(builder.selection.size())
+	builder.hold_unseen(whole)
 
 
 func _select_suggestion(number: int) -> void:

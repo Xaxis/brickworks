@@ -17804,3 +17804,24 @@ msgstr "noch einmal Alles auswählen nimmt jeden Schritt"
 
 msgid "%d in later steps left out."
 msgstr "%d aus späteren Schritten ausgelassen."
+
+msgid "moved %s"
+msgstr "%s verschoben"
+
+msgid "moving %s"
+msgstr "%s wird verschoben"
+
+msgid "%d of them in later steps, not on the screen yet, went with it"
+msgstr "%d davon aus späteren Schritten, noch nicht zu sehen, kamen mit"
+
+msgid "%s more in its other copies"
+msgstr "%s mehr in seinen anderen Kopien"
+
+msgid "%s more in its other copies, in a later step"
+msgstr "%s mehr in seinen anderen Kopien, in einem späteren Schritt"
+
+msgid "Sub-assembly of %d parts, %d on at this step"
+msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut"
+
+msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
+msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut, %d darin"

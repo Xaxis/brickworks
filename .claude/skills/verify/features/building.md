@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe -->
 
 ## Sub-features
 
@@ -1995,26 +1995,47 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`Builder.shown_only`), `Builder._living_selection` drops any before an
   edit, and `Builder.keep_shown` lets go of them when a step back takes them
   off, and puts them back when a step on or the timeline put away shows them
-  again, unless the selection was changed in between. So a colour, Delete, a move, a turn, Mirror, Replace, Cut, Copy and
-  Ctrl-G reach only what is on show. A sub-assembly taken whole is its parts
+  again, unless the selection was changed in between. The rule (stepfix,
+  2026-11-24): an edit that changes what a part is (a colour, Delete,
+  Replace, Cut, Copy, Ctrl-G, a print, Make unique) reaches only what is on
+  show; a rigid move of a sub-assembly taken whole (an arrow, a turn, a
+  drag, a lift and put-down, Mirror) moves all of it, its later parts too,
+  so it never tears, and says how many went with it (`Builder.
+  _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). A minifig
+  lifted at a step leaves its later parts on the model and moves them with
+  it on put-down (`_figure_followers`). `keep_shown` looks only at the parts
+  a step flipped and tells the selection's listeners once, 0.3 s after the
+  stepping stops (`SETTLE_SECONDS`); the line is said at once. A sub-assembly taken whole is its parts
   on so far and says so ("House selected, 56 of its 149 parts on at this step
   — double-click edits inside…"; a phone's line the same before "hold, then
-  Edit inside"; `Assemblies.selected_assembly` and `parts_beyond`). Select
+  Edit inside"; the properties "Sub-assembly of 149 parts, 56 on at this
+  step"; `Assemblies.selected_assembly`, `Main._say_selected`). A paint
+  says the parts its copies took too ("— 2 parts more in its other copies,
+  in a later step"). Select
   all takes the parts on show and says how many later ones it left out;
   the same again takes every step (`EditVerbs.every_step`, the timeline to
   its end). Find and replace leaves later steps' parts out and counts them
   (`FindReplace.find_among`'s "later"). A session's `edit_model` (and so
-  `edit_selection`), `mirror_parts`, `split_parts`, `merge_parts` and
-  `pattern_parts` naming a later step's part are refused before anything
-  changes, at most ten named, unless `all_steps: true`
-  (`Builder.later_refusal`); `replace_parts` leaves them out and counts them,
-  `all_steps: true` finds them too. Off the timeline, or at its last step,
+  `edit_selection`), `mirror_parts`, `split_parts`, `merge_parts`,
+  `pattern_parts`, `print_part`, `make_unique` and `move_part` naming a later
+  step's part are refused before anything changes, at most ten named, unless
+  `all_steps: true` (`Builder.later_refusal`); `replace_parts` leaves them out
+  and counts them, `all_steps: true` finds them too, and leaves the
+  selection only what is on show. `all_steps` is read at the tool's edge
+  (`Builder.all_steps_read`, from `AppTools.refusal` and `Assistant.
+  _run_tool`): true, "true", 1 and "1" are true, false, "false", 0 and "0"
+  false, anything else refused with nothing changed. Off the timeline, or at its last step,
   nothing is ahead and nothing changes. Probe: `PROBE_SIZE=1280x720
   tools/probe.sh stepedit_probe` (346-2 at step 5: the house clicked and
   painted, Select all and Delete, a session's edit refused and then made,
   each undone exactly, saved and opened again part by part; a step back and
   on, and the timeline put away, the selection let go of and put back), and at
-  `390x844` by a tap.
+  `390x844` by a tap. The review's own: `PROBE_SIZE=1280x720 tools/probe.sh
+  stepreview_probe` (the house nudged, turned and dragged at step 6 moves
+  all 149 or none, the line and properties counts true, each tool on a later
+  part refused, a paint's copies said, a minifig lifted at a step, the
+  selection on another model, undo of a carried move, and a step's time with
+  the house selected), and at `390x844`.
 - `model tree`: at the top of the right-hand column, over the properties
   (View, Panels, Model tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A

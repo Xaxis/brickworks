@@ -304,7 +304,7 @@ func press(name: String) -> void:
 			var painted: int = builder.paint_selection(builder.held_color)
 			if painted > 0:
 				edited.call()
-				say.call("painted %s" % _parts(painted))
+				say.call(_painted_words(painted))
 			elif not builder.selection.is_empty():
 				# Painted the colour they are already, and nothing said: the
 				# selection stayed as it was with no word why (ux14's walk, p11).
@@ -1141,7 +1141,7 @@ func lift(grab: Array = []) -> int:
 		return 0
 	aim_again.call()
 	say.call(Keymap.filled("moving %s — click to put down, {rotate_held|turns}, Esc puts back")
-		% _parts(count))
+		% _parts(count) + (" — " + builder.riding_said() if builder.riding_later > 0 else ""))
 	return count
 
 
@@ -1185,7 +1185,8 @@ func turn_by(degrees: float) -> int:
 	_armed = {"verb": "turn", "depth": depth, "degrees": degrees}
 	edited.call()
 	aim_again.call()
-	say.call("turned %s %+d° — or type its angle" % [_parts(count), roundi(degrees)])
+	say.call("turned %s %+d° — or type its angle" % [_parts(count), roundi(degrees)]
+		+ (" — " + builder.riding_said() if builder.riding_later > 0 else ""))
 	return count
 
 
@@ -1218,8 +1219,8 @@ func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
 	builder.carrying.reshape(turn)
 	edited.call()
 	aim_again.call()
-	say.call("no room to %s there (%s): it is in hand turned — click where it goes, Esc puts it back"
-		% [words, why])
+	say.call("no room to %s there (%s): it is in hand turned — click where it goes, Esc puts it back%s"
+		% [words, why, " — " + builder.riding_said() if builder.riding_later > 0 else ""])
 	return count
 
 
@@ -1573,6 +1574,8 @@ func _drag_lift(alone: bool) -> bool:
 	elif _riders_cut:
 		say.call("moving %s — what rests on it stays, more than a drag can follow"
 			% _parts(count))
+	elif builder.riding_later > 0:
+		say.call("moving %s — %s" % [_parts(count), builder.riding_said()])
 	return true
 
 
@@ -1772,7 +1775,7 @@ func click(at: Vector2, shift: bool) -> bool:
 			var painted: int = builder.paint_selection(builder.held_color)
 			if painted > 0:
 				edited.call()
-				say.call("painted %s" % _parts(painted))
+				say.call(_painted_words(painted))
 			return painted > 0
 		"hide":
 			return hide_selection() > 0
@@ -2148,4 +2151,33 @@ func put_away() -> void:
 
 static func _parts(count: int) -> String:
 	return "1 part" if count == 1 else "%d parts" % count
+
+
+## What a paint of [param painted] parts says, once the other copies of their
+## sub-model have followed it (Assemblies.after_edit, run by edited): the
+## parts it changed there too, and whether a step the timeline has not put on
+## holds them. "painted 2 parts" was said of a paint that changed 4, two in
+## a copy of a later step (stepreview F6).
+func _painted_words(painted: int) -> String:
+	var said: String = "painted %s" % _parts(painted)
+	var recoloured: Array = []
+	_recolours_in(builder.last_step(), recoloured)
+	var in_copies: int = recoloured.size() - painted
+	var later: bool = recoloured.any(func(id: int) -> bool: return builder.is_ahead(id))
+	if in_copies <= 0:
+		return said
+	return "%s — %s" % [said, ("%s more in its other copies, in a later step" if later
+		else "%s more in its other copies") % _parts(in_copies)]
+
+
+## The parts a history step recolours, into [param out], groups within it too.
+static func _recolours_in(step: Variant, out: Array) -> void:
+	if not (step is Dictionary):
+		return
+	match str((step as Dictionary).get("undo", "")):
+		"group":
+			for inner: Variant in (step as Dictionary).get("steps", []):
+				_recolours_in(inner, out)
+		"recolor":
+			out.append(int((step as Dictionary).get("brick", 0)))
 

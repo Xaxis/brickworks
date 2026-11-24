@@ -4811,6 +4811,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "along": {
           "description": "studs to slide along its line",
           "type": "number"
@@ -6167,6 +6171,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "area": {
           "description": "a print's area, by name",
           "type": "string"
@@ -6243,6 +6251,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "assembly": {
           "type": "string"
         },
