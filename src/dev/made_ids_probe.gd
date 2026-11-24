@@ -460,11 +460,18 @@ func _together(out: String) -> void:
 	await _frames(5)
 	var here_id: int = int(together._ids.get(their_uid, 0))
 	var here: String = _world.get_brick(here_id).part_id if _world.get_brick(here_id) != null else ""
-	_check(str(opened.get("error", "")).is_empty() and _world.brick_count() == 2 and here == sent_as
+	# The model's parts, the floor's own plates (scenery) left out.
+	var parts_here: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			parts_here.append(brick.part_id)
+	parts_here.sort()
+	_check(str(opened.get("error", "")).is_empty() and parts_here == ["3001", sent_as] and here == sent_as
 			and _whose(_library.custom_source(here), mine, theirs) == "THEIRS"
 			and _whose(_library.custom_source(OLD_ID), mine, theirs) == "MINE",
-		"joined here: %d parts (%s); their part is %s, drawn as %s; %s here is %s" % [_world.brick_count(),
-			opened.get("error", ""), here, _whose(_library.custom_source(here), mine, theirs), OLD_ID,
+		"joined here: parts %s, %d floor plates (%s); their part is %s, drawn as %s; %s here is %s" % [
+			parts_here, _world.brick_count() - parts_here.size(), opened.get("error", ""), here,
+			_whose(_library.custom_source(here), mine, theirs), OLD_ID,
 			_whose(_library.custom_source(OLD_ID), mine, theirs)])
 	var saved_at: String = ProjectSettings.globalize_path(PROBE_DIR + "together-saved.mpd")
 	_main.call("save_model", saved_at)
