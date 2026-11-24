@@ -469,12 +469,19 @@ export async function openColumnFor(page, name) {
 export async function clickStill(page, name, { find = null, seconds = START_MS / 1000, open = false,
   shots = "", optional = false, act = (at) => page.mouse.click(at.x, at.y), after = 0 } = {}) {
   const look = find || ((n) => shownWithin(page, n, seconds, open));
-  let at = await look(name);
-  for (let n = 0; at && n < 10; n++) {
-    const again = await nextTelling(page, name);
-    if (again === undefined || (again && again.x === at.x && again.y === at.y)) break;
-    at = again || (await look(name));
-  }
+  const still = async () => {
+    let at = await look(name);
+    for (let n = 0; at && n < 10; n++) {
+      const again = await nextTelling(page, name);
+      if (again === undefined || (again && again.x === at.x && again.y === at.y)) break;
+      at = again || (await look(name));
+    }
+    return at;
+  };
+  let at = await still();
+  // Cut off by a list it is in, scrolled into sight first, as a person
+  // scrolls to what they want: its middle may be under something else.
+  if (at && at.clipped) at = await intoSight(page, name, at, still);
   if (!at) {
     if (shots) await page.screenshot({ path: `${shots}/never_showed_${name}.png` }).catch(() => {});
     if (optional) return false;
@@ -482,6 +489,63 @@ export async function clickStill(page, name, { find = null, seconds = START_MS /
   }
   await act(at);
   if (after) await page.waitForTimeout(after);
+  return at;
+}
+
+/// [at], the place of [name], which the app says a list it is in cuts off
+/// (clipped: Main._cut_off), brought into sight as a person brings it: the
+/// wheel turned over the list beside it until the app tells it whole, its
+/// place read again each time once it stands still ([still]). Pressed where
+/// its middle was, a control under a list's foot pressed whatever stood
+/// there: share_flow's List it in the gallery, under the Share form's foot
+/// once the model had a link and Ask the builders (28a1fe332, 2026-11-23),
+/// pressed Publish again and published it listed; link and in_view's
+/// Private address, under the assistant column's foot once the app's
+/// header (c2f7790d7, 2026-11-23) took 61 px, was pressed off the window
+/// and never opened (nightly 2026-11-24).
+///
+/// The list is not told, only the controls in it, so the wheel is turned
+/// at places in the control's own column, first above it (a list cut off at
+/// its foot, the wheel down) and then below (cut off at its top, the wheel
+/// up), each over none of the controls the app tells (a field or a choice
+/// may take the wheel for itself) nor the view (the wheel zooms it), until
+/// one moves it. None does in either way: [at] as it was.
+async function intoSight(page, name, at, still) {
+  const size = page.viewportSize() || { width: 1280, height: 720 };
+  const told = await page.evaluate(() => window.brickworksControls || {});
+  const over = (x, y) => Object.entries(told).some(([n, c]) => n !== name && c && c.w && c.h
+    && Math.abs(c.x - x) <= c.w / 2 && Math.abs(c.y - y) <= c.h / 2);
+  const view = told.view;
+  const inView = (x, y) => view && Math.abs(view.x - x) <= view.w / 2 && Math.abs(view.y - y) <= view.h / 2;
+  const x = Math.max(2, Math.min(size.width - 2, at.x));
+  for (const way of [1, -1]) {
+    // The first edge of the control toward the list, inside the window.
+    const edge = way > 0 ? Math.min(at.y - at.h / 2, size.height) - 2 : Math.max(at.y + at.h / 2, 0) + 2;
+    const places = [];
+    for (let by = 0; by <= 240 && places.length < 6; by += 8) {
+      const y = edge - way * by;
+      if (y < 0 || y > size.height) break;
+      if (over(x, y) || inView(x, y)) continue;
+      if (places.length && Math.abs(places[places.length - 1] - y) < 24) continue;
+      places.push(y);
+    }
+    for (const y of places) {
+      let moved = false;
+      for (let n = 0; n < 20 && at && at.clipped; n++) {
+        await page.mouse.move(x, y);
+        await page.mouse.wheel(0, way * 120);
+        // A telling made before the wheel was heard passed by, so one where
+        // it stood is not read as the wheel moving nothing.
+        await nextTelling(page, name);
+        const now = await still();
+        if (!now || now.y === at.y) { at = now || at; break; }
+        moved = true;
+        at = now;
+      }
+      // Moved, this way is the list's: the other would scroll it back.
+      if (!at || !at.clipped || moved) return at;
+    }
+  }
   return at;
 }
 

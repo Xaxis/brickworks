@@ -163,14 +163,57 @@ async function codeInStudio(page, press, email) {
   await press("signin_go", 3, true);
 }
 
+// When the deployment last said who this is to the studio (GET
+// /api/account with its token: Account._ask_who), since the page last
+// loaded. The age question and the beta's welcome come from that answer,
+// so they can follow the studio saying it is signed in and ungated: a
+// sign-in heard from another tab lets it in at once and asks who after
+// (tab2, nightly 2026-11-24: the age question came over the copy after
+// answerStudio had returned, and no change could be made).
+const whoHeard = new WeakMap();
+function hearWho(page) {
+  if (whoHeard.has(page)) return;
+  whoHeard.set(page, 0);
+  // A new document asked for (a load, a reload), not a change of address
+  // within one: the studio writes its own address as it goes.
+  page.on("request", (asked) => {
+    if (asked.isNavigationRequest() && asked.frame() === page.mainFrame()) whoHeard.set(page, 0);
+  });
+  page.on("requestfinished", async (asked) => {
+    const at = new URL(asked.url());
+    if (at.pathname !== "/api/account" || at.search || asked.method() !== "GET") return;
+    const told = await asked.allHeaders().catch(() => ({}));
+    if (/^Bearer /.test(told.authorization || "")) whoHeard.set(page, Date.now());
+  });
+}
+
+// [n] of the studio's tellings to the page (a new window.brickworksAccount
+// each), or 5 s for each that does not come.
+async function tellings(page, n) {
+  for (let k = 0; k < n; k++) {
+    await page.evaluate(() => { window.fmToldBefore = window.brickworksAccount; }).catch(() => {});
+    await page.waitForFunction(() => window.brickworksAccount !== window.fmToldBefore, null, { timeout: 5000, polling: 100 })
+      .catch(() => {});
+  }
+}
+
 // The age question and the beta's welcome, in the studio, as a stranger
-// answers them: born in 1990, and Not now.
+// answers them: born in 1990, and Not now. Answered once the studio is in,
+// ungated and asks nothing, three tellings after it heard who this is.
 async function answerStudio(page, press) {
+  hearWho(page);
   const end = Date.now() + 120000;
   while (Date.now() < end) {
     const s = await look(page);
-    if (s.account.state === "signed_in" && !s.account.gated) return true;
     const named = await page.evaluate(() => window.brickworksControls || {}).catch(() => ({}));
+    const asks = named.age_go || named.beta_not_now || named.beta_start;
+    if (s.account.state === "signed_in" && !s.account.gated && !asks && whoHeard.get(page)) {
+      const heard = whoHeard.get(page);
+      await tellings(page, 3);
+      const after = await look(page);
+      if (after.account.state === "signed_in" && !after.account.gated && whoHeard.get(page) === heard) return true;
+      continue;
+    }
     if (named.age_go) {
       await press("age_month_3");
       await typeInto(page, press, "age_year", "1990");
@@ -313,12 +356,16 @@ const copiesOf = (writes) => new Set(writes.filter((p) => /\/models\//.test(p)
 async function walk(width, way) {
   const tag = `${width}-${way}`;
   console.log(`\n${tag}`);
-  const email = address(`${way[0]}${width}`);
+  // The whole way's name: by its first letter, returning and reload shared
+  // one account, so reload's copy met returning's Garden shed in the cloud
+  // and was kept beside it as "Garden shed 2" (nightly 2026-11-24).
+  const email = address(`${way}${width}`);
   made.push(email);
   if (way === "returning") await mintSession(email, { age: true, welcome: true });
   const { context, phone } = await contextAt(width);
   const press = (page) => presser(page, phone);
   const page = await context.newPage();
+  hearWho(page);
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
   let n = 0;
@@ -375,6 +422,10 @@ async function walk(width, way) {
       result.answered = await codeOnSite(page, email);
       await page.waitForURL(/\/app\?/, { timeout: 60000 }).catch(() => {});
       check(`back to the studio: ${new URL(page.url()).pathname}${new URL(page.url()).search}`, page.url().includes("/app"));
+      // And what the studio asks a new account there, the beta's welcome
+      // over the copy: never answered, no change could be made (nightly
+      // 2026-11-24, 1280-profile-05).
+      result.answered_studio = await answerStudio(page, p);
     } else if (way === "tab2") {
       const second = await context.newPage();
       await second.goto(`${site}/m/${id}`, { waitUntil: "load", timeout: 120000 });

@@ -195,7 +195,9 @@ try {
   const rules = await look.textContent("main");
   for (const [what, pattern] of [["credit", /credit/i], ["the three licences", /CC BY 4\.0[\s\S]*CC BY-SA 4\.0[\s\S]*All rights reserved/],
     ["no copying passed off", /No copying passed off as yours/], ["takedowns", /takedown requests/i],
-    ["no personal photos of children", /No personal photos of children/], ["AI designer and Brickify labelled", /AI designer or with Brickify are labelled/],
+    // Since aiprivate (12bb6d749, 2026-11-23) how a model was made is its owner's to say, never labelled by the site.
+    ["no personal photos of children", /No personal photos of children/], ["how it was made, the AI designer or Brickify, is the owner's to say",
+      /made with the AI designer or with Brickify is yours to say[\s\S]*passing one off as the other is not/],
     ["LEGO® only as an adjective", /as an adjective/], ["what gets a model or an account taken out", /What gets a model or an account taken out/]]) {
     check(`/guidelines: ${what}`, pattern.test(rules));
   }
