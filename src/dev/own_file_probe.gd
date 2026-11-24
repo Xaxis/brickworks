@@ -70,6 +70,8 @@ func _stores() -> void:
 		"...nor taken for it by the watch for saves elsewhere")
 	_ok(not b.save_as(OWN) and b.taken == OWN and ModelStore._count_bricks(own) == 2,
 		"Save under that name is refused, asking (taken %s), the person's 2 parts kept" % b.taken)
+	_ok(_version_parts(OWN) == [2], "...and its versions are the person's save alone: %s"
+		% str(_version_parts(OWN)))
 	b.listen()
 	b.touch()
 	b.write_now()
@@ -227,6 +229,9 @@ func _app() -> void:
 	await _until(func() -> bool: return _save_result != null)
 	_ok(_save_result == true and store.is_own_file(own) and ModelStore._count_bricks(own) == 3
 		and not bar._ask_name.visible, "Replace it writes over %s, which it is now" % OWN)
+	var kept_saves: Array = _version_parts(OWN)
+	_ok(kept_saves.size() >= 2 and kept_saves[0] == 3 and kept_saves.has(2),
+		"...the person's own 2-part save still among its versions, newest first: %s" % str(kept_saves))
 	_press_save(bar)
 	await _until(func() -> bool: return _save_result != null or bar._ask_name.visible)
 	_ok(_save_result == true and not bar._ask_name.visible, "...and the next Save asks nothing")
@@ -296,6 +301,14 @@ static func _text(name: String, parts: int) -> String:
 	for n: int in parts:
 		lines.append("1 4 %d -24 0 1 0 0 0 1 0 0 0 1 3001.dat" % (n * 40))
 	return "\n".join(lines) + "\n"
+
+
+## The parts of each version kept of the saved model [param name], newest first.
+static func _version_parts(name: String) -> Array:
+	var parts: Array = []
+	for version: ModelVersions.Version in ModelVersions.of(ModelStore.saved_path(name).get_file().get_basename()):
+		parts.append(version.parts)
+	return parts
 
 
 static func _said_title(path: String) -> String:
