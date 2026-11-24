@@ -2119,6 +2119,19 @@ func _ready() -> void:
 	# Whatever changes the model from here on is kept, by whatever path.
 	_store.listen()
 	_boot_mark("model")
+	# A set's Make your own version (?library=), its file and its entry
+	# fetched by the page as it opened (ModelLibrary.early_here): opened now,
+	# so the studio's first frame draws it and compiles its shaders with the
+	# studio's own. Opened after that frame, it waited on the studio's first
+	# frames drawn in software, 1.5 to 3.5 s, and its first frame compiled
+	# the bricks' shaders after them, 0.9 to 1.7 s more (setopen, 2026-11-23).
+	if not _from_library.is_empty() and ModelLibrary.early_here(_from_library):
+		_maybe_open_library()
+		# And its parts whose geometry is here, on this build's disk, read now
+		# rather than a frame at a time: whole in that first frame.
+		var waiting: Array = _store.awaited.map(func(p: LdrModel.Placement) -> String: return p.part_id)
+		var read: int = _library.read_waiting(waiting)
+		_boot_mark("library %d read" % read)
 
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are

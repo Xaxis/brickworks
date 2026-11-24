@@ -57,6 +57,17 @@ if (!site) {
 const out = path.resolve(String(args.out || "shots/sethub"));
 mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
+// --viewport=WxH (1400x900): 390 wide or less is a phone's, touch and all.
+const [viewWidth, viewHeight] = String(args.viewport || "1400x900").split("x").map(Number);
+const viewport = { width: viewWidth || 1400, height: viewHeight || 900 };
+// --chrome-trace=DIR: each open-time page traced whole, as DIR/<plain|version><round>.json.
+const chromeTrace = args["chrome-trace"] && args["chrome-trace"] !== true ? path.resolve(String(args["chrome-trace"])) : "";
+if (chromeTrace) mkdirSync(chromeTrace, { recursive: true });
+// --open=ADDRESS: what is opened beside the plain studio (Make your own
+// version's, /app?new=1&library=omr-346-2), e.g. a shared model's Open in the app.
+const openAt = String(args.open && args.open !== true ? args.open : "/app?new=1&library=omr-346-2");
+// --bricks=N: the parts down that say it is open (346-2's 165: 150).
+const wantBricks = Number(args.bricks) > 0 ? Number(args.bricks) : 150;
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const list = (given, fallback) => String(given || fallback).split(",").map((one) => one.trim()).filter((one) => one && one !== "none");
 /// Modelled: House with Car (the house published its LDraw model, so it has
@@ -297,20 +308,57 @@ async function published(browser) {
 /// what it is working on, its status bar, parts down and on their way), by
 /// the page's clock from its navigation, so the time between the studio up
 /// and the set down can be put where it went.
-async function timed(browser, address, ready, most = 240000) {
-  const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, extraHTTPHeaders: headers });
-  await context.addInitScript((trace) => {
+async function timed(browser, address, ready, most = 240000, label = "", readyArg = null) {
+  const context = await browser.newContext({ viewport, isMobile: viewport.width < 600, hasTouch: viewport.width < 600,
+    extraHTTPHeaders: headers });
+  await context.addInitScript(({ trace, least }) => {
     const log = [];
     window.sethubLog = log;
+    // The page's clock at a mark a Chrome trace holds too (--chrome-trace):
+    // how the trace's times are read on the page's clock.
+    window.sethubZero = performance.mark("sethub-zero").startTime;
     // The page's frames (requestAnimationFrame, the engine's own pace): each
     // gap over 250 ms, [when, how long], to tell the app's work from frames
     // the browser did not give.
     const gaps = [];
     window.sethubGaps = gaps;
     let lastFrame = 0;
+    // When what the app told the page was on the screen: the first frame
+    // drawn after it (a WebGL draw call), up to a fence put in after that
+    // frame, which passes once the browser drawing in software has drawn
+    // it (memory brickworks-swiftshader-timing). "up": the studio up;
+    // "set": its parts down. {at, drew, seen} by the page's clock.
+    const drawn = { last: 0, gl: null };
+    for (const name of ["drawElements", "drawArrays", "drawElementsInstanced", "drawArraysInstanced", "drawRangeElements"]) {
+      const kind = window.WebGL2RenderingContext;
+      const real = kind && kind.prototype[name];
+      if (typeof real !== "function") continue;
+      kind.prototype[name] = function (...given) {
+        drawn.last = performance.now();
+        drawn.gl = this;
+        return real.apply(this, given);
+      };
+    }
+    const seen = window.sethubSeen = {};
+    const look = () => {
+      for (const one of Object.values(seen)) {
+        if (one.seen) continue;
+        if (!one.fence && drawn.gl && drawn.last > one.at) {
+          one.drew = Math.round(drawn.last);
+          one.gl = drawn.gl;
+          one.fence = one.gl.fenceSync(one.gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+          one.gl.flush();
+        } else if (one.fence && one.gl.getSyncParameter(one.fence, one.gl.SYNC_STATUS) === one.gl.SIGNALED) {
+          one.seen = Math.round(performance.now());
+          one.gl.deleteSync(one.fence);
+          one.fence = null;
+        }
+      }
+    };
     const frame = (at) => {
       if (lastFrame && at - lastFrame > 250) gaps.push([Math.round(lastFrame), Math.round(at - lastFrame)]);
       lastFrame = at;
+      look();
       requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
@@ -364,16 +412,37 @@ async function timed(browser, address, ready, most = 240000) {
         said: state.said || "", bricks: state.bricks, awaited: state.awaited, slow: state.slow, busy: state.busy };
       const before = log[log.length - 1];
       if (!before || ["working", "said", "bricks", "awaited"].some((key) => before[key] !== row[key])) log.push(row);
+      if (!seen.up && row.awaited === 0) seen.up = { at: row.t, drew: 0, seen: 0, fence: null };
+      if (!seen.set && row.bricks >= least && row.awaited === 0) seen.set = { at: row.t, drew: 0, seen: 0, fence: null };
     }, 25);
-  }, Boolean(args.trace));
+  }, { trace: Boolean(args.trace), least: wantBricks });
   const page = await context.newPage();
   page.on("pageerror", (error) => errors.push(`${address}: ${error.message}`));
+  // --chrome-trace=DIR: the whole browser traced (the page's thread, the
+  // GPU process drawing in software), DIR/<label>.json.
+  const tracing = chromeTrace && label ? path.join(chromeTrace, `${label}.json`) : "";
+  if (tracing) {
+    // Few kinds: with cc, viz and the timeline's own, SwiftShader drew a
+    // frame in half a second and the studio never came up in 240 s.
+    await browser.startTracing(page, { path: tracing, categories: ["toplevel", "devtools.timeline", "blink.user_timing",
+      "gpu"] });
+  }
   try {
     const began = Date.now();
     await page.goto(`${site}${address}`, { waitUntil: "commit", timeout: 120000 });
-    const done = await page.waitForFunction(ready, null, { timeout: most, polling: 100 }).then(() => true, () => false);
+    const done = await page.waitForFunction(ready, readyArg, { timeout: most, polling: 100 }).then(() => true, () => false);
     const ms = done ? Date.now() - began : null;
+    // And drawn: the plain studio up, the version's set down (sethubSeen).
+    const shown = readyArg === null ? "up" : "set";
+    if (done) {
+      await page.waitForFunction((what) => window.sethubSeen?.[what]?.seen > 0, shown, { timeout: 60000, polling: 100 })
+        .catch(() => {});
+    }
     await page.waitForTimeout(200);
+    const drawnAt = await page.evaluate((what) => {
+      const one = window.sethubSeen?.[what];
+      return one ? { at: one.at, drew: one.drew, seen: one.seen || null } : null;
+    }, shown).catch(() => null);
     const log = await page.evaluate(() => window.sethubLog || []).catch(() => []);
     const at = (test) => log.find(test)?.t ?? null;
     const state = await page.evaluate(() => {
@@ -391,9 +460,20 @@ async function timed(browser, address, ready, most = 240000) {
     const gaps = await page.evaluate(() => window.sethubGaps || []).catch(() => []);
     const gl = await page.evaluate(() => window.sethubGl || null).catch(() => null);
     const engineFrames = await page.evaluate(() => window.sethubFrames || []).catch(() => []);
-    return { ms, first: at(() => true), up: at((row) => row.awaited === 0), placed: at((row) => row.bricks >= 150),
-      whole: at((row) => row.bricks >= 150 && row.awaited === 0), log, fetched, slow, gaps, gl, engineFrames, state, page, context };
+    // When the page wrote the packs that came after the start into the
+    // engine's files, a task of its own on the page's thread.
+    const packs = await page.evaluate(() => {
+      const when = (one) => (one ? [Math.round(one.came), Math.round(one.began), Math.round(one.written), one.files] : null);
+      const all = { later: when(window.brickworksLater) };
+      for (const [name, one] of Object.entries(window.brickworksPacks || {})) all[name] = when(one);
+      return { zero: window.sethubZero ?? null, ...all };
+    }).catch(() => ({}));
+    if (tracing) await browser.stopTracing().catch(() => {});
+    return { ms, first: at(() => true), up: at((row) => row.awaited === 0), placed: at((row) => row.bricks >= wantBricks),
+      whole: at((row) => row.bricks >= wantBricks && row.awaited === 0), log, fetched, slow, gaps, gl, engineFrames, packs, state,
+      drawnAt, seen: drawnAt?.seen ?? null, page, context };
   } catch (trouble) {
+    if (tracing) await browser.stopTracing().catch(() => {});
     await context.close();
     return { ms: null, log: [], state: { trouble: String(trouble.message || trouble).slice(0, 200) } };
   }
@@ -402,14 +482,14 @@ async function timed(browser, address, ready, most = 240000) {
 async function openTime(rounds) {
   const up = () => Boolean(window.brickworksState) && window.brickworksState.awaited === 0;
   // Its parts all down (an app before brickworksState.title says no name).
-  const set = () => window.brickworksState?.bricks >= 150 && window.brickworksState.awaited === 0;
+  const set = (least) => window.brickworksState?.bricks >= least && window.brickworksState.awaited === 0;
   // Signed in as this run's own throwaway account, deleted at the end.
   const browsers = [await launch({ ownAccount: true }), await launch({ ownAccount: true })];
   const got = [];
   try {
     for (let round = 0; round <= rounds; round += 1) {
-      const [plainOne, version] = await Promise.all([timed(browsers[round % 2], "/app?new=1", up),
-        timed(browsers[(round + 1) % 2], "/app?new=1&library=omr-346-2", set)]);
+      const [plainOne, version] = await Promise.all([timed(browsers[round % 2], "/app?new=1", up, 240000, `plain${round}`),
+        timed(browsers[(round + 1) % 2], openAt, set, 240000, `version${round}`, wantBricks)]);
       if (round === rounds) await version.page?.screenshot({ path: path.join(out, "make_your_own_version_app.png") });
       await Promise.all([plainOne.context?.close(), version.context?.close()]);
       console.log(`  round ${round}${round ? "" : " (warming, not counted)"}: the studio up at ${plainOne.up} ms `
@@ -422,6 +502,8 @@ async function openTime(rounds) {
           + `bricks ${row.bricks} awaited ${row.awaited}  working ${row.working}  said "${row.said}"`);
       }
       console.log(`    its fetches: ${version.fetched?.join("; ")}`);
+      console.log(`    the packs after the start, [came, writing began, written, files] by its page's clock: `
+        + `${JSON.stringify(version.packs)}; the plain studio's: ${JSON.stringify(plainOne.packs)}`);
       console.log(`    the plain studio's slow frames: ${plainOne.slow}`);
       const within = (one) => (version.gaps || []).filter(([at]) => at >= (one ?? 0) - 1000 && at <= (version.whole ?? Infinity));
       const stalled = within(version.first);
@@ -438,7 +520,13 @@ async function openTime(rounds) {
       const plainWaited = (plainOne.gl?.long || []).filter(([at]) => at <= (plainOne.up ?? Infinity));
       console.log(`    the plain studio's WebGL waits over 50 ms before it was up: ${plainWaited.length}, `
         + `${plainWaited.reduce((sum, [, ms]) => sum + ms, 0)} ms in all`);
-      if (round) got.push({ plain: plainOne.up, placed: version.placed, version: version.whole, log: version.log });
+      console.log(`    drawn and on the screen (the first frame drawn after it, fenced): the plain studio up `
+        + `${JSON.stringify(plainOne.drawnAt)}, the version's set down ${JSON.stringify(version.drawnAt)}; `
+        + `${version.seen !== null && plainOne.seen !== null ? version.seen - plainOne.seen : null} ms apart`);
+      if (round) {
+        got.push({ plain: plainOne.up, placed: version.placed, version: version.whole, plainSeen: plainOne.seen,
+          versionSeen: version.seen, log: version.log });
+      }
     }
     // Build it's address: its timeline at step 1, with an app that takes --build.
     const built = await timed(browsers[0], "/app?new=1&library=omr-346-2&build",
@@ -463,6 +551,10 @@ async function openTime(rounds) {
   const over = median(got.map((one) => (one.placed !== null && one.plain !== null ? one.placed - one.plain : null)));
   console.log(`  every part's shape in ${versionMs} ms at the median; ${median(got.map((one) => (one.version !== null
     && one.plain !== null ? one.version - one.plain : null)))} ms after the studio, a round's median`);
+  const seenOver = median(got.map((one) => (one.versionSeen !== null && one.plainSeen !== null
+    ? one.versionSeen - one.plainSeen : null)));
+  console.log(`  drawn: the set on the screen ${seenOver} ms after the plain studio was, a round's median `
+    + `(${JSON.stringify(got.map((one) => (one.versionSeen !== null && one.plainSeen !== null ? one.versionSeen - one.plainSeen : null)))})`);
   check(`Make your own version puts the set on the baseplate in ${placedMs} ms, the studio up in ${plainMs} ms `
     + `(medians of ${got.length}; ${over} ms later, a round's median): within the studio's open time + 2 s`,
   got.every((one) => one.placed !== null && one.plain !== null) && over !== null && over <= 2000);

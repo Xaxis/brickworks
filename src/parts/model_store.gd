@@ -1732,7 +1732,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# finished (adding to it waits for those).
 	var taken: Array = []
 	if job != null:
-		await CustomParts.readers_done(library)
+		if CustomParts.carries_any(model):
+			await CustomParts.readers_done(library)
 		await CustomParts.take_into(taken, library, model, job)
 	else:
 		CustomParts.take_into(taken, library, model, null)
@@ -4747,7 +4748,8 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	# The parts it carries join the library first, as an open's do.
 	var took: Array = []
 	if job != null:
-		await CustomParts.readers_done(library)
+		if CustomParts.carries_any(model):
+			await CustomParts.readers_done(library)
 		await CustomParts.take_into(took, library, model, job)
 	else:
 		CustomParts.take_into(took, library, model, null)

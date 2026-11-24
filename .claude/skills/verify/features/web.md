@@ -4201,7 +4201,13 @@ plan with Claude as the client.
   logs where the version's time went (the app's state as it changed, its
   fetches, the page's frames over 250 ms apart). `--trace` adds every
   WebGL call and each engine frame over 200 ms, to tell the app's own work
-  from shader compiles and frames the browser never gave. A local export
+  from shader compiles and frames the browser never gave; `--chrome-trace=DIR`
+  traces each page whole (the GPU process too: SwiftShader's drawing shows as
+  `GLContextEGL::MakeCurrent`), read by window with
+  `bench/results/setopen-2026-11-23/open_trace.py`. Each round also says when
+  the studio and the set were drawn (the first frame drawn after the app said
+  so, up to a WebGL fence). `--viewport=WxH` (390 wide is a phone's),
+  `--open=ADDRESS` and `--bricks=N` time another open the same way. A local export
   works too: relay --static with each browser signed in as its own
   throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23;
   the 2 s bar is not met there).

@@ -861,7 +861,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   status bar once a browser's awaited parts arrive. The share page's count
   (`api/share.js` `checkModel`) still counts every placed reference.
   The set's file is fetched with the index, not after it
-  (`ModelLibrary.fetch_model`: an id's file is known from the id). A big
+  (`ModelLibrary.fetch_model`: an id's file is known from the id). On the
+  web the page itself fetches both as it opens for `?library=omr-*`
+  (`src/boot/shell.html`, `window.brickworksEarly`: the file, the index and
+  the index's entry for the id), and the app takes them from it
+  (`ModelLibrary._early_file`, `_early_entry`); with the entry and the file
+  there when the studio comes up (`ModelLibrary.early_here`), Main opens the
+  set in the studio's first frame, so that frame draws it and compiles the
+  bricks' shaders with the studio's own. A file under 32 KB is read and
+  opened in the frame it came in, its bar not waited on to be drawn
+  (`ModelBar.OPENED_AT_ONCE_MOST`), and an open waits on the library's
+  readers only when its file carries parts or LDCad skins
+  (`CustomParts.carries_any`; setopen, 2026-11-23). A big
   set opens as any big model does (`ModelStore._open_into` with a job), on
   the screen once its parts are (walk180 A8: the hotel, 10297-1's 3,164
   parts, took 60-90 s in a browser drawing in software): the geometry the
