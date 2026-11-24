@@ -160,6 +160,8 @@ SETS_DIR = RESULTS / "realset-sets"
 # a fresh folder outside any checkout. A verdict file says so; one that does not was asked under
 # the two models' fixed names (bench/results/blind/) and is never read back as a sample.
 FRESH = "fresh names and folder a verdict"
+# A dry run's arm folder: never the real arm's, which a later real run would resume from.
+DRY = "-dry"
 
 SALT = "brickworks realset 1"
 FEWEST, MOST = 80, 1500
@@ -2208,6 +2210,11 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("--no-claude-code hides it from the relay's tab: with --via relay")
         if args.what == "run" and not args.dry_run:
             _imported(args.checkout)
+        if args.dry_run and not args.arm.endswith(DRY):
+            # A dry run's canned design and verdicts in the arm's own folder were taken
+            # up by the real run after it as made (design34: 42006 and 42049 judged a
+            # 60-part fixture), since each stage is skipped when its output is there.
+            args.arm += DRY
         bench.classes_current(args.checkout)
         return run(args)
     if args.what == "calibrate":

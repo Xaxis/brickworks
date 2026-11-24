@@ -596,3 +596,20 @@ def test_a_tab_without_claude_code_finds_every_other_tool_for_as_long_as_it_runs
 def test_a_tab_without_claude_code_on_this_box_finds_every_other_tool(tmp_path):
     _tab_finds_its_tools_for_as_long_as_it_runs(
         {"PATH": os.environ["PATH"], "HOME": str(Path.home())}, tmp_path / "data")
+
+
+def test_a_dry_run_designs_into_a_folder_of_its_own_never_the_real_arms(monkeypatch):
+    # design34: a dry run of d34lev, stopped by a timeout, left a canned 60-part design in
+    # realset-2026-11-24-d34lev/42006-1; the real run after it found design.json there, took
+    # it as made, and the judge was asked about the fixture eight times.
+    ran: list[str] = []
+    monkeypatch.setattr(realset.bench, "classes_current", lambda *a: None)
+    monkeypatch.setattr(realset, "_imported", lambda *a: None)
+    monkeypatch.setattr(realset, "run", lambda args: ran.append(args.arm) or 0)
+    common = ["--which", "tune", "--date", "2026-11-24", "--subjects", "42006-1",
+              "--via", "relay", "--instructions", "none", "--no-claude-code"]
+    realset.main(["run", "--arm", "d34lev", "--dry-run", *common])
+    realset.main(["one", "--arm", "d34lev-dry", "--dry-run", *common])  # as run starts each
+    realset.main(["run", "--arm", "d34lev", *common])
+    assert ran == ["d34lev-dry", "d34lev-dry", "d34lev"]
+    assert realset.arm_dir("2026-11-24", ran[0]) != realset.arm_dir("2026-11-24", ran[2])
