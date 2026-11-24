@@ -733,14 +733,37 @@ Whether what you built is still there tomorrow, and still means the same thing.
 - `reload a model saved elsewhere`: when another tab or window saves the model
   this one has open, this one is told and asked (`ReloadOffer`, a strip over the
   model like the seat offer: **Reload it** or **Keep mine**), never saved over
-  in silence. `ModelStore.saved_elsewhere` compares the file of the model's name
-  with what this tab last read or wrote of it (`know`: on open, on every save,
-  and when the name changes), by time and then by its brick lines, so a save of
+  in silence. `ModelStore.saved_elsewhere` compares the saved model this one is
+  (`_known_path`: the file it was opened from or saved to, never one it only
+  shares a name with) with what this tab last read or wrote of it (`know`: on
+  open, on every save), by time and then by its brick lines, so a save of
   the same bricks asks nothing; Main asks once a second
   (`_watch_other_tabs`). Saving over a file changed elsewhere since is refused
   with the reason in the bar (`refused`, `saved_by_another`), and the offer
   comes up; Keep mine takes the other's save as seen, and saving then replaces
   it, as the person chose.
+- `Save writes only into its own file` (viewfix, 2026-11-24, viewreview F1):
+  Save writes unasked only into the saved model the working model is: the one
+  it was opened from or last saved to (`ModelStore._known_path`,
+  `is_own_file`), kept across a reload beside the tab's autosave
+  (`sessions/<tab>/autosave_file.json`, `ModelStore.OWN_FILE`: the name it
+  was written under and the file; an autosave from before it is taken as its
+  name's file, as before). Over any other saved model, Save asks ("“X” is a
+  saved model already, and this is not it…", `ModelBar.ask_name_taken`, the
+  field offering a free name, control `save_name_replace` for **Replace
+  it**); Cancel saves nothing and says so. Before, the working model was its
+  name's file: a link's copy saved as "Train (copy)" behind the sign-in
+  screen came back from a reload as "Train" and Ctrl+S wrote its 30 parts
+  over the person's own 12. Every path that names a working model takes
+  this: a link's copy, a set's version and Make your own version, an
+  example, an import, a file from the computer, New and Clear (no saved
+  model), a name typed in the field, the assistant (`AppTools._save_first`,
+  `command_socket` save_model), a rename elsewhere (`Main._called_now` only
+  for its own file), undo of Clear and of an open (`identity`, `reopen`),
+  and a version opened (`open_version`, its model's file). A save that
+  changes the name marks the autosave due at once (`_autosave_follows`).
+  `src/dev/own_file_probe.gd`; the reviewer's `collide2`, `collide2_all`
+  (bench/results/viewfix-2026-11-24/f1).
 - `open over unsaved work` (2026-10-23, walk180 D6 and A11): every way a
   person opens a model in place of one with changes not saved asks first, as
   New does (`ModelBar.ask_to_replace`): "Save changes to “X”?" with **Save**
@@ -908,7 +931,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   is in; without that wait `?view=` showed the empty studio in every round
   (diag_v2). Without the link's answer by then (a slow or failed fetch, a
   link with no model) it goes as before: the screen lifts on the studio's
-  first frame and the viewer says what it is waiting for. The screen lifts
+  first frame and the viewer says what it is waiting for. A link and parts
+  still not in `Main.SHOWN_WHOLE_BY_MS` (2 s) after the `ui` mark lift the
+  screen on the studio first (`Main._lift_if_late`, boot mark `lifted late`)
+  and the model is drawn as it opens, its parts still coming: the screen's
+  6 s bound (`SET_SHOWN_MOST`) cannot lift it while the open holds the
+  page's thread, and a copy stayed under it 14.3 s after `ui` (viewreview
+  F3). The screen lifts
   in the frame that drew the model (`Main._mark_shown` calls
   `window.brickworksBootShown`), not at whenUp's next look, which waited out
   the app's next frame too: 1.0 s at a load of 74. Laid whole before the
@@ -1892,6 +1921,7 @@ Runtime:
 # takes it back (the "seating an old model" section)
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd
 godot --headless --path . --script src/dev/store_probe.gd    # survives save and reopen
+godot --headless --path . --script src/dev/own_file_probe.gd # Save goes only into its own file, or asks
 #   also: the build order is written as 0 STEP (a 1 x 1 plate in a step before
 #   the 3 x 3 that hides it), and the autosave skips it
 godot --headless --path . --script src/dev/keeping_probe.gd  # keeps what it was given

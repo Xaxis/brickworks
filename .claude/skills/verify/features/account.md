@@ -500,7 +500,14 @@ they have. A Claude connector belongs to the account that switched it on.
   fetched and opened, what was there is saved first if it had unsaved work
   (not the untouched example), the copy waits for its parts and is saved under
   its own name — "Name (copy)" if one of theirs has it — with no link of its
-  own, and the address loses its `?copy=` so a reload makes no second copy.
+  own, and the address loses its `?copy=` so a reload makes no second copy,
+  once the tab's autosave holds it under that saved name (viewfix: the save
+  marks the autosave due, `ModelStore._autosave_follows`; before, a reload
+  brought it back under the link's name and Save went over theirs). A link
+  none of whose parts this build can show is not left as the example car:
+  its text is kept among their models as shared, credited, under a free
+  name, for a later build to open, and a lasting notice says so
+  (`Main._not_copied`, `ModelStore.keep_unopened_copy`; viewreview F2).
   It knows the link it came from (`ModelStore.remixed_from`, kept in its
   saves as `0 !BRICKWORKS REMIX <id>`), so shared, its page says what it was
   remixed from.
