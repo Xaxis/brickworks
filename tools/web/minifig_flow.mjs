@@ -16,7 +16,6 @@
 // JPEG. The whole of it at 1280 in dark, the maker at 390 in light; with
 // --pictures, the maker, her profile, her comment, the gallery's cards and
 // the home's feed at 1280 and 390, dark and light.
-import { answerAsks } from "./asks.mjs";
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { PORTRAIT } from "./design_stand_in.mjs";
@@ -95,10 +94,7 @@ async function open(pathname, { width = 1280, theme = "dark", session = null, la
     }, session);
   }
   const page = await context.newPage();
-  // The site asks in its own dialog since dialogkit (1661d6dd5, 11-23), not
-  // the browser's confirm(): Remove the picture asks "Take your picture
-  // off?", answered yes as a confirm was.
-  await answerAsks(page);
+  page.on("dialog", (dialog) => dialog.accept().catch(() => {}));
   listen(page, label);
   await page.goto(site + pathname, { waitUntil: "load", timeout: 90000 });
   return { page, context };
