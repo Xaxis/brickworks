@@ -939,7 +939,11 @@ static func apply(edit: Edit, mesh: Lbm.PartMesh) -> Dictionary:
 	return {"shape": shape, "problem": ""}
 
 
-## The part file's name for an edit: "bw-3700-l6", "bw-3001-p6s0".
+## How the part file's name for an edit begins: "bw-3700-l6", "bw-3001-p6s0",
+## "bw-3001-c" for a cut. The rest is a tag of the whole text it makes
+## (CustomParts.named), so two edits are two parts however alike. Up to
+## moulds4 a cut box was a 12-bit tag here and the name was cut to 21
+## characters: 180 cut boxes of a 3001 had 174 names (mouldreview3).
 static func id_for(edit: Edit) -> String:
 	var source: String = ""
 	for n: int in edit.from.length():
@@ -958,11 +962,10 @@ static func id_for(edit: Edit) -> String:
 	elif edit.studs == "fill":
 		tail += "sa"
 	if edit.cut.size() == 6:
-		# The box as a short tag: its six numbers would not fit the name.
-		tail += "c%03x" % (hash(Array(edit.cut)) & 0xfff)
+		tail += "c"
 	if tail.is_empty():
 		tail = "copy"
-	return ("bw-%s-%s" % [source.left(10), tail]).left(21)
+	return "bw-%s-%s" % [source.left(10), tail]
 
 
 ## The title: the original's, and what was changed.

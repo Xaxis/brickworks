@@ -459,9 +459,9 @@ func _placed(input: Dictionary, name: String) -> String:
 	var store: ModelStore = app.get("_store")
 	# The parts made here it places, from its table, before its lines are
 	# read: a line names one of them, and its shape is waited for below.
-	Carry.take_made(str(entry.get("made", "")), library)
+	var lines: String = Carry.kept_lines(entry, library)
 	var ids := PackedStringArray()
-	for line: String in str(entry["ldraw"]).split("\n", false):
+	for line: String in lines.split("\n", false):
 		var bits: PackedStringArray = line.strip_edges().split(" ", false)
 		if bits.size() >= 15 and bits[0] == "1":
 			var part: String = library.resolve(bits[14].trim_suffix(".dat"))
@@ -471,7 +471,7 @@ func _placed(input: Dictionary, name: String) -> String:
 		return "The sub-assembly's parts did not load, so it was not put down. Nothing changed."
 	# Read as the bin reads it once its shapes are here: framed about the
 	# point it turns round (Carry.from_ldraw).
-	var parts: Array = Carry.from_ldraw(str(entry["ldraw"]), library)
+	var parts: Array = Carry.from_ldraw(lines, library)
 	if parts.is_empty():
 		return "The sub-assembly's parts did not load, so it was not put down. Nothing changed."
 	var pivot: Vector3 = parts[0].get("pivot", Vector3.ZERO)

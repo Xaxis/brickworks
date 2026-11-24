@@ -1317,12 +1317,10 @@ func _along_stem(middle: Vector3, across: Vector3) -> Array:
 # -- the part file ------------------------------------------------------------------------
 
 
-## Its id: what it is called and a tag from its shape and connectors, so the
-## same part made twice is one part and any change is another.
-func id_for(title: String) -> String:
-	var hashing := HashingContext.new()
-	hashing.start(HashingContext.HASH_MD5)
-	hashing.update(text("", title).to_utf8_buffer())
+## Its id and its file: what it is called and a tag of the whole file
+## (CustomParts.named), so the same part made twice is one part and any
+## change is another. [id, text].
+func named(title: String) -> Array:
 	var source: String = ""
 	for ch: String in title.to_lower():
 		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
@@ -1331,7 +1329,7 @@ func id_for(title: String) -> String:
 		source = "shape"
 	# Joined, not formatted: "%s-s" reads as a key named in words
 	# (tests/test_keys_named.py).
-	return "bw-" + source.left(10) + "-s" + hashing.finish().hex_encode().left(6)
+	return CustomParts.named("bw-" + source.left(10) + "-s", text(CustomParts.hole(), title))
 
 
 ## The part file: its triangles, its connectors, what it was made from.
@@ -1531,9 +1529,8 @@ func make(library: PartLibrary, title: String, keep: bool = true) -> Dictionary:
 		words = name_from(name)
 	if words.length() > MOST_NAME:
 		return {"id": "", "problem": _long_name(words)}
-	var id: String = id_for(words)
-	var made: Dictionary = CustomParts.add(library, text(id, words), id, keep)
-	return made
+	var own: Array = named(words)
+	return CustomParts.add(library, own[1], own[0], keep)
 
 
 ## [method make] with its file written and built on a worker, so the window
@@ -1550,9 +1547,8 @@ func make_built(library: PartLibrary, title: String, keep: bool = true) -> Dicti
 	var forge: GDScript = Later.script(&"PartForge")
 	WorkerTasks.first_here("the forge", Callable(forge, &"warm"))
 	var made: Array = await WorkerTasks.awaited(func() -> Variant:
-		var id: String = id_for(words)
-		var source: String = text(id, words)
-		return [id, source, forge.build(source, id, {}, true, null, false)],
+		var own: Array = named(words)
+		return [own[0], own[1], forge.build(own[1], own[0], {}, true, null, false)],
 		"build a part from a 3D file", library)
 	return CustomParts.add(library, made[1], made[0], keep, {}, forge.with_mesh(made[2]))
 

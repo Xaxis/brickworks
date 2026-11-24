@@ -95,26 +95,46 @@ func _check_modified(write: bool) -> PackedStringArray:
 			continue
 		var edit: PartEditor.Edit = PartEditor.parse_edit(PartEditor.MODIFIED_BY + " " + line)
 		var made: Dictionary = CustomParts.modified_text(library, edit)
-		var id: String = made["id"]
 		_ok(str(made["problem"]).is_empty(), "%s can be made (%s)" % [line,
-			made["problem"] if not str(made["problem"]).is_empty() else id])
+			made["problem"] if not str(made["problem"]).is_empty() else made["id"]])
 		if not str(made["problem"]).is_empty():
 			continue
+		# The app names it by a tag of its whole text (CustomParts.named); the
+		# fixture is kept under its name's start (its old name for a cut, the
+		# start and a tag of the box), as tests/test_elements.py finds it.
+		var stem: String = PartEditor.id_for(edit)
+		var info: PartLibrary.PartInfo = library.parts[edit.from]
+		var as_made: Dictionary = PartEditor.make_dat(edit, library.mesh_for(edit.from), info.name,
+			info.ldraw_category if info.custom else info.category, CustomParts.hole())
+		_ok(str(made["id"]) == str(CustomParts.named(stem, str(as_made["text"]))[0]),
+			"%s is named %s, its start and a tag of its text" % [line, made["id"]])
+		var id: String = _fixture_named(stem)
 		ids.append(id)
+		var text: String = str(as_made["text"]).replace(CustomParts.hole(), id)
 		var path: String = DIR + "modified/" + id + ".dat"
 		if write:
 			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(DIR + "modified"))
 			var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
-			file.store_string(made["text"])
+			file.store_string(text)
 			file.close()
 			print("        wrote %s" % path)
 			continue
-		_ok(FileAccess.get_file_as_string(path) == str(made["text"]),
+		_ok(FileAccess.get_file_as_string(path) == text,
 			"%s.dat is byte for byte what the editor makes" % id)
-		var back: PartEditor.Edit = PartEditor.parse_edit(made["text"])
+		var back: PartEditor.Edit = PartEditor.parse_edit(text)
 		_ok(back != null and back.to_words() == edit.to_words(),
 			"%s reads back as the change that made it" % id)
 	return ids
+
+
+## The changed fixture whose name begins [param stem] (a cut's ends in its
+## old tag of the box), or [param stem] for one not written yet.
+func _fixture_named(stem: String) -> String:
+	for file: String in DirAccess.get_files_at(DIR + "modified/"):
+		if file.ends_with(".dat") and (file == stem + ".dat" or stem.ends_with("-c")
+				and file.begins_with(stem)):
+			return file.get_basename()
+	return stem
 
 
 func _ok(passed: bool, said: String) -> void:

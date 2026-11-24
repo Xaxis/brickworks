@@ -600,16 +600,21 @@ static func id_for(base: String, tag: String) -> String:
 	return "bw-%s-p%s" % [source.left(10), tag]
 
 
-## Six hex digits from everything that makes a print what it is.
+## A tag of everything that makes a part made in the app what it is: a
+## print's part, title and pictures, a sticker's, a made part's whole text
+## (CustomParts.named). CustomParts.TAG_DIGITS hex digits of their SHA-256,
+## each thing's length before it, so ["ab", "c"] is not ["a", "bc"]. Up to
+## moulds4 six digits (24 bits) of an MD5 of them run together.
 static func tag_of(things: Array) -> String:
 	var hashing := HashingContext.new()
-	hashing.start(HashingContext.HASH_MD5)
+	hashing.start(HashingContext.HASH_SHA256)
 	for thing: Variant in things:
-		if thing is PackedByteArray:
-			hashing.update(thing)
-		else:
-			hashing.update(str(thing).to_utf8_buffer())
-	return hashing.finish().hex_encode().left(6)
+		var bytes: PackedByteArray = thing if thing is PackedByteArray \
+			else str(thing).to_utf8_buffer()
+		hashing.update(("%d:" % bytes.size()).to_ascii_buffer())
+		if not bytes.is_empty():
+			hashing.update(bytes)
+	return hashing.finish().hex_encode().left(CustomParts.TAG_DIGITS)
 
 
 ## The picture's file name for an area of a print.

@@ -107,6 +107,8 @@ A file that is not a closed shape (it has holes in its surface) is refused, with
 
 A model that uses a part you made carries it whatever it was opened from: your own model, a set, or someone else's file. Save, Export, a link, a kept sub-assembly and, on the desktop, a copy to the clipboard all take it with them.
 
+Each part you make is named by what it is: its name ends in a tag of its whole file, so the same part made twice is one part, and a part someone else made is never mistaken for yours. A file from an older version of Brickworks may name someone else's part the way it named one of yours; it opens with their part under a name of its own, and both are kept.
+
 ![Hair brought in from an STL file, seated on a minifigure's head: Your own hair, Seated on a minifigure's head, and Wear it.](/docs/img/figures-own-hair.webp "Headgear › Your own…: hair from an STL, seated on the head.")
 
 **Hair.** In the minifigure builder choose **Headgear**, then **Your own…**, or press **This is hair** on any part from a file. Brickworks stands the hair up and faces it forward (a ponytail's tail at the back, a wig's open side at the face), sizes it to fit round the head, and seats it: the inside of its crown goes on the head's stud, with a socket like a real hair piece's, so it turns with the head. If it guessed wrong, **Turn** and **Tip** put it right. **Wear it** puts it on the figure.

@@ -876,41 +876,72 @@ static func too_much(text: String) -> bool:
 	return text.length() > MOST_PASTED or placing_length(text) > MOST_PLACING
 
 
-## How long the part of [param text] that places parts is: up to the end of its
-## first FILE section where it is in sections, else all of it.
+## How long the lines of [param text] that place parts are, as PartShelf
+## .too_big measures a sub-assembly's: all of it, or where it is in sections,
+## the lines of its model and of each sub-model after it, their FILE and NOFILE
+## lines not counted, up to the first section that declares a part or the
+## first !DATA (what it carries for its parts counts toward MOST_PASTED alone).
+## Up to moulds4 only the first section was counted, and its FILE line with
+## it: a paste placing 250,000 parts through one sub-model was read whole
+## (12 s), and a copy of lines kept at exactly the cap was refused by a paste
+## (mouldreview3, lows 2 and 3).
 static func placing_length(text: String) -> int:
 	var first: int = 0
 	while first < text.length() and text[first] in " \t\r\n":
 		first += 1
 	if not text.substr(first, 7).to_upper().begins_with("0 FILE"):
 		return text.length()
-	for mark: String in ["\n0 FILE ", "\n0 NOFILE", "\n0 !DATA "]:
-		var at: int = text.findn(mark, first + 1)
-		if at >= 0:
-			return at
-	return text.length()
+	var count: int = 0
+	# The line end of a FILE or NOFILE line: the lines after it are counted
+	# to the next such line.
+	var at: int = text.find("\n", first)
+	while at >= 0:
+		var ends: int = -1
+		for mark: String in ["\n0 FILE ", "\n0 NOFILE", "\n0 !DATA "]:
+			var found: int = text.findn(mark, at)
+			if found >= 0 and (ends < 0 or found < ends):
+				ends = found
+		if ends < 0:
+			return count + text.length() - (at + 1)
+		count += ends - at
+		var line_end: int = text.find("\n", ends + 1)
+		var word: String = LdrModel.section_word(text.substr(ends + 1,
+			(line_end if line_end >= 0 else text.length()) - ends - 1))
+		if word == "!DATA" or word == "FILE" and line_end >= 0 \
+				and LdrModel.declares_part(text.substr(line_end + 1, 4000).split("\n")):
+			return count
+		at = line_end
+	return count
 
 
-## A kept sub-assembly's made parts ([method made_text], kept beside its
-## lines), taken into [param library] before its lines are read: those the
-## library has not got are built, and one it has is never drawn otherwise by
-## them (CustomParts.take_into's [param redefine]). The ids added.
-static func take_made(made: String, library: PartLibrary) -> PackedStringArray:
+## A kept sub-assembly's lines (a PartShelf entry), with its made parts
+## ([method made_text], kept beside them) taken into [param library] first:
+## those the library has not got are built, and one it has is never drawn
+## otherwise by them (CustomParts.take_into's [param redefine]). One it has
+## as other text (kept on another computer, or by an older app that named
+## two parts alike) comes in under a name of its own, and the lines given
+## back name it so (CustomParts.own_names).
+static func kept_lines(entry: Dictionary, library: PartLibrary) -> String:
+	var ldraw: String = str(entry.get("ldraw", ""))
+	var made: String = str(entry.get("made", ""))
 	if made.strip_edges().is_empty() or library == null:
-		return PackedStringArray()
-	var model: LdrModel = LdrModel.parse("0 FILE made.ldr\n0 NOFILE\n" + made, "made")
+		return ldraw
+	var lines: PackedStringArray = ldraw.trim_suffix("\n").split("\n")
+	var whole: String = "0 FILE kept.ldr\n" + "\n".join(lines) + "\n0 NOFILE\n" + made
+	var model: LdrModel = LdrModel.parse(whole, "kept")
 	if model == null or model.embedded_parts.is_empty():
-		return PackedStringArray()
-	var out: Array = []
-	CustomParts.take_into(out, library, model, null, false)
-	return PackedStringArray(out[0]["added"])
+		return ldraw
+	var owned: Dictionary = CustomParts.own_names(library, whole, model, "kept")
+	CustomParts.take_into([], library, owned["model"], null, false)
+	if str(owned["text"]) == whole:
+		return ldraw
+	return "\n".join(str(owned["text"]).split("\n").slice(1, 1 + lines.size())) + "\n"
 
 
 ## A kept sub-assembly's parts (a PartShelf entry): its made parts taken
-## first ([method take_made]), then its lines read ([method from_ldraw]).
+## first and its lines read ([method kept_lines], [method from_ldraw]).
 static func from_kept(entry: Dictionary, library: PartLibrary) -> Array:
-	take_made(str(entry.get("made", "")), library)
-	return from_ldraw(str(entry.get("ldraw", "")), library)
+	return from_ldraw(kept_lines(entry, library), library)
 
 
 ## Parts read back from LDraw text, if it is any: what another tool or window
@@ -928,6 +959,9 @@ static func from_ldraw(text: String, from: PartLibrary) -> Array:
 	if model == null:
 		return []
 	if not model.embedded_parts.is_empty():
+		# Another's part of a name the library has for other text comes in
+		# under a name of its own (CustomParts.own_names).
+		model = CustomParts.own_names(from, text, model, "clipboard")["model"]
 		CustomParts.take_into([], from, model, null, false)
 	var placed: Array = []
 	for placement: LdrModel.Placement in model.flatten(from.parts):

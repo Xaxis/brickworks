@@ -272,8 +272,9 @@ the model, and the design assistant doing the same with `add_minifig`.
   (`Rays.Grid`) and the share under 1 mm. Picking is `Rays.nearest`. The file
   (`text`) is the triangles on the mesh's 64ths of an LDU, the original's
   connectors as `0 !BRICKWORKS CONNECTOR` lines, its creases, and `0 // Moulded
-  by Brickworks: from=<part>`; named `bw-<part>-m<tag>` from an MD5 of its
-  corners, built by `PartForge` (`CustomParts.add`), filed under Custom. On a
+  by Brickworks: from=<part>`; named `bw-<part>-m-<tag>`, a tag of its whole
+  text, its title with it (`Mould.named`, `CustomParts.named`), built by
+  `PartForge` (`CustomParts.add`), filed under Custom. On a
   figure it stands where its original stands (`PartPrints.bases`).
 - `mould maker` (`src/minifig/mould_editor.gd`, `MouldEditor`): "Make a mould…"
   beside the search in the Headgear, Headgear extra, Neck, Back, In right hand and

@@ -767,19 +767,17 @@ func walls() -> Dictionary:
 # -- the file ----------------------------------------------------------------------
 
 
-## A mould's id: the part it was made from and a tag from its shape.
-func id_for() -> String:
-	var hashing := HashingContext.new()
-	hashing.start(HashingContext.HASH_MD5)
-	hashing.update(base.to_utf8_buffer())
-	hashing.update(positions.to_byte_array())
-	hashing.update(triangles.to_byte_array())
+## A mould's id and file called [param title]: the part it was made from and
+## a tag of the whole file (CustomParts.named), its title with it. Up to
+## moulds4 the tag was of its shape alone, 24 bits: two moulds of one shape
+## and another title had one id (mouldreview3). [id, text].
+func named(title: String) -> Array:
 	var source: String = ""
 	for n: int in base.length():
 		var ch: String = base[n].to_lower()
 		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
 			source += ch
-	return "bw-%s-m%s" % [source.left(10), hashing.finish().hex_encode().left(6)]
+	return CustomParts.named("bw-%s-m" % source.left(10), text(CustomParts.hole(), title))
 
 
 ## The part file: the sculpted triangles, the base part's connectors as
@@ -848,8 +846,8 @@ func _ldraw(v: int) -> Vector3:
 
 ## Make the part, add it to the library and keep it: {"id", "problem"}.
 func make(library: PartLibrary, title: String, keep: bool = true) -> Dictionary:
-	var id: String = id_for()
-	return CustomParts.add(library, text(id, title), id, keep)
+	var own: Array = named(title)
+	return CustomParts.add(library, own[1], own[0], keep)
 
 
 # -- drawing it ----------------------------------------------------------------------

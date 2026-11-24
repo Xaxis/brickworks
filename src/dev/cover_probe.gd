@@ -130,8 +130,8 @@ func _same_cells() -> void:
 		var said: String = goblet.put(str(aim[0]), hit) if not hit.is_empty() else "missed"
 		put.append("%s %s" % [aim[0], "put" if said.is_empty() else said])
 	print("  the goblet: %s, put %s" % [size, ", ".join(put)])
-	var id: String = goblet.id_for("Goblet")
-	_compare("the goblet made here", goblet.text(id, "Goblet"), id, {})
+	var own: Array = goblet.named("Goblet")
+	_compare("the goblet made here", own[1], own[0], {})
 	# A cube with a pin hole through it at a slant, as a file can state one.
 	var cube: String = _cube_text("bw-probe-slant", 120.0).trim_suffix("0\n") \
 		+ "0 %s CONNECTOR pin_hole neutral 10 -60 5 0.5 0.7 0.5\n0\n" % PartEditor.CONNECTOR

@@ -66,16 +66,20 @@ func _initialize() -> void:
 
 	print("\nit makes what the dialog makes")
 	var said: String = await _call({"family": "technic", "across": 9})
-	_ok(said.begins_with("Made part \"bw-h1x9\"") and _library.parts.has("bw-h1x9"),
+	# Its shape and a tag of its whole text (CustomParts.named).
+	var h1x9: String = said.get_slice("\"", 1)
+	_ok(said.begins_with("Made part \"bw-h1x9-") and _library.parts.has(h1x9),
 		"a 1 x 9 Technic brick: %s" % said.left(160))
 	var spec := ElementMaker.from_words("family=technic across=9 deep=1 plates=3 studs=yes")
-	_ok(_library.custom_source("bw-h1x9") == ElementMaker.dat(spec, "bw-h1x9"),
-		"...the very file the dialog's spec makes")
-	_ok(FileAccess.file_exists(PROBE_DIR + "bw-h1x9.dat"), "...and kept, as a person's part is")
+	_ok(_library.custom_source(h1x9) == ElementMaker.dat(spec, h1x9)
+			and h1x9 == CustomParts.named("bw-h1x9", ElementMaker.dat(spec, CustomParts.hole()))[0],
+		"...the very file the dialog's spec makes, named by its text")
+	_ok(FileAccess.file_exists(PROBE_DIR + h1x9 + ".dat"), "...and kept, as a person's part is")
 	_ok(said.contains("8 Technic holes through it") and said.contains("Footprint 9 x 1 studs (x by z), 3 plates tall"),
 		"...and said in a design's terms: its footprint and its 8 holes")
 	said = await _call({"family": "bracket", "across": 2, "deep": 1, "rise": 1, "way": "down"})
-	_ok(said.begins_with("Made part \"bw-k1x2x1d\"") and said.contains("on its +z face")
+	var bracket: String = said.get_slice("\"", 1)
+	_ok(said.begins_with("Made part \"bw-k1x2x1d-") and said.contains("on its +z face")
 			and said.contains("2.5 plates tall"),
 		"a bracket, its upright's studs said to face +z, its height 2.5 plates: %s"
 			% said.left(240))
@@ -84,7 +88,8 @@ func _initialize() -> void:
 	_ok(said.contains("\"Brick 1 x 4 for the headlights\"") or said.contains("headlights"),
 		"a brick with studs on its side, named as asked: %s" % said.left(140))
 	said = await _call({"from": "3700", "across": 6})
-	_ok(said.begins_with("Made part \"bw-3700-l6\"") and said.contains("5 Technic holes"),
+	var beam: String = said.get_slice("\"", 1)
+	_ok(said.begins_with("Made part \"bw-3700-l6-") and said.contains("5 Technic holes"),
 		"3700 changed to six long, its own holes repeated: %s" % said.left(140))
 	said = await _call({"from": "3003", "cut": {"x_from": 1, "x_to": 2, "z_from": 0, "z_to": 1,
 		"plates_from": 0, "plates_to": 3}})
@@ -107,22 +112,22 @@ func _initialize() -> void:
 	_judge("the 1 x 9 Technic brick on two 2 x 4s, a pin in its first hole", true, [
 		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
 		{"part": "3001", "color": 4, "x": 5, "y": 0, "z": 0, "rot": 0},
-		{"part": "bw-h1x9", "color": 1, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": h1x9, "color": 1, "x": 0, "y": 3, "z": 0, "rot": 0},
 		{"part": "3673", "color": 0, "x": 0.6, "y": 3.75, "z": -0.5, "face": "up", "rot": 1},
 	])
 	_judge("...and the pin a stud along, between the holes, is not", false, [
 		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
 		{"part": "3001", "color": 4, "x": 5, "y": 0, "z": 0, "rot": 0},
-		{"part": "bw-h1x9", "color": 1, "x": 0, "y": 3, "z": 0, "rot": 0},
+		{"part": h1x9, "color": 1, "x": 0, "y": 3, "z": 0, "rot": 0},
 		{"part": "3673", "color": 0, "x": 1.1, "y": 3.75, "z": -0.5, "face": "up", "rot": 1},
 	])
 	_judge("the bracket holding a 1 x 2 plate on its upright", true, [
 		{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
-		{"part": "bw-k1x2x1d", "color": 4, "x": 0, "y": 1.5, "z": 1, "rot": 0},
+		{"part": bracket, "color": 4, "x": 0, "y": 1.5, "z": 1, "rot": 0},
 		{"part": "3023", "color": 15, "x": 0, "y": 1.5, "z": 2.2, "face": "+z", "rot": 0},
 	])
 	_judge("3700 made six long, a pin in its fourth hole", true, [
-		{"part": "bw-3700-l6", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
+		{"part": beam, "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
 		{"part": "3673", "color": 0, "x": 3.6, "y": 0.75, "z": -0.5, "face": "up", "rot": 1},
 	])
 
@@ -132,19 +137,19 @@ func _initialize() -> void:
 		"bricks": [
 			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
 			{"part": "3001", "color": 4, "x": 5, "y": 0, "z": 0, "rot": 0},
-			{"part": "bw-h1x9", "color": 1, "x": 0, "y": 3, "z": 0, "rot": 0},
+			{"part": h1x9, "color": 1, "x": 0, "y": 3, "z": 0, "rot": 0},
 		],
 		"assemblies": [{"name": "beam", "x_from": 0, "x_to": 9, "z_from": 0, "z_to": 2}],
 	})
 	var standing: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
-		if brick.part_id == "bw-h1x9":
+		if brick.part_id == h1x9:
 			standing += 1
 	_ok(standing == 1, "the design stands, the made brick in it (%s)"
 		% str(answer).left(120).replace("\n", " "))
 	var text: String = _store.to_text("made parts", true)
-	_ok(text.contains("0 FILE bw-h1x9.dat") and text.contains("Technic Brick  1 x  9"),
-		"the saved file carries bw-h1x9.dat")
+	_ok(text.contains("0 FILE %s.dat" % h1x9) and text.contains("Technic Brick  1 x  9"),
+		"the saved file carries %s.dat" % h1x9)
 
 	_forget_kept()
 	print("")

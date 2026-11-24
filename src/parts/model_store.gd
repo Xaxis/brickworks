@@ -1744,6 +1744,13 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	if model == null:
 		out.append({"placed": 0, "missing": 0, "error": "that is not an LDraw file"})
 		return
+	# A part made in the app it carries as other text than this library's
+	# part of its name is someone else's: opened, kept and saved under a name
+	# of its own, the person's own untouched (CustomParts.own_names). The
+	# file is kept (SourceFile) as renamed, so a save writes it so.
+	var owned: Dictionary = CustomParts.own_names(library, text, model, name)
+	text = owned["text"]
+	model = owned["model"]
 	# Parts the file brought with it, made here or somewhere else, join
 	# the library before anything asks whether the library has them: with a
 	# job, built over frames, after any worker reading the library has
@@ -4778,6 +4785,9 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	if model == null or model.main == null:
 		out["error"] = "that is not an LDraw file"
 		return out
+	# A part made in the app it carries as other text than the library's of
+	# its name comes in under a name of its own (CustomParts.own_names).
+	model = CustomParts.own_names(library, str(named["text"]), model, str(named["file"]))["model"]
 	# The parts it carries join the library first, as an open's do; but one
 	# the library has already is drawn as the model open draws it, never by
 	# the file put into it (as a paste: Carry.from_ldraw).

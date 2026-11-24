@@ -27,26 +27,47 @@ static var dir: String = "user://custom_parts/"
 static var keeps: bool = true
 
 
+## How many hex digits of its text's SHA-256 end a made part's id ([method
+## named]): 80 bits. Two texts share a tag by chance alone, so this is long
+## enough that no two of every part anyone makes ever do: among a hundred
+## million made parts, the chance that any two share one is about one in 240
+## million (n squared over 2 to the 81st). Up to moulds4 a cut's tag was 12
+## bits, and a mould's, a print's and a part from a 3D file's 24: 180 cut
+## boxes of a 3001 made 174 ids, and a model of someone else's whose part had
+## the id of one of mine was drawn and saved with mine (mouldreview3).
+const TAG_DIGITS := 20
+
+
+## Where a made part's id goes in its text while the text is made: its id is
+## a tag of the rest of the text ([method named]), so the text comes first.
+static func hole() -> String:
+	return String.chr(1) + "id" + String.chr(1)
+
+
+## A made part's id and text: [param text], made with [method hole] where its
+## id goes, named [param stem] (what it was made from, or its shape) and a tag
+## of the whole of the rest of it ([constant TAG_DIGITS]). One text is one id
+## and one id one text: the same part made twice, here or by anyone, is one
+## part, and any change to it (a title, a cut, a corner) is another.
+## [id, the text with the id in it].
+static func named(stem: String, text: String) -> Array:
+	var id: String = "%s-%s" % [stem, PartPrints.tag_of([text.replace(hole(), "")])]
+	return [id, text.replace(hole(), id)]
+
+
 ## Make a part from a spec, add it to the library and keep it. Returns
 ## {"id": the part's id, "problem": why not, or ""}.
 ##
 ## The same shape under another name is another part: a designer who calls
-## one 2 x 7 brick a sill and another a lintel gets both, numbered apart.
+## one 2 x 7 brick a sill and another a lintel gets both, each its own tag.
 static func make(library: PartLibrary, spec: RefCounted,
 		keep: bool = true) -> Dictionary:
 	var maker: GDScript = Later.script(&"ElementMaker")
 	var problem: String = maker.problem(spec)
 	if not problem.is_empty():
 		return {"id": "", "problem": problem}
-	var base: String = maker.id_for(spec)
-	var id: String = base
-	var text: String = maker.dat(spec, id)
-	var n: int = 1
-	while library.parts.has(id) and library.custom_source(id) != text:
-		n += 1
-		id = "%s-%d" % [base, n]
-		text = maker.dat(spec, id)
-	return add(library, text, id, keep)
+	var own: Array = named(maker.id_for(spec), maker.dat(spec, hole()))
+	return add(library, own[1], own[0], keep)
 
 
 ## Make a part by changing one that exists (see [PartEditor]), add it to
@@ -61,8 +82,8 @@ static func make_modified(library: PartLibrary, edit: RefCounted,
 	return add(library, result["text"], result["id"], keep)
 
 
-## The part file an edit makes, under an id no other part has unless it is
-## this very part: {"text", "id", "problem"}.
+## The part file an edit makes, named by its whole text ([method named]):
+## {"text", "id", "problem"}.
 static func modified_text(library: PartLibrary, edit: RefCounted) -> Dictionary:
 	var info: PartLibrary.PartInfo = library.parts.get(edit.from)
 	if info == null:
@@ -70,16 +91,11 @@ static func modified_text(library: PartLibrary, edit: RefCounted) -> Dictionary:
 	var mesh: Lbm.PartMesh = library.mesh_for(edit.from)
 	var category: String = info.ldraw_category if info.custom else info.category
 	var editor: GDScript = Later.script(&"PartEditor")
-	var base: String = editor.id_for(edit)
-	var id: String = base
-	var made: Dictionary = editor.make_dat(edit, mesh, info.name, category, id)
-	var n: int = 1
-	while made["problem"] == "" and library.parts.has(id) \
-			and library.custom_source(id) != str(made["text"]):
-		n += 1
-		id = "%s-%d" % [base, n]
-		made = editor.make_dat(edit, mesh, info.name, category, id)
-	return {"text": made["text"], "id": id, "problem": made["problem"]}
+	var made: Dictionary = editor.make_dat(edit, mesh, info.name, category, hole())
+	if not str(made["problem"]).is_empty():
+		return {"text": "", "id": "", "problem": made["problem"]}
+	var own: Array = named(editor.id_for(edit), str(made["text"]))
+	return {"text": own[1], "id": own[0], "problem": ""}
 
 
 ## Add a part from its LDraw text: built, registered and, with [param
@@ -660,7 +676,9 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 ## The parts [param model] carries that [method take_from] builds, by file
 ## name: not one of the library's own, and not one built already as it is.
 ## Nor, with [param redefine] false, one the library has at all; nor ever a
-## part made here that this person keeps ([method _kept_as_built]).
+## part made here the library has ([method _made_here]): the file's text of
+## it is the library's, or a copy of it cut short, since every other text was
+## given a name of its own before the file was read ([method own_names]).
 static func _to_build(library: PartLibrary, model: LdrModel,
 		redefine: bool = true) -> PackedStringArray:
 	var wanted := PackedStringArray()
@@ -672,7 +690,7 @@ static func _to_build(library: PartLibrary, model: LdrModel,
 			continue
 		if info != null and library.custom_source(id) == text:
 			continue
-		if info != null and (not redefine or _kept_as_built(library, id)):
+		if info != null and (not redefine or _made_here(id)):
 			continue
 		# A part Studio drew itself that LDraw has since drawn (bl_5095 is
 		# 5095): the library's, as ModelStore.studio_part reads the name.
@@ -683,21 +701,166 @@ static func _to_build(library: PartLibrary, model: LdrModel,
 	return wanted
 
 
-## Whether [param id] is a part made here ("bw-", the space no LDraw number is
-## in) that this person keeps in [member dir], built as kept. Its name is a
-## token made from what it is (its shape and connectors, MeshPart.id_for; a
-## mould's sculpting; a print's picture; an element's size), so a file
-## carrying other text under it has a damaged or edited copy: the person's
-## own is drawn, and a model saved here carries the person's own (SourceFile
-## .parts_carried_into). Up to moulds3 the file's text was built over it, and
-## the person's bin and every model they saved that session had the other
-## text (mouldreview, mouldreview2: a copy cut short at 40% drew 2,683 of the
-## goblet's 6,484 triangles).
-static func _kept_as_built(library: PartLibrary, id: String) -> bool:
-	if not id.begins_with("bw-") or not own_name(id + ".dat") \
-			or not FileAccess.file_exists(dir + id + ".dat"):
+## Whether [param id] is in the space of the parts made in the app ("bw-",
+## which no LDraw number is in), other than a flexible part's piece the app
+## makes from its name alone (Bands). A file's text never redraws one the
+## library has: up to moulds3 it was built over it, and the person's bin and
+## every model they saved that session had the other text (mouldreview,
+## mouldreview2: a copy cut short at 40% drew 2,683 of the goblet's 6,484
+## triangles).
+static func _made_here(id: String) -> bool:
+	return id.begins_with("bw-") and not Bands.is_piece_id(id)
+
+
+## [param text], a model's file or a paste, read as [param model], with each
+## part made in the app ([method _made_here]) that it carries as other text
+## than the library's part of that name, or with other pictures, given a name
+## of its own: its FILE and Name lines, each line that places it, and each of
+## its pictures that differs (its !DATA and TEXMAP lines). The library's part,
+## the person's own, is untouched and the file's is drawn as the file has it,
+## both kept. A copy cut short of the library's (a file cut off at 40%, or
+## inside a face line, or its header alone) keeps its name: it is the same
+## part, drawn whole, and a save mends it (SourceFile.parts_carried_into).
+## Up to moulds4 every other text was taken for a damaged copy as well: two
+## people's cuts of a 3001 had one id, and a model of theirs opened here drew
+## mine where they had theirs, and a save wrote mine over it (mouldreview3).
+## {"text", "model"}: the text renamed and read again, or both as given.
+## Renamed again while a section's text changes with a name in it (a print
+## on a part renamed), a few times at most.
+static func own_names(library: PartLibrary, text: String, model: LdrModel,
+		name: String) -> Dictionary:
+	for _round: int in 4:
+		if model == null or model.embedded_parts.is_empty():
+			break
+		var names: Dictionary = _other_names(library, model)
+		if names["parts"].is_empty() and names["pictures"].is_empty():
+			break
+		text = _renamed(text, names["parts"], names["pictures"])
+		model = LdrModel.parse(text, name)
+	return {"text": text, "model": model}
+
+
+## The names [method own_names] gives: {"parts": old id -> new id,
+## "pictures": old file name, lowercase -> new name}. A part's new name is
+## its old one and a tag of its text and pictures as the file has them, so
+## the same file opened twice names it alike and keeps it once.
+static func _other_names(library: PartLibrary, model: LdrModel) -> Dictionary:
+	var parts: Dictionary = {}
+	var pictures: Dictionary = {}
+	for file_name: String in model.embedded_parts:
+		var id: String = LdrModel.stem(file_name)
+		if parts.has(id) or not _made_here(id):
+			continue
+		var theirs: String = model.embedded_parts[file_name]
+		# A picture the file carries under a name kept here, or drawn here,
+		# as other bytes: kept, it would be written over the person's own
+		# (add), whether the part's own name is the library's or not.
+		var other_pictures: Dictionary = {}
+		var bytes_had: Array = []
+		if PartPrints.has_pictures(theirs):
+			for picture: String in PartPrints.pictures_named(theirs):
+				var bytes: Variant = model.embedded_data.get(picture.to_lower())
+				if not bytes is PackedByteArray:
+					continue
+				bytes_had.append(bytes)
+				var have: PackedByteArray = _picture_of(library, id, picture)
+				if not have.is_empty() and have != bytes:
+					other_pictures[picture.to_lower()] = "%s-%s.%s" % [picture.get_basename(),
+						PartPrints.tag_of([bytes]), picture.get_extension()]
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		var mine: String = library.custom_source(id) if info != null and info.custom else ""
+		var same: bool = info == null or not info.custom or theirs == mine
+		if not same:
+			same = as_read(theirs) == as_read(mine) or cut_short(theirs, mine)
+		if same and other_pictures.is_empty():
+			continue
+		parts[id] = "%s-%s" % [id, PartPrints.tag_of([as_read(theirs)] + bytes_had)]
+		pictures.merge(other_pictures)
+	return {"parts": parts, "pictures": pictures}
+
+
+## The picture [param name] as the library's part [param id] draws it, from
+## its built print, or as kept here. Empty where there is none.
+static func _picture_of(library: PartLibrary, id: String, name: String) -> PackedByteArray:
+	var mesh: Lbm.PartMesh = library.mesh_for(id) if library.parts.has(id) else null
+	if mesh != null:
+		for key: String in [name, name.to_lower()]:
+			if mesh.print_files.has(key):
+				return mesh.print_files[key]
+	if own_name(name) and FileAccess.file_exists(dir + name):
+		return FileAccess.get_file_as_bytes(dir + name)
+	return PackedByteArray()
+
+
+## A part's text as a reader takes it, to tell two apart: each line's own
+## words, the blank lines and the line ends left out.
+static func as_read(text: String) -> String:
+	var out := PackedStringArray()
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if not line.is_empty():
+			out.append(line)
+	return "\n".join(out)
+
+
+## Whether [param copy] is [param whole] cut short: its lines, as a reader
+## takes them, the first of whole's, the last of them perhaps cut inside, and
+## fewer or shorter. A file cut off by a failed write or a short download.
+static func cut_short(copy: String, whole: String) -> bool:
+	var some: PackedStringArray = as_read(copy).split("\n", false)
+	var all: PackedStringArray = as_read(whole).split("\n", false)
+	if some.is_empty() or some.size() > all.size():
 		return false
-	return FileAccess.get_file_as_string(dir + id + ".dat") == library.custom_source(id)
+	var last: int = some.size() - 1
+	for n: int in last:
+		if some[n] != all[n]:
+			return false
+	if some[last] == all[last]:
+		return some.size() < all.size()
+	return all[last].begins_with(some[last])
+
+
+## [param text] with the parts in [param parts] (id -> new id) and the
+## pictures in [param pictures] (lowercase name -> new name) called by their
+## new names, wherever a reader finds them: FILE and !DATA lines, a part's
+## Name line, the lines that place a part and a print's TEXMAP lines. Every
+## other character as it was, the line ends too.
+static func _renamed(text: String, parts: Dictionary, pictures: Dictionary) -> String:
+	var lines: PackedStringArray = text.split("\n")
+	for n: int in lines.size():
+		var raw: String = lines[n]
+		var line: String = raw.strip_edges()
+		if not line.begins_with("0") and not line.begins_with("1"):
+			continue
+		var fields: PackedStringArray = LdrModel._fields(line)
+		var named: String = ""
+		if fields[0] == "1":
+			named = LdrModel.reference_of(line) if fields.size() >= 15 else ""
+		elif fields[0] == "0":
+			var word: String = LdrModel.section_word(line)
+			if word == "FILE" or word == "!DATA":
+				named = " ".join(fields.slice(2))
+			elif fields.size() >= 3 and fields[1].to_lower() == "name:":
+				named = " ".join(fields.slice(2))
+			elif PartPrints.has_pictures(line) or line.begins_with("0 !TEXMAP NEXT"):
+				named = fields[fields.size() - 1]
+		if named.is_empty():
+			continue
+		var bare: String = named.replace("\\", "/").get_file()
+		var key: String = bare.to_lower()
+		var id: String = key.trim_suffix(".dat")
+		var given: String = ""
+		if pictures.has(key):
+			given = pictures[key]
+		elif parts.has(id):
+			# Its ".dat" as the line has it, or none.
+			given = str(parts[id]) + bare.substr(id.length())
+		if given.is_empty():
+			continue
+		var at: int = raw.rfind(bare)
+		if at >= 0:
+			lines[n] = raw.substr(0, at) + given + raw.substr(at + bare.length())
+	return "\n".join(lines)
 
 
 # -- The library's own files, fetched -----------------------------------------

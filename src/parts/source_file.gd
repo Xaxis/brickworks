@@ -267,13 +267,15 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 ## first ([method _as_sections]), or the first part carried would be read as
 ## its model.
 ##
-## And a part's section the file has with text other than [param files]' (a
-## section cut short, or empty, or another's copy, for a part this window
-## draws from a whole copy it keeps: CustomParts._kept_as_built, or one a
-## paste could not draw otherwise) is written with the text the model shows:
-## a model saved here carries what it draws. It was kept as it was, and on
-## any other computer the part was not built (mouldreview2 finding 5). A
-## section the model was drawn from is its text already, and is not touched.
+## And a part's section the file has as a copy of [param files]' cut short
+## (cut off, inside a face line or after its header: CustomParts.cut_short),
+## which the window draws whole, is written whole: a model saved here carries
+## what it draws. It was kept as it was, and on any other computer the part
+## was not built (mouldreview2 finding 5). Never a section of other text: it
+## is another part, given a name of its own when the file was read
+## (CustomParts.own_names), and up to moulds4 this wrote the person's own part
+## over another's of the same id (mouldreview3). A section the model was drawn
+## from is its text already, and is not touched.
 func parts_carried_into(text: String, files: Dictionary) -> String:
 	if files.is_empty():
 		return text
@@ -321,7 +323,7 @@ func parts_carried_into(text: String, files: Dictionary) -> String:
 		if span.size() < 2 or mending.has(int(span[0])):
 			continue
 		var body: String = "\n".join(lines.slice(int(span[0]), int(span[1])))
-		if _as_read(body) != _as_read(str(files[name])):
+		if CustomParts.cut_short(body, str(files[name])):
 			mending[int(span[0])] = true
 			mends.append([int(span[0]), int(span[1]), str(files[name])])
 	mends.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) > int(b[0]))
@@ -354,17 +356,6 @@ func parts_carried_into(text: String, files: Dictionary) -> String:
 	if not out.ends_with("\n"):
 		out += eol + "\n"
 	return out + (added.replace("\n", "\r\n") if not eol.is_empty() else added)
-
-
-## A part's text as a reader takes it, to tell two apart: each line's own
-## words, the blank lines and the line ends left out.
-static func _as_read(text: String) -> String:
-	var out := PackedStringArray()
-	for raw: String in text.split("\n"):
-		var line: String = raw.strip_edges()
-		if not line.is_empty():
-			out.append(line)
-	return "\n".join(out)
 
 
 ## Of [param parts], what the app cannot show and what is on its way (as
