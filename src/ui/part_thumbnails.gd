@@ -312,7 +312,9 @@ func _next_job(drawn_anyway: bool = true) -> Dictionary:
 					put_off = true
 					continue
 				var key: String = tile.key()
-				if _drawing.has(key):
+				# To hand before a draw of it ends: the server's file came
+				# after the draw began.
+				if _drawing.has(key) and not _sheet_cells.has(key):
 					continue
 				if _has(key):
 					_touch(key)
@@ -444,6 +446,16 @@ func take_sheet_image(image: Image, index: Dictionary) -> int:
 		return 0
 	_sheet = image
 	_sheet_cells = cells
+	# The tiles already waiting have theirs now, even one whose picture is
+	# being drawn here (the file came after the page was laid): no stage
+	# need be free, and no draw ended, for what is to hand.
+	for entry: Array in _watching:
+		for item: Variant in entry[1]:
+			if not is_instance_valid(item):
+				continue
+			var waiting: ThumbTile = item
+			if waiting.state == ThumbTile.State.LOADING and _has(waiting.key()):
+				waiting.show_picture(_cache[waiting.key()], waiting.in_sight)
 	_look = true
 	set_process(true)
 	return cells.size() / 2

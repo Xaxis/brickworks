@@ -44,7 +44,18 @@ static func take(body: Dictionary, thumbnails: PartThumbnails, host: Node) -> bo
 		return false
 	var began: int = Time.get_ticks_msec()
 	var from: String = "page"
-	var bytes: PackedByteArray = await _early(path)
+	var early: Dictionary = await _early(path)
+	var bytes: PackedByteArray = early.get("bytes", PackedByteArray())
+	# Read by the page already: its pixels taken as they are, in this frame.
+	var pixels: PackedByteArray = early.get("pixels", PackedByteArray())
+	var width: int = int(early.get("width", 0))
+	var height: int = int(early.get("height", 0))
+	if not bytes.is_empty() and width > 0 and height > 0 and pixels.size() == width * height * 4:
+		var lots_now: int = thumbnails.take_sheet_image(
+			Image.create_from_data(width, height, false, Image.FORMAT_RGBA8, pixels), index_of(bytes))
+		said = {"url": path, "lots": lots_now, "ms": Time.get_ticks_msec() - began, "from": "page, read"}
+		if lots_now > 0:
+			return true
 	if bytes.is_empty():
 		from = "asked"
 		var result: Array = await PageFetch.ask(host, Deployment.api_base() + path, PackedStringArray(),
@@ -67,11 +78,12 @@ static func take(body: Dictionary, thumbnails: PartThumbnails, host: Node) -> bo
 
 
 ## [param path] as the page fetched it (window.brickworksLots), waited for a
-## frame at a time while it is on its way; empty when the page did not fetch
-## it, or it failed.
-static func _early(path: String) -> PackedByteArray:
+## frame at a time while it is on its way: {bytes, and where the page read
+## it too, pixels (RGBA, a row after another), width, height}; {} when the
+## page did not fetch it, or it failed.
+static func _early(path: String) -> Dictionary:
 	if not OS.has_feature("web"):
-		return PackedByteArray()
+		return {}
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var asked: String = ("(function(u){var l=window.brickworksLots;"
 		+ "return l && l.url===u ? (l.done ? (l.status===200 && l.bytes ? 2 : 3) : 1) : 0})(%s)") % JSON.stringify(path)
@@ -81,12 +93,22 @@ static func _early(path: String) -> PackedByteArray:
 		await tree.process_frame
 		state = JavaScriptBridge.eval(asked, true)
 	if state == null or int(state) != 2:
-		return PackedByteArray()
-	var bytes: Variant = JavaScriptBridge.eval(
-		"(function(){var l=window.brickworksLots;window.brickworksLots=null;return l.bytes})()", true)
+		return {}
+	var bytes: Variant = JavaScriptBridge.eval("window.brickworksLots.bytes", true)
 	if not bytes is PackedByteArray or (bytes as PackedByteArray).size() > MOST_BYTES:
-		return PackedByteArray()
-	return bytes
+		JavaScriptBridge.eval("window.brickworksLots=null", true)
+		return {}
+	# Only numbers, words and buffers come back from the page: "width,height".
+	var size: PackedStringArray = str(JavaScriptBridge.eval(
+		"(function(l){return l.pixels ? l.width + ',' + l.height : ''})(window.brickworksLots)", true)).split(",")
+	var width: int = int(size[0]) if size.size() == 2 else 0
+	var height: int = int(size[1]) if size.size() == 2 else 0
+	var pixels: Variant = PackedByteArray()
+	if width > 0 and height > 0 and width * height * 4 <= 64 * 1024 * 1024:
+		pixels = JavaScriptBridge.eval("window.brickworksLots.pixels", true)
+	JavaScriptBridge.eval("window.brickworksLots=null", true)
+	return {"bytes": bytes, "pixels": pixels if pixels is PackedByteArray else PackedByteArray(),
+		"width": width, "height": height}
 
 
 ## The index a file carries (its "brickworks-lots" tEXt chunk), or {} when it
