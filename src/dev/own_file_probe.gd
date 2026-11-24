@@ -246,6 +246,9 @@ func _app() -> void:
 	var unshown: String = "0 Own File Probe Link\n\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 zzownprobe1.dat\n"
 	var opened: Dictionary = await store.open_text_fetched(unshown, "Own File Probe Link")
 	main.set("_copying", "AbCdEfGhIj")
+	# The person's own work on the baseplate (the copy saved above), as the
+	# bar's open says it is; the store's open here does not.
+	main.set("_sample_untouched", false)
 	main.call("_not_copied", {"model": unshown, "version": 1, "name": "Own File Probe Link"},
 		"Own File Probe Link", opened)
 	var notice: RestoreNotice = main.get("_restore_notice")
@@ -261,12 +264,16 @@ func _app() -> void:
 	main.call("_not_copied", {"model": unshown, "version": 1, "name": "Own File Probe Link"},
 		"Own File Probe Link", opened)
 	var world: BrickWorld = main.get("_world")
-	_press_save(bar)
-	await _until(func() -> bool: return _save_result != null)
 	_ok(world.brick_count() - store.scenery.size() == 0 and store.title == ModelStore.UNTITLED
-		and _save_result == false and not FileAccess.file_exists(ModelStore.saved_path(car))
-		and FileAccess.file_exists(kept),
-		"the baseplate left bare, Save saves nothing as %s (%s), the link kept" % [car, bar.status_text()])
+		and FileAccess.file_exists(kept), "the baseplate left bare and Untitled, the link kept")
+	# Save on a bare baseplate asks what to call it, as after New; put away.
+	_press_save(bar)
+	await _until(func() -> bool: return _save_result != null or bar._ask_name.visible)
+	if bar._ask_name.visible:
+		bar._ask_name.get_cancel_button().pressed.emit()
+		await _until(func() -> bool: return _save_result != null)
+	_ok(_save_result == false and not FileAccess.file_exists(ModelStore.saved_path(car)),
+		"...and Save saves nothing as %s: %s" % [car, bar.status_text()])
 	DirAccess.remove_absolute(kept)
 	main.set("_copying", "")
 	store.keeps = false
