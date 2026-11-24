@@ -8,6 +8,10 @@
 ## before and after, and what the drag did to the selection. Run on the branch
 ## and on its base: what differs is the change's.
 ##
+## In the suite since appfix (726b8bf82): the driver and the drawn pose are
+## checked; the turns are noted, as the drag moves a part and Simulate reads
+## any edited mechanism again from 0, on the base too.
+##
 ##   PROBE_SIZE=1280x720 tools/probe.sh simgrab_probe
 ##   godot --path . --resolution 1280x720 --script src/dev/simgrab_probe.gd
 extends "res://src/dev/grabselect_probe.gd"
@@ -145,8 +149,12 @@ func _run() -> void:
 	print("  status: \"%s\"" % str((panel.get("_driver") as Label).text))
 	_check("Simulate's driver is the one it had before the drag (%d, now %d)" % [driver0, driver1],
 		driver1 == driver0)
-	_check("Simulate's turns are where they were scrubbed (%.3f, now %.3f)" % [turns0, turns1],
-		is_equal_approx(turns0, turns1))
+	_check("Simulate's pose still drawn (%d parts, now %d)" % [drawn0.size(), drawn1.size()],
+		drawn1.size() == drawn0.size() and not drawn0.is_empty())
+	# The drag moved a part, so Simulate reads the mechanism again and starts
+	# it at 0, as after any edit: on appwalk's base too (pastereview F4).
+	print("  NOTE  Simulate's turns after the drag moved a part: %.3f, scrubbed %.3f (read again, as any edit is)"
+		% [turns1, turns0])
 	print("\nsimgrab_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
 
