@@ -125,9 +125,9 @@ func _paint_the_house() -> void:
 	var after: Dictionary = _by_id()
 	var painted: Array = _changed(before, after)
 	var wrong: Array = painted.filter(func(id: int) -> bool: return not on_show.has(id))
-	_check("a colour paints the %d on show and nothing else (painted %d, %d of them not on show)"
-		% [on_show.size(), painted.size(), wrong.size()],
-		painted.size() == on_show.size() and wrong.is_empty())
+	_check("a colour paints the %d on show and nothing else (painted %d, %d of them not on show), one step to undo (%d, was %d)"
+		% [on_show.size(), painted.size(), wrong.size(), _builder.history_depth(), depth],
+		painted.size() == on_show.size() and wrong.is_empty() and _builder.history_depth() == depth + 1)
 	_check("...every later step's part keeps its colour (%d of %d)" % [
 		_kept(before, after, all_of), all_of.size() - on_show.size()],
 		_kept(before, after, all_of) == all_of.size() - on_show.size())
@@ -170,9 +170,11 @@ func _select_all_and_delete() -> void:
 	await _until(func() -> bool: return _builder.history_depth() > depth)
 	var after: Dictionary = _by_id()
 	var gone: Array = before.keys().filter(func(id: int) -> bool: return not after.has(id))
-	_check("Delete takes the %d on show and nothing else (%d gone, %d of them not on show)"
-		% [on_show.size(), gone.size(), gone.filter(func(id: int) -> bool: return not on_show.has(id)).size()],
-		gone.size() == on_show.size() and gone.all(func(id: int) -> bool: return on_show.has(id)))
+	_check("Delete takes the %d on show and nothing else (%d gone, %d of them not on show), one step to undo (%d, was %d)"
+		% [on_show.size(), gone.size(), gone.filter(func(id: int) -> bool: return not on_show.has(id)).size(),
+			_builder.history_depth(), depth],
+		gone.size() == on_show.size() and gone.all(func(id: int) -> bool: return on_show.has(id))
+			and _builder.history_depth() == depth + 1)
 	_check("...every later step's part where it was, in its colour (%d of %d)" % [
 		_kept(before, after, PackedInt64Array(before.keys())) , later_parts + _store.scenery.size()],
 		_kept(before, after, PackedInt64Array(before.keys())) == later_parts + _store.scenery.size())
