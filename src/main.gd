@@ -4762,21 +4762,19 @@ const KEPT_WAIT_MS := 120000
 
 ## [param path] put in the address once the model just opened from it
 ## (?library=, ?copy=) is in this tab's storage: the working model written
-## now (ModelStore.write_now) and the browser's word that it landed
-## (ModelStore.stored, which follows the newest write of it). Till then the
-## address goes on asking for that model, so a reload opens it again.
-## Taken off at once, a reload before the autosave was written (2.5 s after
-## the open) or stored landed on an empty "Untitled", the set gone and
+## at the next frame (ModelStore.write_soon, written) and the browser's word
+## that it landed (ModelStore.stored, which follows the newest write of it).
+## Till then the address goes on asking for that model, so a reload opens it
+## again. Taken off at once, a reload before the autosave was written (2.5 s
+## after the open) or stored landed on an empty "Untitled", the set gone and
 ## nothing to say so; with a set's loading screen still up (openreview F1,
 ## 2026-11-24). Never awaited by an open: the open goes on meanwhile.
 func _address_once_kept(path: String) -> void:
 	var since: int = Time.get_ticks_msec()
-	# Half a model being laid is not written (ModelStore.write_now).
-	while _store.laying and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
+	_store.write_soon()
+	while not _store.written() and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
 		await get_tree().process_frame
-	var kept: String = _store.write_now()
-	while not kept.is_empty() and not ModelStore.stored(kept) \
-			and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
+	while not ModelStore.stored(ModelStore.autosave()) and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
 		await get_tree().create_timer(0.2).timeout
 	_set_address(path)
 

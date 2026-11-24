@@ -413,6 +413,24 @@ func write_now() -> String:
 	return autosave() if FileAccess.file_exists(autosave()) else ""
 
 
+## The working model written by the next [method tick], not once the change
+## has settled: over frames when it is big, as tick writes one. A model just
+## opened from the page's address is (Main._address_once_kept), which lets
+## the address go once it is kept ([method written], [method stored]):
+## written in one go ([method write_now]) a big set held a frame for it, 512
+## ms in a browser for 1,327 parts (progress_check, 2026-10-15).
+func write_soon() -> void:
+	if _pending:
+		_dirty_at = mini(_dirty_at, Time.get_ticks_msec() - AUTOSAVE_DELAY_MS)
+
+
+## Whether the working model, as it is now, is written to the autosave (its
+## way into the browser's storage is [method stored]'s), or is never written
+## by this run.
+func written() -> bool:
+	return not keeps or read_only or (not _pending and not _autosaving and not laying)
+
+
 ## Restore the working model from the last session, if there is one. How
 ## many of its parts come back: put down now, or on their way (on the web,
 ## parts not fetched yet go down as they arrive, and nothing may be opened
