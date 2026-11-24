@@ -72,6 +72,18 @@ In **Author's steps**, a row of buttons under it changes the step showing: **Ear
 ui:build animation
 -->
 
+### Editing at a step {#edit-at-step}
+
+While the timeline shows a step, what you change is what you see, as in Studio and LDCad. A click, a box or a tap takes only parts that are on the model at this step, never one of a later step. A sub-assembly, taken whole by a click, is the parts of it on so far: the line along the top says so, "House selected, 56 of its 149 parts on at this step". A colour, **Delete**, a move, a turn, **Mirror**, **Replace**, **Cut** and **Copy**, and a new sub-assembly then change those parts alone. The parts of later steps stay as they are, and each change is one Undo.
+
+**Select all** at a step takes the parts on so far, and says how many in later steps it left out. Press it again to take every step: the timeline goes to its end, the whole model on show, and everything is selected. **Find and replace** leaves out parts of later steps too, and counts them. Go to the timeline's last step, or put it away with **Done**, to change the whole model.
+
+An assistant works the same way. A change it asks for to a part of a later step is refused before anything changes, the parts named, unless it says `all_steps`. It should only say that when you have asked for the whole model.
+
+<!-- covers
+ui:edit at a step
+-->
+
 ### On a phone {#timeline-phone}
 
 ![The timeline on a phone, 390 pixels across: the car built to its fourth step, and along the foot the row of steps, the step's parts as pictures with how many of each, its words, and one row of Back, the step's number, Next, Parts and More.](/docs/img/instructions-timeline-phone.webp "On a phone: one row a thumb works, the rest in More.")

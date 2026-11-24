@@ -17786,3 +17786,21 @@ msgstr "füge noch einmal ein, um es erneut zu versuchen"
 
 msgid "paste stopped"
 msgstr "Einfügen abgebrochen"
+
+msgid "%s selected, %d of its %d parts on at this step"
+msgstr "%s ausgewählt, %d seiner %d Teile in diesem Schritt verbaut"
+
+msgid "selected the %d parts on up to step %d"
+msgstr "die %d bis Schritt %d verbauten Teile ausgewählt"
+
+msgid "selected the %d parts on at this step"
+msgstr "die %d in diesem Schritt verbauten Teile ausgewählt"
+
+msgid "%d more in later steps are left out"
+msgstr "%d weitere aus späteren Schritten sind ausgelassen"
+
+msgid "Select all again takes every step"
+msgstr "noch einmal Alles auswählen nimmt jeden Schritt"
+
+msgid "%d in later steps left out."
+msgstr "%d aus späteren Schritten ausgelassen."

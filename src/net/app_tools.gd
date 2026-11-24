@@ -8751,6 +8751,10 @@ static func _replace_parts_definition() -> Dictionary:
 				# ownswap (APP_UX10 #2)
 				"mine": {"type": "boolean",
 					"description": "true: the lots the person owns too few of (their collection, as submit_design mine=true counts it), each swapped for a part or colour of their own that keeps the look, or said to have none; the owned share before and after and what is still missing said; no find= or replace= with it"},
+				# stepedit: at a step of the timeline, later steps' parts are left out.
+				"all_steps": {"type": "boolean", "description": ("while the person's timeline "
+					+ "shows a step, the parts of later steps, not on their screen yet, are left "
+					+ "out and counted; true finds and changes them too")},
 			}},
 	}
 
@@ -8884,8 +8888,16 @@ func _replace_parts(input: Dictionary) -> String:
 		if put_back < 0:
 			return "Nothing changed: %s." % Later.script(&"FindReplace").HELD_WORDS
 	put_back += first
-	var found: Dictionary = finder.call("find", find, where)
+	# At a step of the person's timeline, parts of later steps are left out
+	# and counted (FindReplace.find_among), unless the call says all_steps.
+	var builder: Builder = app.get("_builder")
+	var found: Dictionary = builder.in_every_step(func() -> Dictionary:
+		return finder.call("find", find, where)) if input.get("all_steps") == true \
+		else finder.call("find", find, where)
 	var listed: String = finder.call("listed", found)
+	if int(found.get("later", 0)) > 0:
+		listed += (" They are in steps after the one the person's timeline shows, not on their "
+			+ "screen yet; all_steps: true finds them too.")
 	if (found["ids"] as Array).is_empty():
 		return listed
 	var changes: bool = not str(put["part"]).is_empty() or int(put["color"]) >= 0

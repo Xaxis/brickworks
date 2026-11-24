@@ -3475,6 +3475,8 @@ func _steps_revealed(ids: Dictionary) -> void:
 				ahead[brick.id] = true
 	_ahead_key = -1
 	_builder.lattice.ahead = ahead
+	# ...nor is it selected: a step back lets go of what it takes off.
+	_builder.keep_shown()
 	if ids.is_empty() and _verbs != null:
 		_verbs.apply_hidden()
 	else:
@@ -3507,6 +3509,9 @@ func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void
 				_ahead.erase(order[n])
 	_ahead_count = count
 	_builder.lattice.ahead = _ahead
+	# A selection holds only what the step shows (Builder.shown_only): a step
+	# back lets go of the parts it takes off.
+	_builder.keep_shown()
 	# What the world's rebuild said before, when a step was a rebuild: a
 	# selection's outline round what is on show, and what is under a still
 	# pointer.
@@ -7055,6 +7060,10 @@ func _build_ui() -> void:
 	# A part put down while the timeline shows the author's steps goes in
 	# the step it is on.
 	_builder.place_step = _steps.place_step
+	# The step an edit reaches no further than, for what an edit says.
+	_builder.step_showing = func() -> int:
+		var at: Instructions.Step = _steps.current_step()
+		return at.number if at != null else -1
 	middle.add_child(_steps)
 	# The line over a phone's model kept above the bar as it opens, grows
 	# with a step's parts and goes: it was placed once, over the bar's five
@@ -7370,6 +7379,8 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	# Select all asked again at a step: the timeline to its end, every step.
+	_verbs.every_step = _steps.to_end
 	# A copy is the account's that made it (EditVerbs.account_changed).
 	_verbs.account = func() -> String: return _account.user_id if _account != null else ""
 	add_child(_verbs)
@@ -7650,8 +7661,13 @@ func _build_ui() -> void:
 		_look_under_again()
 		var whole: String = _verbs.assemblies.selected_assembly() \
 			if count > 1 and _phone == null and _verbs != null and _verbs.assemblies != null else ""
+		# At a step, only its parts on show, and said: "of its 149".
+		var of_all: int = _verbs.assemblies.parts_beyond(whole) if not whole.is_empty() else 0
 		if count == 0:
 			_bar.say("")
+		elif of_all > count:
+			_bar.say("%s selected, %d of its %d parts on at this step — double-click edits inside a sub-assembly"
+				% [Assemblies.label(whole), count, of_all])
 		elif not whole.is_empty():
 			# A click took a sub-assembly whole: which, and the way to one
 			# of its parts, as a phone's line says (PhoneShell.hint, in a

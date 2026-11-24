@@ -17786,3 +17786,21 @@ msgstr "vuelve a pegar para intentarlo de nuevo"
 
 msgid "paste stopped"
 msgstr "pegado detenido"
+
+msgid "%s selected, %d of its %d parts on at this step"
+msgstr "%s seleccionado, %d de sus %d piezas puestas en este paso"
+
+msgid "selected the %d parts on up to step %d"
+msgstr "seleccionadas las %d piezas puestas hasta el paso %d"
+
+msgid "selected the %d parts on at this step"
+msgstr "seleccionadas las %d piezas puestas en este paso"
+
+msgid "%d more in later steps are left out"
+msgstr "%d más de pasos posteriores quedan fuera"
+
+msgid "Select all again takes every step"
+msgstr "Seleccionar todo otra vez toma todos los pasos"
+
+msgid "%d in later steps left out."
+msgstr "%d de pasos posteriores omitidos."

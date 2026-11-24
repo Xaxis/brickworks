@@ -7194,6 +7194,20 @@
       "area": "building"
     },
     {
+      "kind": "ui",
+      "label": "edit at a step",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (B, Author's steps, Next to a step; a click on a sub-assembly takes its parts on so far, \"N of its M parts on at this step\"; C, Delete, a move reach those alone; Select all twice takes every step)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "stepedit probe",
+      "entry": "src/dev/stepedit_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepedit_probe   (346-2 at step 5: the house clicked and painted, Select all and Delete, a session's edit refused then all_steps, each undone, saved and opened again part by part; PROBE_SIZE=390x844 by a tap)",
+      "area": "building"
+    },
+    {
       "kind": "cli",
       "label": "paste from another tab",
       "entry": "tools/web/tabpaste_flow.mjs",

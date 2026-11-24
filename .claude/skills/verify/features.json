@@ -3735,6 +3735,14 @@
       "tests": []
     },
     {
+      "id": "cli:stepedit probe",
+      "kind": "cli",
+      "entry": "src/dev/stepedit_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepedit_probe   (346-2 at step 5: the house clicked and painted, Select all and Delete, a session's edit refused then all_steps, each undone, saved and opened again part by part; PROBE_SIZE=390x844 by a tap)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:stepnames probe",
       "kind": "cli",
       "entry": "src/dev/stepnames_probe.gd",
@@ -7076,6 +7084,17 @@
       "reach": "tools/probe.sh edges && PROBE_SIZE=1280x720 tools/probe.sh edges   (by hand: View, Edges and studs, Edges or Studs; kept in this machine's controls.cfg [view]; only the window follows them: renders, booklets, view_model and thumbnails draw every seam and stud)",
       "area": "view",
       "tests": []
+    },
+    {
+      "id": "ui:edit at a step",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (B, Author's steps, Next to a step; a click on a sub-assembly takes its parts on so far, \"N of its M parts on at this step\"; C, Delete, a move reach those alone; Select all twice takes every step)",
+      "area": "building",
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
+      ]
     },
     {
       "id": "ui:enter this month's challenge",

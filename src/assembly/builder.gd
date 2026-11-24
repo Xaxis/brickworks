@@ -910,21 +910,127 @@ func _live(brick_id: int) -> int:
 # -- working on several at once ------------------------------------------
 
 
-## What a click with Select on this brick takes: none for a locked brick.
+## What a click with Select on this brick takes: none for a locked brick,
+## nor for one the timeline has not put on yet ([method shown_only]).
 func takes(brick_id: int) -> PackedInt64Array:
-	if brick_id == 0 or locked.has(brick_id):
+	if brick_id == 0 or locked.has(brick_id) or is_ahead(brick_id):
 		return PackedInt64Array()
 	# A sub-assembly is one thing to whoever points at it, at the level
-	# being edited; and nothing outside the one being edited is.
+	# being edited; and nothing outside the one being edited is. At a step
+	# of the timeline, its parts on show: at a set's fifth step a click took
+	# the whole house, 149 parts with 77 not on yet, and a colour then
+	# painted them all (appwalk, stepedit).
 	if unit_of.is_valid():
-		return unit_of.call(brick_id)
+		return shown_only(unit_of.call(brick_id))
 	# A figure is one thing too. Picking out its arm alone and moving it
 	# would leave the arm floating beside the figure, which is not an edit
 	# anybody means. Asked only here, where it is used: asked first and
 	# thrown away, it was the hover's 180 ms over a panel of Brick Art,
 	# 170 parts asked whether they were a figure (2026-10-15).
 	var members: PackedInt64Array = figure_of(brick_id)
-	return members if members.size() > 1 else PackedInt64Array([brick_id])
+	return shown_only(members) if members.size() > 1 else PackedInt64Array([brick_id])
+
+
+# -- what the step showing holds ---------------------------------------------
+#
+# While the timeline shows a step (StepsBar), the parts it has not put on
+# yet are drawn nowhere and the pointer passes through them
+# (BrickLattice.ahead). A selection holds only parts on show, and so every
+# edit of it (a colour, Delete, a move, a turn, a mirror, Replace, Cut and
+# Copy, a group) reaches only what the person sees, as Studio and LDCad edit
+# at a step. Off the timeline, or at its last step, nothing is ahead and
+# nothing here changes anything.
+
+
+## More than nothing while an edit made for every step runs ([method
+## in_every_step]): a session's call sent with all_steps (replace_parts).
+var _every_step: int = 0
+
+
+## Whether the timeline has not put [param brick_id] on yet, so nothing the
+## person does at this step reaches it.
+func is_ahead(brick_id: int) -> bool:
+	return _every_step == 0 and lattice != null and lattice.ahead.has(brick_id)
+
+
+## [param ids] without the parts the timeline has not put on yet.
+func shown_only(ids: PackedInt64Array) -> PackedInt64Array:
+	if _every_step > 0 or lattice == null or lattice.ahead.is_empty():
+		return ids
+	var out := PackedInt64Array()
+	for brick_id: int in ids:
+		if not lattice.ahead.has(brick_id):
+			out.append(brick_id)
+	return out
+
+
+## How many of [param ids] the timeline has not put on yet.
+func ahead_of(ids: Variant) -> int:
+	if lattice == null or lattice.ahead.is_empty():
+		return 0
+	var count: int = 0
+	for brick_id: Variant in ids:
+		if lattice.ahead.has(int(brick_id)):
+			count += 1
+	return count
+
+
+## Whether the timeline shows a step with parts still to come.
+func at_a_step() -> bool:
+	return lattice != null and not lattice.ahead.is_empty()
+
+
+## The number of the step the timeline shows, -1 for none (Main).
+var step_showing: Callable = Callable()
+
+
+## Why a session's change to [param ids] is not made: some are in steps after
+## the one the person is looking at, and [param all_steps] is not true. ""
+## when it can go ahead. Refused before anything is written, the parts
+## named, at most ten.
+func later_refusal(ids: Array, all_steps: Variant) -> String:
+	if all_steps == true or not at_a_step():
+		return ""
+	var later: Array = []
+	var seen: Dictionary = {}
+	for raw: Variant in ids:
+		var brick_id: int = int(raw)
+		if lattice.ahead.has(brick_id) and not seen.has(brick_id):
+			seen[brick_id] = true
+			later.append(brick_id)
+	if later.is_empty():
+		return ""
+	var step: int = int(step_showing.call()) if step_showing.is_valid() else -1
+	var named: Array = later.slice(0, 10).map(func(id: int) -> String: return "#%d" % id)
+	return ("Not applied — the person is looking at %s of the timeline, and %d of the parts this "
+		+ "changes are in later steps, not on the screen yet: %s%s. Change only parts on show, "
+		+ "or send all_steps: true to change those too (say so to the person).") % [
+		"step %d" % step if step > 0 else "a step", later.size(), ", ".join(PackedStringArray(named)),
+		" and %d more" % (later.size() - 10) if later.size() > 10 else ""]
+
+
+## [param edit] called with every step's parts in reach: what it returns.
+func in_every_step(edit: Callable) -> Variant:
+	_every_step += 1
+	var out: Variant = edit.call()
+	_every_step -= 1
+	return out
+
+
+## The selection let go of what the timeline no longer shows: a step back
+## from the one it was made at. How many went.
+func keep_shown() -> int:
+	if lattice == null or lattice.ahead.is_empty() or selection.is_empty():
+		return 0
+	var gone: Array = []
+	for brick_id: int in selection:
+		if lattice.ahead.has(brick_id):
+			gone.append(brick_id)
+	for brick_id: int in gone:
+		selection.erase(brick_id)
+	if not gone.is_empty():
+		selection_changed.emit(selection.size())
+	return gone.size()
 
 
 ## Add the brick under the cursor to the selection, or take it out.
@@ -955,7 +1061,8 @@ func toggle_hovered() -> bool:
 ## selection becomes it (its whole figure, for a minifigure part), or with
 ## ``add`` it is added or taken away.
 func select_brick(brick_id: int, add: bool) -> bool:
-	if brick_id == 0 or locked.has(brick_id) or world.get_brick(brick_id) == null:
+	if brick_id == 0 or locked.has(brick_id) or world.get_brick(brick_id) == null \
+			or is_ahead(brick_id):
 		return false
 	if not add:
 		selection.clear()
@@ -985,10 +1092,12 @@ func select_in(box: Rect2, where: Callable, touching: bool,
 			continue
 		var caught: bool = (box.intersects(on_screen) if touching
 			else box.encloses(on_screen))
-		if caught and not selection.has(brick.id) and not locked.has(brick.id):
-			# A box round part of a sub-assembly takes all of it.
-			var members: PackedInt64Array = unit_of.call(brick.id) if unit_of.is_valid() \
-				else PackedInt64Array([brick.id])
+		if caught and not selection.has(brick.id) and not locked.has(brick.id) \
+				and not is_ahead(brick.id):
+			# A box round part of a sub-assembly takes all of it: what of it
+			# the step showing has on (takes).
+			var members: PackedInt64Array = shown_only(unit_of.call(brick.id)) \
+				if unit_of.is_valid() else PackedInt64Array([brick.id])
 			for member: int in members:
 				if not selection.has(member) and not locked.has(member):
 					selection[member] = true
@@ -1018,7 +1127,7 @@ func select_alike() -> int:
 	for brick: BrickWorld.Brick in world.bricks():
 		if (brick.part_id == seed.part_id
 				and brick.color_code == seed.color_code
-				and not locked.has(brick.id)):
+				and not locked.has(brick.id) and not is_ahead(brick.id)):
 			selection[brick.id] = true
 	selection_changed.emit(selection.size())
 	return selection.size()
@@ -1026,12 +1135,14 @@ func select_alike() -> int:
 
 ## Drop from the selection anything that is no longer in the world, and
 ## say how many are left. Called before every operation, because a brick
-## can go away by undo or by the assistant rebuilding the model.
+## can go away by undo or by the assistant rebuilding the model. Nor what
+## the step showing has not put on: whatever put it in the selection, an
+## edit reaches only what is on show ([method shown_only]).
 func _living_selection() -> PackedInt64Array:
 	var alive := PackedInt64Array()
 	var gone: Array = []
 	for brick_id: int in selection:
-		if world.get_brick(brick_id) == null:
+		if world.get_brick(brick_id) == null or is_ahead(brick_id):
 			gone.append(brick_id)
 		else:
 			alive.append(brick_id)

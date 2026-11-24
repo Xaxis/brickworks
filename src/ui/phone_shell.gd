@@ -847,12 +847,24 @@ func hint() -> String:
 	if not builder.selection.is_empty():
 		var count: int = builder.selection.size()
 		var whole: String = _whole_assembly()
+		var of_all: int = _whole_of
+		if not whole.is_empty() and of_all > count:
+			return "%s selected, %d of its %d parts on at this step · hold, then Edit inside, to change one" \
+				% [Assemblies.label(whole), count, of_all]
 		if not whole.is_empty():
 			return "%s selected, %d parts · hold, then Edit inside, to change one" \
 				% [Assemblies.label(whole), count]
 		return "%d selected · drag to move · Select adds more · hold for actions" % count \
 			if count > 1 else "Selected · drag to move · Select adds more · hold for actions"
 	return "Parts to pick one · tap a part to select · drag turns the view · pinch zooms"
+
+
+## [method _whole_assembly]'s: how many parts the sub-assembly has in all
+## where the step showing has only some of them on (0 otherwise), and what
+## it asked and was told at a step.
+var _whole_of: int = 0
+var _whole_asked: Array = []
+var _whole_said: String = ""
 
 
 ## The sub-assembly the selection is all of, not yet gone into: "" for a
@@ -863,11 +875,26 @@ func _whole_assembly() -> String:
 	if builder == null or verbs == null or verbs.assemblies == null or builder.selection.size() < 2:
 		return ""
 	var unit: Variant = verbs.assemblies.unit_path_of(int(builder.selection.keys()[0]))
+	_whole_of = 0
 	if unit == null or str(unit).is_empty():
 		return ""
 	# Its parts counted from the kept index, without a walk in script: the
 	# hint asks every frame, and Orthanc's sub-assemblies run to thousands.
-	return str(unit) if verbs.assemblies.bricks_under(str(unit)).size() == builder.selection.size() else ""
+	var all_of: int = verbs.assemblies.bricks_under(str(unit)).size()
+	if all_of == builder.selection.size():
+		return str(unit)
+	# At a step of the timeline a tap takes the parts of it on show
+	# (Builder.takes): asked once for each selection and step, not each frame.
+	if not builder.at_a_step():
+		return ""
+	var asked: Array = [unit, builder.selection.size(), builder.lattice.revision]
+	if asked != _whole_asked:
+		_whole_asked = asked
+		_whole_said = verbs.assemblies.selected_assembly()
+	if _whole_said.is_empty():
+		return ""
+	_whole_of = all_of
+	return _whole_said
 
 
 func _lay_pill() -> void:

@@ -3525,6 +3525,14 @@ func _tool_answer(block: Dictionary) -> Variant:
 				+ "should be, the right size for the place, facing the right way?",
 				"corner", (stood["box"] as AABB).grow(60.0))
 		"edit_model":
+			# At a step of the person's timeline, parts of later steps are not
+			# on their screen: changed only when the call says all_steps, as
+			# the window's own edits reach only what the step shows
+			# (Builder.shown_only). Refused before anything is changed.
+			var later: String = builder.later_refusal(_named_by_edit(args), args.get("all_steps")) \
+				if builder != null else ""
+			if not later.is_empty():
+				return later
 			var edited: Model = _edit(args)
 			_say_shorthand_trouble()
 			if not _bad_colours.is_empty():
@@ -4070,6 +4078,24 @@ var _changed_ids: PackedInt64Array = PackedInt64Array()
 ## the session asks look_at_model for a number it has just made (walk256's
 ## edit did, for the post its rope was tied to).
 var _added_ids: PackedInt64Array = PackedInt64Array()
+
+
+## The parts an edit_model call names to change: those it takes off,
+## recolours, moves and turns, by number as look_at_model gives them.
+static func _named_by_edit(args: Dictionary) -> Array:
+	var out: Array = []
+	var removed: Variant = args.get("remove", [])
+	if removed is Array:
+		out.append_array(removed)
+	for key: String in ["recolor", "move", "turn"]:
+		var orders: Variant = args.get(key, [])
+		if not (orders is Array):
+			continue
+		for order: Variant in orders:
+			if order is Dictionary and (order as Dictionary).get("bricks") is Array:
+				out.append_array((order as Dictionary)["bricks"])
+	return out.filter(func(raw: Variant) -> bool:
+		return raw is int or raw is float or (raw is String and str(raw).is_valid_int()))
 
 
 func _edit(args: Dictionary) -> Model:
@@ -25190,6 +25216,10 @@ func _tools() -> Array:
 							+ "named, its box holding it and none of the "
 							+ "model: a piece apart that nothing names is "
 							+ "a part that has come off, and fails."},
+					"all_steps": {"type": "boolean", "description":
+						"while the person's timeline shows a step, a change to parts of "
+						+ "later steps, not on their screen yet, is refused; true changes "
+						+ "them too"},
 				},
 				"additionalProperties": false,
 			},

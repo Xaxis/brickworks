@@ -336,7 +336,9 @@ func unit_of(brick_id: int) -> PackedInt64Array:
 	return ids_under(str(path))
 
 
-## The assembly the selection is exactly, if it is one: "" otherwise.
+## The assembly the selection is exactly, if it is one: "" otherwise. At a
+## step of the timeline, exactly its parts on show (Builder.shown_only), as a
+## click takes it there.
 func selected_assembly() -> String:
 	var ids: Array = builder.selection.keys()
 	if ids.is_empty():
@@ -350,13 +352,23 @@ func selected_assembly() -> String:
 	for brick_id: Variant in ids:
 		if unit_path_of(int(brick_id)) != path:
 			return ""
-	var under: PackedInt64Array = ids_under(str(path))
+	var under: PackedInt64Array = builder.shown_only(ids_under(str(path)))
 	if under.size() != ids.size():
 		return ""
 	for brick_id: int in under:
 		if not builder.selection.has(brick_id):
 			return ""
 	return str(path)
+
+
+## How many parts the assembly at [param path] has in all, where the timeline
+## shows a step with some of them still to come: the "of" in "37 of its 149
+## parts on at this step". 0 when all of it is on show.
+func parts_beyond(path: String) -> int:
+	if not builder.at_a_step():
+		return 0
+	var under: PackedInt64Array = ids_under(path)
+	return under.size() if builder.ahead_of(under) > 0 else 0
 
 
 ## Every other copy of the definition the assembly at ``path`` is a copy

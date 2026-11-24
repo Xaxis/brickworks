@@ -37,6 +37,12 @@ var reopen_words: Callable = func(_again: bool) -> String: return ""
 ## Built presses, CollectionDialog.undo_built): what it took back in words,
 ## said, and the model's history is left alone; "" when it had nothing.
 var panel_undo: Callable = func() -> String: return ""
+## The timeline taken to its last step, every part on show (StepsBar.to_end):
+## Select all asked for again at a step (select_by).
+var every_step: Callable = Callable()
+## What Select all at a step took: {ahead, selected} as it left them, so the
+## same press again means every step. Empty when it was not the last thing.
+var _all_at_step: Dictionary = {}
 ## Building together (Together): while in a session, Undo and Redo are this
 ## person's own, and take back none of anybody else's parts. Null until the
 ## session is made (Main._together, Later): then nobody is in one.
@@ -662,18 +668,42 @@ func select_by(kind: String) -> int:
 		"inverse":
 			found = Later.script(&"SelectBy").inverse(world, builder.selection, scenery)
 		"all":
+			# At a step of the timeline, what it shows (SelectBy leaves the
+			# hidden out), and said so; the same again, every step: the
+			# timeline to its end and the whole model, as an editor's second
+			# Select all takes the whole document.
+			if builder.at_a_step() and not _all_at_step.is_empty() and every_step.is_valid() \
+					and int(_all_at_step["ahead"]) == builder.lattice.ahead.size() \
+					and int(_all_at_step["selected"]) == builder.selection.size():
+				_all_at_step = {}
+				every_step.call()
 			found = Later.script(&"SelectBy").inverse(world, {}, scenery)
+			if builder.at_a_step():
+				var took: int = select_found(found)
+				var later: int = 0
+				for brick_id: int in builder.lattice.ahead:
+					if not scenery.has(brick_id) and not builder.lattice.unseen.has(brick_id) \
+							and not builder.is_locked(brick_id):
+						later += 1
+				_all_at_step = {"ahead": builder.lattice.ahead.size(), "selected": took}
+				var step: int = int(builder.step_showing.call()) if builder.step_showing.is_valid() else -1
+				say.call(("selected the %d parts on up to step %d — %d more in later steps are left "
+					+ "out; Select all again takes every step") % [took, step, later] if step > 0
+					else ("selected the %d parts on at this step — %d more in later steps are left "
+					+ "out; Select all again takes every step") % [took, later])
+				return took
 		"none":
 			builder.clear_selection()
 			return 0
 	return select_found(found)
 
 
-## Select these bricks, leaving out the hidden and the locked: how many
-## that was.
+## Select these bricks, leaving out the hidden and the locked, and at a step
+## of the timeline what it has not put on yet: how many that was.
 func select_found(found: Array) -> int:
+	_all_at_step = {}
 	builder.selection.clear()
-	for brick_id: int in found:
+	for brick_id: int in builder.shown_only(PackedInt64Array(found)):
 		if not builder.lattice.unseen.has(brick_id) and not builder.is_locked(brick_id):
 			builder.selection[brick_id] = true
 	builder.selection_changed.emit(builder.selection.size())
