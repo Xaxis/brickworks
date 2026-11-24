@@ -405,8 +405,10 @@ func _joins() -> void:
 				Transform3D(Basis.IDENTITY, Vector3(s.x + 10, 24, s.y + 10)))
 			_ok(r["one body"] and (r["joins"] as Array).has("studs") and int(r["lodged"]) == 0,
 				"plate %s mm, a 3001 on the stud at %s: %s" % [thick, s, r])
-		var r3: Dictionary = await _pair("3001", Transform3D(Basis.IDENTITY, Vector3(0, -24, 0)), id,
-			Transform3D.IDENTITY)
+		# The 3001 under the plate's bottom (size.y below its top), its stud
+		# up in the anti-stud: 24 under a plate 20 LDU thick.
+		var r3: Dictionary = await _pair("3001", Transform3D(Basis.IDENTITY,
+			Vector3(0, -4.0 - size.y, 0)), id, Transform3D.IDENTITY)
 		_ok(r3["one body"] and (r3["joins"] as Array).has("studs"),
 			"plate %s mm on a 3001's stud, through its anti-stud: %s" % [thick, r3])
 
