@@ -586,6 +586,8 @@ async function strip(browser) {
   let up = null;
   let down = null;
   let still = null;
+  let made = null;
+  let lifted = null;
   try {
     await page.goto(`${site}/library/set/${set}`, { waitUntil: "load", timeout: 120000 });
     const link = page.locator("[data-version]").first();
@@ -602,15 +604,31 @@ async function strip(browser) {
       lifted: window.sethubLifted || null, since: performance.timeOrigin - Number(sessionStorage.getItem("sethubPressAt") || NaN) }));
     pressed = Number.isFinite(clock.since) ? Math.round(clock.since) : null;
     up = clock.lifted ?? clock.ui;
+    made = clock.ui;
+    lifted = clock.lifted;
     const end = up + Math.max(...stripAt) + 500;
     await page.waitForFunction((at) => performance.now() >= at, end, { timeout: 60000, polling: 50 });
-    down = await page.waitForFunction((least) => window.brickworksState?.bricks >= least
-      && window.brickworksState.awaited === 0 ? performance.now() : 0, wantBricks, { timeout: 120000, polling: 25 })
-      .then((one) => one.jsonValue(), () => null);
+    // The set down, then 4 s more: a studio that shows late is seen too.
+    await page.waitForFunction((least) => window.brickworksState?.bricks >= least
+      && window.brickworksState.awaited === 0, wantBricks, { timeout: 120000, polling: 50 }).catch(() => {});
+    await page.waitForTimeout(4000);
     // The state's own record, so a state is the one at the shot's moment.
     const states = await page.evaluate(() => window.sethubStates || []);
     await cdp.send("Page.stopScreencast").catch(() => {});
+    down = states.find(([, bricks, awaited]) => bricks >= wantBricks && awaited === 0)?.[0] ?? null;
+    // And the app's states by their time from the press, beside the frames.
+    writeFileSync(path.join(out, "strip_states.json"), `${JSON.stringify(states.map(([t, ...rest]) =>
+      [Math.round(t + pressed), ...rest]))}\n`);
     const epoch = (at) => clock.origin + at;
+    // Every frame from a second before the lift, by its time from the press,
+    // for a strip from the moment the studio itself is on the screen
+    // (the loading screen gone), which the page cannot say.
+    const kept = path.join(out, "strip_frames");
+    mkdirSync(kept, { recursive: true });
+    for (const one of frames.filter((frame) => frame.at >= epoch(up) - 1000)) {
+      writeFileSync(path.join(kept, `${String(Math.round(one.at - clock.origin + pressed)).padStart(6, "0")}.jpg`),
+        Buffer.from(one.data, "base64"));
+    }
     for (const after of stripAt) {
       const at = epoch(up + after);
       const frame = frames.filter((one) => one.at <= at).pop();
@@ -631,10 +649,10 @@ async function strip(browser) {
     await context.close();
   }
   const fromPress = (at) => (at === null || pressed === null ? null : Math.round(at + pressed));
-  writeFileSync(path.join(out, "strip.json"), `${JSON.stringify({ pressed, up: fromPress(up), down: fromPress(down), still,
+  writeFileSync(path.join(out, "strip.json"), `${JSON.stringify({ pressed, up: fromPress(up), made: fromPress(made), lifted: fromPress(lifted), down: fromPress(down), still,
     frames: frames.length, shots }, null, 1)}\n`);
-  console.log(`  pressed on the set's page: the app's page began ${pressed} ms after the press, the studio up `
-    + `${fromPress(up)} ms after it, the set down ${fromPress(down)} ms after it; the screen still for ${still} ms at `
+  console.log(`  pressed on the set's page: the app's page began ${pressed} ms after the press, the studio made `
+    + `${fromPress(made)} ms after it, the loading screen lifted ${fromPress(lifted)} ms after it, the set down ${fromPress(down)} ms after it; the screen still for ${still} ms at `
     + `the most from the studio up to ${Math.max(...stripAt) + 500} ms after (${frames.length} frames seen)`);
   for (const one of shots) {
     console.log(`    ${one.file}: ${one.after} ms after the studio was up (${one.fromPress} ms from the press), `
