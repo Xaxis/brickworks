@@ -5071,7 +5071,7 @@
       "id": "lib:made parts in the library and in files",
       "kind": "lib",
       "entry": "src/parts/custom_parts.gd",
-      "reach": "godot --headless --path . --script src/dev/element_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/element_probe.gd; tools/probe.sh made_carry_probe -- --carry-out=DIR   (a made part placed in a set's .mpd, a bare .ldr, the same with CRLF ends and a new model: Save, Export and the autosave each carry its 0 FILE, and a copy to the clipboard carries it into a library that never saw it; every part of the file read back in its colour)",
       "area": "elements",
       "tests": []
     },
@@ -5280,7 +5280,7 @@
       "id": "lib:parts from 3D files",
       "kind": "lib",
       "entry": "src/parts/mesh_part.gd",
-      "reach": "tools/probe.sh mesh_part_probe -- --files=bench/results/moulds-2026-11-23/files --write=DIR, then python3 tools/own_parts_check.py DIR   (MeshPart: STL and OBJ read at the edge, refused in a sentence when not closed, flat or past 120,000 triangles; simplified to 9,000 within 1% of its size; sized, upright, centred, on the 2 LDU lattice; stud, anti-stud, bar, bar hole, pin hole put where pointed; hair seated on 3901's socket and worn as 3901; carried as 0 FILE, LDraw read back by tools/ldraw)",
+      "reach": "tools/probe.sh mesh_part_probe -- --files=bench/results/moulds-2026-11-23/files --write=DIR, then python3 tools/own_parts_check.py DIR   (MeshPart: STL and OBJ read at the edge, refused in a sentence when not closed, flat or past 120,000 triangles; simplified to 9,000 within 1% of its size; sized, upright, centred, on the 2 LDU lattice; stud, anti-stud, bar, bar hole, pin hole put where pointed; hair seated on 3901's socket and worn as 3901; carried as 0 FILE, LDraw read back by tools/ldraw; a NaN or endless corner refused, the file's units asked outside 4 to 400 mm and never read as metres unsaid, a part over 400 mm refused before any work, the forge's cells bounded by PartForge.MOST_CELLS, a file name or title never an LDraw line of its own)",
       "area": "minifig",
       "tests": []
     },

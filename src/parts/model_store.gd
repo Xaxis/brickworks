@@ -3266,7 +3266,12 @@ func _source_asked(title_now: String) -> Dictionary:
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"looks": _looks_with_loose(world, world.step_looks.duplicate(true), loose),
-		"authored": AuthorSteps.any(world, scenery)}.merged(_metas_asked(source))
+		"authored": AuthorSteps.any(world, scenery),
+		# The files of the parts made here it places, which the file is
+		# written carrying where it has not got them (SourceFile
+		# .parts_carried_into), as a model of the app's own does
+		# ([method _text_into]). Read here: the library is this thread's.
+		"carry": _files_carried()}.merged(_metas_asked(source))
 	# A model put into it whole (held_from) is grafted into the patch of the
 	# file's own parts: its sections as the model written whole has them
 	# (SourceFile.grafted). Written whole here, on this thread.
@@ -3406,12 +3411,12 @@ static func _source_written(asked: Dictionary) -> Variant:
 			var kept: String = Motions.moved_into(patched, asked.get("moved", Transform3D.IDENTITY))
 			if grafts.is_empty():
 				asked["whole"] = ""
-				return kept
+				return source.parts_carried_into(kept, asked.get("carry", {}))
 			var grafted: String = source.grafted(kept, plan, grafts["roots"], grafts["whole"],
 				grafts["steps_now"], library.parts)
 			if not grafted.begins_with("why: "):
 				asked["whole"] = ""
-				return grafted
+				return source.parts_carried_into(grafted, asked.get("carry", {}))
 			why = grafted.trim_prefix("why: ")
 	asked["whole"] = why
 	_said_whole(source, why)
@@ -3424,7 +3429,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 		asked.get("moved", Transform3D.IDENTITY)))
 	if not asked.get("drops_said", false):
 		asked["drops"] = source.left_out_of(kept)
-	return kept
+	return source.parts_carried_into(kept, asked.get("carry", {}))
 
 
 ## [param kept], the file with the change, and what else the app keeps in

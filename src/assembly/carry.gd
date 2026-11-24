@@ -806,8 +806,9 @@ func _build_ghost() -> void:
 ## The held parts as LDraw lines, which any LDraw tool pastes: LDCad,
 ## LeoCAD, a text file. Written where they were in the model, so a paste
 ## into another tool puts them where they came from.
-static func as_ldraw(parts: Array) -> String:
+static func as_ldraw(parts: Array, library: PartLibrary = null) -> String:
 	var lines := PackedStringArray()
+	var used: Dictionary = {}
 	for item: Dictionary in parts:
 		var pivot: Vector3 = item.get("pivot", Vector3.ZERO)
 		var at: Transform3D = item["at"]
@@ -816,7 +817,17 @@ static func as_ldraw(parts: Array) -> String:
 			("0x%07X" % colour) if LdrModel.is_direct_colour(colour) else str(colour),
 			LdrModel._line_numbers(Transform3D(at.basis, at.origin + pivot)),
 			str(item["part"])])
-	return "\n".join(lines) + "\n"
+		used[str(item["part"])] = true
+	var text: String = "\n".join(lines) + "\n"
+	# With a [param library], the parts made here go with them, as a model's
+	# file carries them: pasted into LDCad, another tab or another computer,
+	# or kept as a sub-assembly, a part made here was a line naming nothing
+	# there (mouldreview). The parts' lines in a section of their own first,
+	# which a reader takes as the model.
+	var files: Dictionary = CustomParts.sources_for(library, used.keys()) if library != null else {}
+	if files.is_empty():
+		return text
+	return "0 FILE copied.ldr\n" + text + "0 NOFILE\n" + LdrModel.carried_text(files)
 
 
 ## Parts read back from LDraw text, if it is any: what another tool put on
@@ -827,6 +838,10 @@ static func from_ldraw(text: String, from: PartLibrary) -> Array:
 	var model: LdrModel = LdrModel.parse(text, "clipboard")
 	if model == null:
 		return []
+	# The parts it carries, made elsewhere ([method as_ldraw]), taken into the
+	# library as an open of a model file takes them.
+	if not model.embedded_parts.is_empty():
+		CustomParts.take_from(from, model)
 	var placed: Array = []
 	for placement: LdrModel.Placement in model.flatten(from.parts):
 		if from.parts.has(placement.part_id):

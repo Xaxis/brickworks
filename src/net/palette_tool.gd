@@ -262,7 +262,7 @@ func _kept(input: Dictionary, name: String) -> String:
 	var added: int = PartShelf.keep_parts(id, pairs) if not pairs.is_empty() else 0
 	var kept_assembly: String = ""
 	if not held.is_empty():
-		var entry_id: String = PartShelf.keep_assembly(id, assembly_name, Carry.as_ldraw(held),
+		var entry_id: String = PartShelf.keep_assembly(id, assembly_name, Carry.as_ldraw(held, library),
 			held.size())
 		if not entry_id.is_empty():
 			kept_assembly = str(_entry_of(PartShelf.palette(id), entry_id).get("name", ""))

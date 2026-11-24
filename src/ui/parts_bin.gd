@@ -6081,7 +6081,7 @@ func _on_add(id: int) -> void:
 			var held: Array = Carry.gather(builder.world, library, ids)
 			if held.is_empty():
 				return
-			var ldraw: String = Carry.as_ldraw(held)
+			var ldraw: String = Carry.as_ldraw(held, library)
 			var palette_id: String = _shelf_open
 			_ask_name("Keep as a sub-assembly", "Keep", _assembly_named(bricks),
 				func(given: String) -> void:

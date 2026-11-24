@@ -292,9 +292,18 @@ the model, and the design assistant doing the same with `add_minifig`.
   odd number of times), has no size, or is past 120,000 triangles. Past 9,000
   it is simplified (quadric edge collapse) and kept only if no point moved
   more than 1% of its longest side (`HOLDS_SHARE`, a Hausdorff bound both
-  ways). Sized by its longest side in LDU, mm or studs (a guess from its
-  bounds: mm, or metres when under 2), upright, centred, its height on the
-  2 LDU lattice. `put(kind, hit)`: stud (drawn with stud.dat), anti-stud,
+  ways). A corner that is no number (NaN, endless) is refused in `MeshFile`,
+  the edge every 3D file comes in by. Sized by its longest side in LDU, mm or
+  studs: the file read as mm, and asked (`unit_unsure`, Millimetres /
+  Centimetres / Metres / Inches, `read_as`) when that is under 4 or over
+  400 mm, never read as metres unsaid; over `MOST_MM` (400 mm) it is refused
+  before any work (`size_problem`). Upright, centred, its height on the
+  2 LDU lattice. Its file's name and its title reach the part's text only
+  through `name_from` (no control character) and `_token`; the title follows
+  a lead of ours ("0 Custom Shape …"), never the line's first word.
+  `PartForge` builds any part's cover in at most `MOST_CELLS` cells: past
+  them at a coarser grain (`grain_for`, `_coarse_cover`), so a part's cost
+  is its triangles and that, whatever its size. `put(kind, hit)`: stud (drawn with stud.dat), anti-stud,
   bar (along a stem 10 LDU or thinner, else a drawn 4-4cyli), bar hole, pin
   hole; `make_hair()` stands it up and faces it (of the six ways up, each
   seated in its deepest cave and grown up to 1.4x until the head fits, the
@@ -308,7 +317,12 @@ the model, and the design assistant doing the same with `add_minifig`.
   facing it, since a part of one's own has no exact shape and its sockets
   are looked for only at its bottom (a ponytail's tail end). Written as an
   unofficial LDraw part (`text`), kept in user://custom_parts/ and carried
-  as `0 FILE`. `tools/own_parts_check.py DIR` reads what
+  as `0 FILE` by every writer: a model of the app's own (`_text_into`), and
+  someone else's file patched or written (`SourceFile.parts_carried_into`
+  after `_source_written`), so Save, Export, the autosave, a link, a
+  sub-model's export (cut from Export's text), a copy and a kept
+  sub-assembly (`Carry.as_ldraw` with the library; `from_ldraw` takes the
+  parts it carries) all carry it. `made_carry_probe` checks each. `tools/own_parts_check.py DIR` reads what
   `mesh_part_probe --write=DIR` kept with tools/ldraw: every line, BFC,
   no flat triangle, references found, 0 FILE sections, connectors.
 - `own part from a 3D file` (`src/ui/mesh_part_dialog.gd`, `MeshPartDialog`):
@@ -338,6 +352,7 @@ file…**.
 
 ```sh
 tools/probe.sh mesh_part_probe -- --files=DIR --write=OUT   # DIR holds hair-ponytail/
+tools/probe.sh made_carry_probe -- --carry-out=DIR          # each writer's file kept in DIR
 python3 tools/own_parts_check.py OUT
 tools/probe.sh mesh_part_ui_probe -- --pictures=DIR
 PROBE_SIZE=390x844 tools/probe.sh mesh_part_ui_probe -- --pictures=DIR

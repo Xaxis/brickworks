@@ -255,6 +255,42 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 	return out
 
 
+## [param text], this file written with the change, with the files of the
+## parts made here that it places and has not got ([param files], name ->
+## text, or bytes for a print's picture: CustomParts.sources_for, as a model
+## of the app's own carries them): each part's text a FILE section after the
+## file's own, and each picture a !DATA one, the line ends the file's. Up to
+## moulds2 a part made here, put into someone else's file (a set, an .mpd
+## from anyone) and saved, was placed in it with no file to say what it is:
+## on any other computer, or for anyone the file was shared with, it was
+## gone without a word (mouldreview). A file of no FILE line is put in one
+## first ([method _as_sections]), or the first part carried would be read as
+## its model.
+func parts_carried_into(text: String, files: Dictionary) -> String:
+	if files.is_empty():
+		return text
+	var have: Dictionary = {}
+	var sectioned: bool = false
+	for raw: String in text.split("\n"):
+		var word: String = LdrModel.section_word(raw)
+		if word == "FILE" or word == "!DATA":
+			have[LdrModel._key(" ".join(LdrModel._fields(raw.strip_edges()).slice(2)))] = true
+			sectioned = sectioned or word == "FILE"
+	var names: Array = files.keys().filter(func(name: Variant) -> bool:
+		return not have.has(LdrModel._key(str(name))))
+	if names.is_empty():
+		return text
+	var missing: Dictionary = {}
+	for name: Variant in names:
+		missing[name] = files[name]
+	var added: String = LdrModel.carried_text(missing).replace("\r\n", "\n")
+	var eol: String = "\r" if text.get_slice("\n", 0).ends_with("\r") else ""
+	var out: String = text if sectioned else _as_sections(text)
+	if not out.ends_with("\n"):
+		out += eol + "\n"
+	return out + (added.replace("\n", "\r\n") if not eol.is_empty() else added)
+
+
 ## Of [param parts], what the app cannot show and what is on its way (as
 ## [member not_shown] holds them, in the file's coordinates), those a model
 ## written whole writes with the parts it shows, each in its own step and its
@@ -1171,10 +1207,11 @@ func _fresh_lines(plan: Plan, frames: Dictionary, dead_copies: Dictionary,
 		var frame: Transform3D = frames.get(brick.unit, Transform3D.IDENTITY)
 		if frame.basis.determinant() < 0.0:
 			return {"": "a new part in a mirrored copy"}
-		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
-		if CustomParts.is_skin(brick.part_id) or info != null and info.custom \
-				and not sections.has(_carried_as(brick.part_id)):
-			return {"": "a new part made here the file does not carry"}
+		# A part made here the file has not got is carried after the patch
+		# (parts_carried_into), as after a write; a skin built from this
+		# file is no file of its own here, and only the whole write carries it.
+		if CustomParts.is_skin(brick.part_id):
+			return {"": "a new piece of a flexible part"}
 		var section: String = _section_of(brick.unit)
 		var local: Transform3D = frame.affine_inverse() * (entry[1] as Transform3D)
 		var colour: String = "16" if placing and not brick.unit.is_empty() \

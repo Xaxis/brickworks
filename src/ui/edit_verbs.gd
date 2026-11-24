@@ -758,7 +758,7 @@ func copy() -> int:
 	# the page's own handling of a key or a click — and Godot answers both
 	# a frame later, so every copy there printed an error instead.
 	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) and not OS.has_feature("web"):
-		_put_on_clipboard = Carry.as_ldraw(Carry.clipboard)
+		_put_on_clipboard = Carry.as_ldraw(Carry.clipboard, library)
 		DisplayServer.clipboard_set(_put_on_clipboard)
 	say.call(Keymap.filled("copied %s — {paste|to paste}") % _parts(count))
 	return count

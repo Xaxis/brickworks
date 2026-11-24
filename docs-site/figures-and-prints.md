@@ -99,11 +99,13 @@ lib:the assistant makes a part
 ![A goblet brought in from an STL file, beside a 1 x 1 brick for its size: its longest side in mm, the turn buttons, This is hair, and one button for each connector to put on it.](/docs/img/figures-own-part.webp "Make a part… › From a 3D file…: a goblet from an STL, beside a 1 x 1 brick.")
 
 1. Press **Make a part…** and then **From a 3D file…**, and choose an **STL** or an **OBJ** file. In a browser your browser's file chooser opens; on the desktop, your system's.
-2. It comes in upright, centred and at LDraw's scale, beside a 1 x 1 brick so you can see its size. Change **Size** (its longest side) in **LDU**, **mm** or **studs**. If it came in lying down, **Tip forward** or **Tip sideways**; **Turn** faces it the other way.
+2. It comes in upright, centred and at LDraw's scale, beside a 1 x 1 brick so you can see its size. Change **Size** (its longest side) in **LDU**, **mm** or **studs**. If it came in lying down, **Tip forward** or **Tip sideways**; **Turn** faces it the other way. An STL or OBJ does not say what it is measured in, so it is read as millimetres; if that makes it smaller than 4 mm or longer than 400 mm, you are asked: **Millimetres**, **Centimetres**, **Metres** or **Inches**.
 3. Choose a connector, then click on the part where it goes: **Stud**, **Anti-stud**, **Bar**, **Bar hole** or **Pin hole**. A bar on a thin stem runs along the stem. **Take off** removes one.
 4. Name it and press **Add to parts**. It goes in the bin under **Custom** and into your hand, and every model that uses it carries it, so the file opens on another computer and in LDCad.
 
-A file that is not a closed shape (it has holes in its surface) is refused, with how to close it in Blender. A file with more than 9,000 triangles is simplified if the shape stays within 1% of its size; past 120,000 it is refused.
+A file that is not a closed shape (it has holes in its surface) is refused, with how to close it in Blender, and so is one whose numbers are damaged. A file with more than 9,000 triangles is simplified if the shape stays within 1% of its size; past 120,000 it is refused. A part may be at most 400 mm (50 studs) long, longer than any LEGO® element.
+
+A model that uses a part you made carries it whatever it was opened from: your own model, a set, or someone else's file. Save, Export, a link, a kept sub-assembly and, on the desktop, a copy to the clipboard all take it with them.
 
 ![Hair brought in from an STL file, seated on a minifigure's head: Your own hair, Seated on a minifigure's head, and Wear it.](/docs/img/figures-own-hair.webp "Headgear › Your own…: hair from an STL, seated on the head.")
 
