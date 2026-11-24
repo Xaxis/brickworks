@@ -41,7 +41,7 @@
     "signed-in"
    ],
    "wait": "#groups .notice .acts",
-   "alt": "Notifications: Inbox and Done, Mark all read and Mark all done, then a group a model with its picture, newest first: the sports car's comment, likes and a photo of a build, a reply on the corner shop, your achievements, a remix, a challenge's last days and a mention, each with Done and More.",
+   "alt": "Notifications: Inbox and Done, Mark all read and Mark all done, then a group a model with its picture, newest first: the sports car's comment, likes and a photo of a build, a reply on the corner shop, your achievements, a remix, a challenge's last days and a mention, each with Done and More, and Reply under a comment.",
    "caption": "brickworks.diy/notifications.",
    "features": [
     "ui:notifications page",

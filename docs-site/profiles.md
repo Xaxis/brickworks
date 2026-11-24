@@ -70,7 +70,7 @@ If you signed in to do something, such as liking a model or following a builder,
 
 ### A name before your first comment {#name-first}
 
-Your comments, replies, posts in Talk and shared models go out under your profile's name, so people know who said it and can follow you. If you have no profile yet, **Post** (or **Share it**) first asks for a name and a handle, in the same **Make your profile** step. What you wrote stays in its box while you answer. **Make my profile** posts it under your new name, and your earlier comments show that name too. **Skip** posts it as *A builder*; the next time you post, you are asked again. Accounts under 13 have no public profile, so they are never asked.
+Your comments, replies, posts in Talk, photos of your builds and shared models go out under your profile's name, so people know who said it and can follow you. If you have no profile yet, **Post** (or **Share it**, or sending a photo) first asks for a name and a handle, in the same **Make your profile** step. What you wrote stays in its box while you answer. **Make my profile** posts it under your new name, and your earlier comments show that name too. **Skip** posts it as *A builder*; the next time you post, you are asked again. Accounts under 13 have no public profile, so they are never asked.
 
 ![Make your profile over a model's comments, at 390 px: a name and a handle, Make my profile and Skip, and the comment still typed in the box behind it.](/docs/img/name-first-phone.webp "Asked once, before a first comment.")
 
@@ -129,7 +129,7 @@ Each group has **Done** (the tick) and **More**:
 
 Which kinds come here at all, and which by push or by email, is yours to choose in [Settings › Notifications](#settings).
 
-![Notifications: Inbox and Done, Mark all read and Mark all done, then a group a model with its picture, newest first: the sports car's comment, likes and a photo of a build, a reply on the corner shop, your achievements, a remix, a challenge's last days and a mention, each with Done and More.](/docs/img/notifications-page.webp "brickworks.diy/notifications.")
+![Notifications: Inbox and Done, Mark all read and Mark all done, then a group a model with its picture, newest first: the sports car's comment, likes and a photo of a build, a reply on the corner shop, your achievements, a remix, a challenge's last days and a mention, each with Done and More, and Reply under a comment.](/docs/img/notifications-page.webp "brickworks.diy/notifications.")
 
 ![Notifications on a phone: the same groups, each with its picture, its name, Done and More, and its rows under it.](/docs/img/notifications-phone.webp "On a phone, at 390 px.")
 
