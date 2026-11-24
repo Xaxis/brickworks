@@ -13,7 +13,9 @@
 // that failed the flow on 2026-10-20 with nothing wrong in the app.
 //
 //   1. Three small models, their steps carried and tested as the Share
-//      panel does it (src/dev/tested_probe.gd --write): three bricks stacked
+//      panel does it (tests/fixtures/flow_models, which
+//      src/dev/flow_models_probe.gd holds to what the app writes and finds
+//      today; this run's name put in, tools/web/flow_models.mjs): three bricks stacked
 //      in order, which pass all four tests; the same with the top one put in
 //      before what holds it, which fails steps; and a third sent with no
 //      finding. Published and listed by a throwaway owner: the first marked
@@ -34,18 +36,15 @@
 // its models are taken down, so nothing is left in the bucket.
 import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { flowModel } from "./flow_models.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, "../..");
 const site = String(args.url || "http://127.0.0.1:8923").replace(/\/+$/, "").replace(/\/app$/, "");
 const out = path.resolve(String(args.out || "shots/tested"));
 mkdirSync(out, { recursive: true });
@@ -65,39 +64,21 @@ const errors = [];
 
 // --- the models, their steps carried and tested ----------------------------
 
-/// Three 2 x 4 bricks in three steps, the top one in step 2 when [air].
-function stack(name, air) {
-  const at = air ? [0, -48, -24] : [0, -24, -48];
-  const lines = [`0 ${name}`, `0 Name: ${name.toLowerCase().replace(/\s+/g, "_")}.ldr`, "0 Author: Tested Flow", ""];
-  at.forEach((y, n) => {
-    lines.push(`1 ${[4, 1, 14][n]} 0 ${y} 0 1 0 0 0 1 0 0 0 1 3001.dat`);
-    lines.push("0 STEP");
-  });
-  return `${lines.join("\r\n")}\r\n`;
-}
-const models = path.join(out, "models");
-mkdirSync(models, { recursive: true });
-// Each named for this run, which the gallery below is searched by: the
-// newest first of every test model held its three on its first page only
-// while no other run listed 22 more (three live checks at once,
-// preview_checks.sh).
+// Three 2 x 4 bricks in three steps, the top one in step 2 in the overhang,
+// each with its steps carried and, but the untested one, what the app
+// found of it as the Share panel tests it (tools/web/flow_models.mjs: no
+// godot, so a tree never imported runs it). Each named for this run, which
+// the gallery below is searched by: the newest first of every test model
+// held its three on its first page only while no other run listed 22 more
+// (three live checks at once, preview_checks.sh).
 const NAMES = { passed: `Tested Flow Stack ${rand}`, failed: `Tested Flow Overhang ${rand}`, none: `Tested Flow Untested ${rand}` };
-const files = [];
-for (const [key, air] of [["passed", false], ["failed", true], ["none", false]]) {
-  writeFileSync(path.join(models, `${key}_bare.ldr`), stack(NAMES[key], air));
-  files.push(path.join(models, `${key}_bare.ldr`), path.join(models, `${key}.ldr`));
-}
-const made = spawnSync("godot", ["--headless", "--path", root, "--script", "src/dev/tested_probe.gd",
-  "--", "--write", ...files], { encoding: "utf8", timeout: 600000,
-  env: { ...process.env, XDG_DATA_HOME: process.env.XDG_DATA_HOME || path.join(root, ".scratch-data") } });
 const text = {};
 const finding = {};
 for (const key of Object.keys(NAMES)) {
-  text[key] = readFileSync(path.join(models, `${key}.ldr`), "utf8");
-  finding[key] = JSON.parse(readFileSync(path.join(models, `${key}.ldr.tested.json`), "utf8"));
+  ({ text: text[key], tested: finding[key] } = flowModel(`tested_${key}`, rand));
 }
-if (!finding.passed.tests || !finding.failed.tests) {
-  throw new Error(`the models were not tested: ${String(made.stdout || "").slice(-400)} ${String(made.stderr || "").slice(-300)}`);
+if (!text.passed.startsWith(`0 ${NAMES.passed}\r\n`) || !finding.passed?.tests || !finding.failed?.tests) {
+  throw new Error(`tests/fixtures/flow_models lacks the stacks as this flow names them, or their findings`);
 }
 check(`the app tested them: the stack passes all four (${Object.values(finding.passed.tests).map((t) => t.ok).join(", ")}), `
   + `the overhang fails steps ("${finding.failed.tests.steps.why}")`,

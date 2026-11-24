@@ -22,8 +22,9 @@
 ##
 ## --sets prints the four results for each file, and how long they took.
 ## --write puts the steps in each IN, as the Share panel does, and writes it
-## to OUT with what it found beside it as OUT.tested.json: the tested flow
-## publishes those (tools/web/tested_flow.mjs).
+## to OUT with what it found beside it as OUT.tested.json. The tested flow's
+## models are written by src/dev/flow_models_probe.gd -- --write, and read
+## from tests/fixtures/flow_models: a flow never runs godot.
 extends SceneTree
 
 const BIG := "res://vendor/omr/files/10218-1.mpd"

@@ -15,6 +15,13 @@ R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 set -a; . "$R/.env"; set +a
 H=~/.claude/claude-core/bin/heavy
 export BW_BYPASS="$VERCEL_BYPASS"; B="--bypass=$VERCEL_BYPASS"
+# The checks that run the engine from WT (godot --path WT): together's
+# desktop half. Only an imported tree can, and a release's web lane never
+# imports its tree, so train.sh never names one there: refused when the lead
+# names it, left out (and said) when lean.py would add it. A flow that needs
+# only a fixed model the engine makes reads it from tests/fixtures/flow_models
+# instead (comments died on ENOENT at rel-m331's ship, 2026-11-24).
+ENGINE_CHECKS="together"
 declare -A CMD=(
   [art]="tools/web/art_flow.mjs --url=$P/app $B --out=$S/${TAG}_art_web"
   [io]="tools/web/io_flow.mjs --url=$P/app $B --out=$S/${TAG}_io_web"

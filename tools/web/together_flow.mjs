@@ -88,6 +88,16 @@ mkdirSync(out, { recursive: true });
 const bypass = args.bypass || process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const withDesktop = String(args.desktop || "yes") !== "no";
+// The desktop's half is the app itself, run from this tree (godot --script
+// src/dev/together_probe.gd), which compiles only once the tree is imported:
+// a release's web lane never imports its tree, and release_wt.sh makes one
+// with none until tools/fresh_import.sh. Said here at once, not 45 minutes
+// on as "the desktop app joins" and 16 failures after it (2026-11-10).
+if (withDesktop && !existsSync(path.join(root, ".godot/global_script_class_cache.cfg"))) {
+  console.log(`  FAIL  the desktop's half: godot runs nothing from ${root}, never imported `
+    + "(tools/fresh_import.sh there, or --desktop=no)");
+  process.exit(2);
+}
 const EDITS = Number(args.edits || 50);
 const rand = randomBytes(4).toString("hex");
 const emails = {
@@ -835,7 +845,18 @@ try {
     desktop.stdout.on("data", (bytes) => {
       for (const line of String(bytes).split("\n")) if (/ok  |FAIL|together probe/.test(line)) console.log(`        [desktop] ${line.trim()}`);
     });
-    const live = await until(async () => readDesktop(desktopFile)?.live, "the desktop in the session", 300).catch(() => null);
+    // Godot ended before it joined (a script that does not compile, a tree
+    // imported for another commit): said now, in its own last words.
+    let ended = null;
+    let said = "";
+    desktop.stderr.on("data", (bytes) => { said = (said + String(bytes)).slice(-4000); });
+    desktop.on("exit", (code, signal) => { ended = code ?? signal; });
+    const live = await until(async () => readDesktop(desktopFile)?.live || (ended !== null && "ended"),
+      "the desktop in the session", 300).catch(() => null);
+    if (live === "ended") {
+      const last = said.split("\n").map((line) => line.trim()).filter(Boolean).pop() || "it said nothing";
+      throw new Error(`the desktop app (godot) ended (${ended}) before it joined: ${last.slice(0, 200)}`);
+    }
     check("the desktop app joins the same session", Boolean(live));
   }
 

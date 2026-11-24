@@ -48,6 +48,13 @@ const emails = [`delivered+bw-tt-owner-${rand}@resend.dev`, `delivered+bw-tt-gue
 // Ctrl+Z with the pointer left on the model, twice the parts, the desktop
 // copy, the owner's assistant with Claude connected, the guest under 13.
 const extras = String(args.extras || "").split(",").filter(Boolean);
+// The desktop copy is the app run from this tree, which compiles only once
+// it is imported (tools/fresh_import.sh): said at once, not 300 s on.
+if (extras.includes("desktop") && !existsSync(path.resolve(".godot/global_script_class_cache.cfg"))) {
+  console.log(`stopped: the desktop copy: godot runs nothing from ${path.resolve(".")}, never imported `
+    + "(tools/fresh_import.sh there, or leave desktop out of --extras)");
+  process.exit(2);
+}
 let desktop = null;
 const wait = (ms) => new Promise((done) => setTimeout(done, ms));
 const controls = (page) => page.evaluate(() => window.brickworksControls || {});
@@ -253,7 +260,11 @@ try {
       desktop = spawn("godot", ["--headless", "--path", path.resolve("."), "--script", "src/dev/together_probe.gd", "--",
         `--api=${site}`, `--join=${link}`, `--out=${file}`, "--edits=0", `--email=${emails[2]}`, "--seconds=900"],
       { env: { ...process.env, XDG_DATA_HOME: process.env.TOGETHER_XDG || path.join(out, "desktop-data") }, stdio: "ignore" });
-      await until(async () => (existsSync(file) && JSON.parse(readFileSync(file, "utf8")).live) || null, "the desktop in", 300);
+      let ended = null;
+      desktop.on("exit", (code, signal) => { ended = code ?? signal; });
+      const live = await until(async () => (existsSync(file) && JSON.parse(readFileSync(file, "utf8")).live)
+        || (ended !== null && "ended") || null, "the desktop in", 300);
+      if (live === "ended") throw new Error(`the desktop copy (godot) ended (${ended}) before it joined`);
       return "the desktop joined";
     },
     assistant: async () => {
@@ -277,6 +288,7 @@ try {
   }
 } catch (trouble) {
   console.log(`stopped: ${String(trouble.message || trouble).split("\n")[0]}`);
+  process.exitCode = 1;
 } finally {
   writeFileSync(path.join(out, "timing.json"), JSON.stringify(rows, null, 1));
   await browser.close().catch(() => {});
