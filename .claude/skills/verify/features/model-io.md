@@ -899,9 +899,19 @@ Whether what you built is still there tomorrow, and still means the same thing.
   for then and waited for under the screen ("Fetching the model's parts: N
   of M", "Opening the model…"), the viewer's open (`Main._view_shared`) or
   the copy's (`_open_asked`, after the tab's own autosave is back) drawn
-  whole before the screen lifts. Without the link's answer by then (a slow
-  or failed fetch, a link with no model) it goes as before: the screen lifts
-  on the studio's first frame and the viewer says what it is waiting for.
+  whole before the screen lifts. The page takes that answer in on its own
+  thread, which the engine's start holds for seconds in one go, so one that
+  came meanwhile is not seen when the studio is made: the app lets cheap
+  frames go under the screen ("Fetching the model…", the tree paused and
+  nothing drawn, `Main._await_early_link`, `SharedModels.early_coming`,
+  `window.brickworksBootFetching`, 3 s at most, boot mark `link`) until it
+  is in; without that wait `?view=` showed the empty studio in every round
+  (diag_v2). Without the link's answer by then (a slow or failed fetch, a
+  link with no model) it goes as before: the screen lifts on the studio's
+  first frame and the viewer says what it is waiting for. The screen lifts
+  in the frame that drew the model (`Main._mark_shown` calls
+  `window.brickworksBootShown`), not at whenUp's next look, which waited out
+  the app's next frame too: 1.0 s at a load of 74.
   Then the screen says "Opening the set…" and is drawn so, a frame before
   the open and the studio's first frame, which hold the page's thread in one
   go (`window.brickworksBootOpening`): the count said there was "0 of 12"
