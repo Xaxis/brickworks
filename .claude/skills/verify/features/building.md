@@ -2021,10 +2021,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   step's part are refused before anything changes, at most ten named, unless
   `all_steps: true` (`Builder.later_refusal`); `replace_parts` leaves them out
   and counts them, `all_steps: true` finds them too, and leaves the
-  selection only what is on show. `all_steps` is read at the tool's edge
+  selection only what is on show. `all_steps` is checked at the tool's edge
   (`Builder.all_steps_read`, from `AppTools.refusal` and `Assistant.
-  _run_tool`): true, "true", 1 and "1" are true, false, "false", 0 and "0"
-  false, anything else refused with nothing changed. Off the timeline, or at its last step,
+  _run_tool`): only JSON's true reaches later parts, false or none leaves
+  them out, and anything else ("true", 1, "1", null) is refused, "all_steps
+  must be true or false", before any write. Off the timeline, or at its last step,
   nothing is ahead and nothing changes. Probe: `PROBE_SIZE=1280x720
   tools/probe.sh stepedit_probe` (346-2 at step 5: the house clicked and
   painted, Select all and Delete, a session's edit refused and then made,

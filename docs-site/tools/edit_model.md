@@ -3,7 +3,7 @@ tool: edit_model
 example: {"recolor": [{"bricks": [3, 4], "color": 1}], "move": [{"bricks": [7], "dx": 1}]}
 ---
 
-While the person's timeline shows a step, a call naming a part of a later step, not on their screen yet, is refused before anything changes, and the parts are named. Send `all_steps: true` only when the person has asked for the whole model; `"true"`, `1` and `"1"` read as true, and anything but true or false is refused with nothing changed. `mirror_parts`, `split_parts`, `merge_parts`, `pattern_parts`, `print_part`, `make_unique` and `move_part` refuse the same way; `replace_parts` leaves those parts out and counts them.
+While the person's timeline shows a step, a call naming a part of a later step, not on their screen yet, is refused before anything changes, and the parts are named. Send `all_steps: true` only when the person has asked for the whole model. It must be the JSON value true or false: `"true"`, `1` or anything else is refused with nothing changed. `mirror_parts`, `split_parts`, `merge_parts`, `pattern_parts`, `print_part`, `make_unique` and `move_part` refuse the same way; `replace_parts` leaves those parts out and counts them.
 
 <!-- the tool list's words: tools/docs_site.py --write copies them here from tools/mcp_tools.json; --check fails while they differ -->
 ```text

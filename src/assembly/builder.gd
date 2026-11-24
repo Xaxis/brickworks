@@ -1017,37 +1017,17 @@ func later_refusal(ids: Array, all_steps: Variant) -> String:
 		" and %d more" % (later.size() - 10) if later.size() > 10 else ""]
 
 
-## all_steps as a session sent it, read at the tool's edge (AppTools.refusal,
-## Assistant._run_tool) into a real bool in [param input]: true, "true", 1
-## and "1" are true; false, "false", 0, "0" and null are false, as if not
-## sent. Anything else is refused with these words before anything changes;
-## "" when it was read or not sent.
+## all_steps as a session sent it, checked at the tool's edge (AppTools.
+## refusal, Assistant._run_tool): only JSON's true reaches the parts a step
+## has not put on, and false or no all_steps leaves them out. Anything else
+## ("true", 1, "1", null, an object) is refused with these words before
+## anything changes, never read as a leave: a leave to change what the
+## person cannot see is never guessed (stepreview F2). "" for a bool or none.
 static func all_steps_read(input: Dictionary) -> String:
-	if not input.has("all_steps"):
+	if not input.has("all_steps") or input["all_steps"] is bool:
 		return ""
-	var sent: Variant = input["all_steps"]
-	var read: Variant = null
-	match typeof(sent):
-		TYPE_NIL:
-			read = false
-		TYPE_BOOL:
-			read = sent
-		TYPE_INT, TYPE_FLOAT:
-			if float(sent) == 1.0:
-				read = true
-			elif float(sent) == 0.0:
-				read = false
-		TYPE_STRING, TYPE_STRING_NAME:
-			var said: String = str(sent).strip_edges().to_lower()
-			if said == "true" or said == "1":
-				read = true
-			elif said == "false" or said == "0":
-				read = false
-	if typeof(read) != TYPE_BOOL:
-		return "Not applied — all_steps is true or false, and it was %s; nothing changed." \
-			% JSON.stringify(sent).left(40)
-	input["all_steps"] = read
-	return ""
+	return "Not applied — all_steps must be true or false, and it was %s; nothing changed." \
+		% JSON.stringify(input["all_steps"]).left(40)
 
 
 ## [param edit] called with every step's parts in reach: what it returns.
