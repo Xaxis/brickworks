@@ -455,6 +455,7 @@ func forget_history() -> void:
 		selection_changed.emit(0)
 	_let_go.clear()
 	_figure_followers = []
+	_figure_lift = {}
 	# A selection picked up to move has no way back once the model it
 	# came off is gone.
 	if carrying != null and carrying.lifted:
@@ -469,6 +470,11 @@ func undo() -> bool:
 	# A part lifted off and put back by the undo is no longer held by it.
 	grip = null
 	var step: Dictionary = _history.pop_back()
+	# The lift of a figure still in hand, undone: its parts go back on the
+	# model, so the hand lets go of it. It held a second figure that a click
+	# put down, the later parts it left (_figure_followers) moved again.
+	if is_same(step, _figure_lift) and is_holding_figure():
+		drop_figure()
 	# Said before it is undone, while the brick a step names is still
 	# there to name, and kept with the step that redoes it: the step
 	# reversed would read backwards ("removed" for a placing redone).
@@ -6189,6 +6195,7 @@ func hold_figure(parts: Array, called: String) -> void:
 	held_figure_name = called if not called.strip_edges().is_empty() else "Minifig"
 	held_face = "up"
 	_figure_followers = []
+	_figure_lift = {}
 
 
 ## Go back to holding the part that was held before.
@@ -6197,6 +6204,7 @@ func drop_figure() -> void:
 	held_figure_name = ""
 	# What of it stayed on the model stays where it stands.
 	_figure_followers = []
+	_figure_lift = {}
 	_hide_figure_ghosts()
 
 
@@ -6332,6 +6340,10 @@ func _place_figure() -> int:
 	# A figure lifted at a step with parts still to come: one figure still,
 	# under its own name and each part in its own step, and those parts
 	# brought where it went (_lift_figure).
+	# Only straight after the lift that left them: an edit or another model
+	# since, and they stay where they stand.
+	if _history.is_empty() or not is_same(_history.back(), _figure_lift):
+		_figure_followers = []
 	var following: bool = not _figure_followers.is_empty()
 	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform,
 		following)
@@ -6364,6 +6376,9 @@ func _place_figure() -> int:
 ## left on the model, each {brick, at} where it stands in the figure's
 ## frame, to go where the figure is put down. Empty for any other.
 var _figure_followers: Array = []
+## The history step of the last figure lifted off the model, while it is
+## held: its undo lets go of it, and its followers go only with it.
+var _figure_lift: Dictionary = {}
 
 
 ## Take a whole figure off the model and hold it, facing the way it
@@ -6404,11 +6419,13 @@ func _lift_figure(brick_id: int) -> bool:
 		removed.emit(brick.id)
 	if unpicked:
 		selection_changed.emit(selection.size())
-	_history.append({"undo": "group", "steps": steps})
+	var lift: Dictionary = {"undo": "group", "steps": steps}
+	_history.append(lift)
 	_redo.clear()
 	var following: Array = _figure_followers
 	hold_figure(parts, (bricks[0] as BrickWorld.Brick).group)
 	_figure_followers = following
+	_figure_lift = lift
 	held_rotation = BrickLattice.turns_about(BrickLattice.snap_basis(home.basis), "up")
 	_hovered = 0
 	return true
