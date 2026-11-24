@@ -2230,8 +2230,9 @@ func _meets_as_before(brick: BrickWorld.Brick, packed: PackedInt32Array,
 ## (Assemblies.entered), "" for the model.
 var place_group: String = ""
 ## Why another copy of the sub-assembly being edited has no room for what
-## goes down into it, [part id, where] each, asked for no longer than the
-## second argument in microseconds (0, no bound): "" when every copy has
+## goes down into it ({"items": [part id, where] each}, kept and handed back
+## till answered), asked for no longer than the second argument in
+## microseconds: "" when every copy has, null when not done yet
 ## (Assemblies.room_in_copies). Unset, none is asked.
 var copies_room: Callable = Callable()
 ## Why the ghost is red though nothing in the copy being edited is in its
@@ -2245,7 +2246,9 @@ signal copies_refused(words: String)
 ## put down into an assembly with several copies is asked by the click.
 const COPIES_ASK_US := 4000
 var _copies_asked: Array = []
-var _copies_hand: Array = []
+var _copies_hand: Variant = null
+## The ask not answered yet (Assemblies.room_in_copies keeps its place in it).
+var _copies_ask: Dictionary = {}
 ## Whether the part's ghost was last drawn red for the copies.
 var _drawn_red: bool = false
 ## What a click on a brick selects with it, brick id -> PackedInt64Array:
@@ -3258,7 +3261,8 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 ## one has not, as where something is in its way, and why said once as it
 ## turns so ([signal copies_refused]). A click there is still the follow's
 ## to judge (Assemblies.after_edit), which says the same. Asked again only
-## when the ghost, the model or the level edited moved.
+## when the ghost, the model or the level edited moved; an ask longer than
+## [constant COPIES_ASK_US] goes on next frame, the ghost as it was till then.
 func _ask_copies() -> void:
 	var asked: Array = []
 	if copies_room.is_valid() and not place_group.is_empty():
@@ -3270,18 +3274,27 @@ func _ask_copies() -> void:
 	if not asked.is_empty():
 		asked.append_array([place_group, world.revision, BrickWorld.paths_written, lattice.revision])
 	# What is carried by the hold, not its contents: a paste held again is a
-	# new array, and a big hand is not compared part by part each frame.
-	var hand: Array = carrying.items if is_carrying() else []
+	# new array, and a big hand is not compared part by part each frame. Null
+	# for a part in hand.
+	var hand: Variant = carrying.items if is_carrying() else null
 	if asked != _copies_asked or not is_same(hand, _copies_hand):
 		_copies_asked = asked
 		_copies_hand = hand
-		copies_refuse = "" if asked.is_empty() \
-			else str(copies_room.call(_going_down(), COPIES_ASK_US))
-		# Said each time it is asked and red: as it turns red, and again as it
-		# moves on red once the line has cleared (the shell says it only where
-		# the line does not say it already).
-		if not copies_refuse.is_empty():
-			copies_refused.emit(copies_refuse)
+		copies_refuse = ""
+		_copies_ask = {} if asked.is_empty() else {"items": _going_down()}
+	if not _copies_ask.is_empty():
+		var answer: Variant = copies_room.call(_copies_ask, COPIES_ASK_US)
+		if answer == null:
+			if is_inside_tree() and not get_tree().process_frame.is_connected(_ask_copies):
+				get_tree().process_frame.connect(_ask_copies, CONNECT_ONE_SHOT)
+		else:
+			_copies_ask = {}
+			copies_refuse = str(answer)
+			# Said each time it is answered red: as it turns red, and again as
+			# it moves on red once the line has cleared (the shell says it only
+			# where the line does not say it already).
+			if not copies_refuse.is_empty():
+				copies_refused.emit(copies_refuse)
 	var red: bool = not copies_refuse.is_empty()
 	if is_carrying():
 		carrying.copies_red(red)
@@ -5727,6 +5740,7 @@ func hold_still(at: Variant = null) -> bool:
 		_ghost_valid = true
 		_joint_site = null
 		_show_ghost(part)
+		_ask_copies()
 	if not has_preview():
 		return false
 	connect_picking = true
@@ -5833,7 +5847,10 @@ func typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> 
 			* tipped
 	by = Transform3D(Basis.IDENTITY, move) * by
 	if is_carrying():
-		return carrying.show_moved(by, lattice, self)
+		var shown: bool = carrying.show_moved(by, lattice, self)
+		# The copies asked where the number puts it, as the pointer's aim asks.
+		_ask_copies()
+		return shown
 	var at: Transform3D = by * (_typed_from as Transform3D)
 	at = _tidy(Transform3D(at.basis.orthonormalized(), at.origin),
 		BrickLattice.is_square_to_grid(at.basis))
@@ -5846,6 +5863,7 @@ func typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> 
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
 	if part != null:
 		_show_ghost(part)
+	_ask_copies()
 	return _ghost_valid
 
 

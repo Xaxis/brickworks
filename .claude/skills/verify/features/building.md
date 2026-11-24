@@ -1935,22 +1935,33 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and nothing waits a frame. Find and replace shares the lock rule
   (`Assemblies.locked_twins`). `followfix_probe` holds it. The ghost asks
   the same before the click (wingplace): inside an edited sub-assembly with
-  copies, whatever is in hand (a part from the bin, dragged from it, typed
-  in, a paste, a clone, a part dragged inside it) is laid in each copy as
-  the follow will lay it (`Assemblies.room_in_copies`: the follow's
-  `best_match`, `_laid` and `in_the_way`, the copy round it left out as
-  `_own_copy` leaves it, each copy's fit read once per model and level), and
-  where one has no room the ghost is red, `Builder.can_place` false (the
-  pointer and `brickworksState.can_place` say so) and the bar says why as it
-  turns red, in the words the click's refusal says (`Builder.copies_refuse`,
-  `copies_refused`); an aim asks for 4 ms at most (`COPIES_ASK_US`), a click
-  is still the follow's to judge. Ctrl+D lays a copy beside (ux14), and a
+  copies, whatever is in hand (a part from the bin, dragged from it, moved
+  by a typed number, a paste, a clone, a part dragged inside it) is laid in
+  each copy as the follow will lay it (`Assemblies.room_in_copies`: the
+  follow's `best_match`, `_laid` and `in_the_way`, a retired number laid as
+  the part that replaced it, a copy's own parts and those of a copy round it
+  that lies on the one round the edited copy left out as `_own_copy` leaves
+  them, newest copy first; each copy's fit read once per model and level,
+  and for parts lifted off the model as the copies stood before the lift, as
+  the lift-and-put step's follow reads them), and where one has no room the
+  ghost is red, `Builder.can_place` false (the pointer,
+  `brickworksState.can_place` and a session's hand tool say so, the typed
+  number's line names why) and the bar says why as it turns red, in the
+  words the click's refusal says (`Builder.copies_refuse`,
+  `copies_refused`); an aim asks for 4 ms a frame (`COPIES_ASK_US`) and an
+  ask not done goes on next frame where it stopped, the ghost as it was till
+  then, never "room" for being cut short; a click is still the follow's to
+  judge. Not asked: locked parts in a copy (the click's refusal says those),
+  train-track sleepers laid with a track, and parts whose shape is still on
+  its way. Ctrl+D lays a copy beside (ux14), and a
   mirrored copy beside its original leaves a strip between them where a
   part's twin lands on it: the web's assembly flow put down nothing there
   from rel-m324 and nobody saw why. `wingplace_probe` (windowed) aims a plate
-  from the bin and a pasted brick all round such a wing: every green ghost is
-  put down with its twin, every red one takes nothing and said why, plus a
-  plate put down inside fresh and after a save and an open. Make unique cuts a copy loose (a session's `make_unique`,
+  from the bin and a pasted brick all round such a wing, and drags the wing's
+  own brick there: every green ghost is put down (or moved) with its twin,
+  every red one takes nothing and said why, each drawn as it is; an ask cut
+  a microsecond at a time answers as one in one go; plus a plate put down
+  inside fresh and after a save and an open. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,

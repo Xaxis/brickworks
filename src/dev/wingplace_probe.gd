@@ -211,8 +211,120 @@ func _beside() -> void:
 		await _key(KEY_V, true)
 		await _frames(2))
 	await _key(KEY_ESCAPE)
+	await _drag_sweep()
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
+
+
+## An ask cut short goes on where it stopped, and gives what an ask in one
+## go gives, never "room" for having been cut: four more of what is in hand
+## far off on the ground, asked first, and then it where the ghost said
+## [param words], a microsecond at a time.
+func _cut_short(words: String) -> void:
+	if not _tree.has_method("room_in_copies"):
+		return
+	var item: Array = (_builder.call("_going_down") as Array)[0]
+	var items: Array = []
+	for n: int in 4:
+		items.append([item[0], (item[1] as Transform3D).translated(Vector3(2000.0 + 200.0 * n, 0.0, 0.0))])
+	items.append(item)
+	var ask: Dictionary = {"items": items}
+	var calls: int = 0
+	var answer: Variant = null
+	while answer == null and calls < 100:
+		answer = _tree.call("room_in_copies", ask, 1)
+		calls += 1
+	_check("an ask cut short goes on where it stopped and says the same (%d calls: \"%s\")"
+		% [calls, answer], calls > 1 and answer != null and str(answer) == words)
+
+
+## The box round the wing being edited, on the ground.
+func _wing_box() -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for brick_id: int in _tree.ids_under("Wing#1"):
+		var b: BrickWorld.Brick = _world.get_brick(brick_id)
+		var mesh_box: AABB = (b.transform * _library.mesh_for(b.part_id).bounds).abs()
+		box = mesh_box if first else box.merge(mesh_box)
+		first = false
+	return box
+
+
+## Whether what is in hand is drawn as fitting: the ghost's or the carry's
+## "valid".
+func _drawn_fits() -> bool:
+	var materials: Array = _builder.carrying.get("_materials") if _builder.is_carrying() \
+		else [_builder.get("_ghost_material")]
+	if materials.is_empty() or materials[0] == null:
+		return false
+	return bool((materials[0] as ShaderMaterial).get_shader_parameter("valid"))
+
+
+## The wing's brick dragged inside it, by the Select tool, to the ground all
+## round it two studs apart, and let go of there: its lift is one step with
+## its put, and the follow pairs the copies by what they were before the lift
+## (the twin taken off as it was picked up). Where the ghost is green the
+## brick and its twin move; where red for the copy, nothing does.
+func _drag_sweep() -> void:
+	var box: AABB = _wing_box()
+	var green: int = 0
+	var green_put: int = 0
+	var red: int = 0
+	var red_put: int = 0
+	var red_said: int = 0
+	var drawn_wrong: int = 0
+	var wrong: Array = []
+	for x: int in range(int(box.position.x) - 60, int(box.end.x) + 61, 40):
+		for z: int in range(int(box.position.z) - 60, int(box.end.z) + 61, 40):
+			var target: Vector2 = _screen(Vector3(float(x), 0.0, float(z)))
+			var brick: int = _of_part("Wing#1", "3004")
+			if brick == 0 or not _clickable(target):
+				continue
+			var from: Vector2 = _on(brick)
+			var depth: int = _builder.history_depth()
+			_select_only([brick])
+			await _move(from)
+			await _button(from, true)
+			for k: int in range(1, 7):
+				await _move(from.lerp(target, float(k) / 6.0))
+			await _move(target + Vector2(1, 0))
+			var asked: Variant = _builder.get("copies_refuse")
+			var predicted: String = "" if asked == null else str(asked)
+			var fits: bool = _builder.can_place()
+			var carried: bool = _builder.is_carrying()
+			var heard: String = _shell.status.fields()["message"]
+			if carried and (fits or not predicted.is_empty()) and _drawn_fits() != fits:
+				drawn_wrong += 1
+			await _button(target + Vector2(1, 0), false)
+			await _frames(3)
+			var put: bool = _builder.history_depth() > depth
+			if carried and fits:
+				green += 1
+				if put and _tree.ids_under("Wing#2").size() == 3:
+					green_put += 1
+				elif wrong.size() < 6:
+					wrong.append("green drag to %s: %s (\"%s\")" % [str(Vector3(x, 0, z)),
+						"moved" if put else "not moved", _tree.refused])
+			elif carried and not predicted.is_empty():
+				red += 1
+				red_put += 1 if put else 0
+				red_said += 1 if heard == predicted else 0
+				if put and wrong.size() < 6:
+					wrong.append("red drag to %s moved it (\"%s\")" % [str(Vector3(x, 0, z)), predicted])
+			if put:
+				await _key(KEY_Z, true)
+				await _frames(2)
+			if _builder.is_carrying():
+				await _key(KEY_ESCAPE)
+	print("    a brick dragged inside: %d places green, %d moved with its twin; %d red for the copy, %d moved, %d said; %d drawn otherwise"
+		% [green, green_put, red, red_put, red_said, drawn_wrong])
+	for one: String in wrong:
+		print("      " + one)
+	_check("a brick dragged inside the wing: every green ghost moves it and its twin (%d of %d)"
+		% [green_put, green], green > 0 and green_put == green)
+	_check("...every ghost red for the copy moves nothing, and says why (%d red, %d moved, %d said)"
+		% [red, red_put, red_said], red > 0 and red_put == 0 and red_said == red)
+	_check("...each drawn as it is (%d not)" % drawn_wrong, drawn_wrong == 0)
 
 
 ## What is in hand aimed at the ground all round the wing being edited, a
@@ -221,13 +333,8 @@ func _beside() -> void:
 ## red only for the copy (Builder.copies_refuse) is said as it turns red and
 ## takes nothing, the click's refusal in the same words.
 func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
-	var box := AABB()
-	var first: bool = true
-	for brick_id: int in _tree.ids_under("Wing#1"):
-		var b: BrickWorld.Brick = _world.get_brick(brick_id)
-		var mesh_box: AABB = (b.transform * _library.mesh_for(b.part_id).bounds).abs()
-		box = mesh_box if first else box.merge(mesh_box)
-		first = false
+	var box: AABB = _wing_box()
+	var drawn_wrong: int = 0
 	var green: int = 0
 	var green_put: int = 0
 	var red: int = 0
@@ -256,8 +363,10 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 			# What one aim's ask costs, unbounded, here.
 			if _tree.has_method("room_in_copies"):
 				var began: int = Time.get_ticks_usec()
-				_tree.call("room_in_copies", _builder.call("_going_down"), 0)
+				_tree.call("room_in_copies", {"items": _builder.call("_going_down")}, 0)
 				slowest = maxi(slowest, Time.get_ticks_usec() - began)
+			if _drawn_fits() != fits:
+				drawn_wrong += 1
 			var heard: String = _shell.status.fields()["message"]
 			var count: int = _count()
 			await _click(at + Vector2(1, 0))
@@ -284,6 +393,7 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 				if shown.is_empty():
 					shown.append(predicted)
 					await _shot("red_%s" % what.replace(" ", "_"))
+					_cut_short(predicted)
 			if put:
 				await _key(KEY_Z, true)
 				await _frames(2)
@@ -299,6 +409,8 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 		red > 0 and red_put == 0)
 	_check("...and says why as it turns red, in the words the click's refusal says (%d, %d of %d)"
 		% [red_said, same_words, red], red_said == red and same_words == red)
+	_check("...each ghost drawn as it is, green where it fits and red where not (%d not)" % drawn_wrong,
+		drawn_wrong == 0)
 
 
 func _frame_view() -> void:

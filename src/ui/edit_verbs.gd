@@ -1968,6 +1968,10 @@ func _hand_on_screen() -> Rect2:
 func _typed_preview(what: Dictionary) -> String:
 	var fits: bool = builder.typed_hand(what["move"], float(what["turn"]), float(what["tilt"]),
 		-_level_right())
+	# Room here, and none in another copy of the sub-assembly being edited:
+	# why, as the ghost is red for it (Builder.copies_refuse, wingplace).
+	if fits and not builder.copies_refuse.is_empty():
+		return builder.copies_refuse
 	return "" if fits else "no room there"
 
 

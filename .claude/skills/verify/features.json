@@ -1802,7 +1802,7 @@
       "id": "cli:wingplace probe",
       "kind": "cli",
       "entry": "src/dev/wingplace_probe.gd",
-      "reach": "tools/probe.sh wingplace_probe   (windowed, 1100x700: a plate put inside a wing fresh and after a save and an open; a plate from the bin and a pasted brick aimed all round a wing whose mirrored copy stands beside it, every green ghost put down with its twin, every red one refused in the words it said)",
+      "reach": "tools/probe.sh wingplace_probe   (windowed, 1100x700: a plate put inside a wing fresh and after a save and an open; a plate from the bin and a pasted brick aimed all round a wing whose mirrored copy stands beside it, and the wing's brick dragged there, every green ghost put down or moved with its twin, every red one refused in the words it said, each drawn as it is; an ask cut short answers as one in one go)",
       "area": "building",
       "tests": []
     },
