@@ -173,7 +173,7 @@ ui:a copy's first acts
 
 ## Comments {#comments}
 
-Comments are newest first, each with **Reply**. A comment can name a step, and its pill opens Build it there. People 13 and over can comment; a model's designer can turn comments off. The box works as [everywhere on Brickworks](/docs/gallery#composer): [[Ctrl]]+[[Enter]] or **Post** posts, [[Enter]] is a new line, [[Esc]] closes a reply's box, and signed out, **Post** signs you in and then posts what you wrote. A model's newest two comments also show under it in the [home page's feed](/docs/gallery#home), where you can comment without opening its page.
+Comments are newest first, each with **Reply**. A comment can name a step, and its pill opens Build it there. People 13 and over can comment; a model's designer can turn comments off. The box works as [everywhere on Brickworks](/docs/gallery#composer): [[Ctrl]]+[[Enter]] or **Post** posts, [[Enter]] is a new line, [[Esc]] closes a reply's box, and signed out, **Post** signs you in and then posts what you wrote. With no profile yet, **Post** first asks for [a name](/docs/profiles#name-first). The designer can answer a comment from [Notifications](/docs/profiles#reply) too. A model's newest two comments also show under it in the [home page's feed](/docs/gallery#home), where you can comment without opening its page.
 
 ### Mention someone {#mentions}
 

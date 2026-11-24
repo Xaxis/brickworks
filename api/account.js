@@ -15,7 +15,10 @@
 //               may use ({tester, early}: api/_early.js), whether the beta
 //               is open, and whether its welcome is due: a new account not
 //               yet asked to join (open, welcome: api/_beta.js memberOf),
-//               which the site and the app show after the age question.
+//               which the site and the app show after the age question;
+//               and its profile ({handle, name}, or null for none), which
+//               is what asks a name before its first comment, reply or
+//               post on the site (web/account.js nameFirst, socialloop).
 //
 //   POST ?op=age, with a token and {month, year}: the answer to the age
 //   question (2026-10-18). Worked out here into whether that is 13 or over
@@ -188,10 +191,14 @@ async function handler(request, response) {
   let age = null;
   let tester = false;
   let welcome = false;
+  // Its own profile, the name its comments and posts go out under: null
+  // for none, left out when it could not be read (nobody is asked then).
+  let profile;
   const open = await betaMode(request) === "open";
   if (dbConfigured()) {
-    const [kept, isTester] = await Promise.allSettled([ageOf(claims.sub),
-      open ? memberOf(claims.sub).catch(() => asTester(claims.sub)) : asTester(claims.sub)]);
+    const [kept, isTester, people] = await Promise.allSettled([ageOf(claims.sub),
+      open ? memberOf(claims.sub).catch(() => asTester(claims.sub)) : asTester(claims.sub),
+      db(`people?account=eq.${claims.sub}&select=handle,name&limit=1`)]);
     if (kept.status === "fulfilled" && kept.value.ready) age = { ask: kept.value.ask, over_13: kept.value.over_13 };
     if (kept.status === "rejected") {
       console.error(`account: no age: ${String(kept.reason?.message || kept.reason).slice(0, 120)}`);
@@ -199,6 +206,10 @@ async function handler(request, response) {
     const said = isTester.status === "fulfilled" ? isTester.value : null;
     tester = said?.tester === true;
     welcome = open && said?.welcome === true;
+    if (people.status === "fulfilled" && Array.isArray(people.value)) {
+      const row = people.value[0];
+      profile = row && row.handle ? { handle: String(row.handle), name: String(row.name || row.handle) } : null;
+    }
   }
 
   return response.status(200).json({
@@ -210,6 +221,7 @@ async function handler(request, response) {
     // while it is (bugreport); welcome only while it is open (betajoin).
     beta: { tester, early: earlyFor(tester), open, ...(open ? { welcome } : {}) },
     ...(age ? { age } : {}),
+    ...(profile !== undefined ? { profile } : {}),
   });
 }
 

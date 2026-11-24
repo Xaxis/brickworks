@@ -13,6 +13,8 @@
 //   askToSignIn), and once in, posts what was typed, from where it was:
 //   no page left, no word lost. Whether they may then (13 and over, not
 //   barred, the comments on) is the server's, said in its own words.
+// - Signed in with no profile, Post asks for a name and a handle first
+//   (web/account.js nameFirst, socialloop): made or skipped, it posts.
 // - A press posts once: a second while it goes sends nothing more.
 // - What was posted shows at once where it will be (pending), then as the
 //   server has it; refused, it goes and its words are back in the box.
@@ -22,7 +24,7 @@
 // lines of web/home-feed.js saidLineHtml: the newest two comments of a
 // model, with "n more" opening the rest in place; a thread's latest reply,
 // a reply posted here under it. Every word anybody typed goes in as text.
-import { askToSignIn, call, signedIn } from "/account.js";
+import { askToSignIn, call, nameFirst, signedIn } from "/account.js";
 import { counted, escapeHtml, langAt, number, say, told } from "/card.js";
 import { saidLineHtml } from "/home-feed.js";
 
@@ -142,6 +144,10 @@ export function wireComposer(form, {
           return;
         }
       }
+      // A name first, once (web/account.js nameFirst): an account with no
+      // profile is asked for one over the page, its words still in the box
+      // under it; made or skipped, what they wrote then goes.
+      await nameFirst();
       sent = field.value.trim();
       shown = pending ? pending(sent) : null;
       // What went leaves the box at once; it is put back if it is refused.
@@ -376,11 +382,17 @@ export async function commentsInCard(post, id, { opener = null, all = false, tes
 }
 
 /// A reply to thread [thread] of Talk from [card] (a post of the feed, a
-/// row of Talk's lists): the composer opened in it, the reply shown under
-/// its latest reply once posted, its count one more. [tests] the checks'
-/// pool, [lang] the page's language for what the server draws.
-export async function replyInCard(card, thread, { opener = null, tests = "", lang = "", after = null } = {}) {
-  if (!Number.isSafeInteger(thread) || thread < 1) return;
+/// row of Talk's lists, a line of Notifications): the composer opened in
+/// it, the reply shown under its latest reply once posted, its count one
+/// more. Or, with [comment] (and [thread] 0), a reply to that comment on a
+/// model, in its thread (op=reply; a reply's goes in its thread too): from
+/// a line of Notifications that tells of it (socialloop, 2026-11-24).
+/// [answered](made) once it is posted. [tests] the checks' pool, [lang]
+/// the page's language for what the server draws.
+export async function replyInCard(card, thread, { opener = null, tests = "", lang = "", after = null, comment = 0,
+  answered = null } = {}) {
+  const onModel = Number.isSafeInteger(comment) && comment > 0;
+  if (!onModel && (!Number.isSafeInteger(thread) || thread < 1)) return;
   const state = card.__reply ||= { form: null, you: null };
   const back = opener;
   if (state.form) {
@@ -400,8 +412,9 @@ export async function replyInCard(card, thread, { opener = null, tests = "", lan
     (meta || acts || words.lastElementChild).after(room);
   }
   const { room, lines } = roomIn(words, { label: say("Replies") });
-  const form = makeComposer({ id: `reply-${thread}`, label: say("Your reply"),
-    placeholder: say("Reply to {name}", { name: card.querySelector(".post-head .who, .talk-row-meta a:not([data-reply-thread])")?.textContent.trim() || say("them") }) });
+  const form = makeComposer({ id: onModel ? `reply-c${comment}` : `reply-${thread}`, label: say("Your reply"),
+    placeholder: say("Reply to {name}", { name: card.querySelector(".post-head .who, .talk-row-meta a:not([data-reply-thread]), .what > b")
+      ?.textContent.trim() || say("them") }) });
   state.form = form;
   (after || acts || room).after(form);
   opener?.setAttribute("aria-expanded", "true");
@@ -419,20 +432,23 @@ export async function replyInCard(card, thread, { opener = null, tests = "", lan
   const mayNot = (you) => (!you ? say("That did not go just now. Try again in a minute.")
     : you.locked ? say("This thread is locked: it takes no new posts.")
     : !you.may_write ? told(you.why_not, say("That did not go just now. Try again in a minute.")) : "");
+  // A comment's reply is a comment (1,000 characters, the comments' words,
+  // whether they may said by the server as it is sent); Talk's is a post.
   const { field, tell } = wireComposer(form, {
-    most: 4000,
-    over: (n) => say("A post is at most 4,000 characters; that is {n}.", { n: number(n) }),
-    signIn: "Sign in to reply: we email you a code, no password. Anyone can read Talk.",
+    ...(onModel ? {} : { most: 4000, over: (n) => say("A post is at most 4,000 characters; that is {n}.", { n: number(n) }) }),
+    signIn: onModel ? "Sign in to add your reply: we email you a code, no password. What you wrote is kept."
+      : "Sign in to reply: we email you a code, no password. Anyone can read Talk.",
     close,
-    ready: async () => mayNot(await load()),
+    ready: onModel ? null : async () => mayNot(await load()),
     send: async (text) => {
-      const answer = await call(`/api/people?op=talk_reply${query}`, { method: "POST", body: { thread, body: text } })
-        .catch(() => ({ status: 0, body: {} }));
-      return answer.status === 201 ? { ok: true, made: answer.body } : { ok: false, error: told(answer.body?.error) };
+      const answer = await call(onModel ? "/api/people?op=reply" : `/api/people?op=talk_reply${query}`,
+        { method: "POST", body: onModel ? { id: comment, body: text } : { thread, body: text } }).catch(() => ({ status: 0, body: {} }));
+      return answer.status === 201 ? { ok: true, made: onModel ? answer.body.comment : answer.body }
+        : { ok: false, error: told(answer.body?.error) };
     },
     pending: (text) => addLine(lines, saidLineHtml({ name: YOU().name, said: text }, { pending: true })),
     posted: (made, shown) => {
-      const post = made?.post || {};
+      const post = (onModel ? made : made?.post) || {};
       const fresh = saidLineHtml({ by: post.handle ? { handle: post.handle, name: post.by || post.handle, picture: post.picture || "" } : null,
         name: post.by || YOU().name, said: post.body || shown?.querySelector("p span")?.textContent || "", id: post.id });
       if (shown && fresh) shown.outerHTML = fresh;
@@ -452,10 +468,11 @@ export async function replyInCard(card, thread, { opener = null, tests = "", lan
       heard(words, made?.mentions?.length
         ? say("Posted. {names} will hear of it.", { names: made.mentions.map((one) => `@${one.handle}`).join(", ") })
         : say("Posted."));
+      answered?.(onModel ? made : made?.post);
     },
   });
   field.focus();
-  if (signedIn()) {
+  if (signedIn() && !onModel) {
     const why = mayNot(await load());
     if (why) {
       field.hidden = true;

@@ -3116,7 +3116,14 @@
       "kind": "ui",
       "label": "notifications page",
       "entry": "web/notifications.html",
-      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
+      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read; a comment's, a reply's, a mention's or a Talk post's line has Reply, the composer opened in place, posted to the comment's thread (op=reply) or the Talk thread, the line then Replied with See your reply, the group read; tools/web/socialloop_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "socialloop browser flow",
+      "entry": "tools/web/socialloop_flow.mjs",
+      "reach": "node --env-file=.env tools/web/socialloop_flow.mjs --url=http://127.0.0.1:11850 --out=DIR   (a local relay_server.mjs 11850, nothing held, or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>: a fan with no profile asked for a name before a first comment at 1280 and 390, the words kept, Skip posts as A builder, asked again, a profile made in the ask credits both, then no ask; under 13 never asked; Talk's new thread asked first; the designer's Reply in Notifications from the keyboard, 44 px at 390, Replied, Escape, the reply in its thread on the model's page; de, fr, es)",
       "area": "web"
     },
     {
@@ -7078,7 +7085,7 @@
       "kind": "ui",
       "label": "saying something in place",
       "entry": "web/composer.js",
-      "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs)",
+      "reach": "https://brickworks.diy/ (a build's Add a comment and n more; a Talk post's Reply), /talk and /talk/b/<board> (a row's Reply), /m/<id>#comments (the box, a comment's Reply), /talk/t/<n> (the reply box)   (one composer everywhere: Enter a new line, Ctrl/Cmd+Enter or Post posts, Escape closes one opened in place, the focus back; signed out, Post signs in in the dialog and then posts the kept words from the same place; signed in 13 or over with no profile, Post first asks for a name and a handle in First steps' Make your profile (web/account.js nameFirst, also before Talk's new thread and Share it), the words kept in the box, Skip posting it as \"A builder\" and the next asking again, never an account under 13; the guidelines and the keys under the box; in a card its line at once, then the server's; node tools/web/homefeed_check.mjs --url=... --signed-in, tools/web/talk_flow.mjs, tools/web/comments_flow.mjs, tools/web/socialloop_flow.mjs)",
       "area": "web"
     },
     {

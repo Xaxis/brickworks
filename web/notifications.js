@@ -19,6 +19,12 @@
 // about a model, here, by push and by email, until it is unmuted (here's
 // Undo, the model's page, or Settings › Notifications).
 //
+// Reply in place (socialloop, 2026-11-24), as GitHub's and Flickr's inbox
+// have it: a line that tells of a comment, a reply or a mention, on a model
+// or in Talk, has Reply under it, the composer of everywhere opened there
+// (web/composer.js); posted, it is in the comment's thread on the model's
+// page at once, and the line says Replied, with the way to it.
+//
 // Every word is put on the page as text; an avatar is the kit's, which
 // escapes its own.
 import { askToSignIn, call, signOut, signedIn, token } from "/account.js";
@@ -213,9 +219,71 @@ function actsOf(one, item) {
   return acts.childElementCount ? acts : null;
 }
 
+/// The lines answered where they are read (socialloop, 2026-11-24), as
+/// GitHub's and Flickr's are: a comment, a reply or a mention on a model,
+/// and a post or a mention in Talk.
+const ANSWERED = new Set(["comment", "reply", "mention", "talk_reply", "talk_mention"]);
+
+/// Reply under each of [one]'s lines that can be answered ([item] drawn):
+/// the composer of everywhere opened in place (web/composer.js
+/// replyInCard), the reply going to the comment's thread on its model, or
+/// to the thread in Talk. Posted, the line says so, with the way to the
+/// reply on its page, and the group is read.
+function repliesIn(one, item) {
+  const lines = item.querySelectorAll(".lines > li");
+  (one.rows || []).forEach((row, at) => {
+    const line = lines[at];
+    if (!line || !ANSWERED.has(row.kind)) return;
+    const link = line.querySelector(":scope > a")?.getAttribute("href") || "";
+    const comment = row.kind.startsWith("talk_") ? 0 : Number(/#comment-(\d+)$/.exec(link)?.[1]) || 0;
+    const thread = row.kind.startsWith("talk_") ? Number(/\/talk\/t\/(\d+)/.exec(link)?.[1]) || 0 : 0;
+    if (!comment && !thread) return;
+    const acts = document.createElement("p");
+    acts.className = "said-acts notice-acts";
+    const reply = document.createElement("button");
+    reply.type = "button";
+    reply.className = "post-say";
+    reply.textContent = say("Reply");
+    reply.setAttribute("aria-label", say("Reply to {name}", { name: String(row.who || say("them")) }));
+    reply.setAttribute("aria-expanded", "false");
+    acts.append(reply);
+    // The reply, once posted, shows under the line it answers, over Reply.
+    const room = document.createElement("div");
+    room.className = "said-room";
+    line.append(room, acts);
+    // The composer's script comes with the first Reply: the list draws
+    // without it.
+    reply.addEventListener("click", async () => (await import("/composer.js")).replyInCard(line, thread, {
+      opener: reply, comment, after: acts,
+      tests: /[?&]tests=1\b/.test(link) ? "&tests=1" : "", lang: LANG.slice(6),
+      answered: (made) => {
+        // The line says it was answered, the reply linked where it now is.
+        const id = Number(made?.id) || 0;
+        let said = line.querySelector(".answered");
+        if (!said) {
+          said = document.createElement("span");
+          said.className = "pill good answered";
+          said.textContent = say("Replied");
+          // Beside what happened, before the words quoted.
+          line.querySelector(".what q, .what time")?.before(" ", said);
+        }
+        const shown = line.querySelector(`.said-line[data-line="${id}"] p`);
+        if (shown && id && !shown.querySelector(".said-see")) {
+          const see = document.createElement("a");
+          see.className = "said-see";
+          see.href = link.replace(/#.*$/, "") + (comment ? `#comment-${id}` : `#post-${id}`);
+          see.textContent = say("See your reply");
+          shown.append(" ", see);
+        }
+        read(item);
+      } }));
+  });
+}
+
 /// [one] group drawn, its links reading it as they are followed.
 function groupOf(one, i = 0) {
   const item = group(one, i, { acts: actsOf });
+  repliesIn(one, item);
   const opened = (event) => {
     const link = event.target.closest("a");
     if (link) read(item, item.dataset.own !== undefined && link.getAttribute("href") === item.dataset.own);

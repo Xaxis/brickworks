@@ -10,7 +10,7 @@
 // Every word somebody typed comes from the server already escaped, in the
 // posts' HTML it draws (api/_talk.js postsHtml); nothing typed is put on
 // the page here but as text.
-import { askToSignIn, call, say, signedIn } from "/account.js";
+import { askToSignIn, call, nameFirst, say, signedIn } from "/account.js";
 import { langAt, number, partSaid, told } from "/card.js";
 import { replyInCard, wireComposer } from "/composer.js";
 import { openReport } from "/report.js";
@@ -449,6 +449,9 @@ function newPage() {
     const send = $("button[type='submit']", form);
     send.disabled = true;
     try {
+      // A name first, once, as before any reply (web/account.js nameFirst):
+      // made or skipped, the thread then starts, its words as typed.
+      await nameFirst();
       const photo = await sendPhoto(form);
       if (photo === false) return;
       tell(form, say("Posting…"));
