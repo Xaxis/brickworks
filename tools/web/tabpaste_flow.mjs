@@ -64,12 +64,20 @@ async function up(page) {
 const colour = (s) => (s.selected === 1 && (s.selected_colours || []).length ? s.selected_colours[0] : -1);
 /// A part of the model on the screen in another colour than [not] clicked, alone: [part, colour].
 async function select(page, not = -2) {
-  const laid = await askApp(page, "Layout", { seconds: 6, tellings: 8 }).catch(() => null);
-  for (const t of (laid?.targets || []).slice(0, 12)) {
+  await page.bringToFront();
+  let laid = null;
+  for (let n = 0; n < 3 && !(laid?.targets || []).length; n++) {
+    laid = await askApp(page, "Layout", { seconds: 20, tellings: 8 }).catch(() => null);
+  }
+  const targets = laid?.targets || [];
+  if (!targets.length) console.log("        (the app named no parts on the screen)");
+  for (const t of targets.slice(0, 12)) {
     await page.keyboard.press("Escape");
+    await framesDrawn(page, 2).catch(() => {});
     await page.mouse.click(t.x, t.y);
-    const s = await until(page, (now) => now.selected === 1, 4);
+    const s = await until(page, (now) => now.selected === 1 && colour(now) >= 0, 12);
     if (colour(s) >= 0 && colour(s) !== not) return [String(t.part), colour(s)];
+    console.log(`        (a ${t.part} at ${Math.round(t.x)},${Math.round(t.y)}: ${s.selected} selected, colour ${colour(s)})`);
   }
   return ["", -1];
 }
@@ -80,14 +88,14 @@ async function putDown(page) {
   const before = (await state(page)).bricks || 0;
   for (const [fx, fy] of [[0.2, 0.85], [0.8, 0.85], [0.15, 0.6], [0.85, 0.6], [0.5, 0.92]]) {
     await page.mouse.click(x + w * fx, y + h * fy);
-    const s = await until(page, (now) => (now.bricks || 0) > before && !now.carrying, 6);
+    const s = await until(page, (now) => (now.bricks || 0) > before && !now.carrying, 10);
     if ((s.bricks || 0) > before) return s;
   }
   return state(page);
 }
 async function paste(page) {
   await page.keyboard.press("Control+v");
-  return until(page, (s) => s.carrying, 8);
+  return until(page, (s) => s.carrying, 15);
 }
 
 const browser = await launch({ ownAccount: true });
