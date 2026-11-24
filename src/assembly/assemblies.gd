@@ -1920,6 +1920,127 @@ func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
 	return ids.filter(func(brick_id: int) -> bool: return held.has(brick_id))
 
 
+## Why some other copy of the sub-assembly being edited ([member entered])
+## has no room for what [method copies_follow] would lay in it for
+## [param items] ([part id, where in the world] each: what a click puts down
+## into the one edited), in the words its refusal says ([method room_words]);
+## "" where every copy has room. Each part goes into every copy laid as that
+## copy lies on the edited one, mirrored where it is mirrored, and is asked
+## as [method _new_blocker] asks it: that copy's own parts are not in its
+## way; the edited copy's parts, what goes down there now and what goes down
+## in the other copies are. Asked as the ghost moves (Builder._ask_copies):
+## up to wingplace (2026-11-24) only the follow asked, after the click, so the
+## ghost said a part fitted, the click put it down, the follow took it
+## straight back, and its words were gone in 4 s. Ctrl+D lays a wing's copy
+## beside it (ux14) and Shift-M mirrors it there, and a plate put down
+## between the two had its mirrored twin on it: the web's assembly flow put
+## down nothing. [param budget_us]: "" once asking has taken that long (0,
+## no bound), for an aim with a big hand.
+func room_in_copies(items: Array, budget_us: int = 0) -> String:
+	if entered.is_empty() or items.is_empty():
+		return ""
+	var started: int = Time.get_ticks_usec()
+	var copies: Array = _copies_laid()
+	if copies.is_empty():
+		return ""
+	## [part, cells, the copy it goes into] of each part going down so far.
+	var down: Array = []
+	for item: Array in items:
+		var mesh: Lbm.PartMesh = library.mesh_for(str(item[0]))
+		if mesh != null:
+			down.append([str(item[0]), builder.boxes_for(mesh, item[1]), entered])
+	var laid_already: Dictionary = {}
+	for copy: Array in copies:
+		var other: String = copy[0]
+		var round: String = copy[3]
+		for item: Array in items:
+			if budget_us > 0 and Time.get_ticks_usec() - started > budget_us:
+				return ""
+			var laid: Array = _laid(copy[1], str(item[0]), item[1])
+			var at: Transform3D = laid[1]
+			var mesh: Lbm.PartMesh = library.mesh_for(str(laid[0]))
+			# Laid once in each copy, as _put_already keeps it.
+			var key: String = "%s %s %s" % [other, laid[0], str(at.origin.snappedf(0.5))]
+			if mesh == null or laid_already.has(key):
+				continue
+			laid_already[key] = true
+			var blocker: int = in_the_way(str(laid[0]), at, 0, copy[2])
+			if blocker != 0:
+				return room_words(other, blocker)
+			var cells: PackedInt32Array = builder.boxes_for(mesh, at)
+			for one: Array in down:
+				if not within(str(one[2]), round) and BrickLattice.shared_cells(cells, one[1]) > 0:
+					return _room_words_part(other, str(one[0]))
+			down.append([str(laid[0]), cells, other])
+	return ""
+
+
+## [method room_words] for a part not down yet, [param part_id]: one going
+## down in this edit, which the follow meets as a part in the way.
+func _room_words_part(path: String, part_id: String) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	if info == null:
+		return "No room in %s: move what is in the way there, or use Build › Make this copy unique" \
+			% label(path)
+	return "No room in %s: %s is in the way there. Move it, or use Build › Make this copy unique" \
+		% [label(path), Inventory._tidy(info.name)]
+
+
+## Each other copy of [member entered] that lies on it part for part, as
+## [method copies_follow] pairs them: [its path, the fit (best_match), the
+## parts not in its way (brick -> true), the copy round it they are under].
+## Not in its way, as [method _own_copy] has it: the parts of the outermost
+## copy round it that is a copy of the one round the edited copy at that
+## level (a wing in the other plane: that plane, laid on this one whole), else
+## its own. Read once while the model, its tree and the level being edited
+## stay as they are: the ghost asks at every move.
+func _copies_laid() -> Array:
+	var key: Array = [world.revision, BrickWorld.paths_written, entered, world.brick_count()]
+	if key == _copies_key:
+		return _copies_kept
+	_copies_key = key
+	_copies_kept = []
+	if not _any_copied([entered]):
+		return _copies_kept
+	var source: Array = content(entered)
+	if source.is_empty():
+		return _copies_kept
+	_begin_pass()
+	for other: String in copies_of(entered):
+		var twin: Array = content(other)
+		if twin.size() != source.size():
+			continue
+		var fit: Dictionary = best_match(source, twin)
+		if int(fit["score"]) != source.size() or _laid_on(source, twin, fit).size() != source.size():
+			continue
+		var round: String = _copy_round(other)
+		var own: Dictionary = {}
+		for brick_id: int in ids_under(round):
+			own[brick_id] = true
+		_copies_kept.append([other, fit, own, round])
+	_end_pass()
+	return _copies_kept
+
+
+## The copy round [param other] (a copy of [member entered]) its parts are laid
+## on the edited ones with: at the outermost level where its path and the
+## edited one's part, that level's copy where both are copies of one
+## definition, else [param other] itself.
+func _copy_round(other: String) -> String:
+	var mine: PackedStringArray = segments(entered)
+	var theirs: PackedStringArray = segments(other)
+	var path: String = ""
+	for n: int in mini(mine.size(), theirs.size()):
+		path = join(path, theirs[n])
+		if theirs[n] != mine[n]:
+			return path if definition(theirs[n]) == definition(mine[n]) else other
+	return other
+
+
+var _copies_key: Array = []
+var _copies_kept: Array = []
+
+
 ## What is in the way of the part [param part_id] at [param at], a copy's
 ## part as a follow lays it or moves it, as a part put there by hand is
 ## asked (Builder.room_for: nothing in its way but what it is joined to as

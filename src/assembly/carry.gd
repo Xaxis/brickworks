@@ -642,6 +642,14 @@ func can_place() -> bool:
 	return is_aimed() and _valid
 
 
+## The ghost red where another copy of the sub-assembly being edited has no
+## room for what it would lay (Builder._ask_copies), though nothing here is in
+## its way; drawn as it fits again where [param red] is false.
+func copies_red(red: bool) -> void:
+	for material: ShaderMaterial in _materials:
+		material.set_shader_parameter("valid", _valid and not red)
+
+
 func hide_ghost() -> void:
 	_aimed = false
 	_valid = false

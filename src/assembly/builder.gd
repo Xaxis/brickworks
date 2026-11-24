@@ -2229,6 +2229,22 @@ func _meets_as_before(brick: BrickWorld.Brick, packed: PackedInt32Array,
 ## The sub-assembly a part put down goes into: the one being edited
 ## (Assemblies.entered), "" for the model.
 var place_group: String = ""
+## Why another copy of the sub-assembly being edited has no room for what
+## goes down into it, [part id, where] each, asked for no longer than the
+## second argument in microseconds (0, no bound): "" when every copy has
+## (Assemblies.room_in_copies). Unset, none is asked.
+var copies_room: Callable = Callable()
+## Why the ghost is red though nothing in the copy being edited is in its
+## way: another copy of it has no room for the twin a click would lay there,
+## and the click's part would be taken straight back ([method _ask_copies]).
+## "" otherwise.
+var copies_refuse: String = ""
+## [member copies_refuse], said as the ghost turns red for it.
+signal copies_refused(words: String)
+## How long an aim asks the copies, in microseconds: a hand of many parts
+## put down into an assembly with several copies is asked by the click.
+const COPIES_ASK_US := 4000
+var _copies_asked: Array = []
 ## What a click on a brick selects with it, brick id -> PackedInt64Array:
 ## its whole sub-assembly (Assemblies.unit_of). Unset, a brick alone, or
 ## its minifigure.
@@ -3226,10 +3242,54 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		_hide_figure_ghosts()
 		carrying.library = library
 		_hovered = carrying.aim(lattice, self, origin, direction)
+		_ask_copies()
 		_went(was, carrying.pivot())
 		return
 	_aim_single(origin, direction)
+	_ask_copies()
 	_went(was, _ghost_transform.origin)
+
+
+## Whether the other copies of the sub-assembly being edited have room for
+## what the ghost would put down ([member copies_room]): the ghost red where
+## one has not, as where something is in its way, and why said once as it
+## turns so ([signal copies_refused]). A click there is still the follow's
+## to judge (Assemblies.after_edit), which says the same. Asked again only
+## when the ghost, the model or the level edited moved.
+func _ask_copies() -> void:
+	var asked: Array = []
+	if copies_room.is_valid() and not place_group.is_empty():
+		if is_carrying():
+			if carrying.is_aimed() and carrying._valid:
+				asked = ["carried", carrying._frame, carrying.turns, carrying.items.size()]
+		elif _ghost_valid and _ghost.visible and held_figure.is_empty() and not _ghost_warming:
+			asked = [held_part, _ghost_transform]
+	if not asked.is_empty():
+		asked.append_array([place_group, world.revision, BrickWorld.paths_written, lattice.revision])
+	var was: String = copies_refuse
+	if asked != _copies_asked:
+		_copies_asked = asked
+		copies_refuse = "" if asked.is_empty() \
+			else str(copies_room.call(_going_down(), COPIES_ASK_US))
+	var red: bool = not copies_refuse.is_empty()
+	if is_carrying():
+		carrying.copies_red(red)
+	elif red:
+		_ghost_material.set_shader_parameter("valid", false)
+		preview_changed.emit(held_part, false)
+	if red and copies_refuse != was:
+		copies_refused.emit(copies_refuse)
+
+
+## What a click would put down now, [part id, where] each: the part in hand
+## where its ghost is, or each part carried where the carry puts it.
+func _going_down() -> Array:
+	if not is_carrying():
+		return [[held_part, _ghost_transform]]
+	var out: Array = []
+	for item: Dictionary in carrying.placements(self):
+		out.append([str(item["part"]), item["at"]])
+	return out
 
 
 func _aim_single(origin: Vector3, direction: Vector3) -> void:
@@ -5585,6 +5645,8 @@ func ghost_transform() -> Transform3D:
 
 ## Whether a click would put the held part down where the ghost is.
 func can_place() -> bool:
+	if not copies_refuse.is_empty():
+		return false
 	if is_carrying():
 		return carrying.can_place()
 	return has_preview() and _ghost_valid
