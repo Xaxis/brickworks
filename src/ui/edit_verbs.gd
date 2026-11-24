@@ -37,6 +37,12 @@ var reopen_words: Callable = func(_again: bool) -> String: return ""
 ## Built presses, CollectionDialog.undo_built): what it took back in words,
 ## said, and the model's history is left alone; "" when it had nothing.
 var panel_undo: Callable = func() -> String: return ""
+## The timeline taken to its last step, every part on show (StepsBar.to_end):
+## Select all asked for again at a step (select_by).
+var every_step: Callable = Callable()
+## What Select all at a step took: {ahead, selected} as it left them, so the
+## same press again means every step. Empty when it was not the last thing.
+var _all_at_step: Dictionary = {}
 ## Building together (Together): while in a session, Undo and Redo are this
 ## person's own, and take back none of anybody else's parts. Null until the
 ## session is made (Main._together, Later): then nobody is in one.
@@ -298,7 +304,7 @@ func press(name: String) -> void:
 			var painted: int = builder.paint_selection(builder.held_color)
 			if painted > 0:
 				edited.call()
-				say.call("painted %s" % _parts(painted))
+				say.call(_painted_words(painted))
 			elif not builder.selection.is_empty():
 				# Painted the colour they are already, and nothing said: the
 				# selection stayed as it was with no word why (ux14's walk, p11).
@@ -662,18 +668,42 @@ func select_by(kind: String) -> int:
 		"inverse":
 			found = Later.script(&"SelectBy").inverse(world, builder.selection, scenery)
 		"all":
+			# At a step of the timeline, what it shows (SelectBy leaves the
+			# hidden out), and said so; the same again, every step: the
+			# timeline to its end and the whole model, as an editor's second
+			# Select all takes the whole document.
+			if builder.at_a_step() and not _all_at_step.is_empty() and every_step.is_valid() \
+					and int(_all_at_step["ahead"]) == builder.lattice.ahead.size() \
+					and int(_all_at_step["selected"]) == builder.selection.size():
+				_all_at_step = {}
+				every_step.call()
 			found = Later.script(&"SelectBy").inverse(world, {}, scenery)
+			if builder.at_a_step():
+				var took: int = select_found(found)
+				var later: int = 0
+				for brick_id: int in builder.lattice.ahead:
+					if not scenery.has(brick_id) and not builder.lattice.unseen.has(brick_id) \
+							and not builder.is_locked(brick_id):
+						later += 1
+				_all_at_step = {"ahead": builder.lattice.ahead.size(), "selected": took}
+				var step: int = int(builder.step_showing.call()) if builder.step_showing.is_valid() else -1
+				say.call(("selected the %d parts on up to step %d — %d more in later steps are left "
+					+ "out; Select all again takes every step") % [took, step, later] if step > 0
+					else ("selected the %d parts on at this step — %d more in later steps are left "
+					+ "out; Select all again takes every step") % [took, later])
+				return took
 		"none":
 			builder.clear_selection()
 			return 0
 	return select_found(found)
 
 
-## Select these bricks, leaving out the hidden and the locked: how many
-## that was.
+## Select these bricks, leaving out the hidden and the locked, and at a step
+## of the timeline what it has not put on yet: how many that was.
 func select_found(found: Array) -> int:
+	_all_at_step = {}
 	builder.selection.clear()
-	for brick_id: int in found:
+	for brick_id: int in builder.shown_only(PackedInt64Array(found)):
 		if not builder.lattice.unseen.has(brick_id) and not builder.is_locked(brick_id):
 			builder.selection[brick_id] = true
 	builder.selection_changed.emit(builder.selection.size())
@@ -1111,7 +1141,7 @@ func lift(grab: Array = []) -> int:
 		return 0
 	aim_again.call()
 	say.call(Keymap.filled("moving %s — click to put down, {rotate_held|turns}, Esc puts back")
-		% _parts(count))
+		% _parts(count) + (" — " + builder.riding_said() if builder.riding_later > 0 else ""))
 	return count
 
 
@@ -1155,7 +1185,8 @@ func turn_by(degrees: float) -> int:
 	_armed = {"verb": "turn", "depth": depth, "degrees": degrees}
 	edited.call()
 	aim_again.call()
-	say.call("turned %s %+d° — or type its angle" % [_parts(count), roundi(degrees)])
+	say.call("turned %s %+d° — or type its angle" % [_parts(count), roundi(degrees)]
+		+ (" — " + builder.riding_said() if builder.riding_later > 0 else ""))
 	return count
 
 
@@ -1188,8 +1219,8 @@ func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
 	builder.carrying.reshape(turn)
 	edited.call()
 	aim_again.call()
-	say.call("no room to %s there (%s): it is in hand turned — click where it goes, Esc puts it back"
-		% [words, why])
+	say.call("no room to %s there (%s): it is in hand turned — click where it goes, Esc puts it back%s"
+		% [words, why, " — " + builder.riding_said() if builder.riding_later > 0 else ""])
 	return count
 
 
@@ -1543,6 +1574,8 @@ func _drag_lift(alone: bool) -> bool:
 	elif _riders_cut:
 		say.call("moving %s — what rests on it stays, more than a drag can follow"
 			% _parts(count))
+	elif builder.riding_later > 0:
+		say.call("moving %s — %s" % [_parts(count), builder.riding_said()])
 	return true
 
 
@@ -1742,7 +1775,7 @@ func click(at: Vector2, shift: bool) -> bool:
 			var painted: int = builder.paint_selection(builder.held_color)
 			if painted > 0:
 				edited.call()
-				say.call("painted %s" % _parts(painted))
+				say.call(_painted_words(painted))
 			return painted > 0
 		"hide":
 			return hide_selection() > 0
@@ -2118,4 +2151,33 @@ func put_away() -> void:
 
 static func _parts(count: int) -> String:
 	return "1 part" if count == 1 else "%d parts" % count
+
+
+## What a paint of [param painted] parts says, once the other copies of their
+## sub-model have followed it (Assemblies.after_edit, run by edited): the
+## parts it changed there too, and whether a step the timeline has not put on
+## holds them. "painted 2 parts" was said of a paint that changed 4, two in
+## a copy of a later step (stepreview F6).
+func _painted_words(painted: int) -> String:
+	var said: String = "painted %s" % _parts(painted)
+	var recoloured: Array = []
+	_recolours_in(builder.last_step(), recoloured)
+	var in_copies: int = recoloured.size() - painted
+	var later: bool = recoloured.any(func(id: int) -> bool: return builder.is_ahead(id))
+	if in_copies <= 0:
+		return said
+	return "%s — %s" % [said, ("%s more in its other copies, in a later step" if later
+		else "%s more in its other copies") % _parts(in_copies)]
+
+
+## The parts a history step recolours, into [param out], groups within it too.
+static func _recolours_in(step: Variant, out: Array) -> void:
+	if not (step is Dictionary):
+		return
+	match str((step as Dictionary).get("undo", "")):
+		"group":
+			for inner: Variant in (step as Dictionary).get("steps", []):
+				_recolours_in(inner, out)
+		"recolor":
+			out.append(int((step as Dictionary).get("brick", 0)))
 

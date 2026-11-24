@@ -3791,6 +3791,14 @@
       "tests": []
     },
     {
+      "id": "cli:stepedit probe",
+      "kind": "cli",
+      "entry": "src/dev/stepedit_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepedit_probe   (346-2 at step 5: the house clicked and painted, Select all and Delete, a session's edit refused then all_steps, each undone, saved and opened again part by part; PROBE_SIZE=390x844 by a tap)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:stepnames probe",
       "kind": "cli",
       "entry": "src/dev/stepnames_probe.gd",
@@ -3804,6 +3812,14 @@
       "entry": "src/dev/stepnames2_probe.gd",
       "reach": "tools/probe.sh stepnames2_probe   (headless; SN2_ONLY=letters,refuse,undo,sub,held: name_of letter by letter, a letter of a hundred accents keeping four, 80 letters with an emoji or accents, zero-width and direction characters alone no name; such a name refused over MCP and in Name the step\u2026, which stays up saying why; 14 name edits, MCP and by hand, each one undo, undone to the steps and the file as the plain save; the same name again no undo; sub.ldr's \"Both wings on\" on the first step built in it in the plan, caption, Build it, list and booklet; a stepless file's first step edit numbering its held part with the part before it, undone to the stepless file)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:stepreview probe",
+      "kind": "cli",
+      "entry": "src/dev/stepreview_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepreview_probe   (346-2 at a step: the house nudged, turned and dragged whole, its later parts with it; line and properties counts; print_part, make_unique, move_part on a later part refused; a paint's copies said; a minifig lifted at a step; a step's time; PROBE_SIZE=390x844)",
+      "area": "building",
       "tests": []
     },
     {
@@ -7156,6 +7172,17 @@
       "reach": "tools/probe.sh edges && PROBE_SIZE=1280x720 tools/probe.sh edges   (by hand: View, Edges and studs, Edges or Studs; kept in this machine's controls.cfg [view]; only the window follows them: renders, booklets, view_model and thumbnails draw every seam and stud)",
       "area": "view",
       "tests": []
+    },
+    {
+      "id": "ui:edit at a step",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (B, Author's steps, Next to a step; a click on a sub-assembly takes its parts on so far, \"N of its M parts on at this step\"; C, Delete, a move reach those alone; Select all twice takes every step)",
+      "area": "building",
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
+      ]
     },
     {
       "id": "ui:enter this month's challenge",

@@ -17837,3 +17837,41 @@ msgstr "Google solo responde por direcciones de Gmail y de Google Workspace. Ini
 
 msgid "This address has a Brickworks account already. Sign in with a code we email you. To sign in with %s here from then on, sign in with it once on the Brickworks website."
 msgstr "Esta dirección ya tiene una cuenta de Brickworks. Inicia sesión con un código que te enviamos por correo. Para iniciar sesión aquí con %s a partir de entonces, úsalo una vez en el sitio web de Brickworks."
+msgid "%s selected, %d of its %d parts on at this step"
+msgstr "%s seleccionado, %d de sus %d piezas puestas en este paso"
+
+msgid "selected the %d parts on up to step %d"
+msgstr "seleccionadas las %d piezas puestas hasta el paso %d"
+
+msgid "selected the %d parts on at this step"
+msgstr "seleccionadas las %d piezas puestas en este paso"
+
+msgid "%d more in later steps are left out"
+msgstr "%d más de pasos posteriores quedan fuera"
+
+msgid "Select all again takes every step"
+msgstr "Seleccionar todo otra vez toma todos los pasos"
+
+msgid "%d in later steps left out."
+msgstr "%d de pasos posteriores omitidos."
+
+msgid "moved %s"
+msgstr "%s movido"
+
+msgid "moving %s"
+msgstr "moviendo %s"
+
+msgid "%d of them in later steps, not on the screen yet, went with it"
+msgstr "%d de ellas, de pasos posteriores, aún no en pantalla, fueron con él"
+
+msgid "%s more in its other copies"
+msgstr "%s más en sus otras copias"
+
+msgid "%s more in its other copies, in a later step"
+msgstr "%s más en sus otras copias, en un paso posterior"
+
+msgid "Sub-assembly of %d parts, %d on at this step"
+msgstr "Subconjunto de %d piezas, %d puestas en este paso"
+
+msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
+msgstr "Subconjunto de %d piezas, %d puestas en este paso, %d dentro"

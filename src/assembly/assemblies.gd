@@ -336,7 +336,9 @@ func unit_of(brick_id: int) -> PackedInt64Array:
 	return ids_under(str(path))
 
 
-## The assembly the selection is exactly, if it is one: "" otherwise.
+## The assembly the selection is exactly, if it is one: "" otherwise. At a
+## step of the timeline, exactly its parts on show (Builder.shown_only), as a
+## click takes it there.
 func selected_assembly() -> String:
 	var ids: Array = builder.selection.keys()
 	if ids.is_empty():
@@ -350,7 +352,7 @@ func selected_assembly() -> String:
 	for brick_id: Variant in ids:
 		if unit_path_of(int(brick_id)) != path:
 			return ""
-	var under: PackedInt64Array = ids_under(str(path))
+	var under: PackedInt64Array = builder.shown_only(ids_under(str(path)))
 	if under.size() != ids.size():
 		return ""
 	for brick_id: int in under:

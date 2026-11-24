@@ -110,6 +110,11 @@ func find_among(looked: Array, asked: Dictionary, where: String, frames: Diction
 			out["locked"] = int(out["locked"]) + 1
 			(out["locked_ids"] as Array).append(brick.id)
 			continue
+		# Not on at the step the timeline shows: left out and counted, as
+		# every edit there reaches only what is on show (Builder.shown_only).
+		if builder.is_ahead(brick.id):
+			out["later"] = int(out.get("later", 0)) + 1
+			continue
 		(out["ids"] as Array).append(brick.id)
 		if not _mirror_of(path, frames).is_empty():
 			(out["mirrored"] as Dictionary)[brick.id] = true
@@ -882,6 +887,8 @@ func listed(found: Dictionary) -> String:
 		if int(found["locked"]) > 0:
 			none += " %d locked %s left out: unlock to change them." % [int(found["locked"]),
 				"part is" if int(found["locked"]) == 1 else "parts are"]
+		if int(found.get("later", 0)) > 0:
+			none += " %d in later steps left out." % int(found["later"])
 		return none
 	var places := PackedStringArray()
 	for place: Dictionary in found["places"]:
@@ -898,6 +905,8 @@ func listed(found: Dictionary) -> String:
 		said += " All in %s." % colour_name(int((found["colours"] as Dictionary).keys()[0]))
 	if int(found["locked"]) > 0:
 		said += " %d locked left out." % int(found["locked"])
+	if int(found.get("later", 0)) > 0:
+		said += " %d in later steps left out." % int(found["later"])
 	return said
 
 

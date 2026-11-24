@@ -3504,6 +3504,9 @@ func _steps_revealed(ids: Dictionary) -> void:
 				ahead[brick.id] = true
 	_ahead_key = -1
 	_builder.lattice.ahead = ahead
+	# ...nor is it selected: a step back lets go of what it takes off.
+	if _builder.keep_shown() > 0:
+		_say_selected(_builder.selection.size(), _said_whole)
 	if ids.is_empty() and _verbs != null:
 		_verbs.apply_hidden()
 	else:
@@ -3523,19 +3526,31 @@ func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void
 			showing[order[n]] = true
 		_steps_revealed(showing)
 		return
+	# The parts this step put on or took off, when the order is the one the
+	# last step had: all keep_shown looks at (stepreview F3). Another order,
+	# the whole selection.
+	var changed: Variant = null
 	if key != _ahead_key:
 		_ahead_key = key
 		_ahead = {}
 		for n: int in range(count, order.size()):
 			_ahead[order[n]] = true
 	else:
+		var flipped := PackedInt64Array()
 		for n: int in range(mini(count, _ahead_count), maxi(count, _ahead_count)):
+			flipped.append(order[n])
 			if n >= count:
 				_ahead[order[n]] = true
 			else:
 				_ahead.erase(order[n])
+		changed = flipped
 	_ahead_count = count
 	_builder.lattice.ahead = _ahead
+	# A selection holds only what the step shows (Builder.shown_only): a step
+	# back lets go of the parts it takes off, and the line says what is
+	# selected now (stepreview F7).
+	if _builder.keep_shown(changed) > 0:
+		_say_selected(_builder.selection.size(), _said_whole)
 	# What the world's rebuild said before, when a step was a rebuild: a
 	# selection's outline round what is on show, and what is under a still
 	# pointer.
@@ -3549,6 +3564,39 @@ func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void
 var _ahead: Dictionary = {}
 var _ahead_key: int = -1
 var _ahead_count: int = 0
+## The sub-assembly the selection was all of when it last changed (""
+## for none), which a step's line names again ([method _say_selected]).
+var _said_whole: String = ""
+
+
+## The line for [param count] selected, all of [param whole] at this level
+## ("" for no one sub-assembly): its name, and at a step of the timeline how
+## many of its parts are on. Said again at a step that changes the
+## selection, counted from the kept index, so a step never reads the whole
+## selection again: "72 of its 149 parts on" stayed after a step on put 86
+## on (stepreview F7).
+func _say_selected(count: int, whole: String) -> void:
+	var of_all: int = _verbs.assemblies.bricks_under(whole).size() \
+		if not whole.is_empty() and _builder.at_a_step() and _verbs != null \
+			and _verbs.assemblies != null else 0
+	if count == 0:
+		_bar.say("")
+	elif of_all > count:
+		_bar.say("%s selected, %d of its %d parts on at this step — double-click edits inside a sub-assembly"
+			% [Assemblies.label(whole), count, of_all])
+	elif not whole.is_empty():
+		# A click took a sub-assembly whole: which, and the way to one
+		# of its parts, as a phone's line says (PhoneShell.hint, in a
+		# finger's words: hold, then Edit inside; a phone's double tap
+		# turns, so it is left to say it, never "double-tap"). "149
+		# selected — … C paints" at a set's fifth step, its house taken
+		# whole, said neither, and a colour then painted 149 parts
+		# (appwalk).
+		_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
+			% [Assemblies.label(whole), count])
+	else:
+		_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
+			% count)
 
 
 ## The longest a frame took, ms (Performance.TIME_PROCESS, the most of the
@@ -7087,6 +7135,10 @@ func _build_ui() -> void:
 	# A part put down while the timeline shows the author's steps goes in
 	# the step it is on.
 	_builder.place_step = _steps.place_step
+	# The step an edit reaches no further than, for what an edit says.
+	_builder.step_showing = func() -> int:
+		var at: Instructions.Step = _steps.current_step()
+		return at.number if at != null else -1
 	middle.add_child(_steps)
 	# The line over a phone's model kept above the bar as it opens, grows
 	# with a step's parts and goes: it was placed once, over the bar's five
@@ -7402,6 +7454,8 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	# Select all asked again at a step: the timeline to its end, every step.
+	_verbs.every_step = _steps.to_end
 	# A copy is the account's that made it (EditVerbs.account_changed).
 	_verbs.account = func() -> String: return _account.user_id if _account != null else ""
 	add_child(_verbs)
@@ -7682,21 +7736,10 @@ func _build_ui() -> void:
 		_look_under_again()
 		var whole: String = _verbs.assemblies.selected_assembly() \
 			if count > 1 and _phone == null and _verbs != null and _verbs.assemblies != null else ""
-		if count == 0:
-			_bar.say("")
-		elif not whole.is_empty():
-			# A click took a sub-assembly whole: which, and the way to one
-			# of its parts, as a phone's line says (PhoneShell.hint, in a
-			# finger's words: hold, then Edit inside; a phone's double tap
-			# turns, so it is left to say it, never "double-tap"). "149
-			# selected — … C paints" at a set's fifth step, its house taken
-			# whole, said neither, and a colour then painted 149 parts
-			# (appwalk).
-			_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
-				% [Assemblies.label(whole), count])
-		else:
-			_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
-				% count))
+		# Kept for a step's saying it again (_steps_revealed_upto): a step
+		# changes a sub-assembly's parts on show, never which it is.
+		_said_whole = whole
+		_say_selected(count, whole))
 	# The world is redrawn whenever anything in it changes, which
 	# includes a selected brick being removed by undo or replaced by the
 	# assistant. Without redrawing the outline then, it is a box round
@@ -12963,8 +13006,12 @@ func _nudge(screen_way: Vector3) -> void:
 
 
 func _nudge_by(cells: Vector3i) -> void:
-	if _builder.move_selection(cells) > 0:
+	var moved: int = _builder.move_selection(cells)
+	if moved > 0:
 		_on_model_edited()
+		# At a step, the sub-assembly whole: said, its later parts too.
+		if _builder.riding_later > 0:
+			_bar.say("moved %s — %s" % [EditVerbs._parts(moved), _builder.riding_said()])
 	else:
 		_bar.say("no room that way")
 
