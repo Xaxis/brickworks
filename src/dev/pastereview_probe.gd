@@ -14,6 +14,13 @@
 ## three cases more: a copy made by one account and pasted by another or after
 ## a sign-out (F2), and a copy one of whose parts can't be had (F1's refusal).
 ##
+## All of 10030-1 pasted in either tab is written as live writes it (a copy the
+## file never placed is no patch), and that write fits each copy's frame from
+## its parts (Assemblies.file_frames): 76 parts come back up to 0.44 LDU off,
+## and some mirror-symmetric pins and plates mirrored, the same for both tabs'
+## pastes and on appwalk (appfix FINDINGS.txt S1). So case 3 notes that drift
+## and checks the other tab's paste reopened against the same tab's.
+##
 ##   godot --headless --path . --script src/dev/pastereview_probe.gd
 ##
 ## Made parts go to user://pastereview_probe/, never the person's own.
@@ -67,6 +74,9 @@ var _verbs: EditVerbs
 var _store: ModelStore
 var _failures: int = 0
 var _notes: int = 0
+## The last comparison's spot and its model reopened (_compare).
+var _spot: Variant = null
+var _reopened: Array = []
 
 
 func _initialize() -> void:
@@ -147,7 +157,29 @@ func _case_big() -> void:
 	var ids: Array = []
 	for brick: BrickWorld.Brick in _shown():
 		ids.append(brick.id)
-	await _compare("10030", ids, true)
+	const DRIFT := "known: the live write fits each pasted copy's frame, appfix FINDINGS S1"
+	await _compare("10030", ids, true, Callable(), DRIFT)
+	var cross_back: Array = _reopened
+	# The same tab's paste, put down at the same spot, saved and reopened the
+	# same way: the other tab's must come back as it does.
+	await _open("res://vendor/omr/files/10030-1.mpd")
+	ids = []
+	for brick: BrickWorld.Brick in _shown():
+		ids.append(brick.id)
+	_select(ids)
+	_verbs.copy()
+	_builder.clear_selection()
+	_ok(_verbs.paste() == ids.size(), "10030 same tab: paste() holds all %d" % ids.size())
+	var put: Dictionary = await _put([_spot] if _spot is Vector3 else [])
+	_ok((put["ids"] as Array).size() == ids.size(), "10030 same tab: put down %d at %s, as the other tab's was"
+		% [(put["ids"] as Array).size(), put["spot"]])
+	var same_after: Array = _records_all()
+	var same_at: String = ProjectSettings.globalize_path(PROBE_DIR + "10030-same.mpd")
+	_ok(bool(_main.call("save_model", same_at)), "saved with the same tab's paste")
+	await _open(same_at)
+	var same_back: Array = _records_all()
+	_reopen_check("10030 same tab", same_after, same_back, DRIFT)
+	_same_place("10030: the other tab's paste reopened against the same tab's", same_back, cross_back, Vector3.ZERO)
 
 
 func _case_made() -> void:
@@ -379,7 +411,8 @@ func _case_cannot_have() -> void:
 ## other tab's paste put down at the same spot, recorded, compared; [param
 ## also] called after each put and undo with the stage; when [param reopen],
 ## the model saved with the other tab's paste and reopened.
-func _compare(tag: String, ids: Array, reopen: bool, also: Callable = Callable()) -> void:
+func _compare(tag: String, ids: Array, reopen: bool, also: Callable = Callable(),
+		drift_known: String = "") -> void:
 	if ids.is_empty():
 		_ok(false, "%s: nothing to copy" % tag)
 		return
@@ -456,15 +489,20 @@ func _compare(tag: String, ids: Array, reopen: bool, also: Callable = Callable()
 	var saved: bool = bool(_main.call("save_model", saved_at))
 	_ok(saved, "saved with the other tab's paste")
 	await _open(saved_at)
-	_reopen_check(tag, after, _records_all())
+	_spot = same_put["spot"]
+	_reopened = _records_all()
+	_reopen_check(tag, after, _reopened, drift_known)
 
 
-func _reopen_check(tag: String, before: Array, back: Array) -> void:
+## [param drift_known]: why the reopen is known to move parts, the drift noted
+## and not failed.
+func _reopen_check(tag: String, before: Array, back: Array, drift_known: String = "") -> void:
 	var offset: Vector3 = _centre(back) - _centre(before) if not back.is_empty() and not before.is_empty() \
 		else Vector3.ZERO
 	_ok(_part_colours(before) == _part_colours(back), "%s: reopened %d parts against %d saved; part:colour %s"
 		% [tag, back.size(), before.size(), _diff_counts(_part_colours(before), _part_colours(back))])
-	_same_place("%s: reopened, in place (whole model offset %s)" % [tag, offset], before, back, offset)
+	_same_place("%s: reopened, in place (whole model offset %s)" % [tag, offset], before, back, offset,
+		drift_known)
 
 
 # -- records ------------------------------------------------------------------------
@@ -608,14 +646,19 @@ func _pair(a: Array, b: Array, offset: Vector3) -> Dictionary:
 
 
 ## A check that [param b] has [param a]'s parts where [param a] has them: a
-## part not paired, or one more than half an LDU or 0.01 of a turn out, fails.
-func _same_place(said: String, a: Array, b: Array, offset: Vector3) -> void:
+## part not paired, or one more than half an LDU or 0.01 of a turn out, fails;
+## noted instead where [param known] says why it is known to.
+func _same_place(said: String, a: Array, b: Array, offset: Vector3, known: String = "") -> void:
 	var p: Dictionary = _pair(a, b, offset)
 	var bad: bool = int(p["unpaired_a"]) > 0 or int(p["unpaired_b"]) > 0 or float(p["origin"]) > 0.5 \
 		or float(p["basis"]) > 0.01
-	_ok(not bad, "%s: %d against %d parts; unpaired %d/%d; most apart %.5f LDU, rotation element %.7f; %d pairs past 0.01 LDU or 0.0001"
+	var words: String = "%s: %d against %d parts; unpaired %d/%d; most apart %.5f LDU, rotation element %.7f; %d pairs past 0.01 LDU or 0.0001" \
 		% [said, a.size(), b.size(), int(p["unpaired_a"]), int(p["unpaired_b"]), float(p["origin"]),
-			float(p["basis"]), int(p["over"])])
+			float(p["basis"]), int(p["over"])]
+	if bad and not known.is_empty():
+		_note("%s (%s)" % [words, known])
+	else:
+		_ok(not bad, words)
 	if int(p["over"]) > 0:
 		print("        worst: %s" % p["worst"])
 
