@@ -17694,3 +17694,39 @@ msgstr "su nombre tiene %d letras, y el de una pieza puede tener como mucho %d"
 
 msgid " (which %s stands in for)"
 msgstr " (al que sustituye %s)"
+
+msgid "Millimetres"
+msgstr "Milímetros"
+
+msgid "Centimetres"
+msgstr "Centímetros"
+
+msgid "Metres"
+msgstr "Metros"
+
+msgid "Inches"
+msgstr "Pulgadas"
+
+msgid "Read the file as measured in millimetres"
+msgstr "Leer el archivo como medido en milímetros"
+
+msgid "Read the file as measured in centimetres"
+msgstr "Leer el archivo como medido en centímetros"
+
+msgid "Read the file as measured in metres"
+msgstr "Leer el archivo como medido en metros"
+
+msgid "Read the file as measured in inches"
+msgstr "Leer el archivo como medido en pulgadas"
+
+msgid "%s does not say what it is measured in, and read as millimetres it is %s mm long, no part's size. What is it measured in?"
+msgstr "%s no dice en qué está medido, y leído en milímetros mide %s mm de largo, el tamaño de ninguna pieza. ¿En qué está medido?"
+
+msgid "say what its file is measured in first"
+msgstr "di primero en qué está medido su archivo"
+
+msgid "it is %s mm long, and a part may be at most %d mm (%d studs): make it smaller"
+msgstr "mide %s mm de largo, y una pieza puede medir como mucho %d mm (%d espigas): hazla más pequeña"
+
+msgid "%s has a corner whose place is not a number, so it is damaged: export it again from your 3D program."
+msgstr "%s tiene una esquina cuyo lugar no es un número, así que está dañado: expórtalo de nuevo desde tu programa 3D."

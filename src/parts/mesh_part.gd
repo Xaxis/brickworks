@@ -63,6 +63,18 @@ const STUD := 20.0
 const LATTICE := 2.0
 ## The sizes a person can say, and what one of each is in LDU.
 const UNITS: Dictionary = {"LDU": 1.0, "mm": LDU_PER_MM, "studs": STUD}
+## The longest a part may be, mm: past every one of LEGO's own (a 48 x 48
+## baseplate is 384 mm), and refused in a sentence before anything is made
+## ([method size_problem]). A part's cost to build is bounded whatever its
+## size (PartForge.MOST_CELLS); this is the size a part is.
+const MOST_MM := 400.0
+## The sizes a file's own units are read as millimetres without asking:
+## from about the smallest of LEGO's elements to the longest a part may be.
+## Outside them the file's units are asked ([member unit_unsure]): an STL
+## says none, and one 1.5 long may be in metres, or inches, or millimetres.
+const LEAST_MM := 4.0
+## What a file may be measured in, and how many millimetres one of each is.
+const FILE_UNITS: Dictionary = {"mm": 1.0, "cm": 10.0, "m": 1000.0, "inches": 25.4}
 
 ## The connectors one click puts, by the words on their buttons: [LDraw
 ## kind, gender, length, radius]. A bar is 3.18 mm across, a bar hole takes
@@ -134,8 +146,14 @@ var offset := Vector3.ZERO
 ## What the scale is made a hair larger or smaller by, so its height is a
 ## whole number of lattice steps ([method refit]); 1 for hair.
 var _snap: float = 1.0
-## The unit its size is said in, and the one guessed for the file.
+## The unit its size is said in.
 var unit: String = "mm"
+## What the file is read as measured in (a key of [constant FILE_UNITS]),
+## and whether that is a guess to ask about: its size read as millimetres
+## is no part's ([method guess_fit]). Answered by [method read_as], or by a
+## size given ([method set_longest]).
+var file_unit: String = "mm"
+var unit_unsure: bool = false
 ## Worn on a minifigure's head, seated by [method seat_on_head] or a
 ## socket put by hand.
 var hair: bool = false
@@ -158,16 +176,24 @@ var _column_cell: float = 1.0
 static func read(bytes: PackedByteArray, file_name: String,
 		extras: Dictionary = {}) -> MeshPart:
 	var out := MeshPart.new()
-	out.file = file_name.get_file()
-	out.name = _title_from(file_name.get_file().get_basename())
-	var kind: String = file_name.get_extension().to_lower()
+	# What it was called, read here once into words of ours: no line break or
+	# other control character of a file's name reaches the part's lines
+	# (mouldreview: a name holding a line break wrote a 0 FILE into it).
+	out.file = name_from(file_name.get_file())
+	var kind: String = out.file.get_extension().to_lower()
+	if out.file.get_basename().is_empty():
+		out.file = "file." + kind
+	out.name = _title_from(out.file.get_basename())
 	if not kind in KINDS:
 		out.problem = "%s is not a 3D file this can make a part from: choose an %s file." % [
 			out.file, NAMED]
 		return out
-	var mesh: MeshFile = MeshFile.read(bytes, file_name, extras)
+	var mesh: MeshFile = MeshFile.read(bytes, out.file, extras)
 	if not mesh.error.is_empty():
-		out.problem = mesh.error[0].to_upper() + mesh.error.substr(1) + "."
+		# A sentence's first letter, but a file's name as it is: "zero.stl
+		# has no surfaces", not "Zero.stl".
+		out.problem = (mesh.error if mesh.error.begins_with(out.file)
+			else mesh.error[0].to_upper() + mesh.error.substr(1)) + "."
 		return out
 	out.file_triangles = mesh.triangle_count()
 	if out.file_triangles > MOST_BROUGHT:
@@ -644,16 +670,57 @@ static func _furthest_from(points: PackedVector3Array, surface: PackedVector3Arr
 
 
 ## The size, upright and place a part from this file most likely wants: the
-## file's own units read as millimetres (what a printer's file is in) unless
-## it is under 2 of them, which is metres; centred, its top at the part's
-## origin, as a brick's is.
+## file's own units read as millimetres, what a printer's file is in;
+## centred, its top at the part's origin, as a brick's is. Where that makes
+## it no part's size (under [constant LEAST_MM] or over [constant MOST_MM])
+## the guess is asked about ([member unit_unsure]), never taken: up to
+## moulds2 a file under 2 long was read as metres without a word, and a
+## 1.5 mm part came out 1.5 m.
 func guess_fit() -> void:
 	var size: Vector3 = _source_box().size
 	var longest: float = maxf(size.x, maxf(size.y, size.z))
-	scale = LDU_PER_MM * (1000.0 if longest < 2.0 else 1.0)
+	scale = LDU_PER_MM
+	file_unit = "mm"
+	unit_unsure = longest < LEAST_MM or longest > MOST_MM
 	unit = "mm"
 	hair = false
 	refit()
+
+
+## The file read as measured in [param in_unit] (a key of [constant
+## FILE_UNITS]): what a person answers when asked ([member unit_unsure]).
+func read_as(in_unit: String) -> void:
+	if not FILE_UNITS.has(in_unit):
+		return
+	file_unit = in_unit
+	unit_unsure = false
+	if hair:
+		return
+	scale = LDU_PER_MM * float(FILE_UNITS[in_unit])
+	unit = "mm"
+	refit()
+
+
+## What is asked when its file's units are a guess ([member unit_unsure]):
+## its longest side as the file has it, read as millimetres, and the question.
+func unit_question() -> String:
+	var size: Vector3 = _source_box().size
+	return ("%s does not say what it is measured in, and read as millimetres it is %s mm long, "
+		+ "no part's size. What is it measured in?") % [file,
+		_short(maxf(size.x, maxf(size.y, size.z)))]
+
+
+## Why it cannot be made as it is, in words, or "": its file's units still
+## a guess, or longer than [constant MOST_MM]. Said before any of the part
+## is made ([method make]).
+func size_problem() -> String:
+	if unit_unsure:
+		return "say what its file is measured in first"
+	var mm: float = longest("mm")
+	if mm > MOST_MM + 0.05:
+		return "it is %s mm long, and a part may be at most %d mm (%d studs): make it smaller" % [
+			_short(mm), int(MOST_MM), int(MOST_MM * LDU_PER_MM / STUD)]
+	return ""
 
 
 ## The part's corners where they go: turned, sized and placed.
@@ -707,6 +774,8 @@ func set_longest(value: float, in_unit: String) -> void:
 		return
 	scale = value * float(UNITS.get(in_unit, 1.0)) / source
 	unit = in_unit
+	# A size given answers what the file is measured in.
+	unit_unsure = false
 	refit()
 
 
@@ -745,6 +814,8 @@ func refit() -> void:
 ## head_inside].
 func make_hair() -> void:
 	hair = true
+	# Sized as a hair piece, whatever its file is measured in.
+	unit_unsure = false
 	_snap = 1.0
 	_stand_as_hair()
 	unit = "mm"
@@ -1256,16 +1327,23 @@ func id_for(title: String) -> String:
 
 
 ## The part file: its triangles, its connectors, what it was made from.
+## Nothing a person typed or a file was called is written raw: the title is
+## [method name_from]'s words after a lead of ours, so it can never be the
+## line's first word (a title "FILE x" wrote "0 FILE x, Custom Shape", a
+## section of its own to every reader), and the file's name one [method
+## _token].
 func text(id: String, title: String) -> String:
-	var words: String = title.strip_edges().replace("\n", " ")
+	var words: String = name_from(title)
 	if words.is_empty():
-		words = name
+		words = name_from(name)
+	if words.is_empty():
+		words = "My shape"
 	var made: Dictionary = placed()
 	var size: Vector3 = box().size
 	var points: PackedVector3Array = fitted()
 	var faces := _faces(points)
 	var out := PackedStringArray()
-	out.append("0 Minifig Hair, Custom Shape %s" % words if hair else "0 %s, Custom Shape" % words)
+	out.append(("0 Minifig Hair, Custom Shape %s" if hair else "0 Custom Shape %s") % words)
 	out.append("0 Name: %s.dat" % id)
 	out.append("0 Author: " + AUTHOR)
 	out.append("0 !LDRAW_ORG Unofficial_Part")
@@ -1274,13 +1352,13 @@ func text(id: String, title: String) -> String:
 	out.append("")
 	if hair:
 		out.append("0 !CATEGORY Minifig Headwear")
-	out.append("0 !KEYWORDS Brickworks, own shape, %s" % file.get_extension().to_lower())
+	out.append("0 !KEYWORDS Brickworks, own shape, %s" % _token(file.get_extension().to_lower()))
 	out.append("")
 	out.append("%s%s file=%s triangles=%d size=%sx%sx%s" % [IMPORTED_BY,
-		(" from=%s" % HAIR_BASE) if hair else "", file.replace(" ", "_"), faces.size(),
+		(" from=%s" % HAIR_BASE) if hair else "", _token(file), faces.size(),
 		PartEditor._n(snappedf(size.x, 0.01)), PartEditor._n(snappedf(size.y, 0.01)),
 		PartEditor._n(snappedf(size.z, 0.01))])
-	out.append("0 // Made in Brickworks from %s, a 3D file of its maker's own." % file)
+	out.append("0 // Made in Brickworks from %s, a 3D file of its maker's own." % _token(file))
 	out.append("")
 	out.append("0 // Connectors, for programs that read them")
 	for c: Array in made["connectors"]:
@@ -1435,11 +1513,14 @@ func _creases(points: PackedVector3Array) -> PackedVector3Array:
 	return out
 
 
-## Made, added to the library and kept: {"id", "problem"}.
+## Made, added to the library and kept: {"id", "problem"}. Refused before
+## any of it is made where its size is no part's ([method size_problem]).
 func make(library: PartLibrary, title: String, keep: bool = true) -> Dictionary:
+	if not size_problem().is_empty():
+		return {"id": "", "problem": size_problem()}
 	var words: String = name_from(title)
 	if words.is_empty():
-		words = name
+		words = name_from(name)
 	if words.length() > MOST_NAME:
 		return {"id": "", "problem": _long_name(words)}
 	var id: String = id_for(words)
@@ -1451,9 +1532,11 @@ func make(library: PartLibrary, title: String, keep: bool = true) -> Dictionary:
 ## draws meanwhile: 9,000 triangles' text, cover and meshes are most of a
 ## second. Here and now where there are no threads. A coroutine.
 func make_built(library: PartLibrary, title: String, keep: bool = true) -> Dictionary:
+	if not size_problem().is_empty():
+		return {"id": "", "problem": size_problem()}
 	var words: String = name_from(title)
 	if words.is_empty():
-		words = name
+		words = name_from(name)
 	if words.length() > MOST_NAME:
 		return {"id": "", "problem": _long_name(words)}
 	var forge: GDScript = Later.script(&"PartForge")
@@ -1482,6 +1565,13 @@ static func name_from(title: String) -> String:
 			continue
 		out += " " if code in SubmodelFile.SPACES else title[n]
 	return " ".join(out.split(" ", false))
+
+
+## [param words] as one word of a line that programs read as key=value
+## ("file=wig_67.stl"): [method name_from]'s, with no space and no "=".
+static func _token(words: String) -> String:
+	var out: String = name_from(words).replace(" ", "_").replace("=", "_")
+	return out if not out.is_empty() else "file"
 
 
 static func _long_name(words: String) -> String:

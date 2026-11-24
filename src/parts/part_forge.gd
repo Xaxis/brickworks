@@ -550,7 +550,10 @@ func _add_polygon(points: PackedFloat64Array, color: int, reverse: bool,
 
 func _add_triangle(a: PackedFloat64Array, b: PackedFloat64Array, c: PackedFloat64Array,
 		color: int, two_sided: bool) -> void:
-	if _length(_cross(_sub(b, a), _sub(c, a))) * 0.5 <= 1e-9:
+	# Not "<= 1e-9" alone: a corner that is no number (a file's "nan") makes
+	# the area NaN, which compares false either way, and it was drawn.
+	var area: float = _length(_cross(_sub(b, a), _sub(c, a))) * 0.5
+	if not (area > 1e-9) or not is_finite(area):
 		return
 	_tri.append_array(a)
 	_tri.append_array(b)
@@ -1516,6 +1519,9 @@ class Grid extends RefCounted:
 	var origin := Vector3i.ZERO
 	var shape := Vector3i.ZERO
 	var bits := PackedByteArray()
+	## How many [constant CELL]s a side each of its cells is: 1 but for a
+	## part too big for [constant MOST_CELLS] of them ([method _voxelise]).
+	var grain: int = 1
 
 	func at(x: int, y: int, z: int) -> int:
 		return bits[(x * shape.y + y) * shape.z + z]
@@ -1531,7 +1537,43 @@ class Grid extends RefCounted:
 		out.origin = origin
 		out.shape = shape
 		out.bits = bits.duplicate()
+		out.grain = grain
 		return out
+
+
+## The most cells a part's cover is worked out in ([method _voxelise]). A
+## part's box holds them at [constant CELL] a side, as every part of the
+## library's own is made, while it has no more than this: a 48 x 48 baseplate
+## and anything smaller does. Past it the cells are a whole number of those a
+## side, the fewest that keep them under it, and the cover is the box's cells
+## at that grain ([method _build]). The cells of a box grow with the cube of
+## its size: a part 200 mm across was 15.6 million of them, 41 s and 2.2 GB,
+## and one 400 mm across went past 16 GB (mouldreview). So what a part costs
+## to build is its triangles and this, whatever its size.
+const MOST_CELLS := 1 << 20
+## How far from its origin a part's corners may be, LDU: 40 m. Further, its
+## cells' places are past the numbers a grid holds, and no part is so big.
+const FARTHEST := 100000.0
+
+
+## How many [constant CELL]s a side a cell of the grid over the box from
+## [param lo] to [param hi] (LDU, the app's axes) is: 1 while the box holds
+## no more than [constant MOST_CELLS] of them, else the fewest that keep it
+## so. Counted as floats: a box 40 m across is 10^13 cells.
+static func grain_for(lo: PackedFloat64Array, hi: PackedFloat64Array) -> int:
+	var cells: Callable = func(grain: int) -> float:
+		var size: float = CELL * grain
+		var out: float = 1.0
+		for n: int in 3:
+			out *= maxf(1.0, ceilf(hi[n] / size - 1e-9) - floorf(lo[n] / size + 1e-9))
+		return out
+	var whole: float = cells.call(1)
+	if whole <= MOST_CELLS:
+		return 1
+	var grain: int = maxi(2, floori(pow(whole / MOST_CELLS, 1.0 / 3.0)))
+	while cells.call(grain) > MOST_CELLS:
+		grain += 1
+	return grain
 
 
 ## occupancy.TIE: how far a column's ray is moved off its cell's middle to
@@ -1566,13 +1608,16 @@ func _voxelise() -> Grid:
 			app[v * 3 + n] = p[n]
 			lo[n] = minf(lo[n], p[n])
 			hi[n] = maxf(hi[n], p[n])
-	var origin := Vector3i(int(floor(lo[0] / CELL + 1e-9)), int(floor(lo[1] / CELL + 1e-9)),
-		int(floor(lo[2] / CELL + 1e-9)))
-	var extent := Vector3i(int(ceil(hi[0] / CELL - 1e-9)), int(ceil(hi[1] / CELL - 1e-9)),
-		int(ceil(hi[2] / CELL - 1e-9))) - origin
+	grid.grain = grain_for(lo, hi)
+	var cell: float = CELL * grid.grain
+	var origin := Vector3i(int(floor(lo[0] / cell + 1e-9)), int(floor(lo[1] / cell + 1e-9)),
+		int(floor(lo[2] / cell + 1e-9)))
+	var extent := Vector3i(int(ceil(hi[0] / cell - 1e-9)), int(ceil(hi[1] / cell - 1e-9)),
+		int(ceil(hi[2] / cell - 1e-9))) - origin
 	grid.origin = origin
 	grid.shape = Vector3i(maxi(1, extent.x), maxi(1, extent.y), maxi(1, extent.z))
-	var stabbed: Array = _stab(app, grid.origin, grid.shape, 0.0, 0.0, PackedByteArray())
+	var stabbed: Array = _stab(app, grid.origin, grid.shape, 0.0, 0.0, PackedByteArray(),
+		2.0 * TIE, cell)
 	grid.bits = stabbed[0]
 	var touchy: PackedByteArray = stabbed[1]
 	if not touchy.has(1):
@@ -1580,7 +1625,8 @@ func _voxelise() -> Grid:
 	var moved: Array[PackedByteArray] = []
 	var on: Array[PackedByteArray] = []
 	for step: Array in [[TIE, 0.0], [-TIE, 0.0], [0.0, TIE], [0.0, -TIE]]:
-		var stab: Array = _stab(app, grid.origin, grid.shape, step[0], step[1], touchy, ON_EDGE)
+		var stab: Array = _stab(app, grid.origin, grid.shape, step[0], step[1], touchy, ON_EDGE,
+			cell)
 		moved.append(stab[0])
 		on.append(stab[1])
 	var s: Vector3i = grid.shape
@@ -1605,16 +1651,18 @@ func _voxelise() -> Grid:
 
 ## occupancy._stab: [the cells inside by a ray up each column, dx and dz LDU
 ## off its middle; the columns (x * sz + z) whose rays are within band of an
-## edge of a triangle in plan]. Given columns, only those are stabbed.
+## edge of a triangle in plan]. Given columns, only those are stabbed. Cells
+## [param cell] LDU a side.
 static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx: float,
-		dz: float, columns: PackedByteArray, band: float = 2.0 * TIE) -> Array:
+		dz: float, columns: PackedByteArray, band: float = 2.0 * TIE,
+		cell: float = CELL) -> Array:
 	var every: bool = columns.is_empty()
 	var xs := PackedFloat64Array()
 	for i: int in shape.x:
-		xs.append((float(i + origin.x) + 0.5) * CELL + dx)
+		xs.append((float(i + origin.x) + 0.5) * cell + dx)
 	var zs := PackedFloat64Array()
 	for k: int in shape.z:
-		zs.append((float(k + origin.z) + 0.5) * CELL + dz)
+		zs.append((float(k + origin.z) + 0.5) * cell + dz)
 	var touchy := PackedByteArray()
 	touchy.resize(shape.x * shape.z)
 
@@ -1637,10 +1685,10 @@ static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx
 		var x1: float = maxf(ax, maxf(bx, cx))
 		var z0: float = minf(az, minf(bz, cz))
 		var z1: float = maxf(az, maxf(bz, cz))
-		var i0: int = maxi(0, int(floor(x0 / CELL)) - origin.x)
-		var i1: int = mini(shape.x - 1, int(ceil(x1 / CELL)) - origin.x)
-		var k0: int = maxi(0, int(floor(z0 / CELL)) - origin.z)
-		var k1: int = mini(shape.z - 1, int(ceil(z1 / CELL)) - origin.z)
+		var i0: int = maxi(0, int(floor(x0 / cell)) - origin.x)
+		var i1: int = mini(shape.x - 1, int(ceil(x1 / cell)) - origin.x)
+		var k0: int = maxi(0, int(floor(z0 / cell)) - origin.z)
+		var k1: int = mini(shape.z - 1, int(ceil(z1 / cell)) - origin.z)
 		if i0 > i1 or k0 > k1:
 			continue
 		# How far each barycentric coordinate moves when the ray moves band:
@@ -1677,7 +1725,7 @@ static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx
 	bits.resize(shape.x * shape.y * shape.z)
 	var y_base := PackedFloat64Array()
 	for j: int in shape.y:
-		y_base.append((float(j + origin.y) + 0.5) * CELL)
+		y_base.append((float(j + origin.y) + 0.5) * cell)
 	for column: int in crossings:
 		var hits: Array = crossings[column]
 		hits.sort_custom(PartForge._before)
@@ -3517,6 +3565,23 @@ func _skin_boxes() -> Array:
 	return boxes
 
 
+## The cover of a part too big for [constant MOST_CELLS] cells of [constant
+## CELL] ([method grain_for]): its cells at [param raw]'s grain, enclosed
+## voids filled, as boxes of whole [constant CELL]s. What reads the cells at
+## a stud's or a hole's size (a stud taken out of the cover, a bore cleared,
+## the sockets found under it) is not done at a grain that cannot see them:
+## the connectors it states are its joints, as they are any part's.
+func _coarse_cover(result: Result, raw: Grid) -> void:
+	var solid: Grid = _fill_cavities(raw)
+	var grain: int = raw.grain
+	result.cells = solid.count() * grain * grain * grain
+	for box: Array in _to_boxes(solid):
+		var scaled: Array = []
+		for n: int in 6:
+			scaled.append(int(box[n]) * grain)
+		result.boxes.append(scaled)
+
+
 func _build(text: String, id: String, others: Dictionary,
 		cover: Lbm.PartMesh = null, meshed: bool = true) -> Result:
 	var result := Result.new()
@@ -3541,6 +3606,11 @@ func _build(text: String, id: String, others: Dictionary,
 	if _tri_color.is_empty():
 		result.problem = "it has no faces"
 		return result
+	for v: float in _tri:
+		if absf(v) > FARTHEST:
+			result.problem = "it reaches more than %d LDU (40 m) from its origin, and no part is so big" \
+				% int(FARTHEST)
+			return result
 
 	var normals: PackedFloat64Array = _normals()
 	var surfaces: Array = _surfaces(normals)
@@ -3578,6 +3648,11 @@ func _build(text: String, id: String, others: Dictionary,
 			result.sockets.append([socket.x, socket.y])
 	else:
 		var raw: Grid = _voxelise()
+		if raw.grain > 1:
+			_coarse_cover(result, raw)
+			result.lbm = encode(surfaces, result.bounds_min, result.bounds_max,
+				result.connectors, result.boxes, result.sockets)
+			return with_mesh(result) if meshed else result
 		var solid: Grid = _clear_bores(_fill_cavities(_remove_studs(raw, found), found), found)
 		# A part with no connector at all that is a ring: its hole a bore
 		# (occupancy.open_ring, and build_meshes after it).

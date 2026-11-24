@@ -795,11 +795,18 @@ static func base_in(text: String) -> String:
 ## What a print or mould made here is called, said as the builder says
 ## it: "print: Captain", "mould: Quiff", "shape: Mohawk" (one's own 3D file).
 static func made_title(name: String) -> String:
+	# The lead the part's own text put first: one a title holds is after it
+	# ("Minifig Hair, Custom Shape Pirate, Custom Print Hat" is a shape).
+	var first: String = ""
+	var at: int = -1
 	for kind: String in ["Print", "Mould", "Shape"]:
-		var lead: String = ", Custom %s " % kind
-		if name.contains(lead):
-			return "%s: %s" % [kind.to_lower(), name.get_slice(lead, 1)]
-	return name
+		var found: int = name.find(", Custom %s " % kind)
+		if found >= 0 and (at < 0 or found < at):
+			first = kind
+			at = found
+	if at < 0:
+		return name
+	return "%s: %s" % [first.to_lower(), name.substr(at + (", Custom %s " % first).length())]
 
 
 ## The part a figure should treat this one as: a print's or mould's plain

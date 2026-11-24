@@ -47,6 +47,18 @@ func _initialize() -> void:
 	_refused("model.fbx", PackedByteArray([1, 2, 3]), "STL or OBJ")
 	var ball: PackedVector3Array = _sphere(260, 260)
 	_refused("too-fine.obj", _obj(ball), "at most 120,000")
+	# A corner that is no number, anywhere in the file (mouldreview: only a
+	# first one was refused, and "nan" was written into the part).
+	var cube: PackedVector3Array = _box(Vector3(8, 8, 8))
+	var nan_corner: PackedVector3Array = cube.duplicate()
+	nan_corner[17] = Vector3(NAN, 1.0, 2.0)
+	_refused("nan-corner.stl", _stl_binary(nan_corner), "not a number")
+	var endless: PackedVector3Array = cube.duplicate()
+	endless[5] = Vector3(1.0, INF, 2.0)
+	_refused("endless.stl", _stl_binary(endless), "not a number")
+	_sizes()
+	_names()
+	_forge_bounds()
 
 	print("\nbrought in: binary STL, ASCII STL, OBJ")
 	var goblet_bytes: PackedByteArray = _bytes(FIXTURES + "lego-goblet.stl")
@@ -185,6 +197,157 @@ func _initialize() -> void:
 	for id: String in worn:
 		await _wear(id)
 	_finish()
+
+
+## A file's units asked where read as millimetres it is no part's size, never
+## read as metres unsaid; a part longer than MeshPart.MOST_MM refused before
+## any of it is made (mouldreview: a 1.5-unit file came out 1.5 m, and a
+## 400 mm one went past 16 GB).
+func _sizes() -> void:
+	print("\nits size: the unit asked, the longest refused before any work")
+	var small: MeshPart = MeshPart.read(_stl_binary(_box(Vector3(1.5, 1.5, 1.5))), "small.stl")
+	_ok(small.problem.is_empty() and small.unit_unsure and small.unit_question().contains("1.5 mm")
+			and absf(small.longest("mm") - 1.5) < 0.2,
+		"a cube 1.5 across is asked about, not read as metres: %s" % small.unit_question())
+	var refused: Dictionary = small.make(_library, "Small")
+	_ok(str(refused["id"]).is_empty() and str(refused["problem"]).contains("measured in")
+			and not _library.parts.has("bw-small-s"),
+		"Add to parts before it is answered: %s" % refused["problem"])
+	small.read_as("m")
+	_ok(not small.unit_unsure and absf(small.longest("mm") - 1500.0) < 5.0
+			and small.size_problem().contains("at most 400 mm"),
+		"answered metres, it is 1.5 m, and refused in a sentence: %s" % small.size_problem())
+	var at: int = Time.get_ticks_msec()
+	var big: Dictionary = small.make(_library, "Small")
+	_ok(str(big["id"]).is_empty() and Time.get_ticks_msec() - at < 50,
+		"Add to parts refuses it in %d ms, before any of it is made" % (Time.get_ticks_msec() - at))
+	small.read_as("cm")
+	_ok(not small.unit_unsure and absf(small.longest("mm") - 15.0) < 0.5
+			and small.size_problem().is_empty(), "answered centimetres, 15 mm: %s" % small.size_words())
+	var huge: MeshPart = MeshPart.read(_stl_binary(_box(Vector3(500, 20, 20))), "beam.stl")
+	_ok(huge.unit_unsure and absf(huge.longest("mm") - 500.0) < 1.0,
+		"a file 500 long is asked about too: %s" % huge.unit_question())
+	huge.set_longest(400.0, "mm")
+	_ok(not huge.unit_unsure and huge.size_problem().is_empty(),
+		"a size given answers it, and 400 mm may be made: %s" % huge.size_words())
+	# Asked for 450, it is 460: its height is put on the lattice, as any size.
+	huge.set_longest(450.0, "mm")
+	_ok(huge.size_problem().contains("at most 400 mm") and huge.longest("mm") > 400.0,
+		"450 mm may not: %s" % huge.size_problem())
+	var goblet_sized: MeshPart = MeshPart.read(_stl_binary(_box(Vector3(8, 44, 8))), "plain.stl")
+	_ok(not goblet_sized.unit_unsure and goblet_sized.size_problem().is_empty(),
+		"a part of a part's size is not asked about: %s" % goblet_sized.size_words())
+
+
+## Nothing a file was called or a person typed reaches the part's lines raw
+## (mouldreview: a file name holding a line break wrote a 0 FILE and a 3001
+## into the part, and the model reopened without it).
+func _names() -> void:
+	print("\nnames: one safe token, made here")
+	var evil_name: String = "hat\n0 FILE injected.dat\n1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n.stl"
+	var evil: MeshPart = MeshPart.read(_stl_binary(_box(Vector3(8, 8, 8))), evil_name)
+	var made: Dictionary = evil.make(_library, "Hat")
+	var source: String = _library.custom_source(str(made["id"]))
+	_ok(str(made["problem"]).is_empty() and not source.contains("\n0 FILE")
+			and not source.contains("\n1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat")
+			and not source.contains("\r") and source.split("\n").size() == MeshPart.read(
+				_stl_binary(_box(Vector3(8, 8, 8))), "hat.stl").text("bw-x", "Hat").split("\n").size(),
+		"a file name with line breaks: no line of the part from it (%s)" % evil.file.c_escape())
+	var typed: Dictionary = evil.make(_library, "FILE typed.dat")
+	var typed_source: String = _library.custom_source(str(typed["id"]))
+	_ok(typed_source.begins_with("0 Custom Shape FILE typed.dat\n"),
+		"a title \"FILE typed.dat\" is words after a lead of ours: %s" % typed_source.get_slice("\n", 0))
+	var sneaky: Dictionary = evil.make(_library, "!BRICKWORKS CONNECTOR stud male 0 0 0 0 -1 0")
+	var sneaky_mesh: Lbm.PartMesh = _library.mesh_for(str(sneaky["id"]))
+	_ok(sneaky_mesh != null and sneaky_mesh.connectors.is_empty(),
+		"a title that reads as a connector line gives the part none: %d" % [
+			sneaky_mesh.connectors.size() if sneaky_mesh != null else -1])
+	# Written into a model and read back on a library that never saw them:
+	# each part whole, and nothing else in the file.
+	var ids: Array = [str(made["id"]), str(typed["id"]), str(sneaky["id"])]
+	var placements: Array = []
+	for id: String in ids:
+		placements.append(LdrModel.Placement.new(id, 4, Transform3D.IDENTITY, 0))
+	var saved: String = LdrModel.write_ldr(placements, "Names", "Probe", {},
+		CustomParts.sources_for(_library, ids))
+	var read: LdrModel = LdrModel.parse(saved, "names.mpd")
+	CustomParts.dir = PROBE_DIR + "elsewhere-names/"
+	var fresh := PartLibrary.new()
+	fresh.load_catalogue()
+	CustomParts.take_from(fresh, read)
+	CustomParts.dir = PROBE_DIR
+	var whole: int = 0
+	for id: String in ids:
+		if fresh.mesh_for(id) != null and _library.mesh_for(id) != null \
+				and fresh.mesh_for(id).triangle_count == _library.mesh_for(id).triangle_count:
+			whole += 1
+	_ok(read.embedded_parts.size() == 3 and whole == 3,
+		"saved and reopened where never made: %d files carried, %d of 3 parts whole" % [
+			read.embedded_parts.size(), whole])
+
+
+## The forge's cost is its triangles and PartForge.MOST_CELLS, whatever the
+## size: a part 1000 LDU across (400 mm) is built at a coarser grain, its
+## cover still round it; a corner that is no number is no triangle.
+func _forge_bounds() -> void:
+	print("\nthe forge: cells bounded, corners that are numbers")
+	var lo := PackedFloat64Array([-500.0, -1000.0, -500.0])
+	var hi := PackedFloat64Array([500.0, 0.0, 500.0])
+	var grain: int = PartForge.grain_for(lo, hi)
+	var cells: float = 1.0
+	for n: int in 3:
+		cells *= ceilf(hi[n] / (PartForge.CELL * grain)) - floorf(lo[n] / (PartForge.CELL * grain))
+	_ok(grain > 1 and cells <= PartForge.MOST_CELLS,
+		"a box 1000 LDU a side: cells %d LDU, %d of them (at most %d)" % [int(PartForge.CELL) * grain,
+			int(cells), PartForge.MOST_CELLS])
+	_ok(PartForge.grain_for(PackedFloat64Array([-480.0, -8.0, -480.0]),
+			PackedFloat64Array([480.0, 0.0, 480.0])) == 1,
+		"a 48 x 48 baseplate's box is built at 2 LDU as before")
+	var cube: String = _cube_text("bw-probe-big", 1000.0)
+	var at: int = Time.get_ticks_msec()
+	var built: PartForge.Result = PartForge.build(cube, "bw-probe-big", {}, true, null, false)
+	var took: int = Time.get_ticks_msec() - at
+	var covered := AABB()
+	for box: Array in built.boxes:
+		var one := AABB(Vector3(box[0], box[1], box[2]) * PartForge.CELL,
+			Vector3(box[3], box[4], box[5]) * PartForge.CELL)
+		covered = one if covered.size == Vector3.ZERO else covered.merge(one)
+	_ok(built.problem.is_empty() and covered.has_point(Vector3(0, 500, 0))
+			and covered.size.x >= 1000.0 and covered.size.x <= 1000.0 + 2.0 * PartForge.CELL * grain,
+		"a cube 1000 LDU a side built in %d ms, %d boxes round it: %s" % [took, built.boxes.size(),
+			covered])
+	# A number past any a float holds is endless, and one times nought no
+	# number: neither is a corner.
+	var endless_text: String = _cube_text("bw-probe-inf", 10.0).trim_suffix("0\n") \
+		+ "3 16 1e999 0 0 10 0 0 0 10 0\n1 16 0 0 0 1e999 0 0 0 1 0 0 0 1 bw-probe-tri.dat\n0\n"
+	var with_endless: PartForge.Result = PartForge.build(endless_text, "bw-probe-inf",
+		{"bw-probe-tri.dat": "0 Tri\n3 16 0 0 0 10 0 0 0 10 0\n"}, true, null, false)
+	_ok(with_endless.problem.is_empty() and with_endless.triangles == 12
+			and is_finite(with_endless.bounds_min[0]) and is_finite(with_endless.bounds_max[0]),
+		"a carried part's triangles with an endless corner, or a NaN one, are not drawn: %d triangles, bounds %s to %s" % [
+			with_endless.triangles, with_endless.bounds_min, with_endless.bounds_max])
+	var far: PartForge.Result = PartForge.build(_cube_text("bw-probe-far", 300000.0), "bw-probe-far",
+		{}, true, null, false)
+	_ok(far.problem.contains("40 m"), "one 300,000 LDU across is refused: %s" % far.problem)
+
+
+## A closed cube [param side] LDU a side as a part's text, its top at 0.
+static func _cube_text(id: String, side: float) -> String:
+	var h: float = side / 2.0
+	var lines := PackedStringArray(["0 Probe cube", "0 Name: %s.dat" % id, "0 BFC CERTIFY CCW"])
+	var c: Array[Vector3] = []
+	for n: int in 8:
+		c.append(Vector3(h if n & 1 else -h, -side if n & 2 else 0.0, h if n & 4 else -h))
+	for q: Array in [[0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2], [1, 3, 7, 5], [0, 2, 3, 1],
+			[4, 5, 7, 6]]:
+		# Outward by the right hand in the app's axes, as LDraw winds them.
+		for three: Array in [[q[0], q[2], q[1]], [q[0], q[3], q[2]]]:
+			var words := PackedStringArray(["3", "16"])
+			for k: int in three:
+				words.append_array([str(c[k].x), str(c[k].y), str(c[k].z)])
+			lines.append(" ".join(words))
+	lines.append("0")
+	return "\n".join(lines) + "\n"
 
 
 ## A figure wearing [param id] placed on a plate: where 3901 would be, the

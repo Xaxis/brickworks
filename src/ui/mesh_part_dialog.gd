@@ -29,6 +29,10 @@ var _title: Label
 var _status: Label
 var _size: SpinBox
 var _unit: OptionButton
+## What its file is measured in, asked where the guess is no part's size
+## (MeshPart.unit_unsure): a button for each unit, shown only then.
+var _ask: HFlowContainer
+var _asks: Dictionary = {}            ## file unit -> its Button
 var _size_words: Label
 var _hair: Button
 var _tools: Dictionary = {}           ## kind -> its Button
@@ -77,6 +81,12 @@ const TOOL_TIPS: Dictionary = {
 	"pin hole": "A Technic pin hole where you click, facing out of the surface",
 	"hair socket": "Under the crown of a hair piece: where the head's stud goes in",
 	"take off": "Click a connector to take it off"}
+## What a file may be measured in, by MeshPart.FILE_UNITS' keys.
+const FILE_UNIT_WORDS: Dictionary = {"mm": "Millimetres", "cm": "Centimetres", "m": "Metres",
+	"inches": "Inches"}
+const FILE_UNIT_TIPS: Dictionary = {"mm": "Read the file as measured in millimetres",
+	"cm": "Read the file as measured in centimetres", "m": "Read the file as measured in metres",
+	"inches": "Read the file as measured in inches"}
 const MARK_COLOURS: Dictionary = {
 	"stud": Color(1.0, 0.85, 0.2), "tube": Color(0.4, 0.8, 1.0), "shaft": Color(0.5, 1.0, 0.5),
 	"bore": Color(1.0, 0.55, 0.3), "pin_hole": Color(0.75, 0.55, 1.0)}
@@ -255,6 +265,14 @@ func _build() -> void:
 	_scroll.add_child(_controls)
 	_status = _words(_controls, "", 12)
 	_status.modulate = Color(1.0, 0.86, 0.6)
+	_ask = HFlowContainer.new()
+	_ask.add_theme_constant_override("h_separation", 6)
+	_ask.add_theme_constant_override("v_separation", 6)
+	_ask.visible = false
+	_controls.add_child(_ask)
+	for file_unit: String in MeshPart.FILE_UNITS:
+		_asks[file_unit] = _button(_ask, FILE_UNIT_WORDS[file_unit], _read_as.bind(file_unit),
+			FILE_UNIT_TIPS[file_unit])
 
 	_words(_controls, "Size: the longest side", 11).modulate = Color(1, 1, 1, 0.7)
 	var size_row := HBoxContainer.new()
@@ -433,7 +451,14 @@ func _refresh() -> void:
 	_hair.set_pressed_no_signal(part.hair)
 	_tools["hair socket"].visible = part.hair or for_hair
 	_size_words.text = part.size_words()
+	_ask.visible = part.unit_unsure
+	# Not made at a size no part is: said here, before the button is pressed.
+	_add.disabled = not part.size_problem().is_empty()
 	var said := PackedStringArray()
+	if part.unit_unsure:
+		said.append(part.unit_question())
+	elif not part.size_problem().is_empty():
+		said.append("It cannot be made: %s." % part.size_problem())
 	if not part.note.is_empty():
 		said.append(part.note)
 	if part.hair:
@@ -611,6 +636,15 @@ func _make_hair() -> void:
 	_frame_it()
 
 
+## The answer to what its file is measured in.
+func _read_as(file_unit: String) -> void:
+	if part == null or _busy:
+		return
+	part.read_as(file_unit)
+	_refresh()
+	_frame_it()
+
+
 func _choose_tool(kind: String) -> void:
 	var button: Button = _tools[kind]
 	_tool = kind if button.button_pressed else ""
@@ -748,6 +782,8 @@ func choose_tool(kind: String) -> void:
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"own_part_size": _size, "own_part_unit": _unit, "own_part_hair": _hair,
 		"own_part_name": _name, "own_part_add": _add, "own_part_choose": _choose}
+	for file_unit: String in _asks:
+		named["own_part_in_" + file_unit] = _asks[file_unit]
 	for kind: String in _tools:
 		named["own_part_" + kind.replace(" ", "_").replace("-", "_")] = _tools[kind]
 	return named

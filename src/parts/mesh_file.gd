@@ -133,6 +133,15 @@ static func read(bytes: PackedByteArray, file_name: String,
 		out.error = "%s has %d triangles; at most %d can be brought in" % [
 			file_name.get_file(), out.triangle_count(), MOST_TRIANGLES]
 		return out
+	# A corner whose place is not a number (a "nan" or an endless one), read
+	# here and nowhere later: a box drawn round the corners passes over it
+	# (AABB.expand skips NaN), and a part made from the file was written with
+	# "nan" in its lines, which LDraw has no word for (mouldreview).
+	for p: Vector3 in out.positions:
+		if not p.is_finite():
+			out.error = ("%s has a corner whose place is not a number, so it is damaged: export it "
+				+ "again from your 3D program") % file_name.get_file()
+			return out
 	# Filled in whole where a reader gave none, not a corner at a time: a
 	# scan has millions.
 	if out.colours.is_empty():
