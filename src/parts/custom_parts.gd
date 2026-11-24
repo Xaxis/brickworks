@@ -1203,6 +1203,16 @@ static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
 			_add_skin(library, built, str(entry["text"]))
 
 
+## Whether [method take_into] adds anything of [param model]'s to a library:
+## parts it carries (its FILE sections that are parts) or LDCad's flexible
+## parts made from its sub-models. A file with neither adds nothing, and an
+## open waits on no reader of the library for it: a set's file from its page,
+## which carries none, waited 2.0 to 3.9 s on the parts bin's readers in
+## some rounds (sethub, 2026-11-23).
+static func carries_any(model: LdrModel) -> bool:
+	return not model.embedded_parts.is_empty() or not model.generated.is_empty()
+
+
 ## Until no worker is reading [param library] (PartLibrary.being_read, which
 ## ends early those that can be), a frame at a time and ten seconds at most:
 ## adding a part to it waits for them, and waited for in one frame, reading

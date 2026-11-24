@@ -413,6 +413,24 @@ func write_now() -> String:
 	return autosave() if FileAccess.file_exists(autosave()) else ""
 
 
+## The working model written by the next [method tick], not once the change
+## has settled: over frames when it is big, as tick writes one. A model just
+## opened from the page's address is (Main._address_once_kept), which lets
+## the address go once it is kept ([method written], [method stored]):
+## written in one go ([method write_now]) a big set held a frame for it, 512
+## ms in a browser for 1,327 parts (progress_check, 2026-10-15).
+func write_soon() -> void:
+	if _pending:
+		_dirty_at = mini(_dirty_at, Time.get_ticks_msec() - AUTOSAVE_DELAY_MS)
+
+
+## Whether the working model, as it is now, is written to the autosave (its
+## way into the browser's storage is [method stored]'s), or is never written
+## by this run.
+func written() -> bool:
+	return not keeps or read_only or (not _pending and not _autosaving and not laying)
+
+
 ## Restore the working model from the last session, if there is one. How
 ## many of its parts come back: put down now, or on their way (on the web,
 ## parts not fetched yet go down as they arrive, and nothing may be opened
@@ -1732,7 +1750,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# finished (adding to it waits for those).
 	var taken: Array = []
 	if job != null:
-		await CustomParts.readers_done(library)
+		if CustomParts.carries_any(model):
+			await CustomParts.readers_done(library)
 		await CustomParts.take_into(taken, library, model, job)
 	else:
 		CustomParts.take_into(taken, library, model, null)
@@ -2383,10 +2402,13 @@ const READ_OFF_FRAME_FROM := 262144
 ## as soon as the file is read: fetched while the rest of the open goes on,
 ## and waited for before the model is drawn (_await_geometry). The parts the
 ## file's own copies are of first, as its carried parts wait for those alone
-## (CustomParts._fetch_copied). Asked again, nothing is asked twice.
-func ask_geometry(model: LdrModel) -> void:
-	library.want(_parts_named_in(model))
+## (CustomParts._fetch_copied). Asked again, nothing is asked twice. The
+## parts named, by the name each is laid under.
+func ask_geometry(model: LdrModel) -> Array:
+	var named: Array = _parts_named_in(model)
+	library.want(named)
 	library.want(CustomParts.copied_parts(library, model), true)
+	return named
 
 
 ## Every part [param model] places, by the name it is laid under
@@ -4747,7 +4769,8 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	# The parts it carries join the library first, as an open's do.
 	var took: Array = []
 	if job != null:
-		await CustomParts.readers_done(library)
+		if CustomParts.carries_any(model):
+			await CustomParts.readers_done(library)
 		await CustomParts.take_into(took, library, model, job)
 	else:
 		CustomParts.take_into(took, library, model, null)
