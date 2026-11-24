@@ -103,9 +103,26 @@ async function copyModel(id) {
 }
 
 async function copyVersions(id) {
-  for (const one of await rest(`share_versions?model=eq.${id}&select=n,at`)) {
-    await db.q(`insert into public.share_versions (model, n, at) select $1, $2, $3
-      where not exists (select 1 from public.share_versions v where v.model = $1 and v.n = $2)`, [id, one.n, one.at]);
+  for (const one of await rest(`share_versions?model=eq.${id}&select=n,at,steps`)) {
+    await db.q(`insert into public.share_versions (model, n, at, steps) select $1, $2, $3, $4
+      where not exists (select 1 from public.share_versions v where v.model = $1 and v.n = $2)`, [id, one.n, one.at, one.steps ?? null]);
+  }
+}
+
+/// Set [set]'s versions (set_asks.sql tells their builders): each model the
+/// project counts as the set's own (model_alt_sets, role own), copied with
+/// its owner, as the project lists it now.
+async function copySetVersions(set) {
+  if (!/^[a-z0-9][a-z0-9.-]{0,29}$/.test(String(set || ""))) return;
+  for (const one of await rest(`model_alt_sets?set_number=eq.${set}&role=eq.own&select=model,set_number,role,n,have`)) {
+    await copyModel(one.model);
+    const [now] = await rest(`shared_models?id=eq.${one.model}&select=published,barred,listed,listed_at,wip_at`);
+    if (now) {
+      await db.q("update public.shared_models set published = $2, barred = $3, listed = $4, listed_at = $5, wip_at = $6 where id = $1",
+        [one.model, now.published, now.barred, now.listed, now.listed_at, now.wip_at]);
+    }
+    await db.q(`insert into public.model_alt_sets (model, set_number, role, n, have) select $1, $2, $3, $4, $5
+      where exists (select 1 from public.shared_models m where m.id = $1) on conflict do nothing`, [one.model, one.set_number, one.role, one.n, one.have]);
   }
 }
 
@@ -133,6 +150,8 @@ async function copyNamed(name, body) {
   for (const key of ["account", "viewer", "p_account"]) if (UUID.test(String(body?.[key] || ""))) await copyAccount(body[key]);
   if (name === "talk_mention") await copyHandles(body.handles);
   if (MODEL.test(String(body?.p_model || ""))) await copyModel(body.p_model);
+  if (name === "talk_set_ask") await copySetVersions(String(body.p_set || ""));
+  if (MODEL.test(String(body?.p_drawn || ""))) await copyModel(body.p_drawn);
   if (name === "talk_ensure" || name === "talk_seed" || name === "talk_threads_of") await copyChallenges();
   if (name === "talk_ensure" || name === "talk_seed") for (const one of await rest("people?handle=eq.brickworks&select=account")) await copyAccount(one.account);
 }
@@ -217,6 +236,8 @@ export async function rowsOf(name) {
     posts: await db.q(`select id::int as id, thread::int as thread, author, first, hidden_at is not null as hidden,
       removed_at is not null as removed, answers::int as answers, left(body, 80) as said from public.talk_posts order by id`),
     mentions: await db.q("select post::int as post, account from public.talk_mentions order by 1, 2"),
+    heard: await db.q("select thread::int as thread, account from public.talk_ask_heard order by 1, 2"),
+    set_asks: await db.q("select id::int as id, ask_set, ask_library, ask_drawn, ask_version, ask_step from public.talk_threads where ask_set is not null order by id"),
     reports: await db.q("select post::int as post, reporter, reason, resolved_at is not null as resolved from public.talk_reports order by 1"),
     follows: await db.q("select account, thread::int as thread from public.talk_follows order by 2, 1"),
     bans: await db.q("select account, until from public.talk_bans order by 1"),

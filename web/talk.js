@@ -169,7 +169,8 @@ function onPart(part) {
 
 function startAsk() {
   const big = $(".talk-ask .picture[data-scene]");
-  if (!big || !askStart?.ask?.model) return;
+  // A model's ask, or a set's (asked on its page, api/_asks.js setAskHtml).
+  if (!big || !(askStart?.ask?.model || askStart?.ask?.set)) return;
   question3d.view = start3d(big, {
     // The step seen whole, 8% clear on every side (the view's buttons sit
     // at its edges), before anybody turns it.

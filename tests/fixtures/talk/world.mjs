@@ -37,6 +37,17 @@ export const NEEDS = `
   create table if not exists public.model_comments (id bigint primary key, model text, author uuid, parent bigint, version integer,
     step integer, body text, at timestamptz not null default now(), removed_at timestamptz, hidden_at timestamptz);
   create table if not exists public.acts_held (actor text not null, act text not null, at timestamptz not null default now());
+  -- A set's versions (alt_builds.sql's model_alt_sets, set_versions.sql), for set_asks.sql: whose they are.
+  alter table public.shared_models add column if not exists listed_at timestamptz,
+    add column if not exists wip_at timestamptz;
+  alter table public.share_versions add column if not exists steps integer;
+  create table if not exists public.model_alt_sets (model text not null, set_number text not null, role text not null,
+    n smallint not null default 0, have integer not null default 0, primary key (model, set_number));
+  -- wip.sql's, as production has it.
+  create or replace function public.gallery_shows(m public.shared_models, tests boolean) returns boolean language sql stable as $$
+    select m.published and m.listed and not m.barred and m.wip_at is null
+       and not exists (select 1 from public.barred_accounts b where b.account = m.owner)
+       and (not m.test or coalesce(tests, false)) $$;
 
   -- moderation.sql's, trust.sql's, block.sql's and follows.sql's, as they write them.
   create or replace function public.is_barred(account uuid) returns boolean language sql stable as $$
@@ -89,6 +100,8 @@ export async function talkWorld() {
   const pinShaped = /create or replace function public\.pin_shaped[\s\S]*?\n\$\$;\n/.exec(file("supabase/comment_pins.sql"))[0];
   await db.q(pinShaped);
   await db.q(file("supabase/talk_asks.sql"));
+  // And on a set's page (hubask): its versions' builders told.
+  await db.q(file("supabase/set_asks.sql"));
   await db.q("set check_function_bodies = on");
   const pool = [];
   for (let at = 0; at < 4; at += 1) pool.push(await db.connect());

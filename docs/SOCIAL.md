@@ -1799,6 +1799,39 @@ askhelp; `supabase/talk_asks.sql`, `api/_asks.js`, `web/talk.js`,
 What it does not do yet: show an asked step's earlier steps as ghosts, and
 let a builder ask about somebody else's model (they comment on its page).
 
+### 12a. Ask the builders on a set's page (2026-11-24)
+
+The same ask from where most builders are stuck: a real set's instructions,
+on its page (`/library/set/<n>`), not a model of their own. Nobody on the
+forums above can reach the people who built that very set; Brickworks
+knows them, as the set's versions (`model_alt_sets` role own). Unit
+hubask; `supabase/set_asks.sql`, `api/_asks.js`, `api/_talk.js`
+(`op=talk_set_ask`, `op=talk_set_asks`), `web/set-page.js`,
+docs-site/talk.md#set.
+
+- **One box, one step.** The set's page has a tab, Ask the builders: pick
+  the step (the whole set, or step 1 to N of the newest version that is
+  LDraw's model unchanged, as Build it numbers them; `?step=N` in the
+  address picks it), see that step in 3D in the box, say what you want to
+  know, Ask the builders. Signed out, it signs you in as it sends; then a
+  name, once.
+- **The same thread.** A Help thread, as a studio ask's: the step in 3D at
+  its top (that version's `scene.json?step=N`, or LDraw's file whole when
+  no version carries steps), Answer on this part, the dot on the part
+  (`talk_pin_reply`, checked against that version's file or LDraw's).
+- **Who hears of it.** The publishers of the set's versions, newest 24,
+  once each (`talk_ask_heard`), in Notifications as a mention of them
+  (*Ann asked the builders of LEGO® set 346-2 about step 3*): their
+  mention choice decides push and email, as it does for an @handle. Never
+  under 13, never shown privately, never somebody blocked either way, never
+  the other pool (a check's asks reach only checks' accounts).
+- **The page lists them.** Under the box, every ask about the set, newest
+  first, each linking its thread, *Answered* once somebody other than the
+  asker replied, else *Open*.
+
+What it does not do yet: an Ask button inside the studio's step player for
+a set (the address takes `?step=N`, so it is one link away).
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is

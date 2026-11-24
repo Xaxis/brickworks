@@ -1915,6 +1915,14 @@
       "tests": []
     },
     {
+      "id": "cli:hubask browser flow",
+      "kind": "cli",
+      "entry": "tools/web/hubask_flow.mjs",
+      "reach": "PG_MODULE=... PG_BIN=<postgres bin> node --env-file=$SCRATCH/flow.env tools/web/relay_server.mjs 11870 --hold=talk, then node --env-file=$SCRATCH/flow.env tools/web/hubask_flow.mjs --url=http://127.0.0.1:11870 --out=DIR   (two versions of 346-2 published, the refusals, the hub's ask at step 3 in 3D at 1280 and 390, the thread's 3D, the publishers' notices, an answer on a part, the hub listing it Answered)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:idle check",
       "kind": "cli",
       "entry": "tools/web/idle_check.mjs",
@@ -4599,6 +4607,14 @@
       "tests": []
     },
     {
+      "id": "lib:ask a set's builders",
+      "kind": "lib",
+      "entry": "supabase/set_asks.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/set_asks.sql --dry --try=tools/set_asks_try.sql --table=talk_threads   (after talk_asks.sql; talk_set_ask tells each version's publisher once (talk_ask_heard): never under 13, kept private, banned, blocked either way or of the other pool; talk_set_asks newest first with answered; talk_notice_rows' talk_mention rows with {ask: {set, step}}; talk_pin_reply and talk_ask_as take a set's ask)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:ask the builders in talk",
       "kind": "lib",
       "entry": "supabase/talk_asks.sql",
@@ -6490,6 +6506,14 @@
       "kind": "ui",
       "entry": "api/_asks.js",
       "reach": "https://brickworks.diy/talk/t/<n>: a thread asked from the studio shows the model in 3D at the asked step with the asked parts lit (web/talk.js, web/start3d.js, /m/<id>/scene.json?step=N); Answer on this part from the 3D's menu; POST /api/people?op=talk_ask, ?op=talk_reply {part}; GET ?op=talk_asks&model=X for the studio; in the app Share, Ask the builders, Ask in Talk (src/ui/share_panel.gd), new answers lit in the studio (src/ui/part_pins.gd)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:ask the builders on a set's page",
+      "kind": "ui",
+      "entry": "web/set-page.js",
+      "reach": "https://brickworks.diy/library/set/346-2#asks: the Ask the builders tab (api/_sets.js asksHtml): the step picker (?step=N picks it), the step in 3D in the box, Ask the builders (POST /api/people?op=talk_set_ask), the asks listed newest first with Answered or Open (GET ?op=talk_set_asks&set=N); the thread at /talk/t/<n> draws the step (api/_asks.js setAskHtml, /m/<version>/scene.json?step=N or /library/<id>/scene.json); a version's publisher's notice (api/_notifications.js noticeSaid)",
       "area": "web",
       "tests": []
     },
