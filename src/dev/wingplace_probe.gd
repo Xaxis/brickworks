@@ -70,6 +70,7 @@ func _run() -> void:
 	await _put_inside("saved and opened again")
 	await _key(KEY_Z, true)
 	await _beside()
+	await _big()
 
 	print("")
 	if _failures == 0:
@@ -236,6 +237,70 @@ func _cut_short(words: String) -> void:
 		calls += 1
 	_check("an ask cut short goes on where it stopped and says the same (%d calls: \"%s\")"
 		% [calls, answer], calls > 1 and answer != null and str(answer) == words)
+
+
+## What the ask costs a frame on a big set: the Millennium Falcon (10179)
+## opened, the copied sub-assembly of most parts edited, a plate aimed at
+## points all over it. The copies' fits are read once a model (what the
+## follow reads for every click there), timed and said; each aim after asks
+## for 4 ms at most, and one not done goes on next frame.
+func _big() -> void:
+	if not _tree.has_method("room_in_copies"):
+		return
+	var placed: int = _store.open(ProjectSettings.globalize_path("res://vendor/omr/files/10179-1.mpd"))
+	await _frames(20)
+	var most: String = ""
+	var size: int = 0
+	for path: String in _tree.paths():
+		var copies: int = _tree.copies_of(path).size()
+		var parts: int = _tree.ids_under(path).size()
+		if copies > 0 and parts > size:
+			most = path
+			size = parts
+	_check("10179 opened with a copied sub-assembly (%d parts; %s, %d parts, %d other copies)"
+		% [placed, most, size, _tree.copies_of(most).size() if not most.is_empty() else 0],
+		placed > 1000 and not most.is_empty())
+	if most.is_empty():
+		return
+	_tree.enter(most)
+	await _frames(3)
+	_bin._on_part("3023")
+	await _frames(5)
+	var box := AABB()
+	var first: bool = true
+	for brick_id: int in _tree.ids_under(most):
+		var b: BrickWorld.Brick = _world.get_brick(brick_id)
+		var mesh: Lbm.PartMesh = _library.mesh_for(b.part_id)
+		if mesh == null:
+			continue
+		var one: AABB = (b.transform * mesh.bounds).abs()
+		box = one if first else box.merge(one)
+		first = false
+	_camera.frame(box, 1.4)
+	await _frames(10)
+	# The fits read afresh, as after an edit: timed alone.
+	_tree.set("_copies_key", [])
+	var began: int = Time.get_ticks_usec()
+	_tree.call("_copies_laid")
+	var fits_us: int = Time.get_ticks_usec() - began
+	var slowest: int = 0
+	var aims: int = 0
+	var reds: int = 0
+	var size_px: Vector2 = Vector2(root.size)
+	for i: int in 6:
+		for j: int in 6:
+			var at := Vector2(size_px.x * (0.2 + 0.12 * i), size_px.y * (0.2 + 0.12 * j))
+			began = Time.get_ticks_usec()
+			_builder.update_preview(_camera.project_ray_origin(at), _camera.project_ray_normal(at))
+			slowest = maxi(slowest, Time.get_ticks_usec() - began)
+			aims += 1
+			reds += 0 if _builder.copies_refuse.is_empty() else 1
+			await _frames(1)
+	print("    10179's %s: its copies' fits read in %d us; %d aims, the slowest %d us (the aim's own work with the ask), %d red for a copy"
+		% [most, fits_us, aims, slowest, reds])
+	_check("...each aim with its ask within a frame's 16 ms (%d us)" % slowest, slowest < 16000)
+	await _key(KEY_ESCAPE)
+	_tree.enter("")
 
 
 ## The box round the wing being edited, on the ground.
