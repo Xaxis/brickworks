@@ -17749,9 +17749,6 @@ msgstr "le presse-papiers place plus de pièces qu'on ne peut en coller d'un cou
 msgid "Sign in with %s"
 msgstr "Se connecter avec %s"
 
-msgid "Signing in also makes your orangecheck account."
-msgstr "Se connecter crée aussi votre compte orangecheck."
-
 msgid "What is that?"
 msgstr "Qu'est-ce que c'est ?"
 
@@ -17790,3 +17787,12 @@ msgstr "%s ne vous a pas connecté pour le moment. Réessayez dans une minute, o
 
 msgid "Could not sign in with %s just now (%d). Try again in a minute."
 msgstr "Impossible de se connecter avec %s pour le moment (%d). Réessayez dans une minute."
+
+msgid "Signing in without orangecheck also makes your orangecheck account."
+msgstr "Vous connecter sans orangecheck crée aussi votre compte orangecheck."
+
+msgid "Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead."
+msgstr "Google ne se porte garant que des adresses Gmail et Google Workspace. Connectez-vous plutôt avec un code que nous vous envoyons par e-mail."
+
+msgid "This address has a Brickworks account already. Sign in with a code we email you. To sign in with %s here from then on, sign in with it once on the Brickworks website."
+msgstr "Cette adresse a déjà un compte Brickworks. Connectez-vous avec un code que nous vous envoyons par e-mail. Pour vous connecter ici avec %s par la suite, utilisez-le une fois sur le site de Brickworks."

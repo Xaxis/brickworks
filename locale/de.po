@@ -17749,9 +17749,6 @@ msgstr "was in der Zwischenablage ist, setzt mehr Teile, als auf einmal eingefü
 msgid "Sign in with %s"
 msgstr "Mit %s anmelden"
 
-msgid "Signing in also makes your orangecheck account."
-msgstr "Mit der Anmeldung bekommst du auch dein orangecheck-Konto."
-
 msgid "What is that?"
 msgstr "Was ist das?"
 
@@ -17790,3 +17787,12 @@ msgstr "%s hat dich gerade nicht angemeldet. Versuch es in einer Minute noch ein
 
 msgid "Could not sign in with %s just now (%d). Try again in a minute."
 msgstr "Die Anmeldung mit %s hat gerade nicht geklappt (%d). Versuch es in einer Minute noch einmal."
+
+msgid "Signing in without orangecheck also makes your orangecheck account."
+msgstr "Wenn du dich ohne orangecheck anmeldest, bekommst du auch dein orangecheck-Konto."
+
+msgid "Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead."
+msgstr "Google bürgt nur für Gmail- und Google-Workspace-Adressen. Melde dich stattdessen mit einem Code an, den wir dir mailen."
+
+msgid "This address has a Brickworks account already. Sign in with a code we email you. To sign in with %s here from then on, sign in with it once on the Brickworks website."
+msgstr "Für diese Adresse gibt es schon ein Brickworks-Konto. Melde dich mit einem Code an, den wir dir mailen. Damit dich %s hier künftig anmeldet, melde dich einmal auf der Brickworks-Website damit an."

@@ -244,14 +244,20 @@ async function handler(request, response) {
 /// The orangecheck account of [claims]' account made, after the answer,
 /// when its session is a sign-in of the last 15 minutes and Connect is set
 /// up here (api/_oc.js ensureOrangecheck); said in the log when it is not
-/// made for a reason worth reading (orangecheck out, its daily limit).
+/// made for a reason worth reading (orangecheck out, its daily limit). Not
+/// asked while what started the session cannot be read: its address would
+/// go as unchecked when it may be a code's, and the next request asks.
 function wrapOrangecheck(claims) {
   if (!process.env.OC_CONNECT_KEY) return;
   afterAnswer(async () => {
     const { codeOf, ensureOrangecheck, signedInJustNow } = await import("./_oc.js");
     if (!signedInJustNow(claims)) return;
-    const { emailed } = await codeOf(claims).catch(() => ({ emailed: null }));
-    const done = await ensureOrangecheck(claims, emailed);
+    const asked = await codeOf(claims).catch((trouble) => {
+      console.error(`account: orangecheck not asked, the sign-in not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+      return null;
+    });
+    if (!asked) return;
+    const done = await ensureOrangecheck(claims, asked.emailed);
     if (!done.made && !["has_orangecheck", "has_one", "asked_just_now"].includes(done.reason)) {
       console.error(`account: no orangecheck account made at a sign-in: ${done.reason}`);
     }

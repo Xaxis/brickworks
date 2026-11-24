@@ -14,7 +14,7 @@
 // page as text, never as markup; a link is built from an id or a handle
 // only when it is one. Each tab asks for its own when it is first opened
 // and draws what came, so one that cannot be read leaves the others.
-import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn, takeWay, wayFailed } from "/account.js";
+import { age, askAgeIfAsked, askToSignIn, bindWay, call, signOut, signedIn, takeWay, wayFailed } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
 import { ask, avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
 import { counted, langAt, minifigOf, number, say, setPhoto, sharpPhotos, told } from "/card.js";
@@ -802,8 +802,11 @@ function draw() {
 //
 // Or back from Google or GitHub (signin3, ?with=google or github: api/_ways.js
 // sends every sign-in with them here): the session the server left this
-// browser taken (takeWay), the age question if it is to be asked, and on to
-// the page they were on: then, any page of this site, never another's.
+// browser taken (takeWay) with the verifier of take, its challenge, the age
+// question if it is to be asked, and on to the page they were on: then, any
+// page of this site, never another's. GitHub come to an account it has not
+// signed in to (failed=confirm): signed in with a code first, then GitHub's
+// id kept for the account (bindWay), then on.
 const via = new URLSearchParams(location.search).get("with") || "";
 const byWay = via === "google" || via === "github";
 const back = (() => {
@@ -813,7 +816,9 @@ const back = (() => {
 })();
 // Refused there or on the way back: why, in words, for the sign-in to say.
 const wayRefused = byWay ? new URLSearchParams(location.search).get("failed") || "" : "";
+const wayChallenge = byWay ? new URLSearchParams(location.search).get("take") || "" : "";
 let wayTaken = false;
+let wayBinding = wayRefused === "confirm";
 
 // Come from the app's Sign in with orangecheck (src/ui/sign_in_form.gd):
 // its button first, and words for the one more press its window needs.
@@ -847,7 +852,7 @@ async function load({ ask = true } = {}) {
   let wayWords = "";
   if (byWay && !wayTaken) {
     wayTaken = true;
-    const took = wayRefused ? { error: wayFailed(wayRefused, via) } : await takeWay();
+    const took = wayRefused ? { error: wayFailed(wayRefused, via) } : await takeWay(wayChallenge);
     if (took.error) {
       wayWords = took.error;
     } else {
@@ -862,7 +867,23 @@ async function load({ ask = true } = {}) {
       }
     }
   }
-  if (back && signedIn()) {
+  // Signed in with a code just now: GitHub's id kept, then on. Signed in
+  // before that, the code is asked for first (the server wants one emailed
+  // in the last five minutes).
+  // Not now: on, without it. Refused: said here, on this page.
+  let wayStay = false;
+  if (wayBinding && signedIn()) {
+    const bound = await bindWay();
+    // Signed in with the code, brickworks:signed-in-done (below) binds it.
+    if (bound.fresh === false && (await askToSignIn(wayFailed("confirm", via), { then: back }))) return;
+    wayBinding = false;
+    if (bound.error) {
+      toast(bound.error);
+      wayStay = true;
+      history.replaceState(null, "", location.pathname);
+    }
+  }
+  if (back && signedIn() && !wayStay) {
     location.replace(back);
     return;
   }

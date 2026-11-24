@@ -501,6 +501,11 @@ func sign_in_with_way(name: String) -> String:
 			return "Signing in with %s was cancelled there." % said
 		"unverified":
 			return "%s gave no verified email address of yours. Sign in with a code we email you instead." % said
+		"vouch":
+			return "Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead."
+		"confirm":
+			return ("This address has a Brickworks account already. Sign in with a code we email you. To sign in "
+				+ "with %s here from then on, sign in with it once on the Brickworks website.") % said
 		"unlinked":
 			return ("%s is unlinked from your account. Sign in with a code we email you, "
 				+ "then link it again in Settings.") % said

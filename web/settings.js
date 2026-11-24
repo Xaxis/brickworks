@@ -17,7 +17,7 @@
 // own and draws what came, so one that cannot be read leaves the others.
 import {
   age, askAgeIfAsked, askToSignIn, betaOpen, call, codeLength, email, madeUp, orangecheckButton, redeem, sendCode, signOut,
-  signedIn, WAY_NAMES, wayLink, wayMark,
+  signedIn, WAY_NAMES, wayLink, wayLinkTo, wayMark,
 } from "/account.js";
 import { langAt, say, told } from "/card.js";
 import { codeBoxes } from "/code-boxes.js";
@@ -283,7 +283,7 @@ async function ways(given = null) {
     let end;
     if (state === "never") {
       end = make("a", "cta ghost small", name === "google" ? say("Sign in with Google") : say("Sign in with GitHub"));
-      end.href = wayLink(name, `${langAt()}/settings#ways-part`);
+      wayLinkTo(end, wayLink(name, `${langAt()}/settings#ways-part`));
     } else {
       end = make("button", "link", state === "on" ? say("Unlink") : say("Link again"));
       end.type = "button";
@@ -291,6 +291,16 @@ async function ways(given = null) {
         end.disabled = true;
         const done = await call("/api/otp?op=ways", { method: "POST", body: { with: name, on: state !== "on" } }).catch(() => null);
         const took = done && done.status === 200;
+        // Unlinked, what it signed in ends, this session too when it was one
+        // (api/_ways.js waysRoute): signed out here, and asked for a code.
+        if (took && done.body?.signed_out) {
+          signOut();
+          showFeedCount().catch(() => null);
+          await load();
+          askToSignIn(say("{way} no longer signs you in. You had signed in here with it, so sign in again with a code we email you.",
+            { way: WAY_NAMES[name] }));
+          return;
+        }
         // The list from the answer first, then what was done: said before
         // it, the old row stood beside the words a moment (signin3 flow).
         await ways(took ? done : null);

@@ -199,7 +199,7 @@ func setup(with_account: Account) -> void:
 	_made.add_theme_constant_override("separation", 6)
 	_made.visible = false
 	var made_said := Label.new()
-	made_said.text = "Signing in also makes your orangecheck account."
+	made_said.text = "Signing in without orangecheck also makes your orangecheck account."
 	made_said.add_theme_font_size_override("font_size", 12)
 	made_said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	made_said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -409,8 +409,17 @@ func _to_way(name: String) -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 		Account.came()
-		JavaScriptBridge.eval("location.assign('/auth/%s?then=' " % name
-			+ "+ encodeURIComponent(location.pathname + location.search))", true)
+		# With the challenge of a verifier this page keeps, as the site's own
+		# links have (web/account.js wayLink, the same bw_way_takes): the
+		# session /profile takes on the way back opens only with it.
+		JavaScriptBridge.eval(("(async () => {"
+			+ " const b64 = (u) => btoa(String.fromCharCode(...u)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');"
+			+ " const v = b64(crypto.getRandomValues(new Uint8Array(32)));"
+			+ " const c = b64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v))));"
+			+ " let kept = {}; try { kept = JSON.parse(localStorage.getItem('bw_way_takes') || '{}') || {}; } catch (_) {}"
+			+ " kept[c] = { v: v, t: Date.now() }; localStorage.setItem('bw_way_takes', JSON.stringify(kept));"
+			+ " location.assign('/auth/%s?' + new URLSearchParams({ then: location.pathname + location.search, take: c }));"
+			+ " })()") % name, true)
 		return
 	_oc_say("Finish signing in with %s in your browser." % said, true)
 	_oc_cancel.visible = true

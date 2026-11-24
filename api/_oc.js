@@ -36,7 +36,7 @@
 // the token is taken as the window's is: checkToken, then the same
 // sign-in.
 
-import { forgetSessions, isTestAccount, sessionEnded, sessionOf } from "./_auth.js";
+import { forgetSessions, isTestAccount, sessionEnded, sessionOf, sessionWay } from "./_auth.js";
 import { db } from "./_db.js";
 import { audiences, nativeOffered, ocConfigured, ocHosts } from "./_oc_config.js";
 import {
@@ -271,11 +271,13 @@ export function connectConfigured() {
 /// An orangecheck account made for [account], which signed in, told that
 /// signing in makes one (ensureOrangecheck; until signin3 it ticked a box):
 /// {made, did} or {made: false, reason}. Asked of orangecheck with consent
-/// and the account's id; and with [emailed], when the request is a fresh
-/// emailed code's for that address (codeOf), the address as verified, so
-/// that signing in to ochk.app with it offers the account to claim. Written
-/// down first, so deleting the account deletes that one too whatever the
-/// answer. And once orangecheck has answered, kept only while the account
+/// and the account's id, and with [address] ({email, verified}), so that
+/// signing in to ochk.app with it offers the account to claim: verified
+/// only when the request is a fresh emailed code's for that very address
+/// (codeOf), as orangecheck asked (2026-10-24), never on Google's or
+/// GitHub's word (signinreview F2). Its row is claimed first
+/// (ensureOrangecheck), so deleting the account deletes that one too
+/// whatever the answer. And once orangecheck has answered, kept only while the account
 /// is neither gone nor marked as leaving in the last 15 minutes
 /// (supabase/orangecheck_connect_leaving.sql): one deleted while
 /// orangecheck was asked, even on a first tick that began after its
@@ -284,17 +286,11 @@ export function connectConfigured() {
 /// is deleted at once, and the answer is {made: false, reason:
 /// "account_leaving"}. Never throws: a refusal or an outage is an answer,
 /// as Connect's own calls give them.
-export async function provision(account, emailed = null) {
-  try {
-    await db("rpc/oc_connect_asked", { method: "POST", body: { account } });
-  } catch (trouble) {
-    console.error(`orangecheck: Connect not asked, nothing kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    return { made: false, reason: "unavailable" };
-  }
+export async function provision(account, address = null) {
   let made;
   try {
     made = await connectProvision({ apiKey: process.env.OC_CONNECT_KEY, userId: account, consent: true,
-      ...(emailed ? { email: emailed, emailVerified: true } : {}) });
+      ...(address ? { email: address.email, emailVerified: address.verified === true } : {}) });
   } catch (trouble) {
     console.error(`orangecheck: Connect: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return { made: false, reason: "unavailable" };
@@ -317,11 +313,6 @@ export async function provision(account, emailed = null) {
 // ensureOrangecheck: Supabase keeps the sign-in's own time in amr through
 // every renewal, so a session left open for days is not one.
 const SIGNED_IN_JUST_NOW_S = 900;
-// Connect asked for an account this recently is not asked again: a page
-// asks /api/account several times as it opens, and orangecheck slow or down
-// is asked again after this, while the sign-in is still just now, and at
-// the next sign-in.
-const ASK_AGAIN_MS = 60_000;
 
 /// Whether the session behind [claims] began in the last 15 minutes.
 export function signedInJustNow(claims, now = Date.now()) {
@@ -338,13 +329,15 @@ export function signedInJustNow(claims, now = Date.now()) {
 /// site's dialog and /profile, and the app, ask it as soon as they are
 /// signed in), never in the sign-in's way. None for an account that has
 /// orangecheck (signed in with it, or linked) or one Connect made already
-/// (that one is kept and reused: never two); none asked again within a
-/// minute of the last ask. [emailed], the address when this session is a
-/// fresh emailed code's (codeOf), goes to orangecheck as verified, so that
-/// signing in to ochk.app with it offers the account to claim; a session
-/// Google or GitHub started (api/_ways.js) is minted from a one-time link,
-/// as orangecheck's is, and its address is the one Google or GitHub said is
-/// verified. {made, did} or {made: false, reason}; throws when the database
+/// (that one is kept and reused: never two). The ask is claimed in one
+/// statement (oc_connect_claim, supabase/sign_in_ways.sql): of the first
+/// requests of a sign-in, made at once, one asks, and none again within a
+/// minute (signinreview F6: each of six asked when the minute was read,
+/// then written). The account's address goes with it, as verified when
+/// [emailed] is that address (codeOf: a code emailed in the last five
+/// minutes), as one orangecheck has still to check otherwise: a sign-in
+/// with Google or GitHub, or the age answered after those five minutes
+/// (F11). {made, did} or {made: false, reason}; throws when the database
 /// cannot be read.
 export async function ensureOrangecheck(claims, emailed = null) {
   if (!connectConfigured()) return { made: false, reason: "not_here" };
@@ -355,10 +348,16 @@ export async function ensureOrangecheck(claims, emailed = null) {
   ]);
   if (did) return { made: false, reason: "has_orangecheck" };
   if (connected?.did) return { made: false, reason: "has_one", did: connected.did };
-  if (connected?.asked_at && Date.now() - Date.parse(connected.asked_at) < ASK_AGAIN_MS) {
-    return { made: false, reason: "asked_just_now" };
+  let claimed;
+  try {
+    claimed = await db("rpc/oc_connect_claim", { method: "POST", body: { account: claims.sub } });
+  } catch (trouble) {
+    console.error(`orangecheck: Connect not asked, nothing kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { made: false, reason: "unavailable" };
   }
-  return provision(claims.sub, emailed);
+  if (claimed !== true) return { made: false, reason: "asked_just_now" };
+  const email = String(claims.email || "").trim().toLowerCase();
+  return provision(claims.sub, email ? { email, verified: Boolean(emailed) && emailed === email } : null);
 }
 
 /// The orangecheck account Connect made for [account], asked to be deleted
@@ -492,27 +491,31 @@ export async function sessionStanding(claims, method) {
 const FRESH_SECONDS = 300;
 
 /// The session behind [claims], as linking, unlinking and deleting ask
-/// after it: {bound, fresh, emailed}. bound, when orangecheck started it;
-/// fresh, when it is an emailed code of the last five minutes; emailed, the
-/// address that code went to, when it is one (amr otp alone, never a test
-/// account's password), which Connect may send orangecheck as verified
-/// (orangecheck's answer, 2026-10-24). A session
-/// orangecheck started says "otp" too (it is minted from a one-time link),
-/// so it is told apart by its binding, and is never fresh. Nor is a
-/// password, but a test account's (tools/web/session.mjs), whose address
-/// nobody can receive mail at: anybody signed in could set a password on
-/// their account (oc188's review, H1; supabase/no_new_ways_in.sql now
-/// refuses it). Throws when the binding cannot be read.
+/// after it: {bound, way, fresh, emailed}. bound, when orangecheck started
+/// it; way, google or github when either did (api/_ways.js); fresh, when it
+/// is an emailed code of the last five minutes; emailed, the address that
+/// code went to, when it is one (amr otp alone, never a test account's
+/// password), which Connect may send orangecheck as verified (orangecheck's
+/// answer, 2026-10-24). A session orangecheck, Google or GitHub started
+/// says "otp" too (each is minted from a one-time link), so each is told
+/// apart by what was written down as it was handed out, and is never fresh
+/// (signinreview F2: a GitHub sign-in passed linking's step-up, with no
+/// code sent). Nor is a password, but a test account's
+/// (tools/web/session.mjs), whose address nobody can receive mail at:
+/// anybody signed in could set a password on their account (oc188's
+/// review, H1; supabase/no_new_ways_in.sql now refuses it). Throws when
+/// either record cannot be read.
 export async function codeOf(claims) {
-  const session = claims.session_id ? await sessionOf(claims.session_id) : null;
+  const [session, way] = claims.session_id
+    ? await Promise.all([sessionOf(claims.session_id), sessionWay(claims.session_id)]) : [null, null];
   const amr = Array.isArray(claims.amr) ? claims.amr : [];
   const bound = Boolean(session && session.bound);
-  const recent = (one) => Boolean(one && session && session.exists && !bound
+  const recent = (one) => Boolean(one && session && session.exists && !bound && !way
     && Date.now() / 1000 - Number(one.timestamp) <= FRESH_SECONDS);
   const fresh = recent(amr.find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims))));
   const address = String(claims.email || "").trim().toLowerCase();
   const emailed = recent(amr.find((one) => one?.method === "otp")) && address && !madeUp(address) ? address : null;
-  return { bound, fresh, emailed };
+  return { bound, way, fresh, emailed };
 }
 
 /// Whether a Claude connection approved while signed in with orangecheck

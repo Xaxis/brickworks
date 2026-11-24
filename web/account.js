@@ -20,8 +20,9 @@
 //
 // Or with Google or GitHub (signin3, 2026-11-24): a link to /auth/google or
 // /auth/github, which go there and back (api/_ways.js) and land on /profile,
-// which takes the session the server left for it (takeWay) and goes on to
-// the page the person was on. The same account as their code's, for the
+// which takes the session the server left for it (takeWay), with the
+// verifier this browser made for it as the link was drawn (wayLink), and
+// goes on to the page the person was on. The same account as their code's, for the
 // same address. And every sign-in also makes the person's orangecheck
 // account, once, on the server (api/_oc.js ensureOrangecheck), which the
 // dialog says in one line with a link, where Connect is set up: there is no
@@ -432,18 +433,77 @@ export async function waysOffer() {
 /// Google and GitHub by their names, as their buttons say them.
 export const WAY_NAMES = { google: "Google", github: "GitHub" };
 
+// The verifiers this browser made for the sessions Google and GitHub hand
+// back (api/_ways.js wayTake), by their S256 challenge, for 15 minutes:
+// made as a Sign in with Google or GitHub is drawn, its challenge sent with
+// it, and taken by /profile as the sign-in lands. The session the callback
+// leaves in a cookie opens only with its verifier, and only once
+// (signinreview F1, F4). In localStorage, so a sign-in finished in another
+// tab or window than the one it was started from finds it too.
+const TAKES = "bw_way_takes";
+const TAKE_MS = 900_000;
+
+function takesKept() {
+  try {
+    const all = JSON.parse(localStorage.getItem(TAKES) || "{}");
+    return Object.fromEntries(Object.entries(all && typeof all === "object" ? all : {})
+      .filter(([, one]) => typeof one?.v === "string" && Date.now() - Number(one.t) < TAKE_MS));
+  } catch {
+    return {};
+  }
+}
+
+function takesKeep(all) {
+  try {
+    localStorage.setItem(TAKES, JSON.stringify(all));
+  } catch {
+    // Storage refused: the take then finds no verifier, and says to sign in again.
+  }
+}
+
+const base64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+/// A verifier made and kept, and its S256 challenge.
+async function takeChallenge() {
+  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+  const challenge = base64url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))));
+  takesKeep({ ...takesKept(), [challenge]: { v: verifier, t: Date.now() } });
+  return challenge;
+}
+
 /// Where Sign in with Google or GitHub goes: there, and back to [then] (this
-/// page, by default) signed in, through /profile.
-export function wayLink(name, then = location.pathname + location.search + location.hash) {
-  return `/auth/${name}?${new URLSearchParams({ then })}`;
+/// page, by default) signed in, through /profile, with the challenge of a
+/// verifier this browser keeps for it.
+export async function wayLink(name, then = location.pathname + location.search + location.hash) {
+  return `/auth/${name}?${new URLSearchParams({ then, take: await takeChallenge() })}`;
+}
+
+/// [link] given its address (wayLink) as soon as it is made: a press before
+/// then goes there once it is.
+export function wayLinkTo(link, address) {
+  const ready = address.then((href) => {
+    link.href = href;
+    return href;
+  });
+  link.addEventListener("click", (event) => {
+    if (link.getAttribute("href")) return;
+    event.preventDefault();
+    ready.then((href) => location.assign(href));
+  });
 }
 
 /// The session a sign-in with Google or GitHub left this browser
-/// (api/_ways.js wayBack), taken once and kept, for the app too: {ok} or
-/// {error} in the visitor's words.
-export async function takeWay() {
+/// (api/_ways.js wayBack), taken once with the verifier whose [challenge]
+/// it came back with, and kept, for the app too: {ok} or {error} in the
+/// visitor's words.
+export async function takeWay(challenge) {
   await where();
-  const reply = await fetch("/api/otp?op=way_take", { method: "POST", credentials: "same-origin" }).catch(() => null);
+  const all = takesKept();
+  const verifier = all[challenge]?.v || "";
+  delete all[challenge];
+  takesKeep(all);
+  const reply = await fetch("/api/otp?op=way_take", { method: "POST", credentials: "same-origin",
+    headers: { "content-type": "application/json" }, body: JSON.stringify({ code_verifier: verifier }) }).catch(() => null);
   const body = reply ? await json(reply) : {};
   if (!reply || !reply.ok || !body.access_token) {
     return { error: body.error ? say(body.error) : say("Could not sign in just now ({status}). Try again.", { status: reply?.status || 0 }) };
@@ -451,6 +511,17 @@ export async function takeWay() {
   keep(body, body.user?.email);
   dispatchEvent(new Event("brickworks:signed-in"));
   return { ok: true };
+}
+
+/// GitHub's id, which met this account before it had signed in to it, kept
+/// for it now that the person is signed in with a code (api/_ways.js
+/// wayBind): {ok}, {fresh: false} while the code is still to be typed, or
+/// {error} in the visitor's words.
+export async function bindWay() {
+  const done = await call("/api/otp?op=way_bind", { method: "POST" }).catch(() => null);
+  if (done?.status === 200) return { ok: true };
+  if (done?.status === 403 && done.body?.fresh === false) return { fresh: false };
+  return { error: done?.body?.error ? say(done.body.error) : say("That did not work just now.") };
 }
 
 /// This page, to come back to after Google or GitHub: its address without
@@ -496,6 +567,10 @@ export function wayFailed(why, name) {
   if (why === "again") return say("That sign-in took too long, or was started in another tab. Try again.");
   if (why === "denied") return say("Signing in with {way} was cancelled there.", { way });
   if (why === "unverified") return say("{way} gave no verified email address of yours. Sign in with a code we email you instead.", { way });
+  if (why === "vouch") return say("Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead.");
+  if (why === "confirm") {
+    return say("This address has a Brickworks account already. Sign in with a code we email you this once, and {way} signs you in from then on.", { way });
+  }
   if (why === "unlinked") {
     return say("{way} is unlinked from your account. Sign in with a code we email you, then link it again in Settings.", { way });
   }
@@ -794,7 +869,7 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
       const via = document.createElement("a");
       via.className = "cta ghost wide way";
       via.id = `way-${name}`;
-      via.href = wayLink(name, then || hereThen());
+      wayLinkTo(via, wayLink(name, then || hereThen()));
       via.hidden = true;
       via.append(wayMark(name), wayWords[name]);
       viaWays[name] = via;
@@ -855,8 +930,9 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
     close.textContent = say("Not now");
     foot.append(close);
 
-    // Every way in makes the person's orangecheck account too, where
-    // Connect is set up here: said in one line, with what it is.
+    // Every way in but orangecheck's own makes the person's orangecheck
+    // account too, where Connect is set up here: said in one line, with
+    // what it is, true for whichever is pressed (signinreview F11).
     const madeLine = document.createElement("p");
     madeLine.className = "note made-line";
     madeLine.id = "oc-made-line";
@@ -865,7 +941,7 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
     madeWhat.target = "_blank";
     madeWhat.rel = "noopener";
     madeWhat.textContent = say("What is that?");
-    madeLine.append(say("Signing in also makes your orangecheck account."), " ", madeWhat);
+    madeLine.append(say("Signing in without orangecheck also makes your orangecheck account."), " ", madeWhat);
     madeLine.hidden = true;
 
     // Each drawn once the deployment has said it is offered here, and its

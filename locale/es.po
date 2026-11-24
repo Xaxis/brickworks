@@ -17749,9 +17749,6 @@ msgstr "lo que hay en el portapapeles coloca más piezas de las que se pueden pe
 msgid "Sign in with %s"
 msgstr "Iniciar sesión con %s"
 
-msgid "Signing in also makes your orangecheck account."
-msgstr "Al iniciar sesión también se crea tu cuenta de orangecheck."
-
 msgid "What is that?"
 msgstr "¿Qué es eso?"
 
@@ -17790,3 +17787,12 @@ msgstr "%s no ha podido iniciar tu sesión ahora. Inténtalo de nuevo en un minu
 
 msgid "Could not sign in with %s just now (%d). Try again in a minute."
 msgstr "No se pudo iniciar sesión con %s ahora (%d). Inténtalo de nuevo en un minuto."
+
+msgid "Signing in without orangecheck also makes your orangecheck account."
+msgstr "Al iniciar sesión sin orangecheck también se crea tu cuenta de orangecheck."
+
+msgid "Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead."
+msgstr "Google solo responde por direcciones de Gmail y de Google Workspace. Inicia sesión con un código que te enviamos por correo."
+
+msgid "This address has a Brickworks account already. Sign in with a code we email you. To sign in with %s here from then on, sign in with it once on the Brickworks website."
+msgstr "Esta dirección ya tiene una cuenta de Brickworks. Inicia sesión con un código que te enviamos por correo. Para iniciar sesión aquí con %s a partir de entonces, úsalo una vez en el sitio web de Brickworks."

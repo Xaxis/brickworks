@@ -239,7 +239,7 @@ async function attempt(call, failed) {
 // the app alone, so answered before the open CORS below.
 const WAY_OPS = {
   "GET way_start": "wayStart", "GET way_back": "wayBack", "POST way_take": "wayTake", "POST way_app": "wayApp",
-  "GET ways": "waysRoute", "POST ways": "waysRoute",
+  "POST way_bind": "wayBind", "GET ways": "waysRoute", "POST ways": "waysRoute",
 };
 
 async function handler(request, response) {
