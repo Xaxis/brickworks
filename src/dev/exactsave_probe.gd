@@ -18,10 +18,14 @@
 ## 4. Twelve real sets with rounded matrices (ODD_SETS): each written whole,
 ##    every part where it was; and one part moved and saved, its line the one
 ##    changed and only in its place.
+## 5. A sub-model a real set places once, its parts turned off square,
+##    moved and turned whole by 30 degrees: a patch rewriting the one line
+##    placing it (TURN_SETS, the first with room).
 ##
-##   godot --headless --path . --script src/dev/exactsave_probe.gd -- [--keep=DIR]
+##   godot --headless --path . --script src/dev/exactsave_probe.gd -- [--keep=DIR] [--cases=1,5]
 ##
-## --keep=DIR copies each saved file there, for tools that read them after.
+## --keep=DIR copies each saved file there, for tools that read them after;
+## --cases= runs those cases alone.
 extends "res://src/dev/pastereview_probe.gd"
 
 const SET := "res://vendor/omr/files/10030-1.mpd"
@@ -37,10 +41,14 @@ var _keep: String = ""
 
 func _run() -> void:
 	await process_frame
+	var cases: String = "1,2,3,4,5"
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--keep="):
 			_keep = arg.trim_prefix("--keep=")
 			DirAccess.make_dir_recursive_absolute(_keep)
+		if arg.begins_with("--cases="):
+			cases = arg.trim_prefix("--cases=")
+	var asked: PackedStringArray = cases.split(",", false)
 	_forget(PROBE_DIR)
 	DirAccess.make_dir_recursive_absolute(PROBE_DIR)
 	CustomParts.dir = PROBE_DIR
@@ -56,11 +64,17 @@ func _run() -> void:
 	_library = _main.get("_library")
 	_verbs = _main.get("_verbs")
 	_store = _main.get("_store")
-	await _case_whole()
-	await _case_paste()
-	await _case_paste_and_move()
-	for set: String in ODD_SETS:
-		await _case_odd(set)
+	if "1" in asked:
+		await _case_whole()
+	if "2" in asked:
+		await _case_paste()
+	if "3" in asked:
+		await _case_paste_and_move()
+	if "4" in asked:
+		for set: String in ODD_SETS:
+			await _case_odd(set)
+	if "5" in asked:
+		await _case_turned_whole()
 	_forget(PROBE_DIR)
 	print("\nexactsave_probe: %d failed, %d notes" % [_failures, _notes])
 	quit(1 if _failures > 0 else 0)
@@ -276,6 +290,89 @@ func _case_odd(name: String) -> void:
 			" | ".join(PackedStringArray(lost.slice(0, 2))), " | ".join(PackedStringArray(fresh.slice(0, 2)))])
 	await _open(at)
 	_exact("%s: moved, saved, reopened" % name, after, _records_all())
+
+
+## 5. A sub-model a real set places once, holding parts turned off square,
+## moved and then turned whole by 30 degrees about the up axis
+## (Builder.turn_selection_by): every part of it turned by the one turn, so
+## the save is a patch rewriting the one line that places it and no line of
+## its section. Each part squared after the turn, each moved by its own turn
+## and every one of its lines was rewritten. The first of TURN_SETS' copies
+## placed once that has room for the move and the turn.
+const TURN_SETS := ["6285-1.mpd", "6685-1.mpd", "4005-1.mpd", "7750-1.mpd", "920-2.mpd", "10030-1.mpd"]
+
+
+func _case_turned_whole() -> void:
+	print("\n5. a sub-model placed once, moved and turned whole by 30 degrees, saved")
+	for name: String in TURN_SETS:
+		var path: String = "res://vendor/omr/files/" + name
+		await _open(path)
+		# Top-level copies, each of a definition placed once, with a part
+		# turned off square: top -> [ids].
+		var tops: Dictionary = {}
+		var kinds: Dictionary = {}
+		var odd: Dictionary = {}
+		for brick: BrickWorld.Brick in _shown():
+			if brick.unit.is_empty():
+				continue
+			for segment: String in Assemblies.segments(brick.unit):
+				kinds[Assemblies.definition(segment)] = (kinds.get(Assemblies.definition(segment), {}) as Dictionary) \
+					.merged({segment: true})
+			var top: String = Assemblies.segments(brick.unit)[0]
+			if not tops.has(top):
+				tops[top] = []
+			(tops[top] as Array).append(brick.id)
+			if not _square(brick.transform.basis):
+				odd[top] = true
+		for top: String in tops:
+			if not odd.has(top) or (kinds[Assemblies.definition(top)] as Dictionary).size() != 1 \
+					or (tops[top] as Array).size() < 3 or (tops[top] as Array).size() > 200:
+				continue
+			if await _turned_whole(name, path, top, tops[top]):
+				return
+	_ok(false, "no sub-model placed once in %s could be moved and turned" % [TURN_SETS])
+
+
+## [param top]'s parts [param ids], of the set [param name] at [param
+## path], moved and turned whole, saved and reopened: whether it turned
+## (else the set is opened again and nothing is asked).
+func _turned_whole(name: String, path: String, top: String, ids: Array) -> bool:
+	var original: String = _text_of(path)
+	_select(ids)
+	var turned: int = 0
+	for by: Vector3 in [Vector3(0, -400, 0), Vector3(0, 400, 0), Vector3(800, 0, 0), Vector3(0, 0, 800)]:
+		if _builder.move_selection_by(by) == 0:
+			continue
+		for degrees: float in [30.0, -30.0]:
+			turned = _builder.turn_selection_by(degrees)
+			if turned > 0:
+				break
+		if turned > 0:
+			break
+	_builder.clear_selection()
+	await _frames(3)
+	if turned == 0:
+		print("    %s %s (%d parts): no room to move and turn it" % [name, top, ids.size()])
+		await _open(path)
+		return false
+	_ok(turned == ids.size(), "%s: %s moved and turned, %d of its %d parts" % [name, top, turned, ids.size()])
+	var after: Array = _records_all()
+	var at: String = ProjectSettings.globalize_path(PROBE_DIR + "turned.mpd")
+	_ok(bool(_main.call("save_model", at)), "saved")
+	var saved: String = _text_of(at)
+	_kept(name.get_basename() + "-turned.mpd", saved)
+	var diff: Dictionary = _line_diff(original, saved)
+	var fresh: Array = (diff["new"] as Array).filter(func(line: String) -> bool:
+		return not line.strip_edges().begins_with("0 !BRICKWORKS"))
+	_ok(_store.last_whole.is_empty() and (diff["lost"] as Array).size() == 1 and fresh.size() == 1,
+		"a patch, the line placing it alone changed: %d gone, %d new%s (%s -> %s)" % [
+			(diff["lost"] as Array).size(), fresh.size(),
+			"" if _store.last_whole.is_empty() else ", written whole: " + _store.last_whole,
+			" | ".join(PackedStringArray((diff["lost"] as Array).slice(0, 2))),
+			" | ".join(PackedStringArray(fresh.slice(0, 2)))])
+	await _open(at)
+	_exact("turned whole: reopened", after, _records_all())
+	return true
 
 
 ## A part the file has, of a sub-model placed once (or the model's own), one

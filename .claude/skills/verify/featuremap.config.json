@@ -7001,7 +7001,7 @@
       "kind": "cli",
       "label": "exactsave probe",
       "entry": "src/dev/exactsave_probe.gd",
-      "reach": "tools/probe.sh exactsave_probe [--keep=DIR]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place)",
+      "reach": "tools/probe.sh exactsave_probe [--keep=DIR] [--cases=1,5]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; the paste with a part of the original moved, reopened exact; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place; a sub-model placed once moved and turned 30 degrees whole, the one line placing it changed)",
       "area": "model-io"
     },
     {
