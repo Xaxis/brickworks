@@ -71,7 +71,9 @@ connectors and collision the library's own parts have.
   is another. Every kind of made part is named so (a change, a part from a 3D
   file, a mould; a print's and a sticker's tag is of everything they are made
   of). `made_ids_probe --made-stage=ids`: 180 cut boxes of a 3001 make 180
-  ids, and each kind as many ids as texts.
+  ids, and each kind as many ids as texts. `made_second_probe`: a person's
+  second cut, print and mould that pre261's short tags named alike keeps the
+  first in their library and in its kept folder.
 - `build a part in the app` (`PartForge`): tools/build_meshes.py's
   conversion, step for step, in GDScript — flatten with BFC, crease-aware
   normals, per-colour surfaces, connectors from primitives, voxelise, remove

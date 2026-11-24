@@ -57,7 +57,7 @@ func _run() -> void:
 				else "OTHER TEXT (%d chars, made %d)" % [again.custom_source(id).length(), str(first[1]).length()]])
 	_say("%d kept parts read back" % loaded)
 	print("\nMADE SECOND DONE: %d finding line%s" % [_findings, "" if _findings == 1 else "s"])
-	quit(0)
+	quit(1 if _findings > 0 else 0)
 
 
 ## Made one after the other: [first id, its text as made], after saying what

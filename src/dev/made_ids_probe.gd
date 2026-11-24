@@ -13,6 +13,7 @@
 ##     sub-assembly, put into a model), my own model of mine, a copy of mine
 ##     cut short (mended, not renamed) and a print whose picture differs.
 ## RESULT / FINDING lines. Headless.
+## Both stages when none is named.
 ##   godot --headless --path . --script src/dev/made_ids_probe.gd -- --made-stage=collide --made-out=DIR
 extends SceneTree
 
@@ -78,13 +79,13 @@ func _run() -> void:
 	_library = _main.get("_library")
 	_verbs = _main.get("_verbs")
 	_store = _main.get("_store")
-	match str(_args.get("stage", "")):
-		"ids":
-			await _ids()
-		"collide":
-			await _collide(out)
+	var stage: String = str(_args.get("stage", ""))
+	if stage in ["", "ids"]:
+		await _ids()
+	if stage in ["", "collide"]:
+		await _collide(out)
 	print("\nMADE IDS DONE: %d finding line%s" % [_findings, "" if _findings == 1 else "s"])
-	quit(0)
+	quit(1 if _findings > 0 else 0)
 
 
 # -- every kind of made part: one text, one id -------------------------------------
