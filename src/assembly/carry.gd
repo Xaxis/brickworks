@@ -878,13 +878,20 @@ static func too_much(text: String) -> bool:
 
 ## How long the lines of [param text] that place parts are, as PartShelf
 ## .too_big measures a sub-assembly's: all of it, or where it is in sections,
-## the lines of its model and of each sub-model after it, their FILE and NOFILE
-## lines not counted, up to the first section that declares a part or the
-## first !DATA (what it carries for its parts counts toward MOST_PASTED alone).
+## the lines of its model, and the lines that place a part (type 1) of each
+## sub-model after it, their FILE and NOFILE lines not counted, up to the
+## first section that declares a part or the first !DATA (what it carries for
+## its parts counts toward MOST_PASTED alone). A section with no part header
+## is a sub-model by LDraw's rule, and its shape's lines place nothing.
 ## Up to moulds4 only the first section was counted, and its FILE line with
 ## it: a paste placing 250,000 parts through one sub-model was read whole
 ## (12 s), and a copy of lines kept at exactly the cap was refused by a paste
 ## (mouldreview3, lows 2 and 3).
+## A line that places a part (type 1), as [method placing_length] counts a
+## sub-model's. Made at class load, as a worker may read it.
+static var _placing_line: RegEx = RegEx.create_from_string("(?m)^[ \\t]*1[ \\t][^\\n]*")
+
+
 static func placing_length(text: String) -> int:
 	var first: int = 0
 	while first < text.length() and text[first] in " \t\r\n":
@@ -892,6 +899,7 @@ static func placing_length(text: String) -> int:
 	if not text.substr(first, 7).to_upper().begins_with("0 FILE"):
 		return text.length()
 	var count: int = 0
+	var model: bool = true
 	# The line end of a FILE or NOFILE line: the lines after it are counted
 	# to the next such line.
 	var at: int = text.find("\n", first)
@@ -901,9 +909,16 @@ static func placing_length(text: String) -> int:
 			var found: int = text.findn(mark, at)
 			if found >= 0 and (ends < 0 or found < ends):
 				ends = found
+		if model:
+			count += (ends if ends >= 0 else text.length() - 1) - at
+		else:
+			var placing: RegExMatch = _placing_line.search(text, at, ends if ends >= 0 else -1)
+			while placing != null and count <= MOST_PLACING:
+				count += placing.get_end() - placing.get_start() + 1
+				placing = _placing_line.search(text, placing.get_end(), ends if ends >= 0 else -1)
 		if ends < 0:
-			return count + text.length() - (at + 1)
-		count += ends - at
+			return count
+		model = false
 		var line_end: int = text.find("\n", ends + 1)
 		var word: String = LdrModel.section_word(text.substr(ends + 1,
 			(line_end if line_end >= 0 else text.length()) - ends - 1))
