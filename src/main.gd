@@ -2182,7 +2182,9 @@ func _ready() -> void:
 		_boot_mark("library")
 		await _show_whole()
 	elif not _copying.is_empty() and _early_asked:
-		# Open in Brickworks' copy, opened above with its parts here.
+		# Open in Brickworks' copy, opened above with its parts here; its open
+		# having taken it past the bound, the studio first, then its parts.
+		await _lift_if_late()
 		await _show_whole()
 	# Every other address's page lifts its screen once the studio is made
 	# ("ui"); one that opens a model waits for this (src/boot/shell.html,
@@ -3623,6 +3625,7 @@ func _view_shared() -> void:
 			_share_view.drawn()
 		else:
 			_share_view.arriving(_store.awaited.size())
+		await _lift_if_late()
 		await _show_whole()
 	else:
 		await get_tree().process_frame
@@ -5406,7 +5409,9 @@ var _ui_at: int = 0
 ## (shell.html's SET_SHOWN_MOST, 6 s after "ui") cannot lift it: a copy whose
 ## link answered 2.5 s late was under the screen 14.3 s after the studio was
 ## made (viewreview F3, 2026-11-24). Its link and parts waited for past this,
-## the studio is shown first and the model comes in on it, as before viewopen.
+## the studio is shown first and the model comes in on it, as before viewopen;
+## its open past this, the model is not drawn whole in one frame under the
+## screen but a slice a frame on the studio.
 const SHOWN_WHOLE_BY_MS := 2000
 
 
