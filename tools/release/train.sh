@@ -184,6 +184,16 @@ stage() {
     said="named at staging"
   fi
   git -C "$R" rev-parse -q --verify "$branch^{commit}" >/dev/null || { echo "train: no branch $branch"; exit 2; }
+  # The local branch is what merges. One behind origin's left out a gate fix
+  # pushed from another tree, and rel-m335 would have held at the same gate
+  # rel-m334 did (2026-11-24). A branch origin has moved past is refused.
+  if git -C "$R" rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null; then
+    timeout 120 git -C "$R" fetch -q origin "$branch" 2>/dev/null
+    if ! git -C "$R" merge-base --is-ancestor "origin/$branch" "$branch"; then
+      echo "train: $branch is behind origin/$branch ($(git -C "$R" rev-parse --short "$branch") vs $(git -C "$R" rev-parse --short "origin/$branch")): fast-forward it first (git -C <its worktree> merge --ff-only origin/$branch)"
+      exit 2
+    fi
+  fi
   # A name the branch has no check or probe for fails the release an hour
   # on, "no such check": share, build and sets held rel-m222, as one held
   # m87 (2026-10-30). Named against the branch's own lists, where it has them.
