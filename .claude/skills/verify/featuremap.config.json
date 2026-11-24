@@ -6999,6 +6999,13 @@
     },
     {
       "kind": "cli",
+      "label": "exactsave probe",
+      "entry": "src/dev/exactsave_probe.gd",
+      "reach": "tools/probe.sh exactsave_probe [--keep=DIR]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
       "label": "sethub browser flow",
       "entry": "tools/web/sethub_flow.mjs",
       "reach": "node --env-file=.env tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--publish]   (sethub: a modelled set's Build it at its first step and Make your own version under its name, Versions of this set before Built from this set with each card said changed or as it is, or none said with Make your own version, the first screen unmoved; a set with no model offering neither; de/fr/es; --versions=FILE answers the row from a set_versions dry run; --publish, once supabase/set_versions.sql is applied, this run's own account publishes a changed version of 346-2 and it is among its versions through the CDN within 60 s, its card first on the page)",

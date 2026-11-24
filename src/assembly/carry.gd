@@ -260,12 +260,12 @@ func count() -> int:
 func reshape(turn: Basis) -> void:
 	var pivot: Vector3 = items[0].get("pivot", Vector3.ZERO) if not items.is_empty() \
 		else Vector3.ZERO
-	var about := Transform3D(turn * Basis(Vector3.UP, turns * PI * 0.5), pivot)
+	# The turn made square, not each part (show_moved).
+	var about := Transform3D((turn * Basis(Vector3.UP, turns * PI * 0.5)).orthonormalized(), pivot)
 	var placed: Array = []
 	for item: Dictionary in items:
 		var mine: Dictionary = item.duplicate()
-		var at: Transform3D = about * (item["at"] as Transform3D)
-		mine["at"] = Transform3D(at.basis.orthonormalized(), at.origin)
+		mine["at"] = about * (item["at"] as Transform3D)
 		placed.append(mine)
 	var keep: bool = repeats
 	hold(framed(placed, library), lifted)
@@ -339,12 +339,17 @@ func show_moved(by: Transform3D, lattice: BrickLattice, builder: Builder) -> boo
 	if not _pinned:
 		return false
 	var inside: Transform3D = _frame.affine_inverse() * by * _frame
+	# The move made square, not each part: a part keeps the turn its file
+	# gave it, rounded as the file has it (10030's 0.951/0.308). Squared,
+	# every part of a copy moved by a number moved by a different turn, the
+	# copy's line could not say it, and each of its parts' lines was
+	# rewritten in every copy of its sub-model (exactsave).
+	var move := Transform3D(inside.basis.orthonormalized(), inside.origin)
 	items = []
 	for item: Dictionary in _base:
 		var mine: Dictionary = item.duplicate()
-		var at: Transform3D = inside * (item["at"] as Transform3D)
-		mine["at"] = Builder._tidy(Transform3D(at.basis.orthonormalized(), at.origin),
-			BrickLattice.is_square_to_grid(at.basis))
+		var at: Transform3D = move * (item["at"] as Transform3D)
+		mine["at"] = Builder._tidy(at, BrickLattice.is_square_to_grid(at.basis))
 		items.append(mine)
 	_covers.clear()
 	_build_ghost()
