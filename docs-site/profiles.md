@@ -68,6 +68,12 @@ After a first sign-in and the age question, **First steps** helps you start: **M
 
 If you signed in to do something, such as liking a model or following a builder, that is done first. **First steps** is then offered in a note at the foot of the screen; press **First steps** there to open it. The same happens when you sign in from the header on a page you came to use, such as a model's page or Share a model: only the age question comes first, and the page is yours again. From the header on the home page, your profile or your feed, **First steps** opens at once.
 
+### A name before your first comment {#name-first}
+
+Your comments, replies, posts in Talk and shared models go out under your profile's name, so people know who said it and can follow you. If you have no profile yet, **Post** (or **Share it**) first asks for a name and a handle, in the same **Make your profile** step. What you wrote stays in its box while you answer. **Make my profile** posts it under your new name, and your earlier comments show that name too. **Skip** posts it as *A builder*; the next time you post, you are asked again. Accounts under 13 have no public profile, so they are never asked.
+
+![Make your profile over a model's comments, at 390 px: a name and a handle, Make my profile and Skip, and the comment still typed in the box behind it.](/docs/img/name-first-phone.webp "Asked once, before a first comment.")
+
 <!-- covers
 ui:first steps after a first sign-in
 -->
@@ -109,6 +115,12 @@ ui:the app's Account count
 ## Notifications {#notifications}
 
 [brickworks.diy/notifications](/notifications) says what happened to your models, grouped by model, newest first: comments, replies, [mentions](/docs/model-pages#mentions), photos of builds, remixes, and how many liked it that day. **Your achievements** are a group of their own, and so is each [challenge](/docs/challenges#told). News from Brickworks, such as a new feature or planned upkeep, is a group of its own too, marked *From Brickworks* (and *edited* if it was changed after it went). So is each [Talk](/docs/talk) thread you follow or that names you. Opening it clears the count on your avatar; **Mark all read** clears them all.
+
+### Reply where you read {#reply}
+
+A comment, a reply, a mention or a post in Talk has **Reply** under it. It opens the box right there, the same box as [everywhere on Brickworks](/docs/gallery#composer): [[Ctrl]]+[[Enter]] or **Post** posts, and [[Esc]] closes it. A reply to a comment goes into that comment's thread on the model's page, and a reply to a post in Talk goes into its thread. Once it is posted, the line says **Replied**, your reply shows under it, and **See your reply** opens it on its page.
+
+![Notifications at 1280 px: a fan's comment on the sports car with Replied beside it, the designer's reply under it with See your reply, and Reply.](/docs/img/notifications-replied.webp "Replied, from Notifications.")
 
 Each group has **Done** (the tick) and **More**:
 

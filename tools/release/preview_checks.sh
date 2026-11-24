@@ -212,6 +212,16 @@ declare -A CMD=(
   # Achievements tab, read once opened. Throwaway accounts, deleted after;
   # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
+  # A name before the first public act, and Reply where you read
+  # (socialloop): a fan with no profile at 1280 and 390 asked for one over
+  # the page before a first comment, its words kept in the box; Skip posts
+  # as "A builder", the next asks again, a profile made in the ask credits
+  # it, the next asks nothing; under 13 never asked; a Talk thread asked
+  # first. The designer's Notifications: Reply under the comment (44 px at
+  # 390), from the keyboard, Replied with the way to it, Escape, the reply
+  # in the comment's thread on the model's page at once; de, fr and es.
+  # Throwaway accounts, deleted after.
+  [socialloop]="tools/web/socialloop_flow.mjs --url=$P --out=$S/${TAG}_socialloop"
   # What you hear of, and where (inbox): Settings' grid at 390 and 1280 in
   # both themes (33 boxes, each named and 44 px); the account menu's
   # newest five against the list's first five, opening the menu marking

@@ -840,8 +840,20 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
    (.list-rows): the model's picture, its name, then its lines. */
 .notice .row-title a { overflow-wrap: anywhere; }
 .notice .lines { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
-.notice .lines a { display: flex; align-items: flex-start; gap: var(--s-2); color: var(--ink); text-decoration: none; }
-.notice .lines a:hover .what { text-decoration: underline; text-decoration-color: var(--ink-faint); }
+.notice .lines > li > a { display: flex; align-items: flex-start; gap: var(--s-2); color: var(--ink); text-decoration: none; }
+.notice .lines > li > a:hover .what { text-decoration: underline; text-decoration-color: var(--ink-faint); }
+/* Reply where it is read (socialloop, 2026-11-24): under a line that can
+   be answered, the feed's text button (a finger's 44 px on a touch
+   screen, site.css), in line with the words past the avatar; the reply,
+   once posted, over it, with the way to it on its page; the composer of
+   everywhere under it. */
+.notice .lines > li > :is(.said-room, .notice-acts, .composer) { margin-left: calc(24px + var(--s-2)); }
+.notice .lines > li > .said-room { min-height: 0; margin-top: var(--s-1); }
+.notice .lines > li > .said-room:not(:has(.said-line)) { display: none; }
+.notice .said-line p { white-space: normal; }
+.notice .said-see { color: var(--ink-soft); font-weight: 600; }
+.notice .notice-acts { margin-top: 2px; }
+.notice .lines > li > .composer { margin-top: var(--s-1); }
 .notice .lines .avatar.small, .notice .lines .icon { margin-top: 1px; }
 .notice .lines .icon { width: 24px; color: var(--ink-soft); }
 .notice .what { min-width: 0; font-size: var(--t-small); line-height: 1.45; overflow-wrap: anywhere; }
