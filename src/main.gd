@@ -2044,6 +2044,8 @@ func _ready() -> void:
 	# cube's Fit), told them again (Keymap.tell).
 	Keymap.retell(self)
 	_boot_mark("ui")
+	if _viewing.is_empty():
+		_ask_early_set()
 
 	if not _viewing.is_empty():
 		_enter_view()
@@ -2125,14 +2127,12 @@ func _ready() -> void:
 	# studio's own. Opened after that frame, it waited on the studio's first
 	# frames drawn in software, 1.5 to 3.5 s, and its first frame compiled
 	# the bricks' shaders after them, 0.9 to 1.7 s more (setopen, 2026-11-23).
+	# Its parts' geometry asked for as the studio was made comes first
+	# (_ask_early_set), so every part is down in that frame.
 	if not _from_library.is_empty() and ModelLibrary.early_here(_from_library):
+		await _await_early_set()
 		_maybe_open_library()
-		# And its parts whose geometry is here, on this build's disk, read now
-		# rather than a frame at a time: whole in that first frame.
-		var waiting: Array = _store.awaited.map(func(p: LdrModel.Placement) -> String: return p.part_id)
-		var read: int = _library.read_waiting(waiting)
-		_boot_mark("library %d read" % read)
-
+		_boot_mark("library")
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are
 	# real before framing them.
@@ -5083,6 +5083,56 @@ func _maybe_open_library() -> void:
 	_bar.offer_moved(false)
 	if build:
 		await _build_from_step_one()
+
+
+## The parts of a set opened from its page (?library=) whose geometry
+## [method _ask_early_set] asked for, by the name each is laid under.
+var _early_parts: Array = []
+## The longest the studio's first frame waits for them, in ms: past it the set
+## opens and the rest are put down as they come, as before.
+const EARLY_SET_WAIT_MS := 2000
+
+
+## A set's Make your own version (?library=), its file fetched by the page as
+## it opened (ModelLibrary.early_text): the geometry of its parts this build
+## does not carry asked for now, while the rest of the studio is made, from
+## where the page heard the parts live (ModelLibrary.early_parts_url), so the
+## open in the studio's first frame puts every part down. Asked once the
+## studio was up, 346-2's 13 such parts (36 of its 165) were asked a frame
+## after the deployment answered and came three to four frames later, frames
+## a browser drawing in software took 0.4 to 3 s each (setopen, 2026-11-23).
+## Only for a file the bar opens in one frame (ModelBar.OPENED_AT_ONCE_MOST).
+func _ask_early_set() -> void:
+	if _from_library.is_empty():
+		return
+	var text: String = ModelLibrary.early_text(_from_library)
+	if text.is_empty() or text.length() >= ModelBar.OPENED_AT_ONCE_MOST:
+		return
+	var parsed: LdrModel = LdrModel.parse(text, _from_library)
+	if parsed == null:
+		return
+	if _library.remote_parts.is_empty():
+		_library.remote_parts = ModelLibrary.early_parts_url()
+	_early_parts = _store.ask_geometry(parsed)
+
+
+## Until none of [member _early_parts] is on its way, [constant
+## EARLY_SET_WAIT_MS] at most, nothing drawn and nothing moving, as the data
+## pack is waited for (_ready): the page's own screen stays up, and each frame
+## costs milliseconds, not a studio drawn in software.
+func _await_early_set() -> void:
+	var coming: Callable = func() -> bool:
+		return _early_parts.any(func(part_id: String) -> bool: return _library.is_on_its_way(part_id))
+	if not coming.call():
+		return
+	get_tree().paused = true
+	GpuFence.hold()
+	var until: int = Time.get_ticks_msec() + EARLY_SET_WAIT_MS
+	while coming.call() and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
+	GpuFence.let_go()
+	get_tree().paused = false
+	_boot_mark("set geometry")
 
 
 ## Build it from a set's page (sethub): the model just opened, at its first

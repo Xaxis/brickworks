@@ -2127,32 +2127,6 @@ func _read_soon(item: Array, first: bool = false) -> void:
 		tree.process_frame.connect(_read_frame)
 
 
-## The geometry waiting to be read for any of [param part_ids], read and kept
-## now on this thread, not over a worker's next frames: a set opened before
-## the studio's first frame (Main) is whole in that frame. Read off the
-## frame, its last 32 parts landed two to four frames later, frames that in
-## a browser drawing in software took 1.5 to 3 s each (setopen, 2026-11-23).
-## How many were read.
-func read_waiting(part_ids: Array) -> int:
-	var wanted: Dictionary = {}
-	for part_id: Variant in part_ids:
-		wanted[str(part_id)] = true
-	var mine: Array = []
-	_read_lock.lock()
-	var rest: Array = []
-	for item: Array in _to_read:
-		var askers: Array = _fetching.get(item[1], [item[3]])
-		if item[0] == LBM and askers.any(func(one: Variant) -> bool: return wanted.has(str(one))):
-			mine.append(item)
-		else:
-			rest.append(item)
-	_to_read = rest
-	_read_lock.unlock()
-	for item: Array in mine:
-		_kept_read(item, _read_one(item))
-	return mine.size()
-
-
 ## The tree whose frames [method _read_soon] reads in: the fetch host's.
 func _read_tree() -> SceneTree:
 	return _fetch_host.get_tree() if _fetch_host != null and _fetch_host.is_inside_tree() else null

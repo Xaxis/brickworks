@@ -585,19 +585,52 @@ static func _early_file(url: String, most: int) -> Dictionary:
 ## not wait for the deployment to say where the library is (the page asked
 ## it itself, as Deployment does).
 static func _early_file_at(path: String) -> Dictionary:
-	if not OS.has_feature("web") or not _inside(path):
-		return {}
-	var url: Variant = JavaScriptBridge.eval(("(function (p) { var all = window.brickworksEarly;"
-		+ " if (!all) return ''; for (var u in all.files) { var one = all.files[u];"
-		+ " if (u.slice(-p.length - 1) === '/' + p && one.done && one.status === 200 && one.bytes) return u; }"
-		+ " return ''; })(%s)") % JSON.stringify(path), true)
-	if not url is String or (url as String).is_empty():
+	var url: String = _early_url_of(path)
+	if url.is_empty():
 		return {}
 	var bytes: Variant = JavaScriptBridge.eval(("(function (u) { var all = window.brickworksEarly;"
 		+ " var one = all.files[u]; delete all.files[u]; return one.bytes; })(%s)") % JSON.stringify(url), true)
 	if not bytes is PackedByteArray or (bytes as PackedByteArray).size() > MOST_MODEL:
 		return {}
 	return {"code": 200, "bytes": bytes}
+
+
+## The address the page fetched the library's [param path] from, if it came
+## whole, or "".
+static func _early_url_of(path: String) -> String:
+	if not OS.has_feature("web") or not _inside(path):
+		return ""
+	var url: Variant = JavaScriptBridge.eval(("(function (p) { var all = window.brickworksEarly;"
+		+ " if (!all) return ''; for (var u in all.files) { var one = all.files[u];"
+		+ " if (u.slice(-p.length - 1) === '/' + p && one.done && one.status === 200 && one.bytes) return u; }"
+		+ " return ''; })(%s)") % JSON.stringify(path), true)
+	return url if url is String else ""
+
+
+## [param id]'s file as the page fetched it, read and left for the open to
+## take: "" when it has not come whole. Main asks for its parts' geometry
+## from it as the studio is made.
+static func early_text(id: String) -> String:
+	var url: String = _early_url_of(file_of(id))
+	if url.is_empty():
+		return ""
+	var bytes: Variant = JavaScriptBridge.eval(("(function (u) { var one = window.brickworksEarly.files[u];"
+		+ " return one ? one.bytes : null; })(%s)") % JSON.stringify(url), true)
+	if not bytes is PackedByteArray or (bytes as PackedByteArray).size() > MOST_MODEL:
+		return ""
+	return (bytes as PackedByteArray).get_string_from_utf8()
+
+
+## Where the deployment keeps the library and the parts' geometry, as the
+## page heard it from the deployment as it opened (window.brickworksEarly),
+## or "": what PartLibrary.remote_parts is once Deployment has asked too.
+static func early_parts_url() -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var said: Variant = JavaScriptBridge.eval("(function () { var all = window.brickworksEarly;"
+		+ " return all && typeof all.parts === 'string' ? all.parts : ''; })()", true)
+	var url: String = str(said) if said is String else ""
+	return url if url.begins_with("https://") or url.begins_with("http://") or url.begins_with("/") else ""
 
 
 ## "" (not fetched by the page), "coming", "failed" or "came <code>".

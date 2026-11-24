@@ -2384,10 +2384,13 @@ const READ_OFF_FRAME_FROM := 262144
 ## as soon as the file is read: fetched while the rest of the open goes on,
 ## and waited for before the model is drawn (_await_geometry). The parts the
 ## file's own copies are of first, as its carried parts wait for those alone
-## (CustomParts._fetch_copied). Asked again, nothing is asked twice.
-func ask_geometry(model: LdrModel) -> void:
-	library.want(_parts_named_in(model))
+## (CustomParts._fetch_copied). Asked again, nothing is asked twice. The
+## parts named, by the name each is laid under.
+func ask_geometry(model: LdrModel) -> Array:
+	var named: Array = _parts_named_in(model)
+	library.want(named)
 	library.want(CustomParts.copied_parts(library, model), true)
+	return named
 
 
 ## Every part [param model] places, by the name it is laid under
