@@ -17742,3 +17742,6 @@ msgstr "%s fait %s, et un fichier d'au plus %s peut être importé ici : réduis
 
 msgid "%s are more than a sub-assembly can keep: keep part of it"
 msgstr "%s, c'est plus qu'un sous-ensemble ne peut garder : gardez-en une partie"
+
+msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
+msgstr "le presse-papiers place plus de pièces qu'on ne peut en coller d'un coup : copiez-en moins"

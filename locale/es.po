@@ -17742,3 +17742,6 @@ msgstr "%s ocupa %s, y aquí solo se puede traer un archivo de como mucho %s: ha
 
 msgid "%s are more than a sub-assembly can keep: keep part of it"
 msgstr "%s son más de lo que un subconjunto puede guardar: guarda una parte"
+
+msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
+msgstr "lo que hay en el portapapeles coloca más piezas de las que se pueden pegar de una vez: copia menos"

@@ -17742,3 +17742,6 @@ msgstr "%s ist %s groß, und hier kann eine Datei von höchstens %s eingelesen w
 
 msgid "%s are more than a sub-assembly can keep: keep part of it"
 msgstr "%s sind mehr, als eine Baugruppe behalten kann: behalte einen Teil davon"
+
+msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
+msgstr "was in der Zwischenablage ist, setzt mehr Teile, als auf einmal eingefügt werden können: kopiere weniger"

@@ -787,6 +787,11 @@ func paste() -> int:
 			and DisplayServer.clipboard_has():
 		outside = DisplayServer.clipboard_get()
 	if not outside.is_empty() and outside != _put_on_clipboard:
+		# Parts past what a paste reads are said, not swapped silently for
+		# the app's own last copy (moulds3).
+		if outside.contains("\n1 ") and Carry.too_much(outside):
+			say.call("what is on the clipboard places more parts than can be pasted at once: copy fewer")
+			return 0
 		var read: Array = Carry.from_ldraw(outside, library)
 		if not read.is_empty():
 			parts = read

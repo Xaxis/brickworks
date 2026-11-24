@@ -870,6 +870,12 @@ const MOST_PLACING := 4_000_000
 const MOST_PASTED := 96 * 1024 * 1024
 
 
+## Whether [param text] is more than a paste reads ([constant MOST_PASTED],
+## [constant MOST_PLACING]): said to the person, never let fall silently.
+static func too_much(text: String) -> bool:
+	return text.length() > MOST_PASTED or placing_length(text) > MOST_PLACING
+
+
 ## How long the part of [param text] that places parts is: up to the end of its
 ## first FILE section where it is in sections, else all of it.
 static func placing_length(text: String) -> int:
@@ -916,8 +922,7 @@ static func from_kept(entry: Dictionary, library: PartLibrary) -> Array:
 ## drawn as it was (mouldreview2: a pasted copy of my part by another's text
 ## replaced mine in the window).
 static func from_ldraw(text: String, from: PartLibrary) -> Array:
-	if not text.contains("1 ") or text.length() > MOST_PASTED \
-			or placing_length(text) > MOST_PLACING:
+	if not text.contains("1 ") or too_much(text):
 		return []
 	var model: LdrModel = LdrModel.parse(text, "clipboard")
 	if model == null:
