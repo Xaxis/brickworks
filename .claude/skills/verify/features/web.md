@@ -4263,10 +4263,14 @@ plan with Claude as the client.
   so, up to a WebGL fence). `--viewport=WxH` (390 wide is a phone's),
   `--open=ADDRESS` and `--bricks=N` time another open the same way. Each run
   says the set down and on the screen from the press (its page's clock), and
-  `--strip[=MS,...]` presses Make your own version on the set's page and takes
-  the screen 0, 0.5, 1 and 2 s after the studio was up (`strip_<MS>.png`,
-  `strip.json`: each shot's time from the press, parts down and on their way),
-  to see that the studio is never still with the set coming. A local export
+  `--strip[=MS,...]` presses Make your own version on the set's page and keeps
+  the screen 0, 0.5, 1 and 2 s after the studio was up, from the browser's
+  screencast (`strip_<MS>.jpg`, `strip.json`: each picture's time from the
+  press, how long the screen had been unchanged, parts down and on their way,
+  and the longest the screen stood still), to see that the studio is never
+  still with the set coming. A set's page keeps its loading screen up, saying
+  how many of the set's parts have come, until the studio is drawn with the
+  set ("shown"; 6 s past the studio made at most). A local export
   works too: relay --static with each browser signed in as its own
   throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23,
   before setopen; after it, same-moment pairs with pre261 at load 54-87:

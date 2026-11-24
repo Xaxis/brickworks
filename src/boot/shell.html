@@ -572,6 +572,7 @@ const loaderSays = (function () {
 			"legal": "Teilegeometrie aus der LDraw™ Teilebibliothek, lizenziert unter {by2} und {by4}. LEGO® ist eine Marke der LEGO Unternehmensgruppe, die diese Website weder sponsert noch autorisiert oder unterstützt.",
 			"Fetching parts…": "Teile werden geladen…",
 			"Sorting the bin…": "Der Teilekasten wird sortiert…",
+			"Fetching the set's parts: {done} of {total}": "Die Teile des Sets werden geladen: {done} von {total}",
 			"Ready": "Bereit",
 			"This browser is missing: {what}.": "Diesem Browser fehlt: {what}.",
 			"Threads need the page served with {headers}.": "Threads brauchen die Seite mit {headers}.",
@@ -634,6 +635,7 @@ const loaderSays = (function () {
 			"legal": "Géométrie des pièces issue de la bibliothèque de pièces LDraw™, sous licence {by2} et {by4}. LEGO® est une marque du groupe de sociétés LEGO, qui ne parraine, n’autorise ni n’approuve ce site.",
 			"Fetching parts…": "Chargement des pièces…",
 			"Sorting the bin…": "Tri du bac à pièces…",
+			"Fetching the set's parts: {done} of {total}": "Chargement des pièces du set : {done} sur {total}",
 			"Ready": "Prêt",
 			"This browser is missing: {what}.": "Il manque à ce navigateur : {what}.",
 			"Threads need the page served with {headers}.": "Les threads demandent une page servie avec {headers}.",
@@ -696,6 +698,7 @@ const loaderSays = (function () {
 			"legal": "Geometría de las piezas de la biblioteca de piezas LDraw™, con licencia {by2} y {by4}. LEGO® es una marca del grupo de empresas LEGO, que no patrocina, autoriza ni respalda este sitio.",
 			"Fetching parts…": "Cargando piezas…",
 			"Sorting the bin…": "Ordenando la caja de piezas…",
+			"Fetching the set's parts: {done} of {total}": "Cargando las piezas del set: {done} de {total}",
 			"Ready": "Listo",
 			"This browser is missing: {what}.": "A este navegador le falta: {what}.",
 			"Threads need the page served with {headers}.": "Los hilos necesitan que la página se sirva con {headers}.",
@@ -1124,6 +1127,12 @@ brickworksEngine.ready.then(function (chosen) {
 		note.textContent = loaderSays(text);
 		note.classList.toggle("bad", Boolean(bad));
 	}
+
+	// A set's parts as the app waits for them, under this screen, before
+	// the studio is shown with the set on it (Main._await_early_set, whenUp).
+	window.brickworksBootParts = function (done, total) {
+		say(loaderSays("Fetching the set's parts: {done} of {total}", { done: done, total: total }));
+	};
 
 	function fail(text) {
 		running = false;
@@ -2141,9 +2150,18 @@ brickworksEngine.ready.then(function (chosen) {
 	// it cannot be ("stopped"): a frame or more after the engine has
 	// started, since the start's pack is written in only then. Until then
 	// this screen stays, rather than the page's empty canvas.
+	// A set's Make your own version (?library=omr-…) keeps this screen up
+	// until the studio is drawn with the set on it (the app's "shown" mark),
+	// saying how many of its parts have come, SET_SHOWN_MOST ms after the
+	// studio was made at the most: lifted as the studio was made, the person
+	// saw it still, its drawing held while the set's parts came. Any other
+	// address, as the studio is made.
+	const forSet = /^omr-/.test(query.get("library") || "");
+	const SET_SHOWN_MOST = 6000;
 	function whenUp(then) {
 		const marks = window.brickworksBoot || {};
-		if (marks.ui || marks.stopped) then();
+		if (marks.shown || marks.stopped
+			|| (marks.ui && (!forSet || performance.now() - marks.ui > SET_SHOWN_MOST))) then();
 		else if (!(packs.data && packs.data.gave_up)) setTimeout(function () { whenUp(then); }, 50);
 	}
 

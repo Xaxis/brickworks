@@ -72,7 +72,7 @@ const wantBricks = Number(args.bricks) > 0 ? Number(args.bricks) : 150;
 // --strip[=MS,...] (0,500,1000,2000), with --open-time: after the timed rounds,
 // Make your own version pressed on its set's page, and the screen taken MS
 // after the studio was up (the page's loading screen lifted), as
-// strip_<MS>.png and strip.json in --out.
+// strip_<MS>.jpg (from the browser's screencast) and strip.json in --out.
 const stripAt = args.strip ? String(args.strip === true ? "0,500,1000,2000" : args.strip).split(",")
   .map(Number).filter((ms) => Number.isFinite(ms) && ms >= 0) : [];
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
@@ -536,12 +536,15 @@ async function timed(browser, address, ready, most = 240000, label = "", readyAr
 }
 
 /// --strip: what a person sees once they press Make your own version on the
-/// set's page (--open's set), in a fresh context of [browser]: the screen at
-/// each of [stripAt] ms after the studio was up (the app's "ui" boot mark, on
-/// which the page lifts its loading screen), each with its time from the press
-/// and the parts down and on their way then; and when the set was down, from
-/// the press. The press is timed by the set's page as it is clicked, the rest
-/// by the app's page's clock plus where its navigation began.
+/// set's page (--open's set), in a fresh context of [browser]. The browser's
+/// own record of the screen (a screencast: a frame each time what is shown
+/// changed) gives the screen at each of [stripAt] ms after the studio was up
+/// (the page's loading screen lifted; an app before "shown" lifts it at "ui"),
+/// with how long it had been unchanged then, and the longest the screen stood
+/// still from the lift to the last of them: a studio held still, waiting,
+/// shows there. Shots taken by asking waited on the page's thread, behind
+/// frames of 2 to 3 s. Each with its time from the press, timed by the set's
+/// page as it is clicked, and the parts down and on their way then.
 async function strip(browser) {
   const set = /[?&]library=omr-([^&]+)/.exec(openAt)?.[1];
   if (!set) {
@@ -550,12 +553,36 @@ async function strip(browser) {
   }
   const context = await browser.newContext({ viewport, isMobile: viewport.width < 600, hasTouch: viewport.width < 600,
     extraHTTPHeaders: headers });
+  await context.addInitScript(() => {
+    const states = [];
+    window.sethubStates = states;
+    let last = null;
+    setInterval(() => {
+      const state = window.brickworksState;
+      if (!state || state === last) return;
+      last = state;
+      states.push([Math.round(performance.now()), state.bricks, state.awaited, state.said || ""]);
+    }, 25);
+    // The loading screen lifted: the moment it is told to go.
+    new MutationObserver(() => {
+      if (!window.sethubLifted && document.getElementById("boot")?.classList.contains("done")) {
+        window.sethubLifted = performance.now();
+      }
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ["class"] });
+  });
   const page = await context.newPage();
   page.on("pageerror", (error) => errors.push(`strip: ${error.message}`));
+  const cdp = await context.newCDPSession(page);
+  const frames = [];
+  cdp.on("Page.screencastFrame", (frame) => {
+    frames.push({ at: (frame.metadata?.timestamp ?? Date.now() / 1000) * 1000, data: frame.data });
+    cdp.send("Page.screencastFrameAck", { sessionId: frame.sessionId }).catch(() => {});
+  });
   const shots = [];
   let pressed = null;
   let up = null;
   let down = null;
+  let still = null;
   try {
     await page.goto(`${site}/library/set/${set}`, { waitUntil: "load", timeout: 120000 });
     const link = page.locator("[data-version]").first();
@@ -563,41 +590,52 @@ async function strip(browser) {
     await link.evaluate((one) => one.addEventListener("click", () => {
       sessionStorage.setItem("sethubPressAt", String(performance.timeOrigin + performance.now()));
     }));
+    await cdp.send("Page.startScreencast", { format: "jpeg", quality: 85 });
     await link.click();
     await page.waitForURL(/\/app\?/, { timeout: 60000 });
-    await page.waitForFunction(() => window.brickworksBoot?.ui > 0, null, { timeout: 240000, polling: 25 });
-    // The app's page's clock from the press: where its navigation began.
-    const clock = await page.evaluate(() => ({ ui: window.brickworksBoot.ui,
-      since: performance.timeOrigin - Number(sessionStorage.getItem("sethubPressAt") || NaN) }));
+    await page.waitForFunction(() => window.brickworksBoot?.ui > 0, null, { timeout: 240000, polling: 50 });
+    await page.waitForFunction(() => window.sethubLifted > 0, null, { timeout: 30000, polling: 50 }).catch(() => {});
+    const clock = await page.evaluate(() => ({ origin: performance.timeOrigin, ui: window.brickworksBoot.ui,
+      lifted: window.sethubLifted || null, since: performance.timeOrigin - Number(sessionStorage.getItem("sethubPressAt") || NaN) }));
     pressed = Number.isFinite(clock.since) ? Math.round(clock.since) : null;
-    up = clock.ui;
-    for (const after of stripAt) {
-      await page.waitForFunction((at) => performance.now() >= at, up + after, { timeout: 60000, polling: 10 });
-      const now = await page.evaluate(() => ({ at: performance.now(), bricks: window.brickworksState?.bricks ?? null,
-        awaited: window.brickworksState?.awaited ?? null, said: window.brickworksState?.said ?? "" }));
-      const file = `strip_${after}.png`;
-      await page.screenshot({ path: path.join(out, file) });
-      const done = await page.evaluate(() => performance.now());
-      shots.push({ after, at: Math.round(now.at - up), took: Math.round(done - now.at),
-        fromPress: pressed === null ? null : Math.round(now.at + pressed), bricks: now.bricks, awaited: now.awaited,
-        said: now.said, file });
-    }
+    up = clock.lifted ?? clock.ui;
+    const end = up + Math.max(...stripAt) + 500;
+    await page.waitForFunction((at) => performance.now() >= at, end, { timeout: 60000, polling: 50 });
     down = await page.waitForFunction((least) => window.brickworksState?.bricks >= least
       && window.brickworksState.awaited === 0 ? performance.now() : 0, wantBricks, { timeout: 120000, polling: 25 })
       .then((one) => one.jsonValue(), () => null);
+    // The state's own record, so a state is the one at the shot's moment.
+    const states = await page.evaluate(() => window.sethubStates || []);
+    await cdp.send("Page.stopScreencast").catch(() => {});
+    const epoch = (at) => clock.origin + at;
+    for (const after of stripAt) {
+      const at = epoch(up + after);
+      const frame = frames.filter((one) => one.at <= at).pop();
+      const state = states.filter(([t]) => t <= up + after).pop() || [null, null, null, ""];
+      const file = `strip_${after}.jpg`;
+      if (frame) writeFileSync(path.join(out, file), Buffer.from(frame.data, "base64"));
+      shots.push({ after, fromPress: pressed === null ? null : Math.round(up + after + pressed),
+        unchanged: frame ? Math.round(at - frame.at) : null, bricks: state[1], awaited: state[2], said: state[3],
+        file: frame ? file : null });
+    }
+    // The longest the screen stood still from the lift to the last shot.
+    const seen = frames.map((one) => one.at).filter((at) => at > epoch(up) && at <= epoch(end));
+    const marks = [epoch(up), ...seen, epoch(end)];
+    still = Math.round(Math.max(...marks.slice(1).map((at, n) => at - marks[n])));
   } catch (trouble) {
     errors.push(`strip: ${String(trouble.message || trouble).slice(0, 200)}`);
   } finally {
     await context.close();
   }
   const fromPress = (at) => (at === null || pressed === null ? null : Math.round(at + pressed));
-  writeFileSync(path.join(out, "strip.json"), `${JSON.stringify({ pressed, up: fromPress(up), down: fromPress(down), shots },
-    null, 1)}\n`);
+  writeFileSync(path.join(out, "strip.json"), `${JSON.stringify({ pressed, up: fromPress(up), down: fromPress(down), still,
+    frames: frames.length, shots }, null, 1)}\n`);
   console.log(`  pressed on the set's page: the app's page began ${pressed} ms after the press, the studio up `
-    + `${fromPress(up)} ms after it, the set down ${fromPress(down)} ms after it`);
+    + `${fromPress(up)} ms after it, the set down ${fromPress(down)} ms after it; the screen still for ${still} ms at `
+    + `the most from the studio up to ${Math.max(...stripAt) + 500} ms after (${frames.length} frames seen)`);
   for (const one of shots) {
-    console.log(`    ${one.file}: ${one.at} ms after the studio was up (${one.fromPress} ms from the press; the shot `
-      + `took ${one.took} ms), ${one.bricks} parts down, ${one.awaited} on their way, said "${one.said}"`);
+    console.log(`    ${one.file}: ${one.after} ms after the studio was up (${one.fromPress} ms from the press), `
+      + `unchanged for ${one.unchanged} ms, ${one.bricks} parts down, ${one.awaited} on their way, said "${one.said}"`);
   }
 }
 

@@ -873,9 +873,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   page heard parts live (`Main._ask_early_set`,
   `ModelLibrary.early_text`/`early_parts_url`), and read before anything
   read ahead, in a queue of its own, and kept first (`PartLibrary.want`,
-  `_waited_on_parts`, `_to_read_first`): what has come is down in that
-  frame and the rest follows within frames. Nothing holds the studio still
-  for it (a 2 s hold was tried and showed a frozen studio). A file under 32 KB is read and
+  `_waited_on_parts`, `_to_read_first`). The open waits for it, 2 s at most,
+  with nothing drawn, under the page's loading screen, which stays up for a
+  set and says how many of its parts have come (`Main._await_early_set`,
+  `window.brickworksBootParts`), and comes down once the studio is drawn
+  with the set on it (boot mark `shown`, shell.html's `whenUp`): every part
+  down in that frame, and the studio never seen still. Waited for with the
+  studio showing, it was a frozen studio; not waited for, the last parts came
+  3 to 4 s later. The boot mark `set geometry: N of M` says how it went. A file under 32 KB is read and
   opened in the frame it came in, its bar not waited on to be drawn
   (`ModelBar.OPENED_AT_ONCE_MOST`), and an open waits on the library's
   readers only when its file carries parts or LDCad skins

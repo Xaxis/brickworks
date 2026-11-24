@@ -2128,12 +2128,19 @@ func _ready() -> void:
 	# frames drawn in software, 1.5 to 3.5 s, and its first frame compiled
 	# the bricks' shaders after them, 0.9 to 1.7 s more (setopen, 2026-11-23).
 	# Its parts' geometry was asked for as the studio was made (_ask_early_set)
-	# and is read before anything else: what has come is down in that frame,
-	# and the rest is put down as it comes. Nothing waits for it with the
-	# studio held still: held up to 2 s for it, a person saw a frozen studio.
+	# and is waited for under the page's own screen, which says how much has
+	# come, so every part is down in that frame; that screen comes down once
+	# the set is drawn ("shown"). Waited for with the studio on the screen,
+	# it was a frozen studio; not waited for, the last parts came 3 to 4 s
+	# later, frames of a browser drawing in software.
 	if not _from_library.is_empty() and ModelLibrary.early_here(_from_library):
+		await _await_early_set()
 		_maybe_open_library()
 		_boot_mark("library")
+		await RenderingServer.frame_post_draw
+	# Every other address's page lifts its screen once the studio is made
+	# ("ui"); a set's waits for this (src/boot/shell.html, whenUp).
+	_boot_mark("shown")
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are
 	# real before framing them.
@@ -5086,12 +5093,20 @@ func _maybe_open_library() -> void:
 		await _build_from_step_one()
 
 
+## The parts of a set opened from its page (?library=) whose geometry
+## [method _ask_early_set] asked for, by the name each is laid under.
+var _early_parts: Array = []
+## The longest the page's screen waits for them, in ms: past it the set opens
+## and the rest are put down as they come.
+const EARLY_SET_WAIT_MS := 2000
+
+
 ## A set's Make your own version (?library=), its file fetched by the page as
 ## it opened (ModelLibrary.early_text): the geometry of its parts this build
 ## does not carry asked for now, while the rest of the studio is made, from
 ## where the page heard the parts live (ModelLibrary.early_parts_url), and read
 ## before anything read ahead (PartLibrary.want), so the open in the studio's
-## first frame puts down what has come and the rest follows within frames.
+## first frame puts every part down ([method _await_early_set]).
 ## Asked once the studio was up, 346-2's 13 such parts (36 of its 165) were
 ## asked a frame after the deployment answered and came three to four frames
 ## later, frames a browser drawing in software took 0.4 to 3 s each (setopen,
@@ -5108,7 +5123,43 @@ func _ask_early_set() -> void:
 		return
 	if _library.remote_parts.is_empty():
 		_library.remote_parts = ModelLibrary.early_parts_url()
-	_store.ask_geometry(parsed)
+	_early_parts = _store.ask_geometry(parsed)
+
+
+## Until none of [member _early_parts] is on its way, [constant
+## EARLY_SET_WAIT_MS] at most, nothing drawn and nothing moving, under the
+## page's own screen, still up for a set (shell.html's whenUp), which says how
+## many have come (window.brickworksBootParts). Each frame then costs
+## milliseconds, not a studio drawn in software, so the parts, read before
+## anything else as they come (PartLibrary.want), are kept in a few of them.
+func _await_early_set() -> void:
+	var coming: Callable = func() -> int:
+		return _early_parts.filter(func(part_id: String) -> bool: return _library.is_on_its_way(part_id)).size()
+	var total: int = coming.call()
+	if total == 0:
+		return
+	get_tree().paused = true
+	GpuFence.hold()
+	var until: int = Time.get_ticks_msec() + EARLY_SET_WAIT_MS
+	var left: int = total
+	var told: int = -1
+	while left > 0 and Time.get_ticks_msec() < until:
+		if left != told:
+			_tell_set_parts(total - left, total)
+			told = left
+		await get_tree().process_frame
+		left = coming.call()
+	_tell_set_parts(total - left, total)
+	GpuFence.let_go()
+	get_tree().paused = false
+	_boot_mark("set geometry: %d of %d" % [total - left, total])
+
+
+## How many of the set's parts have come, said on the page's screen while
+## [method _await_early_set] waits for them.
+static func _tell_set_parts(done: int, total: int) -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.brickworksBootParts && window.brickworksBootParts(%d, %d)" % [done, total], true)
 
 
 ## Build it from a set's page (sethub): the model just opened, at its first
