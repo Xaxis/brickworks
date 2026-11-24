@@ -4263,8 +4263,13 @@ plan with Claude as the client.
   so, up to a WebGL fence). `--viewport=WxH` (390 wide is a phone's),
   `--open=ADDRESS` and `--bricks=N` time another open the same way. A local export
   works too: relay --static with each browser signed in as its own
-  throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23;
-  the 2 s bar is not met there).
+  throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23,
+  before setopen; after it, same-moment pairs with pre261 at load 54-87:
+  1.0 s at 1280 and 1.4 s at 390 against pre261's 6.6 and 6.8 s, the set on
+  the screen 3.1 and 2.7 s after the plain studio was, against 5.4 and 8.4 s.
+  A model page's Open in the app, `--open=/app?view=ID`, is not changed by
+  it: 7.0 s against 8.3 s, the shared model's fetch and then its parts:
+  bench/results/setopen-2026-11-23/FINDINGS.txt).
 - **Search that finds what a builder means** (search, 2026-10-30):
   `api/_search.js` reads a query word by word (misspelt by edit distance,
   run together or apart, plurals, accents and apostrophes, set numbers and
