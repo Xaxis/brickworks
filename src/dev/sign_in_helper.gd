@@ -106,9 +106,10 @@ static func delete_accounts(prefix: String, host: Node) -> int:
 ## phone the studio opens on its first screen over the example car, as a
 ## real first visit does (Main._maybe_start), and a probe that works on the
 ## car puts it away as a person does, by its ✕. Left up, a finger's tap,
-## drag or panel landed on it and nothing in the studio heard
-## (carryrest_phone, fingertools, phonepanels on rel-m338). Waits for the
-## app to decide; returns whether a screen was put away.
+## drag or panel landed on it and nothing in the studio heard (on rel-m338:
+## carryrest, fingertools, phonepanels, binrow, subexport and hpreview, on a
+## phone and a tablet). Waits for the app to decide; returns whether a
+## screen was put away.
 static func put_away_first_screen(main: Node) -> bool:
 	var tree: SceneTree = main.get_tree()
 	for _n: int in 600:
