@@ -1,5 +1,6 @@
-// Make a minifig, as a person meets it (avatarkit, 2026-11-23), with a
-// throwaway account (deleted at the end), on a local relay or a preview:
+// Make a minifig, as a person meets it (avatarkit, 2026-11-23; the live 3D
+// maker, figmaker 2026-11-24), with a throwaway account (deleted at the
+// end), on a local relay or a preview:
 //
 //   node --env-file=.env tools/web/relay_server.mjs 11851 --hold=profile_avatars,profile_choices &
 //   node --env-file=.env tools/web/minifig_flow.mjs --url=http://127.0.0.1:11851 --out=DIR
@@ -7,19 +8,23 @@
 //
 // Ada makes a profile, lists a model and comments on it. Edit profile shows
 // her the minifig made from her handle and Make a minifig; the maker opens on
-// it, she picks a face, long wavy hair in a colour, a print, colours and a
-// background, Surprise me changes it, she picks again and saves. Her profile
-// and her comment show it as her picture (each under 30 KB), a reload keeps
-// it, and the maker opens on it again (its recipe kept, where the column is).
-// Then she chooses a picture of her own instead, and removes it: the minifig
-// made from her handle again. ?op=avatar&handle= draws that minifig as a
-// JPEG. The whole of it at 1280 in dark, the maker at 390 in light; with
-// --pictures, the maker, her profile, her comment, the gallery's cards and
-// the home's feed at 1280 and 390, dark and light.
+// that same figure in 3D, skin first. She picks a skin tone, a face, a
+// ponytail in a colour, a torso and its colour, shorts, a backpack and a cup,
+// waves, and a sky behind; Surprise me changes it and Undo brings hers back;
+// she saves. Her profile, her comment and her page show it as her picture, a
+// reload keeps it, and the maker opens on it again as she made it. A figure
+// kept from the maker before (v 1, layers) opens as the same figure. Then
+// she chooses a picture of her own instead, and removes it, saying yes in
+// the site's own dialog: the minifig made from her handle again.
+// ?op=avatar&handle= draws that minifig as a JPEG. The whole of it at 1280
+// in dark, the maker at 390 in light; with --pictures, the maker, her
+// profile, her comment, her page, the gallery's cards and the home's feed at
+// 1280 and 390, dark and light.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { PORTRAIT } from "./design_stand_in.mjs";
 import { minifigLayers, minifigOf } from "../../web/card.js";
+import { figureShape, fromLayers } from "../../web/minifig-parts.js";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -106,12 +111,37 @@ const ADA = `mfig-ada-${rand}`;
 let ada = null;
 const asAda = () => [STORAGE_KEY, JSON.stringify(ada.kept), JSON.stringify({ token: ada.access_token,
   until: Date.now() + 50 * 60 * 1000, email: ada.kept.email })];
-// What she picks: [group, index in its list].
-const PICKS = [["face", 4], ["hair", 1], ["hairColour", 4], ["print", 2], ["torso", 1], ["legs", 4], ["background", 5]];
-const picked = { face: "3626cp87", hair: "40251", hairColour: 484, print: "973p18", torso: 1, legs: 0, background: 6 };
+// What she picks: [tab, what to press in it], in turn; and what her figure
+// is then made of.
+const PICKS = [["skin", "label.mf-tile:has(input[name=mf-sk][value='84'])"], ["face", "label.mf-tile:has(input[name=mf-fa][value='3626cp87'])"],
+  ["hair", "label.mf-tile:has(input[name=mf-hd][value='6093a'])"], ["hair", "label.mf-swatch:has(input[name=mf-hc][value='484'])"],
+  ["torso", "label.mf-tile:has(input[name=mf-to][value='973p0l'])"], ["torso", "label.mf-swatch:has(input[name=mf-tc][value='15'])"],
+  ["legs", "label.mf-tile:has(input[name=mf-lg][value='shorts'])"], ["legs", "label.mf-swatch:has(input[name=mf-hp][value='272'])"],
+  ["extras", "label.mf-tile:has(input[name=mf-nk][value='2524'])"], ["extras", "[data-extras=right]"],
+  ["extras", "label.mf-tile:has(input[name=mf-ir][value='3899'])"], ["pose", "[data-pose=wave]"],
+  ["ground", "label.mf-swatch:has(input[name=mf-bg][value='s1'])"]];
+const WANT = { sk: 84, fa: "3626cp87", hd: "6093a", hc: 484, to: "973p0l", tc: 15, lg: "shorts", hp: 272, nk: "2524", ir: "3899",
+  po: [-12, 0, -150, 0, 30, 0], bg: "s1" };
+// A figure kept from the layers' maker (web/card.js minifigShape).
+const OLD = { v: 1, face: "3626cp71", hair: "3833", hairColour: 70, print: "973p9c", torso: 25, legs: 272, background: 2 };
 
+const recipeIn = (page) => page.evaluate(() => JSON.parse(document.querySelector("#minifig-dialog").dataset.recipe || "null"));
+const makerReady = (page) => until(page, () => ["ready", "failed"].includes(document.querySelector("dialog#minifig-dialog[open]")?.dataset.figure), null, 90000)
+  .then(async (seen) => seen && (await page.evaluate(() => document.querySelector("#minifig-dialog").dataset.figure)) === "ready");
 async function pick(page) {
-  for (const [key, at] of PICKS) await page.locator(`fieldset[data-key="${key}"] label.minifig-tile`).nth(at).click();
+  for (const [tab, what] of PICKS) {
+    if ((await page.getAttribute("[role=tab][aria-selected=true]", "data-tab")) !== tab) await page.click(`[role=tab][data-tab=${tab}]`);
+    const one = page.locator(what).first();
+    await one.scrollIntoViewIfNeeded();
+    await one.click();
+    await page.waitForTimeout(200);
+  }
+}
+// The site's own dialog asking yes or no (web/kit.js ask): yes.
+async function sayYes(page) {
+  const asked = await until(page, () => document.querySelector("dialog.ask[open] [data-answer=yes]"), null, 10000);
+  if (asked) await page.click("dialog.ask[open] [data-answer=yes]");
+  return asked;
 }
 
 try {
@@ -156,37 +186,39 @@ try {
         edit.shown && edit.make === "Make a minifig" && /minifig made from your handle/.test(edit.said));
     }
     await page.click("#avatar-make");
-    const opened = await until(page, () => document.querySelector("dialog#minifig-dialog[open] .minifig-tile .avatar.minifig"));
+    const opened = await makerReady(page);
     const drawn = await page.evaluate(() => ({
-      groups: [...document.querySelectorAll("#minifig-choices fieldset")].map((f) => [f.dataset.key, f.querySelectorAll("input").length, f.hidden]),
-      checked: [...document.querySelectorAll("#minifig-choices input:checked")].length,
-      light: document.querySelectorAll("#minifig-light .avatar.minifig").length, dark: document.querySelectorAll("#minifig-dark .avatar.minifig").length,
+      tabs: [...document.querySelectorAll("#minifig-dialog [role=tab]")].map((one) => one.dataset.tab),
+      open: document.querySelector("#minifig-dialog [role=tab][aria-selected=true]")?.dataset.tab,
+      skins: document.querySelectorAll("#minifig-dialog input[name=mf-sk]").length,
+      sizes: document.querySelectorAll("#minifig-light .avatar img, #minifig-dark .avatar img").length,
+      first: Number(document.querySelector("#minifig-dialog").dataset.firstFrame),
       wide: document.querySelector("#minifig-dialog").scrollWidth > document.querySelector("#minifig-dialog").clientWidth + 1,
       save: (() => { const b = document.querySelector("#minifig-save").getBoundingClientRect(); return b.bottom <= innerHeight && b.top >= 0; })() }));
-    check(`${tag}: the maker opened on her minifig: ${drawn.groups.map(([k, n]) => `${k} ${n}`).join(", ")}; ${drawn.light}+${drawn.dark} sizes; Save in view`,
-      opened && drawn.groups.length === 7 && drawn.groups.find(([k]) => k === "face")[1] === 10 && drawn.groups.find(([k]) => k === "hair")[1] === 15
-      && drawn.light === 3 && drawn.dark === 3 && !drawn.wide && drawn.save);
+    check(`${tag}: the maker drew her figure in 3D in ${drawn.first} ms: tabs ${drawn.tabs.join(", ")}, "${drawn.open}" open, `
+      + `${drawn.skins} skin tones, ${drawn.sizes} sizes; Save in view`,
+      opened && drawn.tabs.length === 9 && drawn.tabs[0] === "skin" && drawn.open === "skin" && drawn.skins >= 9 && drawn.sizes === 6
+      && !drawn.wide && drawn.save);
+    const startedOn = await recipeIn(page);
+    check(`${tag}: it opened on the minifig made from her handle, the same figure`,
+      JSON.stringify(startedOn) === JSON.stringify(figureShape(fromLayers(minifigOf(ADA)))));
     await page.waitForTimeout(600);
     await shot(page, `maker_${width}_${theme}.png`);
     if (!first) { await context.close(); continue; }
 
-    console.log("3. She picks, is surprised, picks again and saves");
-    const start = await page.evaluate(faceOf, "#minifig-big");
-    check(`the maker starts on the handle's minifig ("${start?.minifig}")`, start?.minifig === minifigKey(ADA));
+    console.log("3. She picks in each tab, is surprised, undoes it and saves");
     await pick(page);
-    const mine = await page.evaluate(faceOf, "#minifig-big");
-    const want = minifigLayers(picked, 256);
-    check(`her picks drawn large: ${mine.layers.join(" ")}`, JSON.stringify(mine.layers) === JSON.stringify(want));
-    check(`the hair colour shows for hair: ${await page.isVisible('fieldset[data-key="hairColour"]')}`, await page.isVisible('fieldset[data-key="hairColour"]'));
-    await page.click("#minifig-surprise");
-    const surprised = await page.evaluate(faceOf, "#minifig-big");
-    check(`Surprise me changed it (${surprised.layers.length} layers)`, JSON.stringify(surprised.layers) !== JSON.stringify(want));
-    await pick(page);
-    await page.locator('fieldset[data-key="hair"] label.minifig-tile').nth(9).click();
-    check(`a hat hides the hair colour`, !(await page.isVisible('fieldset[data-key="hairColour"]')));
-    await page.locator('fieldset[data-key="hair"] label.minifig-tile').nth(1).click();
-    await page.waitForTimeout(400);
+    const mine = await recipeIn(page);
+    check(`her picks made her figure: ${JSON.stringify(mine)}`, Object.entries(WANT).every(([key, value]) => JSON.stringify(mine?.[key]) === JSON.stringify(value)));
+    const said = await page.getAttribute("#mf-stage", "aria-label");
+    check(`a screen reader is told it ("${said}")`, /Medium Nougat skin/.test(said) && /Ponytail/.test(said) && /Cup/.test(said));
     await shot(page, `maker_picked_${width}_${theme}.png`);
+    await page.click("#minifig-surprise");
+    await page.waitForTimeout(300);
+    check(`Surprise me changed it`, JSON.stringify(await recipeIn(page)) !== JSON.stringify(mine));
+    await page.click("#mf-undo");
+    await page.waitForTimeout(300);
+    check(`Undo brought hers back`, JSON.stringify(await recipeIn(page)) === JSON.stringify(mine));
     const sent = page.waitForRequest((q) => q.url().includes("op=avatar") && q.method() === "POST", { timeout: 30000 }).catch(() => null);
     const answered = page.waitForResponse((a) => a.url().includes("op=avatar") && a.request().method() === "POST", { timeout: 60000 }).catch(() => null);
     await page.click("#minifig-save");
@@ -194,17 +226,18 @@ try {
     const body = request ? JSON.parse(request.postData() || "{}") : {};
     const answer = await answered;
     const json = answer ? await answer.json().catch(() => ({})) : {};
-    check(`Save sent a ${Buffer.from(body.picture || "", "base64").length} byte PNG with its recipe`,
-      body.type === "image/png" && Buffer.from(body.picture || "", "base64").subarray(1, 4).toString() === "PNG"
-      && JSON.stringify(body.minifig) === JSON.stringify({ v: 1, ...picked }));
+    const png = Buffer.from(body.picture || "", "base64");
+    writeFileSync(path.join(out, "saved_minifig.png"), png);
+    check(`Save sent a ${png.length} byte PNG with its recipe`,
+      body.type === "image/png" && png.subarray(1, 4).toString() === "PNG" && JSON.stringify(body.minifig) === JSON.stringify(mine));
     check(`kept: ${answer?.status()} ${json.picture}, ${json.side} px, ${json.bytes} bytes, recipe ${json.minifig ? "kept" : "not kept (no column)"}`,
-      answer?.status() === 200 && /op=avatar&id=/.test(json.picture || "") && json.side === 256 && json.bytes < 30 * 1024);
+      answer?.status() === 200 && /op=avatar&id=/.test(json.picture || "") && json.side === 400 && json.bytes < 60 * 1024);
     await until(page, () => document.querySelector("#avatar img")?.complete);
     head = await page.evaluate(faceOf, "#avatar");
     check(`her profile shows it as her picture at once (${head.src})`, head.pictured && head.src === json.picture);
     const kept = await api(json.picture || "/");
     writeFileSync(path.join(out, "saved_minifig.jpg"), kept.bytes || Buffer.alloc(0));
-    check(`the kept picture: ${kept.status} ${kept.type}, ${kept.bytes?.length} bytes`, kept.status === 200 && kept.bytes?.length < 30 * 1024);
+    check(`the kept picture: ${kept.status} ${kept.type}, ${kept.bytes?.length} bytes`, kept.status === 200 && kept.bytes?.length < 60 * 1024);
     await page.keyboard.press("Escape").catch(() => {});
     await page.reload({ waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.profile === "ready", null, 60000);
@@ -218,9 +251,8 @@ try {
     if (json.minifig) {
       check(`Edit profile says "${again}"`, again === "Change your minifig");
       await page.click("#avatar-make");
-      await until(page, () => document.querySelector("dialog#minifig-dialog[open] .minifig-tile .avatar.minifig"));
-      const reopened = await page.evaluate(faceOf, "#minifig-big");
-      check(`the maker opens on what she saved`, JSON.stringify(reopened.layers) === JSON.stringify(want));
+      const reopened = (await makerReady(page)) && await recipeIn(page);
+      check(`the maker opens on what she saved, after a reload`, JSON.stringify(reopened) === JSON.stringify(mine));
       await page.click("#minifig-cancel");
     } else {
       check(`without the column, the maker still offers to make one ("${again}")`, again === "Make a minifig");
@@ -228,7 +260,7 @@ try {
     await page.keyboard.press("Escape").catch(() => {});
     await context.close();
 
-    console.log("4. Her comment shows it");
+    console.log("4. Her comment and her page show it");
     const m = await open(`/m/${model}`, { width, theme, label: "model page" });
     await until(m.page, () => document.querySelector(".comment .avatar img")?.complete, null, 60000);
     const commentFace = await m.page.evaluate(() => document.querySelector(".comment .avatar img")?.getAttribute("src"));
@@ -236,6 +268,31 @@ try {
     await m.page.locator(".comment").first().scrollIntoViewIfNeeded().catch(() => {});
     await shot(m.page, `comment_${width}_${theme}.png`);
     await m.context.close();
+    const u = await open(`/u/${ADA}`, { width, theme, label: "her page" });
+    await until(u.page, (src) => [...document.querySelectorAll(".avatar img")].some((img) => img.getAttribute("src") === src && img.complete),
+      json.picture, 60000);
+    const onPage = await u.page.evaluate((src) => [...document.querySelectorAll(".avatar img")].filter((img) => img.getAttribute("src") === src).length, json.picture);
+    check(`her page shows it (${onPage} times)`, onPage >= 1);
+    await shot(u.page, `page_${width}_${theme}.png`);
+    await u.context.close();
+
+    if (json.minifig) {
+      console.log("4b. A figure kept from the maker before opens as the same figure");
+      const v1 = await api("/api/people?op=avatar", { method: "POST", token: ada.access_token,
+        body: { picture: png.toString("base64"), type: "image/png", minifig: OLD } });
+      check(`a v 1 recipe is still kept: ${v1.status}`, v1.status === 200 && JSON.stringify(v1.json?.minifig) === JSON.stringify(OLD));
+      const o = await open("/profile", { width, theme, session: asAda(), label: "old figure" });
+      await until(o.page, () => document.documentElement.dataset.profile === "ready", null, 60000);
+      await o.page.click("#edit");
+      await until(o.page, () => document.querySelector("dialog#edit-dialog[open]"));
+      await o.page.click("#avatar-make");
+      const old = (await makerReady(o.page)) && await recipeIn(o.page);
+      check(`the maker opens it as the same figure: ${JSON.stringify(old)}`, JSON.stringify(old) === JSON.stringify(figureShape(fromLayers(OLD))));
+      await o.page.waitForTimeout(400);
+      await shot(o.page, `maker_old_figure_${width}_${theme}.png`);
+      await o.page.click("#minifig-cancel");
+      await o.context.close();
+    }
 
     console.log("5. A picture of her own instead, then removed");
     const p = await open("/profile", { width, theme, session: asAda(), label: "upload" });
@@ -250,11 +307,14 @@ try {
     const upJson = up ? await up.json().catch(() => ({})) : {};
     check(`her own picture kept: ${up?.status()} ${upJson.picture}, recipe ${JSON.stringify(upJson.minifig)}`,
       up?.status() === 200 && upJson.picture && upJson.picture !== json.picture && !upJson.minifig);
-    const said = await p.page.evaluate(() => ({ make: document.querySelector("#avatar-make").textContent,
+    const words = await p.page.evaluate(() => ({ make: document.querySelector("#avatar-make").textContent,
       remove: document.querySelector("#avatar-remove").textContent }));
-    check(`Edit profile: "${said.make}", "${said.remove}"`, said.make === "Make a minifig" && said.remove === "Remove the picture");
+    check(`Edit profile: "${words.make}", "${words.remove}"`, words.make === "Make a minifig" && words.remove === "Remove the picture");
+    // Remove asks first, in the site's own dialog (web/kit.js ask), not the
+    // browser's: a dialog handler never sees it.
     const removed = p.page.waitForResponse((a) => a.url().includes("op=avatar_remove"), { timeout: 60000 }).catch(() => null);
     await p.page.click("#avatar-remove");
+    check(`Remove asked first, and she said yes`, await sayYes(p.page));
     check(`removed: ${(await removed)?.status()}`, (await removed)?.status() === 200);
     await p.page.waitForTimeout(500);
     const back = await p.page.evaluate(faceOf, "#avatar-edit");
