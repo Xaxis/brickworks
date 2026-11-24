@@ -11417,7 +11417,11 @@ func _still_bare() -> bool:
 ## The first screen, once a tab, when it is due: the studio up, nobody's
 ## sign-in screen over it, and an account with a model (here, or the
 ## account's once it has said). An account with none gets the example car,
-## as a first visit does, and Build your first model (FirstBuild).
+## as a first visit does, and Build your first model (FirstBuild); where
+## that has no room (a phone, a window a phone's width), this screen over
+## the car, welcoming, New model its strong button. A phone's first visit
+## had the car and nothing else: no offer, and New three taps away in More,
+## File (appwalk's first-timer, 2026-11-24).
 func _maybe_start() -> void:
 	if _start_decided or not _first_open_done or not _built or _gated() or not _start_wanted():
 		return
@@ -11435,6 +11439,8 @@ func _maybe_start() -> void:
 			_sample_untouched = _open(SAMPLE_MODEL) > 0
 			_lay_baseplate()
 			_camera.frame(_built_bounds())
+			if _shell != null and _shell.first_build != null and not _shell.first_build.fits_here():
+				_studio_start_now().call("open", saved, false, true)
 		return
 	_start_decided = true
 	_studio_start_now().call("open", saved, saved.is_empty())

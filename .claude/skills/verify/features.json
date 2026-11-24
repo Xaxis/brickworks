@@ -1748,6 +1748,14 @@
       "tests": []
     },
     {
+      "id": "cli:firststart probe",
+      "kind": "cli",
+      "entry": "src/dev/firststart_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh firststart_probe -- --pictures=DIR   (windowed; an account with nothing saved: on a phone the first screen over the example car, Welcome to Brickworks, New model strong, one press an empty baseplate with nothing asked; PROBE_SIZE=1280x800: the car and no first screen, Build your first model has room)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:flex skin probe",
       "kind": "cli",
       "entry": "src/dev/flex_skin_probe.gd",
@@ -8851,7 +8859,7 @@
       "id": "ui:the studio's first screen",
       "kind": "ui",
       "entry": "src/ui/studio_start.gd",
-      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start)",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start). An account with nothing saved gets the example car, and on a phone or a window a phone's width (no room for Build your first model, FirstBuild.fits_here) this screen over it: Welcome to Brickworks, New model its strong button",
       "area": "web",
       "tests": []
     },

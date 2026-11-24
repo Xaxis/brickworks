@@ -17131,6 +17131,9 @@ msgstr "Willkommen zurück"
 msgid "Pick up where you left off, or see what came back from other builders."
 msgstr "Mach dort weiter, wo du aufgehört hast, oder sieh, was von anderen Baumeistern zurückkam."
 
+msgid "Start a model of your own: New model, this week's quick build or one from the gallery. The example car is behind this."
+msgstr "Fang ein eigenes Modell an: Neues Modell, der Schnellbau dieser Woche oder eines aus der Galerie. Das Beispielauto steht dahinter."
+
 msgid "New model"
 msgstr "Neues Modell"
 
