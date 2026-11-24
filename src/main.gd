@@ -2044,6 +2044,8 @@ func _ready() -> void:
 	# cube's Fit), told them again (Keymap.tell).
 	Keymap.retell(self)
 	_boot_mark("ui")
+	if _viewing.is_empty():
+		_ask_early_set()
 
 	if not _viewing.is_empty():
 		_enter_view()
@@ -2119,7 +2121,26 @@ func _ready() -> void:
 	# Whatever changes the model from here on is kept, by whatever path.
 	_store.listen()
 	_boot_mark("model")
-
+	# A set's Make your own version (?library=), its file and its entry
+	# fetched by the page as it opened (ModelLibrary.early_here): opened now,
+	# so the studio's first frame draws it and compiles its shaders with the
+	# studio's own. Opened after that frame, it waited on the studio's first
+	# frames drawn in software, 1.5 to 3.5 s, and its first frame compiled
+	# the bricks' shaders after them, 0.9 to 1.7 s more (setopen, 2026-11-23).
+	# Its parts' geometry was asked for as the studio was made (_ask_early_set)
+	# and is waited for under the page's own screen, which says how much has
+	# come, so every part is down in that frame; that screen comes down once
+	# the set is drawn ("shown"). Waited for with the studio on the screen,
+	# it was a frozen studio; not waited for, the last parts came 3 to 4 s
+	# later, frames of a browser drawing in software.
+	if not _from_library.is_empty() and ModelLibrary.early_here(_from_library):
+		await _await_early_set()
+		_maybe_open_library()
+		_boot_mark("library")
+		await RenderingServer.frame_post_draw
+	# Every other address's page lifts its screen once the studio is made
+	# ("ui"); a set's waits for this (src/boot/shell.html, whenUp).
+	_boot_mark("shown")
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are
 	# real before framing them.
@@ -4734,6 +4755,30 @@ func _set_address(path: String) -> void:
 	JavaScriptBridge.eval("history.replaceState(%s, '', %s)" % [mark, to], true)
 
 
+## The longest [method _address_once_kept] waits for the browser to store the
+## working model, in ms: past it the address is put as asked all the same.
+const KEPT_WAIT_MS := 120000
+
+
+## [param path] put in the address once the model just opened from it
+## (?library=, ?copy=) is in this tab's storage: the working model written
+## at the next frame (ModelStore.write_soon, written) and the browser's word
+## that it landed (ModelStore.stored, which follows the newest write of it).
+## Till then the address goes on asking for that model, so a reload opens it
+## again. Taken off at once, a reload before the autosave was written (2.5 s
+## after the open) or stored landed on an empty "Untitled", the set gone and
+## nothing to say so; with a set's loading screen still up (openreview F1,
+## 2026-11-24). Never awaited by an open: the open goes on meanwhile.
+func _address_once_kept(path: String) -> void:
+	var since: int = Time.get_ticks_msec()
+	_store.write_soon()
+	while not _store.written() and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
+		await get_tree().process_frame
+	while not ModelStore.stored(ModelStore.autosave()) and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
+		await get_tree().create_timer(0.2).timeout
+	_set_address(path)
+
+
 ## The share panel, asked for by the address (/app?share, _share_asked):
 ## once the model is back and the account lets them in, and the address
 ## put back to /app, so a reload does not ask again.
@@ -4834,7 +4879,8 @@ func _maybe_copy() -> void:
 func _offer_first_acts(kept: String, person: String) -> void:
 	while _gated():
 		await get_tree().create_timer(0.25).timeout
-	_set_address("")
+	# Let go once the copy is in this tab's storage, the offer not waiting.
+	_address_once_kept("")
 	if _store.title == kept:
 		_first_acts.offer(kept, person)
 
@@ -5042,15 +5088,19 @@ func _maybe_open_library() -> void:
 	var got: Dictionary = await _model_library.fetch_model(id, job)
 	var entry: Dictionary = got["entry"]
 	job.end()
-	_set_address("")
+	# Not opened, the address asks for it no more: a reload would only fail
+	# again, or ask again what the person said no to.
 	if entry.is_empty():
+		_set_address("")
 		_bar.say("could not open it: %s" % _model_library.trouble)
 		return
 	var title: String = ModelLibrary.title_of(entry)
 	if not str(got["error"]).is_empty():
+		_set_address("")
 		_bar.say("could not open %s: %s" % [title, got["error"]])
 		return
 	if not await _bar.ask_to_replace("“%s”" % title):
+		_set_address("")
 		return
 	if _assistant_made != null:
 		_assistant_made.forget_built()
@@ -5059,10 +5109,13 @@ func _maybe_open_library() -> void:
 	# Not by the parts placed or on their way: a model of none opens, and
 	# those on their way may be the last model's.
 	if not str(result["error"]).is_empty():
+		_set_address("")
 		_bar.say("could not open %s: %s" % [title, result["error"]])
 		return
 	_store.credit = ModelLibrary.credit_of(entry)
 	_store.touch()
+	# Opened, the address lets it go only once this tab's storage holds it.
+	_address_once_kept("")
 	_bar.opened.emit(placed)
 	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
 		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
@@ -5070,6 +5123,89 @@ func _maybe_open_library() -> void:
 	_bar.offer_moved(false)
 	if build:
 		await _build_from_step_one()
+
+
+## The parts of a set opened from its page (?library=) whose geometry
+## [method _ask_early_set] asked for, by the name each is laid under.
+var _early_parts: Array = []
+## The longest the page's screen waits for them, in ms: past it the set opens
+## and the rest are put down as they come.
+const EARLY_SET_WAIT_MS := 2000
+
+
+## A set's Make your own version (?library=), its file fetched by the page as
+## it opened (ModelLibrary.early_text): the geometry of its parts this build
+## does not carry asked for now, while the rest of the studio is made, from
+## where the page heard the parts live (ModelLibrary.early_parts_url), and read
+## before anything read ahead (PartLibrary.want), so the open in the studio's
+## first frame puts every part down ([method _await_early_set]).
+## Asked once the studio was up, 346-2's 13 such parts (36 of its 165) were
+## asked a frame after the deployment answered and came three to four frames
+## later, frames a browser drawing in software took 0.4 to 3 s each (setopen,
+## 2026-11-23). Only for a file the bar opens in one frame
+## (ModelBar.OPENED_AT_ONCE_MOST).
+func _ask_early_set() -> void:
+	if _from_library.is_empty():
+		return
+	var text: String = ModelLibrary.early_text(_from_library)
+	if text.is_empty() or text.length() >= ModelBar.OPENED_AT_ONCE_MOST:
+		return
+	var parsed: LdrModel = LdrModel.parse(text, _from_library)
+	if parsed == null:
+		return
+	if _library.remote_parts.is_empty():
+		_library.remote_parts = ModelLibrary.early_parts_url()
+	_early_parts = _store.ask_geometry(parsed)
+
+
+## Until none of [member _early_parts] is on its way, [constant
+## EARLY_SET_WAIT_MS] at most, nothing drawn and nothing moving, under the
+## page's own screen, still up for a set (shell.html's whenUp), which says how
+## many have come (window.brickworksBootParts). Each frame then costs
+## milliseconds, not a studio drawn in software, and each part is read here as
+## its bytes come (PartLibrary.read_first_here), this thread idle meanwhile.
+##
+## Then the screen says "Opening the set…", and is drawn so, a frame before
+## the open: the open and the studio's first frame, drawn with the set, hold
+## the page's thread in one go, 5.4 s in a browser drawing in software, and
+## nothing on the page can change meanwhile. Whatever it said then is what
+## the person read all that while: "0 of 12" though all 12 had been read in
+## the first 170 ms (openreview F3, 2026-11-24).
+func _await_early_set() -> void:
+	var coming: Callable = func() -> int:
+		return _early_parts.filter(func(part_id: String) -> bool: return _library.is_on_its_way(part_id)).size()
+	var total: int = coming.call()
+	get_tree().paused = true
+	GpuFence.hold()
+	if total > 0:
+		var until: int = Time.get_ticks_msec() + EARLY_SET_WAIT_MS
+		var left: int = total
+		var told: int = -1
+		var here: int = 0
+		while left > 0 and Time.get_ticks_msec() < until:
+			if left != told:
+				_tell_set_parts(total - left, total)
+				told = left
+			await get_tree().process_frame
+			here += _library.read_first_here()
+			left = coming.call()
+		_boot_mark("set geometry: %d of %d, %d read here" % [total - left, total, here])
+	_tell_boot("window.brickworksBootOpening && window.brickworksBootOpening()")
+	await get_tree().process_frame
+	GpuFence.let_go()
+	get_tree().paused = false
+
+
+## How many of the set's parts have come, said on the page's screen while
+## [method _await_early_set] waits for them.
+static func _tell_set_parts(done: int, total: int) -> void:
+	_tell_boot("window.brickworksBootParts && window.brickworksBootParts(%d, %d)" % [done, total])
+
+
+## [param call] run on the page, whose loading screen it changes.
+static func _tell_boot(call: String) -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval(call, true)
 
 
 ## Build it from a set's page (sethub): the model just opened, at its first

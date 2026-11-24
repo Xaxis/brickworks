@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, lib:staged product photographs, lib:no two parts alike, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe, lib:where hands leave their marks, lib:the stage matched to the photographs, lib:moulded edges, ui:the steps bar on a phone -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, ui:swing by a part, cli:swoosh probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, lib:staged product photographs, lib:no two parts alike, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:find a step by what it places, cli:stepsearch probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, cli:photoreal probe, cli:photoreal judge, cli:photoreal cycles, ui:stud directions, ui:connection points, cli:jointmarks probe, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:finger taps to undo and redo and turn, cli:phonefingers probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe, ui:the view kept over the floor and on the model, cli:viewfloor probe, lib:camera keys in a motion, cli:camerakeys probe, cli:smalls12 probe, lib:where hands leave their marks, lib:the stage matched to the photographs, lib:moulded edges, ui:the steps bar on a phone, lib:a large source on a table -->
 
 ## Sub-features
 
@@ -3337,6 +3337,48 @@ picture the assistant is shown.
   --without=edge` draws photoreal10's pictures (within the pass split's 4
   levels), and without `--without` red_slope_2x4's slope ends catch a line
   of light; the car at Best stays within 25% of its time without it.
+- `a large source on a table` (`RenderSettings.source` and `source_*`,
+  `StudioRender.PRODUCT_SOURCE` at `SOURCE_LEVEL` 128 and `SOURCE_KEY` 0.05,
+  `_source_rows`; photoreal14, on by default since photoreal16, docs/RENDERING.md
+  5r and 5t): at Best in the Product look on a table under the studio's
+  light, a bright window behind the model (90
+  by 50 degrees, sharp-edged) that glossy tops mirror, rising with the
+  camera so a flat top mirrors its middle, and the table's own key cut to a
+  twentieth; none in the tent. A way towards it passes the sweep
+  (path_tracer.glsl `lit_mask`), as a softbox stands in front of the paper.
+  A table is lit by it but does not mirror it (`SOURCE_SPILL` 0,
+  `source_spill`; path_tracer.glsl `on_table`): mirrored, its glare drew
+  wood and terrazzo nearly white. photoreal14's judge had it ahead by only
+  0.012 and 0.022 a draw; the fixed judge (photoreal16, a fresh blind name a
+  verdict) found it lifting every table close-up in every draw, 12 pictures
+  of 12, +0.35 over those shots (95%: +0.04 to +0.69), so it is on. Check:
+  `tools/probe.sh source_probe` opens the car, File, Render…, Best, Product,
+  each table and the seamless, Picture at the dialog's size: on each table
+  the source on by default, the picture changed from it asked off and the
+  table's own colour where the meter reads its card within
+  CIEDE2000 8 of the source off (the paling was 29 to 39), none on the
+  seamless, the car on each table at Best within 2.9 s; under Compatibility
+  it says Best has no path tracer and so no source.
+  `tools/probe.sh photoreal_probe -- --tag=T --without=source` draws the
+  parent commit's pictures byte for byte; `tools/photoreal/reflect_measure.py
+  LABEL=DIR` measures each close-up's top against its side and its edges'
+  lines of light, photograph against render (shots.json `reflect`).
+- `the moulded skin's breakup` (`RenderSettings.peel`, `sink`, `polish`,
+  `scuff`; `StudioRender.PRODUCT_PEEL`, `_SINK`, `_POLISH`, `_SCUFF` all 0,
+  `_breakup`; path_tracer.glsl `peeled`, `sunk`, `polish_split`,
+  `sparse_scuffs`, marks version only; photoreal15, docs/RENDERING.md 5s):
+  off in the app, four bench levers. Asked for, an orange-peel waviness of
+  a part's skin (its normal, seeded by the part), sink by each stud's foot
+  and over each tube, polished tops against satin sides, and a few
+  hairline scuffs and pits. Judged alone and together beside the
+  photographs, none gained (peel and scuff alone lost to the off arm), so
+  each stays at 0 and the plain version draws every default picture. Check:
+  `tools/probe.sh photoreal_probe -- --tag=T` draws byte for byte as the
+  parent commit; `-- --tag=T --shots=FILE` with `"peel": 0.5` (or sink,
+  polish, scuff) on a shot draws it; `tools/photoreal/breakup_measure.py
+  LABEL=DIR` measures each close-up's face mottle, highlight-line wobble,
+  mirrored outlines and the dip by a stud's foot, photograph against
+  render (shots.json `breakup`).
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong
@@ -3881,14 +3923,30 @@ picture the assistant is shown.
   --out DIR [--jobs 4]` shows a blind judge (Claude Code on the
   subscription, `judge.call`) the photograph and the render under opaque
   names, both as JPEG at 92, in both orders, and asks which is the
-  photograph of real bricks and what gives the render away; its copies go
-  in `DIR/blind/` (a `.gdignore` in it: a checkout's `bench/` is not left
-  out of the web export), and it writes
+  photograph of real bricks and what gives the render away; each ask's
+  copies are written under fresh random names in a fresh folder in the
+  system's temporary folder (never a checkout, whose branch and commits
+  Claude Code would show the judge) and taken away after its verdict
+  (photoreal16: a blind name is a seed, byte-identical twins under two
+  kept names scored 0.65 and 0.29 over ten verdicts each), and it writes
   `judge_TAG.json` (each verdict, its confidence, reason and tells; the
   pick rate and mean confidence for close-ups, sets and all). A render as
   real as the photograph is picked half the time; the bar is a lower pick
   rate after than before, judged the same day against a before drawn from
-  a locked tree. `colour TAG [--out DIR]` measures each close-up's faces
+  a locked tree.
+  `solo LABEL=DIR ... --name N --base LABEL --trials T --rounds R --out DIR`
+  asks every picture alone, each verdict under its own fresh name and
+  folder (the pictures it showed are kept in `DIR/masters/` by their
+  bytes' hash); a LABEL given once a draw is one arm. It ends with
+  `score`'s table, also `photoreal.py score SOLO_JSON... [--base L]
+  [--merge-draws]` (several pools' verdicts together): each label's mean
+  over its shots with a bootstrap 95% interval (shots, then verdicts,
+  drawn again), each label against the base shot by shot (a picture the
+  same in both arms counts as one), and every two labels sharing
+  byte-identical pictures as twins, whose interval's half-width is the
+  smallest difference the pool tells apart. Keep a lever only if its
+  interval against the base is above 0.
+  `colour TAG [--out DIR]` measures each close-up's faces
   (shots.json's `faces`, the photograph's box and the render's) as the
   trimmed mean of their CIELAB and prints and writes (`colour_TAG.json`)
   each face's CIEDE2000 from its photograph's; the bar is 5 on every main
