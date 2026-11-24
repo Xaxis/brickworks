@@ -437,9 +437,16 @@ try {
     "the guidelines beside Publish", 60).catch(() => false);
   const placed = await app2.evaluate(() => window.brickworksControls || {});
   const [publishAt, agreeAt, nameAt] = [placed.share_publish, placed.share_guidelines, placed.share_name];
-  check(`"Publishing means you agree to the guidelines" just under Publish (${open.guidelines}; at ${agreeAt?.y}, Publish ${publishAt?.y})`,
+  // Under the last button that publishes: Enter the month's challenge
+  // publishes too, and while a real one is open it stands under Publish with
+  // its line saying so (Microscale, 11-01 to 11-30: the checks' account is
+  // told it since ab8622d1f, as a person is).
+  const enterAt = placed.share_enter;
+  const lastAt = enterAt && publishAt && enterAt.y > publishAt.y ? enterAt : publishAt;
+  check(`"Publishing means you agree to the guidelines" just under Publish (${open.guidelines}; at ${agreeAt?.y}, Publish ${publishAt?.y}`
+    + `${enterAt ? `, Enter ${enterAt.y}` : ""})`,
     Boolean(beside) && /\/guidelines$/.test(open.guidelines || "") && publishAt && agreeAt
-    && agreeAt.y > publishAt.y && agreeAt.y - publishAt.y < 60);
+    && agreeAt.y > lastAt.y && agreeAt.y - lastAt.y < 60);
   check("the rest of the panel laid out above it as before", Boolean(nameAt) && nameAt.y < publishAt.y);
   await shot(app2, "4_app_share_13_or_over.png");
   const opened = appAdult.waitForEvent("page", { timeout: 30000 }).catch(() => null);
