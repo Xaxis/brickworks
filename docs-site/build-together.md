@@ -48,6 +48,7 @@ Open the link someone sent you and sign in. Or paste it in **File › Build toge
 - **Follow** beside a name puts your view where theirs is and keeps it there as they turn it; a bar over the view says *Following* with **Stop**. Moving the view yourself stops it too.
 - A short chat is there for people 13 and over.
 - Someone you build with can send you only their words and parts, never anything that runs.
+- A part someone made comes to you as theirs. If an older version of Brickworks gave it the same name as one you made, it is kept under a name of its own, and yours stays yours.
 - A reload goes back into the session by itself and sends what you had just changed. So does closing the tab: what you had just changed is sent as it closes, or, if it could not be, the next time you open Brickworks. Leaving ends nothing for the others, even if you started the session.
 
 ### Comments on parts {#comments}

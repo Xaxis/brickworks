@@ -13,7 +13,11 @@
 ##     sub-assembly, put into a model), my own model of mine, a copy of mine
 ##     cut short (mended, not renamed) and a print whose picture differs.
 ## RESULT / FINDING lines. Headless.
-## Both stages when none is named. --made-theirs=FILE opens their model as the
+##   --made-stage=together: Build together, both sides here with no server:
+##     their model with their part under the old id joined, saved, theirs moved
+##     there; mine put down here and taken there; an older app's own name for
+##     theirs. Theirs drawn and saved as theirs on both sides, mine as mine.
+## Every stage when none is named. --made-theirs=FILE opens their model as the
 ## live app wrote it (mr3_cross_probe --mr3-stage=collide on pre261's
 ## their-model.mpd), after checking its section is the cut made here.
 ##   godot --headless --path . --script src/dev/made_ids_probe.gd -- --made-stage=collide --made-out=DIR
@@ -86,6 +90,8 @@ func _run() -> void:
 		await _ids()
 	if stage in ["", "collide"]:
 		await _collide(out)
+	if stage in ["", "together"]:
+		await _together(out)
 	print("\nMADE IDS DONE: %d finding line%s" % [_findings, "" if _findings == 1 else "s"])
 	quit(1 if _findings > 0 else 0)
 
@@ -401,6 +407,158 @@ func _collide(out: String) -> void:
 				int(back["tris"].get(OLD_ID, -1)), my_tri])
 
 	await _pictures(out)
+
+
+## Build together with their part under an old id of mine (no server: their
+## side as togethersafe_probe has one, this window the other). Their model
+## begun, joined here; saved here; mine put down here and taken there; theirs
+## moved there and taken here; an older app's own name for theirs taken here.
+func _together(out: String) -> void:
+	print("\nBUILD TOGETHER: THEIR PART UNDER AN OLD ID OF MINE")
+	var mesh: Lbm.PartMesh = _library.mesh_for("3001")
+	var info: PartLibrary.PartInfo = _library.parts["3001"]
+	var mine: String = str(PartEditor.make_dat(_edit(MINE_CUT), mesh, info.name, info.category, OLD_ID)["text"])
+	var theirs: String = str(PartEditor.make_dat(_edit(THEIR_CUT), mesh, info.name, info.category, OLD_ID)["text"])
+	if _library.custom_source(OLD_ID) != mine:
+		CustomParts.add(_library, mine, OLD_ID)
+	var their_lib := PartLibrary.new()
+	their_lib.load_catalogue()
+	CustomParts.add(their_lib, theirs, OLD_ID, false)
+	var a: Dictionary = _side(their_lib)
+	var a_world: BrickWorld = a["world"]
+	var a_store: ModelStore = a["store"]
+	var a_together: Together = a["together"]
+	a_world.add_brick("3001", 4, Transform3D.IDENTITY)
+	var their_brick: int = a_world.add_brick(OLD_ID, 2, Transform3D(Basis.IDENTITY, Vector3(0, -24, 0)))
+	var snapshot: Dictionary = a_together._begin_own()
+	snapshot["text"] = a_store.to_text("their-model")
+	snapshot = JSON.parse_string(JSON.stringify(snapshot))
+	_write_abs(out.path_join("together-snapshot.json"), JSON.stringify(snapshot, " "))
+	var their_uid: String = str(a_together._uids.get(their_brick, ""))
+	var sent_as: String = ""
+	for entry: Variant in snapshot["bricks"]:
+		if str(entry[0]) == their_uid:
+			sent_as = str(entry[1])
+	_check(sent_as.begins_with(OLD_ID + "-") and CustomParts.names_its_text(sent_as),
+		"their side begins the session with their part as %s (its name there %s)" % [sent_as, OLD_ID])
+	# Joined here: the session's model opened, its parts laid as it has them.
+	var together: Together = _main.get("_together")
+	var opened: Dictionary = await _store.open_text_fetched(str(snapshot["text"]), "their-model")
+	var until: int = Time.get_ticks_msec() + 60000
+	while (_store.laying or not _store.awaited.is_empty()) and Time.get_ticks_msec() < until:
+		await process_frame
+	together._reset()
+	together._client = "bbbbbbbb"
+	together._lay_snapshot(snapshot)
+	await _frames(5)
+	var here_id: int = int(together._ids.get(their_uid, 0))
+	var here: String = _world.get_brick(here_id).part_id if _world.get_brick(here_id) != null else ""
+	_check(str(opened.get("error", "")).is_empty() and _world.brick_count() == 2 and here == sent_as
+			and _whose(_library.custom_source(here), mine, theirs) == "THEIRS"
+			and _whose(_library.custom_source(OLD_ID), mine, theirs) == "MINE",
+		"joined here: %d parts (%s); their part is %s, drawn as %s; %s here is %s" % [_world.brick_count(),
+			opened.get("error", ""), here, _whose(_library.custom_source(here), mine, theirs), OLD_ID,
+			_whose(_library.custom_source(OLD_ID), mine, theirs)])
+	var saved_at: String = ProjectSettings.globalize_path(PROBE_DIR + "together-saved.mpd")
+	_main.call("save_model", saved_at)
+	var saved: String = FileAccess.get_file_as_string(saved_at)
+	_write_abs(out.path_join("together-saved-here.mpd"), saved)
+	var got: Dictionary = _reopen(saved)
+	_check(_whose(_section(saved, here + ".dat"), mine, theirs) == "THEIRS"
+			and _section(saved, OLD_ID + ".dat").is_empty() and _line_in(saved, 2).contains(here),
+		"saved here: their line places %s, its section %s; read where never made: %s" % [
+			LdrModel.stem(LdrModel.reference_of(_line_in(saved, 2))),
+			_whose(_section(saved, here + ".dat"), mine, theirs), got["counts"]])
+	# Mine put down here: to the session under its name there, taken there.
+	await _put(OLD_ID)
+	var changes: Dictionary = together._diff(null)
+	var wire: Dictionary = JSON.parse_string(JSON.stringify(together._wire_changes(changes)))
+	var mine_uid: String = ""
+	var mine_as: String = ""
+	var named_old: int = 0
+	for key: String in wire:
+		if wire[key] is Array:
+			if str(wire[key][0]) == OLD_ID:
+				named_old += 1
+			if not snapshot_has(snapshot, key) and str(wire[key][0]).begins_with("bw-"):
+				mine_uid = key
+				mine_as = str(wire[key][0])
+	_check(named_old == 0 and mine_as.begins_with(OLD_ID + "-") and mine_as != sent_as
+			and wire.has(Together.MADE_PART + mine_as),
+		"mine put down here goes as %s with its files, no state names %s (%d do)" % [mine_as, OLD_ID, named_old])
+	a_together._take([{"seq": 1, "client": "bbbbbbbb", "cid": 0, "changes": wire}])
+	var there: BrickWorld.Brick = a_world.get_brick(int(a_together._ids.get(mine_uid, 0)))
+	var there_as: String = there.part_id if there != null else ""
+	var their_text: String = a_store.to_text("their-model")
+	_write_abs(out.path_join("together-saved-there.mpd"), their_text)
+	_check(there_as == mine_as and _whose(their_lib.custom_source(there_as), mine, theirs) == "MINE"
+			and _whose(their_lib.custom_source(OLD_ID), mine, theirs) == "THEIRS"
+			and _whose(_section(their_text, there_as + ".dat"), mine, theirs) == "MINE"
+			and _whose(_section(their_text, OLD_ID + ".dat"), mine, theirs) == "THEIRS",
+		"taken there: mine is %s, drawn as %s, %s there still %s; their save carries %s as %s and %s as %s" % [
+			there_as, _whose(their_lib.custom_source(there_as), mine, theirs), OLD_ID,
+			_whose(their_lib.custom_source(OLD_ID), mine, theirs), there_as,
+			_whose(_section(their_text, there_as + ".dat"), mine, theirs), OLD_ID,
+			_whose(_section(their_text, OLD_ID + ".dat"), mine, theirs)])
+	# Theirs moved there: taken here as theirs.
+	a_world.move_brick(their_brick, Transform3D(Basis.IDENTITY, Vector3(0, -24, 80)))
+	var moved: Dictionary = JSON.parse_string(JSON.stringify(a_together._wire_changes(a_together._diff(null))))
+	together._take([{"seq": 2, "client": a_together._client, "cid": 0, "changes": moved}])
+	var after: BrickWorld.Brick = _world.get_brick(int(together._ids.get(their_uid, 0)))
+	_check(after != null and after.part_id == sent_as and is_equal_approx(after.transform.origin.z, 80.0),
+		"theirs moved there: here %s at z %s" % [after.part_id if after != null else "(gone)",
+			after.transform.origin.z if after != null else 0.0])
+	# An older app sends its own name for theirs.
+	var older: Dictionary = {Together.MADE_PART + OLD_ID: var_to_str(CustomParts.sources_for(their_lib, [OLD_ID])),
+		"cccccccc.1": [OLD_ID, 2, Together.numbers_of(Transform3D(Basis.IDENTITY, Vector3(0, -48, 160))), "", "", 0]}
+	together._take([{"seq": 3, "client": "cccccccc", "cid": 0,
+		"changes": JSON.parse_string(JSON.stringify(older))}])
+	var from_older: BrickWorld.Brick = _world.get_brick(int(together._ids.get("cccccccc.1", 0)))
+	var older_as: String = from_older.part_id if from_older != null else ""
+	_check(older_as == sent_as and _whose(_library.custom_source(OLD_ID), mine, theirs) == "MINE",
+		"an older app's %s for theirs, taken here: %s, drawn as %s" % [OLD_ID, older_as,
+			_whose(_library.custom_source(older_as), mine, theirs)])
+	_main.call("save_model", saved_at)
+	saved = FileAccess.get_file_as_string(saved_at)
+	_write_abs(out.path_join("together-saved-here-2.mpd"), saved)
+	_check(_whose(_section(saved, sent_as + ".dat"), mine, theirs) == "THEIRS"
+			and _whose(_section(saved, OLD_ID + ".dat"), mine, theirs) == "MINE",
+		"saved here again: %s %s, %s %s" % [sent_as, _whose(_section(saved, sent_as + ".dat"), mine, theirs),
+			OLD_ID, _whose(_section(saved, OLD_ID + ".dat"), mine, theirs)])
+	together._reset()
+	_check(FileAccess.get_file_as_string(CustomParts.dir + OLD_ID + ".dat") == mine,
+		"my kept file of %s after the session: %s" % [OLD_ID, _whose(FileAccess.get_file_as_string(
+			CustomParts.dir + OLD_ID + ".dat"), mine, theirs)])
+
+
+static func snapshot_has(snapshot: Dictionary, uid: String) -> bool:
+	for entry: Variant in snapshot["bricks"]:
+		if str(entry[0]) == uid:
+			return true
+	return false
+
+
+## One side of a session with no server, on [param library] (togethersafe_probe's).
+func _side(library: PartLibrary) -> Dictionary:
+	var world := BrickWorld.new()
+	world.library = library
+	root.add_child(world)
+	var builder := Builder.new()
+	builder.world = world
+	builder.library = library
+	root.add_child(builder)
+	var store := ModelStore.new()
+	store.world = world
+	store.library = library
+	store.builder = builder
+	store.keeps = false
+	var together := Together.new()
+	together.world = world
+	together.builder = builder
+	together.store = store
+	together.keeps_place = false
+	root.add_child(together)
+	return {"world": world, "builder": builder, "store": store, "together": together}
 
 
 ## Two prints of one old id whose text is the same and whose picture is not.

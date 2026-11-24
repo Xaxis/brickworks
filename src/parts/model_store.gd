@@ -1751,6 +1751,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	var owned: Dictionary = CustomParts.own_names(library, text, model, name)
 	text = owned["text"]
 	model = owned["model"]
+	renamed = owned["names"]
 	# Parts the file brought with it, made here or somewhere else, join
 	# the library before anything asks whether the library has them: with a
 	# job, built over frames, after any worker reading the library has
@@ -2670,6 +2671,11 @@ func _await_geometry(waiting: Dictionary, job: Working.Job) -> void:
 ## says it).
 var open_phases: Dictionary = {}
 var _phase_at: int = 0
+## The parts made in the app the last model opened carried as someone
+## else's under a name a part here has, each old id -> the name it was
+## opened under (CustomParts.own_names): what Build together's joiner reads
+## the session's older names by (Together._lay_snapshot).
+var renamed: Dictionary = {}
 
 
 func _phase(name: String) -> void:

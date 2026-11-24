@@ -724,11 +724,13 @@ static func _made_here(id: String) -> bool:
 ## Up to moulds4 every other text was taken for a damaged copy as well: two
 ## people's cuts of a 3001 had one id, and a model of theirs opened here drew
 ## mine where they had theirs, and a save wrote mine over it (mouldreview3).
-## {"text", "model"}: the text renamed and read again, or both as given.
-## Renamed again while a section's text changes with a name in it (a print
-## on a part renamed), a few times at most.
+## {"text", "model", "names"}: the text renamed and read again, or both as
+## given, and each part's old id -> the name it was given. Renamed again
+## while a section's text changes with a name in it (a print on a part
+## renamed), a few times at most.
 static func own_names(library: PartLibrary, text: String, model: LdrModel,
 		name: String) -> Dictionary:
+	var given: Dictionary = {}
 	for _round: int in 4:
 		if model == null or model.embedded_parts.is_empty():
 			break
@@ -737,13 +739,16 @@ static func own_names(library: PartLibrary, text: String, model: LdrModel,
 			break
 		text = _renamed(text, names["parts"], names["pictures"])
 		model = LdrModel.parse(text, name)
-	return {"text": text, "model": model}
+		for old: String in given:
+			given[old] = names["parts"].get(given[old], given[old])
+		for old: String in names["parts"]:
+			if not given.values().has(old):
+				given[old] = names["parts"][old]
+	return {"text": text, "model": model, "names": given}
 
 
 ## The names [method own_names] gives: {"parts": old id -> new id,
-## "pictures": old file name, lowercase -> new name}. A part's new name is
-## its old one and a tag of its text and pictures as the file has them, so
-## the same file opened twice names it alike and keeps it once.
+## "pictures": old file name, lowercase -> new name}.
 static func _other_names(library: PartLibrary, model: LdrModel) -> Dictionary:
 	var parts: Dictionary = {}
 	var pictures: Dictionary = {}
@@ -751,32 +756,130 @@ static func _other_names(library: PartLibrary, model: LdrModel) -> Dictionary:
 		var id: String = LdrModel.stem(file_name)
 		if parts.has(id) or not _made_here(id):
 			continue
-		var theirs: String = model.embedded_parts[file_name]
-		# A picture the file carries under a name kept here, or drawn here,
-		# as other bytes: kept, it would be written over the person's own
-		# (add), whether the part's own name is the library's or not.
-		var other_pictures: Dictionary = {}
-		var bytes_had: Array = []
-		if PartPrints.has_pictures(theirs):
-			for picture: String in PartPrints.pictures_named(theirs):
-				var bytes: Variant = model.embedded_data.get(picture.to_lower())
-				if not bytes is PackedByteArray:
-					continue
-				bytes_had.append(bytes)
-				var have: PackedByteArray = _picture_of(library, id, picture)
-				if not have.is_empty() and have != bytes:
-					other_pictures[picture.to_lower()] = "%s-%s.%s" % [picture.get_basename(),
-						PartPrints.tag_of([bytes]), picture.get_extension()]
-		var info: PartLibrary.PartInfo = library.parts.get(id)
-		var mine: String = library.custom_source(id) if info != null and info.custom else ""
-		var same: bool = info == null or not info.custom or theirs == mine
-		if not same:
-			same = as_read(theirs) == as_read(mine) or cut_short(theirs, mine)
-		if same and other_pictures.is_empty():
-			continue
-		parts[id] = "%s-%s" % [id, PartPrints.tag_of([as_read(theirs)] + bytes_had)]
-		pictures.merge(other_pictures)
+		var other: Dictionary = other_name(library, id, model.embedded_parts[file_name],
+			model.embedded_data)
+		if not str(other["part"]).is_empty():
+			parts[id] = other["part"]
+			pictures.merge(other["pictures"])
 	return {"parts": parts, "pictures": pictures}
+
+
+## The name another's part made in the app comes in under here, [param id]
+## its name there, [param theirs] its text and [param bytes_of] its pictures
+## (lowercase name -> bytes): {"part": "" where it is the library's part of
+## that name (or none here has it), else its own name, "pictures": lowercase
+## name -> its own name, for each picture other than the one here of that
+## name}. Its own name is its old one and a tag of its text and pictures as
+## they came ([method carried_name] gives the same for the library's part),
+## so the same part brought in twice is named alike and kept once.
+static func other_name(library: PartLibrary, id: String, theirs: String,
+		bytes_of: Dictionary) -> Dictionary:
+	# A picture brought in under a name kept here, or drawn here, as other
+	# bytes: kept, it would be written over the person's own (add), whether
+	# the part's own name is the library's or not.
+	var other_pictures: Dictionary = {}
+	var bytes_had: Array = []
+	if PartPrints.has_pictures(theirs):
+		for picture: String in PartPrints.pictures_named(theirs):
+			var bytes: Variant = bytes_of.get(picture.to_lower())
+			if not bytes is PackedByteArray:
+				continue
+			bytes_had.append(bytes)
+			var have: PackedByteArray = _picture_of(library, id, picture)
+			if not have.is_empty() and have != bytes:
+				other_pictures[picture.to_lower()] = _picture_named(picture, bytes)
+	var info: PartLibrary.PartInfo = library.parts.get(id)
+	var mine: String = library.custom_source(id) if info != null and info.custom else ""
+	var same: bool = info == null or not info.custom or theirs == mine
+	if not same:
+		same = as_read(theirs) == as_read(mine) or cut_short(theirs, mine)
+	if same and other_pictures.is_empty():
+		return {"part": "", "pictures": {}}
+	return {"part": "%s-%s" % [id, PartPrints.tag_of([as_read(theirs)] + bytes_had)],
+		"pictures": other_pictures}
+
+
+## A picture's own name: [param name] and a tag of its bytes.
+static func _picture_named(name: String, bytes: PackedByteArray) -> String:
+	return "%s-%s.%s" % [name.get_basename(), PartPrints.tag_of([bytes]), name.get_extension()]
+
+
+## Whether [param id] ends in a tag (TAG_DIGITS lowercase hex digits): every
+## id made since moulds4, and every name [method other_name] gives. One that
+## does not is an older app's, which two people's parts can share.
+static func names_its_text(id: String) -> bool:
+	if id.length() <= TAG_DIGITS:
+		return false
+	for c: String in id.right(TAG_DIGITS):
+		if not "0123456789abcdef".contains(c):
+			return false
+	return true
+
+
+## The name the library's part [param id] goes under to another app (Build
+## together): an older app's name for a part made in the app given the tag
+## of its text and pictures, the name [method other_name] gives that part
+## where another part has its name; any other id as it is. So two people's
+## parts of one older name never meet under it.
+static func carried_name(library: PartLibrary, id: String) -> String:
+	if not _made_here(id) or names_its_text(id):
+		return id
+	var text: String = library.custom_source(id)
+	if text.is_empty():
+		return id
+	var tagged: Array = [as_read(text)]
+	if PartPrints.has_pictures(text):
+		for picture: String in PartPrints.pictures_named(text):
+			var bytes: PackedByteArray = _picture_of(library, id, picture)
+			if not bytes.is_empty():
+				tagged.append(bytes)
+	return "%s-%s" % [id, PartPrints.tag_of(tagged)]
+
+
+## The library's part of the name [param wire] another app sent ([method
+## carried_name]): the part of that name, or the older name whose carried
+## name it is; [param wire] when there is neither.
+static func local_name(library: PartLibrary, wire: String) -> String:
+	if library.parts.has(wire) or not names_its_text(wire) or wire.length() < TAG_DIGITS + 2 \
+			or wire[wire.length() - TAG_DIGITS - 1] != "-":
+		return wire
+	var base: String = wire.left(wire.length() - TAG_DIGITS - 1)
+	if library.parts.has(base) and carried_name(library, base) == wire:
+		return base
+	return wire
+
+
+## The library's part [param id] as files to go to another app ([method
+## sources_for]) under the name it goes by there ([method carried_name]),
+## its pictures under names of their own: [name, files].
+static func carried_files(library: PartLibrary, id: String) -> Array:
+	var files: Dictionary = sources_for(library, [id])
+	var wire: String = carried_name(library, id)
+	if wire == id:
+		return [id, files]
+	var pictures: Dictionary = {}
+	for name: String in files:
+		if files[name] is PackedByteArray:
+			pictures[name.to_lower()] = _picture_named(name, files[name])
+	return [wire, files_renamed(files, {id: wire}, pictures)]
+
+
+## [param files] (a part's, as [method sources_for] gives them) with the parts
+## in [param parts] (id -> new id) and the pictures in [param pictures]
+## (lowercase name -> new name) called by their new names: in the texts, and
+## the files' own names.
+static func files_renamed(files: Dictionary, parts: Dictionary, pictures: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for name: String in files:
+		var given: String = name
+		var stem: String = LdrModel.stem(name)
+		if pictures.has(name.to_lower()):
+			given = pictures[name.to_lower()]
+		elif parts.has(stem) and name.get_extension().to_lower() == "dat":
+			given = str(parts[stem]) + ".dat"
+		var file: Variant = files[name]
+		out[given] = _renamed(file, parts, pictures) if file is String else file
+	return out
 
 
 ## The picture [param name] as the library's part [param id] draws it, from
