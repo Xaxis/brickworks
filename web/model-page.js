@@ -1301,7 +1301,11 @@ function startComments(section) {
   pinBridge.name = nameOf;
   pinBridge.placed = (where) => {
     placed = new Map(where.map((one) => [one.id, one.index >= 0 ? { index: one.index, moved: one.moved } : null]));
-    draw();
+    // The 3D view places its pins at its first frame, and opened playing on
+    // a phone that can come before the comments' answer: they are drawn with
+    // these places once it comes (load), and drawn now they threw on no
+    // answer at all (play, nightreds unit preview 3, 2026-11-24).
+    if (state) draw();
   };
   // A dot pressed in 3D: its comment marked, and a line of it for the view
   // to show.
