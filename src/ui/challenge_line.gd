@@ -19,7 +19,8 @@
 ## a quick build has no rules, so the line names it and the day to publish
 ## by. Else the month's challenge open now (?op=challenge_rules), asked as
 ## the app starts and again each hour, and with the sign-in once it is
-## known, for a test account's is the checks' own.
+## known. Never a test one: those are told only to a page asked with
+## tests=1, which the studio never asks.
 ##
 ## Above the model as every notice is (Main._notices), never over it: one
 ## line at its narrowest, its name cut short before the days left are.
