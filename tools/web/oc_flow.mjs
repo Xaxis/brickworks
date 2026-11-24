@@ -421,7 +421,11 @@ try {
       await page.locator("#oc-part").waitFor({ state: "visible", timeout: 60000 }).catch(() => null);
       const said = await page.locator("#oc-said").textContent().catch(() => "");
       check(`settings ${width} ${theme}: Link orangecheck, with its words`, await page.locator("#oc-go").isVisible()
-        && (await page.locator("#oc-go").textContent()) === "Link orangecheck" && /^Link orangecheck to sign in with it/.test(said), said);
+        && (await page.locator("#oc-go").textContent()) === "Link orangecheck"
+        // Once the server has made the person's orangecheck account (it does
+        // at sign-in, on a deployment that reaches orangecheck), the line
+        // says so first, then offers the link (rel-m339's preview).
+        && /^(Your orangecheck account \(did:oc:[0-9a-f]+\) was made when you signed in\. .*?)?Link orangecheck to sign in with it/.test(said), said);
       const linkIs = await page.evaluate(() => ({
         link: Boolean(document.querySelector("#oc-go[data-oc-sign-in].cta.ghost svg[data-oc-mark=mono]")),
         remove: Boolean(document.querySelector("#delete-oc[data-oc-sign-in].cta.ghost.danger svg[data-oc-mark=mono]")),
