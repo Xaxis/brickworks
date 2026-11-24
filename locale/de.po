@@ -17745,3 +17745,48 @@ msgstr "%s sind mehr, als eine Baugruppe behalten kann: behalte einen Teil davon
 
 msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
 msgstr "was in der Zwischenablage ist, setzt mehr Teile, als auf einmal eingefügt werden können: kopiere weniger"
+
+msgid "Sign in with %s"
+msgstr "Mit %s anmelden"
+
+msgid "Signing in also makes your orangecheck account."
+msgstr "Mit der Anmeldung bekommst du auch dein orangecheck-Konto."
+
+msgid "What is that?"
+msgstr "Was ist das?"
+
+msgid "Taking you to %s to sign in…"
+msgstr "Weiter zu %s, um dich anzumelden…"
+
+msgid "Finish signing in with %s in your browser."
+msgstr "Schließe die Anmeldung mit %s in deinem Browser ab."
+
+msgid "Signing in with %s is not offered here. Sign in with your email instead."
+msgstr "Die Anmeldung mit %s gibt es hier nicht. Melde dich stattdessen mit deiner E-Mail an."
+
+msgid "Brickworks could not wait for %s on this computer. Sign in with your email instead."
+msgstr "Brickworks konnte auf diesem Computer nicht auf %s warten. Melde dich stattdessen mit deiner E-Mail an."
+
+msgid "%s did not answer in time. Sign in with %s again."
+msgstr "%s hat nicht rechtzeitig geantwortet. Melde dich noch einmal mit %s an."
+
+msgid "Signing in with %s was cancelled there."
+msgstr "Die Anmeldung mit %s wurde dort abgebrochen."
+
+msgid "%s gave no verified email address of yours. Sign in with a code we email you instead."
+msgstr "%s hat keine bestätigte E-Mail-Adresse von dir genannt. Melde dich stattdessen mit einem Code an, den wir dir mailen."
+
+msgid "%s is unlinked from your account. Sign in with a code we email you, then link it again in Settings."
+msgstr "%s ist von deinem Konto getrennt. Melde dich mit einem Code an, den wir dir mailen, und verknüpfe es dann in den Einstellungen wieder."
+
+msgid "Signing in with %s is not offered here just now. Sign in with a code we email you."
+msgstr "Die Anmeldung mit %s gibt es hier gerade nicht. Melde dich mit einem Code an, den wir dir mailen."
+
+msgid "A lot of people are signing in just now. Try again in a minute."
+msgstr "Gerade melden sich sehr viele an. Versuch es in einer Minute noch einmal."
+
+msgid "%s did not sign you in just now. Try again in a minute, or sign in with a code we email you."
+msgstr "%s hat dich gerade nicht angemeldet. Versuch es in einer Minute noch einmal oder melde dich mit einem Code an, den wir dir mailen."
+
+msgid "Could not sign in with %s just now (%d). Try again in a minute."
+msgstr "Die Anmeldung mit %s hat gerade nicht geklappt (%d). Versuch es in einer Minute noch einmal."
