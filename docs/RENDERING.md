@@ -2340,7 +2340,9 @@ do not have. So `StudioRender.PRODUCT_SOURCE` is 0: off in the app, the
 photo bench asks for it (`SOURCE_LEVEL` 128 on a table) until its judge
 keeps it, and a person's Render on a table draws as it did before
 photoreal14, byte for byte. The light-and-shadow tell is named on 94% of
-the fixed tree's verdicts.
+the fixed tree's verdicts. (That judge kept one blind name a picture, and
+its "0.012 and 0.022" was one draw of it. Judged again by the fixed judge,
+the source lifted every table close-up in every draw and is on: 5t.)
 
 ## 5s. The moulded skin's breakup, measured then judged (photoreal15)
 
@@ -2407,6 +2409,89 @@ names differ by up to 0.37 (three_2x2_top in draw 12: 0.66 and 0.28). So a
 pool's rounds repeat each verdict rather than adding new ones, and an arm's
 mean over ten shots carries about 0.024 of noise from the names alone. A
 lever worth keeping has to lead across draws and shots, not rounds.
+
+## 5t. A judge whose noise is measured, and the levers judged again (photoreal16)
+
+**A blind name is a seed.** photoreal15's fourteen twin pairs were asked
+again an hour later, six more times each, at their own paths in their own
+folder. Every old gap came back (old gap against new, r 0.99):
+three_2x2_top in draw 12 scored 0.65 under one name and 0.29 under the
+other, ten verdicts each, with the same bytes in the same folder. The judge
+reads one picture two ways ("small flaws, a real photograph" near 0.65,
+"garbled logos, a render" near 0.3), and the exact prompt, of which the
+file name is a part, settles which. Most names leave both open; some lock
+one. Position and neighbours played no part. Ten pictures under eight fresh
+names, three times each, shuffled into one pool, showed no pull from a
+verdict's place in the pool (r +0.01 against what is left once its name's
+mean is taken out) or from the verdict asked just before it (r +0.04). The
+judge only ever opened its own file. The old judge kept one name a picture
+for every round, so its rounds repeated one draw. It also ran inside the
+checkout, so each verdict's context held a path naming the unit, "solo"
+and "blind", and main's newest commits.
+
+**The fix** (`tools/bench/photoreal.py`, `_fresh`): every verdict, solo or
+paired, photograph or render, sees its picture under a fresh random name,
+alone in a fresh folder in the system's temporary folder, outside any
+checkout, and the copy is taken away after. Rounds are shuffled as before.
+An arm is scored as the mean over its shots of each shot's mean verdict,
+with a bootstrap 95% interval (the shots drawn again, then each picture's
+verdicts). Against a base it is scored shot by shot, a picture the same in
+both arms counting as one. Any byte-identical twins give the judge's own
+noise (`score`; several pools' verdicts add up).
+
+**Measured** (two pools from a locked snapshot of 8df1b3205, draws 11 to
+14, 2 rounds of 2 trials each, the photographs in; the off arm asked twice
+under two labels; 1,680 verdicts, 0 errors;
+bench/results/photoreal16-2026-11-23/solo_p16pool and solo_p16pool2):
+
+| twins | difference (95%) | tells apart at 95% |
+|---|---|---|
+| off and its twin, first pool (4 verdicts a picture) | +0.017 (+0.001 to +0.046) | 0.023 |
+| the second pool | -0.001 (-0.019 to +0.014) | 0.016 |
+| both (8 verdicts a picture, 40 pictures) | +0.008 (-0.001 to +0.023) | 0.012 |
+
+The first pool's twin interval missed 0 by 0.001. One shot carried it:
+three_2x2_top, whose verdicts split 0.3 and 0.65 within a picture. Drawn
+from the pools' own verdicts, the same interval holds 0 for 98.7% of 300
+simulated twin pairs. The second pool held 0, and so did both together.
+With fresh names an arm's mean repeats between pools: off 0.298 and 0.292,
+the source's lead +0.104 and +0.107. The old judge's twin gaps had a
+spread (sd) of 0.099, and the same pictures moved by 0.095 a picture (sd)
+between the old judge and the new.
+
+**The levers judged again** (both pools; against off, shot by shot):
+
+| arm | mean (95%) | against off, all shots | close-ups | the shots it changes |
+|---|---|---|---|---|
+| off | 0.295 (0.116 to 0.512) | | | |
+| the source on tables (photoreal14) | 0.400 (0.185 to 0.619) | +0.106 (+0.000 to +0.259) | +0.176 (+0.006 to +0.409) | +0.352 (+0.043 to +0.690), 12 pictures of 12 ahead |
+| peel 0.5 | 0.253 (0.088 to 0.476) | -0.042 (-0.127 to +0.008) | -0.074 | three_2x2_top -0.36 to -0.46 in every draw |
+| source, peel and scuff | 0.384 (0.157 to 0.619) | +0.089 (-0.061 to +0.265) | +0.145 | three_2x2_top -0.32 to -0.39 in every draw |
+
+The source changes only the three table close-ups and lifts every one in
+every draw: grey_1x3 from 0.12 to 0.82, black_2x4 from 0.28 to 0.61,
+green_plate from 0.87 to 0.91. Over all ten shots its interval starts at
+0.000 only because a resample of ten shots draws none of those three 2.8%
+of the time, and there the two arms are the same pictures. So the source
+is kept: `StudioRender.PRODUCT_SOURCE` is `SOURCE_LEVEL` (128) on a table
+under the studio's light, and none in the tent. Peel turns the top-down
+three_2x2 from "real" to "render" in every draw, and it drags the
+source-peel-scuff arm below the source alone, so both stay at 0. With
+peel and scuff added to the source, black_2x4 rose to 0.78 (0.61 with the
+source alone, and peel alone lowers it), so the source with scuff and
+without peel is the next arm worth judging.
+
+**The design ladder's realset screen is built the same way, and is left as
+it is.** realset.shown copies a model's views into one folder per set,
+bench/results/blind/<set>/, under a name fixed by the model's key
+(pairwise.opaque). The judge runs in that folder, inside the checkout.
+realset.ask keeps each ordered pair's verdict on disk under its two names
+and reads it back, so asking again repeats it. Both orders are asked, so
+position is balanced, but a set's side carries one name in every
+comparison of that set, and each rung one more. A design's place on a
+ladder is therefore one draw of each pair of names. Fresh names for every
+ask, and a folder outside the checkout, would make its verdicts samples
+(tools/design_ladder.py, place_one and order; realset.ask and shown).
 
 ## 6. Web and desktop
 

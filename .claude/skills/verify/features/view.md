@@ -3338,24 +3338,24 @@ picture the assistant is shown.
   levels), and without `--without` red_slope_2x4's slope ends catch a line
   of light; the car at Best stays within 25% of its time without it.
 - `a large source on a table` (`RenderSettings.source` and `source_*`,
-  `StudioRender.PRODUCT_SOURCE` 0, `SOURCE_LEVEL` 128 and `SOURCE_KEY` 0.05,
-  `_source_rows`; photoreal14, docs/RENDERING.md 5r): off in the app, a
-  lever the photo bench asks for until its judge keeps it. Asked for, at
-  Best in the Product look on a table, a bright window behind the model (90
+  `StudioRender.PRODUCT_SOURCE` at `SOURCE_LEVEL` 128 and `SOURCE_KEY` 0.05,
+  `_source_rows`; photoreal14, on by default since photoreal16, docs/RENDERING.md
+  5r and 5t): at Best in the Product look on a table under the studio's
+  light, a bright window behind the model (90
   by 50 degrees, sharp-edged) that glossy tops mirror, rising with the
   camera so a flat top mirrors its middle, and the table's own key cut to a
   twentieth; none in the tent. A way towards it passes the sweep
   (path_tracer.glsl `lit_mask`), as a softbox stands in front of the paper.
   A table is lit by it but does not mirror it (`SOURCE_SPILL` 0,
   `source_spill`; path_tracer.glsl `on_table`): mirrored, its glare drew
-  wood and terrazzo nearly white. Judged alone beside the photographs with
-  the table mirroring it: 28 of 80 called a photograph against 19; with the
-  table keeping its colour, ahead by only 0.012 and 0.022 a draw (18 of 80
-  against 16), under the 0.03 a default needs, so it stays off. Check:
+  wood and terrazzo nearly white. photoreal14's judge had it ahead by only
+  0.012 and 0.022 a draw; the fixed judge (photoreal16, a fresh blind name a
+  verdict) found it lifting every table close-up in every draw, 12 pictures
+  of 12, +0.35 over those shots (95%: +0.04 to +0.69), so it is on. Check:
   `tools/probe.sh source_probe` opens the car, File, Render…, Best, Product,
   each table and the seamless, Picture at the dialog's size: on each table
-  no source by default, and asked for the picture changed from it asked
-  off and the table's own colour where the meter reads its card within
+  the source on by default, the picture changed from it asked off and the
+  table's own colour where the meter reads its card within
   CIEDE2000 8 of the source off (the paling was 29 to 39), none on the
   seamless, the car on each table at Best within 2.9 s; under Compatibility
   it says Best has no path tracer and so no source.
