@@ -286,23 +286,19 @@ func _names() -> void:
 			read.embedded_parts.size(), whole])
 
 
-## The forge's cost is its triangles and PartForge.MOST_CELLS, whatever the
-## size: a part 1000 LDU across (400 mm) is built at a coarser grain, its
-## cover still round it; a corner that is no number is no triangle.
+## The forge's cost is bounded whatever the size: a part 1000 LDU across
+## (400 mm) is covered from its surface at 2 LDU (PartForge._surface_cover),
+## its cover still round it; a corner that is no number is no triangle.
 func _forge_bounds() -> void:
-	print("\nthe forge: cells bounded, corners that are numbers")
+	print("\nthe forge: cost bounded, corners that are numbers")
 	var lo := PackedFloat64Array([-500.0, -1000.0, -500.0])
 	var hi := PackedFloat64Array([500.0, 0.0, 500.0])
-	var grain: int = PartForge.grain_for(lo, hi)
-	var cells: float = 1.0
-	for n: int in 3:
-		cells *= ceilf(hi[n] / (PartForge.CELL * grain)) - floorf(lo[n] / (PartForge.CELL * grain))
-	_ok(grain > 1 and cells <= PartForge.MOST_CELLS,
-		"a box 1000 LDU a side: cells %d LDU, %d of them (at most %d)" % [int(PartForge.CELL) * grain,
-			int(cells), PartForge.MOST_CELLS])
-	_ok(PartForge.grain_for(PackedFloat64Array([-480.0, -8.0, -480.0]),
-			PackedFloat64Array([480.0, 0.0, 480.0])) == 1,
-		"a 48 x 48 baseplate's box is built at 2 LDU as before")
+	_ok(PartForge.box_cells(lo, hi) > PartForge.DENSE_MOST,
+		"a box 1000 LDU a side is %d cells: covered from its surface" % int(PartForge.box_cells(lo, hi)))
+	_ok(PartForge.box_cells(PackedFloat64Array([-480.0, -8.0, -480.0]),
+			PackedFloat64Array([480.0, 0.0, 480.0])) <= PartForge.MADE_DENSE_MOST,
+		"a 48 x 48 baseplate's box is covered cell by cell, as before")
+	var grain: int = 1
 	var cube: String = _cube_text("bw-probe-big", 1000.0)
 	var at: int = Time.get_ticks_msec()
 	var built: PartForge.Result = PartForge.build(cube, "bw-probe-big", {}, true, null, false)
@@ -328,7 +324,7 @@ func _forge_bounds() -> void:
 			with_endless.triangles, with_endless.bounds_min, with_endless.bounds_max])
 	var far: PartForge.Result = PartForge.build(_cube_text("bw-probe-far", 300000.0), "bw-probe-far",
 		{}, true, null, false)
-	_ok(far.problem.contains("40 m"), "one 300,000 LDU across is refused: %s" % far.problem)
+	_ok(far.problem.contains("12 m"), "one 300,000 LDU across is refused: %s" % far.problem)
 
 
 ## A closed cube [param side] LDU a side as a part's text, its top at 0.
