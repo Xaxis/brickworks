@@ -900,13 +900,19 @@ static func placing_length(text: String) -> int:
 		return text.length()
 	var count: int = 0
 	var model: bool = true
+	# Where each mark is next, so the text is read once for each however many
+	# sections it has (-1: none after).
+	var next: Dictionary = {}
 	# The line end of a FILE or NOFILE line: the lines after it are counted
 	# to the next such line.
 	var at: int = text.find("\n", first)
 	while at >= 0:
 		var ends: int = -1
 		for mark: String in ["\n0 FILE ", "\n0 NOFILE", "\n0 !DATA "]:
-			var found: int = text.findn(mark, at)
+			var found: int = int(next.get(mark, -2))
+			if found == -2 or (found >= 0 and found < at):
+				found = text.findn(mark, at)
+				next[mark] = found
 			if found >= 0 and (ends < 0 or found < ends):
 				ends = found
 		if model:
