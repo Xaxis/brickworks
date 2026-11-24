@@ -932,9 +932,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (diag_v2). Without the link's answer by then (a slow or failed fetch, a
   link with no model) it goes as before: the screen lifts on the studio's
   first frame and the viewer says what it is waiting for. A link and parts
-  still not in `Main.SHOWN_WHOLE_BY_MS` (2 s) after the `ui` mark lift the
-  screen on the studio first (`Main._lift_if_late`, boot mark `lifted late`)
-  and the model is drawn as it opens, its parts still coming: the screen's
+  still not in `Main.SHOWN_WHOLE_BY_MS` (2 s) after the `ui` mark (a copy's
+  link not come at all in its wait too), or an open that ends past it, lift
+  the screen on the studio first (`Main._lift_if_late`, boot mark `lifted
+  late`) and the model is drawn as it opens, its parts still coming: the screen's
   6 s bound (`SET_SHOWN_MOST`) cannot lift it while the open holds the
   page's thread, and a copy stayed under it 14.3 s after `ui` (viewreview
   F3). The screen lifts
