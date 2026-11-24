@@ -1813,6 +1813,10 @@ func want(part_ids: Array, first: bool = false) -> int:
 	var asked: int = 0
 	for part_id: String in part_ids:
 		var info: PartInfo = parts.get(part_id)
+		# Read ahead of anything read ahead, as it comes (_read_soon), asked
+		# for here or already on its way.
+		if info != null and not is_resident(part_id):
+			_waited_on_parts[part_id] = true
 		if info == null or is_resident(part_id) or (is_on_its_way(part_id) and not first) \
 				or not _on_disk(info.mesh_hash).is_empty():
 			continue
@@ -2036,6 +2040,7 @@ func _on_fetched(code: int, body: PackedByteArray, hash_name: String,
 		var asked_for: Array = _fetching.get(hash_name, [part_id])
 		_fetching.erase(hash_name)
 		for asked: String in asked_for:
+			_waited_on_parts.erase(asked)
 			fetch_failed.emit(asked, "HTTP %d" % code)
 		return
 	# Still on its way until it is read: one asked for meanwhile joins it.
@@ -2094,9 +2099,18 @@ var read_on_a_worker: bool = not OS.has_feature("nothreads")
 var read_here: int = 0
 ## Waiting to be read: [kind, hash, bytes, part id, box], under [member
 ## _read_lock], which the worker takes too; and what it has read, [that, what
-## it made], under the same lock.
+## it made], under the same lock. The geometry a model being opened waits on
+## ([member _waited_on_parts]) waits in a queue of its own, read before the
+## other.
 var _to_read: Array = []
+var _to_read_first: Array = []
 var _was_read: Array = []
+## Parts a model being opened waits on ([method want]) whose geometry is not
+## kept yet: read and kept before anything read ahead. Read in the order they
+## came, the geometry 346-2 waited on, here within 70 ms of being asked for,
+## was still behind the parts bin's pictures two seconds later (setopen,
+## 2026-11-23). The main thread's alone.
+var _waited_on_parts: Dictionary = {}
 var _read_lock := Mutex.new()
 var _reading: int = -1
 ## Read and not kept yet, [that, what it made]: the main thread's alone.
@@ -2111,14 +2125,18 @@ var _reading_shapes: Dictionary = {}
 
 
 ## [param item] ([kind, hash, bytes, part id, box]) read off the frame, first
-## with [param first]; read here and now where there is no frame (no tree).
+## with [param first], and before all else when a model being opened waits on
+## it ([method _waited_on]); read here and now where there is no frame (no tree).
 func _read_soon(item: Array, first: bool = false) -> void:
 	var tree: SceneTree = _read_tree()
 	if tree == null:
 		_kept_read(item, _read_one(item))
 		return
+	var waited_on: bool = _waited_on(item)
 	_read_lock.lock()
-	if first:
+	if waited_on:
+		_to_read_first.append(item)
+	elif first:
 		_to_read.push_front(item)
 	else:
 		_to_read.append(item)
@@ -2127,35 +2145,21 @@ func _read_soon(item: Array, first: bool = false) -> void:
 		tree.process_frame.connect(_read_frame)
 
 
-## The geometry of any of [param part_ids] whose bytes are here and waiting to
-## be read, read and kept now on this thread rather than by a worker behind
-## the rest: Main waits on a set's parts with nothing drawn, the page's thread
-## idle, and the 12 that came for 346-2 within 70 ms of being asked for were
-## still behind the parts bin's read-ahead two seconds later (setopen,
-## 2026-11-23). How many were read.
-func read_waiting(part_ids: Array) -> int:
-	var wanted: Dictionary = {}
-	for part_id: Variant in part_ids:
-		wanted[str(part_id)] = true
-	var mine: Array = []
-	var rest: Array = []
-	_read_lock.lock()
-	for item: Array in _to_read:
-		var askers: Array = _fetching.get(item[1], [item[3]])
-		if item[0] == LBM and askers.any(func(one: Variant) -> bool: return wanted.has(str(one))):
-			mine.append(item)
-		else:
-			rest.append(item)
-	_to_read = rest
-	_read_lock.unlock()
-	for item: Array in mine:
-		# The first of its kind alone, as a worker reads it (_read_some).
-		var made: Array = [null]
-		var read: Callable = func() -> void: made[0] = _read_one(item)
-		if not WorkerTasks.first_here("read a part's " + str(item[0]), read):
-			read.call()
-		_kept_read(item, made[0])
-	return mine.size()
+## Whether a model being opened waits on [param item]'s geometry: one of
+## those who asked for it is in [member _waited_on_parts]. Main thread.
+func _waited_on(item: Array) -> bool:
+	if item[0] != LBM or _waited_on_parts.is_empty():
+		return false
+	var askers: Array = _fetching.get(item[1], [item[3]])
+	return askers.any(func(one: Variant) -> bool: return _waited_on_parts.has(str(one)))
+
+
+## What is read next, under [member _read_lock]: what a model waits on first,
+## then the rest in order; [] when nothing waits.
+func _next_to_read() -> Array:
+	if not _to_read_first.is_empty():
+		return _to_read_first.pop_front()
+	return _to_read.pop_front() if not _to_read.is_empty() else []
 
 
 ## The tree whose frames [method _read_soon] reads in: the fetch host's.
@@ -2170,10 +2174,19 @@ func _read_frame() -> void:
 		WorkerTasks.collect(_reading)
 		_reading = -1
 	_read_lock.lock()
-	_to_keep.append_array(_was_read)
+	var came: Array = _was_read
 	_was_read = []
-	var waiting: bool = not _to_read.is_empty()
+	var waiting: bool = not _to_read.is_empty() or not _to_read_first.is_empty()
 	_read_lock.unlock()
+	# What a model waits on kept first, ahead of what was read before it.
+	var first: Array = []
+	for one: Array in came:
+		if _waited_on(one[0]):
+			first.append(one)
+		else:
+			_to_keep.append(one)
+	if not first.is_empty():
+		_to_keep = first + _to_keep
 	var now: int = Time.get_ticks_usec()
 	var drawn_us: int = now - _read_frame_at - _kept_us if _read_frame_at > 0 else 0
 	var budget_us: float = maxf(KEEP_BUDGET_MS * 1000.0, drawn_us * KEEP_SHARE)
@@ -2187,7 +2200,7 @@ func _read_frame() -> void:
 		var began: int = Time.get_ticks_usec()
 		while true:
 			_read_lock.lock()
-			var item: Array = _to_read.pop_front() if not _to_read.is_empty() else []
+			var item: Array = _next_to_read()
 			_read_lock.unlock()
 			if item.is_empty():
 				break
@@ -2198,7 +2211,7 @@ func _read_frame() -> void:
 		_reading = WorkerTasks.add(_read_some, false, "read parts' geometry and shapes")
 	_kept_us = Time.get_ticks_usec() - now
 	_read_lock.lock()
-	var idle: bool = _to_read.is_empty() and _reading < 0 and _to_keep.is_empty()
+	var idle: bool = _to_read.is_empty() and _to_read_first.is_empty() and _reading < 0 and _to_keep.is_empty()
 	_read_lock.unlock()
 	var tree: SceneTree = _read_tree()
 	if idle and tree != null and tree.process_frame.is_connected(_read_frame):
@@ -2207,12 +2220,12 @@ func _read_frame() -> void:
 
 
 ## On a worker: all that waits, read, the first waiting first, so what is
-## wanted most meanwhile goes next. The first of each kind the app reads is
-## read alone (WorkerTasks.first_here).
+## wanted most meanwhile goes next (_next_to_read). The first of each kind the
+## app reads is read alone (WorkerTasks.first_here).
 func _read_some() -> void:
 	while true:
 		_read_lock.lock()
-		var item: Array = _to_read.pop_front() if not _to_read.is_empty() else []
+		var item: Array = _next_to_read()
 		_read_lock.unlock()
 		if item.is_empty():
 			return
@@ -2251,6 +2264,8 @@ func _kept_read(item: Array, made: Variant) -> void:
 		return
 	var asked_for: Array = _fetching.get(hash_name, [part_id])
 	_fetching.erase(hash_name)
+	for asked: String in asked_for:
+		_waited_on_parts.erase(asked)
 	var part: Lbm.PartMesh = made
 	if part == null and not is_resident(part_id):
 		for asked: String in asked_for:

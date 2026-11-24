@@ -871,11 +871,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   bricks' shaders with the studio's own. The geometry of its parts this
   build does not carry is asked for as the studio is made, from where the
   page heard parts live (`Main._ask_early_set`,
-  `ModelLibrary.early_text`/`early_parts_url`), and the open waits for it
-  with nothing drawn, 2 s at most, each part read on the page's idle thread
-  as its bytes come (`Main._await_early_set`, `PartLibrary.read_waiting`):
-  every part down in that frame. The boot mark `set geometry: N read here,
-  M still coming` says how it went. A file under 32 KB is read and
+  `ModelLibrary.early_text`/`early_parts_url`), and read before anything
+  read ahead, in a queue of its own, and kept first (`PartLibrary.want`,
+  `_waited_on_parts`, `_to_read_first`): what has come is down in that
+  frame and the rest follows within frames. Nothing holds the studio still
+  for it (a 2 s hold was tried and showed a frozen studio). A file under 32 KB is read and
   opened in the frame it came in, its bar not waited on to be drawn
   (`ModelBar.OPENED_AT_ONCE_MOST`), and an open waits on the library's
   readers only when its file carries parts or LDCad skins

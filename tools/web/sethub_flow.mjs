@@ -8,7 +8,8 @@
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/sethub_flow.mjs --url=<site> --out=DIR [--sets=N,N] [--publish]
-//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--open-time[=N] [--pages] [--trace]]
+//     [--widths=1280,390] [--themes=light,dark] [--versions=FILE] [--open-time[=N] [--pages] [--trace]
+//     [--strip[=MS,...]]]
 //
 //   1. Each modelled set, at each width and theme, signed out: Build it
 //      opens LDraw's model at its first step (&build) and Make your own
@@ -68,6 +69,12 @@ if (chromeTrace) mkdirSync(chromeTrace, { recursive: true });
 const openAt = String(args.open && args.open !== true ? args.open : "/app?new=1&library=omr-346-2");
 // --bricks=N: the parts down that say it is open (346-2's 165: 150).
 const wantBricks = Number(args.bricks) > 0 ? Number(args.bricks) : 150;
+// --strip[=MS,...] (0,500,1000,2000), with --open-time: after the timed rounds,
+// Make your own version pressed on its set's page, and the screen taken MS
+// after the studio was up (the page's loading screen lifted), as
+// strip_<MS>.png and strip.json in --out.
+const stripAt = args.strip ? String(args.strip === true ? "0,500,1000,2000" : args.strip).split(",")
+  .map(Number).filter((ms) => Number.isFinite(ms) && ms >= 0) : [];
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const list = (given, fallback) => String(given || fallback).split(",").map((one) => one.trim()).filter((one) => one && one !== "none");
 /// Modelled: House with Car (the house published its LDraw model, so it has
@@ -528,6 +535,72 @@ async function timed(browser, address, ready, most = 240000, label = "", readyAr
   }
 }
 
+/// --strip: what a person sees once they press Make your own version on the
+/// set's page (--open's set), in a fresh context of [browser]: the screen at
+/// each of [stripAt] ms after the studio was up (the app's "ui" boot mark, on
+/// which the page lifts its loading screen), each with its time from the press
+/// and the parts down and on their way then; and when the set was down, from
+/// the press. The press is timed by the set's page as it is clicked, the rest
+/// by the app's page's clock plus where its navigation began.
+async function strip(browser) {
+  const set = /[?&]library=omr-([^&]+)/.exec(openAt)?.[1];
+  if (!set) {
+    console.log(`  strip: ${openAt} is not a set's Make your own version`);
+    return;
+  }
+  const context = await browser.newContext({ viewport, isMobile: viewport.width < 600, hasTouch: viewport.width < 600,
+    extraHTTPHeaders: headers });
+  const page = await context.newPage();
+  page.on("pageerror", (error) => errors.push(`strip: ${error.message}`));
+  const shots = [];
+  let pressed = null;
+  let up = null;
+  let down = null;
+  try {
+    await page.goto(`${site}/library/set/${set}`, { waitUntil: "load", timeout: 120000 });
+    const link = page.locator("[data-version]").first();
+    await link.waitFor({ timeout: 60000 });
+    await link.evaluate((one) => one.addEventListener("click", () => {
+      sessionStorage.setItem("sethubPressAt", String(performance.timeOrigin + performance.now()));
+    }));
+    await link.click();
+    await page.waitForURL(/\/app\?/, { timeout: 60000 });
+    await page.waitForFunction(() => window.brickworksBoot?.ui > 0, null, { timeout: 240000, polling: 25 });
+    // The app's page's clock from the press: where its navigation began.
+    const clock = await page.evaluate(() => ({ ui: window.brickworksBoot.ui,
+      since: performance.timeOrigin - Number(sessionStorage.getItem("sethubPressAt") || NaN) }));
+    pressed = Number.isFinite(clock.since) ? Math.round(clock.since) : null;
+    up = clock.ui;
+    for (const after of stripAt) {
+      await page.waitForFunction((at) => performance.now() >= at, up + after, { timeout: 60000, polling: 10 });
+      const now = await page.evaluate(() => ({ at: performance.now(), bricks: window.brickworksState?.bricks ?? null,
+        awaited: window.brickworksState?.awaited ?? null, said: window.brickworksState?.said ?? "" }));
+      const file = `strip_${after}.png`;
+      await page.screenshot({ path: path.join(out, file) });
+      const done = await page.evaluate(() => performance.now());
+      shots.push({ after, at: Math.round(now.at - up), took: Math.round(done - now.at),
+        fromPress: pressed === null ? null : Math.round(now.at + pressed), bricks: now.bricks, awaited: now.awaited,
+        said: now.said, file });
+    }
+    down = await page.waitForFunction((least) => window.brickworksState?.bricks >= least
+      && window.brickworksState.awaited === 0 ? performance.now() : 0, wantBricks, { timeout: 120000, polling: 25 })
+      .then((one) => one.jsonValue(), () => null);
+  } catch (trouble) {
+    errors.push(`strip: ${String(trouble.message || trouble).slice(0, 200)}`);
+  } finally {
+    await context.close();
+  }
+  const fromPress = (at) => (at === null || pressed === null ? null : Math.round(at + pressed));
+  writeFileSync(path.join(out, "strip.json"), `${JSON.stringify({ pressed, up: fromPress(up), down: fromPress(down), shots },
+    null, 1)}\n`);
+  console.log(`  pressed on the set's page: the app's page began ${pressed} ms after the press, the studio up `
+    + `${fromPress(up)} ms after it, the set down ${fromPress(down)} ms after it`);
+  for (const one of shots) {
+    console.log(`    ${one.file}: ${one.at} ms after the studio was up (${one.fromPress} ms from the press; the shot `
+      + `took ${one.took} ms), ${one.bricks} parts down, ${one.awaited} on their way, said "${one.said}"`);
+  }
+}
+
 async function openTime(rounds) {
   const up = () => Boolean(window.brickworksState) && window.brickworksState.awaited === 0;
   // Its parts all down (an app before brickworksState.title says no name).
@@ -577,6 +650,7 @@ async function openTime(rounds) {
           versionSeen: version.seen, log: version.log });
       }
     }
+    if (stripAt.length) await strip(browsers[1]);
     // Build it's address: its timeline at step 1, with an app that takes --build.
     const built = await timed(browsers[0], "/app?new=1&library=omr-346-2&build",
       () => Array.isArray(window.brickworksShare?.steps) && window.brickworksShare.steps.length === 2, 240000);
@@ -604,6 +678,10 @@ async function openTime(rounds) {
     ? one.versionSeen - one.plainSeen : null)));
   console.log(`  drawn: the set on the screen ${seenOver} ms after the plain studio was, a round's median `
     + `(${JSON.stringify(got.map((one) => (one.versionSeen !== null && one.plainSeen !== null ? one.versionSeen - one.plainSeen : null)))})`);
+  // From the press: the address asked is the link's, its page's clock from
+  // its navigation (--strip times a press itself).
+  console.log(`  from the press (its address asked): the set down ${placedMs} ms, on the screen `
+    + `${median(got.map((one) => one.versionSeen))} ms, at the median (${JSON.stringify(got.map((one) => [one.placed, one.versionSeen]))})`);
   check(`Make your own version puts the set on the baseplate in ${placedMs} ms, the studio up in ${plainMs} ms `
     + `(medians of ${got.length}; ${over} ms later, a round's median): within the studio's open time + 2 s`,
   got.every((one) => one.placed !== null && one.plain !== null) && over !== null && over <= 2000);
