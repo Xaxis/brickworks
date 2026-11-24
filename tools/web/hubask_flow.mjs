@@ -345,7 +345,10 @@ try {
     && rows[1].thread === firstThread && rows[1].answered === false);
   for (const phone of [false, true]) {
     const size = phone ? "390" : "1280";
-    const visitor = await open(`${HUB}#asks`, { phone });
+    // As Ann, who asked: a reader signed in gets the list fresh, where a
+    // signed-out one gets the CDN's copy of the last 20 s (80 stale) by
+    // design. Signed out, the hub fix's preview listed #83 alone.
+    const visitor = await open(`${HUB}#asks`, { who: people.ann, phone });
     const seen = await until(visitor, () => {
       const items = [...document.querySelectorAll(".set-ask-row")];
       if (!items.length) return null;
