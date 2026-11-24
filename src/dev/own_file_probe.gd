@@ -254,6 +254,20 @@ func _app() -> void:
 		and FileAccess.get_file_as_string(kept).contains("zzownprobe1.dat") and store.title == OWN,
 		"kept and said above the model: %s" % notice._words.text)
 	DirAccess.remove_absolute(kept)
+	print("...in place of the example car, untouched")
+	_ok(store.open(main.get("SAMPLE_MODEL")) > 0, "the example car on the baseplate: %s" % store.title)
+	var car: String = store.title
+	main.set("_sample_untouched", true)
+	main.call("_not_copied", {"model": unshown, "version": 1, "name": "Own File Probe Link"},
+		"Own File Probe Link", opened)
+	var world: BrickWorld = main.get("_world")
+	_press_save(bar)
+	await _until(func() -> bool: return _save_result != null)
+	_ok(world.brick_count() - store.scenery.size() == 0 and store.title == ModelStore.UNTITLED
+		and _save_result == false and not FileAccess.file_exists(ModelStore.saved_path(car))
+		and FileAccess.file_exists(kept),
+		"the baseplate left bare, Save saves nothing as %s (%s), the link kept" % [car, bar.status_text()])
+	DirAccess.remove_absolute(kept)
 	main.set("_copying", "")
 	store.keeps = false
 	main.queue_free()

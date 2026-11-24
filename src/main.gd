@@ -4950,6 +4950,11 @@ func _not_copied(shared: Dictionary, name: String, result: Dictionary) -> void:
 		+ "File › Open, for a later version of Brickworks to open; nothing else was saved.") % [
 			name, why, kept] if not kept.is_empty() \
 		else "“%s” could not be copied: %s. Nothing was saved." % [name, why]
+	# Nor is the example car the copy was to replace left in its place: Save
+	# put "Car" among their models as if it were the copy (F2). The person's
+	# own work on the baseplate stays as it was.
+	if _sample_untouched:
+		clear_model()
 	_bar.say("could not copy “%s”" % name)
 	if _restore_notice != null:
 		_restore_notice.tell(said)

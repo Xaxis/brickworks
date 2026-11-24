@@ -507,7 +507,9 @@ they have. A Claude connector belongs to the account that switched it on.
   none of whose parts this build can show is not left as the example car:
   its text is kept among their models as shared, credited, under a free
   name, for a later build to open, and a lasting notice says so
-  (`Main._not_copied`, `ModelStore.keep_unopened_copy`; viewreview F2).
+  (`Main._not_copied`, `ModelStore.keep_unopened_copy`; viewreview F2); the
+  untouched example car it was to replace is taken off, so Save never puts
+  "Car" among their models in the copy's place.
   It knows the link it came from (`ModelStore.remixed_from`, kept in its
   saves as `0 !BRICKWORKS REMIX <id>`), so shared, its page says what it was
   remixed from.
