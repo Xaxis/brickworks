@@ -479,6 +479,21 @@ func setup() -> void:
 		if sign_in.is_valid():
 			sign_in.call())
 	column.add_child(_sign_in)
+	# What publishing agrees to, where it is agreed to: just under Publish,
+	# never under the questions' row (Ask the builders came between them,
+	# 28a1fe332, and the line read as asking's: age, nightly 2026-11-24).
+	# One line, never wrapped: a wrapping label in a row is given no width
+	# and stands one letter to a line down the panel.
+	var agree := HBoxContainer.new()
+	agree.add_theme_constant_override("separation", 4)
+	column.add_child(agree)
+	var agree_words: Label = _line("Publishing means you agree to the", 11, 0.7)
+	agree_words.autowrap_mode = TextServer.AUTOWRAP_OFF
+	agree.add_child(agree_words)
+	_guidelines = Look.link("guidelines", 11)
+	_guidelines.tooltip_text = "What may be shared here, credit and licences, and what gets a model taken out"
+	_guidelines.pressed.connect(func() -> void: Outside.open_link(guidelines_url()))
+	agree.add_child(_guidelines)
 	# Ask the builders: the open step, its question in Talk.
 	var ask_head: Label = _line("Ask the builders", 13, 0.9)
 	ask_head.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -508,19 +523,6 @@ func setup() -> void:
 	_ask_open.pressed.connect(func() -> void:
 		if asked_thread.has("url"):
 			Outside.open_link(str(asked_thread["url"])))
-	# What publishing agrees to, where it is agreed to.
-	# One line, never wrapped: a wrapping label in a row is given no width
-	# and stands one letter to a line down the panel.
-	var agree := HBoxContainer.new()
-	agree.add_theme_constant_override("separation", 4)
-	column.add_child(agree)
-	var agree_words: Label = _line("Publishing means you agree to the", 11, 0.7)
-	agree_words.autowrap_mode = TextServer.AUTOWRAP_OFF
-	agree.add_child(agree_words)
-	_guidelines = Look.link("guidelines", 11)
-	_guidelines.tooltip_text = "What may be shared here, credit and licences, and what gets a model taken out"
-	_guidelines.pressed.connect(func() -> void: Outside.open_link(guidelines_url()))
-	agree.add_child(_guidelines)
 
 	_status = _line("", 12, 0.85)
 	column.add_child(_status)

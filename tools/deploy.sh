@@ -587,6 +587,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/beta" } },
     { "src": "/($langs)/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/beta" } },
     { "src": "/beta-admin([.]html|/)?", "status": 308, "headers": { "Location": "/admin#beta" } },
+    { "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" },
+    { "src": "/($langs)/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists&lang=\$1" },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },
@@ -650,8 +652,6 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
-    { "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" },
-    { "src": "/($langs)/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists&lang=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
     { "src": "/live/[A-Za-z0-9]{12}/?", "dest": "/live.html" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/parts[.](json|xml|csv)", "dest": "/api/share?op=catalog_parts&set=\$1&as=\$2" },

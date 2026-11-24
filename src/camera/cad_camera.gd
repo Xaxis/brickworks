@@ -174,6 +174,15 @@ var pivot_shown: bool = false
 ## centred on it and framed to fill it. Without it, the whole window.
 var seen: Callable = Callable()
 
+## How much of [member seen]'s top something lies over, in the same units
+## (the notices strip: Main._model_rect takes the room from above it, so a
+## notice coming or going never slides the model). Set by whoever owns the
+## scene; it takes nothing and returns a float. A framing keeps the model
+## clear of it, the lens still centred on the whole rect: framed to the
+## whole, a stack of eleven bricks opened under First steps and the month's
+## challenge had its top under them (drawn, nightreds 2026-11-24).
+var covered: Callable = Callable()
+
 ## Where the middle of the lens is on the screen, from the middle of the
 ## window, in the viewport's units. It eases to the middle of
 ## [method seen_rect], and holds still while a button or a finger is down
@@ -1868,6 +1877,11 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 	# a model took 92% of the room a 1280 x 720 window gives it, where the
 	# margin means it to take 76% (centring_probe).
 	var seen_size: Vector2 = seen_rect().size
+	# Centred on the whole rect, the model is clear of what lies over its
+	# top only within the room below that and as much again at its foot.
+	if covered.is_valid():
+		var over: float = maxf(0.0, float(covered.call()))
+		seen_size.y = maxf(seen_size.y * 0.5, seen_size.y - 2.0 * over)
 	var share: float = minf(seen_size.x, seen_size.y) / _room().y
 	var half: float = atan(tan(deg_to_rad(fov) * 0.5) * share)
 	_target_distance = clampf(

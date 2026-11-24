@@ -51,18 +51,11 @@
   });
 })();
 
-// The language a person reads the site in: English, German,
-// French or Spanish, the app's four (src/ui/language.gd). The one they
-// chose (the footer's Language, or the app's Settings, which keeps it here
-// too), else the first of their browser's languages the site has (as its
-// Accept-Language says them), else English. An English page with a copy
-// in that language (tools/site_lang.py, at /de/...) gives way to it before
-// it is drawn; a copy reached by its own address stays itself unless
-// another was chosen. Every
-// link into the app carries the language (/app?lang=de), so a German
-// visitor opens a German app. And a page's scripts say their words in the
-// page's language: window.brickworksLang.say, from the words
-// tools/site_lang.py put in the copy (#site-words).
+// The site's language, one of the app's four (src/ui/language.gd): the one
+// chosen here or in the app, else the browser's, else English. An English
+// page gives way to its copy (tools/site_lang.py, /de/...) before it is
+// drawn; links into the app carry it (/app?lang=de); brickworksLang.say
+// gives a script the copy's words (#site-words).
 (() => {
   const KEY = "brickworks.lang";
   const CODES = ["en", "de", "fr", "es"];
@@ -168,22 +161,12 @@
   }
 })();
 
-// The beta (betahome): while open, a strip at every page's top (betabar.js)
-// with Report a bug and Join, and the landing page's Open beta. What the
-// site last said of it is kept here ("brickworks.beta"): open in the last
-// day, <html data-beta="open"> is set before anything is drawn, so what is
-// held for it is in place at the first frame; off in the last ten minutes,
-// the bar's script is not asked for. The bar's own room at the top
-// (<html data-betabar>, site.css) is decided here, before the first frame,
-// and never after but by the person's own act (betabar.js), so the strip
-// moves nothing as it comes (pagebar) and never goes once drawn: unless its
-// × hid it here, a page the server makes holds it as that page says the
-// beta is (<meta name="brickworks-beta">, api/_settings.js sayBeta), unless
-// what was heard here is newer (a page the CDN kept); any other holds it
-// unless the beta was last heard off, so a first visit holds it as for the
-// open beta. A set's page on a phone held it, then let it go half a second
-// in, as the server said off (checkdrift, 2026-11-23). Never on an embed's
-// card or the connector's consent page.
+// The beta (betahome): its strip at every page's top (betabar.js), its room
+// (<html data-betabar>, site.css) decided here before the first frame and
+// never taken back but by the person (pagebar): as the page's own
+// <meta name="brickworks-beta"> says (api/_settings.js), unless what this
+// browser heard ("brickworks.beta") is newer (a page the CDN kept,
+// checkdrift); a first visit holds it. Not on an embed or the consent page.
 (() => {
   const root = document.documentElement;
   if (root.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
@@ -227,11 +210,9 @@
   else load();
 })();
 
-// The site installed, and this device's notifications (homescreen,
-// 2026-11-22): web/push.js, on every page but an embed's card and the
-// connector's consent page. The browser's offer to install is held here,
-// from the first moment, so its own bar never shows: push.js offers it
-// from a second visit, never the first.
+// Installing the site and notifications (web/push.js, homescreen): the
+// browser's own install bar held from the first moment; push.js offers it
+// from a second visit. Not on an embed or the consent page.
 (() => {
   if (document.documentElement.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
   addEventListener("beforeinstallprompt", (event) => {
@@ -244,11 +225,9 @@
   else addEventListener("load", load, { once: true });
 })();
 
-// Whether counting is said no to here, as web/counting.js's countingState
-// has it, its cheap half: [driven] a browser a program drives that did not
-// ask to be counted (a check's) is a no too. Read before the counter is
-// fetched, so a no costs no request at all (inreview L3), and before the
-// social desk's visit is told (L2).
+// A no to counting (web/counting.js countingState's cheap half), read
+// before anything is fetched for it (inreview L3, L2); [driven]: a check's
+// browser that did not ask to be counted is a no too.
 window.brickworksCountingNo = (driven = true) => {
   const kept = (key) => {
     try {
@@ -275,14 +254,9 @@ window.brickworksCountingNo = (driven = true) => {
   else addEventListener("load", load, { once: true });
 })();
 
-// How this visit came, for the owner's mail of a new sign-up (ownernotify,
-// 2026-11-18; api/_notify.js): the site that sent the visitor, and a link's
-// utm_ tags, read before they are taken out of the address below. The
-// visit's first that says anything is kept for this tab alone
-// (sessionStorage, gone when it closes), so a page or two later, or in the
-// studio, it is still known (onfix); never sent but with a sign-in code
-// asked for in this tab (web/account.js, web/authorize.js,
-// src/account/account.gd).
+// How this visit came, for the owner's mail of a sign-up (api/_notify.js,
+// ownernotify): the sending site and utm_ tags, kept for this tab only
+// (onfix) and sent only with a sign-in code asked for in it.
 (() => {
   try {
     const KEY = "brickworks.came";
@@ -313,18 +287,10 @@ window.brickworksCountingNo = (driven = true) => {
   }
 })();
 
-// A visit a post from the owner's social desk brought (socialdesk,
-// 2026-11-18; api/_social.js, /admin › Social): the desk tags the site's
-// links in what it sends with utm_campaign=bw-<send id>. The landing is told
-// once, with a random number of its own so it is counted once, and nothing
-// else about the visitor; once the page has loaded (the visit counter has
-// read the address too) the tags are taken out of the address, so a reload
-// or a link copied from it does not count again.
-//
-// It is a count, so it keeps to /counting (inreview L2): never with Do Not
-// Track or GPC, or after a No; where a yes comes first (web/counting.js,
-// fetched for such a landing only), only once it is given on this page. A
-// check's driven browser is told, as the desk's own flow lands one.
+// A visit a post from the owner's social desk brought (api/_social.js, socialdesk):
+// utm_campaign=bw-<send id>, told once with a nonce and nothing else of the
+// visitor, then taken out of the address. A count, so it keeps to /counting
+// (inreview L2); a check's driven browser is told, as the desk's flow lands.
 (() => {
   try {
     const params = new URLSearchParams(location.search);

@@ -575,14 +575,18 @@ async function setLotsOf(id, setNumber, origin) {
 }
 
 /// GET ?op=challenge_rules: the month's challenge open now and its rules
-/// as the studio ticks them, the set's parts with them. A test account's
-/// (its sign-in, when sent) is the flows' own. Kept by the CDN a minute
-/// when asked without a sign-in. {challenge: null} when none is open. The
-/// week's quick build is the studio's to name from the copy it has open
-/// (?op=prompt_of), so it is not said here.
+/// as the studio ticks them, the set's parts with them. A test one only
+/// when asked for (tests=1), as the admin's sets it (api/admin.js), and
+/// never to a person's sign-in: told to every test account unasked, the
+/// challenges check's own week lay over the model in the studio of each
+/// check beside it, and drawn found its stack cut off under it (nightly
+/// 2026-11-24). Kept by the CDN a minute when asked without a sign-in.
+/// {challenge: null} when none is open. The week's quick build is the
+/// studio's to name from the copy it has open (?op=prompt_of), so it is
+/// not said here.
 export async function challengeRules(request, response, { origin }) {
   const who = bearer(request) ? await caller(request).catch(() => null) : null;
-  const tests = who ? who.test : testsAsked(request.query || {});
+  const tests = testsAsked(request.query || {}) && (who ? who.test : true);
   response.setHeader("Cache-Control", who || tests ? TESTS_CACHE : "public, max-age=0, s-maxage=60, stale-while-revalidate=60");
   let row;
   try {

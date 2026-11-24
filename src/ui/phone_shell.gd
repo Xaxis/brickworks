@@ -65,6 +65,9 @@ var _mark: Button
 ## the way home there (AppHeader); null on the desktop, where the mark is it.
 var _menu: Button
 var _assistant: Button
+## The assistant turned on, its button on the top bar where there is room
+## for it (_share_top): More, View, Assistant opens it where there is not.
+var _assistant_wanted: bool = false
 var _name: LineEdit
 var _colour_button: Button
 var _tool_buttons: Dictionary = {}
@@ -280,6 +283,10 @@ func _build() -> void:
 	_name.custom_minimum_size = Vector2(p(WIDE_NAME if wide else NAME), p(Phone.TARGET))
 	_name.size_flags_horizontal = Control.SIZE_FILL if wide else Control.SIZE_EXPAND_FILL
 	_name.add_theme_font_size_override("font_size", ceili(p(16)))
+	# Its width is the bar's to give (_share_top): a field's own least, four
+	# M's at this font, was wider than the room at 150%, and the bar ran 33
+	# px off a 390 phone, Menu half gone (app_a11y, nightly 2026-11-24).
+	_name.add_theme_constant_override("minimum_character_width", 0)
 	_name.tooltip_text = ""
 	top_row.add_child(_name)
 	if wide:
@@ -302,7 +309,8 @@ func _build() -> void:
 	_pin(spark, 0.0, 0.0, 1.0, 1.0, Rect2())
 	_assistant.add_child(spark)
 	_assistant.pressed.connect(func() -> void: shell.run("panel_assistant"))
-	_assistant.visible = shell != null and shell.assistant_shown
+	_assistant_wanted = shell != null and shell.assistant_shown
+	_assistant.visible = _assistant_wanted
 	top_row.add_child(_assistant)
 	_tool_buttons["assistant"] = _assistant
 	for one: Array in [["undo", "undo"], ["redo", "redo"]]:
@@ -556,13 +564,21 @@ func _share_top() -> void:
 	var rest: float = 0.0
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		if control == _name or (not control.visible and control != redo):
+		var counted: bool = control == redo or (control == _assistant and _assistant_wanted)
+		if control == _name or (not control.visible and not counted):
 			continue
 		rest += control.get_combined_minimum_size().x + gap + 1.0
 	var room: float = inside - rest
 	redo.visible = room >= p(NAME_LEAST)
 	if not redo.visible:
 		room += redo.get_combined_minimum_size().x + gap
+	# Then the assistant's button, turned on, where Redo going was not room
+	# enough: at 150% with it the bar was 115 px wider than a 390 phone
+	# (app_a11y). More, View, Assistant still opens it.
+	if _assistant != null:
+		_assistant.visible = _assistant_wanted and room >= p(NAME_LEAST)
+		if _assistant_wanted and not _assistant.visible:
+			room += _assistant.get_combined_minimum_size().x + gap
 	_name.custom_minimum_size.x = minf(p(WIDE_NAME if wide else NAME), maxf(room, 0.0))
 
 
@@ -755,8 +771,8 @@ func _show_tools() -> void:
 	var verbs: EditVerbs = app.get("_verbs")
 	if builder == null or verbs == null or _tool_buttons.is_empty():
 		return
-	if _assistant != null and _assistant.visible != shell.assistant_shown:
-		_assistant.visible = shell.assistant_shown
+	if _assistant != null and _assistant_wanted != shell.assistant_shown:
+		_assistant_wanted = shell.assistant_shown
 		_share_top()
 	var holding: bool = verbs.shows_ghost() or builder.is_carrying()
 	var selected: bool = not builder.selection.is_empty()

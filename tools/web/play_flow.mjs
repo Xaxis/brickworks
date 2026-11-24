@@ -149,6 +149,15 @@ const share = (page) => page.evaluate(() => window.brickworksShare || {});
 const play = async (page) => ((await share(page)).view || {}).play || {};
 const grab = (page) => page.evaluate(() => window.brickworksGrab || {});
 const controls = (page) => page.evaluate(() => window.brickworksControls || {});
+/// The pill's right edge [right] clear of the view cube by 20 px where the
+/// cube is shown. A phone's viewer shows none since b10609d04 (2026-11-23):
+/// two fingers turn and pinch the model there, as in the studio, so on a
+/// [finger] the pill is clear of nothing; with a mouse the cube must show.
+function clearOfCube(placed, right, finger) {
+  const cube = Object.entries(placed).filter(([name]) => name.startsWith("cube_")).map(([, at]) => at.x);
+  if (!cube.length) return { ok: finger, said: finger ? "none on a phone, as since b10609d04" : "no cube" };
+  return { ok: right < Math.min(...cube) - 20, said: `from ${Math.min(...cube)}` };
+}
 const yaw = async (page) => Number(((await page.evaluate(() => window.brickworksState || {})).view || {}).yaw || 0);
 const shot = (page, name) => page.screenshot({ path: path.join(out, name), timeout: 180000 })
   .then(() => console.log(`        picture: ${path.join(out, name)}`))
@@ -365,10 +374,9 @@ async function houseLink(size, shape) {
   const buttons = [placed.view_motion_1, placed.view_motion_2];
   check(`the buttons are inside the page (${buttons.map((b) => `${Math.round(b.x)}, ${Math.round(b.y)}, ${Math.round(b.h)} tall`).join("; ")})`,
     buttons.every(inside) && (!finger || buttons.every((b) => b.h >= 30)));
-  const cube = Object.entries(placed).filter(([name]) => name.startsWith("cube_")).map(([, at]) => at.x);
   const right = placed.view_play.x + placed.view_play.w / 2;
-  check(`the pill (to ${Math.round(right)}) is clear of the view cube (from ${cube.length ? Math.min(...cube) : "?"})`,
-    cube.length > 0 && right < Math.min(...cube) - 20);
+  const clear = clearOfCube(placed, right, finger);
+  check(`the pill (to ${Math.round(right)}) is clear of the view cube (${clear.said})`, clear.ok);
   await page.waitForTimeout(1200);
   await shot(page, `${size}_6_motions.png`);
   const press = async (at) => (finger ? page.touchscreen.tap(at.x, at.y) : page.mouse.click(at.x, at.y));
@@ -797,10 +805,9 @@ try {
     // The pill at its widest, Reset in it, clear of the view cube.
     const placed = await controls(page);
     const wide = placed.view_play;
-    const cube = Object.entries(placed).filter(([name]) => name.startsWith("cube_")).map(([, at]) => at.x);
     const pillRight = wide ? wide.x + wide.w / 2 : Infinity;
-    check(`the pill (to ${Math.round(pillRight)}) is clear of the view cube (from ${cube.length ? Math.min(...cube) : "?"})`,
-      Boolean(wide) && cube.length > 0 && pillRight < Math.min(...cube) - 20);
+    const clear = clearOfCube(placed, pillRight, finger);
+    check(`the pill (to ${Math.round(pillRight)}) is clear of the view cube (${clear.said})`, Boolean(wide) && clear.ok);
     if (reset) {
       if (finger) await page.touchscreen.tap(reset.x, reset.y);
       else await page.mouse.click(reset.x, reset.y);

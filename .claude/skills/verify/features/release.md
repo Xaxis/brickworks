@@ -318,6 +318,16 @@ that offers each system its own build. The cycle and its cadence are
   (`lean.py record`) and `$RELEASE_OUT/nightly-YYYYMMDD.summary`
   (`nightly.latest`, `nightly.sh status`); `nightly.sh plan` counts what it
   would run. Never moves main, never promotes, nothing on brickworks.diy.
+  Since nightreds (2026-11-24) it ends inside `NIGHTLY_HOURS` (4): each
+  check at its own bound (`PC_BOUNDS`, twice its last passes, 300-2,700 s),
+  none begun or waiting past its share of the time (`PC_DEADLINE`, "not
+  run"), those proven longest ago first (`lean.py oldest`), timing checks
+  alone with no probe begun meanwhile (`PC_CALM`), reruns 4 at a time, and
+  the proof and summary rewritten every minute. Check it with
+  `nightly.sh plan` (what 4 hours hold) and `nightly.sh dry age builds makes
+  studiostart play load` (each check a sleep of its bound / 60, no preview,
+  its lines and proof under `$RELEASE_OUT/dry/`): a timeline of the battery
+  then the reruns side by side, about a minute.
 - `lean release lists`: `tools/release/lean.py checks|probes --live L --head H
   --tree DIR` says what a release must run and what was carried by which
   proof; `lean.py record` writes proof. `tests/test_lean.py`,

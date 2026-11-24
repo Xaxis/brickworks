@@ -943,9 +943,17 @@ func _tell_page() -> void:
 	# edit, a frame drawn, an answer, a check's question: Wake), then every
 	# TELL_RESTING_MS: twice a second, a still phone at a quarter speed
 	# spent 5 to 13 ms of a frame on it for nobody (idlesleep).
-	if moment == _told_moment and not Wake.owed(_told_page_at) and Wake.on \
+	# A control left out because it had moved or come since the telling
+	# before (_page_places) is owed the next half second's, a few times:
+	# held to TELL_RESTING_MS, Sign in's address and Disconnect came two
+	# seconds after they stood still, and the checks that read them first
+	# found nothing (account, oauth; nightly 2026-11-24).
+	var settling: bool = _places_unsettled and _places_settling < PLACES_SETTLING
+	if moment == _told_moment and not Wake.owed(_told_page_at) and not settling and Wake.on \
 			and now - _told_page_at < TELL_RESTING_MS:
 		return
+	if settling:
+		_places_settling += 1
 	_told_page_at = now
 	_told_moment = moment
 	_hear_look_ask()
@@ -1460,6 +1468,7 @@ func _page_controls() -> Dictionary:
 func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> Dictionary:
 	var seen: Dictionary = {}
 	var where: Dictionary = {}
+	var withheld: bool = false
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -1479,32 +1488,52 @@ func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> 
 		# Cut off by a list it is in, scrolled past it: on a phone held
 		# sideways at 130% Settings' Interface size stood under the list's
 		# foot, behind Done, inside the window, and a tap meant for it
-		# pressed Done (app_a11y, uifix). Said, so a check scrolls to it.
-		if _cut_off(control):
+		# pressed Done (app_a11y, uifix). Said, so a check scrolls to it,
+		# with the part of the list that shows, where a wheel turned scrolls
+		# it: the Share form's List it in the gallery lay wholly under the
+		# form's foot, and every place a check could guess beside it was the
+		# foot, a field or the view (nightreds, 2026-11-24).
+		var cut_by: Control = _cut_off(control)
+		if cut_by != null:
 			at["clipped"] = true
+			var list: Rect2 = to_window * cut_by.get_global_rect()
+			at["list"] = {"x": roundi(list.get_center().x / per_css), "y": roundi(list.get_center().y / per_css),
+				"w": roundi(list.size.x / per_css), "h": roundi(list.size.y / per_css)}
 		seen[name] = at
 		if _told_places.get(name, {}) == at:
 			where[name] = at
+		else:
+			withheld = true
 	_told_places = seen
+	_places_unsettled = withheld
+	if not withheld:
+		_places_settling = 0
 	return where
 
 
 ## Where each control was at the last telling (_page_places).
 var _told_places: Dictionary = {}
+## Whether the last telling left a control out for having moved or come
+## since the one before, and how many tellings since have been owed for it
+## (_tell_page): at most PLACES_SETTLING, so a control that never stands
+## still (a bar filling) costs a resting phone no telling more than that.
+var _places_unsettled: bool = false
+var _places_settling: int = 0
+const PLACES_SETTLING := 3
 
 
-## Whether something [param control] is in that clips what it holds (a
-## list that scrolls, a drawer) shows less than all of it. By more than two
-## units: a list scrolls by whole units, and one 455.7 tall scrolled to its
-## end left its last row 1.1 under its foot (the assistant's at 150%).
-static func _cut_off(control: Control) -> bool:
+## What [param control] is in that clips what it holds (a list that
+## scrolls, a drawer) and shows less than all of it, or null. By more than
+## two units: a list scrolls by whole units, and one 455.7 tall scrolled to
+## its end left its last row 1.1 under its foot (the assistant's at 150%).
+static func _cut_off(control: Control) -> Control:
 	var rect: Rect2 = control.get_global_rect()
 	var up: Control = control.get_parent() as Control
 	while up != null:
 		if up.clip_contents and not up.get_global_rect().grow(2.0).encloses(rect):
-			return true
+			return up
 		up = up.get_parent() as Control
-	return false
+	return null
 
 
 ## The model's parts by number, each once, the first 300: worked out again
@@ -4122,6 +4151,7 @@ func _enter_build(page: int = -1) -> void:
 		(_build_mode.get("make") as Control).call("adopt", viewer_card)
 	_build_mode.open()
 	_camera.seen = _build_mode.free_rect
+	_camera.covered = Callable()
 	if page < 0:
 		page = int(BuildSteps.recall(_viewing).get("page", 0))
 	# A frame for the bars to be laid out, so the view is framed between them.
@@ -4491,6 +4521,7 @@ func _leave_build() -> void:
 	_build_faded_part = 0
 	_build_outline.show_selection({})
 	_camera.seen = _model_rect
+	_camera.covered = _model_covered
 	_share_view.show_bar(true)
 	_gizmo.visible = bool(_build_left.get("cube", true))
 	if not _party_pages:
@@ -6998,6 +7029,7 @@ func _build_ui() -> void:
 	# the window behind the columns (CadCamera.seen): with one column open
 	# the model sat 168 units to the side of the room it had.
 	_camera.seen = _model_rect
+	_camera.covered = _model_covered
 	_camera.lens_moved.connect(_hover_again)
 
 	# View, Split: the model straight on beside this column, in the model's
@@ -9538,6 +9570,15 @@ func _model_rect() -> Rect2:
 	return rect
 
 
+## How much of the top of the model's room the notices strip lies over
+## (CadCamera.covered): framed, the model is kept clear of it, while the
+## view stays centred on the whole room.
+func _model_covered() -> float:
+	if _over_model == null or not _over_model.is_inside_tree():
+		return 0.0
+	return maxf(0.0, _over_model.get_global_rect().position.y - _model_rect().position.y)
+
+
 ## How wide Simulate's column is: the panel's own width, its words wrapped
 ## at 320, with its margins.
 const SIMULATE_WIDTH := 360.0
@@ -9775,8 +9816,13 @@ func _show_notices() -> void:
 	for note: Node in _notices.get_child(0).get_children():
 		any = any or (note as Control).visible
 	# On a phone the drawer down the left takes the screen beside its rail,
-	# and the strip, squeezed beside it, ran off the screen: it waits.
-	_notices.visible = any and not (_phone != null and not Phone.wide() and _bin_dock.is_open())
+	# and the strip, squeezed beside it, ran off the screen: it waits. So
+	# for the assistant's down the right: the month's challenge line kept
+	# its least width in the model's column, and at 150% the assistant's
+	# drawer opened beside it, two thirds off a 390 phone (app_a11y,
+	# nightreds 2026-11-24).
+	var drawer: bool = _bin_dock.is_open() or (_chat_dock != null and _chat_dock.is_open())
+	_notices.visible = any and not (_phone != null and not Phone.wide() and drawer)
 	if _phone != null and any:
 		_for_a_finger(_notices)
 
@@ -12500,7 +12546,9 @@ func _dress_for_phone() -> void:
 	# (_make_chat sizes it then).
 	if _chat_made != null:
 		_touch.size_panel(_chat_made)
-	_chat_dock.toggled.connect(func(_open: bool) -> void: _fit_drawers())
+	_chat_dock.toggled.connect(func(_open: bool) -> void:
+		_show_notices()
+		_fit_drawers())
 	_bin_dock.toggled.connect(Callable(_phone, &"dock_toggled"))
 	_tool_column.visibility_changed.connect(Callable(_phone, &"dock_toggled"))
 	_bin_dock.toggled.connect(func(_open: bool) -> void:

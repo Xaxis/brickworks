@@ -213,8 +213,9 @@ try {
   await bobPage.goto(`${site}/feed`, { waitUntil: "load" });
   await until(bobPage, () => document.documentElement.dataset.feed === "ready", "Bob's feed");
   let rows = await listRows(bobPage);
+  // People say "list" since lists2a (994baf213, 11-22): the feed's line too.
   check(`Bob's feed: "${rows[0]?.text}"`, rows.length === 1
-    && rows[0].text.startsWith(`Ada Collects added “${TOWER}” to their collection “${LIST}”`));
+    && rows[0].text.startsWith(`Ada Collects added “${TOWER}” to their list “${LIST}”`));
   check(`its links: the tower ${rows[0]?.model}, the collection ${rows[0]?.list}, the tower's card ${rows[0]?.card}`,
     rows[0]?.model === `/m/${tower}` && rows[0]?.list === `/c/${listId}` && rows[0]?.card === tower);
   await shot(bobPage, "3_feed.png", true);

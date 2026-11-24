@@ -200,6 +200,15 @@ async function api(pathname, { method = "GET", token, body, extra = {} } = {}, a
   return said;
 }
 
+// /challenge drawn from its answer: after five seconds without one the page
+// marks itself "loading" to show its head (challenge.js), and read then it
+// holds no round at all (Ed's fan vote at 390, nightreds unit preview 3,
+// 2026-11-24).
+const drawnChallenge = () => {
+  const state = document.documentElement.dataset.challenge;
+  return state && state !== "loading" ? state : null;
+};
+
 async function until(page, test, what, seconds = 30, arg = null) {
   const end = Date.now() + seconds * 1000;
   for (;;) {
@@ -714,7 +723,7 @@ try {
     const page = await visitor.newPage();
     listen(page, `winners at ${width} px`);
     await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
-    await until(page, () => document.documentElement.dataset.challenge, "the challenge drawn");
+    await until(page, drawnChallenge, "the challenge drawn");
     if (year) {
       // The hub shows the first theme now (or the real one open), and this
       // one under Past challenges with its winners; its name opens its own page.
@@ -731,6 +740,11 @@ try {
         && card.won.length === 2 && card.won[0].id === ids.house && card.won[0].text === `“Challenge House ${rand}” by Ada Challenges, by hand`
         && card.won[1].id === ids.shed && card.won[1].text === `“Challenge Shed ${rand}” by Bob Challenges, with the assistant`
         && pictured.join() === `/m/${ids.house}.png,/m/${ids.shed}.png`);
+      // Past challenges are a tab of their own since pagekit (3cfdbeabe,
+      // 11-23), hidden until chosen: chosen as a person does, before its
+      // pictures are waited for (a hidden panel's lazy pictures never load).
+      await page.click("#tab-past-part");
+      await until(page, () => !document.getElementById("past-part")?.hidden, "the Past challenges tab");
       await pictures(page);
       await page.evaluate(() => document.getElementById("past").scrollIntoView());
       await shot(page, `9a_challenge_past-${width}.png`, false);
@@ -932,9 +946,15 @@ try {
         }
         await admin.fill('.rounds-form input[name="judge_handle"]', BOB);
         await admin.fill('.rounds-form input[name="cover"]', `${site}/m/${ids.house}`);
+        // Its own note, "Saved: ..." and not one there before: the sheet's
+        // last note can still be the shortlist's "Published.", and read as
+        // saved the vote went before the days did and was refused as not
+        // open yet (nightreds unit preview, 2026-11-24).
+        const before = await admin.evaluate(() => [...document.querySelectorAll("#sheet .note.good")].map((note) => note.textContent));
         await admin.click('.rounds-form button[type="submit"]');
-        const said = await until(admin, () => document.querySelector("#sheet .note.good")?.textContent
-          || document.querySelector(".rounds-form .note.bad, .rounds-form .note[data-bad]")?.textContent, `${label}: saved`, 30);
+        const said = await until(admin, (was) => [...document.querySelectorAll("#sheet .note.good")]
+          .map((note) => note.textContent).find((text) => /^Saved/.test(text) && !was.includes(text))
+          || document.querySelector(".rounds-form .note.bad, .rounds-form .note[data-bad]")?.textContent, `${label}: saved`, 30, before);
         return said;
       };
       const saved = await saveRounds(dayFrom(0), dayFrom(1), "the rounds");
@@ -960,7 +980,7 @@ try {
         const page = await made.newPage();
         listen(page, `${label} at ${width} px`);
         await page.goto(`${site}/challenge?id=${ids.rounds}&tests=1`, { waitUntil: "load" });
-        await until(page, () => document.documentElement.dataset.challenge, `${label}: drawn`);
+        await until(page, drawnChallenge, `${label}: drawn`);
         await pictures(page);
         const seen = await page.evaluate(() => ({
           status: document.getElementById("status")?.textContent || "", clock: document.getElementById("clock-h")?.textContent || "",
@@ -1005,7 +1025,10 @@ try {
       }
       // The fan vote opens today: only the shortlist has Vote.
       await panel();
-      await saveRounds(dayFrom(-1), dayFrom(0), "the fan vote open");
+      // What the panel said, so a refusal is read here and not as the vote
+      // refused after it (nightreds unit preview, 2026-11-24).
+      const opened = await saveRounds(dayFrom(-1), dayFrom(0), "the fan vote open");
+      check(`the fan vote opened today on the panel: "${opened}"`, /^Saved/.test(String(opened || "")));
       const house = await api("/api/people?op=vote", { method: "POST", token: who.ed.access_token, body: { challenge: ids.rounds, model: ids.house } });
       check(`a vote for the house, not shortlisted: ${house.status} "${house.body.error}"`, house.status === 422 && house.body.refused === "not_shortlisted");
       const pickBefore = (await api("/api/share?op=shelves&tests=1")).body?.pick?.model?.id || null;

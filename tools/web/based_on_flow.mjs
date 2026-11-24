@@ -158,9 +158,18 @@ async function until(page, test, what, seconds = 30, arg = null) {
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 
 /// The page's lines of what it is based on, as drawn.
-const linesDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#based-on li")].map((li) => ({
-  how: li.dataset.how, text: li.textContent.replace(/\s+/g, " ").trim(),
-  href: li.querySelector("a")?.getAttribute("href") || "", rel: li.querySelector("a")?.getAttribute("rel") || "" })));
+/// A declared alternate the count does not bear out tells its designer, and
+/// only her, how many of its parts the set lacks (altbuilds 62c391e27, 11-22:
+/// <span class="alt-short" data-short>): [text] is the line without it,
+/// [short] that count (0 when not said).
+const linesDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#based-on li")].map((li) => {
+  const bare = li.cloneNode(true);
+  bare.querySelectorAll(".alt-short").forEach((one) => one.remove());
+  return { how: li.dataset.how, text: bare.textContent.replace(/\s+/g, " ").trim(),
+    short: Number(li.querySelector(".alt-short")?.dataset.short || 0),
+    shortSaid: li.querySelector(".alt-short")?.textContent || "",
+    href: li.querySelector("a")?.getAttribute("href") || "", rel: li.querySelector("a")?.getAttribute("rel") || "" };
+}));
 
 /// The lines as the server sent them, before any script: [how, text, href, rel].
 const linesSent = (html) => {
@@ -303,7 +312,10 @@ try {
       { how: "changed", what: WORK, title: "A castle", author: "Someone", licence: "CC BY 4.0" }]);
     check(`kept: ${JSON.stringify(said)}`, said.kept === true);
     let lines = await linesDrawn(ivyPage);
-    check(`its page: ${lines.map((one) => `"${one.text}" → ${one.href}`).join(", ")}`, lines.length === 2
+    const shortRight = (one) => !one.shortSaid
+      || (one.short > 0 && one.shortSaid === `(uses ${one.short.toLocaleString("en-US")} ${one.short === 1 ? "part" : "parts"} not in the set)`);
+    check(`its page: ${lines.map((one) => `"${one.text}"${one.shortSaid ? ` + to her "${one.shortSaid}"` : ""} → ${one.href}`).join(", ")}`,
+      lines.length === 2 && shortRight(lines[0])
       && lines[0].how === "alternate" && lines[0].text === `An alternate build of set ${SET} King's Castle`
       && lines[0].href === `/library/set/${SET}`
       && lines[1].how === "changed" && lines[1].text === "Changed from “A castle” by Someone (CC BY 4.0)"
@@ -319,8 +331,10 @@ try {
     // SHARED_CACHE): asked anew.
     const page = await text(`/m/${castle}?asked=${Date.now()}`);
     const sent = linesSent(page.html);
+    // What the set lacks is said to its designer alone, never in the page a visitor is sent.
     check(`the page as sent: ${sent.map((one) => `"${one.text}"`).join(", ")}`, page.status === 200 && sent.length === 2
-      && sent[0].text === lines[0].text && sent[1].text === lines[1].text && sent[1].rel === "nofollow ugc noopener");
+      && sent[0].text === lines[0].text && sent[1].text === lines[1].text && sent[1].rel === "nofollow ugc noopener"
+      && !/class="alt-short"/.test(page.html));
     const data = [...page.html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
       .map((found) => JSON.parse(found[1])).find((one) => one["@type"] === "CreativeWork") || {};
     check(`its structured data, isBasedOn ${JSON.stringify(data.isBasedOn)}`, Array.isArray(data.isBasedOn)
@@ -435,7 +449,8 @@ try {
     await ivyPage.locator("dialog.bases-dialog").getByRole("button", { name: "Save" }).click();
     await until(ivyPage, () => !document.querySelector("dialog.bases-dialog"), "saved");
     lines = await linesDrawn(ivyPage);
-    check(`saved: ${lines.map((one) => `"${one.text}" → ${one.href}`).join(", ")}`, lines.length === 1 && lines[0].how === "alternate"
+    check(`saved: ${lines.map((one) => `"${one.text}"${one.shortSaid ? ` + to her "${one.shortSaid}"` : ""} → ${one.href}`).join(", ")}`,
+      lines.length === 1 && lines[0].how === "alternate" && shortRight(lines[0])
       && lines[0].text === `An alternate build of set ${FOUND} X-wing Fighter` && lines[0].href === `/library/set/${FOUND}`);
     await shot(ivyPage, "6_found_saved_1280.png");
 

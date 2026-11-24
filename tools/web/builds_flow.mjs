@@ -472,7 +472,9 @@ try {
     // The list's cards, not the front's shelves above it (the pick, small builds).
     const mine = document.querySelector(`#models .model[data-id="${one}"]`);
     return { cards: [...document.querySelectorAll("#models .model")].map((a) => ({ id: a.dataset.id, builds: a.dataset.builds })),
-      said: mine?.querySelector("small.acts")?.textContent || "",
+      // A card's builds are a tally in its row of acts, titled "1 built"
+      // (sitebold f1ab9f930, 11-23), no longer words in small.acts.
+      said: [...(mine?.querySelectorAll(".tally") || [])].map((one) => one.title).find((title) => / built$/.test(title)) || "",
       sorts: [...document.querySelectorAll("#sort option")].map((o) => o.textContent) };
   }, id);
   const listed = new Map((await Promise.all(answers)).flatMap((one) => one.models || [])
@@ -588,7 +590,8 @@ try {
   const desk2 = await ownerContext.newPage();
   listen(desk2, "owner");
   await fresh(async () => {
-    await desk2.goto(`${site}/m/${id}#builds`, { waitUntil: "load" });
+    // A second try to the same #builds would only move the hash: load anew.
+    await desk2.goto(`${site}/m/${id}?seen=${Date.now()}#builds`, { waitUntil: "load" });
     await until(desk2, () => document.documentElement.dataset.buildPhotos === "owner", "the owner's tools", 60);
     return desk2.evaluate((one) => Boolean(document.querySelector(`[data-hide="${one}"]`)), photo);
   });
@@ -617,8 +620,11 @@ try {
 
   // --- 5. reported, and taken out -----------------------------------------------------
   console.log("reported, and taken out by the site's owner");
+  // The visitor is still on /m/<id> from the hidden step: going to its
+  // #builds alone (44963b088, 11-23) only moves the hash, and the strip drawn
+  // while the photo was hidden stays. Each try loads the page anew.
   await fresh(async () => {
-    await visitor.goto(`${site}/m/${id}#builds`, { waitUntil: "load" });
+    await visitor.goto(`${site}/m/${id}?seen=${Date.now()}#builds`, { waitUntil: "load" });
     return visitor.evaluate((one) => Boolean(document.querySelector(`[data-report-photo="${one}"]`)), photo);
   });
   await visitor.click(`[data-report-photo="${photo}"]`);

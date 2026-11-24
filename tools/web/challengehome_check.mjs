@@ -161,7 +161,9 @@ try {
     for (const dark of [false, true]) {
       const { context, page: p } = await page({ width, height, phone, dark });
       await p.goto(`${site}/challenge`, { waitUntil: "load", timeout: 60000 });
-      await until(p, () => document.documentElement.dataset.challenge, "the challenge drawn");
+      // Drawn from its answer, not the "loading" the page marks itself with
+      // after five seconds without one (challenge.js).
+      await until(p, () => !["", "loading"].includes(document.documentElement.dataset.challenge || ""), "the challenge drawn");
       await p.waitForTimeout(3000);
       const moved = await cls(p);
       check(`/challenge at ${width}${dark ? " dark" : ""} moves ${moved.cls} as it loads${moved.shifts.length ? ` (${moved.shifts.join("; ")})` : ""}`,

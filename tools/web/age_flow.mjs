@@ -195,7 +195,9 @@ try {
   const rules = await look.textContent("main");
   for (const [what, pattern] of [["credit", /credit/i], ["the three licences", /CC BY 4\.0[\s\S]*CC BY-SA 4\.0[\s\S]*All rights reserved/],
     ["no copying passed off", /No copying passed off as yours/], ["takedowns", /takedown requests/i],
-    ["no personal photos of children", /No personal photos of children/], ["AI designer and Brickify labelled", /AI designer or with Brickify are labelled/],
+    // Since aiprivate (12bb6d749, 2026-11-23) how a model was made is its owner's to say, never labelled by the site.
+    ["no personal photos of children", /No personal photos of children/], ["how it was made, the AI designer or Brickify, is the owner's to say",
+      /made with the AI designer or with Brickify is yours to say[\s\S]*passing one off as the other is not/],
     ["LEGO® only as an adjective", /as an adjective/], ["what gets a model or an account taken out", /What gets a model or an account taken out/]]) {
     check(`/guidelines: ${what}`, pattern.test(rules));
   }
@@ -435,9 +437,16 @@ try {
     "the guidelines beside Publish", 60).catch(() => false);
   const placed = await app2.evaluate(() => window.brickworksControls || {});
   const [publishAt, agreeAt, nameAt] = [placed.share_publish, placed.share_guidelines, placed.share_name];
-  check(`"Publishing means you agree to the guidelines" just under Publish (${open.guidelines}; at ${agreeAt?.y}, Publish ${publishAt?.y})`,
+  // Under the last button that publishes: Enter the month's challenge
+  // publishes too, and while a real one is open it stands under Publish with
+  // its line saying so (Microscale, 11-01 to 11-30: the checks' account is
+  // told it since ab8622d1f, as a person is).
+  const enterAt = placed.share_enter;
+  const lastAt = enterAt && publishAt && enterAt.y > publishAt.y ? enterAt : publishAt;
+  check(`"Publishing means you agree to the guidelines" just under Publish (${open.guidelines}; at ${agreeAt?.y}, Publish ${publishAt?.y}`
+    + `${enterAt ? `, Enter ${enterAt.y}` : ""})`,
     Boolean(beside) && /\/guidelines$/.test(open.guidelines || "") && publishAt && agreeAt
-    && agreeAt.y > publishAt.y && agreeAt.y - publishAt.y < 60);
+    && agreeAt.y > lastAt.y && agreeAt.y - lastAt.y < 60);
   check("the rest of the panel laid out above it as before", Boolean(nameAt) && nameAt.y < publishAt.y);
   await shot(app2, "4_app_share_13_or_over.png");
   const opened = appAdult.waitForEvent("page", { timeout: 30000 }).catch(() => null);

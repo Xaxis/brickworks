@@ -101,14 +101,25 @@ function focusNow() {
     || ringed(getComputedStyle(el, "::before")));
   const box = el.getBoundingClientRect();
   const onScreen = box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < innerHeight && box.right > 0 && box.left < innerWidth;
-  // Not under the sticky header: what is drawn at its middle is it (or in
-  // it), not the header over it.
+  // Not under the sticky header (WCAG 2.4.11): the part of it on the screen
+  // is not all behind the header, so what is drawn just clear of the
+  // header, in its part on the screen, is it (or in it). Its own box's top
+  // was read: a tab's panel, a stop since pagekit (3cfdbeabe, 2026-11-23,
+  // tabindex 0 as ARIA's tabs ask) and taller than the window, was
+  // scrolled with its top above the screen and judged by the header.
   let under = false;
   if (onScreen && !el.closest(".site-head") && !el.closest("dialog")) {
     const x = Math.min(innerWidth - 1, Math.max(0, box.left + box.width / 2));
-    const y = Math.min(innerHeight - 1, Math.max(0, box.top + Math.min(box.height / 2, 12)));
-    const top = document.elementFromPoint(x, y);
-    under = Boolean(top && top.closest(".site-head"));
+    const seenTop = Math.max(0, box.top), seenFoot = Math.min(innerHeight, box.bottom);
+    const head = document.querySelector(".site-head");
+    const headBox = head ? head.getBoundingClientRect() : null;
+    const clear = headBox && headBox.top <= seenTop + 1 ? Math.max(seenTop, headBox.bottom) : seenTop;
+    if (clear >= seenFoot) under = true;
+    else {
+      const y = Math.min(innerHeight - 1, clear + Math.min((seenFoot - clear) / 2, 12));
+      const top = document.elementFromPoint(x, y);
+      under = Boolean(top && top.closest(".site-head"));
+    }
   }
   return { lost: false, said, tag, id: el.id, name, shown, onScreen, under, inDialog: Boolean(el.closest("dialog[open]")),
     pressed: el.getAttribute("aria-pressed"), expanded: el.getAttribute("aria-expanded") };
