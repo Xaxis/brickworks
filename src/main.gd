@@ -2053,6 +2053,7 @@ func _ready() -> void:
 	if not _viewing.is_empty():
 		_enter_view()
 		_lay_baseplate()
+		await _await_early_link()
 		if _early_asked:
 			# Its parts waited for under the page's screen, then the model
 			# opened and drawn whole before that screen lifts (_view_shared,
@@ -2102,6 +2103,8 @@ func _ready() -> void:
 		# screen before anything opens: the model the tab kept, which is this
 		# copy after a reload, or the copy itself (_open_asked), opened whole
 		# and drawn so before the screen lifts (_show_whole).
+		if not _copying.is_empty():
+			await _await_early_link()
 		if not _copying.is_empty() and _early_asked:
 			await _await_early_model()
 		if not OS.get_cmdline_args().has("--script"):
@@ -5169,6 +5172,39 @@ var _early_asked: bool = false
 ## The longest the page's screen waits for them, in ms: past it the model
 ## opens and the rest are put down as they come.
 const EARLY_SET_WAIT_MS := 2000
+## The longest the page's screen waits for a shared link's answer that had
+## not come when the studio was made, in ms ([method _await_early_link]):
+## with the parts' wait it stays inside the screen's own bound (shell.html's
+## SET_SHOWN_MOST, 6 s after "ui").
+const EARLY_LINK_WAIT_MS := 3000
+
+
+## A shared link's answer (?view=, ?copy=), asked for by the page as it
+## loaded and not come when the studio was made, waited for under the page's
+## screen, which says the model is being fetched, with nothing drawn and
+## nothing moving, [constant EARLY_LINK_WAIT_MS] at most; its parts asked for
+## the frame it comes ([method _ask_early_model]). The page takes the reply
+## in on its own thread, which the engine's start held for 10 s in one go:
+## a reply that came meanwhile was not seen at "ui", the studio was shown
+## empty, and the model opened in it 2.2 s later with 38 of its parts still
+## to come (diag_v2, 2026-11-24). Not come by then, or not the model (a link
+## that is gone), it goes on as before: the screen lifts on the studio and
+## the viewer or the copy says what it waits for.
+func _await_early_link() -> void:
+	var id: String = _viewing if not _viewing.is_empty() else _copying
+	if _early_asked or not SharedModels.early_coming(id, _viewing_version):
+		return
+	get_tree().paused = true
+	GpuFence.hold()
+	_tell_boot("window.brickworksBootFetching && window.brickworksBootFetching()")
+	var until: int = Time.get_ticks_msec() + EARLY_LINK_WAIT_MS
+	while Time.get_ticks_msec() < until and SharedModels.early_coming(id, _viewing_version):
+		await get_tree().process_frame
+	_ask_early_model()
+	if _early_asked:
+		_boot_mark("link")
+	GpuFence.let_go()
+	get_tree().paused = false
 
 
 ## The model the page's address opens, its text fetched by the page as it
@@ -5282,6 +5318,8 @@ func _mark_shown() -> void:
 	if not _shown_marked:
 		_shown_marked = true
 		_boot_mark("shown")
+		# Lifted now, in the frame that drew it, not after the next one.
+		_tell_boot("window.brickworksBootShown && window.brickworksBootShown()")
 
 
 ## How many of the model's parts have come, said on the page's screen while

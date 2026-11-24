@@ -576,6 +576,7 @@ const loaderSays = (function () {
 			"Opening the set…": "Das Set wird geöffnet…",
 			"Fetching the model's parts: {done} of {total}": "Die Teile des Modells werden geladen: {done} von {total}",
 			"Opening the model…": "Das Modell wird geöffnet…",
+			"Fetching the model…": "Das Modell wird geladen…",
 			"Ready": "Bereit",
 			"This browser is missing: {what}.": "Diesem Browser fehlt: {what}.",
 			"Threads need the page served with {headers}.": "Threads brauchen die Seite mit {headers}.",
@@ -642,6 +643,7 @@ const loaderSays = (function () {
 			"Opening the set…": "Ouverture du set…",
 			"Fetching the model's parts: {done} of {total}": "Chargement des pièces du modèle : {done} sur {total}",
 			"Opening the model…": "Ouverture du modèle…",
+			"Fetching the model…": "Chargement du modèle…",
 			"Ready": "Prêt",
 			"This browser is missing: {what}.": "Il manque à ce navigateur : {what}.",
 			"Threads need the page served with {headers}.": "Les threads demandent une page servie avec {headers}.",
@@ -708,6 +710,7 @@ const loaderSays = (function () {
 			"Opening the set…": "Abriendo el set…",
 			"Fetching the model's parts: {done} of {total}": "Cargando las piezas del modelo: {done} de {total}",
 			"Opening the model…": "Abriendo el modelo…",
+			"Fetching the model…": "Cargando el modelo…",
 			"Ready": "Listo",
 			"This browser is missing: {what}.": "A este navegador le falta: {what}.",
 			"Threads need the page served with {headers}.": "Los hilos necesitan que la página se sirva con {headers}.",
@@ -1152,6 +1155,11 @@ brickworksEngine.ready.then(function (chosen) {
 	// Open in the app or Open in Brickworks): its parts as the app waits for
 	// them, under this screen, before the studio is shown with the model on
 	// it (Main._await_early_model, whenUp).
+	// Before them, a shared model's link whose answer had not come when the
+	// studio was made (Main._await_early_link).
+	window.brickworksBootFetching = function () {
+		say(loaderSays("Fetching the model…"));
+	};
 	window.brickworksBootParts = function (done, total) {
 		say(loaderSays(forSet ? "Fetching the set's parts: {done} of {total}"
 			: "Fetching the model's parts: {done} of {total}", { done: done, total: total }));
@@ -2209,13 +2217,29 @@ brickworksEngine.ready.then(function (chosen) {
 	// and a set's file opened in one go only under
 	// ModelBar.OPENED_AT_ONCE_MOST. The screen stayed 7.9 s after "ui" at a
 	// load of 70 (openreview F4).
+	// The app says "shown" from inside the frame that drew the model
+	// (window.brickworksBootShown, Main._mark_shown): lifted there, the lift
+	// is painted with that frame. Left to the next look below, it waited out
+	// the app's next frame too, which the browser runs first: 1.0 s at a load
+	// of 74 (viewopen's strip, shown 22087, lifted 23107).
 	const SET_SHOWN_MOST = 6000;
+	let upThen = null;
 	function whenUp(then) {
+		if (!upThen) return;
 		const marks = window.brickworksBoot || {};
 		if (marks.shown || marks.stopped
-			|| (marks.ui && (!(forSet || forShared) || performance.now() - marks.ui > SET_SHOWN_MOST))) then();
-		else if (!(packs.data && packs.data.gave_up)) setTimeout(function () { whenUp(then); }, 50);
+			|| (marks.ui && (!(forSet || forShared) || performance.now() - marks.ui > SET_SHOWN_MOST))) {
+			upThen = null;
+			then();
+		} else if (!(packs.data && packs.data.gave_up)) setTimeout(function () { whenUp(then); }, 50);
 	}
+	function onceUp(then) {
+		upThen = then;
+		whenUp(then);
+	}
+	window.brickworksBootShown = function () {
+		if (upThen) whenUp(upThen);
+	};
 
 	// A first visit on a phone told how long it will take, as it loads
 	// (phonetruth, docs/PHONE.md): the engine's files at the rate they are
@@ -2349,7 +2373,7 @@ brickworksEngine.ready.then(function (chosen) {
 		fetchStart();
 		writePacks();
 		writeLater();
-		whenUp(function () {
+		onceUp(function () {
 			eta.up();
 			running = false;
 			downloaded = 1;

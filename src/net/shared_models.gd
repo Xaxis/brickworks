@@ -143,6 +143,20 @@ static func early_model(id: String, version: int = 0) -> String:
 	return str((read["body"] as Dictionary).get("model", ""))
 
 
+## Whether the page asked for [param id]'s answer (at [param version]) as it
+## loaded and it has not come yet. Its reply is taken in on the page's
+## thread, which the engine's start holds for seconds in one go: one that
+## came over the network meanwhile is not here until the app lets a frame
+## go (diag_v2: asked at 0.2 s, still not here at "ui", 10.8 s).
+static func early_coming(id: String, version: int = 0) -> bool:
+	if not OS.has_feature("web") or not is_id(id) or not _early_read.is_empty():
+		return false
+	var coming: Variant = JavaScriptBridge.eval(("(function(){var p=window.brickworksSharePrefetch;"
+		+ "return p && p.id===%s && (p.version||0)===%d && !p.done ? 1 : 0})()")
+		% [JSON.stringify(id), version], true)
+	return coming != null and int(coming) == 1
+
+
 func publish(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/share", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 
