@@ -40,6 +40,11 @@ func _run() -> void:
 	var button: Button = offer.controls_by_name().get("storage_download_all")
 	var unsorted: Vector2 = to_window * button.get_global_rect().get_center()
 	var first: Dictionary = main.call("_page_places", main.call("_page_controls"), to_window, 1.0)
+	# Left out for having come, it is owed a telling soon, not two seconds
+	# on (Main._tell_page): account and oauth read nothing there for two
+	# seconds (nightly 2026-11-24).
+	_check("...left out as it came, the next telling is owed now, not at rest's two seconds",
+		bool(main.get("_places_unsettled")))
 	await _frames(3)
 	var drawn: Vector2 = to_window * button.get_global_rect().get_center()
 	var drawn_at: Dictionary = {"x": roundi(drawn.x), "y": roundi(drawn.y)}
@@ -56,6 +61,8 @@ func _run() -> void:
 	_check("...and once it has stayed there, it is told where it is drawn: %s"
 		% str(third.get("storage_download_all")), third.get("storage_download_all") != null
 		and _at(third["storage_download_all"]) == drawn_at)
+	_check("...and with every control told where it stood, nothing more is owed",
+		not bool(main.get("_places_unsettled")) and int(main.get("_places_settling")) == 0)
 
 	print("\nput away, it is gone at once")
 	offer.visible = false

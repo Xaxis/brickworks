@@ -940,9 +940,17 @@ func _tell_page() -> void:
 	# edit, a frame drawn, an answer, a check's question: Wake), then every
 	# TELL_RESTING_MS: twice a second, a still phone at a quarter speed
 	# spent 5 to 13 ms of a frame on it for nobody (idlesleep).
-	if moment == _told_moment and not Wake.owed(_told_page_at) and Wake.on \
+	# A control left out because it had moved or come since the telling
+	# before (_page_places) is owed the next half second's, a few times:
+	# held to TELL_RESTING_MS, Sign in's address and Disconnect came two
+	# seconds after they stood still, and the checks that read them first
+	# found nothing (account, oauth; nightly 2026-11-24).
+	var settling: bool = _places_unsettled and _places_settling < PLACES_SETTLING
+	if moment == _told_moment and not Wake.owed(_told_page_at) and not settling and Wake.on \
 			and now - _told_page_at < TELL_RESTING_MS:
 		return
+	if settling:
+		_places_settling += 1
 	_told_page_at = now
 	_told_moment = moment
 	_hear_look_ask()
@@ -1457,6 +1465,7 @@ func _page_controls() -> Dictionary:
 func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> Dictionary:
 	var seen: Dictionary = {}
 	var where: Dictionary = {}
+	var withheld: bool = false
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -1482,12 +1491,24 @@ func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> 
 		seen[name] = at
 		if _told_places.get(name, {}) == at:
 			where[name] = at
+		else:
+			withheld = true
 	_told_places = seen
+	_places_unsettled = withheld
+	if not withheld:
+		_places_settling = 0
 	return where
 
 
 ## Where each control was at the last telling (_page_places).
 var _told_places: Dictionary = {}
+## Whether the last telling left a control out for having moved or come
+## since the one before, and how many tellings since have been owed for it
+## (_tell_page): at most PLACES_SETTLING, so a control that never stands
+## still (a bar filling) costs a resting phone no telling more than that.
+var _places_unsettled: bool = false
+var _places_settling: int = 0
+const PLACES_SETTLING := 3
 
 
 ## Whether something [param control] is in that clips what it holds (a
