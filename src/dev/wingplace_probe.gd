@@ -96,6 +96,7 @@ func _run() -> void:
 	await _frames(20)
 	await _beside()
 	await _big()
+	await _many_in_hand()
 
 	print("")
 	if _failures == 0:
@@ -219,6 +220,7 @@ func _beside() -> void:
 	_builder.clear_selection()
 	await _key(KEY_ESCAPE)
 	await _click_tool("mode_select")
+	await _whole_copy_drag()
 	await _double_click(_on(_of_part("Wing#1", "3034")))
 	_check("a double-click edits inside the wing (%s)" % _tree.entered, _tree.entered == "Wing#1")
 	_bin._on_part("3023")
@@ -484,6 +486,77 @@ func _parts_now() -> Dictionary:
 
 
 ## The box round the wing being edited, on the ground.
+## Wing#2 dragged whole at the model's level across Wing#1 to its far side,
+## as the web's assembly flow drags its Ctrl+D copy: the follow leaves a
+## copy moved whole alone, so no aim of the drag is red for a copy
+## (Assemblies._changed_level walks up past it to the model).
+func _whole_copy_drag() -> void:
+	var wing2: Array = Array(_tree.ids_under("Wing#2"))
+	var box: AABB = _wing_box()
+	var from: Vector2 = _on(int(wing2[0]))
+	var far: Vector2 = _screen(Vector3(box.position.x - 80.0, 0.0, box.get_center().z))
+	var depth: int = _builder.history_depth()
+	_select_only(wing2)
+	await _move(from)
+	_button(from, true)
+	await _frames(2)
+	var aims: int = 0
+	var red: int = 0
+	var said: Array = []
+	var last: Vector2 = from
+	for k: int in range(1, 13):
+		var next: Vector2 = from.lerp(far, float(k) / 12.0)
+		await _drag_move(last, next)
+		last = next
+		await _asked()
+		if _builder.is_carrying() and _builder.carrying.is_aimed():
+			aims += 1
+			var words: String = str(_builder.get("copies_refuse"))
+			if not words.is_empty():
+				red += 1
+				if said.size() < 3:
+					said.append(words)
+	await _button(last, false)
+	await _frames(3)
+	_check("Wing#2 dragged whole at the model's level is never red for a copy (%d of %d aims red %s; entered \"%s\")"
+		% [red, aims, str(said), _tree.entered], aims > 0 and red == 0)
+	if _builder.is_carrying():
+		await _key(KEY_ESCAPE)
+	if _builder.history_depth() > depth:
+		await _key(KEY_Z, true)
+		await _frames(2)
+	_builder.clear_selection()
+
+
+## 200 parts of a 2,000-part sub-assembly in hand, asked of its copies: each
+## path is walked up once an ask, on the index, not a copy of the
+## sub-assembly's parts for each part (review L1: ~400k copies an aim).
+func _many_in_hand() -> void:
+	if not _tree.has_method("_changed_level"):
+		return
+	_main.call("clear_model")
+	await _frames(3)
+	var ids: Array = []
+	for n: int in 2000:
+		var at := Transform3D(Basis.IDENTITY, Vector3(20.0 * (n % 50), 8.0, 20.0 * (n / 50)))
+		var brick_id: int = _world.add_brick("3024", 4, at)
+		Builder.set_path(_world.get_brick(brick_id), "Big#1")
+		ids.append(brick_id)
+	await _frames(2)
+	var items: Array = []
+	for n: int in 200:
+		items.append(["3024", _world.get_brick(ids[n]).transform.translated(Vector3(0, 400, 0)), "Big#1"])
+	var best: int = 1 << 40
+	for _try: int in 3:
+		var began: int = Time.get_ticks_usec()
+		_tree.call("room_in_copies", {"items": items}, 4000)
+		best = mini(best, Time.get_ticks_usec() - began)
+	_check("200 of a 2,000-part sub-assembly's parts asked in %d us, the least of three (%d under it)"
+		% [best, _tree.ids_under("Big#1").size()], best < 4000 and _tree.ids_under("Big#1").size() == 2000)
+	_main.call("clear_model")
+	await _frames(3)
+
+
 func _wing_box() -> AABB:
 	var box := AABB()
 	var first: bool = true
@@ -625,6 +698,18 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 			if not fits and not cut_asked:
 				cut_asked = true
 				_cut_short(predicted)
+				# A number typed there (0, where it is): the field says why, as
+				# the bar does, not "Enter puts it down"; Esc leaves it as it was.
+				if _tree.has_method("_changed_level"):
+					await _key(KEY_KP_0)
+					var field: TypedEntry = _verbs.get("typed")
+					var line: String = (field.get("_meaning") as Label).text if field.is_open() else "(not open)"
+					await _key(KEY_ESCAPE)
+					await _frames(2)
+					_check("%s: a number typed on a red spot says why (\"%s\")" % [what, line],
+						line.contains(predicted) and not line.contains("Enter puts it down"))
+					await _move(at + Vector2(1, 0))
+					await _asked()
 			var heard: String = _shell.status.fields()["message"]
 			var count: int = _count()
 			await _click(at + Vector2(1, 0))

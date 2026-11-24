@@ -928,9 +928,18 @@ func _hold_pasted(parts: Array, lines: Dictionary, frames: Dictionary, held: Arr
 	builder.carrying.frames = frames
 	builder.carrying.held = held
 	aim_again.call()
-	say.call(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
-		% _parts(parts.size()))
+	say.call(_click_line(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
+		% _parts(parts.size())))
 	return parts.size()
+
+
+## [param line], a hint that a click puts down what is in hand, unless the
+## ghost is red for another copy of the sub-assembly (Builder.copies_refuse):
+## then the click puts nothing down, and the line says why. The hint is said
+## after the aim that asked the copies, so it wrote over the why (wingplace).
+## An answer that comes later is said as it comes (Shell, copies_refused).
+func _click_line(line: String) -> String:
+	return line if builder.copies_refuse.is_empty() else builder.copies_refuse
 
 
 ## The parts of [param parts] whose shape is not here: in a browser, those it
@@ -1110,8 +1119,8 @@ func lift(grab: Array = []) -> int:
 	if not builder.is_carrying():
 		return 0
 	aim_again.call()
-	say.call(Keymap.filled("moving %s — click to put down, {rotate_held|turns}, Esc puts back")
-		% _parts(count))
+	say.call(_click_line(Keymap.filled("moving %s — click to put down, {rotate_held|turns}, Esc puts back")
+		% _parts(count)))
 	return count
 
 
@@ -1820,6 +1829,16 @@ func _ready() -> void:
 		if _pattern != null:
 			_pattern.hide_copies()
 		return _typed_preview(what)
+	# Room here and none in another copy: the field says why, as the bar
+	# does, not "Enter puts it down"; Enter still goes to the follow.
+	typed.advice = func(what: Dictionary) -> String:
+		return "" if _handles_typing() or what.has("copies") else builder.copies_refuse
+	# An ask answered after the field read its number (a big hand, asked over
+	# frames): the field says it then.
+	if builder != null:
+		builder.copies_refused.connect(func(_words: String) -> void:
+			if typed.is_open():
+				typed.again())
 	typed.apply = func(what: Dictionary) -> bool:
 		if _handles_typing():
 			return handles.typed_apply(what)

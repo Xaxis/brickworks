@@ -1962,7 +1962,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (a lifted part goes back into its own sub-assembly, `Builder._going_down`,
   and is asked of the copies of the innermost one round it that keeps a
   part, `Assemblies._changed_level`: a copy dragged whole asks nothing of its
-  own twins): every green ghost is put down (or moved)
+  own twins, and Wing#2 dragged whole at the model's level is never red; 200
+  of a 2,000-part sub-assembly's parts are asked within 4 ms; a number typed
+  on a red spot says why, and a paste or a lift's hint never covers the why,
+  `EditVerbs._click_line`): every green ghost is put down (or moved)
   with its twin, every red one takes nothing and said why, each drawn as it
   is; an ask cut a microsecond at a time answers as one in one go; on 10179
   what the ask adds to the app's own aim stays under a frame and each ghost

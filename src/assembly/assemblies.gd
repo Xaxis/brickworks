@@ -1955,13 +1955,18 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 		var down: Array = []
 		## Each item's level ([method _changed_level]) -> the items going there.
 		var by_level: Dictionary = {}
+		## Each path the items go into -> its level, found once an ask.
+		var level_of: Dictionary = {}
 		for item: Array in items:
 			# As the world puts it down: a retired number is the part that
 			# replaced it, where its stub puts it (BrickWorld._place), so a
 			# 3023 in hand is a 3023b in the copy and its twins, named so.
 			var real: String = library.resolve(str(item[0]))
 			var at: Transform3D = (item[1] as Transform3D) * library.moved_by(str(item[0]))
-			var level: String = _changed_level(str(item[2]) if item.size() > 2 else entered)
+			var into: String = str(item[2]) if item.size() > 2 else entered
+			if not level_of.has(into):
+				level_of[into] = _changed_level(into)
+			var level: String = level_of[into]
 			var mesh: Lbm.PartMesh = library.mesh_for(real)
 			if mesh != null:
 				down.append([real, builder.boxes_for(mesh, at), level])
@@ -2085,7 +2090,12 @@ func _copies_laid(level: String) -> Array:
 ## round it. "" at the model.
 func _changed_level(path: String) -> String:
 	var level: String = path
-	while not level.is_empty() and bricks_under(level).is_empty():
+	if level.is_empty():
+		return level
+	# Asked of the index, its lists not copied (bricks_under copies them):
+	# 200 parts dragged out of a 2,000-part sub-model asked it 200 times.
+	_index()
+	while not level.is_empty() and (_under.get(level, []) as Array).is_empty():
 		level = parent_of(level)
 	return level
 
