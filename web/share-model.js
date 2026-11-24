@@ -314,8 +314,11 @@ async function share() {
     // model shared from it went out with no name and nobody who liked it
     // could follow its designer (sitewalk2, 2026-11-24). With no profile,
     // First steps' Make your profile first; Skip shares it with no name.
+    // Never for an account the server keeps from a profile (under 13, as
+    // api/_trust.js publicTrouble): the publish says why in its own words.
+    const mayProfile = !age || age.over_13 === true;
     let me = await call("/api/people?op=me").catch(() => null);
-    if (me && me.status === 200 && me.body && !me.body.profile?.handle) {
+    if (mayProfile && me && me.status === 200 && me.body && !me.body.profile?.handle) {
       await import("/first-steps.js").then((steps) => steps.firstSteps({ pending: true, profileOnly: true })).catch(() => null);
       me = await call("/api/people?op=me").catch(() => null);
     }
