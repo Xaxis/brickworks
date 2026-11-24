@@ -13,7 +13,9 @@
 ##     sub-assembly, put into a model), my own model of mine, a copy of mine
 ##     cut short (mended, not renamed) and a print whose picture differs.
 ## RESULT / FINDING lines. Headless.
-## Both stages when none is named.
+## Both stages when none is named. --made-theirs=FILE opens their model as the
+## live app wrote it (mr3_cross_probe --mr3-stage=collide on pre261's
+## their-model.mpd), after checking its section is the cut made here.
 ##   godot --headless --path . --script src/dev/made_ids_probe.gd -- --made-stage=collide --made-out=DIR
 extends SceneTree
 
@@ -272,6 +274,15 @@ func _collide(out: String) -> void:
 	var their_model: String = ("0 FILE their-model.ldr\n0 Their model\n0 Name: their-model.ldr\n0 Author: Them\n"
 		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n1 2 0 -24 0 1 0 0 0 1 0 0 0 1 %s.dat\n0 NOFILE\n") % OLD_ID \
 		+ "0 FILE " + OLD_ID + ".dat\n" + theirs.strip_edges() + "\n0 NOFILE\n"
+	# --made-theirs=FILE: their model as the live app wrote it (mr3_cross_probe's
+	# collide stage on pre261, their-model.mpd), opened here in place of ours.
+	var live_file: String = str(_args.get("theirs", ""))
+	if not live_file.is_empty():
+		var live: String = FileAccess.get_file_as_string(live_file)
+		_check(_body(_section(live, OLD_ID + ".dat")) == _body(theirs),
+			"their model as the live app wrote it (%s, %d chars): its %s section is the cut made here, %s" % [
+				live_file.get_file(), live.length(), OLD_ID, _whose(_section(live, OLD_ID + ".dat"), mine, theirs)])
+		their_model = live
 	var path: String = PROBE_DIR + "their-model.mpd"
 	_write_abs(path, their_model)
 	_write_abs(out.path_join("their-model.mpd"), their_model)
