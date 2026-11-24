@@ -1959,8 +1959,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   from rel-m324 and nobody saw why. `wingplace_probe` (windowed) aims a plate
   from the bin and a pasted brick all round such a wing, and drags the wing's
   own brick there, once inside the wing and once picked out from outside it
-  (a lifted part goes back into its own sub-assembly, `Builder._copies_path`,
-  and that one's copies are asked): every green ghost is put down (or moved)
+  (a lifted part goes back into its own sub-assembly, `Builder._going_down`,
+  and is asked of the copies of the innermost one round it that keeps a
+  part, `Assemblies._changed_level`: a copy dragged whole asks nothing of its
+  own twins): every green ghost is put down (or moved)
   with its twin, every red one takes nothing and said why, each drawn as it
   is; an ask cut a microsecond at a time answers as one in one go; on 10179
   what the ask adds to the app's own aim stays under a frame and each ghost
