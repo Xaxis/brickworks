@@ -7385,12 +7385,14 @@ func _build_ui() -> void:
 		_tell_bin_selection()
 		_look_under_again()
 		var whole: String = _verbs.assemblies.selected_assembly() \
-			if count > 1 and _verbs != null and _verbs.assemblies != null else ""
+			if count > 1 and _phone == null and _verbs != null and _verbs.assemblies != null else ""
 		if count == 0:
 			_bar.say("")
 		elif not whole.is_empty():
 			# A click took a sub-assembly whole: which, and the way to one
-			# of its parts, as a phone's line says (PhoneShell). "149
+			# of its parts, as a phone's line says (PhoneShell.hint, in a
+			# finger's words: hold, then Edit inside; a phone's double tap
+			# turns, so it is left to say it, never "double-tap"). "149
 			# selected — … C paints" at a set's fifth step, its house taken
 			# whole, said neither, and a colour then painted 149 parts
 			# (appwalk).

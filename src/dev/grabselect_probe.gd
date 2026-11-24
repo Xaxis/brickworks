@@ -22,10 +22,12 @@
 ##   3. on a phone, a second finger on the screen while the first turns the
 ##      1 x 1: put back where it was, and the selection as it was before the
 ##      press (nothing), as a second finger leaves a carried part (touchfix);
-##   4. on the desktop's layout, the two made a sub-assembly and a click on the
-##      2 x 4: it takes them whole, and the status line names the sub-assembly
-##      and says a double-click edits inside it, as a phone's line does (a
-##      set's house, 149 parts, was said as "149 selected — … C paints").
+##   4. the two made a sub-assembly and a click on the 2 x 4: it takes them
+##      whole, and on the desktop's layout the status line names the
+##      sub-assembly and says a double-click edits inside it, as a phone's line
+##      does (a set's house, 149 parts, was said as "149 selected — … C
+##      paints"); on a phone, a tap: its line says hold, then Edit inside, and
+##      nothing names a double tap, which turns a part there.
 ## Pictures in shots/grabselect/. Exits non-zero when a check fails.
 extends "res://src/dev/twist_probe.gd"
 
@@ -140,27 +142,46 @@ func _run() -> void:
 		_check("...it was taken hold of (%s), and is put back, the selection as it was: %s"
 			% [grabbed, _moved(before)], grabbed and _parts() == before)
 
-	if _layout == "desktop":
-		print("\n4. a click on a part of a sub-assembly")
-		await _model()
-		await _go_home()
-		_builder.selection[_base] = true
-		_builder.selection[_small] = true
-		var made: String = _verbs.assemblies.make("Wall")
-		_builder.clear_selection()
-		await _frames(4)
-		var at: Vector2 = _point_on(_base)
+	print("\n4. a %s on a part of a sub-assembly" % ("tap" if _layout == "phone" else "click"))
+	await _model()
+	await _go_home()
+	_builder.selection[_base] = true
+	_builder.selection[_small] = true
+	var made: String = _verbs.assemblies.make("Wall")
+	_builder.clear_selection()
+	await _frames(4)
+	var at: Vector2 = _point_on(_base)
+	if _layout == "phone":
+		_touch(0, at, true)
+		await process_frame
+		_touch(0, at, false)
+	else:
 		_button(at, true)
 		await process_frame
 		_button(at, false)
-		await _frames(8)
-		var shell: Variant = _main.get("_shell")
-		var said: String = str(shell.status.message.text)
+	# A tap waits out a double tap's time before it selects.
+	for _n: int in 90:
+		await process_frame
+		if not _builder.selection.is_empty():
+			break
+	await _frames(8)
+	var shell: Variant = _main.get("_shell")
+	var said: String = str(shell.status.message.text)
+	if _layout == "desktop":
 		_check("a click on its 2 x 4 takes the sub-assembly %s whole (%d selected) and says which and how to change one: \"%s\""
 			% [made, _builder.selection.size(), said],
 			_builder.selection.size() == 2 and said.begins_with("Wall selected, 2 parts")
 				and said.contains("double-click edits inside"))
-		await _shot2("4_subassembly")
+	else:
+		# A phone's double tap turns: its line says hold, then Edit inside, and
+		# nothing said over it names a double tap or click.
+		var line: String = str((_main.get("_phone") as Node).call("hint"))
+		_check("a tap on its 2 x 4 takes the sub-assembly %s whole (%d selected); the phone's line says hold, then Edit inside: \"%s\" (the status line \"%s\")"
+			% [made, _builder.selection.size(), line, said],
+			_builder.selection.size() == 2 and line.begins_with("Wall selected, 2 parts")
+				and line.contains("hold, then Edit inside") and not line.contains("double")
+				and not said.contains("double"))
+	await _shot2("4_subassembly")
 
 	print("\ngrabselect_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
