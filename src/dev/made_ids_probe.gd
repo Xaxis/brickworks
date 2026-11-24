@@ -115,8 +115,8 @@ func _tally(kind: String, made: Array) -> void:
 	for pair: Array in made:
 		ids[pair[0]] = true
 		texts[pair[1]] = true
-		var tag: String = str(pair[0]).get_slice("-", str(pair[0]).get_slice_count("-") - 1)
-		if tag.length() != CustomParts.TAG_DIGITS or not tag.is_valid_hex_number():
+		# A print's tag follows its "p" (bw-3068b-p<tag>), a sticker's "st-".
+		if not CustomParts.names_its_text(str(pair[0])):
 			bad.append(pair[0])
 	_check(ids.size() == texts.size() and bad.is_empty(),
 		"%s: %d made, %d texts, %d ids; ids without a %d-digit tag: %s; e.g. %s" % [kind, made.size(),
@@ -128,16 +128,23 @@ func _ids() -> void:
 	print("\nONE TEXT, ONE ID, FOR EVERY KIND OF MADE PART")
 	# Cuts: every box of a 3001 (4 x 2 studs, 3 plates).
 	var cuts: Array = []
+	var refused: Array = []
+	var boxes: int = 0
 	for x0: int in 5:
 		for x1: int in range(x0 + 1, 5):
 			for z0: int in 3:
 				for z1: int in range(z0 + 1, 3):
 					for p0: int in 4:
 						for p1: int in range(p0 + 1, 4):
-							var made: Dictionary = CustomParts.modified_text(_library, _edit([x0, z0, x1, z1, p0, p1]))
+							boxes += 1
+							var cut: Array = [x0, z0, x1, z1, p0, p1]
+							var made: Dictionary = CustomParts.modified_text(_library, _edit(cut))
 							if str(made["problem"]).is_empty():
 								cuts.append([made["id"], made["text"]])
-	_say("%d cut boxes of 3001 make %d ids" % [cuts.size(), _distinct(cuts)])
+							else:
+								refused.append("%s: %s" % [cut, made["problem"]])
+	_say("%d cut boxes of 3001: %d make a part, %d ids; refused: %s" % [boxes, cuts.size(),
+		_distinct(cuts), refused])
 	_tally("cut boxes of 3001", cuts)
 	var again: Dictionary = CustomParts.modified_text(_library, _edit(MINE_CUT))
 	var first: Dictionary = CustomParts.modified_text(_library, _edit(MINE_CUT))

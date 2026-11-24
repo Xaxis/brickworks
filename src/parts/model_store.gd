@@ -4782,6 +4782,13 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 		carried[LdrModel._key(name)] = _plain_section(str(files_here[name]))
 	var shares: Callable = func(name: String, content: String) -> bool:
 		return carried.get(LdrModel._key(name), null) == _plain_section(content)
+	# A part made in the app it carries as other text than the library's of
+	# its name comes in under a name of its own (CustomParts.own_names), as an
+	# open's does, before its sections are named apart from the model's: up
+	# to then IntoModel took it for a sub-model of the same name as one here
+	# and called it "<id>_2", another name each time.
+	if text.findn("FILE bw-") >= 0:
+		text = CustomParts.own_names(library, text, LdrModel.parse(text, file_name), file_name)["text"]
 	var named: Dictionary = IntoModel.renamed(text, file_name, Assemblies.names_in(world),
 		called, shares)
 	if not str(named["error"]).is_empty():
@@ -4791,8 +4798,7 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	if model == null or model.main == null:
 		out["error"] = "that is not an LDraw file"
 		return out
-	# A part made in the app it carries as other text than the library's of
-	# its name comes in under a name of its own (CustomParts.own_names).
+	# And one its sections' names gave it (a FILE line not found above).
 	model = CustomParts.own_names(library, str(named["text"]), model, str(named["file"]))["model"]
 	# The parts it carries join the library first, as an open's do; but one
 	# the library has already is drawn as the model open draws it, never by
