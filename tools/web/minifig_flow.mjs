@@ -187,6 +187,8 @@ try {
     }
     await page.click("#avatar-make");
     const opened = await makerReady(page);
+    // The sizes are drawn from the figure a moment after it is (web/minifig-maker.js sizes).
+    await until(page, () => document.querySelectorAll("#minifig-light .avatar img, #minifig-dark .avatar img").length === 6, null, 10000);
     const drawn = await page.evaluate(() => ({
       tabs: [...document.querySelectorAll("#minifig-dialog [role=tab]")].map((one) => one.dataset.tab),
       open: document.querySelector("#minifig-dialog [role=tab][aria-selected=true]")?.dataset.tab,
