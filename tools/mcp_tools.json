@@ -1555,6 +1555,10 @@
           },
           "type": "array"
         },
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "assemblies": {
           "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model — a display stand, a sign, a nameplate in front of it — must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
           "items": {
@@ -3634,6 +3638,10 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
         },
         "assemblies": {
           "description": "name a part of the model, as submit_design's assemblies do; one of the same name moves to the new box. Something meant to stand apart from the model — a display stand, a sign, a nameplate in front of it — must be named, its box holding it and none of the model: a piece apart that nothing names is a part that has come off, and fails.",
@@ -6575,6 +6583,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "bricks": {
           "description": "the parts, by their numbers in look_at_model",
           "items": {
@@ -6657,6 +6669,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "all_steps": {
+          "description": "while the person's timeline shows a step, the parts of later steps, not on their screen yet, are left out and counted; true finds and changes them too",
+          "type": "boolean"
+        },
         "find": {
           "additionalProperties": false,
           "properties": {
@@ -6734,6 +6750,10 @@
           "description": "the mirror's plane, x= (or z=) in studs",
           "type": "number"
         },
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "axis": {
           "enum": [
             "x",
@@ -6775,6 +6795,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "bricks": {
           "description": "the parts, by their numbers in look_at_model",
           "items": {
@@ -6806,6 +6830,10 @@
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "all_steps": {
+          "description": "while the person's timeline shows a step, a change to parts of later steps, not on their screen yet, is refused; true changes them too",
+          "type": "boolean"
+        },
         "bricks": {
           "description": "the parts, by their numbers in look_at_model",
           "items": {
