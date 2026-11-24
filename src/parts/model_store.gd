@@ -2411,8 +2411,14 @@ func ask_geometry(model: LdrModel) -> Array:
 ## [method ask_geometry] of [param in_library], with no store yet: the model
 ## a page's address opens, asked for as soon as the catalogue is read, before
 ## the studio is made and its parts bin asks for its own (Main._ask_early_model).
-static func ask_geometry_in(in_library: PartLibrary, model: LdrModel) -> Array:
-	var named: Array = _parts_named_in(model, in_library)
+## With [param quick], a part LDraw keeps only for old files is asked for by
+## its own number, not the one made now that the open lays, unless the index
+## of those is made already (PartLibrary.current_here): made then, on the
+## page's thread, it held the app's start 1.4 s, or waited as long on the
+## worker making it for the parts bin's search (viewopen, 2026-11-24).
+## The caller asks again, not quick, once it is made.
+static func ask_geometry_in(in_library: PartLibrary, model: LdrModel, quick: bool = false) -> Array:
+	var named: Array = _parts_named_in(model, in_library, not quick or in_library.current_here())
 	in_library.want(named)
 	in_library.want(CustomParts.copied_parts(in_library, model), true)
 	return named
@@ -2422,7 +2428,8 @@ static func ask_geometry_in(in_library: PartLibrary, model: LdrModel) -> Array:
 ## ([method _open_into]: Studio's, a retired number's, a part LDraw draws in
 ## one colour as the part it draws), each once: what its open asks the
 ## geometry of. A sub-model's name is among them, and asks for nothing.
-static func _parts_named_in(model: LdrModel, in_library: PartLibrary) -> Array:
+## Without [param current], a part LDraw keeps for old files by its own name.
+static func _parts_named_in(model: LdrModel, in_library: PartLibrary, current: bool = true) -> Array:
 	var named: Dictionary = {}
 	for sub: LdrModel.SubModel in model.submodels.values():
 		for placement: LdrModel.Placement in sub.placements:
@@ -2430,7 +2437,7 @@ static func _parts_named_in(model: LdrModel, in_library: PartLibrary) -> Array:
 	var out: Dictionary = {}
 	for part_id: String in named:
 		var real: String = in_library.resolve(studio_part(part_id, in_library))
-		if in_library.current_colour(real) >= 0:
+		if current and in_library.current_colour(real) >= 0:
 			real = in_library.current(real)
 		out[real] = true
 	return out.keys()

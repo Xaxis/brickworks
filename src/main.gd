@@ -5253,8 +5253,30 @@ func _ask_early_model() -> void:
 	# Fetched for, and read in the frames of, this node's tree: the same
 	# host the studio gives it (_build_ui), given now.
 	_library.set_fetch_host(self)
-	_early_parts = ModelStore.ask_geometry_in(_library, parsed)
+	# Quick: a part LDraw keeps for old files by its own number until the
+	# index of the ones made now is here (_ask_early_current).
+	_early_parts = ModelStore.ask_geometry_in(_library, parsed, true)
+	_early_model = parsed
 	_early_asked = true
+	_ask_early_current()
+
+
+## The model [method _ask_early_model] asked for quickly, until its parts
+## are asked again by the names the open lays them under.
+var _early_model: LdrModel = null
+
+
+## [member _early_model]'s parts asked for again by the names its open lays
+## them under, once the index of the parts LDraw makes now is made
+## (PartLibrary.current_here), by the parts bin's search on a worker; asked
+## for with it before, on the page's thread, the app's start was held 1.4 s
+## while that index was made or waited for (viewopen, 2026-11-24). Asked
+## twice, nothing is fetched twice.
+func _ask_early_current() -> void:
+	if _early_model == null or not _library.current_here():
+		return
+	_early_parts = ModelStore.ask_geometry_in(_library, _early_model)
+	_early_model = null
 
 
 ## Until none of [member _early_parts] is on its way, [constant
@@ -5274,6 +5296,7 @@ func _ask_early_model() -> void:
 func _await_early_model() -> void:
 	var coming: Callable = func() -> int:
 		return _early_parts.filter(func(part_id: String) -> bool: return _library.is_on_its_way(part_id)).size()
+	_ask_early_current()
 	var total: int = coming.call()
 	get_tree().paused = true
 	GpuFence.hold()
@@ -5288,7 +5311,9 @@ func _await_early_model() -> void:
 				told = left
 			await get_tree().process_frame
 			here += _library.read_first_here()
+			_ask_early_current()
 			left = coming.call()
+			total = maxi(total, left)
 		_boot_mark("model geometry: %d of %d, %d read here" % [total - left, total, here])
 	_tell_boot("window.brickworksBootOpening && window.brickworksBootOpening()")
 	await get_tree().process_frame
