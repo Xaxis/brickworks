@@ -3045,6 +3045,9 @@ func _on_account_changed() -> void:
 	if _shell != null:
 		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
 	_offer_reports()
+	# Signed out, or in as somebody else: the copy made before goes.
+	if _verbs != null:
+		_verbs.account_changed()
 	# A viewer is nobody's session: no connector, ever.
 	if not _viewing.is_empty():
 		return
@@ -7108,6 +7111,8 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	# A copy is the account's that made it (EditVerbs.account_changed).
+	_verbs.account = func() -> String: return _account.user_id if _account != null else ""
 	add_child(_verbs)
 	# A double-click in the bin replaces the selection, or puts a fit on it.
 	_bin.verbs = _verbs

@@ -976,14 +976,9 @@ static func from_kept(entry: Dictionary, library: PartLibrary) -> Array:
 static func from_ldraw(text: String, from: PartLibrary) -> Array:
 	if not text.contains("1 ") or too_much(text):
 		return []
-	var model: LdrModel = LdrModel.parse(text, "clipboard")
+	var model: LdrModel = _take_made(text, from)["model"]
 	if model == null:
 		return []
-	if not model.embedded_parts.is_empty():
-		# Another's part of a name the library has for other text comes in
-		# under a name of its own (CustomParts.own_names).
-		model = CustomParts.own_names(from, text, model, "clipboard")["model"]
-		CustomParts.take_into([], from, model, null, false)
 	var placed: Array = []
 	for placement: LdrModel.Placement in model.flatten(from.parts):
 		if from.parts.has(placement.part_id):
@@ -993,6 +988,114 @@ static func from_ldraw(text: String, from: PartLibrary) -> Array:
 		out.append({"part": placement.part_id, "color": placement.color_code,
 			"at": placement.transform, "group": placement.group})
 	return framed(out, from)
+
+
+## [param text] read as LDraw, the parts it carries (a copy from a window that
+## made them: [method as_file]) taken into [param from] as an open of a model
+## file takes them, except that a part the library has is never drawn
+## otherwise: {"model": the text read, or null, "names": each carried part's
+## name there -> its name here, where another's part of a name the library
+## has for other text comes in under one of its own (CustomParts.own_names)}.
+static func _take_made(text: String, from: PartLibrary) -> Dictionary:
+	var model: LdrModel = LdrModel.parse(text, "clipboard")
+	if model == null or model.embedded_parts.is_empty():
+		return {"model": model, "names": {}}
+	var owned: Dictionary = CustomParts.own_names(from, text, model, "clipboard")
+	CustomParts.take_into([], from, owned["model"], null, false)
+	return {"model": owned["model"], "names": owned["names"]}
+
+
+# -- the clipboard for this site's other tabs ----------------------------------
+
+
+## The first line of the copy kept for this site's other browser tabs (EditVerbs
+## ._share_copy): the mark, whose copy it is (an account id, "-" for nobody),
+## which copy (a stamp each copy is given), and as JSON (JSON.from_native) all
+## a paste in the tab that copied holds that LDraw has no words for: each
+## part's sub-assembly, group, step and frame, the lights and views of its
+## sub-models, and what its copies hold that is not on the baseplate (parts the
+## app can't show). The copy's LDraw follows ([method as_file], its made parts
+## with it). An LDraw meta line, so a reader of LDraw passes over it.
+##
+## Up to appfix the tabs kept the LDraw alone, and a paste in another tab
+## flattened every sub-assembly into loose parts and lost the parts the app
+## can't show inside a copied sub-model (pastereview F3).
+const WHOLE_MARK := "0 !BRICKWORKS CLIPBOARD "
+
+
+## The clipboard whole as one text for another tab ([constant WHOLE_MARK]):
+## made by [param account], told apart from every other copy by [param stamp].
+static func whole_text(account: String, stamp: String, library: PartLibrary) -> String:
+	var whole: Dictionary = {"items": clipboard, "lines": clipboard_lines,
+		"frames": clipboard_frames, "held": clipboard_held}
+	return "%s%s %s %s\n%s" % [WHOLE_MARK, account if not account.is_empty() else "-", stamp,
+		JSON.stringify(JSON.from_native(whole), "", false, true), as_file(clipboard, library)]
+
+
+## Whose copy [param text] is ([method whole_text]): an account id, "" for
+## nobody's, or null when it is not one.
+static func whole_account(text: String) -> Variant:
+	if not text.begins_with(WHOLE_MARK):
+		return null
+	var account: String = text.substr(WHOLE_MARK.length(), 200).get_slice(" ", 0)
+	return "" if account == "-" else account
+
+
+## The clipboard another tab kept ([method whole_text]), when [param account]
+## made it: {stamp, items, lines, frames, held}, as that tab's own clipboard
+## was when it copied, its made parts taken into [param library] first (as
+## [method from_ldraw] takes them), each part under its name here. {} for
+## text that is not one, or someone else's copy.
+static func from_whole(text: String, account: String, library: PartLibrary) -> Dictionary:
+	var whose: Variant = whole_account(text)
+	if whose == null or str(whose) != account:
+		return {}
+	var first: int = text.find("\n")
+	if first < 0:
+		return {}
+	var head: PackedStringArray = text.substr(WHOLE_MARK.length(), first - WHOLE_MARK.length()) \
+		.split(" ", true, 2)
+	if head.size() < 3:
+		return {}
+	var parsed: Variant = JSON.parse_string(head[2])
+	var whole: Variant = JSON.to_native(parsed, false) if parsed is Dictionary else null
+	if not _whole_ok(whole):
+		return {}
+	var items: Array = whole["items"]
+	var held: Array = whole["held"]
+	# Their made parts, here under their names here: as_file carries them in
+	# sections after the lines, and plain lines carry none.
+	var ldraw: String = text.substr(first + 1)
+	var names: Dictionary = _take_made(ldraw, library)["names"] if ldraw.begins_with("0 FILE ") else {}
+	for one: Dictionary in items + held:
+		if names.has(str(one["part"])):
+			one["part"] = names[str(one["part"])]
+	return {"stamp": head[1], "items": items, "lines": whole["lines"],
+		"frames": whole["frames"], "held": held}
+
+
+## Whether [param whole] read back is a clipboard: parts each with a part, a
+## colour and a place, sub-models' lines and frames by name, held parts each
+## with a path, a part, a colour and a place.
+static func _whole_ok(whole: Variant) -> bool:
+	if not whole is Dictionary:
+		return false
+	var items: Variant = whole.get("items")
+	if not items is Array or (items as Array).is_empty() or not whole.get("lines") is Dictionary \
+			or not whole.get("frames") is Dictionary or not whole.get("held") is Array:
+		return false
+	for one: Variant in items:
+		if not one is Dictionary or not one.get("part") is String or not one.get("color") is int \
+				or not one.get("at") is Transform3D:
+			return false
+	for one: Variant in whole["held"]:
+		if not one is Dictionary or not one.get("path") is String or not one.get("part") is String \
+				or not one.get("color") is int or not one.get("at") is Transform3D:
+			return false
+	for def: Variant in whole["lines"]:
+		if not def is String or not whole["lines"][def] is PackedStringArray:
+			return false
+	return true
 
 
 # -- what rests on it ---------------------------------------------------------

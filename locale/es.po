@@ -17748,3 +17748,21 @@ msgstr "%s son más de lo que un subconjunto puede guardar: guarda una parte"
 
 msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
 msgstr "lo que hay en el portapapeles coloca más piezas de las que se pueden pegar de una vez: copia menos"
+
+msgid "fetching 1 part to paste"
+msgstr "cargando 1 pieza para pegar"
+
+msgid "fetching %d parts to paste"
+msgstr "cargando %d piezas para pegar"
+
+msgid "could not paste: 1 part did not load"
+msgstr "no se pudo pegar: 1 pieza no se cargó"
+
+msgid "could not paste: %d parts did not load"
+msgstr "no se pudo pegar: %d piezas no se cargaron"
+
+msgid "paste again to try again"
+msgstr "vuelve a pegar para intentarlo de nuevo"
+
+msgid "paste stopped"
+msgstr "pegado detenido"

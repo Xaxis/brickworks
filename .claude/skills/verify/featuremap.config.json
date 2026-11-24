@@ -5389,6 +5389,27 @@
     },
     {
       "kind": "cli",
+      "label": "pastereview probe",
+      "entry": "src/dev/pastereview_probe.gd",
+      "reach": "tools/probe.sh pastereview_probe   (headless: a paste in another tab, the copy kept whole, against the same tab's, part by part and by sub-assembly, undone, saved and reopened; a copy another account made or one after a sign-out pastes nothing; a part that can't be had puts nothing down)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "pastereview flow",
+      "entry": "tools/web/pastereview_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 11821 --static=build/web, then node tools/web/pastereview_flow.mjs --url=http://127.0.0.1:11821/app --out=shots/pastereview --width=1280|390 --model=bench/results/pastereview-2026-11-24/pr_fixture.ldr --unpacked=30365,4854,30360,4855,30356   (with .env sourced; parts the other tab hasn't fetched, a slow line, another account, a sign-out)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simgrab probe",
+      "entry": "src/dev/simgrab_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh simgrab_probe   (windowed: Simulate open on the orrery, a part of another drivable body dragged on its joint; Simulate's driver stays)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
       "label": "carryrest probe",
       "entry": "src/dev/carryrest_probe.gd",
       "reach": "tools/probe.sh carryrest_probe   (PROBE_SIZE=1280x720 too; carryrest_phone_probe and carryrest_tablet_probe by finger; --no-gate without an account; CARRYREST_OUT=DIR for its pictures)",
