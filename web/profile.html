@@ -399,21 +399,12 @@
 				</div>
 			</dialog>
 
-			<!-- A minifig of your own, of real parts, as your avatar (web/minifig-maker.js). -->
+			<!-- A minifig of your own, of real parts in 3D, as your avatar
+			     (web/minifig-maker.js draws the maker into #minifig-body). -->
 			<dialog class="minifig-dialog" id="minifig-dialog" aria-labelledby="minifig-h">
 				<h2 id="minifig-h">Make your minifig</h2>
-				<p>Pick a face, hair or a hat, a torso and colours. It is your avatar wherever your name is.</p>
-				<div class="minifig-maker">
-					<div class="minifig-look">
-						<span class="avatar huge" id="minifig-big" aria-hidden="true"></span>
-						<div class="minifig-themes" role="img" aria-label="Your minifig at its sizes, on a light page and a dark one">
-							<div class="minifig-on light" id="minifig-light"></div>
-							<div class="minifig-on dark" id="minifig-dark"></div>
-						</div>
-						<button class="cta ghost small" type="button" id="minifig-surprise">Surprise me</button>
-					</div>
-					<div class="minifig-choices" id="minifig-choices"></div>
-				</div>
+				<p class="minifig-lead">Build it part by part, skin first. Drag it to turn it; press a part to change it. It is your avatar wherever your name is.</p>
+				<div class="minifig-body" id="minifig-body"></div>
 				<p class="note minifig-credit">Built from real parts of the LDraw™ library (CC BY).</p>
 				<div class="actions">
 					<button class="cta" type="button" id="minifig-save">Save</button>

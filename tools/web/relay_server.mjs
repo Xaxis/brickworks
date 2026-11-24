@@ -263,7 +263,7 @@ const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"], [/^\/gallery\/?$/,
 // .mjs as the host serves it: a module script, which a browser refuses as
 // anything else (orangecheck's button, web/oc-button.mjs).
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", mjs: "text/javascript", svg: "image/svg+xml",
-  png: "image/png", json: "application/json", css: "text/css" };
+  png: "image/png", webp: "image/webp", json: "application/json", css: "text/css" };
 
 const FILE_TYPES = {
   ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm",
@@ -315,11 +315,14 @@ function page(pathname) {
     const file = built && existsSync(built) ? built : new URL(`${lang[1]}/${copy}`, web);
     return existsSync(file) ? { body: readFileSync(file), type: TYPES[copy.split(".").pop()] || "application/octet-stream" } : null;
   }
-  // A minifigure avatar's layer (web/minifig/<side>/, web/card.js MINIFIG).
-  const layer = /^\/(minifig\/[0-9]{2,3}\/[a-z0-9-]+[.]webp)$/.exec(pathname);
+  // A minifigure avatar's layer (web/minifig/<side>/, web/card.js MINIFIG),
+  // and the 3D maker's parts and tiles (web/minifig/figure.json and tiles/,
+  // web/minifig-maker.js), all served from web/minifig/ as a deployment
+  // serves them: without these the maker here never drew (figmaker2).
+  const layer = /^\/(minifig\/(?:[0-9]{2,3}\/[a-z0-9-]+[.]webp|tiles\/[a-z0-9-]+[.]webp|figure[.]json))$/.exec(pathname);
   if (layer) {
     const file = new URL(layer[1], web);
-    return existsSync(file) ? { body: readFileSync(file), type: "image/webp" } : null;
+    return existsSync(file) ? { body: readFileSync(file), type: TYPES[layer[1].split(".").pop()] || "application/octet-stream" } : null;
   }
   const named = PAGES.find(([pattern]) => pattern.test(pathname));
   // Any other page at its bare name, as deploy.sh serves them: /admin,

@@ -35,6 +35,13 @@ import { decodePicture, encodeJpeg, PhotoTrouble, QUALITY, resample, upright } f
 import { deleteFiles, getFile, newPhotoId, putFile } from "./_builds.js";
 import { pictureAt } from "./_faces.js";
 import { minifigShape } from "./_card.js";
+import { figureShape } from "./_minifig_parts.js";
+
+/// What a minifigure made in the maker was made of, either version: the
+/// live maker's (web/minifig-parts.js figureShape, v 2) or the layers'
+/// before it (web/card.js minifigShape, v 1), each as its own maker opens
+/// it; null for anything else.
+export const recipeShape = (recipe) => figureShape(recipe) || minifigShape(recipe);
 
 export const AVATARS = "avatars";
 export const AVATAR_SIDE = 400;
@@ -86,7 +93,7 @@ export async function avatarOf(account) {
     const row = (await db(`profile_avatars?account=eq.${account}&select=*`))[0];
     const shown = row && !row.removed_at;
     return { ready: true, id: shown ? row.id : null, at: row?.at ?? null, removed: Boolean(row?.removed_at),
-      minifig: shown ? minifigShape(row.minifig) : null };
+      minifig: shown ? recipeShape(row.minifig) : null };
   } catch (trouble) {
     if (notThere(trouble)) return { ready: false, id: null, at: null, removed: false, minifig: null };
     throw trouble;
@@ -115,7 +122,7 @@ async function keepRecipe(account, recipe) {
 /// A picture kept as [account]'s avatar, in place of the one before.
 /// [check] is the caller's own refusals (a profile, the age rule, the rate
 /// limit), asked once the picture itself is in order. [recipe] is what a
-/// minifigure made in the maker was made of (web/card.js minifigShape), the
+/// minifigure made in the maker was made of (recipeShape), the
 /// picture the maker drew of it; null for a picture of their own.
 export async function keepAvatar(account, base64, type, check, recipe = null) {
   const before = await avatarOf(account);
