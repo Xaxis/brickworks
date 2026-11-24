@@ -22,7 +22,8 @@
 //   people     builders to follow
 //   photo      a photo of a real build of a model
 import {
-  avatarHtml, counted, escapeHtml, iconButtonHtml, iconHtml, langAt, likeName, madeOf, madePublic, motionWords, number, photoSrc, pictureOf, say,
+  appAt, avatarHtml, counted, escapeHtml, iconButtonHtml, iconHtml, langAt, likeName, madeOf, madePublic, motionWords, number, photoSrc, pictureOf,
+  say,
 } from "./card.js";
 
 /// The cards the deploy writes into the page: a laptop's first two rows of
@@ -104,8 +105,10 @@ export function madeHtml(model) {
   const motions = Array.isArray(model.motions) ? model.motions.filter((one) => typeof one === "string" && one) : [];
   const moves = Array.isArray(model.moves) ? model.moves.filter((one) => typeof one === "string" && one) : [];
   if (motions.length || moves.length) {
-    pills.push(`<a class="pill" href="${MADE_DOCS.moves[0]}" data-made="moves">${escapeHtml(`${say("Moves:")} `
-      + `${motions.length ? motionWords(motions, 2) : moves.slice(0, 2).map((word) => say(word)).join(", ")}`)}</a>`);
+    // A model's motions by the names its builder gave them, in whatever
+    // language that is (lang=""); its kinds of moves in the page's.
+    pills.push(`<a class="pill" href="${MADE_DOCS.moves[0]}" data-made="moves">${escapeHtml(say("Moves:"))} ${motions.length
+      ? `<span lang="">${escapeHtml(motionWords(motions, 2))}</span>` : escapeHtml(moves.slice(0, 2).map((word) => say(word)).join(", "))}</a>`);
   } else if (Number(model.steps) > 1) {
     pills.push(`<a class="pill" href="${MADE_DOCS.steps[0]}" data-made="steps">${escapeHtml(counted(Number(model.steps), "step"))}</a>`);
   }
@@ -147,8 +150,12 @@ function saidHtml(id, said, count) {
 }
 
 /// A model of the gallery as a post. [eager] its picture asked for at once;
-/// [said] the newest comment on it; [line] what its builder did, said
-/// (shared it, its week's pick, entered it); [pick] this week's pick.
+/// [said] the newest comment on it; [line] what its builder did: "version"
+/// (a new version of it), "entry" (entered it in the challenge), else
+/// shared it; [pick] this week's pick, which says so in its place. Said
+/// here, as it is drawn: compose() and feedItem() say no words, so the
+/// deploy's posts (tools/web/home_shelf.mjs, one compose for every
+/// language) are in each copy's (rel-m324's /de said "this week’s pick").
 export function buildPostHtml(model, { eager = false, said = null, line = "", pick = false } = {}) {
   const id = String(model.id);
   if (!MODEL.test(id)) return "";
@@ -159,7 +166,8 @@ export function buildPostHtml(model, { eager = false, said = null, line = "", pi
   const marks = [];
   if (pick) marks.push(`<span class="pill new">${escapeHtml(say("Week’s pick"))}</span>`);
   if (model.tested === true) marks.push(`<span class="pill good tested">✓ ${escapeHtml(say("Tested"))}</span>`);
-  const what = line || say("shared a build");
+  const what = pick ? say("this week’s pick") : line === "version" ? say("shared a new version")
+    : line === "entry" ? say("entered the challenge") : say("shared a build");
   const when = timeHtml(model.listed_at);
   const image = picture
     ? `<img src="${escapeHtml(picture)}" alt="${escapeHtml(name)}" width="480" height="360" ${eager
@@ -181,11 +189,11 @@ export function buildPostHtml(model, { eager = false, said = null, line = "", pi
   // list and to buy (the model's page's Parts: BrickLink, Rebrickable, Pick
   // a Brick).
   const verbs = `<p class="post-verbs">`
-    + `<a class="cta small" href="/app?view=${id}" data-verb="open">${escapeHtml(say("Open in the studio"))}</a>`
-    + `<a class="cta ghost small" href="/app?copy=${id}" data-verb="remix" title="${escapeHtml(credit
+    + `<a class="cta small" href="${escapeHtml(appAt(`view=${id}`))}" data-verb="open">${escapeHtml(say("Open in the studio"))}</a>`
+    + `<a class="cta ghost small" href="${escapeHtml(appAt(`copy=${id}`))}" data-verb="remix" title="${escapeHtml(credit
       ? say("A copy of it in the studio, yours to change; its page will say it came from {name}’s", { name: credit })
       : say("A copy of it in the studio, yours to change"))}">${escapeHtml(say("Remix"))}</a>`
-    + `<a class="cta ghost small" href="/app?view=${id}&amp;build" data-verb="build" title="${escapeHtml(say("Build it with real bricks, one step at a time"))}">${escapeHtml(say("Build it"))}</a>`
+    + `<a class="cta ghost small" href="${escapeHtml(appAt(`view=${id}&build`))}" data-verb="build" title="${escapeHtml(say("Build it with real bricks, one step at a time"))}">${escapeHtml(say("Build it"))}</a>`
     + `<a class="cta ghost small" href="${page}#parts" data-verb="parts" title="${escapeHtml(say("Its parts, to list and to buy"))}">${escapeHtml(say("Parts"))}</a></p>`;
   return `<article class="post build" data-kind="build" data-id="${id}"${pick ? ' data-pick="yes"' : ""} aria-labelledby="post-${id}">`
     + headHtml(model.by, `${escapeHtml(what)}${when ? ` · ${when}` : ""}`, { follow: true, author: String(model.author || "") })
@@ -286,7 +294,7 @@ export function tryPostHtml(model) {
     + `<button type="button" class="cta try-go" data-try="${id}">${iconHtml("play")}<span>${escapeHtml(say("Try it here"))}</span></button></div>`
     + `<div class="post-words"><h3 class="post-title" id="try-h">${escapeHtml(say("Try the studio, right here"))}</h3>`
     + `<p class="post-text">${escapeHtml(say("{name}, in the real studio: turn it, play what moves and build it step by step. Then make it yours in the whole studio.", { name }))}</p>`
-    + `<p class="post-verbs"><a class="cta small" href="/app?copy=${id}" data-try-open="${id}">${escapeHtml(say("Open the whole studio"))}</a>`
+    + `<p class="post-verbs"><a class="cta small" href="${escapeHtml(appAt(`copy=${id}`))}" data-try-open="${id}">${escapeHtml(say("Open the whole studio"))}</a>`
     + `<a class="cta ghost small" href="/docs/first-model">${escapeHtml(say("How to start"))}</a></p></div></article>`;
 }
 
@@ -319,7 +327,7 @@ export function photoPostHtml(photo) {
     + `<div class="post-words"><h3 class="post-title" id="photo-${id}"><a href="${at}/m/${escapeHtml(String(photo.model))}#photo-${id}">`
     + `${escapeHtml(say("A build of {name}", { name: model }))}</a></h3>`
     + `${photo.words ? `<p class="post-text">${escapeHtml(String(photo.words))}</p>` : ""}`
-    + `<p class="post-verbs"><a class="cta small" href="/app?view=${escapeHtml(String(photo.model))}&amp;build">${escapeHtml(say("Build it too"))}</a></p></div></article>`;
+    + `<p class="post-verbs"><a class="cta small" href="${escapeHtml(appAt(`view=${photo.model}&build`))}">${escapeHtml(say("Build it too"))}</a></p></div></article>`;
 }
 
 /// A post's skeleton: the home holds three in its page (web/index.html)
@@ -386,7 +394,7 @@ export function compose(given, { tab = "foryou", skip = new Set() } = {}) {
   const build = (m, extra = {}) => ({ kind: "build", model: m, said: said.get(m.id) || null, ...extra });
   // Top and New in turn, the week's pick first.
   const builds = [];
-  if (pick && tab === "foryou") builds.push(build(pick, { pick: true, line: say("this week’s pick") }));
+  if (pick && tab === "foryou") builds.push(build(pick, { pick: true }));
   const lists = tab === "new" ? [newest, top] : [top, newest];
   for (let i = 0; i < Math.max(lists[0].length, lists[1].length); i += 1) {
     if (lists[0][i]) builds.push(build(lists[0][i]));
@@ -445,8 +453,7 @@ export function feedItem(row) {
     return { kind: "photo", photo: { ...row.photo, model: row.model, model_name: row.name, by: row.by, at: row.at, words: row.said } };
   }
   if (row?.card && MODEL.test(String(row.card.id)) && pictureOf(row.card)) {
-    return { kind: "build", model: { ...row.card, by: row.card.by || row.by }, line: row.kind === "version" ? say("shared a new version")
-      : row.kind === "entry" ? say("entered the challenge") : say("shared a build") };
+    return { kind: "build", model: { ...row.card, by: row.card.by || row.by }, line: ["version", "entry"].includes(row.kind) ? row.kind : "" };
   }
   return null;
 }

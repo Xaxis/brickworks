@@ -112,10 +112,8 @@ const LOOK = `
 .insights .pill.mid { color: var(--ink); border-color: var(--accent-edge); }
 .insights .pill.bad { color: var(--bad); border-color: var(--bad); }
 /* The loop: a dumbbell a step, the range before in a quieter shade of the
-   series' blue (validated as an ordinal pair against each theme's panel). */
-.insights { --viz-before: var(--viz-seq-2); }
-:root[data-theme="light"] .insights { --viz-before: var(--viz-seq-3); }
-@media (prefers-color-scheme: light) { :root:not([data-theme]) .insights { --viz-before: var(--viz-seq-3); } }
+   series' blue (validated as an ordinal pair against each theme's panel):
+   --viz-before, a token of each theme's (site.css). */
 .insights .loop { margin-top: var(--s-6); }
 .insights .loop .legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: 0 0 var(--s-2); padding: 0; list-style: none;
   font-size: var(--t-tiny); color: var(--ink-soft); }

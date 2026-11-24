@@ -96,7 +96,7 @@
 .hero-mark { margin: 0; min-width: 0; display: flex; align-items: flex-end; gap: var(--s-3); }
 @media (width < 900px) { .hero-mark { order: -1; } }
 @media (width >= 900px) {
-	.home-band { padding: 16px 0 var(--s-7); background-image: radial-gradient(26% 85% at 82% 48%, rgba(242, 205, 55, 0.18), transparent 72%), var(--studs); }
+	.home-band { padding: 16px 0 var(--s-7); background-image: radial-gradient(26% 85% at 82% 48%, color-mix(in srgb, var(--yellow) 18%, transparent), transparent 72%), var(--studs); }
 	.home-hero { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-6); }
 	/* Up 47 px under the header (the stage's empty top: the bricks begin
 	   9 px under the header's edge; the header, over it, keeps its own
@@ -159,14 +159,21 @@
    first row of pictures is whole on the first screen, over the beta bar. */
 @media (width >= 900px) { .home-words h1, .home-words .lede { max-width: none; } }
 /* The search and Start building in a row, the search taking what is left;
-   on a phone one over the other, each the whole width. Both at the 44 px
-   every field and button is (docs/DESIGN_SYSTEM.md). */
+   on a phone one over the other, each the whole width, signed in Share a
+   build and Share a file too, as one group (one of its own width beside
+   one the whole width on two lines looked like two things). All at the
+   44 px every field and button is (docs/DESIGN_SYSTEM.md). */
 .home-acts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; max-width: 720px; }
 .find { position: relative; flex: 1 1 320px; min-width: 0; }
 .home-acts > .cta { flex: none; }
 .home-acts > .mine { display: none; }
 @media (width < 600px) {
-	.home-acts > .start { flex: 1 1 100%; justify-content: center; }
+	.home-acts { flex-direction: column; align-items: stretch; }
+	.home-acts > * { flex: none; }
+	.home-acts > .cta { justify-content: center; }
+	/* A button never wider than the page: German's Eine Datei aus einem
+	   anderen Programm teilen ran 46 px past a 390 px window; its words wrap. */
+	.home-acts > .cta { max-width: 100%; white-space: normal; text-align: center; }
 	.find .search .hint { display: none; }
 	.find .search input { padding-right: 12px; }
 	.home-words .note { display: none; }
@@ -207,7 +214,7 @@
 }
 :root[data-signed="in"] .home-acts { max-width: none; align-items: center; }
 :root[data-signed="in"] .home-acts > .mine { display: inline-flex; }
-@media (width < 600px) { :root[data-signed="in"] .find { flex-basis: 100%; } }
+@media (width < 600px) { :root[data-signed="in"] .home-acts { align-items: stretch; } }
 
 /* The feed: its head (signed in, the tabs), then the stream, a column on
    a phone, two from 700 px, three from 1100 and four from 1560; the
@@ -230,6 +237,11 @@
 :root[data-signed="in"] .feed-head .tabs { display: flex; }
 .feed-head > a { flex: none; padding: 0 0 10px; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; }
 .feed-head > a:hover { color: var(--ink); text-decoration: underline; }
+/* Beside the tabs, See the gallery's words on the tabs' own line (by their
+   boxes' feet they sat 2 px above it), the link no deeper than the tabs, so
+   their underline still lies on the head's rule. */
+:root[data-signed="in"] .feed-head { align-items: baseline; }
+:root[data-signed="in"] .feed-head > a { padding: 4px 0; }
 .stream { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); align-items: stretch; }
 @media (width >= 700px) { .stream { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-5); } .stream > .post.try { grid-column: span 2; } }
 @media (width >= 1100px) { .stream { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

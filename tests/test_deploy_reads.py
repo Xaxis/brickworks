@@ -22,6 +22,9 @@ BUILD = ["tools/deploy.sh", "tools/export.sh", "tools/package_api.sh", "tools/si
 # make nothing in it.
 RUN_ON_IT = {"check.mjs", "fit_check.mjs", "landing_check.mjs", "coming_soon_check.mjs", "load_check.mjs",
              "beta_flow.mjs", "billing_flow.mjs", "serve.py"}
+# Named by the build as where an input it reads was made, and run by hand:
+# the build reads what it made (web/minifig, package_api.sh), never runs it.
+MADE_BY_HAND = {"minifig_layers.mjs"}
 
 
 def reads(path: str) -> bool:
@@ -48,7 +51,7 @@ def test_every_tools_web_file_the_build_names_is_read():
         named |= set(re.findall(r"tools/web/([A-Za-z0-9_.-]+\.(?:mjs|py|sh|json))", text))
     # And what those import, one step at a time (not what a check run on the
     # deployment imports: that is a check's module).
-    named -= RUN_ON_IT
+    named -= RUN_ON_IT | MADE_BY_HAND
     todo = list(named)
     while todo:
         f = ROOT / "tools" / "web" / todo.pop()

@@ -816,6 +816,22 @@ function lotMaker(library, given) {
   return { add, done };
 }
 
+/// How many rows a parts list shows before Show all (web/model-page.js
+/// LOTS_SHOWN), and each row's height, which web/directory.css gives every
+/// row: a model's page and a set's keep the space the list will take
+/// before it comes, so nothing under it moves.
+export const LOTS_SHOWN = 12;
+export const LOT_ROW = 60;
+
+/// The rows [lots] make in a parts list as web/model-page.js first draws
+/// it, by colour: a row a colour with its lots under it. Show all is
+/// decided by these, not by the lots: 8 lots in 6 colours are 14 rows, the
+/// last 2 hidden until it is pressed (checkdrift, 2026-11-23: a set's page
+/// left them out, its Show all there only past 12 lots).
+export function listRows(lots) {
+  return lots.length + new Set(lots.map((lot) => lot.colour)).size;
+}
+
 /// A set's parts list from its inventory (tools/collection_data.py's
 /// shards: [[part, colour, qty]], already in LDraw's numbers), in the lots a
 /// model's list has, so a set's page draws and exports it as a model's page

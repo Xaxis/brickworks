@@ -95,7 +95,7 @@ func _run() -> void:
 		else:
 			var phone: Variant = _main.get("_phone")
 			if phone is Node:
-				(phone as Node).set_process(false)
+				(phone as Node).set("holds_scale", true)
 			root.content_scale_factor = (_main.get_script() as GDScript).sized_factor(across, down,
 				true, ShellPrefs.interface_size(), true)
 		await _frames(30)

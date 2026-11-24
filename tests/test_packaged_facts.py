@@ -66,3 +66,49 @@ def test_a_function_packaged_without_them_fails_the_package(tmp_path: Path) -> N
     check = subprocess.run(["node", str(ROOT / "tools/web/packaged_facts.mjs"), str(tmp_path), "collection"],
                            cwd=ROOT, capture_output=True, text=True, timeout=60)
     assert check.returncode == 1 and "FAILED collection: known none, moved 0" in check.stdout, check.stdout
+
+
+def table_routes() -> set[str]:
+    """Every route whose own file or a module it imports (at load or when asked) takes from api/_parts.js
+    a function that reads the parts' table: partsTable itself, or one whose own text calls it."""
+    parts = (ROOT / "api/_parts.js").read_text()
+    pieces = re.split(r"\n(?=(?:export )?(?:async )?function )", parts)
+    reading = {"partsTable"} | {found.group(1) for piece in pieces
+                                if (found := re.match(r"export (?:async )?function (\w+)", piece)) and "partsTable()" in piece}
+    files = {path.name: path.read_text() for path in (ROOT / "api").glob("*.js")}
+    imports = {name: set(re.findall(r'(?:from |import\()"\./(_[a-z_]+\.js)"', text)) for name, text in files.items()}
+
+    def takes(text: str) -> set[str]:
+        said = re.findall(r'(?:import|const)\s*\{([^}]*)\}\s*(?:from|=\s*await import\()\s*"\./_parts\.js"', text)
+        return {one.strip().split(" as ")[0] for group in said for one in group.split(",") if one.strip()}
+    readers = {name for name, text in files.items() if name != "_parts.js" and takes(text) & reading}
+
+    def reaches(name: str, seen: set[str]) -> bool:
+        if name in readers:
+            return True
+        seen.add(name)
+        return any(reaches(one, seen) for one in imports.get(name, ()) if one not in seen)
+    return {name[:-3] for name in files if not name.startswith("_") and reaches(name, set())}
+
+
+def test_every_function_that_names_parts_is_packaged_with_their_table() -> None:
+    """A Talk ask's parts are named by /api/people (api/_asks.js nameOf): packaged without the table it
+    named them ", " and its chips "a part" on rel-m325's preview."""
+    routes = table_routes()
+    # Where it was found: if the walk finds none of these, it reads the wrong thing.
+    assert {"share", "people"} <= routes, routes
+    said = re.search(r'^TABLE_ROUTES=" ([a-z ]+) "$', (ROOT / "tools/package_api.sh").read_text(), re.M)
+    assert said, "tools/package_api.sh names no TABLE_ROUTES"
+    assert routes <= set(said.group(1).split()), routes - set(said.group(1).split())
+
+
+@ready
+def test_people_is_packaged_with_the_parts_names(tmp_path: Path) -> None:
+    done = package(tmp_path, "people")
+    assert done.returncode == 0, done.stdout + done.stderr
+    said = subprocess.run(["node", "--input-type=module", "-e", """
+const parts = await import(process.argv[1]);
+console.log(JSON.stringify(parts.partsTable()?.parts?.["3001"] ?? null));
+""", str(tmp_path / "api/people.func/_parts.js")], capture_output=True, text=True, timeout=60)
+    row = json.loads(said.stdout)
+    assert row and re.fullmatch(r"Brick +2 x +4", row[0]), row

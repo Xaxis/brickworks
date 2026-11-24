@@ -248,7 +248,7 @@ console.log(JSON.stringify(ownedOf(rows, pool, keyOf)));""")
 @needs_node
 def test_a_set_s_page_says_what_it_is_credits_its_data_and_sells_nothing() -> None:
     said = node(SETS + """
-import { cardHtml } from "./web/card.js";
+import { cardHtml, minifigHtml, minifigOf } from "./web/card.js";
 const chrome = { head: "", header: "<header></header>", footer: "<footer></footer>" };
 const page = (n, extra = {}) => S.setPage({ origin: "https://brickworks.test", entry: S.catalogSet(n), chrome,
   held: models.get(n.toLowerCase()) || null, cardHtml, ...extra });
@@ -258,7 +258,7 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
   explorer: page("10497-1", { lots }), chain: page("853900-1"),
   other: page("4488-1", { held: { main: null, more: [{ id: "omr-4488-1_B", name: "Millennium Falcon - Mini — B model" }] } }),
   brief: S.starterBrief(S.catalogSet("10497-1"), lots), files: S.sitemapSets(catalog.sets, "https://b.test"),
-  de: S.sitemapSets(catalog.sets, "https://b.test", "de") }));""")
+  de: S.sitemapSets(catalog.sets, "https://b.test", "de"), fig: minifigHtml(minifigOf("Roland Dahl")) }));""")
     falcon, explorer, chain = said["falcon"], said["explorer"], said["chain"]
     for page in (falcon, explorer, chain):
         assert 'Set and inventory data: <a href="https://rebrickable.com/">Rebrickable</a>' in page
@@ -275,8 +275,10 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
     assert '<a class="cta ghost" href="/app?new=1&amp;library=omr-10179-1" data-version' in falcon
     assert ">Make your own version</a>" in falcon and ">Build it</a>" in falcon
     assert 'href="/library/omr-10179-1">a page of its own' in falcon and "/library/omr-10179-1_B" in falcon
-    # Who modelled it heads its credit, by their initial, linked to LDraw's page of it (sitebold).
-    assert re.search(r'<div class="shared-by credit"><span class="avatar [^"]*" aria-hidden="true">R</span><div class="names">'
+    # Who modelled it heads its credit, linked to LDraw's page of it (sitebold), by the
+    # minifigure made from their name, as every avatar is since avatarkit (a8ddbf0be).
+    assert 'class="avatar c' in said["fig"] and ' minifig" aria-hidden="true" style="background-image:url(/minifig/128/' in said["fig"]
+    assert re.search(r'<div class="shared-by credit">' + re.escape(said["fig"]) + r'<div class="names">'
                      r'<p class="from modelled-by">Modelled by <b>Roland Dahl</b> for <a href="https://library\.ldraw\.org/omr/sets/\d+">', falcon)
     assert 'src="/library/omr-10179-1.cutout.webp"' in falcon
     # In 3D in the page (set3d): its picture the way into the 3D view a
@@ -355,7 +357,7 @@ console.log(JSON.stringify({ list: { status: list.status, total: list.body.total
   page: [page.status, page.headers["cache-control"], page.body.includes("Key Chain Falcon")], none: none.status,
   index: index.body, first: (first.body.match(/<loc>/g) || []).length, past: past.status, owned: owned.status,
   german: [german.status, german.body.match(/<loc>[^<]*<\/loc>/g) || []], other: other.status,
-  db: asked.filter((one) => one.startsWith("https://db.test/rest")).length }));""")
+  db: asked.filter((one) => one.startsWith("https://db.test/rest") && !one.includes("/rpc/site_setting")).length }));""")
     assert said["list"] == {"status": 200, "total": 3, "of": 6, "ids": ["set-10179-1", "set-4488-1", "set-853900-1"],
                             "years": 5, "credit": {"name": "Rebrickable", "url": "https://rebrickable.com/"}}
     assert said["page"] == [200, "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800", True]
@@ -369,7 +371,9 @@ console.log(JSON.stringify({ list: { status: list.status, total: list.body.total
     assert said["german"][0] == 200 and len(said["german"][1]) == 5
     assert all(loc.startswith("<loc>https://brickworks.test/de/library/set/") for loc in said["german"][1])
     assert said["other"] == 404
-    # What somebody owns is theirs: nobody signed in is refused, and nothing asked of the database.
+    # What somebody owns is theirs: nobody signed in is refused, and nothing asked of the database
+    # (but by the set's page, the beta's switch, said in its head for the strip: api/_settings.js
+    # betaSaid, 2026-11-23).
     assert said["owned"] == 401 and said["db"] == 0
 
 

@@ -209,7 +209,12 @@ func _button(words: String, tip: String) -> Button:
 func fit(pt: float, pill_points: float = 16.0) -> void:
 	_pt = maxf(pt, 0.1)
 	pill.add_theme_font_size_override("font_size", roundi(pill_points * _pt))
-	pill.custom_minimum_size = Vector2(0.0, roundi(pill_points * 2.4 * _pt))
+	# A fingertip on a phone, whatever its words: the viewer's, at 14 points,
+	# was 34 tall (ux15's walk).
+	var tall: float = pill_points * 2.4
+	if Phone.on():
+		tall = maxf(tall, Phone.TARGET)
+	pill.custom_minimum_size = Vector2(0.0, roundi(tall * _pt))
 	_face(pill, Color(1, 1, 1, 0.12))
 	var backing := StyleBoxFlat.new()
 	backing.bg_color = Color(0.09, 0.10, 0.12, 0.97)

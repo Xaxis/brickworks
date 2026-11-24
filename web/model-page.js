@@ -198,7 +198,10 @@ if (partsPart && partsPart.dataset.parts) startParts(partsPart);
 // desktop app or the site gets one alike. Signed in on the page, the same.
 // <html data-clip> says how it went (tools/web/turntable_flow.mjs reads it).
 let clipAsked = false;
-const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && frame?.dataset.scene === `/m/${id}/scene.json`;
+// Its newest version's page: one no older version's note is on (each
+// version's scene is named by its number, api/share.js sceneAt).
+const newestScene = marks && /^[A-Za-z0-9]{10}$/.test(id || "") && Boolean(frame?.dataset.scene?.startsWith(`/m/${id}/`))
+  && !document.querySelector(".model-page .old-version");
 if (newestScene && signedIn()) clipOwn();
 else if (newestScene) addEventListener("brickworks:signed-in-done", () => clipOwn(), { once: true });
 
@@ -529,13 +532,16 @@ function startPicture(big) {
 /// older picture carries (--render-top, --render-foot) carried on above and
 /// below it. Never smaller than the whole picture across the frame, as it
 /// was: 186 px tall at 390, a fifth of the screen (site273), and 380 of a
-/// 1280 window's 800 beside a column 560 tall (sitepolish). By transform
-/// alone (--fit, which a pointer's zoom adds to), which moves nothing
-/// else, so the page never shifts as it does. A photo is shown whole
+/// 1280 window's 800 beside a column 560 tall (sitepolish). By its own
+/// scale and translate alone (a pointer's zoom is its transform, applied
+/// after them), which move nothing else, so the page never shifts as it
+/// does; never a custom property made in the page (the design system's
+/// tokens are :root's). A photo is shown whole
 /// (.photo); a tablet's frame is the picture's own shape.
 function fitPicture(big, img) {
   img.style.objectFit = "";
-  img.style.removeProperty("--fit");
+  img.style.removeProperty("scale");
+  img.style.removeProperty("translate");
   big.style.background = "";
   if (!FITTED.matches || big.classList.contains("photo") || !img.naturalWidth || !big.clientHeight) return;
   // The frame's shape against the picture's: a square is 1, 4:3 is 1.33.
@@ -579,7 +585,9 @@ function fitPicture(big, img) {
   const middle = Math.min(1 - shown / 2, Math.max(shown / 2, (first + last + 1) / 2 / w));
   // Drawn whole across the frame (contain), then enlarged round the model.
   img.style.objectFit = "contain";
-  img.style.setProperty("--fit", `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`);
+  // scale(1 / shown) translateX(t) is translate(t / shown) then the scale.
+  img.style.scale = (1 / shown).toFixed(4);
+  img.style.translate = `${(((0.5 - middle) * 100) / shown).toFixed(2)}% 0`;
   // An older picture's own ground above and below it, where it is shorter
   // than the frame; one with nothing behind the model is on the frame's.
   const band = Math.max(0, (1 - frame / (shown * aspect)) / 2) * 100;
@@ -1094,6 +1102,24 @@ function startComments(section) {
       return tell(told(answer.body.error, say("The comments did not load just now.")));
     }
     state = answer.body;
+    // A page the CDN kept from before a newer version was published (a
+    // model's page is kept 30 s, and 30 more while it is asked again): its
+    // picture, 3D and pins are the version before's. The comments are never
+    // kept and say which is newest, so the newest's page is asked anew,
+    // once, under an address the CDN has not kept. Right after a publish a
+    // visitor saw every pin where it had been (partpins, rel-m325's preview).
+    const fresh = new URL(location.href);
+    if (Number(state.newest) > newest && version === newest && !/\/v\/\d+\/?$/.test(fresh.pathname)
+      && Number(fresh.searchParams.get("newest") || 0) < Number(state.newest)) {
+      fresh.searchParams.set("newest", String(Number(state.newest)));
+      location.replace(fresh);
+      return;
+    }
+    // Drawn anew: its address as it is shared, without the asking.
+    if (fresh.searchParams.has("newest")) {
+      fresh.searchParams.delete("newest");
+      history.replaceState(history.state, "", fresh);
+    }
     // Not open on this deployment yet (comments.sql): nothing to show, and
     // no tab (commentsSaid).
     hold?.remove();

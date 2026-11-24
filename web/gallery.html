@@ -198,6 +198,13 @@ html[data-tab="builds"] .toolbar { position: static; }
 	background: var(--accent-soft); color: var(--ink); font-size: var(--t-small);
 }
 #challenge-line a { color: var(--ink); font-weight: 650; }
+/* From 600 px, where it heads the grid, the band sits closer under the
+   filters and over the pick, so the cards' first row still begins on a
+   1280 x 900 first screen with the beta's strip over the header (60 px of
+   it at least: the lead, 2026-11-23). */
+@media (width >= 600px) {
+	.feed > #challenge-line:not([hidden]) { margin: calc(-1 * var(--s-2)) 0 calc(var(--s-3) - var(--s-5)); padding-block: 8px; }
+}
 .listing .state { margin-top: var(--s-2); }
 .state .said { margin: 0 0 var(--s-2); }
 .state .actions { margin-top: var(--s-3); }

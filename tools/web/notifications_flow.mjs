@@ -215,7 +215,9 @@ try {
   const betaOpen = await adaPage.evaluate(() => window.brickworksBeta !== "off"
     && import("/betabar.js").then(({ betaState }) => betaState()).then((heard) => heard.beta === "open"))
     .catch(() => false);
-  const menuNow = ["profile", "notifications", "feed", "lists", "saved", "settings", "feedback",
+  // Plans and the desktop app since the header gave their links to the
+  // community (landing, 2026-11-22, web/follow.js accountPart).
+  const menuNow = ["profile", "notifications", "feed", "lists", "saved", "settings", "plans", "download", "feedback",
     ...(betaOpen ? ["report-bug"] : [])].join(",");
   await until(adaPage, (want) => [...document.querySelectorAll(".site-head .nav .account-menu .account-part nav a")]
     .map((a) => a.dataset.place).join(",") === want, "the account menu as it now is", 10, menuNow).catch(() => null);
@@ -419,9 +421,12 @@ try {
   if (levelled) {
     // His photo of his build of the tower is his first level.
     const his = await listDrawn(bobPage);
-    check(`Bob, with no models: only his achievements, "${his.map((one) => one.rows.map((row) => row.text).join("; ")).join(" | ")}"`,
+    // His achievements are the aside's card (listkit, 2026-11-23), so the
+    // list itself is empty and says so.
+    check(`Bob, with no models: only his achievements, in the aside's card, "${his.map((one) => one.rows.map((row) => row.text).join("; ")).join(" | ")}", the list's empty state beside it`,
       his.length === 1 && his[0].achievements && his[0].rows.length === 1
-      && /^You reached Builder · first build, level 1 of 5/.test(his[0].rows[0].text) && !(await bobPage.isVisible("#empty")));
+      && /^You reached Builder · first build, level 1 of 5/.test(his[0].rows[0].text)
+      && await bobPage.isVisible("#achieved .notice") && await bobPage.isVisible("#empty"));
   } else {
     check(`Bob, with no models: the empty state, its ways in (${await bobPage.isVisible("#empty")})`,
       await bobPage.isVisible("#empty") && (await bobPage.textContent("#empty")).includes("Nothing yet"));

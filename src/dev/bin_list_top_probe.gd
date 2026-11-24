@@ -71,7 +71,7 @@ func _run() -> void:
 	_phone = _main.get("_phone")
 	if not wide:
 		# A phone draws at a browser's scale, as field_drag_probe holds it.
-		_phone.set_process(false)
+		_phone.set("holds_scale", true)
 		for link: Dictionary in root.size_changed.get_connections():
 			var call: Callable = link["callable"]
 			if call.get_method() == &"_match_screen_density":

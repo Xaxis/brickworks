@@ -1364,7 +1364,11 @@ plan with Claude as the client.
   screen or its tab is chosen, drawn into a `min-height` kept for its first
   12 rows of 60 px, `li.group` (a colour's or kind's swatch, name and
   count) over `li.lot` (picture, name, part and element number, colour,
-  `× n`), Show all (`[data-all]`) for the rest; `<html data-parts="drawn">`
+  `× n`), Show all (`[data-all]`) for the rest, in the page from the start
+  where the rows are more than 12, counted as lots plus their colours
+  (`api/_parts.js` `listRows`, a model's page and a set's: a set of 12
+  lots or fewer can have more rows, 30476-1's 12 lots in 7 colours are 19;
+  checkdrift 2026-11-23); `<html data-parts="drawn">`
   once drawn. The list is the app's Inventory.of, ported (`inventoryOf`:
   sub-models expanded, a sticker counted, a Brickworks-laid hose once as
   the straight part nearest its length, an LDCad hose one flexible part,
@@ -1436,8 +1440,14 @@ plan with Claude as the client.
   ModelShot's corner: `inline.js` LOOKS). `/viewer3d.js` (built by
   `tools/viewer/build.mjs` beside the card, from the same
   `tools/viewer/view.js`; about 580 KB, 150 KB gzipped) is imported only
-  then; its scene is `/m/<id>/scene.json` (`/m/<id>/v/<n>/scene.json`,
-  `/library/<id>/scene.json`: `api/share.js` ?op=scene and set_scene,
+  then; its scene is named by the version the page shows, the newest's too
+  (`/m/<id>/v/<n>/scene.json`, `api/share.js` `sceneAt`; `/m/<id>/scene.json`
+  is kept by the CDN as long as the page, and a page drawn after a publish
+  opened the version before's model and pinned on it: partpins), and a page
+  the CDN kept from before a publish asks for `?newest=N` once its comments
+  say a newer version (`web/model-page.js` load, then the address is put
+  back; `tests/test_model_page_fresh.py`); `/library/<id>/scene.json` for a
+  set (`api/share.js` ?op=scene and set_scene,
   `api/_parts.js` `sceneOf`, the stored file packed as the app packs the
   card's scene, every part through the sub-models, carried copies as their
   part, a retired number turned as its stub turns it (the table's
@@ -1896,7 +1906,8 @@ plan with Claude as the client.
   strips, the gallery's shelves, Pinned on /u/ and /profile, a model
   page's More by / Similar with a See all in `.scroller-head`),
   `.pills.scroller` (the gallery's and library's kinds, `.inset` in a
-  toolbar), `#pictures.media-strip.scroller`, `.build-strip.scroller`,
+  toolbar, a person's badges on `/u/<handle>` under 900 px, wrapping
+  beside the page: `awardsHtml(..., { row: true })`), `#pictures.media-strip.scroller`, `.build-strip.scroller`,
   `nav.tabs`, an inner page's `.page-toc ul.scroller` under 900 px, and
   the boxes `.table`, docs `.code > pre` and /admin's `.card.scroller`. It
   scrolls inside itself (`overscroll-behavior-x: contain`, never the
@@ -2007,7 +2018,14 @@ plan with Claude as the client.
   "brickworks.lang" too), else the browser's first the site has, else English
   (`web/theme.js` `brickworksLang`): an English page with a copy gives way to
   it before it is drawn (its `link rel=alternate hreflang`), and every link to
-  `/app` carries `?lang=<code>`. The scripts' words (`web/download.js`,
+  `/app` carries `?lang=<code>`: the page's own by theme.js's `carry()`, one a
+  script draws later (the home's feed, a set's, a challenge's, the 3D
+  frame's) through `web/card.js` `appAt`, which asks `brickworksLang.app()`
+  for the same language; `tools/site_lang.py --check` (`unapped`) fails a
+  script under `web/` that writes `/app` by hand (sitefix325, 2026-11-23).
+  The home's first posts, written at deploy for every language at once
+  (`tools/web/home_shelf.mjs`), say their lines as each is drawn
+  (`web/home-feed.js` `buildPostHtml`), never while composing. The scripts' words (`web/download.js`,
   `web/card.js` `say`/`number`, the header's account in `web/follow.js`) come
   from the copy's `#site-words`. The app's loading page (`src/boot/shell.html`)
   says its words in `?lang` or the kept language. The sign-in's dialogs
@@ -2486,7 +2504,11 @@ plan with Claude as the client.
   saying only the reply and the tower's like; unmute; the barn's page
   mute; Done in one request, a second tab, a reload, Undo, Mark all done,
   something new back. Pictures `docs_*` in `--out`. Push per kind is
-  `homescreen_flow.mjs`'s push part (comments ticked in the grid).
+  `homescreen_flow.mjs`'s push part (comments ticked in the grid). Each
+  browser after the first signs in by itself (`mintSession`): the minted
+  refresh token replayed after two renewals is refused by Supabase
+  (`refresh_token_already_used`), which ends every session of that
+  sign-in (checkdrift 2026-11-23).
 - `latest on Brickworks and designers to follow` (`api/_follows.js`
   `latest`, `designersFrom`, docs/SOCIAL.md U9): `GET ?op=latest`, anybody,
   `{models, photos, designers}`: the 8 newest listed models as the
@@ -2506,8 +2528,12 @@ plan with Claude as the client.
 - `first steps after a first sign-in` (`web/first-steps.js`, docs/SOCIAL.md
   U10): `web/account.js` `askAgeIfAsked`, once the age question is
   answered 13 or over (a first sign-in, from the dialog or a page that asks
-  on load), imports it and opens `dialog.first-steps` before the page goes
-  on: `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
+  on load), imports it and opens `dialog.first-steps` at once from a page's
+  own Sign in; signed in to do something (a like, a follow: `pending`),
+  what was pressed is done first and First steps are offered after it in a
+  snackbar (`offerFirstSteps`, kept in localStorage
+  `brickworks.first_steps_due` until offered, also on the next page if that
+  one went; checkdrift 2026-11-23): `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
   name until typed in, the `.face-row` avatar from it, `#first-make` posts
   `?op=profile`; left out with a profile already), `kinds` (the gallery's
   kinds from `?op=list&sort=top` as `button.pill[data-kind]`,
@@ -3189,7 +3215,14 @@ plan with Claude as the client.
   place, `GET op=comments` for the version, `POST op=comment`) and Follow
   (`web/follow.js` `followButton`, a visitor's drawn without asking)
   each ask a visitor to sign in on the spot (`account.js` `askToSignIn`)
-  and go on after; Share (`navigator.share`, else the link copied); 3D
+  and go on after, a new person's First steps offered only once it is
+  done (a snackbar), the like put on the stream as drawn again for them
+  (`signedInDraw`), and the post they pressed held where it was on the
+  screen as the visitor's band gives way to the search row (318 px to 76
+  at 1280); the Following tab waits on a Follow still being sent
+  (`follow.js` `followsSettled`; checkdrift 2026-11-23, homefeed_check
+  steps 8 to 10, which measure the post on the screen, not scrollY);
+  Share (`navigator.share`, else the link copied); 3D
   (`data-feed-turn`, `web/viewer3d.js` `open3d({spin: true})` in the
   picture's place on a 0.7 s hover with a fine pointer or a tap); Open in
   the studio `/app?view=<id>`, Remix `/app?copy=<id>`, Build it
@@ -3485,8 +3518,20 @@ plan with Claude as the client.
   lit (`brickworks3d.pins.asked`), **Answer on this part** in the 3D's menu
   (`[data-on-part]` over the reply box, `op=talk_reply {part}`), each answer's
   `.talk-on-part` line; the studio asks `op=talk_asks&model=X` every 20 s
-  while the model has asks and lights each new answer's part.
-  `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`);
+  while the model has asks and lights each new answer's part. Its 3D's
+  first view (`start3d margin: 0.08`, `view.js fitting` with the tools'
+  band as `foot`) holds the whole step about 8% clear of each edge and
+  above the tools: the flow projects all 32 corners (within 0.85 of the
+  frame's half, at the stage's own aspect) and hits each with
+  `elementFromPoint` (the 3D itself, no button or hint over it); the frame
+  is square under 600 px and 16:10 from 900, as a model's page; the ask
+  and the posts share one column on the header's edges. Its poster and the
+  thread's link preview are the model's own picture (`askPicture`, the
+  asked version's), a model with none a plain frame (and its embed's,
+  `embedCard`): never `/share.png`, which had stood in as an advert; the
+  flow publishes `tests/fixtures/talk/ask_windmill.png` and compares bytes.
+  `tools/web/askhelp_flow.mjs` on a relay holding Talk (`--hold=talk`,
+  `--keep` leaves its thread for a look on 127.0.0.1);
   `src/dev/askhelp_probe.gd` at 1280x800 and 390x844 (`--pictures=DIR`).
 - `comments on parts in the studio` (`src/ui/part_pins_panel.gd`,
   `src/ui/part_pins.gd`, `main._look_for_pins`): opening a model you
@@ -3520,8 +3565,11 @@ plan with Claude as the client.
   `model_alt_sets`; `alt_of`, `alt_needs_of`, `alt_uncounted(rule)`,
   `set_built(set, tests)` (the set page's cards, `{based, alt: {role, have,
   pieces, with}}`), `gallery_models` with `alt` and `one_set`; the service
-  role alone. A model's page says it under its credit (`web/card.js`
-  `altHtml`, `p#alt-build[data-alt]`: "An alternate build of 31009 Small
+  role alone. A model's page says it in its lineage, under its picture
+  and on a phone after the column, with what it is based on (`web/card.js`
+  `altHtml`, `p#alt-build[data-alt]`; in the column a house built from
+  four sets took three lines and pushed a phone's action bar off the first
+  screen, rel-m325): "An alternate build of 31009 Small
   Cottage: every part from the set", "of 42115 and 42054", "97% from
   31009", each set a link to `/library/set/N`); its designer's `?op=bases`
   answer carries `short` for an alternate set, drawn "(uses 6 parts not in
@@ -4183,8 +4231,14 @@ plan with Claude as the client.
   copies in `?op=set_based`'s `versions` (`api/_bases.js setVersions`, the
   answer kept 20 s by the CDN and 20 s more stale, so a version is on the
   page within a minute); `web/set-page.js versionsOf` draws
-  `section#versions` "Versions of this set" before `#built-from`, each card's
-  `small.version-said[data-changed]` and a picture of its model (LDraw's as
+  `section#versions` "Versions of this set" before `#built-from`, each card
+  `[data-changed]`, credited by `web/card.js cardHtml`: LDraw's model as
+  it is "Modelled by" its modeller (`[data-modelled-by]`) and
+  `small.version-said` "LDraw's model, as it is"; a changed one by who
+  published it (`a.who` to `/u/<handle>`, their avatar), never "Modelled
+  by", with `small[data-changed-from]` "Changed from LDraw's model by
+  <modeller>" under it, as on any card and on its own page
+  (`api/share.js modelledLine`, under `designerRow`); and a picture of its model (LDraw's as
   it is by `/library/<id>.webp`; a changed one by its own card, else its
   `.cutout.png`, else LDraw's; never "No picture"), or none said with Make your own
   version (`[data-version-empty]`), `<html data-versions>` the count or
@@ -6203,7 +6257,22 @@ plan with Claude as the client.
   moves nothing as it comes and scrolls away with the page (pagebar,
   2026-11-23: docked at the foot it covered whatever reached the fold, an
   object page's tabs and its Like and Save; floating, the home's first
-  post; bench/results/pagekit-2026-11-23/bar_check.mjs): Open beta (to /beta), Report a bug
+  post; bench/results/pagekit-2026-11-23/bar_check.mjs). The room is
+  decided before the first frame and never comes or goes after but by the
+  person's own act (betabar.js drawBar {act}: Settings' switch, Undo, a
+  show in another tab): a page the server makes says the beta in its head
+  (`<meta name="brickworks-beta">` just before theme.js, api/_settings.js
+  sayBeta and betaSaid, from share.js, people.js and Talk's html senders,
+  with when it was said, so an answer the browser heard since wins over a
+  page the CDN kept: a set's, a day);
+  a file page holds it unless the beta was last heard off (a first visit
+  holds it, so a never-seen visitor's first file page while the beta is off
+  is the one page that loses it, said by `--only=steady`); a kept "off"
+  holds none, and an "open" heard then shows the strip from the next page.
+  Not heard (the server not answering), a held room keeps the strip
+  without Join. A set's page held 48 px on a phone, then let it go as the
+  server said off (checkdrift, 2026-11-23); `tests/test_beta_strip_room.py`
+  holds what the server writes. Open beta (to /beta), Report a bug
   (`window.brickworksReportBug({source: "site", from})` of web/bugreport.js,
   loaded on the first press; without it Send feedback's dialog as a bug),
   and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
@@ -6237,7 +6306,10 @@ plan with Claude as the client.
   early features (GET ?op=beta_hub). Prove: `node
   tools/web/betahome_flow.mjs --out=DIR` (the stand-in, beta open and off,
   ends "betahome: all ok"; `--only=hide,back` for the x, its toast, Undo,
-  Settings' choice and the menus' Report a bug), then on a `tools/deploy.sh --unit --beta-open`
+  Settings' choice and the menus' Report a bug; `--only=steady` for the
+  header's top every frame of the first second at 390, open, off, open
+  heard two days ago, off heard an hour ago and off heard since a set's
+  page said open), then on a `tools/deploy.sh --unit --beta-open`
   preview `--url=<preview>` with `BW_BYPASS`: the months left are the
   deployment's (?op=beta_spots), and Join's focus is read a frame after the
   page has loaded and drawn, when web/beta.js puts it there.
@@ -6966,7 +7038,11 @@ locally (numbers in the unit's report).
 
 The design system, with no network and no account (pages from the
 checkout, `/m/<id>`, `/u/<handle>`, `/c/<id>` and the embed made by its
-`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`):
+`api/` in-process, every API call answered by `tools/web/design_stand_in.mjs`).
+Each model's picture (`/m/<id>.png`, `.webp`, a version's) and a set's
+(`/library/set/<num>.webp`) is a house card from `tests/fixtures/stand_in/`
+picked for that id (`PICTURE_OF`, else one by its id), so cards and model
+pages read true; `/share.png` is the og card's alone:
 
 ```sh
 heavy node tools/web/design_flow.mjs --out=shots/design              # this checkout
@@ -7484,8 +7560,9 @@ Brickworks to follow and six models castles first, Following, See your
 feed: 7 posts by Brickworks with their cards, no Latest
 (`2_{profile,kinds,start,followed,feed}-*.png`); Skip, Skip, Follow, See
 your feed: 4 taps to a filled feed (`3_feed-390-*.png`); signed in from
-Follow on `/u/brickworks`: First steps end with Done only, and the follow
-goes on after (`4_start_pending-*.png`). It ends "first steps: a first
+Follow on `/u/brickworks`: the follow goes first with no dialog over it,
+then First steps from the snackbar end with Done only
+(`4_start_pending-*.png`). It ends "first steps: a first
 visit meets a designer to follow, a first sign-in makes a profile and
 fills the feed: ok". With `--url`, throwaway Ada (a listed castle, one
 build) is suggested at 390 and 1280; Bob signs in through the dialog,

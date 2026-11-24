@@ -18,6 +18,40 @@
    "features": [
     "ui:build steps"
    ]
+  },
+  {
+   "id": "instructions-timeline-phone",
+   "source": "app",
+   "window": "390x844",
+   "phone": true,
+   "setup": [
+    {
+     "frames": 360
+    },
+    {
+     "run": "timeline",
+     "after": 30
+    },
+    {
+     "key": "Right"
+    },
+    {
+     "key": "Right"
+    },
+    {
+     "key": "Right"
+    },
+    {
+     "frames": 60
+    }
+   ],
+   "settle": 60,
+   "crop": "window",
+   "alt": "The timeline on a phone, 390 pixels across: the car built to its fourth step, and along the foot the row of steps, the step's parts as pictures with how many of each, its words, and one row of Back, the step's number, Next, Parts and More.",
+   "caption": "On a phone: one row a thumb works, the rest in More.",
+   "features": [
+    "ui:the steps bar on a phone"
+   ]
   }
  ]
 }

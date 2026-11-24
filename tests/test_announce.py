@@ -148,7 +148,9 @@ def test_the_console_preview_is_drawn_by_the_page_s_own_code() -> None:
     page = (ROOT / "web/notifications.js").read_text()
     assert 'import { group } from "/notice-view.js";' in page
     assert 'import { group as noticeGroup } from "/notice-view.js";' in CONSOLE
-    assert "export function group(" in view and 'told ? "pic announce"' in view
+    # An announcement's picture is the row's (listkit, c5ef2bac6), its spark styled by .pic.announce.
+    assert "export function group(" in view and 'picture.className = `row-pic pic${' in view
+    assert 'told ? " announce"' in view
     # Its words are text, never markup; another site's link only an announcement's.
     assert "innerHTML" not in view.replace("made.innerHTML = html", "")
     assert 'one.kind === "announcement" ? outside(one.link) : here(one.link)' in view

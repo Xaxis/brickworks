@@ -266,7 +266,7 @@ const watchBuildIt = (page) => page.evaluate(() => {
     const at = told.view_build;
     const last = window.flowBuildIt[window.flowBuildIt.length - 1];
     if (at && (!last || last[1] !== at.x || last[2] !== at.y)) {
-      window.flowBuildIt.push([Math.round(performance.now()), at.x, at.y, Boolean(told.steps_slider)]);
+      window.flowBuildIt.push([Math.round(performance.now()), at.x, at.y, Boolean(told.steps_slider || told.steps_next)]);
     }
   }, 50);
 });
@@ -283,7 +283,7 @@ async function firstTap(page) {
     await tap(page, "build_close");
     await until(page, () => ((window.brickworksShare || {}).build || {}).open === false, "the step player closed", 60);
   }
-  await until(page, () => Boolean((window.brickworksControls || {}).steps_slider), "the timeline", 120);
+  await until(page, () => Boolean((window.brickworksControls || {}).steps_slider || (window.brickworksControls || {}).steps_next), "the timeline", 120);
   await page.waitForTimeout(1500);
   const rests = (await controls(page)).view_build || {};
   const moves = await page.evaluate(() => window.flowBuildIt || []);
@@ -383,7 +383,7 @@ try {
     // where it stays from its first frame now (--first-told); the flow
     // still taps once the timeline is up, as a person waits for a page to
     // stop moving.
-    await until(page, () => Boolean((window.brickworksControls || {}).steps_slider), "the timeline", 120);
+    await until(page, () => Boolean((window.brickworksControls || {}).steps_slider || (window.brickworksControls || {}).steps_next), "the timeline", 120);
     await tap(page, "view_build");
     await until(page, () => ((window.brickworksShare || {}).build || {}).open === true, "the step player", 60);
     const last = (await page.evaluate(() => window.brickworksShare.build)).last;

@@ -157,6 +157,13 @@ var studs: float = 0.0
 ## there). It goes to the card with each part, as studs does (its record's
 ## last number, the byte above studs', in hundredths).
 var edge: float = 0.0
+## Moulded ABS's own unevenness (photoreal15, RenderSettings.peel and sink),
+## set before [method stage]: its skin's orange-peel waviness and how far it
+## sinks round each stud and over each tube, 0 for none, 1 as measured. They
+## go with each part's record as edge does (the third byte, and the fourth's
+## lower seven, in hundredths), read only by the shader's marks version.
+var peel: float = 0.0
+var sink: float = 0.0
 ## Whether the picture asks for the wear hands leave (photoreal9,
 ## RenderSettings.rubbed), set before [method stage]: it is then traced by
 ## the shader's "marks" version.
@@ -406,6 +413,8 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	var stud_code: int = clampi(roundi(studs * 255.0), 0, 255) if product else 0
 	if product:
 		stud_code |= clampi(roundi(edge * 100.0), 0, 255) << 8
+		stud_code |= clampi(roundi(peel * 100.0), 0, 255) << 16
+		stud_code |= clampi(roundi(sink * 100.0), 0, 127) << 24
 	_has_glass = false
 	for node: Variant in batches:
 		var batch := node as MultiMeshInstance3D

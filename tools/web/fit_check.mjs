@@ -3,6 +3,7 @@
 //
 //   node tools/web/fit_check.mjs --url=http://127.0.0.1:8743/index.html --out=shots/fit
 //   node tools/web/fit_check.mjs --url=<preview>/app --quick --bypass=…   (what deploy.sh runs)
+//   node tools/web/fit_check.mjs --url=… --phones   (360, 390 and 430 upright, and on its side)
 //
 // At two device pixels to the point the app laid out 800 units of
 // interface where it needs about 1270: the toolbar ran off at "He…" and
@@ -117,6 +118,10 @@ const ALL = [
   [1100, 700, 1, ONE, 0.6],
   [1100, 760, 2, ONE, 0.6],
   [390, 844, 3, PHONE, 0],
+  // The narrowest phone in use (an older iPhone mini or SE at its zoom,
+  // most small Androids) and a big one (ux15).
+  [360, 780, 3, PHONE, 0],
+  [430, 932, 3, PHONE, 0],
   [844, 390, 3, PHONE, 0],
   // A browser window as small as a phone on its side, with a mouse: the
   // window appux2 saw the desktop in. It gets the phone's layout too.
@@ -129,8 +134,10 @@ const RAILS = ["parts_rail", "assistant_rail"];
 const PANEL_CONTROLS = ["outliner", "outliner_tree", "properties", "prop_x", "prop_y", "prop_z",
   "prop_turn", "assembly_done"];
 // The deploy's: the density that broke, a laptop, and a phone.
+// --phones: the phones alone, upright and on their side.
 const CASES = args.quick
   ? ALL.filter(([w, h, r]) => (w === 1400 && r === 2) || (w === 1100 && h === 700) || w === 390)
+  : args.phones ? ALL.filter(([, , , wanted]) => wanted === PHONE)
   : ALL;
 
 const inside = (r, x, y) => x > r[0] && x < r[0] + r[2] && y > r[1] && y < r[1] + r[3];

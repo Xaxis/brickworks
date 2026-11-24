@@ -2,7 +2,7 @@
 // 2026-11-09; web/betabar.js, web/landing.js, web/beta.js), as a person
 // meets them, in a real browser:
 //
-//   node tools/web/betahome_flow.mjs [--root=DIR] [--before=DIR] [--out=DIR] [--only=bar,hide,back,press,home,hub,off,same,weight]
+//   node tools/web/betahome_flow.mjs [--root=DIR] [--before=DIR] [--out=DIR] [--only=bar,hide,back,press,home,hub,steady,off,same,weight]
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/betahome_flow.mjs --url=<deployment> --out=DIR
 //
 // By default the design stand-in (tools/web/design_stand_in.mjs) serves
@@ -37,7 +37,14 @@
 //          loaded (a first visit, and one that kept the answer);
 //   hub    /beta for each visitor: the way in, the line under the title,
 //          how to report and this week's releases (changelog.json); a
-//          tester's what to try, known issues and early features.
+//          tester's what to try, known issues and early features;
+//   steady at 390, the site's header where it was first drawn for the
+//          page's whole first second, the strip's room decided before the
+//          first frame: a first visit open (home, gallery, a set's page, a
+//          model's) and off (the server's pages, which say it in their
+//          head), open heard two days ago, heard off an hour ago (none on
+//          that page, the strip from the next), and heard off since a
+//          set's page said open.
 //
 // Off: no bar and no #beta on any page, /beta says Coming soon with no way
 // in, and after the first page the bar's script is not asked for again
@@ -133,6 +140,9 @@ async function visitor({ width, height = 0, theme = "light", who = "out", beta =
     ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   const told = { asked: [], joins: [], scripts: [] };
   if (!remote) {
+    // The pages the server makes here say the same of the beta in their
+    // head (api/_settings.js betaSaid), run in this process.
+    process.env.BRICKWORKS_BETA = beta;
     await stand.serveSite(context, { web: path.join(tree, "web"), api: path.join(tree, "api"), state: {} });
     let tester = who === "tester";
     await context.route(/\/api\/plans\?op=beta(?:_spots|_join)?(?:&.*)?$/, async (route) => {
@@ -641,6 +651,79 @@ try {
   });
 
   // --- off ----------------------------------------------------------------
+  // --- steady ---------------------------------------------------------------
+  // The page's top over its first second at 390 x 844: the strip's room is
+  // decided before the first frame (web/theme.js) and never comes or goes
+  // after, so the header stays where it was first drawn. A set's page held
+  // 48 px for it, then let it go half a second in as the server said the
+  // beta was off (checkdrift, 2026-11-23), which the layout-shift count
+  // missed. Pages the server makes say the beta in their head, and when;
+  // what the browser heard since is taken over it. A page kept as a file,
+  // first visited while the beta is off, cannot know, and holds the room as
+  // for the open beta (said, not judged).
+  if (!remote && asked("steady")) await section("steady", async () => {
+    console.log("steady: the header where it was first drawn, the first second at 390");
+    const SET = "/library/set/30476-1";
+    const server = [SET, `/m/${stand.MODEL_ID}`];
+    const day = 86400000;
+    const rounds = [
+      { name: "a first visit, the beta open", beta: "open", kept: null, pages: ["/", "/gallery", ...server], want: 48 },
+      { name: "a first visit, the beta off", beta: "off", kept: null, pages: server, want: 0 },
+      { name: "open, heard two days ago", beta: "open", kept: { beta: "open", at: -2 * day }, pages: ["/", SET], want: 48 },
+      { name: "heard off an hour ago, open now", beta: "open", kept: { beta: "off", at: -3600000 }, pages: ["/gallery"], want: 0, next: 48 },
+      // What the browser heard after the page was made is taken over what
+      // the page says (a page the CDN kept: a set's, a day).
+      { name: "heard off since the page said open", beta: "open", kept: { beta: "off", at: 0 }, pages: [SET], want: 0 },
+      { name: "a first visit to a file page, the beta off", beta: "off", kept: null, pages: ["/gallery"], want: null },
+    ];
+    for (const round of rounds) {
+      for (const where of round.pages) {
+        const { context, page } = await visitor({ width: 390, theme: "light", who: "out", beta: round.beta });
+        if (round.kept) {
+          await context.addInitScript((kept) => {
+            if (sessionStorage.getItem("seeded")) return;
+            sessionStorage.setItem("seeded", "1");
+            localStorage.setItem("brickworks.beta", JSON.stringify({ beta: kept.beta, tester: null, cap: 100, left: 40, who: null,
+              at: Date.now() + kept.at }));
+          }, round.kept);
+        }
+        // Every frame's header top, from the first frame it is there.
+        await context.addInitScript(() => {
+          const began = performance.now();
+          window.__tops = [];
+          const look = () => {
+            const head = document.querySelector(".site-head");
+            if (head) {
+              const top = Math.round(head.getBoundingClientRect().top + scrollY);
+              const last = window.__tops[window.__tops.length - 1];
+              if (!last || last.top !== top) window.__tops.push({ at: Math.round(performance.now() - began), top });
+            }
+            if (performance.now() - began < 1000) requestAnimationFrame(look);
+          };
+          requestAnimationFrame(look);
+        });
+        await page.goto(base + where, { waitUntil: "load", timeout: 60000 });
+        await page.waitForTimeout(1300);
+        const seen = await page.evaluate(() => ({ tops: window.__tops, bar: Boolean(document.querySelector("#beta-bar.shown")) }));
+        const said = seen.tops.map((one) => `${one.top} px at ${one.at} ms`).join(", then ");
+        if (round.want === null) {
+          console.log(`  --    ${round.name}, ${where}: ${said} (cannot be known before the first frame)`);
+        } else {
+          check(`390 ${round.name}, ${where}: the header at ${said || "nothing drawn"}, the strip ${seen.bar ? "shown" : "none"}`,
+            seen.tops.length === 1 && seen.tops[0].top === round.want && seen.bar === (round.want > 0));
+        }
+        if (round.next !== undefined) {
+          await page.goto(base + where, { waitUntil: "load", timeout: 60000 });
+          await page.waitForTimeout(1300);
+          const again = await page.evaluate(() => ({ tops: window.__tops, bar: Boolean(document.querySelector("#beta-bar.shown")) }));
+          check(`390 ${round.name}, the next page: the header at ${again.tops.map((one) => `${one.top} px at ${one.at} ms`).join(", then ")}, `
+            + `the strip ${again.bar ? "shown" : "none"}`, again.tops.length === 1 && again.tops[0].top === round.next && again.bar);
+        }
+        await context.close();
+      }
+    }
+  });
+
   if ((!open || !remote) && asked("off")) await section("off", async () => {
     console.log("off: nothing drawn");
     for (const [width, theme, who] of remote ? [[1280, "light", "out"], [390, "dark", "out"]] : [[1280, "light", "in"], [390, "dark", "out"]]) {

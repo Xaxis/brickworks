@@ -56,6 +56,7 @@ In the studio, with the model open, each new answer on a part lights that part w
 
 <!-- covers
 ui:ask the builders from the studio
+lib:ask the builders in talk
 -->
 
 ## A thread {#thread}

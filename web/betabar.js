@@ -120,7 +120,8 @@ async function ask() {
   } catch {
     body = null;
   }
-  // Not heard: nothing is drawn and nothing kept, so the next page asks.
+  // Not heard: nothing kept, so the next page asks; a room held for the bar
+  // keeps it, without Join (drawBar).
   if (!body || !["open", "off"].includes(body.beta)) return { beta: "unknown", tester: null, cap: 100, left: null, who };
   const heard = heardOf(body, who);
   keep(heard);
@@ -221,7 +222,7 @@ export function barShown() {
 export function showBar(on) {
   write(HIDDEN, on ? null : "off");
   dispatchEvent(new CustomEvent("brickworks:betabar", { detail: { shown: Boolean(on) } }));
-  return betaState().then(drawBar);
+  return betaState().then((heard) => drawBar(heard, { act: true }));
 }
 
 /// Hidden from its ×: said in a toast, with Undo and where to show it
@@ -265,13 +266,20 @@ function third(heard) {
   return join;
 }
 
-function drawBar(heard) {
+/// The bar as [heard] says, in the room web/theme.js held for it before the
+/// page was drawn. Hidden here or in another tab, or the beta off, it goes.
+/// No room held, none is made now, which would move the whole page down: the
+/// next page holds it; only the person's own act ([act]: Settings' switch,
+/// Undo) brings it onto this one. Not heard (the server not answering), the
+/// room held keeps its bar, without Join.
+function drawBar(heard, { act = false } = {}) {
   let bar = document.getElementById("beta-bar");
-  if (heard.beta !== "open" || !barShown()) {
+  if (heard.beta === "off" || !barShown()) {
     bar?.remove();
     delete root.dataset.betabar;
     return;
   }
+  if (!bar && !root.dataset.betabar && !act) return;
   if (!bar) {
     bar = made("aside", { className: "beta-bar", id: "beta-bar" });
     bar.setAttribute("aria-label", say("The Brickworks beta"));
@@ -296,7 +304,7 @@ function drawBar(heard) {
     // In the frame after: it fades in (site.css), moving nothing.
     requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add("shown")));
   }
-  bar.querySelector(".third").replaceChildren(third(heard));
+  bar.querySelector(".third").replaceChildren(...(heard.beta === "open" ? [third(heard)] : []));
   fit(bar);
 }
 
@@ -323,7 +331,8 @@ async function start() {
   // Another tab joined, signed in or out, or hid or showed the bar.
   addEventListener("storage", (event) => {
     if (event.key === HIDDEN) dispatchEvent(new CustomEvent("brickworks:betabar", { detail: { shown: barShown() } }));
-    if (event.key === KEY || event.key === HIDDEN) betaState().then(drawBar);
+    // Shown again in another tab is the person's own act: here too.
+    if (event.key === KEY || event.key === HIDDEN) betaState().then((heard) => drawBar(heard, { act: event.key === HIDDEN }));
   });
 }
 

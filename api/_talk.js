@@ -47,6 +47,7 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
+import { sayBeta } from "./_settings.js";
 import {
   SITE_LANGS, TESTS_CACHE, Unacceptable, asText, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords, summary,
   testsAsked, visitorKey,
@@ -60,7 +61,7 @@ import { PHOTOS, TICKET, UPLOADS, deleteFiles, getFile, putFile, signUpload } fr
 import { MAX_PHOTO_BYTES, PhotoTrouble, TYPES, cleanPhoto } from "./_photo.js";
 import { avatarHtml, iconHtml, langAt, mentionPieces, mentionsIn, modellerOf, number, pageHeadHtml, say } from "./_card.js";
 import {
-  ASK_EVERY_S, NOT_YET as ASKS_NOT_YET, askHtml, askOf, askRefused, asksOn, asksReady, pinLineHtml, placesAsked, withAsks,
+  ASK_EVERY_S, NOT_YET as ASKS_NOT_YET, askHtml, askOf, askPicture, askRefused, asksOn, asksReady, pinLineHtml, placesAsked, withAsks,
 } from "./_asks.js";
 
 export const BOARDS = ["show", "help", "ideas", "challenges", "news"];
@@ -769,6 +770,7 @@ function talkCsp() {
 }
 
 function sendPage(response, status, body, tests) {
+  if (response.betaSaid) body = sayBeta(body, response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", talkCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -1029,7 +1031,8 @@ export async function talkPage(request, response, { origin }) {
     const path = threadPath(page.thread);
     const first = (page.posts || []).find((one) => one.first);
     const image = first?.photo && PHOTO.test(first.photo.id || "") ? `${origin}/talk/p/${first.photo.id}.jpg`
-      : page.thread.model?.id ? `${origin}${modelPicture(page.thread.model) || "/share.png"}` : "";
+      : page.thread.model?.id ? `${origin}${modelPicture(page.thread.model) || "/share.png"}`
+      : askPicture(page.thread.ask) ? `${origin}${askPicture(page.thread.ask)}` : "";
     return sendPage(response, 200, draw(() => talkShell(origin, {
       title: say("{title} · Brickworks Talk", { title: page.thread.title }),
       about: summary(first?.body || page.thread.title, 200), path, lang, words, image,

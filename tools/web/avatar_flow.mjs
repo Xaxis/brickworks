@@ -130,6 +130,9 @@ async function avatars(page, scope = "body") {
         src: img ? img.getAttribute("src") : "", round: style.borderTopLeftRadius === "50%" || parseFloat(style.borderTopLeftRadius) >= one.offsetWidth / 2,
         size: Math.round(one.getBoundingClientRect().width),
         minifig: one.classList.contains("minifig") ? (one.style.backgroundImage.match(/(?:face|hair)-[\w-]+/g) || []).join(" ") : "",
+        // A profile's head, by its own class: on a phone its avatar is 72 px
+        // (directory.css .person-card), and the nearest id inside it hid it.
+        head: Boolean(one.closest(".profile-head")),
         where: where ? (where.id || where.className.split(" ")[0]) : "" };
     }), scope);
 }
@@ -454,16 +457,22 @@ async function deployed() {
         const tag = `${width} ${theme}`;
         let { page, context } = await open(`/u/${ADA}?tests=1`, { width, theme, label: `her page ${tag}` });
         let seen = await avatars(page, "main");
-        check(`her page ${tag}: the head's and her card's avatars are her picture, loaded`,
-          seen.some((one) => one.where === "profile-head" || one.size >= 80) && seen.filter((one) => one.pictured).length >= 2
-          && seen.filter((one) => one.pictured).every((one) => one.loaded && one.src === picture));
+        const told = (list) => list.map((one) => `${one.where || "?"} ${one.size}px ${one.pictured ? `${one.loaded ? "loaded" : "not loaded"} ${one.src === picture ? "hers" : one.src}` : "none"}`).join("; ");
+        const herPage = seen.some((one) => one.head && one.pictured) && seen.filter((one) => one.pictured).length >= 2
+          && seen.filter((one) => one.pictured).every((one) => one.loaded && one.src === picture);
+        check(`her page ${tag}: the head's and her card's avatars are her picture, loaded${herPage ? "" : `: ${told(seen)}`}`, herPage);
         await shot(page, `ada_${width}_${theme}.png`);
         await context.close();
         ({ page, context } = await open(`/m/${model}`, { width, theme, session: asBob(), label: `her model ${tag}` }));
-        await until(page, () => document.querySelectorAll(".comment").length > 0, null, 30000);
+        // Her comment is on the Comments tab (pagekit, 2026-11-23).
+        await page.waitForSelector('#page-tabs [data-tab="comments"]', { state: "visible", timeout: 30000 }).catch(() => null);
+        if (await page.$eval('#page-tabs [data-tab="comments"]', (tab) => tab.getAttribute("aria-selected") !== "true").catch(() => false)) {
+          await page.click('#page-tabs [data-tab="comments"]');
+        }
+        await until(page, () => document.querySelectorAll("#comments:not([hidden]) .comment").length > 0, null, 30000);
         seen = await avatars(page, "main");
-        check(`her model ${tag}: beside her name and her comment, her picture (${seen.filter((one) => one.pictured).length})`,
-          seen.filter((one) => one.pictured && one.loaded && one.src === picture).length >= 2);
+        const both = seen.filter((one) => one.pictured && one.loaded && one.src === picture).length >= 2;
+        check(`her model ${tag}: beside her name and her comment, her picture (${seen.filter((one) => one.pictured).length})${both ? "" : `: ${told(seen)}`}`, both);
         await shot(page, `model_${width}_${theme}.png`);
         await context.close();
         ({ page, context } = await open("/feed", { width, theme, session: asBob(), label: `Bob's feed ${tag}` }));

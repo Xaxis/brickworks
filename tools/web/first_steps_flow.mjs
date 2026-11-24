@@ -21,8 +21,9 @@
 //      chosen puts its models first), the house to follow and six models;
 //      Follow, then See your feed: the house's models as posts.
 //   3. The fewest taps: Skip, Skip, Follow, See your feed, a filled feed.
-//   4. Signed in to do something (Follow on the house's page): First steps
-//      end with Done, not the feed, and the follow goes on after them.
+//   4. Signed in to do something (Follow on the house's page): the follow
+//      goes first, nothing over it; then First steps are offered in a
+//      snackbar and, pressed, end with Done, not the feed.
 //
 // With --url, the same on the live project with throwaway accounts at
 // Resend test addresses, deleted at the end with their model: Ada, a
@@ -443,18 +444,27 @@ try {
     await page.click(button);
     await signIn(page, "dee@example.com");
     await answerAge(page);
+    // The follow first, with nothing over it; First steps after it, from a
+    // snackbar (web/account.js offerFirstSteps). They opened over the page
+    // and the follow waited behind them until 2026-11-23 (checkdrift).
+    const followed = await until(page, (at) => (document.querySelector(at)?.getAttribute("aria-pressed") === "true"
+      && !document.querySelector(at).disabled ? !document.querySelector("dialog[open]") : null), "the follow, answered", 20, button);
+    check(`signed in to follow: the follow went first, nothing over it (${followed}): "${await page.textContent(button)}", on ${new URL(page.url()).pathname}`,
+      followed === true && (await page.textContent(button)) === "Following" && new URL(page.url()).pathname === `/u/${HOUSE}` && them.follows.has(HOUSE));
+    const offered = await until(page, () => document.querySelector(".toast.shown .toast-act")?.textContent.trim() || null, "First steps offered", 15);
+    await page.click(".toast.shown .toast-act");
     await atStep(page, "profile", "pending");
     await page.click("#first-skip");
     await atStep(page, "kinds", "pending");
     await page.click("#first-skip");
     const drawn = await atStep(page, "start", "pending");
-    check(`signed in to follow: First steps end with Done (${drawn.done}), not the feed (${drawn.feed || "none"})`, drawn.done && !drawn.feed);
+    check(`...then First steps from the snackbar ("${offered}"), ending with Done (${drawn.done}), not the feed (${drawn.feed || "none"})`,
+      Boolean(offered) && drawn.done && !drawn.feed);
     await shots(page, "4_start_pending-1280", "dark");
     await page.click("#first-done");
-    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true"
-      && !document.querySelector(at).disabled, "the follow, after First steps, answered", 20, button);
-    check(`...closed, and the follow went on: "${await page.textContent(button)}", on ${new URL(page.url()).pathname}`,
-      (await page.textContent(button)) === "Following" && new URL(page.url()).pathname === `/u/${HOUSE}` && them.follows.has(HOUSE));
+    await until(page, () => (!document.querySelector("dialog.first-steps[open]") ? true : null), "First steps closed", 10);
+    check(`...closed, still on ${new URL(page.url()).pathname}, still following`, new URL(page.url()).pathname === `/u/${HOUSE}`
+      && (await page.textContent(button)) === "Following");
     await browserOf.close();
   }
 } catch (trouble) {

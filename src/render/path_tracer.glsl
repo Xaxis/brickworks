@@ -47,6 +47,12 @@ struct Hit {
 	// Where, in the part's own space.
 	vec3 local;
 	float unused;
+#ifdef MARKS
+	// The face hit, in the part's own space (photoreal15): which way it
+	// faces on the part, whichever way the part is turned in the model.
+	vec3 face;
+	float face_unused;
+#endif
 };
 
 layout(location = 0) rayPayloadEXT Hit hit;
@@ -166,6 +172,25 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	vec4 table;
 	// The way towards that light (xyz; w unused).
 	vec4 table_key;
+	// The large bright source a glossy top mirrors (photoreal14): a softbox
+	// or a window card standing above and behind the model as the camera
+	// sees it, sharp-edged. The way to its middle (xyz) and its light (w, in
+	// the sky's units: 0 none); its face's right (xyz) and half width (w, a
+	// tangent); its face's up and half height (the same); its colour (rgb)
+	// and how soft its edges are (w, a share of its half size). How much
+	// darker its edges are than its middle, as a softbox's diffuser is (x,
+	// 0 even, 1 dark at the corners; yzw unused).
+	vec4 source;
+	vec4 source_right;
+	vec4 source_up;
+	vec4 source_colour;
+	vec4 source_shape;
+	// Moulded ABS is never a perfect mirror (photoreal15): how much sharper
+	// the mould's polished tops are than its textured sides (x, 0 one gloss,
+	// 1 as the photographs measure), and the sparse scuffs and pits a part
+	// picks up (y, 0 none, 1 as measured). The surface's waviness and sink
+	// are the closest hit's (each part's record, PathTracer.peel and sink).
+	vec4 breakup;
 #endif
 } scene;
 
@@ -458,6 +483,73 @@ vec3 sky_light(vec3 way) {
 	vec3 below = mix(scene.sky_horizon.rgb, scene.sky_ground.rgb, pow(max(-way.y, 0.0), 0.4));
 	return scene.sky.rgb * (way.y >= 0.0 ? above : below);
 }
+
+#ifdef MARKS
+// The large source (photoreal14). A product photograph's glossy top is mostly
+// what it mirrors: the black 2x4's top in its photograph is 7.4 stops over its
+// side, mirroring a bright window behind it, where the tent's even walls and
+// the room's panorama left ours darker than its side. A rectangle seen from
+// the model at a distance, its edges straight and sharp as a softbox's or a
+// window's are; lit by it directly and mirrored in every gloss, its shadow
+// cast. Each way across its face is picked evenly in the plane of the face
+// (its tangents), so its chance per steradian grows towards the corners.
+const float SOURCE_SHARE = 0.5;
+
+// Where a way meets the face, in its half sizes (|x|, |y| under 1 within),
+// and 0 in z where it does not meet it at all.
+vec3 source_at(vec3 way) {
+	float d = dot(way, scene.source.xyz);
+	if (scene.source.w <= 0.0 || d <= 1e-4) {
+		return vec3(2.0, 2.0, 0.0);
+	}
+	return vec3(dot(way, scene.source_right.xyz) / d / scene.source_right.w,
+		dot(way, scene.source_up.xyz) / d / scene.source_up.w, 1.0);
+}
+
+vec3 source_light(vec3 way) {
+	vec3 at = source_at(way);
+	if (at.z <= 0.0 || abs(at.x) >= 1.0 || abs(at.y) >= 1.0) {
+		return vec3(0.0);
+	}
+	float edge = max(scene.source_colour.w, 1e-3);
+	float within = (1.0 - smoothstep(1.0 - edge, 1.0, abs(at.x))) * (1.0 - smoothstep(1.0 - edge, 1.0, abs(at.y)));
+	within *= 1.0 - scene.source_shape.x * min((at.x * at.x + at.y * at.y) * 0.5, 1.0);
+	return scene.source_colour.rgb * scene.source.w * within;
+}
+
+float source_pdf(vec3 way) {
+	vec3 at = source_at(way);
+	if (at.z <= 0.0 || abs(at.x) >= 1.0 || abs(at.y) >= 1.0) {
+		return 0.0;
+	}
+	float x = at.x * scene.source_right.w;
+	float y = at.y * scene.source_up.w;
+	float r2 = 1.0 + x * x + y * y;
+	return r2 * sqrt(r2) / (4.0 * scene.source_right.w * scene.source_up.w);
+}
+
+vec3 source_pick(vec2 u) {
+	return normalize(scene.source.xyz + scene.source_right.xyz * ((u.x * 2.0 - 1.0) * scene.source_right.w)
+		+ scene.source_up.xyz * ((u.y * 2.0 - 1.0) * scene.source_up.w));
+}
+
+// The share of the light's own picks that go to the source: none without one.
+float source_share() {
+	return scene.source.w > 0.0 ? SOURCE_SHARE : 0.0;
+}
+
+// What stops a way towards the light. The source stands in front of the
+// backdrop's paper, inside the tent, so a way that meets it above the floor
+// passes the sweep (its wall stands close behind the model and would hide
+// it); every other way is stopped by the sweep as before.
+uint lit_mask(vec3 way) {
+	vec3 at = source_at(way);
+	bool to_source = at.z > 0.0 && abs(at.x) < 1.0 && abs(at.y) < 1.0 && way.y > 0.02;
+	return to_source ? MASK_SOLID : MASK_SOLID | MASK_SWEEP;
+}
+#else
+#define lit_mask(way) (MASK_SOLID | MASK_SWEEP)
+#endif
 
 // How likely the panorama's table is to pick this direction, per steradian.
 float place_pdf(vec3 way) {
@@ -818,6 +910,96 @@ void gathered_wear(vec3 local, vec4 lo, vec4 hi, vec3 ng, float own, uint which,
 		s.roughness = mix(s.roughness, 0.9, cover);
 	}
 }
+
+// The mould's faces are not one finish (photoreal15): a part's tops are
+// polished, so they mirror sharply, while its side walls come out of the
+// mould a satin, a soft sheen of the same room. The black 2x4's and the grey
+// 1x3's photographs show the studs sharp in their tops and only a blur in
+// their sides; ours mirrored alike in both. Faint polishing lines run across
+// a top, one way on each part. The studs are left as they are (their tops a
+// satin plate, their walls polished). [param amount] 0 one gloss, 1 a top's
+// roughness POLISH_TOP of its own and a side's at least SIDE_SATIN.
+const float POLISH_TOP = 0.5;
+const float SIDE_SATIN = 0.16;
+
+void polish_split(vec3 local, vec4 lo, vec4 hi, uint which, float amount, inout Surface s) {
+	if (local.y > min(lo.w, hi.y) + 0.05) {
+		return;
+	}
+	vec3 f = hit.face;
+	float up = smoothstep(0.9, 0.98, f.y);
+	float side = 1.0 - smoothstep(0.15, 0.4, abs(f.y));
+	if (up > 0.0) {
+		float angle = part_unit(which, 73u) * PI;
+		vec2 along = vec2(cos(angle), sin(angle));
+		float lines = gloss_noise(vec3(dot(local.xz, vec2(-along.y, along.x)) * 3.0,
+			dot(local.xz, along) * 0.08, float(which & 255u) * 1.37));
+		float top = s.coat_roughness * POLISH_TOP * (1.0 + 0.35 * lines);
+		s.coat_roughness = mix(s.coat_roughness, top, up * amount);
+	}
+	if (side > 0.0) {
+		float own = 1.0 + 0.25 * part_bell(which, 72u);
+		s.coat_roughness = mix(s.coat_roughness, max(s.coat_roughness, SIDE_SATIN * own), side * amount);
+	}
+}
+
+// Sparse scuffs and pits (photoreal15): a few short hairline scratches here
+// and there, each its own way, as a part picks up from a table or a box, and
+// now and then a pit where a speck was moulded in, on every face, each its
+// own place on each part. Where a face mirrors something bright each is a
+// dark break in the highlight; where it mirrors the dark room, a faint light
+// line, as the black 2x4's and the green plate's photographs show them.
+// photoreal8's scuffs over every face read as "a procedural texture": these
+// are few. At [param amount] 1 a scratch in SCUFF_SHARE of the squares
+// SCUFF_CELL LDU across, a pit in PIT_SHARE of those PIT_CELL across.
+const float SCUFF_CELL = 10.0;
+const float SCUFF_SHARE = 0.35;
+const float PIT_CELL = 3.0;
+const float PIT_SHARE = 0.04;
+
+void sparse_scuffs(vec3 local, uint which, float amount, inout vec3 body, inout Surface s) {
+	vec3 f = hit.face;
+	vec3 t = normalize(cross(abs(f.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), f));
+	vec3 b = cross(f, t);
+	vec2 uv = vec2(dot(local, t), dot(local, b));
+	float salt = float(which % 4096u) * 0.731;
+	float mark = 0.0;
+	vec2 cell = floor(uv / SCUFF_CELL);
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 c = cell + vec2(float(x), float(y));
+			vec2 h = cell_hash(c + vec2(salt, salt * 1.3));
+			if (h.x > SCUFF_SHARE * amount) {
+				continue;
+			}
+			vec2 g = cell_hash(c * 1.7 + vec2(salt * 2.1, 5.3));
+			vec2 centre = (c + 0.2 + 0.6 * g) * SCUFF_CELL;
+			float angle = h.y * PI;
+			float half_length = 1.0 + 3.5 * fract(h.x * 7.13 + g.y);
+			float width = 0.05 + 0.08 * fract(g.x * 3.7);
+			vec2 way = vec2(cos(angle), sin(angle));
+			vec2 p = uv - centre;
+			float along = dot(p, way);
+			if (abs(along) < half_length) {
+				// A scratch drawn by a hand bends a little.
+				float across = abs(dot(p, vec2(-way.y, way.x)) - 0.04 * along * along / half_length);
+				float fade = 1.0 - smoothstep(0.6, 1.0, abs(along) / half_length);
+				mark = max(mark, (1.0 - smoothstep(0.5 * width, width, across)) * fade);
+			}
+		}
+	}
+	vec2 pit_cell = floor(uv / PIT_CELL);
+	vec2 ph = cell_hash(pit_cell + vec2(salt * 3.1, 7.7));
+	if (ph.x < PIT_SHARE * amount) {
+		vec2 pit = (pit_cell + 0.2 + 0.6 * cell_hash(pit_cell + vec2(1.9, salt))) * PIT_CELL;
+		float radius = 0.08 + 0.15 * ph.y;
+		mark = max(mark, 1.0 - smoothstep(0.6 * radius, radius, length(uv - pit)));
+	}
+	if (mark > 0.0) {
+		s.coat_roughness = mix(s.coat_roughness, 0.45, mark);
+		body = mix(body, body * 1.1 + vec3(0.02), 0.5 * mark);
+	}
+}
 #endif
 
 // textured: the hit is on a straight slope's face (closest_hit's grain);
@@ -992,6 +1174,12 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			// spread over every face: photoreal8's scuffs everywhere read as "a
 			// procedural texture" on a part alone.
 			gathered_wear(local, thing.box_min, thing.box_max, ng, own, which, scene.marks.x, body, s);
+		}
+		if (scene.breakup.x > 0.0 && textured < 0.5) {
+			polish_split(local, thing.box_min, thing.box_max, which, scene.breakup.x, s);
+		}
+		if (scene.breakup.y > 0.0) {
+			sparse_scuffs(local, which, scene.breakup.y, body, s);
 		}
 #endif
 		if (textured < 0.0) {
@@ -1448,6 +1636,19 @@ vec3 shadow_marked(vec3 at, vec3 n, vec3 relief) {
 			kept += c * max(dot(relief, l), 0.0) / facing * let;
 		}
 	}
+	if (scene.source.w > 0.0) {
+		// The large source (photoreal14): its light and its shadow, once.
+		vec3 l = source_pick(rand2());
+		float facing = max(dot(n, l), 0.0);
+		float pdf = source_pdf(l);
+		float c = pdf > 0.0 ? luminance(source_light(l)) * facing / pdf : 0.0;
+		if (c > 0.0) {
+			vec3 let = through_masked(at, l, 1e7, MASK_SOLID);
+			all += c;
+			seen += c * let;
+			kept += c * max(dot(relief, l), 0.0) / facing * let;
+		}
+	}
 	for (int k = 0; k < 4; k++) {
 		vec3 l;
 		float own = 0.0;
@@ -1591,6 +1792,29 @@ float sky_pdf(vec3 way, vec3 n) {
 	return scene.sky.w > 0.5 ? place_pdf(way) : max(dot(n, way), 0.0) / PI;
 }
 
+#ifdef MARKS
+// The sky's and the large source's light together (photoreal14), and how
+// likely the light's own picks are to find a way: the source's share of the
+// picks by its own chance, the rest by the sky's.
+vec3 lit_from(vec3 way) {
+	return sky_light(way) + source_light(way);
+}
+
+float lit_pdf(vec3 way, vec3 n) {
+	float share = source_share();
+	return share > 0.0 ? share * source_pdf(way) + (1.0 - share) * sky_pdf(way, n) : sky_pdf(way, n);
+}
+
+// Whether the surface being lit is a staged table (photoreal14b): lit by the
+// large source as the white card is, but mirroring only scene.source_shape.y
+// of it. Mirrored whole, its glare was as bright again as its own colour,
+// and the table was drawn nearly white.
+bool on_table = false;
+#else
+#define lit_from sky_light
+#define lit_pdf sky_pdf
+#endif
+
 // The light arriving at a point of a surface straight from the lights and
 // the sky.
 vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
@@ -1612,7 +1836,17 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 	// over the hemisphere otherwise, and weighed against the bounce.
 	float pdf_light;
 	vec3 l;
+#ifdef MARKS
+	// The large source (photoreal14) half the time when there is one: its
+	// chance drawn only then, so without one each path is as it was.
+	float share = source_share();
+	bool to_source = share > 0.0 && rand() < share;
+	if (to_source) {
+		l = source_pick(rand2());
+	} else if (tent()) {
+#else
 	if (tent()) {
+#endif
 		l = tent_pick(n, pdf_light);
 	} else if (scene.sky.w > 0.5) {
 		l = place_pick(rand2(), pdf_light);
@@ -1620,12 +1854,34 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 		l = cosine_around(n, rand2());
 		pdf_light = max(dot(n, l), 0.0) / PI;
 	}
+#ifdef MARKS
+	if (share > 0.0) {
+		pdf_light = lit_pdf(l, n);
+	}
+#endif
 	if (pdf_light > 0.0) {
 		float pdf_bounce;
 		vec3 f = reflect_light(s, n, v, l, pdf_bounce);
 		if (max(f.r, max(f.g, f.b)) > 0.0) {
-			vec3 let = through(at, l);
-			sum += f * sky_light(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
+			vec3 let = through_masked(at, l, 1e7, lit_mask(l));
+#ifdef MARKS
+			if (on_table && share > 0.0) {
+				// The source's light on a table is taken here alone (its bounce
+				// leaves it), so it weighs 1: its colour as the white card's is
+				// lit, and of its gloss (the whole lobe, the glance's Fresnel
+				// too) only as much as asked.
+				float n_l = max(dot(n, l), 0.0);
+				vec3 f0 = mix(vec3(0.08 * s.specular), s.albedo, s.metallic);
+				vec3 own = (vec3(1.0) - schlick(f0, max(dot(n, v), 0.0))) * (1.0 - s.metallic) * s.albedo / PI * n_l;
+				vec3 fd = mix(own, f, scene.source_shape.y);
+				sum += (f * sky_light(l) * balance(pdf_light, pdf_bounce) + fd * source_light(l)) * let
+					/ pdf_light;
+			} else {
+				sum += f * lit_from(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
+			}
+#else
+			sum += f * lit_from(l) * let * balance(pdf_light, pdf_bounce) / pdf_light;
+#endif
 		}
 	}
 	return sum;
@@ -1678,7 +1934,9 @@ void main() {
 		vec4 first = vec4(0.0, 0.0, 0.0, 4.0);
 		bool met = false;
 		for (int event = 0; event < most + 8; event++) {
-			if (!trace(from, way, 1e7, 0xFFu, gl_RayFlagsOpaqueEXT)) {
+			// A bounce towards the large source passes the sweep (lit_mask).
+			uint seen = !straight && lit_mask(way) == MASK_SOLID ? 0xFFu & ~MASK_SWEEP : 0xFFu;
+			if (!trace(from, way, 1e7, seen, gl_RayFlagsOpaqueEXT)) {
 				met = true;
 				if (straight && scene.stage.x > 0.5 && scene.look.w < -0.5) {
 					// Nothing past a staged surface's white card: the card alone
@@ -1691,12 +1949,21 @@ void main() {
 					// What is behind everything, as the eye sees it.
 					radiance += carried * scene.background.rgb;
 				} else {
-					float weight = sharp ? 1.0 : balance(last_pdf, sky_pdf(way, last_n));
-					radiance += carried * sky_light(way) * weight;
+					float weight = sharp ? 1.0 : balance(last_pdf, lit_pdf(way, last_n));
+#ifdef MARKS
+					// Off a table, the source was taken by direct() alone.
+					radiance += carried * (on_table && source_share() > 0.0 ? sky_light(way) : lit_from(way))
+						* weight;
+#else
+					radiance += carried * lit_from(way) * weight;
+#endif
 				}
 				break;
 			}
 			Instance thing = instances[hit.instance];
+#ifdef MARKS
+			on_table = thing.info.y == KIND_SWEEP && scene.stage.x > 0.5 && scene.look.w > -0.5;
+#endif
 			if (inside) {
 				// Through the clear plastic it went in at.
 				carried *= exp(-absorb * hit.t);
@@ -1765,9 +2032,9 @@ void main() {
 				// over everything seen through a windscreen.
 				float f = schlick(vec3(0.045), abs(dot(ng, v))).x;
 				vec3 mirrored = reflect(way, n);
-				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, MASK_SOLID | MASK_SWEEP,
+				if (!inside && !trace(at + ng * 0.02, mirrored, 1e7, lit_mask(mirrored),
 						gl_RayFlagsOpaqueEXT)) {
-					radiance += carried * f * sky_light(mirrored);
+					radiance += carried * f * lit_from(mirrored);
 				}
 				if (scene.look.x > 0.5 && !inside && scene.wear.x > 0.0) {
 					// A handled clear part (photoreal4): fine scratches in its skin
@@ -1929,6 +2196,12 @@ struct Hit {
 	// Where, in the part's own space.
 	vec3 local;
 	float unused;
+#ifdef MARKS
+	// The face hit, in the part's own space (photoreal15): which way it
+	// faces on the part, whichever way the part is turned in the model.
+	vec3 face;
+	float face_unused;
+#endif
 };
 
 layout(location = 0) rayPayloadInEXT Hit hit;
@@ -1951,6 +2224,12 @@ struct Hit {
 	// Where, in the part's own space.
 	vec3 local;
 	float unused;
+#ifdef MARKS
+	// The face hit, in the part's own space (photoreal15): which way it
+	// faces on the part, whichever way the part is turned in the model.
+	vec3 face;
+	float face_unused;
+#endif
 };
 
 layout(location = 0) rayPayloadInEXT Hit hit;
@@ -2003,6 +2282,13 @@ const float ROUND = 0.6;
 // own number (info.z).
 float edge_amount = 0.0;
 uint part_key = 0u;
+#ifdef MARKS
+// Moulded ABS's own unevenness (photoreal15, PathTracer.peel and sink in
+// info.w's third and fourth bytes, in hundredths; 0 for none): its skin's
+// orange-peel waviness, and how far it sinks over thick sections.
+float peel_amount = 0.0;
+float sink_amount = 0.0;
+#endif
 
 float wave_noise(vec3 p);
 
@@ -2296,6 +2582,63 @@ vec3 grain_bumps(vec3 at, vec3 face, vec3 n) {
 // it, so a light mirrored across a long face bends, as a real part's does.
 const float SINK = 0.0005;
 
+#ifdef MARKS
+// Orange peel (photoreal15): a moulded skin is never flat. It ripples a few
+// microns over a millimetre or two, as the mould's polish and the plastic's
+// cooling leave it, so every reflection in it wobbles and a highlight's edge
+// is never ruled: the photographs' are broken and wavy where ours were cut
+// by a straight edge. Two octaves of smooth noise in the part's own space
+// (LDU), the first PEEL_CELL across, leaning the normal by about PEEL_SLOPE
+// at 1, each part its own.
+const float PEEL_CELL = 2.5;
+const float PEEL_SLOPE = 0.03;
+
+vec3 peeled(vec3 at, vec3 n) {
+	vec3 own = vec3(float(part_key & 1023u) * 0.917, float((part_key >> 10) & 1023u) * 0.533, 7.3);
+	vec3 s = at / PEEL_CELL + own;
+	vec3 t = at / (PEEL_CELL * 0.43) + own * 1.7 + vec3(3.7, 0.0, 9.1);
+	vec3 w = vec3(wave_noise(s), wave_noise(s + vec3(5.2, 1.3, 7.1)), wave_noise(s + vec3(2.9, 8.4, 3.3)))
+		+ 0.5 * vec3(wave_noise(t), wave_noise(t + vec3(4.1, 6.6, 0.7)), wave_noise(t + vec3(8.8, 2.2, 5.5)));
+	return normalize(n + (w - n * dot(w, n)) * PEEL_SLOPE * peel_amount);
+}
+
+// Sink (photoreal15): ABS shrinks as it cools, most where it is thickest, so
+// a top dips a few microns round the foot of each stud and over each tube
+// beneath it, and what the top mirrors bends and dims there, as the
+// photographs' highlights do round their studs. A dip of SINK_STUD LDU
+// SINK_WIDE across just off each stud's foot, and of SINK_TUBE LDU over each
+// tube (the corner between four studs, inside the part), at 1.
+const float SINK_STUD = 0.08;
+const float SINK_WIDE = 2.0;
+const float SINK_TUBE = 0.06;
+const float SINK_TUBE_WIDE = 4.0;
+
+vec3 sunk(vec3 at, vec3 n, vec4 lo, vec4 hi) {
+	float body_top = min(hi.y, lo.w);
+	if (abs(at.y - body_top) > 0.3 || hi.x <= lo.x || hi.z <= lo.z) {
+		return n;
+	}
+	vec2 tilt = vec2(0.0);
+	vec2 centre = lo.xz + 10.0 + 20.0 * floor((at.xz - lo.xz) / 20.0);
+	vec2 d = at.xz - centre;
+	float r = length(d);
+	if (body_top < hi.y - 0.5 && r > 6.0) {
+		// h = -SINK_STUD exp(-x^2), x = (r - 6) / SINK_WIDE: its slope outwards.
+		float x = (r - 6.0) / SINK_WIDE;
+		tilt += SINK_STUD * 2.0 * x / SINK_WIDE * exp(-x * x) * d / r;
+	}
+	vec2 corner = lo.xz + 20.0 * floor((at.xz - lo.xz) / 20.0 + 0.5);
+	if (all(greaterThan(corner, lo.xz + 5.0)) && all(lessThan(corner, hi.xz - 5.0))) {
+		vec2 e = at.xz - corner;
+		float q = length(e) / SINK_TUBE_WIDE;
+		if (q > 1e-4) {
+			tilt += SINK_TUBE * 2.0 * q / SINK_TUBE_WIDE * exp(-q * q) * e / length(e);
+		}
+	}
+	return normalize(n - vec3(tilt.x, 0.0, tilt.y) * sink_amount);
+}
+#endif
+
 vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	vec3 high = vec3(box_max.x, min(box_max.y, box_min.w), box_max.z);
 	vec3 bent = bevelled(at, n, box_min.xyz, high);
@@ -2311,6 +2654,16 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	}
 	vec3 s = at / 14.0;
 	vec3 wave = vec3(wave_noise(s), wave_noise(s + vec3(5.2, 1.3, 7.1)), wave_noise(s + vec3(2.9, 8.4, 3.3)));
+#ifdef MARKS
+	// On the top wherever it is hit (bevelled() hands an inner point of a top
+	// back as the axis itself, not n, so this cannot wait for bent == n).
+	if (sink_amount > 0.0 && n.y > 0.97) {
+		bent = sunk(at, bent, box_min, box_max);
+	}
+	if (peel_amount > 0.0) {
+		bent = peeled(at, bent);
+	}
+#endif
 	return normalize(bent + (wave - n * dot(wave, n)) * 0.006);
 }
 
@@ -2321,6 +2674,10 @@ void main() {
 	stud_variety = float(codes & 255u) / 255.0;
 	edge_amount = float((codes >> 8) & 255u) / 100.0;
 	part_key = instances[which].info.z;
+#ifdef MARKS
+	peel_amount = float((codes >> 16) & 255u) / 100.0;
+	sink_amount = float((codes >> 24) & 127u) / 100.0;
+#endif
 	logo_grime = 0.0;
 	uvec4 mesh = meshes[instances[which].info.x];
 	uint first = mesh.y + uint(gl_PrimitiveID) * 3u;
@@ -2367,4 +2724,8 @@ void main() {
 	hit.t = gl_HitTEXT;
 	hit.instance = which;
 	hit.local = local;
+#ifdef MARKS
+	vec3 own_face = dot(g, g) > 1e-20 ? normalize(g) : vec3(0.0, 1.0, 0.0);
+	hit.face = dot(own_face, n) < 0.0 ? -own_face : own_face;
+#endif
 }

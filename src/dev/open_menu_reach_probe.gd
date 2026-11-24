@@ -56,9 +56,12 @@ func _run() -> void:
 		(playback as BuildPlayback).stop()
 	# A phone draws at a browser's scale (Main.screen_factor, web), where
 	# a desktop's window draws its layout half as big, which no phone does:
-	# held there, with the phone's layout's own look at it stopped.
+	# held there by the phone's layout (PhoneShell.holds_scale). Stopping that
+	# layout's _process held it only until the next wake: since idlesleep a
+	# line said sets it going again, and its look put the desktop's scale
+	# back mid-run (phonedrag, twist_probe's points then on the foot row).
 	if Phone.on() and not Phone.wide() and not OS.has_feature("web"):
-		(_main.get("_phone") as Node).set_process(false)
+		(_main.get("_phone") as Node).set("holds_scale", true)
 		for link: Dictionary in root.size_changed.get_connections():
 			var call: Callable = link["callable"]
 			if call.get_method() == &"_match_screen_density":

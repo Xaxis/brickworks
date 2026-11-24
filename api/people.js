@@ -256,6 +256,7 @@ import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { billingMode } from "./_billing.js";
 import { db, dbConfigured, dbCount, orUnknown } from "./_db.js";
+import { betaSaid, sayBeta } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
   SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
@@ -1295,6 +1296,7 @@ function pageCsp() {
 }
 
 function html(response, status, body, { tests = false, unlisted = false } = {}) {
+  if (response.betaSaid) body = sayBeta(body, response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -1620,7 +1622,7 @@ async function challengePage(request, response) {
   const origin = originOf(request);
   const tests = testsAsked(request.query);
   const id = /^[1-9][0-9]{0,15}$/.test(String(request.query?.id || "")) ? Number(request.query.id) : null;
-  const body = await challengePageHtml(origin, id, tests, String(request.query?.lang || "en"));
+  const body = sayBeta(await challengePageHtml(origin, id, tests, String(request.query?.lang || "en")), response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : PAGE_CACHE);
   return response.status(200).end(body);
@@ -1772,7 +1774,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
   </div>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="${asText(say("Elsewhere"))}">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }), { row: true })}</div>
   </aside>`;
 
   // Pinned: up to three of their models, in the order they chose.
@@ -2085,6 +2087,8 @@ async function handler(request, response) {
   try {
     // HEAD as GET, its body left off by the server.
     if (request.method === "GET" || request.method === "HEAD") {
+      // A page: what it says of the beta, for its strip (api/_settings.js sayBeta).
+      if (["page", "challenge_page", "list_page", "talk_page"].includes(op)) response.betaSaid = await betaSaid(request);
       if (op === "me") return await me(request, response);
       if (op === "profile") return await profile(request, response);
       if (op === "page") return await profilePage(request, response);

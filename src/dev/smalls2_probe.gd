@@ -270,6 +270,14 @@ func _timeline() -> void:
 		steps.visible and row != null and _presses <= 2)
 	await _shot("2_timeline")
 	var named: Dictionary = steps.controls_by_name()
+	# Since ux15 a phone's bar is one row of five, the Booklet row in its
+	# More's sheet: a tap on More brings it into sight.
+	var more: Control = named.get("steps_more") as Control
+	if more != null and more.is_visible_in_tree():
+		await _tap(_middle(more))
+		await _frames(20)
+		var sheet: Window = steps.get("_more_sheet")
+		_check("the bar's More shows the rest of it in a sheet", sheet != null and sheet.visible)
 	var lay: Control = named.get("booklet_lay_out") as Control
 	var looks: bool = lay != null and lay.is_visible_in_tree()
 	_check("its Booklet row is shown on a model as it first opens (order %s)"
@@ -292,14 +300,18 @@ func _timeline() -> void:
 	var bottom: float = steps.get_global_rect().end.y
 	_check("the timeline ends above the row of tools (%.0f, the row from %.0f points)" % [bottom / _pt(),
 		foot.get_global_rect().position.y / _pt()], bottom <= foot.get_global_rect().position.y + 1.0)
-	_check("Lay out the page… is on the screen, over nothing (%.0f, %.0f points)" % [r.get_center().x / _pt(),
-		r.get_center().y / _pt()], root.get_visible_rect().has_point(r.get_center())
-		and not _phone.call("covers", r.get_center()))
+	# Where it is drawn on the screen: in More's sheet since ux15, which the
+	# phone's own bars are under.
+	var at: Vector2 = _middle(lay)
+	var in_sheet: bool = lay.get_window() != root
+	_check("Lay out the page… is on the screen, over nothing (%.0f, %.0f points)" % [at.x / _pt(),
+		at.y / _pt()], root.get_visible_rect().has_point(at)
+		and (in_sheet or not _phone.call("covers", at)))
 	var editor: PageEditor = _main.get("_page_editor")
 	_presses = 0
 	var heard: Array = [false]
 	(lay as BaseButton).button_down.connect(func() -> void: heard[0] = true)
-	await _tap(r.get_center())
+	await _tap(at)
 	for _n: int in 300:
 		await process_frame
 		if editor.is_open():
@@ -307,7 +319,7 @@ func _timeline() -> void:
 	_check("a tap on Lay out the page… opens the page editor (%d tap)" % _presses, editor.is_open())
 	if not editor.is_open():
 		print("    the button heard the press: %s; what takes a press there: %s" % [heard[0],
-			_who_at(r.get_center())])
+			_who_at(at)])
 	# Where the timeline lies against the foot's row: its own room and what
 	# it wants, each row of it, and the column round it.
 	var column: Control = steps.get_parent_control()
@@ -580,7 +592,16 @@ func _world_box() -> AABB:
 
 
 func _middle(control: Control) -> Vector2:
-	return control.get_global_rect().get_center() if control != null else Vector2(-100, -100)
+	if control == null:
+		return Vector2(-100, -100)
+	# A control in a sheet (an embedded Window) is placed in the sheet: the
+	# sheet's own place added, for a tap on the window it is drawn in.
+	var at: Vector2 = control.get_global_rect().get_center()
+	var window: Window = control.get_window()
+	while window != null and window != root:
+		at += Vector2(window.position)
+		window = window.get_parent().get_window() if window.get_parent() != null else null
+	return at
 
 
 func _tap(at: Vector2) -> void:

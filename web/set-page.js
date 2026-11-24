@@ -35,7 +35,7 @@
 // Every word in the page's language (web/card.js say: /de/library/set/<n>
 // carries its copy's words), its numbers as the language writes them.
 import { call, signedIn } from "/account.js";
-import { altCardSaid, counted, langAt, modelCard, number, pictureOf, say } from "/card.js";
+import { altCardSaid, appAt, counted, langAt, modelCard, number, pictureOf, say } from "/card.js";
 
 const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 // A list's link (api/_mylists.js): ten letters and digits.
@@ -97,7 +97,7 @@ async function builtFrom(article) {
       + "once you publish it, it is listed here.");
     const go = document.createElement("a");
     go.className = "cta";
-    go.href = `/app?new=1&parts=${encodeURIComponent(article.dataset.set)}`;
+    go.href = appAt(`new=1&parts=${encodeURIComponent(article.dataset.set)}`);
     go.dataset.buildFrom = "";
     go.textContent = say("Build something from it");
     empty.append(note, how, go);
@@ -140,19 +140,23 @@ function versionsOf(article, versions, before) {
     row.append(...shown.map((model) => {
       const own = model.changed !== true ? "" : model.thumb ? pictureOf(model)
         : model.image ? `/m/${encodeURIComponent(model.id)}.cutout.png` : "";
-      const card = modelCard({ ...model, picture: own || ldraw || undefined });
+      const card = modelCard({ ...model, picture: own || ldraw || undefined }, { inWords: true });
       const picture = card.querySelector(".frame img");
       if (picture && ldraw) {
         picture.addEventListener("error", () => {
           if (!picture.src.endsWith(ldraw)) picture.src = ldraw;
         });
       }
-      const line = document.createElement("small");
-      line.className = "alt-said version-said";
-      line.dataset.changed = String(model.changed === true);
-      line.textContent = model.changed === true ? say("Their own version: changed from LDraw's model")
-        : say("LDraw's model, as it is");
-      card.querySelector(".words")?.append(line);
+      // A changed one is its sharer's, and its card says so (cardHtml:
+      // who published it, and whose model it was changed from); LDraw's as
+      // it is says that it is.
+      card.dataset.changed = String(model.changed === true);
+      if (model.changed !== true) {
+        const line = document.createElement("small");
+        line.className = "alt-said version-said";
+        line.textContent = say("LDraw's model, as it is");
+        card.querySelector(".words")?.append(line);
+      }
       return card;
     }));
     section.append(row);

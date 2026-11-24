@@ -240,7 +240,10 @@ class Yard:
             path.write_text(text)
             path.chmod(0o755)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith(("GIT_", "TRAIN_", "STUB_", "SHIP_", "RELEASE_", "LIVE_WAIT", "LIVE_DB", "BOX_"))}
+               # PC_ and BW_ too: ship.sh exports PC_AT_ONCE=6 before its gate, and a yard that kept it ran five
+               # checks at once where the default is three (rel-m325's gate, 2026-11-23).
+               if not k.startswith(("GIT_", "TRAIN_", "STUB_", "SHIP_", "RELEASE_", "LIVE_WAIT", "LIVE_DB", "BOX_",
+                                    "PC_", "BW_"))}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1",
                    GIT_AUTHOR_NAME="Xaxis", GIT_AUTHOR_EMAIL="william.neeley@gmail.com",
                    GIT_COMMITTER_NAME="Xaxis", GIT_COMMITTER_EMAIL="william.neeley@gmail.com",
@@ -845,23 +848,27 @@ def test_a_check_or_probe_the_branch_has_no_name_for_is_refused_when_staged(tmp_
         y.stop()
 
 
+def _connector_change(y: Yard) -> None:
+    """model_view's flow on main, and on stage2 a change to what a chat hears first, which that flow reaches."""
+    y.put("tools/web/model_view_check.mjs", "await fetch(`${site}/api/mcp`, { method: 'POST' });\n")
+    y.git(y.r, "add", "tools/web/model_view_check.mjs")
+    y.git(y.r, "commit", "-q", "-m", "the flow")
+    y.git(y.r, "push", "-q", "origin", "main")
+    y.git(y.r, "checkout", "-q", "stage2")
+    y.git(y.r, "merge", "-q", "--no-edit", "main")
+    y.put("src/net/claude_connector.gd", "class_name ClaudeConnector\n")
+    y.git(y.r, "add", "src/net/claude_connector.gd")
+    y.git(y.r, "commit", "-q", "-m", "what a chat hears first")
+    y.git(y.r, "checkout", "-q", "main")
+
+
 def test_staging_adds_the_checks_whose_flows_reach_what_the_branch_changed(tmp_path):
     """A change to what a session hears through the connector runs model_view
     when the lead named only site: rel-m237 changed it under a hand-picked
     list, and model_view went unrun to rel-m250 (mcpview, 2026-11-02)."""
     y = Yard(tmp_path)
     try:
-        # The flow on main, as it was before the change; the change on stage2.
-        y.put("tools/web/model_view_check.mjs", "await fetch(`${site}/api/mcp`, { method: 'POST' });\n")
-        y.git(y.r, "add", "tools/web/model_view_check.mjs")
-        y.git(y.r, "commit", "-q", "-m", "the flow")
-        y.git(y.r, "push", "-q", "origin", "main")
-        y.git(y.r, "checkout", "-q", "stage2")
-        y.git(y.r, "merge", "-q", "--no-edit", "main")
-        y.put("src/net/claude_connector.gd", "class_name ClaudeConnector\n")
-        y.git(y.r, "add", "src/net/claude_connector.gd")
-        y.git(y.r, "commit", "-q", "-m", "what a chat hears first")
-        y.git(y.r, "checkout", "-q", "main")
+        _connector_change(y)
         staged = y.train("stage", "t-m2", "stage2", "--checks", "site")
         assert staged.returncode == 0, staged.stdout + staged.stderr
         assert "lean.py against the build brickworks.diy serves (%s): " % y.git(y.r, "rev-parse", "--short", "main") \
@@ -874,6 +881,28 @@ def test_staging_adds_the_checks_whose_flows_reach_what_the_branch_changed(tmp_p
         again = y.train("stage", "t-m3", "unitB", "--checks", "io")
         assert again.returncode == 0, again.stdout + again.stderr
         assert "adds no check to those named" in again.stdout and y.spec("t-m3", "checks") == "io", again.stdout
+    finally:
+        y.stop()
+
+
+def test_only_checks_ships_exactly_the_checks_named_at_staging_and_at_the_ship(tmp_path):
+    """lean.py named 96 and 107 checks for rel-m326's and rel-m327's fixes, and
+    the lead's trim of TAG.train/checks was widened again once the merge was
+    made, so the lead stopped each train and ran the proving checks by hand
+    (2026-11-23). --only-checks keeps the list named through the ship."""
+    y = Yard(tmp_path)
+    try:
+        _connector_change(y)
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "site", "--only-checks")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        assert "adds none: exactly those named (--only-checks), at the ship too" in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "checks") == "site"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert y.text("t-m2_pv_args").split()[2:] == ["site", "frames"], y.logs()
+        assert "checks: exactly those named (--only-checks): site" in y.text("t-m2_train.out"), y.logs()
+        both = y.train("stage", "t-m3", "unitB", "--checks", "io", "--only-checks", "--every-check")
+        assert both.returncode == 2 and "train: --every-check or --only-checks, not both" in both.stdout, both.stdout
     finally:
         y.stop()
 

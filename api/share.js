@@ -283,7 +283,7 @@ import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { cronNoted, isCron, sweepHeld } from "./_cron.js";
 import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { raise } from "./_notify.js";
-import { scopeOf } from "./_settings.js";
+import { betaSaid, sayBeta, scopeOf } from "./_settings.js";
 import { originOf } from "./_oauth.js";
 import {
   ASSISTANT_TAGS, KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
@@ -303,8 +303,8 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
-  pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, stepParts, wantedList } from "./_parts.js";
+import { LOTS_SHOWN, LOT_ROW, PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, listRows, namesOf, paletteOf,
+  partNames, partsTable, pickABrick, placedOf, rebrickableCsv, roomOf, sceneOf, stepParts, wantedList } from "./_parts.js";
 import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
@@ -1154,12 +1154,14 @@ function testedMark(mark, steps = null) {
 /// alone, with an avatar made from it; a model shared with no credit, none.
 function designerRow(model) {
   // Somebody else modelled it (a set from LDraw's library the house shares):
-  // they lead, their initial for an avatar, the line that credits them
-  // beside it, and who shares it under, with Follow (sitebold, 2026-11-23:
-  // forty such pages were headed "Brickworks").
+  // they lead, with an avatar made from their name, the line that credits
+  // them beside it, and who shares it under, with Follow (sitebold,
+  // 2026-11-23: forty such pages were headed "Brickworks"). A version its
+  // sharer changed is theirs: they lead, and the line under them says whose
+  // LDraw model it was changed from (sethub).
   const modeller = modelledByOf(model.modelled_by);
   const sharer = model.by ? model.by.name : model.author || "";
-  if (modeller && sharer && modeller.name !== sharer) {
+  if (modeller && !modeller.changed && sharer && modeller.name !== sharer) {
     const via = model.by ? `<a class="who" href="${langAt()}/u/${escapeHtml(model.by.handle)}">${avatarHtml(model.by, { size: "small" })}`
       + `<span>${escapeHtml(model.by.name)}</span></a>` : `<span class="who">${escapeHtml(sharer)}</span>`;
     // Follow beside the sharer it follows, not beside the modeller's name.
@@ -1222,9 +1224,15 @@ export function altLine(page, kept, at = "") {
 
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
-  return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
-    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}`
-    + `${modeller.changed ? escapeHtml(say(", changed by {name}", { name: sharerOf(model) })) : ""}</p>` : "";
+  if (!modeller) return "";
+  // Changed by whoever shares it (designerRow heads the page with them):
+  // theirs, changed from LDraw's model, its modeller linking LDraw's page.
+  if (modeller.changed) {
+    return `<p class="from modelled-by" data-changed-from>${sayHtml("Changed from LDraw's model by {name}",
+      { name: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(modeller.name)}</a>` })}</p>`;
+  }
+  return `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
+    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}</p>`;
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
@@ -1468,6 +1476,12 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // the Parts list under it says.
   const shownModel = { ...model, parts: parts ? parts.pieces : old ? version.parts : model.parts };
   const fileAt = set ? `/library/${id}` : `/m/${id}${old ? `/v/${version.n}` : ""}`;
+  // Its 3D view's scene by the version this page shows, the newest's too:
+  // /m/X/scene.json is kept by the CDN as long as the page, so a page drawn
+  // after a publish opened the version before's model and placed every
+  // comment's pin on it (partpins, rel-m321 to rel-m325's previews), as
+  // the clip recorder once drew it (ttreview F2).
+  const sceneAt = set ? fileAt : `/m/${id}/v/${version.n}`;
   // Its picture with nothing behind the model, on the theme's own ground
   // (?op=cutout: the picture itself for a model published before there were
   // cut-outs). In the strip, whose frames are four to three, the cards'
@@ -1497,8 +1511,11 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // Where it came from, what it changed and what it is based on, under its
   // picture (sitebold, 2026-11-23, as Printables says a remix's source under
   // its pictures); on a phone after the column, so the first screen is the
-  // picture, the name, who made it and the action bar.
-  const lineage = `${fromLine}${changedLine}${basedHtml(model.based || [])}`;
+  // picture, the name, who made it and the action bar. The sets it can be
+  // built from with them: in the column, a house that builds from four
+  // sets said so in three lines on a phone, and its action bar ended 16 px
+  // under a 390 x 844 window's first screen (rel-m325's preview).
+  const lineage = `${fromLine}${changedLine}${altHtml(model.alt)}${basedHtml(model.based || [])}`;
   // What it is, as pills, each said once there is one. Its steps are the
   // ones its step player and booklet number, counted from the file shown;
   // a file that carries none has them worked out as it opens, and they are
@@ -1583,7 +1600,7 @@ ${header}
   <div class="top">
     <div class="media">
     <a class="picture" id="model-picture" href="${escapeHtml(viewer)}" aria-label="${escapeHtml(say("View {name} in 3D", { name: model.name }))}"
-      data-scene="${fileAt}/scene.json"${changed?.drawn ? ` data-changes="/m/${id}/changes.json?n=${changed.n}"` : ""} data-parts="${Number(shownModel.parts) || 0}">${picture
+      data-scene="${sceneAt}/scene.json"${changed?.drawn ? ` data-changes="/m/${id}/changes.json?n=${changed.n}"` : ""} data-parts="${Number(shownModel.parts) || 0}">${picture
       ? `<span class="waiting" aria-hidden="true">${asText(say("Loading its picture…"))}</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">${asText(say("No picture"))}</span>`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
     ${mediaStrip(model, picture, photos, small)}
@@ -1591,7 +1608,6 @@ ${header}
     <div class="side">
       <h1 class="obj-title"${model.name.length > 48 ? ` title="${escapeHtml(model.name)}"` : ""}>${escapeHtml(model.name)}</h1>
       ${designerRow(model)}
-      ${altHtml(model.alt)}
       <div class="actions">
         ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in the studio"))}</a>`
     : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
@@ -1691,12 +1707,6 @@ function pageTabs(model, newest, inLists = 0, parts = null, log = newest > 1) {
   ], { label: say("About it"), extra: "page-tabs" });
 }
 
-/// How many rows the Parts list shows before Show all, and each row's
-/// height, which web/directory.css gives every row: the space the list will
-/// take is kept for it before it comes, so nothing under it moves.
-export const LOTS_SHOWN = 12;
-export const LOT_ROW = 60;
-
 /// Its parts (site278, docs/SOCIAL.md U4): how many in how many lots, the
 /// three shops' lists to download, and the list itself, which
 /// web/model-page.js asks for (/m/X/parts.json) as the section nears the
@@ -1705,8 +1715,7 @@ export const LOT_ROW = 60;
 /// version.
 function partsSection(at, parts) {
   if (!parts || !parts.lots.length) return "";
-  const colours = new Set(parts.lots.map((lot) => lot.colour)).size;
-  const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
+  const rows = listRows(parts.lots);
   const pab = pickABrick(parts);
   // Lean: every byte here is in the page's first bytes, and the list is not.
   return `<section class="parts" id="parts"${panelAttrs("parts")} data-parts="${at}/parts.json">`
@@ -1720,11 +1729,11 @@ function partsSection(at, parts) {
     + `<div class="parts-shops"><a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
     + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
     + pickABrickNote(pab)
-    + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
+    + `<ul class="lot-list" style="min-height:${Math.min(LOTS_SHOWN, rows) * LOT_ROW}px"></ul>`
     // Show all in the page from the start where the list will need it, so
     // its row is in the space kept too: put in only with the list, it moved
     // everything under the panel 48 px (checkdrift, 2026-11-23).
-    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
+    + (rows > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
 }
@@ -2055,7 +2064,9 @@ async function oembed(request, response, origin) {
 /// for itself; [row] is given it without its maker (embedAnswer).
 function embedCard(origin, id, row, lang = "en", words = null, clip = null, blind = false) {
   const link = links(origin, id);
-  const poster = row.has_image ? `/m/${id}.png` : "/share.png";
+  // Its own picture, or the picture's ground with nothing on it: never the
+  // site's share card, which read as an advert where the model should be.
+  const poster = row.has_image ? `/m/${id}.png` : "";
   const at = lang === "en" ? "" : `/${lang}`;
   const page = at ? `${origin}${at}/m/${id}` : link.url;
   const viewer = at ? `${link.viewer}&lang=${lang}` : link.viewer;
@@ -2097,8 +2108,8 @@ ${scriptWords}${siteChrome().head}
 <div class="media">
 <a class="picture" href="${escapeHtml(viewer)}" rel="noopener" aria-label="${escapeHtml(say("View {name} in 3D", { name: row.name }))}"
   data-scene="/m/${id}/scene.json">${clip
-    ? `<video src="${escapeHtml(clip.path)}" poster="${escapeHtml(poster)}" muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
-    : `<img src="${escapeHtml(poster)}" alt="">`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
+    ? `<video src="${escapeHtml(clip.path)}"${poster ? ` poster="${escapeHtml(poster)}"` : ""} muted loop playsinline preload="metadata" disablepictureinpicture aria-hidden="true"></video>`
+    : poster ? `<img src="${escapeHtml(poster)}" alt="">` : ""}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
 ${clip ? iconButtonHtml({ icon: "pause", name: say("Pause"), small: true, attrs: 'data-clip-toggle hidden' }) : ""}
 </div>
 ${blind ? "" : `<div class="embed-bar">
@@ -2195,6 +2206,7 @@ function embedCsp() {
 export const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 
 function html(response, status, body, { embed = false, cache = SHARED_CACHE } = {}) {
+  if (!embed && response.betaSaid) body = sayBeta(body, response.betaSaid);
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", embed ? embedCsp() : pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -2487,6 +2499,8 @@ async function read(request, response) {
   const op = String(request.query?.op || "");
   const id = String(request.query?.id || "");
   const origin = originOf(request);
+  // A page: what it says of the beta, for its strip (sayBeta).
+  if (op === "page" || op === "catalog_set" || op === "set") response.betaSaid = await betaSaid(request);
 
   if (op === "mine") return mine(request, response, origin);
   if (op === "made") return madeShown(request, response);

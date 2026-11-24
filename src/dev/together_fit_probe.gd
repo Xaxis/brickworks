@@ -93,8 +93,15 @@ func _run() -> void:
 	var together: Together = _main.get("_together")
 	together.check_alone([{"who": "a1b2c3d4", "name": "Ann", "here": true, "owner": false,
 		"at": null, "sel": [], "view": null}])
+	# The session's link as start gives it, as long as a real one: check_alone
+	# makes none (its _reset clears it), and the pictures showed an empty
+	# field beside Copy link.
+	together.link = "https://brickworks.diy/app?together=wv5o99Qwfl4hqfTR8LtPSRVz36un66No"
+	together.changed.emit()
 	await _frames(40)
 	_whole(dialog, "in a session")
+	_check("in a session: its link shown beside Copy link, from its start",
+		str(dialog.get("_link").text).begins_with("https://brickworks.diy/app?together="))
 	_in_sight(dialog, ["together_copy", "together_end", "together_chat_field", "together_chat_send",
 		"together_close"], "in a session")
 	var note: String = str(dialog.page_state().get("note", ""))
@@ -116,6 +123,7 @@ func _run() -> void:
 	await _frames(40)
 	_whole(dialog, "open to watchers")
 	_in_sight(dialog, ["together_watch_copy", "together_watch_close", "together_end", "together_close"], "open to watchers")
+	_whole_rows(dialog, "open to watchers")
 	await _shot("watching")
 	together.watch = {}
 	together.changed.emit()
@@ -192,6 +200,28 @@ func _in_sight(dialog: TogetherDialog, names: Array, when: String, room: Rect2 =
 			out.append("%s at %s" % [name, _rect(Rect2(at + box.position, box.size))])
 	_check("%s: %s in sight%s" % [when, ", ".join(PackedStringArray(names)),
 		"" if out.is_empty() else " — not: " + "; ".join(out)], out.is_empty())
+
+
+## Who is here shown in whole rows: each row one height, and the list a
+## whole number of them tall, so no row's buttons are cut through (buildfit).
+func _whole_rows(dialog: TogetherDialog, when: String) -> void:
+	var scroll: ScrollContainer = dialog.get("_people_scroll")
+	var rows: VBoxContainer = dialog.get("_rows")
+	var heights := PackedStringArray()
+	var tall: float = -1.0
+	var even: bool = rows != null and rows.get_child_count() > 0
+	if even:
+		for row: Node in rows.get_children():
+			var high: float = (row as Control).size.y
+			heights.append("%d" % roundi(high))
+			if tall < 0.0:
+				tall = high
+			even = even and absf(high - tall) < 0.5
+	var shown: float = scroll.size.y if scroll != null else 0.0
+	var gap: float = float(rows.get_theme_constant("separation")) if rows != null else 0.0
+	var n: float = (shown + gap) / (tall + gap) if tall > 0.0 else 0.0
+	_check("%s: who is here in whole rows (rows %s, the list %d tall, %.2f rows)" % [when, ",".join(heights), roundi(shown), n],
+		even and absf(n - roundf(n)) < 0.05 and n >= 0.95)
 
 
 func _rect(box: Rect2) -> String:

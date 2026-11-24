@@ -670,7 +670,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`PhoneShell._row`, `add_tiles`, `tiles_why`; ux14, `ux12_walk_probe
   --only=x14 --phone`); and a finger held still on a
   part (`Main._on_phone_hold`, `HOLD_MS`) brings its actions, the right-click
-  menu's rows. Two fingers turn the view and pinch zooms
+  menu's rows; with the whole of a sub-assembly selected (a tap on a set's
+  tower takes all of it) the first row is Edit inside it and the line over
+  the model says so (`PhoneShell._whole_assembly`; ux15, `ux15_phone_probe
+  --only=p17 --phone`, King's Castle at 390 x 844). Two fingers turn the view and pinch zooms
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
   the view stays (`finger_taken`). A second finger makes the gesture the
   view's (`Main._second_finger`, touchfix): the first finger's press on a

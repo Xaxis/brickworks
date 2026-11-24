@@ -320,11 +320,13 @@ const countHtml = (n, zero) => (n ? `<span class="n" aria-hidden="true">${escape
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
 /// name, what it means on hover; a challenge won is a link to the model that
 /// won it. [awards] as api/people.js achievementsOf makes them: [{id, name,
-/// said, model?, level?}]. "" when there is none.
-export function awardsHtml(awards, { id = "" } = {}) {
+/// said, model?, level?}]. "" when there is none. [row]: the kit's row that
+/// scrolls where it has no room (a profile's head on a phone: web/scroller.js
+/// gives it the keyboard while it overflows, its fade and its bar).
+export function awardsHtml(awards, { id = "", row = false } = {}) {
   const shown = (awards || []).filter((one) => one && one.name);
   if (!shown.length) return "";
-  return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="${escapeHtml(say("Achievements"))}">${shown.map((one) => {
+  return `<ul class="pills awards${row ? " scroller inset" : ""}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="${escapeHtml(say("Achievements"))}">${shown.map((one) => {
     const inside = `${iconHtml("award")}${escapeHtml(one.name)}`;
     const said = one.said ? ` title="${escapeHtml(one.said)}"` : "";
     const level = Number(one.level) > 0 ? ` data-level="${Number(one.level)}"` : "";
@@ -533,12 +535,15 @@ export const langAt = () => {
   return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
 
-/// A link into the app with [query], in the page's language as theme.js
-/// carries it into the links a page is served with: a link drawn later,
-/// a card's or the pick's, is not among those (sitebold, 2026-11-23).
-export const appAt = (query) => {
-  const code = langAt().slice(1);
-  return `/app?${query}${code ? `&lang=${code}` : ""}`;
+/// A link into the app with [query], in the language web/theme.js
+/// carries into the links a page is served with (brickworksLang.app: the
+/// one chosen, else the page's, else the browser's where not English): a
+/// link drawn later, a card's, the pick's or the feed's, is not among
+/// those (sitebold, 2026-11-23). On a page the server makes, the page's.
+export const appAt = (query = "") => {
+  const code = globalThis.brickworksLang?.app?.() || langAt().slice(1);
+  const asked = [query, code ? `lang=${code}` : ""].filter(Boolean).join("&");
+  return `/app${asked ? `?${asked}` : ""}`;
 };
 
 /// The tags that say a model was made with the assistant or Brickify, as
@@ -653,7 +658,9 @@ const catalogueSet = (model) => (isSet(model) && typeof model.library.set === "s
 /// gallery's; a set of the catalogue always carries Own and your lists.
 /// [pick]: this week's pick (/api/share?op=shelves), first on the home
 /// page's shelf: Week's pick its first mark, as the gallery's front marks it.
-export function cardHtml(model, { earned = false, like = false, eager = false, keep = false, pick = false } = {}) {
+/// [inWords]: a set's own Versions (web/set-page.js): a model somebody
+/// modelled and another shares says "Modelled by" them, in words.
+export function cardHtml(model, { earned = false, like = false, eager = false, keep = false, pick = false, inWords = false } = {}) {
   const id = String(model.id);
   const name = escapeHtml(model.name);
   const picture = pictureOf(model);
@@ -685,20 +692,26 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
     marks.push(`<span class="pill good model3d" title="${escapeHtml(say("LDraw has a 3D model of it, to build in Brickworks"))}">3D</span>`);
     data.push('data-model3d="yes"');
   }
-  // Who made it: whoever modelled it, when that is not who shares it (the
-  // app's Library's model it is: supabase/modelled_by.sql), as words that
-  // wrap on a phone's narrow card rather than end in "…"; else their avatar and name, a link to their profile, when they
-  // have one shown in public (supabase directory_card's by); else the name
-  // they credited it to, as words; else nobody.
+  // Who made it: whoever modelled it, when its sharer shares LDraw's model
+  // as it is (the app's Library's model it is: supabase/modelled_by.sql),
+  // as words that wrap on a phone's narrow card rather than end in "…";
+  // else whoever shares it: their avatar and name, a link to their
+  // profile, when they have one shown in public (supabase directory_card's
+  // by); else the name they credited it to, as words; else nobody. A
+  // version its sharer changed is theirs, and says under it whose model it
+  // was changed from: Marc modelled LDraw's model, not their version.
   const by = model.by && typeof model.by === "object" && HANDLE.test(String(model.by.handle || "")) ? model.by : null;
   const modeller = modellerOf(model);
+  const changedFrom = changedFromOf(model);
   const sharer = by ? by.name || by.handle : model.author || "";
   // A model somebody shares that a person modelled (a set from LDraw's
   // library, shared by the house): that person leads, as a sharer would,
   // their initial for an avatar, and who shares it is said under it, small
   // (sitebold, 2026-11-23: forty such cards read "Brickworks", the gallery
-  // one company's posts). A set's own card names them in words.
-  const who = modeller && sharer && sharer !== modeller
+  // one company's posts). A set's own card names them in words
+  // ([inWords]: its page's Versions, sethub), "Modelled by" them.
+  const led = modeller && sharer && sharer !== modeller && !inWords;
+  const who = led
     ? `<span class="who modeller" data-modelled-by title="${escapeHtml(say("Modelled by {name}", { name: modeller }))}">`
       + `${avatarHtml({ name: modeller }, { size: "small" })}<span>${escapeHtml(modeller)}</span></span>`
     : modeller
@@ -709,7 +722,11 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
-  if (modeller && sharer && sharer !== modeller) lines.push(`<small class="via">${escapeHtml(say("Shared by {name}", { name: sharer }))}</small>`);
+  if (led) lines.push(`<small class="via">${escapeHtml(say("Shared by {name}", { name: sharer }))}</small>`);
+  if (changedFrom) {
+    lines.push(`<small class="changed-from" data-changed-from>${escapeHtml(say("Changed from LDraw's model by {name}",
+      { name: changedFrom }))}</small>`);
+  }
   if (set) {
     const said = [set.set, set.theme && themeSaid(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
     if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);
@@ -791,9 +808,19 @@ export function cardHtml(model, { earned = false, like = false, eager = false, k
 const MODEL_ID = /^[A-Za-z0-9]{10}$/;
 
 /// Whoever modelled [model] when that is not who shares it (the app's
-/// Library's model it is: supabase/modelled_by.sql), by name; "" for none.
-export const modellerOf = (model) => (model && model.modelled_by && typeof model.modelled_by === "object"
-  && typeof model.modelled_by.name === "string" ? model.modelled_by.name.trim() : "");
+/// Library's model it is: supabase/modelled_by.sql), by name; "" for none,
+/// and for a version its sharer changed, which is theirs (sethub).
+const modelledOf = (model) => (model && model.modelled_by && typeof model.modelled_by === "object"
+  && typeof model.modelled_by.name === "string" ? model.modelled_by : null);
+export const modellerOf = (model) => {
+  const modelled = modelledOf(model);
+  return modelled && modelled.changed !== true ? modelled.name.trim() : "";
+};
+/// Whose LDraw model a changed version was changed from; "" for any other.
+export const changedFromOf = (model) => {
+  const modelled = modelledOf(model);
+  return modelled && modelled.changed === true ? modelled.name.trim() : "";
+};
 
 /// An icon link, an icon button's look (iconButtonHtml): its icon, then its
 /// count once there is one; its name and count its label.
