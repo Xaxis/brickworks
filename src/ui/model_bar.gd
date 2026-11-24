@@ -907,7 +907,21 @@ func save_to_file(path: String) -> bool:
 	on_disk = path
 	_name.text = called
 	_name.text_changed.emit(called)
-	return await _on_save()
+	if not await _on_save():
+		return false
+	if model_name() == called.strip_edges():
+		return true
+	# A saved model that is not this one had the file's name, and the person
+	# gave this one another (ask_name_taken): the file they chose is written
+	# all the same, as it is named; Save writes it again only while the model
+	# keeps the file's name.
+	var name: String = model_name()
+	if await store.export_paced(path, name):
+		SaveTo.wrote(path)
+		_say("saved “%s” — wrote %s" % [name, path])
+		return true
+	_say("saved “%s” here, but could not write %s" % [name, path])
+	return false
 
 
 ## "Save, then start new": the new model only once the save has been made.
