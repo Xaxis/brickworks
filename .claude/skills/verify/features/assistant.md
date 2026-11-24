@@ -2929,7 +2929,7 @@ python3 tools/minitest.py tests/test_realset.py              # exclusion, halves
 python3 tools/bench/realset.py sample --which tune --show     # never --show the proof half
 python3 tools/bench/realset.py sample --which proof --first 10   # the ten every result before 2026-10-19 ran on
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py calibrate --which tune --jobs 2
-env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1 --audit-later
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm dry --subjects 40148-1 --dry-run --jobs 1 --audit-later   # into realset-D-dry-dry: a dry run's arm ends in -dry, never the real arm's folder
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --first 10 --arm mine --checkout ../mine --jobs 2 --audit-later
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
 heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
