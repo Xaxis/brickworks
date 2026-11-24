@@ -37,16 +37,18 @@
 //   (data-oc-sign-in, enhanced by web/oc-button.mjs, its mark drawn, its
 //   stylesheet web/oc-button.css loaded from this origin under the page's
 //   policy), and still the kit's secondary button beside Email me a code.
-//   7. orangecheck Connect's box under it: unticked, in orangecheck's exact
-//      words (web/oc-connect-consent.mjs). Ticked, a sign-in by emailed code
-//      asks for an orangecheck account once; unticked, never; a failed ask
-//      still signs in. orangecheck is stood in for, here in the browser,
-//      on every deployment: the box where the deployment has no Connect key
-//      (a unit's preview), and ?op=connect always, so this flow never makes
-//      anybody an orangecheck account (oc_live_flow.mjs does, on
-//      brickworks.diy). Deleting an account Connect made one for asks
-//      orangecheck first: without the key nothing is asked, and it is
-//      paused (503), nothing deleted.
+//   7. No box (signin3, 2026-11-24: the owner had it taken out): every
+//      sign-in makes the person's orangecheck account on the server
+//      (api/account.js, api/_oc.js ensureOrangecheck), and the dialog says
+//      so in one line with a link where the deployment has Connect's key,
+//      stood in for here where it has not (a unit's preview). A sign-in by
+//      emailed code signs in and the page asks nothing of orangecheck
+//      itself (?op=connect is gone: 405). That the server makes the account
+//      once, reuses it, and signs in with orangecheck down is
+//      tools/web/ways_check.mjs's, against a stand-in orangecheck.
+//      Deleting an account Connect made one for asks orangecheck first:
+//      without the key nothing is asked, and it is paused (503), nothing
+//      deleted.
 // A finished orangecheck sign-in needs a wallet and orangecheck's list of
 // ended sessions for the domain, which a preview's address is not:
 // tools/web/oc_live_flow.mjs does that on brickworks.diy.
@@ -54,7 +56,6 @@ import { launch } from "./browser.mjs";
 import { deleteAccount, mintCode, mintSession, STORAGE_KEY } from "./session.mjs";
 // orangecheck's own words, as this checkout serves them.
 import { OUTCOME_COPY } from "../../web/oc-button.mjs";
-import { CONNECT_CONSENT_BLURB, CONNECT_CONSENT_LABEL } from "../../web/oc-connect-consent.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -107,15 +108,14 @@ async function api(pathname, { method = "GET", body, raw } = {}) {
 const browser = await launch({ signedOut: true });
 const person = `delivered+bw-oc-flow-${randomBytes(4).toString("hex")}@resend.dev`;
 
-// orangecheck Connect, stood in for in the browser: each ask the page makes
-// (?op=connect) kept, and answered as set, never sent on.
+// Anything the page asks of orangecheck's Connect itself: nothing, now that
+// the server makes the account (signin3).
 const connectAsks = [];
-let connectAnswer = [200, { made: true, did: "did:oc:00000000000000000000000000000000" }];
 
 async function context(width, theme, { blockWindows = false } = {}) {
   const made = await browser.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, colorScheme: theme });
   await made.route(`${site}/**`, (route) => route.continue({ headers: { ...route.request().headers(), ...headers } }));
-  // A deployment without the Connect key offers no box: offered here.
+  // A deployment without the Connect key says nothing of it: said here.
   await made.route(`${site}/api/account`, async (route) => {
     if (route.request().method() !== "GET" || route.request().headers().authorization) {
       return route.continue({ headers: { ...route.request().headers(), ...headers } });
@@ -126,10 +126,8 @@ async function context(width, theme, { blockWindows = false } = {}) {
     return route.fulfill({ response: reply, json: said });
   });
   await made.route(`${site}/api/orangecheck?op=connect`, (route) => {
-    const request = route.request();
-    connectAsks.push({ method: request.method(), body: request.postDataJSON(), signedIn: /^Bearer \S+/.test(request.headers().authorization || "") });
-    const [status, json] = connectAnswer;
-    return route.fulfill({ status, json });
+    connectAsks.push({ method: route.request().method() });
+    return route.continue({ headers: { ...route.request().headers(), ...headers } });
   });
   await made.addInitScript(([chosen, block]) => {
     try {
@@ -218,21 +216,15 @@ try {
         JSON.stringify(theirs));
       check(`${width} ${theme}: and it looks like Email me a code's kind: the same height, corners and type`,
         theirs.height === theirs.goHeight && theirs.height >= 44 && theirs.radius && theirs.font, JSON.stringify(theirs));
-      const box = await page.evaluate(() => {
-        const tick = document.querySelector("dialog.sign-in #oc-connect");
-        const label = tick?.closest("label");
-        const blurb = document.querySelector("dialog.sign-in #oc-connect-blurb");
-        // With the email it belongs to (signinux): between the address and
-        // Email me a code, since a sign-in with orangecheck has an account.
-        const field = document.querySelector("dialog.sign-in input[type=email]").getBoundingClientRect();
-        const go = document.querySelector("dialog.sign-in button[type=submit]").getBoundingClientRect();
-        const r = label?.getBoundingClientRect();
-        return { drawn: Boolean(tick && tick.checkVisibility()), checked: tick?.checked, label: label?.textContent.trim(),
-          blurb: blurb?.textContent, described: tick?.getAttribute("aria-describedby") === "oc-connect-blurb",
-          under: tick ? r.top >= field.bottom && r.bottom <= go.top : false, choice: label?.classList.contains("choice") };
+      const line = await page.evaluate(() => {
+        const made = document.querySelector("dialog.sign-in #oc-made-line");
+        const link = made?.querySelector("a");
+        return { box: document.querySelectorAll('dialog.sign-in input[type="checkbox"]').length,
+          shown: Boolean(made && made.checkVisibility()), words: made?.textContent.trim(), href: link?.getAttribute("href") };
       });
-      check(`${width} ${theme}: with the email, orangecheck Connect's box, unticked, with orangecheck's exact words`, box.drawn && box.checked === false
-        && box.label === CONNECT_CONSENT_LABEL && box.blurb === CONNECT_CONSENT_BLURB && box.described && box.under && box.choice, JSON.stringify(box));
+      check(`${width} ${theme}: no box to tick; one line says signing in also makes the orangecheck account, with a link to what that is`,
+        line.box === 0 && line.shown && /^Signing in also makes your orangecheck account\. What is that\?$/.test(line.words || "")
+        && line.href === "/docs/account#orangecheck", JSON.stringify(line));
       check(`${width} ${theme}: nothing sideways`, !(await sideways(page)));
       // The pointer off the dialog: the click that opened it leaves it over
       // whatever button is drawn there now.
@@ -337,7 +329,7 @@ try {
 
   // 3. Loaded from here, and nothing refused.
   for (const [file, type, has] of [["/oc-button.mjs", /javascript/, /enhanceSignInButton/], ["/oc-button.css", /text\/css/, /data-oc-sign-in/],
-    ["/oc-connect-consent.mjs", /javascript/, /CONNECT_CONSENT_LABEL/]]) {
+  ]) {
     const code = await fetch(site + file, { headers });
     check(`orangecheck's ${file} is served from this site, as orangecheck made it`,
       code.ok && type.test(code.headers.get("content-type") || "") && has.test(await code.text()), `${code.status} ${code.headers.get("content-type")}`);
@@ -495,20 +487,19 @@ try {
   }
   check("no refusal from the page's security policy, no error, on /settings either", errors.length === 0, errors.slice(0, 3).join(" | "));
 
-  // 7. orangecheck Connect's box, ticked or not, at a sign-in by emailed code.
-  const signInByCode = async ({ tick }) => {
+  // 7. A sign-in by emailed code: no box, the line, and nothing asked of
+  // orangecheck by the page (the server makes the account: ways_check.mjs).
+  const signInByCode = async () => {
     const made = await context(390, "light");
     const page = await made.newPage();
-    listen(page, `connect ${tick ? "ticked" : "unticked"}`);
+    listen(page, "sign-in by code");
     await openDialog(page);
-    await page.locator("dialog.sign-in #oc-connect").waitFor({ state: "visible", timeout: 15000 });
-    if (tick) await page.locator("dialog.sign-in #oc-connect").check();
+    await page.locator("dialog.sign-in #oc-made-line").waitFor({ state: "visible", timeout: 15000 });
+    const boxes = await page.locator('dialog.sign-in input[type="checkbox"]').count();
     await page.fill("dialog.sign-in form input", person);
     await page.click('dialog.sign-in button[type="submit"]');
     await page.waitForFunction(() => /The code sent to/.test(document.querySelector("dialog.sign-in label")?.textContent || ""), null, { timeout: 30000 });
-    const ticked = await page.locator("dialog.sign-in #oc-connect").isChecked();
-    const shown = await page.locator("dialog.sign-in #oc-connect").isVisible();
-    if (tick) await shot(page, "connect_ticked_390_light.png");
+    await shot(page, "made_line_code_390_light.png");
     // One digit a box (signinux): the whole code in the first goes by itself.
     await page.fill("dialog.sign-in .code-boxes input:first-child", await mintCode(person));
     const signedIn = await page.waitForFunction((key) => {
@@ -518,31 +509,18 @@ try {
         return false;
       }
     }, STORAGE_KEY, { timeout: 30000 }).then(() => true, () => false);
-    // The ask is never waited on: a moment for it to go.
     await page.waitForTimeout(3000);
     await made.close();
-    return { signedIn, ticked, shown };
+    return { signedIn, boxes };
   };
-  // Its age answered first, as 6 does where orangecheck takes a token. On a
-  // deployment without the signing secret (a unit's preview) the first
-  // sign-in here made the account, the age question came up after the
-  // code, and the ask, which waits for the answer (account.js), was never
-  // sent in the three seconds given it (signinux2, 2026-11-14).
   if (!session) await mintSession(person, { age: true });
   connectAsks.length = 0;
-  const unticked = await signInByCode({ tick: false });
-  check("Connect: unticked, a sign-in by code asks for no orangecheck account", unticked.signedIn && connectAsks.length === 0,
-    `${JSON.stringify(unticked)} ${connectAsks.length} asks`);
-  connectAsks.length = 0;
-  const ticked = await signInByCode({ tick: true });
-  check("Connect: ticked, the box stays ticked through the code, and the sign-in asks once, signed in, with consent",
-    ticked.signedIn && ticked.ticked && ticked.shown && connectAsks.length === 1 && connectAsks[0].method === "POST"
-    && connectAsks[0].signedIn && connectAsks[0].body?.consent === true, `${JSON.stringify(ticked)} ${JSON.stringify(connectAsks)}`);
-  connectAsks.length = 0;
-  connectAnswer = [503, { error: "orangecheck is down" }];
-  const failing = await signInByCode({ tick: true });
-  check("Connect: an ask that fails still signs in", failing.signedIn && connectAsks.length === 1, `${JSON.stringify(failing)} ${connectAsks.length}`);
-  connectAnswer = [200, { made: true }];
+  const byCode = await signInByCode();
+  check("a sign-in by code: no box, signed in, and the page asks nothing of orangecheck itself", byCode.signedIn && byCode.boxes === 0
+    && connectAsks.length === 0, `${JSON.stringify(byCode)} ${connectAsks.length} asks`);
+  const connectGone = await fetch(`${site}/api/orangecheck?op=connect`, { method: "POST", headers: { ...headers, "content-type": "application/json" },
+    body: "{}" });
+  check("?op=connect, the box's, is gone: 405", connectGone.status === 405, String(connectGone.status));
 
   // Deleting an account Connect made one for asks orangecheck first.
   {
@@ -569,7 +547,7 @@ try {
     }
     await deleteAccount(leaver).catch(() => false);
   }
-  check("no refusal from the page's security policy, no error, signing in with the box", errors.length === 0, errors.slice(0, 3).join(" | "));
+  check("no refusal from the page's security policy, no error, signing in by code", errors.length === 0, errors.slice(0, 3).join(" | "));
 } catch (trouble) {
   check("the flow finished", false, String(trouble?.stack || trouble).slice(0, 400));
 } finally {

@@ -604,6 +604,8 @@ $docs_moved
     { "src": "/api/plans/tally-daily", "dest": "/api/plans?op=tally_daily" },
     { "src": "/api/plans/owner-notify", "dest": "/api/plans?op=owner_notify" },
     { "src": "/api/plans/announce-due", "dest": "/api/plans?op=announce_due" },
+    { "src": "/auth/(google|github)/?", "dest": "/api/otp?op=way_start&with=\$1" },
+    { "src": "/auth/callback/(google|github)/?", "dest": "/api/otp?op=way_back&with=\$1" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },

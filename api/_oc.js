@@ -24,8 +24,9 @@
 // supabase/orangecheck_merge_connect.sql), so that once somebody merges two
 // orangecheck accounts, the one they keep signs in to the Brickworks
 // account the other had (merged). And orangecheck Connect, with
-// OC_CONNECT_KEY: an orangecheck account made at the person's tick
-// (provision), and deleted with their Brickworks account (unprovision).
+// OC_CONNECT_KEY: an orangecheck account made for the person as they sign in
+// (ensureOrangecheck, provision; at their tick of a box until signin3), and
+// deleted with their Brickworks account (unprovision).
 //
 // The desktop app (2026-10-24, oc237): it cannot open orangecheck's window,
 // so it opens orangecheck in the person's own browser, which hands a
@@ -267,7 +268,8 @@ export function connectConfigured() {
   return Boolean(process.env.OC_CONNECT_KEY);
 }
 
-/// An orangecheck account made for [account], which ticked the box for it:
+/// An orangecheck account made for [account], which signed in, told that
+/// signing in makes one (ensureOrangecheck; until signin3 it ticked a box):
 /// {made, did} or {made: false, reason}. Asked of orangecheck with consent
 /// and the account's id; and with [emailed], when the request is a fresh
 /// emailed code's for that address (codeOf), the address as verified, so
@@ -309,6 +311,54 @@ export async function provision(account, emailed = null) {
     return { made: false, reason: "account_leaving" };
   }
   return { made: true, did: made.did_oc };
+}
+
+// A session whose sign-in began this long ago or less is a sign-in, for
+// ensureOrangecheck: Supabase keeps the sign-in's own time in amr through
+// every renewal, so a session left open for days is not one.
+const SIGNED_IN_JUST_NOW_S = 900;
+// Connect asked for an account this recently is not asked again: a page
+// asks /api/account several times as it opens, and orangecheck slow or down
+// is asked again after this, while the sign-in is still just now, and at
+// the next sign-in.
+const ASK_AGAIN_MS = 60_000;
+
+/// Whether the session behind [claims] began in the last 15 minutes.
+export function signedInJustNow(claims, now = Date.now()) {
+  const times = (Array.isArray(claims?.amr) ? claims.amr : []).map((one) => Number(one?.timestamp)).filter(Number.isFinite);
+  return times.length > 0 && now / 1000 - Math.max(...times) <= SIGNED_IN_JUST_NOW_S;
+}
+
+/// The orangecheck account every sign-in makes (signin3, 2026-11-24: the
+/// owner, "wrap around both of them the orangecheck account creation, remove
+/// the checkbox"): for the account behind [claims], once, by Connect
+/// (provision), as the box did when it was ticked, now without one: the
+/// sign-in says so in one line, with a link, on every surface it is made
+/// at. Asked by api/account.js after a sign-in's first word with it (the
+/// site's dialog and /profile, and the app, ask it as soon as they are
+/// signed in), never in the sign-in's way. None for an account that has
+/// orangecheck (signed in with it, or linked) or one Connect made already
+/// (that one is kept and reused: never two); none asked again within a
+/// minute of the last ask. [emailed], the address when this session is a
+/// fresh emailed code's (codeOf), goes to orangecheck as verified, so that
+/// signing in to ochk.app with it offers the account to claim; a session
+/// Google or GitHub started (api/_ways.js) is minted from a one-time link,
+/// as orangecheck's is, and its address is the one Google or GitHub said is
+/// verified. {made, did} or {made: false, reason}; throws when the database
+/// cannot be read.
+export async function ensureOrangecheck(claims, emailed = null) {
+  if (!connectConfigured()) return { made: false, reason: "not_here" };
+  if (madeUp(claims.email)) return { made: false, reason: "has_orangecheck" };
+  const [did, connected] = await Promise.all([
+    db("rpc/oc_did_of", { method: "POST", body: { account: claims.sub } }),
+    db("rpc/oc_connected_of", { method: "POST", body: { account: claims.sub } }),
+  ]);
+  if (did) return { made: false, reason: "has_orangecheck" };
+  if (connected?.did) return { made: false, reason: "has_one", did: connected.did };
+  if (connected?.asked_at && Date.now() - Date.parse(connected.asked_at) < ASK_AGAIN_MS) {
+    return { made: false, reason: "asked_just_now" };
+  }
+  return provision(claims.sub, emailed);
 }
 
 /// The orangecheck account Connect made for [account], asked to be deleted

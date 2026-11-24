@@ -600,6 +600,76 @@
       "area": "account"
     },
     {
+      "kind": "ui",
+      "label": "sign in with google",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with Google (where GOOGLE_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "sign in with github",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with GitHub (where GITHUB_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account"
+    },
+    {
+      "kind": "api",
+      "label": "GET /auth/google",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/google?then=/gallery'   (302 to Google with the client, or to /profile?...&failed=off without keys)",
+      "area": "account"
+    },
+    {
+      "kind": "api",
+      "label": "GET /auth/github",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/github?then=/gallery'",
+      "area": "account"
+    },
+    {
+      "kind": "api",
+      "label": "POST /api/otp?op=way_take",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_take'   (410 with nothing to take)",
+      "area": "account"
+    },
+    {
+      "kind": "api",
+      "label": "GET /api/otp?op=ways",
+      "entry": "api/_ways.js",
+      "reach": "curl -s '<deployment>/api/otp?op=ways' -H 'authorization: Bearer <session>'",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "how you sign in",
+      "entry": "web/settings.js",
+      "reach": "<deployment>/settings#ways-part signed in",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's sign-in switches",
+      "entry": "web/admin-switches.js",
+      "reach": "<deployment>/admin#switches as MASTER_EMAIL, Sign in with Google and GitHub (on a checkout: relay_server.mjs --ways-stand-in --owner=<throwaway>)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "ways check",
+      "entry": "tools/web/ways_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11701 --ways-stand-in --owner=$OWNER & node tools/web/ways_check.mjs --url=http://127.0.0.1:11701 --owner=$OWNER   (OWNER a delivered+...@resend.dev throwaway)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "ways browser flow",
+      "entry": "tools/web/ways_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11702 --ways-stand-in --owner=$OWNER & node tools/web/ways_flow.mjs --url=http://127.0.0.1:11702 --owner=$OWNER --out=shots/ways",
+      "area": "account"
+    },
+    {
       "kind": "cli",
       "label": "orangecheck check",
       "entry": "tools/web/orangecheck_check.mjs",

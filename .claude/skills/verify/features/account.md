@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down, ui:setting the weekly quick build, ui:the quick build in the studio, cli:prompt probe, ui:the month's challenge in the studio, ui:Enter from Share, cli:challenge line probe, cli:challenge rules probe -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, ui:sign in with google, ui:sign in with github, ui:how you sign in, ui:the console's sign-in switches, api:GET /auth/google, api:GET /auth/github, api:POST /api/otp?op=way_take, api:GET /api/otp?op=ways, cli:ways check, cli:ways browser flow, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down, ui:setting the weekly quick build, ui:the quick build in the studio, cli:prompt probe, ui:the month's challenge in the studio, ui:Enter from Share, cli:challenge line probe, cli:challenge rules probe -->
 
 ## Sub-features
 
@@ -563,7 +563,7 @@ they have. A Claude connector belongs to the account that switched it on.
   how the window ended said in its words (`OUTCOME_COPY`), and the nonce
   orangecheck's window asks for said back to that window alone. That code is
   me-client 0.59.0's (the server's checks 0.50.0's), served from here (`web/oc-button.mjs`,
-  `web/oc-button.css`, `web/oc-connect-consent.mjs`, made by
+  `web/oc-button.css`, made by
   `tools/web/vendor_orangecheck.sh` with the server's checks in
   `api/_orangecheck.js`); the token it hands back is checked (`checkOcToken`;
   audience from configuration: brickworks.diy alone in production, a Preview
@@ -649,18 +649,29 @@ they have. A Claude connector belongs to the account that switched it on.
   account's did becomes the new one, what the old did started there ends,
   its address is told; handles naming two accounts sign in to neither and
   make nothing (409, in words); an unlinked did's handles name nobody.
-- `orangecheck Connect` (2026-10-24, oc225; `api/orangecheck.js` POST
-  `?op=connect`, `api/_oc.js` `provision`/`unprovision`, `oc_connected`):
-  under the dialog's orangecheck button, an unticked box with
-  orangecheck's exact words (`CONNECT_CONSENT_LABEL`, `_BLURB`), drawn where
-  `/api/account` says `orangecheck.connect` (the deployment has
-  `OC_CONNECT_KEY`; a unit's preview never does). Ticked, a sign-in by
-  emailed code then asks, never waited on: the server, for a fresh code's
-  session of an account without orangecheck, writes the ask down and calls
-  `connectProvision({consent: true})`, with `email` and `emailVerified: true`
-  only when that session is a fresh emailed code's (amr `otp`) for that
-  address (`codeOf` `emailed`); a refusal or an outage is an
-  answer, never in the sign-in's way. Unticked, nothing is asked. Deleting
+- `orangecheck Connect` (2026-10-24, oc225; around every sign-in since
+  signin3, 2026-11-24, the box and `?op=connect` gone at the owner's word;
+  `api/account.js` `wrapOrangecheck`, `api/_oc.js` `ensureOrangecheck`,
+  `provision`/`unprovision`, `oc_connected`): where `/api/account` says
+  `orangecheck.connect` (the deployment has `OC_CONNECT_KEY`; a unit's
+  preview never does) the sign-in dialog says, in one line with a link to
+  `/docs/account#orangecheck` (`#oc-made-line`; the app's form the same,
+  `signin_made`), that signing in also makes the orangecheck account, and
+  no box is drawn. The server makes it after its answer, never in a
+  sign-in's way (`afterAnswer`): at `GET /api/account` for a session whose
+  sign-in (any amr's timestamp) is under 15 minutes old (`signedInJustNow`),
+  and at the age answered 13 or over, for an account 13 or over, without an
+  orangecheck sign-in id (`oc_did_of`) or one Connect made
+  (`oc_connected_of`), and not asked in the last minute: it writes the ask
+  down and calls `connectProvision({consent: true})`, with `email` and
+  `emailVerified: true` only when that session is a fresh emailed code's
+  (amr `otp`: a code, or Google's or GitHub's minted session) for that
+  address (`codeOf` `emailed`). Once made it is reused: no second ask. An
+  account from before gets one at its next sign-in; one asked while
+  orangecheck is down, at a sign-in a minute or more later.
+  `GET /api/orangecheck?op=status` says `made: {did, at}`, which Settings
+  shows. `ways check` proves each of these against a stand-in Connect.
+  Deleting
   an account Connect was asked for calls `connectDelete` first (`unprovision`).
   A person can always delete their account (site-attest's L1): orangecheck
   refusing for good (`holds_earnings`, `not_deletable`) deletes ours anyway
@@ -674,7 +685,7 @@ they have. A Claude connector belongs to the account that switched it on.
   answer not named) is Brickworks' setup fault (orangecheck's final
   ruling): 503 "Deleting is paused while Brickworks fixes a setup problem.
   Nothing has been deleted." The canary's (d) hears of a key problem by the
-  next morning. An account that never ticked the box asks
+  next morning. An account Connect never made one for asks
   orangecheck nothing, and is deleted whatever Connect's state. An account
   deleted while Connect is still asked (orangecheck's L2, oc237): deleting
   marks the account leaving as it reads it (`oc_connect_leaving`, writing a
@@ -686,6 +697,55 @@ they have. A Claude connector belongs to the account that switched it on.
   `{made: false, reason: "account_leaving"}`. A mark is never lifted, only
   lapses, so a failed deletion cannot unmark another of the same account
   going on (site-attest's R1) (`supabase/orangecheck_connect_leaving.sql`).
+- `sign in with google`, `sign in with github` (signin3, 2026-11-24;
+  `api/_ways.js`, through `api/otp.js` `?op=way_start|way_back|way_take|way_app`
+  and the routes `/auth/google|github` and `/auth/callback/google|github`,
+  tools/deploy.sh and the relay alike): Brickworks is each one's OAuth client
+  itself, by the authorization code with PKCE (S256), since Supabase's own
+  providers cannot make an account while sign-up is off. `/auth/<name>?then=`
+  302s to Google (`openid email`, a nonce, `prompt=select_account`) or GitHub
+  (`user:email`) with `GOOGLE_|GITHUB_CLIENT_ID`, the deployment's own
+  `/auth/callback/<name>`, a fresh state and the challenge; state, verifier,
+  nonce and then ride a sealed cookie (AES-256-GCM, a key from
+  `SUPABASE_SECRET_KEY`, HttpOnly, SameSite=Lax, its callback's path, 600 s).
+  The callback trades the code with the verifier and the client secret, takes
+  only a verified address (Google's ID token: its issuer, audience, nonce and
+  expiry; GitHub's primary verified address, never a noreply one, its token
+  revoked after), makes the account by the admin API when the address has
+  none, mints a session for it (`api/_minted.js` `mintedSession`, as
+  orangecheck's), records the way in `app_metadata.ways`, and 302s to
+  `/profile?then=&with=` with the session sealed in a 120 s cookie for
+  `/api/otp` alone, which `web/profile.js` takes (`takeWay`), asks the age if
+  due, and goes on to then (any path of this site; `//host` and the like go
+  home). Refused (`failed=again|denied|unverified|unlinked|off|busy|failed`)
+  it lands on the dialog with words for why (`wayFailed`). The desktop app:
+  `Account.sign_in_with_way` with `OrangecheckSignIn.way` opens
+  `/auth/<name>?app=<loopback>&state&code_challenge` in the browser; the
+  callback answers the loopback with a code sealed for that challenge, which
+  `?op=way_app` opens for its verifier alone. Buttons (`#way-google`,
+  `#way-github`, app `signin_google`, `signin_github`) only where
+  `/api/account` `ways` says so: keys in Vercel and the console's switch not
+  off. `ways check` (`tools/web/ways_check.mjs` against
+  `relay_server.mjs --ways-stand-in`, which stands in for both providers'
+  token and address calls and for Connect) and `ways browser flow`
+  (`tools/web/ways_flow.mjs`, the same relay, Playwright routing
+  accounts.google.com and github.com's authorize to the callback) prove it at
+  1280 and 390; a real round trip needs the owner's clients (the console's
+  steps).
+- `how you sign in` (signin3; `web/settings.js` `ways`, `#ways-part`,
+  `GET|POST /api/otp?op=ways`): Settings lists a code to the address
+  (always), Google and GitHub as `on` (signed in with it), `off` (Unlink:
+  `app_metadata.ways[name] = "off"`, which the callback refuses) or `never`;
+  Link again lifts it. An orangecheck-only account gets 409. Settings'
+  orangecheck part says when Connect made the account.
+- `the console's sign-in switches` (signin3; `/admin#switches` "Sign in with
+  Google and GitHub", `web/admin-switches.js` `drawWays`, `GET
+  /api/admin?op=switches` `ways`, `POST /api/admin?op=sign_in_switch {with,
+  on}` into `site_settings` `sign_in_google|sign_in_github` per scope,
+  audited `setting`): each one's keys by whether they are here, its state,
+  Turn it on/off (on refused without keys, 409), and five steps for the
+  owner to make the client and paste its keys into Vercel, hidden once on.
+  The four variables are listed in Deployment variables.
 - `sign in with orangecheck on the desktop` (2026-10-24, oc237;
   `src/account/orangecheck_sign_in.gd`, `Account.sign_in_with_orangecheck`,
   `api/orangecheck.js` POST `?op=native`, `api/_oc.js` `tradeCode`): the

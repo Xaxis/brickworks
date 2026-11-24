@@ -68,9 +68,9 @@ export function ocConfigured() {
 /// What /api/account says of orangecheck: {ready, everyone, connect,
 /// native}. ready false (no signing secret here, as on a unit's preview):
 /// the button, where it is offered, says sign-in with orangecheck is
-/// unavailable. connect: orangecheck Connect's key is here, so the sign-in
-/// dialog offers the box that makes an orangecheck account
-/// (api/orangecheck.js ?op=connect); without it, no box. native: where the
+/// unavailable. connect: orangecheck Connect's key is here, so signing in
+/// makes the orangecheck account (api/_oc.js ensureOrangecheck) and the
+/// sign-in says so in one line; without it, neither. native: where the
 /// desktop app opens orangecheck in the person's browser, {project, auth,
 /// audience}, all three public, when it is offered (nativeOffered);
 /// otherwise null, and the app's sign-in screen shows no button.

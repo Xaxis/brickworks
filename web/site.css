@@ -662,21 +662,22 @@ dialog .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
 /* The refusal itself, as large as the lines after it: directory.css makes
    a .said small on the pages that load it (/profile). */
 dialog .said.too-young { margin: 0 0 14px; font-size: inherit; }
-/* Sign in (account.js; signinux, 2026-11-13): the email and orangecheck
-   as two equal ways in, each a .wide button of one size, "or" between them
-   as the best sign-ins have it; orangecheck Connect's box with the email it
-   belongs to (the box and its words, then orangecheck's line under the
-   words); the code a box per digit (.code-boxes); and while orangecheck's
-   window is open, the wait for it in their place. */
+/* Sign in (account.js; signinux, 2026-11-13): the email and the other ways
+   in (Google, GitHub and orangecheck since signin3), each a .wide button of
+   one size, "or" between them as the best sign-ins have it, each with its
+   mark; the code a box per digit (.code-boxes); while orangecheck's window
+   is open, the wait for it in their place; and the line that signing in
+   also makes the orangecheck account, above Not now. */
 dialog.sign-in .lead { margin-bottom: var(--s-5); }
-dialog .consent { margin: calc(-1 * var(--s-1)) 0 var(--s-3); }
-dialog .consent .note { margin: 0 0 0 28px; }
+dialog .elsewhere { display: grid; gap: var(--s-2); }
+dialog .way-mark { flex: none; }
+dialog .made-line { margin: var(--s-4) 0 0; text-align: center; font-size: var(--t-small); }
 dialog .or {
 	display: flex; align-items: center; gap: var(--s-3); margin: var(--s-4) 0;
 	font-size: var(--t-small); color: var(--ink-faint);
 }
 dialog .or::before, dialog .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-dialog .elsewhere .note { margin: var(--s-2) 0 0; }
+dialog .elsewhere .note { margin: 0; }
 /* How orangecheck's window ended: calm when it was closed, a callout when
    the browser blocked it (what to do, in orangecheck's words), the
    trouble's colour when it failed. */

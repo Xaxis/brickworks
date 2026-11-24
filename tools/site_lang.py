@@ -139,15 +139,14 @@ META = {"description", "og:title", "og:description", "og:image:alt", "twitter:ti
         "twitter:description", "twitter:image:alt"}
 # The words the API hands the copies' scripts to show: each label of these
 # constants (an "id" is not one), and the plans form's fixed replies; and
-# orangecheck's code's, for its button and its box (web/account.js).
+# orangecheck's code's, for its button (web/account.js).
 API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS", "LDRAW_FROM"),
              "api/_tested.js": ("SAID", "FAILED"), "api/_trust.js": ("TOO_YOUNG",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL", "TRACKS"),
              "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE"),
              "api/_feedback.js": ("THANKS",),
              # What a watch page is told when a line or an ask is refused (buildlive).
              "api/together.js": ("WATCH_WORDS",),
-             "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
-             "web/oc-connect-consent.mjs": ("CONNECT_CONSENT_LABEL", "CONNECT_CONSENT_BLURB")}
+             "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY")}
 # Those each of whose words is said, in a list or not, but a link's (href).
 EVERY_WORD = {"TRACKS"}
 STRING = r'"(?:[^"\\\n]|\\.)*"'
@@ -172,7 +171,7 @@ TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/
         "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js",
         "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js", "api/_beta.js",
         "api/_notifications.js", "api/oauth.js", "api/_mylists.js", "api/_blocks.js", "api/_push.js", "api/_talk.js",
-        "api/_asks.js")
+        "api/_asks.js", "api/_ways.js")
 # And what a profile can be refused with, in First steps, the profile's own
 # page and settings, in the functions that refuse it: every sentence, ended
 # with a full stop or not.
@@ -234,7 +233,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
 WRITTEN = ("tools/site.py",)
 # Capitalized words of those that are no English to say: code, and names.
 CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Claude", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook",
-              "Edge", "Opera", "Safari", "Instagram", "Flickr"}
+              "Edge", "Opera", "Safari", "Instagram", "Flickr", "Google"}
 # And the keys a script listens for, each a literal of its own.
 KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
 # Runs that are names, the same in every language: and each AI app's, as

@@ -202,6 +202,14 @@
   .with-preview { display: grid; gap: var(--s-4); align-items: start; margin-top: var(--s-4); }
   .with-preview > .console-form { margin-top: 0; }
   @media (width >= 1180px) { .with-preview { grid-template-columns: minmax(0, 640px) minmax(0, 1fr); } }
+  /* Sign in with Google and GitHub: a card each, its steps above its switch. */
+  .ways-grid { display: grid; gap: var(--s-4); margin-top: var(--s-4); }
+  @media (width >= 1000px) { .ways-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .ways-grid > .console-form { margin-top: 0; }
+  .ways-grid h4 { margin: 0; }
+  .ways-grid .way-is { margin-left: var(--s-2); color: var(--ink-soft); font-weight: 400; }
+  .ways-grid .way-steps { margin: 0; padding-left: 1.4em; display: grid; gap: var(--s-1); font-size: var(--t-small);
+    color: var(--ink-soft); overflow-wrap: anywhere; }
   .preview { display: grid; gap: var(--s-3); }
   /* On the type scale, as the form beside it titles itself (design_flow). */
   .preview > h3 { margin: 0; }
@@ -1454,6 +1462,35 @@
               </table>
             </div>
             <p class="note" id="settings-note" role="status"></p>
+          </div>
+          <div class="part">
+            <div class="lead"><h3 id="h-ways">Sign in with Google and GitHub</h3><p class="note" id="ways-said">Each signs
+              people in to the account of the same verified address, made if new, with its orangecheck account. Off until its
+              keys are in Vercel; then on unless switched off here.</p></div>
+            <div class="ways-grid">
+              <form class="card console-form" id="way-google" data-way="google" aria-labelledby="h-way-google">
+                <h4 id="h-way-google">Google <small class="way-is" id="way-google-is"></small></h4>
+                <ol class="way-steps">
+                  <li>Open <a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener">Google Cloud › Google Auth Platform</a>, Get started: app name Brickworks, External, publish it.</li>
+                  <li>Clients › Create client › Web application, named Brickworks.</li>
+                  <li>Authorized redirect URI: <code class="way-callback">https://brickworks.diy/auth/callback/google</code></li>
+                  <li>In <a href="https://vercel.com/xaxis-projects/brickworks/settings/environment-variables" target="_blank" rel="noopener">Vercel › Environment Variables</a>, Production: paste the Client ID as <code>GOOGLE_CLIENT_ID</code> and the secret as <code>GOOGLE_CLIENT_SECRET</code>.</li>
+                  <li>Redeploy production, then come back: Google turns on here.</li>
+                </ol>
+                <div class="row"><button type="submit" class="cta"></button><span class="note" id="way-google-note" role="status"></span></div>
+              </form>
+              <form class="card console-form" id="way-github" data-way="github" aria-labelledby="h-way-github">
+                <h4 id="h-way-github">GitHub <small class="way-is" id="way-github-is"></small></h4>
+                <ol class="way-steps">
+                  <li>Open <a href="https://github.com/settings/applications/new" target="_blank" rel="noopener">GitHub › Developer settings › New OAuth App</a>.</li>
+                  <li>Name Brickworks, homepage <code>https://brickworks.diy</code>.</li>
+                  <li>Authorization callback URL: <code class="way-callback">https://brickworks.diy/auth/callback/github</code>, then Register.</li>
+                  <li>Generate a new client secret. In <a href="https://vercel.com/xaxis-projects/brickworks/settings/environment-variables" target="_blank" rel="noopener">Vercel › Environment Variables</a>, Production: the Client ID as <code>GITHUB_CLIENT_ID</code>, the secret as <code>GITHUB_CLIENT_SECRET</code>.</li>
+                  <li>Redeploy production, then come back: GitHub turns on here.</li>
+                </ol>
+                <div class="row"><button type="submit" class="cta"></button><span class="note" id="way-github-note" role="status"></span></div>
+              </form>
+            </div>
           </div>
           <div class="part">
             <div class="lead"><h3 id="h-phones">Phones</h3><p class="note" id="phones-said"></p></div>

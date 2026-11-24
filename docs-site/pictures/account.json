@@ -29,7 +29,11 @@
        "audience": "https://brickworks.diy"
       }
      },
-     "signed_in": false
+     "signed_in": false,
+     "ways": {
+      "google": true,
+      "github": true
+     }
     }
    },
    "steps": [
@@ -40,16 +44,21 @@
      "wait": "dialog.sign-in .elsewhere:not([hidden])"
     },
     {
-     "wait": "dialog.sign-in .consent:not([hidden])"
+     "wait": "dialog.sign-in #way-github:not([hidden])"
+    },
+    {
+     "wait": "dialog.sign-in #oc-made-line:not([hidden])"
     }
    ],
    "crop": "dialog.sign-in",
    "pad": 0,
-   "alt": "The site's Sign in to Brickworks dialog: the Email box with Email me a code and Not now, then Sign in with orangecheck with what it takes, and the box Also create my orangecheck account with what it means.",
-   "caption": "Signing in on the site: a code by email, or orangecheck.",
+   "alt": "The site's Sign in to Brickworks dialog: the Email box with Email me a code, then Sign in with Google, Sign in with GitHub and Sign in with orangecheck, and the line Signing in also makes your orangecheck account, with What is that?",
+   "caption": "Signing in on the site: a code by email, Google, GitHub or orangecheck.",
    "features": [
     "lib:site sign-in",
-    "ui:sign in with orangecheck"
+    "ui:sign in with orangecheck",
+    "ui:sign in with google",
+    "ui:sign in with github"
    ]
   },
   {

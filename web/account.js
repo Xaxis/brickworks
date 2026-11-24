@@ -16,9 +16,16 @@
 // gets an id, never the address. Since 2026-10-24 the button is ours made
 // orangecheck's by its own code (web/oc-button.mjs and web/oc-button.css,
 // served from here): its mark, its busy state, its window opened from the
-// click. Under it, orangecheck Connect's box, unticked, in orangecheck's
-// words (web/oc-connect-consent.mjs): ticked, a sign-in by emailed code
-// also asks for an orangecheck account (api/orangecheck.js ?op=connect).
+// click.
+//
+// Or with Google or GitHub (signin3, 2026-11-24): a link to /auth/google or
+// /auth/github, which go there and back (api/_ways.js) and land on /profile,
+// which takes the session the server left for it (takeWay) and goes on to
+// the page the person was on. The same account as their code's, for the
+// same address. And every sign-in also makes the person's orangecheck
+// account, once, on the server (api/_oc.js ensureOrangecheck), which the
+// dialog says in one line with a link, where Connect is set up: there is no
+// box to tick (orangecheck Connect's box, until signin3).
 //
 // Nothing here is shown as markup: the pages that import it put every
 // word on the page as text.
@@ -35,8 +42,8 @@
 // this browser keeps that it was told (REFUSED, nothing about the person),
 // so the sign-in says so at once from then on, and a new account signed in
 // here is not asked again but deleted the same way. An account that
-// answered 13 or over, a parent's, signs in here as anywhere. orangecheck
-// Connect, ticked, is asked only once the answer is in: never for a child.
+// answered 13 or over, a parent's, signs in here as anywhere. The
+// orangecheck account is made only once the answer is in: never for a child.
 //
 // Every word of these dialogs, and every error a person reads in them, the
 // server's too, is said in the visitor's language (2026-11-01): on a page
@@ -99,7 +106,8 @@ async function where() {
   if (project) return project;
   const said = await json(await fetch("/api/account"));
   if (!said.enabled || !said.url || !said.key) throw new Error(say("Brickworks cannot sign anyone in just now."));
-  project = { url: said.url, key: said.key, orangecheck: said.orangecheck || { ready: false, everyone: false } };
+  project = { url: said.url, key: said.key, orangecheck: said.orangecheck || { ready: false, everyone: false },
+    ways: said.ways || { google: false, github: false } };
   return project;
 }
 
@@ -407,10 +415,93 @@ function orangecheckCode() {
 /// as the deployment says (api/_oc_config.js, the one switch). {offered,
 /// ready, connect}: ready false is a deployment without the signing secret,
 /// where the button says so rather than open orangecheck's window; connect,
-/// whether it can make somebody an orangecheck account (the box).
+/// whether signing in makes the person an orangecheck account here
+/// (orangecheck Connect's key is here), which the sign-in then says.
 export async function orangecheckOffer() {
   const said = (await where()).orangecheck;
   return { offered: said.everyone === true, ready: said.ready === true, connect: said.connect === true };
+}
+
+/// Which of Google and GitHub sign people in here (api/_ways.js): {google,
+/// github}.
+export async function waysOffer() {
+  const said = (await where()).ways;
+  return { google: said.google === true, github: said.github === true };
+}
+
+/// Google and GitHub by their names, as their buttons say them.
+export const WAY_NAMES = { google: "Google", github: "GitHub" };
+
+/// Where Sign in with Google or GitHub goes: there, and back to [then] (this
+/// page, by default) signed in, through /profile.
+export function wayLink(name, then = location.pathname + location.search + location.hash) {
+  return `/auth/${name}?${new URLSearchParams({ then })}`;
+}
+
+/// The session a sign-in with Google or GitHub left this browser
+/// (api/_ways.js wayBack), taken once and kept, for the app too: {ok} or
+/// {error} in the visitor's words.
+export async function takeWay() {
+  await where();
+  const reply = await fetch("/api/otp?op=way_take", { method: "POST", credentials: "same-origin" }).catch(() => null);
+  const body = reply ? await json(reply) : {};
+  if (!reply || !reply.ok || !body.access_token) {
+    return { error: body.error ? say(body.error) : say("Could not sign in just now ({status}). Try again.", { status: reply?.status || 0 }) };
+  }
+  keep(body, body.user?.email);
+  dispatchEvent(new Event("brickworks:signed-in"));
+  return { ok: true };
+}
+
+/// This page, to come back to after Google or GitHub: its address without
+/// the ?sign-in that opened the dialog (/profile?sign-in).
+function hereThen() {
+  const here = new URL(location.href);
+  here.searchParams.delete("sign-in");
+  return here.pathname + here.search + here.hash;
+}
+
+const SVG = "http://www.w3.org/2000/svg";
+// Each provider's own mark, as its sign-in buttons show it: Google's G in
+// its four colours, GitHub's in the button's ink.
+const MARKS = {
+  google: [["#4285F4", "M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.7z"],
+    ["#34A853", "M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.4 1.2-4 1.2-3.1 0-5.7-2.1-6.7-4.9H1.3v3.1A12 12 0 0 0 12 24z"],
+    ["#FBBC05", "M5.3 14.4a7.2 7.2 0 0 1 0-4.7V6.6h-4a12 12 0 0 0 0 10.9l4-3.1z"],
+    ["#EA4335", "M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A11.5 11.5 0 0 0 12 0 12 12 0 0 0 1.3 6.6l4 3.1c.9-2.8 3.6-4.9 6.7-4.9z"]],
+  github: [["currentColor", "M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"]],
+};
+
+/// [name]'s mark, 18 px, beside its button's words.
+export function wayMark(name) {
+  const mark = document.createElementNS(SVG, "svg");
+  mark.setAttribute("viewBox", "0 0 24 24");
+  mark.setAttribute("width", "18");
+  mark.setAttribute("height", "18");
+  mark.setAttribute("aria-hidden", "true");
+  mark.setAttribute("class", "way-mark");
+  for (const [fill, d] of MARKS[name] || []) {
+    const path = document.createElementNS(SVG, "path");
+    path.setAttribute("fill", fill);
+    path.setAttribute("d", d);
+    mark.append(path);
+  }
+  return mark;
+}
+
+/// Why a sign-in with Google or GitHub ([name]) came back refused, in the
+/// visitor's words ([why], api/_ways.js failed).
+export function wayFailed(why, name) {
+  const way = WAY_NAMES[name] || name;
+  if (why === "again") return say("That sign-in took too long, or was started in another tab. Try again.");
+  if (why === "denied") return say("Signing in with {way} was cancelled there.", { way });
+  if (why === "unverified") return say("{way} gave no verified email address of yours. Sign in with a code we email you instead.", { way });
+  if (why === "unlinked") {
+    return say("{way} is unlinked from your account. Sign in with a code we email you, then link it again in Settings.", { way });
+  }
+  if (why === "off") return say("Signing in with {way} is not offered here just now. Sign in with a code we email you.", { way });
+  if (why === "busy") return say("A lot of people are signing in just now. Try again in a minute.");
+  return say("{way} did not sign you in just now. Try again in a minute, or sign in with a code we email you.", { way });
 }
 
 /// Whether an address is an orangecheck account's, made up by the server
@@ -522,19 +613,6 @@ export async function exchangeOrangecheck(token) {
   dispatchEvent(new Event("brickworks:signed-in"));
 }
 
-/// orangecheck Connect asked for, right after a sign-in by emailed code
-/// with its box ticked: the server asks orangecheck to make the person an
-/// account (api/orangecheck.js ?op=connect). Never waited on, and nothing
-/// it answers touches the sign-in, which is done; kept going if the page
-/// moves on.
-function connectOrangecheck(access) {
-  fetch("/api/orangecheck?op=connect", {
-    method: "POST", keepalive: true,
-    headers: { authorization: `Bearer ${access}`, "content-type": "application/json" },
-    body: JSON.stringify({ consent: true }),
-  }).catch(() => null);
-}
-
 export function signOut() {
   forgetDevice();
   try {
@@ -605,8 +683,7 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
 ///
 /// signinux (2026-11-13), as the best sign-ins set out a second way in
 /// (Vercel, Linear, Notion, Figma): the email and orangecheck are two equal
-/// ways in, buttons of one size, one under the other with "or" between;
-/// orangecheck Connect's box sits with the email it belongs to; the code is
+/// ways in, buttons of one size, one under the other with "or" between; the code is
 /// typed one digit to a box (web/code-boxes.js) and sent by its last digit,
 /// a wrong one shaking the row empty; and while orangecheck's window is
 /// open the dialog says so, with a way to bring the window back and a way
@@ -624,7 +701,12 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
 /// a snackbar as they do after a like, and the page is theirs again once
 /// the age question is answered (sitewalk2, 2026-11-24: the header's Sign
 /// in on Share a model put five dialogs between the code and the share).
-export async function askToSignIn(why, { prefer = "", back = null, later = false } = {}) {
+/// Under "or" (signin3, 2026-11-24): Sign in with Google and with GitHub
+/// where they are offered, links that go there and come back to [then] (this
+/// page by default) signed in, then orangecheck; and at the foot, where
+/// Connect is set up, one line saying that signing in also makes the
+/// person's orangecheck account, with a link to what that is.
+export async function askToSignIn(why, { prefer = "", back = null, later = false, then = "" } = {}) {
   await learn();
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
@@ -667,25 +749,6 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
     codeNote.className = "note";
     codeNote.textContent = say("It works once and expires in ten minutes. Not there? Look in spam.");
     code.append(codeNote);
-    // orangecheck Connect's box, with the email it belongs to: never
-    // ticked but by the person, in orangecheck's own words. Ticked, a
-    // sign-in by emailed code asks for an orangecheck account too; a
-    // sign-in with orangecheck has one.
-    const consent = document.createElement("div");
-    consent.className = "consent";
-    const tick = document.createElement("label");
-    tick.className = "choice";
-    const box = document.createElement("input");
-    box.type = "checkbox";
-    box.id = "oc-connect";
-    box.name = "orangecheck";
-    const boxSaid = document.createElement("span");
-    tick.append(box, boxSaid);
-    const blurb = document.createElement("p");
-    blurb.className = "note";
-    blurb.id = "oc-connect-blurb";
-    box.setAttribute("aria-describedby", blurb.id);
-    consent.append(tick, blurb);
     const go = document.createElement("button");
     go.className = "cta wide";
     go.type = "submit";
@@ -714,11 +777,10 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
     another.textContent = say("Use a different address");
     links.append(resend, another);
     links.hidden = true;
-    form.append(label, consent, go, note, links);
+    form.append(label, go, note, links);
 
-    // Or orangecheck: its own window, so its own button, ours made
-    // orangecheck's (orangecheckButton), its mark's place held; as tall
-    // and as wide as Email me a code.
+    // Or Google or GitHub, where they are offered: links there and back
+    // (wayLink), each with its mark, as tall and as wide as Email me a code.
     const or = document.createElement("p");
     or.className = "or";
     const orWords = document.createElement("span");
@@ -726,6 +788,21 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
     or.append(orWords);
     const other = document.createElement("div");
     other.className = "elsewhere";
+    const viaWays = {};
+    const wayWords = { google: say("Sign in with Google"), github: say("Sign in with GitHub") };
+    for (const name of ["google", "github"]) {
+      const via = document.createElement("a");
+      via.className = "cta ghost wide way";
+      via.id = `way-${name}`;
+      via.href = wayLink(name, then || hereThen());
+      via.hidden = true;
+      via.append(wayMark(name), wayWords[name]);
+      viaWays[name] = via;
+      other.append(via);
+    }
+    // Or orangecheck: its own window, so its own button, ours made
+    // orangecheck's (orangecheckButton), its mark's place held; as tall
+    // and as wide as Email me a code.
     const oc = document.createElement("button");
     oc.className = "cta ghost wide";
     oc.type = "button";
@@ -778,12 +855,28 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
     close.textContent = say("Not now");
     foot.append(close);
 
+    // Every way in makes the person's orangecheck account too, where
+    // Connect is set up here: said in one line, with what it is.
+    const madeLine = document.createElement("p");
+    madeLine.className = "note made-line";
+    madeLine.id = "oc-made-line";
+    const madeWhat = document.createElement("a");
+    madeWhat.href = "/docs/account#orangecheck";
+    madeWhat.target = "_blank";
+    madeWhat.rel = "noopener";
+    madeWhat.textContent = say("What is that?");
+    madeLine.append(say("Signing in also makes your orangecheck account."), " ", madeWhat);
+    madeLine.hidden = true;
+
     // Each drawn once the deployment has said it is offered here, and its
     // code is in.
     or.hidden = true;
     other.hidden = true;
-    consent.hidden = true;
+    oc.hidden = true;
+    ocSaid.hidden = true;
     let offer = { offered: false, ready: false, connect: false };
+    let offered = { google: false, github: false };
+    const anyWay = () => offer.offered || offered.google || offered.github;
     let windowed = null;
     // How orangecheck's window last ended, for the line said after it.
     let ended = "";
@@ -799,14 +892,15 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
       ocTold.dataset.tone = words ? tone : "";
       ocTold.setAttribute("role", tone === "bad" || tone === "blocked" ? "alert" : "status");
     };
-    // The two ways in again, as they were before the window opened.
+    // The ways in again, as they were before the window opened.
     const ways = (focus = true) => {
       waiting.hidden = true;
       form.hidden = false;
-      or.hidden = !offer.offered || Boolean(address);
-      other.hidden = !offer.offered || Boolean(address);
+      or.hidden = !anyWay() || Boolean(address);
+      other.hidden = !anyWay() || Boolean(address);
       foot.hidden = false;
-      if (focus && !other.hidden) oc.focus();
+      madeLine.hidden = !offer.connect;
+      if (focus && !other.hidden && !oc.hidden) oc.focus();
     };
     const wait = (words, more, choices = true) => {
       waitSaid.textContent = words;
@@ -817,13 +911,22 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
       or.hidden = true;
       other.hidden = true;
       foot.hidden = true;
+      madeLine.hidden = true;
       waiting.hidden = false;
       ocTell("");
       tell("");
     };
 
-    orangecheckOffer().then(async (known) => {
+    Promise.all([orangecheckOffer(), waysOffer()]).then(async ([known, viaOffered]) => {
       offer = known;
+      offered = viaOffered;
+      for (const name of ["google", "github"]) viaWays[name].hidden = !offered[name];
+      madeLine.hidden = !known.connect || !waiting.hidden;
+      // Google and GitHub at once; orangecheck's once its code is in.
+      if (offered.google || offered.github) {
+        or.hidden = Boolean(address);
+        other.hidden = Boolean(address);
+      }
       const drawn = [];
       if (known.offered) {
         drawn.push(orangecheckButton(oc, {
@@ -869,21 +972,16 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
         }).catch((trouble) => {
           ocTell(trouble.message);
         }).then(() => {
+          oc.hidden = false;
+          ocSaid.hidden = false;
           or.hidden = Boolean(address);
           other.hidden = Boolean(address);
           if (prefer === "orangecheck" && !address && document.activeElement === field && !other.hidden) oc.focus();
         }));
       }
-      if (known.connect) {
-        drawn.push(import("/oc-connect-consent.mjs").then((words) => {
-          boxSaid.textContent = say(words.CONNECT_CONSENT_LABEL);
-          blurb.textContent = say(words.CONNECT_CONSENT_BLURB);
-          consent.hidden = false;
-        }).catch(() => null));
-      }
       await Promise.all(drawn);
     }).catch(() => null);
-    dialog.append(title, ...refused, said, form, or, other, waiting, foot);
+    dialog.append(title, ...refused, said, form, or, other, waiting, madeLine, foot);
     document.body.append(dialog);
 
     // Signed in, the page told to draw what somebody signed in sees, once
@@ -1002,9 +1100,8 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
       if (!boxes.complete((words) => tell(words, true))) return;
       const typed = boxes.value();
       busy(true);
-      let access;
       try {
-        access = await redeem(address, typed);
+        await redeem(address, typed);
       } catch (trouble) {
         busy(false);
         tell(trouble.message, true);
@@ -1018,10 +1115,9 @@ export async function askToSignIn(why, { prefer = "", back = null, later = false
       finished = true;
       windowed?.cancel();
       gone();
+      // Its first word with /api/account makes its orangecheck account on
+      // the server, once it is 13 or over (api/account.js).
       const asked = await askAgeIfAsked({ pending: Boolean(why) || later }).catch(() => null);
-      // Asked at the box's tick, never otherwise, never for an account
-      // under 13, and never waited on.
-      if (!asked?.refused && offer.connect && !consent.hidden && box.checked) connectOrangecheck(access);
       settled(!asked?.refused);
     });
     dialog.showModal();
