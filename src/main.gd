@@ -4755,6 +4755,32 @@ func _set_address(path: String) -> void:
 	JavaScriptBridge.eval("history.replaceState(%s, '', %s)" % [mark, to], true)
 
 
+## The longest [method _address_once_kept] waits for the browser to store the
+## working model, in ms: past it the address is put as asked all the same.
+const KEPT_WAIT_MS := 120000
+
+
+## [param path] put in the address once the model just opened from it
+## (?library=, ?copy=) is in this tab's storage: the working model written
+## now (ModelStore.write_now) and the browser's word that it landed
+## (ModelStore.stored, which follows the newest write of it). Till then the
+## address goes on asking for that model, so a reload opens it again.
+## Taken off at once, a reload before the autosave was written (2.5 s after
+## the open) or stored landed on an empty "Untitled", the set gone and
+## nothing to say so; with a set's loading screen still up (openreview F1,
+## 2026-11-24). Never awaited by an open: the open goes on meanwhile.
+func _address_once_kept(path: String) -> void:
+	var since: int = Time.get_ticks_msec()
+	# Half a model being laid is not written (ModelStore.write_now).
+	while _store.laying and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
+		await get_tree().process_frame
+	var kept: String = _store.write_now()
+	while not kept.is_empty() and not ModelStore.stored(kept) \
+			and Time.get_ticks_msec() - since < KEPT_WAIT_MS:
+		await get_tree().create_timer(0.2).timeout
+	_set_address(path)
+
+
 ## The share panel, asked for by the address (/app?share, _share_asked):
 ## once the model is back and the account lets them in, and the address
 ## put back to /app, so a reload does not ask again.
@@ -4855,7 +4881,8 @@ func _maybe_copy() -> void:
 func _offer_first_acts(kept: String, person: String) -> void:
 	while _gated():
 		await get_tree().create_timer(0.25).timeout
-	_set_address("")
+	# Let go once the copy is in this tab's storage, the offer not waiting.
+	_address_once_kept("")
 	if _store.title == kept:
 		_first_acts.offer(kept, person)
 
@@ -5063,15 +5090,19 @@ func _maybe_open_library() -> void:
 	var got: Dictionary = await _model_library.fetch_model(id, job)
 	var entry: Dictionary = got["entry"]
 	job.end()
-	_set_address("")
+	# Not opened, the address asks for it no more: a reload would only fail
+	# again, or ask again what the person said no to.
 	if entry.is_empty():
+		_set_address("")
 		_bar.say("could not open it: %s" % _model_library.trouble)
 		return
 	var title: String = ModelLibrary.title_of(entry)
 	if not str(got["error"]).is_empty():
+		_set_address("")
 		_bar.say("could not open %s: %s" % [title, got["error"]])
 		return
 	if not await _bar.ask_to_replace("“%s”" % title):
+		_set_address("")
 		return
 	if _assistant_made != null:
 		_assistant_made.forget_built()
@@ -5080,10 +5111,13 @@ func _maybe_open_library() -> void:
 	# Not by the parts placed or on their way: a model of none opens, and
 	# those on their way may be the last model's.
 	if not str(result["error"]).is_empty():
+		_set_address("")
 		_bar.say("could not open %s: %s" % [title, result["error"]])
 		return
 	_store.credit = ModelLibrary.credit_of(entry)
 	_store.touch()
+	# Opened, the address lets it go only once this tab's storage holds it.
+	_address_once_kept("")
 	_bar.opened.emit(placed)
 	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
 		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
