@@ -1958,10 +1958,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   part's twin lands on it: the web's assembly flow put down nothing there
   from rel-m324 and nobody saw why. `wingplace_probe` (windowed) aims a plate
   from the bin and a pasted brick all round such a wing, and drags the wing's
-  own brick there: every green ghost is put down (or moved) with its twin,
-  every red one takes nothing and said why, each drawn as it is; an ask cut
-  a microsecond at a time answers as one in one go; plus a plate put down
-  inside fresh and after a save and an open. Make unique cuts a copy loose (a session's `make_unique`,
+  own brick there, once inside the wing and once picked out from outside it
+  (a lifted part goes back into its own sub-assembly, `Builder._copies_path`,
+  and that one's copies are asked): every green ghost is put down (or moved)
+  with its twin, every red one takes nothing and said why, each drawn as it
+  is; an ask cut a microsecond at a time answers as one in one go; on 10179
+  what the ask adds to the app's own aim stays under a frame and each ghost
+  says what its click does; plus a plate put down inside fresh and after a
+  save and an open, the reopened file compared part by part. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,

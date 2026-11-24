@@ -312,10 +312,13 @@ func _big() -> void:
 	_camera.frame(box, 1.4)
 	await _frames(10)
 	# The fits read afresh, as after an edit: timed alone.
-	_tree.set("_copies_key", [])
-	var began: int = Time.get_ticks_usec()
-	_tree.call("_copies_laid", most)
-	var fits_us: int = Time.get_ticks_usec() - began
+	var began: int = 0
+	var fits_us: int = 1 << 40
+	for _try: int in 3:
+		_tree.set("_copies_key", [])
+		began = Time.get_ticks_usec()
+		_tree.call("_copies_laid", most)
+		fits_us = mini(fits_us, Time.get_ticks_usec() - began)
 	var slowest: int = 0
 	var slowest_alone: int = 0
 	var aims: int = 0
@@ -334,15 +337,22 @@ func _big() -> void:
 			# asked, then again with them; what the ask adds is the difference.
 			await _move(at)
 			await _frames(2)
+			# The least of three tries each: on a box at load 90 one try is
+			# preempted now and then (a 3-part wing's ask "took" 20 ms). The
+			# fits, read once after each edit, are timed apart (fits_us).
 			var room: Callable = _builder.copies_room
-			_builder.copies_room = Callable()
-			began = Time.get_ticks_usec()
-			_main.call("_refresh_preview")
-			var alone: int = Time.get_ticks_usec() - began
-			_builder.copies_room = room
-			began = Time.get_ticks_usec()
-			_main.call("_refresh_preview")
-			var with_ask: int = Time.get_ticks_usec() - began
+			_tree.call("_copies_laid", most)
+			var alone: int = 1 << 40
+			var with_ask: int = 1 << 40
+			for _try: int in 3:
+				_builder.copies_room = Callable()
+				began = Time.get_ticks_usec()
+				_main.call("_refresh_preview")
+				alone = mini(alone, Time.get_ticks_usec() - began)
+				_builder.copies_room = room
+				began = Time.get_ticks_usec()
+				_main.call("_refresh_preview")
+				with_ask = mini(with_ask, Time.get_ticks_usec() - began)
 			slowest = maxi(slowest, with_ask - alone)
 			slowest_alone = maxi(slowest_alone, alone)
 			await _asked()
@@ -393,7 +403,9 @@ func _big() -> void:
 		% [most, fits_us, slowest, slowest_alone, aims, greens, reds])
 	for one: String in told_wrong:
 		print("      " + one)
-	_check("...what the ask adds to an aim within a frame's 16 ms (%d us)" % slowest, slowest < 16000)
+	_check("...what the ask adds to an aim within a frame's 16 ms, the least of three tries (%d us)" % slowest,
+		slowest < 16000)
+	_check("...and the copies' fits, read once after an edit, within one too (%d us)" % fits_us, fits_us < 16000)
 	_check("...and on the set the ghost says what the click does: each green put down with its twin, each red refused in its words (%d wrong of %d)"
 		% [told_wrong.size(), aims], aims > 0 and told_wrong.is_empty())
 	await _key(KEY_ESCAPE)
