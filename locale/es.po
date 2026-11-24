@@ -17730,3 +17730,15 @@ msgstr "mide %s mm de largo, y una pieza puede medir como mucho %d mm (%d espiga
 
 msgid "%s has a corner whose place is not a number, so it is damaged: export it again from your 3D program."
 msgstr "%s tiene una esquina cuyo lugar no es un número, así que está dañado: expórtalo de nuevo desde tu programa 3D."
+
+msgid "%s has a corner too far from the rest to be read, so it is damaged: export it again from your 3D program."
+msgstr "%s tiene una esquina demasiado lejos del resto para leerla, así que está dañado: expórtalo de nuevo desde tu programa 3D."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program."
+msgstr "%s ocupa %s, y aquí solo se puede traer un archivo de como mucho %s: hazlo más pequeño en tu programa 3D."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program"
+msgstr "%s ocupa %s, y aquí solo se puede traer un archivo de como mucho %s: hazlo más pequeño en tu programa 3D"
+
+msgid "%s are more than a sub-assembly can keep: keep part of it"
+msgstr "%s son más de lo que un subconjunto puede guardar: guarda una parte"

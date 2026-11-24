@@ -138,6 +138,10 @@ func open_file(path: String, hair: bool) -> void:
 	for_hair = hair
 	HudFront.show_panel(self)
 	_arrange()
+	var size: int = MeshFilePicker.size_of(path)
+	if size > MeshPart.MOST_BYTES:
+		_status.text = MeshFile.too_large(path.get_file(), size, MeshPart.MOST_BYTES) + "."
+		return
 	take(FileAccess.get_file_as_bytes(path), path.get_file())
 
 
@@ -246,10 +250,15 @@ func _build() -> void:
 	_picker.title = "A part from a 3D file"
 	_picker.filter = PackedStringArray(["*.stl, *.obj", "3D files (STL, OBJ)"])
 	_picker.native = SaveTo.native
+	# A file larger than a part is made from is refused from its size, before
+	# it is read: in a browser too, where reading it whole froze the tab.
+	_picker.most_bytes = mini(MeshPart.MOST_BYTES, MeshFile.most_bytes())
 	_picker.picked.connect(take)
 	_picker.failed.connect(func(why: String) -> void:
 		if why != "no model chosen":
-			_status.text = why[0].to_upper() + why.substr(1) + ".")
+			# A sentence's first letter, but a file's name as it is.
+			var named: bool = why.get_slice(" ", 0).contains(".")
+			_status.text = (why if named else why[0].to_upper() + why.substr(1)) + ".")
 	add_child(_picker)
 
 	var column := VBoxContainer.new()

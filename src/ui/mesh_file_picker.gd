@@ -23,6 +23,12 @@ var filter: PackedStringArray = ["*.obj, *.stl, *.gltf, *.glb, *.ply, *.3mf, *.v
 ## turns SaveTo.native off: the portal's would open on the desktop its bus
 ## belongs to, not in the probe's display).
 var native: bool = false
+## The most the files chosen may be, together, judged from their sizes before
+## a byte is read: Brickify's MeshFile.most_bytes (less in a browser), a
+## part's MeshPart.MOST_BYTES. Past it the file is refused in a sentence.
+## Up to moulds3 a browser read the whole file first, as base64 in JSON: a
+## 100 MB STL grew the tab past 6 GB and it never answered (mouldreview2).
+var most_bytes: int = MeshFile.most_bytes()
 
 ## The model's bytes and name, and the files beside it by name.
 signal picked(bytes: PackedByteArray, name: String, extras: Dictionary)
@@ -30,6 +36,10 @@ signal failed(why: String)
 
 var _dialog: FileDialog
 var _on_files: JavaScriptObject
+## Each choice in a browser is numbered, so a file still arriving from one
+## before is let fall; and what has come of this one, by its place.
+var _choice: int = 0
+var _arrived: Dictionary = {}
 
 
 ## Ask for a file. Called straight from the press that wanted it.
@@ -59,10 +69,26 @@ func _exit_tree() -> void:
 	_dialog = null
 
 
-## A model on this computer, with the files it names read from beside it.
+## A model on this computer, with the files it names read from beside it:
+## its size judged first, before it is read ([member most_bytes]).
 func open_path(path: String) -> void:
+	var size: int = size_of(path)
+	if size > most_bytes:
+		failed.emit(MeshFile.too_large(path.get_file(), size, most_bytes))
+		return
 	var read: Dictionary = read_path(path)
 	take(read["bytes"], path.get_file(), read["extras"])
+
+
+## How many bytes the file at [param path] is, read from the file system
+## without reading it; 0 when it cannot be opened.
+static func size_of(path: String) -> int:
+	var handle := FileAccess.open(path, FileAccess.READ)
+	if handle == null:
+		return 0
+	var size: int = handle.get_length()
+	handle.close()
+	return size
 
 
 ## A model's bytes on this computer and the files it names, read from beside
@@ -95,15 +121,21 @@ func take(bytes: PackedByteArray, file_name: String, extras: Dictionary = {}) ->
 	picked.emit(bytes, file_name, extras)
 
 
+## The page's own chooser. The files' sizes are judged in the page, before
+## one is read ([member most_bytes]); each is then read as bytes and handed
+## over as they are (JavaScriptBridge.js_buffer_to_packed_byte_array), one
+## call a file: no base64, no JSON, no string of it in Godot.
 func _ask_browser() -> void:
 	_on_files = JavaScriptBridge.create_callback(_from_browser)
 	var window: JavaScriptObject = JavaScriptBridge.get_interface("window")
 	if window == null:
 		failed.emit("this build cannot open files")
 		return
-	window.brickworksPickMeshFiles = _on_files
+	window.brickworksPickMeshFile = _on_files
+	_choice += 1
+	_arrived = {}
 	JavaScriptBridge.eval("""
-		(function () {
+		(function (choice, most) {
 			var input = document.createElement('input');
 			input.type = 'file';
 			input.multiple = true;
@@ -113,46 +145,63 @@ func _ask_browser() -> void:
 			input.addEventListener('change', function () {
 				var files = Array.prototype.slice.call(input.files || []);
 				document.body.removeChild(input);
-				if (!files.length) { window.brickworksPickMeshFiles(''); return; }
-				var read = [];
-				var left = files.length;
+				var say = window.brickworksPickMeshFile;
+				if (!files.length) { say(choice, '', -2, 0, null); return; }
+				var total = 0;
+				var biggest = files[0];
+				files.forEach(function (file) {
+					total += file.size;
+					if (file.size > biggest.size) { biggest = file; }
+				});
+				if (total > most) { say(choice, biggest.name, -1, total, null); return; }
 				files.forEach(function (file, n) {
 					var reader = new FileReader();
 					reader.onload = function () {
-						var url = String(reader.result);
-						read[n] = {name: file.name, data: url.substring(url.indexOf(',') + 1)};
-						if (--left === 0) window.brickworksPickMeshFiles(JSON.stringify(read));
+						say(choice, file.name, n, files.length, new Uint8Array(reader.result));
 					};
 					reader.onerror = function () {
-						read[n] = {name: file.name, data: ''};
-						if (--left === 0) window.brickworksPickMeshFiles(JSON.stringify(read));
+						say(choice, file.name, n, files.length, new Uint8Array(0));
 					};
-					reader.readAsDataURL(file);
+					reader.readAsArrayBuffer(file);
 				});
 			});
 			input.click();
-		})();
-	""" % accept, true)
+		})(%d, %d);
+	""" % [accept, _choice, most_bytes], true)
 
 
+## One call a file of a choice: [choice, its name, its place (-1: the files
+## are too large together, their size in the next; -2: none chosen), how
+## many files, its bytes].
 func _from_browser(arguments: Array) -> void:
-	var said: Variant = JSON.parse_string(str(arguments[0])) if not arguments.is_empty() else null
-	if not said is Array or (said as Array).is_empty():
+	if arguments.size() < 5 or int(arguments[0]) != _choice:
+		return
+	var name: String = str(arguments[1])
+	var place: int = int(arguments[2])
+	if place == -2:
 		failed.emit("no model chosen")
+		return
+	if place == -1:
+		failed.emit(MeshFile.too_large(name, int(arguments[3]), most_bytes))
+		return
+	var data: Variant = arguments[4]
+	_arrived[place] = [name, JavaScriptBridge.js_buffer_to_packed_byte_array(data)
+		if data is JavaScriptObject else PackedByteArray()]
+	if _arrived.size() < int(arguments[3]):
 		return
 	var main: String = ""
 	var bytes := PackedByteArray()
 	var extras: Dictionary = {}
-	for entry: Variant in said:
-		if not entry is Dictionary:
-			continue
-		var name: String = str(entry.get("name", ""))
-		var data: PackedByteArray = Marshalls.base64_to_raw(str(entry.get("data", "")))
-		if main.is_empty() and name.get_extension().to_lower() in MeshFile.KINDS:
-			main = name
-			bytes = data
+	var places: Array = _arrived.keys()
+	places.sort()
+	for n: Variant in places:
+		var one: Array = _arrived[n]
+		if main.is_empty() and str(one[0]).get_extension().to_lower() in MeshFile.KINDS:
+			main = str(one[0])
+			bytes = one[1]
 		else:
-			extras[name] = data
+			extras[str(one[0])] = one[1]
+	_arrived = {}
 	if main.is_empty():
 		failed.emit(MeshFile.refusal(str(extras.keys()[0])) if extras.size() == 1
 			else "none of those is a 3D model — choose an %s" % MeshFile.NAMED)

@@ -17730,3 +17730,15 @@ msgstr "il fait %s mm de long, et une pièce peut faire au plus %d mm (%d tenons
 
 msgid "%s has a corner whose place is not a number, so it is damaged: export it again from your 3D program."
 msgstr "%s a un coin dont la place n'est pas un nombre, il est donc endommagé : exportez-le à nouveau depuis votre logiciel 3D."
+
+msgid "%s has a corner too far from the rest to be read, so it is damaged: export it again from your 3D program."
+msgstr "%s a un coin trop loin du reste pour être lu, il est donc endommagé : exportez-le à nouveau depuis votre logiciel 3D."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program."
+msgstr "%s fait %s, et un fichier d'au plus %s peut être importé ici : réduisez-le dans votre logiciel 3D."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program"
+msgstr "%s fait %s, et un fichier d'au plus %s peut être importé ici : réduisez-le dans votre logiciel 3D"
+
+msgid "%s are more than a sub-assembly can keep: keep part of it"
+msgstr "%s, c'est plus qu'un sous-ensemble ne peut garder : gardez-en une partie"

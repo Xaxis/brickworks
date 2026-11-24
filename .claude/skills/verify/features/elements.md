@@ -190,6 +190,15 @@ connectors and collision the library's own parts have.
   written with its own text only, 3315-1 saved whole came back with 5 of its
   parts unbuilt and the model 28 LDU higher (docs/CADTASK.md, 2026-10-16).
   `fidelity_probe` saves 3315-1 whole and opens it as the same model.
+  Text coming into an open model (a paste, a kept sub-assembly, a file put
+  in) never redefines a made part this window has: `CustomParts.take_into`
+  with `redefine = false`, and a kept `bw-` token whose `.dat` in
+  `user://custom_parts/` is what the library draws is never rebuilt from a
+  file (`_kept_as_built`); a section another's file carries for it, cut
+  short, is written back on save with the text the model draws
+  (`SourceFile.parts_carried_into`; minifig.md, `parts from 3D files`).
+  An empty FILE section is an empty sub-model by LDraw's rule, and is kept
+  as one.
 - `build custom parts` (`tools/build_custom.py`): the Python pipeline for just
   the given parts — `.dat` files, or the parts embedded in an `.mpd` — in
   seconds rather than the full build's ninety minutes. `--out DIR` writes

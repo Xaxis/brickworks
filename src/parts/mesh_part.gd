@@ -48,6 +48,10 @@ const MOST_TRIANGLES := 9000
 ## The most a file may have to be simplified to that at all. Past it the
 ## simplifying would take a browser longer than anyone waits.
 const MOST_BROUGHT := 120000
+## The most a file a part is made from may be, judged from its size before it
+## is read (MeshFilePicker): a text STL of [constant MOST_BROUGHT] triangles
+## is about 31 MB, a binary one 6 MB, and an OBJ less.
+const MOST_BYTES := 32 * 1024 * 1024
 ## What it reads, by extension, and the same as a person is told it.
 const KINDS: PackedStringArray = ["stl", "obj"]
 const NAMED := "STL or OBJ"
@@ -188,6 +192,9 @@ static func read(bytes: PackedByteArray, file_name: String,
 	if not kind in KINDS:
 		out.problem = "%s is not a 3D file this can make a part from: choose an %s file." % [
 			out.file, NAMED]
+		return out
+	if bytes.size() > MOST_BYTES:
+		out.problem = MeshFile.too_large(out.file, bytes.size(), MOST_BYTES) + "."
 		return out
 	var mesh: MeshFile = MeshFile.read(bytes, out.file, extras)
 	if not mesh.error.is_empty():

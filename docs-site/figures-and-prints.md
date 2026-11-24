@@ -103,7 +103,7 @@ lib:the assistant makes a part
 3. Choose a connector, then click on the part where it goes: **Stud**, **Anti-stud**, **Bar**, **Bar hole** or **Pin hole**. A bar on a thin stem runs along the stem. **Take off** removes one.
 4. Name it and press **Add to parts**. It goes in the bin under **Custom** and into your hand, and every model that uses it carries it, so the file opens on another computer and in LDCad.
 
-A file that is not a closed shape (it has holes in its surface) is refused, with how to close it in Blender, and so is one whose numbers are damaged. A file with more than 9,000 triangles is simplified if the shape stays within 1% of its size; past 120,000 it is refused. A part may be at most 400 mm (50 studs) long, longer than any LEGO® element.
+A file that is not a closed shape (it has holes in its surface) is refused, with how to close it in Blender, and so is one whose numbers are damaged. A file with more than 9,000 triangles is simplified if the shape stays within 1% of its size; past 120,000 it is refused, and so is a file over 32 MB, before it is read. A part may be at most 400 mm (50 studs) long, longer than any LEGO® element.
 
 A model that uses a part you made carries it whatever it was opened from: your own model, a set, or someone else's file. Save, Export, a link, a kept sub-assembly and, on the desktop, a copy to the clipboard all take it with them.
 

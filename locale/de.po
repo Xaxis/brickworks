@@ -17730,3 +17730,15 @@ msgstr "es ist %s mm lang, und ein Teil darf höchstens %d mm (%d Noppen) lang s
 
 msgid "%s has a corner whose place is not a number, so it is damaged: export it again from your 3D program."
 msgstr "%s hat eine Ecke, deren Ort keine Zahl ist, also ist sie beschädigt: exportiere sie erneut aus deinem 3D-Programm."
+
+msgid "%s has a corner too far from the rest to be read, so it is damaged: export it again from your 3D program."
+msgstr "%s hat eine Ecke, die zu weit vom Rest entfernt ist, um gelesen zu werden, also ist sie beschädigt: exportiere sie erneut aus deinem 3D-Programm."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program."
+msgstr "%s ist %s groß, und hier kann eine Datei von höchstens %s eingelesen werden: mach sie in deinem 3D-Programm kleiner."
+
+msgid "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program"
+msgstr "%s ist %s groß, und hier kann eine Datei von höchstens %s eingelesen werden: mach sie in deinem 3D-Programm kleiner"
+
+msgid "%s are more than a sub-assembly can keep: keep part of it"
+msgstr "%s sind mehr, als eine Baugruppe behalten kann: behalte einen Teil davon"
