@@ -382,7 +382,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	# ...and the ghost red where a copy has no room for its twin, why said as
 	# it turns so, before the click it would refuse (wingplace).
 	builder.copies_room = assemblies.room_in_copies
-	builder.copies_refused.connect(bar.say)
+	builder.copies_refused.connect(func(words: String) -> void:
+		if bar.status_text() != words:
+			bar.say(words))
 	# A model put into this one comes in hand as a paste does (intomodel).
 	bar.hold_parts = verbs.hold
 	# Whatever replaces the model leaves no assembly being edited.

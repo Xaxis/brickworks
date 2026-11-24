@@ -2245,6 +2245,9 @@ signal copies_refused(words: String)
 ## put down into an assembly with several copies is asked by the click.
 const COPIES_ASK_US := 4000
 var _copies_asked: Array = []
+var _copies_hand: Array = []
+## Whether the part's ghost was last drawn red for the copies.
+var _drawn_red: bool = false
 ## What a click on a brick selects with it, brick id -> PackedInt64Array:
 ## its whole sub-assembly (Assemblies.unit_of). Unset, a brick alone, or
 ## its minifigure.
@@ -3261,24 +3264,34 @@ func _ask_copies() -> void:
 	if copies_room.is_valid() and not place_group.is_empty():
 		if is_carrying():
 			if carrying.is_aimed() and carrying._valid:
-				asked = ["carried", carrying._frame, carrying.turns, carrying.items.size()]
+				asked = ["carried", carrying._frame, carrying.turns]
 		elif _ghost_valid and _ghost.visible and held_figure.is_empty() and not _ghost_warming:
 			asked = [held_part, _ghost_transform]
 	if not asked.is_empty():
 		asked.append_array([place_group, world.revision, BrickWorld.paths_written, lattice.revision])
-	var was: String = copies_refuse
-	if asked != _copies_asked:
+	# What is carried by the hold, not its contents: a paste held again is a
+	# new array, and a big hand is not compared part by part each frame.
+	var hand: Array = carrying.items if is_carrying() else []
+	if asked != _copies_asked or not is_same(hand, _copies_hand):
 		_copies_asked = asked
+		_copies_hand = hand
 		copies_refuse = "" if asked.is_empty() \
 			else str(copies_room.call(_going_down(), COPIES_ASK_US))
+		# Said each time it is asked and red: as it turns red, and again as it
+		# moves on red once the line has cleared (the shell says it only where
+		# the line does not say it already).
+		if not copies_refuse.is_empty():
+			copies_refused.emit(copies_refuse)
 	var red: bool = not copies_refuse.is_empty()
 	if is_carrying():
 		carrying.copies_red(red)
 	elif red:
 		_ghost_material.set_shader_parameter("valid", false)
-		preview_changed.emit(held_part, false)
-	if red and copies_refuse != was:
-		copies_refused.emit(copies_refuse)
+	elif _drawn_red and _ghost.visible:
+		_ghost_material.set_shader_parameter("valid", _ghost_valid)
+	if red != _drawn_red and not is_carrying():
+		preview_changed.emit(held_part, _ghost_valid and not red)
+	_drawn_red = red
 
 
 ## What a click would put down now, [part id, where] each: the part in hand

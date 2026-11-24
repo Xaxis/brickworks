@@ -245,13 +245,19 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 			if again.is_valid() and not _builder.is_carrying():
 				await again.call()
 			await _move(at)
-			var began: int = Time.get_ticks_usec()
 			await _move(at + Vector2(1, 0))
-			slowest = maxi(slowest, Time.get_ticks_usec() - began)
-			var predicted: String = _builder.copies_refuse
+			# By name: a build from before wingplace has none, and is run to
+			# show its green ghosts refused.
+			var asked: Variant = _builder.get("copies_refuse")
+			var predicted: String = "" if asked == null else str(asked)
 			var fits: bool = _builder.can_place()
 			if not fits and predicted.is_empty():
 				continue
+			# What one aim's ask costs, unbounded, here.
+			if _tree.has_method("room_in_copies"):
+				var began: int = Time.get_ticks_usec()
+				_tree.call("room_in_copies", _builder.call("_going_down"), 0)
+				slowest = maxi(slowest, Time.get_ticks_usec() - began)
 			var heard: String = _shell.status.fields()["message"]
 			var count: int = _count()
 			await _click(at + Vector2(1, 0))
@@ -269,6 +275,9 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 				red_put += 1 if put else 0
 				red_said += 1 if heard == predicted else 0
 				same_words += 1 if _tree.refused == predicted else 0
+				if (heard != predicted or _tree.refused != predicted) and wrong.size() < 6:
+					wrong.append("red at %s: said \"%s\", refused \"%s\"" % [str(Vector3(x, 0, z)),
+						heard, _tree.refused])
 				if put and wrong.size() < 6:
 					wrong.append("red at %s took %d (\"%s\")" % [str(Vector3(x, 0, z)), _count() - count,
 						predicted])
@@ -278,7 +287,7 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 			if put:
 				await _key(KEY_Z, true)
 				await _frames(2)
-	print("    %s: %d places green, %d of them put down with the twin; %d red for the copy, %d put down, %d said as it turned red, %d refused in the same words; the slowest aim %d us"
+	print("    %s: %d places green, %d of them put down with the twin; %d red for the copy, %d put down, %d said as it turned red, %d refused in the same words; the slowest ask %d us"
 		% [what, green, green_put, red, red_put, red_said, same_words, slowest])
 	for one: String in wrong:
 		print("      " + one)

@@ -1945,15 +1945,22 @@ func room_in_copies(items: Array, budget_us: int = 0) -> String:
 		return ""
 	## [part, cells, the copy it goes into] of each part going down so far.
 	var down: Array = []
+	## Each item as the world puts it down: a retired number is the part that
+	## replaced it, where its stub puts it (BrickWorld._place), so a 3023 in
+	## hand is a 3023b in the copy and its twins, named so.
+	var going: Array = []
 	for item: Array in items:
-		var mesh: Lbm.PartMesh = library.mesh_for(str(item[0]))
+		var real: String = library.resolve(str(item[0]))
+		var at: Transform3D = (item[1] as Transform3D) * library.moved_by(str(item[0]))
+		going.append([real, at])
+		var mesh: Lbm.PartMesh = library.mesh_for(real)
 		if mesh != null:
-			down.append([str(item[0]), builder.boxes_for(mesh, item[1]), entered])
+			down.append([real, builder.boxes_for(mesh, at), entered])
 	var laid_already: Dictionary = {}
 	for copy: Array in copies:
 		var other: String = copy[0]
 		var round: String = copy[3]
-		for item: Array in items:
+		for item: Array in going:
 			if budget_us > 0 and Time.get_ticks_usec() - started > budget_us:
 				return ""
 			var laid: Array = _laid(copy[1], str(item[0]), item[1])
