@@ -154,6 +154,14 @@ func find(id: String) -> Dictionary:
 	if not is_id(id):
 		trouble = "A library id is a kind and a name, like omr-10179-1."
 		return {}
+	# The one the address asked for, found by the page as it opened, before
+	# the index is read here (src/boot/shell.html, window.brickworksEarly):
+	# the index is half a megabyte, read on a worker a frame at a time. Not
+	# for a run that holds sets out, which the whole index decides.
+	if _models.is_empty() and DesignMemory.held_out().is_empty():
+		var given: Dictionary = _early_entry(id)
+		if not given.is_empty():
+			return given
 	await models()
 	if _models.is_empty():
 		return {}
@@ -392,7 +400,12 @@ static func file_of(id: String) -> String:
 func fetch_model(id: String, job: Working.Job = null) -> Dictionary:
 	var file: String = file_of(id)
 	var early: Array = []
-	if not file.is_empty():
+	# Fetched by the page as it opened, taken now: asked for here, it waited
+	# first for the deployment to say where the library is, a frame away.
+	var came: Dictionary = _early_file_at(file) if not file.is_empty() else {}
+	if not came.is_empty():
+		early.append(came)
+	elif not file.is_empty():
 		(func() -> void:
 			early.append(await _kept_or_fetched(file, MOST_MODEL, false, job))).call()
 	var entry: Dictionary = await find(id)
@@ -488,8 +501,13 @@ func _kept_or_fetched(path: String, most: int, fresh: bool, job: Working.Job = n
 
 ## One request: {code, bytes}, code 0 when nothing came back. Asked again
 ## twice when nothing did, as SharedModels.fetch does. [param job], when
-## given, says how much has come: "… 12 of 36 MB".
+## given, says how much has come: "… 12 of 36 MB". What the page fetched
+## as it opened is taken from it ([method _early_file]), not asked again.
 func fetch(url: String, most: int, job: Working.Job = null, headers := PackedStringArray()) -> Dictionary:
+	if headers.is_empty():
+		var kept: Dictionary = await _early_file(url, most)
+		if not kept.is_empty():
+			return kept
 	var words: String = job.words.trim_suffix("…") if job != null else ""
 	for attempt: int in 3:
 		var request := HTTPRequest.new()
@@ -522,3 +540,131 @@ func fetch(url: String, most: int, job: Working.Job = null, headers := PackedStr
 		if attempt < 2:
 			await get_tree().create_timer(1.0 + attempt * 2.0).timeout
 	return {"code": 0, "bytes": PackedByteArray()}
+
+
+# -- What the page fetched as it opened -----------------------------------
+#
+# A set's page opens the studio at /app?library=<id>, and the page asks for
+# the model's file and the library's index as it opens (src/boot/shell.html,
+# window.brickworksEarly), beside the engine's own files. Asked for here
+# once the studio was up, each request went on a frame at a time under the
+# studio's first frames drawn in software: the file came 3.5 s after the
+# studio was up (setopen, 2026-11-23). Each is taken once, and what did not
+# come is asked for here as before.
+
+
+## How long a file the page is still fetching is waited for, in ms, before
+## it is asked for here.
+const EARLY_WAIT_MS := 20000
+
+
+## [param url] as the page fetched it: {code, bytes}, waited for a frame at
+## a time while it is on its way; {} when the page did not fetch it, or it
+## failed, or came bigger than [param most].
+static func _early_file(url: String, most: int) -> Dictionary:
+	if not OS.has_feature("web"):
+		return {}
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	var until: int = Time.get_ticks_msec() + EARLY_WAIT_MS
+	var state: String = _early_state(url)
+	while state == "coming" and Time.get_ticks_msec() < until:
+		await tree.process_frame
+		state = _early_state(url)
+	if not state.begins_with("came "):
+		return {}
+	var bytes: Variant = JavaScriptBridge.eval(("(function (u) { var all = window.brickworksEarly;"
+		+ " var one = all && all.files[u]; if (!one) return null; delete all.files[u];"
+		+ " return one.bytes; })(%s)") % JSON.stringify(url), true)
+	if not bytes is PackedByteArray or (bytes as PackedByteArray).size() > most:
+		return {}
+	return {"code": int(state.trim_prefix("came ")), "bytes": bytes}
+
+
+## The library's [param path] (library/omr/...) as the page fetched it, if it
+## has come whole: {code, bytes}, or {}. Found by the path, so the open need
+## not wait for the deployment to say where the library is (the page asked
+## it itself, as Deployment does).
+static func _early_file_at(path: String) -> Dictionary:
+	var url: String = _early_url_of(path)
+	if url.is_empty():
+		return {}
+	var bytes: Variant = JavaScriptBridge.eval(("(function (u) { var all = window.brickworksEarly;"
+		+ " var one = all.files[u]; delete all.files[u]; return one.bytes; })(%s)") % JSON.stringify(url), true)
+	if not bytes is PackedByteArray or (bytes as PackedByteArray).size() > MOST_MODEL:
+		return {}
+	return {"code": 200, "bytes": bytes}
+
+
+## The address the page fetched the library's [param path] from, if it came
+## whole, or "".
+static func _early_url_of(path: String) -> String:
+	if not OS.has_feature("web") or not _inside(path):
+		return ""
+	var url: Variant = JavaScriptBridge.eval(("(function (p) { var all = window.brickworksEarly;"
+		+ " if (!all) return ''; for (var u in all.files) { var one = all.files[u];"
+		+ " if (u.slice(-p.length - 1) === '/' + p && one.done && one.status === 200 && one.bytes) return u; }"
+		+ " return ''; })(%s)") % JSON.stringify(path), true)
+	return url if url is String else ""
+
+
+## [param id]'s file as the page fetched it, read and left for the open to
+## take: "" when it has not come whole. Main asks for its parts' geometry
+## from it as the studio is made.
+static func early_text(id: String) -> String:
+	var url: String = _early_url_of(file_of(id))
+	if url.is_empty():
+		return ""
+	var bytes: Variant = JavaScriptBridge.eval(("(function (u) { var one = window.brickworksEarly.files[u];"
+		+ " return one ? one.bytes : null; })(%s)") % JSON.stringify(url), true)
+	if not bytes is PackedByteArray or (bytes as PackedByteArray).size() > MOST_MODEL:
+		return ""
+	return (bytes as PackedByteArray).get_string_from_utf8()
+
+
+## Where the deployment keeps the library and the parts' geometry, as the
+## page heard it from the deployment as it opened (window.brickworksEarly),
+## or "": what PartLibrary.remote_parts is once Deployment has asked too.
+static func early_parts_url() -> String:
+	if not OS.has_feature("web"):
+		return ""
+	var said: Variant = JavaScriptBridge.eval("(function () { var all = window.brickworksEarly;"
+		+ " return all && typeof all.parts === 'string' ? all.parts : ''; })()", true)
+	var url: String = str(said) if said is String else ""
+	return url if url.begins_with("https://") or url.begins_with("http://") or url.begins_with("/") else ""
+
+
+## "" (not fetched by the page), "coming", "failed" or "came <code>".
+static func _early_state(url: String) -> String:
+	var said: Variant = JavaScriptBridge.eval(("(function (u) { var all = window.brickworksEarly;"
+		+ " var one = all && all.files && all.files[u]; if (!one) return '';"
+		+ " if (!one.done) return 'coming'; return one.status && one.bytes ? 'came ' + one.status : 'failed'; })(%s)")
+		% JSON.stringify(url), true)
+	return str(said) if said is String else ""
+
+
+## Whether the page has [param id]'s entry and its file whole now, so an open
+## of it waits on nothing (Main opens it in the frame the studio comes up in).
+static func early_here(id: String) -> bool:
+	if not OS.has_feature("web"):
+		return false
+	return str(JavaScriptBridge.eval(("(function (i) { var all = window.brickworksEarly;"
+		+ " if (!all || !all.entry || all.entry.id !== i) return '';"
+		+ " for (var u in all.files) if (!all.files[u].done) return '';"
+		+ " return 'here'; })(%s)") % JSON.stringify(id), true)) == "here"
+
+
+## The index's entry for [param id] as the page found it, checked as every
+## entry is ([method _entry]); {} when the page has none for it.
+static func _early_entry(id: String) -> Dictionary:
+	if not OS.has_feature("web"):
+		return {}
+	var said: Variant = JavaScriptBridge.eval(("(function (i) { var all = window.brickworksEarly;"
+		+ " var one = all && all.entry; return one && one.id === i ? one.json : ''; })(%s)")
+		% JSON.stringify(id), true)
+	if not said is String or (said as String).is_empty():
+		return {}
+	var json := JSON.new()
+	if json.parse(said) != OK:
+		return {}
+	var entry: Dictionary = _entry(json.data)
+	return entry if str(entry.get("id", "")) == id else {}

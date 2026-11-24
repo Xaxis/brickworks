@@ -993,6 +993,11 @@ func replace_moved(numbers: Array) -> String:
 	return said
 
 
+## The biggest file [method open_text_with_progress] reads and opens in one
+## frame: a set of a few hundred parts, read in milliseconds.
+const OPENED_AT_ONCE_MOST := 32 * 1024
+
+
 ## A model's text opened and called [param name], said first as
 ## [method open_with_progress] says it: open_text_fetched's answer, with
 ## "placed" 0 when it could not be read. Called that whatever the file calls
@@ -1004,10 +1009,23 @@ func replace_moved(numbers: Array) -> String:
 ## desktop's frame to read and 2.6 s more to build its 29 hoses, and a
 ## browser drawing in software is several times slower. Then laid out a
 ## slice at a time (ModelStore._open_into), the bar counting it.
+##
+## A file under [constant OPENED_AT_ONCE_MOST] is read and opened in the
+## frame it came in, its bar never waited on to be drawn: a set's 8 KB file
+## from its page waited eight frames for "Reading" and "Opening" to show (each
+## up to three, as the parts bin's pictures held the drawing), and its read
+## a frame more on a worker, each frame under the studio's first ones in a
+## browser drawing in software a quarter to one and a half seconds, for a
+## read of milliseconds (setopen, 2026-11-23).
 func open_text_with_progress(text: String, name: String) -> Dictionary:
+	var at_once: bool = text.length() < OPENED_AT_ONCE_MOST
 	var job: Working.Job = Working.begin("Reading %s (%s)…" % [name, ModelLibrary.size_words(text.length())])
-	await job.shown()
-	var parsed: LdrModel = await read_off_frame(text, name)
+	var parsed: LdrModel = null
+	if at_once:
+		parsed = LdrModel.parse(text, name)
+	else:
+		await job.shown()
+		parsed = await read_off_frame(text, name)
 	if parsed != null:
 		store.ask_geometry(parsed)
 	if parsed != null and not parsed.generated.is_empty():
@@ -1015,7 +1033,8 @@ func open_text_with_progress(text: String, name: String) -> Dictionary:
 		await CustomParts.warm_skins(store.library, parsed)
 	job.end()
 	job = Working.begin("Opening %s…" % name)
-	await job.shown()
+	if not at_once:
+		await job.shown()
 	var result: Dictionary = await store.open_text_fetched(text, name, parsed, job)
 	job.end()
 	if not str(result["error"]).is_empty():

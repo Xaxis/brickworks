@@ -4255,10 +4255,35 @@ plan with Claude as the client.
   logs where the version's time went (the app's state as it changed, its
   fetches, the page's frames over 250 ms apart). `--trace` adds every
   WebGL call and each engine frame over 200 ms, to tell the app's own work
-  from shader compiles and frames the browser never gave. A local export
+  from shader compiles and frames the browser never gave; `--chrome-trace=DIR`
+  traces each page whole (the GPU process too: SwiftShader's drawing shows as
+  `GLContextEGL::MakeCurrent`), read by window with
+  `bench/results/setopen-2026-11-23/open_trace.py`. Each round also says when
+  the studio and the set were drawn (the first frame drawn after the app said
+  so, up to a WebGL fence). `--viewport=WxH` (390 wide is a phone's),
+  `--open=ADDRESS` and `--bricks=N` time another open the same way. Each run
+  says the set down and on the screen from the press (its page's clock), and
+  `--strip[=MS,...]` presses Make your own version on the set's page and keeps
+  the browser's screencast from the loading screen's lift on
+  (`strip_frames/<ms from the press>.jpg`, the app's states in
+  `strip_states.json`, the press, studio made and lift in `strip.json`).
+  The page cannot say when the studio itself is on the screen: the lift's
+  fade waits on the page's thread, behind first frames of 2 to 3 s, so
+  `bench/results/setopen-2026-11-23/strip_sheet.py PAIR_DIR` finds it (the
+  studio's dark header) and lays the screen 0, 0.5, 1 and 2 s after it, each
+  with its time from the press, how long it had not changed, and the parts
+  down and coming (`strip.png`, `strip.txt`). A set's page keeps its loading
+  screen up, saying how many of the set's parts have come, until the studio
+  is drawn with the set ("shown"; 6 s past the studio made at most). A local export
   works too: relay --static with each browser signed in as its own
-  throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23;
-  the 2 s bar is not met there).
+  throwaway account (p50 6.3 s at load ~100, threads and no threads, 11-23,
+  before setopen; after it, the loading screen kept up for the set, same-moment
+  pairs with pre261 at load 46-82: 1.4 s at 1280 and 0.9 s at 390 against
+  pre261's 4.8 and 4.0 s; from the press, the set on the screen 17.7 and
+  17.9 s against 20.0 and 21.4 s.
+  A model page's Open in the app, `--open=/app?view=ID`, is not changed by
+  it: 7.0 s against 8.3 s, the shared model's fetch and then its parts:
+  bench/results/setopen-2026-11-23/FINDINGS.txt).
 - **Search that finds what a builder means** (search, 2026-10-30):
   `api/_search.js` reads a query word by word (misspelt by edit distance,
   run together or apart, plurals, accents and apostrophes, set numbers and

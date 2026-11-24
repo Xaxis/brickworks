@@ -861,7 +861,46 @@ Whether what you built is still there tomorrow, and still means the same thing.
   status bar once a browser's awaited parts arrive. The share page's count
   (`api/share.js` `checkModel`) still counts every placed reference.
   The set's file is fetched with the index, not after it
-  (`ModelLibrary.fetch_model`: an id's file is known from the id). A big
+  (`ModelLibrary.fetch_model`: an id's file is known from the id). On the
+  web the page itself fetches both as it opens for `?library=omr-*`
+  (`src/boot/shell.html`, `window.brickworksEarly`: the file, the index and
+  the index's entry for the id), and the app takes them from it
+  (`ModelLibrary._early_file`, `_early_entry`); with the entry and the file
+  there when the studio comes up (`ModelLibrary.early_here`), Main opens the
+  set in the studio's first frame, so that frame draws it and compiles the
+  bricks' shaders with the studio's own. The geometry of its parts this
+  build does not carry is asked for as the studio is made, from where the
+  page heard parts live (`Main._ask_early_set`,
+  `ModelLibrary.early_text`/`early_parts_url`), and read before anything
+  read ahead, in a queue of its own, and kept first (`PartLibrary.want`,
+  `_waited_on_parts`, `_to_read_first`). The open waits for it, 2 s at most,
+  with nothing drawn, under the page's loading screen, which stays up for a
+  set and says how many of its parts have come (`Main._await_early_set`,
+  `window.brickworksBootParts`), each read on the page's idle thread as its
+  bytes come (`PartLibrary.read_first_here`: left to the workers, none of
+  346-2's 12 came in the 2 s), and comes down once the studio is drawn
+  with the set on it (boot mark `shown`, shell.html's `whenUp`): every part
+  down in that frame, and the studio never seen still. Waited for with the
+  studio showing, it was a frozen studio; not waited for, the last parts came
+  3 to 4 s later. The boot mark `set geometry: N of M, R read here` says how it went.
+  Then the screen says "Opening the set…" and is drawn so, a frame before
+  the open and the studio's first frame, which hold the page's thread in one
+  go (`window.brickworksBootOpening`): the count said there was "0 of 12"
+  for 5.4 s with all 12 read (openreview F3). The loading screen's tips stop
+  turning once the app's `ui` mark is set, the tip shown kept (bootTips in
+  shell.html; a fade begun then left the card empty for 5.5 s, F2). The
+  address keeps `?library=` (and `?copy=`) until the working model, written
+  at the next frame after the open (over frames when big), is in the
+  browser's storage (`Main._address_once_kept`, `ModelStore.write_soon`,
+  `written`, `stored`):
+  a reload before that opens the set again, never an empty "Untitled"
+  (openreview F1: the address went at the fetch, the autosave 2.5 s after
+  the open). A failed open, or one the person said no to, lets the address
+  go at once. A file under 32 KB is read and
+  opened in the frame it came in, its bar not waited on to be drawn
+  (`ModelBar.OPENED_AT_ONCE_MOST`), and an open waits on the library's
+  readers only when its file carries parts or LDCad skins
+  (`CustomParts.carries_any`; setopen, 2026-11-23). A big
   set opens as any big model does (`ModelStore._open_into` with a job), on
   the screen once its parts are (walk180 A8: the hotel, 10297-1's 3,164
   parts, took 60-90 s in a browser drawing in software): the geometry the
