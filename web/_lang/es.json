@@ -3937,6 +3937,9 @@
   "{who} asked the builders of LEGO® set {set}": "{who} preguntó a los constructores del set LEGO® {set}",
   "Sign in to ask: we email you a code, no password. Anyone can read Talk.": "Inicia sesión para preguntar: te enviamos un código por correo, sin contraseña. Cualquiera puede leer el foro.",
   "Stuck on a step? Ask everybody who built a version of this set. They hear of it, and an answer can point at the part in 3D.": "¿Atascado en un paso? Pregunta a todos los que construyeron una versión de este set. Se enteran, y una respuesta puede señalar la pieza en 3D.",
-  "Getting the questions asked here…": "Cargando las preguntas hechas aquí…"
+  "Getting the questions asked here…": "Cargando las preguntas hechas aquí…",
+  "Pick a step from 1 to {n}.": "Elige un paso del 1 al {n}.",
+  "A step is a whole number from 1.": "Un paso es un número entero desde 1.",
+  "That may not have gone. Look for it in the list below before you ask again.": "Puede que no se haya enviado. Búscala en la lista de abajo antes de volver a preguntar."
  }
 }

@@ -213,7 +213,9 @@ async function startAsks(section) {
   const library = section.dataset.library || "";
   const tests = new URLSearchParams(location.search).get("tests") === "1";
   const body = section.querySelector(".set-asks-body");
-  const reply = await call(`/api/people?op=talk_set_asks&set=${encodeURIComponent(set)}${tests ? "&tests=1" : ""}`).catch(() => null);
+  const address = `/api/people?op=talk_set_asks&set=${encodeURIComponent(set)}${tests ? "&tests=1" : ""}`;
+  const rowsOf = (said) => (Array.isArray(said?.asks) ? said.asks : []).filter((one) => one && Number(one.thread) > 0);
+  const reply = await call(address).catch(() => null);
   section.setAttribute("aria-busy", "false");
   if (!reply || reply.status !== 200 || !reply.body || typeof reply.body !== "object") {
     document.documentElement.dataset.asks = "broken";
@@ -233,8 +235,17 @@ async function startAsks(section) {
   }
   const drawn = reply.body.drawn && ID.test(String(reply.body.drawn.model || "")) && Number(reply.body.drawn.steps) > 0
     ? { model: reply.body.drawn.model, steps: Number(reply.body.drawn.steps) } : null;
-  const listed = (Array.isArray(reply.body.asks) ? reply.body.asks : []).filter((one) => one && Number(one.thread) > 0);
-  body.replaceChildren(askForm({ set, library, drawn, tests }), askList(listed, tests));
+  const listed = rowsOf(reply.body);
+  // The list read again, as after an ask whose answer was lost.
+  let list = askList(listed, tests);
+  const relist = async () => {
+    const again = await call(address).catch(() => null);
+    if (!again || again.status !== 200) return;
+    const fresh = askList(rowsOf(again.body), tests);
+    list.replaceWith(fresh);
+    list = fresh;
+  };
+  body.replaceChildren(askForm({ set, library, drawn, tests, relist }), list);
   document.documentElement.dataset.asks = String(listed.length);
   const tab = document.getElementById("tab-asks");
   if (tab && listed.length && !tab.querySelector(".n")) {
@@ -273,7 +284,7 @@ function titleOf(words, set, step) {
 /// once (web/account.js nameFirst); then the thread, where the step is
 /// drawn and every builder of a version was told.
 function askForm(at) {
-  const { set, library, drawn, tests } = at;
+  const { set, library, drawn, tests, relist } = at;
   const form = document.createElement("form");
   form.className = "comment-new set-ask-form";
   form.noValidate = true;
@@ -377,17 +388,32 @@ function askForm(at) {
         field.focus();
         return;
       }
-      // Over the most is said, never cut: the words stay as typed.
-      if (words.length > MOST_WORDS) {
-        tell(say("That is {n} characters: at most {most}, please.", { n: number(words.length), most: number(MOST_WORDS) }));
+      // Over the most is said, never cut: the words stay as typed. Counted
+      // as the server counts them, by character, not by UTF-16 unit.
+      const length = [...words].length;
+      if (length > MOST_WORDS) {
+        tell(say("That is {n} characters: at most {most}, please.", { n: number(length), most: number(MOST_WORDS) }));
         return;
       }
-      if (!signedIn() && !(await askToSignIn(ASK_WHY))) return;
+      // A step typed that is none of the set's is said, never asked as the whole set.
+      const step = stepNow();
+      if (picker.value.trim() !== "" && step === null) {
+        tell(drawn ? say("Pick a step from 1 to {n}.", { n: number(drawn.steps) }) : say("A step is a whole number from 1."));
+        picker.focus();
+        return;
+      }
+      if (!signedIn() && !(await askToSignIn(ASK_WHY, { later: true }))) return;
       await nameFirst();
       tell(say("Asking…"));
-      const step = stepNow();
       const done = await call(`/api/people?op=talk_set_ask${tests ? "&tests=1" : ""}`, { method: "POST",
-        body: { set, library, step, title: titleOf(words, set, step), body: words } });
+        body: { set, library, step, title: titleOf(words, set, step), body: words } }).catch(() => null);
+      // No answer, or a server's failure with no words: it may have been
+      // asked all the same, so the list is read again before another try.
+      if (!done || (done.status >= 500 && !done.body?.error)) {
+        tell(say("That may not have gone. Look for it in the list below before you ask again."));
+        await relist();
+        return;
+      }
       if (done.status !== 201 || !done.body?.path) {
         tell(told(done.body?.error, say("That did not go just now. Try again in a minute.")));
         return;
