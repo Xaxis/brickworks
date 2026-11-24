@@ -145,6 +145,7 @@ func _run() -> void:
 		and _library.parts[held].category == "Custom" and not own.visible)
 	await _shot("goblet_in_hand")
 	await _key(KEY_ESCAPE)
+	await _unit_asked(elements, own)
 
 	print("\nhair from the figure builder's Your own…")
 	_main.call("_open_figures")
@@ -242,6 +243,79 @@ func _run() -> void:
 
 
 ## The hair on the head from the front (the face) and from the side.
+## A file 1.5 across, which says nothing of its units (moulds2): asked, never
+## read as metres unsaid; answered Metres it is refused in words before Add
+## to parts can be pressed, answered Centimetres it is made.
+func _unit_asked(elements: Control, own: Control) -> void:
+	print("\na file 1.5 across, its units asked")
+	var path: String = ProjectSettings.globalize_path(PROBE_DIR.path_join("small.stl"))
+	DirAccess.make_dir_recursive_absolute(PROBE_DIR)
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_buffer(_small_stl(1.5))
+	file.close()
+	elements.call("open", "")
+	await _frames(20)
+	await _press(elements.get("_from_file"))
+	var picker: MeshFilePicker = own.call("picker")
+	var chooser: FileDialog = picker.get("_dialog")
+	if chooser != null:
+		chooser.hide()
+	picker.open_path(path)
+	await _read_by(own)
+	var asks: Dictionary = own.get("_asks")
+	var ask: Control = own.get("_ask")
+	var add: Button = own.get("_add")
+	var status: Label = own.get("_status")
+	_check("it is asked what the file is measured in, and Add to parts waits: \"%s\"" % status.text,
+		ask.is_visible_in_tree() and add.disabled and status.text.contains("What is it measured in?")
+		and asks.size() == 4)
+	await _shot("unit_asked")
+	await _press(asks["m"])
+	await _frames(10)
+	var part: MeshPart = own.get("part")
+	_check("Metres: 1.5 m is refused in words before any of it is made: \"%s\"" % status.text,
+		not ask.is_visible_in_tree() and add.disabled and status.text.contains("at most 400 mm")
+		and _builder.held_part.is_empty())
+	await _shot("unit_metres_refused")
+	# Answered; the same file read again is asked about again.
+	picker.open_path(path)
+	await _read_by(own)
+	await _press(asks["cm"])
+	await _frames(10)
+	part = own.get("part")
+	_check("Centimetres: %s, and it may be made" % part.size_words(),
+		absf(part.longest("mm") - 15.0) < 0.5 and not add.disabled)
+	await _press(add)
+	await _read_by(own)
+	_check("Add to parts: %s in the hand" % _builder.held_part,
+		_builder.held_part.begins_with("bw-") and not own.visible)
+	await _key(KEY_ESCAPE)
+
+
+## A closed cube [param side] across in the file's own numbers, binary STL.
+static func _small_stl(side: float) -> PackedByteArray:
+	var h: float = side / 2.0
+	var c: Array[Vector3] = []
+	for n: int in 8:
+		c.append(Vector3(h if n & 1 else -h, h if n & 2 else -h, h if n & 4 else -h))
+	var quads: Array = [[0, 2, 3, 1], [4, 5, 7, 6], [0, 1, 5, 4], [2, 6, 7, 3], [0, 4, 6, 2],
+		[1, 3, 7, 5]]
+	var out := PackedByteArray()
+	out.resize(84 + 50 * 12)
+	out.encode_u32(80, 12)
+	var t: int = 0
+	for q: Array in quads:
+		for three: Array in [[q[0], q[1], q[2]], [q[0], q[2], q[3]]]:
+			for k: int in 3:
+				var p: Vector3 = c[three[k]]
+				var at: int = 84 + 50 * t + 12 + 12 * k
+				out.encode_float(at, p.x)
+				out.encode_float(at + 4, p.y)
+				out.encode_float(at + 8, p.z)
+			t += 1
+	return out
+
+
 func _hair_shots(panel: Control, what: String) -> void:
 	panel.call("turn_to", 0.0, 0.25)
 	await _frames(30)
