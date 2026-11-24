@@ -21,7 +21,9 @@
 // appfix (the review's fixes judged on it): a paste that says it is fetching
 // its parts' shapes is waited on until it holds them; case 5 signs out with
 // the site's own signOut, and then puts the first account's copy back by hand
-// to show the second account reads none of it.
+// to show the second account reads none of it. In 7140-1 each unpacked part
+// is in a minifig a click takes whole (appwalk), so cases 1 and 1b copy that
+// minifig: B gains all its parts as one sub-assembly, as A has it.
 import { askApp, framesDrawn, launch, openFromFile } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -78,9 +80,14 @@ async function targets(page) {
   return { targets: laid?.targets || [], view: laid?.view || [480, 96, 780, 680] };
 }
 /// One part clicked alone whose part id passes [want]: {part, colour, x, y} or null.
-async function pick(page, want, tried = new Set()) {
+/// A part clicked alone: {part, colour, x, y, count: 1}. With [whole], where
+/// every such part is in a sub-assembly a click takes whole (each of 7140-1's
+/// unpacked parts is in a minifig: appwalk), the first such sub-assembly
+/// instead: {part, colour: null, count: its parts, whole: true}.
+async function pick(page, want, tried = new Set(), whole = false) {
   await page.bringToFront();
   const { targets: all } = await targets(page);
+  const wholes = [];
   for (const t of all) {
     const part = String(t.part);
     if (!want(part) || tried.has(`${Math.round(t.x)},${Math.round(t.y)}`)) continue;
@@ -89,12 +96,25 @@ async function pick(page, want, tried = new Set()) {
     await framesDrawn(page, 2).catch(() => {});
     await page.mouse.click(t.x, t.y);
     const s = await until(page, (now) => now.selected >= 1, 10);
-    if (s.selected === 1) return { part, colour: colour(s), x: t.x, y: t.y };
+    if (s.selected === 1) return { part, colour: colour(s), x: t.x, y: t.y, count: 1 };
     console.log(`        (a ${part} at ${Math.round(t.x)},${Math.round(t.y)} selected ${s.selected})`);
+    if (s.selected > 1 && s.selected < 40) wholes.push({ part, x: t.x, y: t.y });
+  }
+  if (whole && wholes.length) {
+    const t = wholes[0];
+    await page.keyboard.press("Escape");
+    await framesDrawn(page, 2).catch(() => {});
+    await page.mouse.click(t.x, t.y);
+    const s = await until(page, (now) => now.selected > 1, 10);
+    console.log(`        (no ${[...new Set(wholes.map((w) => w.part))].join(" ")} alone: the sub-assembly a click on one takes, ${s.selected} parts)`);
+    return { part: t.part, colour: null, x: t.x, y: t.y, count: s.selected, whole: true };
   }
   console.log(`        (no target among ${all.length} passed: ${[...new Set(all.map((t) => t.part))].slice(0, 30).join(" ")})`);
   return null;
 }
+/// A put-down's words for a sub-assembly put down whole (Main's status:
+/// "<name> selected, N parts — double-click edits inside a sub-assembly").
+const wholeSaid = (s) => /selected, \d+ parts — double-click edits inside/.test(String(s.said || ""));
 async function sky(page) {
   const { view } = await targets(page);
   await page.keyboard.press("Escape");
@@ -207,12 +227,14 @@ try {
 
   console.log("\n1. A copies a part the web pack lacks; B pastes it");
   const tried = new Set();
-  const one = await pick(a, (p) => unpacked.has(p), tried);
+  const one = await pick(a, (p) => unpacked.has(p), tried, true);
+  const count1 = one?.count || 1;
+  const what1 = one?.whole ? `the sub-assembly holding a ${one.part} (${count1} parts)` : `a ${one?.part}`;
   const copied1 = await copy(a);
   const text1 = await clip(a);
-  check(`A copied a ${one?.part} (colour ${one?.colour}), unpacked in the web build: "${copied1.said}"; `
+  check(`A copied ${what1} (colour ${one?.colour}), unpacked in the web build: "${copied1.said}"; `
     + `localStorage holds ${text1 === null ? "nothing" : JSON.stringify(String(text1).slice(0, 80))}`,
-    one && /^copied 1 part/.test(String(copied1.said)));
+    one && new RegExp(`^copied ${count1} parts?`).test(String(copied1.said)));
   await b.bringToFront();
   await sky(b);
   const before1 = await state(b);
@@ -224,7 +246,8 @@ try {
   const gained1 = (put1.bricks || 0) - (before1.bricks || 0);
   record.case1 = { part: one?.part, said_held: held1.said, carrying: held1.carrying, said_put: put1.said, gained: gained1 };
   check(`B: Ctrl+V "${held1.said}" (carrying ${held1.carrying}); put down: "${put1.said}"; B ${before1.bricks} -> ${put1.bricks} parts `
-    + `(want +1), selected colour ${colour(put1)} (A's ${one?.colour})`, gained1 === 1 && colour(put1) === one?.colour);
+    + (one?.whole ? `(want +${count1}, one sub-assembly as in A)` : `(want +1), selected colour ${colour(put1)} (A's ${one?.colour})`),
+    gained1 === count1 && (one?.whole ? wholeSaid(put1) : colour(put1) === one?.colour));
   const saved1 = await inAutosave(b, one?.part || "", one?.colour);
   check(`B's autosave places the ${one?.part} in colour ${one?.colour} ${saved1.hits} time(s) (want 1; ${saved1.parts} part lines, `
     + `${saved1.mine.join(" ")})`, saved1.hits === 1);
@@ -258,10 +281,12 @@ try {
     await route.continue().catch(() => {});
   });
   console.log(`\n1b. B's part shapes ${SLOW_MS / 1000} s slow: A copies another unpacked part; B pastes it and puts it down 1.5 s on`);
-  const oneB = await pick(a, (p) => unpacked.has(p) && p !== one?.part, tried);
+  const oneB = await pick(a, (p) => unpacked.has(p) && (p !== one?.part || one?.whole), tried, true);
+  const count1b = oneB?.count || 1;
   const copied1b = await copy(a);
   await b.bringToFront();
   await sky(b);
+  const had1b = oneB?.whole ? (await inAutosave(b, oneB.part, oneB.colour)).hits : 0;
   const before1b = await state(b);
   const held1b = await paste(b);
   await b.waitForTimeout(1500);
@@ -273,9 +298,14 @@ try {
   const saved1b = await inAutosave(b, oneB?.part || "", oneB?.colour);
   record.case1b = { part: oneB?.part, said_held: held1b.said, said_put: put1b.said,
     gained: (put1b.bricks || 0) - (before1b.bricks || 0), later: (later1b.bricks || 0) - (before1b.bricks || 0), saved: saved1b.hits };
-  check(`A copied a ${oneB?.part} "${copied1b.said}"; B: "${held1b.said}", put down "${put1b.said}": `
+  // B's file had case 1's sub-assembly already: its part written in a
+  // definition another copy may share, so at least as often as before.
+  check(`A copied ${oneB?.whole ? `the sub-assembly holding a ${oneB.part} (${count1b} parts)` : `a ${oneB?.part}`} "${copied1b.said}"; `
+    + `B: "${held1b.said}", put down "${put1b.said}": `
     + `+${(put1b.bricks || 0) - (before1b.bricks || 0)} at once, +${(later1b.bricks || 0) - (before1b.bricks || 0)} ${(SLOW_MS + 4000) / 1000} s later, `
-    + `in B's autosave ${saved1b.hits} time(s) (want +1 and 1)`, later1b.bricks === before1b.bricks + 1 && saved1b.hits === 1);
+    + `in B's autosave ${saved1b.hits} time(s) (want +${count1b} and ${oneB?.whole ? `at least ${Math.max(1, had1b)}, one sub-assembly` : "1"})`,
+    oneB && later1b.bricks === before1b.bricks + count1b
+      && (oneB.whole ? saved1b.hits >= Math.max(1, had1b) && wholeSaid(put1b) : saved1b.hits === 1));
   await shot(b, `1b_b_later_${width}`);
 
   console.log("\n2. B still slow: A copies all its parts (a packed 2 x 4, and unpacked parts B has never had); B pastes");
@@ -297,6 +327,9 @@ try {
   const wanted2 = lines2.length;
   await b.bringToFront();
   await sky(b);
+  // How often B's file wrote that part before: 7140-1's is in the minifigs
+  // cases 1 and 1b put down.
+  const had2 = two?.part ? (await inAutosave(b, two.part)).hits : 0;
   const before2 = await state(b);
   const held2 = await paste(b);
   await b.waitForTimeout(1500);
@@ -311,8 +344,9 @@ try {
   const later2 = await state(b);
   const saved2 = await inAutosave(b, two?.part || "");
   record.case2.later = (later2.bricks || 0) - (before2.bricks || 0);
-  check(`B's autosave places the unpacked ${two?.part} ${saved2.hits} time(s) (want 1); +${record.case2.later} parts `
-    + `${SLOW_MS / 1000} s after the put-down`, saved2.hits === 1);
+  check(`B's autosave places the unpacked ${two?.part} ${saved2.hits} time(s) (want ${had2 ? `at least the ${had2} it had` : "1"}); `
+    + `+${record.case2.later} parts ${SLOW_MS / 1000} s after the put-down (want +${wanted2})`,
+    (had2 ? saved2.hits >= had2 : saved2.hits === 1) && record.case2.later === wanted2);
   await b.unroute("**/*.lbm");
 
   console.log("\n3. B copies a car part; A pastes: the newest copy");
