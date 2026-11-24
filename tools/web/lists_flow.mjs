@@ -169,6 +169,12 @@ const toastSays = (page) => until(page, () => {
   const t = document.querySelector("body > .toast.shown");
   return t && t.textContent.trim() ? t.textContent.trim() : null;
 }, "the toast", 15);
+/// The page's own line (#said) once it says [pattern]: what is done and
+/// cannot be undone is said there alone, with no toast (web/lists.js tell).
+const lineSays = (page, pattern) => until(page, (source) => {
+  const words = document.getElementById("said")?.textContent.trim() || "";
+  return new RegExp(source).test(words) ? words : null;
+}, `the page's line: ${pattern}`, 15, pattern.source);
 
 let ada = null;
 let bob = null;
@@ -369,6 +375,10 @@ try {
   await page.click('dialog.lists-dialog button[type="submit"]');
   const made = await untilApi(async () => ((await api(`/api/people?op=list_items&id=${listId}`)).status === 200 ? true : null), "public");
   check(`made public: a visitor's list_items ${made ? "200" : "refused"}`, made === true);
+  // Share shows on a private list too since lists2a (994baf213, 11-22), where
+  // it asks who may open it: pressed before the page has heard the save, it
+  // asks that, not the sheet. The page says the save once it has redrawn.
+  await lineSays(page, /^Saved: it is public\.$/).catch(() => "");
   await page.waitForSelector("#share:not([hidden])", { timeout: 15000 });
   await page.click("#share");
   const sheet = await until(page, () => document.querySelector("#share-sheet[open] #share-link")?.value || null, "the share sheet", 15).catch(() => "");
@@ -474,7 +484,8 @@ try {
   };
   for (const [where, absent] of Object.entries(nowhere)) check(`shared by its link, it is not in the ${where}`, absent);
   await page.click("#unshare");
-  const stopped = await toastSays(page).catch(() => "");
+  // Stopping cannot be undone, so it is said in the page's line, not a toast.
+  const stopped = await lineSays(page, /Stopped sharing/).catch(() => "");
   const gone = await api(byLink);
   check(`Stop sharing ("${stopped.slice(0, 60)}"): the next request for its link is ${gone.status}, its name nowhere`,
     /Stopped sharing/.test(stopped) && gone.status === 404 && !gone.text.includes(LIST));

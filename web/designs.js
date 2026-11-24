@@ -453,6 +453,18 @@ function drawPeriod(box, title, only, period, models) {
   left.setAttribute("role", "status");
   left.hidden = true;
   let chart = chartOf(period, "views");
+  // Each row moved only where it is not already, and each word written only
+  // where it changes: a row the browser is given again it styles and lays
+  // out again, and appending all 50 for every choice made a choice cost
+  // 60 ms on a loaded box (designer_period, nightly 2026-11-24).
+  const set = (node, key, value) => { if (node.dataset[key] !== value) node.dataset[key] = value; };
+  const place = (wanted) => {
+    let at = list.firstElementChild;
+    for (const item of wanted) {
+      if (item === at) at = at.nextElementSibling;
+      else list.insertBefore(item, at);
+    }
+  };
   const order = () => {
     const kind = kindChoice.select.value;
     const how = sortChoice.select.value;
@@ -460,15 +472,16 @@ function drawPeriod(box, title, only, period, models) {
     const by = (sort) => (a, b) => sort(a.model.period[kind], b.model.period[kind]);
     const compared = rows.filter((one) => !against || whole(one.model.period[kind]));
     const out = against ? rows.filter((one) => !whole(one.model.period[kind])) : [];
-    for (const one of rows) one.item.dataset.compared = String(!out.includes(one));
-    list.dataset.kind = kind;
-    list.dataset.sort = how;
-    list.append(...compared.slice().sort(by(SORTS[how] || SORTS.most)).map((one) => one.item),
-      ...out.slice().sort(by(SORTS.most)).map((one) => one.item));
-    left.hidden = !out.length;
-    left.textContent = !out.length ? ""
+    for (const one of rows) set(one.item, "compared", String(!out.includes(one)));
+    set(list, "kind", kind);
+    set(list, "sort", how);
+    place([...compared.slice().sort(by(SORTS[how] || SORTS.most)).map((one) => one.item),
+      ...out.slice().sort(by(SORTS.most)).map((one) => one.item)]);
+    if (left.hidden !== !out.length) left.hidden = !out.length;
+    const words = !out.length ? ""
       : compared.length ? say("Not compared, so last: {n} counted for under 30 days of either window.", { n: number(out.length) })
         : say("None is compared yet: no model was counted for all 60 days. They are in order of the most in the last 30 days.");
+    if (left.textContent !== words) left.textContent = words;
   };
   kindChoice.select.addEventListener("change", () => {
     const kind = kindChoice.select.value;

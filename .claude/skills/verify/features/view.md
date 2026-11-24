@@ -294,7 +294,13 @@ picture the assistant is shown.
   notices strip's place included, so a notice coming or going never moves
   the model: centred under the strip, the sub-assembly banner a double-click
   shows slid it 22 px from under the pointer, and the next double-click
-  missed the part inside (2026-10-19). `assembly_probe` double-clicks twice
+  missed the part inside (2026-10-19). Fit still keeps the model clear of
+  the strip (`CadCamera.covered`, `Main._model_covered`): centred on the
+  whole room, it frames to the room less the strip's height at the top and
+  as much at the foot, so drawn's stack opened under First steps and the
+  month's challenge no longer has its top under them (nightreds,
+  2026-11-24; `centring_probe` "a notice shown ... after Fit all of the
+  model is below it"). `assembly_probe` double-clicks twice
   at a still pointer across a 600 ms frame and checks the part has not moved
   going in or coming out (21.9 px before). Done by shifting the lens, not the
   camera: perspective is `PROJECTION_FRUSTUM` with the same 45° across the

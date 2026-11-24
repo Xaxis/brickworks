@@ -121,6 +121,7 @@ func _run() -> void:
 
 	await _glides()
 	await _pictures()
+	await _under_a_notice()
 
 	print("")
 	if _failures == 0:
@@ -171,6 +172,49 @@ func _centred(folded: String) -> void:
 	var fills: float = ball / minf(view.size.x, view.size.y)
 	_check("...all of it inside that part, its ball %.0f%% of the narrower side" % (fills * 100.0),
 		view.encloses(drawn) and fills > 0.68 and fills < 0.85)
+
+
+## A notice up over the top of the model's room (Main._notices): Fit keeps
+## the whole model below it, and the view's middle stays where it was, so
+## the notice coming did not slide the model (Main._model_rect). Framed to
+## the whole room, a stack of eleven opened under First steps and the
+## month's challenge had its top under them (drawn, nightreds 2026-11-24).
+func _under_a_notice() -> void:
+	# A tower taller than it is wide, so Fit is bound by the room's height:
+	# the model above was bound by its width, and its top lay far below any
+	# strip whatever Fit did.
+	_main.call("clear_model")
+	await _frames(3)
+	for level: int in 24:
+		_put("3001", 4 if level % 2 == 0 else 14, Vector3(0, 24 + 24 * level, 0))
+	await _frames(10)
+	await _fit()
+	var notices: Control = _main.get("_notices")
+	var middle_before: Vector2 = _camera.unproject_position((_main.call("_built_bounds") as AABB).get_center())
+	var note := Label.new()
+	note.text = "A notice two lines tall,\nas First steps and a challenge are together"
+	note.custom_minimum_size.y = 64.0
+	(notices.get_child(0) as Control).add_child(note)
+	_main.call("_show_notices")
+	await _frames(20)
+	var strip: Rect2 = notices.get_global_rect()
+	var middle_shown: Vector2 = _camera.unproject_position((_main.call("_built_bounds") as AABB).get_center())
+	_check("%dx: a notice shown (%.0f units) leaves the model where it was (%.1f units off)"
+		% [_ratio, strip.size.y, middle_shown.distance_to(middle_before)],
+		notices.visible and middle_shown.distance_to(middle_before) < 2.0)
+	await _fit()
+	var bounds: AABB = _main.call("_built_bounds")
+	var top: float = INF
+	for n: int in 8:
+		var corner: Vector3 = bounds.position + bounds.size * Vector3(
+			float(n & 1), float((n >> 1) & 1), float((n >> 2) & 1))
+		top = minf(top, _camera.unproject_position(corner).y)
+	_check("...and after Fit all of the model is below it: its top at %.0f, the strip's foot at %.0f"
+		% [top, strip.end.y], top >= strip.end.y)
+	note.queue_free()
+	await _frames(3)
+	_main.call("_show_notices")
+	await _fit()
 
 
 ## Five parts, found from the world rather than the screen: a point on each

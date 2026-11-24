@@ -570,6 +570,12 @@ try {
   // Opened again, the box says what the link is: listed.
   await until(ownerPage, () => (window.brickworksShare.panel || {}).listed === true, "the box ticked, as the link is", 30);
   await press(ownerPage, "share_list");
+  // Unticked before Publish is pressed: pressed where Publish stood, the
+  // box never changed and the link was published listed again.
+  const unticked = await until(ownerPage, () => (window.brickworksShare.panel || {}).listed === false, "the box unticked", 10)
+    .then(() => true, () => false);
+  await ownerPage.screenshot({ path: `${out}/9b2_unticked.png` }).catch(() => {});
+  check(`List it in the gallery unticked (${JSON.stringify(await ownerPage.evaluate(() => (window.brickworksControls || {}).share_list || null))})`, unticked);
   await press(ownerPage, "share_publish");
   const unlisted = await until(ownerPage, () => {
     const p = (window.brickworksShare || {}).panel || {};

@@ -4078,7 +4078,11 @@ plan with Claude as the client.
   read-only). `brickworksShare.view.play`: `ready`, `shown`, `moves`,
   `title`, `says`, `played`, `reset`, `touch`, `motions`, `motions_out`; the
   page that sets `window.brickworksGrabAsk` gets the play's handles first in
-  `brickworksGrab.handles` (`play: "steering"`, `GrabDrag.handle_parts`).
+  `brickworksGrab.handles` (`play: "steering"`, `GrabDrag.handle_parts`),
+  each a place where the same part is under a press one CSS pixel to any
+  side (`GrabDrag._lands_on`): the page presses at whole pixels, and a
+  handle at the edge of the wheel's cells sent the press to the plate
+  behind it (play, nightly 2026-11-24).
   A model with motions of its own (docs/MOTIONS.md, unit 3, 2026-10-20): the
   pill says "Play its motions" with a button each (`view_motion_1`…, Reset's
   face, a fingertip tall on a phone) and "Press one to play it, and again to
@@ -6647,7 +6651,12 @@ plan with Claude as the client.
   scrolled past it, is marked `clipped` (`Main._cut_off`): at 130% on a
   phone held sideways Settings' Interface size was published inside the
   window, behind Done, and app_a11y's tap pressed Done (uifix); a check
-  scrolls to it first. So a control is in the map about a second
+  scrolls to it first. It carries `list` too, the part of that list that
+  shows ({x, y, w, h}), where `clickStill`'s `intoSight` turns the wheel
+  (its scroll bar first): the Share form's List it in the gallery lay
+  wholly under the form's foot, and no place guessed beside it scrolled
+  anything (nightreds, 2026-11-24; `page_places_probe`'s "a control under a
+  list's foot"). So a control is in the map about a second
   after it appears, and gone from it at once, and a flow that reads it once
   right after showing a control can miss it: each waits for the controls it
   needs, as a person waits for a panel (`controlsWith(page, names, ms,

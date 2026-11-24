@@ -1490,7 +1490,9 @@ async function challengeSaid(browser, code, width, past) {
     const at = new URL(tab.url()).pathname;
     check(at === `${lang}/challenge` && await tab.evaluate(() => document.documentElement.lang) === code,
       `${where}: opens ${lang}/challenge in ${code} (at ${at})`);
-    await tab.waitForFunction(() => document.documentElement.dataset.challenge, null, { timeout: 20000 });
+    // Drawn from its answer, not the "loading" the page marks itself with
+    // after five seconds without one (challenge.js).
+    await tab.waitForFunction(() => !["", "loading"].includes(document.documentElement.dataset.challenge || ""), null, { timeout: 20000 });
     const state = await tab.evaluate(() => document.documentElement.dataset.challenge);
     const title = await tab.title();
     const name = (await tab.locator("#title").textContent()).trim();

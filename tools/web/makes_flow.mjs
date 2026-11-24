@@ -233,12 +233,24 @@ async function choose(page, file, name = "make_show") {
   const chooser = page.choosers[page.choosers.length - 1] || null;
   if (!check(`${name === "make_show" ? "Show your build" : "Another photo"} brings up the page's file chooser`,
     page.choosers.length > before && chooser !== null)) return {};
+  // The card goes to "reading" only a frame or more after the file is given:
+  // until then it still shows what it said last (a file that was not a
+  // picture, at 1280), which is not this file's answer. Wait for it to
+  // have read this one: seen reading, or what it says changed.
+  const was = await page.evaluate(() => {
+    window.__makeRead = false;
+    const m = ((window.brickworksShare || {}).build || {}).make || {};
+    return JSON.stringify([m.state, m.said, m.photo, m.read_ms]);
+  });
   const began = Date.now();
   await chooser.setFiles(file);
-  const card = await until(page, () => {
+  const card = await until(page, (then) => {
     const m = ((window.brickworksShare || {}).build || {}).make || {};
-    return m.state && m.state !== "reading" && (m.state === "chosen" || m.said) ? m : null;
-  }, "the photo read", 60);
+    if (m.state === "reading") window.__makeRead = true;
+    const moved = window.__makeRead || JSON.stringify([m.state, m.said, m.photo, m.read_ms]) !== then;
+    return moved && m.state && m.state !== "reading" && (m.state === "chosen" || m.said) ? m : null;
+  }, "the photo read", 60, was);
+  await page.evaluate(() => { delete window.__makeRead; });
   timings.read_ms = Math.max(timings.read_ms || 0, Date.now() - began);
   return card;
 }

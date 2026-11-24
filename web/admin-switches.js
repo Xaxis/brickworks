@@ -11,6 +11,7 @@
 //
 // Everything is put on the page as text, never as markup.
 import { $, act, adminJson, ago, ask, cell, emptyRow, make, post, say, segmented, sift, when } from "/admin-kit.js";
+import { keepInView } from "/admin-gallery.js";
 
 const LANGS = { en: "English", de: "Deutsch", fr: "Français", es: "Español" };
 let tone = "info";
@@ -130,8 +131,9 @@ $("phones-form").addEventListener("submit", async (event) => {
     after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
   send.disabled = false;
   // Switches drawn again above can push it off a phone's screen: what the
-  // press came to is brought into view.
-  $("phones-note").scrollIntoView({ block: "nearest" });
+  // press came to is kept in view while the Overview's count, drawn after
+  // and not waited for, settles above it (phonewarn, nightly 2026-11-24).
+  keepInView($("phones-note"));
 });
 
 // Which engine an iPhone or iPad starts (nothreads, api/_phone.js): one act.
@@ -147,7 +149,7 @@ $("phones-engine").addEventListener("submit", async (event) => {
     + " Pages read it within a minute or two.", { body: { on },
     after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
   send.disabled = false;
-  $("phones-engine-note").scrollIntoView({ block: "nearest" });
+  keepInView($("phones-engine-note"));
 });
 
 // Sign in with Google and GitHub (signin3, api/_ways.js): each one's switch

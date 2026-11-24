@@ -40,6 +40,11 @@ func _run() -> void:
 	var button: Button = offer.controls_by_name().get("storage_download_all")
 	var unsorted: Vector2 = to_window * button.get_global_rect().get_center()
 	var first: Dictionary = main.call("_page_places", main.call("_page_controls"), to_window, 1.0)
+	# Left out for having come, it is owed a telling soon, not two seconds
+	# on (Main._tell_page): account and oauth read nothing there for two
+	# seconds (nightly 2026-11-24).
+	_check("...left out as it came, the next telling is owed now, not at rest's two seconds",
+		bool(main.get("_places_unsettled")))
 	await _frames(3)
 	var drawn: Vector2 = to_window * button.get_global_rect().get_center()
 	var drawn_at: Dictionary = {"x": roundi(drawn.x), "y": roundi(drawn.y)}
@@ -56,6 +61,8 @@ func _run() -> void:
 	_check("...and once it has stayed there, it is told where it is drawn: %s"
 		% str(third.get("storage_download_all")), third.get("storage_download_all") != null
 		and _at(third["storage_download_all"]) == drawn_at)
+	_check("...and with every control told where it stood, nothing more is owed",
+		not bool(main.get("_places_unsettled")) and int(main.get("_places_settling")) == 0)
 
 	print("\nput away, it is gone at once")
 	offer.visible = false
@@ -63,6 +70,45 @@ func _run() -> void:
 	_check("Got it, and the page is told no Download my models", not fourth.has("storage_download_all"))
 	_check("...and the controls that stayed put are still told: Save at %s" % str(fourth.get("save")),
 		fourth.has("save"))
+
+	# A control a list cuts off is told so, with the part of the list that
+	# shows: a check turns the wheel there (tools/web/browser.mjs intoSight),
+	# where the Share form's foot covered every place beside List it in the
+	# gallery (share_flow, nightreds 2026-11-24).
+	print("\na control under a list's foot")
+	var holder := Control.new()
+	main.add_child(holder)
+	holder.position = Vector2(40, 60)
+	var scroller := ScrollContainer.new()
+	scroller.position = Vector2(0, 0)
+	scroller.size = Vector2(200, 100)
+	holder.add_child(scroller)
+	var rows := VBoxContainer.new()
+	scroller.add_child(rows)
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(180, 140)
+	rows.add_child(spacer)
+	var under := Button.new()
+	under.text = "under the foot"
+	rows.add_child(under)
+	await _frames(3)
+	var named: Dictionary = {"under_the_foot": under}
+	main.call("_page_places", named, to_window, 1.0)
+	var cut: Dictionary = main.call("_page_places", named, to_window, 1.0)
+	var at_cut: Dictionary = cut.get("under_the_foot", {})
+	var list_shown: Rect2 = to_window * scroller.get_global_rect()
+	var list_told: Dictionary = at_cut.get("list", {})
+	_check("told cut off, with the list's part that shows: %s" % str(at_cut),
+		bool(at_cut.get("clipped", false)) and list_told.get("x") == roundi(list_shown.get_center().x)
+		and list_told.get("y") == roundi(list_shown.get_center().y)
+		and list_told.get("w") == roundi(list_shown.size.x) and list_told.get("h") == roundi(list_shown.size.y))
+	scroller.scroll_vertical = 1000
+	await _frames(3)
+	main.call("_page_places", named, to_window, 1.0)
+	var whole: Dictionary = main.call("_page_places", named, to_window, 1.0).get("under_the_foot", {})
+	_check("...and scrolled to it, told whole, with no list: %s" % str(whole),
+		not whole.is_empty() and not whole.has("clipped") and not whole.has("list"))
+	holder.queue_free()
 
 	StorageKeep.pretend({})
 	print("")
