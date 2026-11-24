@@ -11439,8 +11439,11 @@ func _maybe_start() -> void:
 			_sample_untouched = _open(SAMPLE_MODEL) > 0
 			_lay_baseplate()
 			_camera.frame(_built_bounds())
-			if _shell != null and _shell.first_build != null and not _shell.first_build.fits_here():
-				_studio_start_now().call("open", saved, false, true)
+		# The car opened here, or in _ready when the sign-in came after
+		# the studio started, and not touched since.
+		if _sample_untouched and _shell != null and _shell.first_build != null \
+				and not _shell.first_build.fits_here():
+			_studio_start_now().call("open", saved, false, true)
 		return
 	_start_decided = true
 	_studio_start_now().call("open", saved, saved.is_empty())
