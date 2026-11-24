@@ -13,8 +13,9 @@
 ## part, an old link with none, steps written twice (the second replaces
 ## the first), and a model with a part this catalogue lacks.
 ##
-## --write puts the steps in each IN and writes it to OUT (the share steps
-## browser flow serves those).
+## --write puts the steps in each IN and writes it to OUT. The browser flows'
+## models are written by src/dev/flow_models_probe.gd -- --write, and read
+## from tests/fixtures/flow_models: a flow never runs godot.
 extends SceneTree
 
 var _failures: int = 0

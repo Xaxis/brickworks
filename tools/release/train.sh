@@ -72,7 +72,10 @@
 # none is named with --probes and an export is kept; --web asks for it and
 # is refused otherwise, --full never takes it. Its merge is checked again:
 # an app file that differs from the export's tree stops it, to be staged
-# again with --full. The social desk's train ran all 294 probes and its
+# again with --full. Its tree is never imported, so it never names a check
+# that runs the engine from it (preview_checks.sh's ENGINE_CHECKS, together):
+# refused when named, left out and said when lean.py adds one, at staging,
+# once merged and at a reship. The social desk's train ran all 294 probes and its
 # export for a change to web/ and api/ alone, and the lead shipped it by
 # hand instead (fastlane, 2026-11-18). --plan says what a stage would run
 # and stages nothing.
@@ -127,6 +130,14 @@ words() { read -r -d '' -a "$1" < "$SPEC/$2" || true; }
 # The probes a tools/suite list names, one a line, as check.sh reads it:
 # NAME or NAME:ARGS, and from a # to the line's end a comment.
 suite_names() { sed -E 's/(^|[[:space:]])#.*//' | awk 'NF { split($1, p, ":"); print p[1] }'; }
+
+# The checks a preview_checks.sh, on stdin, says run the engine from the tree
+# they are given (ENGINE_CHECKS): only an imported tree can, and the web
+# lane's never is, so it never names one. comments_flow made its models with
+# godot so, wrote nothing in rel-m331's tree and died on ENOENT at the ship,
+# and reship --accept could not ship past it (2026-11-24).
+engine_checks() { sed -n 's/^ENGINE_CHECKS="\([a-z_0-9 ]*\)".*/\1/p' | head -1; }
+ENGINE_WHY="it runs the desktop app from the release's tree, which the web lane never imports"
 
 stage() {
   [ $# -ge 2 ] || usage
@@ -305,6 +316,24 @@ stage() {
   local -a named=()
   read -r -a named <<< "$checks$added"
   checks="${named[*]}"
+  # On the web lane a check that runs the engine is refused when named, and
+  # left out, and said, when lean.py adds it.
+  local left_out="" engine=""
+  if [ "$lane" = web ]; then
+    engine=$(git -C "$R" show "$branch:tools/release/preview_checks.sh" 2>/dev/null | engine_checks)
+    for name in $engine; do
+      case " $named_checks " in *" $name "*)
+        echo "train: the web lane cannot run $name: $ENGINE_WHY. Stage it with --full, or name the checks without it"; exit 2 ;;
+      esac
+      case " $checks " in *" $name "*)
+        left_out+=" $name"; checks=" $checks "; checks=${checks// $name / }; added=" $added "; added=${added// $name / } ;;
+      esac
+    done
+    read -r -a named <<< "$checks"; checks="${named[*]}"
+    read -r -a named <<< "$added"; added=${named[*]:+ ${named[*]}}
+  fi
+  local left_said=""
+  [ -z "$left_out" ] || left_said="  left out:$left_out: $ENGINE_WHY (--full runs it)"
   if [ -n "$plan" ]; then
     echo "train: $tag, planned (--plan): nothing staged or run"
     echo "  lane: $why_lane"
@@ -312,6 +341,7 @@ stage() {
     echo "  $told against the build brickworks.diy serves ($live_sha): ${#files[@]} files differ; reaches ${reached_n:-0} checks, ${carried_n:-0} carried by proof since${every:+ (--every-check: none carried)}; adds${added:- no check} to those named"
     [ -z "$after" ] || echo "  (worked out against main with $branch merged; chosen again once $after serves and $branch is merged)"
     echo "  checks: ${checks:-none named} (and site, frames)"
+    [ -z "$left_said" ] || echo "$left_said"
     echo "  probes: ${said}${probes:+: $(wc -w <<< "$probes") ($(cut -d' ' -f1-8 <<< "$probes")...)}"
     [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
     return 0
@@ -357,6 +387,7 @@ stage() {
   elif [ -n "$added" ]; then added="adds$added to the checks named"; else added="adds no check to those named"; fi
   echo "  $told against the build brickworks.diy serves ($live_sha): ${#files[@]} files differ, ${reached_n:-0} checks reached, ${carried_n:-0} carried; $added"
   echo "  lane: $why_lane"
+  [ -z "$left_said" ] || echo "$left_said"
   if [ -n "$named_probes" ] && [ -n "$probes" ]; then echo "  probes: $said: $probes"; else echo "  probes: $said"; fi
   [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
 }
@@ -421,6 +452,17 @@ reship() {
   # Stopped before its ship, it has no build to reuse and maybe no merge.
   [ -e "$SPEC/shipped" ] && [ -d "$WT/$tag" ] \
     || { echo "train: $tag stopped before its ship (${res:-no result}): stage it again"; exit 1; }
+  # On the web lane never a check that runs the engine (stage): refused
+  # named here, and left out, said, where lean.py would add it below.
+  local engine=""
+  if web_lane; then
+    engine=$(engine_checks 2>/dev/null < "$WT/$tag/tools/release/preview_checks.sh")
+    for n in "${checks[@]}"; do
+      case " $engine " in *" $n "*)
+        echo "train: the web lane cannot run $n: $ENGINE_WHY. Stage it again with --full, or reship without it"; exit 2 ;;
+      esac
+    done
+  fi
   # Shipped past only where it fails on brickworks.diy too, as the same
   # script: one that passes there is this release's own to fix. progress
   # failed on rel-m249's preview and worse on brickworks.diy, untouched by
@@ -501,6 +543,13 @@ reship() {
       probes+=" $n"
     done
     probes=${probes# }
+  fi
+  if [ -n "$engine" ]; then
+    local runs=()
+    for n in "${checks[@]}"; do
+      case " $engine " in *" $n "*) echo "train: leaves out $n: $ENGINE_WHY (--full runs it)" ;; *) runs+=("$n") ;; esac
+    done
+    checks=("${runs[@]}")
   fi
   echo "${checks[*]}" > "$SPEC/reship"
   [ -e "$SPEC/probes.staged" ] || cp "$SPEC/probes" "$SPEC/probes.staged"
@@ -828,7 +877,22 @@ lean_now() {
     sed -n 's/^checks: //p' <<< "$out" > "$SPEC/checks"
     say "checks, for what it changes against ${live:0:9} (lean.py, ${TAG}_lean.out): $(sed -n 's/^reached (\([0-9]*\)).*/\1/p' <<< "$out") reached, $(grep -c '^carried ' <<< "$out") carried: $(cat "$SPEC/checks")"
   fi
-  web_lane && return
+  if web_lane; then
+    # Never one that runs the engine (stage): named since, by an edit of
+    # TAG.train/checks, it stops here, never at the ship.
+    local engine kept=() listed=()
+    engine=$(engine_checks 2>/dev/null < "$W/tools/release/preview_checks.sh")
+    words listed checks
+    for n in "${listed[@]}"; do
+      case " $engine " in
+        *" $n "*) case " ${named[*]} " in *" $n "*) stop "$n is named, and $ENGINE_WHY: stage it again with --full" ;; esac
+          say "leaves out $n: $ENGINE_WHY (--full runs it)" ;;
+        *) kept+=("$n") ;;
+      esac
+    done
+    echo "${kept[*]}" > "$SPEC/checks"
+    return
+  fi
   [ "$(cat "$SPEC/probes.lean" 2>/dev/null)" = lean ] || return 0
   out=$(python3 "$HERE/lean.py" probes --live "$live" --head "$head" --tree "$W" 2>&1) \
     || { echo "$out" | tail -3; stop "lean.py could not choose the probes"; }

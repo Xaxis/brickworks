@@ -286,7 +286,9 @@
       "reach": "node tools/web/together_probe.mjs --url=<a relay server or a preview>   (with .env sourced; BW_BYPASS for a preview)",
       "area": "together",
       "tests": [
+        "tests/test_flow_models.py",
         "tests/test_flows_for.py",
+        "tests/test_release_train.py",
         "tests/test_start_abba.py",
         "tests/test_steps_score.py"
       ]
@@ -1304,6 +1306,7 @@
       "reach": "node --env-file=.env tools/web/relay_server.mjs 8830 --static=build/web --hold=replies & node --env-file=.env tools/web/comments_flow.mjs --url=http://127.0.0.1:8830 --out=DIR   (MASTER_EMAIL; --site leaves the app out; --hold=replies until supabase/replies.sql is applied)",
       "area": "web",
       "tests": [
+        "tests/test_flow_models.py",
         "tests/test_release_train.py"
       ]
     },
@@ -1769,6 +1772,14 @@
       "entry": "tools/web/floor_flow.mjs",
       "reach": "node tools/web/floor_flow.mjs --url=http://127.0.0.1:8761/index.html  (a local export, serve.py --parts)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:flow models probe",
+      "kind": "cli",
+      "entry": "src/dev/flow_models_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/flow_models_probe.gd   (the browser flows' models in tests/fixtures/flow_models, each what the app writes and finds today whatever the run's token; -- --write writes them again, to commit)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3537,7 +3548,9 @@
       "entry": "tools/web/share_steps_flow.mjs",
       "reach": "node tools/web/share_steps_flow.mjs --build=build/web --port=8800 --out=DIR   (a local export; or --url=<preview> --publish with .env sourced)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_flow_models.py"
+      ]
     },
     {
       "id": "cli:share view probe",
@@ -3851,6 +3864,7 @@
       "reach": "node --env-file=.env tools/web/relay_server.mjs 8923 --static=build/web --hold=share_tests & node --env-file=.env tools/web/tested_flow.mjs --url=http://127.0.0.1:8923 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/tested.sql is applied)",
       "area": "web",
       "tests": [
+        "tests/test_flow_models.py",
         "tests/test_release_train.py"
       ]
     },
@@ -4199,6 +4213,7 @@
       "reach": "node tools/web/relay_server.mjs 8852 --static=build/web --hold=share_versions & node tools/web/versions_flow.mjs --url=http://127.0.0.1:8852 --out=DIR   (.env sourced; or --url=<preview> with BW_BYPASS once supabase/versions.sql is applied)",
       "area": "web",
       "tests": [
+        "tests/test_flow_models.py",
         "tests/test_release_train.py"
       ]
     },
@@ -4725,7 +4740,9 @@
       "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then godot --headless --path . --script src/dev/together_probe.gd -- --api=http://127.0.0.1:9011   (with .env sourced)",
       "area": "together",
       "tests": [
+        "tests/test_flow_models.py",
         "tests/test_flows_for.py",
+        "tests/test_release_train.py",
         "tests/test_start_abba.py",
         "tests/test_steps_score.py"
       ]

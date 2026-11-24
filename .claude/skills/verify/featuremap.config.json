@@ -7178,6 +7178,13 @@
       "entry": "src/ui/mesh_part_dialog.gd",
       "reach": "tools/probe.sh mesh_part_ui_probe -- --pictures=DIR, and PROBE_SIZE=390x844 for a phone by touch   (by hand: Make a part…, From a 3D file…; M, Headgear, Your own…)",
       "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "flow models probe",
+      "entry": "src/dev/flow_models_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/flow_models_probe.gd   (the browser flows' models in tests/fixtures/flow_models, each what the app writes and finds today whatever the run's token; -- --write writes them again, to commit)",
+      "area": "web"
     }
   ]
 }

@@ -283,7 +283,12 @@ signed in as someone else.
   in a long frame runs no `pagehide`. Before the fix: 29 of 30 lost.
 - Whole thing, about 30 minutes, two SwiftShader browsers and a headless
   desktop copy: `node tools/web/together_flow.mjs --url=http://127.0.0.1:9011
-  --out=DIR` (`--desktop=no` without the desktop's half). Expect
+  --out=DIR` (`--desktop=no` without the desktop's half). The desktop's
+  half runs godot from the checkout, so it needs `tools/fresh_import.sh`
+  first: a tree never imported fails at once, one line, exit 2, and a
+  godot that ends before it joins fails the flow in its own last words.
+  train.sh never names `together` on the web lane (preview_checks.sh
+  `ENGINE_CHECKS`): refused named, left out where lean.py adds it. Expect
   `together_flow: all ok`: the edits made and the hash equal in both
   browsers and the desktop; then each kind of the model's own state (name
   typed, floor, printed part, step, booklet look, motion, hidden colours)
