@@ -11637,13 +11637,18 @@ func _open_theirs() -> void:
 	_theirs_opened = true
 	var placed: int = await _bar.open_with_progress(path)
 	if placed >= 0:
+		_bringing_theirs = true
 		_bar.opened.emit(placed)
+		_bringing_theirs = false
 		_bar.say("Opened %s, the model you saved last%s" % [_cloud.newest,
 			ModelBar.unshown_words(_store)])
 
 
 ## Whether [method _open_theirs] has opened one this start.
 var _theirs_opened: bool = false
+## While [method _open_theirs] says its model is open: the first screen's
+## Continue is about it, so it stays up (_studio_start_now).
+var _bringing_theirs: bool = false
 
 
 # -- the studio's first screen (studiostart) ------------------------------------------
@@ -11760,6 +11765,15 @@ func _studio_start_now() -> Control:
 		_touch.size_panel(_studio_start)
 	_bar.started_new.connect(func() -> void: _studio_start.call("close", "edited"))
 	_bar.cleared.connect(func() -> void: _studio_start.call("close", "edited"))
+	# Another model opened, by File, Open, a file picked or dropped, or a
+	# session's open_model: it is what the person came to, so the screen
+	# goes, as the notices over the model go (FirstActs, ReloadOffer). Left
+	# up, it covered the model opened behind it, and a phone's welcome
+	# still said the example car was there (m338reds). Not for the model
+	# the app brings back itself (_open_theirs): Continue is about that one.
+	_bar.opened.connect(func(_bricks: int) -> void:
+		if not _bringing_theirs:
+			_studio_start.call("close", "edited"))
 	return _studio_start
 
 
