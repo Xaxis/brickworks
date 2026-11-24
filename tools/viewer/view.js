@@ -352,9 +352,11 @@ export class View {
     // And the band of the view's tools at its foot (this.o.foot, CSS px)
     // clear too, the model drawn above it: the buttons over a phone's 3D had
     // covered the step's bottom part. Shares of the frame's height.
-    const tall = Math.max(1, this.stage.clientHeight);
+    // A view in a worker (clip_worker.js) has no stage and no tools at its
+    // foot: read as one, every clip failed at once (8d36466f6 to nightly
+    // 2026-11-24's turntable).
     const footPx = Number(typeof this.o.foot === "function" ? this.o.foot() : this.o.foot) || 0;
-    const foot = Math.min(0.4, Math.max(0, footPx) / tall);
+    const foot = footPx > 0 && this.stage ? Math.min(0.4, footPx / Math.max(1, this.stage.clientHeight)) : 0;
     const below = foot > 0 ? Math.max(margin, foot + margin / 2) : margin;
     const tan = Math.tan((this.camera.fov * Math.PI) / 360);
     const tanUp = tan * (1 - margin - below);
