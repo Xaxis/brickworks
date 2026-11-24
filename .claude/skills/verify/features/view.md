@@ -3938,13 +3938,15 @@ picture the assistant is shown.
   asks every picture alone, each verdict under its own fresh name and
   folder (the pictures it showed are kept in `DIR/masters/` by their
   bytes' hash); a LABEL given once a draw is one arm. It ends with
-  `score`'s table, also `photoreal.py score SOLO_JSON [--base L]
-  [--merge-draws]`: each label's mean over its shots with a bootstrap 95%
-  interval (shots, then verdicts, drawn again), each label against the
-  base shot by shot (a picture the same in both arms counts as one), and
-  every two labels sharing byte-identical pictures as twins, whose
-  interval's half-width is the smallest difference the pool tells apart.
-  Keep a lever only if its interval against the base is above 0. `colour TAG [--out DIR]` measures each close-up's faces
+  `score`'s table, also `photoreal.py score SOLO_JSON... [--base L]
+  [--merge-draws]` (several pools' verdicts together): each label's mean
+  over its shots with a bootstrap 95% interval (shots, then verdicts,
+  drawn again), each label against the base shot by shot (a picture the
+  same in both arms counts as one), and every two labels sharing
+  byte-identical pictures as twins, whose interval's half-width is the
+  smallest difference the pool tells apart. Keep a lever only if its
+  interval against the base is above 0.
+  `colour TAG [--out DIR]` measures each close-up's faces
   (shots.json's `faces`, the photograph's box and the render's) as the
   trimmed mean of their CIELAB and prints and writes (`colour_TAG.json`)
   each face's CIEDE2000 from its photograph's; the bar is 5 on every main

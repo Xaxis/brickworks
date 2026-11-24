@@ -27,8 +27,8 @@ reasons, the things it names in the render that give it away, are the gap list.
         each verdict under a fresh name (photoreal16); each label's mean over its shots with a
         bootstrap 95% interval, its difference from --base shot by shot, and the noise of any
         byte-identical twins; a LABEL may be given once a draw; DIR/solo_NAME.json
-    tools/bench/photoreal.py score FILE [--base LABEL] [--merge-draws]
-        those scores again from a solo_NAME.json
+    tools/bench/photoreal.py score FILE ... [--base LABEL] [--merge-draws]
+        those scores again from solo_NAME.json files, their verdicts together
     tools/bench/photoreal.py camera TAG
         each shot's sensor noise, photograph against render, in 8-bit levels (photoreal4)
     tools/bench/photoreal.py masks [--only a,b]
@@ -862,11 +862,12 @@ def score_table(scores: dict) -> str:
     return "\n".join(lines)
 
 
-def score_file(path: Path, base: str | None, merge_draws: bool) -> int:
-    """score() of a solo_NAME.json; with merge_draws, labels named ARM_dN are one arm, draw dN."""
+def score_file(paths: list[Path], base: str | None, merge_draws: bool) -> int:
+    """score() of one or more solo_NAME.json files' verdicts together: a fresh name a verdict makes
+    each an independent sample, so a pool's verdicts can be added to by another's on the same
+    pictures (by hash). With merge_draws, labels named ARM_dN (an older pool's) are one arm, draw dN."""
     import re
-    record = json.loads(path.read_text())
-    verdicts = [dict(v) for r in record["rounds"] for v in r["verdicts"]]
+    verdicts = [dict(v) for path in paths for r in json.loads(path.read_text())["rounds"] for v in r["verdicts"]]
     if merge_draws:
         for v in verdicts:
             found = re.fullmatch(r"(.+)_(d\d+)", v["who"])
@@ -984,7 +985,7 @@ def main() -> int:
                    help="renders alone, for a quick look at one change (the photographs are not asked)")
     s.add_argument("--base", default=None, help="the label every other is scored against (default the first)")
     o = sub.add_parser("score")
-    o.add_argument("file", type=Path)
+    o.add_argument("files", nargs="+", type=Path)
     o.add_argument("--base", default=None)
     o.add_argument("--merge-draws", action="store_true",
                    help="labels named ARM_dN (an older pool's) are one arm, draw dN")
@@ -1000,7 +1001,7 @@ def main() -> int:
     if args.what == "tally":
         return tally(args.files)
     if args.what == "score":
-        return score_file(args.file, args.base, args.merge_draws)
+        return score_file(args.files, args.base, args.merge_draws)
     if args.what == "camera":
         return camera(args.tag, args.drawn)
     if args.what == "masks":
