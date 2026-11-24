@@ -20,7 +20,8 @@
 //   4. Kit, under 13, never sees the ask: the box is not offered and the
 //      page says why, as before.
 //   5. A fan with no profile starts a thread in Talk (1280): asked first,
-//      Skip, and the thread starts.
+//      Skip, and the thread starts. Then a photo of her build on the
+//      model: asked again, its words kept; Skip, and it goes.
 //   6. Dana's Notifications: each comment's line has Reply (44 px under a
 //      finger). From the keyboard: Reply, the box focused, Ctrl+Enter
 //      posts, the line says Replied with the way to it, the focus back on
@@ -366,6 +367,22 @@ try {
     const thread = Number(/\/talk\/t\/(\d+)/.exec(page.url())?.[1]) || 0;
     check(`Talk: Skip, and the thread starts (/talk/t/${thread})`, thread > 0);
     if (thread) made.push([`talk:${thread}`, accounts.tess]);
+    // A photo of her build on Dana's model: asked again (she skipped),
+    // its words kept; Skip, and the photo goes.
+    await page.goto(`${site}/m/${id}?tests=1#builds`, { waitUntil: "load" });
+    await until(page, () => document.documentElement.dataset.buildPhotos, "tess: the builds section", 60);
+    await page.click("[data-add-build]");
+    await page.setInputFiles('.build-form input[type="file"]', path.join(here, "../../docs/brickify/fox-24.jpg"));
+    const caption = `My fox beside the arch (${rand})`;
+    await page.fill('.build-form input[name="words"]', caption);
+    await page.click('.build-form button[type="submit"]');
+    const asked = await until(page, () => document.querySelector("dialog.first-steps[open][data-step=profile]") && true, "tess: the photo's ask", 30)
+      .then(() => askDrawn(page, '.build-form input[name="words"]')).catch(() => askDrawn(page, '.build-form input[name="words"]'));
+    check(`a build photo: Send asks first, its words still there ("${asked.box.slice(0, 30)}")`, asked.open && asked.box === caption);
+    await shot(page, "1280_photo_ask");
+    await page.click("#first-skip");
+    const kept = await until(page, () => document.documentElement.dataset.buildPhoto || null, "tess: the photo kept", 120).catch(() => "");
+    check(`...Skip, and the photo goes (${kept})`, /^[A-Za-z0-9]{10}$/.test(kept || ""));
     await ctx.close();
   }
 

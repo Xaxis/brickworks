@@ -31,7 +31,7 @@
 // since" where its part moved, and "on version N", pressable no more, where
 // it is on no part of this one. A pin its designer resolved is folded away
 // under Resolved; its designer may resolve one here too.
-import { askToSignIn, call, email, signedIn } from "/account.js";
+import { askToSignIn, call, email, nameFirst, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { blockPerson } from "/block.js";
 import { ask, avatarHtml } from "/kit.js";
@@ -1803,6 +1803,9 @@ function buildPhotos(box) {
     const send = form.querySelector('button[type="submit"]');
     send.disabled = true;
     try {
+      // A name first, once, as before a comment (web/account.js nameFirst):
+      // the photo shows under it; made or skipped, it then goes.
+      await nameFirst();
       tell(say("Sending the photo…"));
       const start = await call("/api/people?op=photo_start", { method: "POST",
         body: { model, type: photo.type, size: photo.size } });
