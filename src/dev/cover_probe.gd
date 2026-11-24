@@ -350,7 +350,7 @@ func _one_size(what: String) -> void:
 		"plate400":
 			bytes = _stl_binary(_box(Vector3(400, 400, 3.2)))
 		"ball400":
-			bytes = _stl_binary(_scaled(_sphere(100, 180), 20.0))
+			bytes = _stl_binary(_scaled(_sphere(50, 90), 20.0))
 		_:
 			var mm: float = what.to_float()
 			bytes = _stl_binary(_box(Vector3(mm, mm, mm)))
@@ -366,10 +366,11 @@ func _one_size(what: String) -> void:
 	var cells: float = PartForge.box_cells(PackedFloat64Array([-size.x / 2, -size.y, -size.z / 2]),
 		PackedFloat64Array([size.x / 2, 0.0, size.z / 2]))
 	_ok(str(made["problem"]).is_empty() and info != null,
-		"SIZE %s: %s LDU, %d cells' box (%s), read in %d ms, made in %d ms; %d triangles, %d boxes; peak %s" % [
+		"SIZE %s: %s LDU, %d cells' box (%s), read in %d ms, made in %d ms; %d triangles, %d boxes; peak %s%s" % [
 			what, size, int(cells), "from its surface" if cells > PartForge.MADE_DENSE_MOST
 			else "cell by cell", read_ms, took, info.triangles if info != null else -1,
-			info.box_count if info != null else -1, _peak()])
+			info.box_count if info != null else -1, _peak(),
+			"" if info != null else "; made %s, read %s" % [made, part.problem]])
 
 
 # -- joins on a big plate ----------------------------------------------------------
@@ -402,7 +403,7 @@ func _joins() -> void:
 		for s: Vector2 in spots:
 			var r: Dictionary = await _pair(id, Transform3D.IDENTITY, "3001",
 				Transform3D(Basis.IDENTITY, Vector3(s.x + 10, 24, s.y + 10)))
-			_ok(r["one body"] and (r["joins"] as Array).has("studs") and (r["lodged"] as Array).is_empty(),
+			_ok(r["one body"] and (r["joins"] as Array).has("studs") and int(r["lodged"]) == 0,
 				"plate %s mm, a 3001 on the stud at %s: %s" % [thick, s, r])
 		var r3: Dictionary = await _pair("3001", Transform3D(Basis.IDENTITY, Vector3(0, -24, 0)), id,
 			Transform3D.IDENTITY)
