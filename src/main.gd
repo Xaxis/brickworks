@@ -5119,10 +5119,15 @@ func _ask_early_set() -> void:
 ## Until none of [member _early_parts] is on its way, [constant
 ## EARLY_SET_WAIT_MS] at most, nothing drawn and nothing moving, as the data
 ## pack is waited for (_ready): the page's own screen stays up, and each frame
-## costs milliseconds, not a studio drawn in software.
+## costs milliseconds, not a studio drawn in software. Each part read here as
+## its bytes come (PartLibrary.read_waiting), the page's thread idle.
 func _await_early_set() -> void:
+	# Read here, and still on its way: what the page's boot marks say.
+	var counts: Array = [0, 0]
 	var coming: Callable = func() -> bool:
-		return _early_parts.any(func(part_id: String) -> bool: return _library.is_on_its_way(part_id))
+		counts[0] += _library.read_waiting(_early_parts)
+		counts[1] = _early_parts.filter(func(part_id: String) -> bool: return _library.is_on_its_way(part_id)).size()
+		return counts[1] > 0
 	if not coming.call():
 		return
 	get_tree().paused = true
@@ -5132,7 +5137,7 @@ func _await_early_set() -> void:
 		await get_tree().process_frame
 	GpuFence.let_go()
 	get_tree().paused = false
-	_boot_mark("set geometry")
+	_boot_mark("set geometry: %d read here, %d still coming" % counts)
 
 
 ## Build it from a set's page (sethub): the model just opened, at its first

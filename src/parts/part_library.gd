@@ -2127,6 +2127,37 @@ func _read_soon(item: Array, first: bool = false) -> void:
 		tree.process_frame.connect(_read_frame)
 
 
+## The geometry of any of [param part_ids] whose bytes are here and waiting to
+## be read, read and kept now on this thread rather than by a worker behind
+## the rest: Main waits on a set's parts with nothing drawn, the page's thread
+## idle, and the 12 that came for 346-2 within 70 ms of being asked for were
+## still behind the parts bin's read-ahead two seconds later (setopen,
+## 2026-11-23). How many were read.
+func read_waiting(part_ids: Array) -> int:
+	var wanted: Dictionary = {}
+	for part_id: Variant in part_ids:
+		wanted[str(part_id)] = true
+	var mine: Array = []
+	var rest: Array = []
+	_read_lock.lock()
+	for item: Array in _to_read:
+		var askers: Array = _fetching.get(item[1], [item[3]])
+		if item[0] == LBM and askers.any(func(one: Variant) -> bool: return wanted.has(str(one))):
+			mine.append(item)
+		else:
+			rest.append(item)
+	_to_read = rest
+	_read_lock.unlock()
+	for item: Array in mine:
+		# The first of its kind alone, as a worker reads it (_read_some).
+		var made: Array = [null]
+		var read: Callable = func() -> void: made[0] = _read_one(item)
+		if not WorkerTasks.first_here("read a part's " + str(item[0]), read):
+			read.call()
+		_kept_read(item, made[0])
+	return mine.size()
+
+
 ## The tree whose frames [method _read_soon] reads in: the fetch host's.
 func _read_tree() -> SceneTree:
 	return _fetch_host.get_tree() if _fetch_host != null and _fetch_host.is_inside_tree() else null
