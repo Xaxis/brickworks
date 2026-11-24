@@ -1485,9 +1485,17 @@ func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> 
 		# Cut off by a list it is in, scrolled past it: on a phone held
 		# sideways at 130% Settings' Interface size stood under the list's
 		# foot, behind Done, inside the window, and a tap meant for it
-		# pressed Done (app_a11y, uifix). Said, so a check scrolls to it.
-		if _cut_off(control):
+		# pressed Done (app_a11y, uifix). Said, so a check scrolls to it,
+		# with the part of the list that shows, where a wheel turned scrolls
+		# it: the Share form's List it in the gallery lay wholly under the
+		# form's foot, and every place a check could guess beside it was the
+		# foot, a field or the view (nightreds, 2026-11-24).
+		var cut_by: Control = _cut_off(control)
+		if cut_by != null:
 			at["clipped"] = true
+			var list: Rect2 = to_window * cut_by.get_global_rect()
+			at["list"] = {"x": roundi(list.get_center().x / per_css), "y": roundi(list.get_center().y / per_css),
+				"w": roundi(list.size.x / per_css), "h": roundi(list.size.y / per_css)}
 		seen[name] = at
 		if _told_places.get(name, {}) == at:
 			where[name] = at
@@ -1511,18 +1519,18 @@ var _places_settling: int = 0
 const PLACES_SETTLING := 3
 
 
-## Whether something [param control] is in that clips what it holds (a
-## list that scrolls, a drawer) shows less than all of it. By more than two
-## units: a list scrolls by whole units, and one 455.7 tall scrolled to its
-## end left its last row 1.1 under its foot (the assistant's at 150%).
-static func _cut_off(control: Control) -> bool:
+## What [param control] is in that clips what it holds (a list that
+## scrolls, a drawer) and shows less than all of it, or null. By more than
+## two units: a list scrolls by whole units, and one 455.7 tall scrolled to
+## its end left its last row 1.1 under its foot (the assistant's at 150%).
+static func _cut_off(control: Control) -> Control:
 	var rect: Rect2 = control.get_global_rect()
 	var up: Control = control.get_parent() as Control
 	while up != null:
 		if up.clip_contents and not up.get_global_rect().grow(2.0).encloses(rect):
-			return true
+			return up
 		up = up.get_parent() as Control
-	return false
+	return null
 
 
 ## The model's parts by number, each once, the first 300: worked out again

@@ -179,9 +179,14 @@ async function main() {
   let tags = metas(r.text);
   check(r.status === 200 && tags["twitter:card"] === "summary_large_image" && Boolean(tags["og:image"]) && !tags["og:video"],
     `its page is today's picture card: ${tags["twitter:card"]}, og:image, no og:video`);
+  // Its own picture, or the plain frame for one with none: never the site's
+  // share card, which stood in as an advert (87ec71b31, 2026-11-23).
+  // (Its head's link card, og:image, may still be the share card.)
   r = await call(`/m/${id}/embed?autoplay=1`);
-  check(r.status === 200 && /<img src="\/(m\/\w+\.png|share\.png)"/.test(r.text) && !/<video/.test(r.text),
-    "its embed with ?autoplay=1 is the picture, with no clip to play");
+  const media = (/<a class="picture"[\s\S]*?<\/a>/.exec(r.text) || [""])[0];
+  const embedImg = (/<img src="([^"]*)"/.exec(media) || [])[1] || "";
+  check(r.status === 200 && Boolean(media) && (embedImg === "" || /^\/m\/\w+\.png/.test(embedImg)) && !/<video/.test(r.text),
+    `its embed with ?autoplay=1 is its picture or the plain frame (${r.status}, ${embedImg || "no picture"}), with no clip to play`);
 
   console.log("2. the designer's first visit records it");
   const browser = await launch({ signedOut: true });

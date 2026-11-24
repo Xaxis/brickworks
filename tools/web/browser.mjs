@@ -481,7 +481,14 @@ export async function clickStill(page, name, { find = null, seconds = START_MS /
   let at = await still();
   // Cut off by a list it is in, scrolled into sight first, as a person
   // scrolls to what they want: its middle may be under something else.
-  if (at && at.clipped) at = await intoSight(page, name, at, still);
+  if (at && at.clipped) {
+    const was = at;
+    const tried = [];
+    at = await intoSight(page, name, at, still, tried);
+    console.log(`  --    ${name} was cut off by its list at ${was.x}, ${was.y} (${was.w} x ${was.h}): `
+      + (at && !at.clipped ? `wheeled into sight, at ${at.x}, ${at.y}`
+        : `the wheel did not bring it into sight (turned at ${tried.join("; ") || "no place"})`));
+  }
   if (!at) {
     if (shots) await page.screenshot({ path: `${shots}/never_showed_${name}.png` }).catch(() => {});
     if (optional) return false;
@@ -504,25 +511,70 @@ export async function clickStill(page, name, { find = null, seconds = START_MS /
 /// header (c2f7790d7, 2026-11-23) took 61 px, was pressed off the window
 /// and never opened (nightly 2026-11-24).
 ///
-/// The list is not told, only the controls in it, so the wheel is turned
-/// at places in the control's own column, first above it (a list cut off at
-/// its foot, the wheel down) and then below (cut off at its top, the wheel
-/// up), each over none of the controls the app tells (a field or a choice
-/// may take the wheel for itself) nor the view (the wheel zooms it), until
-/// one moves it. None does in either way: [at] as it was.
-async function intoSight(page, name, at, still) {
+/// The app tells the part of the list that shows ([at].list): the wheel is
+/// turned inside it, at its right edge first (its scroll bar, which takes
+/// the wheel whatever the rows are), toward the control: down when the
+/// control is under the list's middle. Where that is not told (a build
+/// before nightreds), at places in the control's own column, first above it
+/// (a list cut off at its foot, the wheel down) and then below (cut off at
+/// its top, the wheel up), each over none of the controls the app tells (a
+/// field or a choice may take the wheel for itself) nor the view (the wheel
+/// zooms it), until one moves it. None does: [at] as it was.
+async function intoSight(page, name, at, still, tried = []) {
   const size = page.viewportSize() || { width: 1280, height: 720 };
   const told = await page.evaluate(() => window.brickworksControls || {});
   const over = (x, y) => Object.entries(told).some(([n, c]) => n !== name && c && c.w && c.h
     && Math.abs(c.x - x) <= c.w / 2 && Math.abs(c.y - y) <= c.h / 2);
   const view = told.view;
   const inView = (x, y) => view && Math.abs(view.x - x) <= view.w / 2 && Math.abs(view.y - y) <= view.h / 2;
+  const turn = async (x, y, way) => {
+    let moved = false;
+    const from = at.y;
+    for (let n = 0; n < 20 && at && at.clipped; n++) {
+      await page.mouse.move(x, y);
+      await page.mouse.wheel(0, way * 120);
+      // A telling made before the wheel was heard passed by, so one where
+      // it stood is not read as the wheel moving nothing.
+      await nextTelling(page, name);
+      const now = await still();
+      if (!now || now.y === at.y) { at = now || at; break; }
+      moved = true;
+      at = now;
+    }
+    tried.push(`${Math.round(x)},${Math.round(y)} ${way > 0 ? "down" : "up"}: ${at ? `${from} to ${at.y}${at.clipped ? ", cut off" : ""}` : "gone"}`);
+    return moved;
+  };
+  const list = at.list;
+  if (list && list.w > 8 && list.h > 8) {
+    const way = at.y > list.y ? 1 : -1;
+    const top = Math.max(2, list.y - list.h / 2 + 4), foot = Math.min(size.height - 2, list.y + list.h / 2 - 4);
+    const right = Math.min(size.width - 2, list.x + list.w / 2 - 4), left = Math.max(2, list.x - list.w / 2 + 4);
+    const near = way > 0 ? foot : top;
+    const places = [[right, list.y], [right, near], [left, near], [left, list.y]];
+    for (let y = near; y >= top && y <= foot && places.length < 8; y -= way * 24) {
+      if (!over(at.x, y)) places.push([at.x, y]);
+    }
+    for (const [x, y] of places) {
+      if (inView(x, y)) continue;
+      const moved = await turn(x, y, way);
+      if (!at || !at.clipped || moved) return at;
+    }
+    return at;
+  }
   const x = Math.max(2, Math.min(size.width - 2, at.x));
   for (const way of [1, -1]) {
     // The first edge of the control toward the list, inside the window.
     const edge = way > 0 ? Math.min(at.y - at.h / 2, size.height) - 2 : Math.max(at.y + at.h / 2, 0) + 2;
-    const places = [];
-    for (let by = 0; by <= 240 && places.length < 6; by += 8) {
+    // First the control's own edge, just inside it: in the list when any of
+    // it shows, where a box or a button leaves the wheel to the list. Then
+    // up the column as far as half the window: the Share form's foot (its
+    // buttons, the guidelines, Ask the builders) is 180 px tall since
+    // 28a1fe332, and List it in the gallery lay wholly under it, so the six
+    // places within 240 px were all on the foot, which scrolls nothing
+    // (nightreds, 2026-11-24).
+    const own = edge + way * 5;
+    const places = own > 0 && own < size.height ? [own] : [];
+    for (let by = 0; by <= size.height / 2 && places.length < 12; by += 8) {
       const y = edge - way * by;
       if (y < 0 || y > size.height) break;
       if (over(x, y) || inView(x, y)) continue;
@@ -530,18 +582,7 @@ async function intoSight(page, name, at, still) {
       places.push(y);
     }
     for (const y of places) {
-      let moved = false;
-      for (let n = 0; n < 20 && at && at.clipped; n++) {
-        await page.mouse.move(x, y);
-        await page.mouse.wheel(0, way * 120);
-        // A telling made before the wheel was heard passed by, so one where
-        // it stood is not read as the wheel moving nothing.
-        await nextTelling(page, name);
-        const now = await still();
-        if (!now || now.y === at.y) { at = now || at; break; }
-        moved = true;
-        at = now;
-      }
+      const moved = await turn(x, y, way);
       // Moved, this way is the list's: the other would scroll it back.
       if (!at || !at.clipped || moved) return at;
     }

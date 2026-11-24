@@ -215,7 +215,16 @@ async function answerStudio(page, press) {
       continue;
     }
     if (named.age_go) {
-      await press("age_month_3");
+      // Read again if it goes before it is answered, as a person answers
+      // what is shown: at 1280 after a reload mid-check (the code still
+      // Checking at 60 s) the question was told once and then the beta's
+      // welcome stood there instead, and a press that waited a minute for
+      // the month failed the way (nightreds unit preview, 2026-11-24).
+      // Never answerable, the loop still ends unanswered at two minutes.
+      if (!await press("age_month_3", 10, true)) {
+        console.log("  --    the age question went before it was answered; read again");
+        continue;
+      }
       await typeInto(page, press, "age_year", "1990");
       await press("age_go");
     } else if (named.beta_not_now) {
