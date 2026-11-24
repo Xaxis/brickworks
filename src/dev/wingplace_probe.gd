@@ -428,7 +428,8 @@ func _told(carried: bool) -> String:
 		not (_builder.get("_copies_ask") as Dictionary).is_empty(),
 		str(going.map(func(i: Array) -> String: return "%s at %s" % [i[0],
 			str((i[1] as Transform3D).origin.snappedf(0.1))]))]
-	var into: String = _builder.call("_copies_path")
+	var into: String = _tree.call("_changed_level",
+		str((going[0] as Array)[2]) if not going.is_empty() and (going[0] as Array).size() > 2 else _tree.entered)
 	var copies: Array = _tree.call("_copies_laid", into)
 	words += "into \"%s\" (editing \"%s\"), %d copies fit:" % [into, _tree.entered, copies.size()]
 	if copies.is_empty():
@@ -451,7 +452,7 @@ func _told(carried: bool) -> String:
 		for item: Array in going:
 			var laid: Array = _tree.call("_laid", fit, library_id(str(item[0])), item[1])
 			words += " twin %s at %s" % [laid[0], str((laid[1] as Transform3D).origin.snappedf(0.1))]
-	words += "; asked again: \"%s\"" % str(_tree.call("room_in_copies", {"items": going, "path": into}, 0))
+	words += "; asked again: \"%s\"" % str(_tree.call("room_in_copies", {"items": going}, 0))
 	return words
 
 

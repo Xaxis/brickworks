@@ -3265,15 +3265,15 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 ## [constant COPIES_ASK_US] goes on next frame, the ghost as it was till then.
 func _ask_copies() -> void:
 	var asked: Array = []
-	var into: String = _copies_path() if copies_room.is_valid() else ""
-	if not into.is_empty():
+	# Into the sub-assembly being edited, or parts lifted back into their own.
+	if copies_room.is_valid() and (not place_group.is_empty() or is_carrying() and carrying.lifted):
 		if is_carrying():
 			if carrying.is_aimed() and carrying._valid:
 				asked = ["carried", carrying._frame, carrying.turns]
 		elif _ghost_valid and _ghost.visible and held_figure.is_empty() and not _ghost_warming:
 			asked = [held_part, _ghost_transform]
 	if not asked.is_empty():
-		asked.append_array([into, world.revision, BrickWorld.paths_written, lattice.revision])
+		asked.append_array([place_group, world.revision, BrickWorld.paths_written, lattice.revision])
 	# What is carried by the hold, not its contents: a paste held again is a
 	# new array, and a big hand is not compared part by part each frame. Null
 	# for a part in hand.
@@ -3282,7 +3282,7 @@ func _ask_copies() -> void:
 		_copies_asked = asked
 		_copies_hand = hand
 		copies_refuse = ""
-		_copies_ask = {} if asked.is_empty() else {"items": _going_down(), "path": into}
+		_copies_ask = {} if asked.is_empty() else {"items": _going_down()}
 	if not _copies_ask.is_empty():
 		var answer: Variant = copies_room.call(_copies_ask, COPIES_ASK_US)
 		if answer == null:
@@ -3308,38 +3308,19 @@ func _ask_copies() -> void:
 	_drawn_red = red
 
 
-## What a click would put down now, [part id, where] each: the part in hand
-## where its ghost is, or each part carried where the carry puts it.
-## The sub-assembly what is in hand goes into, as [method _put_carried] puts
-## it: parts lifted off the model back into their own (one picked in the
-## tree and dragged, the sub-assembly round it not entered), the one round
-## them all where they come from several; anything else into
+## What a click would put down now, [part id, where, the sub-assembly it
+## goes into] each, as [method _put_carried] puts it: the part in hand where
+## its ghost is, or each part carried where the carry puts it. A part lifted
+## off the model goes back into its own (one picked in the tree and dragged,
+## the sub-assembly round it not entered); anything else into
 ## [member place_group], the one being edited. "" for the model itself.
-func _copies_path() -> String:
-	if not is_carrying() or not carrying.lifted:
-		return place_group
-	var common: PackedStringArray = []
-	var first: bool = true
-	for item: Dictionary in carrying.items:
-		var mine: PackedStringArray = Assemblies.segments(
-			Assemblies.path_from(str(item.get("group", "")), str(item.get("unit", ""))))
-		if first:
-			common = mine
-			first = false
-			continue
-		var n: int = 0
-		while n < mini(common.size(), mine.size()) and common[n] == mine[n]:
-			n += 1
-		common = common.slice(0, n)
-	return "/".join(common)
-
-
 func _going_down() -> Array:
 	if not is_carrying():
-		return [[held_part, _ghost_transform]]
+		return [[held_part, _ghost_transform, place_group]]
 	var out: Array = []
 	for item: Dictionary in carrying.placements(self):
-		out.append([str(item["part"]), item["at"]])
+		out.append([str(item["part"]), item["at"], place_group if not carrying.lifted
+			else Assemblies.path_from(str(item.get("group", "")), str(item.get("unit", "")))])
 	return out
 
 

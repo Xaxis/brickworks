@@ -1936,9 +1936,11 @@ func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
 ## between the two had its mirrored twin on it: the web's assembly flow put
 ## down nothing.
 ##
-## [param ask]: {"items": [[part id, where in the world], ...], "path": the
-## sub-assembly they go into ([member entered] when not given)} the first
-## time, and the same Dictionary again until it is answered, as the ask is
+## [param ask]: {"items": [[part id, where in the world, the sub-assembly it
+## goes into ([member entered] when not given)], ...]} the first time, each
+## asked of the copies of the innermost one round it the follow changes in
+## part ([method _changed_level]: a copy lifted whole is asked of the one
+## round it), and the same Dictionary again until it is answered, as the ask is
 ## kept in it. Each call goes on for [param budget_us] microseconds at most
 ## (0, no bound) after the copies' fits are read ([method _copies_laid],
 ## once a model, the follow's own cost for one click), and gives null where
@@ -1946,46 +1948,51 @@ func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
 ## "room" for having been cut short.
 func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 	var items: Array = ask.get("items", [])
-	# Where they go down ("path", Builder._copies_path): the sub-assembly
-	# being edited, or for parts lifted off the model their own one, picked
-	# in the tree or edited from outside it.
-	var into: String = str(ask.get("path", entered))
-	if into.is_empty() or items.is_empty():
+	if items.is_empty():
 		return ""
-	if not ask.has("copies"):
-		var copies: Array = _copies_laid(into)
-		if copies.is_empty():
-			return ""
+	if not ask.has("pairs"):
 		## [part, cells, the copy it goes into] of each part going down so far.
 		var down: Array = []
-		## Each item as the world puts it down: a retired number is the part
-		## that replaced it, where its stub puts it (BrickWorld._place), so a
-		## 3023 in hand is a 3023b in the copy and its twins, named so.
-		var going: Array = []
+		## Each item's level ([method _changed_level]) -> the items going there.
+		var by_level: Dictionary = {}
 		for item: Array in items:
+			# As the world puts it down: a retired number is the part that
+			# replaced it, where its stub puts it (BrickWorld._place), so a
+			# 3023 in hand is a 3023b in the copy and its twins, named so.
 			var real: String = library.resolve(str(item[0]))
 			var at: Transform3D = (item[1] as Transform3D) * library.moved_by(str(item[0]))
-			going.append([real, at])
+			var level: String = _changed_level(str(item[2]) if item.size() > 2 else entered)
 			var mesh: Lbm.PartMesh = library.mesh_for(real)
 			if mesh != null:
-				down.append([real, builder.boxes_for(mesh, at), into])
-		ask.merge({"copies": copies, "going": going, "down": down, "laid": {}, "next": 0})
+				down.append([real, builder.boxes_for(mesh, at), level])
+			if not level.is_empty():
+				if not by_level.has(level):
+					by_level[level] = []
+				(by_level[level] as Array).append([real, at])
+		# Each copy with what goes into it, the newest copy first, as the
+		# follow's refusal reads them (copies_follow: back newest first), so
+		# the words name the same one.
+		var pairs: Array = []
+		for level: String in by_level:
+			var copies: Array = _copies_laid(level)
+			for c: int in range(copies.size() - 1, -1, -1):
+				for one: Array in by_level[level]:
+					pairs.append([copies[c], one])
+		if pairs.is_empty():
+			return ""
+		ask.merge({"pairs": pairs, "down": down, "laid": {}, "next": 0})
 	var started: int = Time.get_ticks_usec()
-	var copies: Array = ask["copies"]
-	var going: Array = ask["going"]
+	var pairs: Array = ask["pairs"]
 	var down: Array = ask["down"]
 	var laid_already: Dictionary = ask["laid"]
-	var total: int = copies.size() * going.size()
-	while int(ask["next"]) < total:
+	while int(ask["next"]) < pairs.size():
 		# One at least each call, so a slow box still gets there.
 		if budget_us > 0 and int(ask["next"]) > 0 and Time.get_ticks_usec() - started > budget_us:
 			return null
 		var n: int = int(ask["next"])
 		ask["next"] = n + 1
-		# The newest copy first, as the follow's refusal reads them
-		# (copies_follow: back newest first), so the words name the same one.
-		var copy: Array = copies[copies.size() - 1 - n / going.size()]
-		var item: Array = going[n % going.size()]
+		var copy: Array = pairs[n][0]
+		var item: Array = pairs[n][1]
 		var other: String = copy[0]
 		var laid: Array = _laid(copy[1], str(item[0]), item[1])
 		var at: Transform3D = laid[1]
@@ -2041,19 +2048,21 @@ func _room_words_part(path: String, part_id: String) -> String:
 ## asks at every move.
 func _copies_laid(level: String) -> Array:
 	var lifted: bool = builder.is_carrying() and builder.carrying.lifted and builder._lift_on_top()
-	var key: Array = [world.revision, BrickWorld.paths_written, level, world.brick_count(), lifted]
-	if key == _copies_key:
-		return _copies_kept
-	_copies_key = key
-	_copies_kept = []
-	_copies_level = level
-	_rounds_fit.clear()
-	_copies_then = _before(builder.last_step()) if lifted else {}
+	var key: Array = [world.revision, BrickWorld.paths_written, world.brick_count(), lifted]
+	if key != _copies_key:
+		_copies_key = key
+		_copies_kept = {}
+		_rounds_fit.clear()
+		_copies_then = _before(builder.last_step()) if lifted else {}
+	if _copies_kept.has(level):
+		return _copies_kept[level]
+	var kept: Array = []
+	_copies_kept[level] = kept
 	if not _any_copied([level]):
-		return _copies_kept
+		return kept
 	var source: Array = _read_then(level)
 	if source.is_empty():
-		return _copies_kept
+		return kept
 	_begin_pass()
 	for other: String in copies_of(level):
 		var twin: Array = _read_then(other)
@@ -2065,9 +2074,20 @@ func _copies_laid(level: String) -> Array:
 		var own: Dictionary = {}
 		for brick_id: int in ids_under(other):
 			own[brick_id] = true
-		_copies_kept.append([other, fit, own, other, false])
+		kept.append([other, fit, own, other, false, level])
 	_end_pass()
-	return _copies_kept
+	return kept
+
+
+## The innermost sub-assembly at or round [param path] that keeps a part
+## where it stood: one lifted off whole is moved whole, and the follow lays
+## nothing in its copies (_made_in: changed whole) but in those of the one
+## round it. "" at the model.
+func _changed_level(path: String) -> String:
+	var level: String = path
+	while not level.is_empty() and bricks_under(level).is_empty():
+		level = parent_of(level)
+	return level
 
 
 ## A copy's parts as [method _copies_laid] reads them: as the follow reads
@@ -2088,7 +2108,7 @@ func _round_out(copy: Array) -> bool:
 	copy[4] = true
 	var levels: Array = []
 	var path: String = ""
-	var mine: PackedStringArray = segments(_copies_level)
+	var mine: PackedStringArray = segments(str(copy[5]))
 	for n: int in mine.size() - 1:
 		path = join(path, mine[n])
 		levels.append(path)
@@ -2129,9 +2149,9 @@ func _fits_round(level: String, outer: String) -> bool:
 
 
 var _copies_key: Array = []
-var _copies_kept: Array = []
+## Level -> its copies ([method _copies_laid]), while [member _copies_key] holds.
+var _copies_kept: Dictionary = {}
 var _copies_then: Dictionary = {}
-var _copies_level: String = ""
 var _rounds_fit: Dictionary = {}
 
 
