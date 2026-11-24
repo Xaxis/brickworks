@@ -8242,6 +8242,7 @@ func _make_simulate() -> void:
 	simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_seat_tool_panel(simulate)
+	simulate.held_by_hand = func() -> bool: return _grab_drag != null and _grab_drag.is_grabbing()
 	_builder.selection_changed.connect(Callable(simulate, &"_on_selection"))
 	# A click on a battery box, a receiver or a hub works its switch, the
 	# part under the pointer, wherever it is in the model (F3).
