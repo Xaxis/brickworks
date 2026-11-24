@@ -171,6 +171,11 @@ def test_the_old_address_answers_301_to_lists_keeping_its_query() -> None:
     deploy = (ROOT / "tools/deploy.sh").read_text(encoding="utf-8")
     assert '{ "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" }' in deploy
     assert '"dest": "/api/people?op=moved&to=gallery-lists&lang=\\$1" }' in deploy
+    # Ahead of the routes that take any page's .html off: behind them,
+    # /collections.html went 308 to /collections and only then 301 (the
+    # nightly's collections, 2026-11-24).
+    assert deploy.index('"/collections([.]html)?/?"') < deploy.index('"/([A-Za-z0-9_-]+)[.]html"')
+    assert deploy.index('"/($langs)/collections([.]html)?/?"') < deploy.index('"/($langs)/([A-Za-z0-9_-]+)([.]html|/)"')
     script = """
       import handler from "./api/people.js";
       const said = [];
