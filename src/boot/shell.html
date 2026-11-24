@@ -1108,6 +1108,20 @@ const bootTips = (function () {
 			early.status = reply.status;
 			early.text = text;
 			early.done = true;
+			// And every lot's picture of it in one file, which the answer
+			// names (api/share.js lotPicturesOf): here before Build it's
+			// first step, which shows them at once (LotPictures).
+			let named = "";
+			try { named = String(JSON.parse(text).lot_pictures || ""); } catch (e) {}
+			if (reply.status !== 200 || !/^\/m\/[A-Za-z0-9]{10}\/v\/[1-9][0-9]{0,5}\/parts[.]png[?]f=[0-9a-f]{12}$/.test(named)) return;
+			const lots = window.brickworksLots = { url: named, done: false, status: 0, bytes: null };
+			fetch(named).then((answer) => {
+				lots.status = answer.status;
+				return answer.arrayBuffer();
+			}).then((bytes) => {
+				lots.bytes = bytes;
+				lots.done = true;
+			}, () => { lots.done = true; });
 		})).catch(() => { early.done = true; });
 	} catch (e) {}
 })();

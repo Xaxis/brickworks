@@ -356,6 +356,34 @@ geometry in front of them.
   fetched, in that order; `PartLibrary.prefer` puts their fetches ahead of ones
   scrolled past, behind only a part somebody clicked. `request()` still draws a
   picture wanted outside a grid, after the tiles in sight.
+- `lot pictures` (partpics, 2026-11-24; `api/_lot_pictures.js`,
+  `api/share.js lotPicturesOf`, `src/net/lot_pictures.gd`,
+  `PartThumbnails.take_sheet`): a shared model's lots, every one drawn once by
+  the server into one PNG, `/m/X/v/N/parts.png?f=F` (96 px squares, 16 across,
+  the index `{tile, across, of, lots: [[part, colour]...]}` in its
+  `brickworks-lots` tEXt chunk; F the first 12 hex of the version file's SHA-1,
+  so a republished link's version 1 never takes the old one's). Drawn as the
+  model page's Parts list draws a lot (`web/part-pictures.js`: the bin's
+  corner, key and fill, lines where the part folds or steps back), in plain
+  JS, the first time it is asked and as the version is published
+  (`afterAnswer`), and kept as `X.lotsN.png` beside the model, so a later ask
+  reads that one file (deleted with the model's files at a take-down). The
+  share answer names it (`lot_pictures`); the page fetches it beside the model
+  while the engine starts (`src/boot/shell.html`, `window.brickworksLots`) and
+  the app takes it as it opens the link (`_view_shared`, and the two copy
+  paths), so Build it's step, the studio's step bar, the part-step card and
+  the parts list show each lot at once (`peek` finds it), and `PartThumbnails`
+  draws live only what the file lacks. Before, step 1 of Survey Ship at 390
+  showed counts over empty boxes for 8.5 s (billbuilds). Tiles still waiting
+  show their part's shape (`ThumbTile.sketch_for`, PartSketch), never an empty
+  box. Check: `node tools/web/lot_pictures_try.mjs MODEL.ldr OUT.png` then
+  `godot --headless --path . --script src/dev/lot_pictures_test.gd --
+  --sheet=OUT.png` (11 checks: index, every lot to hand at once, each its own
+  square, a broken file refused); in a browser, `brickworksShare.build`'s
+  `lot_pictures` ({url, lots, ms, from: page|asked}), `pictures_drawn_here`
+  and `pictures_from_file`, and `pictures_ms` near 0 on step 1
+  (bench/results/partpics-2026-11-24/pair.mjs times it against another
+  deployment at the same moment).
 - `palette`: every colour can be chosen by hand, grouped by kind of plastic
   (solid; transparent; chrome, metallic, pearl; glitter, opal, speckle, glow,
   rubber, fabric), greys first and then round the colour wheel. What sets are

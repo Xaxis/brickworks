@@ -38,7 +38,11 @@
 //                            list, as=pab (/m/X/parts-pab.csv; past 400
 //                            elements as=pab-2, /m/X/parts-pab-2.csv, and
 //                            on) a LEGO® Pick a Brick list, each to
-//                            download; with v=N, version N's
+//                            download; with v=N, version N's; as=png
+//                            (/m/X/v/N/parts.png?f=F) every lot's picture
+//                            in one file (api/_lot_pictures.js), drawn the
+//                            first time it is asked and kept beside the
+//                            model, F the file it is of (lotPicturesOf)
 //   GET  ?op=parts_missing&id=X  with the session: what the person is
 //                            missing of that list, and the three shops'
 //                            lists of only those (the Parts tab's What
@@ -277,7 +281,7 @@
 
 import { noted } from "./_noted.js";
 import { afterAnswer } from "./_after.js";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { cronNoted, isCron, sweepHeld } from "./_cron.js";
@@ -322,6 +326,7 @@ import {
   yearsOf,
 } from "./_sets.js";
 import { drawModel, flatLayJpeg, pngOf } from "./_flatlay.js";
+import { indexOf as lotIndexOf, lotSheet, withGeometry } from "./_lot_pictures.js";
 import { parseLbm } from "./_lbm.js";
 import { heightOf, promptNow, promptOnPublish, runPrompts } from "./_prompts.js";
 import { indexOf as searchIndex } from "./_search.js";
@@ -2334,7 +2339,7 @@ function undeviced(file) {
 /// its parts, of the version asked for (the newest unless one is). Read as a
 /// visitor, signed out: what its page offers anybody. Kept by the CDN as the
 /// page is, so a model taken down goes with its page.
-async function download(response, op, id, asked, as, lang = "en", step = null) {
+async function download(response, op, id, asked, as, lang = "en", step = null, f = "") {
   const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
   const row = await publishedRow(id);
   if (!row) {
@@ -2358,7 +2363,59 @@ async function download(response, op, id, asked, as, lang = "en", step = null) {
     return response.status(200).end(file);
   }
   if (op === "scene" || op === "room") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`, op, step);
+  if (op === "parts" && as === "png") {
+    // A link to another file's pictures (a republished link starts its
+    // versions at 1 again) is none of this one's.
+    if (f && f !== lotsFingerprint(file)) return fail(404, "These are not this model's parts: open it from its page again.");
+    const png = await lotPicturesOf(id, shown.n, stored, file);
+    if (!png) return fail(503, "This site cannot draw a model's parts just now.");
+    response.setHeader("Content-Type", "image/png");
+    // Under the file it is of, it never changes: kept a year.
+    response.setHeader("Cache-Control", f ? PICTURE_CACHE : SHARED_CACHE);
+    return response.status(200).end(png);
+  }
   return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest }, lang);
+}
+
+/// Which file a version's lot pictures are of: the first 12 hex of its
+/// bytes' SHA-1, in their address (?f=) and in the index they carry.
+const lotsFingerprint = (file) => createHash("sha1").update(file).digest("hex").slice(0, 12);
+
+/// Where the app finds version [n]'s lot pictures: the share answer says it
+/// (LotPictures), with the file they are of, so the CDN keeps them a year.
+const lotPicturesPath = (id, n, file) => `/m/${id}/v/${n}/parts.png?f=${lotsFingerprint(file)}`;
+
+/// Version [n] of [id]'s lot pictures (api/_lot_pictures.js): every lot of
+/// its parts list drawn in one PNG, [stored] the version's file's name and
+/// [file] its bytes. Drawn the first time anybody asks (or as it is
+/// published), from the parts' geometry in the store, and kept beside the
+/// model as X.lotsN.png, so every later ask reads that one small file and
+/// never the parts again (memory supabase-egress-restriction). A kept one
+/// of another file (the link republished) is drawn again. Kept only nearly
+/// whole: a lot whose geometry did not come is left for the next ask to
+/// draw, past one or two that are simply not in the store. Null where this
+/// site cannot draw them.
+async function lotPicturesOf(id, n, stored, file) {
+  const of = lotsFingerprint(file);
+  const name = `${id}.lots${n}.png`;
+  const kept = await getFile(name).catch(() => null);
+  if (kept) {
+    let index = null;
+    try {
+      index = lotIndexOf(kept);
+    } catch {
+      index = null;
+    }
+    if (index?.of === of) return kept;
+  }
+  const parts = partsOf(stored, file);
+  const table = partsTable();
+  if (!parts || !table || !storeRoot()) return null;
+  const lots = await withGeometry(parts.lots, (mesh) => storeBytes(`${mesh}.lbm`));
+  const { png } = lotSheet(lots, paletteOf(table), of);
+  const missing = lots.filter((lot) => !lot.bytes).length;
+  if (missing <= Math.max(2, lots.length / 50)) await putFile(name, png, "image/png").catch(() => {});
+  return png;
 }
 
 /// A parts list as /m/X/parts.json, .xml and .csv answer it, and a set's
@@ -2556,7 +2613,8 @@ async function read(request, response) {
     // A step of it (Ask the builders' thread, api/_asks.js): the parts built
     // by that page, where the file's carried steps say so.
     const step = op === "scene" && /^[1-9][0-9]{0,5}$/.test(String(request.query?.step || "")) ? Number(request.query.step) : null;
-    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"), step);
+    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"), step,
+      String(request.query?.f || ""));
   }
 
   if (op === "page") {
@@ -2742,6 +2800,10 @@ async function read(request, response) {
     updated_at: row.updated_at,
     version: shown.n,
     newest,
+    // Every lot's picture of this version in one file (lotPicturesOf),
+    // which the app takes as it opens it, so Build it's first step shows
+    // its parts at once (src/net/lot_pictures.gd).
+    lot_pictures: lotPicturesPath(id, shown.n, model),
     versions: versions.map((one) => versionSaid(origin, id, one, newest)),
     listed: row.listed === true,
     licence: row.licence ?? null,
@@ -3965,6 +4027,9 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // counted from those needs against every set's inventory: after the
   // answer, so the publish never waits on it.
   if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
+  // Its lots' pictures drawn now and kept (lotPicturesOf), after the answer:
+  // the first person to press Build it finds them made.
+  afterAnswer(() => lotPicturesOf(id, n, `${id}.mpd`, Buffer.from(model, "utf8")), "share: lot pictures");
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const shownKept = await keepMadeShown(id, owner, shownAsked);
@@ -4143,7 +4208,7 @@ export async function unpublishModel(owner, id) {
   const versions = await db(`share_versions?model=eq.${id}&select=n`);
   await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.cutout.png`, `${id}.webp`,
     ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`, `${id}.v${one.n}.cutout.png`,
-      `${id}.v${one.n}.webp`])]);
+      `${id}.v${one.n}.webp`, `${id}.lots${one.n}.png`])]);
   await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
   return { id, published: false, versions: versions.length };
 }

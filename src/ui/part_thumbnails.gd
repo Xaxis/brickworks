@@ -115,6 +115,15 @@ var _reorder: bool = false
 var _groups: Dictionary = {}
 ## The groups whose parts are on their way, by id.
 var _group_waits: Dictionary = {}
+## The open model's lots drawn once by the server (LotPictures): the file's
+## picture, and each key -> its square in it. A key the file has is taken
+## from it the first time it is wanted, and never drawn here.
+var _sheet: Image
+var _sheet_cells: Dictionary = {}
+## How many pictures have been drawn here, and how many taken from such a
+## file, for a check to read.
+var drawn_here: int = 0
+var from_sheet: int = 0
 
 
 func _ready() -> void:
@@ -305,7 +314,7 @@ func _next_job(drawn_anyway: bool = true) -> Dictionary:
 				var key: String = tile.key()
 				if _drawing.has(key):
 					continue
-				if _cache.has(key):
+				if _has(key):
 					_touch(key)
 					# Faded in where it can be seen; out of sight a fade is
 					# a fifth of a second of frames nobody sees.
@@ -324,7 +333,7 @@ func _next_job(drawn_anyway: bool = true) -> Dictionary:
 		_look = put_off
 	while not _queue.is_empty():
 		var job: Dictionary = _queue.pop_front()
-		if not _cache.has(job["key"]) and not _drawing.has(job["key"]):
+		if not _has(job["key"]) and not _drawing.has(job["key"]):
 			return job
 		_queued.erase(job["key"])
 	return {}
@@ -359,7 +368,7 @@ func _prefer_in_sight() -> void:
 ## printed head drawn without its print is the same yellow blank.
 func request(part_id: String, color_code: int, printed: bool = false) -> ImageTexture:
 	var key: String = key_for(part_id, color_code, printed)
-	if _cache.has(key):
+	if _has(key):
 		_touch(key)
 		return _cache[key]
 	if not _queued.has(key):
@@ -375,7 +384,7 @@ func request(part_id: String, color_code: int, printed: bool = false) -> ImageTe
 ## sight.
 func peek(part_id: String, color_code: int, printed: bool = false) -> ImageTexture:
 	var key: String = key_for(part_id, color_code, printed)
-	if not _cache.has(key):
+	if not _has(key):
 		return null
 	_touch(key)
 	return _cache[key]
@@ -383,6 +392,56 @@ func peek(part_id: String, color_code: int, printed: bool = false) -> ImageTextu
 
 static func key_for(part_id: String, color_code: int, printed: bool = false) -> String:
 	return "%s:%d%s" % [part_id, color_code, ":printed" if printed else ""]
+
+
+## Whether the picture for [param key] is to hand: drawn, or in the file of
+## the open model's lots, taken from it now.
+func _has(key: String) -> bool:
+	if _cache.has(key):
+		return true
+	var cell: Variant = _sheet_cells.get(key)
+	if cell == null or _sheet == null:
+		return false
+	_cache[key] = ImageTexture.create_from_image(_sheet.get_region(cell))
+	_touch(key)
+	from_sheet += 1
+	return true
+
+
+## The open model's lots, drawn once by the server ([param bytes], a PNG
+## LotPictures fetched): each of them shown from it from now on, the tiles
+## in sight that wait for one at the next frame. How many it has; 0 when it
+## could not be read, and nothing changes. Drawn with its print, as the
+## server draws every part, so it stands for a lot asked either way.
+func take_sheet(bytes: PackedByteArray) -> int:
+	var index: Dictionary = LotPictures.index_of(bytes)
+	var tile: int = int(index.get("tile", 0))
+	var across: int = int(index.get("across", 0))
+	var lots: Variant = index.get("lots")
+	if tile <= 0 or across <= 0 or not lots is Array:
+		return 0
+	var image := Image.new()
+	if image.load_png_from_buffer(bytes) != OK or image.get_width() < across * tile:
+		return 0
+	var cells: Dictionary = {}
+	var n: int = 0
+	for lot: Variant in lots:
+		var at := Vector2i((n % across) * tile, (n / across) * tile)
+		n += 1
+		if at.y + tile > image.get_height():
+			break
+		if not lot is Array or (lot as Array).size() < 2:
+			continue
+		var cell := Rect2i(at, Vector2i(tile, tile))
+		for printed: bool in [false, true]:
+			cells[key_for(str(lot[0]), int(lot[1]), printed)] = cell
+	if cells.is_empty():
+		return 0
+	_sheet = image
+	_sheet_cells = cells
+	_look = true
+	set_process(true)
+	return cells.size() / 2
 
 
 func _on_geometry_arrived(part_id: String) -> void:
@@ -452,7 +511,7 @@ func _touch(key: String) -> void:
 func _render(job: Dictionary, stage: Stage) -> void:
 	var key: String = job["key"]
 	_queued.erase(key)
-	if library == null or _cache.has(key) or _drawing.has(key):
+	if library == null or _has(key) or _drawing.has(key):
 		return
 
 	if _groups.has(job["part"]):
@@ -554,6 +613,7 @@ func _draw_and_keep(stage: Stage, key: String) -> void:
 	stage.holder.material_override = stage.material
 	_drawing.erase(key)
 	var texture: ImageTexture = ImageTexture.create_from_image(image)
+	drawn_here += 1
 
 	_cache[key] = texture
 	_touch(key)

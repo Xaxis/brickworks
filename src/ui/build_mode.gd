@@ -712,6 +712,8 @@ func _lay_strip() -> void:
 			if thumbnails != null else null
 		if ready != null:
 			tile.show_picture(ready, false)
+		else:
+			ThumbTile.sketch_for(tile, thumbnails)
 		cell.add_child(tile)
 		var count: Label = _count_words() if part > 0 else Label.new()
 		if part == 0:
@@ -1119,6 +1121,11 @@ func page_state() -> Dictionary:
 		"note_lines": _note.get_visible_line_count() if _note.visible else 0,
 		"note_more": _more.text if _more.is_visible_in_tree() else "",
 		"pictures_ms": _pictures_ms,
+		# The model's lots drawn once by the server (LotPictures): from where,
+		# how many, and how long they took to come.
+		"lot_pictures": LotPictures.said,
+		"pictures_drawn_here": thumbnails.drawn_here if thumbnails != null else -1,
+		"pictures_from_file": thumbnails.from_sheet if thumbnails != null else -1,
 		"lots": _lots.size(), "pictures": _tiles.filter(func(tile: ThumbTile) -> bool:
 			return tile.state == ThumbTile.State.READY).size(),
 		"next": _next.text, "back_enabled": not _back.disabled, "points": sizes,

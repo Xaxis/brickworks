@@ -475,6 +475,7 @@ func show_answer(read: Dictionary, at: int) -> void:
 		if ready != null:
 			_tile.show_picture(ready, false)
 		elif thumbnails != null:
+			ThumbTile.sketch_for(_tile, thumbnails)
 			thumbnails.watch(self, [_tile] as Array[ThumbTile])
 	_lay_steps(read, at)
 	_lay_others(read)

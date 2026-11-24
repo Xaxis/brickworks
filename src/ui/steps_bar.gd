@@ -699,6 +699,8 @@ func _lay_strip() -> void:
 		var ready: Texture2D = thumbnails.peek(tile.part_id, tile.color_code) if thumbnails != null else null
 		if ready != null:
 			tile.show_picture(ready, false)
+		else:
+			ThumbTile.sketch_for(tile, thumbnails)
 		cell.add_child(tile)
 		var count := Label.new()
 		count.text = "%dx" % int(lot["count"])
