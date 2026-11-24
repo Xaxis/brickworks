@@ -215,6 +215,9 @@ var _share_asked: bool = false
 ## place of the example car (_open_asked), and not the person's yet: it is
 ## made theirs, saved under its own name, once they are signed in.
 var _asked_open: bool = false
+## And it was opened from the link this run, not brought back by this tab's
+## autosave: written to that autosave once the store listens (_ready).
+var _asked_opened_now: bool = false
 ## The name the copy was saved under in their models, once it is.
 var _copy_made: String = ""
 ## Three first things to do with a copy just made (src/ui/first_acts.gd).
@@ -2144,6 +2147,16 @@ func _ready() -> void:
 	_lay_baseplate()
 	# Whatever changes the model from here on is kept, by whatever path.
 	_store.listen()
+	# Open in Brickworks' copy (?copy=), opened above with every part here:
+	# laid whole before the store listened, nothing it heard changed it, so
+	# nothing wrote it to this tab's autosave, and the address let go of the
+	# link on an autosave never written (ModelStore.written and stored hold
+	# for a file not written): a reload then opened the example car, the
+	# copy only in the person's models (viewopen's copyreloadkept). Laid
+	# while its parts came, as before, the store heard it and wrote it.
+	# Not one this tab's autosave brought back, which holds it already.
+	if _asked_opened_now:
+		_store.touch()
 	_boot_mark("model")
 	# A set's Make your own version (?library=), its file and its entry
 	# fetched by the page as it opened (ModelLibrary.early_here): opened now,
@@ -5009,6 +5022,7 @@ func _open_asked(placed: int) -> int:
 	_store.title = name
 	_credit_copy(shared)
 	_asked_open = true
+	_asked_opened_now = true
 	AskedCopy.mark_shown(_copying)
 	if _gate != null:
 		_gate.asked = name
@@ -5325,12 +5339,19 @@ func _await_early_model() -> void:
 ## frame, framed, and then the screen let go ("shown", shell.html's whenUp):
 ## every batch written at once (BrickWorld.flush_now), not a slice a frame,
 ## and the view framed on it before that frame, not after. The person's first
-## sight of the studio is the whole model, as it stays.
+## sight of the studio is the whole model, as it stays. Not a model of more
+## than [constant SHOWN_WHOLE_MOST] parts, whose batches written in one frame
+## would hold the page for seconds: it goes on a slice a frame, as ever.
 func _show_whole() -> void:
-	_world.flush_now()
+	if _world.brick_count() <= SHOWN_WHOLE_MOST:
+		_world.flush_now()
 	_camera.frame(_built_bounds())
 	await RenderingServer.frame_post_draw
 	_mark_shown()
+
+
+## The most parts [method _show_whole] writes in one frame.
+const SHOWN_WHOLE_MOST := 1000
 
 
 ## The page's loading screen let go of, once ("shown"): for an address that

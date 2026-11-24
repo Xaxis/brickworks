@@ -911,7 +911,20 @@ Whether what you built is still there tomorrow, and still means the same thing.
   first frame and the viewer says what it is waiting for. The screen lifts
   in the frame that drew the model (`Main._mark_shown` calls
   `window.brickworksBootShown`), not at whenUp's next look, which waited out
-  the app's next frame too: 1.0 s at a load of 74.
+  the app's next frame too: 1.0 s at a load of 74. Laid whole before the
+  store listens, the copy is written to the tab's autosave all the same
+  (`Main._asked_opened_now`, a `touch` after `listen`): nothing it heard
+  changed it, the autosave was never written, `ModelStore.written` and
+  `stored` held for a file never written, the address let go of `?copy=`,
+  and a reload then opened the example car (viewopen's `copyreloadkept`
+  case: reload the moment the address lets go). A model of more than
+  `Main.SHOWN_WHOLE_MOST` (1,000) parts is not written in one frame: it
+  goes on a slice a frame as before, the screen lifting on the first. The
+  early ask names parts by their own numbers until the index of parts LDraw
+  makes now is made by the bin's search on a worker
+  (`PartLibrary.current_here`, `Main._ask_early_current`), then asks again
+  by the names the open lays: made on the page's thread it held the start
+  1.4 s.
   Then the screen says "Opening the set…" and is drawn so, a frame before
   the open and the studio's first frame, which hold the page's thread in one
   go (`window.brickworksBootOpening`): the count said there was "0 of 12"
