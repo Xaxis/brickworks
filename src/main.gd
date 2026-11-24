@@ -11633,6 +11633,15 @@ func _grab_on_joint(brick_id: int) -> bool:
 	if not _grab_drag.press(brick_id, _press_at, selected, chained):
 		return false
 	_builder.hide_preview()
+	# Taken hold of, it is the part being worked on: selected, as a carried
+	# part is (EditVerbs.drag_start), and still so once let go. Only now, so
+	# what the grab moves is what the press chose. Left unselected, a phone's
+	# Turn, Colour and Delete stayed greyed after a drag on the car's
+	# headlight, which turns on its one stud where a brick on two is carried
+	# (appwalk; phonedrag's "a dragged part ends unselected"). A second finger
+	# puts the selection back as it was (_second_finger).
+	if _grab_drag.is_grabbing() and not _builder.selection.has(brick_id):
+		_builder.select_brick(brick_id, false)
 	return true
 
 

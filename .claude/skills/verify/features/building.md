@@ -2120,7 +2120,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   joint moves its whole rigid body and everything beyond it about that joint,
   as the real thing moves; no tool or panel first. A click still selects; a
   drag on a part held rigidly to what stays still carries it (`EditVerbs.
-  drag_start`), as does Ctrl's copy-drag and a locked part. Turn: a hinge, a
+  drag_start`), as does Ctrl's copy-drag and a locked part. Either way the
+  part pressed ends selected (`Main._grab_on_joint` selects it once the grab
+  has taken hold, so a selection never changes what the grab moves; a second
+  finger puts the selection back): `PROBE_SIZE=390x844 tools/probe.sh
+  grabselect_probe` by finger and `PROBE_SIZE=1280x720` by the mouse (appwalk:
+  the car's headlights turn on one stud, and a phone's Turn, Colour and
+  Delete stayed greyed after a drag on one). Turn: a hinge, a
   clip, a turntable, a pin or an axle in a round hole, a 1x1 part on one stud;
   a click hinge on 22.5° clicks. Slide: a drag along the line of a clip on a
   bar or a hole on an axle (the first few pixels decide). Ball: every way.
