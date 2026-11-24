@@ -16,7 +16,9 @@
 ##   1. the 1 x 1 dragged: taken hold of on its joint, not carried; let go, it
 ##      has turned, in one step to undo, and it is selected, alone, the 2 x 4
 ##      selected before it no longer;
-##   2. the 2 x 4 dragged: carried, as before, and selected where it is put down;
+##   2. a 2 x 4 alone dragged: carried, as before, and selected where it is put
+##      down (with the 1 x 1 on it, a press on the 2 x 4 turns the 1 x 1: the
+##      anchored half of a joint moves the half across it, Grab._from_part);
 ##   3. on a phone, a second finger on the screen while the first turns the
 ##      1 x 1: put back where it was, and the selection as it was before the
 ##      press (nothing), as a second finger leaves a carried part (touchfix).
@@ -96,8 +98,8 @@ func _run() -> void:
 		% [_builder.selection.keys(), _small, _base], _builder.selection.keys() == [_small])
 	print("  measure grab %s" % _moved(before))
 
-	print("\n2. the 2 x 4 on the floor, dragged")
-	await _model()
+	print("\n2. a 2 x 4 alone on the floor, dragged")
+	await _model(false)
 	await _go_home()
 	before = _parts()
 	var base_at: Vector2 = _point_on(_base)
@@ -138,16 +140,23 @@ func _run() -> void:
 	quit(1 if _failures else 0)
 
 
-## A 2 x 4 brick on the floor and a 1 x 1 brick on its end stud, nothing
-## selected, the example car taken off first.
-func _model() -> void:
+## A 2 x 4 brick on the floor and (unless [param small] is false) a 1 x 1
+## brick on its end stud, nothing selected, no history, the Select tool, the
+## example car taken off first.
+func _model(small: bool = true) -> void:
+	if _builder.is_carrying():
+		_builder.cancel_carry()
 	_main.call("clear_model")
 	await _frames(4)
 	_base = _world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, 24, 0)))
 	_builder.register(_base, "3001", _world.get_brick(_base).transform)
-	_small = _world.add_brick("3005", 1, Transform3D(Basis.IDENTITY, Vector3(30, 48, 10)))
-	_builder.register(_small, "3005", _world.get_brick(_small).transform)
+	_small = 0
+	if small:
+		_small = _world.add_brick("3005", 1, Transform3D(Basis.IDENTITY, Vector3(30, 48, 10)))
+		_builder.register(_small, "3005", _world.get_brick(_small).transform)
+	_builder.forget_history()
 	_builder.clear_selection()
+	_verbs.set_mode("select")
 	var grab: GrabDrag = _main.get("_grab_drag")
 	if grab != null:
 		grab.call("read_soon")
