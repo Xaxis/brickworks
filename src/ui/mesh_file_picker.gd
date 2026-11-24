@@ -160,7 +160,7 @@ func _ask_browser() -> void:
 						say(choice, file.name, n, files.length, new Uint8Array(reader.result));
 					};
 					reader.onerror = function () {
-						say(choice, file.name, n, files.length, new Uint8Array(0));
+						say(choice, file.name, n, files.length, new Uint8Array());
 					};
 					reader.readAsArrayBuffer(file);
 				});
