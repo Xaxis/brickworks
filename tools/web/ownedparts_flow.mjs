@@ -306,7 +306,9 @@ try {
     const list = await api(`/m/${id}/parts.json`);
     const asked = await api(`/api/share?op=parts_missing&id=${id}`, { token: who[name].access_token });
     const body = asked.body;
-    missingOf[id] = body;
+    // By whose it is too: Cy's model may be one of Bo's three, and Cy's
+    // answer read as Bo's (102 lots short for Bo's 72, nightreds 11-24).
+    missingOf[`${name} ${id}`] = body;
     const mine = await ownedRaw(who[name].id);
     const need = new Map();
     for (const lot of list.body.lots || []) {
@@ -389,7 +391,7 @@ try {
         shown: document.querySelectorAll(".lot-list li.lot:not([hidden])").length,
         shops: [...document.querySelectorAll(".parts-shops.missing button:not([hidden])")].map((b) => b.textContent),
         whole: [...document.querySelectorAll(".parts-shops:not(.missing)")].every((one) => one.hidden) }));
-      const body = missingOf[boModel];
+      const body = missingOf[`bo ${boModel}`];
       check(`"${before.said.slice(0, 90)}"; ${before.shows.join(" · ")}; Missing shows ${after.lots} lots (${body.missing.length} short), `
         + `${after.shops.join(", ")} in the whole model's place`, after.lots === body.missing.length && after.whole
         && after.shops.includes("BrickLink XML") && /You have [\d,]+ of its [\d,]+ parts/.test(before.said) && !(await sideways(page)));
@@ -518,13 +520,15 @@ try {
   await reloaded;
   await until(tab, () => document.readyState === "complete" && document.querySelector(".keep-bar [data-keep-main]"), "the page signed out");
   await tab.waitForTimeout(800);
-  const out = await tab.evaluate(() => ({ count: document.querySelector("[data-keep-count]")?.hidden !== false,
+  // Not "out": named so in this block it hid the pictures' folder, and the
+  // BrickLink download above, saved into it, threw before it was set.
+  const gone = await tab.evaluate(() => ({ count: document.querySelector("[data-keep-count]")?.hidden !== false,
     own: document.querySelector(".keep-bar [data-keep-main]")?.getAttribute("aria-pressed") }));
   await tab.click(".keep-bar [data-keep-main]");
   const asked = await tab.waitForSelector("dialog[open]", { timeout: 15000 }).then((d) => d.textContent()).catch(() => "");
-  check(`signed out in the other tab mid-page: this one drawn again with no count (${out.count}), Own not pressed (${out.own}); `
+  check(`signed out in the other tab mid-page: this one drawn again with no count (${gone.count}), Own not pressed (${gone.own}); `
     + `Own asks "${asked.replace(/\s+/g, " ").trim().slice(0, 70)}"; the account still ${await ownedNow()}`,
-  out.count && out.own !== "true" && /Sign in/.test(asked) && (await ownedNow()) === 2);
+  gone.count && gone.own !== "true" && /Sign in/.test(asked) && (await ownedNow()) === 2);
   await made.close();
 } catch (trouble) {
   failed += 1;

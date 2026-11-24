@@ -344,7 +344,11 @@ try {
   const finishSaid = await until(page, () => { const s = document.querySelector(".finish-said"); return s && !s.hidden && /Finished/.test(s.textContent) ? s.textContent : null; },
     "the finish said", 30).catch(() => "");
   check(`the page says: "${String(finishSaid).trim()}"`, /version 2 is the finished one/.test(finishSaid));
-  check("...and its mark is gone", await page.evaluate(() => !document.querySelector(".pill.wip") && !document.querySelector(".wip-line")));
+  // The model's own mark, by its name and over the Log: each version in the
+  // Log keeps the pill it was shared with (api/share.js, e3829cdd4), and
+  // since pagekit (3cfdbeabe) Mark it finished is pressed with the Log open.
+  check("...and its mark is gone", await page.evaluate(() => ![...document.querySelectorAll(".pill.wip")].some((pill) => !pill.closest(".log-entry"))
+    && !document.querySelector(".wip-line")));
   await shot(page, "5_finished.png");
   const after = await postsOf(thread?.id);
   check(`the thread has the finish as one post more (${after.length}): "${String(after.at(-1)?.body || "").split("\n")[0]}"`,
