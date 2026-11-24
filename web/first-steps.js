@@ -82,8 +82,10 @@ export function suggestionsFor({ designers = [], cards = [] }, kinds = []) {
 
 /// Opens First steps over the page. [pending]: the person signed in to do
 /// something here, so the end goes back to it rather than to the feed.
-/// Resolves when it is closed, however it is.
-export async function firstSteps({ pending = false } = {}) {
+/// [profileOnly]: Make your profile alone, as the step before something that
+/// goes out under their name (web/share-model.js); the caller asks it only
+/// of an account with no profile. Resolves when it is closed, however it is.
+export async function firstSteps({ pending = false, profileOnly = false } = {}) {
   await learn();
   return new Promise((done) => {
     const tests = new URLSearchParams(location.search).get("tests") === "1" ? "tests=1" : "";
@@ -110,11 +112,11 @@ export async function firstSteps({ pending = false } = {}) {
     // What the steps need, asked at once: whether you have a profile, the
     // gallery's kinds and Top builds' cards, and the designers to follow.
     const me = call("/api/people?op=me").catch(() => null);
-    const top = call(`/api/share?op=list&sort=top${tests ? `&${tests}` : ""}`).catch(() => null);
+    const top = profileOnly ? null : call(`/api/share?op=list&sort=top${tests ? `&${tests}` : ""}`).catch(() => null);
     // As you (mine=1) once signed in: nobody you blocked is among the
     // designers offered. Signed out, everybody's URL, which the CDN keeps.
     const as = signedIn() ? "&mine=1" : "";
-    const latest = call(`/api/people?op=latest${as}${tests ? `&${tests}` : ""}`).catch(() => null);
+    const latest = profileOnly ? null : call(`/api/people?op=latest${as}${tests ? `&${tests}` : ""}`).catch(() => null);
     let chosen = [];
     let steps = [];
 
@@ -272,7 +274,7 @@ export async function firstSteps({ pending = false } = {}) {
 
     dialog.showModal();
     count.textContent = say("First steps");
-    title.textContent = say("Welcome to Brickworks");
+    title.textContent = profileOnly ? say("Make your profile") : say("Welcome to Brickworks");
     body.append(make("p", "", say("One moment…")));
     Promise.all([me, top, latest]).then(([mine, listed, suggested]) => {
       if (finished) return;
@@ -281,8 +283,10 @@ export async function firstSteps({ pending = false } = {}) {
       const kinds = ok(listed) && Array.isArray(listed.body.kinds) ? listed.body.kinds.filter((kind) => kind && kind.id) : [];
       const found = { cards: ok(listed) && Array.isArray(listed.body.models) ? listed.body.models : [],
         designers: ok(suggested) && Array.isArray(suggested.body.designers) ? suggested.body.designers : [] };
-      steps = [...(hasProfile ? [] : [profileStep]), ...(kinds.length ? [kindsStep(kinds)] : []), startStep(found)];
-      show(0);
+      steps = profileOnly ? (hasProfile ? [] : [profileStep])
+        : [...(hasProfile ? [] : [profileStep]), ...(kinds.length ? [kindsStep(kinds)] : []), startStep(found)];
+      if (!steps.length) end();
+      else show(0);
     });
   });
 }

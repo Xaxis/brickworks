@@ -308,6 +308,14 @@ async function share() {
     }
     const age = await askAgeIfAsked({ pending: true });
     if (age && age.refused) return;
+    // Its page heads it with its sharer's name and Follow beside it only
+    // when they have a profile: one shared without went out with no name,
+    // and nobody who liked it could follow them (sitewalk2, 2026-11-24).
+    // First steps' Make your profile first, then; Skip shares it as it is.
+    const me = await call("/api/people?op=me").catch(() => null);
+    if (me && me.status === 200 && me.body && !me.body.profile?.handle) {
+      await import("/first-steps.js").then((steps) => steps.firstSteps({ pending: true, profileOnly: true })).catch(() => null);
+    }
     await publish(given);
   } finally {
     busy = false;
