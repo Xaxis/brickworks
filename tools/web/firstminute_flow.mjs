@@ -227,10 +227,12 @@ async function answerStudio(page, press) {
       }
       await typeInto(page, press, "age_year", "1990");
       await press("age_go");
-    } else if (named.beta_not_now) {
-      await press("beta_not_now");
-    } else if (named.beta_start) {
-      await press("beta_start");
+    } else if (named.beta_not_now || named.beta_start) {
+      // The same for the beta's welcome: at 390 back from the site's sign-in
+      // it was told once and then gone, the studio signed in and let in
+      // (nightreds unit preview 2, 2026-11-24).
+      const name = named.beta_not_now ? "beta_not_now" : "beta_start";
+      if (!await press(name, 10, true)) console.log(`  --    ${name} went before it was pressed; read again`);
     }
     await page.waitForTimeout(800);
   }

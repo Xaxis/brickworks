@@ -4084,6 +4084,7 @@ func _enter_build(page: int = -1) -> void:
 		(_build_mode.get("make") as Control).call("adopt", viewer_card)
 	_build_mode.open()
 	_camera.seen = _build_mode.free_rect
+	_camera.covered = Callable()
 	if page < 0:
 		page = int(BuildSteps.recall(_viewing).get("page", 0))
 	# A frame for the bars to be laid out, so the view is framed between them.
@@ -4453,6 +4454,7 @@ func _leave_build() -> void:
 	_build_faded_part = 0
 	_build_outline.show_selection({})
 	_camera.seen = _model_rect
+	_camera.covered = _model_covered
 	_share_view.show_bar(true)
 	_gizmo.visible = bool(_build_left.get("cube", true))
 	if not _party_pages:
@@ -6765,6 +6767,7 @@ func _build_ui() -> void:
 	# the window behind the columns (CadCamera.seen): with one column open
 	# the model sat 168 units to the side of the room it had.
 	_camera.seen = _model_rect
+	_camera.covered = _model_covered
 	_camera.lens_moved.connect(_hover_again)
 
 	# View, Split: the model straight on beside this column, in the model's
@@ -9288,6 +9291,15 @@ func _model_rect() -> Rect2:
 	if _phone != null:
 		rect = _phone.model_room(rect)
 	return rect
+
+
+## How much of the top of the model's room the notices strip lies over
+## (CadCamera.covered): framed, the model is kept clear of it, while the
+## view stays centred on the whole room.
+func _model_covered() -> float:
+	if _over_model == null or not _over_model.is_inside_tree():
+		return 0.0
+	return maxf(0.0, _over_model.get_global_rect().position.y - _model_rect().position.y)
 
 
 ## How wide Simulate's column is: the panel's own width, its words wrapped
