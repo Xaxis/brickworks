@@ -648,6 +648,9 @@ func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dict
 ## the parts from them.
 var _shown_at: int = 0
 var _pictures_ms: int = -1
+## How many of the page's tiles had their picture as the page was laid, so
+## were drawn with it in its first frame.
+var _laid_ready: int = 0
 
 
 func _process(_delta: float) -> void:
@@ -698,6 +701,7 @@ func _lay_strip() -> void:
 		_strip.remove_child(child)
 		child.queue_free()
 	_tiles.clear()
+	_laid_ready = 0
 	_callout.visible = not _lots.is_empty() or part > 0
 	if part > 0 and _lots.is_empty():
 		_strip.add_child(_count_words())
@@ -712,6 +716,7 @@ func _lay_strip() -> void:
 			if thumbnails != null else null
 		if ready != null:
 			tile.show_picture(ready, false)
+			_laid_ready += 1
 		else:
 			ThumbTile.sketch_for(tile, thumbnails)
 		cell.add_child(tile)
@@ -1124,6 +1129,7 @@ func page_state() -> Dictionary:
 		# The model's lots drawn once by the server (LotPictures): from where,
 		# how many, and how long they took to come.
 		"lot_pictures": LotPictures.said,
+		"pictures_laid": [_laid_ready, _tiles.size()],
 		"pictures_drawn_here": thumbnails.drawn_here if thumbnails != null else -1,
 		"pictures_from_file": thumbnails.from_sheet if thumbnails != null else -1,
 		"lots": _lots.size(), "pictures": _tiles.filter(func(tile: ThumbTile) -> bool:
