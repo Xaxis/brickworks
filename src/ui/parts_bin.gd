@@ -210,13 +210,18 @@ func _build() -> void:
 	backing.bg_color = Color(0.11, 0.12, 0.14, 0.94)
 	backing.content_margin_left = _z(10)
 	backing.content_margin_right = _z(10)
-	# A phone's sheet has its own margins and height to spare for none.
-	backing.content_margin_top = _z(4 if by_finger else 10)
-	backing.content_margin_bottom = _z(4 if by_finger else 10)
+	# A phone's sheet has its own margins and height to spare for none. The
+	# desktop's rows sit DESK_GAP apart, as the tiles and chips do: at 10
+	# and 8 the margins and gaps above and below the grid took the room of
+	# a row of parts once the header was the site's 60 points (rel-m324),
+	# 1400 x 900 showing 35 parts where it had 42, 1280 x 720 18 of 24
+	# (binrow, A10; m338reds).
+	backing.content_margin_top = _z(4 if by_finger else DESK_GAP)
+	backing.content_margin_bottom = _z(4 if by_finger else DESK_GAP)
 	add_theme_stylebox_override("panel", backing)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", int(_z(4 if by_finger else 8)))
+	root.add_theme_constant_override("separation", int(_z(4 if by_finger else DESK_GAP)))
 	var head := HBoxContainer.new()
 	# On the desktop a section of its column (PanelStack): its header, the
 	# chevron and "Parts", folds the rest away, the colours under it taking
@@ -232,7 +237,7 @@ func _build() -> void:
 		head.add_child(title)
 	else:
 		var frame := VBoxContainer.new()
-		frame.add_theme_constant_override("separation", int(_z(8)))
+		frame.add_theme_constant_override("separation", int(_z(DESK_GAP)))
 		add_child(frame)
 		frame.add_child(head)
 		root.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1127,6 +1132,10 @@ const PALETTE_FLOOR := 48.0
 const PARTS_LEAST := 88.0
 ## A column shorter than this shows one row of categories, not two.
 const SHORT := 700.0
+## The desktop bin's margin over its title and under its foot, and the gap
+## between its rows (title, search, chips, parts, foot): the chips' and the
+## tiles' own gap (_build).
+const DESK_GAP := 4.0
 var _chip_tall: float = 0.0
 
 
