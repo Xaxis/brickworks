@@ -13,12 +13,13 @@
 // them into its pictures (LotPictures) as the model opens, and draws live only
 // what the file does not have.
 //
-// Drawn as the model page's Parts list draws a lot (web/part-pictures.js),
-// in plain JavaScript as api/_flatlay.js draws, since a function has no
-// graphics card: orthographic from the parts bin's corner, lit by its key and
-// its fill, each surface in its own colour and colour 16 in the lot's, then
-// its lines where the part turns or steps back. At twice the pixels and
-// halved, as the page draws them.
+// Drawn as the app draws its own (PartThumbnails), so a lot from the file sits
+// beside one the app drew without a seam, in plain JavaScript as
+// api/_flatlay.js draws, since a function has no graphics card: orthographic
+// from the parts bin's corner, framed as the app frames a part, each surface
+// in its own colour and colour 16 in the lot's, lit as the app's pictures are
+// lit (lit: measured from them by src/dev/lot_look_probe.gd), then a light
+// line where the part turns or steps back. At twice the pixels and halved.
 //
 // The file is a PNG: [TILE] pixel squares, ACROSS to a row, in the order of
 // the index it carries in a tEXt chunk named "brickworks-lots", JSON
@@ -34,6 +35,11 @@ export const ACROSS = 16;
 export const MOST = 1024;
 /// The chunk the index is carried in.
 export const INDEX = "brickworks-lots";
+/// How the lots are drawn: one more whenever drawLot draws them otherwise.
+/// It is in every file's fingerprint (api/share.js lotsFingerprint), so a
+/// file kept, or held a year by a cache, under the old drawing is never
+/// asked for again, and the next ask draws the version anew.
+export const DRAWN = 1;
 const OVER = 2;
 const SIZE = TILE * OVER;
 
@@ -43,7 +49,8 @@ const unit = (v) => {
 };
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-/// The camera and lights of web/part-pictures.js (PartThumbnails._frame).
+/// The app's camera and lights for a part's picture (PartThumbnails: _frame
+/// and the stage's key and fill).
 const EYE = unit([0.72, 0.52, 0.86]);
 const RIGHT = unit(cross([-EYE[0], -EYE[1], -EYE[2]], [0, 1, 0]));
 const UP = cross(RIGHT, [-EYE[0], -EYE[1], -EYE[2]]);
@@ -53,36 +60,81 @@ const towards = (x, y) => {
 };
 const KEY = towards(-42, -38);
 const FILL = towards(-14, 132);
-const HALF = unit([KEY[0] + EYE[0], KEY[1] + EYE[1], KEY[2] + EYE[2]]);
 
-/// A colour as the palette says it, "rrggbb" or "rrggbbaa": [r, g, b, a]
-/// from 0 to 1, never less than two thirds there (inkOf); null else.
+/// A colour as the palette says it, "rrggbb" or "rrggbbaa", as the app draws
+/// it (shownOf): [r, g, b] from 0 to 1, how see-through it is left out
+/// (drawLot); null else.
 function inkOf(hex) {
   if (!/^[0-9a-f]{6}([0-9a-f]{2})?$/i.test(String(hex || ""))) return null;
   const at = (i) => parseInt(hex.slice(i, i + 2), 16) / 255;
-  return [at(0), at(2), at(4), hex.length === 8 ? Math.max(at(6), 0.66) : 1];
+  return shownOf([at(0), at(2), at(4)]);
 }
 
-/// A pixel of a surface of colour [ink] facing [n], lit as the page's
-/// FRAGMENT lights it: [r, g, b] from 0 to 1.
+/// What the app draws for a palette value (PartLibrary.shown_for): the value,
+/// except the black family, dark and nearly grey in OKLab, which keeps its
+/// lightness and loses three quarters of its tint, so black reads black
+/// and not navy.
+function shownOf(ink) {
+  const lin = ink.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const cube = (x) => Math.sign(x) * Math.abs(x) ** (1 / 3);
+  const l = cube(0.4122214708 * lin[0] + 0.5363325363 * lin[1] + 0.0514459929 * lin[2]);
+  const m = cube(0.2119034982 * lin[0] + 0.6806995451 * lin[1] + 0.1073969566 * lin[2]);
+  const s = cube(0.0883024619 * lin[0] + 0.2817188376 * lin[1] + 0.6299787005 * lin[2]);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const b = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  if (L >= 0.35 || Math.hypot(a, b) >= 0.04) return ink;
+  const [A, B] = [a * 0.25, b * 0.25];
+  const l2 = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m2 = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s2 = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  return [4.0767416621 * l2 - 3.3077115913 * m2 + 0.2309699292 * s2,
+    -1.2684380046 * l2 + 2.6097574011 * m2 - 0.3413193965 * s2,
+    -0.0041960863 * l2 - 0.7034186147 * m2 + 1.707614701 * s2].map((c) => {
+    const v = Math.min(Math.max(c, 0), 1);
+    return v < 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
+  });
+}
+
+/// How much light a face gets in the app's own pictures of a part
+/// (PartThumbnails, on the Compatibility renderer the web runs, which
+/// lights the colour as it is given): per channel, so much of the colour
+/// for any face (a), for facing the key light (k) and for facing the fill
+/// (f). Measured from its pictures of plain tiles, whose three faces are
+/// three known normals (src/dev/lot_look_probe.gd, 2026-11-24): drawn as the
+/// page's Parts list draws them, these were half as light as the app's.
+/// DARK is a colour up to half light; a lighter one is given less, as the
+/// app gives it (_light_for), down to LIGHT's at white.
+const DARK = { a: [1.043, 1.085, 1.155], k: [0.704, 0.65, 0.59], f: [0.19, 0.167, 0.188] };
+const LIGHT = { a: [0.881, 0.902, 0.977], k: [0.238, 0.203, 0.107], f: [0.082, 0.095, 0.087] };
+const HALF = unit([KEY[0] + EYE[0], KEY[1] + EYE[1], KEY[2] + EYE[2]]);
+const SHINE = 0.4;
+const GLOSS = 24;
+
+/// A pixel of a surface of colour [ink] facing [n], lit as the app lights
+/// its pictures: [r, g, b] from 0 to 1.
 function lit(ink, n) {
   const bright = 0.2126 * ink[0] + 0.7152 * ink[1] + 0.0722 * ink[2];
-  const tame = 1 - 0.3 * Math.min(Math.max((bright - 0.6) / 0.4, 0), 1);
+  const t = Math.min(Math.max((bright - 0.5) / 0.45, 0), 1);
   const k = Math.max(dot(n, KEY), 0);
   const f = Math.max(dot(n, FILL), 0);
-  const shine = Math.max(dot(n, HALF), 0) ** 48 * 0.22;
+  // The key's glint, where a round turns to it between the eye and the key:
+  // white, as on the app's tyres and rounded edges.
+  const shine = SHINE * Math.max(dot(n, HALF), 0) ** GLOSS;
   const out = [0, 0, 0];
   for (let c = 0; c < 3; c += 1) {
-    out[c] = Math.min(ink[c] * (0.58 + tame * (0.62 * k + 0.3 * f)) + (1 - bright) * 0.16 * k + shine, 1);
+    const by = (what) => DARK[what][c] + t * (LIGHT[what][c] - DARK[what][c]);
+    out[c] = Math.min(ink[c] * (by("a") + by("k") * k + by("f") * f) + shine, 1);
   }
   return out;
 }
 
 /// The lines' colour on a part of colour [ink] (penOf): grey on the darkest,
-/// a dark shade of the colour on the rest, and how strongly.
+/// a darker shade of the colour on the rest, and how strongly. Light, as the
+/// app's pictures have only a shade where a part folds.
 function penOf(ink) {
   const bright = 0.2126 * ink[0] + 0.7152 * ink[1] + 0.0722 * ink[2];
-  return [...(bright < 0.12 ? [0.5, 0.5, 0.5] : ink.slice(0, 3).map((c) => c * 0.4)), 0.9];
+  return [...(bright < 0.12 ? [0.45, 0.45, 0.45] : ink.slice(0, 3).map((c) => c * 0.62)), 0.6];
 }
 
 const smooth = (a, b, x) => {
@@ -96,39 +148,35 @@ const smooth = (a, b, x) => {
 export function drawLot(part, own, palette = {}) {
   const surfaces = part.surfaces.filter((s) => s.index.length && s.position.length);
   if (!surfaces.length) return null;
-  const lo = [Infinity, Infinity, Infinity];
-  const hi = [-Infinity, -Infinity, -Infinity];
+  // Framed as the app frames it (PartThumbnails._frame): on the middle of the
+  // part's box, as wide as 1.06 of the box's half diagonal each way, so a
+  // part is as big in its square here as in the app's.
+  const box = [[Infinity, Infinity, Infinity], [-Infinity, -Infinity, -Infinity]];
   for (const s of surfaces) {
-    const p = s.position;
-    for (let v = 0; v < p.length; v += 3) {
-      const seen = [p[v] * RIGHT[0] + p[v + 1] * RIGHT[1] + p[v + 2] * RIGHT[2],
-        p[v] * UP[0] + p[v + 1] * UP[1] + p[v + 2] * UP[2], p[v] * EYE[0] + p[v + 1] * EYE[1] + p[v + 2] * EYE[2]];
+    for (let v = 0; v < s.position.length; v += 3) {
       for (let k = 0; k < 3; k += 1) {
-        if (seen[k] < lo[k]) lo[k] = seen[k];
-        if (seen[k] > hi[k]) hi[k] = seen[k];
+        box[0][k] = Math.min(box[0][k], s.position[v + k]);
+        box[1][k] = Math.max(box[1][k], s.position[v + k]);
       }
     }
   }
-  if (!Number.isFinite(lo[0])) return null;
-  // Framed as the page frames it: tight round the part, a little room left.
-  const half = Math.max(hi[0] - lo[0], hi[1] - lo[1], 1) * 0.5 * 1.08;
-  const deep = Math.max(hi[2] - lo[2], 1) * 0.5 * 1.02;
-  const mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+  const centre = [0, 1, 2].map((k) => (box[0][k] + box[1][k]) / 2);
+  const radius = Math.max(Math.hypot(...[0, 1, 2].map((k) => box[1][k] - box[0][k])) * 0.5, 4);
+  const half = radius * 1.06;
+  const mid = [dot(centre, RIGHT), dot(centre, UP), dot(centre, EYE)];
+  // Lines as fine as the app's shade where a part folds: a part shrunk to fit
+  // its square, a big plate's hundred studs, would be its lines alone.
+  const fine = Math.min(Math.max(0.6 / (2 * half / SIZE), 0.3), 1);
   const N = SIZE * SIZE;
-  // Nearest of every surface: where it faces and how near (the page's FACTS).
+  // The nearest surface: where it faces, how near, and its colour lit. One
+  // you can see through is drawn as one you cannot, as the app draws it.
   const near = new Float32Array(N).fill(-1);
   const across = new Float32Array(N);
   const upward = new Float32Array(N);
-  // The part lit: the nearest surface you cannot see through, then the
-  // nearest you can over it.
-  const solid = new Float32Array(N * 3);
-  const solidNear = new Float32Array(N).fill(-1);
-  const glass = new Float32Array(N * 4);
-  const glassNear = new Float32Array(N).fill(-1);
+  const shaded = new Float32Array(N * 3);
   const inks = surfaces.map((s) => (s.colour === INHERIT ? own : inkOf(palette[s.colour]) || own));
   surfaces.forEach((s, which) => {
     const ink = inks[which];
-    const clear = ink[3] < 1;
     const p = s.position;
     const nor = s.normal;
     const count = p.length / 3;
@@ -141,7 +189,7 @@ export function drawLot(part, own, palette = {}) {
       const e = p[v] * EYE[0] + p[v + 1] * EYE[1] + p[v + 2] * EYE[2];
       sx[i] = ((x - mid[0]) / half * 0.5 + 0.5) * SIZE;
       sy[i] = (0.5 - (y - mid[1]) / half * 0.5) * SIZE;
-      sz[i] = 0.02 + 0.98 * ((e - mid[2]) / (2 * deep) + 0.5);
+      sz[i] = 0.02 + 0.98 * ((e - mid[2]) / (2 * radius) + 0.5);
     }
     const idx = s.index;
     for (let t = 0; t + 2 < idx.length; t += 3) {
@@ -165,57 +213,29 @@ export function drawLot(part, own, palette = {}) {
           if (w0 < 0 || w1 < 0 || w2 < 0) continue;
           const z = w0 * sz[a] + w1 * sz[b] + w2 * sz[c];
           const at = y * SIZE + x;
-          const keepsFacts = z > near[at];
-          const keepsSolid = !clear && z > solidNear[at];
-          const keepsGlass = clear && z > glassNear[at];
-          if (!keepsFacts && !keepsSolid && !keepsGlass) continue;
+          if (z <= near[at]) continue;
           let n = [0, 0, 0];
           for (let k = 0; k < 3; k += 1) n[k] = w0 * nor[a * 3 + k] + w1 * nor[b * 3 + k] + w2 * nor[c * 3 + k];
           n = unit(n);
           // Facing away, it is its other side that is seen.
           if (dot(n, EYE) < 0) n = n.map((v) => -v);
-          if (keepsFacts) {
-            near[at] = z;
-            across[at] = dot(n, RIGHT);
-            upward[at] = dot(n, UP);
-          }
-          if (keepsSolid || keepsGlass) {
-            const shade = lit(ink, n);
-            if (keepsSolid) {
-              solidNear[at] = z;
-              solid.set(shade, at * 3);
-            } else {
-              glassNear[at] = z;
-              glass.set([...shade, ink[3]], at * 4);
-            }
-          }
+          near[at] = z;
+          across[at] = dot(n, RIGHT);
+          upward[at] = dot(n, UP);
+          shaded.set(lit(ink, n), at * 3);
         }
       }
     }
   });
-  // Each sample's colour (premultiplied), the glass over the solid where it
-  // is nearer, and its lines over that.
+  // Each sample's colour (premultiplied), its lines over it.
   const pen = penOf(own);
   const big = new Float32Array(N * 4);
   for (let y = 0; y < SIZE; y += 1) {
     for (let x = 0; x < SIZE; x += 1) {
       const at = y * SIZE + x;
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let a = 0;
-      if (solidNear[at] >= 0) {
-        [r, g, b] = [solid[at * 3], solid[at * 3 + 1], solid[at * 3 + 2]];
-        a = 1;
-      }
-      if (glassNear[at] >= 0 && glassNear[at] > solidNear[at]) {
-        const o = glass[at * 4 + 3];
-        r = glass[at * 4] * o + r * (1 - o);
-        g = glass[at * 4 + 1] * o + g * (1 - o);
-        b = glass[at * 4 + 2] * o + b * (1 - o);
-        a = o + a * (1 - o);
-      }
       const here = near[at] >= 0;
+      const [r, g, b] = here ? shaded.subarray(at * 3, at * 3 + 3) : [0, 0, 0];
+      const a = here ? 1 : 0;
       const read = (dx, dy) => {
         const xx = Math.min(Math.max(x + dx, 0), SIZE - 1);
         const yy = Math.min(Math.max(y + dy, 0), SIZE - 1);
@@ -231,7 +251,7 @@ export function drawLot(part, own, palette = {}) {
         const apart = (o) => Math.hypot(across[at] - across[o], upward[at] - upward[o]);
         const fold = Math.max(apart(l), apart(rr), apart(u), apart(d));
         const step = Math.max(Math.abs(near[l] + near[rr] - 2 * near[at]), Math.abs(near[u] + near[d] - 2 * near[at]));
-        line = Math.max(smooth(0.22, 0.5, fold), smooth(0.004, 0.012, step));
+        line = Math.max(smooth(0.22, 0.5, fold), smooth(0.004, 0.012, step)) * fine;
       }
       const o = pen[3] * line;
       big[at * 4] = pen[0] * line + r * a * (1 - o);
@@ -273,7 +293,7 @@ export function lotSheet(lots, palette = {}, of = "") {
     let pixels = null;
     try {
       const geometry = parseLbm(lot.bytes.buffer.slice(lot.bytes.byteOffset, lot.bytes.byteOffset + lot.bytes.length));
-      pixels = drawLot(geometry, inkOf(palette[lot.colour]) || inkOf(lot.hex) || [0.6, 0.6, 0.6, 1], palette);
+      pixels = drawLot(geometry, inkOf(palette[lot.colour]) || inkOf(lot.hex) || [0.6, 0.6, 0.6], palette);
     } catch {
       pixels = null;
     }

@@ -361,26 +361,36 @@ geometry in front of them.
   `PartThumbnails.take_sheet`): a shared model's lots, every one drawn once by
   the server into one PNG, `/m/X/v/N/parts.png?f=F` (96 px squares, 16 across,
   the index `{tile, across, of, lots: [[part, colour]...]}` in its
-  `brickworks-lots` tEXt chunk; F the first 12 hex of the version file's SHA-1,
-  so a republished link's version 1 never takes the old one's). Drawn as the
-  model page's Parts list draws a lot (`web/part-pictures.js`: the bin's
-  corner, key and fill, lines where the part folds or steps back), in plain
-  JS, the first time it is asked and as the version is published
-  (`afterAnswer`), and kept as `X.lotsN.png` beside the model, so a later ask
-  reads that one file (deleted with the model's files at a take-down). The
-  share answer names it (`lot_pictures`, and the model page's `parts.json`
-  too, whose Parts list then shows each lot from it, `web/part-pictures.js`);
-  the page fetches it beside the model while the engine starts and reads it
-  there too, on the browser's own threads (`src/boot/shell.html`,
-  `window.brickworksLots` {bytes, pixels, width, height}), and the app takes
-  the pixels as they are as it opens the link (`_view_shared`, and the two
-  copy paths), no frame waited on: waiting on frames for the fetch and a
-  read of its own, it took the file 5-10 s after asking at load 70. Where
-  the page has no pixels the file is read on a worker. So Build it's step,
-  the studio's step bar, the part-step card and the parts list show each lot
-  at once (`peek` finds it), and `PartThumbnails` draws live only what the
-  file lacks; a file that comes after a page was laid gives its waiting
-  tiles theirs at once (`take_sheet_image`), even one being drawn.
+  `brickworks-lots` tEXt chunk; F the first 12 hex of the SHA-1 of the drawing's
+  number (`DRAWN`, one more whenever `drawLot` draws otherwise) and the version
+  file, so neither a republished version nor a file drawn the old way is ever
+  taken). Drawn as the app draws its own (`PartThumbnails`: its framing, and
+  its light as measured from its pictures by `src/dev/lot_look_probe.gd`,
+  see-through lots solid as the app draws them), in plain JS, as the version
+  is published (`afterAnswer`), and kept as `X.lotsN.png` beside the model
+  (deleted with the model's files at a take-down). Served with `Cache-Control:
+  public, max-age=31536000, s-maxage=31536000, immutable`, so Vercel's edge
+  keeps it and the bucket is read once per edge (`x-vercel-cache: HIT` on a
+  second fetch); a version with nothing kept yet answers 202 `{drawing: true}`
+  (`no-store`) at once and draws it after answering (`drawLotPictures`, once
+  per instance), and that visitor's tiles show their part's shape and are
+  drawn live. Asked only when someone opens Build it or the steps
+  (`LotPictures.offer` as a link opens, `want()` from `BuildMode` and
+  `StepsBar._lay_strip` with the bar's parts shown, and `PartStep`): a page
+  that only looks at the model never fetches it. The page fetches it beside
+  the model only for a link to Build it (`&build`, `src/boot/shell.html`), and
+  reads it there on the browser's own threads (`window.brickworksLots`
+  {bytes, pixels, width, height}); the app takes the pixels as they are, no
+  frame waited on: waiting on frames for the fetch and a read of its own, it
+  took the file 5-10 s after asking at load 70. Otherwise the app fetches it
+  (`PageFetch`) and reads it on a worker. The model page's Parts list
+  (`parts.json`'s `lot_pictures`, `web/part-pictures.js`) takes its lots from
+  it as the list nears the screen or its tab opens, never in the first
+  screen's load. So Build it's step, the studio's step bar, the part-step card
+  and the parts list show each lot at once (`peek` finds it), and
+  `PartThumbnails` draws live only what the file lacks; a file that comes
+  after a page was laid gives its waiting tiles theirs at once
+  (`take_sheet_image`), even one being drawn.
   The booklet draws its parts in its own page pictures at print size, so it
   does not take these 96 px squares. Before, step 1 of Survey Ship at 390
   showed counts over empty boxes for 8.5 s (billbuilds). Tiles still waiting
@@ -388,7 +398,10 @@ geometry in front of them.
   box. Check: `node tools/web/lot_pictures_try.mjs MODEL.ldr OUT.png` then
   `godot --headless --path . --script src/dev/lot_pictures_test.gd --
   --sheet=OUT.png` (11 checks: index, every lot to hand at once, each its own
-  square, a broken file refused); in a browser, `brickworksShare.build`'s
+  square, a broken file refused); its look against the app's,
+  `PROBE_COMPAT=1 tools/probe.sh lot_look_probe --sheet=OUT.png` (lightness
+  and fill per lot, opaque and see-through, within 0.8-1.25 at the median);
+  in a browser, `brickworksShare.build`'s
   `lot_pictures` ({url, lots, ms, from: "page, read"|page|asked}),
   `pictures_drawn_here`, `pictures_from_file`, and `pictures_laid` [n, of]:
   n == of means every picture was drawn in the step's own first frame

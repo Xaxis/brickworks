@@ -702,6 +702,10 @@ func _lay_strip() -> void:
 		child.queue_free()
 	_tiles.clear()
 	_laid_ready = 0
+	# The model's lot pictures asked for as Build it opens, on its cover, so
+	# they are here by step 1 (taken at once where the page fetched them for
+	# a link to Build it).
+	LotPictures.want()
 	_callout.visible = not _lots.is_empty() or part > 0
 	if part > 0 and _lots.is_empty():
 		_strip.add_child(_count_words())

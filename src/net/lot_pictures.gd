@@ -31,17 +31,49 @@ const EARLY_WAIT_MS := 20000
 const PATH := "^/m/[A-Za-z0-9]{10}/v/[1-9][0-9]{0,5}/parts\\.png\\?f=[0-9a-f]{12}$"
 
 ## The last file taken, for a check to read: its address, how many lots, in
-## ms how long from asking to taken, and from where ("page", "asked").
+## ms how long from asking to taken, and from where ("page, read", "page",
+## "asked"); "drawing" when the server had not drawn it yet.
 static var said: Dictionary = {}
 
+## The file the open model's share answer names, not asked for yet, and the
+## pictures it is for. Asked for only when Build it, the step bar or a part's
+## card lays its tiles ([method want]): a model only looked at costs nothing.
+static var _offered: String = ""
+static var _offered_to: WeakRef = null
 
-## The pictures [param body] (a share answer, SharedModels.fetch) names,
-## fetched and handed to [param thumbnails]: true when they were. [param host]
-## carries the request when the page did not fetch them already.
-static func take(body: Dictionary, thumbnails: PartThumbnails, host: Node) -> bool:
+
+## The model [param body] (a share answer, SharedModels.fetch) is open: its
+## lot pictures are to be asked for when its parts are first shown. Taken at
+## once where the page fetched them already, which it does only for a link
+## that opens Build it (src/boot/shell.html).
+static func offer(body: Dictionary, thumbnails: PartThumbnails) -> void:
 	var path: String = str(body.get("lot_pictures", ""))
-	if thumbnails == null or RegEx.create_from_string(PATH).search(path) == null:
-		return false
+	_offered = path if thumbnails != null and RegEx.create_from_string(PATH).search(path) != null else ""
+	_offered_to = weakref(thumbnails) if not _offered.is_empty() else null
+	said = {}
+	if _offered.is_empty() or not OS.has_feature("web"):
+		return
+	if int(JavaScriptBridge.eval("(function(u){var l=window.brickworksLots;return l && l.url===u ? 1 : 0})(%s)"
+			% JSON.stringify(_offered), true)) == 1:
+		want()
+
+
+## The offered file asked for and taken, once: called as tiles of the open
+## model's parts are laid, before they look for their pictures.
+static func want() -> void:
+	if _offered.is_empty() or _offered_to == null:
+		return
+	var thumbnails: PartThumbnails = _offered_to.get_ref() as PartThumbnails
+	var path: String = _offered
+	_offered = ""
+	if thumbnails != null:
+		_take(path, thumbnails)
+
+
+## [param path] fetched (or taken from the page) and handed to
+## [param thumbnails]: true when it was.
+static func _take(path: String, thumbnails: PartThumbnails) -> bool:
+	var host: Node = (Engine.get_main_loop() as SceneTree).root
 	var began: int = Time.get_ticks_msec()
 	var from: String = "page"
 	var early: Dictionary = await _early(path)
@@ -56,12 +88,19 @@ static func take(body: Dictionary, thumbnails: PartThumbnails, host: Node) -> bo
 		said = {"url": path, "lots": lots_now, "ms": Time.get_ticks_msec() - began, "from": "page, read"}
 		if lots_now > 0:
 			return true
+	if bytes.is_empty() and early.has("status"):
+		# The page asked already: not drawn yet (202) or not to be had. The
+		# tiles keep their parts' shapes and are drawn here, as before.
+		said = {"url": path, "lots": 0, "ms": Time.get_ticks_msec() - began,
+			"from": "drawing" if int(early["status"]) == 202 else "failed"}
+		return false
 	if bytes.is_empty():
 		from = "asked"
 		var result: Array = await PageFetch.ask(host, Deployment.api_base() + path, PackedStringArray(),
 			HTTPClient.METHOD_GET, "", 60.0, MOST_BYTES)
 		if int(result[0]) != HTTPRequest.RESULT_SUCCESS or int(result[1]) != 200:
-			said = {"url": path, "lots": 0, "ms": Time.get_ticks_msec() - began, "from": "failed"}
+			said = {"url": path, "lots": 0, "ms": Time.get_ticks_msec() - began,
+				"from": "drawing" if int(result[1]) == 202 else "failed"}
 			return false
 		bytes = result[3]
 	# Read on a worker: Orthanc's 226 lots are a 1536 x 1440 picture, 28 ms
@@ -79,8 +118,9 @@ static func take(body: Dictionary, thumbnails: PartThumbnails, host: Node) -> bo
 
 ## [param path] as the page fetched it (window.brickworksLots), waited for a
 ## frame at a time while it is on its way: {bytes, and where the page read
-## it too, pixels (RGBA, a row after another), width, height}; {} when the
-## page did not fetch it, or it failed.
+## it too, pixels (RGBA, a row after another), width, height}; {status}
+## when the page asked and had no file (202 while the server draws it); {}
+## when the page did not ask.
 static func _early(path: String) -> Dictionary:
 	if not OS.has_feature("web"):
 		return {}
@@ -92,6 +132,10 @@ static func _early(path: String) -> Dictionary:
 	while state != null and int(state) == 1 and Time.get_ticks_msec() < until:
 		await tree.process_frame
 		state = JavaScriptBridge.eval(asked, true)
+	if state != null and int(state) == 3:
+		var status: int = int(JavaScriptBridge.eval("window.brickworksLots.status", true))
+		JavaScriptBridge.eval("window.brickworksLots=null", true)
+		return {"status": status}
 	if state == null or int(state) != 2:
 		return {}
 	var bytes: Variant = JavaScriptBridge.eval("window.brickworksLots.bytes", true)

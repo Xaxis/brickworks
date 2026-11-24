@@ -688,6 +688,8 @@ func _lay_strip() -> void:
 			thumbnails.watch(self, [] as Array[ThumbTile])
 		return
 	var pt: float = Phone.per_point(get_viewport()) if is_inside_tree() else 1.0
+	# The model's lot pictures asked for the first time any are shown.
+	LotPictures.want()
 	for lot: Dictionary in lots:
 		var cell := HBoxContainer.new()
 		cell.add_theme_constant_override("separation", roundi(2.0 * pt))

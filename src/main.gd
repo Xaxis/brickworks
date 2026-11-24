@@ -3588,9 +3588,10 @@ func _view_shared() -> void:
 			"Brickworks did not answer as it should. Try again in a minute."), _view_shared)
 		return
 	var shared: Dictionary = answer["body"]
-	# Every lot's picture of it, drawn once by the server, taken beside the
-	# open (not waited for): Build it's first step shows its parts at once.
-	LotPictures.take(shared, _thumbnails, self)
+	# Every lot's picture of it, drawn once by the server: asked for when
+	# Build it or the steps first lay its parts (LotPictures.want), at once
+	# where the page fetched it for a link that opens Build it.
+	LotPictures.offer(shared, _thumbnails)
 	var name: String = str(shared.get("name", "A shared model"))
 	var author: String = str(shared["author"]) if shared.get("author") is String else ""
 	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
@@ -4893,9 +4894,9 @@ func _maybe_copy() -> void:
 			_bar.say("could not copy it: " + SharedModels.trouble(answer, "Brickworks did not answer"))
 			return
 		var shared: Dictionary = answer["body"]
-		# Its lots' pictures for the studio's step bar and parts list, as the
-		# viewer takes them (_view_shared).
-		LotPictures.take(shared, _thumbnails, self)
+		# Its lots' pictures for the studio's step bar, as the viewer's
+		# (_view_shared).
+		LotPictures.offer(shared, _thumbnails)
 		name = str(shared.get("name", "Shared model"))
 		if not _sample_untouched and _store.has_unsaved_work():
 			_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
@@ -5068,7 +5069,7 @@ func _open_asked(placed: int) -> int:
 	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
 		return 0
 	var shared: Dictionary = answer["body"]
-	LotPictures.take(shared, _thumbnails, self)
+	LotPictures.offer(shared, _thumbnails)
 	var name: String = str(shared.get("name", "Shared model"))
 	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
 	if not str(result["error"]).is_empty():

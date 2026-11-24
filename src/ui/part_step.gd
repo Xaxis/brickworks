@@ -471,6 +471,7 @@ func show_answer(read: Dictionary, at: int) -> void:
 		_tile.replace_by(fresh)
 		_tile.queue_free()
 		_tile = fresh
+		LotPictures.want()
 		var ready: Texture2D = thumbnails.peek(part_id, colour) if thumbnails != null else null
 		if ready != null:
 			_tile.show_picture(ready, false)
