@@ -21,6 +21,8 @@ ui:shared model page and card
 
 **View in 3D** on the picture turns it into the model, right there: drag to turn it, zoom, or go full screen. **Open in the app** opens the app's viewer (`/app?view=<id>`), with **Build it**, **Steps**, **Booklet** and **Parts list** on its bar; nothing there can change the model. The app's header stays over it, as over every part of the app: the Brickworks mark at the left, the way back to the home page, and **Menu** and **Account** at the right; Build it and the viewer's own bar sit under it.
 
+Open in the app, Build it and Open in the studio each start the app with the whole model already on it. The app's loading screen stays up until it is: it says how many of the model's parts are still coming (*Fetching the model's parts: 25 of 38*), then *Opening the model…*, and lifts on the model framed, every part in place.
+
 <!-- covers
 ui:shared model viewer
 -->

@@ -125,6 +125,9 @@ func _run() -> void:
 	# Through the app's own open, as a first visit does: it was the one
 	# path that did not stand the car on the ground.
 	var sample: String = main.get("SAMPLE_MODEL")
+	# A first visit has no saved model of that name: the tower saved above
+	# is not this car, and Save asks before it writes over another model.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(kept_at))
 	world.clear()
 	main.call("_open", sample)
 	await process_frame

@@ -313,6 +313,15 @@ func _build() -> void:
 	asking.add_child(_ask_name_field)
 	_ask_name.add_child(asking)
 	_ask_name.confirmed.connect(_take_name)
+	# Asked because a saved model that is not this one has its name
+	# (ask_name_taken): replacing that model is a choice of its own.
+	_replace_button = _ask_name.add_button(REPLACE_WORDS, true, "replace")
+	_replace_button.visible = false
+	_ask_name.custom_action.connect(func(action: StringName) -> void:
+		if action == &"replace" and not _replacing.is_empty():
+			_replace_chosen = true
+			_answer_name(_replacing)
+			_ask_name.hide())
 	# Cancel, Escape, the close button, or put away by anything else.
 	_ask_name.canceled.connect(_answer_name.bind(""))
 	_ask_name.visibility_changed.connect(func() -> void:
@@ -586,6 +595,8 @@ func controls_by_name() -> Dictionary:
 		out["save_name"] = _ask_name_field
 		out["save_name_ok"] = _ask_name.get_ok_button()
 		out["save_name_cancel"] = _ask_name.get_cancel_button()
+		if _replace_button.visible:
+			out["save_name_replace"] = _replace_button
 	# And an open's.
 	if _confirm_open.visible:
 		out["replace_save"] = _confirm_open.get_ok_button()
@@ -602,6 +613,14 @@ var _ask_name_field: LineEdit
 signal _name_answered(name: String)
 var _asking_name: bool = false
 const NAME_ASK := "What should this model be called?"
+## Asked when Save would go over a saved model that is not this one.
+const TAKEN_ASK := "“%s” is a saved model already, and this is not it. Save this one under a name of its own, or replace that model with it."
+const REPLACE_WORDS := "Replace it"
+var _replace_button: Button
+## The name [method ask_name_taken] offers to replace, while it asks; and
+## whether the person chose to.
+var _replacing: String = ""
+var _replace_chosen: bool = false
 
 
 ## Who the Account button says is signed in, in its tooltip: the bar has
@@ -762,20 +781,35 @@ func _on_save() -> bool:
 		_name.text = name
 		_name.text_changed.emit(name)
 	var saved: bool = false
-	if not store.says_writing():
-		saved = store.save_as(name)
-	elif _saving != null:
-		return false
-	else:
-		_saving = Working.begin("Saving “%s”…" % name, 0, true)
-		await _saving.shown()
-		saved = await store.save_as_paced(name, _saving)
-		var stopped: bool = _saving.cancelled
-		_saving.end()
-		_saving = null
-		if stopped:
-			_say("stopped saving “%s”; nothing was written" % name)
+	var over: bool = false
+	while true:
+		if not store.says_writing():
+			saved = store.save_as(name, over)
+		elif _saving != null:
 			return false
+		else:
+			_saving = Working.begin("Saving “%s”…" % name, 0, true)
+			await _saving.shown()
+			saved = await store.save_as_paced(name, _saving, over)
+			var stopped: bool = _saving.cancelled
+			_saving.end()
+			_saving = null
+			if stopped:
+				_say("stopped saving “%s”; nothing was written" % name)
+				return false
+		# A saved model that is not this one has the name: asked for one of its
+		# own, or whether to replace that model, never written over unasked
+		# (ModelStore._saved_over_another).
+		if saved or store.taken.is_empty() or over:
+			break
+		var answer: Array = await ask_name_taken(store.taken)
+		if str(answer[0]).is_empty():
+			_say("not saved: “%s” is a saved model already" % store.taken)
+			return false
+		over = bool(answer[1])
+		name = str(answer[0])
+		_name.text = name
+		_name.text_changed.emit(name)
 	if not saved:
 		_say(store.refused if not store.refused.is_empty() else "could not save that name")
 	elif not on_disk.is_empty() and on_disk.get_file().get_basename().strip_edges() == name:
@@ -795,6 +829,8 @@ func ask_name() -> String:
 	if _asking_name:
 		return ""
 	_asking_name = true
+	_replacing = ""
+	_replace_button.visible = false
 	_ask_name_words.text = NAME_ASK
 	_ask_name_field.text = ""
 	_ask(_ask_name)
@@ -806,6 +842,33 @@ func ask_name() -> String:
 	var called: String = await _name_answered
 	Working.asking -= 1
 	return called
+
+
+## Save refused because a saved model that is not this one is called
+## [param name] (ModelStore.taken): asked for a name of this one's own, the
+## next free one offered, or to replace that model with it. [name, replace]:
+## the name to save under and whether it replaces the model of that name;
+## ["", false] when the person cancels. As ask_name asks, so a name a saved
+## model has is refused there too: replacing one is its own button.
+func ask_name_taken(name: String) -> Array:
+	if _asking_name:
+		return ["", false]
+	_asking_name = true
+	_replacing = name
+	_replace_chosen = false
+	_ask_name_words.text = TAKEN_ASK % name
+	_ask_name_field.text = store.unused_name(name) if store != null else ""
+	_replace_button.visible = true
+	_ask(_ask_name)
+	_ask_name_field.grab_focus()
+	_ask_name_field.select_all()
+	Working.asking += 1
+	Working.asked += 1
+	var called: String = await _name_answered
+	Working.asking -= 1
+	_replace_button.visible = false
+	_replacing = ""
+	return [called, _replace_chosen and called == name]
 
 
 func _take_name() -> void:
@@ -844,7 +907,21 @@ func save_to_file(path: String) -> bool:
 	on_disk = path
 	_name.text = called
 	_name.text_changed.emit(called)
-	return await _on_save()
+	if not await _on_save():
+		return false
+	if model_name() == called.strip_edges():
+		return true
+	# A saved model that is not this one had the file's name, and the person
+	# gave this one another (ask_name_taken): the file they chose is written
+	# all the same, as it is named; Save writes it again only while the model
+	# keeps the file's name.
+	var name: String = model_name()
+	if await store.export_paced(path, name):
+		SaveTo.wrote(path)
+		_say("saved “%s” — wrote %s" % [name, path])
+		return true
+	_say("saved “%s” here, but could not write %s" % [name, path])
+	return false
 
 
 ## "Save, then start new": the new model only once the save has been made.

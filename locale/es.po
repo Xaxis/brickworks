@@ -17745,3 +17745,23 @@ msgstr "%s son más de lo que un subconjunto puede guardar: guarda una parte"
 
 msgid "what is on the clipboard places more parts than can be pasted at once: copy fewer"
 msgstr "lo que hay en el portapapeles coloca más piezas de las que se pueden pegar de una vez: copia menos"
+msgid "“%s” is a saved model already, and this is not it. Save this one under a name of its own, or replace that model with it."
+msgstr "«%s» ya es un modelo guardado, y este no es ese. Guarda este con un nombre propio, o reemplaza ese modelo con este."
+
+msgid "Replace it"
+msgstr "Reemplazarlo"
+
+msgid "“%s” is a saved model already, and this is not it: not saved"
+msgstr "«%s» ya es un modelo guardado, y este no es ese: no se ha guardado"
+
+msgid "not saved: “%s” is a saved model already"
+msgstr "no se ha guardado: «%s» ya es un modelo guardado"
+
+msgid "could not copy “%s”"
+msgstr "no se ha podido copiar «%s»"
+
+msgid "“%s” could not be copied: %s. It is kept as it was shared, as “%s” in File › Open, for a later version of Brickworks to open; nothing else was saved."
+msgstr "No se ha podido copiar «%1$s»: %2$s. Se guarda tal como se compartió, como «%3$s» en Archivo › Abrir, para que una versión posterior de Brickworks lo abra; no se ha guardado nada más."
+
+msgid "“%s” could not be copied: %s. Nothing was saved."
+msgstr "No se ha podido copiar «%1$s»: %2$s. No se ha guardado nada."

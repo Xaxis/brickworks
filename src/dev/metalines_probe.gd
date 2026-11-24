@@ -687,12 +687,28 @@ func _settled() -> void:
 ## The bar's Save, and the file it wrote.
 func _bar_save(label: String) -> String:
 	var bar: ModelBar = _main.get("_bar")
-	var ok: bool = await bar._on_save()
+	# A case's file opened under a name of its own, its model called by the
+	# title inside it, which an earlier case saved: Save asks before it
+	# writes over a saved model this one was not opened from (viewfix), and
+	# the probe replaces it, as it wrote over it unasked before.
+	var answer: Array = []
+	_saved_into(bar, answer)
+	for _n: int in 600:
+		if not answer.is_empty():
+			break
+		if bar._ask_name.visible and bar._replace_button.visible:
+			bar._ask_name.custom_action.emit(&"replace")
+		await process_frame
+	var ok: bool = not answer.is_empty() and bool(answer[0])
 	await _frames(4)
 	var text: String = _text_kept(MODELS + bar.model_name() + ".ldr")
 	print("  bar save %s as %s: %s (%d bytes)" % [label, bar.model_name(), ok, text.length()])
 	_keep(label + ".ldr", text)
 	return text
+
+
+func _saved_into(bar: ModelBar, answer: Array) -> void:
+	answer.append(await bar._on_save())
 
 
 ## The save [param saved] opened again and saved again: the same file.

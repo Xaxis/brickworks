@@ -126,6 +126,14 @@ fi
 if grep -q -- '--lists' tools/check.sh 2>/dev/null && ! tools/check.sh --lists >/dev/null 2>&1; then
   tools/check.sh --lists 2>&1 | tail -2; echo "merge_unit: name it once in tools/suite (headless.txt, windowed.txt or out.txt)"; exit 4
 fi
+# The release gate's shellcheck, here, where a unit's script is merged:
+# ENGINE_CHECKS (webflows) passed every merge gate and held rel-m334 at
+# ci_gate (2026-11-24).
+if command -v shellcheck >/dev/null && ! git diff --quiet "$BASE" HEAD -- 'tools/*.sh' 'tools/release/*.sh' 2>/dev/null; then
+  if ! shellcheck -S warning tools/*.sh tools/release/*.sh >/dev/null 2>&1; then
+    shellcheck -S warning tools/*.sh tools/release/*.sh 2>&1 | head -20; echo "merge_unit: shellcheck, as ci_gate.sh runs it"; exit 5
+  fi
+fi
 # MERGE_GATES=ship: the parse gate and the tool list are left to ship.sh,
 # which runs them once for every unit merged, under the release's priority.
 if [ "${MERGE_GATES:-}" = ship ]; then

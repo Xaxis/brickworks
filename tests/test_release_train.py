@@ -851,6 +851,31 @@ def test_a_check_or_probe_the_branch_has_no_name_for_is_refused_when_staged(tmp_
         y.stop()
 
 
+def test_a_branch_origin_has_moved_past_is_refused_when_staged(tmp_path):
+    """2026-11-24: a gate fix pushed to origin/pre261 from another tree was not
+    in the local pre261, and rel-m335 staged without it."""
+    y = Yard(tmp_path)
+    try:
+        y.git(y.r, "push", "-q", "origin", "stage2")
+        y.git(y.r, "fetch", "-q", "origin")
+        ahead = y.git(y.wt / "unitC", "rev-parse", "HEAD")
+        (y.wt / "unitC" / "fix.txt").write_text("the gate fix\n")
+        y.git(y.wt / "unitC", "add", "fix.txt")
+        y.git(y.wt / "unitC", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "the fix")
+        y.git(y.wt / "unitC", "push", "-q", "origin", "HEAD:stage2")
+        assert ahead == y.git(y.r, "rev-parse", "stage2")
+        out = y.train("stage", "t-m2", "stage2")
+        assert out.returncode == 2, out.stdout + out.stderr
+        assert "train: stage2 is behind origin/stage2" in out.stdout, out.stdout
+        assert not (y.ro / "t-m2.train" / "pid").exists()
+        y.git(y.r, "fetch", "-q", "origin")
+        y.git(y.r, "branch", "-f", "stage2", "origin/stage2")
+        good = y.train("stage", "t-m2", "stage2")
+        assert good.returncode == 0, good.stdout + good.stderr
+    finally:
+        y.stop()
+
+
 def _connector_change(y: Yard) -> None:
     """model_view's flow on main, and on stage2 a change to what a chat hears first, which that flow reaches."""
     y.put("tools/web/model_view_check.mjs", "await fetch(`${site}/api/mcp`, { method: 'POST' });\n")

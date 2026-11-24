@@ -1041,7 +1041,7 @@ func _unseen_case() -> void:
 		await _say("export_model", {"format": "ldraw"})
 		wrote.append(", ".join(DirAccess.get_files_at(_files)))
 		_clear_files()
-		await _shell._ask_save_as()
+		await _save_as_another_name()
 		await _until_file(["mpd", "ldr"])
 		wrote.append(", ".join(DirAccess.get_files_at(_files)))
 	var text: String = "0 FILE blank.ldr\n0 Blank\n0 Name: blank.ldr\n"
@@ -1060,6 +1060,29 @@ func _unseen_case() -> void:
 		", ".join(members.map(func(n: String) -> String: return n.c_escape()))],
 		wrote == ["model.mpd", "model.mpd", "model.mpd", "model.mpd"]
 		and members == ["submodel.ldr", "submodel_2.ldr"])
+
+
+## Save as on the desktop where the file's name is a saved model's that is
+## not this one (the first title's save, here): Save asks first (viewfix),
+## and the name it offers is taken; the file the person chose is written
+## all the same, as it is named.
+func _save_as_another_name() -> void:
+	var done: Array = []
+	_save_as_into(done)
+	var asked: bool = false
+	for _n: int in 600:
+		if not done.is_empty():
+			break
+		if not asked and _bar._ask_name.visible and _bar._replace_button.visible:
+			asked = true
+			print("    asked: %s; taking %s" % [_bar._ask_name_words.text, _bar._ask_name_field.text])
+			_bar._ask_name.confirmed.emit()
+		await process_frame
+
+
+func _save_as_into(done: Array) -> void:
+	await _shell._ask_save_as()
+	done.append(true)
 
 
 ## 6: a title cut to fit 200 bytes is cut between two characters as a
