@@ -20,8 +20,9 @@
 // api/admin.js asks these behind its owner check; noticeShown is anybody's.
 
 import { db } from "./_db.js";
-import { scopeOf } from "./_settings.js";
+import { scopeOf, setSetting, settingOf } from "./_settings.js";
 import { phoneRulesRead } from "./_phone.js";
+import { SAID, WAYS, waysOffered } from "./_ways.js";
 import { noticeEnds, setNoticeEnds } from "./_announce.js";
 
 const notYet = (trouble) => /: 404$/.test(String(trouble?.message || ""));
@@ -55,6 +56,10 @@ export const VARIABLES = [
   { name: "OC_ME_ORIGIN", what: "orangecheck's own address", where: "vercel" },
   { name: "OC_ISSUER", what: "orangecheck's tokens: who issues them", where: "vercel" },
   { name: "OC_AUDIENCE", what: "orangecheck's tokens: whom they are for", where: "vercel" },
+  { name: "GOOGLE_CLIENT_ID", what: "Sign in with Google: the OAuth client's id (Switches, Sign in with Google and GitHub)", where: "vercel" },
+  { name: "GOOGLE_CLIENT_SECRET", what: "Sign in with Google: the OAuth client's secret", where: "vercel" },
+  { name: "GITHUB_CLIENT_ID", what: "Sign in with GitHub: the OAuth app's client id (Switches, Sign in with Google and GitHub)", where: "vercel" },
+  { name: "GITHUB_CLIENT_SECRET", what: "Sign in with GitHub: the OAuth app's client secret", where: "vercel" },
   { name: "REDDIT_CLIENT_ID", what: "The social desk: the Reddit app's id, to connect by Reddit's API (Social)", where: "vercel" },
   { name: "REDDIT_CLIENT_SECRET", what: "The social desk: the Reddit app's secret (Social)", where: "vercel" },
   { name: "CLAUDE_KEY_SECRET", what: "Claude in the console: seals the owner's Anthropic key (Claude, Settings)", where: "vercel" },
@@ -121,13 +126,53 @@ export async function switchesRead(request, base) {
     // Every setting kept, each scope's; the beta's is flipped here and in
     // Beta (one act, ?op=beta_switch). None other is the owner's yet.
     settings: settings === null ? null : settings.map((one) => ({ ...one, here: one.scope === scope,
-      switch: one.name === "beta" ? "beta_switch" : null })),
+      switch: one.name === "beta" ? "beta_switch" : /^sign_in_(google|github)$/.test(one.name) ? "sign_in_switch" : null })),
+    // Sign in with Google and GitHub (api/_ways.js): each one's keys, by
+    // whether they are here, its switch here, and whether it is offered.
+    ways: await waysRead(request),
     notice: notice === undefined ? null : notice,
     notice_ready: notice !== undefined,
     notices: notices || [],
     // What a phone is warned by before the studio opens (api/_phone.js).
     phone,
   };
+}
+
+/// Sign in with Google and GitHub where [request] was made: [{name, said,
+/// keys, set, on, callback}], set the console's switch ("on", "off", or
+/// null when never flipped here, which follows the keys).
+async function waysRead(request) {
+  const offered = await waysOffered(request);
+  return Promise.all(Object.keys(WAYS).map(async (name) => ({
+    name,
+    said: SAID[name],
+    keys: Boolean(WAYS[name].keys()),
+    set: (await settingOf(`sign_in_${name}`, request))?.value ?? null,
+    on: offered[name],
+    // The address registered with the provider: brickworks.diy's.
+    callback: `https://brickworks.diy/auth/callback/${name}`,
+  })));
+}
+
+/// POST /api/admin?op=sign_in_switch {with: google | github, on}: Sign in
+/// with it on or off where the console is open (brickworks.diy's on the
+/// site, a preview's on a preview). On only once its keys are here.
+export async function signInSwitch(request, response, claims) {
+  const body = request.body && typeof request.body === "object" ? request.body : {};
+  const name = String(body.with || "");
+  if (!WAYS[name] || typeof body.on !== "boolean") return response.status(422).json({ error: "Google or GitHub, on or off." });
+  if (body.on && !WAYS[name].keys()) {
+    return response.status(409).json({ error: `${SAID[name]}'s keys are not in Vercel yet: its steps are beside the switch.` });
+  }
+  let made;
+  try {
+    made = await setSetting(`sign_in_${name}`, body.on ? "on" : "off", request, claims.email);
+  } catch (trouble) {
+    if (notYet(trouble)) return response.status(503).json({ error: "Not open yet: supabase/console.sql is not applied." });
+    throw trouble;
+  }
+  return response.status(200).json({ with: name, on: body.on, was: made.was ?? null, scope: made.scope,
+    ways: await waysRead(request) });
 }
 
 /// The notice showing in [scope], or null.

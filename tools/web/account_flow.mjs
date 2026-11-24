@@ -150,6 +150,14 @@ try {
   await page.keyboard.type("not-an-address");
   await click("signin_send");
   await page.waitForTimeout(1500);
+  // The form grows by its error line, so it moves in the window, and the
+  // page is told a control's place only once it has held it for two
+  // tellings, two seconds apart at rest (Main._page_places): in between, it
+  // names nothing (signin3's preview at load 30, 2026-11-24, twice, and the
+  // nightly of 11-24). Read it once it names the form again.
+  for (let i = 0; i < 20 && !Object.keys(await controls()).some((name) => name.startsWith("signin_")); i++) {
+    await page.waitForTimeout(500);
+  }
   await shot("2_not_an_address");
   check((await controls()).signin_email && !(await controls()).signin_code,
     "an address that is not one stays on the address");

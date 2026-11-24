@@ -120,6 +120,14 @@
       "tests": []
     },
     {
+      "id": "api:GET /api/otp?op=ways",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s '<deployment>/api/otp?op=ways' -H 'authorization: Bearer <session>'",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:GET /api/plans",
       "kind": "api",
       "entry": "api/plans.js",
@@ -140,6 +148,22 @@
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
+    },
+    {
+      "id": "api:GET /auth/github",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/github?then=/gallery'",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:GET /auth/google",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/google?then=/gallery'   (302 to Google with the client, or to /profile?...&failed=off without keys)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "api:GET/POST /api/people",
@@ -256,6 +280,22 @@
         "tests/test_comment_mentions.py",
         "tests/test_relay_signed_out.py"
       ]
+    },
+    {
+      "id": "api:POST /api/otp?op=way_bind",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_bind' -H 'authorization: Bearer <a code's session>'   (410 with no GitHub sign-in waiting; 403 for a session that is not a code's of the last five minutes)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:POST /api/otp?op=way_take",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_take'   (410 with nothing to take)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "api:POST /api/plans",
@@ -4330,6 +4370,30 @@
       "tests": []
     },
     {
+      "id": "cli:ways app probe",
+      "kind": "cli",
+      "entry": "src/dev/ways_app_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 11703 --ways-stand-in & BRICKWORKS_API=http://127.0.0.1:11703 WAYS_APP_EMAIL=delivered+x@resend.dev tools/probe.sh ways_app_probe   (headless; delete the account it prints; in tools/suite/out.txt)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:ways browser flow",
+      "kind": "cli",
+      "entry": "tools/web/ways_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11702 --ways-stand-in --owner=$OWNER & node tools/web/ways_flow.mjs --url=http://127.0.0.1:11702 --owner=$OWNER --out=shots/ways",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:ways check",
+      "kind": "cli",
+      "entry": "tools/web/ways_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11701 --ways-stand-in --owner=$OWNER & node tools/web/ways_check.mjs --url=http://127.0.0.1:11701 --owner=$OWNER   (OWNER a delivered+...@resend.dev throwaway)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:web build and deploy",
       "kind": "cli",
       "entry": "tools/deploy.sh",
@@ -7255,6 +7319,20 @@
       "tests": []
     },
     {
+      "id": "ui:how you sign in",
+      "kind": "ui",
+      "entry": "web/settings.js",
+      "reach": "<deployment>/settings#ways-part signed in",
+      "area": "account",
+      "tests": [
+        "tests/test_adminclaude.py",
+        "tests/test_announce.py",
+        "tests/test_billing_pay.py",
+        "tests/test_console.py",
+        "tests/test_owner_notify.py"
+      ]
+    },
+    {
       "id": "ui:installing the site",
       "kind": "ui",
       "entry": "web/site.webmanifest",
@@ -8211,6 +8289,22 @@
       "tests": []
     },
     {
+      "id": "ui:sign in with github",
+      "kind": "ui",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with GitHub (where GITHUB_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:sign in with google",
+      "kind": "ui",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with Google (where GOOGLE_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "ui:sign in with orangecheck",
       "kind": "ui",
       "entry": "web/account.js",
@@ -8598,6 +8692,14 @@
       "entry": "web/admin-plans.js",
       "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the console's sign-in switches",
+      "kind": "ui",
+      "entry": "web/admin-switches.js",
+      "reach": "<deployment>/admin#switches as MASTER_EMAIL, Sign in with Google and GitHub (on a checkout: relay_server.mjs --ways-stand-in --owner=<throwaway>)",
+      "area": "account",
       "tests": []
     },
     {

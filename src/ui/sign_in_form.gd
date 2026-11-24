@@ -15,8 +15,10 @@
 ##
 ## As the site's dialog has it (signinux, 2026-11-13, web/account.js), in
 ## the same words and order: the address and Email me a code, then "or",
-## then Sign in with orangecheck, each button as tall and as wide as the
-## others. The code is typed one digit to a box ([CodeBoxes]), as many as
+## then Sign in with Google, with GitHub (signin3, 2026-11-24, where the
+## deployment offers them) and with orangecheck, each button as tall and as
+## wide as the others; and under them all, where the deployment makes one,
+## the line that signing in also makes the person's orangecheck account. The code is typed one digit to a box ([CodeBoxes]), as many as
 ## the deployment says it has (eight), and the last digit signs in by
 ## itself; a wrong or expired code shakes the row, empties it and puts the
 ## keys back in the first box, where a limit or no connection keeps the
@@ -32,6 +34,10 @@ enum Step { ADDRESS, CODE }
 ## words, with its clear space (a quarter of its width) to them.
 const ORANGECHECK_MARK := "res://assets/ui/orangecheck-mark-mono-white.svg"
 const MARK_TALL := 14.0
+## Google's G in its colours, GitHub's mark in the button's white: each
+## 18 units tall, as the site's buttons draw them.
+const WAY_MARKS := {"google": "res://assets/ui/google-mark.svg", "github": "res://assets/ui/github-mark-white.svg"}
+const WAY_MARK_TALL := 18.0
 
 var account: Account
 
@@ -46,6 +52,10 @@ var _note: Label
 var _or: HBoxContainer
 var _orangecheck: Button
 var _orangecheck_why: Label
+## Sign in with Google and with GitHub, by name.
+var _ways: Dictionary = {}
+## That signing in also makes the orangecheck account, with a link to what it is.
+var _made: HBoxContainer
 ## What the orangecheck button started says, under it, and Cancel while the
 ## desktop waits on the browser.
 var _oc_said: Label
@@ -135,6 +145,22 @@ func setup(with_account: Account) -> void:
 			_or.add_child(line)
 	add_child(_or)
 
+	# Google and GitHub, as the deployment offers them (signin3): on the web
+	# the site's own sign-in with each, which comes back to this address
+	# signed in (web/profile.js); on the desktop, in the person's browser,
+	# which hands a code back to this app (Account.sign_in_with_way).
+	for name: String in ["google", "github"]:
+		var way := Button.new()
+		way.text = "Sign in with %s" % Account.WAY_NAMES[name]
+		way.add_theme_constant_override("icon_max_width", roundi(WAY_MARK_TALL))
+		way.add_theme_constant_override("h_separation", 8)
+		way.custom_minimum_size = Vector2(0, 44)
+		way.focus_mode = Control.FOCUS_NONE
+		way.visible = false
+		way.pressed.connect(_to_way.bind(name))
+		add_child(way)
+		_ways[name] = way
+
 	# orangecheck too, as the deployment offers it (2026-10-23,
 	# api/orangecheck.js). On the web its window cannot answer this page,
 	# which keeps the isolation the engine's threads need, so the button
@@ -168,6 +194,21 @@ func setup(with_account: Account) -> void:
 	_orangecheck_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_orangecheck_why.modulate = Color(1, 1, 1, 0.75)
 	add_child(_orangecheck_why)
+
+	_made = HBoxContainer.new()
+	_made.add_theme_constant_override("separation", 6)
+	_made.visible = false
+	var made_said := Label.new()
+	made_said.text = "Signing in without orangecheck also makes your orangecheck account."
+	made_said.add_theme_font_size_override("font_size", 12)
+	made_said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	made_said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	made_said.modulate = Color(1, 1, 1, 0.75)
+	_made.add_child(made_said)
+	var what := Look.link("What is that?", 12)
+	what.pressed.connect(func() -> void: Outside.open_link(Deployment.api_base() + "/docs/account#orangecheck"))
+	_made.add_child(what)
+	add_child(_made)
 	_draw_mark()
 
 	_show(Step.ADDRESS)
@@ -178,10 +219,7 @@ func focus_first() -> void:
 	# orangecheck to everybody, its mark drawn for the screen it is on.
 	_draw_mark()
 	if _step == Step.ADDRESS:
-		var offered: bool = _orangecheck_offered()
-		_orangecheck.visible = offered
-		_orangecheck_why.visible = offered
-		_or.visible = offered
+		_show_ways()
 	if _step == Step.ADDRESS:
 		_email.grab_focus()
 	else:
@@ -193,7 +231,8 @@ func controls_by_name() -> Dictionary:
 	# signin_code is the first box: a flow clicks it and types the whole code.
 	return {"signin_email": _email, "signin_send": _send,
 		"signin_code": _code_row.first_box(), "signin_code_row": _code_row,
-		"signin_go": _verify, "signin_orangecheck": _orangecheck}
+		"signin_go": _verify, "signin_orangecheck": _orangecheck, "signin_google": _ways["google"],
+		"signin_github": _ways["github"], "signin_made": _made}
 
 
 func _show(step: int) -> void:
@@ -205,11 +244,8 @@ func _show(step: int) -> void:
 	_verify.visible = not asking
 	_again.visible = not asking
 	_resend.visible = not asking
-	var offered: bool = asking and _orangecheck_offered()
-	_orangecheck.visible = offered
-	_orangecheck_why.visible = offered
-	_or.visible = offered
-	if not offered:
+	_show_ways()
+	if not (asking and _orangecheck_offered()):
 		_oc_said.visible = false
 		_oc_cancel.visible = false
 	_why.text = ("Your email address is your account. We email you a code "
@@ -283,6 +319,28 @@ func _redeem() -> void:
 	_say(problem, false)
 
 
+## The other ways in, each as the deployment offers it, on the address step
+## alone; "or" before them when there is one; and the line that signing in
+## makes the orangecheck account, where it does.
+func _show_ways() -> void:
+	var asking: bool = _step == Step.ADDRESS
+	var offered: bool = asking and _orangecheck_offered()
+	_orangecheck.visible = offered
+	_orangecheck_why.visible = offered
+	var any: bool = offered
+	for name: String in _ways:
+		var shown: bool = asking and _way_offered(name)
+		(_ways[name] as Button).visible = shown
+		any = any or shown
+	_or.visible = any
+	_made.visible = asking and account != null and account.deployment != null and account.deployment.orangecheck_made
+
+
+## Whether this deployment signs people in with [param name].
+func _way_offered(name: String) -> bool:
+	return account != null and account.deployment != null and bool(account.deployment.ways_offered.get(name, false))
+
+
 ## Whether this tab is offered orangecheck: everybody, as the deployment
 ## says (web/account.js orangecheckOffer, api/_oc_config.js); and on the
 ## desktop, only where the deployment says where to open it.
@@ -294,6 +352,8 @@ func _orangecheck_offered() -> bool:
 ## The mark on the orangecheck button, drawn at the pixels it is shown at.
 func _draw_mark() -> void:
 	_orangecheck.icon = Icons.icon_for(ORANGECHECK_MARK, MARK_TALL, Icons.density(self))
+	for name: String in _ways:
+		(_ways[name] as Button).icon = Icons.icon_for(WAY_MARKS[name], WAY_MARK_TALL, Icons.density(self))
 
 
 ## To the site's sign-in, which comes back to this very address; on the
@@ -326,6 +386,48 @@ func _to_orangecheck() -> void:
 	_oc_cancel.visible = false
 	if problem == Account.SUPERSEDED:
 		# Cancelled here, or signed in by email meanwhile.
+		_oc_said.visible = false
+		return
+	if problem.is_empty():
+		_oc_said.visible = false
+		_show(Step.ADDRESS)
+		done.emit()
+		return
+	_oc_say(problem, false)
+
+
+## Sign in with Google or GitHub ([param name]): on the web, the site's own
+## sign-in with it, back to this very address signed in; on the desktop, in
+## the person's browser, waited on here, its words under orangecheck's
+## button's place, as orangecheck's are. A second press starts again.
+func _to_way(name: String) -> void:
+	_oc_try += 1
+	var mine: int = _oc_try
+	var said: String = Account.WAY_NAMES[name]
+	if OS.has_feature("web"):
+		_oc_say("Taking you to %s to sign in…" % said, true)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		Account.came()
+		# With the challenge of a verifier this page keeps, as the site's own
+		# links have (web/account.js wayLink, the same bw_way_takes): the
+		# session /profile takes on the way back opens only with it.
+		JavaScriptBridge.eval(("(async () => {"
+			+ " const b64 = (u) => btoa(String.fromCharCode(...u)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');"
+			+ " const v = b64(crypto.getRandomValues(new Uint8Array(32)));"
+			+ " const c = b64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v))));"
+			+ " let kept = {}; try { kept = JSON.parse(localStorage.getItem('bw_way_takes') || '{}') || {}; } catch (_) {}"
+			+ " kept[c] = { v: v, t: Date.now() }; localStorage.setItem('bw_way_takes', JSON.stringify(kept));"
+			+ " location.assign('/auth/%s?' + new URLSearchParams({ then: location.pathname + location.search, take: c }));"
+			+ " })()") % name, true)
+		return
+	_oc_say("Finish signing in with %s in your browser." % said, true)
+	_oc_cancel.visible = true
+	var problem: String = await account.sign_in_with_way(name)
+	if mine != _oc_try:
+		return
+	_oc_cancel.visible = false
+	if problem == Account.SUPERSEDED:
 		_oc_said.visible = false
 		return
 	if problem.is_empty():

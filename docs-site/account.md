@@ -1,12 +1,12 @@
 ---
 panels: AccountPanel#account-panel
-ai: Signing in (an email code or orangecheck, no password), the age question, what Brickworks keeps, and deleting the account. Account in the app says who is signed in and where the models are kept; with the assistant on, it shows the AI apps connected and this tab's chats.
+ai: Signing in (an email code, Google, GitHub or orangecheck, no password; every sign-in also makes your orangecheck account), the age question, what Brickworks keeps, and deleting the account. Account in the app says who is signed in and where the models are kept; with the assistant on, it shows the AI apps connected and this tab's chats.
 rules:
   - Brickworks accounts are for people 13 and over; a younger builder builds on a parent's or guardian's account.
   - Deleting the account ends every AI app's connection too.
 title: Your account and privacy
 nav: Your account and privacy
-description: Signing in with a code or orangecheck, the age question, Account in the app, what Brickworks keeps, and deleting your account.
+description: Signing in with a code, Google, GitHub or orangecheck, the orangecheck account signing in makes, the age question, Account in the app, what Brickworks keeps, and deleting your account.
 ---
 
 Your account keeps your models, your collection and your profile, and the app and the site share it: a browser signed in to one is signed in to the other. In the app it is **Account** on the top bar (also **Brickworks › Account…**); on the site, [Settings](/settings), under your picture at the top right.
@@ -18,11 +18,28 @@ There is no password. The app asks the first time it opens; on the site, **Sign 
 1. Type your email address and press **Email me a code**. Signing in makes your account if you have none.
 2. Type the six-digit code from the email and press **Sign in**. It works once, for ten minutes; if it has not come, look in spam, or ask for a new one.
 
-Or press **Sign in with orangecheck**: it opens its own window and takes a Bitcoin wallet, email, Google or GitHub, and Brickworks gets an id for you, not your address. On the site, ticking **Also create my orangecheck account** under it makes you an orangecheck account as you sign in by code; it stays with orangecheck until you claim it at ochk.app.
+Or press **Sign in with Google** or **Sign in with GitHub**: you sign in there and come back to the page you were on, signed in. Brickworks asks either only for your email address, and only one it has verified, so it is the same account a code to that address signs you in to; a new address makes a new account. Google signs you in with a Gmail address, or a Google Workspace address of your organisation; for any other address, sign in with a code. The first time GitHub signs in to an account you already have, it asks for a code to the address once, then GitHub signs you in from then on. In the desktop app it opens in your browser and comes back to the app.
 
-![The site's Sign in to Brickworks dialog: the Email box with Email me a code and Not now, then Sign in with orangecheck with what it takes, and the box Also create my orangecheck account with what it means.](/docs/img/account-sign-in.webp "Signing in on the site: a code by email, or orangecheck.")
+Or press **Sign in with orangecheck**: it opens its own window and takes a Bitcoin wallet, email, Google or GitHub, and Brickworks gets an id for you, not your address.
 
-You stay signed in on that device until you sign out. To sign in with orangecheck as well as your email, [Settings](/settings) › **orangecheck** › **Link orangecheck**; it first sends a code to your email, to be sure it is you ([Settings](/docs/profiles#settings)).
+![The site's Sign in to Brickworks dialog: the Email box with Email me a code, then Sign in with Google, Sign in with GitHub and Sign in with orangecheck, and the line Signing in without orangecheck also makes your orangecheck account, with What is that?](/docs/img/account-sign-in.webp "Signing in on the site: a code by email, Google, GitHub or orangecheck.")
+
+You stay signed in on that device until you sign out. [Settings](/settings) › **How you sign in** lists each way that signs you in: a code to your address always does; **Unlink** takes Google or GitHub off, and signs out wherever it signed you in, and **Link again** puts it back. To sign in with orangecheck as well as your email, [Settings](/settings) › **orangecheck** › **Link orangecheck**; it first sends a code to your email, to be sure it is you ([Settings](/docs/profiles#settings)).
+
+<!-- covers
+ui:sign in with google
+ui:sign in with github
+api:GET /auth/google
+api:GET /auth/github
+api:POST /api/otp?op=way_take
+api:POST /api/otp?op=way_bind
+api:GET /api/otp?op=ways
+ui:how you sign in
+-->
+
+## Your orangecheck account {#orangecheck}
+
+Signing in, with a code, Google or GitHub, also makes you an [orangecheck](https://ochk.io) account, as the sign-in says: once you are 13 or over, at the first sign-in after that, and only once. There is nothing to tick. Your address goes with it: as one you showed is yours when you signed in with a code in the last five minutes, and otherwise as one orangecheck checks itself. orangecheck keeps it for you until you claim it at [ochk.app](https://ochk.app) by signing in there with the same address; then you can use it on other sites, or delete it. If orangecheck is slow or down when you sign in, you are signed in all the same, and the account is made at a later sign-in. [Settings](/settings) › **orangecheck** says when it was made. Deleting your Brickworks account deletes it too, unless you have claimed it ([what is sent, and kept](/privacy#signing-in-with-orangecheck)).
 
 <!-- covers
 api:POST /api/otp

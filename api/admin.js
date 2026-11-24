@@ -126,6 +126,8 @@
 //   POST /api/admin?op=beta_switch       {mode: open | off}: the beta's switch
 //                                        here (on brickworks.diy the site's,
 //                                        on a preview that preview's)
+//   POST /api/admin?op=sign_in_switch    {with: google | github, on}: Sign in
+//                                        with it here, on only with its keys
 //   POST /api/admin?op=beta_waitlist&account=U  {note}: a new application
 //                                        on the waitlist, by hand
 //   GET  /api/admin?op=plans             the plans and what each includes,
@@ -253,7 +255,7 @@ import { plansRead } from "./_console_plans.js";
 import { mailRead } from "./_console_mail.js";
 import { connectorRead } from "./_console_connector.js";
 import { siteRead, supabaseHealth } from "./_console_site.js";
-import { noticeClear, noticeSet, switchesRead } from "./_console_switches.js";
+import { noticeClear, noticeSet, signInSwitch, switchesRead } from "./_console_switches.js";
 import { phoneEngineSet, phoneSet } from "./_phone.js";
 import { dataRead, runCron, withRunNow } from "./_console_data.js";
 import { deleteAccount, exportAccount, findRead, personMore, signOut } from "./_console_people.js";
@@ -345,6 +347,8 @@ async function handler(request, response) {
     // The numbers a phone is warned by (phonetruth), and the engine an
     // iPhone or iPad starts (nothreads).
     phone_rules: phoneSet, phone_engine: phoneEngineSet,
+    // Sign in with Google and GitHub, each on or off here (signin3, api/_ways.js).
+    sign_in_switch: signInSwitch,
     // The social desk (socialdesk, api/_social.js; docs/SOCIAL_DESK.md). Of
     // these, only social_send sends anything anywhere, and only what the
     // owner pressed it on.
