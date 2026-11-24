@@ -185,7 +185,7 @@ try {
   await shot("1_model.png");
 
   // A pneumatic tube from one pin hole to the other.
-  await menu("make", "Hose");
+  await menu("make", "Cable");
   const asking = await until(flex, (f) => f.active && f.stage === "start", 30);
   check(Boolean(asking), `Make, Cable, hose or chain… opens the tool (${asking && asking.told})`);
   const holes = ((await flex()).targets || []).filter((t) => t.kind === "pin_hole" && t.part === "3700");
