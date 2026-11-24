@@ -2,7 +2,7 @@
 // maker, figmaker 2026-11-24), with a throwaway account (deleted at the
 // end), on a local relay or a preview:
 //
-//   node --env-file=.env tools/web/relay_server.mjs 11851 --hold=profile_avatars,profile_choices &
+//   node --env-file=.env tools/web/relay_server.mjs 11851 &
 //   node --env-file=.env tools/web/minifig_flow.mjs --url=http://127.0.0.1:11851 --out=DIR
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/minifig_flow.mjs --url=<preview> --out=DIR
 //

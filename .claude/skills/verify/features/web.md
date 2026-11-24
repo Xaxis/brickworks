@@ -2961,7 +2961,8 @@ plan with Claude as the client.
   `input[name=mf-<key>]`, pictures from `web/minifig/tiles`), colours
   `label.mf-swatch`; `#mf-lock` keeps a tab when surprised; `#mf-undo`,
   `#mf-redo` (Ctrl+Z / Ctrl+Shift+Z), `#mf-turn`, `#minifig-surprise`,
-  `#mf-starters` (eight figures); `#minifig-light`/`#minifig-dark` the
+  `#mf-starters` (eight figures, its list placed by the window so a row
+  that scrolls never cuts it off); `#minifig-light`/`#minifig-dark` the
   picture at byline, card and profile sizes. `#minifig-save` draws a 400 px
   PNG (head and shoulders, or the whole figure) and POSTs
   `?op=avatar {picture, type: "image/png", minifig}`: the recipe v 2
@@ -2972,10 +2973,11 @@ plan with Claude as the client.
   `?op=avatar&handle=X` is the handle's minifig as a 256 px JPEG (layers
   from `_minifig/` beside the function, `tools/package_api.sh`), cached a
   day / a month at the CDN. Proof: `tools/web/minifig_maker_probe.mjs`
-  under `heavy` (the maker on the checkout's files, no sign-in: 75 checks
-  at 1280 and 390, light and dark, pictures of each tab) and
-  `tools/web/minifig_flow.mjs` (preview_checks `minifig`; on a local relay
-  with `--hold=profile_avatars,profile_choices`, `--pictures` for all four
+  under `heavy` (the maker on the checkout's files, no sign-in: every check
+  at 1280 and 390, light and dark, pictures of each tab; nothing wider than
+  the dialog, every starting figure pressable) and
+  `tools/web/minifig_flow.mjs` (preview_checks `minifig`; on a local relay,
+  which serves `web/minifig/` as a deployment does, `--pictures` for all four
   sizes and themes): it saves a new figure, reloads, reopens it, opens a
   kept v 1 recipe as the same figure, and says yes in the site's own
   dialog (`dialog.ask [data-answer=yes]`) to remove a picture.

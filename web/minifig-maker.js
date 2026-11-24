@@ -348,7 +348,7 @@ export function makeMinifig(dialog, start) {
       </div>
     </section>
     <section class="mf-edit">
-      <div class="tabs scroller mf-tabs" role="tablist" aria-label="${esc(say("Parts"))}">${tabs.map(([key, words]) =>
+      <div class="tabs scroller inset mf-tabs" role="tablist" aria-label="${esc(say("Parts"))}">${tabs.map(([key, words]) =>
         `<button type="button" role="tab" id="mf-tab-${key}" data-tab="${key}" aria-controls="mf-panel" aria-selected="false" tabindex="-1">${esc(words)}</button>`).join("")}</div>
       <div class="mf-panel" id="mf-panel" role="tabpanel" tabindex="-1"></div>
     </section>
@@ -391,7 +391,7 @@ export function makeMinifig(dialog, start) {
     + `<span class="visually-hidden">${esc(words)}</span><input type="search" id="mf-q" autocomplete="off" enterkeyhint="search" placeholder="${esc(words)}"></label>`;
   const head = (key, words) => `<div class="mf-panel-head">${search(words)}<button type="button" class="cta ghost small mf-lock" id="mf-lock" aria-pressed="${locks.has(key)}">`
     + `<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#lock"></use></svg><span class="words">${esc(say("Keep when surprised"))}</span></button></div>`;
-  const filters = (choices) => `<div class="pills scroller mf-filters" role="group" aria-label="${esc(say("Show"))}">`
+  const filters = (choices) => `<div class="pills scroller inset mf-filters" role="group" aria-label="${esc(say("Show"))}">`
     + choices.map(([key, words], k) => `<button type="button" class="pill" data-filter="${key}" aria-pressed="${k === 0}">${esc(words)}</button>`).join("") + "</div>";
   const group = (legend, list, inner, chosenName) => `<fieldset class="mf-group" data-list="${list}"><legend>${esc(legend)} <span class="mf-chosen">${esc(chosenName)}</span></legend>`
     + `<div class="mf-tiles">${inner}</div></fieldset>`;
@@ -794,6 +794,23 @@ export function makeMinifig(dialog, start) {
     eachArm.legs = next.rr !== next.ll;
     change(next);
   };
+  // Start from…'s list is placed by the window, over everything: inside the
+  // row of buttons that scrolls on a phone, and the column that scrolls
+  // beside the parts, it was cut off, open with none of it to press. Under
+  // its button where there is room, over it where there is not.
+  const placeStarters = () => {
+    const menu = $("mf-starters");
+    const list = menu.querySelector(".menu-list");
+    list.removeAttribute("style");
+    if (!menu.open) return;
+    const button = menu.querySelector("summary").getBoundingClientRect();
+    const tall = Math.min(list.offsetHeight, innerHeight - 16);
+    const wide = list.offsetWidth;
+    const top = innerHeight - button.bottom - 16 >= tall ? button.bottom + 8 : Math.max(8, button.top - 8 - tall);
+    const left = Math.max(8, Math.min(button.right - wide, innerWidth - wide - 8));
+    Object.assign(list.style, { position: "fixed", top: `${top}px`, left: `${left}px`, right: "auto",
+      maxHeight: `${innerHeight - 16}px`, overflowY: "auto" });
+  };
   const starter = (event) => {
     const button = event.target.closest("[data-starter]");
     if (!button) return;
@@ -874,7 +891,7 @@ export function makeMinifig(dialog, start) {
     const listeners = [[panel, "change", changed], [panel, "input", inputted], [panel, "click", clicked],
       [dialog.querySelector("[role=tablist]"), "click", tabbed], [dialog.querySelector("[role=tablist]"), "keydown", tabKeys],
       [dialog, "keydown", keys], [stage, "keydown", stageKeys], [$("minifig-surprise"), "click", surprised],
-      [$("mf-starters"), "click", starter], [$("mf-turn"), "click", turnBack],
+      [$("mf-starters"), "click", starter], [$("mf-starters"), "toggle", placeStarters], [$("mf-turn"), "click", turnBack],
       [$("mf-undo"), "click", undo], [$("mf-redo"), "click", redo], [$("minifig-cancel"), "click", cancel], [$("minifig-save"), "click", save]];
     function end(result) {
       made = result;

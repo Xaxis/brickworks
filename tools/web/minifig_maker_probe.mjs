@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serveDir } from "./static_server.mjs";
 import { launch } from "./browser.mjs";
-import { figureShape, fromLayers, LEGS, POSES } from "../../web/minifig-parts.js";
+import { figureShape, fromLayers, LEGS, POSES, STARTERS } from "../../web/minifig-parts.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -119,6 +119,10 @@ try {
       return columns.map((one) => Math.round(document.querySelector(one).getBoundingClientRect().top - (lead ? under : top)));
     }, width < 700 ? [".mf-look"] : [".mf-look", ".mf-edit"]);
     check(`${tag}: the figure and its tabs right under the words`, tops.every((gap) => gap >= 0 && gap <= 24), `${tops.join(" and ")} px below`);
+    // Nothing reaches past the dialog's side, so it never moves sideways
+    // under a finger (the tabs' row reached 16 px into a page's gutter).
+    const sideways = await tab.evaluate(() => { const d = document.getElementById("minifig-dialog"); return d.scrollWidth - d.clientWidth; });
+    check(`${tag}: nothing wider than the dialog`, sideways <= 1, `${sideways} px over`);
 
     // Every target a finger presses is 44 px at the phone's size.
     if (width < 700) {
@@ -208,6 +212,17 @@ try {
     check(`${tag}: Surprise me keeps a locked skin`, surprised.sk === 84 && JSON.stringify(surprised) !== before, await wordsNow());
     await shot("11-surprised");
     await tab.click("#mf-starters summary");
+    await tab.waitForTimeout(400);
+    // Each one there to press where it is shown, not cut off by a row that
+    // scrolls: a click by Playwright would scroll the row to reach it.
+    const starters = await tab.evaluate(() => [...document.querySelectorAll("#mf-starters .menu-list button")].filter((one) => {
+      const box = one.getBoundingClientRect();
+      const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return at === one || one.contains(at);
+    }).length);
+    check(`${tag}: every starting figure can be pressed`, starters === Object.keys(STARTERS).length,
+      `${starters} of ${Object.keys(STARTERS).length}`);
+    await shot("12a-starters");
     await tab.click("[data-starter=astronaut]");
     await tab.waitForTimeout(600);
     await shot("12-starter");
