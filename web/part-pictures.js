@@ -3,10 +3,12 @@
 //
 // A builder scans a parts list by picture, not by name. Until rel-m180 the
 // list showed Rebrickable's photos, which had every visitor's browser ask a
-// third party for each part; then only a swatch. Pictures made ahead of
-// time are out (src/ui/part_thumbnails.gd: 24,731 parts in 322 colours), and
-// so is a sheet a publish renders, which every model shared before it would
-// lack. What every model's page already has is each part's geometry: content
+// third party for each part; then only a swatch. Pictures of every part made
+// ahead of time are out (src/ui/part_thumbnails.gd: 24,731 parts in 322
+// colours); a model's own lots, drawn by the server the first time anybody
+// asks and kept (api/_lot_pictures.js, partpics), are not: a lot that file
+// holds is shown from it, and what follows draws the rest, as it drew every
+// lot before. What every model's page already has is each part's geometry: content
 // named (api/_parts.js gives each lot its mesh), immutable, a year in the
 // browser's cache, in the store the app and the viewer fetch it from. So a
 // lot is drawn here, as the app's parts bin draws one: a small square,
@@ -173,14 +175,54 @@ function penOf(ink) {
   return [...line.map((c) => c * alpha), alpha];
 }
 
+/// The index a file of lot pictures carries (api/_lot_pictures.js: its
+/// "brickworks-lots" tEXt chunk), {tile, across, lots}, or null.
+function sheetIndex(bytes) {
+  const word = (at) => ((bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) | bytes[at + 3]) >>> 0;
+  const text = (from, to) => String.fromCharCode(...bytes.subarray(from, to));
+  for (let at = 8; at + 8 <= bytes.length;) {
+    const length = word(at);
+    const type = text(at + 4, at + 8);
+    if (type === "IDAT" || type === "IEND" || at + 12 + length > bytes.length) return null;
+    if (type === "tEXt") {
+      const body = bytes.subarray(at + 8, at + 8 + length);
+      const zero = body.indexOf(0);
+      if (zero > 0 && text(at + 8, at + 8 + zero) === "brickworks-lots") {
+        try {
+          const index = JSON.parse(new TextDecoder().decode(body.subarray(zero + 1)));
+          return index && Array.isArray(index.lots) && index.tile > 0 && index.across > 0 ? index : null;
+        } catch {
+          return null;
+        }
+      }
+    }
+    at += 12 + length;
+  }
+  return null;
+}
+
 /// What draws the list's pictures: geometry from [root] (the store, ending
 /// in "/"), a surface's own colour from [colours] ({code: hex}). Null where
-/// there is no store to draw from.
-export function partPictures(root, colours = {}) {
+/// there is no store to draw from. [sheet] is where the server drew every
+/// lot already (parts.json's lot_pictures, partpics): a lot it holds is
+/// shown from it, and only one it does not is drawn here.
+export function partPictures(root, colours = {}, sheet = "") {
   if (typeof root !== "string" || !/^(https?:)?\//.test(root)) return null;
   const ratio = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
   const px = Math.round(SHOWN * ratio);
   const size = px * OVER;
+  // The file, once: its picture and each lot's square, by part and colour.
+  const fromSheet = typeof sheet === "string" && /^\/m\/[A-Za-z0-9]{10}\/v\/[1-9][0-9]{0,5}\/parts[.]png[?]f=[0-9a-f]{12}$/.test(sheet)
+    && typeof createImageBitmap === "function"
+    ? fetch(sheet).then((answer) => (answer.ok ? answer.arrayBuffer() : null)).then(async (bytes) => {
+      const index = bytes && sheetIndex(new Uint8Array(bytes));
+      if (!index) return null;
+      const picture = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+      const cells = new Map(index.lots.map(([part, colour], n) =>
+        [`${part}:${colour}`, [(n % index.across) * index.tile, Math.floor(n / index.across) * index.tile]]));
+      return { picture, cells, tile: index.tile };
+    }).catch(() => null)
+    : null;
   const drawn = new Map();      // part:colour -> its canvas
   const jobs = new Map();       // part:colour -> {lot, pics, started}, to be drawn
   const geometry = new Map();   // hash -> Promise of its buffers on the card
@@ -550,10 +592,30 @@ export function partPictures(root, colours = {}) {
       if (!lot || !/^[0-9a-f]{8,64}$/.test(String(lot.mesh || ""))) return giveUp(pic);
       const key = `${lot.mesh}:${lot.colour}`;
       if (drawn.has(key)) return place(pic, drawn.get(key));
-      if (broken) return giveUp(pic);
-      if (!near) return ask(pic, lot);
-      wanted.set(pic, lot);
-      near.observe(pic);
+      const live = () => {
+        if (drawn.has(key)) return place(pic, drawn.get(key));
+        if (broken) return giveUp(pic);
+        if (!near) return ask(pic, lot);
+        wanted.set(pic, lot);
+        near.observe(pic);
+      };
+      if (!fromSheet) return live();
+      // From the file the server drew, where it has the lot; else drawn here.
+      fromSheet.then((made) => {
+        const cell = made && made.cells.get(`${lot.part}:${lot.colour}`);
+        if (!cell) return live();
+        if (!drawn.has(key)) {
+          const canvas = document.createElement("canvas");
+          canvas.width = px;
+          canvas.height = px;
+          canvas.setAttribute("aria-hidden", "true");
+          const pen = canvas.getContext("2d");
+          pen.imageSmoothingQuality = "high";
+          pen.drawImage(made.picture, cell[0], cell[1], made.tile, made.tile, 0, 0, px, px);
+          drawn.set(key, canvas);
+        }
+        return place(pic, drawn.get(key));
+      });
     },
     /// The rows asked for so far are gone (the list drawn again): none of
     /// them watched any more, nor waiting its turn. A picture under way is

@@ -2374,7 +2374,11 @@ async function download(response, op, id, asked, as, lang = "en", step = null, f
     response.setHeader("Cache-Control", f ? PICTURE_CACHE : SHARED_CACHE);
     return response.status(200).end(png);
   }
-  return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest }, lang);
+  // The list says where its lots' pictures are drawn already, so the page's
+  // Parts list shows them from that file at once (web/part-pictures.js), and
+  // Build it after it finds the file in the browser's cache.
+  return partsAnswer(response, partsOf(stored, file), base, as,
+    { id, version: shown.n, newest, lot_pictures: lotPicturesPath(id, shown.n, file) }, lang);
 }
 
 /// Which file a version's lot pictures are of: the first 12 hex of its
