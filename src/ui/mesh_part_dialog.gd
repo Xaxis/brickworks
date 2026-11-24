@@ -56,6 +56,9 @@ var _marks: Node3D
 var _turn: float = 0.7
 var _tilt: float = 0.4
 var _reach: float = 160.0
+## The farthest the view goes back: four times the part's size, and 3,000
+## LDU at least.
+var _reach_most: float = 3000.0
 var _centre := Vector3.ZERO
 var _pressed_at := Vector2(-1, -1)
 var _dragged: bool = false
@@ -189,6 +192,9 @@ func _work(change: Callable, frame: bool = false) -> void:
 
 
 func _took(read: MeshPart) -> void:
+	# What is said of a file read is at the panel's top, above the size: on
+	# a phone, scrolled down by the part before, it was out of sight.
+	_scroll.scroll_vertical = 0
 	if read == null or not read.problem.is_empty():
 		_status.text = read.problem if read != null else "That file could not be read."
 		_enable(part != null)
@@ -577,6 +583,10 @@ func _frame_it() -> void:
 		box = box.merge(AABB(Vector3(box.end.x + 10.0, box.position.y, -10.0), Vector3(20, 28, 20)))
 	_centre = box.get_center()
 	_reach = maxf(box.size.length() * 2.0, 60.0)
+	# Its far side in sight at any size it is read at: a file answered in
+	# metres, 1.5 m across, was past a fixed 6,000 LDU and the view was empty.
+	_reach_most = maxf(3000.0, box.size.length() * 4.0)
+	_camera.far = maxf(6000.0, _reach_most + box.size.length())
 	_aim()
 
 
@@ -642,6 +652,7 @@ func _read_as(file_unit: String) -> void:
 		return
 	part.read_as(file_unit)
 	_refresh()
+	_scroll.ensure_control_visible(_status)
 	_frame_it()
 
 
@@ -713,7 +724,7 @@ func _on_view_input(event: InputEvent) -> void:
 			_reach = maxf(20.0, _reach / 1.12)
 			_aim()
 		elif button.button_index == MOUSE_BUTTON_WHEEL_DOWN and button.pressed:
-			_reach = minf(3000.0, _reach * 1.12)
+			_reach = minf(_reach_most, _reach * 1.12)
 			_aim()
 		elif button.button_index == MOUSE_BUTTON_LEFT or button.button_index == MOUSE_BUTTON_RIGHT:
 			if button.pressed:
@@ -728,7 +739,7 @@ func _on_view_input(event: InputEvent) -> void:
 				_pressed_at = Vector2(-1, -1)
 		accept_event()
 	elif event is InputEventMagnifyGesture:
-		_reach = clampf(_reach / (event as InputEventMagnifyGesture).factor, 20.0, 3000.0)
+		_reach = clampf(_reach / (event as InputEventMagnifyGesture).factor, 20.0, _reach_most)
 		_aim()
 		accept_event()
 	elif event is InputEventMouseMotion and _pressed_at.x >= 0.0:

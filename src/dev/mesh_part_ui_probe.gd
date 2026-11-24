@@ -269,13 +269,22 @@ func _unit_asked(elements: Control, own: Control) -> void:
 	_check("it is asked what the file is measured in, and Add to parts waits: \"%s\"" % status.text,
 		ask.is_visible_in_tree() and add.disabled and status.text.contains("What is it measured in?")
 		and asks.size() == 4)
+	# In sight as it comes, though the panel was scrolled down for the part before.
+	var seen: Rect2 = (own.get("_scroll") as Control).get_global_rect()
+	_check("the question and its answers are in sight: %s and %s in %s" % [
+		status.get_global_rect(), ask.get_global_rect(), seen],
+		seen.encloses(status.get_global_rect()) and seen.encloses(ask.get_global_rect()))
 	await _shot("unit_asked")
+	var parts_before: int = _library.parts.size()
 	await _press(asks["m"])
 	await _frames(10)
 	var part: MeshPart = own.get("part")
 	_check("Metres: 1.5 m is refused in words before any of it is made: \"%s\"" % status.text,
 		not ask.is_visible_in_tree() and add.disabled and status.text.contains("at most 400 mm")
-		and _builder.held_part.is_empty())
+		and _library.parts.size() == parts_before)
+	if ask.is_visible_in_tree() or not add.disabled or _library.parts.size() != parts_before:
+		print("    asked %s, Add to parts %s, parts %d then %d" % [ask.is_visible_in_tree(),
+			"off" if add.disabled else "on", parts_before, _library.parts.size()])
 	await _shot("unit_metres_refused")
 	# Answered; the same file read again is asked about again.
 	picker.open_path(path)
