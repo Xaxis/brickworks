@@ -13,8 +13,8 @@
 // accounts, the models' rows, their files — to the real project.
 //
 //   1. A model of six steps, two bricks a step, its steps carried as the
-//      app carries them (SharedPages, by src/dev/share_pages_probe.gd
-//      --write), published and listed by a throwaway owner. Then the same
+//      app carries them (SharedPages: tests/fixtures/flow_models, which
+//      src/dev/flow_models_probe.gd holds to what the app writes), published and listed by a throwaway owner. Then the same
 //      with the two bricks of step 3 red where they were blue... blue where
 //      they were red, published again with a note: version 2, which says
 //      2 parts added and 2 removed in step 3, and that step 3 is the first
@@ -39,18 +39,15 @@
 // after their models are taken down, so nothing is left in the bucket.
 import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { flowModel } from "./flow_models.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, "../..");
 const site = String(args.url || "http://127.0.0.1:8852").replace(/\/+$/, "").replace(/\/app$/, "");
 const out = path.resolve(String(args.out || "shots/versions"));
 mkdirSync(out, { recursive: true });
@@ -74,34 +71,12 @@ const check = (what, ok) => {
 const errors = [];
 
 // --- the two versions, their steps carried -------------------------------
-
-/// Six steps of two 2 x 4 bricks, one on another; [blue] makes step 3's
-/// two blue where they are red.
-function tower(blue) {
-  const lines = [`0 ${NAME}`, "0 Name: versions_tower.ldr", "0 Author: Versions Flow", ""];
-  for (let step = 1; step <= 6; step += 1) {
-    const colour = blue && step === 3 ? 1 : 4;
-    lines.push(`1 ${colour} 0 ${-24 * step} 0 1 0 0 0 1 0 0 0 1 3001.dat`);
-    lines.push(`1 ${colour} 80 ${-24 * step} 0 1 0 0 0 1 0 0 0 1 3001.dat`);
-    lines.push("0 STEP");
-  }
-  return `${lines.join("\r\n")}\r\n`;
-}
-const models = path.join(out, "models");
-mkdirSync(models, { recursive: true });
-const files = [];
-for (const [n, blue] of [[1, false], [2, true]]) {
-  writeFileSync(path.join(models, `v${n}_bare.ldr`), tower(blue));
-  files.push(path.join(models, `v${n}_bare.ldr`), path.join(models, `v${n}.ldr`));
-}
-const made = spawnSync("godot", ["--headless", "--path", root, "--script", "src/dev/share_pages_probe.gd",
-  "--", "--write", ...files], { encoding: "utf8", timeout: 600000,
-  env: { ...process.env, XDG_DATA_HOME: process.env.XDG_DATA_HOME || path.join(root, ".scratch-data") } });
-const v1 = readFileSync(path.join(models, "v1.ldr"), "utf8");
-const v2 = readFileSync(path.join(models, "v2.ldr"), "utf8");
-if (!v1.includes("0 !BRICKWORKS PAGES ") || !v2.includes("0 !BRICKWORKS PAGES ")) {
-  throw new Error(`the steps were not carried: ${String(made.stderr || "").slice(-300)}`);
-}
+//
+// Six steps of two 2 x 4 bricks, one on another, step 3's two blue in
+// version 2 where they are red (tools/web/flow_models.mjs: no godot, so a
+// tree never imported runs it).
+const v1 = flowModel("versions_v1").text;
+const v2 = flowModel("versions_v2").text;
 
 // --- helpers ---------------------------------------------------------------
 

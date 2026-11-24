@@ -169,6 +169,16 @@ const PIN_KEY := "~pin:"
 const META_MS := 250
 var _meta_at: int = 0
 var _parts_sent: Dictionary = {}
+## A part made in the app by an older one (whose names two people's parts
+## can share) goes to the session under a name of its text
+## (CustomParts.carried_name) and comes back to its own: each side reads the
+## session's names as its own parts (moulds4). Up to then a joiner who had
+## another part of the same name drew theirs as the joiner's, and a save
+## wrote the joiner's over it. Name here -> the session's, and back; an
+## older app's own name for its part, other than the one here, -> the name
+## it was given here.
+var _wire_of: Dictionary = {}
+var _local_of: Dictionary = {}
 
 ## The highest cid put down of each copy: a send taken twice (its answer lost
 ## on the way back, sent again) is put down once, the same everywhere.
@@ -469,7 +479,10 @@ func _begin_own() -> Dictionary:
 		var state: Array = state_of(brick)
 		_shown[uid] = state
 		_confirmed[uid] = state
-		bricks.append([uid] + state)
+		# By the session's name for its part (_wire_name).
+		var sent: Array = state.duplicate()
+		sent[0] = _wire_name(str(state[0]))
+		bricks.append([uid] + sent)
 	var meta: Dictionary = _meta_now()
 	for key: String in meta:
 		_shown[key] = meta[key]
@@ -692,7 +705,8 @@ func _restore_pending() -> void:
 	for item: Variant in kept.get("ops", []):
 		if not item is Dictionary or not (item as Dictionary).get("changes") is Dictionary:
 			continue
-		var changes: Dictionary = (item as Dictionary)["changes"]
+		# Kept by the session's names (_keep_pending): read as here.
+		var changes: Dictionary = _local_changes((item as Dictionary)["changes"])
 		_pending.append({"cid": int(item.get("cid", 0)), "changes": changes, "at": Time.get_ticks_msec(),
 			"queued": _unix_ms()})
 		for uid: String in changes:
@@ -812,6 +826,8 @@ func _reset() -> void:
 	_page_poll = -1
 	_mine_at.clear()
 	_parts_sent.clear()
+	_wire_of.clear()
+	_local_of.clear()
 	_last_cid.clear()
 	messages.clear()
 	chat_words = ""
@@ -888,6 +904,66 @@ static func _as_state(given: Variant) -> Variant:
 	return [s[0], int(s[1]), numbers_of(at), s[3], s[4], int(s[5])]
 
 
+## The session's name for the part [param part] here ([member _wire_of]).
+func _wire_name(part: String) -> String:
+	if not part.begins_with("bw-") or builder == null or builder.library == null:
+		return part
+	if not _wire_of.has(part):
+		var wire: String = CustomParts.carried_name(builder.library, part)
+		_wire_of[part] = wire
+		if wire != part:
+			_local_of[wire] = part
+	return _wire_of[part]
+
+
+## The part here of the session's name [param wire] ([member _local_of]).
+func _local_name(wire: String) -> String:
+	if _local_of.has(wire):
+		return _local_of[wire]
+	if not wire.begins_with("bw-") or builder == null or builder.library == null:
+		return wire
+	var part: String = CustomParts.local_name(builder.library, wire)
+	if part != wire:
+		_local_of[wire] = part
+	return part
+
+
+## [param changes] as the session has them: each part's state by the
+## session's name for its part. A copy: the changes kept here stay as here.
+func _wire_changes(changes: Dictionary) -> Dictionary:
+	var out: Dictionary = changes
+	for uid: String in changes:
+		var state: Variant = changes[uid]
+		if state is Array and not uid.begins_with("~") and not (state as Array).is_empty() \
+				and (state as Array)[0] is String:
+			var wire: String = _wire_name((state as Array)[0])
+			if wire != (state as Array)[0]:
+				if is_same(out, changes):
+					out = changes.duplicate()
+				var given: Array = (state as Array).duplicate()
+				given[0] = wire
+				out[uid] = given
+	return out
+
+
+## [param changes] from the session as here: each part's state by the name
+## of its part here. A copy.
+func _local_changes(changes: Dictionary) -> Dictionary:
+	var out: Dictionary = changes
+	for uid: String in changes:
+		var state: Variant = changes[uid]
+		if state is Array and not uid.begins_with("~") and not (state as Array).is_empty() \
+				and (state as Array)[0] is String:
+			var part: String = _local_name((state as Array)[0])
+			if part != (state as Array)[0]:
+				if is_same(out, changes):
+					out = changes.duplicate()
+				var given: Array = (state as Array).duplicate()
+				given[0] = part
+				out[uid] = given
+	return out
+
+
 func _map(uid: String, brick_id: int) -> void:
 	_uids[brick_id] = uid
 	_ids[uid] = brick_id
@@ -907,6 +983,11 @@ static func _place_key(at: Vector3) -> String:
 ## file carries beyond its parts (sub-models, motions, the floor) is the
 ## file's. Then each set exactly as the owner had it, and the lift too.
 func _lay_snapshot(snapshot: Dictionary) -> void:
+	# A part of the model's that an older app named as one of this side's
+	# opened here under a name of its own (ModelStore.renamed): the session's
+	# name for it is that one here.
+	for old: String in store.renamed:
+		_local_of[old] = store.renamed[old]
 	var lift_here: float = store.lift().y
 	var lift_there: float = float(snapshot.get("lift")) \
 		if TogetherWords.number(snapshot.get("lift")) else 0.0
@@ -945,6 +1026,8 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 		var state: Variant = _as_state((entry as Array).slice(1))
 		if state == null:
 			continue
+		# Its part by its name here (_local_name).
+		state[0] = _local_name(str(state[0]))
 		var at: Transform3D = transform_of(state[2])
 		var key: String = "%s|%d|%s" % [state[0], state[1], state[4]]
 		var best: int = 0
@@ -1145,8 +1228,10 @@ func _diff(touched: Variant) -> Dictionary:
 			if not _parts_sent.has(part) and not builder.library.custom_source(part).is_empty():
 				_parts_sent[part] = true
 				made.append(part)
+	# Under the session's name for it (_wire_name), its files named so.
 	for part: String in made:
-		changes[MADE_PART + part] = var_to_str(CustomParts.sources_for(builder.library, [part]))
+		var carried: Array = CustomParts.carried_files(builder.library, part)
+		changes[MADE_PART + _wire_name(part)] = var_to_str(carried[1])
 	# And what the model is besides its parts, when it may have changed.
 	if touched == null or Time.get_ticks_msec() - _meta_at > META_MS:
 		_meta_at = Time.get_ticks_msec()
@@ -1269,7 +1354,7 @@ func _flush() -> void:
 		var size: int = JSON.stringify(op["changes"]).length()
 		if not going.is_empty() and (talk or chars + size > SEND_CHARS):
 			break
-		going.append({"cid": op["cid"], "changes": op["changes"]})
+		going.append({"cid": op["cid"], "changes": _wire_changes(op["changes"])})
 		chars += size
 		if talk:
 			break
@@ -1463,7 +1548,7 @@ func _exit_tree() -> void:
 		return
 	var ops: Array = []
 	for op: Dictionary in _pending:
-		ops.append({"cid": op["cid"], "changes": op["changes"]})
+		ops.append({"cid": op["cid"], "changes": _wire_changes(op["changes"])})
 	var began: int = Time.get_ticks_msec()
 	var code: int = _send_now(JSON.stringify({"s": _token, "client": _client, "ops": ops}, "", false, true))
 	print("Build together: %d change%s on their way sent as the app quit: %s in %d ms" % [ops.size(),
@@ -1590,6 +1675,8 @@ func _take(ops: Array) -> void:
 		for key: String in changes:
 			if key.begins_with(MADE_PART):
 				_add_made(key.substr(MADE_PART.length()), str(changes[key]))
+		# Each part by its name here (_local_name), this side's own too.
+		changes = _local_changes(changes)
 		if from == _client:
 			var cid: int = int(op.get("cid", -1))
 			while not _pending.is_empty() and int((_pending[0] as Dictionary)["cid"]) <= cid:
@@ -2114,15 +2201,40 @@ func _broken_from(words: String) -> void:
 ## The part made in the app [param part] on the other side: built here from
 ## its files, in memory alone. Only the part its key names, and only from
 ## files named as a part's are (TogetherWords.made_part): never one of the
-## library's own, and never a file whose name the other side chose.
+## library's own, and never a file whose name the other side chose. A part
+## of this side's by the session's name for it ([method _local_name]) is
+## this side's. An older app sends its own name for its part: where this
+## side has another part of that name, theirs is built under a name of its
+## own (CustomParts.other_name), and the session's states of that name are
+## read as it.
 func _add_made(part: String, words: String) -> void:
-	if not builder.library.parts.has(part):
+	var library: PartLibrary = builder.library
+	# An older app's own name for its part, one this side has a part of.
+	var older: bool = not CustomParts.names_its_text(part) and library.parts.has(part) \
+		and library.parts[part].custom
+	if older or not library.parts.has(_local_name(part)):
 		var dropped := PackedStringArray()
 		var files: Dictionary = TogetherWords.made_part(part, TogetherWords.dictionary(words,
 			"made part"), dropped)
 		TogetherWords.left_out_each("made part %s" % part.left(80), dropped)
-		if not files.is_empty():
-			CustomParts.add(builder.library, files[part + ".dat"], part, false, files)
+		if files.is_empty():
+			pass
+		elif not library.parts.has(part):
+			CustomParts.add(library, files[part + ".dat"], part, false, files)
+		else:
+			var bytes_of: Dictionary = {}
+			for name: String in files:
+				if files[name] is PackedByteArray:
+					bytes_of[name.to_lower()] = files[name]
+			var other: Dictionary = CustomParts.other_name(library, part, files[part + ".dat"], bytes_of)
+			var own: String = other["part"]
+			if own.is_empty():
+				_local_of.erase(part)
+			else:
+				if not library.parts.has(own):
+					var theirs: Dictionary = CustomParts.files_renamed(files, {part: own}, other["pictures"])
+					CustomParts.add(library, theirs[own + ".dat"], own, false, theirs)
+				_local_of[part] = own
 	for uid: String in _awaiting.keys():
 		_put(uid, _awaiting[uid])
 
@@ -3061,9 +3173,11 @@ func _forget_place() -> void:
 func _keep_pending() -> void:
 	if not keeps_place or _token.is_empty():
 		return
+	# By the session's names (_wire_changes): the page sends them as it goes,
+	# and a restore reads them back as here (_restore_pending).
 	var ops: Array = []
 	for op: Dictionary in _pending:
-		ops.append({"cid": op["cid"], "changes": op["changes"]})
+		ops.append({"cid": op["cid"], "changes": _wire_changes(op["changes"])})
 	if ops.is_empty():
 		_forget_pending()
 		return

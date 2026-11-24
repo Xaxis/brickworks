@@ -133,8 +133,11 @@ esac
 # STUB_AB_THERE's numbers (50 when none is left), failing over the bar.
 P=$1 WT=$2 OUT=$3; shift 3
 S=$RELEASE_OUT
-# The checks it has, as the real one's table names them for train.sh stage.
+# The checks it has, as the real one's table names them for train.sh stage,
+# and those that run the engine from the tree, as the real one says them.
+ENGINE_CHECKS="together"
 declare -A CMD=(
+  [together]="tools/web/together_flow.mjs --url=$P"
   [io]="tools/web/io_flow.mjs --url=$P/app"
   [gallery]="tools/web/gallery_flow.mjs --url=$P"
   [people]="tools/web/people_flow.mjs --url=$P"
@@ -1017,6 +1020,65 @@ def test_the_web_lane_is_refused_where_an_app_file_differs_and_its_merge_is_chec
         assert y.spec("t-m3", "result") == ("stopped: the web lane, but app files differ from t-m1's export "
                                             "(made from %s): src/app.gd: stage it again with --full" % y.base[:9]), y.logs()
         assert not (y.ro / "promoted").exists() and not (y.ro / "t-m3_lead.out").exists()
+    finally:
+        y.stop()
+
+
+def _together_change(y: Yard, name: str) -> None:
+    """A branch NAME from main that changes together's flow alone: no app
+    file, and lean.py adds together, which runs the engine from the tree."""
+    y.git(y.r, "checkout", "-q", "-b", name, "main")
+    y.put("tools/web/together_flow.mjs", "await fetch(`${site}/api/together`);\n")
+    y.git(y.r, "add", "-A")
+    y.git(y.r, "commit", "-q", "-m", "together's flow")
+    y.git(y.r, "checkout", "-q", "main")
+
+
+def test_the_web_lane_never_names_a_check_that_runs_the_engine_from_its_tree(tmp_path):
+    """rel-m331's comments check made its models with godot from the
+    release's tree, which the web lane never imports: godot wrote nothing,
+    and the flow died on ENOENT at the ship (2026-11-24). together's desktop
+    half needs the engine as it runs, so the web lane refuses it named, at
+    staging and at a reship, and leaves it out, saying so, where lean.py adds
+    it, at staging and again once merged; the full lane runs it."""
+    y = Yard(tmp_path)
+    why = "it runs the desktop app from the release's tree, which the web lane never imports"
+    try:
+        assert _keep(y, "t-m1", y.base, tmp_path / "export").returncode == 0
+        _together_change(y, "webtogether")
+        for asked in ((), ("--web",), ("--only-checks",)):
+            refused = y.train("stage", "t-m2", "webtogether", "--checks", "io together", *asked)
+            assert refused.returncode == 2, refused.stdout + refused.stderr
+            assert ("train: the web lane cannot run together: %s. Stage it with --full, or name the checks without it\n"
+                    % why) in refused.stdout, refused.stdout
+            assert not (y.ro / "t-m2.train").exists()
+        full = y.train("stage", "t-m2", "webtogether", "--checks", "io together", "--full", "--plan")
+        assert full.returncode == 0 and "  checks: io together (and site, frames)\n" in full.stdout, full.stdout
+        assert "left out" not in full.stdout, full.stdout
+
+        plan = y.train("stage", "t-m2", "webtogether", "--checks", "io", "--plan")
+        assert plan.returncode == 0 and "  lane: web: " in plan.stdout, plan.stdout
+        assert "  checks: io (and site, frames)\n" in plan.stdout and "; adds no check to those named\n" in plan.stdout
+        assert "  left out: together: %s (--full runs it)\n" % why in plan.stdout, plan.stdout
+        staged = y.train("stage", "t-m2", "webtogether", "--checks", "io", STUB_FAILS="io")
+        assert staged.returncode == 0 and "  left out: together: %s" % why in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "checks") == "io"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert "held, failed on the preview: io" in y.spec("t-m2", "result"), y.logs()
+        # Chosen again once merged (lean_now), and left out again: never run.
+        assert "t-m2: leaves out together: %s (--full runs it)" % why in y.text("t-m2_train.out"), y.logs()
+        assert y.text("t-m2_pv_args").split()[2:] == ["io", "site"], y.logs()
+        assert "together" not in y.text("check_times"), y.text("check_times")
+
+        refused = y.train("reship", "t-m2", "together")
+        assert refused.returncode == 2 and "train: the web lane cannot run together: %s." % why in refused.stdout, \
+            refused.stdout
+        again = y.train("reship", "t-m2", STUB_FAILS="")
+        assert again.returncode == 0 and ": io (and site, frames)" in again.stdout, again.stdout
+        assert y.spec("t-m2", "reship") == "io"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert "together" not in y.text("check_times"), y.text("check_times")
     finally:
         y.stop()
 

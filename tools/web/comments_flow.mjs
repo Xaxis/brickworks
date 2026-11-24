@@ -63,19 +63,16 @@
 // Pictures in --out.
 import { clickStill, launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { answerAsks } from "./asks.mjs";
+import { flowModel } from "./flow_models.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
   return [k, rest.join("=") || true];
 }));
-const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, "../..");
 const site = String(args.url || "http://127.0.0.1:9040").replace(/\/+$/, "").replace(/\/app$/, "");
 const out = path.resolve(String(args.out || "shots/comments"));
 mkdirSync(out, { recursive: true });
@@ -109,32 +106,12 @@ const check = (what, ok) => {
 const errors = [];
 
 // --- the model: six steps of two bricks, its steps carried ----------------
-
-function tower(blue) {
-  const lines = [`0 ${NAME}`, "0 Name: comments_tower.ldr", "0 Author: Comments Flow", ""];
-  for (let step = 1; step <= 6; step += 1) {
-    const colour = blue && step === 3 ? 1 : 4;
-    lines.push(`1 ${colour} 0 ${-24 * step} 0 1 0 0 0 1 0 0 0 1 3001.dat`);
-    lines.push(`1 ${colour} 80 ${-24 * step} 0 1 0 0 0 1 0 0 0 1 3001.dat`);
-    lines.push("0 STEP");
-  }
-  return `${lines.join("\r\n")}\r\n0 // comments flow ${rand}\r\n`;
-}
-const models = path.join(out, "models");
-mkdirSync(models, { recursive: true });
-const files = [];
-for (const [n, blue] of [[1, false], [2, true]]) {
-  writeFileSync(path.join(models, `v${n}_bare.ldr`), tower(blue));
-  files.push(path.join(models, `v${n}_bare.ldr`), path.join(models, `v${n}.ldr`));
-}
-const made = spawnSync("godot", ["--headless", "--path", root, "--script", "src/dev/share_pages_probe.gd",
-  "--", "--write", ...files], { encoding: "utf8", timeout: 600000,
-  env: { ...process.env, XDG_DATA_HOME: process.env.XDG_DATA_HOME || path.join(root, ".scratch-data") } });
-const v1 = readFileSync(path.join(models, "v1.ldr"), "utf8");
-const v2 = readFileSync(path.join(models, "v2.ldr"), "utf8");
-if (!v1.includes("0 !BRICKWORKS PAGES ") || !v2.includes("0 !BRICKWORKS PAGES ")) {
-  throw new Error(`the steps were not carried: ${String(made.stderr || "").slice(-300)}`);
-}
+//
+// Step 3 blue in version 2, each with its steps as the Share panel writes
+// them, and this run's token in a comment line at its end, before them
+// (tools/web/flow_models.mjs: no godot, so a tree never imported runs it).
+const v1 = flowModel("comments_v1", rand).text;
+const v2 = flowModel("comments_v2", rand).text;
 
 // --- helpers ---------------------------------------------------------------
 

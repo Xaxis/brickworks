@@ -533,7 +533,7 @@
       "kind": "lib",
       "label": "made parts in the library and in files",
       "entry": "src/parts/custom_parts.gd",
-      "reach": "godot --headless --path . --script src/dev/element_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/element_probe.gd; tools/probe.sh made_carry_probe -- --carry-out=DIR   (a made part placed in a set's .mpd, a bare .ldr, the same with CRLF ends and a new model: Save, Export and the autosave each carry its 0 FILE, and a copy to the clipboard carries it into a library that never saw it; every part of the file read back in its colour)",
       "area": "elements"
     },
     {
@@ -7164,6 +7164,27 @@
       "entry": "src/dev/source_probe.gd",
       "reach": "tools/probe.sh source_probe [OUT]  (photoreal14, docs/RENDERING.md 5r: File, Render..., Best, the Product look, each table under Background: on by default since photoreal16 (StudioRender.PRODUCT_SOURCE at SOURCE_LEVEL 128, docs/RENDERING.md 5t): a bright window behind the model that glossy tops mirror, the table's own key nearly gone, the table lit by it but not mirroring it (SOURCE_SPILL 0) (RenderSettings.source and source_*, SOURCE_KEY 0.05, _source_rows; path_tracer.glsl source_light, source_pick, lit_mask: a way to it passes the sweep), rising with the camera so a flat top mirrors its middle; none in the tent; the car on each table at Best within 2.9 s; photoreal_probe --without=source draws the parent's pictures byte for byte; tools/photoreal/reflect_measure.py measures each close-up's top against its side and its edges' lines, photograph against render)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "parts from 3D files",
+      "entry": "src/parts/mesh_part.gd",
+      "reach": "tools/probe.sh mesh_part_probe -- --files=bench/results/moulds-2026-11-23/files --write=DIR, then python3 tools/own_parts_check.py DIR   (MeshPart: STL and OBJ read at the edge, refused in a sentence when not closed, flat or past 120,000 triangles; simplified to 9,000 within 1% of its size; sized, upright, centred, on the 2 LDU lattice; stud, anti-stud, bar, bar hole, pin hole put where pointed; hair seated on 3901's socket and worn as 3901; carried as 0 FILE, LDraw read back by tools/ldraw; a NaN or endless corner refused, the file's units asked outside 4 to 400 mm and never read as metres unsaid, a part over 400 mm refused before any work, the forge's cells bounded by PartForge.MOST_CELLS, a file name or title never an LDraw line of its own)",
+      "area": "minifig"
+    },
+    {
+      "kind": "ui",
+      "label": "own part from a 3D file",
+      "entry": "src/ui/mesh_part_dialog.gd",
+      "reach": "tools/probe.sh mesh_part_ui_probe -- --pictures=DIR, and PROBE_SIZE=390x844 for a phone by touch   (by hand: Make a part…, From a 3D file…; M, Headgear, Your own…)",
+      "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "flow models probe",
+      "entry": "src/dev/flow_models_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/flow_models_probe.gd   (the browser flows' models in tests/fixtures/flow_models, each what the app writes and finds today whatever the run's token; -- --write writes them again, to commit)",
+      "area": "web"
     }
   ]
 }

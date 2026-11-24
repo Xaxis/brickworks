@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, cli:figure prints and moulds in a browser, cli:held items probe -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, lib:parts from 3D files, ui:own part from a 3D file, cli:figure prints and moulds in a browser, cli:held items probe -->
 
 ## Sub-features
 
@@ -272,8 +272,9 @@ the model, and the design assistant doing the same with `add_minifig`.
   (`Rays.Grid`) and the share under 1 mm. Picking is `Rays.nearest`. The file
   (`text`) is the triangles on the mesh's 64ths of an LDU, the original's
   connectors as `0 !BRICKWORKS CONNECTOR` lines, its creases, and `0 // Moulded
-  by Brickworks: from=<part>`; named `bw-<part>-m<tag>` from an MD5 of its
-  corners, built by `PartForge` (`CustomParts.add`), filed under Custom. On a
+  by Brickworks: from=<part>`; named `bw-<part>-m-<tag>`, a tag of its whole
+  text, its title with it (`Mould.named`, `CustomParts.named`), built by
+  `PartForge` (`CustomParts.add`), filed under Custom. On a
   figure it stands where its original stands (`PartPrints.bases`).
 - `mould maker` (`src/minifig/mould_editor.gd`, `MouldEditor`): "Make a mould…"
   beside the search in the Headgear, Headgear extra, Neck, Back, In right hand and
@@ -286,6 +287,75 @@ the model, and the design assistant doing the same with `add_minifig`.
   with the right button to turn it, the wheel to come closer; a ring shows the
   brush; locked corners are tinted blue and a faint head shows the fit. Save mould
   builds it ("Building the mould…" said first) and puts it on the figure.
+- `parts from 3D files` (`src/parts/mesh_part.gd`, `MeshPart`, a Later class):
+  an STL (binary or ASCII; Z up, turned upright) or an OBJ read with
+  `MeshFile` and refused in a sentence when it is not closed (an edge used an
+  odd number of times), has no size, or is past 120,000 triangles. Past 9,000
+  it is simplified (quadric edge collapse) and kept only if no point moved
+  more than 1% of its longest side (`HOLDS_SHARE`, a Hausdorff bound both
+  ways). A corner that is no number (NaN, endless; in text a "nan", "inf",
+  "Infinity" or "nan(ind)", which `String.to_float` reads as 0, so each word
+  is `is_valid_float` first) or further than `MeshFile.FARTHEST` (a binary
+  1e30) is refused in `MeshFile` in its own sentence, the edge every 3D file
+  comes in by. The file's size is judged before a byte is read
+  (`MeshFilePicker.size_of` on the desktop, `File.size` in the page): over
+  `MeshPart.MOST_BYTES` (32 MiB) for a part, `MeshFile.most_bytes()` for
+  Brickify (96 MiB, `WEB_MAX_BYTES` 32 MiB in a browser), refused with
+  `MeshFile.too_large`'s sentence. A browser reads it as bytes
+  (`readAsArrayBuffer`, `JavaScriptBridge.js_buffer_to_packed_byte_array`),
+  never as base64 in JSON: a 100 MB STL read that way grew the tab past
+  6 GB (mouldreview2). Sized by its longest side in LDU, mm or
+  studs: the file read as mm, and asked (`unit_unsure`, Millimetres /
+  Centimetres / Metres / Inches, `read_as`) when that is under 4 or over
+  400 mm, never read as metres unsaid; over `MOST_MM` (400 mm) it is refused
+  before any work (`size_problem`). Upright, centred, its height on the
+  2 LDU lattice. Its file's name and its title reach the part's text only
+  through `name_from` (no control character) and `_token`; the title follows
+  a lead of ours ("0 Custom Shape …"), never the line's first word.
+  `PartForge` builds a part's cover at 2 LDU always: densely, as
+  tools/occupancy.py does, up to `DENSE_MOST` cells (`MADE_DENSE_MOST` for a
+  made part, whose text has `0 // Imported by Brickworks:`), so no real
+  part's cover changes; past that from its surface (`_surface_cover`, a run
+  of each column between the faces it crosses, `MOST_COLUMNS`), so a part's
+  cost follows its surface, not its box: a 400 mm ball in about 6 s.
+  `cover_probe` holds the dense path to occupancy.py on 65421 and 65421p01
+  and times the made ones. `put(kind, hit)`: stud (drawn with stud.dat), anti-stud,
+  bar (along a stem 10 LDU or thinner, else a drawn 4-4cyli), bar hole, pin
+  hole; `make_hair()` stands it up and faces it (of the six ways up, each
+  seated in its deepest cave and grown up to 1.4x until the head fits, the
+  one that covers the head's sides, hangs below its top and lets the head
+  through least; then a one-sided hang to the back, else its open side to
+  the front), sizes it like a hair piece and seats its crown on the head's
+  stud (3901's socket, worn as 3901: `0 // Imported by Brickworks:
+  from=3901`), drawing 3901's tube (stud4.dat) and plastic up into the crown.
+  Bodies holds it by the head's stud as it holds 3901 ("studs", not
+  "lodged"): `Bodies._takes_stud` takes a stud into a tube the part states
+  facing it, since a part of one's own has no exact shape and its sockets
+  are looked for only at its bottom (a ponytail's tail end). Written as an
+  unofficial LDraw part (`text`), kept in user://custom_parts/ and carried
+  as `0 FILE` by every writer: a model of the app's own (`_text_into`), and
+  someone else's file patched or written (`SourceFile.parts_carried_into`
+  after `_source_written`, which also writes back with the text the model
+  draws a part's section that is cut short or another's), so Save, Export,
+  the autosave, a link and a sub-model's export (cut from Export's text)
+  carry it. A made part's text is never in the lines that place parts:
+  `Carry.as_ldraw` is placements only (what the bin, palettes, MCP and every
+  other reader sees); a kept sub-assembly keeps its made parts in a table of
+  its own (`made`, `Carry.made_text`; read by `Carry.from_kept` /
+  `take_made`), and the system clipboard gets a whole file
+  (`Carry.as_file`). Text coming in (a paste, a kept entry, a file put into
+  the open model) never redefines a part this window has
+  (`CustomParts.take_into(…, redefine = false)`, `_kept_as_built`).
+  `made_carry_probe` checks each. `tools/own_parts_check.py DIR` reads what
+  `mesh_part_probe --write=DIR` kept with tools/ldraw: every line, BFC,
+  no flat triangle, references found, 0 FILE sections, connectors.
+- `own part from a 3D file` (`src/ui/mesh_part_dialog.gd`, `MeshPartDialog`):
+  **Make a part…**, **From a 3D file…** (and **Your own…** in the figure
+  builder's Headgear slot, as hair): the file chooser (the browser's, or
+  the desktop's own), the part beside a 1 x 1 brick (a head for hair), size
+  and unit, Turn / Tip forward / Tip sideways, This is hair, one tool per
+  connector and Take off, a click on the part puts it; Add to parts (into
+  the hand, under Custom) or Wear it. Below 760 px wide the view is on top.
 
 ## How to reach it
 
@@ -300,7 +370,19 @@ On the web the builder's parts come over the wire like any other; the default
 figure's are in the pack (`tools/web_pack.py` ESSENTIAL).
 
 Prints: M, a Head, Torso, Hips or Legs slot, **Draw a print…**. Moulds: M, a
-Headgear, Neck, Back or hand slot, **Make a mould…**.
+Headgear, Neck, Back or hand slot, **Make a mould…**. Hair from a file: M,
+Headgear, **Your own…**; any part from a file: **Make a part…**, **From a 3D
+file…**.
+
+```sh
+tools/probe.sh mesh_part_probe -- --files=DIR --write=OUT   # DIR holds hair-ponytail/
+tools/probe.sh made_carry_probe -- --carry-out=DIR          # each writer's file kept in DIR
+python3 tools/own_parts_check.py OUT
+tools/probe.sh cover_probe                                  # surface cover = cell by cell; 65421 as the catalogue
+tools/probe.sh cover_probe -- --cover-size=ball400          # one made part timed, its peak memory said
+tools/probe.sh mesh_part_ui_probe -- --pictures=DIR
+PROBE_SIZE=390x844 tools/probe.sh mesh_part_ui_probe -- --pictures=DIR
+```
 
 ## How to check it
 

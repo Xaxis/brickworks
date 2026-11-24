@@ -550,7 +550,10 @@ func _add_polygon(points: PackedFloat64Array, color: int, reverse: bool,
 
 func _add_triangle(a: PackedFloat64Array, b: PackedFloat64Array, c: PackedFloat64Array,
 		color: int, two_sided: bool) -> void:
-	if _length(_cross(_sub(b, a), _sub(c, a))) * 0.5 <= 1e-9:
+	# Not "<= 1e-9" alone: a corner that is no number (a file's "nan") makes
+	# the area NaN, which compares false either way, and it was drawn.
+	var area: float = _length(_cross(_sub(b, a), _sub(c, a))) * 0.5
+	if not (area > 1e-9) or not is_finite(area):
 		return
 	_tri.append_array(a)
 	_tri.append_array(b)
@@ -1534,6 +1537,52 @@ class Grid extends RefCounted:
 		return out
 
 
+## The most cells a part's box may hold, at [constant CELL] a side, for its
+## cover to be worked out cell by cell as the library's own pipeline
+## (occupancy.py) works out every part's: [method _voxelise] and what follows
+## it, ported from there. Every array that pipeline keeps is the box's size,
+## so it costs the box's volume, a part's size cubed: a million cells were
+## 3.7 s here (moulds2), a part 200 mm across is 15.6 million, 41 s and
+## 2.2 GB, and one 400 mm across went past 16 GB (mouldreview). The largest
+## part any of the OMR's files carries, 6286-1's hull u9499p01c01 (478 x 482
+## x 107 LDU), is 3,194,400 cells and 42112-1's drum 2,197,000: under this,
+## each is covered as the library covers its own copy. moulds2 covered a part
+## past 1,048,576 cells at a coarser grain, and 42112-1's drum lost its four
+## sockets, an axle joiner its joint and a 27-part group its hold on the
+## truck (mouldreview2).
+const DENSE_MOST := 1 << 22
+## [constant DENSE_MOST] for a part made here from a 3D file (its text says
+## so: PartPrints.IMPORTED_BY), which a person waits for as it is made: a
+## million cells are a few seconds, and past them its surface is quicker
+## ([method _surface_cover]).
+const MADE_DENSE_MOST := 1 << 20
+## The most columns, [constant CELL] square in plan, a cover from a part's
+## surface is worked out in. A part 400 mm across (MeshPart.MOST_MM, the most
+## one made here may be) stands on 250,000 of them. Past it, which only a file
+## made so can be, a column is a whole number of cells wide.
+const MOST_COLUMNS := 1 << 20
+## How far from its origin a part's corners may be, LDU: 12 m. A cover's
+## boxes are kept in cells as 16-bit numbers ([method encode]), which reach
+## 65,534 LDU either way, and no part is so big.
+const FARTHEST := 30000.0
+
+
+## How many cells of [constant CELL] the box from [param lo] to [param hi]
+## (LDU, the app's axes) holds, as [method _voxelise] lays its grid over it.
+## A float: a box 24 m across is 10^12 of them.
+static func box_cells(lo: PackedFloat64Array, hi: PackedFloat64Array) -> float:
+	var out: float = 1.0
+	for n: int in 3:
+		out *= maxf(1.0, ceilf(hi[n] / CELL - 1e-9) - floorf(lo[n] / CELL + 1e-9))
+	return out
+
+
+## The most cells a part of [param text] is covered cell by cell in
+## ([constant DENSE_MOST]); past them, from its surface.
+static func dense_most(text: String) -> int:
+	return MADE_DENSE_MOST if text.contains(PartPrints.IMPORTED_BY) else DENSE_MOST
+
+
 ## occupancy.TIE: how far a column's ray is moved off its cell's middle to
 ## tell which side of a face the middle is on, LDU.
 const TIE := 1.3e-4
@@ -1697,6 +1746,623 @@ static func _stab(app: PackedFloat64Array, origin: Vector3i, shape: Vector3i, dx
 			previous = height
 			started = true
 	return [bits, touchy]
+
+
+# -- a big part's cover, from its surface ---------------------------------------
+
+
+## The columns a cover from a part's surface is worked out in: [member wide]
+## cells square in plan, from column [member ox], [member oz] (counted in
+## columns) for [member sx] by [member sz] of them, and from cell [member oy]
+## up for [member sy] cells, as [method _voxelise] lays its grid.
+class Columns extends RefCounted:
+	var wide: int = 1
+	var ox: int = 0
+	var oz: int = 0
+	var sx: int = 1
+	var sz: int = 1
+	var oy: int = 0
+	var sy: int = 1
+
+	func _init(lo: PackedFloat64Array, hi: PackedFloat64Array, grain: int) -> void:
+		wide = grain
+		var side: float = CELL * grain
+		ox = int(floor(lo[0] / side + 1e-9))
+		oz = int(floor(lo[2] / side + 1e-9))
+		sx = maxi(1, int(ceil(hi[0] / side - 1e-9)) - ox)
+		sz = maxi(1, int(ceil(hi[2] / side - 1e-9)) - oz)
+		oy = int(floor(lo[1] / CELL + 1e-9))
+		sy = maxi(1, int(ceil(hi[1] / CELL - 1e-9)) - oy)
+
+
+## A part's cover from its surface, at [constant CELL] as every cover is, for
+## a part whose box holds more cells than [method dense_most] allows. It costs
+## the part's columns in plan and the faces that cross them, never its box's
+## volume: no array here is the size of the box. A cube 400 mm across is
+## 250,000 columns and one run up each, where cell by cell it is 125 million
+## cells and past 16 GB.
+##
+## Up each column a ray is crossed by the faces as [method _stab] crosses
+## them, and the cells between two crossings that the faces' winding says
+## are inside are a run, [y0, y1) in whole cells. The columns a ray passes an
+## edge in plan at are stabbed again a hair each way and voted, as [method
+## _voxelise] votes, cell by cell in those columns alone. Then the studs the
+## part states are taken out ([method _remove_studs]) and its holes bored
+## (as [method _fill_cavities] clears them), the few cells each reaches.
+## Not done: a layer's enclosed voids filled ([method _fill_holes]), which
+## looks at every cell of the box a layer at a time and is the volume this is
+## to keep clear of (so a cup is open, and holds what is put in it); a wide
+## bore seen through ([method _clear_bores]); and the sockets under it
+## ([method _bottom_sockets]): the connectors it states are its joints, as
+## they are any part's. Its boxes: [method _run_boxes].
+func _surface_cover(result: Result, found: Array) -> void:
+	var raw: Array = _surface_runs(result.bounds_min, result.bounds_max)
+	var plan: Columns = raw[0]
+	var runs: Dictionary = raw[1]
+	var grain: int = plan.wide
+	if grain == 1:
+		var gone: Dictionary = {}
+		_studs_out(plan, found, gone)
+		_holes_out(plan, _holes(found), gone)
+		_cells_out(plan, runs, gone)
+	var cells: int = 0
+	for column: int in runs:
+		var column_runs: PackedInt32Array = runs[column]
+		for n: int in range(0, column_runs.size(), 2):
+			cells += column_runs[n + 1] - column_runs[n]
+	result.cells = cells * grain * grain
+	result.boxes = _run_boxes(plan, runs)
+
+
+## The part's cells as [method _voxelise] finds them, as runs: [the columns
+## (a [Columns] over the box from [param lo] to [param hi], LDU, the app's
+## axes), the runs up them (column -> [y0, y1, ...])]. The columns are
+## [constant CELL] wide unless there would be more than [constant
+## MOST_COLUMNS] of them.
+func _surface_runs(lo: PackedFloat64Array, hi: PackedFloat64Array) -> Array:
+	var app := PackedFloat64Array()
+	app.resize(_tri.size())
+	for v: int in _tri.size() / 3:
+		app[v * 3] = _tri[v * 3]
+		app[v * 3 + 1] = -_tri[v * 3 + 1]
+		app[v * 3 + 2] = -_tri[v * 3 + 2]
+	var grain: int = 1
+	var plan := Columns.new(lo, hi, grain)
+	if plan.sx * plan.sz > MOST_COLUMNS:
+		grain = maxi(2, floori(sqrt(float(plan.sx) * float(plan.sz) / MOST_COLUMNS)))
+		plan = Columns.new(lo, hi, grain)
+		while plan.sx * plan.sz > MOST_COLUMNS:
+			grain += 1
+			plan = Columns.new(lo, hi, grain)
+	var first: Array = _stab_runs(app, plan, [[0.0, 0.0]], 2.0 * TIE, PackedByteArray())
+	var runs: Dictionary = first[0][0]
+	var touchy: PackedByteArray = first[1]
+	if touchy.has(1):
+		var moved: Array = _stab_runs(app, plan, [[TIE, 0.0], [-TIE, 0.0], [0.0, TIE],
+			[0.0, -TIE]], ON_EDGE, touchy)
+		_vote(runs, touchy, moved)
+	return [plan, runs]
+
+
+## occupancy._stab, up the columns of [param plan] alone: [for each of [param
+## offsets] ([dx, dz], LDU off a column's middle), the runs inside by its ray
+## (column (x * sz + z) -> [y0, y1, ...] in whole cells, y1 not in it); the
+## columns whose rays are within [param band] of an edge of a face in plan, 1
+## at column * offsets + the offset's place]. With [param only], only the
+## columns it has a 1 at. The same rays, crossings and cells as [method
+## _stab]'s, kept a column at a time: what is kept grows with the faces'
+## crossings, not the box.
+static func _stab_runs(app: PackedFloat64Array, plan: Columns, offsets: Array, band: float,
+		only: PackedByteArray) -> Array:
+	var every: bool = only.is_empty()
+	var side: float = CELL * plan.wide
+	var columns: int = plan.sx * plan.sz
+	var xs := PackedFloat64Array()
+	for i: int in plan.sx:
+		xs.append((float(i + plan.ox) + 0.5) * side)
+	var zs := PackedFloat64Array()
+	for k: int in plan.sz:
+		zs.append((float(k + plan.oz) + 0.5) * side)
+	var ways: int = offsets.size()
+	var dxs := PackedFloat64Array()
+	var dzs := PackedFloat64Array()
+	for w: int in ways:
+		dxs.append(float(offsets[w][0]))
+		dzs.append(float(offsets[w][1]))
+	# Kept flat, every way's together (a way's flags at column * ways + way),
+	# and split by way at the end: appended here a crossing at a time.
+	var touchy := PackedByteArray()
+	touchy.resize(columns * ways)
+	var at := PackedInt32Array()
+	var way_of := PackedByteArray()
+	var heights := PackedFloat64Array()
+	var up := PackedByteArray()
+	for t: int in app.size() / 9:
+		var o: int = t * 9
+		var ax: float = app[o]
+		var ay: float = app[o + 1]
+		var az: float = app[o + 2]
+		var bx: float = app[o + 3]
+		var by: float = app[o + 4]
+		var bz: float = app[o + 5]
+		var cx: float = app[o + 6]
+		var cy: float = app[o + 7]
+		var cz: float = app[o + 8]
+		var area2: float = (bx - ax) * (cz - az) - (bz - az) * (cx - ax)
+		if absf(area2) < 1e-12:
+			continue
+		var x0: float = minf(ax, minf(bx, cx))
+		var x1: float = maxf(ax, maxf(bx, cx))
+		var z0: float = minf(az, minf(bz, cz))
+		var z1: float = maxf(az, maxf(bz, cz))
+		var i0: int = maxi(0, int(floor(x0 / side)) - plan.ox)
+		var i1: int = mini(plan.sx - 1, int(ceil(x1 / side)) - plan.ox)
+		var k0: int = maxi(0, int(floor(z0 / side)) - plan.oz)
+		var k1: int = mini(plan.sz - 1, int(ceil(z1 / side)) - plan.oz)
+		if i0 > i1 or k0 > k1:
+			continue
+		var spread: float = maxf(absf(area2), 1e-300)
+		var e0: float = band * sqrt((bx - cx) * (bx - cx) + (bz - cz) * (bz - cz)) / spread
+		var e1: float = band * sqrt((cx - ax) * (cx - ax) + (cz - az) * (cz - az)) / spread
+		var e2: float = band * sqrt((ax - bx) * (ax - bx) + (az - bz) * (az - bz)) / spread
+		var upward: int = 1 if area2 > 0.0 else 0
+		for i: int in range(i0, i1 + 1):
+			for k: int in range(k0, k1 + 1):
+				var column: int = i * plan.sz + k
+				if not every and only[column] == 0:
+					continue
+				for w: int in ways:
+					var gx: float = xs[i] + dxs[w]
+					var gz: float = zs[k] + dzs[w]
+					var w0: float = ((bx - gx) * (cz - gz) - (bz - gz) * (cx - gx)) / area2
+					var w1: float = ((cx - gx) * (az - gz) - (cz - gz) * (ax - gx)) / area2
+					var w2: float = 1.0 - w0 - w1
+					if w0 >= -e0 and w1 >= -e1 and w2 >= -e2 \
+							and (absf(w0) <= e0 or absf(w1) <= e1 or absf(w2) <= e2):
+						touchy[column * ways + w] = 1
+					if w0 < 0.0 or w1 < 0.0 or w2 < 0.0:
+						continue
+					at.append(column)
+					way_of.append(w)
+					heights.append(w0 * ay + w1 * by + w2 * cy)
+					up.append(upward)
+	if ways == 1:
+		return [[_runs_of(plan, columns, at, heights, up)], touchy]
+	var out: Array = []
+	for w: int in ways:
+		var its_at := PackedInt32Array()
+		var its_heights := PackedFloat64Array()
+		var its_up := PackedByteArray()
+		for h: int in at.size():
+			if way_of[h] == w:
+				its_at.append(at[h])
+				its_heights.append(heights[h])
+				its_up.append(up[h])
+		out.append(_runs_of(plan, columns, its_at, its_heights, its_up))
+	return [out, touchy]
+
+
+## The crossings of [method _stab_runs] ([param at] each one's column, at
+## [param heights], [param up] 1 for a face whose winding goes up), as runs
+## a column at a time: each column's crossings in order of height, a face
+## going down before one going up at the same (Python's order of [y,
+## direction], as [method _stab] sorts them), and the cells whose middles are
+## between two crossings while the winding is inside, both ends counted: a
+## face at a cell's middle counts on both sides.
+static func _runs_of(plan: Columns, columns: int, at: PackedInt32Array,
+		heights: PackedFloat64Array, up: PackedByteArray) -> Dictionary:
+	var out: Dictionary = {}
+	# A few columns' crossings (the moved rays of the columns on an edge):
+	# gathered by column.
+	if at.size() * 4 < columns:
+		var by_column: Dictionary = {}
+		for h: int in at.size():
+			# Put back: a packed array taken out of a Dictionary is a copy,
+			# and appending to it alone left the column with nothing.
+			var hits: PackedInt32Array = by_column.get(at[h], PackedInt32Array())
+			hits.append(h)
+			by_column[at[h]] = hits
+		for column: int in by_column:
+			var made: PackedInt32Array = _column_runs(plan, by_column[column], heights, up)
+			if not made.is_empty():
+				out[column] = made
+		return out
+	# Every column's: counted out by column, rather than every crossing sorted.
+	var starts := PackedInt32Array()
+	starts.resize(columns + 1)
+	for column: int in at:
+		starts[column + 1] += 1
+	for column: int in columns:
+		starts[column + 1] += starts[column]
+	var order := PackedInt32Array()
+	order.resize(at.size())
+	var next: PackedInt32Array = starts.duplicate()
+	for h: int in at.size():
+		order[next[at[h]]] = h
+		next[at[h]] += 1
+	for column: int in columns:
+		if starts[column + 1] - starts[column] < 2:
+			continue
+		var made: PackedInt32Array = _column_runs(plan,
+			order.slice(starts[column], starts[column + 1]), heights, up)
+		if not made.is_empty():
+			out[column] = made
+	return out
+
+
+## One column's runs from its crossings ([param hits], indices into [param
+## heights] and [param up]), as [method _runs_of] says.
+static func _column_runs(plan: Columns, hits: PackedInt32Array, heights: PackedFloat64Array,
+		up: PackedByteArray) -> PackedInt32Array:
+	# Its few crossings in order, as an insertion sort puts them.
+	for n: int in range(1, hits.size()):
+		var h: int = hits[n]
+		var m: int = n - 1
+		while m >= 0 and (heights[hits[m]] > heights[h]
+				or (heights[hits[m]] == heights[h] and up[hits[m]] > up[h])):
+			hits[m + 1] = hits[m]
+			m -= 1
+		hits[m + 1] = h
+	var made := PackedInt32Array()
+	var bottom: int = plan.oy
+	var top: int = plan.oy + plan.sy
+	var winding: int = 0
+	var previous: float = 0.0
+	for n: int in hits.size():
+		var h: int = hits[n]
+		var height: float = heights[h]
+		if winding > 0 and n > 0:
+			var y0: int = maxi(bottom, _middle_from(previous))
+			var y1: int = mini(top, _middle_past(height))
+			if y0 < y1:
+				if not made.is_empty() and y0 <= made[made.size() - 1]:
+					made[made.size() - 1] = maxi(made[made.size() - 1], y1)
+				else:
+					made.append(y0)
+					made.append(y1)
+		winding += 1 if up[h] == 1 else -1
+		previous = height
+	return made
+
+
+## The first cell whose middle is at or above [param y] (LDU): where
+## PackedFloat64Array.bsearch(y, true) finds it among the middles.
+static func _middle_from(y: float) -> int:
+	var j: int = int(ceilf(y / CELL - 0.5))
+	while (float(j - 1) + 0.5) * CELL >= y:
+		j -= 1
+	while (float(j) + 0.5) * CELL < y:
+		j += 1
+	return j
+
+
+## The first cell whose middle is above [param y]: bsearch(y, false).
+static func _middle_past(y: float) -> int:
+	var j: int = int(floorf(y / CELL - 0.5)) + 1
+	while (float(j - 1) + 0.5) * CELL > y:
+		j -= 1
+	while (float(j) + 0.5) * CELL <= y:
+		j += 1
+	return j
+
+
+## [method _voxelise]'s vote, in the columns [param touchy] marks: the runs
+## of the four moved rays ([param moved], [method _stab_runs]: along x each
+## way, then along z), cell by cell up the column, put in [param runs] for
+## the column's own.
+static func _vote(runs: Dictionary, touchy: PackedByteArray, moved: Array) -> void:
+	var by_way: Array = moved[0]
+	var on: PackedByteArray = moved[1]
+	var column: int = touchy.find(1)
+	while column >= 0:
+		_vote_column(runs, column, by_way, on)
+		column = touchy.find(1, column + 1)
+
+
+## [method _vote] in one [param column]: [param by_way] each moved ray's runs,
+## [param on] whether each was on an edge (column * 4 + its place).
+static func _vote_column(runs: Dictionary, column: int, by_way: Array, on: PackedByteArray) -> void:
+	var ways: Array[PackedInt32Array] = []
+	var low: int = 1 << 30
+	var high: int = -(1 << 30)
+	for w: int in 4:
+		var one: PackedInt32Array = (by_way[w] as Dictionary).get(column, PackedInt32Array())
+		ways.append(one)
+		if not one.is_empty():
+			low = mini(low, one[0])
+			high = maxi(high, one[one.size() - 1])
+	var off_x: bool = on[column * 4] == 0 and on[column * 4 + 1] == 0
+	var off_z: bool = on[column * 4 + 2] == 0 and on[column * 4 + 3] == 0
+	var made := PackedInt32Array()
+	var reading := PackedInt32Array([0, 0, 0, 0])
+	for y: int in range(low, high):
+		var m := PackedByteArray([0, 0, 0, 0])
+		for w: int in 4:
+			var one: PackedInt32Array = ways[w]
+			while reading[w] < one.size() and one[reading[w] + 1] <= y:
+				reading[w] += 2
+			if reading[w] < one.size() and one[reading[w]] <= y:
+				m[w] = 1
+		var agreed: bool = (m[0] == 1 and m[1] == 1) or (m[2] == 1 and m[3] == 1)
+		var clean_x: bool = off_x and m[0] == m[1]
+		var clean_z: bool = off_z and m[2] == m[3]
+		if clean_x or clean_z:
+			agreed = (clean_x and m[0] == 1) or (clean_z and m[2] == 1)
+		if not agreed:
+			continue
+		if not made.is_empty() and made[made.size() - 1] == y:
+			made[made.size() - 1] = y + 1
+		else:
+			made.append(y)
+			made.append(y + 1)
+	if made.is_empty():
+		runs.erase(column)
+	else:
+		runs[column] = made
+
+
+## The cells [method _remove_studs] takes out of a part for the male studs of
+## [param connectors], into [param gone] (column -> {y: true}), within
+## [param plan].
+static func _studs_out(plan: Columns, connectors: Array, gone: Dictionary) -> void:
+	for stud: Array in connectors:
+		if stud[0] != "stud" or stud[1] != "male":
+			continue
+		var base: Array[float] = [stud[2], -float(stud[3]), -float(stud[4])]
+		var axis: Array[float] = [stud[5], -float(stud[6]), -float(stud[7])]
+		var length: float = sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2])
+		if length < 1e-9:
+			continue
+		axis = [axis[0] / length, axis[1] / length, axis[2] / length]
+		var from := Vector3i.ZERO
+		var to := Vector3i.ZERO
+		for n: int in 3:
+			from[n] = int(floor((base[n] - 8.0) / CELL)) - 1
+			to[n] = int(ceil((base[n] + 8.0) / CELL)) + 1
+		from = Vector3i(maxi(from.x, plan.ox), maxi(from.y, plan.oy), maxi(from.z, plan.oz))
+		to = Vector3i(mini(to.x, plan.ox + plan.sx), mini(to.y, plan.oy + plan.sy),
+			mini(to.z, plan.oz + plan.sz))
+		for x: int in range(from.x, to.x):
+			var dx: float = (float(x) + 0.5) * CELL - base[0]
+			for y: int in range(from.y, to.y):
+				var dy: float = (float(y) + 0.5) * CELL - base[1]
+				for z: int in range(from.z, to.z):
+					var dz: float = (float(z) + 0.5) * CELL - base[2]
+					var along: float = dx * axis[0] + dy * axis[1] + dz * axis[2]
+					var px: float = dx - along * axis[0]
+					var py: float = dy - along * axis[1]
+					var pz: float = dz - along * axis[2]
+					var radial: float = sqrt(px * px + py * py + pz * pz)
+					if along > 0.0 and along < STUD_HEIGHT and radial < STUD_RADIUS:
+						_gone_at(plan, gone, x, y, z)
+
+
+## The cells within each of [param found]'s holes ([method _holes]), as
+## [method _bore] finds them along each one's own length or, where it gives
+## none, the whole line through the part; into [param gone]. Along the hole
+## a few cells at a time, not across the whole box: a hole square to the
+## part looks in the slab round its line, as [method _bore] does, and one at
+## an angle steps along its line inside the part's box.
+static func _holes_out(plan: Columns, found: Array, gone: Dictionary) -> void:
+	var lo := Vector3i(plan.ox, plan.oy, plan.oz)
+	var hi := Vector3i(plan.ox + plan.sx, plan.oy + plan.sy, plan.oz + plan.sz)
+	for hole: Array in found:
+		var point: PackedFloat64Array = hole[0]
+		var axis: PackedFloat64Array = hole[1]
+		var span: Array = hole[2]
+		var radius: float = float(hole[3]) if hole.size() > 3 else HOLE_RADIUS
+		var bounded: bool = not span.is_empty()
+		var reach: float = radius / CELL + 1.0
+		var square: int = -1
+		for n: int in 3:
+			if absf(axis[n]) > 0.99:
+				square = n
+		var near: Array = []   # [from, to] cell boxes to look in
+		if square >= 0:
+			var from := Vector3i(lo)
+			var to := Vector3i(hi)
+			for n: int in 3:
+				if n == square:
+					continue
+				var middle: float = point[n] / CELL
+				from[n] = maxi(lo[n], int(floor(middle - reach)))
+				to[n] = mini(hi[n], int(ceil(middle + reach)) + 1)
+			if bounded:
+				var a: float = (point[square] + float(span[0]) * axis[square]) / CELL
+				var b: float = (point[square] + float(span[1]) * axis[square]) / CELL
+				from[square] = maxi(lo[square], int(floor(minf(a, b))) - 1)
+				to[square] = mini(hi[square], int(ceil(maxf(a, b))) + 1)
+			near.append([from, to])
+		else:
+			# The line's stretch inside the part's box, a radius round it.
+			var t0: float = float(span[0]) if bounded else -INF
+			var t1: float = float(span[1]) if bounded else INF
+			for n: int in 3:
+				var low: float = float(lo[n]) * CELL - radius - CELL
+				var high: float = float(hi[n]) * CELL + radius + CELL
+				if absf(axis[n]) < 1e-9:
+					if point[n] < low or point[n] > high:
+						t1 = -INF
+					continue
+				var a: float = (low - point[n]) / axis[n]
+				var b: float = (high - point[n]) / axis[n]
+				t0 = maxf(t0, minf(a, b))
+				t1 = minf(t1, maxf(a, b))
+			var t: float = t0
+			while t <= t1:
+				var from := Vector3i.ZERO
+				var to := Vector3i.ZERO
+				for n: int in 3:
+					var middle: float = (point[n] + axis[n] * t) / CELL
+					from[n] = maxi(lo[n], int(floor(middle - reach)))
+					to[n] = mini(hi[n], int(ceil(middle + reach)) + 1)
+				near.append([from, to])
+				t += CELL * 0.5
+		var seen: Dictionary = {}
+		for box: Array in near:
+			var from: Vector3i = box[0]
+			var to: Vector3i = box[1]
+			for x: int in range(from.x, to.x):
+				var dx: float = (float(x) + 0.5) * CELL - point[0]
+				for y: int in range(from.y, to.y):
+					var dy: float = (float(y) + 0.5) * CELL - point[1]
+					for z: int in range(from.z, to.z):
+						var dz: float = (float(z) + 0.5) * CELL - point[2]
+						var along: float = dx * axis[0] + dy * axis[1] + dz * axis[2]
+						var px: float = dx - along * axis[0]
+						var py: float = dy - along * axis[1]
+						var pz: float = dz - along * axis[2]
+						if px * px + py * py + pz * pz > radius * radius:
+							continue
+						if bounded and (along < float(span[0]) or along > float(span[1])):
+							continue
+						var key := Vector3i(x, y, z)
+						if not seen.has(key):
+							seen[key] = true
+							_gone_at(plan, gone, x, y, z)
+
+
+static func _gone_at(plan: Columns, gone: Dictionary, x: int, y: int, z: int) -> void:
+	var column: int = (x - plan.ox) * plan.sz + (z - plan.oz)
+	if not gone.has(column):
+		gone[column] = {}
+	(gone[column] as Dictionary)[y] = true
+
+
+## [param runs] without the cells of [param gone] (column -> {y: true}).
+static func _cells_out(_plan: Columns, runs: Dictionary, gone: Dictionary) -> void:
+	for column: int in gone:
+		if not runs.has(column):
+			continue
+		var was: PackedInt32Array = runs[column]
+		var out := PackedInt32Array()
+		var taken: Dictionary = gone[column]
+		for n: int in range(0, was.size(), 2):
+			var start: int = was[n]
+			for y: int in range(was[n], was[n + 1]):
+				if taken.has(y):
+					if y > start:
+						out.append(start)
+						out.append(y)
+					start = y + 1
+			if start < was[n + 1]:
+				out.append(start)
+				out.append(was[n + 1])
+		if out.is_empty():
+			runs.erase(column)
+		else:
+			runs[column] = out
+
+
+## The coarser plans a cover from a surface tries when its own columns make
+## too many boxes, in columns a block a side.
+const RUN_BLOCKS: Array[int] = [2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64]
+
+
+## [param runs] (the cover in [param plan]'s columns) as boxes of whole cells,
+## at most CARVED_LIMIT of them, as [method _to_boxes]' most. Each run is a
+## box with those of the same run in the columns beside it, grown along z and
+## then x while every column it reaches has that run: a slab is one box, and
+## a cube 400 mm across one. Past CARVED_LIMIT, the plan's columns are put
+## together in blocks, the fewest a side that fit, each block the cells any
+## of its columns has; and past those, the bounding box.
+static func _run_boxes(plan: Columns, runs: Dictionary) -> Array:
+	if runs.is_empty():
+		return []
+	var boxes: Variant = _run_rects(runs, plan, 1, CARVED_LIMIT)
+	if boxes != null:
+		return boxes
+	for block: int in RUN_BLOCKS:
+		var bsz: int = (plan.sz + block - 1) / block
+		var gathered: Dictionary = {}
+		for column: int in runs:
+			var into: int = (column / plan.sz) / block * bsz + (column % plan.sz) / block
+			if not gathered.has(into):
+				gathered[into] = []
+			var one: PackedInt32Array = runs[column]
+			for n: int in range(0, one.size(), 2):
+				(gathered[into] as Array).append(Vector2i(one[n], one[n + 1]))
+		var merged: Dictionary = {}
+		for into: int in gathered:
+			var spans: Array = gathered[into]
+			spans.sort()
+			var out := PackedInt32Array()
+			for span: Vector2i in spans:
+				if not out.is_empty() and span.x <= out[out.size() - 1]:
+					out[out.size() - 1] = maxi(out[out.size() - 1], span.y)
+				else:
+					out.append(span.x)
+					out.append(span.y)
+			merged[into] = out
+		boxes = _run_rects(merged, plan, block, CARVED_LIMIT)
+		if boxes != null:
+			return boxes
+	var low := Vector3i(1 << 30, 1 << 30, 1 << 30)
+	var high := Vector3i(-(1 << 30), -(1 << 30), -(1 << 30))
+	for column: int in runs:
+		var one: PackedInt32Array = runs[column]
+		var x: int = (plan.ox + column / plan.sz) * plan.wide
+		var z: int = (plan.oz + column % plan.sz) * plan.wide
+		low = Vector3i(mini(low.x, x), mini(low.y, one[0]), mini(low.z, z))
+		high = Vector3i(maxi(high.x, x + plan.wide), maxi(high.y, one[one.size() - 1]),
+			maxi(high.z, z + plan.wide))
+	return [[low.x, low.y, low.z, high.x - low.x, high.y - low.y, high.z - low.z]]
+
+
+## The boxes of [method _run_boxes] for [param runs] in blocks of [param
+## block] of [param plan]'s columns a side: each run's columns found in
+## order, x slowest, a box grown from the first not yet in one along z, then
+## along x, while each column has the run and is in no box. Null past
+## [param limit] of them. A box ends at the plan's own edge.
+static func _run_rects(runs: Dictionary, plan: Columns, block: int, limit: int) -> Variant:
+	var bsz: int = (plan.sz + block - 1) / block
+	var bsx: int = (plan.sx + block - 1) / block
+	var by_run: Dictionary = {}
+	var keys: Array = runs.keys()
+	keys.sort()
+	for column: int in keys:
+		var one: PackedInt32Array = runs[column]
+		for n: int in range(0, one.size(), 2):
+			var run := Vector2i(one[n], one[n + 1])
+			if not by_run.has(run):
+				by_run[run] = {}
+			(by_run[run] as Dictionary)[column] = true
+	var side: int = block * plan.wide
+	var x_end: int = (plan.ox + plan.sx) * plan.wide
+	var z_end: int = (plan.oz + plan.sz) * plan.wide
+	var boxes: Array = []
+	for run: Vector2i in by_run:
+		var has: Dictionary = by_run[run]
+		var taken: Dictionary = {}
+		for column: int in has:
+			if taken.has(column):
+				continue
+			if boxes.size() >= limit:
+				return null
+			var i: int = column / bsz
+			var k: int = column % bsz
+			var k1: int = k + 1
+			while k1 < bsz and has.has(i * bsz + k1) and not taken.has(i * bsz + k1):
+				k1 += 1
+			var i1: int = i + 1
+			while i1 < bsx:
+				var whole: bool = true
+				for kk: int in range(k, k1):
+					if not has.has(i1 * bsz + kk) or taken.has(i1 * bsz + kk):
+						whole = false
+						break
+				if not whole:
+					break
+				i1 += 1
+			for ii: int in range(i, i1):
+				for kk: int in range(k, k1):
+					taken[ii * bsz + kk] = true
+			var x0: int = plan.ox * plan.wide + i * side
+			var z0: int = plan.oz * plan.wide + k * side
+			var x1: int = mini(x_end, plan.ox * plan.wide + i1 * side)
+			var z1: int = mini(z_end, plan.oz * plan.wide + k1 * side)
+			boxes.append([x0, run.x, z0, x1 - x0, run.y - run.x, z1 - z0])
+	return boxes
 
 
 func _remove_studs(grid: Grid, connectors: Array) -> Grid:
@@ -3541,6 +4207,11 @@ func _build(text: String, id: String, others: Dictionary,
 	if _tri_color.is_empty():
 		result.problem = "it has no faces"
 		return result
+	for v: float in _tri:
+		if absf(v) > FARTHEST:
+			result.problem = "it reaches more than %d LDU (12 m) from its origin, and no part is so big" \
+				% int(FARTHEST)
+			return result
 
 	var normals: PackedFloat64Array = _normals()
 	var surfaces: Array = _surfaces(normals)
@@ -3576,6 +4247,8 @@ func _build(text: String, id: String, others: Dictionary,
 			result.cells += roundi(box.size.x * box.size.y * box.size.z)
 		for socket: Vector2 in cover.sockets:
 			result.sockets.append([socket.x, socket.y])
+	elif box_cells(result.bounds_min, result.bounds_max) > float(dense_most(text)):
+		_surface_cover(result, found)
 	else:
 		var raw: Grid = _voxelise()
 		var solid: Grid = _clear_bores(_fill_cavities(_remove_studs(raw, found), found), found)

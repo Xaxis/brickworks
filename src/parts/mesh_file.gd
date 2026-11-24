@@ -22,6 +22,18 @@ const NAMED := "OBJ, STL, glTF, GLB, PLY, 3MF, VOX or FBX"
 ## Pictures an OBJ's material or a .gltf may name.
 const PICTURES: PackedStringArray = ["png", "jpg", "jpeg", "webp", "tga", "bmp"]
 const MAX_BYTES := 96 * 1024 * 1024
+## The most in a browser, where the page holds the whole file before anything
+## is read of it. A 100 MB STL read there as base64 in JSON grew a tab past
+## 6 GB and never answered, and 30 MB answered in 12 s (mouldreview2). Read
+## as bytes now ([MeshFilePicker]), and refused past this before it is read.
+const WEB_MAX_BYTES := 32 * 1024 * 1024
+## The furthest a corner may be from the origin, in the file's own units: a
+## hundred kilometres in millimetres. Further is a damaged number, not a
+## thing anyone drew.
+const FARTHEST := 1e8
+## What a corner that is no number is refused with (a "nan", an "inf" or
+## "Infinity" in a text file, a NaN in a binary one).
+const NOT_A_NUMBER := "%s has a corner whose place is not a number, so it is damaged: export it again from your 3D program"
 ## A scan of millions of triangles is not wanted at forty studs, and
 ## reading one would hold the page for minutes.
 const MOST_TRIANGLES := 1500000
@@ -124,6 +136,8 @@ static func read(bytes: PackedByteArray, file_name: String,
 		_:
 			out.error = refusal(file_name)
 			return out
+	if out.error == NOT_A_NUMBER:
+		out.error = NOT_A_NUMBER % file_name.get_file()
 	if not out.error.is_empty():
 		return out
 	if out.triangle_count() == 0:
@@ -133,6 +147,21 @@ static func read(bytes: PackedByteArray, file_name: String,
 		out.error = "%s has %d triangles; at most %d can be brought in" % [
 			file_name.get_file(), out.triangle_count(), MOST_TRIANGLES]
 		return out
+	# A corner whose place is not a number (a "nan" or an endless one), read
+	# here and nowhere later: a box drawn round the corners passes over it
+	# (AABB.expand skips NaN), and a part made from the file was written with
+	# "nan" in its lines, which LDraw has no word for (mouldreview).
+	# And one further from the rest than any real thing is drawn (a binary
+	# corner of 1e30): the box round it has no size a number can hold, and
+	# it was refused as having none (mouldreview2).
+	for p: Vector3 in out.positions:
+		if not p.is_finite():
+			out.error = NOT_A_NUMBER % file_name.get_file()
+			return out
+		if absf(p.x) > FARTHEST or absf(p.y) > FARTHEST or absf(p.z) > FARTHEST:
+			out.error = ("%s has a corner too far from the rest to be read, so it is damaged: "
+				+ "export it again from your 3D program") % file_name.get_file()
+			return out
 	# Filled in whole where a reader gave none, not a corner at a time: a
 	# scan has millions.
 	if out.colours.is_empty():
@@ -158,6 +187,18 @@ static func refusal(file_name: String) -> String:
 		return ("%s is USD, which nothing here can read: save it from your 3D program as "
 			+ "glTF, FBX or OBJ") % file_name.get_file()
 	return "%s is not a 3D model this can bring in — %s" % [file_name.get_file(), NAMED]
+
+
+## The most a 3D file chosen here may be, judged from its size before a byte
+## of it is read ([MeshFilePicker]): less in a browser.
+static func most_bytes() -> int:
+	return WEB_MAX_BYTES if OS.has_feature("web") else MAX_BYTES
+
+
+## Why a file of [param size] bytes is not read, past [param most].
+static func too_large(file_name: String, size: int, most: int) -> String:
+	return "%s is %s, and a file of at most %s can be brought in here: make it smaller in your 3D program" % [
+		file_name.get_file(), String.humanize_size(size), String.humanize_size(most)]
 
 
 ## The files a model names beside itself, as it names them: an OBJ's
@@ -221,6 +262,12 @@ static func _obj(text: String, extras: Dictionary, out: MeshFile) -> void:
 			"v":
 				if words.size() < 4:
 					continue
+				# "nan", "inf" or "Infinity" read as 0 (String.to_float), and
+				# the file was refused for having no size (mouldreview2).
+				if not (words[1].is_valid_float() and words[2].is_valid_float()
+						and words[3].is_valid_float()):
+					out.error = NOT_A_NUMBER
+					return
 				v.append(Vector3(words[1].to_float(), words[2].to_float(), words[3].to_float()))
 				# Colour after the position, as ZBrush, MeshLab and most
 				# scanners write it.
@@ -402,6 +449,10 @@ static func _stl(bytes: PackedByteArray, out: MeshFile) -> void:
 	for raw: String in text.split("\n"):
 		var words: PackedStringArray = raw.strip_edges().replace("\t", " ").split(" ", false)
 		if words.size() >= 4 and words[0] == "vertex":
+			if not (words[1].is_valid_float() and words[2].is_valid_float()
+					and words[3].is_valid_float()):
+				out.error = NOT_A_NUMBER
+				return
 			out.positions.append(Vector3(words[1].to_float(), words[2].to_float(),
 				words[3].to_float()))
 	out.positions.resize(out.positions.size() / 3 * 3)

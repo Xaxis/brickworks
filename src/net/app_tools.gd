@@ -7618,7 +7618,8 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 		if not name.get_extension().to_lower() in MeshFile.KINDS:
 			return ("%s does not name an %s file; give a link that ends in .%s."
 				% [url.left(100), MeshFile.NAMED, ", .".join(MeshFile.KINDS)])
-		var fetched: Dictionary = await _fetch(url, MeshFile.MAX_BYTES)
+		# Less in a browser, where the tab holds the whole file (moulds3).
+		var fetched: Dictionary = await _fetch(url, MeshFile.most_bytes())
 		if fetched.has("error"):
 			var why: String = str(fetched["error"])
 			# Not "serve it on localhost": that is refused too.
@@ -7640,7 +7641,7 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 						or wanted.begins_with("/"):
 					continue
 				var beside: Dictionary = await _fetch(folder + "/" + wanted.uri_encode()
-					.replace("%2F", "/"), MeshFile.MAX_BYTES)
+					.replace("%2F", "/"), MeshFile.most_bytes())
 				if beside.has("bytes"):
 					extras[wanted] = beside["bytes"]
 		var why: String = await dialog.take(bytes, name, extras)

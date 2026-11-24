@@ -1,0 +1,30 @@
+0 Comments Flow Tower
+0 Name: comments_tower.ldr
+0 Author: Comments Flow
+
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 0 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -96 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 -96 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -120 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 -120 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 4 0 -144 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 -144 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 // comments flow runtoken
+0 !BRICKWORKS PAGES {"mode":3,"model":"11ad5a3959f3fde55ac6b1bd98b61b1179281f36c0dfc449a3e3600090969656","order":"cd7e2b723029268feaf836afceeae218b8d9d6526c83e0e96a622ec078e70c52","parts":12,"steps":6,"v":1}
+0 !BRICKWORKS PAGE {"ai":["",0],"b":[0,1],"i":1,"n":1,"p":{"3001":2}}
+0 !BRICKWORKS PAGE {"ai":["",1],"b":[2,3],"i":2,"n":2,"p":{"3001":2}}
+0 !BRICKWORKS PAGE {"ai":["",2],"b":[4,5],"i":3,"n":3,"p":{"3001":2}}
+0 !BRICKWORKS PAGE {"ai":["",3],"b":[6,7],"i":4,"n":4,"p":{"3001":2}}
+0 !BRICKWORKS PAGE {"ai":["",4],"b":[8,9],"i":5,"n":5,"p":{"3001":2}}
+0 !BRICKWORKS PAGE {"ai":["",5],"b":[10,11],"i":6,"n":6,"p":{"3001":2}}

@@ -8,8 +8,10 @@
 //   BW_BYPASS=… node tools/web/share_steps_flow.mjs --url=<preview> --publish --out=DIR
 //
 // The models are the lowest 300, 1,000 and 4,000 parts of Orthanc
-// (models/orthanc.ldr), Brickworks' own file, so the steps are worked out
-// as they are for any model made here. --build serves the export here
+// (models/orthanc.ldr), Brickworks' own file, its minifigures left out, as
+// it builds from the bottom a section at a time (orthsteps212), so the steps
+// are worked out as they are for any model made here: kept in
+// tests/fixtures/flow_models as share_steps_N, steps carried. --build serves the export here
 // (tools/web/serve.py, one link per size with --share ID=FILE, parts from
 // assets/generated/parts at once); --url with --publish publishes them to
 // that deployment from a throwaway probe account (a Resend test address,
@@ -42,10 +44,11 @@
 import { appFromModelPage, launch } from "./browser.mjs";
 import { deleteAccount, mintSession } from "./session.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { bareOf, flowModel } from "./flow_models.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -73,52 +76,22 @@ const check = (what, ok) => {
 };
 const say = (what) => console.log(`  --    ${what}`);
 
-// The lowest [n] parts of Orthanc's own model, its minifigures left out: its
-// file builds it from the bottom, a section at a time, each placed where it
-// stands (orthsteps212).
-function model(n) {
-  const text = readFileSync(path.join(root, "models/orthanc.ldr"), "utf8");
-  const sections = text.split(/\r?\n0 FILE /);
-  const own = [sections[0], ...sections.slice(1).filter((section) =>
-    sections[0].includes(`1 16 0 0 0 1 0 0 0 1 0 0 0 1 ${section.split(/\r?\n/)[0].trim()}`))];
-  const parts = own.flatMap((section) => section.split(/\r?\n/))
-    .filter((line) => /^1 /.test(line) && /\.dat\s*$/i.test(line)).slice(0, n);
-  if (parts.length < n) throw new Error(`Orthanc has only ${parts.length} parts of its own`);
-  return [`0 FILE steps_${n}.ldr`, `0 Steps ${n}`, `0 Name: steps_${n}.ldr`, "0 Author: Brickworks",
-    "", ...parts, ""].join("\r\n");
-}
-
 // --- the models, with their steps carried --------------------------------
 //
 // Each shared as the app shares it: its steps worked out and written at
-// the end of its text (SharedPages, by src/dev/share_pages_probe.gd
-// --write, the same code the Share panel runs), so the phone reads them
-// and works nothing out. --bare shares the text alone, as a link from
-// before carried steps is: the phone works them out.
+// the end of its text by SharedPages, the same code the Share panel runs,
+// so the phone reads them and works nothing out (tests/fixtures/flow_models,
+// which src/dev/flow_models_probe.gd holds to what the app writes today:
+// no godot here, so a tree never imported runs it). --bare shares the text
+// alone, as a link from before carried steps is: the phone works them out.
 const texts = {};
 {
   const dir = path.join(out, "models");
   mkdirSync(dir, { recursive: true });
-  const pairs = [];
   for (const n of sizes) {
-    const bare = path.join(dir, `steps_${n}_bare.ldr`);
-    writeFileSync(bare, model(n));
-    texts[n] = bare;
-    pairs.push(bare, path.join(dir, `steps_${n}.ldr`));
-  }
-  if (!args.bare) {
-    const made = spawnSync("godot", ["--headless", "--path", root, "--script", "src/dev/share_pages_probe.gd",
-      "--", "--write", ...pairs], { encoding: "utf8", timeout: 900000,
-      // Never the person's own app data: the checkout's scratch copy.
-      env: { ...process.env, XDG_DATA_HOME: process.env.XDG_DATA_HOME || path.join(root, ".scratch-data") } });
-    for (const line of String(made.stdout || "").split("\n").filter((l) => / -> /.test(l))) say(line.trim());
-    for (const n of sizes) {
-      const carried = path.join(dir, `steps_${n}.ldr`);
-      if (!/0 !BRICKWORKS PAGES /.test(readFileSync(carried, "utf8"))) {
-        throw new Error(`no steps written for ${n} parts: ${String(made.stderr || "").slice(-300)}`);
-      }
-      texts[n] = carried;
-    }
+    const { text } = flowModel(`share_steps_${n}`);
+    texts[n] = path.join(dir, args.bare ? `steps_${n}_bare.ldr` : `steps_${n}.ldr`);
+    writeFileSync(texts[n], args.bare ? bareOf(text) : text);
   }
 }
 

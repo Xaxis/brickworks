@@ -115,10 +115,20 @@ parts** puts it in the bin under Custom.
   bracket's upright 4 LDU in front of its plate (99781, 99780, 44728); a
   curved slope's face an eighth of a circle in the part's proportions, as
   11477 draws it; a Technic hole 10 LDU under the top, a 12 LDU bore with a
-  16 LDU mouth two deep in each face (3700, 3701, 6541). It is named `bw-`
-  and its shape (`bw-b2x7x3`, `bw-b1x4x3-sf`, `bw-k1x2x1d`, `bw-c4x2x3r4`,
-  `bw-h1x4`), never a `u` number, and the header carries the spec it was
-  made from, so it can be read back and remade.
+  16 LDU mouth two deep in each face (3700, 3701, 6541). It is named `bw-`,
+  its shape (`bw-b2x7x3`, `bw-b1x4x3-sf`, `bw-k1x2x1d`, `bw-c4x2x3r4`,
+  `bw-h1x4`) and a tag of its whole text: 20 hex digits (80 bits) of its
+  SHA-256, the id left out. So the same part made twice, by anyone, is one
+  part, and two texts (another title, another cut) are two: among a hundred
+  million made parts the chance that any two share a tag is about one in 240
+  million. Never a `u` number, and the header carries the spec it was made
+  from, so it can be read back and remade. Every part made in the app is
+  named so: a part changed from another (`bw-3003-c-…` for a cut), one from
+  a 3D file, a mould, a print, a sticker. A file made by an older version
+  may carry a part of someone else's under a name a part of yours has (those
+  versions named a cut with 12 bits): it opens under a name of its own (the
+  old name and a tag of its text), its lines renamed with it, and both parts
+  are kept; a copy of yours cut short keeps its name and is mended on save.
 - **The geometry** comes from that file, built in the app by a GDScript port
   of the mesh build (`src/parts/part_forge.gd`) — because neither an exported
   desktop build nor a browser has Python. The port produces the same `.lbm`

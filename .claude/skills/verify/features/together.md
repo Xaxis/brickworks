@@ -59,7 +59,17 @@ app, joined by a link (docs/TOGETHER.md).
   in one op; a change `check_edit` makes as the keys and the mouse do is
   followed as one by hand is (`Together._edited`:
   `ModelStore.looks_follow_edit`), before it is sent;
-  a part made in the app sent as `~part:<id>` with its files. A 400 naming a
+  a part made in the app sent as `~part:<id>` with its files. One an older
+  app named (no tag of its text, so two people's can share it) goes to the
+  session as `<id>-<tag>` (`CustomParts.carried_name`, its files and
+  pictures renamed, `carried_files`) and each side reads the session's
+  names as its own parts (`Together._wire_changes`, `_local_changes`,
+  `_local_name`; a joiner's open renames another's by the same tag,
+  `ModelStore.renamed`); an older app's own name for another part than
+  mine is built under a name of its own (`_add_made`). Up to moulds4 a
+  joiner who had another part of that name drew theirs as the joiner's and
+  a save wrote the joiner's over it. `made_ids_probe --made-stage=together`
+  (both sides, no server). A 400 naming a
   `~` key the relay does not know (an older relay) drops that kind from what
   is unsent and from then on, said once (`_drop_unknown`,
   `TogetherWords.not_carried`; the `~sublines:` and `~frame:` keys one
@@ -273,7 +283,12 @@ signed in as someone else.
   in a long frame runs no `pagehide`. Before the fix: 29 of 30 lost.
 - Whole thing, about 30 minutes, two SwiftShader browsers and a headless
   desktop copy: `node tools/web/together_flow.mjs --url=http://127.0.0.1:9011
-  --out=DIR` (`--desktop=no` without the desktop's half). Expect
+  --out=DIR` (`--desktop=no` without the desktop's half). The desktop's
+  half runs godot from the checkout, so it needs `tools/fresh_import.sh`
+  first: a tree never imported fails at once, one line, exit 2, and a
+  godot that ends before it joins fails the flow in its own last words.
+  train.sh never names `together` on the web lane (preview_checks.sh
+  `ENGINE_CHECKS`): refused named, left out where lean.py adds it. Expect
   `together_flow: all ok`: the edits made and the hash equal in both
   browsers and the desktop; then each kind of the model's own state (name
   typed, floor, printed part, step, booklet look, motion, hidden colours)

@@ -1604,6 +1604,31 @@ static func _origin(chain: String, line: int) -> String:
 ## out as 33009.ldr and came back as the library's 33009, its five parts gone and
 ## the model 20 LDU higher. [param steps] and [param files] as [method
 ## write_tree] takes them.
+## The files a model carries for its parts ([param embedded], name -> its
+## text, or bytes for a picture: a made element, which no other tool has),
+## each a FILE section, by name; and the files the parts need that are not
+## LDraw, a print's pictures, as the MPD spec carries them: !DATA, base64 in
+## lines of 76 characters. Put after a model's own sections, by every writer
+## of a model and of the clipboard (Carry.as_ldraw).
+static func carried_text(embedded: Dictionary) -> String:
+	var text: String = ""
+	var names: Array = embedded.keys()
+	names.sort()
+	for part_name: Variant in names:
+		if embedded[part_name] is PackedByteArray:
+			continue
+		text += "0 FILE " + str(part_name) + "\n" \
+			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
+	for data_name: Variant in names:
+		if not (embedded[data_name] is PackedByteArray):
+			continue
+		var encoded: String = Marshalls.raw_to_base64(embedded[data_name])
+		text += "0 !DATA " + str(data_name) + "\n"
+		for at: int in range(0, encoded.length(), 76):
+			text += "0 !: " + encoded.substr(at, 76) + "\n"
+	return text
+
+
 static func write_ldr(
 	placements: Array, title: String = "Model", author_name: String = "",
 	frames: Dictionary = {}, embedded: Dictionary = {}, parts: Dictionary = {},
@@ -1660,23 +1685,7 @@ static func write_ldr(
 			+ _write_one(own, group, author_name, [],
 				str(file_of[group]), [], [], [], [], PackedStringArray(), {}, _kept_anchors(own), [],
 				kept_out, _key(str(files[group])) if files.has(group) else "\n") + "0 NOFILE\n"
-	var names: Array = embedded.keys()
-	names.sort()
-	for part_name: Variant in names:
-		if embedded[part_name] is PackedByteArray:
-			continue
-		text += "0 FILE " + str(part_name) + "\n" \
-			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
-	# And the files the parts need that are not LDraw: a print's pictures,
-	# as the MPD spec carries them, base64 in lines of 76 characters.
-	for data_name: Variant in names:
-		if not (embedded[data_name] is PackedByteArray):
-			continue
-		var encoded: String = Marshalls.raw_to_base64(embedded[data_name])
-		text += "0 !DATA " + str(data_name) + "\n"
-		for at: int in range(0, encoded.length(), 76):
-			text += "0 !: " + encoded.substr(at, 76) + "\n"
-	return text
+	return text + carried_text(embedded)
 
 
 ## The model as a tree of sub-models, one file section per definition:
@@ -1879,21 +1888,7 @@ static func write_tree(
 				kept_in.call(master), _kept_anchors(own), ref_anchors.call(master), kept_out,
 				_key(str(files[def])) if files.has(def) else "\n", flat_lines.get(master, {})) \
 			+ "0 NOFILE\n"
-	var names: Array = embedded.keys()
-	names.sort()
-	for part_name: Variant in names:
-		if embedded[part_name] is PackedByteArray:
-			continue
-		text += "0 FILE " + str(part_name) + "\n" \
-			+ str(embedded[part_name]).strip_edges() + "\n0 NOFILE\n"
-	for data_name: Variant in names:
-		if not (embedded[data_name] is PackedByteArray):
-			continue
-		var encoded: String = Marshalls.raw_to_base64(embedded[data_name])
-		text += "0 !DATA " + str(data_name) + "\n"
-		for at: int in range(0, encoded.length(), 76):
-			text += "0 !: " + encoded.substr(at, 76) + "\n"
-	return text
+	return text + carried_text(embedded)
 
 
 ## Which copies built in the model's own steps (IN_PARENT) [method
