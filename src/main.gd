@@ -2039,23 +2039,38 @@ func _ready() -> void:
 		# part the model carries is kept for next time.
 		ShellPrefs.frozen = true
 		CustomParts.keeps = false
+	# The model the address opens, its parts asked for before the studio is
+	# made, and so before its parts bin asks for any of its own.
+	_ask_early_model()
 	_build_ui()
 	# Told their keys before the menus' commands were learned (the view
 	# cube's Fit), told them again (Keymap.tell).
 	Keymap.retell(self)
 	_boot_mark("ui")
-	if _viewing.is_empty():
-		_ask_early_set()
+	# The page's fetch of it come since, if it had not then.
+	_ask_early_model()
 
 	if not _viewing.is_empty():
 		_enter_view()
 		_lay_baseplate()
-		await get_tree().process_frame
-		_camera.frame(_built_bounds())
+		if _early_asked:
+			# Its parts waited for under the page's screen, then the model
+			# opened and drawn whole before that screen lifts (_view_shared,
+			# _show_whole), as a set's own version is: shown at once, the
+			# studio stood empty under "Loading…" while the model was read,
+			# and its last 38 parts filled in 4.7 s after it opened (setopen,
+			# 2026-11-23).
+			await _await_early_model()
+		else:
+			await get_tree().process_frame
+			_camera.frame(_built_bounds())
+			_mark_shown()
 		_unthrottle_if_nobody_is_watching()
 		# Nothing below is for a viewer: no autosave to restore, no port,
 		# no design, nothing written out.
 		await _view_shared()
+		# Whatever it ended on (gone, failed, the model), on the screen.
+		_mark_shown()
 		return
 
 	var stress: String = _argument("--stress")
@@ -2083,6 +2098,12 @@ func _ready() -> void:
 		# shows (StudioStart.prepare).
 		if _start_wanted():
 			_studio_start_now().call("prepare")
+		# Open in Brickworks (?copy=), its parts waited for under the page's
+		# screen before anything opens: the model the tab kept, which is this
+		# copy after a reload, or the copy itself (_open_asked), opened whole
+		# and drawn so before the screen lifts (_show_whole).
+		if not _copying.is_empty() and _early_asked:
+			await _await_early_model()
 		if not OS.get_cmdline_args().has("--script"):
 			placed = await _store.restore_fetched()
 		# Open in Brickworks (/app?copy=<id>): the model asked for, from the
@@ -2127,20 +2148,25 @@ func _ready() -> void:
 	# studio's own. Opened after that frame, it waited on the studio's first
 	# frames drawn in software, 1.5 to 3.5 s, and its first frame compiled
 	# the bricks' shaders after them, 0.9 to 1.7 s more (setopen, 2026-11-23).
-	# Its parts' geometry was asked for as the studio was made (_ask_early_set)
-	# and is waited for under the page's own screen, which says how much has
-	# come, so every part is down in that frame; that screen comes down once
-	# the set is drawn ("shown"). Waited for with the studio on the screen,
-	# it was a frozen studio; not waited for, the last parts came 3 to 4 s
-	# later, frames of a browser drawing in software.
+	# Its parts' geometry was asked for before the studio was made
+	# (_ask_early_model) and is waited for under the page's own screen, which
+	# says how much has come, so every part is down in that frame; that screen
+	# comes down once the set is drawn whole ("shown", _show_whole). Waited for
+	# with the studio on the screen, it was a frozen studio; not waited for,
+	# the last parts came 3 to 4 s later, frames of a browser drawing in
+	# software.
 	if not _from_library.is_empty() and ModelLibrary.early_here(_from_library):
-		await _await_early_set()
+		await _await_early_model()
 		_maybe_open_library()
 		_boot_mark("library")
-		await RenderingServer.frame_post_draw
+		await _show_whole()
+	elif not _copying.is_empty() and _early_asked:
+		# Open in Brickworks' copy, opened above with its parts here.
+		await _show_whole()
 	# Every other address's page lifts its screen once the studio is made
-	# ("ui"); a set's waits for this (src/boot/shell.html, whenUp).
-	_boot_mark("shown")
+	# ("ui"); one that opens a model waits for this (src/boot/shell.html,
+	# whenUp).
+	_mark_shown()
 
 	# Wait a frame so the deferred batch rebuild has run and the bounds are
 	# real before framing them.
@@ -3567,8 +3593,13 @@ func _view_shared() -> void:
 	_set_address(_view_address())
 	_lay_baseplate()
 	_shell.assemblies.enter("")
-	await get_tree().process_frame
-	_camera.frame(_built_bounds())
+	if not _shown_marked:
+		# Opened under the page's screen (_ready): drawn whole and framed in
+		# the frame that screen lifts on.
+		await _show_whole()
+	else:
+		await get_tree().process_frame
+		_camera.frame(_built_bounds())
 	_view_phases["drawn"] = Time.get_ticks_msec() - began
 	# In the frame after: finding them makes the motion player, whose script
 	# a browser compiles then, and the first picture is not held for it.
@@ -5125,53 +5156,86 @@ func _maybe_open_library() -> void:
 		await _build_from_step_one()
 
 
-## The parts of a set opened from its page (?library=) whose geometry
-## [method _ask_early_set] asked for, by the name each is laid under.
+## The parts of the model the page's address opens (?library=, ?view=,
+## ?copy=) whose geometry [method _ask_early_model] asked for, by the name
+## each is laid under.
 var _early_parts: Array = []
-## The longest the page's screen waits for them, in ms: past it the set opens
-## and the rest are put down as they come.
+## Whether [method _ask_early_model] has asked for them: the model's text was
+## here, from the page, as the app was made. A shared model's (?view=,
+## ?copy=) is then opened under the page's screen ([method _await_early_model],
+## [method _show_whole]); a set's when its entry is here too
+## (ModelLibrary.early_here).
+var _early_asked: bool = false
+## The longest the page's screen waits for them, in ms: past it the model
+## opens and the rest are put down as they come.
 const EARLY_SET_WAIT_MS := 2000
 
 
-## A set's Make your own version (?library=), its file fetched by the page as
-## it opened (ModelLibrary.early_text): the geometry of its parts this build
-## does not carry asked for now, while the rest of the studio is made, from
-## where the page heard the parts live (ModelLibrary.early_parts_url), and read
-## before anything read ahead (PartLibrary.want), so the open in the studio's
-## first frame puts every part down ([method _await_early_set]).
-## Asked once the studio was up, 346-2's 13 such parts (36 of its 165) were
-## asked a frame after the deployment answered and came three to four frames
-## later, frames a browser drawing in software took 0.4 to 3 s each (setopen,
-## 2026-11-23). Only for a file the bar opens in one frame
-## (ModelBar.OPENED_AT_ONCE_MOST).
-func _ask_early_set() -> void:
-	if _from_library.is_empty():
+## The model the page's address opens, its text fetched by the page as it
+## opened: a set's Make your own version (?library=, ModelLibrary.early_text),
+## a shared model's Open in the app or Build it (?view=) and its Open in
+## Brickworks (?copy=, both SharedModels.early_model). The geometry of its
+## parts this build does not carry asked for now, from where the page heard
+## the parts live (ModelLibrary.early_parts_url), and read before anything
+## read ahead (PartLibrary.want), so the open in the studio's first frame
+## puts every part down ([method _await_early_model]).
+##
+## Called as soon as the catalogue is read, before the studio is made, and
+## again once it is made if the page's fetch had not come by then. Asked as
+## the studio was made, the parts bin's read-ahead was asked first and held
+## the connection: at a load of 130, 0 of 346-2's 27 came in the 2 s waited,
+## and its baseplate, fence and tree came 5 s after the studio showed, the
+## grid floor grey where the green baseplate goes (setopen3's strip,
+## 2026-11-24). Asked once the studio was up, a shared model's 38 parts came
+## 4.7 s after it opened, 8.3 s after the studio (setopen, 2026-11-23). A
+## set's only for a file the bar opens in one frame
+## (ModelBar.OPENED_AT_ONCE_MOST); a shared model's always opens in one.
+func _ask_early_model() -> void:
+	if _early_asked or _library == null:
 		return
-	var text: String = ModelLibrary.early_text(_from_library)
-	if text.is_empty() or text.length() >= ModelBar.OPENED_AT_ONCE_MOST:
+	var text: String = ""
+	var name: String = ""
+	# The viewer opens its link and nothing else the address asks for.
+	if not _viewing.is_empty():
+		name = _viewing
+		text = SharedModels.early_model(name, _viewing_version)
+	elif not _from_library.is_empty():
+		text = ModelLibrary.early_text(_from_library)
+		name = _from_library
+		if text.length() >= ModelBar.OPENED_AT_ONCE_MOST:
+			return
+	elif not _copying.is_empty():
+		name = _copying
+		text = SharedModels.early_model(name, _viewing_version)
+	if text.is_empty():
 		return
-	var parsed: LdrModel = LdrModel.parse(text, _from_library)
+	var parsed: LdrModel = LdrModel.parse(text, name)
 	if parsed == null:
 		return
 	if _library.remote_parts.is_empty():
 		_library.remote_parts = ModelLibrary.early_parts_url()
-	_early_parts = _store.ask_geometry(parsed)
+	# Fetched for, and read in the frames of, this node's tree: the same
+	# host the studio gives it (_build_ui), given now.
+	_library.set_fetch_host(self)
+	_early_parts = ModelStore.ask_geometry_in(_library, parsed)
+	_early_asked = true
 
 
 ## Until none of [member _early_parts] is on its way, [constant
 ## EARLY_SET_WAIT_MS] at most, nothing drawn and nothing moving, under the
-## page's own screen, still up for a set (shell.html's whenUp), which says how
-## many have come (window.brickworksBootParts). Each frame then costs
-## milliseconds, not a studio drawn in software, and each part is read here as
-## its bytes come (PartLibrary.read_first_here), this thread idle meanwhile.
+## page's own screen, still up for a model the address opens (shell.html's
+## whenUp), which says how many have come (window.brickworksBootParts). Each
+## frame then costs milliseconds, not a studio drawn in software, and each
+## part is read here as its bytes come (PartLibrary.read_first_here), this
+## thread idle meanwhile.
 ##
-## Then the screen says "Opening the set…", and is drawn so, a frame before
-## the open: the open and the studio's first frame, drawn with the set, hold
-## the page's thread in one go, 5.4 s in a browser drawing in software, and
-## nothing on the page can change meanwhile. Whatever it said then is what
-## the person read all that while: "0 of 12" though all 12 had been read in
-## the first 170 ms (openreview F3, 2026-11-24).
-func _await_early_set() -> void:
+## Then the screen says "Opening the set…" (or the model), and is drawn so, a
+## frame before the open: the open and the studio's first frame, drawn with
+## the model, hold the page's thread in one go, 5.4 s in a browser drawing in
+## software, and nothing on the page can change meanwhile. Whatever it said
+## then is what the person read all that while: "0 of 12" though all 12 had
+## been read in the first 170 ms (openreview F3, 2026-11-24).
+func _await_early_model() -> void:
 	var coming: Callable = func() -> int:
 		return _early_parts.filter(func(part_id: String) -> bool: return _library.is_on_its_way(part_id)).size()
 	var total: int = coming.call()
@@ -5189,15 +5253,39 @@ func _await_early_set() -> void:
 			await get_tree().process_frame
 			here += _library.read_first_here()
 			left = coming.call()
-		_boot_mark("set geometry: %d of %d, %d read here" % [total - left, total, here])
+		_boot_mark("model geometry: %d of %d, %d read here" % [total - left, total, here])
 	_tell_boot("window.brickworksBootOpening && window.brickworksBootOpening()")
 	await get_tree().process_frame
 	GpuFence.let_go()
 	get_tree().paused = false
 
 
-## How many of the set's parts have come, said on the page's screen while
-## [method _await_early_set] waits for them.
+## The model just opened under the page's screen drawn whole in the next
+## frame, framed, and then the screen let go ("shown", shell.html's whenUp):
+## every batch written at once (BrickWorld.flush_now), not a slice a frame,
+## and the view framed on it before that frame, not after. The person's first
+## sight of the studio is the whole model, as it stays.
+func _show_whole() -> void:
+	_world.flush_now()
+	_camera.frame(_built_bounds())
+	await RenderingServer.frame_post_draw
+	_mark_shown()
+
+
+## The page's loading screen let go of, once ("shown"): for an address that
+## opens a model it waits for this (shell.html's whenUp), every other lifts
+## once the studio is made ("ui").
+var _shown_marked: bool = false
+
+
+func _mark_shown() -> void:
+	if not _shown_marked:
+		_shown_marked = true
+		_boot_mark("shown")
+
+
+## How many of the model's parts have come, said on the page's screen while
+## [method _await_early_model] waits for them.
 static func _tell_set_parts(done: int, total: int) -> void:
 	_tell_boot("window.brickworksBootParts && window.brickworksBootParts(%d, %d)" % [done, total])
 

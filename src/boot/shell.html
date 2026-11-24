@@ -574,6 +574,8 @@ const loaderSays = (function () {
 			"Sorting the bin…": "Der Teilekasten wird sortiert…",
 			"Fetching the set's parts: {done} of {total}": "Die Teile des Sets werden geladen: {done} von {total}",
 			"Opening the set…": "Das Set wird geöffnet…",
+			"Fetching the model's parts: {done} of {total}": "Die Teile des Modells werden geladen: {done} von {total}",
+			"Opening the model…": "Das Modell wird geöffnet…",
 			"Ready": "Bereit",
 			"This browser is missing: {what}.": "Diesem Browser fehlt: {what}.",
 			"Threads need the page served with {headers}.": "Threads brauchen die Seite mit {headers}.",
@@ -638,6 +640,8 @@ const loaderSays = (function () {
 			"Sorting the bin…": "Tri du bac à pièces…",
 			"Fetching the set's parts: {done} of {total}": "Chargement des pièces du set : {done} sur {total}",
 			"Opening the set…": "Ouverture du set…",
+			"Fetching the model's parts: {done} of {total}": "Chargement des pièces du modèle : {done} sur {total}",
+			"Opening the model…": "Ouverture du modèle…",
 			"Ready": "Prêt",
 			"This browser is missing: {what}.": "Il manque à ce navigateur : {what}.",
 			"Threads need the page served with {headers}.": "Les threads demandent une page servie avec {headers}.",
@@ -702,6 +706,8 @@ const loaderSays = (function () {
 			"Sorting the bin…": "Ordenando la caja de piezas…",
 			"Fetching the set's parts: {done} of {total}": "Cargando las piezas del set: {done} de {total}",
 			"Opening the set…": "Abriendo el set…",
+			"Fetching the model's parts: {done} of {total}": "Cargando las piezas del modelo: {done} de {total}",
+			"Opening the model…": "Abriendo el modelo…",
 			"Ready": "Listo",
 			"This browser is missing: {what}.": "A este navegador le falta: {what}.",
 			"Threads need the page served with {headers}.": "Los hilos necesitan que la página se sirva con {headers}.",
@@ -1142,16 +1148,19 @@ brickworksEngine.ready.then(function (chosen) {
 		note.classList.toggle("bad", Boolean(bad));
 	}
 
-	// A set's parts as the app waits for them, under this screen, before
-	// the studio is shown with the set on it (Main._await_early_set, whenUp).
+	// The model the address opens (a set's own version, a shared model's
+	// Open in the app or Open in Brickworks): its parts as the app waits for
+	// them, under this screen, before the studio is shown with the model on
+	// it (Main._await_early_model, whenUp).
 	window.brickworksBootParts = function (done, total) {
-		say(loaderSays("Fetching the set's parts: {done} of {total}", { done: done, total: total }));
+		say(loaderSays(forSet ? "Fetching the set's parts: {done} of {total}"
+			: "Fetching the model's parts: {done} of {total}", { done: done, total: total }));
 	};
-	// Then the set opened and the studio's first frame drawn with it, which
+	// Then the model opened and the studio's first frame drawn with it, which
 	// hold this page's thread for seconds: said a frame before, so it is
 	// what the person reads meanwhile, not a count that cannot move.
 	window.brickworksBootOpening = function () {
-		say(loaderSays("Opening the set…"));
+		say(loaderSays(forSet ? "Opening the set…" : "Opening the model…"));
 	};
 
 	function fail(text) {
@@ -1171,6 +1180,12 @@ brickworksEngine.ready.then(function (chosen) {
 		args.push(value === "" ? "--" + key : "--" + key + "=" + value);
 	}
 	if (args.length) GODOT_CONFIG.args = ["--", ...args];
+	// Whether the address opens a model as the app starts: a set's Make your
+	// own version (?library=omr-…), or a shared model's link (?view=, its
+	// page's Open in the app and Build it; ?copy=, Open in Brickworks), whose
+	// answer the page asked for already (window.brickworksSharePrefetch).
+	const forSet = /^omr-/.test(query.get("library") || "");
+	const forShared = /^[A-Za-z0-9]{10}$/.test(query.get("view") || query.get("copy") || "");
 
 	// -- A library model the address asks for, fetched as the page opens --
 	//
@@ -1182,10 +1197,14 @@ brickworksEngine.ready.then(function (chosen) {
 	// for here instead, beside the engine's own files, and the index's entry
 	// for it found here: the app takes them from window.brickworksEarly
 	// (ModelLibrary.fetch and find), and asks itself for what did not come.
+	// For a shared model's link only where the parts live: the app asks for
+	// its parts as soon as its catalogue is read (Main._ask_early_model),
+	// before its Deployment has said where they are.
 	const early = window.brickworksEarly = { files: {}, entry: null, parts: "" };
 	(function () {
 		const id = query.get("library") || "";
-		if (!/^omr-[A-Za-z0-9_-]{1,120}$/.test(id) || typeof fetch !== "function") return;
+		const set = /^omr-[A-Za-z0-9_-]{1,120}$/.test(id);
+		if (!(set || forShared) || typeof fetch !== "function") return;
 		const keep = function (url) {
 			const one = early.files[url] = { done: false, status: 0, bytes: null };
 			return fetch(url).then(function (answer) {
@@ -1208,9 +1227,11 @@ brickworksEngine.ready.then(function (chosen) {
 			let root = said && typeof said.parts_url === "string" ? said.parts_url : "";
 			if (!/^(https?:\/\/|\/)/.test(root)) return;
 			if (!root.endsWith("/")) root += "/";
-			// And the parts' geometry is there too: the app asks for the set's
-			// own as the studio is made, before its Deployment has said so.
+			// And the parts' geometry is there too: the app asks for the
+			// model's own before the studio is made, and before its
+			// Deployment has said so.
 			early.parts = root;
+			if (!set) return;
 			keep(root + "library/omr/" + id.slice(4) + ".mpd");
 			keep(root + "library/index.json").then(function (bytes) {
 				if (!bytes) return;
@@ -2170,27 +2191,29 @@ brickworksEngine.ready.then(function (chosen) {
 	// it cannot be ("stopped"): a frame or more after the engine has
 	// started, since the start's pack is written in only then. Until then
 	// this screen stays, rather than the page's empty canvas.
-	// A set's Make your own version (?library=omr-…) keeps this screen up
-	// until the studio is drawn with the set on it (the app's "shown" mark),
-	// saying how many of its parts have come, SET_SHOWN_MOST ms after the
-	// studio was made at the most: lifted as the studio was made, the person
-	// saw it still, its drawing held while the set's parts came. Any other
-	// address, as the studio is made.
+	// An address that opens a model (forSet, forShared: a set's Make your own
+	// version, a shared model's Open in the app, Build it or Open in
+	// Brickworks) keeps this screen up until the studio is drawn with the
+	// model on it (the app's "shown" mark), saying how many of its parts have
+	// come, SET_SHOWN_MOST ms after the studio was made at the most: lifted as
+	// the studio was made, the person saw it still, its drawing held while
+	// the model's parts came; or empty, the model read and its parts filling
+	// in over seconds. Any other address, as the studio is made.
 	// SET_SHOWN_MOST bounds only a wait that leaves this thread free: the
 	// app waiting on something that never comes. While the app holds the
-	// thread (the parts read, the set opened, the studio's first frame drawn
-	// in software) no script of this page runs, so nothing here can lift the
-	// screen sooner, and lifted it would show nothing new: that same held
-	// task is what draws the studio. The app bounds its own part: the parts
-	// waited for EARLY_SET_WAIT_MS at most (Main._await_early_set), and the
-	// file opened in one go only under ModelBar.OPENED_AT_ONCE_MOST. The
-	// screen stayed 7.9 s after "ui" at a load of 70 (openreview F4).
-	const forSet = /^omr-/.test(query.get("library") || "");
+	// thread (the parts read, the model opened, the studio's first frame
+	// drawn in software) no script of this page runs, so nothing here can
+	// lift the screen sooner, and lifted it would show nothing new: that same
+	// held task is what draws the studio. The app bounds its own part: the
+	// parts waited for EARLY_SET_WAIT_MS at most (Main._await_early_model),
+	// and a set's file opened in one go only under
+	// ModelBar.OPENED_AT_ONCE_MOST. The screen stayed 7.9 s after "ui" at a
+	// load of 70 (openreview F4).
 	const SET_SHOWN_MOST = 6000;
 	function whenUp(then) {
 		const marks = window.brickworksBoot || {};
 		if (marks.shown || marks.stopped
-			|| (marks.ui && (!forSet || performance.now() - marks.ui > SET_SHOWN_MOST))) then();
+			|| (marks.ui && (!(forSet || forShared) || performance.now() - marks.ui > SET_SHOWN_MOST))) then();
 		else if (!(packs.data && packs.data.gave_up)) setTimeout(function () { whenUp(then); }, 50);
 	}
 

@@ -2405,9 +2405,16 @@ const READ_OFF_FRAME_FROM := 262144
 ## (CustomParts._fetch_copied). Asked again, nothing is asked twice. The
 ## parts named, by the name each is laid under.
 func ask_geometry(model: LdrModel) -> Array:
-	var named: Array = _parts_named_in(model)
-	library.want(named)
-	library.want(CustomParts.copied_parts(library, model), true)
+	return ask_geometry_in(library, model)
+
+
+## [method ask_geometry] of [param in_library], with no store yet: the model
+## a page's address opens, asked for as soon as the catalogue is read, before
+## the studio is made and its parts bin asks for its own (Main._ask_early_model).
+static func ask_geometry_in(in_library: PartLibrary, model: LdrModel) -> Array:
+	var named: Array = _parts_named_in(model, in_library)
+	in_library.want(named)
+	in_library.want(CustomParts.copied_parts(in_library, model), true)
 	return named
 
 
@@ -2415,16 +2422,16 @@ func ask_geometry(model: LdrModel) -> Array:
 ## ([method _open_into]: Studio's, a retired number's, a part LDraw draws in
 ## one colour as the part it draws), each once: what its open asks the
 ## geometry of. A sub-model's name is among them, and asks for nothing.
-func _parts_named_in(model: LdrModel) -> Array:
+static func _parts_named_in(model: LdrModel, in_library: PartLibrary) -> Array:
 	var named: Dictionary = {}
 	for sub: LdrModel.SubModel in model.submodels.values():
 		for placement: LdrModel.Placement in sub.placements:
 			named[placement.part_id] = true
 	var out: Dictionary = {}
 	for part_id: String in named:
-		var real: String = library.resolve(studio_part(part_id, library))
-		if library.current_colour(real) >= 0:
-			real = library.current(real)
+		var real: String = in_library.resolve(studio_part(part_id, in_library))
+		if in_library.current_colour(real) >= 0:
+			real = in_library.current(real)
 		out[real] = true
 	return out.keys()
 

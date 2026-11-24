@@ -869,20 +869,39 @@ Whether what you built is still there tomorrow, and still means the same thing.
   there when the studio comes up (`ModelLibrary.early_here`), Main opens the
   set in the studio's first frame, so that frame draws it and compiles the
   bricks' shaders with the studio's own. The geometry of its parts this
-  build does not carry is asked for as the studio is made, from where the
-  page heard parts live (`Main._ask_early_set`,
-  `ModelLibrary.early_text`/`early_parts_url`), and read before anything
-  read ahead, in a queue of its own, and kept first (`PartLibrary.want`,
-  `_waited_on_parts`, `_to_read_first`). The open waits for it, 2 s at most,
-  with nothing drawn, under the page's loading screen, which stays up for a
-  set and says how many of its parts have come (`Main._await_early_set`,
+  build does not carry is asked for as soon as the catalogue is read, before
+  the studio is made and its parts bin asks for its own (again once it is
+  made if the page's fetch had not come), from where the page heard parts
+  live (`Main._ask_early_model`, `ModelStore.ask_geometry_in`,
+  `ModelLibrary.early_text`/`early_parts_url`; asked as the studio was made,
+  the bin's read-ahead held the connection and 0 of 346-2's 27 came in the
+  2 s at a load of 130, its green baseplate, fence and tree drawn 5 s after
+  the studio, the grid floor grey where the baseplate goes: viewopen), and
+  read before anything read ahead, in a queue of its own, and kept first
+  (`PartLibrary.want`, `_waited_on_parts`, `_to_read_first`). The open waits
+  for it, 2 s at most, with nothing drawn, under the page's loading screen,
+  which stays up for a model the address opens and says how many of its
+  parts have come (`Main._await_early_model`,
   `window.brickworksBootParts`), each read on the page's idle thread as its
   bytes come (`PartLibrary.read_first_here`: left to the workers, none of
   346-2's 12 came in the 2 s), and comes down once the studio is drawn
-  with the set on it (boot mark `shown`, shell.html's `whenUp`): every part
+  with the model whole on it (`Main._show_whole`: every batch written at
+  once, `BrickWorld.flush_now`, not a slice a frame, and the view framed
+  before that frame; boot mark `shown`, shell.html's `whenUp`): every part
   down in that frame, and the studio never seen still. Waited for with the
   studio showing, it was a frozen studio; not waited for, the last parts came
-  3 to 4 s later. The boot mark `set geometry: N of M, R read here` says how it went.
+  3 to 4 s later. The boot mark `model geometry: N of M, R read here` says how it went.
+  A shared model's link takes the same path (viewopen): Open in the
+  studio (`/app?copy=`), Build it and the viewer (`/app?view=`, `&build`,
+  `&v=`), the page's own fetch of the link's answer
+  (`window.brickworksSharePrefetch`) read once as the app is made
+  (`SharedModels.early_model`, kept for the open's `fetch`), its parts asked
+  for then and waited for under the screen ("Fetching the model's parts: N
+  of M", "Opening the model…"), the viewer's open (`Main._view_shared`) or
+  the copy's (`_open_asked`, after the tab's own autosave is back) drawn
+  whole before the screen lifts. Without the link's answer by then (a slow
+  or failed fetch, a link with no model) it goes as before: the screen lifts
+  on the studio's first frame and the viewer says what it is waiting for.
   Then the screen says "Opening the set…" and is drawn so, a frame before
   the open and the studio's first frame, which hold the page's thread in one
   go (`window.brickworksBootOpening`): the count said there was "0 of 12"
