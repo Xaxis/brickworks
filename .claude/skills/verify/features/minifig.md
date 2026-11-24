@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, cli:figure prints and moulds in a browser, cli:held items probe -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, lib:parts from 3D files, ui:own part from a 3D file, cli:figure prints and moulds in a browser, cli:held items probe -->
 
 ## Sub-features
 
@@ -286,6 +286,38 @@ the model, and the design assistant doing the same with `add_minifig`.
   with the right button to turn it, the wheel to come closer; a ring shows the
   brush; locked corners are tinted blue and a faint head shows the fit. Save mould
   builds it ("Building the mould…" said first) and puts it on the figure.
+- `parts from 3D files` (`src/parts/mesh_part.gd`, `MeshPart`, a Later class):
+  an STL (binary or ASCII; Z up, turned upright) or an OBJ read with
+  `MeshFile` and refused in a sentence when it is not closed (an edge used an
+  odd number of times), has no size, or is past 120,000 triangles. Past 9,000
+  it is simplified (quadric edge collapse) and kept only if no point moved
+  more than 1% of its longest side (`HOLDS_SHARE`, a Hausdorff bound both
+  ways). Sized by its longest side in LDU, mm or studs (a guess from its
+  bounds: mm, or metres when under 2), upright, centred, its height on the
+  2 LDU lattice. `put(kind, hit)`: stud (drawn with stud.dat), anti-stud,
+  bar (along a stem 10 LDU or thinner, else a drawn 4-4cyli), bar hole, pin
+  hole; `make_hair()` stands it up and faces it (of the six ways up, each
+  seated in its deepest cave and grown up to 1.4x until the head fits, the
+  one that covers the head's sides, hangs below its top and lets the head
+  through least; then a one-sided hang to the back, else its open side to
+  the front), sizes it like a hair piece and seats its crown on the head's
+  stud (3901's socket, worn as 3901: `0 // Imported by Brickworks:
+  from=3901`), drawing 3901's tube (stud4.dat) and plastic up into the crown.
+  Bodies holds it by the head's stud as it holds 3901 ("studs", not
+  "lodged"): `Bodies._takes_stud` takes a stud into a tube the part states
+  facing it, since a part of one's own has no exact shape and its sockets
+  are looked for only at its bottom (a ponytail's tail end). Written as an
+  unofficial LDraw part (`text`), kept in user://custom_parts/ and carried
+  as `0 FILE`. `tools/own_parts_check.py DIR` reads what
+  `mesh_part_probe --write=DIR` kept with tools/ldraw: every line, BFC,
+  no flat triangle, references found, 0 FILE sections, connectors.
+- `own part from a 3D file` (`src/ui/mesh_part_dialog.gd`, `MeshPartDialog`):
+  **Make a part…**, **From a 3D file…** (and **Your own…** in the figure
+  builder's Headgear slot, as hair): the file chooser (the browser's, or
+  the desktop's own), the part beside a 1 x 1 brick (a head for hair), size
+  and unit, Turn / Tip forward / Tip sideways, This is hair, one tool per
+  connector and Take off, a click on the part puts it; Add to parts (into
+  the hand, under Custom) or Wear it. Below 760 px wide the view is on top.
 
 ## How to reach it
 
@@ -300,7 +332,16 @@ On the web the builder's parts come over the wire like any other; the default
 figure's are in the pack (`tools/web_pack.py` ESSENTIAL).
 
 Prints: M, a Head, Torso, Hips or Legs slot, **Draw a print…**. Moulds: M, a
-Headgear, Neck, Back or hand slot, **Make a mould…**.
+Headgear, Neck, Back or hand slot, **Make a mould…**. Hair from a file: M,
+Headgear, **Your own…**; any part from a file: **Make a part…**, **From a 3D
+file…**.
+
+```sh
+tools/probe.sh mesh_part_probe -- --files=DIR --write=OUT   # DIR holds hair-ponytail/
+python3 tools/own_parts_check.py OUT
+tools/probe.sh mesh_part_ui_probe -- --pictures=DIR
+PROBE_SIZE=390x844 tools/probe.sh mesh_part_ui_probe -- --pictures=DIR
+```
 
 ## How to check it
 

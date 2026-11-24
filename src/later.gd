@@ -108,6 +108,9 @@ const PATHS: Dictionary[StringName, String] = {
 	&"PartForge": "res://src/parts/part_forge.gd",
 	&"PartEditor": "res://src/parts/part_editor.gd",
 	&"ElementMaker": "res://src/parts/element_maker.gd",
+	# A part of one's own from an STL or OBJ, and its panel.
+	&"MeshPart": "res://src/parts/mesh_part.gd",
+	&"MeshPartDialog": "res://src/ui/mesh_part_dialog.gd",
 	&"StudioDecor": "res://src/parts/studio_decor.gd",
 	&"Stickers": "res://src/prints/stickers.gd",
 	&"SvgText": "res://src/prints/svg_text.gd",

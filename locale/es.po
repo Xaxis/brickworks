@@ -17484,3 +17484,213 @@ msgstr "%s seleccionado, %d piezas"
 
 msgid "hold, then Edit inside, to change one"
 msgstr "mantén pulsado y luego Editar dentro, para cambiar una"
+
+msgid "From a 3D file…"
+msgstr "Desde un archivo 3D…"
+
+msgid "Or your own shape"
+msgstr "O tu propia forma"
+
+msgid "Your own…"
+msgstr "La tuya…"
+
+msgid "Wear it"
+msgstr "Ponérsela"
+
+msgid "Anti-stud"
+msgstr "Antiespiga"
+
+msgid "Bar hole"
+msgstr "Agujero de barra"
+
+msgid "Pin hole"
+msgstr "Agujero de pasador"
+
+msgid "Hair socket"
+msgstr "Encaje del pelo"
+
+msgid "A stud where you click, facing out of the surface"
+msgstr "Una espiga donde hagas clic, hacia fuera de la superficie"
+
+msgid "A place a stud fits into, where you click: under the part, for it to sit on a stud"
+msgstr "Un sitio donde encaja una espiga, donde hagas clic: bajo la pieza, para que se asiente en una espiga"
+
+msgid "A bar a hand or a clip holds: on a thin stem it runs along the stem, elsewhere it stands out"
+msgstr "Una barra que sujeta una mano o un clip: en un tallo fino recorre el tallo; en otro sitio sobresale"
+
+msgid "A hole a bar fits into, going into the part where you click"
+msgstr "Un agujero donde entra una barra, hacia dentro de la pieza, donde hagas clic"
+
+msgid "A Technic pin hole where you click, facing out of the surface"
+msgstr "Un agujero de pasador Technic donde hagas clic, hacia fuera de la superficie"
+
+msgid "Under the crown of a hair piece: where the head's stud goes in"
+msgstr "Bajo la coronilla de un pelo: donde entra la espiga de la cabeza"
+
+msgid "Click a connector to take it off"
+msgstr "Haz clic en una conexión para quitarla"
+
+msgid "Your own hair from a 3D file"
+msgstr "Tu propio pelo desde un archivo 3D"
+
+msgid "A part from a 3D file"
+msgstr "Una pieza desde un archivo 3D"
+
+msgid "Choose an STL or an OBJ file."
+msgstr "Elige un archivo STL u OBJ."
+
+msgid "That file could not be read."
+msgstr "No se pudo leer ese archivo."
+
+msgid "Your own hair: %s"
+msgstr "Tu propio pelo: %s"
+
+msgid "A part from %s"
+msgstr "Una pieza desde %s"
+
+msgid "Choose file…"
+msgstr "Elegir archivo…"
+
+msgid "Bring in another STL or OBJ file"
+msgstr "Traer otro archivo STL u OBJ"
+
+msgid "Back without making a part (Escape)"
+msgstr "Volver sin hacer una pieza (Escape)"
+
+msgid "Size: the longest side"
+msgstr "Tamaño: el lado más largo"
+
+msgid "The longest side"
+msgstr "El lado más largo"
+
+msgid "Size in"
+msgstr "Tamaño en"
+
+msgid "A quarter turn about the upright, to face it the other way"
+msgstr "Un cuarto de vuelta sobre la vertical, para orientarla al revés"
+
+msgid "Tip forward"
+msgstr "Inclinar hacia delante"
+
+msgid "A quarter turn forward, if it came in lying down"
+msgstr "Un cuarto de vuelta hacia delante, si llegó tumbada"
+
+msgid "Tip sideways"
+msgstr "Inclinar de lado"
+
+msgid "A quarter turn sideways"
+msgstr "Un cuarto de vuelta de lado"
+
+msgid "This is hair"
+msgstr "Esto es pelo"
+
+msgid "Seat it on a minifigure's head: the inside of its crown on the head's stud, sized like a hair piece if it is not one already"
+msgstr "Asentarlo en la cabeza de una minifigura: el interior de la coronilla sobre la espiga de la cabeza, del tamaño de un pelo si no lo tiene ya"
+
+msgid "Put on it, one click each"
+msgstr "Para ponerle, un clic cada uno"
+
+msgid "My shape"
+msgstr "Mi forma"
+
+msgid "Make the part, keep it with your parts, and carry it in every model that uses it"
+msgstr "Hacer la pieza, guardarla con tus piezas y llevarla en cada modelo que la use"
+
+msgid "The part, and a 1 x 1 brick for its size"
+msgstr "La pieza, y un ladrillo 1 x 1 para su tamaño"
+
+msgid "Seated on a minifigure's head."
+msgstr "Asentado en la cabeza de una minifigura."
+
+msgid "The head goes into it in places (%d%%): make it a little larger, or put the hair socket by hand."
+msgstr "La cabeza lo atraviesa en algunos sitios (%d %%): hazlo un poco más grande o pon el encaje del pelo a mano."
+
+msgid "Click the inside of the hair, under its crown, from below: the head's stud goes in there."
+msgstr "Haz clic dentro del pelo, bajo la coronilla, desde abajo: ahí entra la espiga de la cabeza."
+
+msgid "Choose what to put on it first."
+msgstr "Elige primero qué ponerle."
+
+msgid "There is no connector there to take off."
+msgstr "Ahí no hay ninguna conexión que quitar."
+
+msgid "That is beside the part: click on it."
+msgstr "Eso está al lado de la pieza: haz clic sobre ella."
+
+msgid "It could not be made: %s."
+msgstr "No se pudo hacer: %s."
+
+msgid "Bring in an STL or OBJ file as a part: sized, turned upright, and given studs, anti-studs, bars or holes where you click"
+msgstr "Traer un archivo STL u OBJ como pieza: a su tamaño, de pie y con espigas, antiespigas, barras o agujeros donde hagas clic"
+
+msgid "Your own hair from a 3D file, an STL or an OBJ: seated on the head, its socket on the head's stud"
+msgstr "Tu propio pelo desde un archivo 3D, STL u OBJ: asentado en la cabeza, su encaje sobre la espiga de la cabeza"
+
+msgid "%s is not a 3D file this can make a part from: choose an %s file."
+msgstr "%s no es un archivo 3D del que se pueda hacer una pieza aquí: elige un archivo %s."
+
+msgid "%s has %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s tiene %s triángulos. Una pieza puede tener como mucho %s: redúcelo antes en tu programa 3D (el modificador Decimate de Blender lo hace)."
+
+msgid "%s has no size: its points are all in one place, on one line or one flat sheet."
+msgstr "%s no tiene tamaño: sus puntos están todos en un sitio, en una línea o en una lámina plana."
+
+msgid "%s has no surfaces with any size to them."
+msgstr "%s no tiene superficies con tamaño alguno."
+
+msgid "Simplified from %s triangles to %s; no point of it moved more than %s of its size."
+msgstr "Simplificado de %s triángulos a %s; ningún punto se movió más del %s de su tamaño."
+
+msgid "Point at the part to put a %s on it."
+msgstr "Apunta a la pieza para ponerle: %s."
+
+msgid "A hair socket goes under the crown: point at the inside of the hair, from below."
+msgstr "Un encaje del pelo va bajo la coronilla: apunta al interior del pelo, desde abajo."
+
+msgid "%s x %s x %s LDU (%s x %s x %s mm, %s x %s x %s studs)"
+msgstr "%s x %s x %s LDU (%s x %s x %s mm, %s x %s x %s espigas)"
+
+msgid "no connectors yet"
+msgstr "aún sin conexiones"
+
+msgid "%d triangles"
+msgstr "%d triángulos"
+
+msgid "%d triangle"
+msgstr "%d triángulo"
+
+msgid "%d connectors"
+msgstr "%d conexiones"
+
+msgid "%d connector"
+msgstr "%d conexión"
+
+msgid "%d edges"
+msgstr "%d aristas"
+
+msgid "%d edge"
+msgstr "%d arista"
+
+msgid "LDU"
+msgstr "LDU"
+
+msgid "mm"
+msgstr "mm"
+
+msgid "%s is not a closed shape: %s of its surface border a hole. A part has to be solid to be moulded. Close it in your 3D program (in Blender: select all, then Mesh > Clean Up > Fill Holes) and bring it in again."
+msgstr "%s no es una forma cerrada: %s de su superficie bordean un agujero. Una pieza tiene que ser maciza para moldearse. Ciérrala en tu programa 3D (en Blender: seleccionar todo y luego Mesh > Clean Up > Fill Holes) y vuelve a traerla."
+
+msgid "%s has %s triangles; a part keeps at most %s, and made that simple its surface would move by up to %s of its size. Reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s tiene %s triángulos; una pieza guarda como mucho %s y, así de simplificada, su superficie se movería hasta un %s de su tamaño. Redúcelo antes en tu programa 3D (el modificador Decimate de Blender lo hace)."
+
+msgid "more than %s"
+msgstr "más de %s"
+
+msgid "Making the part…"
+msgstr "Haciendo la pieza…"
+
+msgid "its name has %d letters, and a part's may have at most %d"
+msgstr "su nombre tiene %d letras, y el de una pieza puede tener como mucho %d"
+
+msgid " (which %s stands in for)"
+msgstr " (al que sustituye %s)"

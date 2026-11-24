@@ -39,6 +39,9 @@ extends RefCounted
 const PRINTED_BY := "0 // Printed by Brickworks:"
 ## And the line a sculpted part's file says what it was moulded from in.
 const MOULDED_BY := "0 // Moulded by Brickworks:"
+## And a part brought in from a 3D file (MeshPart): from= says the part it is
+## worn as, for a hair piece 3901.
+const IMPORTED_BY := "0 // Imported by Brickworks:"
 const AUTHOR := "Brickworks print designer"
 ## How finely a print is drawn: ten pixels to the LDU, 25 to the
 ## millimetre, more than a pad print holds. And no side longer than this,
@@ -781,7 +784,7 @@ const STUDIO_BIN := "From Studio"
 static func base_in(text: String) -> String:
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
-		for lead: String in [PRINTED_BY, MOULDED_BY]:
+		for lead: String in [PRINTED_BY, MOULDED_BY, IMPORTED_BY]:
 			if line.begins_with(lead):
 				for word: String in line.substr(lead.length()).split(" ", false):
 					if word.begins_with("from="):
@@ -790,9 +793,9 @@ static func base_in(text: String) -> String:
 
 
 ## What a print or mould made here is called, said as the builder says
-## it: "print: Captain", "mould: Quiff".
+## it: "print: Captain", "mould: Quiff", "shape: Mohawk" (one's own 3D file).
 static func made_title(name: String) -> String:
-	for kind: String in ["Print", "Mould"]:
+	for kind: String in ["Print", "Mould", "Shape"]:
 		var lead: String = ", Custom %s " % kind
 		if name.contains(lead):
 			return "%s: %s" % [kind.to_lower(), name.get_slice(lead, 1)]

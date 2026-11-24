@@ -45,6 +45,9 @@ var _studs_top: Dictionary = {}        ## "keep", "none", "fill" -> its Button
 var _cut: Array[SpinBox] = []
 var _start: Button
 var _change_it: Button
+## "From a 3D file…", and the panel it opens (made the first time).
+var _from_file: Button
+var _own: Control = null
 ## The controls' scrolling area: what is outside it cannot be pressed.
 var _scroll: ScrollContainer
 ## The part whose geometry is on its way, to change once it is here.
@@ -239,6 +242,14 @@ func _build() -> void:
 	_modify_note.modulate = Color(1, 0.86, 0.6, 0.9)
 	_modify_note.visible = false
 	column.add_child(_modify_note)
+	# Or a shape of one's own, from an STL or an OBJ (MeshPartDialog).
+	var own_row := _row(column, "Or your own shape")
+	_from_file = Button.new()
+	_from_file.text = "From a 3D file…"
+	_from_file.tooltip_text = ("Bring in an STL or OBJ file as a part: sized, turned upright, "
+		+ "and given studs, anti-studs, bars or holes where you click")
+	_from_file.pressed.connect(_own_file)
+	own_row.add_child(_from_file)
 
 	# Every family on show, one press each: a menu hid six of the seven.
 	var family_holder := VBoxContainer.new()
@@ -996,9 +1007,34 @@ func _make() -> void:
 	made.emit(str(result["id"]))
 
 
+## The panel a part from a 3D file is made in, over this one: by name, so
+## opening this dialog compiles none of it (Later).
+func own_part() -> Control:
+	if _own == null:
+		_own = Later.make(&"MeshPartDialog")
+		_own.set("library", library)
+		HudFront.add_beside(self, _own)
+		_own.set_anchors_preset(Control.PRESET_FULL_RECT)
+		for side: Side in [SIDE_LEFT, SIDE_TOP]:
+			_own.set_offset(side, 24)
+		for side: Side in [SIDE_RIGHT, SIDE_BOTTOM]:
+			_own.set_offset(side, -24)
+		_own.connect("made", func(part_id: String, _hair: bool) -> void:
+			visible = false
+			made.emit(part_id))
+	return _own
+
+
+## Straight from the press: a browser hands its file chooser only to a click.
+func _own_file() -> void:
+	own_part().call("choose_file", false)
+
+
 ## Where a browser test finds the controls (main._tell_page publishes
 ## them), by the names tools/web/element_flow.mjs clicks.
 func controls_by_name() -> Dictionary:
+	if _own != null and _own.visible:
+		return _own.call("controls_by_name")
 	if not visible:
 		return {}
 	var named: Dictionary = {
@@ -1012,6 +1048,7 @@ func controls_by_name() -> Dictionary:
 	named["element from"] = _from
 	named["element start"] = _start
 	named["element change"] = _change_it
+	named["element from file"] = _from_file
 	for way: String in _studs_top:
 		if _mode == "modify":
 			named["element studs " + way] = _studs_top[way]

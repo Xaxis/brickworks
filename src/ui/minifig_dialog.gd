@@ -59,6 +59,10 @@ var _stage: BrickWorld
 var _make: Button
 var _print_editor: PrintEditor
 var _mould_editor: MouldEditor
+## Hair's "Your own…", a shape from one's own STL or OBJ, and the panel it
+## opens (MeshPartDialog, by name: made the first time it is wanted).
+var _own: Button
+var _own_editor: Control = null
 var _waiting: Dictionary = {}            ## part id -> true, geometry on its way
 var _turn: float = 0.45
 var _dragging: bool = false
@@ -336,6 +340,15 @@ func _build_picker() -> Control:
 	_make.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
 	_make.pressed.connect(_make_own)
 	row.add_child(_make)
+	_own = Button.new()
+	_own.text = "Your own…"
+	_own.tooltip_text = ("Your own hair from a 3D file, an STL or an OBJ: seated on the head, "
+		+ "its socket on the head's stud")
+	_own.focus_mode = Control.FOCUS_NONE
+	_own.add_theme_font_size_override("font_size", 12)
+	_own.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
+	_own.pressed.connect(_own_hair)
+	row.add_child(_own)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -555,6 +568,7 @@ func _make_for_a_finger() -> void:
 	_search_row.move_child(_back, 0)
 	_put(_group, _second_row, 0)
 	_put(_make, _second_row, 1)
+	_put(_own, _second_row, 2)
 	_group.custom_minimum_size.x = 0.0
 	_group.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bench = VBoxContainer.new()
@@ -590,7 +604,7 @@ func _take_turn(choosing: bool) -> void:
 ## The search row's second line, while it has something on it.
 func _show_second() -> void:
 	if _second_row != null:
-		_second_row.visible = _group.visible or _make.visible
+		_second_row.visible = _group.visible or _make.visible or _own.visible
 
 
 ## While the keyboard is up for its search or its name, the figure and the
@@ -653,6 +667,7 @@ func _choose_slot(slot: String) -> void:
 	_search.text = ""
 	_search.editable = true
 	_make.visible = PRINTED.has(slot) or MOULDED.has(slot)
+	_own.visible = slot == "headwear"
 	_make.text = "Draw a print…" if PRINTED.has(slot) else "Make a mould…"
 	_make.tooltip_text = ("Draw your own print for this part: a face, a torso's front and "
 		+ "back, a pair of legs") if PRINTED.has(slot) else ("Sculpt your own from this part, "
@@ -882,8 +897,15 @@ func _mark_swatches() -> void:
 			note += " A dot marks the %s %s comes in: %s is that cloth as worn." \
 				% [Counted.of(info.colors.size(), "colour"), info.id, part]
 		else:
+			# A mould or a shape of one's own is made in its plain part's
+			# place; a print is on it.
+			var made: String = PartPrints.made_title(library.parts[part].name) \
+				if library.parts.has(part) else ""
+			var stands: String = " (which %s stands in for)" % made.get_slice(": ", 1) \
+				if made.begins_with("mould: ") or made.begins_with("shape: ") \
+				else " (what %s is printed on)" % part
 			note += " A dot marks the %s %s%s comes in." % [Counted.of(info.colors.size(), "colour"),
-				info.id, "" if info.id == part else " (what %s is printed on)" % part]
+				info.id, "" if info.id == part else stands]
 	_colour_note.text = note
 
 
@@ -963,6 +985,22 @@ func mould_editor() -> MouldEditor:
 		_overlay(_mould_editor)
 		_mould_editor.made.connect(_on_made)
 	return _mould_editor
+
+
+func own_editor() -> Control:
+	if _own_editor == null:
+		_own_editor = Later.make(&"MeshPartDialog")
+		_own_editor.set("library", library)
+		_overlay(_own_editor)
+		_own_editor.connect("made", func(part_id: String, _hair: bool) -> void:
+			_on_made([part_id], "headwear"))
+	return _own_editor
+
+
+## Straight from the press: a browser hands its file chooser only to a click.
+func _own_hair() -> void:
+	own_editor().set("colour_code", int(figure.colours.get("headwear", 6)))
+	own_editor().call("choose_file", true)
 
 
 func _open_mould_editor() -> void:
@@ -1117,6 +1155,7 @@ func controls_by_name() -> Dictionary:
 	named["minifig_search"] = _search
 	named["minifig_group"] = _group
 	named["minifig_make"] = _make
+	named["minifig_own"] = _own
 	named["minifig_name"] = _name
 	# Back to the slots, where they and a slot's choices take turns.
 	if _back != null:
@@ -1126,6 +1165,8 @@ func controls_by_name() -> Dictionary:
 		named.merge(_print_editor.controls_by_name())
 	if _mould_editor != null and _mould_editor.visible:
 		named.merge(_mould_editor.controls_by_name())
+	if _own_editor != null and _own_editor.visible:
+		named.merge(_own_editor.call("controls_by_name"))
 	# The first part the grid offers, so a browser check can choose one.
 	for cell: Node in _grid.get_children():
 		var id: String = str(cell.get_meta("part", ""))

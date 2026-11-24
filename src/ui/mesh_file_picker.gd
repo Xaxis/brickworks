@@ -13,6 +13,17 @@ extends Node
 
 const ACCEPT := ".obj,.stl,.gltf,.glb,.ply,.3mf,.vox,.fbx,.mtl,.bin,.png,.jpg,.jpeg,.webp,.tga,.bmp"
 
+## What is asked for: Brickify's every kind, or fewer (a part of one's own
+## takes an STL or an OBJ), with the desktop dialog's title and filter.
+var accept: String = ACCEPT
+var title: String = "Brickify a 3D model"
+var filter: PackedStringArray = ["*.obj, *.stl, *.gltf, *.glb, *.ply, *.3mf, *.vox, *.fbx",
+	"3D models (OBJ, STL, glTF, PLY, 3MF, VOX, FBX)"]
+## The platform's own Open dialog on the desktop, as SaveTo's is (a probe
+## turns SaveTo.native off: the portal's would open on the desktop its bus
+## belongs to, not in the probe's display).
+var native: bool = false
+
 ## The model's bytes and name, and the files beside it by name.
 signal picked(bytes: PackedByteArray, name: String, extras: Dictionary)
 signal failed(why: String)
@@ -30,9 +41,9 @@ func ask() -> void:
 		_dialog = FileDialog.new()
 		_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 		_dialog.access = FileDialog.ACCESS_FILESYSTEM
-		_dialog.add_filter("*.obj, *.stl, *.gltf, *.glb, *.ply, *.3mf, *.vox, *.fbx",
-			"3D models (OBJ, STL, glTF, PLY, 3MF, VOX, FBX)")
-		_dialog.title = "Brickify a 3D model"
+		_dialog.add_filter(filter[0], filter[1])
+		_dialog.title = title
+		_dialog.use_native_dialog = native
 		_dialog.size = Vector2i(760, 520)
 		_dialog.file_selected.connect(open_path)
 		# On the window, not under the Brickify panel, which waits hidden
@@ -121,7 +132,7 @@ func _ask_browser() -> void:
 			});
 			input.click();
 		})();
-	""" % ACCEPT, true)
+	""" % accept, true)
 
 
 func _from_browser(arguments: Array) -> void:

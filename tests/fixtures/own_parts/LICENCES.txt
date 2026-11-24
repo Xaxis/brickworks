@@ -1,0 +1,66 @@
+Real 3D files for src/dev/mesh_part_probe.gd: a part of one's own from an STL or OBJ (MeshPart).
+Each is redistributed here under its own licence, as its source page states it (fetched 2026-11-23).
+The fourth hair piece the probe reads, the 3.4 MB ponytail (CC0 1.0, VicArtGil,
+https://www.printables.com/model/1607412-hair-for-110-tpu-join-action-figure-eva-02), is not kept here: pass --files=.
+
+------------------------------------------------------------------------
+path:        hair-wig67/wig_67.stl
+what:        Minifigure hair ("Wig 67"), scaled 8.33x from a LEGO-style hair and
+             cut flat at the back (made to sit on a wall-mounted toilet-roll holder head).
+             At 1/8.33 scale it is about 13 x 9 x 7 mm, which is minifigure size.
+source page: https://www.printables.com/model/561113-large-scale-minifigure-hair
+download:    https://files.printables.com/media/prints/561113/stls/4497341_f29d23ca-c84e-4c0b-bc64-264ef98083a0/wig_67.stl
+author:      Pugwash
+licence:     Creative Commons — Attribution (CC-BY), 4.0 International
+             The page says the author started from "a low-poly OBJ of original minifigure hair";
+             no remix parent is listed.
+format:      binary STL, 612284 bytes, sha256 49d6adb0e5417395745a7cd44e2d30af7efe61c91fe6346a0f20fcf7cfafea31
+triangles:   12244 (6124 vertices), watertight, no degenerate triangles
+bbox:        min (-51.412, 148.093, -8.591) max (57.720, 223.388, 50.479)
+             size 109.132 x 75.295 x 59.070
+fetched:     2026-11-23
+------------------------------------------------------------------------
+path:        hair-mohawk/mohawk.stl
+what:        Mohawk hairstyle for the Dummy13 printable jointed figure (a small figure's
+             head with the mohawk on it).
+source page: https://www.printables.com/model/1331460-dummy13-punk-hairstyles
+download:    https://files.printables.com/media/prints/165cf72f-e502-43df-abb1-bb76eb5d40a7/stls/10044941_22a5d0ae-de9e-426d-bbf4-6d4dba8e35b8_4f540859-e810-4b9d-a50c-3fce03e8f2c3/mohawk.stl
+author:      Earl of Pudding
+licence:     Creative Commons — Attribution (CC-BY), 4.0 International
+             This is a remix of "Dummy 13 - version 1.0!" by soozafone (Printables model 981111),
+             also CC-BY. Credit both authors.
+format:      binary STL, 125084 bytes, sha256 21ee7c11d4f8d13f3283dc93e7c80b91a66b16720b787ed0fdead4642a19380b
+triangles:   2500 (1252 vertices), watertight, no degenerate triangles
+bbox:        min (-10.608, -14.551, -5.748) max (17.500, 17.416, 5.752)
+             size 28.108 x 31.966 x 11.500
+fetched:     2026-11-23
+------------------------------------------------------------------------
+path:        goblet/lego-goblet.stl
+what:        NON-HAIR piece: a LEGO-compatible goblet/cup that "fits perfectly in a
+             mini-figure hand", at real minifigure scale.
+source page: https://www.printables.com/model/1130591-lego-compatible-gobletcupglass
+download:    https://files.printables.com/media/prints/1130591/stls/8530806_63944f5f-dd10-4de6-bbb9-11c35d79bf3b_e0005068-9c4a-46d1-9f29-3478853717f7/lego-goblet.stl
+author:      Aeon_X
+licence:     Creative Commons — Attribution (CC-BY), 4.0 International (no remix parent)
+format:      binary STL, 321884 bytes, sha256 d04b4edaeb856c7a430490e96b778b3339569585425c0ec8193247930f8c3d96
+triangles:   6436 (3220 vertices), watertight, no degenerate triangles
+bbox:        min (-4.013, -4.007, -9.172) max (4.013, 4.007, 8.375)
+             size 8.026 x 8.015 x 17.547
+fetched:     2026-11-23
+------------------------------------------------------------------------
+EXTRA (an open-mesh case, not one of the three main hair pieces)
+path:        hair-emka/hair-emka.stl
+what:        Hair made for a large printable "LEGO Character" figure. NOT watertight: 96 edges
+             belong to only one triangle. It is useful for testing how the importer handles an
+             open mesh.
+source page: https://www.printables.com/model/1854671-hairs-for-lego-figure
+download:    https://files.printables.com/media/prints/d2db580d-89d8-44f1-9bc2-600561eebc5a/stls/13907157_cab67689-bdb0-43bd-bd1f-5c56f1eda283_a62a7c76-81d0-4d37-8027-74ddd63a5d33/hair-emka.stl
+author:      Patrik Jaššo
+licence:     Creative Commons — Attribution (CC-BY), 4.0 International
+             This is a remix of "LEGO Character (Full body and piece separed)" by daxhen
+             (Printables model 796453), also CC-BY.
+format:      binary STL, 133284 bytes, sha256 8036660df0bf9bfd39082a4fbd603d5fded2ab8da37f9afc18101e5d1e212017
+triangles:   2664 (1360 vertices), NOT watertight (96 boundary edges), no degenerate triangles
+bbox:        min (65.394, 54.525, 0.000) max (114.606, 122.618, 26.214)
+             size 49.212 x 68.093 x 26.214
+fetched:     2026-11-23

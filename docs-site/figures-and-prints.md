@@ -1,6 +1,6 @@
 ---
 tools: add_minifig, print_part, make_part
-panels: MinifigDialog#minifig, MouldEditor#mould, PrintEditor#prints, ElementDialog#make-a-part
+panels: MinifigDialog#minifig, MouldEditor#mould, MeshPartDialog#own-part, PrintEditor#prints, ElementDialog#make-a-part
 ai: Minifigures from real parts, prints and stickers drawn on parts, the printed versions real parts came in, and parts made when no real one will do. An assistant adds a figure with add_minifig, prints or stickers a part with print_part, and makes a part with make_part.
 rules:
   - A print or a made part is saved inside the model, so the file opens anywhere.
@@ -37,6 +37,8 @@ For headgear or something to hold that does not exist, choose its slot and **Mak
 ui:mould maker
 lib:custom moulds
 -->
+
+For hair you already have as a 3D file, choose **Headgear** and **Your own…**: see [A part from a 3D file](#own-part). It is seated on the head and worn like any hair.
 
 ## Prints {#prints}
 
@@ -90,4 +92,24 @@ lib:change a part
 lib:element maker
 lib:made parts in the library and in files
 lib:the assistant makes a part
+-->
+
+### A part from a 3D file {#own-part}
+
+![A goblet brought in from an STL file, beside a 1 x 1 brick for its size: its longest side in mm, the turn buttons, This is hair, and one button for each connector to put on it.](/docs/img/figures-own-part.webp "Make a part… › From a 3D file…: a goblet from an STL, beside a 1 x 1 brick.")
+
+1. Press **Make a part…** and then **From a 3D file…**, and choose an **STL** or an **OBJ** file. In a browser your browser's file chooser opens; on the desktop, your system's.
+2. It comes in upright, centred and at LDraw's scale, beside a 1 x 1 brick so you can see its size. Change **Size** (its longest side) in **LDU**, **mm** or **studs**. If it came in lying down, **Tip forward** or **Tip sideways**; **Turn** faces it the other way.
+3. Choose a connector, then click on the part where it goes: **Stud**, **Anti-stud**, **Bar**, **Bar hole** or **Pin hole**. A bar on a thin stem runs along the stem. **Take off** removes one.
+4. Name it and press **Add to parts**. It goes in the bin under **Custom** and into your hand, and every model that uses it carries it, so the file opens on another computer and in LDCad.
+
+A file that is not a closed shape (it has holes in its surface) is refused, with how to close it in Blender. A file with more than 9,000 triangles is simplified if the shape stays within 1% of its size; past 120,000 it is refused.
+
+![Hair brought in from an STL file, seated on a minifigure's head: Your own hair, Seated on a minifigure's head, and Wear it.](/docs/img/figures-own-hair.webp "Headgear › Your own…: hair from an STL, seated on the head.")
+
+**Hair.** In the minifigure builder choose **Headgear**, then **Your own…**, or press **This is hair** on any part from a file. Brickworks stands the hair up and faces it forward (a ponytail's tail at the back, a wig's open side at the face), sizes it to fit round the head, and seats it: the inside of its crown goes on the head's stud, with a socket like a real hair piece's, so it turns with the head. If it guessed wrong, **Turn** and **Tip** put it right. **Wear it** puts it on the figure.
+
+<!-- covers
+ui:own part from a 3D file
+lib:parts from 3D files
 -->
