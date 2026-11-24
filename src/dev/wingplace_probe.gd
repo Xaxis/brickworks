@@ -67,8 +67,33 @@ func _run() -> void:
 		placed == _count() and _tree.ids_under("Wing#1").size() == 3)
 	_frame_view()
 	await _frames(40)
+	var before_plate: Dictionary = _parts_now()
 	await _put_inside("saved and opened again")
-	await _key(KEY_Z, true)
+	# Saved with the plate and opened again, part by part: the plate in Wing#1
+	# and its twin in Wing#2 are all that is new, and nothing else moved.
+	await _key(KEY_ESCAPE)
+	await _key(KEY_ESCAPE)
+	var with_plate: Dictionary = _parts_now()
+	_check("saved with the plate", _store.save_as("Kit car plate"))
+	_store.open(ModelStore.saved_path("Kit car plate"))
+	await _frames(10)
+	var reopened: Dictionary = _parts_now()
+	var added: Array = []
+	for key: String in with_plate:
+		if int(with_plate[key]) != int(before_plate.get(key, 0)):
+			added.append(key)
+	var gone: int = 0
+	for key: String in before_plate:
+		if int(with_plate.get(key, 0)) < int(before_plate[key]):
+			gone += 1
+	_check("...opened again part by part as saved (%d kinds, %d back)" % [with_plate.size(), reopened.size()],
+		reopened == with_plate)
+	_check("...the plate in Wing#1 and its twin in Wing#2 the only parts new, nothing moved (%s; %d moved or gone)"
+		% [str(added), gone], added.size() == 2 and gone == 0
+		and added.any(func(k: String) -> bool: return k.begins_with("Wing#1 "))
+		and added.any(func(k: String) -> bool: return k.begins_with("Wing#2 ")))
+	_frame_view()
+	await _frames(20)
 	await _beside()
 	await _big()
 
@@ -332,6 +357,19 @@ func _big() -> void:
 		% [told_wrong.size(), aims], aims > 0 and told_wrong.is_empty())
 	await _key(KEY_ESCAPE)
 	_tree.enter("")
+
+
+## Every part of the model by where it is in the tree, its number, colour and
+## place to a tenth of an LDU: key -> how many.
+func _parts_now() -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _model():
+		var at: Transform3D = brick.transform
+		var key: String = "%s %s %d %s %s" % [Assemblies.path_of(brick), brick.part_id, brick.color_code,
+			str(at.origin.snappedf(0.1)), str([at.basis.x.snappedf(0.01), at.basis.y.snappedf(0.01),
+			at.basis.z.snappedf(0.01)])]
+		out[key] = int(out.get(key, 0)) + 1
+	return out
 
 
 ## The box round the wing being edited, on the ground.
