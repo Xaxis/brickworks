@@ -3611,7 +3611,13 @@ func _view_shared() -> void:
 	_shell.assemblies.enter("")
 	if not _shown_marked:
 		# Opened under the page's screen (_ready): drawn whole and framed in
-		# the frame that screen lifts on.
+		# the frame that screen lifts on, under no card when every part is
+		# here, or the one saying how many are still coming. "Opening the
+		# shared model…" stayed over the whole train on that frame.
+		if _store.awaited.is_empty():
+			_share_view.drawn()
+		else:
+			_share_view.arriving(_store.awaited.size())
 		await _show_whole()
 	else:
 		await get_tree().process_frame
