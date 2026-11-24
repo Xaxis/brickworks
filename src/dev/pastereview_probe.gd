@@ -168,6 +168,12 @@ func _case_big() -> void:
 		ids.append(brick.id)
 	_select(ids)
 	_verbs.copy()
+	# What the other tabs are given fits a browser's 5.2 million characters
+	# for the site many times over: as plain JSON it was 2.4 million.
+	var began: int = Time.get_ticks_usec()
+	var kept: String = Carry.whole_text("", "size", _library)
+	_ok(kept.length() < 1000000, "10030: the copy kept for the other tabs is %d characters for %d parts, made in %.1f ms"
+		% [kept.length(), ids.size(), (Time.get_ticks_usec() - began) / 1000.0])
 	_builder.clear_selection()
 	_ok(_verbs.paste() == ids.size(), "10030 same tab: paste() holds all %d" % ids.size())
 	var put: Dictionary = await _put([_spot] if _spot is Vector3 else [])

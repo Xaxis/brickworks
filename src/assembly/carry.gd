@@ -1010,17 +1010,24 @@ static func _take_made(text: String, from: PartLibrary) -> Dictionary:
 
 ## The first line of the copy kept for this site's other browser tabs (EditVerbs
 ## ._share_copy): the mark, whose copy it is (an account id, "-" for nobody),
-## which copy (a stamp each copy is given), and as JSON (JSON.from_native) all
-## a paste in the tab that copied holds that LDraw has no words for: each
-## part's sub-assembly, group, step and frame, the lights and views of its
+## which copy (a stamp each copy is given), and, as JSON (JSON.from_native)
+## deflated into base64 after its length in bytes ("<bytes>:<base64>"), all a
+## paste in the tab that copied holds that LDraw has no words for: each part's
+## sub-assembly, group, step and frame, the lights and views of its
 ## sub-models, and what its copies hold that is not on the baseplate (parts the
 ## app can't show). The copy's LDraw follows ([method as_file], its made parts
 ## with it). An LDraw meta line, so a reader of LDraw passes over it.
 ##
 ## Up to appfix the tabs kept the LDraw alone, and a paste in another tab
 ## flattened every sub-assembly into loose parts and lost the parts the app
-## can't show inside a copied sub-model (pastereview F3).
+## can't show inside a copied sub-model (pastereview F3). The JSON as it is
+## took 2.4 million characters for all of 10030-1, near half of the 5.2
+## million a browser keeps for a site: a copy of 6,600 parts would not have
+## reached another tab at all.
 const WHOLE_MARK := "0 !BRICKWORKS CLIPBOARD "
+## The most bytes the JSON of another tab's copy may unpack to: past it, the
+## text is no copy.
+const WHOLE_MOST := 64 * 1024 * 1024
 
 
 ## The clipboard whole as one text for another tab ([constant WHOLE_MARK]):
@@ -1028,8 +1035,10 @@ const WHOLE_MARK := "0 !BRICKWORKS CLIPBOARD "
 static func whole_text(account: String, stamp: String, library: PartLibrary) -> String:
 	var whole: Dictionary = {"items": clipboard, "lines": clipboard_lines,
 		"frames": clipboard_frames, "held": clipboard_held}
-	return "%s%s %s %s\n%s" % [WHOLE_MARK, account if not account.is_empty() else "-", stamp,
-		JSON.stringify(JSON.from_native(whole), "", false, true), as_file(clipboard, library)]
+	var json: PackedByteArray = JSON.stringify(JSON.from_native(whole), "", false, true).to_utf8_buffer()
+	return "%s%s %s %d:%s\n%s" % [WHOLE_MARK, account if not account.is_empty() else "-", stamp,
+		json.size(), Marshalls.raw_to_base64(json.compress(FileAccess.COMPRESSION_DEFLATE)),
+		as_file(clipboard, library)]
 
 
 ## Whose copy [param text] is ([method whole_text]): an account id, "" for
@@ -1057,7 +1066,15 @@ static func from_whole(text: String, account: String, library: PartLibrary) -> D
 		.split(" ", true, 2)
 	if head.size() < 3:
 		return {}
-	var parsed: Variant = JSON.parse_string(head[2])
+	var packed: PackedStringArray = head[2].split(":", true, 1)
+	var size: int = packed[0].to_int() if packed.size() == 2 and packed[0].is_valid_int() else 0
+	if size <= 0 or size > WHOLE_MOST:
+		return {}
+	var json: PackedByteArray = Marshalls.base64_to_raw(packed[1]).decompress(size,
+		FileAccess.COMPRESSION_DEFLATE)
+	if json.size() != size:
+		return {}
+	var parsed: Variant = JSON.parse_string(json.get_string_from_utf8())
 	var whole: Variant = JSON.to_native(parsed, false) if parsed is Dictionary else null
 	if not _whole_ok(whole):
 		return {}
