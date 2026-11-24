@@ -237,7 +237,15 @@ func _beside() -> void:
 		await _key(KEY_V, true)
 		await _frames(2))
 	await _key(KEY_ESCAPE)
-	await _drag_sweep()
+	# Dragged inside the wing being edited, and picked out of it from outside
+	# (a part's row in the tree selects it alone): either way it goes back
+	# into its own wing, and the twin follows.
+	_tree.enter("Wing#1")
+	await _frames(2)
+	await _drag_sweep("a brick dragged inside the wing", "Wing#1")
+	_tree.enter("")
+	await _frames(2)
+	await _drag_sweep("a brick of the wing picked out from outside it and dragged", "")
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
 
@@ -306,7 +314,7 @@ func _big() -> void:
 	# The fits read afresh, as after an edit: timed alone.
 	_tree.set("_copies_key", [])
 	var began: int = Time.get_ticks_usec()
-	_tree.call("_copies_laid")
+	_tree.call("_copies_laid", most)
 	var fits_us: int = Time.get_ticks_usec() - began
 	var slowest: int = 0
 	var slowest_alone: int = 0
@@ -321,23 +329,26 @@ func _big() -> void:
 			var at := Vector2(size_px.x * (0.2 + 0.12 * i), size_px.y * (0.2 + 0.12 * j))
 			if not _clickable(at):
 				continue
-			# The aim timed as the app makes it (Main._refresh_preview), then the
-			# pointer moved there, which finds it asked already.
-			# The aim alone first, the copies not asked, then again with them:
-			# what the ask adds is the difference.
+			# The pointer moved there, and the aim timed as the app makes it at
+			# the pointer (Main._refresh_preview): alone first, the copies not
+			# asked, then again with them; what the ask adds is the difference.
+			await _move(at)
+			await _frames(2)
 			var room: Callable = _builder.copies_room
 			_builder.copies_room = Callable()
 			began = Time.get_ticks_usec()
-			_builder.update_preview(_camera.ray_origin(at), _camera.ray_normal(at))
+			_main.call("_refresh_preview")
 			var alone: int = Time.get_ticks_usec() - began
 			_builder.copies_room = room
 			began = Time.get_ticks_usec()
-			_builder.update_preview(_camera.ray_origin(at), _camera.ray_normal(at))
+			_main.call("_refresh_preview")
 			var with_ask: int = Time.get_ticks_usec() - began
 			slowest = maxi(slowest, with_ask - alone)
 			slowest_alone = maxi(slowest_alone, alone)
+			await _asked()
+			# Read as the click finds it: the pointer moved there again first, as
+			# _click moves it, and what the ghost says then is what is judged.
 			await _move(at)
-			await _frames(2)
 			await _asked()
 			var words: String = _builder.copies_refuse
 			var fits: bool = _builder.can_place()
@@ -351,14 +362,12 @@ func _big() -> void:
 			for other: String in Array(_tree.copies_of(most)) + [most]:
 				for brick_id: int in _tree.ids_under(other):
 					others[brick_id] = true
-			# The click as _click makes it, the ghost read just before the press.
-			await _move(at)
+			# The press and release of _click, the pointer already there.
 			var pressed_on: Vector3 = (_builder.get("_ghost_transform") as Transform3D).origin
 			_button(at, true)
 			await _frames(2)
 			_button(at, false)
-			await _frames(4)
-			await _frames(3)
+			await _frames(7)
 			var put: int = _count() - count
 			# Where the click and the follow put them, beside where the ask laid them.
 			var laid_words: String = " (ghost at the press %s)" % str(pressed_on.snappedf(0.1))
@@ -404,17 +413,18 @@ func _told(carried: bool) -> String:
 		not (_builder.get("_copies_ask") as Dictionary).is_empty(),
 		str(going.map(func(i: Array) -> String: return "%s at %s" % [i[0],
 			str((i[1] as Transform3D).origin.snappedf(0.1))]))]
-	var copies: Array = _tree.call("_copies_laid")
-	words += "%d copies fit:" % copies.size()
+	var into: String = _builder.call("_copies_path")
+	var copies: Array = _tree.call("_copies_laid", into)
+	words += "into \"%s\" (editing \"%s\"), %d copies fit:" % [into, _tree.entered, copies.size()]
 	if copies.is_empty():
 		# Why none: each copy as _copies_laid reads it.
 		var then: Dictionary = _tree.get("_copies_then")
-		var source: Array = _tree.call("_read_then", _tree.entered)
-		words += " (in %s, %d then [%s], %d parts:" % [_tree.entered, then.size(),
+		var source: Array = _tree.call("_read_then", into)
+		words += " (%d then [%s], %d parts:" % [then.size(),
 			", ".join(then.keys().map(func(k: int) -> String: return "%d %s" % [k,
 				"null" if then[k] == null else str((then[k] as Dictionary).get("group", "?"))])),
 			source.size()]
-		for other: String in _tree.copies_of(_tree.entered):
+		for other: String in _tree.copies_of(into):
 			var twin: Array = _tree.call("_read_then", other)
 			var fit: Dictionary = _tree.best_match(source, twin) if not twin.is_empty() else {"score": -1}
 			words += " %s %d parts score %s laid on %d;" % [other, twin.size(), fit["score"],
@@ -426,7 +436,7 @@ func _told(carried: bool) -> String:
 		for item: Array in going:
 			var laid: Array = _tree.call("_laid", fit, library_id(str(item[0])), item[1])
 			words += " twin %s at %s" % [laid[0], str((laid[1] as Transform3D).origin.snappedf(0.1))]
-	words += "; asked again: \"%s\"" % str(_tree.call("room_in_copies", {"items": going}, 0))
+	words += "; asked again: \"%s\"" % str(_tree.call("room_in_copies", {"items": going, "path": into}, 0))
 	return words
 
 
@@ -483,8 +493,10 @@ func _drawn_fits() -> bool:
 ## round it two studs apart, and let go of there: its lift is one step with
 ## its put, and the follow pairs the copies by what they were before the lift
 ## (the twin taken off as it was picked up). Where the ghost is green the
-## brick and its twin move; where red for the copy, nothing does.
-func _drag_sweep() -> void:
+## brick and its twin move; where red for the copy, nothing does. [param what]
+## names the sweep; [param editing], the sub-assembly entered for it.
+func _drag_sweep(what: String, editing: String) -> void:
+	_check("%s: entered \"%s\" (%s)" % [what, editing, _tree.entered], _tree.entered == editing)
 	var box: AABB = _wing_box()
 	var green: int = 0
 	var green_put: int = 0
@@ -541,12 +553,12 @@ func _drag_sweep() -> void:
 				await _frames(2)
 			if _builder.is_carrying():
 				await _key(KEY_ESCAPE)
-	print("    a brick dragged inside: %d places green, %d moved with its twin; %d red for the copy, %d moved, %d said; %d drawn otherwise"
-		% [green, green_put, red, red_put, red_said, drawn_wrong])
+	print("    %s: %d places green, %d moved with its twin; %d red for the copy, %d moved, %d said; %d drawn otherwise"
+		% [what, green, green_put, red, red_put, red_said, drawn_wrong])
 	for one: String in wrong:
 		print("      " + one)
-	_check("a brick dragged inside the wing: every green ghost moves it and its twin (%d of %d)"
-		% [green_put, green], green > 0 and green_put == green)
+	_check("%s: every green ghost moves it and its twin (%d of %d)"
+		% [what, green_put, green], green > 0 and green_put == green)
 	_check("...every ghost red for the copy moves nothing, and says why (%d red, %d moved, %d said)"
 		% [red, red_put, red_said], red > 0 and red_put == 0 and red_said == red)
 	_check("...each drawn as it is (%d not)" % drawn_wrong, drawn_wrong == 0)

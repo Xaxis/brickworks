@@ -1936,7 +1936,8 @@ func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
 ## between the two had its mirrored twin on it: the web's assembly flow put
 ## down nothing.
 ##
-## [param ask]: {"items": [[part id, where in the world], ...]} the first
+## [param ask]: {"items": [[part id, where in the world], ...], "path": the
+## sub-assembly they go into ([member entered] when not given)} the first
 ## time, and the same Dictionary again until it is answered, as the ask is
 ## kept in it. Each call goes on for [param budget_us] microseconds at most
 ## (0, no bound) after the copies' fits are read ([method _copies_laid],
@@ -1945,10 +1946,14 @@ func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
 ## "room" for having been cut short.
 func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 	var items: Array = ask.get("items", [])
-	if entered.is_empty() or items.is_empty():
+	# Where they go down ("path", Builder._copies_path): the sub-assembly
+	# being edited, or for parts lifted off the model their own one, picked
+	# in the tree or edited from outside it.
+	var into: String = str(ask.get("path", entered))
+	if into.is_empty() or items.is_empty():
 		return ""
 	if not ask.has("copies"):
-		var copies: Array = _copies_laid()
+		var copies: Array = _copies_laid(into)
 		if copies.is_empty():
 			return ""
 		## [part, cells, the copy it goes into] of each part going down so far.
@@ -1963,7 +1968,7 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 			going.append([real, at])
 			var mesh: Lbm.PartMesh = library.mesh_for(real)
 			if mesh != null:
-				down.append([real, builder.boxes_for(mesh, at), entered])
+				down.append([real, builder.boxes_for(mesh, at), into])
 		ask.merge({"copies": copies, "going": going, "down": down, "laid": {}, "next": 0})
 	var started: int = Time.get_ticks_usec()
 	var copies: Array = ask["copies"]
@@ -2024,8 +2029,9 @@ func _room_words_part(path: String, part_id: String) -> String:
 		% [label(path), Inventory._tidy(info.name)]
 
 
-## Each other copy of [member entered] that lies on it part for part, as
-## [method copies_follow] pairs them: [its path, the fit (best_match), the
+## Each other copy of [param level] (what is in hand goes into it) that lies
+## on it part for part, as [method copies_follow] pairs them: [its path, the
+## fit (best_match), the
 ## parts not in its way (brick -> true), the copy round it they are under,
 ## whether that round was looked for ([method _round_out])]. Read as the
 ## follow reads them: the copies as they stand, or, with parts lifted off the
@@ -2033,22 +2039,23 @@ func _room_words_part(path: String, part_id: String) -> String:
 ## step, and its follow pairs the copies by what they were). Read once while
 ## the model, its tree and the level being edited stay as they are: the ghost
 ## asks at every move.
-func _copies_laid() -> Array:
+func _copies_laid(level: String) -> Array:
 	var lifted: bool = builder.is_carrying() and builder.carrying.lifted and builder._lift_on_top()
-	var key: Array = [world.revision, BrickWorld.paths_written, entered, world.brick_count(), lifted]
+	var key: Array = [world.revision, BrickWorld.paths_written, level, world.brick_count(), lifted]
 	if key == _copies_key:
 		return _copies_kept
 	_copies_key = key
 	_copies_kept = []
+	_copies_level = level
 	_rounds_fit.clear()
 	_copies_then = _before(builder.last_step()) if lifted else {}
-	if not _any_copied([entered]):
+	if not _any_copied([level]):
 		return _copies_kept
-	var source: Array = _read_then(entered)
+	var source: Array = _read_then(level)
 	if source.is_empty():
 		return _copies_kept
 	_begin_pass()
-	for other: String in copies_of(entered):
+	for other: String in copies_of(level):
 		var twin: Array = _read_then(other)
 		if twin.size() != source.size():
 			continue
@@ -2081,7 +2088,7 @@ func _round_out(copy: Array) -> bool:
 	copy[4] = true
 	var levels: Array = []
 	var path: String = ""
-	var mine: PackedStringArray = segments(entered)
+	var mine: PackedStringArray = segments(_copies_level)
 	for n: int in mine.size() - 1:
 		path = join(path, mine[n])
 		levels.append(path)
@@ -2124,6 +2131,7 @@ func _fits_round(level: String, outer: String) -> bool:
 var _copies_key: Array = []
 var _copies_kept: Array = []
 var _copies_then: Dictionary = {}
+var _copies_level: String = ""
 var _rounds_fit: Dictionary = {}
 
 
