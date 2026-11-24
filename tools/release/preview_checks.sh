@@ -21,6 +21,8 @@ export BW_BYPASS="$VERCEL_BYPASS"; B="--bypass=$VERCEL_BYPASS"
 # names it, left out (and said) when lean.py would add it. A flow that needs
 # only a fixed model the engine makes reads it from tests/fixtures/flow_models
 # instead (comments died on ENOENT at rel-m331's ship, 2026-11-24).
+# Read by train.sh (engine_checks), not here.
+# shellcheck disable=SC2034
 ENGINE_CHECKS="together"
 declare -A CMD=(
   [art]="tools/web/art_flow.mjs --url=$P/app $B --out=$S/${TAG}_art_web"
