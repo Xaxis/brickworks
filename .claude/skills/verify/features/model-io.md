@@ -762,6 +762,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   for its own file), undo of Clear and of an open (`identity`, `reopen`),
   and a version opened (`open_version`, its model's file). A save that
   changes the name marks the autosave due at once (`_autosave_follows`).
+  The desktop's Save as to a file whose name a saved model here has asks
+  too, and with another name given the file chosen is still written, as it
+  is named (`ModelBar.save_to_file`; subexport's se4check 5). Probes that
+  save one name from many files answer the ask (mlattack, metalines,
+  into_kept with `save_as(name, true)`).
   `src/dev/own_file_probe.gd`; the reviewer's `collide2`, `collide2_all`
   (bench/results/viewfix-2026-11-24/f1).
 - `open over unsaved work` (2026-10-23, walk180 D6 and A11): every way a
