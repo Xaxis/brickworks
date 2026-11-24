@@ -2154,6 +2154,26 @@ func _waited_on(item: Array) -> bool:
 	return askers.any(func(one: Variant) -> bool: return _waited_on_parts.has(str(one)))
 
 
+## The geometry a model waits on whose bytes are here ([member
+## _to_read_first]), read and kept now on this thread, not left to a worker:
+## for a wait with nothing drawn and this thread idle under the page's screen
+## (Main._await_early_set). Left to the workers, 346-2's 12 waited the whole
+## 2 s (setopen, 2026-11-24). How many were read.
+func read_first_here() -> int:
+	_read_lock.lock()
+	var mine: Array = _to_read_first
+	_to_read_first = []
+	_read_lock.unlock()
+	for item: Array in mine:
+		# The first of its kind alone, as a worker reads it (_read_some).
+		var made: Array = [null]
+		var read: Callable = func() -> void: made[0] = _read_one(item)
+		if not WorkerTasks.first_here("read a part's " + str(item[0]), read):
+			read.call()
+		_kept_read(item, made[0])
+	return mine.size()
+
+
 ## What is read next, under [member _read_lock]: what a model waits on first,
 ## then the rest in order; [] when nothing waits.
 func _next_to_read() -> Array:

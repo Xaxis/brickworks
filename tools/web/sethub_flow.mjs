@@ -504,8 +504,11 @@ async function timed(browser, address, ready, most = 240000, label = "", readyAr
     const state = await page.evaluate(() => {
       const one = window.brickworksState || {};
       const shared = window.brickworksShare || {};
+      // And the start's marks, by the page's clock (Main._boot_mark): the
+      // studio made ("ui"), the set's parts waited for, its screen lifted ("shown").
+      const marks = Object.fromEntries(Object.entries(window.brickworksBoot || {}).map(([name, at]) => [name, Math.round(at)]));
       return { title: shared.title, bricks: one.bricks, awaited: one.awaited, steps: shared.steps, phases: one.open_phases,
-        threads: window.brickworksEngine?.threads ?? null };
+        threads: window.brickworksEngine?.threads ?? null, marks };
     }).catch(() => ({}));
     // What it fetched, by the same clock: the library's index and file, the API.
     const fetched = await page.evaluate(() => performance.getEntriesByType("resource")

@@ -876,11 +876,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `_waited_on_parts`, `_to_read_first`). The open waits for it, 2 s at most,
   with nothing drawn, under the page's loading screen, which stays up for a
   set and says how many of its parts have come (`Main._await_early_set`,
-  `window.brickworksBootParts`), and comes down once the studio is drawn
+  `window.brickworksBootParts`), each read on the page's idle thread as its
+  bytes come (`PartLibrary.read_first_here`: left to the workers, none of
+  346-2's 12 came in the 2 s), and comes down once the studio is drawn
   with the set on it (boot mark `shown`, shell.html's `whenUp`): every part
   down in that frame, and the studio never seen still. Waited for with the
   studio showing, it was a frozen studio; not waited for, the last parts came
-  3 to 4 s later. The boot mark `set geometry: N of M` says how it went. A file under 32 KB is read and
+  3 to 4 s later. The boot mark `set geometry: N of M, R read here` says how it went. A file under 32 KB is read and
   opened in the frame it came in, its bar not waited on to be drawn
   (`ModelBar.OPENED_AT_ONCE_MOST`), and an open waits on the library's
   readers only when its file carries parts or LDCad skins

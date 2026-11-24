@@ -5130,8 +5130,8 @@ func _ask_early_set() -> void:
 ## EARLY_SET_WAIT_MS] at most, nothing drawn and nothing moving, under the
 ## page's own screen, still up for a set (shell.html's whenUp), which says how
 ## many have come (window.brickworksBootParts). Each frame then costs
-## milliseconds, not a studio drawn in software, so the parts, read before
-## anything else as they come (PartLibrary.want), are kept in a few of them.
+## milliseconds, not a studio drawn in software, and each part is read here as
+## its bytes come (PartLibrary.read_first_here), this thread idle meanwhile.
 func _await_early_set() -> void:
 	var coming: Callable = func() -> int:
 		return _early_parts.filter(func(part_id: String) -> bool: return _library.is_on_its_way(part_id)).size()
@@ -5143,16 +5143,18 @@ func _await_early_set() -> void:
 	var until: int = Time.get_ticks_msec() + EARLY_SET_WAIT_MS
 	var left: int = total
 	var told: int = -1
+	var here: int = 0
 	while left > 0 and Time.get_ticks_msec() < until:
 		if left != told:
 			_tell_set_parts(total - left, total)
 			told = left
 		await get_tree().process_frame
+		here += _library.read_first_here()
 		left = coming.call()
 	_tell_set_parts(total - left, total)
 	GpuFence.let_go()
 	get_tree().paused = false
-	_boot_mark("set geometry: %d of %d" % [total - left, total])
+	_boot_mark("set geometry: %d of %d, %d read here" % [total - left, total, here])
 
 
 ## How many of the set's parts have come, said on the page's screen while
