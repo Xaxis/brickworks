@@ -13,6 +13,8 @@
 //   askToSignIn), and once in, posts what was typed, from where it was:
 //   no page left, no word lost. Whether they may then (13 and over, not
 //   barred, the comments on) is the server's, said in its own words.
+// - Signed in with no profile, Post asks for a name and a handle first
+//   (web/account.js nameFirst, socialloop): made or skipped, it posts.
 // - A press posts once: a second while it goes sends nothing more.
 // - What was posted shows at once where it will be (pending), then as the
 //   server has it; refused, it goes and its words are back in the box.
@@ -22,7 +24,7 @@
 // lines of web/home-feed.js saidLineHtml: the newest two comments of a
 // model, with "n more" opening the rest in place; a thread's latest reply,
 // a reply posted here under it. Every word anybody typed goes in as text.
-import { askToSignIn, call, signedIn } from "/account.js";
+import { askToSignIn, call, nameFirst, signedIn } from "/account.js";
 import { counted, escapeHtml, langAt, number, say, told } from "/card.js";
 import { saidLineHtml } from "/home-feed.js";
 
@@ -142,6 +144,10 @@ export function wireComposer(form, {
           return;
         }
       }
+      // A name first, once (web/account.js nameFirst): an account with no
+      // profile is asked for one over the page, its words still in the box
+      // under it; made or skipped, what they wrote then goes.
+      await nameFirst();
       sent = field.value.trim();
       shown = pending ? pending(sent) : null;
       // What went leaves the box at once; it is put back if it is refused.

@@ -498,6 +498,17 @@ try {
         await vp.selectOption("#age-year", "1990");
         await vp.click("#age-go");
       }
+      // A new account is asked for a name before its first comment goes
+      // (web/account.js nameFirst), the words still in the box under it;
+      // made there, the comment goes under it.
+      const named = await until(vp, () => (document.querySelector("dialog.first-steps[open][data-step=profile]") ? true : null), null, 20);
+      const kept = await vp.inputValue(`#say-${modelId}`).catch(() => "");
+      check(`9. ...asked for a name first, the words still in the box ("${kept}")`, Boolean(named) && kept === `Signed in from here ${rand}`);
+      if (named) {
+        await vp.fill("#first-name", "Cy Feed");
+        await vp.fill("#first-handle", `bwf-cy-${rand}`);
+        await vp.click("#first-make");
+      }
       const went = await until(vp, (s) => ((/Posted/.test(document.querySelector(`${s} .said-heard`)?.textContent || "") && document.querySelector(`${s} form.composer`)?.hidden === true)
         && !document.querySelector(`${s} .said-line.pending`) ? document.querySelector(`${s} .said-lines`)?.textContent || "" : null), null, 40, sel);
       const nowTop = await topOf(vp);

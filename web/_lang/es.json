@@ -3903,6 +3903,9 @@
   "The parts asked about, lit in 3D:": "Las piezas de la pregunta, iluminadas en 3D:",
   "Answer on a part: open the 3D, then right-click a part, or touch and hold it.": "Responder sobre una pieza: abre el 3D y haz clic derecho en una pieza, o mantenla pulsada.",
   "Open step {step} in the viewer": "Abrir el paso {step} en el visor",
-  "Open it in the viewer": "Abrir en el visor"
+  "Open it in the viewer": "Abrir en el visor",
+  "What you say and share goes out under this name, so people know who it is and can follow you. Skip, and it goes out as “A builder”.": "Lo que dices y compartes sale con este nombre, para que sepan quién eres y puedan seguirte. Si lo omites, sale como «Un constructor».",
+  "Replied": "Respondido",
+  "See your reply": "Ver tu respuesta"
  }
 }

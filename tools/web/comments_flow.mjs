@@ -254,6 +254,12 @@ try {
   writer = await mintSession(writerEmail);
   young = await mintSession(youngEmail, { age: false });
   await answerAge(young.kept.user_id, youngEmail, false);
+  // Each with a profile: Post asks an account with none for a name first
+  // (web/account.js nameFirst; socialloop_flow walks that ask).
+  for (const [who, handle, name] of [[owner, `bwc-owner-${rand}`, "Comments Owner"], [writer, `bwc-writer-${rand}`, "Comments Writer"]]) {
+    const made = await api("/api/people?op=profile", { method: "POST", token: who.access_token, body: { handle, name } });
+    check(`${name}'s profile: ${made.status}`, made.status === 200);
+  }
   const one = await api("/api/share", { method: "POST", token: owner.access_token, body: { name: NAME, model: v1 } });
   id = one.body.id || "";
   const two = await api("/api/share", { method: "POST", token: owner.access_token,
