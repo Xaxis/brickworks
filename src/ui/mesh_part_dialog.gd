@@ -63,7 +63,12 @@ var _centre := Vector3.ZERO
 var _pressed_at := Vector2(-1, -1)
 var _dragged: bool = false
 var _reading: int = -1
-var _read: MeshPart = null
+## Every read still out, task -> [its MeshPart when done]: a file chosen
+## while another is read is shown, the other let go of as it ends. Through
+## WorkerTasks, so one out as the app quits is waited for: two files chosen
+## at once left the first to the engine, which dumped core at quit
+## ("corrupted size vs. prev_size", mouldapp_probe on moulds2).
+var _reads: Dictionary = {}
 ## While a change to the part is made on a worker (_work): nothing reads it.
 var _busy: bool = false
 var _turns: Array[Button] = []
@@ -147,29 +152,35 @@ func close() -> void:
 func take(bytes: PackedByteArray, file_name: String, extras: Dictionary = {}) -> void:
 	_status.text = "Reading %s…" % file_name.get_file()
 	_enable(false)
-	_read = null
 	# Simplifying a file of tens of thousands of triangles takes seconds: on
-	# a worker, so the page keeps drawing.
+	# a worker, so the page keeps drawing. Its part goes in its own holder,
+	# never into this node, which may be gone when it ends.
 	var hair: bool = for_hair
-	_reading = WorkerThreadPool.add_task(func() -> void:
+	var holder: Array = [null]
+	_reading = WorkerTasks.add(func() -> void:
 		var read: MeshPart = MeshPart.read(bytes, file_name, extras)
 		# Seated on the head here too: 70 to 190 ms, a held window's frames.
 		if hair and read != null and read.problem.is_empty():
 			read.make_hair()
-		_read = read)
+		holder[0] = read, false, "read a 3D file for a part")
+	_reads[_reading] = holder
 	set_process(true)
 
 
 func _process(_delta: float) -> void:
-	if _reading < 0:
-		set_process(false)
+	for task: int in _reads.keys():
+		if task != _reading and WorkerThreadPool.is_task_completed(task):
+			WorkerTasks.collect(task)
+			_reads.erase(task)
+	if _reading < 0 or not WorkerThreadPool.is_task_completed(_reading):
+		set_process(not _reads.is_empty())
 		return
-	if not WorkerThreadPool.is_task_completed(_reading):
-		return
-	WorkerThreadPool.wait_for_task_completion(_reading)
+	WorkerTasks.collect(_reading)
+	var read: MeshPart = (_reads[_reading] as Array)[0]
+	_reads.erase(_reading)
 	_reading = -1
-	set_process(false)
-	_took(_read)
+	set_process(not _reads.is_empty())
+	_took(read)
 
 
 ## Whether a file is being read, or the part changed or made.
