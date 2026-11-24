@@ -100,6 +100,7 @@ minifig
 print
 sticker
 mould
+mesh_part   # a part from an STL or OBJ (moulds): the wig, mohawk, goblet and an open hair from tests/fixtures/own_parts read or refused in a sentence, a sheet, noise, an FBX and a 135,200-triangle OBJ refused, simplified within 1%; sized, stood upright, connectors put where pointed, a bar along the goblet's stem; each hair stood up, faced, seated on the head as 3901, held by its stud, worn, saved as 0 FILE, rebuilt by a library that never saw it and reseated; -- --files=DIR adds the 68,416-triangle ponytail, --write=DIR keeps the parts for tools/own_parts_check.py
 brickify
 claude_undo
 design_undo
