@@ -3271,7 +3271,9 @@ func _source_asked(title_now: String) -> Dictionary:
 		# written carrying where it has not got them (SourceFile
 		# .parts_carried_into), as a model of the app's own does
 		# ([method _text_into]). Read here: the library is this thread's.
-		"carry": _files_carried()}.merged(_metas_asked(source))
+		# Never a flexible part's skin: the file's own lines are the part
+		# (a rope's sub-model), and the skin only how the app draws them.
+		"carry": _files_carried(false)}.merged(_metas_asked(source))
 	# A model put into it whole (held_from) is grafted into the patch of the
 	# file's own parts: its sections as the model written whole has them
 	# (SourceFile.grafted). Written whole here, on this thread.
@@ -4670,13 +4672,18 @@ func names_held() -> Array:
 
 ## The part files a whole write of this model carries ([method _text_into]),
 ## by name -> text: those of the parts made here or carried by the file, on
-## the baseplate or held (CustomParts.sources_for).
-func _files_carried() -> Dictionary:
+## the baseplate or held (CustomParts.sources_for). With [param skins] false,
+## not a flexible part's skin.
+func _files_carried(skins: bool = true) -> Dictionary:
 	var used: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		used[brick.part_id] = true
 	for placement: LdrModel.Placement in _held_placements():
 		used[placement.part_id] = true
+	if not skins:
+		for part_id: String in used.keys():
+			if CustomParts.is_skin(part_id):
+				used.erase(part_id)
 	return _part_files(used.keys())
 
 
