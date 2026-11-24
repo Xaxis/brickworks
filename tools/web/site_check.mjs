@@ -495,10 +495,18 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
       // Every lazy picture in, so the full-page shot shows the page as read.
       await allPictures(page);
       await page.waitForTimeout(400);
+      // The home feed draws its cards from the API after load, so their
+      // pictures can start after the first wait: wait for those too. Broken
+      // is a picture that finished with nothing (complete, no width), as
+      // download_check reads it. One still on its way is not: rel-m330's second
+      // live run named six home pictures that answer 200 image/webp in 0.2 s,
+      // read in flight on a loaded box, as sitewalk2's preview run did three
+      // (2026-11-24).
+      await allPictures(page);
       const seen = await page.evaluate(() => ({
         scrollW: document.documentElement.scrollWidth,
         clientW: document.documentElement.clientWidth,
-        broken: [...document.images].filter((i) => !i.naturalWidth).map((i) => i.currentSrc || i.src),
+        broken: [...document.images].filter((i) => i.complete && !i.naturalWidth).map((i) => i.currentSrc || i.src),
       }));
       // A page's clips (/compare's): none fetched before it is scrolled to,
       // and each, scrolled to, playing on its own, muted. Playwright's

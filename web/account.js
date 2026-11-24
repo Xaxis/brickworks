@@ -1040,7 +1040,43 @@ export async function age() {
   if (!access) return null;
   const said = await json(await fetch("/api/account", { headers: { authorization: `Bearer ${access}` } }));
   beta = said.signed_in && said.beta ? said.beta : null;
+  profileSaid = said.signed_in && said.profile !== undefined ? { of: accountId(), profile: said.profile } : null;
   return said.signed_in && said.age ? said.age : null;
+}
+
+// The account's own profile as the last age() heard it: {of, profile}, the
+// profile {handle, name} or null for none; null when it was not said.
+let profileSaid = null;
+// A profile known on this page ({of, profile}): asked about once.
+let named = null;
+
+/// One name before the first public act (socialloop, 2026-11-24). A
+/// comment, a reply, a post in Talk or a model shared from the site goes
+/// out under the account's profile; one by an account with none read "A
+/// builder", and nobody could follow its author. So before it goes, an
+/// account with no profile is asked for a name and a handle, in First
+/// steps' own Make your profile step (web/first-steps.js): one dialog over
+/// the page, what they typed still in its box. Skip, or Escape, lets the
+/// act go as it is, and the next one asks again. Never asked: an account
+/// the server keeps from a profile (13 or over not answered, as
+/// api/_trust.js publicTrouble), which is told what it is told today when
+/// it acts, nor one whose profile could not be read. Resolves with the
+/// profile ({handle, name}) the act goes out under, or null for none.
+export async function nameFirst() {
+  if (!signedIn()) return null;
+  const id = accountId();
+  if (named && named.of === id) return named.profile;
+  const now = await age().catch(() => null);
+  if (!profileSaid || profileSaid.of !== id) return null;
+  let profile = profileSaid.profile;
+  if (!profile) {
+    if (now && now.over_13 !== true) return null;
+    const made = await import("/first-steps.js")
+      .then((steps) => steps.firstSteps({ pending: true, profileOnly: true })).catch(() => null);
+    profile = made && made.profile ? made.profile : null;
+  }
+  if (profile) named = { of: id, profile };
+  return profile;
 }
 
 /// Whether the last age() heard the beta is open for this account: a page

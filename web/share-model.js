@@ -22,7 +22,7 @@
 //
 // What a check reads (tools/web/share_model_flow.mjs): window.brickworksShare.
 
-import { askAgeIfAsked, askToSignIn, call, signedIn } from "/account.js";
+import { askAgeIfAsked, askToSignIn, call, nameFirst, signedIn } from "/account.js";
 import { appAt, langAt, number, say, told } from "/card.js";
 import { withoutPrivateLines } from "/private-lines.js";
 import { readStudioIo, TROUBLE } from "/studio-io.js";
@@ -313,17 +313,11 @@ async function share() {
     // profile's name for any credit sent). This page sent none, so every
     // model shared from it went out with no name and nobody who liked it
     // could follow its designer (sitewalk2, 2026-11-24). With no profile,
-    // First steps' Make your profile first; Skip shares it with no name.
-    // Never for an account the server keeps from a profile (under 13, as
-    // api/_trust.js publicTrouble): the publish says why in its own words.
-    const mayProfile = !age || age.over_13 === true;
-    let me = await call("/api/people?op=me").catch(() => null);
-    if (mayProfile && me && me.status === 200 && me.body && !me.body.profile?.handle) {
-      await import("/first-steps.js").then((steps) => steps.firstSteps({ pending: true, profileOnly: true })).catch(() => null);
-      me = await call("/api/people?op=me").catch(() => null);
-    }
-    const author = me && me.status === 200 ? String(me.body?.profile?.name || "") : "";
-    await publish({ ...given, author });
+    // Make your profile first, as before any public act (nameFirst); Skip
+    // shares it with no name. Never asked of an account the server keeps
+    // from a profile (under 13): the publish says why in its own words.
+    const profile = await nameFirst();
+    await publish({ ...given, author: profile ? String(profile.name || "") : "" });
   } finally {
     busy = false;
     $("share").disabled = false;

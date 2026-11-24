@@ -41,7 +41,7 @@
     "signed-in"
    ],
    "wait": "#groups .notice .acts",
-   "alt": "Notifications: Inbox and Done, Mark all read and Mark all done, then a group a model with its picture, newest first: the sports car's comment, likes and a photo of a build, a reply on the corner shop, your achievements, a remix, a challenge's last days and a mention, each with Done and More.",
+   "alt": "Notifications: Inbox and Done, Mark all read and Mark all done, then a group a model with its picture, newest first: the sports car's comment, likes and a photo of a build, a reply on the corner shop, your achievements, a remix, a challenge's last days and a mention, each with Done and More, and Reply under a comment.",
    "caption": "brickworks.diy/notifications.",
    "features": [
     "ui:notifications page",
@@ -71,6 +71,167 @@
    "caption": "On a phone, at 390 px.",
    "features": [
     "ui:notifications page"
+   ]
+  },
+  {
+   "id": "notifications-replied",
+   "source": "site",
+   "route": "/notifications",
+   "viewport": [
+    1280,
+    1000
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "answers": {
+    "/api/people?op=reply": {
+     "status": 201,
+     "body": {
+      "comment": {
+       "id": 4101,
+       "version": 1,
+       "step": null,
+       "on_step": null,
+       "body": "Thank you! The bonnet is two curved slopes on a jumper plate.",
+       "at": "2026-11-20T12:05:00Z",
+       "edited_at": null,
+       "by": "Test builder",
+       "handle": "test-builder",
+       "by_owner": true,
+       "mine": true,
+       "hidden": false,
+       "older": false,
+       "said": "on version 1",
+       "parent": 41,
+       "pin": null,
+       "resolved": false,
+       "resolved_at": null
+      }
+     }
+    }
+   },
+   "wait": "#groups .notice .notice-acts button",
+   "steps": [
+    {
+     "click": "#groups .notice:first-child .notice-acts button"
+    },
+    {
+     "wait": "#groups .notice:first-child form.composer textarea"
+    },
+    {
+     "fill": "#groups .notice:first-child form.composer textarea",
+     "text": "Thank you! The bonnet is two curved slopes on a jumper plate."
+    },
+    {
+     "click": "#groups .notice:first-child form.composer button[type=submit]"
+    },
+    {
+     "wait": "#groups .notice:first-child .pill.answered"
+    },
+    {
+     "pause": 300
+    }
+   ],
+   "crop": "#groups .notice:first-child",
+   "pad": 12,
+   "alt": "Notifications at 1280 px: a fan's comment on the sports car with Replied beside it, the designer's reply under it with See your reply, and Reply.",
+   "caption": "Replied, from Notifications.",
+   "features": [
+    "ui:notifications page",
+    "ui:saying something in place"
+   ]
+  },
+  {
+   "id": "name-first-phone",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    390,
+    844
+   ],
+   "phone": true,
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "answers": {
+    "/api/account": {
+     "enabled": true,
+     "url": "https://sign-in.example",
+     "key": "docs",
+     "assistant": "own_key",
+     "parts_url": null,
+     "signed_in": true,
+     "email": "you@example.com",
+     "master": false,
+     "age": {
+      "ask": false,
+      "over_13": true
+     },
+     "beta": {
+      "tester": false,
+      "early": []
+     },
+     "profile": null
+    },
+    "/api/people?op=comments&id=DocsSprt01": {
+     "model": "DocsSprt01",
+     "ready": true,
+     "version": 1,
+     "newest": 1,
+     "open": true,
+     "replies": true,
+     "count": 0,
+     "comments": [],
+     "you": {
+      "signed_in": true,
+      "may_write": true,
+      "why_not": "",
+      "owner": false
+     }
+    }
+   },
+   "steps": [
+    {
+     "click": "[data-tab=comments]"
+    },
+    {
+     "wait": "#comment-body"
+    },
+    {
+     "fill": "#comment-body",
+     "text": "The bonnet is spot on. Is the grille a 1 x 2 tile?"
+    },
+    {
+     "click": "#comments form.comment-new button[type=submit]"
+    },
+    {
+     "wait": "dialog.first-steps[open] #first-name"
+    },
+    {
+     "fill": "#first-name",
+     "text": "Sam Okafor"
+    },
+    {
+     "pause": 300
+    }
+   ],
+   "crop": "viewport",
+   "alt": "Make your profile over a model's comments, at 390 px: a name and a handle, Make my profile and Skip, and the comment still typed in the box behind it.",
+   "caption": "Asked once, before a first comment.",
+   "features": [
+    "ui:saying something in place",
+    "ui:first steps after a first sign-in"
    ]
   },
   {

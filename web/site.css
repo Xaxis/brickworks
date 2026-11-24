@@ -2162,11 +2162,14 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 @media (width < 600px) {
 	/* The title and the actions on one row, a search on the next; the
 	   title's row a control's height on every page, so the h1 is where it
-	   is on every page whatever is beside it. */
+	   is on every page whatever is beside it. When the title's words and
+	   the actions do not fit side by side, the actions go under it: from
+	   no room at all the title was cut inside its word, "Notifi / catio /
+	   ns" beside Mark all read and Mark all done (socialloop, 2026-11-24). */
 	.page-hero { padding-top: var(--s-4); }
 	.page-head { align-items: flex-start; column-gap: var(--s-3); }
 	.page-head .lede, .page-head .binding, .page-acts .hint { display: none; }
-	.page-title { flex: 1 1 0; }
+	.page-title { flex: 1 1 auto; }
 	.page-head h1 { display: flex; align-items: center; min-height: var(--control-h); }
 	/* Never wider than the page: two buttons whose words are longer in
 	   French or Spanish (compare's Ouvrir l'application, Voir tous les

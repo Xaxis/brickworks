@@ -83,10 +83,13 @@ export function suggestionsFor({ designers = [], cards = [] }, kinds = []) {
 /// Opens First steps over the page. [pending]: the person signed in to do
 /// something here, so the end goes back to it rather than to the feed.
 /// [profileOnly]: Make your profile alone, as the step before something that
-/// goes out under their name (web/share-model.js); the caller asks it only
-/// of an account with no profile. Resolves when it is closed, however it is.
+/// goes out under their name (web/account.js nameFirst: a comment, a reply,
+/// a post, a model shared); its caller knows the account has no profile, so
+/// the step shows at once. Resolves when it is closed, however it is:
+/// {profile: {handle, name}} when a profile was made in it, else {}.
 export async function firstSteps({ pending = false, profileOnly = false } = {}) {
   await learn();
+  let made = null;
   return new Promise((done) => {
     const tests = new URLSearchParams(location.search).get("tests") === "1" ? "tests=1" : "";
     const dialog = make("dialog", "first-steps");
@@ -105,13 +108,13 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
       dialog.close();
       dialog.remove();
       showFeedCount().catch(() => null);
-      done();
+      done(made ? { profile: made } : {});
     };
     dialog.addEventListener("cancel", end);
 
     // What the steps need, asked at once: whether you have a profile, the
     // gallery's kinds and Top builds' cards, and the designers to follow.
-    const me = call("/api/people?op=me").catch(() => null);
+    const me = profileOnly ? null : call("/api/people?op=me").catch(() => null);
     const top = profileOnly ? null : call(`/api/share?op=list&sort=top${tests ? `&${tests}` : ""}`).catch(() => null);
     // As you (mine=1) once signed in: nobody you blocked is among the
     // designers offered. Signed out, everybody's URL, which the CDN keeps.
@@ -132,8 +135,13 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
 
     // 1. A name and a handle.
     const profileStep = { id: "profile", title: say("Make your profile"), draw(into, next) {
-      const said = make("p", "", say("A name and a handle, and the models you share have a page of your own. "
-        + "Your picture is made from your handle."));
+      // Asked before something goes out under their name, it says why now,
+      // and what Skip does: it goes, unnamed.
+      const said = make("p", "", profileOnly
+        ? say("What you say and share goes out under this name, so people know who it is and can follow you. "
+          + "Skip, and it goes out as “A builder”.")
+        : say("A name and a handle, and the models you share have a page of your own. "
+          + "Your picture is made from your handle."));
       const form = make("form", "profile-start");
       const face = make("div", "face-row");
       let avatar = parsed(avatarHtml({ handle: "", name: "?" }, { size: "big" }));
@@ -186,6 +194,7 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
           note.textContent = answer && answer.body.error ? say(answer.body.error) : say("That did not work just now. Try again in a minute.");
           return;
         }
+        made = { handle: String(answer.body.handle || ""), name: String(answer.body.name || answer.body.handle || "") };
         next();
       });
       into.append(said, form);
@@ -283,7 +292,7 @@ export async function firstSteps({ pending = false, profileOnly = false } = {}) 
       const kinds = ok(listed) && Array.isArray(listed.body.kinds) ? listed.body.kinds.filter((kind) => kind && kind.id) : [];
       const found = { cards: ok(listed) && Array.isArray(listed.body.models) ? listed.body.models : [],
         designers: ok(suggested) && Array.isArray(suggested.body.designers) ? suggested.body.designers : [] };
-      steps = profileOnly ? (hasProfile ? [] : [profileStep])
+      steps = profileOnly ? [profileStep]
         : [...(hasProfile ? [] : [profileStep]), ...(kinds.length ? [kindsStep(kinds)] : []), startStep(found)];
       if (!steps.length) end();
       else show(0);

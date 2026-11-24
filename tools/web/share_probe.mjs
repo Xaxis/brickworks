@@ -292,7 +292,7 @@ async function main() {
   check(r.text.includes('<li class="pill">9 parts</li>') && r.text.includes("<b>Probe Builder</b>"),
     "it says the part count and who made it");
   check(r.text.includes(`<a class="cta" href="/app?view=${id}&amp;build" `) && r.text.includes(">Build it</a>")
-    && r.text.includes(`<a class="picture" href="/app?view=${id}" `)
+    && new RegExp(`<a class="picture"[^>]* href="/app\\?view=${id}"`).test(r.text)
     && r.text.includes('<script src="/share-page.js"') && r.text.includes(`data-viewer="/app?view=${id}"`),
   "a person goes on to the step player with Build it, /app?view=<id>&build, and the viewer with its picture");
   check(/frame-ancestors 'none'/.test(r.headers.get("content-security-policy") || ""), "the page is not frameable");
@@ -920,8 +920,13 @@ async function theDirectory(tokenA) {
     && /style-src 'self' 'unsafe-inline'/.test(r.headers.get("content-security-policy") || ""),
     "its policy lets it load the site's stylesheet and talk to this site, and nowhere else");
   r = await call(`/m/${remix}`);
+  // Its line: the Remixes tab draws it as a tree since remixdiff (4e6d05928),
+  // the one it came from a card above "This model"; the old list where none
+  // is drawn.
+  const drawnLine = r.text.includes(`class="node-card" href="/m/${gate}"`)
+    && /class="node-card self" aria-current="page"/.test(r.text);
   check(r.text.includes(`Remixed from <a href="/m/${gate}">Probe Directory Gate</a>, by Probe Builder`)
-    && r.text.includes("<h3>It came from</h3>"), "the remix's page names what it came from, and its line");
+    && (drawnLine || r.text.includes("<h3>It came from</h3>")), "the remix's page names what it came from, and its line");
   r = await call(`/m/${byLink}`);
   check(r.text.includes(`href="/m/${gears}"`) && r.text.includes("Probe Gear Train"),
     "a copy of a listed model, itself shared by link, names the listed one");
