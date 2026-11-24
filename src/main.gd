@@ -11939,8 +11939,12 @@ func _grab_on_joint(brick_id: int) -> bool:
 	# Turn, Colour and Delete stayed greyed after a drag on the car's
 	# headlight, which turns on its one stud where a brick on two is carried
 	# (appwalk; phonedrag's "a dragged part ends unselected"). A second finger
-	# puts the selection back as it was (_second_finger).
-	if _grab_drag.is_grabbing() and not _builder.selection.has(brick_id):
+	# puts the selection back as it was (_second_finger). Not while Motions
+	# records: the drag is a pose it keeps as keys, not a part being worked
+	# on, and a door swung on 1484-1 put 152 parts in the selection
+	# mid-recording (phonepanels; m338reds).
+	var recording: bool = _pose_made != null and bool(_pose_made.call("is_recording"))
+	if _grab_drag.is_grabbing() and not recording and not _builder.selection.has(brick_id):
 		_builder.select_brick(brick_id, false)
 	return true
 
