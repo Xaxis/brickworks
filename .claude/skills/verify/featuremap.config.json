@@ -671,6 +671,13 @@
     },
     {
       "kind": "cli",
+      "label": "ways app probe",
+      "entry": "src/dev/ways_app_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 11703 --ways-stand-in & BRICKWORKS_API=http://127.0.0.1:11703 WAYS_APP_EMAIL=delivered+x@resend.dev tools/probe.sh ways_app_probe   (headless; delete the account it prints; in tools/suite/out.txt)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
       "label": "orangecheck check",
       "entry": "tools/web/orangecheck_check.mjs",
       "reach": "set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs",
