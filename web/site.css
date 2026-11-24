@@ -2550,3 +2550,20 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .live-words .live-count { white-space: nowrap; }
 .live-words span { color: var(--ink-soft); font-size: var(--t-small); }
 .live-words .live-count { color: var(--ink-faint); }
+
+/* A finger's target (sitewalk2, 2026-11-24): on a touch screen every
+   button is 44 px tall (--control-h, what Apple's guidelines and WCAG
+   2.5.5 ask), the small ones of a card's or a list's row too, where a
+   mouse keeps their denser 36: a post's Follow, Remix, Build it and Add a
+   comment and its count of replies, a card's like, comments and Save, a
+   comment's Reply, Hide it and Report it (24 px links before), a
+   snackbar's act, a page's contents. Last in the sheet, so each
+   component's own 36 gives way to it; the beta's strip keeps its own.
+   Pills stay a finger's 32, as chips are on the phone apps people know,
+   and a link inside a sentence keeps its line. */
+@media (pointer: coarse) {
+	.cta.small, .icon-btn.small, .model .social .icon-btn, .keep > button, .keep-panel .keep-new-open, .post-say,
+	.said-more, .post-acts, .toast-act, .page-toc a { min-height: var(--control-h); }
+	.icon-btn.small { min-width: var(--control-h); }
+	.comment-acts > :is(button, a), .post-acts > a.tally { display: inline-flex; align-items: center; min-height: var(--control-h); }
+}

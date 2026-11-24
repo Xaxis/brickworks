@@ -858,12 +858,10 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .pic.award .icon, .notice .pic.challenge .icon, .notice .pic.announce .icon, .notice .pic.talk .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
 .notice .what .words { display: block; margin-top: 2px; white-space: pre-line; }
 /* A group's Done and More (inbox, 2026-11-23): its .row-act, at the row's
-   end; a finger's 44 px on a touch screen. Inbox and Done above the list. */
+   end; a finger's 44 px on a touch screen, as every small button is there
+   (site.css). Inbox and Done above the list. */
 .notice .acts { display: flex; flex: none; align-items: center; gap: var(--s-1); margin: -4px -4px 0 0; }
 .notices-view { margin: 0; justify-self: start; }
-@media (pointer: coarse) {
-	.notice .acts .icon-btn.small { min-width: 44px; min-height: 44px; }
-}
 /* Beside the list (listkit, 2026-11-23), the feed's column on both tabs:
    Show, the list's kinds, the one shown lit, each with how many groups
    have it; your achievements as a card, the group's row without its

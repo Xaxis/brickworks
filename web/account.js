@@ -619,7 +619,12 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
 /// [back]: what has the focus once signed in, the moment the dialog goes,
 /// where what opened it is no more (the header's Sign in, the avatar by
 /// then); without it the dialog gives the focus back to what opened it.
-export async function askToSignIn(why, { prefer = "", back = null } = {}) {
+/// [later]: the person is on a page to do what it is for (share a model,
+/// read one, ask on a set), so First steps and the beta's welcome wait in
+/// a snackbar as they do after a like, and the page is theirs again once
+/// the age question is answered (sitewalk2, 2026-11-24: the header's Sign
+/// in on Share a model put five dialogs between the code and the share).
+export async function askToSignIn(why, { prefer = "", back = null, later = false } = {}) {
   await learn();
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
@@ -849,7 +854,7 @@ export async function askToSignIn(why, { prefer = "", back = null } = {}) {
             await exchangeOrangecheck(token);
             finished = true;
             gone();
-            const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
+            const asked = await askAgeIfAsked({ pending: Boolean(why) || later }).catch(() => null);
             settled(!asked?.refused);
           },
           // Said after onOutcome, which names how the window ended.
@@ -1013,7 +1018,7 @@ export async function askToSignIn(why, { prefer = "", back = null } = {}) {
       finished = true;
       windowed?.cancel();
       gone();
-      const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
+      const asked = await askAgeIfAsked({ pending: Boolean(why) || later }).catch(() => null);
       // Asked at the box's tick, never otherwise, never for an account
       // under 13, and never waited on.
       if (!asked?.refused && offer.connect && !consent.hidden && box.checked) connectOrangecheck(access);
