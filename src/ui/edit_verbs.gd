@@ -45,6 +45,18 @@ var together: Node = null
 ## What this app last put on the system clipboard, so a paste can tell
 ## LDraw another program put there from its own copy coming back.
 var _put_on_clipboard: String = ""
+## Who is signed in, by account id ("" for nobody): a copy is theirs, and
+## pasted by them alone (Main sets it).
+var account: Callable = func() -> String: return ""
+## Whose the clipboard is (Carry.clipboard), and which copy (the stamp a copy
+## is kept with for this site's other tabs: _share_copy), the one this tab
+## made or the newest another tab made.
+var _copied_by: String = ""
+var _copy_stamp: String = ""
+## A paste waiting for its parts' shapes (_hold_when_here), given up when this
+## is counted on: another paste, Esc, a sign-out.
+var _paste_turn: int = 0
+var _paste_waiting: bool = false
 
 
 ## The key, if it is one of these verbs. True when it was.
@@ -111,6 +123,11 @@ func handle_key(key: InputEventKey) -> bool:
 			if mode == "connect":
 				var placing: bool = connect_tool.holds() and connect_tool.from_hand()
 				set_mode("place" if placing else "select")
+				return true
+			# A paste waiting for its parts' shapes: given up.
+			if _paste_waiting:
+				_give_up_paste()
+				say.call("paste stopped")
 				return true
 			# Out of whatever is carried, and back to Select with nothing
 			# in hand, in one press.
@@ -753,6 +770,9 @@ func copy() -> int:
 	if count == 0:
 		say.call("select something to copy first")
 		return 0
+	# Whose, and which: pasted by this account alone (paste_from).
+	_copied_by = account.call()
+	_copy_stamp = "%x-%08x" % [Time.get_ticks_usec(), randi()]
 	# And as LDraw on the system clipboard, which LDCad, LeoCAD and a
 	# text editor all paste. Not in a browser, which allows it only inside
 	# the page's own handling of a key or a click — and Godot answers both
@@ -760,8 +780,68 @@ func copy() -> int:
 	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) and not OS.has_feature("web"):
 		_put_on_clipboard = Carry.as_file(Carry.clipboard, library)
 		DisplayServer.clipboard_set(_put_on_clipboard)
+	elif OS.has_feature("web"):
+		# In a browser, kept for this site's other tabs instead, each its
+		# own app with its own copy: copied in one, Paste in another found
+		# nothing (appwalk). Kept whole, as this tab's paste has it.
+		_share_copy(Carry.whole_text(_copied_by, _copy_stamp, library))
 	say.call(Keymap.filled("copied %s — {paste|to paste}") % _parts(count))
 	return count
+
+
+## Where this site's tabs keep the newest copy made in any of them, whole
+## (Carry.whole_text): the browser's localStorage, which they all share.
+## web/account.js signOut removes it with the session.
+const SHARED_COPY := "brickworks.clipboard"
+
+
+## [param text] kept as the newest copy for the other tabs. Too big to keep,
+## the copy before it goes, so no tab pastes an older copy as this one.
+static func _share_copy(text: String) -> void:
+	var key: String = JSON.stringify(SHARED_COPY)
+	JavaScriptBridge.eval(("(function(){try{localStorage.setItem(%s,%s)}catch(e){"
+		+ "try{localStorage.removeItem(%s)}catch(f){}}})()") % [key, JSON.stringify(text), key], true)
+
+
+## The newest copy any of this site's tabs made, "" when none.
+static func _shared_copy() -> String:
+	var text: Variant = JavaScriptBridge.eval(
+		"(function(){try{return localStorage.getItem(%s)||''}catch(e){return ''}})()"
+		% JSON.stringify(SHARED_COPY), true)
+	return text if text is String else ""
+
+
+## The account signed in changed (Main._on_account_changed): signed out, or
+## in as somebody else, the copy made before goes, here and wherever it was
+## kept for others ([method forget_copy]). Up to appfix it stayed, and the
+## next account in the same browser pasted it, the made parts it carries too
+## (pastereview F2).
+func account_changed() -> void:
+	if not _copied_by.is_empty() and str(account.call()) != _copied_by:
+		forget_copy()
+
+
+## The copy forgotten: this tab's, the one kept for the site's other tabs
+## when it is the same account's, and the system clipboard's when it is still
+## the copy this app put there. A paste waiting for shapes is given up.
+func forget_copy() -> void:
+	_give_up_paste()
+	if OS.has_feature("web"):
+		# Only that account's: another tab may have a newer one of the next's.
+		JavaScriptBridge.eval(("(function(){try{var v=localStorage.getItem(%s);"
+			+ "if(v&&v.indexOf(%s)===0)localStorage.removeItem(%s)}catch(e){}})()") % [
+			JSON.stringify(SHARED_COPY), JSON.stringify("%s%s " % [Carry.WHOLE_MARK,
+				_copied_by if not _copied_by.is_empty() else "-"]), JSON.stringify(SHARED_COPY)], true)
+	elif not _put_on_clipboard.is_empty() and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) \
+			and DisplayServer.clipboard_get() == _put_on_clipboard:
+		DisplayServer.clipboard_set("")
+	_put_on_clipboard = ""
+	Carry.clipboard = []
+	Carry.clipboard_lines = {}
+	Carry.clipboard_frames = {}
+	Carry.clipboard_held = []
+	_copied_by = ""
+	_copy_stamp = ""
 
 
 func cut() -> int:
@@ -779,11 +859,41 @@ func cut() -> int:
 ##
 ## LDraw put on the system clipboard by another program is taken in place
 ## of the app's own copy when it is newer: parts copied out of LDCad or a
-## text file paste straight in.
+## text file paste straight in. In a browser, a copy made since in another
+## of the site's tabs is taken first (copy).
 func paste() -> int:
+	return paste_from(_shared_copy() if OS.has_feature("web") else "")
+
+
+## [method paste], [param kept] the copy this site's tabs keep (Carry
+## .whole_text), "" for none: when it is newer than this tab's and the same
+## account's, it becomes this tab's clipboard whole, as it was in the tab that
+## copied, and is pasted as a copy made here is. Held once every part's shape
+## is here ([method _hold_when_here]): 0 while it waits, and said so.
+func paste_from(kept: String) -> int:
+	_give_up_paste()
+	var who: String = account.call()
+	# Copied by whoever was signed in before: not this one's to paste.
+	account_changed()
+	var theirs: Dictionary = Carry.from_whole(kept, who, library) if not kept.is_empty() else {}
+	var took: bool = not theirs.is_empty() and str(theirs["stamp"]) != _copy_stamp
+	if took:
+		Carry.clipboard = theirs["items"]
+		Carry.clipboard_lines = theirs["lines"]
+		Carry.clipboard_frames = theirs["frames"]
+		Carry.clipboard_held = theirs["held"]
+		_copied_by = who
+		_copy_stamp = str(theirs["stamp"])
+		_put_on_clipboard = ""
 	var parts: Array = Carry.clipboard
+	# The app's own copy brings its sub-models' lights and views with it, and
+	# what its copies hold that is not on the baseplate.
+	var lines: Dictionary = Carry.clipboard_lines
+	var frames: Dictionary = Carry.clipboard_frames
+	var held: Array = Carry.clipboard_held
 	var outside: String = ""
-	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) \
+	var read_again: Callable = Callable()
+	if not took and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) \
 			and DisplayServer.clipboard_has():
 		outside = DisplayServer.clipboard_get()
 	if not outside.is_empty() and outside != _put_on_clipboard:
@@ -795,20 +905,102 @@ func paste() -> int:
 		var read: Array = Carry.from_ldraw(outside, library)
 		if not read.is_empty():
 			parts = read
+			lines = {}
+			frames = {}
+			held = []
+			# Framed again once every shape is here: its pivot is worked
+			# out from them (Carry.framed).
+			read_again = Carry.from_ldraw.bind(outside, library)
 	if parts.is_empty():
 		say.call(Keymap.filled("nothing copied yet — select something and press {copy}"))
 		return 0
+	var missing: PackedStringArray = _shapes_missing(parts)
+	if missing.is_empty():
+		return _hold_pasted(parts, lines, frames, held)
+	_hold_when_here(parts, lines, frames, held, missing, read_again)
+	return 0
+
+
+func _hold_pasted(parts: Array, lines: Dictionary, frames: Dictionary, held: Array) -> int:
 	builder.cancel_carry()
 	builder.hold_copy(parts)
-	# The app's own copy brings its sub-models' lights and views with it.
-	if is_same(parts, Carry.clipboard):
-		builder.carrying.lines = Carry.clipboard_lines
-		builder.carrying.frames = Carry.clipboard_frames
-		builder.carrying.held = Carry.clipboard_held
+	builder.carrying.lines = lines
+	builder.carrying.frames = frames
+	builder.carrying.held = held
 	aim_again.call()
 	say.call(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
 		% _parts(parts.size()))
 	return parts.size()
+
+
+## The parts of [param parts] whose shape is not here: in a browser, those it
+## has not fetched yet, each asked for now.
+func _shapes_missing(parts: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for item: Dictionary in parts:
+		var id: String = str(item["part"])
+		if not out.has(id) and library.mesh_for(id) == null:
+			out.append(id)
+	return out
+
+
+## How long a paste waits with none of its parts' shapes coming before it is
+## given up and said so.
+const PASTE_STALL_MS := 30000
+
+
+## [param parts] held once each shape in [param missing] is here, the wait
+## said: a part with no shape put down was dropped, so a paste from another
+## tab put down 3 of the 6 parts it said it held, and said nothing
+## (pastereview F1); held with none of them here, it never went down at all.
+## A part that cannot be had stops the paste, said, and nothing is put down:
+## never part of a copy. [param read_again]: the parts read again once the
+## shapes are here (text from another program, framed from its shapes).
+func _hold_when_here(parts: Array, lines: Dictionary, frames: Dictionary, held: Array,
+		missing: PackedStringArray, read_again: Callable) -> void:
+	_paste_turn += 1
+	var turn: int = _paste_turn
+	_paste_waiting = true
+	builder.cancel_carry()
+	for id: String in missing:
+		library.request_mesh(id, true)
+	var left: Array = Array(missing)
+	var said: int = -1
+	var came_at: int = Time.get_ticks_msec()
+	while true:
+		var still: Array = left.filter(func(id: String) -> bool: return not library.is_resident(id))
+		if still.size() < left.size():
+			came_at = Time.get_ticks_msec()
+		left = still
+		if left.is_empty() or not left.any(func(id: String) -> bool: return library.is_on_its_way(id)) \
+				or Time.get_ticks_msec() - came_at > PASTE_STALL_MS:
+			break
+		var waiting: int = parts.filter(func(item: Dictionary) -> bool:
+			return left.has(str(item["part"]))).size()
+		if waiting != said:
+			said = waiting
+			say.call("fetching %s to paste — Esc stops" % _parts(waiting))
+		await get_tree().process_frame
+		if turn != _paste_turn:
+			return
+	_paste_waiting = false
+	var lacking: int = parts.filter(func(item: Dictionary) -> bool:
+		return library.mesh_for(str(item["part"])) == null).size()
+	if lacking > 0:
+		say.call("could not paste: %s did not load — paste again to try again" % _parts(lacking))
+		return
+	var again: Array = read_again.call() if read_again.is_valid() else parts
+	if again.size() != parts.size():
+		say.call("could not paste: %s did not load — paste again to try again"
+			% _parts(absi(parts.size() - again.size())))
+		return
+	_hold_pasted(again, lines, frames, held)
+
+
+## A paste waiting for shapes given up: it holds nothing when they come.
+func _give_up_paste() -> void:
+	_paste_turn += 1
+	_paste_waiting = false
 
 
 ## A worked construction from the parts bin in hand, whole (PartsBin's

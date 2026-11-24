@@ -41,11 +41,11 @@ export async function erase(account) {
       .then((e) => Boolean(e.subscription && e.subscription.status !== "canceled"), () => false);
     return { status: 503, body: { error: paying ? PLAN_NOT_ENDED : PLAN_NOT_ERASED } };
   }
-  // The orangecheck account Connect made for it, at its own tick
-  // (api/orangecheck.js ?op=connect), deleted first: until the person
-  // claims it, deleting it is Brickworks' to do, and once this account is
-  // gone nothing could. Only for an account whose person ticked the box for
-  // it (oc_connected): nobody else ever waits on orangecheck to leave. A
+  // The orangecheck account Connect made for it at a sign-in (api/_oc.js
+  // ensureOrangecheck; at a tick of a box before signin3), deleted first:
+  // until the person claims it, deleting it is Brickworks' to do, and once
+  // this account is gone nothing could. Only for an account Connect made
+  // one for (oc_connected): nobody else ever waits on orangecheck to leave. A
   // person can always delete their Brickworks account (site-attest's L1):
   // orangecheck refusing for good leaves theirs with them at ochk.app, said
   // plainly. Every other answer holds the deletion, 503 (api/_oc.js

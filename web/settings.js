@@ -17,7 +17,7 @@
 // own and draws what came, so one that cannot be read leaves the others.
 import {
   age, askAgeIfAsked, askToSignIn, betaOpen, call, codeLength, email, madeUp, orangecheckButton, redeem, sendCode, signOut,
-  signedIn,
+  signedIn, WAY_NAMES, wayLink, wayLinkTo, wayMark,
 } from "/account.js";
 import { langAt, say, told } from "/card.js";
 import { codeBoxes } from "/code-boxes.js";
@@ -263,6 +263,59 @@ async function blocked() {
   }
 }
 
+/// How this account signs in (signin3, api/_ways.js ?op=ways): a code to its
+/// address, always; Google and GitHub, each signing it in (Unlink), unlinked
+/// (Link again), or not used yet (its button, where it is offered). Unlinking
+/// leaves the code, so there is always a way in. [given] is an answer
+/// already in hand (Unlink's and Link again's carry the new state).
+async function ways(given = null) {
+  const answer = given || await call("/api/otp?op=ways").catch(() => null);
+  const said = answer && answer.status === 200 ? answer.body : null;
+  $("ways-part").hidden = !said || !said.code;
+  if (!said || !said.code) return;
+  const list = $("ways");
+  list.replaceChildren(make("li", "", make("span", "", make("b", "", say("A code we email you")), " ",
+    say("to {address}", { address: email() })), make("small", "", say("Always"))));
+  for (const name of ["google", "github"]) {
+    const state = said[name];
+    if (state === "never" && !said.offered?.[name]) continue;
+    const title = make("span", "way-name", wayMark(name), make("b", "", WAY_NAMES[name]));
+    let end;
+    if (state === "never") {
+      end = make("a", "cta ghost small", name === "google" ? say("Sign in with Google") : say("Sign in with GitHub"));
+      wayLinkTo(end, wayLink(name, `${langAt()}/settings#ways-part`));
+    } else {
+      end = make("button", "link", state === "on" ? say("Unlink") : say("Link again"));
+      end.type = "button";
+      end.addEventListener("click", async () => {
+        end.disabled = true;
+        const done = await call("/api/otp?op=ways", { method: "POST", body: { with: name, on: state !== "on" } }).catch(() => null);
+        const took = done && done.status === 200;
+        // Unlinked, what it signed in ends, this session too when it was one
+        // (api/_ways.js waysRoute): signed out here, and asked for a code.
+        if (took && done.body?.signed_out) {
+          signOut();
+          showFeedCount().catch(() => null);
+          await load();
+          askToSignIn(say("{way} no longer signs you in. You had signed in here with it, so sign in again with a code we email you.",
+            { way: WAY_NAMES[name] }));
+          return;
+        }
+        // The list from the answer first, then what was done: said before
+        // it, the old row stood beside the words a moment (signin3 flow).
+        await ways(took ? done : null);
+        $("ways-status").textContent = took
+          ? state === "on" ? say("{way} no longer signs you in here. A code we email you still does.", { way: WAY_NAMES[name] })
+            : say("{way} signs you in here again.", { way: WAY_NAMES[name] })
+          : told(done?.body?.error, say("That did not work just now."));
+      });
+    }
+    const where = state === "on" ? say("Signs you in") : state === "off" ? say("Unlinked")
+      : say("Not used yet: with this address, it signs you in here");
+    list.append(make("li", "", make("span", "way-row", title, make("small", "", where)), end));
+  }
+}
+
 /// orangecheck on this account: linked or not, and the way to change it.
 /// Linking and unlinking each ask for a code emailed just now; then Link
 /// orangecheck, orangecheck's button (account.js orangecheckButton), opens
@@ -271,13 +324,18 @@ let ocState = null;
 async function orangecheck() {
   const answer = await call("/api/orangecheck?op=status").catch(() => null);
   ocState = answer && answer.status === 200 ? answer.body : null;
-  $("oc-part").hidden = !(ocState && (ocState.ready || ocState.did));
+  $("oc-part").hidden = !(ocState && (ocState.ready || ocState.did || ocState.made));
   if (!ocState) return;
   const did = ocState.did || "";
+  // The orangecheck account signing in made for this one (signin3), said
+  // first, whatever else is offered.
+  const made = ocState.made?.did
+    ? `${say("Your orangecheck account ({did}) was made when you signed in. It stays with orangecheck until you claim it at ochk.app.",
+      { did: ocState.made.did })} ` : "";
   $("oc-said").textContent = ocState.only
     ? say("You sign in with orangecheck ({did}). Brickworks has this id for you, not an email address.", { did })
     : did ? say("orangecheck ({did}) is linked: it signs you in here as well as your email.", { did })
-      : say("Link orangecheck to sign in with it as well as your email: a Bitcoin wallet, email, Google or GitHub. "
+      : made + say("Link orangecheck to sign in with it as well as your email: a Bitcoin wallet, email, Google or GitHub. "
         + "Brickworks gets an id for you, not your address.");
   $("oc-go").hidden = ocState.only || Boolean(did) || !linkReady;
   $("oc-unlink").hidden = ocState.only || !did;
@@ -500,7 +558,7 @@ async function load() {
   const ageNow = age().catch(() => null);
   // The beta's row only while the account says the beta is open: with it
   // off the page asks nothing of /api/plans, as before (billing_flow).
-  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null),
+  const parts = Promise.all([ways().catch(() => null), orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null),
     blocked().catch(() => null),
     ageNow.then(() => (betaOpen() ? beta() : drawBeta(null))).catch(() => drawBeta(null))]);
   const answer = await call("/api/people?op=me");

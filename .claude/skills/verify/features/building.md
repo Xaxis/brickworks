@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe -->
 
 ## Sub-features
 
@@ -189,7 +189,26 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   was 55% green, so a green brick's ghost and the colour about to be placed
   could not be told apart.
 - `copy paste and duplicate` (`src/assembly/carry.gd`): `Ctrl-C` copies the
-  selection, `Ctrl-V` holds a copy as one ghost, `Ctrl-X` cuts. `Ctrl-D`
+  selection, `Ctrl-V` holds a copy as one ghost, `Ctrl-X` cuts. A copy goes
+  on the system clipboard as LDraw on a desktop; in a browser, which lets a
+  page write that only inside its own key handling, into the site's
+  localStorage (`EditVerbs.SHARED_COPY`), so a copy in one tab pastes in
+  another and the newest copy in any tab wins (`paste from another tab`:
+  `tools/web/tabpaste_flow.mjs` against a local export, two tabs,
+  each copy told apart by its colour; appwalk: Paste in a second tab said
+  "nothing copied yet"). The tabs keep the clipboard whole
+  (`Carry.whole_text`: a `0 !BRICKWORKS CLIPBOARD` line before the copy's
+  LDraw, with each part's sub-assembly, group and step, the sub-models' lights
+  and views and the parts the app can't show, as JSON deflated into base64:
+  all of 10030-1 is 472,292 characters of the 5.2 million a browser keeps for
+  the site), so a paste in another tab is
+  the same tab's paste; it is the copying account's alone, and a sign-out
+  forgets it, in the app (`EditVerbs.account_changed`) and on the site
+  (`web/account.js` signOut). A paste whose parts' shapes this tab has not
+  fetched says "fetching N parts to paste — Esc stops" and holds them once
+  they are here, or says it could not and puts nothing down: never part of a
+  copy (appfix, from pastereview's F1 to F3; `pastereview probe` headless,
+  `pastereview flow` on a local export at 1280 and 390). `Ctrl-D`
   (Edit, Duplicate; `EditVerbs.duplicate_beside`, `Builder.put_copy_beside`,
   ux14) puts a copy down at once beside the selection, seated where the
   original stood and selected, one undo, the clipboard untouched; with no room
@@ -1846,7 +1865,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `sub-assemblies`: `Ctrl-G` (Edit or Build, Make a sub-assembly) asks for a
   name and makes the selection a sub-assembly inside the one being edited; a
   click with Select then takes all of it, and every move, turn, hinge, copy,
-  mirror, hide and lock takes it whole. A double-click (or `Enter`) edits inside
+  mirror, hide and lock takes it whole. The status line names it and says a
+  double-click edits inside ("Wall selected, 2 parts — double-click edits
+  inside a sub-assembly", as a phone's line does; on a phone, whose double
+  tap turns, only its own line, "hold, then Edit inside"; `PROBE_SIZE=1280x720
+  tools/probe.sh grabselect_probe` section 4, and at 390x844 by a tap; appwalk: a set's house taken
+  whole at its fifth step was said as "149 selected — … C paints"). A double-click (or `Enter`) edits inside
   it — a banner above the model says which, the model staying where it was
   under the pointer, so a second double-click there goes a level deeper
   (view.md's `centred on the model's column`), a click takes one part, a part put
@@ -2120,7 +2144,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   joint moves its whole rigid body and everything beyond it about that joint,
   as the real thing moves; no tool or panel first. A click still selects; a
   drag on a part held rigidly to what stays still carries it (`EditVerbs.
-  drag_start`), as does Ctrl's copy-drag and a locked part. Turn: a hinge, a
+  drag_start`), as does Ctrl's copy-drag and a locked part. Either way the
+  part pressed ends selected (`Main._grab_on_joint` selects it once the grab
+  has taken hold, so a selection never changes what the grab moves; a second
+  finger puts the selection back): `PROBE_SIZE=390x844 tools/probe.sh
+  grabselect_probe` by finger and `PROBE_SIZE=1280x720` by the mouse (appwalk:
+  the car's headlights turn on one stud, and a phone's Turn, Colour and
+  Delete stayed greyed after a drag on one). Turn: a hinge, a
   clip, a turntable, a pin or an axle in a round hole, a 1x1 part on one stud;
   a click hinge on 22.5° clicks. Slide: a drag along the line of a clip on a
   bar or a hole on an axle (the first few pixels decide). Ball: every way.

@@ -120,6 +120,14 @@
       "tests": []
     },
     {
+      "id": "api:GET /api/otp?op=ways",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s '<deployment>/api/otp?op=ways' -H 'authorization: Bearer <session>'",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:GET /api/plans",
       "kind": "api",
       "entry": "api/plans.js",
@@ -140,6 +148,22 @@
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
+    },
+    {
+      "id": "api:GET /auth/github",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/github?then=/gallery'",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:GET /auth/google",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/google?then=/gallery'   (302 to Google with the client, or to /profile?...&failed=off without keys)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "api:GET/POST /api/people",
@@ -256,6 +280,22 @@
         "tests/test_comment_mentions.py",
         "tests/test_relay_signed_out.py"
       ]
+    },
+    {
+      "id": "api:POST /api/otp?op=way_bind",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_bind' -H 'authorization: Bearer <a code's session>'   (410 with no GitHub sign-in waiting; 403 for a session that is not a code's of the last five minutes)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:POST /api/otp?op=way_take",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_take'   (410 with nothing to take)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "api:POST /api/plans",
@@ -1751,6 +1791,14 @@
       "tests": []
     },
     {
+      "id": "cli:firststart probe",
+      "kind": "cli",
+      "entry": "src/dev/firststart_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh firststart_probe -- --pictures=DIR   (windowed; an account with nothing saved: on a phone the first screen over the example car, Welcome to Brickworks, New model strong, one press an empty baseplate with nothing asked; PROBE_SIZE=1280x800: the car and no first screen, Build your first model has room)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:flex skin probe",
       "kind": "cli",
       "entry": "src/dev/flex_skin_probe.gd",
@@ -1867,6 +1915,14 @@
       "kind": "cli",
       "entry": "tools/web/grab_flow.mjs",
       "reach": "node tools/web/grab_flow.mjs --url=http://127.0.0.1:8820/ --out=<dir>  (after PARTS_URL=x tools/export.sh web and tools/web/serve.py build/web 8820 --parts assets/generated/parts; a preview: preview_checks.sh ... grab)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:grabselect probe",
+      "kind": "cli",
+      "entry": "src/dev/grabselect_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh grabselect_probe   (by finger; PROBE_SIZE=1280x720 by the mouse)",
       "area": "building",
       "tests": []
     },
@@ -2352,6 +2408,22 @@
       "tests": []
     },
     {
+      "id": "cli:minifig maker probe",
+      "kind": "cli",
+      "entry": "tools/web/minifig_maker_probe.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/minifig_maker_probe.mjs [--out=DIR] [--only=1280-light,390-dark]   (the maker on this checkout's files, no sign-in: every tab picked, pose, turn, press a part, Undo/Redo, Surprise me with a lock, Save, a v 1 recipe opens as the same figure, 44 px targets at 390; ends 'N of N passed')",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:minifig maker tiles",
+      "kind": "cli",
+      "entry": "tools/web/minifig_tiles.mjs",
+      "reach": "~/.claude/claude-core/bin/heavy node tools/web/minifig_tiles.mjs --deps=DIR [--only=faces,hair]   (DIR has node_modules/three 0.186.1; writes web/minifig/tiles/<group>-<hash>-b|p.webp and web/minifig/figure.json; run after changing a list in web/minifig-parts.js)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:model library",
       "kind": "cli",
       "entry": "tools/library_build.py",
@@ -2791,6 +2863,30 @@
       "entry": "src/dev/partstep_probe.gd",
       "reach": "tools/probe.sh partstep_probe; PROBE_SIZE=1024x768 tools/probe.sh partstep_probe   (the car as a link, Brickognize stubbed on port 10830: told first and nothing sent until agreed, a photo sent once as a JPEG alone, the car's guesses first, the first step that places it with its part outlined, the card's steps and Back, mid-build the next step and the earlier built, every step built at the last, Not it?, a part at a time, none the car has, offline, 44-point targets, the step framed below the card; edit_steps picture_data= refused until agreed=true, then in 1 call; pictures in shots/partstep/)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:paste from another tab",
+      "kind": "cli",
+      "entry": "tools/web/tabpaste_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 11803 --static=build/web, then node tools/web/tabpaste_flow.mjs --url=http://127.0.0.1:11803/app --out=shots/tabpaste   (with .env sourced)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:pastereview flow",
+      "kind": "cli",
+      "entry": "tools/web/pastereview_flow.mjs",
+      "reach": "node tools/web/relay_server.mjs 11821 --static=build/web, then node tools/web/pastereview_flow.mjs --url=http://127.0.0.1:11821/app --out=shots/pastereview --width=1280|390 --model=bench/results/pastereview-2026-11-24/pr_fixture.ldr --unpacked=30365,4854,30360,4855,30356   (with .env sourced; parts the other tab hasn't fetched, a slow line, another account, a sign-out)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:pastereview probe",
+      "kind": "cli",
+      "entry": "src/dev/pastereview_probe.gd",
+      "reach": "tools/probe.sh pastereview_probe   (headless: a paste in another tab, the copy kept whole, against the same tab's, part by part and by sub-assembly, undone, saved and reopened; a copy another account made or one after a sign-out pastes nothing; a part that can't be had puts nothing down)",
+      "area": "building",
       "tests": []
     },
     {
@@ -3588,6 +3684,14 @@
       "tests": []
     },
     {
+      "id": "cli:simgrab probe",
+      "kind": "cli",
+      "entry": "src/dev/simgrab_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh simgrab_probe   (windowed: Simulate open on the orrery, a part of another drivable body dragged on its joint; Simulate's driver stays)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:site check",
       "kind": "cli",
       "entry": "tools/web/site_check.mjs",
@@ -4263,6 +4367,30 @@
       "entry": "src/dev/viewfloor_probe.gd",
       "reach": "tools/probe.sh viewfloor_probe   (windowed, 390x844 by its header; -- --measure prints and fails nothing; pictures in shots/viewfloor/)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:ways app probe",
+      "kind": "cli",
+      "entry": "src/dev/ways_app_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 11703 --ways-stand-in & BRICKWORKS_API=http://127.0.0.1:11703 WAYS_APP_EMAIL=delivered+x@resend.dev tools/probe.sh ways_app_probe   (headless; delete the account it prints; in tools/suite/out.txt)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:ways browser flow",
+      "kind": "cli",
+      "entry": "tools/web/ways_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11702 --ways-stand-in --owner=$OWNER & node tools/web/ways_flow.mjs --url=http://127.0.0.1:11702 --owner=$OWNER --out=shots/ways",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:ways check",
+      "kind": "cli",
+      "entry": "tools/web/ways_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11701 --ways-stand-in --owner=$OWNER & node tools/web/ways_check.mjs --url=http://127.0.0.1:11701 --owner=$OWNER   (OWNER a delivered+...@resend.dev throwaway)",
+      "area": "account",
       "tests": []
     },
     {
@@ -6299,7 +6427,7 @@
       "id": "ui:a minifig of your own as your avatar",
       "kind": "ui",
       "entry": "web/minifig-maker.js",
-      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig   (dialog#minifig-dialog: a face, hair or a hat and its colour, a torso print and colour, legs colour, background, Surprise me, the minifig at its sizes on a light and a dark page; Save sends the PNG and its recipe to POST /api/people?op=avatar {picture, type, minifig}; everybody without a picture is shown the minifig made from their handle, web/card.js minifigOf, and GET /api/people?op=avatar&handle=X draws it as a JPEG)",
+      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig   (dialog#minifig-dialog: the figure live in 3D of real parts, web/minifig3d.js built from tools/viewer/minifig.js, drag or arrow keys to turn it, a press on a part opens its tab; tabs Skin, Face, Hair and hats, Torso, Arms and hands, Legs, Accessories, Pose, Background, each searched, tiles drawn from the parts, web/minifig/tiles; web/minifig-parts.js the lists and figureShape; Undo, Redo, Surprise me with a lock a tab, Start from\u2026, the picture at its sizes on a light and a dark page; Save sends a 400 px PNG and its recipe (v 2) to POST /api/people?op=avatar {picture, type, minifig}; a v 1 recipe opens as the same figure, fromLayers; everybody without a picture is shown the minifig made from their handle, web/card.js minifigOf, and GET /api/people?op=avatar&handle=X draws it as a JPEG)",
       "area": "web",
       "tests": []
     },
@@ -7189,6 +7317,20 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Cable, hose or chain\u2026, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building",
       "tests": []
+    },
+    {
+      "id": "ui:how you sign in",
+      "kind": "ui",
+      "entry": "web/settings.js",
+      "reach": "<deployment>/settings#ways-part signed in",
+      "area": "account",
+      "tests": [
+        "tests/test_adminclaude.py",
+        "tests/test_announce.py",
+        "tests/test_billing_pay.py",
+        "tests/test_console.py",
+        "tests/test_owner_notify.py"
+      ]
     },
     {
       "id": "ui:installing the site",
@@ -8147,6 +8289,22 @@
       "tests": []
     },
     {
+      "id": "ui:sign in with github",
+      "kind": "ui",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with GitHub (where GITHUB_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:sign in with google",
+      "kind": "ui",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with Google (where GOOGLE_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "ui:sign in with orangecheck",
       "kind": "ui",
       "entry": "web/account.js",
@@ -8537,6 +8695,14 @@
       "tests": []
     },
     {
+      "id": "ui:the console's sign-in switches",
+      "kind": "ui",
+      "entry": "web/admin-switches.js",
+      "reach": "<deployment>/admin#switches as MASTER_EMAIL, Sign in with Google and GitHub (on a checkout: relay_server.mjs --ways-stand-in --owner=<throwaway>)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "ui:the console's site",
       "kind": "ui",
       "entry": "web/admin-site.js",
@@ -8852,7 +9018,7 @@
       "id": "ui:the studio's first screen",
       "kind": "ui",
       "entry": "src/ui/studio_start.gd",
-      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start)",
+      "reach": "<deployment>/app signed in (a check's browser: /app?start): over a bare baseplate, never the example car, the studio's first screen: Continue (the models saved last, here or kept with the account), this week's quick build with Start from its template (a copy in this tab), what came back on your models (comments, a pin opening the model with its part selected, builds and remixes on their pages; GET /api/people?op=studio_start, nothing marked read) and the gallery with a search (a model pressed: a copy of your own); Escape, the scrim, a shortcut or an edit puts it away; its tick Open the studio on this screen (ShellPrefs studio_start). An account with nothing saved gets the example car, and on a phone or a window a phone's width (no room for Build your first model, FirstBuild.fits_here) this screen over it: Welcome to Brickworks, New model its strong button",
       "area": "web",
       "tests": []
     },

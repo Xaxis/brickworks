@@ -260,11 +260,14 @@ row read as counts missing (the lead, 2026-11-23); the label still says no
 - **The sign-in dialog** (`account.js` `askToSignIn`; signinux, 2026-11-14,
   laid out as Vercel, Linear and Notion set out a second way in): two equal
   ways in, one under the other, each a `.cta.wide` the form's width and
-  44 px tall: the address, orangecheck Connect's box (`dialog .consent`: a
-  `label.choice`, never ticked but by the person, in orangecheck's own
-  words exactly as `web/oc-connect-consent.mjs` gives them) and **Email me
-  a code**; then `dialog .or` ("or" between two hairlines); then **Sign in
-  with orangecheck** and its one plain line; **Not now** last, a quiet
+  44 px tall: the address and **Email me a code**; then `dialog .or` ("or"
+  between two hairlines); then, in `dialog .elsewhere` one under the other
+  and as wide, **Sign in with Google** and **Sign in with GitHub** (`a.cta.ghost.wide.way`,
+  each with its own mark, `.way-mark` 18 px; signin3, 2026-11-24, only
+  where the deployment offers them) and **Sign in with orangecheck** and its
+  one plain line; under them one centred `small` line, `dialog .made-line`,
+  that signing in also makes the orangecheck account, with **What is
+  that?** (no box: the server makes it); **Not now** last, a quiet
   `button.link`. While orangecheck's window is open the two ways give
   place to `dialog .waiting`: a ring, "Finish signing in in the orangecheck
   window", **Show the orangecheck window** (the same window to the front)

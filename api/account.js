@@ -19,6 +19,13 @@
 //               and its profile ({handle, name}, or null for none), which
 //               is what asks a name before its first comment, reply or
 //               post on the site (web/account.js nameFirst, socialloop).
+//               And, after answering, a sign-in of the last 15 minutes of
+//               an account 13 or over gets its orangecheck account, made
+//               once, by Connect (signin3, api/_oc.js ensureOrangecheck):
+//               every page and the app ask this as soon as they are
+//               signed in, by a code, Google, GitHub or orangecheck.
+//               Without a token, which of Google and GitHub sign people
+//               in here ({google, github}: api/_ways.js waysOffered).
 //
 //   POST ?op=age, with a token and {month, year}: the answer to the age
 //   question (2026-10-18). Worked out here into whether that is 13 or over
@@ -97,12 +104,14 @@
 // anyone reinstalling.
 
 import { noted } from "./_noted.js";
+import { afterAnswer } from "./_after.js";
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { betaMode, memberOf } from "./_beta.js";
 import { earlyFor } from "./_early.js";
 import { linkFetch } from "./_link.js";
 import { orangecheckOffer } from "./_oc_config.js";
+import { waysOffered } from "./_ways.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver, TOO_YOUNG } from "./_trust.js";
 import { erase, NOT_DELETED } from "./_erase.js";
 
@@ -157,6 +166,9 @@ async function handler(request, response) {
     // Sign in with orangecheck (api/orangecheck.js): whether it works here,
     // and whether everybody is offered it (api/_oc_config.js).
     orangecheck: enabled ? orangecheckOffer() : { ready: false, everyone: false, connect: false, native: null },
+    // Sign in with Google and with GitHub (api/_ways.js): where each is
+    // offered here, its keys in and its switch in the console not off.
+    ways: enabled ? await waysOffered(request) : { google: false, github: false },
   };
 
   const token = bearer(request);
@@ -211,6 +223,10 @@ async function handler(request, response) {
       profile = row && row.handle ? { handle: String(row.handle), name: String(row.name || row.handle) } : null;
     }
   }
+  // Signed in just now, 13 or over: its orangecheck account, after the
+  // answer. Never for an account still to answer the age question (a
+  // child's is deleted): that one gets it with its answer (takeAge).
+  if (age && age.ask === false && age.over_13 === true) wrapOrangecheck(claims);
 
   return response.status(200).json({
     ...base,
@@ -223,6 +239,29 @@ async function handler(request, response) {
     ...(age ? { age } : {}),
     ...(profile !== undefined ? { profile } : {}),
   });
+}
+
+/// The orangecheck account of [claims]' account made, after the answer,
+/// when its session is a sign-in of the last 15 minutes and Connect is set
+/// up here (api/_oc.js ensureOrangecheck); said in the log when it is not
+/// made for a reason worth reading (orangecheck out, its daily limit). Not
+/// asked while what started the session cannot be read: its address would
+/// go as unchecked when it may be a code's, and the next request asks.
+function wrapOrangecheck(claims) {
+  if (!process.env.OC_CONNECT_KEY) return;
+  afterAnswer(async () => {
+    const { codeOf, ensureOrangecheck, signedInJustNow } = await import("./_oc.js");
+    if (!signedInJustNow(claims)) return;
+    const asked = await codeOf(claims).catch((trouble) => {
+      console.error(`account: orangecheck not asked, the sign-in not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+      return null;
+    });
+    if (!asked) return;
+    const done = await ensureOrangecheck(claims, asked.emailed);
+    if (!done.made && !["has_orangecheck", "has_one", "asked_just_now"].includes(done.reason)) {
+      console.error(`account: no orangecheck account made at a sign-in: ${done.reason}`);
+    }
+  }, "account: orangecheck");
 }
 
 /// Whether [account] is a beta tester, as feedback.sql's beta_tester says
@@ -263,6 +302,7 @@ async function takeAge(request, response) {
     if (!kept.ask) return response.status(200).json({ age: { ask: kept.ask, over_13: kept.over_13 } });
     if (!again && thirteenOrOver(born.month, born.year)) {
       const now = await answerAge(claims.sub);
+      if (now.over_13 === true) wrapOrangecheck(claims);
       return response.status(200).json({ age: { ask: now.ask, over_13: now.over_13 } });
     }
   } catch (trouble) {

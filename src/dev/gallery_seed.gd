@@ -37,6 +37,14 @@ var _failures: int = 0
 
 class Keeping extends SharedModels:
 	var sent: Array[Dictionary] = []
+	## The photograph the panel draws once a publish has answered
+	## (SharePanel._card_after), by the link it was for: {thumb, kind}.
+	var cards: Dictionary = {}
+
+	func put_card(_token: String, id: String, thumb: String, kind: String) -> Dictionary:
+		cards[id] = {"thumb": thumb, "kind": kind}
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return {"code": 200, "body": {"id": id, "card": true, "kind": kind}}
 
 	func publish(_token: String, body: Dictionary) -> Dictionary:
 		sent.append(body.duplicate())
@@ -171,6 +179,23 @@ func _run() -> void:
 			_ok(false, "%s: the panel sent nothing (%s)" % [name, panel._status.text])
 			continue
 		var body: Dictionary = keeping.sent[-1]
+		# And the card as a photograph, which the panel draws once the
+		# publish has answered and puts on the link (op=card): kept in the
+		# body as card and card_kind, for tools/web/owner_publish.mjs to put
+		# on the link the same way. Waited for here, as the next model would
+		# change the world it is drawn from; where none can be drawn, none.
+		var link: String = "Seed%06d" % keeping.sent.size()
+		var card_until: float = Time.get_ticks_msec() + 60000.0
+		while CardPhoto.possible() and not keeping.cards.has(link) and Time.get_ticks_msec() < card_until:
+			await process_frame
+		if keeping.cards.has(link):
+			body["card"] = str(keeping.cards[link]["thumb"])
+			body["card_kind"] = str(keeping.cards[link]["kind"])
+			var card := Image.new()
+			if card.load_webp_from_buffer(Marshalls.base64_to_raw(body["card"])) == OK:
+				card.save_png(out.path_join("%d-card.png" % n))
+		_ok(not CardPhoto.possible() or body.has("card"),
+			"%s: its card drawn as a photograph (%s)" % [name, str(body.get("card_kind", "none"))])
 		# The panel shows What changed? only for a link it already has,
 		# which here it never does: said for it, as that box sends it.
 		var note: String = str(said.get("note", "")).strip_edges()

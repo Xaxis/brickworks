@@ -23,18 +23,19 @@
 //   5. Deleted from /settings with a fresh orangecheck sign-in, the same
 //      wallet, by orangecheck's own button there: signed out, and the
 //      account gone.
-//   Step 4 (2026-10-24, oc225), orangecheck Connect, each with a throwaway
-//   at a Resend test address, signed in through the dialog by an emailed
-//   code (minted here, as the tests do). --connect runs these alone, with
-//   no wallet.
-//   6. Unticked: the page asks for no orangecheck account, and none is
-//      written down for the account.
-//   7. Ticked: the page asks once, orangecheck makes one (a did, kept with
-//      the account, and added to --keys for orangecheck to purge). Deleting
-//      the account deletes it at orangecheck first (connectDelete), then
-//      the account.
-//   8. Ticked, and the ask failing on its way (cut off here, in the
-//      browser): signed in all the same.
+//   Step 4 (2026-10-24, oc225; no box since signin3, 2026-11-24),
+//   orangecheck Connect around every sign-in, with a throwaway at a Resend
+//   test address signed in through the dialog by an emailed code (minted
+//   here, as the tests do). --connect runs these alone, with no wallet.
+//   6. No box; the dialog says signing in also makes the orangecheck
+//      account. Signed in and 13 or over, the server makes one (a did, kept
+//      with the account, and added to --keys for orangecheck to purge); the
+//      page asks orangecheck nothing itself.
+//   7. Signed in again: the same orangecheck account, none made anew.
+//   8. Deleting the account deletes it at orangecheck first
+//      (connectDelete), then the account.
+//   orangecheck down at a sign-in, and an account from before getting one
+//   at its next sign-in, are tools/web/ways_check.mjs's, against a stand-in.
 // On a preview (BW_BYPASS) the server refuses the token, which is for the
 // deployment's own address: production takes tokens for brickworks.diy
 // alone (api/_oc_config.js), the only origin orangecheck serves its list of
@@ -135,28 +136,23 @@ async function connectedOf(account) {
   return reply.ok ? reply.json() : { error: reply.status };
 }
 
-/// A throwaway signed in through the sign-in dialog by an emailed code, the
-/// Connect box [tick]ed or not, the page's ask for an orangecheck account
-/// [cut] off on its way or not: {email, account, asks, answer, signedIn}.
-async function connectSignIn(name, { tick, cut = false }) {
-  const email = `delivered+bw-oc-live-${name}-${randomBytes(4).toString("hex")}@resend.dev`;
+/// A throwaway [email] signed in through the sign-in dialog by an emailed
+/// code, its age answered (30) if asked: {email, account, refresh, asks,
+/// line, boxes, signedIn}, asks what the page itself asked of ?op=connect.
+async function connectSignIn(name, email) {
   const made = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   if (bypass) await made.route(`${site}/**`, (route) => route.continue({ headers: { ...route.request().headers(), ...headers } }));
   const asks = [];
-  let answered = null;
-  await made.route(`${site}/api/orangecheck?op=connect`, async (route) => {
-    asks.push(route.request().postDataJSON());
-    if (cut) return route.abort("connectionreset");
-    const reply = await route.fetch({ headers: { ...route.request().headers(), ...headers } });
-    answered = { status: reply.status(), body: await reply.json().catch(() => null) };
-    return route.fulfill({ response: reply });
+  await made.route(`${site}/api/orangecheck?op=connect`, (route) => {
+    asks.push(route.request().method());
+    return route.continue();
   });
   const tab = await made.newPage();
   // Signed out, /profile?sign-in opens the sign-in by itself (signinux, sifix).
   await tab.goto(`${site}/profile?sign-in`, { waitUntil: "domcontentloaded", timeout: 120000 });
-  await tab.locator("dialog.sign-in #oc-connect").waitFor({ state: "visible", timeout: 60000 });
-  check(`${name}: the box is there, unticked`, !(await tab.locator("dialog.sign-in #oc-connect").isChecked()));
-  if (tick) await tab.locator("dialog.sign-in #oc-connect").check();
+  await tab.locator("dialog.sign-in #oc-made-line").waitFor({ state: "visible", timeout: 60000 });
+  const line = (await tab.locator("dialog.sign-in #oc-made-line").textContent()).trim();
+  const boxes = await tab.locator('dialog.sign-in input[type="checkbox"]').count();
   await tab.fill("dialog.sign-in form input", email);
   await tab.click('dialog.sign-in button[type="submit"]');
   await tab.waitForFunction(() => /The code sent to/.test(document.querySelector("dialog.sign-in label")?.textContent || ""), null, { timeout: 60000 });
@@ -169,11 +165,26 @@ async function connectSignIn(name, { tick, cut = false }) {
       return null;
     }
   }, STORAGE_KEY, { timeout: 60000 }).then((handle) => handle.jsonValue(), () => null);
-  // The ask is never waited on by the page; here, a moment for it.
-  for (let n = 0; n < 20 && tick && !cut && !answered; n++) await tab.waitForTimeout(500);
+  const age = tab.locator("dialog.age");
+  if (await age.waitFor({ state: "visible", timeout: 15000 }).then(() => true, () => false)) {
+    await tab.selectOption("#age-month", "1");
+    await tab.selectOption("#age-year", String(new Date().getUTCFullYear() - 30));
+    await tab.locator("#age-go").click();
+  }
   await shot(tab, `connect_${name}.png`);
   await made.close();
-  return { email, account: kept?.user_id || "", refresh: kept?.refresh_token || "", asks, answer: answered, signedIn: Boolean(kept?.refresh_token) };
+  return { email, account: kept?.user_id || "", refresh: kept?.refresh_token || "", asks, line, boxes, signedIn: Boolean(kept?.refresh_token) };
+}
+
+/// What Connect keeps for [account] once the server has had [ms] to make it.
+async function connectedWithin(account, ms = 30000) {
+  let row = null;
+  for (const until = Date.now() + ms; Date.now() < until;) {
+    row = await connectedOf(account);
+    if (row?.did) break;
+    await new Promise((done) => setTimeout(done, 1000));
+  }
+  return row;
 }
 
 try {
@@ -277,35 +288,32 @@ try {
   }
 }
 
-// 6-8. orangecheck Connect, on brickworks.diy only: a preview has no
-// Connect key (tools/deploy.sh --unit) and offers no box.
+// 6-8. orangecheck Connect around a sign-in, on brickworks.diy only: a
+// preview has no Connect key (tools/deploy.sh --unit) and says nothing of it.
 if (!preview) {
   const leftovers = [];
   try {
-    const unticked = await connectSignIn("unticked", { tick: false });
-    leftovers.push(unticked.email);
-    check("6. unticked: signed in, no ask for an orangecheck account, and none written down", unticked.signedIn && unticked.asks.length === 0
-      && (await connectedOf(unticked.account)) === null, `${unticked.signedIn} ${unticked.asks.length}`);
-
-    const ticked = await connectSignIn("ticked", { tick: true });
-    leftovers.push(ticked.email);
-    const row = await connectedOf(ticked.account);
-    if (ticked.answer?.body?.did) appendFileSync(keys, `${new Date().toISOString()} ${site} connect did ${ticked.answer.body.did} (${ticked.email})\n`);
-    check("7. ticked: signed in, one ask with consent, and orangecheck made an account, kept with ours", ticked.signedIn
-      && ticked.asks.length === 1 && ticked.asks[0]?.consent === true && ticked.answer?.status === 200 && ticked.answer.body?.made === true
-      && row?.did === ticked.answer.body.did, `${JSON.stringify(ticked.answer)} ${JSON.stringify(row)}`);
+    const email = `delivered+bw-oc-live-connect-${randomBytes(4).toString("hex")}@resend.dev`;
+    leftovers.push(email);
+    const first = await connectSignIn("first", email);
+    const row = await connectedWithin(first.account);
+    if (row?.did) appendFileSync(keys, `${new Date().toISOString()} ${site} connect did ${row.did} (${email})\n`);
+    check("6. no box, the line said, signed in, and the server made an orangecheck account, kept with ours; the page asked nothing",
+      first.signedIn && first.boxes === 0 && /^Signing in without orangecheck also makes your orangecheck account\./.test(first.line) && first.asks.length === 0
+      && Boolean(row?.did), `${JSON.stringify({ ...first, refresh: undefined })} ${JSON.stringify(row)}`);
+    const again = await connectSignIn("again", email);
+    await new Promise((done) => setTimeout(done, 5000));
+    const still = await connectedOf(again.account);
+    check("7. signed in again: the same orangecheck account, none made anew", again.signedIn && again.account === first.account
+      && still?.did === row?.did && still?.made_at === row?.made_at, `${JSON.stringify(row)} ${JSON.stringify(still)}`);
     // Deleted as /settings deletes: its address typed again.
     const access = await fetch(`${String(process.env.SUPABASE_URL || "").replace(/\/+$/, "")}/auth/v1/token?grant_type=refresh_token`, {
       method: "POST", headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" },
-      body: JSON.stringify({ refresh_token: ticked.refresh }) }).then((r) => r.json()).then((b) => b.access_token).catch(() => "");
+      body: JSON.stringify({ refresh_token: again.refresh }) }).then((r) => r.json()).then((b) => b.access_token).catch(() => "");
     const quit = await fetch(`${site}/api/account?op=delete`, { method: "POST",
-      headers: { ...headers, authorization: `Bearer ${access}`, "content-type": "application/json" }, body: JSON.stringify({ confirm: ticked.email }) });
-    check("7. deleting it deletes orangecheck's first, then ours", quit.status === 200 && (await connectedOf(ticked.account)) === null,
+      headers: { ...headers, authorization: `Bearer ${access}`, "content-type": "application/json" }, body: JSON.stringify({ confirm: email }) });
+    check("8. deleting it deletes orangecheck's first, then ours", quit.status === 200 && (await connectedOf(first.account)) === null,
       `${quit.status} ${JSON.stringify(await quit.json().catch(() => null))}`);
-
-    const cut = await connectSignIn("cut", { tick: true, cut: true });
-    leftovers.push(cut.email);
-    check("8. ticked, the ask cut off on its way: signed in all the same", cut.signedIn && cut.asks.length === 1, `${cut.signedIn} ${cut.asks.length}`);
   } catch (trouble) {
     check("Connect's steps finished", false, String(trouble?.stack || trouble).slice(0, 400));
   } finally {

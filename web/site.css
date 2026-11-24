@@ -662,21 +662,22 @@ dialog .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
 /* The refusal itself, as large as the lines after it: directory.css makes
    a .said small on the pages that load it (/profile). */
 dialog .said.too-young { margin: 0 0 14px; font-size: inherit; }
-/* Sign in (account.js; signinux, 2026-11-13): the email and orangecheck
-   as two equal ways in, each a .wide button of one size, "or" between them
-   as the best sign-ins have it; orangecheck Connect's box with the email it
-   belongs to (the box and its words, then orangecheck's line under the
-   words); the code a box per digit (.code-boxes); and while orangecheck's
-   window is open, the wait for it in their place. */
+/* Sign in (account.js; signinux, 2026-11-13): the email and the other ways
+   in (Google, GitHub and orangecheck since signin3), each a .wide button of
+   one size, "or" between them as the best sign-ins have it, each with its
+   mark; the code a box per digit (.code-boxes); while orangecheck's window
+   is open, the wait for it in their place; and the line that signing in
+   also makes the orangecheck account, above Not now. */
 dialog.sign-in .lead { margin-bottom: var(--s-5); }
-dialog .consent { margin: calc(-1 * var(--s-1)) 0 var(--s-3); }
-dialog .consent .note { margin: 0 0 0 28px; }
+dialog .elsewhere { display: grid; gap: var(--s-2); }
+dialog .way-mark { flex: none; }
+dialog .made-line { margin: var(--s-4) 0 0; text-align: center; font-size: var(--t-small); }
 dialog .or {
 	display: flex; align-items: center; gap: var(--s-3); margin: var(--s-4) 0;
 	font-size: var(--t-small); color: var(--ink-faint);
 }
 dialog .or::before, dialog .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-dialog .elsewhere .note { margin: var(--s-2) 0 0; }
+dialog .elsewhere .note { margin: 0; }
 /* How orangecheck's window ended: calm when it was closed, a callout when
    the browser blocked it (what to do, in orangecheck's words), the
    trouble's colour when it failed. */
@@ -1544,40 +1545,125 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .cropper canvas:active { cursor: grabbing; }
 .cropper .zoom { display: flex; gap: var(--s-2); }
 
-/* Make a minifig (web/minifig-maker.js, Edit profile): the figure as it
-   will be shown beside its choices (above them on a phone), at a byline's,
-   a card's and a profile's size on a light page and a dark one; each choice
-   a row of radio tiles, the one chosen ringed in the accent. Only the
-   choices scroll, so Save stays in reach. */
-.minifig-dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); display: none; }
+/* Make a minifig (web/minifig-maker.js, Edit profile; figmaker
+   2026-11-24): the figure live in 3D on its background beside its parts
+   (above them on a phone), Undo, Redo, Turn back, Surprise me and Start
+   from… under it, then the picture it makes at a byline's, a card's and a
+   profile's size on a light page and a dark one. The parts in tabs, skin
+   first; each choice a tile drawn from its part in the colour chosen, the
+   one chosen edged in the accent. Only a tab's choices scroll, so Save
+   stays in reach. On a phone the dialog is the whole screen. */
+.minifig-dialog { width: min(1180px, calc(100vw - 32px)); height: min(900px, calc(100dvh - 32px)); max-width: none; max-height: none;
+	display: none; }
 .minifig-dialog[open] { display: flex; flex-direction: column; }
-.minifig-maker { display: grid; grid-template-columns: 200px 1fr; grid-template-rows: minmax(0, 1fr); gap: var(--s-5); min-height: 0; flex: 1 1 auto; }
-.minifig-look { display: grid; gap: var(--s-3); justify-items: center; align-content: start; }
-.minifig-look .avatar.huge { width: 160px; height: 160px; }
-.minifig-themes { display: grid; gap: var(--s-2); width: 100%; }
-.minifig-on { display: flex; align-items: center; justify-content: center; gap: var(--s-3); padding: var(--s-2) var(--s-3);
-	border-radius: var(--radius); border: 1px solid var(--line-strong); }
+.minifig-dialog .minifig-lead { margin-bottom: var(--s-3); }
+.minifig-body { flex: 1 1 auto; min-height: 0; display: flex; }
+.minifig-credit { margin: var(--s-3) 0 var(--s-2); font-size: var(--t-small); }
+.mf-maker { flex: 1 1 auto; min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+	gap: var(--s-5); }
+/* Over .page section's gap between a page's sections: these two are one row. */
+.mf-maker > section { margin: 0; max-width: none; }
+.mf-look { display: flex; flex-direction: column; gap: var(--s-3); min-height: 0; overflow-y: auto; }
+.mf-stage { position: relative; flex: 1 1 auto; min-height: 300px; overflow: hidden; border-radius: var(--r-3);
+	border: 1px solid var(--line); background: var(--bg-soft) center / cover no-repeat; cursor: grab; }
+.mf-stage:active { cursor: grabbing; }
+.mf-stage:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mf-stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.mf-wait { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: var(--s-4); text-align: center;
+	color: var(--ink); background: color-mix(in srgb, var(--panel) 55%, transparent); }
+.mf-tools { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.mf-sizes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.minifig-on { display: flex; align-items: center; justify-content: center; gap: var(--s-2); min-width: 0; min-height: 80px;
+	padding: var(--s-2); border-radius: var(--radius); border: 1px solid var(--line-strong); }
 .minifig-on.light { background: var(--ground-light); }
 .minifig-on.dark { background: var(--ground-dark); }
-.minifig-choices { overflow-y: auto; min-height: 0; padding-right: var(--s-2); }
-.minifig-group { border: 0; padding: 0; margin: 0 0 var(--s-4); min-width: 0; }
-.minifig-group legend { font-weight: 600; margin-bottom: var(--s-2); padding: 0; }
-.minifig-tiles { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.minifig-tile { position: relative; display: block; margin: 0; cursor: pointer; }
-.minifig-tile input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.minifig-tile .tile { display: block; width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
-	box-shadow: 0 0 0 1px var(--line-strong); }
-.minifig-tiles.swatch .tile, .minifig-tiles.ground .tile { width: 32px; height: 32px; }
-.minifig-tile .tile .avatar { width: 100%; height: 100%; }
-.minifig-tile:hover .tile { box-shadow: 0 0 0 2px var(--ink-faint); }
-.minifig-tile input:checked + .tile { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-edge); }
-.minifig-tile input:focus-visible + .tile { outline: 2px solid var(--accent-edge); outline-offset: 4px; }
-.minifig-credit { margin: var(--s-3) 0 var(--s-2); font-size: var(--t-small); }
-@media (max-width: 640px) {
-	.minifig-dialog { padding: var(--s-4); }
-	.minifig-maker { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: var(--s-3); }
-	.minifig-look { grid-template-columns: auto 1fr; align-items: center; justify-items: start; }
-	.minifig-look .avatar.huge { width: 112px; height: 112px; grid-row: span 2; }
+.mf-edit { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.mf-tabs { flex: none; margin-bottom: var(--s-3); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.mf-tabs button { padding: 0 8px; }
+/* A tab kept when surprised: a dot in the accent after its name. */
+.mf-tabs button.locked::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-edge); }
+.mf-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 var(--s-2) var(--s-4) 2px; }
+.mf-panel:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mf-panel-head { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center;
+	padding: 2px 0 var(--s-3); background: var(--panel); }
+.mf-panel-head .search { flex: 1 1 220px; }
+.mf-lock { gap: 6px; }
+.mf-lock[aria-pressed="true"] { border-color: var(--accent-edge); background: var(--accent-soft); }
+.mf-lock[aria-pressed="true"] .icon { fill: currentColor; fill-opacity: 0.25; }
+.mf-filters, .mf-extras { margin: 0 0 var(--s-3); }
+.mf-filters { overflow-x: auto; }
+.mf-check { margin: 0 0 var(--s-2); min-height: var(--control-h); align-items: center; }
+.mf-group { min-width: 0; margin: 0 0 var(--s-5); padding: 0; border: 0; }
+.mf-group legend { margin: 0 0 var(--s-2); padding: 0; font-weight: 600; }
+.mf-chosen { margin-left: var(--s-1); color: var(--ink-soft); font-weight: 400; }
+.mf-none { margin: var(--s-4) 0; }
+.mf-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: var(--s-2); }
+.mf-tile { position: relative; display: block; aspect-ratio: 1; margin: 0; border-radius: var(--r-2); background: var(--bg-soft);
+	box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+.mf-tile input, .mf-swatch input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.mf-tile .pic { position: absolute; inset: 4px; }
+/* Its part: the parts' own colour drawn white, multiplied by the colour
+   chosen and cut to the part (.b), what is printed on it over that (.p);
+   --size and --at its cell of the group's pictures. */
+.mf-tile .pic > span { position: absolute; inset: 0; background-size: var(--size); background-position: var(--at); background-repeat: no-repeat; }
+.mf-tile .pic > .b { background-color: var(--tint, #c9c9c9); background-blend-mode: multiply;
+	-webkit-mask-size: var(--size); mask-size: var(--size); -webkit-mask-position: var(--at); mask-position: var(--at);
+	-webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.mf-tile.none .pic::before { content: ""; position: absolute; left: 22%; right: 22%; top: 50%; height: 2px; border-radius: 1px;
+	background: var(--ink-faint); transform: rotate(-45deg); }
+.mf-tile:hover { box-shadow: inset 0 0 0 1px var(--ink-faint); }
+.mf-tile:has(input:checked) { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent-edge); }
+.mf-tile:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mf-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.mf-swatch { position: relative; display: block; margin: 0; cursor: pointer; }
+.mf-swatch > span[style] { display: block; width: 36px; height: 36px; border-radius: 50%; background: var(--c); background-size: cover;
+	background-position: center; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2); }
+.mf-swatch.metal > span[style] { background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.6), transparent 45%, rgba(0, 0, 0, 0.3)); }
+.mf-swatch.clear > span[style] { opacity: 0.6; background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.7), transparent 55%); }
+.mf-swatch.skin > span[style] { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2), inset 0 0 0 4px var(--panel); }
+.mf-swatch.ground > span[style] { width: 48px; height: 48px; border-radius: var(--r-2); }
+.mf-swatches.scenes .mf-swatch.ground > span[style] { width: 72px; height: 72px; }
+.mf-swatch:hover > span[style] { box-shadow: 0 0 0 2px var(--ink-faint); }
+.mf-swatch:has(input:checked) > span[style] { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--accent-edge); }
+.mf-swatch:has(input:focus-visible) > span[style] { outline: 2px solid var(--focus); outline-offset: 5px; }
+.mf-tile.skin .pic > .b { background-color: var(--tint); }
+.mf-tiles.poses { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+.mf-pose { display: grid; justify-items: center; align-content: start; gap: var(--s-1); min-height: 116px; padding: var(--s-2);
+	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-soft); color: var(--ink); font-size: var(--t-small); font-weight: 600; }
+.mf-pose img { width: 72px; height: 72px; }
+.mf-pose[aria-pressed="true"] { border-color: var(--accent-edge); background: var(--accent-soft); }
+.mf-joints { display: grid; gap: var(--s-2); }
+.mf-joint { display: grid; grid-template-columns: minmax(8em, 11em) minmax(0, 1fr) 3.5em; gap: var(--s-3); align-items: center;
+	min-height: var(--control-h); margin: 0; font-size: var(--t-small); }
+.mf-joint input { width: 100%; height: var(--control-h); margin: 0; padding: 0; border: 0; background: none; accent-color: var(--accent-edge); }
+.mf-joint output { color: var(--ink-soft); text-align: right; font-variant-numeric: tabular-nums; }
+.mf-stance { margin-top: var(--s-2); }
+@media (pointer: coarse) {
+	.mf-swatch > span[style] { width: 44px; height: 44px; }
+}
+@media (width < 700px) {
+	.minifig-dialog { width: 100vw; height: 100dvh; margin: 0; padding: var(--s-3) var(--s-3) var(--s-2); border: 0; border-radius: 0; }
+	.minifig-dialog h2 { font-size: var(--t-h3); }
+	.minifig-dialog .minifig-lead { display: none; }
+	.minifig-credit { margin: var(--s-1) 0 var(--s-1); font-size: var(--t-micro); }
+	.minifig-dialog .actions { margin-top: 0; }
+	.mf-maker { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: var(--s-2); }
+	.mf-look { overflow: visible; gap: var(--s-2); min-width: 0; }
+	.mf-stage { flex: none; min-height: 0; height: 26dvh; }
+	.mf-tools { flex-wrap: nowrap; overflow-x: auto; }
+	.mf-tools > * { flex: none; }
+	.mf-sizes { grid-template-columns: 1fr 1fr; }
+	.minifig-on { min-height: 0; gap: var(--s-2); padding: 2px var(--s-2); }
+	.minifig-on .avatar:not(.small) { width: 32px; height: 32px; }
+	.minifig-on .avatar.big { width: 40px; height: 40px; }
+	/* Its lock beside the search, an icon alone (its words still said). */
+	.mf-panel-head { flex-wrap: nowrap; padding-bottom: var(--s-2); }
+	.mf-panel-head .search { flex: 1 1 auto; min-width: 0; }
+	.mf-lock { width: var(--control-h); padding: 0; justify-content: center; }
+	.mf-lock .words { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+	.mf-tiles { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+	.mf-joint { grid-template-columns: 1fr 3em; }
+	.mf-joint span { grid-column: 1 / -1; }
 }
 
 /* An icon from the sprite (web/icons.svg, web/kit.js iconHtml), in the

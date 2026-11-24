@@ -70,6 +70,14 @@ var named: Callable = func() -> String: return "Model"
 ## A drag's reading of the joints (GrabDrag), read ahead: the mechanism is
 ## turned as a drag turns it (Simulation.hold_with). Read here when null.
 var grabbing: GrabDrag = null
+## Whether a part is held by hand now, turned on its joint (Main's grab): the
+## selection it makes as it takes hold is no choice of driver, as a click is.
+var held_by_hand: Callable = func() -> bool: return false
+## That selection, while it stands: not read as the driver either when the
+## edit the grab made reads the mechanism again ([method _selected_body]).
+## Up to appfix a part grabbed with Simulate open became its driver, its
+## turns and its drawn pose gone (pastereview F4).
+var _grab_selection: Dictionary = {}
 ## Where desktop files go; Downloads when empty. A probe points it elsewhere.
 var folder: String = ""
 
@@ -362,6 +370,8 @@ const READ_OFF_THREAD_FROM := 600
 ## The body most of the selection is in that turns on a joint, or -1.
 func _selected_body() -> int:
 	if builder == null or sim == null:
+		return -1
+	if not _grab_selection.is_empty() and builder.selection == _grab_selection:
 		return -1
 	var counted: Dictionary = {}
 	for brick_id: Variant in builder.selection:
@@ -702,6 +712,10 @@ func _process(delta: float) -> void:
 
 ## A click on a part while the panel is open: drive its body, when it turns.
 func _on_selection(_count: int) -> void:
+	if builder != null and held_by_hand.call():
+		_grab_selection = builder.selection.duplicate()
+		return
+	_grab_selection = {}
 	if not visible or sim == null or _reading or _quiet:
 		return
 	var body: int = _selected_body()

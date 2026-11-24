@@ -28,9 +28,21 @@ api:GET/POST /api/people
 
 Everybody starts with a minifig made from their handle: a face, hair or a hat and a torso of real parts from the LDraw™ library, the same on every page. You can make your own, or put a picture of your own in its place.
 
-**Edit profile › Make a minifig** opens the maker on your minifig. Pick a **Face**, **Hair or hat** (and its **Hair colour**), a **Torso** print, the **Torso colour**, the **Legs colour** and a **Background**; each choice shows your minifig with it. **Surprise me** makes one at random. The minifig is shown large and at the sizes the site uses (beside a comment, on a card, on your profile) on a light page and a dark one. **Save** makes it your avatar; **Change your minifig** opens the maker on it again.
+**Edit profile › Make a minifig** opens the maker on your minifig, in 3D, built of real parts. Drag it to turn it (or focus it and use the arrow keys; Home turns it back), and press a part of it to open that part's tab. The tabs, in the order a figure is made:
 
-![Make your minifig: the minifig large, then at its sizes on a light and a dark page, Surprise me, and its choices: faces, hair or a hat, hair colour, torso prints and colours, legs colour and background, then Save and Cancel.](/docs/img/profile-minifig.webp "Edit profile › Make a minifig.")
+- **Skin**: the LEGO® skin tones, yellow and eight more from light nougat to dark brown, then a few fantasy ones. The head, the hands and any bare skin a print shows (a sun top, shorts) take it.
+- **Face**: 65 faces, smiling, laughing, scared, asleep, with glasses, sunglasses, beards and freckles. **Glasses**, **Beards**, **Freckles** and **Two faces** narrow the list; on a two-faced head, **Show the other face** turns it round.
+- **Hair and hats**: 54 hair pieces (short, long, curly, tied up) in a hair colour or any colour, and 54 hats, helmets and headgear.
+- **Torso**: plain or one of 49 prints, in any colour; each print keeps its own colours.
+- **Arms and hands**: the arms' colour, or **Each arm its own colour**; the hands' colour, or your skin.
+- **Legs**: plain, printed hips, shorts, short legs, dresses and skirts, the hips and **Each leg its own colour**.
+- **Accessories**: at the **Neck and back** a cape, scarf, backpack, air tanks and more; in the **Right hand** and the **Left hand**, 53 things to hold: tools, a cup, food, a phone, a camera, a flag, a wand, a brick.
+- **Pose**: Standing, Waving, Cheering, Thinking, Sitting, Walking or Pointing, then each joint: the head, each arm and each hand.
+- **Background**: scenes, gradients, the site's colours or any colour, and whether your picture shows **Head and shoulders** or the **Whole figure**.
+
+Every tab has a search, and each choice is a picture of the part in the colour you chose. **Undo** and **Redo** ([[Ctrl+Z]], [[Ctrl+Shift+Z]]) step through every change; **Surprise me** makes one at random, keeping each tab you locked with **Keep when surprised**; **Start from…** offers eight figures to begin with. Beside the figure, your picture at the sizes the site uses (beside a comment, on a card, on your profile) on a light page and a dark one. **Save** makes it your avatar; **Change your minifig** opens the maker on it again, as you made it. A minifig saved in the maker before it was in 3D opens as the same figure.
+
+![Make your minifig: the figure in 3D on its background, Undo, Redo, Turn back, Surprise me and Start from…, the picture at its sizes on a light and a dark page, the tabs Skin to Background with the skin tones open, then Save and Cancel.](/docs/img/profile-minifig.webp "Edit profile › Make a minifig.")
 
 **Edit profile › Choose a picture**: a JPEG, PNG or WebP up to 8 MB and at least 120 pixels a side. Drag it in the circle, and zoom with the buttons, the wheel, two fingers or [[+]] and [[-]]; **Use this picture** keeps it. Your minifig and a picture are alternatives: whichever you saved last is your avatar. **Remove the picture** (or **Remove your minifig**) goes back to the minifig made from your handle.
 

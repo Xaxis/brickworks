@@ -4078,15 +4078,22 @@ async function pictures(request, response) {
 async function cardPut(request, response) {
   const owner = await signedIn(request);
   const id = String(request.query?.id || request.body?.id || "");
-  const thumb = checkThumb(request.body?.thumb);
+  return response.status(200).json(await putCard(owner, id, request.body?.thumb, request.body?.kind, originOf(request)));
+}
+
+/// [owner]'s card [given] (base64 WebP) put on their model at [id], drawn as
+/// [asked] says (CARD_KINDS, else not said): {id, card, kind, url...}, or a
+/// Refusal. tools/web/owner_publish.mjs puts the card the panel drew so too.
+export async function putCard(owner, id, given, asked, origin) {
+  const thumb = checkThumb(given);
   if (!thumb) throw new Refusal("there is no card picture to put on it");
   const row = await ownRow(id);
   if (!row || !row.published) throw new Refusal("there is no shared model at that link", 404);
   if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
-  const kind = CARD_KINDS.includes(request.body?.kind) ? request.body.kind : null;
+  const kind = CARD_KINDS.includes(asked) ? asked : null;
   await putFile(`${id}.webp`, thumb, "image/webp");
   await keepCard(`shared_models?id=eq.${id}&owner=eq.${owner}`, kind, row.has_thumb);
-  return response.status(200).json({ id, card: true, kind, ...links(originOf(request), id) });
+  return { id, card: true, kind, ...links(origin, id) };
 }
 
 /// How a card was drawn (supabase/card_kind.sql): what op=card and
@@ -4110,6 +4117,13 @@ export async function keepCard(where, kind, hadThumb) {
 async function unpublish(request, response) {
   const owner = await signedIn(request);
   const id = String(request.query?.id || request.body?.id || "");
+  return response.status(200).json(await unpublishModel(owner, id));
+}
+
+/// [owner]'s model at [id] taken down: {id, published, versions}, or a
+/// Refusal. The house's tools take theirs down through it too
+/// (tools/web/owner_publish.mjs --remove), as publishModel publishes.
+export async function unpublishModel(owner, id) {
   const row = await ownRow(id);
   if (!row) throw new Refusal("there is no shared model at that link", 404);
   if (row.owner !== owner) throw new Refusal("that link is somebody else's model", 403);
@@ -4131,7 +4145,7 @@ async function unpublish(request, response) {
     ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`, `${id}.v${one.n}.cutout.png`,
       `${id}.v${one.n}.webp`])]);
   await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
-  return response.status(200).json({ id, published: false, versions: versions.length });
+  return { id, published: false, versions: versions.length };
 }
 
 // ---------------------------------------------------------------------------

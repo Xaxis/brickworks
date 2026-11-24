@@ -183,6 +183,10 @@ func _way_in() -> bool:
 	_check("signed in as a throwaway account, and the screen goes: %s" % (problem
 		if not problem.is_empty() else _email), problem.is_empty() and account.signed_in()
 		and gate != null and not gate.visible)
+	# A throwaway account has nothing saved, so a phone opens on the studio's
+	# first screen over the car (appwalk's firststart): closed, as its ✕ does,
+	# or the finger's drag lands on it and nothing moves (appfix).
+	await SignInHelper.put_away_first_screen(_main)
 	return account.signed_in()
 
 

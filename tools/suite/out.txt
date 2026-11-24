@@ -41,6 +41,7 @@ new_parts         # needs the numbers of the parts a library update added: tools
 grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146
 photo_search      # asks Brickognize, a third party, live over the internet: photo_search_stub runs in its place (bin238)
 oc_native         # needs orangecheck's test stack, its signing secret and a browser: tools/web/oc_native_flow.mjs runs it by hand
+ways_app          # needs the relay with --ways-stand-in and a throwaway address (WAYS_APP_EMAIL): its runner deletes the account (signin3)
 restep            # a tool, not a check: moves the shipped models' part lines among their own STEP lines until none is in the air, and writes them to RESTEP_OUT, ~10 min (stepkeep2); run by hand when a shipped model or the steps test changes
 setbin_time       # judges a time the box's load decides: the biggest sets' bins drawn against the whole library's, run by hand when the bin changes (appux B10)
 altbuilds         # a measure with a site half: tools/web/altbuilds_probe.mjs writes its --pairs= file (real library models against real sets) first, then tools/probe.sh altbuilds_probe --pairs=DIR/pairs.json (altbuilds)

@@ -390,6 +390,10 @@ func _start() -> void:
 	account.state = Account.State.SIGNED_IN
 	account.changed.emit()
 	await _frames(20)
+	# Nothing saved, on a phone: the studio's first screen over the car, as a
+	# real first visit has it, put away by its ✕ before the program row is
+	# tapped; left up, every tap landed on it (hpreview_phone, m338reds).
+	await SignInHelper.put_away_first_screen(_main)
 
 
 # -- 1. files ---------------------------------------------------------------------------------

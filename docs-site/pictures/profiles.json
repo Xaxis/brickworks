@@ -369,18 +369,42 @@
     "test-account",
     "signed-in"
    ],
+   "answers": {
+    "/api/account": {
+     "enabled": true,
+     "url": "https://sign-in.example",
+     "key": "docs",
+     "assistant": "own_key",
+     "parts_url": "https://db.docs.example/storage/v1/object/public/parts/",
+     "signed_in": true,
+     "email": "you@example.com",
+     "master": false,
+     "age": {
+      "ask": false,
+      "over_13": true
+     },
+     "beta": {
+      "tester": false,
+      "early": []
+     }
+    }
+   },
    "wait": "#avatar-acts:not([hidden]) #avatar-make",
    "steps": [
     {
      "click": "#avatar-make"
     },
     {
-     "wait": "#minifig-dialog[open] .minifig-tile"
+     "wait": "#minifig-dialog[data-figure=\"ready\"] #minifig-light .avatar img",
+     "within": 120000
+    },
+    {
+     "pause": 600
     }
    ],
    "crop": "#minifig-dialog",
    "pad": 12,
-   "alt": "Make your minifig: the minifig large, then at its sizes on a light and a dark page, Surprise me, and its choices: faces, hair or a hat, hair colour, torso prints and colours, legs colour and background, then Save and Cancel.",
+   "alt": "Make your minifig: the figure in 3D on its background, Undo, Redo, Turn back, Surprise me and Start from…, the picture at its sizes on a light and a dark page, the tabs Skin to Background with the skin tones open, then Save and Cancel.",
    "caption": "Edit profile › Make a minifig.",
    "features": [
     "ui:a minifig of your own as your avatar"

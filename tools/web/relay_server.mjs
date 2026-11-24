@@ -96,6 +96,15 @@
 // feedback_* function, and the 'feedback' bucket in memory
 // (tools/web/feedback_stand_in.mjs), for tools/web/feedback_flow.mjs.
 //
+// --ways-stand-in answers Google's and GitHub's token and address calls and
+// orangecheck's Connect itself, with keys of its own (tools/web/ways_stand_in.mjs),
+// so tools/web/ways_check.mjs and ways_flow.mjs sign in with Google and
+// GitHub, and have the orangecheck account made around each sign-in, with
+// no client of either and no real orangecheck account; /__ways/state says
+// what each was asked, POST /__ways/oc {mode: up | down | slow} sets
+// Connect's answer. --owner=EMAIL is the console's owner here (MASTER_EMAIL),
+// a throwaway, never the owner's own account.
+//
 // --hold=talk holds supabase/talk.sql in a Postgres of this machine's own,
 // the file itself answering every talk_* function and the console's audit,
 // a person's Notifications joined with their Talk (tools/web/talk_stand_in.mjs),
@@ -165,6 +174,10 @@ const heldTalk = holding.includes("talk") ? await import("./talk_stand_in.mjs") 
 if (heldTalk) await heldTalk.hold();
 const stoodIn = process.argv.includes("--trust-stand-in");
 if (stoodIn) standIn();
+const waysStoodIn = process.argv.includes("--ways-stand-in") ? await import("./ways_stand_in.mjs") : null;
+if (waysStoodIn) waysStoodIn.standInWays();
+const ownerHere = (process.argv.find((a) => a.startsWith("--owner=")) || "").slice(8);
+if (ownerHere) process.env.MASTER_EMAIL = ownerHere;
 const routes = new Map();
 const web = new URL("../../web/", import.meta.url);
 
@@ -175,6 +188,9 @@ const MAPPED = [
   [/^\/oauth\/register\/?$/, "oauth", "register"],
   [/^\/oauth\/token\/?$/, "oauth", "token"],
   [/^\/oauth\/revoke\/?$/, "oauth", "revoke"],
+  // Sign in with Google or GitHub (api/_ways.js), and their way back.
+  [/^\/auth\/(google|github)\/?$/, "otp", "way_start"],
+  [/^\/auth\/callback\/(google|github)\/?$/, "otp", "way_back"],
   // A shared model's link, its picture and its card, as /m/<id>.
   [/^\/m\/([A-Za-z0-9]{10})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})[.]png$/, "share", "image"],
@@ -263,7 +279,7 @@ const PAGES = [[/^\/oauth\/authorize\/?$/, "authorize.html"], [/^\/gallery\/?$/,
 // .mjs as the host serves it: a module script, which a browser refuses as
 // anything else (orangecheck's button, web/oc-button.mjs).
 const TYPES = { html: "text/html; charset=utf-8", js: "text/javascript", mjs: "text/javascript", svg: "image/svg+xml",
-  png: "image/png", json: "application/json", css: "text/css" };
+  png: "image/png", webp: "image/webp", json: "application/json", css: "text/css" };
 
 const FILE_TYPES = {
   ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".wasm": "application/wasm",
@@ -315,11 +331,14 @@ function page(pathname) {
     const file = built && existsSync(built) ? built : new URL(`${lang[1]}/${copy}`, web);
     return existsSync(file) ? { body: readFileSync(file), type: TYPES[copy.split(".").pop()] || "application/octet-stream" } : null;
   }
-  // A minifigure avatar's layer (web/minifig/<side>/, web/card.js MINIFIG).
-  const layer = /^\/(minifig\/[0-9]{2,3}\/[a-z0-9-]+[.]webp)$/.exec(pathname);
+  // A minifigure avatar's layer (web/minifig/<side>/, web/card.js MINIFIG),
+  // and the 3D maker's parts and tiles (web/minifig/figure.json and tiles/,
+  // web/minifig-maker.js), all served from web/minifig/ as a deployment
+  // serves them: without these the maker here never drew (figmaker2).
+  const layer = /^\/(minifig\/(?:[0-9]{2,3}\/[a-z0-9-]+[.]webp|tiles\/[a-z0-9-]+[.]webp|figure[.]json))$/.exec(pathname);
   if (layer) {
     const file = new URL(layer[1], web);
-    return existsSync(file) ? { body: readFileSync(file), type: "image/webp" } : null;
+    return existsSync(file) ? { body: readFileSync(file), type: TYPES[layer[1].split(".").pop()] || "application/octet-stream" } : null;
   }
   const named = PAGES.find(([pattern]) => pattern.test(pathname));
   // Any other page at its bare name, as deploy.sh serves them: /admin,
@@ -426,6 +445,19 @@ http.createServer(async (incoming, outgoing) => {
     outgoing.writeHead(said.status, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(said.value));
   }
+  if (waysStoodIn && url.pathname.startsWith("/__ways/")) {
+    const chunks = [];
+    for await (const chunk of incoming) chunks.push(chunk);
+    let body = {};
+    try {
+      body = JSON.parse(Buffer.concat(chunks).toString() || "{}");
+    } catch {
+      body = {};
+    }
+    const said = waysStoodIn.waysRoute(url, incoming.method, body) || { status: 404, value: { error: "not found" } };
+    outgoing.writeHead(said.status, { "content-type": "application/json", "cache-control": "no-store" });
+    return outgoing.end(JSON.stringify(said.value));
+  }
   let handler = null;
   const found = /^\/api\/([a-z]+)\/?$/.exec(url.pathname);
   if (found) handler = await route(found[1]);
@@ -438,6 +470,7 @@ http.createServer(async (incoming, outgoing) => {
     if (captured[2] && mapped[1] === "share") query.v = captured[2];
     if (captured[3] && mapped[1] === "share") query.as = captured[3];
     if (mapped[2] === "thumb_version") Object.assign(query, { op: "thumb", n: captured[2], v: undefined });
+    if (captured[1] && mapped[1] === "otp") query.with = captured[1];
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (mapped[2] === "page_lang" && mapped[1] === "people") Object.assign(query, { op: "page", lang: captured[1], handle: captured[2] });
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];

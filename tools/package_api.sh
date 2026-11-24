@@ -78,6 +78,9 @@ for handler in api/*.js; do
   # A file's private lines left out of a shared model (web/private-lines.js), which
   # api/_private_lines.js passes through.
   cp web/private-lines.js "$fn/_private_lines.js"
+  # The minifig maker's parts (web/minifig-parts.js), which api/_minifig_parts.js
+  # passes through: what a figure kept with an avatar may be.
+  cp web/minifig-parts.js "$fn/_minifig_parts.js"
   # The stand-in Admission, beside the function only on a preview that asks
   # for it: no other deployment holds it at all.
   if [ "$stand_in" = 1 ]; then cp tests/fixtures/billing/fake_admission.mjs "$fn/_admission_stand_in.mjs"; fi
