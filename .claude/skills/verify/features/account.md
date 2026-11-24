@@ -732,10 +732,11 @@ they have. A Claude connector belongs to the account that switched it on.
   primary verified address, never a noreply one, and its numeric id, its
   token revoked after), makes the account by the admin API when the address
   has none, mints a session for it (`api/_minted.js` `mintedSession`, as
-  orangecheck's), writes the session down as the way's (`way_session_keep`)
-  and reads the account again before handing it out (`app_metadata`
-  `way_google|way_github` "off" refuses, and is never written over;
-  `way_github_id`), and 302s to `/profile?then=&with=&take=` with the
+  orangecheck's), and keeps it as the way's or ends it in one step
+  (`way_signed_in`, `supabase/way_links.sql`, signin4: a lock on the account
+  and the way, so an Unlink at the same moment waits or is waited for;
+  `way_links` "off" ends it, `failed=unlinked`; GitHub's kept id, or a new
+  account's to keep, else `failed=confirm`), and 302s to `/profile?then=&with=&take=` with the
   session sealed in a 120 s cookie for `/api/otp` alone, which
   `web/profile.js` takes (`takeWay`) with the verifier of take, once (its id
   spent in `oc_spent`), asks the age if due, and goes on to then (any path
@@ -743,9 +744,14 @@ they have. A Claude connector belongs to the account that switched it on.
   not signed in to with that id: no session, `failed=confirm`, its id
   sealed in a 900 s `bw_way_bind` cookie; the dialog asks a code to the
   address, then `?op=way_bind` (a code's session of the last five minutes,
-  that account alone, once) keeps `way_github_id`, and GitHub signs it in
-  from then on. Refused
-  (`failed=again|denied|unverified|vouch|confirm|unlinked|off|busy|failed`)
+  that account alone, once) keeps GitHub's id (`way_bind`), and GitHub signs it in
+  from then on. The owner's address (`MASTER_EMAIL`) is refused
+  `failed=code_only` before anything is made or minted (signin4, F8). How
+  often (signin4, F9; `LIMITS`, `way_may_try`, counted before anything is
+  spent, refused ones not counted, a network an IPv4 address or an IPv6 /64,
+  `networkOf`): in 15 minutes 30 starts and 10 ways back per network, 5 per
+  Google or GitHub account, else `failed=often`. Refused
+  (`failed=again|denied|unverified|vouch|confirm|unlinked|off|busy|code_only|often|failed`)
   it lands on the dialog with words for why (`wayFailed`). The desktop app:
   `Account.sign_in_with_way` with `OrangecheckSignIn.way` opens
   `/auth/<name>?app=<loopback>&state&code_challenge` in the browser; the
@@ -759,18 +765,22 @@ they have. A Claude connector belongs to the account that switched it on.
   token and address calls and for Connect) and `ways browser flow`
   (`tools/web/ways_flow.mjs`, the same relay, Playwright routing
   accounts.google.com and github.com's authorize to the callback) prove it at
-  1280 and 390; `ways app probe` (`src/dev/ways_app_probe.gd`, the same
+  1280 and 390 (each sign-in from a network of its own, `x-forwarded-for`:
+  the limits count across runs and relays; ways_check 10-12 prove the
+  owner's refusal, an Unlink racing a first sign-in 20 times, and the
+  limits with a second person signing in meanwhile); `ways app probe` (`src/dev/ways_app_probe.gd`, the same
   relay) drives the desktop's form, its listener and `?op=way_app` round trip
   headless. A real round trip needs the owner's clients (the console's
   steps).
 - `how you sign in` (signin3; `web/settings.js` `ways`, `#ways-part`,
   `GET|POST /api/otp?op=ways`): Settings lists a code to the address
   (always), Google and GitHub as `on` (signed in with it), `off` (Unlink:
-  `app_metadata` `way_<name>` "off", which the callback refuses, GitHub's
-  id dropped, and every session the way started ended with its refresh
-  token, `way_end_sessions`; this one too, when it was one: `signed_out`,
-  and the page signs out and asks for a code) or `never`; Link again lifts
-  it. An orangecheck-only account gets 409. Settings'
+  `way_set`, `supabase/way_links.sql`, in one step: `way_links` "off",
+  which the callback refuses, GitHub's id dropped, and every session the
+  way started ended with its refresh token; this one too, when it was one:
+  `signed_out`, and the page signs out and asks for a code) or `never`
+  (`way_links_of`); Link again lifts it. An orangecheck-only account gets
+  409. The owner's account is offered neither. Settings'
   orangecheck part says when Connect made the account.
 - `the console's sign-in switches` (signin3; `/admin#switches` "Sign in with
   Google and GitHub", `web/admin-switches.js` `drawWays`, `GET

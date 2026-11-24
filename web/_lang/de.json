@@ -4443,6 +4443,8 @@
   "That GitHub sign-in took too long, or was for another account. Sign in with GitHub again.": "Diese Anmeldung mit GitHub hat zu lange gedauert oder war für ein anderes Konto. Melde dich noch einmal mit GitHub an.",
   "Sign in with a code we email you first.": "Melde dich zuerst mit einem Code an, den wir dir mailen.",
   "GitHub is unlinked from your account. Link it again in Settings first.": "GitHub ist von deinem Konto getrennt. Verknüpfe es zuerst in den Einstellungen wieder.",
-  "Brickworks could not keep GitHub for you just now. Sign in with GitHub again in a minute.": "Brickworks konnte GitHub gerade nicht für dich speichern. Melde dich in einer Minute noch einmal mit GitHub an."
+  "Brickworks could not keep GitHub for you just now. Sign in with GitHub again in a minute.": "Brickworks konnte GitHub gerade nicht für dich speichern. Melde dich in einer Minute noch einmal mit GitHub an.",
+  "This account signs in only with a code we email you.": "Bei diesem Konto meldest du dich nur mit einem Code an, den wir dir per E-Mail schicken.",
+  "Too many sign-ins with {way} just now. Try again in a few minutes, or sign in with a code we email you.": "Gerade gab es zu viele Anmeldungen mit {way}. Versuch es in ein paar Minuten noch einmal oder melde dich mit einem Code an, den wir dir per E-Mail schicken."
  }
 }

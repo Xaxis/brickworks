@@ -30,6 +30,10 @@
 //      the dialog with words for why.
 //   6. The owner's console (the relay's --owner, a throwaway): Switches,
 //      Sign in with Google and GitHub, each on with its steps hidden.
+//   8. The owner's address with Google (signin4): back to the dialog, told
+//      the account signs in only with a code, not signed in.
+//   9. Refused for signing in too often: the dialog says so, and that a
+//      code still signs in.
 // Pictures of each at 1280 and 390 in --out. Every account is deleted.
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -58,6 +62,12 @@ const browser = await launch({ signedOut: true });
 /// sign-in page answers at once as [who] says, straight back to the callback.
 async function context(width, who = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, colorScheme: "light" });
+  // Each person a network of their own (198.18.0.0/15, set aside for tests),
+  // as Vercel says it: the sign-ins' limits count by network for 15
+  // minutes, across runs and relays (api/_ways.js LIMITS).
+  const from = `198.18.${randomBytes(1)[0]}.${1 + (randomBytes(1)[0] % 254)}`;
+  await ctx.route(`${site}/auth/**`, async (route) => route.continue({ headers: { ...(await route.request().allHeaders()),
+    "x-forwarded-for": from } }));
   for (const host of ["https://accounts.google.com/**", "https://github.com/login/oauth/authorize**"]) {
     await ctx.route(host, (route) => {
       const asked = new URL(route.request().url());
@@ -314,6 +324,40 @@ try {
       await shot(page, `console_ways_steps_${width}.png`);
       await ctx.close();
     }
+
+    // 8. The owner's address with Google: refused, in words, signed out.
+    for (const width of [1280, 390]) {
+      const ctx = await context(width, { google: { email: owner, verified: true, hd: "resend.dev" } });
+      const page = await ctx.newPage();
+      listen(page, `owner ${width}`);
+      await openDialog(page);
+      await page.locator("dialog.sign-in #way-google").click();
+      await page.waitForURL((url) => url.pathname === "/profile" && url.searchParams.get("failed") === "code_only", { timeout: 60000 });
+      await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
+      const said = await page.locator("dialog.sign-in").textContent();
+      check(`8. ${width}: the owner's address with Google: back to the sign-in, told it signs in only with a code, not signed in`,
+        /This account signs in only with a code we email you\./.test(said || "") && !(await keptOf(page)) && !(await sideways(page)),
+        (said || "").slice(0, 200));
+      await shot(page, `owner_code_only_${width}.png`);
+      await ctx.close();
+    }
+  }
+
+  // 9. Refused for signing in too often (ways_check 12 drives the limit):
+  // the words, as the way back gives them.
+  for (const width of [1280, 390]) {
+    const ctx = await context(width);
+    const page = await ctx.newPage();
+    listen(page, `often ${width}`);
+    await page.goto(`${site}/profile?${new URLSearchParams({ "sign-in": "", then: "/gallery", with: "github", failed: "often" })}`,
+      { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
+    const said = await page.locator("dialog.sign-in").textContent();
+    check(`9. ${width}: refused for signing in too often: the dialog says so, and that a code still signs in`,
+      /Too many sign-ins with GitHub just now\. Try again in a few minutes, or sign in with a code we email you\./.test(said || "")
+      && !(await sideways(page)), (said || "").slice(0, 200));
+    await shot(page, `often_${width}.png`);
+    await ctx.close();
   }
   check("no refusal from the page's security policy, and no error", errors.length === 0, errors.slice(0, 3).join(" | "));
 } catch (trouble) {

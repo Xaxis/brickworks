@@ -17875,3 +17875,9 @@ msgstr "Subconjunto de %d piezas, %d puestas en este paso"
 
 msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
 msgstr "Subconjunto de %d piezas, %d puestas en este paso, %d dentro"
+
+msgid "This account signs in only with a code we email you."
+msgstr "Esta cuenta solo inicia sesión con un código que te enviamos por correo."
+
+msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
+msgstr "Demasiados inicios de sesión con %s ahora mismo. Vuelve a intentarlo en unos minutos o inicia sesión con un código que te enviamos por correo."

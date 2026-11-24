@@ -239,7 +239,7 @@
 // the project's key, which has not come back.
 
 import { noted } from "./_noted.js";
-import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
+import { AuthError, authConfigured, bearer, isMaster, startedBy, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
 import { modelHash } from "./_directory.js";
 import { BuildRefusal, photoFileForAdmin, photosReported, removePhoto } from "./_builds.js";
@@ -326,6 +326,23 @@ async function handler(request, response) {
     // 403 here would confirm to anyone signed in that there is an admin
     // surface and that they are simply not it.
     return response.status(404).json({ error: "not found" });
+  }
+  // And only to a sign-in by a code to that address (signin4, F8): this
+  // console moves money and data, so never to a session Google, GitHub or
+  // orangecheck started, which a provider account taken over could start.
+  // Google and GitHub refuse the owner's address (api/_ways.js); this holds
+  // a session of theirs made before the address was the owner's, and one
+  // orangecheck started, linked or not.
+  let started;
+  try {
+    started = await startedBy(claims);
+  } catch (trouble) {
+    console.error(`admin: the sign-in was not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return response.status(503).json({ error: "Brickworks could not check your sign-in just now. Try again in a minute." });
+  }
+  if (started) {
+    return response.status(403).json({ error: "The console opens only when you sign in with a code we email you. "
+      + "Sign out, then sign in with a code.", code_only: true });
   }
   // The owner reads the switches as they are now. An instance keeps a
   // reading a few seconds (api/_settings.js), and the owner's next request

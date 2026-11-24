@@ -71,8 +71,13 @@ three that stay outside, each with why.
 
 Every op is behind one check: the token verified, then its address against
 `MASTER_EMAIL`. Anybody else gets 404, the same answer as a route that does
-not exist; signed out, 401. Every POST is kept in the audit (below) before
-it answers.
+not exist; signed out, 401. And the session must be a code's to that
+address (signin4, 2026-11-24): one Google, GitHub or orangecheck started
+gets 403 with words (`code_only: true`), since a provider account taken
+over would otherwise open a console that moves money and data (api/_auth.js
+`startedBy`). Google and GitHub refuse the owner's address before anything
+is minted (api/_ways.js, `failed=code_only`), and Settings offers the owner
+neither. Every POST is kept in the audit (below) before it answers.
 
 | Op | Method | What it does | Its tables or calls |
 |---|---|---|---|

@@ -31,8 +31,8 @@ export function claimsOf(jwt) {
 
 /// A session for [email]'s account: {session, sessionId, account, user}.
 /// [account], when given, is the account it must be. [vet], when given, is
-/// shown the account (Supabase's user, its app_metadata in it) before the
-/// link is redeemed, and throws to stop: nothing is handed out then.
+/// shown the account (Supabase's user) before the link is redeemed, and
+/// throws (or rejects) to stop: nothing is minted or handed out then.
 /// Throws with spoiled after four links spoiled in a row, with busy when
 /// Supabase's verify answered 429 (it counts redemptions by address, and
 /// every one of these is this server's).
@@ -55,7 +55,7 @@ async function redeemed(email, account, vet) {
   const hashed = made.hashed_token || made.properties?.hashed_token;
   const id = made.id || made.user?.id;
   if (!link.ok || !hashed || !id || (account && id !== account)) throw new Error(`auth: no link: ${link.status}`);
-  if (vet) vet(made.user || made);
+  if (vet) await vet(made.user || made);
   const verify = await reach("auth POST verify", 10, `${supabase()}/auth/v1/verify`, {
     method: "POST",
     headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" },

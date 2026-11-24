@@ -229,6 +229,17 @@ export async function sessionWay(id) {
   return way === "google" || way === "github" ? way : null;
 }
 
+/// Who started the session behind [claims], when it was not a code to its
+/// address (or a test account's password): "google" or "github"
+/// (way_sessions), "orangecheck" (bound, oc_sessions), else null. The
+/// owner's console opens to none of them (signin4, F8). Throws when the
+/// database cannot be asked.
+export async function startedBy(claims) {
+  if (!claims?.session_id) return null;
+  const [session, way] = await Promise.all([sessionOf(claims.session_id), sessionWay(claims.session_id)]);
+  return way || (session?.bound ? "orangecheck" : null);
+}
+
 /// What this instance has read of sessions, forgotten (for tests).
 export function forgetSessions() {
   sessions.clear();
