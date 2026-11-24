@@ -573,6 +573,7 @@ const loaderSays = (function () {
 			"Fetching parts…": "Teile werden geladen…",
 			"Sorting the bin…": "Der Teilekasten wird sortiert…",
 			"Fetching the set's parts: {done} of {total}": "Die Teile des Sets werden geladen: {done} von {total}",
+			"Opening the set…": "Das Set wird geöffnet…",
 			"Ready": "Bereit",
 			"This browser is missing: {what}.": "Diesem Browser fehlt: {what}.",
 			"Threads need the page served with {headers}.": "Threads brauchen die Seite mit {headers}.",
@@ -636,6 +637,7 @@ const loaderSays = (function () {
 			"Fetching parts…": "Chargement des pièces…",
 			"Sorting the bin…": "Tri du bac à pièces…",
 			"Fetching the set's parts: {done} of {total}": "Chargement des pièces du set : {done} sur {total}",
+			"Opening the set…": "Ouverture du set…",
 			"Ready": "Prêt",
 			"This browser is missing: {what}.": "Il manque à ce navigateur : {what}.",
 			"Threads need the page served with {headers}.": "Les threads demandent une page servie avec {headers}.",
@@ -699,6 +701,7 @@ const loaderSays = (function () {
 			"Fetching parts…": "Cargando piezas…",
 			"Sorting the bin…": "Ordenando la caja de piezas…",
 			"Fetching the set's parts: {done} of {total}": "Cargando las piezas del set: {done} de {total}",
+			"Opening the set…": "Abriendo el set…",
 			"Ready": "Listo",
 			"This browser is missing: {what}.": "A este navegador le falta: {what}.",
 			"Threads need the page served with {headers}.": "Los hilos necesitan que la página se sirva con {headers}.",
@@ -1023,6 +1026,16 @@ const bootTips = (function () {
 	function next() {
 		timer = 0;
 		if (!state.on || state.paused) return;
+		// Once the app has made its window ("ui") it holds this page's
+		// thread for seconds at a time: a set's parts read, its open, the
+		// studio's first frames drawn in software. A fade begun then stood
+		// half done, the card empty, until the page was free again: 5.5 s
+		// under a set's loading screen (openreview F2, 2026-11-24). So from
+		// then on the tip on the card stays.
+		if ((window.brickworksBoot || {}).ui) {
+			stop();
+			return;
+		}
 		if (still) {
 			show(at + 1);
 			wait();
@@ -1050,18 +1063,19 @@ const bootTips = (function () {
 		state.paused = false;
 		wait();
 	});
+	// For good: the app is up, or the page has something else to say
+	// (hide: the card goes, its room kept). A fade begun is undone, its tip
+	// back on the card: never an empty one.
+	function stop(hide) {
+		state.on = false;
+		if (timer) clearTimeout(timer);
+		timer = 0;
+		line.classList.remove("out");
+		if (hide) box.classList.add("gone");
+	}
 	show(at, true);
 	wait();
-	return {
-		// For good: the app is up, or the page has something else to say
-		// (hide: the card goes, its room kept).
-		stop: function (hide) {
-			state.on = false;
-			if (timer) clearTimeout(timer);
-			timer = 0;
-			if (hide) box.classList.add("gone");
-		},
-	};
+	return { stop: stop };
 })();
 
 // A shared model's link (?view=<id>) asked for at once, while the engine
@@ -1132,6 +1146,12 @@ brickworksEngine.ready.then(function (chosen) {
 	// the studio is shown with the set on it (Main._await_early_set, whenUp).
 	window.brickworksBootParts = function (done, total) {
 		say(loaderSays("Fetching the set's parts: {done} of {total}", { done: done, total: total }));
+	};
+	// Then the set opened and the studio's first frame drawn with it, which
+	// hold this page's thread for seconds: said a frame before, so it is
+	// what the person reads meanwhile, not a count that cannot move.
+	window.brickworksBootOpening = function () {
+		say(loaderSays("Opening the set…"));
 	};
 
 	function fail(text) {
@@ -2156,6 +2176,15 @@ brickworksEngine.ready.then(function (chosen) {
 	// studio was made at the most: lifted as the studio was made, the person
 	// saw it still, its drawing held while the set's parts came. Any other
 	// address, as the studio is made.
+	// SET_SHOWN_MOST bounds only a wait that leaves this thread free: the
+	// app waiting on something that never comes. While the app holds the
+	// thread (the parts read, the set opened, the studio's first frame drawn
+	// in software) no script of this page runs, so nothing here can lift the
+	// screen sooner, and lifted it would show nothing new: that same held
+	// task is what draws the studio. The app bounds its own part: the parts
+	// waited for EARLY_SET_WAIT_MS at most (Main._await_early_set), and the
+	// file opened in one go only under ModelBar.OPENED_AT_ONCE_MOST. The
+	// screen stayed 7.9 s after "ui" at a load of 70 (openreview F4).
 	const forSet = /^omr-/.test(query.get("library") || "");
 	const SET_SHOWN_MOST = 6000;
 	function whenUp(then) {

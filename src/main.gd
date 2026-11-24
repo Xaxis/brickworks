@@ -5166,36 +5166,48 @@ func _ask_early_set() -> void:
 ## many have come (window.brickworksBootParts). Each frame then costs
 ## milliseconds, not a studio drawn in software, and each part is read here as
 ## its bytes come (PartLibrary.read_first_here), this thread idle meanwhile.
+##
+## Then the screen says "Opening the set…", and is drawn so, a frame before
+## the open: the open and the studio's first frame, drawn with the set, hold
+## the page's thread in one go, 5.4 s in a browser drawing in software, and
+## nothing on the page can change meanwhile. Whatever it said then is what
+## the person read all that while: "0 of 12" though all 12 had been read in
+## the first 170 ms (openreview F3, 2026-11-24).
 func _await_early_set() -> void:
 	var coming: Callable = func() -> int:
 		return _early_parts.filter(func(part_id: String) -> bool: return _library.is_on_its_way(part_id)).size()
 	var total: int = coming.call()
-	if total == 0:
-		return
 	get_tree().paused = true
 	GpuFence.hold()
-	var until: int = Time.get_ticks_msec() + EARLY_SET_WAIT_MS
-	var left: int = total
-	var told: int = -1
-	var here: int = 0
-	while left > 0 and Time.get_ticks_msec() < until:
-		if left != told:
-			_tell_set_parts(total - left, total)
-			told = left
-		await get_tree().process_frame
-		here += _library.read_first_here()
-		left = coming.call()
-	_tell_set_parts(total - left, total)
+	if total > 0:
+		var until: int = Time.get_ticks_msec() + EARLY_SET_WAIT_MS
+		var left: int = total
+		var told: int = -1
+		var here: int = 0
+		while left > 0 and Time.get_ticks_msec() < until:
+			if left != told:
+				_tell_set_parts(total - left, total)
+				told = left
+			await get_tree().process_frame
+			here += _library.read_first_here()
+			left = coming.call()
+		_boot_mark("set geometry: %d of %d, %d read here" % [total - left, total, here])
+	_tell_boot("window.brickworksBootOpening && window.brickworksBootOpening()")
+	await get_tree().process_frame
 	GpuFence.let_go()
 	get_tree().paused = false
-	_boot_mark("set geometry: %d of %d, %d read here" % [total - left, total, here])
 
 
 ## How many of the set's parts have come, said on the page's screen while
 ## [method _await_early_set] waits for them.
 static func _tell_set_parts(done: int, total: int) -> void:
+	_tell_boot("window.brickworksBootParts && window.brickworksBootParts(%d, %d)" % [done, total])
+
+
+## [param call] run on the page, whose loading screen it changes.
+static func _tell_boot(call: String) -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.brickworksBootParts && window.brickworksBootParts(%d, %d)" % [done, total], true)
+		JavaScriptBridge.eval(call, true)
 
 
 ## Build it from a set's page (sethub): the model just opened, at its first

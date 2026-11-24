@@ -882,7 +882,20 @@ Whether what you built is still there tomorrow, and still means the same thing.
   with the set on it (boot mark `shown`, shell.html's `whenUp`): every part
   down in that frame, and the studio never seen still. Waited for with the
   studio showing, it was a frozen studio; not waited for, the last parts came
-  3 to 4 s later. The boot mark `set geometry: N of M, R read here` says how it went. A file under 32 KB is read and
+  3 to 4 s later. The boot mark `set geometry: N of M, R read here` says how it went.
+  Then the screen says "Opening the set…" and is drawn so, a frame before
+  the open and the studio's first frame, which hold the page's thread in one
+  go (`window.brickworksBootOpening`): the count said there was "0 of 12"
+  for 5.4 s with all 12 read (openreview F3). The loading screen's tips stop
+  turning once the app's `ui` mark is set, the tip shown kept (bootTips in
+  shell.html; a fade begun then left the card empty for 5.5 s, F2). The
+  address keeps `?library=` (and `?copy=`) until the working model, written
+  at once after the open, is in the browser's storage
+  (`Main._address_once_kept`, `ModelStore.write_now`, `ModelStore.stored`):
+  a reload before that opens the set again, never an empty "Untitled"
+  (openreview F1: the address went at the fetch, the autosave 2.5 s after
+  the open). A failed open, or one the person said no to, lets the address
+  go at once. A file under 32 KB is read and
   opened in the frame it came in, its bar not waited on to be drawn
   (`ModelBar.OPENED_AT_ONCE_MOST`), and an open waits on the library's
   readers only when its file carries parts or LDCad skins
