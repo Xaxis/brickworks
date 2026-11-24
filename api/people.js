@@ -295,7 +295,7 @@ import { blockedHandles, getBlocks, refuseFor, setBlock, standing } from "./_blo
 import { designersAlike } from "./_alike.js";
 import {
   AvatarRefusal, avatarFile, avatarOf, avatarSaid, chooseLikes, dropAvatar, keepAvatar, likedRows, likesChoiceOf,
-  likesCount,
+  likesCount, recipeShape,
 } from "./_avatars.js";
 import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
@@ -304,7 +304,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml, themeSaid } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml, minifigOf, minifigShape, HOUSE_HANDLE } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml, minifigOf, HOUSE_HANDLE } from "./_card.js";
 import { minifigJpeg } from "./_minifig.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
@@ -725,12 +725,12 @@ async function saveLikesChoice(request, response) {
 
 /// POST ?op=avatar {picture, type, minifig?}: the square Edit profile
 /// cropped, or the minifigure its maker drew with what it was made of
-/// (web/card.js minifigShape), kept as the caller's avatar.
+/// (api/_avatars.js recipeShape), kept as the caller's avatar.
 async function saveAvatar(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const account = await signedIn(request);
   const body = request.body && typeof request.body === "object" ? request.body : {};
-  const recipe = body.minifig === undefined || body.minifig === null ? null : minifigShape(body.minifig);
+  const recipe = body.minifig === undefined || body.minifig === null ? null : recipeShape(body.minifig);
   if (body.minifig !== undefined && body.minifig !== null && !recipe) {
     throw new Refusal("that is not a minifigure the maker makes: a face, hair or a hat, a print and colours from its lists");
   }
