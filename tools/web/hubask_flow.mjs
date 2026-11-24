@@ -187,7 +187,7 @@ try {
   check(`another set's file is refused: ${other.status} "${other.body.error}"`, other.status >= 400 && other.status < 500 && Boolean(other.body.error));
   const first = await ask("ann", { step: 2, title: "Where does the door go at step 2?", body: `Which way round is the door at step 2? (hubask flow ${rand})` });
   firstThread = Number(first.body.thread?.id) || 0;
-  check(`Ann asks about step 2: ${first.status}, ${first.body.path}, step ${first.body.ask?.step}, set ${first.body.ask?.set}, ${first.body.heard} told`,
+  check(`Ann asks about step 2: ${first.status}, ${first.body.path || first.body.error}, step ${first.body.ask?.step}, set ${first.body.ask?.set}, ${first.body.heard} told`,
     first.status === 201 && firstThread > 0 && first.body.ask?.step === 2 && first.body.ask?.set === SET && first.body.heard === 2);
   await new Promise((resolve) => setTimeout(resolve, 1200));
 
@@ -227,16 +227,22 @@ try {
   await shot(phoneHub, "hub_ask_390.png");
   check("390: nothing goes sideways", !(await sideways(phoneHub)));
   await phoneHub.context().close();
+  // What the box says as it goes (the page goes on to the thread at once,
+  // and the answer's body with it): kept in the tab's sessionStorage.
+  await ann.evaluate(() => {
+    const said = document.querySelector(".set-ask-form .said");
+    new MutationObserver(() => sessionStorage.setItem("hubask-said", said.textContent))
+      .observe(said, { childList: true, characterData: true, subtree: true });
+  });
   const replied = ann.waitForResponse((reply) => reply.url().includes("op=talk_set_ask") && reply.request().method() === "POST", { timeout: 60000 });
   await ann.click(".set-ask-form button[type=submit]");
   const sent = await replied;
-  const said = await sent.json().catch(() => ({}));
-  threadId = Number(said.thread?.id) || 0;
-  threadPath = said.path || "";
-  check(`asked: ${sent.status()}, ${threadPath}, step ${said.ask?.step}, ${said.heard} builders told`,
-    sent.status() === 201 && threadId > 0 && said.ask?.step === 3 && said.heard === 2);
-  await ann.waitForURL((at) => at.pathname === threadPath, { timeout: 60000 }).catch(() => {});
-  check(`the page went on to the thread: ${new URL(ann.url()).pathname}`, new URL(ann.url()).pathname === threadPath);
+  await ann.waitForURL((at) => /^\/talk\/t\/\d+/.test(at.pathname), { timeout: 60000 }).catch(() => {});
+  threadPath = new URL(ann.url()).pathname;
+  threadId = Number(/^\/talk\/t\/(\d+)/.exec(threadPath)?.[1]) || 0;
+  const boxSaid = await ann.evaluate(() => sessionStorage.getItem("hubask-said")).catch(() => "");
+  check(`asked: ${sent.status()}, the box said "${boxSaid}", and the page went on to the thread ${threadPath}`,
+    sent.status() === 201 && boxSaid === "Asked: 2 builders will hear of it." && threadId > 0 && threadId !== firstThread);
   await ann.context().close();
 
   console.log("3. Signed out, the thread is at step 3 of the set, in 3D");
@@ -263,8 +269,10 @@ try {
     const rows = (told.body.groups || []).flatMap((group) => group.rows || []);
     const ours = rows.filter((row) => Number(row.thread) === threadId || String(row.link || "").includes(`/talk/t/${threadId}`));
     const wanted = who === "bo" || who === "cy";
-    check(`${names[who]}: ${told.status}, ${ours.length} notice of it${ours[0] ? `, "${ours[0].line}"` : ""}`,
-      told.status === 200 && (wanted ? ours.length === 1 && line.test(ours[0].line || "") : ours.length === 0));
+    // The line names who asked as {who}, which the page makes their link.
+    const said = ours[0] ? String(ours[0].line || "").replace("{who}", String(ours[0].who || "")) : "";
+    check(`${names[who]}: ${told.status}, ${ours.length} notice of it${said ? `, "${said}"` : ""}`,
+      told.status === 200 && (wanted ? ours.length === 1 && line.test(said) : ours.length === 0));
   }
   for (const phone of [false, true]) {
     const size = phone ? "390" : "1280";

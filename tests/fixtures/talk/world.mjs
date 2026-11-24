@@ -39,7 +39,8 @@ export const NEEDS = `
   create table if not exists public.acts_held (actor text not null, act text not null, at timestamptz not null default now());
   -- A set's versions (alt_builds.sql's model_alt_sets, set_versions.sql), for set_asks.sql: whose they are.
   alter table public.shared_models add column if not exists listed_at timestamptz,
-    add column if not exists wip_at timestamptz;
+    add column if not exists wip_at timestamptz,
+    add column if not exists created_at timestamptz not null default now();
   alter table public.share_versions add column if not exists steps integer;
   create table if not exists public.model_alt_sets (model text not null, set_number text not null, role text not null,
     n smallint not null default 0, have integer not null default 0, primary key (model, set_number));

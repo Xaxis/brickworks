@@ -110,11 +110,19 @@ async function copyVersions(id) {
 }
 
 /// Set [set]'s versions (set_asks.sql tells their builders): each model the
-/// project counts as the set's own (model_alt_sets, role own), copied with
-/// its owner, as the project lists it now.
+/// project counts as the set's own (model_alt_sets role own, which only
+/// set_versions reads: the table is closed to the server's key), checks'
+/// too, copied with its owner, as the project lists it now.
 async function copySetVersions(set) {
   if (!/^[a-z0-9][a-z0-9.-]{0,29}$/.test(String(set || ""))) return;
-  for (const one of await rest(`model_alt_sets?set_number=eq.${set}&role=eq.own&select=model,set_number,role,n,have`)) {
+  const { said } = await real("set_versions", { set_number: set, tests: true });
+  if (!Array.isArray(said)) return;
+  const cards = said.filter((card) => MODEL.test(String(card?.id || "")));
+  // A version the project no longer counts (taken down since, as each
+  // check's are at its end) is no version here either.
+  await db.q("delete from public.model_alt_sets where set_number = $1 and role = 'own' and not (model = any($2::text[]))",
+    [set, cards.map((card) => card.id)]);
+  for (const one of cards.map((card) => ({ model: card.id, set_number: set, role: "own", n: 0, have: 0 }))) {
     await copyModel(one.model);
     const [now] = await rest(`shared_models?id=eq.${one.model}&select=published,barred,listed,listed_at,wip_at`);
     if (now) {
