@@ -79,6 +79,13 @@ var _file: RDShaderFile
 var _marked_shader: RID
 var _marked_pipeline: RID
 var _marked_sbt: RID
+## The shader's "photo" version (photoreal19): the marks version with a set
+## photographed, its floor and its parts' handled skin ([member photo]),
+## made the first time a picture asks for it. Neither the plain nor the
+## marks version reads either, so their pictures are as they were.
+var _photo_shader: RID
+var _photo_pipeline: RID
+var _photo_sbt: RID
 var _resolve_shader: RID
 var _resolve_pipeline: RID
 var _sampler: RID
@@ -168,6 +175,12 @@ var sink: float = 0.0
 ## RenderSettings.rubbed), set before [method stage]: it is then traced by
 ## the shader's "marks" version.
 var marked: bool = false
+## Whether the picture asks for a set photographed (photoreal19,
+## RenderSettings.floor and skin), set before [method stage]: it is then
+## traced by the shader's "photo" version, and [member skin] goes to the
+## closest hit with each moulded part (its record's box_max.w, 1 plus it).
+var photo: bool = false
+var skin: float = 0.0
 ## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
 ## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
 var _fitted: Dictionary = {}
@@ -398,11 +411,38 @@ func _seated(place: Transform3D, key: int) -> Transform3D:
 	return Transform3D(Basis.from_euler(turn) * place.basis, place.origin + shift)
 
 
+## The "photo" version on the card (photoreal19), made the first time it is
+## asked for, as the marks version is.
+func _make_photo() -> bool:
+	if _photo_pipeline.is_valid():
+		return true
+	var made: Array = _pipeline_of("photo")
+	if made.is_empty():
+		return false
+	_photo_shader = made[0]
+	_photo_pipeline = made[1]
+	_photo_sbt = made[2]
+	if int(made[3]) != _range:
+		return _refused("its photo version's hit table is not the plain one's")
+	return true
+
+
+## The version a picture is traced by: [shader, pipeline, hit table].
+func _version() -> Array:
+	if photo:
+		return [_photo_shader, _photo_pipeline, _photo_sbt]
+	if marked:
+		return [_marked_shader, _marked_pipeline, _marked_sbt]
+	return [_shader, _pipeline, _sbt]
+
+
 ## False when there is nothing to trace or no card to trace it on.
 func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	if not _make():
 		return false
 	if marked and not _make_marked():
+		return false
+	if photo and not _make_photo():
 		return false
 	_free_picture_set()
 	var shape_index: Dictionary = {}
@@ -445,6 +485,8 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 		if material != null and material.get_shader_parameter("part_body_top") != null:
 			body_top = minf(float(material.get_shader_parameter("part_body_top")), box_max.y)
 		var moulded: float = 1.0 if product else 0.0
+		if product and photo:
+			moulded += clampf(skin, 0.0, 1.0)
 		var whole: Transform3D = batch.global_transform
 		var buffer: PackedFloat32Array = multimesh.buffer
 		var stride: int = 12 + (4 if multimesh.use_colors else 0) \
@@ -695,7 +737,7 @@ func _bind() -> void:
 	uniforms.append(_uniform(10, RenderingDevice.UNIFORM_TYPE_IMAGE, [_guide]))
 	uniforms.append(_uniform(11, RenderingDevice.UNIFORM_TYPE_SAMPLER_WITH_TEXTURE,
 		[_tile_sampler, _surface_texture]))
-	_trace_set = _rd.uniform_set_create(uniforms, _marked_shader if marked else _shader, 0)
+	_trace_set = _rd.uniform_set_create(uniforms, _version()[0], 0)
 	var resolving: Array[RDUniform] = [
 		_uniform(0, RenderingDevice.UNIFORM_TYPE_IMAGE, [_accum]),
 		_uniform(1, RenderingDevice.UNIFORM_TYPE_IMAGE, [_picture]),
@@ -737,10 +779,11 @@ func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
 	push.encode_u32(12, 1 if samples == 0 else 0)
 	push.encode_u32(16, row)
 	var list: int = _rd.raytracing_list_begin()
-	_rd.raytracing_list_bind_raytracing_pipeline(list, _marked_pipeline if marked else _pipeline)
+	var version: Array = _version()
+	_rd.raytracing_list_bind_raytracing_pipeline(list, version[1])
 	_rd.raytracing_list_bind_uniform_set(list, _trace_set, 0)
 	_rd.raytracing_list_set_push_constant(list, push, push.size())
-	_rd.raytracing_list_trace_rays(list, 0, _marked_sbt if marked else _sbt, _size.x, band, 1)
+	_rd.raytracing_list_trace_rays(list, 0, version[2], _size.x, band, 1)
 	_rd.raytracing_list_end()
 	_rd.capture_timestamp("PathTracer %d" % get_instance_id())
 	if row + band >= _size.y:
@@ -875,10 +918,14 @@ func release() -> void:
 					_free(rid)
 		_shapes.clear()
 	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler,
-			_tile_sampler, _marked_sbt, _marked_pipeline, _marked_shader]:
+			_tile_sampler, _marked_sbt, _marked_pipeline, _marked_shader, _photo_sbt, _photo_pipeline,
+			_photo_shader]:
 		_free(rid)
 	_pipeline = RID()
 	_marked_pipeline = RID()
 	_marked_sbt = RID()
 	_marked_shader = RID()
+	_photo_pipeline = RID()
+	_photo_sbt = RID()
+	_photo_shader = RID()
 	_rd = null

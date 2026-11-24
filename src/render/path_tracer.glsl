@@ -32,11 +32,17 @@
 
 plain = "";
 marks = "#define MARKS";
+photo = "#define PHOTO";
 
 #[raygen]
 
 #version 460
 VERSION_DEFINES
+// The "photo" version (photoreal19) is the marks version with a set
+// photographed: its floor and its parts' handled skin (scene.photo).
+#ifdef PHOTO
+#define MARKS
+#endif
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -191,6 +197,14 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// picks up (y, 0 none, 1 as measured). The surface's waviness and sink
 	// are the closest hit's (each part's record, PathTracer.peel and sink).
 	vec4 breakup;
+#endif
+#ifdef PHOTO
+	// A set photographed (photoreal19): the floor it stands on as a product
+	// photograph's (x, 0 the shadow catcher as before, 1 a glossy sweep exposed
+	// past white, the model's colour bounced on it, its shade cool), and its
+	// parts' handled skin (y, 0 none, 1 years in a box: dust, hairlines, uneven
+	// gloss). zw unused.
+	vec4 photo;
 #endif
 } scene;
 
@@ -1002,6 +1016,99 @@ void sparse_scuffs(vec3 local, uint which, float amount, inout vec3 body, inout 
 }
 #endif
 
+#ifdef PHOTO
+// -- a handled part's skin (photoreal19) ----------------------------------------
+// What years in a box and on a carpet leave on ABS, sized as it is on the part
+// (LDU, 0.4 mm), each part its own way by its own number, never a pattern that
+// repeats from one part or one face to the next. The set photographs' verdicts
+// name "scuffs and uneven gloss", "dust"; ours "flawless uniform plastic with no
+// wear or dust". Each piece is faint, so a close-up holds:
+//   its gloss uneven: a part a shade duller or glossier than the next (a bell),
+//     and soft patches where a fingertip or a cloth went, a few mm across;
+//   micro-scratches: hairlines a few hundredths of a millimetre wide, every way,
+//     dense where the part was rubbed and none elsewhere. No pixel of a set
+//     resolves one: in what a face mirrors they are a haze in streaks;
+//   dust: a few specks a tenth to a third of a millimetre on what faces up, grey
+//     and matt, so a black part shows them light and a white one a hair darker,
+//     never a bright point (a judge called bright flecks fireflies, photoreal1).
+// The sink a moulded face has over its middle is the closest hit's (moulded()).
+
+// Micro-scratches round a point of a face (its own uv, LDU): 0 to 1, how much
+// of the point a hairline covers. Three families of lines each part's own way,
+// each line a few LDU long, as a fingernail or a neighbour's corner leaves them.
+float hairlines(vec2 uv, uint which) {
+	float mark = 0.0;
+	for (int k = 0; k < 3; k++) {
+		float angle = part_unit(which, 101u + uint(k)) * PI;
+		vec2 along = vec2(cos(angle), sin(angle));
+		vec2 across = vec2(-along.y, along.x);
+		// Lines 0.03 LDU wide (12 microns), about 0.9 LDU apart, broken into
+		// lengths of 1 to 6 LDU by a slow noise along them.
+		float a = dot(uv, along);
+		float c = dot(uv, across) / 0.9 + gloss_noise(vec3(a * 0.15, float(k) * 3.1, float(which & 1023u) * 0.37));
+		float line = 1.0 - smoothstep(0.012, 0.035, abs(fract(c) - 0.5) * 0.9);
+		float runs = smoothstep(0.35, 0.6, gloss_noise(vec3(a / 2.2, floor(c) * 1.37 + float(k) * 7.0,
+			float(which & 1023u) * 0.71)));
+		mark = max(mark, line * runs);
+	}
+	return mark;
+}
+
+void handled_skin(vec3 local, vec3 ng, uint which, float amount, inout vec3 body, inout Surface s) {
+	vec3 f = hit.face;
+	vec3 t = normalize(cross(abs(f.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), f));
+	vec3 b = cross(f, t);
+	vec2 uv = vec2(dot(local, t), dot(local, b));
+	vec3 own = vec3(part_unit(which, 91u), part_unit(which, 92u), part_unit(which, 93u)) * 97.0;
+	// How much this part was handled: most a little, some a lot.
+	float handled = amount * (0.3 + 0.7 * part_unit(which, 94u));
+	// Its polish its own: a bell of a part's gloss, sd about a fifth.
+	s.coat_roughness *= exp2(0.5 * part_bell(which, 95u) * amount);
+	// Soft patches a fingertip or a cloth dulled, 3 to 8 mm across.
+	float smudge = smoothstep(0.2, 0.7, gloss_noise(local / 9.0 + own))
+		* smoothstep(-0.2, 0.5, gloss_noise(local / 23.0 + own.zxy));
+	s.coat_roughness = mix(s.coat_roughness, max(s.coat_roughness, 0.14), 0.7 * smudge * handled);
+	// Rubbed where it was rubbed: the hairlines in patches.
+	float rubbed = smoothstep(0.0, 0.6, gloss_noise(local / 14.0 + own.yzx)) * handled;
+	if (rubbed > 0.0) {
+		float line = hairlines(uv, which) * rubbed;
+		s.coat_roughness = mix(s.coat_roughness, 0.3, 0.8 * line);
+	}
+	// Dust on what faces up: in cells 3 LDU across, a speck in some.
+	float up = smoothstep(0.3, 0.9, ng.y);
+	if (up > 0.0) {
+		vec3 cell = floor(local / 3.0);
+		uint h = pcg(uint(int(cell.x) + 4096) * 73856093u ^ uint(int(cell.y) + 4096) * 19349663u
+			^ uint(int(cell.z) + 4096) * 83492791u ^ which * 2654435761u);
+		float chance = float(h & 0xffffu) / 65535.0;
+		if (chance < 0.22 * amount * up) {
+			vec3 centre = (cell + 0.15 + 0.7 * vec3(float((h >> 16) & 255u), float((h >> 24) & 255u),
+				part_unit(which, h & 1023u) * 255.0) / 255.0) * 3.0;
+			float radius = 0.06 + 0.22 * fract(chance * 37.1);
+			vec3 d = local - centre;
+			float off = length(d - f * dot(d, f));
+			float cover = (1.0 - smoothstep(0.55 * radius, radius, off)) * 0.85;
+			if (cover > 0.0) {
+				body = mix(body, vec3(0.42, 0.4, 0.37), cover);
+				s.coat *= 1.0 - cover;
+				s.roughness = mix(s.roughness, 0.9, cover);
+			}
+		}
+	}
+}
+
+// A clear part's handled skin (photoreal19): the same hairlines, where a
+// windscreen was rubbed, scatter a little of the light that falls on it, as a
+// set photograph's windscreens show them ("scratches and haze").
+float glass_haze(vec3 local, vec3 face, uint which, float amount) {
+	vec3 t = normalize(cross(abs(face.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), face));
+	vec3 b = cross(face, t);
+	vec3 own = vec3(part_unit(which, 91u), part_unit(which, 92u), part_unit(which, 93u)) * 97.0;
+	float rubbed = smoothstep(-0.2, 0.5, gloss_noise(local / 14.0 + own.yzx)) * amount;
+	return rubbed * (0.25 + hairlines(vec2(dot(local, t), dot(local, b)), which));
+}
+#endif
+
 // textured: the hit is on a straight slope's face (closest_hit's grain);
 // which: the part's own number (info.z: its body, print and window alike),
 // so no two parts are worn alike and one part is worn as one; ng: the
@@ -1180,6 +1287,11 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		}
 		if (scene.breakup.y > 0.0) {
 			sparse_scuffs(local, which, scene.breakup.y, body, s);
+		}
+#endif
+#ifdef PHOTO
+		if (scene.photo.y > 0.0) {
+			handled_skin(local, ng, which, scene.photo.y, body, s);
 		}
 #endif
 		if (textured < 0.0) {
@@ -1887,6 +1999,109 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 	return sum;
 }
 
+#ifdef PHOTO
+// -- the floor a set is photographed on (photoreal19) ----------------------------
+// The set photographs (6532's and 6660's) stand the model on a white sweep in a
+// tent, and what they show of it is not the shadow catcher's grey ratio:
+//   it is exposed past white: the open sweep clipped, so the broad soft shadow a
+//     tent's walls leave is gone and only the shade near the model shows, deepest
+//     where a tyre or a corner meets the floor;
+//   the shade is cool: lit by the walls and the room once the model keeps the
+//     panel from it (photoreal10 measured it 3 to 4 b* bluer than the lit white);
+//   the model's colour falls on it: a yellow bumper leaves a warm glow under it, a
+//     red chassis a pink one, light the parts send down onto the floor;
+//   the sweep is glossy (a vinyl or an acrylic sheet), so the model's underside
+//     and the tyres where they stand are mirrored in it, faint and blurred.
+// [param amount] 0 the catcher as before, 1 all of these as measured.
+const float FLOOR_OVER = 1.6;
+const float FLOOR_F0 = 0.04;
+const float FLOOR_GLOSS = 0.3;
+
+// How much of an open sweep's light a point of it keeps (shadow_marked's ratio,
+// rgb), with the light the parts send down added: a way blocked by a part
+// brings that part's own light towards the floor.
+vec3 floor_kept(vec3 at, vec3 n, float amount) {
+	vec3 kept = vec3(0.0);
+	vec3 seen = vec3(0.0);
+	vec3 bounced = vec3(0.0);
+	float all = 0.0;
+	int lights = int(scene.look.y);
+	for (int i = 0; i < lights; i++) {
+		Light light = scene.lights[i];
+		vec3 l = in_cone(light.toward.xyz, light.toward.w, rand2());
+		float c = max(dot(n, l), 0.0) * luminance(light.colour.rgb);
+		if (c <= 0.0) {
+			continue;
+		}
+		vec3 let = light.colour.w > 0.5 ? through_masked(at, l, 1e7, MASK_SOLID) : vec3(1.0);
+		all += c;
+		kept += c * let;
+	}
+	if (scene.near_colour.w > 0.0) {
+		float far;
+		float half_angle;
+		vec3 toward = near_way(at, far, half_angle);
+		vec3 l = in_cone(toward, half_angle, rand2());
+		float c = max(dot(n, l), 0.0) * luminance(near_light(at));
+		if (c > 0.0) {
+			vec3 let = through_masked(at, l, far, MASK_SOLID);
+			all += c;
+			kept += c * let;
+		}
+	}
+	for (int k = 0; k < 4; k++) {
+		vec3 l;
+		float own = 0.0;
+		if (k % 2 == 1) {
+			l = cosine_around(n, rand2());
+		} else if (tent()) {
+			l = tent_own_pick();
+		} else if (scene.sky.w > 0.5) {
+			l = place_pick(rand2(), own);
+		} else {
+			l = cosine_around(n, rand2());
+		}
+		float facing = max(dot(n, l), 0.0);
+		if (facing <= 0.0) {
+			continue;
+		}
+		float first = tent() ? tent_own_pdf(l)
+			: (scene.sky.w > 0.5 ? place_pdf(l) : facing / PI);
+		float c = luminance(sky_light(l)) * facing / max(first + facing / PI, 1e-6);
+		vec3 let = through_masked(at, l, 1e7, MASK_SOLID);
+		all += c;
+		kept += c * let;
+		if (k % 2 == 1 && max(let.r, max(let.g, let.b)) <= 0.0
+				&& trace(at, l, 1e7, MASK_SOLID, gl_RayFlagsOpaqueEXT)) {
+			// The part there, lit as the eye would see it from the floor: its
+			// light down this way over the cosine's pick (the sum over four
+			// samples is twice the light, as all is).
+			Instance thing = instances[hit.instance];
+			vec3 p = at + l * hit.t;
+			vec3 pg = dot(hit.geometric, -l) < 0.0 ? -hit.geometric : hit.geometric;
+			vec3 pn = dot(hit.normal, pg) < 0.0 ? -hit.normal : hit.normal;
+			Surface ps = surface_of(thing, p, hit.local, hit.unused, thing.info.z, hit.geometric);
+			bounced += direct(ps, p + pg * 0.02, pn, -l) * PI;
+		}
+	}
+	if (all <= 0.0) {
+		return vec3(1.0);
+	}
+	float lost = clamp(1.0 - luminance(kept) / all, 0.0, 1.0);
+	vec3 cool = max(mix(vec3(1.0), DAYLIGHT_FILL, amount), vec3(0.05));
+	cool /= luminance(cool);
+	return kept / all * mix(vec3(1.0), cool, lost) + amount * bounced / all;
+}
+
+// How far past white a sweep is exposed: a white one FLOOR_OVER at 1, a
+// coloured one not at all (a photographer clips only a white backdrop).
+float floor_over(float amount) {
+	vec3 back = scene.background.rgb;
+	float white = smoothstep(0.8, 0.97, min(back.r, min(back.g, back.b)));
+	return mix(1.0, FLOOR_OVER, amount * white);
+}
+#endif
+
 void main() {
 	ivec2 pixel = ivec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y + pass.row);
 	vec2 size = scene.size.xy;
@@ -1933,11 +2148,28 @@ void main() {
 		int bounces = 0;
 		vec4 first = vec4(0.0, 0.0, 0.0, 4.0);
 		bool met = false;
+#ifdef PHOTO
+		// A way the glossy floor mirrored (photoreal19): it looks for the
+		// model alone, and where it finds none it sees the sweep's own white.
+		bool floor_mirror = false;
+		vec3 floor_open = vec3(0.0);
+#endif
 		for (int event = 0; event < most + 8; event++) {
 			// A bounce towards the large source passes the sweep (lit_mask).
 			uint seen = !straight && lit_mask(way) == MASK_SOLID ? 0xFFu & ~MASK_SWEEP : 0xFFu;
+#ifdef PHOTO
+			if (floor_mirror) {
+				seen = 0xFFu & ~MASK_SWEEP;
+			}
+#endif
 			if (!trace(from, way, 1e7, seen, gl_RayFlagsOpaqueEXT)) {
 				met = true;
+#ifdef PHOTO
+				if (floor_mirror) {
+					radiance += carried * floor_open;
+					break;
+				}
+#endif
 				if (straight && scene.stage.x > 0.5 && scene.look.w < -0.5) {
 					// Nothing past a staged surface's white card: the card alone
 					// is metered (photoreal7).
@@ -2046,6 +2278,13 @@ void main() {
 						radiance += carried * 0.08 * scene.wear.x * sky_light(n);
 					}
 				}
+#ifdef PHOTO
+				if (scene.photo.y > 0.0 && !inside) {
+					// A handled windscreen's haze (photoreal19).
+					radiance += carried * 0.05 * glass_haze(hit.local, hit.face, thing.info.z, scene.photo.y)
+						* sky_light(n);
+				}
+#endif
 				vec3 tint = sqrt(max(thing.colour.rgb, vec3(0.0)));
 				// A clear neon glowing in the Dark light: light of its own,
 				// on every face the path goes through.
@@ -2082,6 +2321,10 @@ void main() {
 				sharp = true;
 				continue;
 			}
+#ifdef PHOTO
+			// The mirrored way has found the model: lit as any bounce is.
+			floor_mirror = false;
+#endif
 			if ((!straight || scene.stage.w > 0.5) && thing.info.y == KIND_SWEEP && scene.look.x > 0.5
 					&& (scene.sky.w > 0.5 || scene.stage.w > 0.5) && at.y - scene.sweep_origin.y > 2.0) {
 				// In a photographed place the backdrop is a table, not a
@@ -2110,6 +2353,32 @@ void main() {
 				vec3 flat_at = at - scene.sweep_origin.xyz;
 				float along = length(flat_at.xz) + max(flat_at.y, 0.0);
 				float lit = 1.0 - scene.sweep.y * smoothstep(scene.sweep.z, scene.sweep.w, along);
+#ifdef PHOTO
+				if (scene.photo.x > 0.0) {
+					// The floor a set is photographed on (photoreal19): exposed
+					// past white, its shade cool and coloured by the model, and
+					// glossy, the model mirrored in it.
+					float amount = scene.photo.x;
+					vec3 open = scene.background.rgb * lit * lit * table_paper(at, scene.wear.z) * table_falloff(at);
+					vec3 shown = open * min(floor_kept(at + ng * 0.02, n, amount) * floor_over(amount), vec3(1.0));
+					vec3 h = ggx_normal(n, v, FLOOR_GLOSS * FLOOR_GLOSS, rand2());
+					vec3 mirrored = reflect(way, h);
+					float f = schlick(vec3(FLOOR_F0), max(dot(v, h), 0.0)).x * amount;
+					if (dot(mirrored, ng) <= 0.0 || f <= 0.0) {
+						radiance += carried * shown;
+						break;
+					}
+					radiance += carried * (1.0 - f) * shown;
+					carried *= f;
+					floor_open = open;
+					floor_mirror = true;
+					from = at + ng * 0.02;
+					way = mirrored;
+					straight = false;
+					sharp = true;
+					continue;
+				}
+#endif
 #ifdef MARKS
 				// The table's relief, its light falling off across it, and its
 				// shade's colour (photoreal10).
@@ -2186,6 +2455,9 @@ void main() {
 
 #version 460
 VERSION_DEFINES
+#ifdef PHOTO
+#define MARKS
+#endif
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -2214,6 +2486,9 @@ void main() {
 
 #version 460
 VERSION_DEFINES
+#ifdef PHOTO
+#define MARKS
+#endif
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -2288,6 +2563,11 @@ uint part_key = 0u;
 // orange-peel waviness, and how far it sinks over thick sections.
 float peel_amount = 0.0;
 float sink_amount = 0.0;
+#endif
+#ifdef PHOTO
+// A handled part's skin (photoreal19, scene.photo.y), which the closest hit
+// reads from the part's record: box_max.w is 1 plus it on a moulded part.
+float skin_amount = 0.0;
 #endif
 
 float wave_noise(vec3 p);
@@ -2650,7 +2930,14 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	}
 	if (bent == n && max(abs(n.x), max(abs(n.y), abs(n.z))) > 0.97) {
 		vec3 off = at - (box_min.xyz + high) * 0.5;
+#ifdef PHOTO
+		// A handled part's skin (photoreal19): its faces sink two to four times
+		// as far, each part its own, as a thick old moulding's do.
+		float own_sink = 1.0 + skin_amount * (1.0 + 2.0 * float(part_key & 255u) / 255.0);
+		bent = normalize(n - (off - n * dot(off, n)) * SINK * own_sink);
+#else
 		bent = normalize(n - (off - n * dot(off, n)) * SINK);
+#endif
 	}
 	vec3 s = at / 14.0;
 	vec3 wave = vec3(wave_noise(s), wave_noise(s + vec3(5.2, 1.3, 7.1)), wave_noise(s + vec3(2.9, 8.4, 3.3)));
@@ -2677,6 +2964,9 @@ void main() {
 #ifdef MARKS
 	peel_amount = float((codes >> 16) & 255u) / 100.0;
 	sink_amount = float((codes >> 24) & 127u) / 100.0;
+#endif
+#ifdef PHOTO
+	skin_amount = clamp(instances[which].box_max.w - 1.0, 0.0, 1.0);
 #endif
 	logo_grime = 0.0;
 	uvec4 mesh = meshes[instances[which].info.x];

@@ -229,6 +229,15 @@ var peel: float = -1.0
 var sink: float = -1.0
 var polish: float = -1.0
 var scuff: float = -1.0
+## A set photographed (photoreal19), path traced in the product look:
+## [member floor] the floor it stands on as a product photograph's (a glossy
+## sweep exposed past white, its shade cool and coloured by the model, the
+## model faintly mirrored in it; on the shadow catcher only), and [member skin]
+## its parts' handled skin (dust, hairlines, uneven gloss, a deeper sink).
+## Each 0 none, 1 as the set photographs show it. Below 0, StudioRender's
+## PRODUCT_FLOOR and PRODUCT_SKIN.
+var floor: float = -1.0
+var skin: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.
