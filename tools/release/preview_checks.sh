@@ -1038,8 +1038,39 @@ run() {
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
   # The dialogs checks use every dialog's main action at their size, about
   # 2,600 s at load 40: dialogs_1024 ran out at 2,700 (fig257, 2026-10-25).
-  local limit=2700
+  local limit=2700 own=""
   case "$name" in dialogs*) limit=3600 ;; esac
+  # Or the check's own bound, where the caller gives one: PC_BOUNDS, a file
+  # of NAME SECONDS lines (nightly.sh: twice what it took when it last
+  # passed). At 2,700 s for every check, a check stuck in one of its waits
+  # held a slot 40 minutes of the night (makes' 600 s for a viewer that
+  # never came, firstminute's 2,378 s; nightly 2026-11-24).
+  [ -n "${PC_BOUNDS:-}" ] && own=$(awk -v n="$name" '$1 == n { print $2; exit }' "$PC_BOUNDS" 2>/dev/null)
+  [[ "$own" =~ ^[0-9]+$ ]] && limit=$own
+  # And what is left of the caller's time (PC_DEADLINE, epoch seconds): a
+  # check whose bound would end past it is not begun, and one queued for a
+  # slot waits only until it would (heavy's BOX_HEAVY_WAIT), so every check
+  # begun ends inside the time. The timing checks, run after the rest, have
+  # theirs (PC_SOLO_DEADLINE), so the rest leave them their share.
+  local wait_env=() deadline=${PC_DEADLINE:-}
+  [ -n "$solo" ] && [ -n "${PC_SOLO_DEADLINE:-}" ] && deadline=$PC_SOLO_DEADLINE
+  if [ -n "$deadline" ]; then
+    local left=$(( deadline - $(date +%s) - limit / ${PC_DRY:-1} ))
+    if [ "$left" -lt 0 ]; then
+      echo "$name exit=125 fails=1 0s :: FAIL not run: its bound of ${limit}s ends past the run's time ($(date -d "@$deadline" +%H:%M))" >> "$S/$TAG.out"
+      return
+    fi
+    wait_env=("BOX_HEAVY_WAIT=$(( left < 60 ? 60 : left ))")
+  fi
+  # A dry run of the scheduling (nightly.sh dry): each check a sleep of its
+  # bound over PC_DRY, failing where PC_DRY_FAIL names it, beside the same
+  # slots, phases and time, with no browser, no slot and no database.
+  if [ -n "${PC_DRY:-}" ]; then
+    local fails=0; case " ${PC_DRY_FAIL:-} " in *" $name "*) fails=1 ;; esac
+    sleep "$(( limit / PC_DRY ))"
+    echo "$name exit=$fails fails=$fails $(( $(date +%s) - t0 ))s :: dry: $(date -d "@$t0" +%T) to $(date +%T), its bound ${limit}s / $PC_DRY${solo:+, alone}" >> "$S/$TAG.out"
+    return
+  fi
   # Outside a release, each solo check is a run of its own: heavy keeps solo
   # jobs within BOX_HEAVY_SOLO_GAP of each other as one run, and an agent's
   # pass of every check chained theirs into an hour that held every other
@@ -1048,8 +1079,12 @@ run() {
   # checks run back to back while the box is calm.
   local gap=""
   [ -n "$solo" ] && [ "${BOX_HEAVY_PRIORITY:-}" != 1 ] && gap="BOX_HEAVY_SOLO_GAP=0"
-  env $gap "$H" $solo "${lock[@]}" timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
+  env $gap "${wait_env[@]}" "$H" $solo "${lock[@]}" timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
   local code=$?
+  if [ "$code" = 124 ]; then
+    echo "$name exit=124 fails=$(( $(grep -c 'FAIL' "$S/${TAG}_$name.log") + 1 )) $(( $(date +%s) - t0 ))s :: FAIL stopped at its bound of ${limit}s: $(grep -vE '^\s*$' "$S/${TAG}_$name.log" | tail -1 | cut -c1-160)" >> "$S/$TAG.out"
+    return
+  fi
   # heavy --solo says the load it began at, after how long, and beside what.
   local began; began=$(sed -n 's/^heavy: solo //p' "$S/${TAG}_$name.log" | head -1)
   [ -n "$solo" ] && echo "$name began ${began:-with no word from heavy}" >> "$S/${TAG}_calm.log"
@@ -1141,5 +1176,11 @@ done
 # and flows kept it at 13-42 (2026-10-30). After BOX_HEAVY_SOLO_WAIT
 # (600 s) it runs anyway. The load each began at, and beside what, goes in
 # TAG_calm.log, to read beside a timing failure.
+# PC_CALM names a file that is there while they run, so a caller's own jobs
+# beside the checks (nightly.sh's probes) begin none meanwhile: begun, each
+# was a job of the project the timing check waited out, 600 s eight times a
+# night (nightly 2026-11-24's _calm.log).
+[ -n "${PC_CALM:-}" ] && [ -n "${ALONE// /}" ] && touch "$PC_CALM"
 for n in $ALONE; do if probes_failed; then not_run "$n"; else run "$n" --solo; fi; done
+[ -n "${PC_CALM:-}" ] && rm -f "$PC_CALM"
 echo "done" >> "$S/$TAG.out"

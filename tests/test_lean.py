@@ -218,3 +218,14 @@ def test_a_check_whose_script_refuses_the_live_site_is_known_without_running_it(
     })
     names = ["always", "signed", "plain", "owner", "said", "free", "unknown"]
     assert lean.never_live(tree, names) == ["always", "signed", "owner"]
+
+
+def test_a_short_night_proves_first_what_was_proven_longest_ago(lean):
+    # The first nightly's 162 checks took 9.5 hours (nightreds, 2026-11-24):
+    # a night of four proves those no proof holds first, then those proven
+    # over 12 hours ago, each lot in the order given (the longest first).
+    now = time.time()
+    proofs = [proof("rel", "P", ["fresh", "stale"], hours=1.0), proof("older", "Q", ["stale", "half"], hours=13.0)]
+    assert lean.oldest(["fresh", "never", "half", "stale", "none"], proofs, now) == ["never", "none", "half", "fresh", "stale"]
+    assert lean.oldest([], proofs, now) == []
+    assert lean.oldest(["a", "b"], [], now) == ["a", "b"]
