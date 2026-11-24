@@ -1,8 +1,10 @@
 // First steps (docs/SOCIAL.md U10, D12): what a person is offered after
 // their first sign-in, once the age question says they are 13 or over
 // (web/account.js askAgeIfAsked): at once from a page's own Sign in, and
-// after what they pressed is done where they signed in to do something (a
-// like, a follow), from a snackbar that covers nothing (offerFirstSteps).
+// from the header's on the home page, the profile and the feed; after what
+// they pressed is done where they signed in to do something (a like, a
+// follow), and from the header's on any other page (sharing a model,
+// reading one), from a snackbar that covers nothing (offerFirstSteps).
 // Three steps in one dialog, each skippable:
 //
 //   1. Make your profile: a name and a handle, the avatar made from the

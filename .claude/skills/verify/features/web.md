@@ -2529,8 +2529,11 @@ plan with Claude as the client.
   U10): `web/account.js` `askAgeIfAsked`, once the age question is
   answered 13 or over (a first sign-in, from the dialog or a page that asks
   on load), imports it and opens `dialog.first-steps` at once from a page's
-  own Sign in; signed in to do something (a like, a follow: `pending`),
-  what was pressed is done first and First steps are offered after it in a
+  own Sign in, and from the header's on the home page, `/profile` and
+  `/feed`; signed in to do something (a like, a follow: `pending`), or from
+  the header's on any other page (`askToSignIn`'s `later`, set in
+  `web/follow.js`; sitewalk2: five dialogs stood between the code and Share
+  it), what was pressed is done first and First steps are offered after it in a
   snackbar (`offerFirstSteps`, kept in localStorage
   `brickworks.first_steps_due` until offered, also on the next page if that
   one went; checkdrift 2026-11-23): `[data-step]` `profile` (`#first-name`, `#first-handle` made from the
