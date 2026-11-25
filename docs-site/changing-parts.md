@@ -123,6 +123,8 @@ Select some parts and press [[Ctrl+G]] (**Build › Make a sub-assembly…**) to
 
 A change is made in every copy or in none. If a part it would change is locked in one copy, or another copy has no room for it (a part put there by hand would have none), nothing changes and the bar says why: "Locked in one copy of Sill: Plate 1 x 2. Unlock it, or use Build › Make this copy unique", or "No room in Sill (copy 2): Plate 1 x 1 is in the way there". Unlock the part, move what is in the way, or use **Build › Make this copy unique** to change that copy alone. A copy's own parts are never in its way, and nor is a part of the model it already stood in (sets put parts through each other), unless the change would push it in deeper. While you edit inside a sub-assembly, the ghost of what you hold (a part, a paste, a part you drag) turns red where another copy has no room for it, and the bar says why before you click.
 
+Change a part in one copy and the others follow. If you pick a part and its twin in another copy together (**Same part and colour**, [[Alt+A]], takes every copy's) and move them so the two copies would no longer match, say both a stud to the right where one copy is the other's mirror image, nothing changes: the ghost turns red and the bar says "Moved in two copies of Wing at once, and differently: move it in one and the others follow, or use Build › Make this copy unique". A move both copies take alike goes through, such as both a stud back from a mirror image side by side.
+
 <!-- covers
 ui:sub-assemblies
 ui:copies follow only where a person could
