@@ -1629,7 +1629,7 @@ func _apply(weight: float) -> void:
 		var going := Quaternion(_target_frame)
 		_frame = _target_frame if was.angle_to(going) < ARRIVED \
 			else Basis(was.slerp(going, weight))
-	_ease_lens(weight)
+	var lens_eased: bool = _ease_lens(weight)
 	var pose: Array = [_yaw, _pitch, distance, focus, _frame]
 	if pose != _posed or global_transform != _posed_at:
 		_posed = pose
@@ -1656,6 +1656,14 @@ func _apply(weight: float) -> void:
 		near = clampf(distance * 0.02, 0.5, 40.0)
 		far = clampf(distance * 12.0, 2000.0, 80000.0)
 	_put_lens()
+	# Told once the lens is on the camera: told as it eased, a ghost aimed
+	# again for it went through the lens a step behind, and after the last
+	# step it rested where none of the camera's rays now was. At 390 x 844 a
+	# red message moved the lens 10 pixels; the ghost stayed a stud from
+	# where the click then put the part, and a click on red put it down
+	# (wingfin).
+	if lens_eased:
+		lens_moved.emit()
 
 
 # -- the lens, centred on the part of the window the model is seen in -------
@@ -1695,21 +1703,22 @@ func _lens_held() -> bool:
 
 ## Bring the lens towards the middle of the seen rect, as the pose is
 ## brought towards its target. A column folding, unfolding or sliding is
-## followed frame by frame, so the model glides to the new middle.
-func _ease_lens(weight: float) -> void:
+## followed frame by frame, so the model glides to the new middle. Whether
+## it moved: [method _apply] tells [signal lens_moved] once it is put on.
+func _ease_lens(weight: float) -> bool:
 	var aim: Vector2 = seen_rect().get_center() - _room() * 0.5
 	if not _shift_known:
 		if not seen.is_valid() or not is_inside_tree():
-			return
+			return false
 		_shift_known = true
 		_shift = aim
-		return
+		return false
 	if _shift == aim or _lens_held():
-		return
+		return false
 	_shift = _shift.lerp(aim, weight)
 	if _shift.distance_to(aim) < 0.01:
 		_shift = aim
-	lens_moved.emit()
+	return true
 
 
 ## Put the lens on the camera, if it is not on already: a value set again

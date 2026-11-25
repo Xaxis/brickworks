@@ -261,9 +261,7 @@ func _cut_short(words: String) -> void:
 		return
 	# In the world: _going_down's places are in the hand's frame.
 	var item: Array = (_builder.call("_going_down") as Array)[0]
-	var frame: Transform3D = _builder.carrying.get("_frame") if _builder.is_carrying() \
-		else _builder.get("_ghost_transform")
-	var at: Transform3D = frame * (item[1] as Transform3D)
+	var at: Transform3D = _hand_frame() * (item[1] as Transform3D)
 	var items: Array = []
 	for n: int in 4:
 		items.append([item[0], at.translated(Vector3(2000.0 + 200.0 * n, 0.0, 0.0))])
@@ -426,7 +424,10 @@ func _big() -> void:
 func _told(carried: bool) -> String:
 	if not _tree.has_method("room_in_copies"):
 		return ""
-	var going: Array = _builder.call("_going_down")
+	# In the world: _going_down's places are in the hand's frame.
+	var frame: Transform3D = _hand_frame()
+	var going: Array = (_builder.call("_going_down") as Array).map(func(i: Array) -> Array:
+		return [i[0], frame * (i[1] as Transform3D)] + i.slice(2))
 	var words: String = "lifted %s on top %s aimed %s valid %s ask pending %s; hand %s; " % [
 		_builder.carrying.lifted if carried else false, _builder.call("_lift_on_top"),
 		_builder.carrying.is_aimed() if carried else _builder.has_preview(),
@@ -460,6 +461,27 @@ func _told(carried: bool) -> String:
 			words += " twin %s at %s" % [laid[0], str((laid[1] as Transform3D).origin.snappedf(0.1))]
 	words += "; asked again: \"%s\"" % str(_tree.call("room_in_copies", {"items": going}, 0))
 	return words
+
+
+## What the places of Builder._going_down are in, as Builder._ask_copies
+## hands it to the ask: the carry's frame, or the ghost's for a part in hand.
+func _hand_frame() -> Transform3D:
+	return _builder.carrying.get("_frame") if _builder.is_carrying() else _builder.get("_ghost_transform")
+
+
+## Where the first part going down would be put, in the world: what a
+## mismatched place prints, beside where the click put it.
+func _first_ghost() -> String:
+	var going: Array = _builder.call("_going_down")
+	if going.is_empty():
+		return "(nothing in hand)"
+	# And where the model's middle is drawn, and the view's size: a view
+	# that moved under a still pointer.
+	return "%s (middle drawn at %s in %s; eye %s, lens %s, at rest %s)" % [
+		str((_hand_frame() * ((going[0] as Array)[1] as Transform3D)).origin.snappedf(0.1)),
+		str(_screen(Vector3.ZERO).snappedf(0.1)), str(_camera.get_viewport().get_visible_rect().size),
+		str(_camera.global_position.snappedf(0.01)), str((_camera.get("_shift") as Vector2).snappedf(0.01)),
+		_camera.call("_at_target")]
 
 
 ## Frames until an ask the aim began is answered (30 at most), as a person's
@@ -727,11 +749,21 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 			var fits: bool = _builder.can_place()
 			if not fits and predicted.is_empty():
 				continue
-			# What one aim's ask costs, unbounded, here.
+			# What one aim's ask costs, unbounded, here; and, for a place the
+			# click judges otherwise, what it answers afresh, whether the
+			# ghost's own was still pending, where the ghost was and the model's
+			# revision then.
+			var seen: String = ""
 			if _tree.has_method("room_in_copies"):
+				# As Builder._ask_copies asks it: the places are in the hand's frame.
+				var ask: Dictionary = {"items": _builder.call("_going_down"), "frame": _hand_frame()}
 				var began: int = Time.get_ticks_usec()
-				_tree.call("room_in_copies", {"items": _builder.call("_going_down")}, 0)
+				var fresh: Variant = _tree.call("room_in_copies", ask, 0)
 				slowest = maxi(slowest, Time.get_ticks_usec() - began)
+				seen = " [afresh \"%s\", pending %s, first part's ghost at %s, revision %d" % [
+					str(fresh).left(40), not (_builder.get("_copies_ask") as Dictionary).is_empty(),
+					_first_ghost(), _world.revision]
+			var first_new: int = _world.get("_next_id")
 			if _drawn_fits() != fits:
 				drawn_wrong += 1
 			# Before the click: a paste refused is let go of.
@@ -752,16 +784,32 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 					await _asked()
 			var heard: String = _shell.status.fields()["message"]
 			var count: int = _count()
-			await _click(at + Vector2(1, 0))
+			var rev_before: int = _world.revision
+			# _click, with what the ghost is once the button is down.
+			await _move(at + Vector2(1, 0))
+			var moved_to: String = _first_ghost()
+			_button(at + Vector2(1, 0), true)
+			await _frames(2)
+			var pressed: String = "%s, %s" % [_first_ghost(), _builder.can_place()]
+			_button(at + Vector2(1, 0), false)
+			await _frames(4)
 			await _frames(3)
 			var put: bool = _count() > count
+			if not seen.is_empty():
+				var landed: Array = []
+				for brick_id: int in range(first_new, int(_world.get("_next_id"))):
+					var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+					if brick != null:
+						landed.append(str(brick.transform.origin.snappedf(0.1)))
+				seen += ", revision %d at the click; moved to %s; pressed %s; put at %s]" % [rev_before,
+					moved_to, pressed, ", ".join(landed)]
 			if fits:
 				green += 1
 				if put and _count() == count + twins:
 					green_put += 1
 				elif wrong.size() < 6:
-					wrong.append("green at %s took %d (\"%s\")" % [str(Vector3(x, 0, z)), _count() - count,
-						_tree.refused])
+					wrong.append("green at %s took %d (\"%s\")%s" % [str(Vector3(x, 0, z)), _count() - count,
+						_tree.refused, seen])
 			else:
 				red += 1
 				red_put += 1 if put else 0
@@ -771,8 +819,8 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 					wrong.append("red at %s: said \"%s\", refused \"%s\"" % [str(Vector3(x, 0, z)),
 						heard, _tree.refused])
 				if put and wrong.size() < 6:
-					wrong.append("red at %s took %d (\"%s\")" % [str(Vector3(x, 0, z)), _count() - count,
-						predicted])
+					wrong.append("red at %s took %d (\"%s\")%s" % [str(Vector3(x, 0, z)), _count() - count,
+						predicted, seen])
 				if shown.is_empty():
 					shown.append(predicted)
 					await _shot("red_%s" % what.replace(" ", "_"))
