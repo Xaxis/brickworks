@@ -245,6 +245,8 @@ func _figland() -> void:
 	_builder.clear_selection()
 	await _frames(4)
 	var depth: int = _builder.history_depth()
+	_result("figland.start", _steps_said())
+	var steps_were: int = _steps.steps().size()
 	var start: Array = _signed(_full())
 	var plate_was: Transform3D = _world.get_brick(int(found["plate"])).transform
 	# X over the torso: the parts on show in hand, the plate left on the model
@@ -262,9 +264,7 @@ func _figland() -> void:
 	# what is between where the plate would land and the wall.
 	var wall: Array = found["wall"]
 	var wall_at: Vector3 = _world.get_brick(int(wall[1])).transform.origin
-	var first: Transform3D = await _aim_figure(Vector3(wall_at.x, 0, wall_at.z))
-	var lands: Vector3 = (first * plate_at).origin
-	var spot := Vector3(wall_at.x - (lands.x - first.origin.x), 0, wall_at.z - (lands.z - first.origin.z))
+	var spot: Vector3 = await _spot_landing(plate_at, wall_at)
 	var ghost: Transform3D = await _aim_figure(spot)
 	var plate_part: Lbm.PartMesh = (_main.get("_library") as PartLibrary).mesh_for(_world.get_brick(plate).part_id)
 	var in_wall: Array = Array(_builder.lattice.blockers_boxes(_builder.boxes_for(plate_part, ghost * plate_at),
@@ -278,7 +278,6 @@ func _figland() -> void:
 	if not _check("there, the parts on show stand clear and the plate would land in the wall",
 			shown_clear and not in_wall.is_empty()):
 		return
-	var said_before: String = _line()
 	var later: Dictionary = await _refused_at(spot, "plate to come")
 	await _pic3("FL1_plate_to_come_in_wall")
 	_check("the plate to come landing in the wall, the figure is refused: its ghost red, a click puts nothing down",
@@ -286,29 +285,41 @@ func _figland() -> void:
 	_check("nothing moved: no part changed, the plate where it was, the figure still in hand",
 		(later["changed"] as Array).is_empty() and _world.get_brick(plate).transform.is_equal_approx(plate_was)
 			and _builder.is_holding_figure())
-	# The same aim at the next step, the plate on show and in hand: the
-	# refusal a figure in a part always had.
-	_builder.undo()
+	# The next step, the plate on show and in hand, aimed so it lands in the
+	# wall: the refusal a figure in a part always had.
+	# Undone as a person undoes: the timeline worked out again for the
+	# model as it is (the builder's own undo leaves it at the lift's).
+	await _verbs.press("undo")
 	await _frames(4)
-	_check("undoing the lift puts the figure back as it was", _signed(_full()) == start
+	_check("undoing the lift puts the figure back as it was (%s)" % _steps_said(), _signed(_full()) == start
 		and not _builder.is_holding_figure())
 	_steps.step_forward()
 	await _frames(6)
 	found = _fig_parts()
 	var on: bool = not _ahead(int(found["plate"]))
 	var shown: Dictionary = await _lift(int(found["torso"]))
-	var with_plate: bool = _builder.held_figure.any(func(item: Dictionary) -> bool:
+	var held_plate: Array = _builder.held_figure.filter(func(item: Dictionary) -> bool:
 		return str(item["part"]).begins_with("3023"))
-	var now: Dictionary = await _refused_at(spot, "plate on show")
-	_check("at the next step (the plate on %s, in hand %s, %d to come), the same aim is refused the same way"
-		% [on, with_plate, shown.size()], on and with_plate and shown.is_empty() and not bool(now["valid"])
-		and int(now["put"]) == 0 and not bool(now["ghosts_valid"]) and (now["changed"] as Array).is_empty())
-	_check("the same line both times (\"%s\" / \"%s\", before \"%s\")" % [later["said"], now["said"], said_before],
-		later["said"] == now["said"])
-	_builder.undo()
+	var now: Dictionary = {}
+	if not held_plate.is_empty():
+		var in_hand: Transform3D = held_plate[0]["at"]
+		var there: Vector3 = await _spot_landing(in_hand, wall_at)
+		var aimed: Transform3D = await _aim_figure(there)
+		_result("figland.aim2", "the plate in hand: aimed at %s, it would land at %s"
+			% [str(there.snapped(Vector3.ONE)), str((aimed * in_hand).origin.snapped(Vector3.ONE))])
+		now = await _refused_at(there, "plate on show")
+	_check("at the next step (the plate on %s, in hand %s, %d to come), aimed into the wall it is refused the same way"
+		% [on, not held_plate.is_empty(), shown.size()], on and not now.is_empty() and shown.is_empty()
+		and not bool(now["valid"]) and int(now["put"]) == 0 and not bool(now["ghosts_valid"])
+		and (now["changed"] as Array).is_empty())
+	_check("the same words both times (\"%s\" / \"%s\")" % [later["said"], now.get("said", "?")],
+		later["said"] == now.get("said", "?"))
+	await _verbs.press("undo")
 	await _frames(4)
 	# Put down clear: the plate goes with it.
 	var back: bool = await _to_plate_step()
+	if not back:
+		_result("figland.walk", "; ".join(_plate_walk.slice(0, 6)))
 	found = _fig_parts()
 	plate = int(found["plate"])
 	going = await _lift(int(found["torso"]))
@@ -326,9 +337,10 @@ func _figland() -> void:
 		back and put != 0 and going.has(plate) and plate_now.is_equal_approx(clear * plate_at))
 	await _pic3("FL2_put_down_clear")
 	while _builder.history_depth() > depth:
-		_builder.undo()
+		await _verbs.press("undo")
 		await _frames(2)
-	_check("undone, every part is back where it was", _signed(_full()) == start)
+	_check("undone, every part is back where it was, the timeline's steps as they were (%s)" % _steps_said(),
+		_signed(_full()) == start and _steps.steps().size() == steps_were)
 
 
 ## From the first step, forward to the step that has the figure on and its
@@ -337,8 +349,13 @@ func _to_plate_step() -> bool:
 	_builder.clear_selection()
 	_steps.to_start()
 	await _frames(4)
+	_plate_walk = PackedStringArray(["%d steps, playing %s" % [_steps.steps().size(), _steps.is_playing_back()]])
 	for _n: int in 16:
 		var found: Dictionary = _fig_parts()
+		var at: Instructions.Step = _steps.current_step()
+		_plate_walk.append("%d: torso %s, plate %s (step %d)" % [at.number if at != null else -1,
+			"ahead" if _ahead(int(found["torso"])) else "on", "ahead" if _ahead(int(found["plate"])) else "on",
+			_world.get_brick(int(found["plate"])).step if _world.get_brick(int(found["plate"])) != null else -9])
 		if not _ahead(int(found["torso"])) and _ahead(int(found["plate"])):
 			return true
 		_steps.step_forward()
@@ -346,8 +363,21 @@ func _to_plate_step() -> bool:
 	return false
 
 
+## How [method _to_plate_step] last walked the steps.
+var _plate_walk := PackedStringArray()
+
+
 ## The fixture's torso, held plate and wall bricks by id, found again after
 ## an undo (a part put back may come back under another number).
+func _steps_said() -> String:
+	var at: Instructions.Step = _steps.current_step()
+	var parts := PackedStringArray()
+	for brick: BrickWorld.Brick in _world.bricks():
+		parts.append("%s@%d%s" % [brick.part_id.get_basename(), brick.step, "~" if _ahead(brick.id) else ""])
+	return "%d steps, mode %d, at %d, history %d: %s" % [_steps.steps().size(), _steps.mode(),
+		at.number if at != null else -1, _builder.history_depth(), " ".join(parts)]
+
+
 func _fig_parts() -> Dictionary:
 	var out: Dictionary = {"torso": 0, "plate": 0, "wall": []}
 	for brick: BrickWorld.Brick in _world.bricks():
@@ -376,19 +406,31 @@ func _lift(torso: int) -> Dictionary:
 ## {valid, put, ghosts_valid (any ghost drawn as fitting), changed, said}.
 func _refused_at(spot: Vector3, what: String) -> Dictionary:
 	var before: Dictionary = _full()
-	await _aim_figure(spot)
+	var stands: Transform3D = await _aim_figure(spot)
 	var valid: bool = bool(_builder.get("_ghost_valid"))
 	var ghosts_valid: bool = false
 	for ghost: MeshInstance3D in _builder.get("_figure_ghosts"):
 		if ghost.visible:
 			ghosts_valid = ghosts_valid or bool((ghost.material_override as ShaderMaterial).get_shader_parameter("valid"))
+	var line_was: String = _line()
 	var put: int = _builder.place()
 	await _frames(4)
+	# What the click said: nothing, where the line is as it was.
 	var out: Dictionary = {"valid": valid, "put": put, "ghosts_valid": ghosts_valid,
-		"changed": _changed(before, _full()), "said": _line()}
-	_result("figland.refused", "%s: ghost valid %s (drawn valid %s), put down #%d, %d changed, said \"%s\""
-		% [what, valid, ghosts_valid, put, (out["changed"] as Array).size(), out["said"]])
+		"changed": _changed(before, _full()), "said": _line() if _line() != line_was else "(nothing)"}
+	_result("figland.refused", "%s: the ghost at %s turned %d, valid %s (drawn valid %s), put down #%d, %d changed, said \"%s\""
+		% [what, str(stands.origin.snapped(Vector3.ONE)), _builder.held_rotation, valid, ghosts_valid, put,
+			(out["changed"] as Array).size(), out["said"]])
 	return out
+
+
+## Where to aim the figure in hand so its part standing at [param part_at] in
+## its frame lands over [param target]: aimed near first, then moved by what
+## is between where the part would land and the target.
+func _spot_landing(part_at: Transform3D, target: Vector3) -> Vector3:
+	var first: Transform3D = await _aim_figure(Vector3(target.x, 0, target.z))
+	var lands: Vector3 = (first * part_at).origin
+	return Vector3(target.x - (lands.x - first.origin.x), 0, target.z - (lands.z - first.origin.z))
 
 
 ## The figure in hand aimed straight down at [param spot]: where it would stand.
