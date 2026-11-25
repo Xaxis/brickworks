@@ -792,7 +792,9 @@ they have. A Claude connector belongs to the account that switched it on.
   a session of the way approved, its codes too: `oauth_codes.way` and
   `oauth_grants.way`, `supabase/way_grants.sql`, set at approve from
   `way_sessions` and re-asked under the same lock after `/oauth/token`
-  writes one, signin5 SR1; Settings redraws its connections; this one too,
+  writes one, which is deleted if the way is off (400) or the ask
+  unanswered (503), signin5 SR1, `tests/test_oauth_clients.py`; Settings
+  redraws its connections; this one too,
   when it was one: `signed_out`, and the page signs out and asks for a code) or `never`
   (`way_links_of`); Link again lifts it. An orangecheck-only account gets
   409. The owner's account is offered neither. Settings'

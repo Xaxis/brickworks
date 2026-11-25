@@ -532,3 +532,46 @@ return {
     assert got["tabAddress"] == {"progressToken": 7}
     assert got["nothingSent"] == {"brickworks/who": "Gemini"}
     assert got["notAnObject"] == {"brickworks/who": "Grok"}
+
+
+def test_a_connection_approved_from_google_or_github_is_kept_only_while_that_way_is() -> None:
+    """signin5 (signreview2 SR1): a code approved from a Google or GitHub
+    session carries its way, and /oauth/token asks way_on after writing
+    the connection, under the Unlink's lock. Unlinked: refused and the
+    connection deleted. way_on unanswered: refused (503) and deleted too,
+    never kept with no tokens. A code's own session (no way): way_on is
+    never asked, and the connection is kept."""
+    got = run(CONNECT + """
+const { createHash } = await import('node:crypto');
+const CALLBACK = 'https://claude.ai/api/mcp/auth_callback';
+const exchange = async (way, state) => {
+  const owner = randomUUID();
+  const code = randomBytes(32).toString('base64url');
+  const verifier = randomBytes(32).toString('base64url');
+  w.tables.oauth_codes.push({ hash: sha256(code), client_id: CLAUDE, owner, redirect_uri: CALLBACK,
+    code_challenge: createHash('sha256').update(verifier).digest('base64url'), resource: `${ORIGIN}/api/mcp`,
+    scope: 'build', expires_at: new Date(Date.now() + 60e3).toISOString(), ...(way ? { way } : {}) });
+  if (way) w.ways.set(`${owner} ${way}`, state);
+  const asked = w.calls.filter((c) => c.endsWith('/rpc/way_on')).length;
+  const got = await askOAuth({ method: 'POST', query: { op: 'token' }, body: { grant_type: 'authorization_code', code,
+    code_verifier: verifier, redirect_uri: CALLBACK, client_id: CLAUDE, resource: `${ORIGIN}/api/mcp` } });
+  const kept = w.tables.oauth_grants.filter((g) => g.owner === owner);
+  return { status: got.status, error: got.json.error || null, access: /^bwa_/.test(got.json.access_token || ''),
+    kept: kept.length, way: kept[0]?.way ?? null, tokens: w.tables.oauth_tokens.filter((t) => kept.some((g) => g.id === t.grant_id)).length,
+    asked: w.calls.filter((c) => c.endsWith('/rpc/way_on')).length - asked };
+};
+return {
+  on: await exchange('github', true),
+  unlinked: await exchange('github', false),
+  unanswered: await exchange('google', 'fail'),
+  code: await exchange(null),
+};
+""")
+    if got is None:
+        return
+    assert got["on"] == {"status": 200, "error": None, "access": True, "kept": 1, "way": "github", "tokens": 2, "asked": 1}
+    assert got["unlinked"] == {"status": 400, "error": "invalid_grant", "access": False, "kept": 0, "way": None,
+                               "tokens": 0, "asked": 1}
+    assert got["unanswered"] == {"status": 503, "error": "temporarily_unavailable", "access": False, "kept": 0,
+                                 "way": None, "tokens": 0, "asked": 1}
+    assert got["code"] == {"status": 200, "error": None, "access": True, "kept": 1, "way": None, "tokens": 2, "asked": 0}

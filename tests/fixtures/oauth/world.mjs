@@ -36,8 +36,11 @@ export async function world() {
   const clients = new Map();
   const spent = new Map();
   const calls = [];
-  // Connections and their tokens, as rows (supabase/oauth.sql).
-  const tables = { oauth_grants: [], oauth_tokens: [] };
+  // Codes, connections and their tokens, as rows (supabase/oauth.sql).
+  const tables = { oauth_codes: [], oauth_grants: [], oauth_tokens: [] };
+  // way_on's answer for "<account> <way>" (supabase/way_grants.sql): true
+  // while that way signs the account in; "fail" answers 500. Unset: false.
+  const ways = new Map();
   const documents = new Map([
     [CHATGPT, {
       client_id: CHATGPT, client_uri: "https://chatgpt.com/",
@@ -69,6 +72,10 @@ export async function world() {
       if (spent.has(body.token_id)) return json(200, false);
       spent.set(body.token_id, body.until);
       return json(200, true);
+    }
+    if (url.pathname === "/rest/v1/rpc/way_on") {
+      const on = ways.get(`${body.account} ${body.way}`);
+      return on === "fail" ? json(500, { message: "the test world's way_on fails" }) : json(200, on === true);
     }
     if (url.pathname.startsWith("/rest/v1/rpc/")) return json(204);
     if (url.pathname === "/rest/v1/oauth_clients") {
@@ -117,7 +124,7 @@ export async function world() {
   };
 
   return {
-    calls, clients, spent, documents, keys, chatgptKey, tables,
+    calls, clients, spent, documents, keys, chatgptKey, tables, ways,
     /// A request with these headers, as Vercel hands one over.
     request: (headers = {}) => ({ method: "POST", headers, query: {} }),
     /// A client assertion: [claims] over the usual ones, signed by [pair]

@@ -694,9 +694,15 @@ async function token(request, response, origin) {
     // (way_set); this is for one that came between the code's read and the
     // connection's write. Asked after the write, under the Unlink's lock:
     // an Unlink before it is seen here, and one after it deletes this.
-    if (row.way && !(await wayStillOn(row.owner, row.way))) {
-      await db(`oauth_grants?id=eq.${grant.id}`, { method: "DELETE" });
-      return oauthError(response, 400, "invalid_grant", "the Google or GitHub sign-in that approved this was unlinked");
+    // Unanswered, the connection is not kept either.
+    if (row.way) {
+      const on = await wayStillOn(row.owner, row.way).catch(() => null);
+      if (on !== true) {
+        await db(`oauth_grants?id=eq.${grant.id}`, { method: "DELETE" }).catch(() => {});
+        return on === null
+          ? oauthError(response, 503, "temporarily_unavailable", "try again in a minute")
+          : oauthError(response, 400, "invalid_grant", "the Google or GitHub sign-in that approved this was unlinked");
+      }
     }
     const tokens = await issue(grant);
     await tellTabs(row.owner, clientLabel(grant)).catch(() => {});
