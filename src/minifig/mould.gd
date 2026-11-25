@@ -888,7 +888,14 @@ func named(title: String) -> Array:
 ## The part file: the sculpted triangles, the base part's connectors as
 ## they were, its creases.
 func text(id: String, title: String) -> String:
-	var words: String = title.strip_edges().replace("\n", " ")
+	# No control character of the name reaches the part's lines: a carriage
+	# return in it would start a line of its own in a program that reads
+	# them ("\r0 FILE ..."), whatever brought it (a draft read back, a check).
+	var words: String = ""
+	for n: int in title.length():
+		var code: int = title.unicode_at(n)
+		words += " " if code < 32 or (code >= 127 and code < 160) else title[n]
+	words = words.strip_edges()
 	var out := PackedStringArray()
 	out.append("0 %s, Custom Mould %s" % [name, words if not words.is_empty() else id])
 	out.append("0 Name: %s.dat" % id)

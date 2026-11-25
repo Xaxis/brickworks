@@ -8448,6 +8448,9 @@ msgstr "Dein Teil „%s“, zum Weiterformen. Gespeichert ist es ein neues Teil;
 msgid "Your mould from before, as you left it. Start begins again from %s; Undo goes back to it."
 msgstr "Deine Form von vorhin, wie du sie gelassen hast. „Los geht's“ beginnt neu mit %s; Rückgängig führt zu ihr zurück."
 
+msgid "Your mould from before could not be read back, so this begins again from %s."
+msgstr "Deine Form von vorhin ließ sich nicht wieder lesen, darum beginnt dies neu mit %s."
+
 msgid "Building the mould…"
 msgstr "Die Form wird gebaut…"
 

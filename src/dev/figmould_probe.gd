@@ -156,8 +156,8 @@ func _sculpt_hair() -> Dictionary:
 	_check("Undo takes it back to the bit, Redo puts it back to the bit",
 		undone and mould.positions == after)
 
-	# Grow one side: with symmetry the other comes too.
-	_editor.turn_to(0.0, 0.2, 95.0)
+	# Grow one side, seen from that side: with symmetry the other comes too.
+	_editor.turn_to(PI * 0.5, 0.2, 95.0)
 	await _frames(6)
 	await _press(_editor._tools["inflate"])
 	_editor.set_brush(8.0, 0.8)
@@ -372,13 +372,20 @@ func _hair_from_file() -> Dictionary:
 	_check("Wear it: the figure wears %s" % worn, worn.begins_with("bw-") and worn != ""
 		and PartPrints.bases.get(worn, "") == "3901")
 	await _shot("figure_stl")
-	# The file's hair sculpted on further, in the same maker.
+	# The file's hair sculpted on further, in the same maker: the mohawk's own
+	# shape (as wide as the file's hair, not the Quiff's), no draft over it.
 	await _press(_figures._make)
 	await _frames(20)
-	_check("Make a mould… opens on the file's hair itself, standing for 3901: %s"
-		% _editor._status.text, _editor.visible and _editor.mould != null
-		and _editor.mould.base == "3901" and _editor._from.text == worn
-		and _editor.mould.triangle_count() > 100)
+	var wide: float = 0.0
+	if _editor.mould != null:
+		for p: Vector3 in _editor.mould.positions:
+			wide = maxf(wide, absf(p.x))
+	_check("Make a mould… opens on the file's hair itself, standing for 3901, %.1f LDU across "
+		% (wide * 2.0) + "as the mohawk is (%.1f): %s" % [piece.box().size.x if piece != null else 0.0,
+		_editor._status.text], _editor.visible and _editor.mould != null
+		and _editor.mould.base == "3901" and _editor._from.text == worn and not _editor._restored
+		and _editor._title.text.contains("your") and _editor.mould.triangle_count() > 100
+		and piece != null and absf(wide * 2.0 - piece.box().size.x) < 1.0)
 	await _shot("mould_on_stl")
 	await _press(_editor.controls_by_name()["mould_close"])
 	var placed: Dictionary = await _place(worn, Vector2(0.18, 0.0))
@@ -392,7 +399,10 @@ func _place(hair: String, share: Vector2) -> Dictionary:
 	var before: Array = _world.bricks().duplicate()
 	await _press(_find_button(_figures, "Place in model"))
 	var screen: Vector2 = root.get_visible_rect().size
-	await _tap(screen * 0.5 + screen * share)
+	# At a desk the parts bin is the screen's left 0.37: the figures go down
+	# on the baseplate right of it, half as far apart.
+	var at_desk := Vector2(screen.x * (0.62 + share.x * 0.5), screen.y * (0.5 + share.y))
+	await _tap(at_desk if not _phone else screen * 0.5 + screen * share)
 	await _frames(10)
 	await _key(KEY_ESCAPE)
 	var added: Array = _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
@@ -489,18 +499,23 @@ func _beside_real_hair() -> void:
 	print("\nthree hairs by strokes, beside the real ones")
 	_main.call("clear_model")
 	await _frames(10)
-	var bases: Array = [["3901", "Swept quiff"], ["62711", "Big bob"], ["40233", "Flicked tousle"]]
+	# Each pair in a hair colour of its own (Reddish Brown, Tan, Dark Orange),
+	# the real piece on the left and the mould made from it on its right, in
+	# one row across the baseplate.
+	var bases: Array = [["3901", "Swept quiff", 70], ["62711", "Big bob", 19],
+		["40233", "Flicked tousle", 484]]
 	var placed: Array = []
 	for n: int in bases.size():
 		var base: String = bases[n][0]
-		var share := Vector2(-0.3 + 0.3 * n, 0.12)
+		var share := Vector2(-0.25 + 0.25 * n, 0.1)
 		_main.call("_open_figures")
 		await _frames(20)
 		_figures.figure.choose(_library, "headwear", base)
+		_figures.figure.colours["headwear"] = int(bases[n][2])
 		_figures._slot = "headwear"
 		_figures._refresh_all()
 		await _frames(10)
-		await _place(base, share + Vector2(0, -0.2))
+		await _place(base, share + Vector2(-0.06, 0))
 		_main.call("_open_figures")
 		await _frames(20)
 		await _press(_figures._slot_buttons["headwear"])
@@ -516,16 +531,16 @@ func _beside_real_hair() -> void:
 		var worn: String = _figures.figure.part("headwear")
 		_check("%s sculpted from %s and worn as %s" % [bases[n][1], base, worn],
 			worn.begins_with("bw-"))
-		placed.append(await _place(worn, share))
+		placed.append(await _place(worn, share + Vector2(0.06, 0)))
 	var box := AABB()
 	var first: bool = true
 	for brick: BrickWorld.Brick in _world.bricks():
 		var at: Vector3 = brick.transform.origin
 		box = AABB(at, Vector3.ZERO) if first else box.expand(at)
 		first = false
-	_camera.frame(box.grow(30.0), 1.0)
+	_camera.frame(box.grow(12.0), 1.0)
 	_camera.set_view("front")
-	_camera.frame(box.grow(30.0), 1.0)
+	_camera.frame(box.grow(12.0), 1.0)
 	await _frames(90)
 	await _shot("beside_real_view")
 	var dialog: Node = _main.get("_render")
@@ -562,7 +577,7 @@ func _shape(n: int) -> void:
 			for k: int in 3:
 				await _stroke([fringe + Vector3(0, -2, 0), fringe + Vector3(0, 2, 1)])
 		1:
-			_editor.turn_to(0.0, 0.1, 95.0)
+			_editor.turn_to(PI * 0.5, 0.1, 95.0)
 			await _frames(6)
 			await _press(_editor._tools["inflate"])
 			_editor.set_brush(10.0, 1.0)

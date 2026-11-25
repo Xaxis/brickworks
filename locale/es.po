@@ -8448,6 +8448,9 @@ msgstr "Tu pieza «%s», para seguir dándole forma. Guardada, es una pieza nuev
 msgid "Your mould from before, as you left it. Start begins again from %s; Undo goes back to it."
 msgstr "Tu molde de antes, tal como lo dejaste. Empezar vuelve a empezar con %s; Deshacer vuelve a él."
 
+msgid "Your mould from before could not be read back, so this begins again from %s."
+msgstr "Tu molde de antes no se pudo volver a leer, así que esto vuelve a empezar con %s."
+
 msgid "Building the mould…"
 msgstr "Construyendo el molde…"
 

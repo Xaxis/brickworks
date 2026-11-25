@@ -311,7 +311,15 @@ the model, and the design assistant doing the same with `add_minifig`.
   start and close, and a typed name 0.4 s after; Make a mould… in that slot
   opens on it ("Your mould from before, as you left it…") until Save mould,
   which lets it go. Nothing of the person's in it (opened and closed untouched)
-  keeps nothing. Save mould builds it ("Building the mould…" said first) and
+  keeps nothing. Each is written beside it (`.draft.new`) and put in its place
+  whole, so a tab closed mid-write leaves the one before; one that cannot be
+  read back (damaged, out of range, from another build) is let go and said
+  ("could not be read back, so this begins again from 3901"). A mould's name
+  reaches its file with no control character (`Mould.text`: a carriage return
+  would start a line of its own). `figmould_attack_probe` (headless) attacks
+  both: hair files inside out, half turned, 300 times too big, a thousandth,
+  open, a million triangles as an STL and as a 28 MB OBJ; drafts damaged six
+  ways and one half written beside a good one; a name with "\r0 FILE". Save mould builds it ("Building the mould…" said first) and
   puts it on the figure. `figmould_probe` (1280 and `PROBE_SIZE=390x844`, by
   touch) is the whole way: strokes each one exact step, Finer and Dome undone,
   a pinch, closed and reopened, an editor made anew from the draft, saved,

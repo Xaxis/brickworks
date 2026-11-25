@@ -8448,6 +8448,9 @@ msgstr "Votre pièce « %s », à façonner encore. Enregistrée, c'est une nouv
 msgid "Your mould from before, as you left it. Start begins again from %s; Undo goes back to it."
 msgstr "Votre moule de tout à l'heure, tel que vous l'avez laissé. Commencer repart de %s ; Annuler y revient."
 
+msgid "Your mould from before could not be read back, so this begins again from %s."
+msgstr "Votre moule de tout à l'heure n'a pas pu être relu, alors celui-ci repart de %s."
+
 msgid "Building the mould…"
 msgstr "Construction du moule…"
 

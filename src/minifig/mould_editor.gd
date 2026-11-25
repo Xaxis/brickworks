@@ -163,7 +163,17 @@ func open(part_id: String, for_slot: String, colour: int) -> void:
 	_earlier.clear()
 	_later.clear()
 	_restored = false
+	# What this opening makes starts here: the mould of an opening before
+	# (saved, or let go) is no step of this one's Undo, nor kept with it.
+	mould = null
+	_body_mesh.mesh = null
 	var kept: Dictionary = _kept()
+	if kept.has("lost"):
+		_start_from(part_id)
+		if mould != null and _status.text.is_empty():
+			_status.text = "Your mould from before could not be read back, so this begins again from %s." \
+				% _from.text
+		return
 	if not kept.is_empty():
 		_set_mould(kept["mould"])
 		_frame_it()
@@ -295,12 +305,15 @@ func _keep_draft() -> void:
 		return
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	TabSession.writing(path)
-	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	# Written beside it and put in its place whole: a tab closed or a power cut
+	# mid-write leaves the draft before, never one cut short.
+	var file: FileAccess = FileAccess.open(path + ".new", FileAccess.WRITE)
 	if file == null:
 		return
 	file.store_buffer(var_to_bytes({"mould": mould.to_draft(), "title": _name.text,
 		"slot": slot}))
 	file.close()
+	DirAccess.rename_absolute(path + ".new", path)
 
 
 func _keep_draft_soon() -> void:
@@ -314,8 +327,8 @@ func _drop_draft() -> void:
 
 
 ## What was kept for this slot: {mould, title}, or {} when nothing was, or
-## what was is not a whole mould (cut short, or from another build), which
-## is let go.
+## {lost: true} when what was is not a whole mould (damaged on the disk, or
+## from another build), which is let go and said.
 func _kept() -> Dictionary:
 	var path: String = _draft_path()
 	if not FileAccess.file_exists(path):
@@ -325,7 +338,7 @@ func _kept() -> Dictionary:
 		if kept is Dictionary else null
 	if made == null:
 		_drop_draft()
-		return {}
+		return {"lost": true}
 	return {"mould": made, "title": str((kept as Dictionary).get("title", ""))}
 
 
