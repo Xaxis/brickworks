@@ -1252,12 +1252,7 @@ static func _step_on(world: BrickWorld, under: Array, section: String, skip: Dic
 	if not on_new:
 		return at
 	if not full.has(section):
-		var items: Array = items_of(world, section, skip)
-		var counts: Dictionary = {}
-		for item: Dictionary in items:
-			counts[int(item["step"])] = int(counts.get(int(item["step"]), 0)) + 1
-		full[section] = counts
-		counts["most"] = Instructions._per_step(items.size())
+		full[section] = step_counts(world, section, skip)
 	var counted: Dictionary = full[section]
 	if int(counted.get(at, 0)) < int(counted["most"]):
 		return at
@@ -1268,13 +1263,75 @@ static func _step_on(world: BrickWorld, under: Array, section: String, skip: Dic
 	return after + 1
 
 
+## How many of [param section]'s items ([method items_of]) each of its steps
+## has (step -> count), and "most", the plan's for a section of that many
+## (Instructions._per_step): what [method _step_on] reads, the same numbers
+## items_of gives, in one pass over the parts with each path's section looked
+## up once. Read through items_of, a part put on one put down since the open
+## read Orthanc's 10,119 parts three times and made an item of each, 40 to
+## 70 ms a follow where a frame is 16 (sk2fix's fixtime, failing since).
+static func step_counts(world: BrickWorld, section: String, skip: Dictionary = {}) -> Dictionary:
+	var counts: Dictionary = {}
+	var total: int = 0
+	var leaves: Dictionary = {}     ## each part's path, as paths_in reads them
+	var least: Dictionary = {}      ## each stepped part's path -> its least step (lowest_under)
+	var mine: Dictionary = {}       ## a path -> whether its section is [param section]
+	for brick: BrickWorld.Brick in world.bricks():
+		if skip.has(brick.id):
+			continue
+		var path: String = Assemblies.path_from(brick.group, brick.unit)
+		leaves[path] = 0
+		var step: int = brick.step
+		if step < 0:
+			continue
+		least[path] = mini(int(least.get(path, step)), step)
+		var here: Variant = mine.get(path)
+		if here == null:
+			here = home(world, path) == section
+			mine[path] = here
+		if here:
+			counts[step] = int(counts.get(step, 0)) + 1
+			total += 1
+	var lowest: Dictionary = _up_paths(least)
+	var placed: Dictionary = _up_paths(leaves)
+	for path: String in placed:
+		if home(world, Assemblies.parent_of(path)) != section:
+			continue
+		var at: int = unit_step(world, path, lowest)
+		if at >= 0:
+			counts[at] = int(counts.get(at, 0)) + 1
+			total += 1
+	# What the model holds and does not show, as items_in numbers it.
+	var held_paths: Dictionary = {}
+	for item: Variant in world.held_parts():
+		var placement: LdrModel.Placement = item
+		var path: String = world.held_path(placement)
+		held_paths[path] = 0
+		if placement.step >= 0 and home(world, path) == section:
+			counts[placement.step] = int(counts.get(placement.step, 0)) + 1
+			total += 1
+	for path: String in _up_paths(held_paths):
+		if path.is_empty() or placed.has(path) \
+				or home(world, Assemblies.parent_of(path)) != section:
+			continue
+		var at: int = int(world.unit_steps.get(path, -1))
+		if at >= 0:
+			counts[at] = int(counts.get(at, 0)) + 1
+			total += 1
+	counts["most"] = Instructions._per_step(total)
+	return counts
+
+
 ## The step after [param section]'s last, the same for every part an edit
 ## puts there ([param last] keeps it).
 static func _new_last(world: BrickWorld, section: String, skip: Dictionary,
 		last: Dictionary) -> int:
 	if not last.has(section):
-		var steps: Array = steps_of(items_of(world, section, skip))
-		last[section] = (int(steps.back()) if not steps.is_empty() else -1) + 1
+		var latest: int = -1
+		for step: Variant in step_counts(world, section, skip):
+			if step is int:
+				latest = maxi(latest, int(step))
+		last[section] = latest + 1
 	return int(last[section])
 
 

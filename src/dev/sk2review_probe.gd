@@ -17,9 +17,13 @@
 ##           and one nested, comments in each), Plan steps then Save: its
 ##           sections and comments kept, reopened in the steps saved, the whole
 ##           write the file; the same file as someone else's: Plan steps refused
-##   castle  models/castle.ldr, Plan steps then Save: the same
+##   castle  models/castle.ldr saved unedited: the file byte for byte, and
+##           again opened from that save; then Plan steps and Save as mpd's,
+##           each sub-model its section or, built in two or more of the
+##           model's steps, written after IN lines (wkfix F3)
 ##   into    the station put into a model whole (held_from): its saved steps
-##           kept, as an open keeps them
+##           kept, as an open keeps them; put down, saved and opened again,
+##           each part in the step it opened in, and no AUTHORED_STEPS
 ##   hand    Plan steps asked over MCP (edit_steps plan) while the person holds
 ##           a part picked up: refused, or the part put down planned with the
 ##           rest, never the one part with a step and the model after it; and
@@ -34,7 +38,8 @@
 ##             asked first, with the count; confirmed, one name; one undo
 ##   heldlook  edit_steps name and the press of Plan steps while a part is
 ##             held: refused in words, Escape puts it back
-##   fixtime   the follow's time on Orthanc as its own (16 ms a follow)
+##   fixtime   the follow's time on Orthanc as its own (16 ms a follow), and
+##             AuthorSteps.step_counts giving items_of's numbers in each section
 ##
 ##   godot --headless --path . --script src/dev/sk2review_probe.gd
 ##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand,looks,redo,ask,heldlook,fixtime   only those
@@ -434,12 +439,40 @@ func _mpd() -> void:
 
 
 func _castle() -> void:
-	print("\n== castle: models/castle.ldr, Plan steps then Save")
-	await _planned_and_saved("castle", CASTLE, FileAccess.get_file_as_string(CASTLE))
+	print("\n== castle: models/castle.ldr, saved unedited, then Plan steps and Save")
+	var file: String = FileAccess.get_file_as_string(CASTLE)
+	await _open(CASTLE)
+	var called: String = "SK2R castle unedited"
+	_forget(called)
+	_store.title = called
+	var ok: bool = _store.save_as(called)
+	var saved_path: String = ModelStore.saved_path(called)
+	var saved: String = FileAccess.get_file_as_string(saved_path)
+	_check("castle: opened and saved unedited (%s), the file byte for byte (%d / %d bytes)"
+		% [ok, saved.length(), file.length()], ok and saved == file)
+	if saved != file:
+		_first_diff(file, saved)
+	await _reopen(saved_path)
+	var again: String = _store.to_text(_store.title, true)
+	_check("castle: ...opened again from that save and written whole, byte for byte (%d / %d bytes)"
+		% [again.length(), file.length()], again == file)
+	if again != file:
+		_first_diff(file, again)
+	_forget(called)
+	await _planned_and_saved("castle", CASTLE, file)
 
 
 ## [param path] opened, Plan steps, saved; its structure held to [param text]'s;
 ## opened again from the save: in the steps saved, and written whole the file.
+## Each of the file's sub-models stays a section of the save, or, where the
+## plan builds its copy in two or more of the model's steps, is written in
+## those steps after the IN lines naming it: wkreview F3, fixed by wkfix
+## (cfe1f947b, 11-22), as every other LDraw reader builds a section whole
+## where its line is, and the castle's towers, a course of each in turn, went
+## up whole at their first courses (2,166 of 2,497 parts in another step).
+## Up to sk2fix2 this held the castle to its 11 sections, which wkfix made
+## 1 and 420 IN lines on purpose: it failed on every tree since (keepfix's
+## "wkfix F3's trade").
 func _planned_and_saved(label: String, path: String, text: String) -> void:
 	if path.begins_with("res://"):
 		await _open(path)
@@ -459,21 +492,37 @@ func _planned_and_saved(label: String, path: String, text: String) -> void:
 	var was: Dictionary = _structure(text)
 	var now: Dictionary = _structure(saved)
 	print("  the file: %s\n  saved:    %s" % [str(was), str(now)])
-	_check("%s: Plan steps + Save (%s): sections %d -> %d, comments %d -> %d, IN lines %d -> %d, FLOOR %s -> %s"
-		% [label, ok, int(was["files"]), int(now["files"]), int(was["comments"]), int(now["comments"]),
-		int(was["in"]), int(now["in"]), was["floor"], now["floor"]],
-		ok and int(now["files"]) == int(was["files"]) and int(now["comments"]) >= int(was["comments"])
-		and int(now["in"]) == int(was["in"]))
+	var named: Dictionary = now["in_defs"]
+	var sub_models: int = int(was["files"]) - 1
+	_check("%s: Plan steps + Save (%s): sections %d -> %d, the other %d of its %d sub-models written after IN lines (%d), comments %d -> %d, FLOOR %s -> %s"
+		% [label, ok, int(was["files"]), int(now["files"]), named.size(), sub_models, int(now["in"]),
+		int(was["comments"]), int(now["comments"]), was["floor"], now["floor"]],
+		ok and int(was["in"]) == 0 and int(now["files"]) - 1 + named.size() == sub_models
+		and int(now["comments"]) >= int(was["comments"]))
 	_check("%s: ...and every comment of the file still in it" % label,
 		(was["comment_lines"] as Array).all(func(line: String) -> bool: return saved.contains(line)))
 	var shown: Array = _plan()
 	var sig: Dictionary = _signatures()
+	var parts: int = _parts_on()
 	await _reopen(saved_path)
 	var reread: Array = _plan()
 	var moved: int = _moved_between(shown, sig, reread, _signatures())
-	_check("%s: opened again from the save, its steps held (%s), the plan as shown before the save (%d steps, were %d; parts in another step %d)"
-		% [label, _own_steps(), reread.size(), shown.size(), moved],
-		_own_steps() and moved == 0 and reread.size() == shown.size())
+	_check("%s: opened again from the save, its steps held (%s), the plan as shown before the save (%d steps, were %d; parts %d of %d, each in its place, colour, sub-model and step: %d in another)"
+		% [label, _own_steps(), reread.size(), shown.size(), _parts_on(), parts, moved],
+		_own_steps() and moved == 0 and reread.size() == shown.size() and _parts_on() == parts)
+	# Each copy written after IN lines is one the plan builds in two or more
+	# of the model's steps (F3's rule): one built in a step would be its section.
+	var fewest: int = 1 << 30
+	for copy: String in now["in_paths"]:
+		var spans: Dictionary = {}
+		for brick: BrickWorld.Brick in _world.bricks():
+			var at: String = Assemblies.path_of(brick)
+			if at == copy or at.begins_with(copy + "/"):
+				spans[brick.step] = true
+		fewest = mini(fewest, spans.size())
+	if not (now["in_paths"] as Dictionary).is_empty():
+		_check("%s: ...each of the %d copies after IN lines built in 2 or more of the model's steps (fewest %d)"
+			% [label, (now["in_paths"] as Dictionary).size(), fewest], fewest >= 2)
 	var whole: String = _store.to_text(_store.title, true)
 	_check("%s: ...and written whole, the file byte for byte (%d / %d bytes)" % [label, whole.length(),
 		saved.length()], whole == saved)
@@ -486,6 +535,8 @@ func _structure(text: String) -> Dictionary:
 	var comments: Array = []
 	var files: int = 0
 	var ins: int = 0
+	var in_paths: Dictionary = {}   ## each copy an IN line names -> true
+	var in_defs: Dictionary = {}    ## each sub-model those copies are of -> true
 	var built: int = 0
 	var floor: bool = false
 	for line: String in text.split("\n"):
@@ -496,12 +547,17 @@ func _structure(text: String) -> Dictionary:
 			comments.append(bare)
 		elif bare.begins_with("0 !BRICKWORKS IN "):
 			ins += 1
+			var copy: String = bare.trim_prefix("0 !BRICKWORKS IN ").strip_edges()
+			in_paths[copy] = true
+			for segment: String in Assemblies.segments(copy):
+				in_defs[Assemblies.definition(segment)] = true
 		elif bare.begins_with("0 !BRICKWORKS BUILT"):
 			built += 1
 		elif bare.begins_with("0 !BRICKWORKS FLOOR"):
 			floor = true
 	return {"files": files, "comments": comments.size(), "in": ins, "built": built,
-		"floor": floor, "authored": text.contains(AUTHORED), "comment_lines": comments}
+		"floor": floor, "authored": text.contains(AUTHORED), "comment_lines": comments,
+		"in_paths": in_paths, "in_defs": in_defs}
 
 
 # -- hand ----------------------------------------------------------------------
@@ -622,6 +678,7 @@ func _into() -> void:
 	for brick: BrickWorld.Brick in _world.bricks():
 		if not _store.scenery.has(brick.id) and brick.step >= 0:
 			own += 1
+	var opened: Dictionary = _relative_steps()
 	var text: String = FileAccess.get_file_as_string(STATION)
 	_main.call("clear_model")
 	await _frames(4)
@@ -631,6 +688,59 @@ func _into() -> void:
 		return int(item.get("step", -1)) >= 0).size()
 	_check("into: opened, %d parts in the steps saved; put in whole (Into this model), %d of %d (error \"%s\")"
 		% [own, stepped, items.size(), str(held.get("error", ""))], stepped == items.size() and stepped > 0)
+	# Put down as a person does (the model bar's Into this model, a click),
+	# saved and opened again: each part in the step it opened in, the steps
+	# still no one's (no AUTHORED_STEPS: nobody gave a step).
+	var count: int = await _bar.hold_text(text, "station.ldr")
+	var put: int = 0
+	if count > 0:
+		_builder.carrying.aim(_builder.lattice, _builder, Vector3(0.0, 600.0, 0.0), Vector3.DOWN)
+		if _builder.carrying.can_place():
+			put = _builder.place()
+		await _edited()
+	var down: Dictionary = _relative_steps()
+	_check("into: put down (%d in hand, %s), each of its parts in the step it opened in (%d in another), the steps the app's own (%s)"
+		% [count, put != 0, _steps_off(opened, down), _own_steps()],
+		put != 0 and _steps_off(opened, down) == 0 and _own_steps())
+	var called: String = "SK2R into"
+	_forget(called)
+	_store.title = called
+	var ok: bool = _store.save_as(called)
+	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(called))
+	await _reopen(ModelStore.saved_path(called))
+	var reread: Dictionary = _relative_steps()
+	_check("into: saved (%s, AUTHORED_STEPS %s) and opened again: in its saved steps (%s), each part in the step it opened in (%d in another)"
+		% [ok, saved.contains(AUTHORED), _own_steps(), _steps_off(opened, reread)],
+		ok and not saved.contains(AUTHORED) and _own_steps() and _steps_off(opened, reread) == 0)
+	_forget(called)
+
+
+## Each part on the model by what it is and where it stands from the model's
+## lowest corner, with its step: "part|colour|x|y|z#step" -> how many.
+func _relative_steps() -> Dictionary:
+	var low := Vector3(INF, INF, INF)
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			low = low.min(brick.transform.origin)
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var at: Vector3 = brick.transform.origin - low
+		var key: String = "%s|%d|%d|%d|%d#%d" % [brick.part_id, brick.color_code, roundi(at.x),
+			roundi(at.y), roundi(at.z), brick.step]
+		out[key] = int(out.get(key, 0)) + 1
+	return out
+
+
+## How many of [param b]'s parts [param a] does not have in that step.
+func _steps_off(a: Dictionary, b: Dictionary) -> int:
+	var off: int = 0
+	for key: String in b:
+		off += maxi(0, int(b[key]) - int(a.get(key, 0)))
+	for key: String in a:
+		off += maxi(0, int(a[key]) - int(b.get(key, 0)))
+	return off
 
 
 # -- sk2fix: undo and redo, the press that asks, a look while held, the time ----
@@ -833,6 +943,33 @@ func _fix_time() -> void:
 	await _open(own_path)
 	if not _check("fixtime: orthanc opens as the app's own steps", _own_steps()):
 		return
+	# The follow counts a section's steps by AuthorSteps.step_counts (sk2fix2):
+	# the numbers items_of gives, every section of Orthanc.
+	var sections: Dictionary = AuthorSteps.paths_in(_world, _store.scenery)
+	sections[""] = true
+	var differ: PackedStringArray = []
+	var read_ms: float = 0.0
+	var count_ms: float = 0.0
+	var counted: int = 0
+	for section: String in sections:
+		if AuthorSteps.home(_world, section) != section:
+			continue
+		counted += 1
+		var began_read: int = Time.get_ticks_usec()
+		var items: Array = AuthorSteps.items_of(_world, section, _store.scenery)
+		read_ms = maxf(read_ms, float(Time.get_ticks_usec() - began_read) / 1000.0)
+		var want: Dictionary = {}
+		for item: Dictionary in items:
+			want[int(item["step"])] = int(want.get(int(item["step"]), 0)) + 1
+		want["most"] = Instructions._per_step(items.size())
+		var began_count: int = Time.get_ticks_usec()
+		var got: Dictionary = AuthorSteps.step_counts(_world, section, _store.scenery)
+		count_ms = maxf(count_ms, float(Time.get_ticks_usec() - began_count) / 1000.0)
+		if got != want:
+			differ.append(section if not section.is_empty() else "(the model)")
+	_check("fixtime: each of Orthanc's %d sections counted as items_of counts it (%d differ%s), in at most %.1f ms (items_of %.1f)"
+		% [counted, differ.size(), (": " + ", ".join(differ.slice(0, 4))) if not differ.is_empty()
+		else "", count_ms, read_ms], differ.is_empty())
 	var top: BrickWorld.Brick = _top_of(func(_brick: BrickWorld.Brick) -> bool: return true)
 	var on: BrickWorld.Brick = top
 	var most: float = 0.0
