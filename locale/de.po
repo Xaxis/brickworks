@@ -8457,6 +8457,27 @@ msgstr "Deine Form von vorhin ließ sich nicht wieder lesen, darum beginnt dies 
 msgid "Your mould could not be kept: there is no room on the disk."
 msgstr "Deine Form ließ sich nicht aufbewahren: Auf dem Datenträger ist kein Platz mehr."
 
+msgid "Kept on your account too: wear it in the site's minifig maker (Edit profile)."
+msgstr "Auch in deinem Konto aufbewahrt: Trage sie im Minifiguren-Baukasten der Website (Profil bearbeiten)."
+
+msgid "Kept in the studio only: %s"
+msgstr "Nur im Studio aufbewahrt: %s"
+
+msgid "sign in to keep it on your account"
+msgstr "melde dich an, um sie in deinem Konto aufzubewahren"
+
+msgid "it is not kept on this device"
+msgstr "sie ist auf diesem Gerät nicht aufbewahrt"
+
+msgid "sign in again to keep it on your account"
+msgstr "melde dich erneut an, um sie in deinem Konto aufzubewahren"
+
+msgid "Brickworks could not be reached"
+msgstr "Brickworks war nicht erreichbar"
+
+msgid "Brickworks could not take it just now (%d)"
+msgstr "Brickworks konnte sie gerade nicht annehmen (%d)"
+
 msgid "%s has %s triangles, and the maker shapes parts of up to %s."
 msgstr "%s hat %s Dreiecke, und hier lassen sich Teile mit bis zu %s formen."
 

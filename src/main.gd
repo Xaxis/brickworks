@@ -8166,6 +8166,8 @@ func _make_figures() -> void:
 	_figures_made = figures
 	figures.library = _library
 	figures.thumbnails = _thumbnails
+	# A mould saved signed in is kept on the account too (MouldsOnAccount).
+	figures.set("account", _account)
 	_add_to_hud(figures)
 	_inset(figures, 1040.0, 660.0)
 	get_viewport().size_changed.connect(func() -> void: _inset(figures, 1040.0, 660.0))

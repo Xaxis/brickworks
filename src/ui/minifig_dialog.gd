@@ -16,6 +16,12 @@ extends PanelContainer
 
 var library: PartLibrary
 var thumbnails: PartThumbnails
+## Who is signed in: a mould saved here is kept on their account too, for
+## the site's minifig maker (MouldsOnAccount). Null keeps it on the device.
+var account: Account
+## What the account said of the last mould sent: "" kept, else why not;
+## null before any was sent (for a check to read).
+var mould_on_account: Variant = null
 
 signal place_wanted(figure: Minifig)
 signal closed()
@@ -127,6 +133,8 @@ func open() -> void:
 	_name.text = figure.name
 	_sight.forget()
 	_refresh_all()
+	# Moulds made while signed out or out of reach, to the account now.
+	MouldsOnAccount.sweep(account, library)
 
 
 func close() -> void:
@@ -984,7 +992,19 @@ func mould_editor() -> MouldEditor:
 		_mould_editor.library = library
 		_overlay(_mould_editor)
 		_mould_editor.made.connect(_on_made)
+		_mould_editor.made.connect(_mould_to_account)
 	return _mould_editor
+
+
+## A mould saved, kept on the account too (MouldsOnAccount), and said
+## after what the figure is made of.
+func _mould_to_account(ids: Array, slot: String) -> void:
+	if ids.is_empty() or slot.is_empty() or account == null or not account.signed_in():
+		return
+	var why: String = await MouldsOnAccount.send(account, str(ids[0]), slot)
+	mould_on_account = why
+	var words: String = MouldsOnAccount.KEPT if why.is_empty() else MouldsOnAccount.NOT_KEPT % why
+	_summary.text = "%s · %s" % [_summary.text, words] if not _summary.text.is_empty() else words
 
 
 func own_editor() -> Control:
