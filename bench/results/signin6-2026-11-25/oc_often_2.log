@@ -1,0 +1,68 @@
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+  ok    1. one orangecheck id: 10 sign-ins from 10 networks get to the verify, the next is refused in words and asks none
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+  ok    2. another id: past the count
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+  ok    3. 40 junk tokens from one network: each refused as not checking out, nothing asked of the database; a real sign-in there gets past
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+orangecheck: no session: oc_often_check: auth POST verify is not asked here
+  ok    4. no network is counted: 25 ids from one IPv6 /64 and 25 from one IPv4 address, all past
+  ok    nothing asked but the count, the account, its link and the verify (the errors' note refused); never oc_may_try
+oc_often_check: all passed

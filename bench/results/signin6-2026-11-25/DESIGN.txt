@@ -24,14 +24,17 @@ INVARIANTS, each in one sentence, and where each is enforced.
    verify()'s 5 s read (api/_auth.js sessionOf) lets an ordinary request through, and nothing it does outlives
    the session. Everything that hands out authority reads the session live, in one statement
    (session_standing: exists, way, orangecheck binding), or has the database check it in the write itself:
-   a code (its foreign key), a connection (oauth_code_grant), a session handed over (wayTake, wayApp), an
-   emailed code's freshness (api/_oc.js codeOf: linking and unlinking orangecheck, GitHub's bind, deleting an
-   orangecheck account, the address Connect is told is verified), Unlink's "this session" (waysRoute), the
-   console (byCode). A session that reads gone is refused, and remembered gone on that instance.
+   a code (its foreign key), a connection (oauth_code_grant), a session handed over (api/_ways.js handOver,
+   for wayTake and wayApp: there, and its way's, or 410), an emailed code's freshness (api/_oc.js codeOf:
+   linking and unlinking orangecheck, GitHub's bind, deleting an orangecheck account, the address Connect is
+   told is verified; gone, 401), Unlink's "this session" (waysRoute), the console (api/admin.js, standingOf's
+   by). A session that reads gone is refused, and remembered gone on that instance.
 
 4. Nothing is counted before a claim is verified, and nothing is counted per network; the limits are per
    verified identity, which is what bounds a loop.
-   One count, 5 a quarter-hour, per provider account ("back <way> <id>") or orangecheck id ("oc <did>"), taken
+   One count, 10 a quarter-hour (5 before: with no network count every try is a real sign-in, and 5 shut out a
+   person on site, app, phone and then home, attack3 N2; 10 is a third of Supabase's 30 at once, so one identity
+   in a loop still cannot empty it), per provider account ("back <way> <id>") or orangecheck id ("oc <did>"), taken
    once per sign-in inside api/_minted.js, right before the one thing it protects (Supabase's verify, shared
    by every minted sign-in), after the way is vetted: a refused try (unlinked, confirm, too often) counts
    nothing. Starts, callbacks, junk tokens and the app's trades count nothing (each made-up callback costs one
@@ -47,12 +50,13 @@ REMOVED (the patch layers this replaces)
 - api/oauth.js: orangecheckOf, wayOf, wayStillOn (rpc/way_on), the exchange's oc_account_of check, the code's
   way and oc_* marks, and the exchange's separate token insert. The refresh's lost race (tokens for a deleted
   connection) answers invalid_grant, not 502.
-- api/_auth.js: sessionWay and startedBy (two reads at two moments, one cached) -> standingOf, byCode.
+- api/_auth.js: sessionWay and startedBy (two reads at two moments, one cached) -> standingOf, one live read.
 - api/_ways.js: the network count (LIMITS.network, COUNTED.network) and counted(); the count is _minted.js's.
 - api/orangecheck.js: counted() (oc_may_try, per network, before the token was read) and its own per-id count.
 - Left in the database, unused by this code (additive only): way_on, way_session_of, oc_may_try, and the
   way/oc_* columns of oauth_codes. way_set and oc_unlink still delete by way and by id, now always right.
-- networkOf stays exported only because signreview3's attack3.mjs imports it; nothing counts by it.
+- networkOf stays exported only for the checks that prove nothing counts by it (ways_check 12 fills signin5's
+  count of a network under its key and signs two people in from it; signreview3's attack3.mjs imports it).
 
 ORDER: supabase/approving_session.sql is applied before this code runs: without session_standing or
 oauth_code_grant every grant of authority fails closed (503), never open.

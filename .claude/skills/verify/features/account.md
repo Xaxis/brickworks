@@ -752,7 +752,7 @@ they have. A Claude connector belongs to the account that switched it on.
   cookie sent again is `failed=again`. How often (signin4 F9, signin6;
   `LIMITS`, `COUNTED`, `way_may_try` in `api/_minted.js` `mintedSession`
   `count`): only sign-ins Google or GitHub vouched for, once the way is
-  vetted and right before Supabase's verify, 5 per Google or GitHub
+  vetted and right before Supabase's verify, 10 per Google or GitHub
   account in 15 minutes, else `failed=often`; nothing per network
   (signreview3 R3), and starts and made-up ways back count nothing, so no
   visitor can lock a shared network out. Handed over (`?op=way_take`) only
@@ -946,7 +946,7 @@ stood in for, so nothing is made or minted (about 10 s):
 set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs
 ```
 
-It ends "all passed": one orangecheck id 5 times in 15 minutes from 5
+It ends "all passed": one orangecheck id 10 times in 15 minutes from 10
 networks, then refused in words (429) with no verify asked; another id
 goes; 40 tokens that are not one from one network ask nothing of the
 database and a real sign-in there goes; 25 ids from one IPv6 /64 and 25

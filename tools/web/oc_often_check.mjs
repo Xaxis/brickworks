@@ -15,9 +15,10 @@
 // answers 502 and nothing is made, minted or kept. One counted out answers
 // 429, and asks no verify.
 //
-//   1. One orangecheck id: 5 sign-ins in a quarter-hour from 5 networks get
-//      to the verify; the 6th, from a 6th network, is refused in words, and
-//      no verify is asked for it.
+//   1. One orangecheck id: as many sign-ins in a quarter-hour as a Google or
+//      GitHub account (api/_ways.js LIMITS, 10), each from a network of its
+//      own, get to the verify; the next, from another, is refused in words,
+//      and no verify is asked for it.
 //   2. Another id, from where the first was refused: past the count.
 //   3. Junk from one network, 40 tokens that do not check out: refused,
 //      with nothing asked of the database, and a real sign-in there next
@@ -72,6 +73,7 @@ mock.module(api("_oc.js"), {
   },
 });
 const { default: handler } = await import(api("orangecheck.js"));
+const { LIMITS } = await import(api("_ways.js"));
 
 let failed = 0;
 const check = (what, ok, detail = "") => {
@@ -98,9 +100,10 @@ const past = (t) => t.status === PAST && t.verified === 1;
 // 1. and 2.
 const one = did();
 const tries = [];
-for (let n = 0; n < 6; n += 1) tries.push(await signIn(one, v4()));
-check("1. one orangecheck id: 5 sign-ins from 5 networks get to the verify, the 6th is refused in words and asks none",
-  tries.slice(0, 5).every(past) && tries[5].status === 429 && tries[5].error === OFTEN && tries[5].verified === 0,
+for (let n = 0; n <= LIMITS.account; n += 1) tries.push(await signIn(one, v4()));
+const over = tries[LIMITS.account];
+check(`1. one orangecheck id: ${LIMITS.account} sign-ins from ${LIMITS.account} networks get to the verify, the next is refused in words and asks none`,
+  tries.slice(0, LIMITS.account).every(past) && over.status === 429 && over.error === OFTEN && over.verified === 0,
   JSON.stringify(tries));
 const other = await signIn(did(), v4());
 check("2. another id: past the count", past(other), JSON.stringify(other));

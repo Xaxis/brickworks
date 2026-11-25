@@ -262,9 +262,12 @@ function appOf(query) {
 // each 10 s: 90 in a quarter of an hour, for everyone's Google, GitHub and
 // orangecheck sign-ins together, and a sign-in that finds none left reads
 // "busy". So one Google or GitHub account, or one orangecheck id, comes
-// back signed in at most 5 times in any 15 minutes (the site, the app, a
-// phone, and two tries more): a loop of it takes 5 of the 90, never the 30
-// at once. Counted per identity its provider has verified, and only there
+// back signed in at most 10 times in any 15 minutes: a loop of it takes 10
+// of the 90, a third of the 30 at once, never all of either. Not 5
+// (signin5): with nothing counted per network any more, every try of a
+// person's is a real sign-in, and one who signs in at work on the site, the
+// app and a phone, then at home, was shut out by their own (signreview3
+// N2). Counted per identity its provider has verified, and only there
 // (api/_minted.js, right before the verify): never per network, nor before
 // anyone is known (signin6). A start costs nothing but the provider's page,
 // and a way back is the one its start was for, its start's id spent first
@@ -272,7 +275,7 @@ function appOf(query) {
 // GitHub is asked. Each made-up way back costs one start, and one call of
 // Google's or GitHub's token endpoint, which refuses it (signreview3 N1). A
 // code to the address is never limited by these, so the words point to it.
-export const LIMITS = { minutes: 15, account: 5 };
+export const LIMITS = { minutes: 15, account: 10 };
 
 /// What each count is kept under in way_attempts (way_may_try): a provider
 /// account's, by its id, and an orangecheck id's (api/orangecheck.js, as
