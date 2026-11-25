@@ -1016,9 +1016,9 @@ func _fix_time() -> void:
 	# time (sk2fix2).
 	each.sort()
 	var middle: float = (float(each[5]) + float(each[6])) / 2.0 if each.size() == 12 else INF
-	_check("fixtime: twelve stacked, in %d steps, followed in %.1f ms the middle of them, at most %.1f (%s; load %s)"
-		% [steps.size(), middle, most, ", ".join(times), FileAccess.get_file_as_string(
-		"/proc/loadavg").get_slice(" ", 0)], middle <= 16.0 and most <= 33.0 and steps.size() > 1)
+	_check("fixtime: twelve stacked, in %d steps, followed in %.1f ms the middle of them, at most %.1f (%s)"
+		% [steps.size(), middle, most, ", ".join(times)],
+		middle <= 16.0 and most <= 33.0 and steps.size() > 1)
 	var lifted: BrickWorld.Brick = _world.get_brick(on.id)
 	_builder.clear_selection()
 	_builder.selection[lifted.id] = true
