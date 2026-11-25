@@ -5790,7 +5790,14 @@
       "kind": "cli",
       "label": "wingplace probe",
       "entry": "src/dev/wingplace_probe.gd",
-      "reach": "tools/probe.sh wingplace_probe   (windowed, 1100x700: a plate put inside a wing fresh and after a save and an open; a plate from the bin and a pasted brick aimed all round a wing whose mirrored copy stands beside it, and the wing's brick dragged there, every green ghost put down or moved with its twin, every red one refused in the words it said, each drawn as it is; an ask cut short answers as one in one go)",
+      "reach": "tools/probe.sh wingplace_probe   (windowed, 1100x700: a plate put inside a wing fresh and after a save and an open; a plate from the bin and a pasted brick aimed all round a wing whose mirrored copy stands beside it, and the wing's brick dragged there, every green ghost put down or moved with its twin, every red one refused in the words it said, each drawn as it is; the wing's brick dropped a stud along and where it stood from outside the wing, its twin with it; an ask cut short answers as one in one go)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "room steady probe",
+      "entry": "src/dev/room_steady_probe.gd",
+      "reach": "tools/probe.sh room_steady_probe   (windowed, 390x844; --phone for the phone's layout: 20 puts and undos on the ground and inside a copied wing, the model's room one height in every frame, the window's column never wider than the window, the status bar inside it with no line cut mid-word; pictures before and after a put)",
       "area": "building"
     },
     {
