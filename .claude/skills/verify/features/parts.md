@@ -378,13 +378,14 @@ geometry in front of them.
   (`LotPictures.offer` as a link opens, `want()` from `BuildMode`, `PartStep`
   and the first step taken in `StepsBar`, its `stepped`): a page that only
   looks at the model never fetches it, though a phone shows the step bar's
-  last step with its parts (those few drawn live, as before). The page fetches it beside
-  the model only for a link to Build it (`&build`, `src/boot/shell.html`), and
-  reads it there on the browser's own threads (`window.brickworksLots`
-  {bytes, pixels, width, height}); the app takes the pixels as they are, no
-  frame waited on: waiting on frames for the fetch and a read of its own, it
-  took the file 5-10 s after asking at load 70. Otherwise the app fetches it
-  (`PageFetch`) and reads it on a worker. The model page's Parts list
+  last step with its parts (those few drawn live, as before). The page
+  fetches it and reads it on the browser's own threads
+  (`window.brickworksLotsAsk`, giving `window.brickworksLots` {bytes, pixels,
+  width, height}, `src/boot/shell.html`): beside the model for a link to
+  Build it (`&build`), else when the app asks; the app takes the pixels as
+  they are, no frame waited on: waiting on frames for the fetch and a read of
+  its own, it took the file 5-10 s after asking at load 70. Off the web the
+  app fetches it (`PageFetch`) and reads it on a worker. The model page's Parts list
   (`parts.json`'s `lot_pictures`, `web/part-pictures.js`) takes its lots from
   it as the list nears the screen or its tab opens, never in the first
   screen's load. So Build it's step, the studio's step bar, the part-step card
