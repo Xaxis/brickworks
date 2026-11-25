@@ -2078,10 +2078,12 @@ static func _put_down(down: Array, blocks: Dictionary, one: Array, reach: Array[
 	var k: int = down.size()
 	down.append(one)
 	for block: Vector3i in reach:
+		# An Array: a PackedInt32Array taken out of the Dictionary is a copy,
+		# and what is put in it never reaches the one kept.
 		if blocks.has(block):
-			(blocks[block] as PackedInt32Array).append(k)
+			(blocks[block] as Array).append(k)
 		else:
-			blocks[block] = PackedInt32Array([k])
+			blocks[block] = [k]
 
 
 ## The part of the first of [param down] that shares a cell with
@@ -2097,7 +2099,7 @@ static func _meets(down: Array, blocks: Dictionary, cells: PackedInt32Array,
 		var near: Variant = blocks.get(block)
 		if near == null:
 			continue
-		for k: int in near as PackedInt32Array:
+		for k: int in near as Array:
 			if first >= 0 and k >= first:
 				continue
 			var one: Array = down[k]
