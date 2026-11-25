@@ -485,6 +485,18 @@ func _first_ghost() -> String:
 		str((_shell.status as Control).get_global_rect()), _shell.status.fields()["message"].left(20)]
 
 
+## The status bar's row as laid out: each shown control's least width, and a
+## line's words.
+func _bar_fields() -> String:
+	var out: PackedStringArray = []
+	for found: Node in (_shell.status as Node).find_children("*", "Control", true, false):
+		var c: Control = found as Control
+		if c.visible and c.get_parent() is HBoxContainer and c.get_parent().get_parent() == _shell.status:
+			out.append("%s %.0f%s" % [c.get_class(), c.get_combined_minimum_size().x,
+				" \"%s\"" % (c as Label).text.left(50) if c is Label else ""])
+	return ", ".join(out)
+
+
 ## Frames until an ask the aim began is answered (30 at most), as a person's
 ## pointer rests a moment before the click.
 func _asked() -> void:
@@ -741,6 +753,7 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 	var slowest: int = 0
 	var moving: int = 0
 	var rooms: Dictionary = {}
+	var wide_said: bool = false
 	for x: int in range(int(box.position.x) - 60, int(box.end.x) + 61, 20):
 		for z: int in range(int(box.position.z) - 60, int(box.end.z) + 61, 20):
 			var at: Vector2 = _screen(Vector3(float(x), 0.0, float(z)))
@@ -764,6 +777,12 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 				room_rect.position.y, (_shell.status as Control).size.x,
 				str((_camera.get("_shift") as Vector2).snappedf(0.1))]
 			rooms[room_key] = int(rooms.get(room_key, 0)) + 1
+			# The first read with the bar wider than the window: what in it
+			# asks for the width.
+			if (_shell.status as Control).size.x > root.get_visible_rect().size.x + 0.5 and not wide_said:
+				wide_said = true
+				print("      the status bar %.0f wide in a window of %.0f: %s" % [(_shell.status as Control).size.x,
+					root.get_visible_rect().size.x, _bar_fields()])
 			if not fits and predicted.is_empty():
 				continue
 			# What one aim's ask costs, unbounded, here; and, for a place the
