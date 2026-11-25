@@ -376,16 +376,14 @@ func _hair_from_file() -> Dictionary:
 	# shape (as wide as the file's hair, not the Quiff's), no draft over it.
 	await _press(_figures._make)
 	await _frames(20)
-	var wide: float = 0.0
-	if _editor.mould != null:
-		for p: Vector3 in _editor.mould.positions:
-			wide = maxf(wide, absf(p.x))
-	_check("Make a mould… opens on the file's hair itself, standing for 3901, %.1f LDU across "
-		% (wide * 2.0) + "as the mohawk is (%.1f): %s" % [piece.box().size.x if piece != null else 0.0,
-		_editor._status.text], _editor.visible and _editor.mould != null
+	var own: Mould = Mould.of_made(_library, worn, "headwear")
+	if own != null:
+		own.refine(Mould.FINEST * 2.0)
+	_check("Make a mould… opens on the file's hair itself, standing for 3901, every corner the "
+		+ "mohawk's (%d): %s" % [own.positions.size() if own != null else 0, _editor._status.text],
+		_editor.visible and _editor.mould != null and own != null
 		and _editor.mould.base == "3901" and _editor._from.text == worn and not _editor._restored
-		and _editor._title.text.contains("your") and _editor.mould.triangle_count() > 100
-		and piece != null and absf(wide * 2.0 - piece.box().size.x) < 1.0)
+		and _editor._title.text.contains("your") and _editor.mould.positions == own.positions)
 	await _shot("mould_on_stl")
 	await _press(_editor.controls_by_name()["mould_close"])
 	var placed: Dictionary = await _place(worn, Vector2(0.18, 0.0))
@@ -510,8 +508,10 @@ func _beside_real_hair() -> void:
 		var share := Vector2(-0.25 + 0.25 * n, 0.1)
 		_main.call("_open_figures")
 		await _frames(20)
-		_figures.figure.choose(_library, "headwear", base)
+		# The colour asked for first, so choosing the piece keeps it where the
+		# piece is made in it, as the mould made from it then is.
 		_figures.figure.colours["headwear"] = int(bases[n][2])
+		_figures.figure.choose(_library, "headwear", base)
 		_figures._slot = "headwear"
 		_figures._refresh_all()
 		await _frames(10)

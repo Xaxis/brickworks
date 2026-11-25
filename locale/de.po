@@ -8424,8 +8424,11 @@ msgstr "Rot markieren, wo das Teil dünner als 1 mm ist"
 msgid "More corners where the surface is coarse, for finer detail (Undo takes it back)"
 msgstr "Mehr Ecken, wo die Oberfläche grob ist, für feinere Einzelheiten (Rückgängig nimmt es zurück)"
 
-msgid "Take the last stroke back"
-msgstr "Den letzten Strich zurücknehmen"
+msgid "Take the last stroke back (%s)"
+msgstr "Den letzten Strich zurücknehmen (%s)"
+
+msgid "Put it back (%s)"
+msgstr "Wieder zurücklegen (%s)"
 
 msgid "Drag on the part to sculpt, off it to turn it; wheel to come closer. Blue is its connection, which stays as it is."
 msgstr "Zieh auf dem Teil, um es zu formen, daneben, um es zu drehen; mit dem Mausrad kommst du näher. Blau ist seine Verbindung, die bleibt, wie sie ist."
@@ -17773,6 +17776,9 @@ msgstr "%s ist keine 3D-Datei, aus der sich hier ein Teil machen lässt: wähle 
 
 msgid "%s has %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
 msgstr "%s hat %s Dreiecke. Ein Teil lässt sich aus höchstens %s machen: verringere sie zuerst in deinem 3D-Programm (Blenders Decimate-Modifier tut das)."
+
+msgid "%s has at least %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s hat mindestens %s Dreiecke. Ein Teil lässt sich aus höchstens %s machen: verringere sie zuerst in deinem 3D-Programm (Blenders Decimate-Modifier tut das)."
 
 msgid "%s has no size: its points are all in one place, on one line or one flat sheet."
 msgstr "%s hat keine Größe: seine Punkte liegen alle an einer Stelle, auf einer Linie oder in einer flachen Ebene."

@@ -330,7 +330,10 @@ the model, and the design assistant doing the same with `add_minifig`.
 - `parts from 3D files` (`src/parts/mesh_part.gd`, `MeshPart`, a Later class):
   an STL (binary or ASCII; Z up, turned upright) or an OBJ read with
   `MeshFile` and refused in a sentence when it is not closed (an edge used an
-  odd number of times), has no size, or is past 120,000 triangles. Past 9,000
+  odd number of times), has no size, or is past 120,000 triangles. Those are
+  counted before a triangle is read (`_triangles_at_least`: a binary STL's
+  own count, a text STL's facets, an OBJ's faces), so a 26 MB OBJ of a million
+  is refused at once; read first, it took 22 s (figmould). Past 9,000
   it is simplified (quadric edge collapse) and kept only if no point moved
   more than 1% of its longest side (`HOLDS_SHARE`, a Hausdorff bound both
   ways). A corner that is no number (NaN, endless; in text a "nan", "inf",

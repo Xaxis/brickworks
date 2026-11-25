@@ -91,8 +91,9 @@ func _files() -> void:
 	at = Time.get_ticks_msec()
 	var fine: MeshPart = MeshPart.read(obj_million, "million.obj")
 	var took: int = Time.get_ticks_msec() - at
-	_ok(fine.problem.contains("1,002,528") and fine.problem.contains("at most 120,000"),
-		"an OBJ of a million triangles is refused in a sentence, in %d ms: %s" % [took, fine.problem])
+	_ok(fine.problem.contains("1,002,528") and fine.problem.contains("at most 120,000") and took < 2000,
+		"an OBJ of a million triangles is refused in a sentence before it is read, in %d ms "
+			% took + "(22,206 ms when it was read first): %s" % fine.problem)
 
 	var kept: PackedStringArray = DirAccess.get_files_at(CustomParts.dir) \
 		if DirAccess.dir_exists_absolute(CustomParts.dir) else PackedStringArray()
@@ -226,12 +227,19 @@ func _drafts() -> void:
 ## and the sentences it says as it goes.
 func _words(editor: MouldEditor) -> void:
 	var shown: Dictionary = {}
+	# Words told with keys (Keymap.tell) are read as the app fills them in: a
+	# check has no keys bound, so each is filled in with one.
+	var keys := RegEx.create_from_string(r"\{[a-z0-9_]+(?:\|[^}]*)?\}")
 	for node: Node in editor.find_children("*", "Control", true, false):
 		var control: Control = node
-		for said: String in [control.tooltip_text, str(control.accessibility_name),
+		var told: Dictionary = control.get_meta(&"key_words", {})
+		for said: String in [control.tooltip_text if not told.has(&"tooltip_text") else "",
+				str(control.accessibility_name),
 				control.get("text") if (control is Button or control is Label) else ""]:
 			if not said.strip_edges().is_empty() and not said in [editor._counts.text]:
 				shown[said] = true
+		for property: StringName in told:
+			shown[keys.sub(str(told[property]), "Ctrl+Z", true)] = true
 	for said: String in [MouldEditor.FINGER_HINT, "Building the mould…", "There is no part 3901x.",
 			"Fetching 3901's geometry…", "That part has no geometry to sculpt.",
 			"Make a mould from your Quiff", "Your Quiff, to shape further. Saved, it is a new part; the one before stays.",

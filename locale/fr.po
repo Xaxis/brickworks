@@ -8424,8 +8424,11 @@ msgstr "Marquer en rouge là où la pièce fait moins de 1 mm d'épaisseur"
 msgid "More corners where the surface is coarse, for finer detail (Undo takes it back)"
 msgstr "Plus de sommets là où la surface est grossière, pour plus de détail (Annuler le retire)"
 
-msgid "Take the last stroke back"
-msgstr "Annuler le dernier trait"
+msgid "Take the last stroke back (%s)"
+msgstr "Annuler le dernier trait (%s)"
+
+msgid "Put it back (%s)"
+msgstr "Le remettre (%s)"
 
 msgid "Drag on the part to sculpt, off it to turn it; wheel to come closer. Blue is its connection, which stays as it is."
 msgstr "Faites glisser sur la pièce pour la sculpter, à côté pour la tourner ; la molette pour vous rapprocher. Le bleu est sa liaison, qui reste telle quelle."
@@ -17773,6 +17776,9 @@ msgstr "%s n'est pas un fichier 3D dont on peut faire une pièce ici : choisisse
 
 msgid "%s has %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
 msgstr "%s a %s triangles. Une pièce peut en avoir au plus %s : réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
+
+msgid "%s has at least %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s a au moins %s triangles. Une pièce peut en avoir au plus %s : réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
 
 msgid "%s has no size: its points are all in one place, on one line or one flat sheet."
 msgstr "%s n'a pas de taille : ses points sont tous au même endroit, sur une ligne ou sur une feuille plate."
