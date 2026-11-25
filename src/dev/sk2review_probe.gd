@@ -41,8 +41,18 @@
 ##   fixtime   the follow's time on Orthanc as its own (16 ms a follow), and
 ##             AuthorSteps.step_counts giving items_of's numbers in each section
 ##
+## sk2fix3's own (sk2review2 F1, the baseplate is not the model's to plan):
+##   plate     a model with steps (the app's own saved, its author's) put whole
+##             by a click into house.ldr, nobody's steps, on the default
+##             baseplate and on a FLOOR baseplate: the baseplate given no step,
+##             the house's parts in the plan they were shown, Undo byte for
+##             byte; and a model with no steps put into one whose baseplate kept
+##             a step as the model's own part (made the floor again, then Plan
+##             steps): no part and no copy given a step, saved without
+##             AUTHORED_STEPS, Undo byte for byte
+##
 ##   godot --headless --path . --script src/dev/sk2review_probe.gd
-##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand,looks,redo,ask,heldlook,fixtime   only those
+##   SK2R_ONLY=drag,pair,stack,mpd,castle,into,hand,looks,redo,ask,heldlook,fixtime,plate   only those
 ##   -- --sk2r=drag,pair,...                     the same, as the suite gives it
 ##   SK2R_OUT=DIR                                the texts written there
 extends SceneTree
@@ -166,6 +176,8 @@ func _run() -> void:
 		await _held_look()
 	if _asked("fixtime"):
 		await _fix_time()
+	if _asked("plate"):
+		await _plate()
 	print("")
 	print("%d FAILURE(S)" % _failures if _failures else "every case holds")
 	quit(1 if _failures else 0)
@@ -1049,6 +1061,189 @@ func _fix_time() -> void:
 	_main.call("clear_model")
 	await _frames(4)
 	DirAccess.remove_absolute(own_path)
+
+
+# -- sk2fix3: the baseplate is not the model's to plan ---------------------------
+
+
+## A model of the app's own on its own baseplate, a part of the file in step
+## 1, with two bricks on it in step 2. Made the floor again
+## (FloorLayer.release), the baseplate is scenery and keeps its step.
+const ON_PLATE := """0 On a plate
+0 Name: sk_on_plate.ldr
+0 Author: Brickworks
+
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3811.dat
+0 STEP
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+"""
+
+## Two bricks someone made, with no steps.
+const FLAT_PAIR := """0 Flat pair
+0 Name: flat_pair.ldr
+0 Author: A. Hand
+1 14 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+"""
+
+
+## sk2review2 F1: a model put into one nobody gave steps made the host's
+## worked-out steps its own with the baseplate planned as a part of it
+## (Builder._bring_steps), so every step of the house moved by a part; and
+## a model with no steps put in went in with steps where only the floor had
+## one (Builder._brought_stepped).
+func _plate() -> void:
+	print("\n== plate: a model put whole into one nobody gave steps, on a baseplate")
+	var house: String = FileAccess.get_file_as_string("res://models/house.ldr")
+	var hosts: Dictionary = {
+		"house": house,
+		"house on a FLOOR baseplate": house.replace("0 Author: Brickworks\n",
+			"0 Author: Brickworks\n0 !BRICKWORKS FLOOR BASEPLATE 32 32 2\n"),
+	}
+	var brought: Dictionary = {
+		"nested_own": ["drops.ldr", FileAccess.get_file_as_string("res://tests/fixtures/steps/nested_own.ldr")],
+		"kart": ["kart.ldr", FileAccess.get_file_as_string("res://models/kart.ldr")],
+	}
+	var called: String = "SK2R plate"
+	for host: String in hosts:
+		for name: String in brought:
+			var label: String = "plate: %s <- %s" % [host, name]
+			await _open_text(called, str(hosts[host]))
+			var plates: int = _store.scenery.size()
+			var shown: Array = _plan_ids()
+			var before: String = _store.to_text(_store.title, true)
+			var count: int = await _bar.hold_text(str(brought[name][1]), str(brought[name][0]))
+			var put: int = 0
+			if count > 0:
+				put = await _put_beside()
+			await _edited()
+			if not _check("%s: put down (%d in hand) beside the house on %d baseplate part(s)"
+					% [label, count, plates], put != 0 and plates > 0):
+				continue
+			var mine: Dictionary = {}
+			for id: Variant in _put_ids(_builder._history.back()):
+				mine[int(id)] = true
+			var own: Array = []
+			for brick: BrickWorld.Brick in _world.bricks():
+				if not _store.scenery.has(brick.id) and not mine.has(brick.id):
+					own.append(brick.id)
+			var now: Array = _plan_ids(own)
+			_check("%s: the baseplate given no step (%d with one), the house's %d parts in the plan they were shown (%d steps then, %d now, %d steps differ)"
+				% [label, _stepped_scenery(), own.size(), shown.size(), now.size(), _steps_differ(shown, now)],
+				_stepped_scenery() == 0 and now == shown)
+			_builder.undo()
+			await _frames(2)
+			var undone: String = _store.to_text(_store.title, true)
+			_check("%s: undone, the save byte for byte as before (%s), the baseplate given no step (%d with one)"
+				% [label, undone == before, _stepped_scenery()], undone == before and _stepped_scenery() == 0)
+			if undone != before:
+				_first_diff(before, undone)
+	_forget(called)
+	# The floor with a step of its own, as a baseplate of the model made the
+	# floor again keeps it, and the model's own parts none (Plan steps).
+	await _open_text(called, ON_PLATE)
+	var ground: FloorLayer = _main.get("_floor")
+	var released: int = ground.release() if ground != null else 0
+	await _edited()
+	var said: String = _shell.change_steps("plan", [], null)
+	await _edited()
+	if _check("plate: the model's baseplate made the floor again (%d), then Plan steps (\"%s\"): the floor keeps its step (%d with one), the model's parts none (%s)"
+			% [released, said.left(50), _stepped_scenery(), not AuthorSteps.any(_world, _store.scenery)],
+			released > 0 and _stepped_scenery() > 0 and not AuthorSteps.any(_world, _store.scenery)):
+		var before: String = _store.to_text(_store.title, true)
+		var count: int = await _bar.hold_text(FLAT_PAIR, "flat_pair.ldr")
+		var put: int = 0
+		if count > 0:
+			put = await _put_beside()
+		await _edited()
+		var stepped: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if not _store.scenery.has(brick.id) and brick.step >= 0:
+				stepped += 1
+		var copies: int = _world.unit_steps.values().filter(func(step: Variant) -> bool:
+			return int(step) >= 0 or int(step) == AuthorSteps.IN_PARENT).size()
+		var saved: String = _store.to_text(_store.title, true)
+		_check("plate: a model with no steps put in (%d in hand, %s): no part given a step (%d), no copy (%d), saved without AUTHORED_STEPS (%s)"
+			% [count, put != 0, stepped, copies, not saved.contains(AUTHORED)],
+			put != 0 and stepped == 0 and copies == 0 and not saved.contains(AUTHORED))
+		_builder.undo()
+		await _frames(2)
+		var undone: String = _store.to_text(_store.title, true)
+		_check("plate: undone, the save byte for byte as before (%s)" % (undone == before), undone == before)
+		if undone != before:
+			_first_diff(before, undone)
+	_forget(called)
+	_main.call("clear_model")
+	await _frames(4)
+
+
+## How many of the scenery's parts (the baseplate) have a step.
+func _stepped_scenery() -> int:
+	var count: int = 0
+	for brick_id: Variant in _store.scenery:
+		var brick: BrickWorld.Brick = _world.get_brick(int(brick_id))
+		if brick != null and brick.step >= 0:
+			count += 1
+	return count
+
+
+## The plan as the booklet shows it: each step's part ids, only [param only]'s
+## where given, steps with none of them left out.
+func _plan_ids(only: Array = []) -> Array:
+	var keep: Dictionary = {}
+	for id: Variant in only:
+		keep[int(id)] = true
+	var out: Array = []
+	for step: Instructions.Step in Instructions.plan(_world, _world.library, _store.scenery, {}, true):
+		var ids: Array = Array(step.brick_ids)
+		for copy: PackedInt64Array in step.copies:
+			ids.append_array(Array(copy))
+		if not keep.is_empty():
+			ids = ids.filter(func(id: Variant) -> bool: return keep.has(int(id)))
+		if ids.is_empty():
+			continue
+		ids.sort()
+		out.append(ids)
+	return out
+
+
+func _steps_differ(a: Array, b: Array) -> int:
+	var differ: int = 0
+	for n: int in maxi(a.size(), b.size()):
+		if (a[n] if n < a.size() else []) != (b[n] if n < b.size() else []):
+			differ += 1
+	return differ
+
+
+## The model held put down by a click beside what is built.
+func _put_beside() -> int:
+	var box := AABB()
+	var any: bool = false
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var here := AABB(brick.transform.origin, Vector3.ZERO)
+		box = here if not any else box.merge(here)
+		any = true
+	for tries: int in 40:
+		var at := Vector3(box.end.x + 300.0 + 40.0 * tries, box.end.y + 800.0, box.get_center().z) \
+			if any else Vector3(40.0 * tries, 800.0, 0.0)
+		_builder.carrying.aim(_builder.lattice, _builder, at, Vector3.DOWN)
+		if _builder.carrying.can_place():
+			var first: int = _builder.place()
+			await _frames(4)
+			return first
+	print("    (nowhere to put it down)")
+	return 0
+
+
+func _open_text(called: String, text: String) -> void:
+	_forget(called)
+	var path: String = ModelStore.saved_path(called)
+	_write(path, text)
+	await _reopen(path)
 
 
 # -- reading ---------------------------------------------------------------------
