@@ -67,8 +67,14 @@ static func want() -> void:
 	var thumbnails: PartThumbnails = _offered_to.get_ref() as PartThumbnails
 	var path: String = _offered
 	_offered = ""
-	if thumbnails != null:
-		_take(path, thumbnails)
+	if thumbnails == null:
+		return
+	# Fetched and read by the page, on the browser's threads, where it can:
+	# read here on a worker, a phone at load 119 had its first step 4.7 s
+	# before the pictures came (bench/results/partpics-2026-11-24/tap).
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.brickworksLotsAsk && window.brickworksLotsAsk(%s)" % JSON.stringify(path), true)
+	_take(path, thumbnails)
 
 
 ## [param path] fetched (or taken from the page) and handed to

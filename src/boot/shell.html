@@ -1096,6 +1096,43 @@ const bootTips = (function () {
 // in Brickworks' (?copy=<id>), whose model the studio opens at start in
 // place of the example car (Main._open_asked).
 (function () {
+	// Every lot's picture of a shared model in one file (api/share.js
+	// drawLotPictures), [named] as its share answer names it, fetched and
+	// read here as window.brickworksLots {url, done, status, bytes, pixels,
+	// width, height}: the browser reads a PNG on threads of its own, and the
+	// app takes the pixels as they are (LotPictures), waiting on no frame of
+	// its own (each one seconds on a busy phone). Asked for by the link to
+	// Build it below, and by the app as Build it opens or a step is taken
+	// (LotPictures.want): false when [named] is no such file.
+	window.brickworksLotsAsk = function (named) {
+		if (!/^\/m\/[A-Za-z0-9]{10}\/v\/[1-9][0-9]{0,5}\/parts[.]png[?]f=[0-9a-f]{12}$/.test(String(named))) return false;
+		if (window.brickworksLots && window.brickworksLots.url === named) return true;
+		const lots = window.brickworksLots = { url: named, done: false, status: 0, bytes: null, pixels: null,
+			width: 0, height: 0 };
+		fetch(named).then((answer) => {
+			lots.status = answer.status;
+			return answer.arrayBuffer();
+		}).then(async (bytes) => {
+			try {
+				if (lots.status === 200 && typeof createImageBitmap === "function" && typeof OffscreenCanvas === "function") {
+					const picture = await createImageBitmap(new Blob([bytes], { type: "image/png" }),
+						{ premultiplyAlpha: "none", colorSpaceConversion: "none" });
+					const canvas = new OffscreenCanvas(picture.width, picture.height);
+					const pen = canvas.getContext("2d", { willReadFrequently: true });
+					pen.drawImage(picture, 0, 0);
+					lots.pixels = pen.getImageData(0, 0, picture.width, picture.height).data.buffer;
+					lots.width = picture.width;
+					lots.height = picture.height;
+					picture.close();
+				}
+			} catch (e) {
+				lots.pixels = null;
+			}
+			lots.bytes = bytes;
+			lots.done = true;
+		}).catch(() => { lots.done = true; });
+		return true;
+	};
 	try {
 		const query = new URLSearchParams(location.search);
 		const id = query.get("view") || query.get("copy") || "";
@@ -1108,43 +1145,13 @@ const bootTips = (function () {
 			early.status = reply.status;
 			early.text = text;
 			early.done = true;
-			// And, for a link that opens Build it (&build), every lot's
-			// picture of it in one file, which the answer names (api/share.js
-			// drawLotPictures): here before Build it's first step, which shows
-			// them at once (LotPictures). A link that only shows the model
-			// asks for none: the app asks when Build it or the steps open.
+			// And, for a link that opens Build it (&build), its lot pictures
+			// (brickworksLotsAsk), here before Build it's first step, while
+			// the engine starts. A link that only shows the model asks for
+			// none: the app asks when Build it opens or a step is taken.
 			let named = "";
 			try { named = String(JSON.parse(text).lot_pictures || ""); } catch (e) {}
-			if (!query.has("build") || reply.status !== 200
-				|| !/^\/m\/[A-Za-z0-9]{10}\/v\/[1-9][0-9]{0,5}\/parts[.]png[?]f=[0-9a-f]{12}$/.test(named)) return;
-			const lots = window.brickworksLots = { url: named, done: false, status: 0, bytes: null, pixels: null,
-				width: 0, height: 0 };
-			fetch(named).then((answer) => {
-				lots.status = answer.status;
-				return answer.arrayBuffer();
-			}).then(async (bytes) => {
-				// Read here too, while the engine starts: the browser reads a
-				// PNG on threads of its own, and the app takes the pixels as
-				// they are, in the frame the model opens, waiting on no frame
-				// of its own (each one seconds on a busy phone).
-				try {
-					if (lots.status === 200 && typeof createImageBitmap === "function" && typeof OffscreenCanvas === "function") {
-						const picture = await createImageBitmap(new Blob([bytes], { type: "image/png" }),
-							{ premultiplyAlpha: "none", colorSpaceConversion: "none" });
-						const canvas = new OffscreenCanvas(picture.width, picture.height);
-						const pen = canvas.getContext("2d", { willReadFrequently: true });
-						pen.drawImage(picture, 0, 0);
-						lots.pixels = pen.getImageData(0, 0, picture.width, picture.height).data.buffer;
-						lots.width = picture.width;
-						lots.height = picture.height;
-						picture.close();
-					}
-				} catch (e) {
-					lots.pixels = null;
-				}
-				lots.bytes = bytes;
-				lots.done = true;
-			}).catch(() => { lots.done = true; });
+			if (query.has("build") && reply.status === 200) window.brickworksLotsAsk(named);
 		})).catch(() => { early.done = true; });
 	} catch (e) {}
 })();
