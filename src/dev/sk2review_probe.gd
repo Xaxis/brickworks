@@ -691,6 +691,8 @@ func _into() -> void:
 	# Put down as a person does (the model bar's Into this model, a click),
 	# saved and opened again: each part in the step it opened in, the steps
 	# still no one's (no AUTHORED_STEPS: nobody gave a step).
+	var empty_text: String = _store.to_text(_store.title, true)
+	var empty_own: bool = _own_steps()
 	var count: int = await _bar.hold_text(text, "station.ldr")
 	var put: int = 0
 	if count > 0:
@@ -702,6 +704,18 @@ func _into() -> void:
 	_check("into: put down (%d in hand, %s), each of its parts in the step it opened in (%d in another), the steps the app's own (%s)"
 		% [count, put != 0, _steps_off(opened, down), _own_steps()],
 		put != 0 and _steps_off(opened, down) == 0 and _own_steps())
+	# One undo takes all of it out, the steps' owner with it; redone, the same.
+	_builder.undo()
+	await _frames(2)
+	_check("into: undone, the model as before it (%d parts, steps the app's own %s, was %s; the save byte for byte %s)"
+		% [_parts_on(), _own_steps(), empty_own, _store.to_text(_store.title, true) == empty_text],
+		_parts_on() == 0 and _own_steps() == empty_own
+		and _store.to_text(_store.title, true) == empty_text)
+	_builder.redo()
+	await _frames(2)
+	_check("into: redone, each part in the step it opened in (%d in another), the steps the app's own (%s)"
+		% [_steps_off(opened, _relative_steps()), _own_steps()],
+		_steps_off(opened, _relative_steps()) == 0 and _own_steps())
 	var called: String = "SK2R into"
 	_forget(called)
 	_store.title = called
