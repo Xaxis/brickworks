@@ -6231,14 +6231,56 @@ func figure_lift(parts: Array, at: Transform3D) -> float:
 ## Whether a figure fits where it would stand: every part's geometry to
 ## hand and none of them in anything already there. Its own parts are
 ## not tested against each other — a head is meant to sit on its neck.
-func figure_fits(parts: Array, at: Transform3D) -> bool:
+## [param going] are parts on the model that go with it ([method
+## _followers_now]): where they stand now is in nobody's way.
+func figure_fits(parts: Array, at: Transform3D, going: Dictionary = {}) -> bool:
 	for item: Dictionary in parts:
 		var part: Lbm.PartMesh = library.mesh_for(str(item["part"]))
 		if part == null:
 			return false
-		if lattice.collides_boxes(boxes_for(part, at * (item["at"] as Transform3D))):
+		var boxes: PackedInt32Array = boxes_for(part, at * (item["at"] as Transform3D))
+		var blocked: bool = lattice.collides_boxes(boxes) if going.is_empty() \
+			else not lattice.blockers_boxes(boxes, 0, going).is_empty()
+		if blocked:
 			return false
 	return true
+
+
+## Whether the figure in hand, put down at [param at], fits: the parts of it
+## on show ([member held_figure]) and the parts of it a step has not put on
+## yet, which go with it ([method _followers_now]), each where it would land
+## and none in anything there but the figure itself. Up to stepfast a later
+## head was put down inside a plate over the figure's shoulders, unasked.
+func _figure_fits_with_followers(at: Transform3D) -> bool:
+	var followers: Array = _followers_now()
+	if followers.is_empty():
+		return figure_fits(held_figure, at)
+	var going: Dictionary = {}
+	for follower: Dictionary in followers:
+		going[int(follower["brick"])] = true
+	if not figure_fits(held_figure, at, going):
+		return false
+	for follower: Dictionary in followers:
+		var brick: BrickWorld.Brick = world.get_brick(int(follower["brick"]))
+		if brick == null:
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if part == null:
+			return false
+		var boxes: PackedInt32Array = boxes_for(part, at * (follower["at"] as Transform3D))
+		if not lattice.blockers_boxes(boxes, 0, going).is_empty():
+			return false
+	return true
+
+
+## The parts of the figure in hand a step has not put on, that go where it
+## is put down ([member _figure_followers]): only straight after the lift
+## that left them; an edit or another model since, and they stay where they
+## stand.
+func _followers_now() -> Array:
+	if _figure_followers.is_empty() or _history.is_empty() or not is_same(_history.back(), _figure_lift):
+		return []
+	return _figure_followers
 
 
 ## Put a figure's parts in the world and the lattice, as one group, and
@@ -6324,8 +6366,9 @@ func _place_figure() -> int:
 	# under its own name and each part in its own step, and those parts
 	# brought where it went (_lift_figure).
 	# Only straight after the lift that left them: an edit or another model
-	# since, and they stay where they stand.
-	if _history.is_empty() or not is_same(_history.back(), _figure_lift):
+	# since, and they stay where they stand. Where they land was asked with
+	# the rest of it (_figure_fits_with_followers).
+	if _followers_now().is_empty():
 		_figure_followers = []
 	var following: bool = not _figure_followers.is_empty()
 	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform,
@@ -6430,7 +6473,7 @@ func _preview_figure(origin: Vector3, direction: Vector3) -> void:
 			return
 		target = landing
 	_ghost_transform = settle_figure(target, held_rotation, hit, held_figure)
-	_ghost_valid = figure_fits(held_figure, _ghost_transform)
+	_ghost_valid = _figure_fits_with_followers(_ghost_transform)
 	for n: int in held_figure.size():
 		if n >= _figure_ghosts.size():
 			var made := MeshInstance3D.new()
