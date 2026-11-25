@@ -254,9 +254,23 @@ func _case_timing() -> void:
 ## A Save's pieces timed alone, as it asks them: the patch of the file, and
 ## live's write it falls to when the patch is refused.
 func _save_pieces() -> String:
+	var began_all: int = Time.get_ticks_usec()
+	_store.call("_moment")
+	var moment_ms: float = (Time.get_ticks_usec() - began_all) / 1000.0
+	began_all = Time.get_ticks_usec()
+	var text: String = _store.to_text(_store.title, true)
+	var text_ms: float = (Time.get_ticks_usec() - began_all) / 1000.0
+	began_all = Time.get_ticks_usec()
 	var asked: Dictionary = _store.call("_source_asked", _store.title)
+	var asked_ms: float = (Time.get_ticks_usec() - began_all) / 1000.0
 	if asked.is_empty() or asked.get("source") == null:
 		return "no file to patch"
+	return "moment %.0f ms, the whole text %.0f ms (%d bytes), asked %.0f ms, %s" % [moment_ms, text_ms,
+		text.length(), asked_ms, _patch_pieces(asked)]
+
+
+## The patch and live's write of [param asked] timed apart.
+func _patch_pieces(asked: Dictionary) -> String:
 	var source: SourceFile = asked["source"]
 	var library: PartLibrary = asked["library"]
 	var began: int = Time.get_ticks_usec()
