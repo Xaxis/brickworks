@@ -163,6 +163,7 @@ func _timeline_up() -> void:
 
 
 func _by_drag() -> void:
+	await _show_step_of(_moved)
 	_select(_moved)
 	await _frames(6)
 	var row: Dictionary = _steps.row_state()
@@ -394,6 +395,7 @@ func _presets() -> void:
 
 	Keymap.use("studio")
 	await _timeline_up()
+	await _show_step_of(_moved)
 	_select(_moved)
 	await _frames(4)
 	await _press(Keymap.CTRL | KEY_D)
@@ -420,6 +422,20 @@ func _presets() -> void:
 func _select(brick_id: int) -> void:
 	_builder.clear_selection()
 	_builder.select_brick(brick_id, false)
+
+
+## A person sees a part before clicking it: while the timeline shows a step
+## that has not put [param brick_id] on yet, its step is shown first by a
+## click on the row, as they would (stepedit: at a step a selection holds
+## only the parts on show).
+func _show_step_of(brick_id: int) -> void:
+	if not _builder.is_ahead(brick_id):
+		return
+	var at: Vector2 = _cell(_step_of(brick_id) - 1)
+	await _mouse_move(at)
+	await _mouse_button(at, true)
+	await _mouse_button(at, false)
+	await _frames(6)
 
 
 ## The middle of the row's cell for [param index], in the window's points.

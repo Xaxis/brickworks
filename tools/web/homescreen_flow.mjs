@@ -1034,8 +1034,11 @@ async function lookAt() {
       listen(page, `look ${width} ${theme}`);
       try {
         await page.goto(`${site}/settings#email-part`, { waitUntil: "load" });
-        await until(page, () => document.documentElement.dataset.settings === "ready" || document.getElementById("push-said")?.textContent
-          || document.getElementById("push-on")?.disabled === false, "Settings drawn", 45);
+        // Drawn is "ready" alone: this device's notifications (drawPush) are
+        // said before the rest is drawn and #signed-in shown, so a wait that
+        // took push-said's words read every heading still [hidden] (nightly
+        // 2026-11-24, 768 and 1280 dark: Notifications []).
+        await until(page, () => document.documentElement.dataset.settings === "ready", "Settings drawn", 45);
         await page.evaluate(() => document.getElementById("email-part").scrollIntoView());
         const parts = await page.evaluate(() => ({ h2: document.querySelector("#email-part h2")?.textContent,
           h3: [...document.querySelectorAll("#email-part h3")].filter((one) => !one.closest("[hidden]")).map((one) => one.textContent),

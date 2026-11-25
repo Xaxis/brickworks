@@ -14,7 +14,7 @@
 // page as text, never as markup; a link is built from an id or a handle
 // only when it is one. Each tab asks for its own when it is first opened
 // and draws what came, so one that cannot be read leaves the others.
-import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
+import { age, askAgeIfAsked, askToSignIn, bindWay, call, signOut, signedIn, takeWay, wayFailed } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
 import { ask, avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
 import { counted, langAt, minifigOf, number, say, setPhoto, sharpPhotos, told } from "/card.js";
@@ -799,14 +799,30 @@ function draw() {
 // the isolation its threads need, which orangecheck's window cannot answer,
 // so the person signs in here and is taken back, signed in there too. Only
 // ever back to the app: never an address the link itself names elsewhere.
+//
+// Or back from Google or GitHub (signin3, ?with=google or github: api/_ways.js
+// sends every sign-in with them here): the session the server left this
+// browser taken (takeWay) with the verifier of take, its challenge, the age
+// question if it is to be asked, and on to the page they were on: then, any
+// page of this site, never another's. GitHub come to an account it has not
+// signed in to (failed=confirm): signed in with a code first, then GitHub's
+// id kept for the account (bindWay), then on.
+const via = new URLSearchParams(location.search).get("with") || "";
+const byWay = via === "google" || via === "github";
 const back = (() => {
   const then = new URLSearchParams(location.search).get("then") || "";
+  if (byWay) return /^\/(?![/\\])[^\s\\]{0,600}$/.test(then) && !/^\/profile(\?|$)/.test(then) ? then : "";
   return /^\/app(\?[^#\s]*)?$/.test(then) ? then : "";
 })();
+// Refused there or on the way back: why, in words, for the sign-in to say.
+const wayRefused = byWay ? new URLSearchParams(location.search).get("failed") || "" : "";
+const wayChallenge = byWay ? new URLSearchParams(location.search).get("take") || "" : "";
+let wayTaken = false;
+let wayBinding = wayRefused === "confirm";
 
 // Come from the app's Sign in with orangecheck (src/ui/sign_in_form.gd):
 // its button first, and words for the one more press its window needs.
-const forOrangecheck = new URLSearchParams(location.search).get("with") === "orangecheck";
+const forOrangecheck = via === "orangecheck";
 
 // Come to sign in: the header's Sign in where its script did not run, or
 // opened in a new tab (/profile?sign-in), or the app (then=, with=). Asked
@@ -831,7 +847,43 @@ let askedHere = (() => {
 // in, with the focus. [ask] false: not opened again (the account just
 // deleted for an answer under 13).
 async function load({ ask = true } = {}) {
-  if (back && signedIn()) {
+  // Back from Google or GitHub: signed in here at once, asked the age
+  // question, then on to where they were; refused, the sign-in says why.
+  let wayWords = "";
+  if (byWay && !wayTaken) {
+    wayTaken = true;
+    const took = wayRefused ? { error: wayFailed(wayRefused, via) } : await takeWay(wayChallenge);
+    if (took.error) {
+      wayWords = took.error;
+    } else {
+      const asked = await askAgeIfAsked({ pending: true }).catch(() => null);
+      if (asked?.refused) {
+        showFeedCount().catch(() => null);
+        return load({ ask: false });
+      }
+      if (!back) {
+        // Signed in on /profile itself: the address without what brought it here.
+        history.replaceState(null, "", location.pathname);
+      }
+    }
+  }
+  // Signed in with a code just now: GitHub's id kept, then on. Signed in
+  // before that, the code is asked for first (the server wants one emailed
+  // in the last five minutes).
+  // Not now: on, without it. Refused: said here, on this page.
+  let wayStay = false;
+  if (wayBinding && signedIn()) {
+    const bound = await bindWay();
+    // Signed in with the code, brickworks:signed-in-done (below) binds it.
+    if (bound.fresh === false && (await askToSignIn(wayFailed("confirm", via), { then: back }))) return;
+    wayBinding = false;
+    if (bound.error) {
+      toast(bound.error);
+      wayStay = true;
+      history.replaceState(null, "", location.pathname);
+    }
+  }
+  if (back && signedIn() && !wayStay) {
     location.replace(back);
     return;
   }
@@ -847,11 +899,11 @@ async function load({ ask = true } = {}) {
       address.searchParams.delete("sign-in");
       history.replaceState(history.state, "", address.pathname + address.search + address.hash);
     }
-    const why = !back ? undefined : forOrangecheck
+    const why = wayWords || (!back ? undefined : forOrangecheck
       ? "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in."
-      : "Sign in with your email or with orangecheck, and you go back to the app signed in.";
+      : byWay ? undefined : "Sign in with your email or with orangecheck, and you go back to the app signed in.");
     // Signed in, brickworks:signed-in-done (below) draws the page, or goes back.
-    if (!(await askToSignIn(why, { prefer: forOrangecheck ? "orangecheck" : "" }))) $("sign-in").focus();
+    if (!(await askToSignIn(why, { prefer: forOrangecheck ? "orangecheck" : "", then: back }))) $("sign-in").focus();
     return;
   }
   // The skeleton at once, never the signed-out page under a dialog just

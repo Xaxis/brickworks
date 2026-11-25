@@ -26,15 +26,11 @@
 //                        no other account has. The address is told.
 //   POST ?op=unlink      the same fresh code: the id unlinked, and every
 //                        session it started on the account ended. Told too.
-//   POST ?op=connect     {consent: true}, right after a sign-in by emailed
-//                        code with the box under Sign in with orangecheck
-//                        ticked (2026-10-24): orangecheck Connect makes the
-//                        person an orangecheck account (api/_oc.js
-//                        provision), with the address as verified when
-//                        this session is a fresh emailed code's for it.
-//                        Never for an account that has orangecheck already. No tick, no call: the page
-//                        sends nothing, and this refuses anything but true.
-//                        It never holds up the sign-in, which is done.
+//   status also says {made}: the orangecheck account Connect made for this
+//   one, if any. Since signin3 (2026-11-24) every sign-in by an emailed
+//   code, Google or GitHub makes it, with no box to tick (the sign-in says
+//   so): the server, after the sign-in's first word with /api/account
+//   (api/_oc.js ensureOrangecheck). ?op=connect, the box's, is gone.
 //
 // The token is never kept, here or in the page. What is (supabase/
 // orangecheck.sql): which account the person's orangecheck id signs in to,
@@ -57,11 +53,11 @@ import { afterAnswer } from "./_after.js";
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
+import { mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
 import {
-  checkToken, codeOf, connectConfigured, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, provision, spendToken,
-  tradeCode,
+  checkToken, codeOf, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, spendToken, tradeCode,
 } from "./_oc.js";
 
 function supabase() {
@@ -71,14 +67,6 @@ function supabase() {
 function admin() {
   const key = process.env.SUPABASE_SECRET_KEY;
   return { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" };
-}
-
-function claimsOf(jwt) {
-  try {
-    return JSON.parse(Buffer.from(String(jwt).split(".")[1], "base64url").toString("utf8"));
-  } catch {
-    return {};
-  }
 }
 
 /// A new account for a new orangecheck id: its id, made by Supabase. The
@@ -100,54 +88,18 @@ async function dropAccount(account) {
   if (!reply.ok && reply.status !== 404) console.error(`orangecheck: an account made for a lost race was not deleted: ${reply.status}`);
 }
 
-/// A Supabase session for [account], minted here: a one-time link for its
-/// address, asked for without sending anything, and redeemed at once. Each
-/// step must name [account], or nothing is handed out. An account has one
-/// such link at a time, so two sign-ins of it at once (two tabs, or two
-/// first sign-ins racing) can each spoil the other's: the one refused asks
-/// again, after a moment that differs each time. An account its id signs
-/// in to and not marked as having orangecheck is marked first, so the
-/// session's own token carries the mark and has every request asked after
-/// (oc188's review, L1).
+/// A Supabase session for [account], minted here (api/_minted.js): a
+/// one-time link for its address, redeemed at once, each step naming
+/// [account]. An account its id signs in to and not marked as having
+/// orangecheck is marked first, so the session's own token carries the mark
+/// and has every request asked after (oc188's review, L1).
 async function sessionFor(account) {
   const who = await reach("auth GET admin/users", 10, `${supabase()}/auth/v1/admin/users/${account}`, {
     headers: admin() });
   const user = await who.json().catch(() => ({}));
   if (!who.ok || user.id !== account || !user.email) throw new Error(`auth: the account was not read: ${who.status}`);
   if (user.app_metadata?.orangecheck !== true) await mark(account, true);
-  for (let attempt = 1; ; attempt += 1) {
-    try {
-      return await redeemedFor(account, user.email);
-    } catch (trouble) {
-      if (attempt >= 4 || !trouble.spoiled) throw trouble;
-      await new Promise((done) => setTimeout(done, 100 + Math.random() * 400 * attempt));
-    }
-  }
-}
-
-async function redeemedFor(account, email) {
-  const link = await reach("auth POST admin/generate_link", 10, `${supabase()}/auth/v1/admin/generate_link`, {
-    method: "POST", headers: admin(),
-    body: JSON.stringify({ type: "magiclink", email }) });
-  const made = await link.json().catch(() => ({}));
-  const hashed = made.hashed_token || made.properties?.hashed_token;
-  if (!link.ok || !hashed || (made.id || made.user?.id) !== account) throw new Error(`auth: no link: ${link.status}`);
-  const verify = await reach("auth POST verify", 10, `${supabase()}/auth/v1/verify`, {
-    method: "POST",
-    headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" },
-    body: JSON.stringify({ type: "magiclink", token_hash: hashed }) });
-  const session = await verify.json().catch(() => ({}));
-  if (verify.status === 403 || verify.status === 401) {
-    throw Object.assign(new Error(`auth: the link was spoiled: ${verify.status}`), { spoiled: true });
-  }
-  // Supabase counts redemptions by address, and every one of these is this
-  // server's.
-  if (verify.status === 429) throw Object.assign(new Error("auth: verify answered 429"), { busy: true });
-  const claims = claimsOf(session.access_token);
-  if (!verify.ok || !session.refresh_token || session.user?.id !== account || claims.sub !== account || !claims.session_id) {
-    throw new Error(`auth: the session was not for this account: ${verify.status}`);
-  }
-  return { session, sessionId: claims.session_id };
+  return mintedSession(user.email, { account });
 }
 
 async function endSession(access) {
@@ -371,7 +323,12 @@ async function signedInAs(request, response) {
 async function status(request, response) {
   const who = await signedInAs(request, response);
   if (!who) return;
-  return response.status(200).json({ did: who.did, only: who.only, fresh: who.fresh, ready: ocConfigured() });
+  // The orangecheck account Connect made for this one (oc_connected), when
+  // it signs in otherwise: unknown (null) when it cannot be read.
+  const connected = who.only || who.did ? null
+    : await db("rpc/oc_connected_of", { method: "POST", body: { account: who.claims.sub } }).catch(() => undefined);
+  return response.status(200).json({ did: who.did, only: who.only, fresh: who.fresh, ready: ocConfigured(),
+    made: connected === undefined ? null : connected?.did ? { did: connected.did, at: connected.made_at } : false });
 }
 
 async function link(request, response) {
@@ -427,23 +384,6 @@ async function unlink(request, response) {
   return response.status(200).json({ did: gone.did, ended: gone.ended, told });
 }
 
-async function connect(request, response) {
-  if (!connectConfigured()) return say(response, 503, "Making an orangecheck account is not set up here.");
-  const who = await signedInAs(request, response);
-  if (!who) return;
-  if (bodyOf(request)?.consent !== true) return say(response, 422, "An orangecheck account is made only when you tick the box for it.");
-  // Their sign-in gave them one: never a second (ochk.io/docs/connect,
-  // "Both on one project").
-  if (who.only || who.did) return response.status(200).json({ made: false, reason: "has_orangecheck" });
-  // The tick goes with the sign-in it was given at: a code just now, never
-  // a session left open.
-  if (!who.fresh) return say(response, 403, "Tick the box as you sign in with a code we email you.", { fresh: false });
-  // Its address as verified only from this session's own fresh code: never
-  // a password's, an orangecheck session's, a stale code's, or one the
-  // request names (orangecheck's answer, 2026-10-24).
-  return response.status(200).json(await provision(who.claims.sub, who.emailed));
-}
-
 async function handler(request, response) {
   // Asked only by the site's own pages: no cross-origin answer, and nothing
   // kept by any cache.
@@ -454,8 +394,7 @@ async function handler(request, response) {
   if (request.method === "GET" && op === "status") return status(request, response);
   if (request.method === "POST" && op === "link") return link(request, response);
   if (request.method === "POST" && op === "unlink") return unlink(request, response);
-  if (request.method === "POST" && op === "connect") return connect(request, response);
-  return say(response, 405, "POST ?op=signin, ?op=native, ?op=link, ?op=unlink or ?op=connect, or GET ?op=status");
+  return say(response, 405, "POST ?op=signin, ?op=native, ?op=link or ?op=unlink, or GET ?op=status");
 }
 
 // Each 5xx kept for the owner's server-errors notification (api/_noted.js).

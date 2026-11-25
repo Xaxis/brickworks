@@ -12,6 +12,12 @@
 ## verifier only this run knows (api/orangecheck.js ?op=native); the
 ## deployment trades it for the token and a Brickworks session. Nothing
 ## secret is in the app.
+##
+## Sign in with Google and with GitHub go the same way (signin3,
+## 2026-11-24): with [member way] set, the browser opens the deployment's
+## own /auth/google or /auth/github with this address, the state and the
+## challenge (api/_ways.js), and comes back here with a code sealed for the
+## verifier only this run knows, traded at ?op=way_app.
 class_name OrangecheckSignIn
 extends Node
 
@@ -26,6 +32,10 @@ var project_key: String = ""
 var audience: String = ""
 var auth_host: String = "https://ochk.io"
 var timeout_seconds: float = 300.0
+## "google" or "github": the deployment's own sign-in with it, at
+## [member way_base] (Deployment.api_base()), instead of orangecheck's.
+var way: String = ""
+var way_base: String = ""
 ## False to open nothing: a probe opens the link in a browser of its own.
 var open_browser: bool = true
 
@@ -66,11 +76,12 @@ func start() -> String:
 	var sha := HashingContext.new()
 	sha.start(HashingContext.HASH_SHA256)
 	sha.update(_verifier.to_ascii_buffer())
+	var challenge: String = _b64url(sha.finish())
 	var query := {
 		"project": project_key,
 		"redirect_uri": _redirect_uri,
 		"state": _state,
-		"code_challenge": _b64url(sha.finish()),
+		"code_challenge": challenge,
 		"code_challenge_method": "S256",
 	}
 	if not audience.is_empty():
@@ -78,6 +89,9 @@ func start() -> String:
 	_deadline_ms = Time.get_ticks_msec() + int(timeout_seconds * 1000.0)
 	set_process(true)
 	var url: String = auth_host.rstrip("/") + "/native/authorize?" + _encode(query)
+	if not way.is_empty():
+		url = way_base.rstrip("/") + "/auth/" + way + "?" + _encode(
+			{"app": _redirect_uri, "state": _state, "code_challenge": challenge})
 	if open_browser:
 		Outside.open_link(url)
 	return url
@@ -137,7 +151,7 @@ func _answer(peer: StreamPeerTCP, head: String) -> void:
 		_reply(peer, 200, "Back to Brickworks to finish signing in. You can close this tab.")
 		_finish({"code": str(params["code"]), "code_verifier": _verifier, "redirect_uri": _redirect_uri})
 	else:
-		_reply(peer, 200, "Signing in with orangecheck was cancelled. You can close this tab.")
+		_reply(peer, 200, "Signing in was cancelled. You can close this tab.")
 		_finish({"reason": str(params.get("error", "access_denied"))})
 
 

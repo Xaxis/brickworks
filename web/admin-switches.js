@@ -11,6 +11,7 @@
 //
 // Everything is put on the page as text, never as markup.
 import { $, act, adminJson, ago, ask, cell, emptyRow, make, post, say, segmented, sift, when } from "/admin-kit.js";
+import { keepInView } from "/admin-gallery.js";
 
 const LANGS = { en: "English", de: "Deutsch", fr: "Français", es: "Español" };
 let tone = "info";
@@ -130,8 +131,9 @@ $("phones-form").addEventListener("submit", async (event) => {
     after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
   send.disabled = false;
   // Switches drawn again above can push it off a phone's screen: what the
-  // press came to is brought into view.
-  $("phones-note").scrollIntoView({ block: "nearest" });
+  // press came to is kept in view while the Overview's count, drawn after
+  // and not waited for, settles above it (phonewarn, nightly 2026-11-24).
+  keepInView($("phones-note"));
 });
 
 // Which engine an iPhone or iPad starts (nothreads, api/_phone.js): one act.
@@ -147,8 +149,40 @@ $("phones-engine").addEventListener("submit", async (event) => {
     + " Pages read it within a minute or two.", { body: { on },
     after: async () => { delete form.dataset.drawn; await loadSwitches(); after(); } });
   send.disabled = false;
-  $("phones-engine-note").scrollIntoView({ block: "nearest" });
+  keepInView($("phones-engine-note"));
 });
+
+// Sign in with Google and GitHub (signin3, api/_ways.js): each one's switch
+// here, on only once its keys are in Vercel; its steps beside it.
+for (const form of document.querySelectorAll("form[data-way]")) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const name = form.dataset.way;
+    const send = form.querySelector('button[type="submit"]');
+    const on = send.dataset.on === "yes";
+    send.disabled = true;
+    await post({ op: "sign_in_switch" }, `way-${name}-note`, (said) => `Kept: ${said.with === "google" ? "Google" : "GitHub"} `
+      + `${said.on ? "signs people in" : "is off"} here. Pages read it within a minute.`, { body: { with: name, on },
+      after: async () => { await loadSwitches(); after(); } });
+    send.disabled = false;
+  });
+}
+
+function drawWays(s) {
+  for (const one of s.ways || []) {
+    const form = $(`way-${one.name}`);
+    if (!form) continue;
+    const send = form.querySelector('button[type="submit"]');
+    // On with keys and no switch, or switched on; off without keys,
+    // whatever the switch says.
+    say(`way-${one.name}-is`, !one.keys ? "off: no keys yet" : one.on ? "on" : "switched off here");
+    send.textContent = one.on ? "Turn it off" : "Turn it on";
+    send.dataset.on = one.on ? "no" : "yes";
+    send.disabled = !one.keys;
+    form.querySelector("ol.way-steps").hidden = one.keys && one.on;
+    for (const shown of form.querySelectorAll(".way-callback")) shown.textContent = one.callback;
+  }
+}
 
 function drawEngine(s) {
   const form = $("phones-engine");
@@ -231,7 +265,8 @@ function drawSettings(s) {
   for (const one of list) {
     const row = make("tr");
     row.dataset.setting = `${one.name}@${one.scope}`;
-    const name = make("th", "", one.name === "beta" ? "The beta" : (s.phone || []).find((rule) => rule.name === one.name)?.said || one.name);
+    const name = make("th", "", one.name === "beta" ? "The beta" : one.name === "sign_in_google" ? "Sign in with Google"
+      : one.name === "sign_in_github" ? "Sign in with GitHub" : (s.phone || []).find((rule) => rule.name === one.name)?.said || one.name);
     name.scope = "row";
     row.append(name);
     cell(row, `${one.scope === "live" ? "brickworks.diy" : one.scope}${one.here ? " (here)" : ""}`, "about");
@@ -298,6 +333,7 @@ export async function loadSwitches() {
   const s = await adminJson({ op: "switches" });
   drawNotice(s);
   drawSettings(s);
+  drawWays(s);
   drawPhones(s);
   drawVariables(s);
   return s;

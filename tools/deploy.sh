@@ -587,6 +587,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/beta" } },
     { "src": "/($langs)/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/beta" } },
     { "src": "/beta-admin([.]html|/)?", "status": 308, "headers": { "Location": "/admin#beta" } },
+    { "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" },
+    { "src": "/($langs)/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists&lang=\$1" },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },
@@ -604,6 +606,8 @@ $docs_moved
     { "src": "/api/plans/tally-daily", "dest": "/api/plans?op=tally_daily" },
     { "src": "/api/plans/owner-notify", "dest": "/api/plans?op=owner_notify" },
     { "src": "/api/plans/announce-due", "dest": "/api/plans?op=announce_due" },
+    { "src": "/auth/(google|github)/?", "dest": "/api/otp?op=way_start&with=\$1" },
+    { "src": "/auth/callback/(google|github)/?", "dest": "/api/otp?op=way_back&with=\$1" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },
@@ -648,8 +652,6 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
-    { "src": "/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists" },
-    { "src": "/($langs)/collections([.]html)?/?", "dest": "/api/people?op=moved&to=gallery-lists&lang=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
     { "src": "/live/[A-Za-z0-9]{12}/?", "dest": "/live.html" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/parts[.](json|xml|csv)", "dest": "/api/share?op=catalog_parts&set=\$1&as=\$2" },
@@ -802,7 +804,7 @@ log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # a key no page or API here reads, so the checks see what production runs.
 #
 # So every deployment gets every production secret, and a unit's preview
-# runs code nobody has reviewed. --unit withholds the five it never needs:
+# runs code nobody has reviewed. --unit withholds the nine it never needs:
 # OC_SIGNING_SECRET, which orangecheck asked be kept from unreviewed branch
 # code, since their review covers what ships (2026-10-23), and for the same
 # reason OC_CONNECT_KEY, which makes and deletes orangecheck accounts
@@ -812,12 +814,17 @@ log="$(mktemp "${TMPDIR:-/tmp}/brickworks-deploy.XXXXXX")"
 # which nothing has read since the proxy that spent it went (2026-10-09); and
 # CLAUDE_KEY_SECRET, which opens the owner's own Anthropic key sealed in the
 # database (api/_claude.js), so unreviewed code holding the database cannot
-# open it too (2026-11-18; the checks' pool seals with its own fixed secret).
+# open it too (2026-11-18; the checks' pool seals with its own fixed secret);
+# and GOOGLE_* and GITHUB_*, the clients signing in with Google and GitHub
+# are (api/_ways.js), so unreviewed code never holds their secrets, and a
+# preview never offers a way whose provider refuses its address as the
+# way back (signinreview F10, 2026-11-24).
 # --env NAME= sets one to nothing for this deployment
 # alone, over the project's value. Never --env NAME: that sends the value
 # in .env. A release's preview and production are reviewed code, and keep
 # both.
-withheld=(OC_SIGNING_SECRET OC_CONNECT_KEY RESEND_API_KEY ANTHROPIC_API_KEY CLAUDE_KEY_SECRET)
+withheld=(OC_SIGNING_SECRET OC_CONNECT_KEY RESEND_API_KEY ANTHROPIC_API_KEY CLAUDE_KEY_SECRET
+  GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET)
 blank=()
 if [ "$unit" = 1 ]; then
   for k in "${withheld[@]}"; do blank+=(--env "$k="); done

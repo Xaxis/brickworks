@@ -2213,20 +2213,23 @@ func _find_handles() -> Array:
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
 	var to_window: Transform2D = get_viewport().get_final_transform()
+	# A CSS pixel in the window's own: the page is told a handle in whole
+	# ones, and a press comes back from one.
+	var css: float = maxf(1.0, per_css / maxf(0.01, to_window.get_scale().x))
 	var out: Array = []
 	for wanted: Array in handle_parts:
 		var key: int = int(wanted[1])
 		var body: int = int(_bodies.body_of.get(key, -1))
 		if not _bodies.parent_link.has(body):
 			continue
-		var spot: Variant = _handle(body, _bodies.parent_link[body], PackedInt64Array([key]))
+		var spot: Variant = _handle(body, _bodies.parent_link[body], PackedInt64Array([key]), css)
 		if spot != null:
 			spot["play"] = str(wanted[0])
 			out.append(_on_page(spot, to_window, per_css))
 	for body: Variant in _bodies.parent_link:
 		if out.size() >= 8 + handle_parts.size():
 			break
-		var spot: Variant = _handle(int(body), _bodies.parent_link[body])
+		var spot: Variant = _handle(int(body), _bodies.parent_link[body], PackedInt64Array(), css)
 		if spot != null:
 			out.append(_on_page(spot, to_window, per_css))
 	return out
@@ -2259,7 +2262,8 @@ func handle_on(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt6
 	return _handle(body, link, only)
 
 
-func _handle(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64Array()) -> Variant:
+func _handle(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64Array(),
+		margin: float = 1.0) -> Variant:
 	# The furthest few by their middles alone, before any ray is cast.
 	var order: Array = []   ## [distance off the line, brick id]
 	for key: int in (only if not only.is_empty() else _bodies.members.get(body, PackedInt64Array())):
@@ -2284,9 +2288,7 @@ func _handle(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64A
 			if camera.is_position_behind(spot):
 				continue
 			var screen: Vector2 = camera.unproject_position(spot)
-			var hit: BrickLattice.Hit = builder.lattice.raycast(
-				camera.ray_origin(screen, CadCamera.MAIN), camera.ray_normal(screen, CadCamera.MAIN))
-			if hit.is_valid() and hit.brick_id == key:
+			if _lands_on(screen, key, margin):
 				var found: Dictionary = {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
 				# Its joint's line where the spot turns about it: the middle of
 				# the circle a drag round it draws on the page.
@@ -2305,6 +2307,22 @@ func _handle(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64A
 					found["far"] = camera.unproject_position(far)
 				return found
 	return null
+
+
+## Whether a press at [param screen], and [param margin] pixels to each
+## side of it, lands on [param key]. A press comes back from the page in
+## whole CSS pixels, and the steering wheel's handle, 70% out to a corner
+## of its box, lay at the edge of its cells between two spokes: the press a
+## fraction of a pixel off it came down on the plate behind and held a
+## locked loop (play, nightly 2026-11-24).
+func _lands_on(screen: Vector2, key: int, margin: float) -> bool:
+	for step: Vector2 in [Vector2.ZERO, Vector2(margin, 0.0), Vector2(-margin, 0.0),
+			Vector2(0.0, margin), Vector2(0.0, -margin)]:
+		var hit: BrickLattice.Hit = builder.lattice.raycast(
+			camera.ray_origin(screen + step, CadCamera.MAIN), camera.ray_normal(screen + step, CadCamera.MAIN))
+		if not hit.is_valid() or hit.brick_id != key:
+			return false
+	return true
 
 
 ## The middle of the corners of [param box], where [param at] stands, that

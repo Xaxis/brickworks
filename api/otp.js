@@ -1,7 +1,10 @@
 // Sending somebody a code to sign in with.
 //
-// Everyone signs in to use Brickworks, and this is the only way in: an
-// email address and a code sent to it. No passwords anywhere. A password
+// Everyone signs in to use Brickworks, and this is the way in every
+// account has: an email address and a code sent to it. (Or with Google or
+// GitHub, which give the same account for the same verified address:
+// api/_ways.js, routed from here; or with orangecheck, api/orangecheck.js.)
+// No passwords anywhere. A password
 // is a thing to choose badly, reuse, forget and reset — by email, which
 // is this, one step later and less securely.
 //
@@ -232,7 +235,16 @@ async function attempt(call, failed) {
   }
 }
 
+// Signing in with Google and GitHub (api/_ways.js): the site's own pages and
+// the app alone, so answered before the open CORS below.
+const WAY_OPS = {
+  "GET way_start": "wayStart", "GET way_back": "wayBack", "POST way_take": "wayTake", "POST way_app": "wayApp",
+  "POST way_bind": "wayBind", "GET ways": "waysRoute", "POST ways": "waysRoute",
+};
+
 async function handler(request, response) {
+  const way = WAY_OPS[`${request.method} ${request.query?.op || ""}`];
+  if (way) return (await import("./_ways.js"))[way](request, response);
   if (request.method === "OPTIONS") {
     return response
       .status(204)

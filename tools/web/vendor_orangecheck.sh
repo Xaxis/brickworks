@@ -11,10 +11,6 @@
 #                         origin, as every page runs under script-src 'self'.
 #   web/oc-button.css     dist/button.css: the mark's size and a 44 px
 #                         target, at zero specificity, so site.css wins.
-#   web/oc-connect-consent.mjs
-#                         dist/connect-consent.mjs: the Connect box's words,
-#                         CONNECT_CONSENT_LABEL and CONNECT_CONSENT_BLURB,
-#                         exactly as orangecheck gives them.
 #   api/_orangecheck.js   me-client's server checks (checkOcToken, which
 #                         tells a token that is no good from a key set that
 #                         cannot be read, bondMeets, and mergedHandles and
@@ -62,7 +58,7 @@ EOF
 # Each without its source map's address: the map is not served, and a page
 # asking for it would be a 404 in every console that opens.
 D=node_modules/me-pages/dist
-for pair in button.mjs:oc-button.mjs button.css:oc-button.css connect-consent.mjs:oc-connect-consent.mjs; do
+for pair in button.mjs:oc-button.mjs button.css:oc-button.css; do
   from="${pair%%:*}"
   to="${pair##*:}"
   case "$to" in
@@ -73,5 +69,5 @@ for pair in button.mjs:oc-button.mjs button.css:oc-button.css connect-consent.mj
 done
 cp node_modules/@orangecheck/mark/assets/svg/orangecheck-mark-mono-white.svg "$R/assets/ui/orangecheck-mark-mono-white.svg"
 echo "vendor_orangecheck: me-client $ME (server) and $ME_PAGES (pages), auth-core $CORE, mark $MARK:"
-wc -c "$R/api/_orangecheck.js" "$R/web/oc-button.mjs" "$R/web/oc-button.css" "$R/web/oc-connect-consent.mjs" \
+wc -c "$R/api/_orangecheck.js" "$R/web/oc-button.mjs" "$R/web/oc-button.css" \
   "$R/assets/ui/orangecheck-mark-mono-white.svg"

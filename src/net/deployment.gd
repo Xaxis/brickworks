@@ -46,6 +46,12 @@ var orangecheck_for_everyone: bool = false
 ## deployment offers it (api/_oc_config.js orangecheckOffer): {project,
 ## auth, audience}, all public. Empty, and the desktop offers no button.
 var orangecheck_native: Dictionary = {}
+## Which of Google and GitHub sign people in here (api/_ways.js waysOffered):
+## {google, github}, each true or false.
+var ways_offered: Dictionary = {"google": false, "github": false}
+## Whether signing in here also makes the person's orangecheck account
+## (api/_oc_config.js: Connect's key is here), which the sign-in says.
+var orangecheck_made: bool = false
 
 ## Emitted once, when the question is over, whether or not anything
 ## answered. Anyone waiting on it needs to hear that it failed, too.
@@ -122,6 +128,11 @@ func _read(result: Array) -> bool:
 			and bool((orangecheck as Dictionary).get("everyone", false))
 		orangecheck_native = _native_of((orangecheck as Dictionary).get("native") \
 			if typeof(orangecheck) == TYPE_DICTIONARY else null)
+		orangecheck_made = typeof(orangecheck) == TYPE_DICTIONARY \
+			and bool((orangecheck as Dictionary).get("connect", false))
+		var ways: Variant = body.get("ways")
+		for name: String in ["google", "github"]:
+			ways_offered[name] = typeof(ways) == TYPE_DICTIONARY and (ways as Dictionary).get(name) == true
 	return answered
 
 

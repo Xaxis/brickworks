@@ -433,14 +433,18 @@ try {
   // --- 7. from a comment's row ------------------------------------------------
   console.log("blocked again from Bob's comment on the tower");
   heard.length = 0;
-  await adaPage.goto(`${site}/m/${towerId}`, { waitUntil: "load" });
+  // The comments are a tab of their own since pagekit (3cfdbeabe, 11-23),
+  // hidden until chosen: opened at it, as a person's link to them is.
+  await adaPage.goto(`${site}/m/${towerId}#comments`, { waitUntil: "load" });
   const blockButton = `#comment-${bobComment} button[data-block-comment="${BOB}"]`;
   await until(adaPage, (selector) => Boolean(document.querySelector(selector)), "Block on Bob's comment", 45, blockButton);
   const row = await adaPage.evaluate((selector) => {
     const button = document.querySelector(selector);
     button.scrollIntoView({ block: "center" });
     const box = button.getBoundingClientRect();
-    return { label: button.getAttribute("aria-label"), text: button.textContent, inside: box.right <= innerWidth && box.left >= 0 };
+    // A hidden button's box is all 0, inside any window: drawn means a size.
+    return { label: button.getAttribute("aria-label"), text: button.textContent,
+      inside: box.width > 0 && box.height > 0 && box.right <= innerWidth && box.left >= 0 && box.top >= 0 && box.bottom <= innerHeight };
   }, blockButton);
   check(`the row's "${row.text}" (${row.label}), on the screen`, row.text === "Block" && row.label === "Block Bob Block" && row.inside);
   await shot(adaPage, "5_comment_row-390.png");

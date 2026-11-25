@@ -336,7 +336,9 @@ func unit_of(brick_id: int) -> PackedInt64Array:
 	return ids_under(str(path))
 
 
-## The assembly the selection is exactly, if it is one: "" otherwise.
+## The assembly the selection is exactly, if it is one: "" otherwise. At a
+## step of the timeline, exactly its parts on show (Builder.shown_only), as a
+## click takes it there.
 func selected_assembly() -> String:
 	var ids: Array = builder.selection.keys()
 	if ids.is_empty():
@@ -350,7 +352,7 @@ func selected_assembly() -> String:
 	for brick_id: Variant in ids:
 		if unit_path_of(int(brick_id)) != path:
 			return ""
-	var under: PackedInt64Array = ids_under(str(path))
+	var under: PackedInt64Array = builder.shown_only(ids_under(str(path)))
 	if under.size() != ids.size():
 		return ""
 	for brick_id: int in under:
@@ -3178,9 +3180,16 @@ func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 		var mates: Array = by_part.get(anchor["part"], [])
 		for mate: Dictionary in mates:
 			for spin: Transform3D in [Transform3D.IDENTITY, half]:
+				# As the anchor lies on its mate, never made square: a file's
+				# turns are rounded (10030's 0.951/0.308), so two copies the
+				# file placed by them lie on each other by a turn a hair off
+				# square. Made square, it laid a copy's far parts up to 0.44
+				# LDU off, no part turned as it is, so a mirror image or a
+				# half turn of pins that look alike was taken for it, and 27
+				# of 10030's copies were written as sub-models of their own at
+				# a whole write (exactsave).
 				var at: Transform3D = (mate["at"] as Transform3D) * spin \
 					* (anchor["at"] as Transform3D).affine_inverse()
-				at = Transform3D(at.basis.orthonormalized(), at.origin)
 				var scored: Dictionary = _score(at, a, by_part, exact_only or laid, laid)
 				tried += 1
 				if laid:
@@ -3637,8 +3646,12 @@ func _written_as(path: String, ctx: Dictionary) -> void:
 			var reflect: Transform3D = LdrModel.REFLECT_X if bool(fit["mirrored"]) \
 				else Transform3D.IDENTITY
 			var written: String = (out[master] as Dictionary)["def"]
-			out[path] = {"frame": (fit["at"] as Transform3D) * reflect
-				* ((out[master] as Dictionary)["frame"] as Transform3D), "def": written}
+			# The frame the file gave it where it lies there (_read_fit); else
+			# laid on the first as its parts lie (_rigid_match). Fitted
+			# square, 38 of 10030's parts came back up to 0.44 LDU off at a
+			# whole write, 6 pins and plates turned a half (exactsave).
+			out[path] = {"frame": fit["frame"] if fit.has("frame") else (fit["at"] as Transform3D)
+				* reflect * ((out[master] as Dictionary)["frame"] as Transform3D), "def": written}
 			# And which copy inside it is which inside the first: its line
 			# says their numbers (LdrModel.COPY_META), the section's being the
 			# first's (cf3check O1).
@@ -3692,7 +3705,12 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 		return none
 	var laid_a: Array = _recoloured(a, swap)
 	var laid_b: Array = _recoloured(b, swap)
-	var fit: Dictionary = exact_match(laid_a, laid_b)
+	# Where the file framed it, it lies there: the matrix the file read, not
+	# one fitted to its parts ([method _read_fit]).
+	var fit: Dictionary = _read_fit(laid_a, laid_b, (ctx.get("read", {}) as Dictionary).get(path),
+		(out[master] as Dictionary)["frame"])
+	if fit.is_empty():
+		fit = exact_match(laid_a, laid_b)
 	if not bool(fit["exact"]):
 		return none
 	fit["swap"] = swap
@@ -3706,7 +3724,8 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 	# first's puts it: only where that is where it is. Within the tolerance
 	# a copy is matched by, 10256-1's headlight bricks and arches came back
 	# half an LDU from where they stood (cf3check).
-	var pairs: Array = _laid_pairs(laid_a, laid_b, fit, MIRROR_NEAR if mirrored else 0.6)
+	var pairs: Array = fit["pairs"] if fit.has("pairs") \
+		else _laid_pairs(laid_a, laid_b, fit, MIRROR_NEAR if mirrored else 0.6)
 	if pairs.is_empty():
 		return none
 	# Each copy inside the one where the other's is, one for one, and each
@@ -3758,6 +3777,70 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 	fit["inner"] = placed
 	fit["copies"] = inner
 	return fit
+
+
+## How the copy whose parts are [param b] lies on the copy written as a
+## definition whose parts are [param a] (written in [param master_frame]),
+## where the file framed it at [param read] ([method _read_frames]): by that
+## frame exactly, mirrored only where the file's matrix mirrors against the
+## first's, each part of [param a] there on one of [param b] in its colour
+## and turned as it is (within a five-hundredth: the frames are the file's
+## rounded numbers, read and multiplied). {"exact", "at", "mirrored",
+## "bases", "frame": [param read], "pairs": [method _laid_pairs]'s}, or {}
+## where it has no such frame or does not lie there: then it is fitted
+## ([method exact_match]). Fitted, a copy of a pin whose two ends look alike
+## lay on the first turned a half, and one of pins and plates in its mirror
+## image, where the file had neither (10030-1's subModel-39 and 40).
+func _read_fit(a: Array, b: Array, read: Variant, master_frame: Transform3D) -> Dictionary:
+	if not (read is Transform3D):
+		return {}
+	var frame: Transform3D = read
+	var mirrored: bool = frame.basis.determinant() * master_frame.basis.determinant() < 0.0
+	var reflect: Transform3D = LdrModel.REFLECT_X if mirrored else Transform3D.IDENTITY
+	var at: Transform3D = frame * master_frame.affine_inverse() * reflect
+	var by_part: Dictionary = {}
+	for item: Dictionary in b:
+		if not by_part.has(item["part"]):
+			by_part[item["part"]] = []
+		(by_part[item["part"]] as Array).append(item)
+	var used: Dictionary = {}
+	var pairs: Array = []
+	var alike: bool = true
+	for item: Dictionary in a:
+		var laid: Dictionary = _mirrored(item) if mirrored else item
+		var there: Transform3D = at * (laid["at"] as Transform3D)
+		var hit: Dictionary = {}
+		var hit_alike: bool = false
+		for other: Dictionary in by_part.get(laid["part"], []):
+			if used.has(other["id"]) or int(other["color"]) != int(item["color"]) \
+					or (other["at"] as Transform3D).origin.distance_to(there.origin) > MIRROR_NEAR:
+				continue
+			if _turned_alike((other["at"] as Transform3D).basis, there.basis):
+				hit = other
+				hit_alike = true
+				break
+			# A mirrored part is its reflection's image (Mirror.image), which
+			# may be the part turned to fill the same cells.
+			if hit.is_empty() and mirrored and _same_place(str(laid["part"]), there, other["at"]):
+				hit = other
+		if hit.is_empty():
+			return {}
+		alike = alike and hit_alike
+		used[hit["id"]] = true
+		pairs.append([item, hit])
+	return {"exact": true, "at": at, "mirrored": mirrored, "bases": alike, "score": a.size(),
+		"frame": frame, "pairs": pairs}
+
+
+## Whether two turns are one but for a file's rounding, read and multiplied:
+## each element within a five-hundredth. A part turned a half or a quarter
+## on itself is a whole 1 or 2 off in some element.
+static func _turned_alike(x: Basis, y: Basis) -> bool:
+	for axis: int in 3:
+		var d: Vector3 = x[axis] - y[axis]
+		if absf(d.x) > 0.002 or absf(d.y) > 0.002 or absf(d.z) > 0.002:
+			return false
+	return true
 
 
 ## The copies laid on others whose inner copies, their colours settled, a

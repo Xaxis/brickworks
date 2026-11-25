@@ -186,20 +186,7 @@ func _way_in() -> bool:
 	# A throwaway account has nothing saved, so a phone opens on the studio's
 	# first screen over the car (appwalk's firststart): closed, as its ✕ does,
 	# or the finger's drag lands on it and nothing moves (appfix).
-	for _n: int in 600:
-		if bool(_main.get("_start_decided")):
-			break
-		await process_frame
-	var start: Control = null
-	for _n: int in 60:
-		start = _main.get("_studio_start")
-		if start != null and start.visible:
-			break
-		await process_frame
-	if start != null and start.visible:
-		start.call("close")
-		await process_frame
-		print("    (the studio's first screen closed)")
+	await SignInHelper.put_away_first_screen(_main)
 	return account.signed_in()
 
 

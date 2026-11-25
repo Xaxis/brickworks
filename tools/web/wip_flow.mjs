@@ -135,6 +135,15 @@ const feedOf = async (who) => (await api("/api/people?op=feed", { token: who.acc
 const noticesOf = async (who) => ((await api("/api/people?op=notifications", { token: who.access_token })).body.groups || [])
   .flatMap((group) => group.rows || []);
 const threadOf = async (id) => (await api(`/api/people?op=talk_model&id=${id}&tests=1`)).body?.thread || null;
+/// Model [id]'s thread as its own page tells it ({id, board, title, model:
+/// {id}, ...}): ?op=talk_model names only its id, title and replies
+/// (supabase/talk.sql talk_model_thread), its board and model are the thread's.
+const threadAbout = async (id) => {
+  const named = await threadOf(id);
+  if (!named?.id) return null;
+  const page = (await api(`/api/people?op=talk_thread&id=${named.id}&tests=1`)).body?.thread;
+  return page ? { ...named, ...page } : named;
+};
 const postsOf = async (thread, who = null) => (await api(`/api/people?op=talk_thread&id=${thread}&tests=1`, { token: who?.access_token })).body.posts || [];
 const listOf = async (sort, extra = "") => ((await api(`/api/share?op=list&tests=1&sort=${sort}&q=${WORD}${extra}`)).body.models || [])
   .map((one) => one.id);
@@ -207,7 +216,7 @@ try {
     Boolean(panel.talk?.url) && panel.publish_text === "Publish as finished");
   await shot(studio, "1_studio_shared.png");
   const inFeed = await poll(async () => (await feedOf(people.bo)).find(aboutIt(modelId)), pressed, BAR_S);
-  const inTalk = await poll(() => threadOf(modelId), pressed, BAR_S);
+  const inTalk = await poll(() => threadAbout(modelId), pressed, BAR_S);
   timings.feed_ms = inFeed.ms;
   timings.talk_ms = inTalk.ms;
   // Share pressed to the name typed, and from there to Share progress pressed.
@@ -235,8 +244,22 @@ try {
   check(`work in progress by its link only is refused, nothing written (${unlisted.status}): "${unlisted.body.error}"`,
     unlisted.status === 422 && /List it in the gallery/.test(unlisted.body.error || "")
     && ((await api(`/api/share?id=${modelId}`)).body.versions || []).length === 1);
+  // The app sends each version with its picture and small picture (the PNG
+  // and WebP it drew); this version goes by the API, so it carries version
+  // 1's two as the app would carry its own. Without them it has none, and
+  // /m/X/v/2.webp is rightly 404 (api/share.js op=thumb).
+  const drawn = async (address, kind) => {
+    const got = await fetch(`${site}${address}`, { headers });
+    const bytes = Buffer.from(await got.arrayBuffer());
+    const ok = kind === "png" ? bytes.subarray(1, 4).toString() === "PNG"
+      : bytes.subarray(0, 4).toString() === "RIFF" && bytes.subarray(8, 12).toString() === "WEBP";
+    return got.status === 200 && ok ? bytes.toString("base64") : undefined;
+  };
+  const [image, thumb] = [await drawn(`/m/${modelId}/v/1.png`, "png"), await drawn(`/m/${modelId}/v/1.webp`, "webp")];
+  check(`version 1's picture and small picture read back to send with version 2 (${image ? "PNG" : "none"}, ${thumb ? "WebP" : "none"})`,
+    Boolean(image));
   const second = await api("/api/share", { method: "POST", token: people.ada.access_token,
-    body: { id: modelId, name: NAME, model: more, listed: true, author: "Ada Wip", note: NOTE, wip: true } });
+    body: { id: modelId, name: NAME, model: more, listed: true, author: "Ada Wip", note: NOTE, wip: true, image, thumb } });
   check(`version ${second.body.version} shared as work in progress (${second.status}): "${second.body.said}"`,
     second.status === 200 && second.body.version === 2 && second.body.wip === true && second.body.talk?.thread === thread?.id);
   const posts = await postsOf(thread?.id);
@@ -288,7 +311,8 @@ try {
             picture: (() => { const img = li.querySelector("img"); return img ? { loaded: img.complete && img.naturalWidth > 0, w: img.getBoundingClientRect().width } : null; })(),
             changed: li.querySelector(".log-changed")?.textContent.trim() || "", note: li.querySelector(".log-note")?.textContent.trim() || "" })),
           pill: Boolean(document.querySelector(".pill.wip")), wide: document.documentElement.scrollWidth - window.innerWidth,
-          tab: [...document.querySelectorAll("nav a, nav button")].map((one) => one.textContent.trim()).find((t) => /^Log/.test(t)) || "" };
+          // The page's tabs are a role=tablist since pagekit (3cfdbeabe, 11-23), not a nav.
+          tab: [...document.querySelectorAll('[role="tab"]')].map((one) => one.textContent.trim()).find((t) => /^Log/.test(t)) || "" };
       });
       const theme = dark ? "dark" : "light";
       check(`${width} px ${theme}: the Log has ${log.entries.length}, newest first (${log.entries.map((one) => one.href).join(", ")})`,
@@ -308,13 +332,23 @@ try {
   const page = await adaContext.newPage();
   listen(page, "Ada's page");
   await page.goto(`${site}/m/${modelId}?tests=1`, { waitUntil: "load" });
-  await until(page, () => { const b = document.querySelector("[data-finish]"); return b && !b.hidden; }, "Mark it finished", 30);
+  // Mark it finished is in the Log, a tab of its own since pagekit
+  // (3cfdbeabe, 11-23) and hidden until chosen: chosen as she would.
+  await page.click("#tab-versions");
+  await until(page, () => {
+    const b = document.querySelector("[data-finish]");
+    return b && !b.hidden && b.getBoundingClientRect().width > 0;
+  }, "Mark it finished", 30);
   await shot(page, "5_mark_finished.png");
   await page.click("[data-finish]");
   const finishSaid = await until(page, () => { const s = document.querySelector(".finish-said"); return s && !s.hidden && /Finished/.test(s.textContent) ? s.textContent : null; },
     "the finish said", 30).catch(() => "");
   check(`the page says: "${String(finishSaid).trim()}"`, /version 2 is the finished one/.test(finishSaid));
-  check("...and its mark is gone", await page.evaluate(() => !document.querySelector(".pill.wip") && !document.querySelector(".wip-line")));
+  // The model's own mark, by its name and over the Log: each version in the
+  // Log keeps the pill it was shared with (api/share.js, e3829cdd4), and
+  // since pagekit (3cfdbeabe) Mark it finished is pressed with the Log open.
+  check("...and its mark is gone", await page.evaluate(() => ![...document.querySelectorAll(".pill.wip")].some((pill) => !pill.closest(".log-entry"))
+    && !document.querySelector(".wip-line")));
   await shot(page, "5_finished.png");
   const after = await postsOf(thread?.id);
   check(`the thread has the finish as one post more (${after.length}): "${String(after.at(-1)?.body || "").split("\n")[0]}"`,

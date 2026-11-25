@@ -102,6 +102,34 @@ static func delete_accounts(prefix: String, host: Node) -> int:
 	return gone
 
 
+## After a throwaway account signs in: a throwaway has nothing saved, so on a
+## phone the studio opens on its first screen over the example car, as a
+## real first visit does (Main._maybe_start), and a probe that works on the
+## car puts it away as a person does, by its ✕. Left up, a finger's tap,
+## drag or panel landed on it and nothing in the studio heard (on rel-m338:
+## carryrest, fingertools, phonepanels, binrow, subexport and hpreview, on a
+## phone and a tablet). Waits for the app to decide; returns whether a
+## screen was put away.
+static func put_away_first_screen(main: Node) -> bool:
+	var tree: SceneTree = main.get_tree()
+	for _n: int in 600:
+		if bool(main.get("_start_decided")):
+			break
+		await tree.process_frame
+	var start: Control = null
+	for _n: int in 60:
+		start = main.get("_studio_start")
+		if start != null and start.visible:
+			break
+		await tree.process_frame
+	if start == null or not start.visible:
+		return false
+	start.call("close")
+	await tree.process_frame
+	print("    (the studio's first screen put away, as its ✕ does)")
+	return true
+
+
 static func _mine(email: String) -> void:
 	if not _made.has(email.to_lower()):
 		_made.append(email.to_lower())

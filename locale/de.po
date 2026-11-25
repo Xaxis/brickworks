@@ -17786,3 +17786,92 @@ msgstr "füge noch einmal ein, um es erneut zu versuchen"
 
 msgid "paste stopped"
 msgstr "Einfügen abgebrochen"
+
+msgid "Sign in with %s"
+msgstr "Mit %s anmelden"
+
+msgid "What is that?"
+msgstr "Was ist das?"
+
+msgid "Taking you to %s to sign in…"
+msgstr "Weiter zu %s, um dich anzumelden…"
+
+msgid "Finish signing in with %s in your browser."
+msgstr "Schließe die Anmeldung mit %s in deinem Browser ab."
+
+msgid "Signing in with %s is not offered here. Sign in with your email instead."
+msgstr "Die Anmeldung mit %s gibt es hier nicht. Melde dich stattdessen mit deiner E-Mail an."
+
+msgid "Brickworks could not wait for %s on this computer. Sign in with your email instead."
+msgstr "Brickworks konnte auf diesem Computer nicht auf %s warten. Melde dich stattdessen mit deiner E-Mail an."
+
+msgid "%s did not answer in time. Sign in with %s again."
+msgstr "%s hat nicht rechtzeitig geantwortet. Melde dich noch einmal mit %s an."
+
+msgid "Signing in with %s was cancelled there."
+msgstr "Die Anmeldung mit %s wurde dort abgebrochen."
+
+msgid "%s gave no verified email address of yours. Sign in with a code we email you instead."
+msgstr "%s hat keine bestätigte E-Mail-Adresse von dir genannt. Melde dich stattdessen mit einem Code an, den wir dir mailen."
+
+msgid "%s is unlinked from your account. Sign in with a code we email you, then link it again in Settings."
+msgstr "%s ist von deinem Konto getrennt. Melde dich mit einem Code an, den wir dir mailen, und verknüpfe es dann in den Einstellungen wieder."
+
+msgid "Signing in with %s is not offered here just now. Sign in with a code we email you."
+msgstr "Die Anmeldung mit %s gibt es hier gerade nicht. Melde dich mit einem Code an, den wir dir mailen."
+
+msgid "A lot of people are signing in just now. Try again in a minute."
+msgstr "Gerade melden sich sehr viele an. Versuch es in einer Minute noch einmal."
+
+msgid "%s did not sign you in just now. Try again in a minute, or sign in with a code we email you."
+msgstr "%s hat dich gerade nicht angemeldet. Versuch es in einer Minute noch einmal oder melde dich mit einem Code an, den wir dir mailen."
+
+msgid "Could not sign in with %s just now (%d). Try again in a minute."
+msgstr "Die Anmeldung mit %s hat gerade nicht geklappt (%d). Versuch es in einer Minute noch einmal."
+
+msgid "Signing in without orangecheck also makes your orangecheck account."
+msgstr "Wenn du dich ohne orangecheck anmeldest, bekommst du auch dein orangecheck-Konto."
+
+msgid "Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead."
+msgstr "Google bürgt nur für Gmail- und Google-Workspace-Adressen. Melde dich stattdessen mit einem Code an, den wir dir mailen."
+
+msgid "This address has a Brickworks account already. Sign in with a code we email you. To sign in with %s here from then on, sign in with it once on the Brickworks website."
+msgstr "Für diese Adresse gibt es schon ein Brickworks-Konto. Melde dich mit einem Code an, den wir dir mailen. Damit dich %s hier künftig anmeldet, melde dich einmal auf der Brickworks-Website damit an."
+msgid "%s selected, %d of its %d parts on at this step"
+msgstr "%s ausgewählt, %d seiner %d Teile in diesem Schritt verbaut"
+
+msgid "selected the %d parts on up to step %d"
+msgstr "die %d bis Schritt %d verbauten Teile ausgewählt"
+
+msgid "selected the %d parts on at this step"
+msgstr "die %d in diesem Schritt verbauten Teile ausgewählt"
+
+msgid "%d more in later steps are left out"
+msgstr "%d weitere aus späteren Schritten sind ausgelassen"
+
+msgid "Select all again takes every step"
+msgstr "noch einmal Alles auswählen nimmt jeden Schritt"
+
+msgid "%d in later steps left out."
+msgstr "%d aus späteren Schritten ausgelassen."
+
+msgid "moved %s"
+msgstr "%s verschoben"
+
+msgid "moving %s"
+msgstr "%s wird verschoben"
+
+msgid "%d of them in later steps, not on the screen yet, went with it"
+msgstr "%d davon aus späteren Schritten, noch nicht zu sehen, kamen mit"
+
+msgid "%s more in its other copies"
+msgstr "%s mehr in seinen anderen Kopien"
+
+msgid "%s more in its other copies, in a later step"
+msgstr "%s mehr in seinen anderen Kopien, in einem späteren Schritt"
+
+msgid "Sub-assembly of %d parts, %d on at this step"
+msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut"
+
+msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
+msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut, %d darin"

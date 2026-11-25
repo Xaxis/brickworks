@@ -136,6 +136,7 @@ func _init() -> void:
 	# _ready means a Builder is usable the moment it exists — which the
 	# headless checks rely on.
 	lattice = BrickLattice.new()
+	selection_changed.connect(_selection_changed_elsewhere)
 
 
 func _ready() -> void:
@@ -452,6 +453,9 @@ func forget_history() -> void:
 	if not selection.is_empty():
 		selection.clear()
 		selection_changed.emit(0)
+	_let_go.clear()
+	_figure_followers = []
+	_figure_lift = {}
 	# A selection picked up to move has no way back once the model it
 	# came off is gone.
 	if carrying != null and carrying.lifted:
@@ -466,6 +470,11 @@ func undo() -> bool:
 	# A part lifted off and put back by the undo is no longer held by it.
 	grip = null
 	var step: Dictionary = _history.pop_back()
+	# The lift of a figure still in hand, undone: its parts go back on the
+	# model, so the hand lets go of it. It held a second figure that a click
+	# put down, the later parts it left (_figure_followers) moved again.
+	if is_same(step, _figure_lift) and is_holding_figure():
+		drop_figure()
 	# Said before it is undone, while the brick a step names is still
 	# there to name, and kept with the step that redoes it: the step
 	# reversed would read backwards ("removed" for a placing redone).
@@ -910,10 +919,20 @@ func _live(brick_id: int) -> int:
 # -- working on several at once ------------------------------------------
 
 
-## What a click with Select on this brick takes: none for a locked brick.
+## What a click with Select on this brick takes: none for a locked brick,
+## nor for one the timeline has not put on yet ([method shown_only]).
 func takes(brick_id: int) -> PackedInt64Array:
-	if brick_id == 0 or locked.has(brick_id):
+	if brick_id == 0 or locked.has(brick_id) or is_ahead(brick_id):
 		return PackedInt64Array()
+	# At a step of the timeline, its parts on show: at a set's fifth step a
+	# click took the whole house, 149 parts with 77 not on yet, and a colour
+	# then painted them all (appwalk, stepedit). The rest is held with the
+	# selection (hold_unseen), for a move to carry.
+	return shown_only(_taken_whole(brick_id))
+
+
+## The whole of what a click on [param brick_id] takes, on show or not.
+func _taken_whole(brick_id: int) -> PackedInt64Array:
 	# A sub-assembly is one thing to whoever points at it, at the level
 	# being edited; and nothing outside the one being edited is.
 	if unit_of.is_valid():
@@ -927,27 +946,307 @@ func takes(brick_id: int) -> PackedInt64Array:
 	return members if members.size() > 1 else PackedInt64Array([brick_id])
 
 
+# -- what the step showing holds ---------------------------------------------
+#
+# While the timeline shows a step (StepsBar), the parts it has not put on
+# yet are drawn nowhere and the pointer passes through them
+# (BrickLattice.ahead). A selection holds only parts on show, and so every
+# edit of it (a colour, Delete, a move, a turn, a mirror, Replace, Cut and
+# Copy, a group) reaches only what the person sees, as Studio and LDCad edit
+# at a step. Off the timeline, or at its last step, nothing is ahead and
+# nothing here changes anything.
+
+
+## More than nothing while an edit made for every step runs ([method
+## in_every_step]): a session's call sent with all_steps (replace_parts).
+var _every_step: int = 0
+
+
+## Whether the timeline has not put [param brick_id] on yet, so nothing the
+## person does at this step reaches it.
+func is_ahead(brick_id: int) -> bool:
+	return _every_step == 0 and lattice != null and lattice.ahead.has(brick_id)
+
+
+## [param ids] without the parts the timeline has not put on yet.
+func shown_only(ids: PackedInt64Array) -> PackedInt64Array:
+	if _every_step > 0 or lattice == null or lattice.ahead.is_empty():
+		return ids
+	var out := PackedInt64Array()
+	for brick_id: int in ids:
+		if not lattice.ahead.has(brick_id):
+			out.append(brick_id)
+	return out
+
+
+## Whether the timeline shows a step with parts still to come.
+func at_a_step() -> bool:
+	return lattice != null and not lattice.ahead.is_empty()
+
+
+## The number of the step the timeline shows, -1 for none (Main).
+var step_showing: Callable = Callable()
+
+
+## Why a session's change to [param ids] is not made: some are in steps after
+## the one the person is looking at, and [param all_steps] is not true. ""
+## when it can go ahead. Refused before anything is written, the parts
+## named, at most ten.
+func later_refusal(ids: Array, all_steps: Variant) -> String:
+	# Only a real true lets it through: read at the tool's edge
+	# ([method all_steps_read]), and anything else here is no leave. A
+	# Variant compared with == true was a script error for "true" and 1, and
+	# the part was taken off with the gate skipped (stepreview F2).
+	if (all_steps is bool and all_steps) or not at_a_step():
+		return ""
+	var later: Array = []
+	var seen: Dictionary = {}
+	for raw: Variant in ids:
+		var brick_id: int = int(raw)
+		if lattice.ahead.has(brick_id) and not seen.has(brick_id):
+			seen[brick_id] = true
+			later.append(brick_id)
+	if later.is_empty():
+		return ""
+	var step: int = int(step_showing.call()) if step_showing.is_valid() else -1
+	var named: Array = later.slice(0, 10).map(func(id: int) -> String: return "#%d" % id)
+	return ("Not applied — the person is looking at %s of the timeline, and %d of the parts this "
+		+ "changes are in later steps, not on the screen yet: %s%s. Change only parts on show, "
+		+ "or send all_steps: true to change those too (say so to the person).") % [
+		"step %d" % step if step > 0 else "a step", later.size(), ", ".join(PackedStringArray(named)),
+		" and %d more" % (later.size() - 10) if later.size() > 10 else ""]
+
+
+## all_steps as a session sent it, checked at the tool's edge (AppTools.
+## refusal, Assistant._run_tool): only JSON's true reaches the parts a step
+## has not put on, and false or no all_steps leaves them out. Anything else
+## ("true", 1, "1", null, an object) is refused with these words before
+## anything changes, never read as a leave: a leave to change what the
+## person cannot see is never guessed (stepreview F2). "" for a bool or none.
+static func all_steps_read(input: Dictionary) -> String:
+	if not input.has("all_steps") or input["all_steps"] is bool:
+		return ""
+	return "Not applied — all_steps must be true or false, and it was %s; nothing changed." \
+		% JSON.stringify(input["all_steps"]).left(40)
+
+
+## [param edit] called with every step's parts in reach: what it returns.
+func in_every_step(edit: Callable) -> Variant:
+	_every_step += 1
+	var out: Variant = edit.call()
+	_every_step -= 1
+	return out
+
+
+## The selection let go of what the timeline no longer shows: a step back
+## from the one it was made at, or the timeline opened on its first step.
+## What it let go of comes back when the timeline shows it again or is put
+## away, unless the selection was changed in between: parts selected, a look
+## at the steps, and they are still selected after. [param changed]: the
+## parts the step put on or took off (Main._steps_revealed_upto), the only
+## ones looked at; null to look at the whole selection, as after the order
+## itself changed. How many came or went.
+##
+## Nothing is said to the rest of the window here: its panels hear once the
+## steps stop changing it ([method _settle_kept]). Told at every step,
+## each of them read the whole selection again: on 10030 with every part
+## selected a step took 113-179 ms against pre261's 18-21 (stepreview F3).
+## The outline is drawn and the line said by Main as the step is shown.
+func keep_shown(changed: Variant = null) -> int:
+	if lattice == null:
+		return 0
+	var gone: Array = []
+	var back: Array = []
+	if changed is PackedInt64Array or changed is Array:
+		for raw: Variant in changed:
+			var brick_id: int = int(raw)
+			if lattice.ahead.has(brick_id):
+				if selection.has(brick_id):
+					gone.append(brick_id)
+			elif _let_go.has(brick_id) and _may_come_back(brick_id):
+				back.append(brick_id)
+	else:
+		if not lattice.ahead.is_empty():
+			for brick_id: int in selection:
+				if lattice.ahead.has(brick_id):
+					gone.append(brick_id)
+		for brick_id: int in _let_go:
+			if not lattice.ahead.has(brick_id) and _may_come_back(brick_id):
+				back.append(brick_id)
+	if gone.is_empty() and back.is_empty():
+		return 0
+	for brick_id: int in gone:
+		selection.erase(brick_id)
+		_let_go[brick_id] = true
+	for brick_id: int in back:
+		_let_go.erase(brick_id)
+		selection[brick_id] = true
+	_settle_kept()
+	return gone.size() + back.size()
+
+
+func _may_come_back(brick_id: int) -> bool:
+	return world.get_brick(brick_id) != null and not locked.has(brick_id) \
+		and not lattice.unseen.has(brick_id)
+
+
+## The parts of the selection the step showing has not put on: let go of by
+## a step back ([method keep_shown]), or the rest of a sub-assembly a click
+## took at a step ([method hold_unseen]). They come back on show, and a move
+## of the selection carries them ([method _moving_selection]); nothing else
+## reaches them. Whether it is keep_shown saying the selection changed,
+## which keeps them.
+var _let_go: Dictionary = {}
+var _keeping: bool = false
+## How long the steps leave the selection alone before the window's panels
+## are told of what they did to it: a step a press, or Play's every frame,
+## tells them once, after.
+const SETTLE_SECONDS := 0.3
+var _kept_timer: Timer = null
+
+
+func _settle_kept() -> void:
+	if not is_inside_tree():
+		_tell_kept()
+		return
+	if _kept_timer == null:
+		_kept_timer = Timer.new()
+		_kept_timer.one_shot = true
+		_kept_timer.wait_time = SETTLE_SECONDS
+		_kept_timer.timeout.connect(_tell_kept)
+		add_child(_kept_timer)
+	_kept_timer.start()
+
+
+func _tell_kept() -> void:
+	_keeping = true
+	selection_changed.emit(selection.size())
+	_keeping = false
+
+
+## Any other change to the selection is the person's or a tool's: what a
+## step back let go of stays let go, and the panels have heard of it.
+func _selection_changed_elsewhere(_count: int) -> void:
+	if not _keeping:
+		_let_go.clear()
+		if _kept_timer != null:
+			_kept_timer.stop()
+
+
+## The parts of [param whole] (a sub-assembly or a figure a click or a box
+## took at a step) the step has not put on, held with the selection: a step
+## on shows them selected, and a move of the selection carries them
+## ([member _let_go]). Called after the selection said it changed.
+func hold_unseen(whole: PackedInt64Array) -> void:
+	if lattice == null or lattice.ahead.is_empty() or _every_step > 0:
+		return
+	for brick_id: int in whole:
+		if lattice.ahead.has(brick_id) and not locked.has(brick_id):
+			_let_go[brick_id] = true
+
+
+## How many parts of later steps the last move of the selection carried
+## with it ([method _moving_selection]), for what is said of it.
+var riding_later: int = 0
+
+
+## What a rigid move of the selection moves: the parts on show selected,
+## and at a step of the timeline, the rest of what was taken with them,
+## drawn or not. A move, a turn, a tip, a mirror, a swing, a drag, a lift
+## into the hand and the arrows all move a sub-assembly whole: its later
+## parts go with it, so it never comes apart where nobody can see it
+## (stepreview F1: the house at step 5 was refused a stud's move by its own
+## unseen roof, and a drag took 72 of its 149 parts and left the roof on
+## the ground). They are
+##  - the parts a step back took off the selection, and the rest of a
+##    sub-assembly a click took at a step ([member _let_go]);
+##  - every later part of a sub-assembly (Builder.unit_of, at the level being
+##    edited) whose parts on show are all selected: Select all, a box.
+## Moving with the rest, none of them is in its way. An edit that changes
+## what a part is (a colour, Delete, Replace, Cut) reaches only the parts on
+## show ([method _living_selection]).
+func _moving_selection() -> PackedInt64Array:
+	var alive: PackedInt64Array = _living_selection()
+	riding_later = 0
+	if alive.is_empty() or not at_a_step() or _every_step > 0:
+		return alive
+	var moving: Dictionary = {}
+	for brick_id: int in alive:
+		moving[brick_id] = true
+	for brick_id: int in _let_go:
+		if lattice.ahead.has(brick_id) and world.get_brick(brick_id) != null \
+				and not locked.has(brick_id):
+			moving[brick_id] = true
+	if unit_of.is_valid():
+		var asked: Dictionary = {}
+		for brick_id: int in alive:
+			if asked.has(brick_id):
+				continue
+			var members: PackedInt64Array = unit_of.call(brick_id)
+			for member: int in members:
+				asked[member] = true
+			if members.size() < 2:
+				continue
+			var later: Array = []
+			var whole: bool = true
+			for member: int in members:
+				if lattice.ahead.has(member):
+					later.append(member)
+				elif not moving.has(member) and not lattice.unseen.has(member):
+					whole = false
+					break
+			if whole:
+				for member: int in later:
+					if not locked.has(member) and world.get_brick(member) != null:
+						moving[member] = true
+	if moving.size() == alive.size():
+		return alive
+	riding_later = moving.size() - alive.size()
+	return PackedInt64Array(moving.keys())
+
+
+## Said after a move that carried parts of later steps: "" when it carried
+## none.
+func riding_said() -> String:
+	return "" if riding_later == 0 else "%d of them in later steps, not on the screen yet, went with it" \
+		% riding_later
+
+
 ## Add the brick under the cursor to the selection, or take it out.
 func toggle_hovered() -> bool:
-	var members: PackedInt64Array = takes(_hovered)
+	if _hovered == 0 or locked.has(_hovered) or is_ahead(_hovered):
+		return false
+	var whole: PackedInt64Array = _taken_whole(_hovered)
+	var members: PackedInt64Array = shown_only(whole)
 	if members.is_empty():
 		return false
+	# What the selection held unseen already stays held: its saying it
+	# changed forgets it (_selection_changed_elsewhere).
+	var held: Dictionary = _let_go.duplicate()
+	var took: bool = true
 	if members.size() > 1:
 		var all_in: bool = true
 		for brick_id: int in members:
 			all_in = all_in and selection.has(brick_id)
+		took = not all_in
 		for brick_id: int in members:
 			if all_in:
 				selection.erase(brick_id)
 			else:
 				selection[brick_id] = true
 		selection_changed.emit(selection.size())
-		return true
-	if selection.erase(_hovered):
+	elif selection.erase(_hovered):
+		took = false
 		selection_changed.emit(selection.size())
-		return true
-	selection[_hovered] = true
-	selection_changed.emit(selection.size())
+	else:
+		selection[_hovered] = true
+		selection_changed.emit(selection.size())
+	_let_go = held
+	if took:
+		hold_unseen(whole)
+	else:
+		for brick_id: int in whole:
+			_let_go.erase(brick_id)
 	return true
 
 
@@ -955,10 +1254,12 @@ func toggle_hovered() -> bool:
 ## selection becomes it (its whole figure, for a minifigure part), or with
 ## ``add`` it is added or taken away.
 func select_brick(brick_id: int, add: bool) -> bool:
-	if brick_id == 0 or locked.has(brick_id) or world.get_brick(brick_id) == null:
+	if brick_id == 0 or locked.has(brick_id) or world.get_brick(brick_id) == null \
+			or is_ahead(brick_id):
 		return false
 	if not add:
 		selection.clear()
+		_let_go.clear()
 	var was: int = _hovered
 	_hovered = brick_id
 	var done: bool = toggle_hovered()
@@ -978,27 +1279,38 @@ func select_in(box: Rect2, where: Callable, touching: bool,
 		add: bool = true) -> int:
 	if not add:
 		selection.clear()
+		_let_go.clear()
 	var took: int = 0
+	var wholes: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
 		var on_screen: Variant = where.call(brick)
 		if not (on_screen is Rect2):
 			continue
 		var caught: bool = (box.intersects(on_screen) if touching
 			else box.encloses(on_screen))
-		if caught and not selection.has(brick.id) and not locked.has(brick.id):
-			# A box round part of a sub-assembly takes all of it.
-			var members: PackedInt64Array = unit_of.call(brick.id) if unit_of.is_valid() \
+		if caught and not selection.has(brick.id) and not locked.has(brick.id) \
+				and not is_ahead(brick.id):
+			# A box round part of a sub-assembly takes all of it: what of it
+			# the step showing has on (takes), the rest held (hold_unseen).
+			var whole: PackedInt64Array = unit_of.call(brick.id) if unit_of.is_valid() \
 				else PackedInt64Array([brick.id])
-			for member: int in members:
+			wholes.append(whole)
+			for member: int in shown_only(whole):
 				if not selection.has(member) and not locked.has(member):
 					selection[member] = true
 					took += 1
 	if took > 0 or not add:
+		var held: Dictionary = _let_go.duplicate()
 		selection_changed.emit(selection.size())
+		_let_go = held
+		for whole: PackedInt64Array in wholes:
+			hold_unseen(whole)
 	return took
 
 
 func clear_selection() -> void:
+	# Let go of on purpose, with or without parts on show (keep_shown).
+	_let_go.clear()
 	if selection.is_empty():
 		return
 	selection.clear()
@@ -1018,7 +1330,7 @@ func select_alike() -> int:
 	for brick: BrickWorld.Brick in world.bricks():
 		if (brick.part_id == seed.part_id
 				and brick.color_code == seed.color_code
-				and not locked.has(brick.id)):
+				and not locked.has(brick.id) and not is_ahead(brick.id)):
 			selection[brick.id] = true
 	selection_changed.emit(selection.size())
 	return selection.size()
@@ -1026,19 +1338,30 @@ func select_alike() -> int:
 
 ## Drop from the selection anything that is no longer in the world, and
 ## say how many are left. Called before every operation, because a brick
-## can go away by undo or by the assistant rebuilding the model.
+## can go away by undo or by the assistant rebuilding the model. Nor what
+## the step showing has not put on: whatever put it in the selection, an
+## edit reaches only what is on show ([method shown_only]).
 func _living_selection() -> PackedInt64Array:
 	var alive := PackedInt64Array()
 	var gone: Array = []
+	var unseen: Array = []
 	for brick_id: int in selection:
 		if world.get_brick(brick_id) == null:
 			gone.append(brick_id)
+		elif is_ahead(brick_id):
+			unseen.append(brick_id)
 		else:
 			alive.append(brick_id)
-	for brick_id: int in gone:
+	for brick_id: int in gone + unseen:
 		selection.erase(brick_id)
-	if not gone.is_empty():
+	# Not on show, it is still the selection's, as a step back's are
+	# (keep_shown): a move carries it, and a step on shows it selected.
+	for brick_id: int in unseen:
+		_let_go[brick_id] = true
+	if not gone.is_empty() or not unseen.is_empty():
+		_keeping = true
 		selection_changed.emit(selection.size())
+		_keeping = false
 	return alive
 
 
@@ -1122,7 +1445,7 @@ func move_selection_by(by: Vector3) -> int:
 ## which reads a pin in its bore as two parts in one place. Refused,
 ## changing nothing, where any would run into something.
 func _moved_joined(by: Vector3) -> int:
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty():
 		return 0
 	if _lock_refuses_ids(alive, func(at: Transform3D) -> Transform3D:
@@ -1249,7 +1572,7 @@ func hinge_angle() -> Variant:
 ## Nothing could turn a part once it was down: the only way to face a
 ## finished window the other way was to take it apart and build it again.
 func turn_selection(quarter_turns: int) -> int:
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty() or posmod(quarter_turns, 4) == 0:
 		return 0
 	var bricks: Array = []
@@ -1294,7 +1617,7 @@ func turn_selection_by(degrees: float) -> int:
 	var quarters: float = degrees / 90.0
 	if is_equal_approx(quarters, roundf(quarters)):
 		return turn_selection(roundi(quarters))
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty():
 		return 0
 	var bricks: Array = []
@@ -1306,9 +1629,10 @@ func turn_selection_by(degrees: float) -> int:
 	var around: Transform3D = Transform3D(Basis.IDENTITY, pivot) \
 		* Transform3D(Basis(Vector3.UP, deg_to_rad(degrees)), Vector3.ZERO) \
 		* Transform3D(Basis.IDENTITY, -pivot)
+	# The turn is square already; each part keeps its own turn as its file
+	# rounded it, turned with the rest ([method _dragged_to]).
 	var turned: int = _reposition(func(at: Transform3D) -> Transform3D:
 		var to: Transform3D = around * at
-		to = Transform3D(to.basis.orthonormalized(), to.origin)
 		return _tidy(to, BrickLattice.is_square_to_grid(to.basis)),
 		"turned %s %d°" % [_many(alive.size()), roundi(degrees)])
 	if turned > 0:
@@ -1330,7 +1654,7 @@ func turn_selection_basis(turn: Basis, words: String = "") -> int:
 	if (turn * Vector3.UP).dot(Vector3.UP) > 0.99999:
 		var x: Vector3 = turn * Vector3.RIGHT
 		return turn_selection_by(rad_to_deg(atan2(-x.z, x.x)))
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty():
 		return 0
 	var middle: Vector3 = _bounds_of(alive, Transform3D.IDENTITY).get_center()
@@ -1338,7 +1662,6 @@ func turn_selection_basis(turn: Basis, words: String = "") -> int:
 		* Transform3D(turn, Vector3.ZERO) * Transform3D(Basis.IDENTITY, -middle)
 	return _reposition(func(at: Transform3D) -> Transform3D:
 		var to: Transform3D = around * at
-		to = Transform3D(to.basis.orthonormalized(), to.origin)
 		return _tidy(to, BrickLattice.is_square_to_grid(to.basis)),
 		words if not words.is_empty() else "turned %s" % _many(alive.size()))
 
@@ -1348,7 +1671,7 @@ func turn_selection_basis(turn: Basis, words: String = "") -> int:
 ## down arrows; T here. One step; refused, changing nothing, where it would
 ## run into something.
 func tip_selection(axis: Vector3, quarters: int) -> int:
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty() or posmod(quarters, 4) == 0:
 		return 0
 	var box: AABB = _bounds_of(alive, Transform3D.IDENTITY)
@@ -1381,7 +1704,7 @@ var _dragged: Dictionary = {}
 func drag_begin() -> int:
 	drag_end(Transform3D.IDENTITY)
 	refused_lock = ""
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty():
 		return 0
 	var was: Dictionary = {}
@@ -1408,9 +1731,13 @@ func drag_places(by: Transform3D) -> Dictionary:
 	return out
 
 
+## The move made square, not the part: a part keeps the turn its file
+## rounded (10030's 0.951/0.308) turned with the rest. Each part made square
+## moved each of a copy's parts by its own turn, so no line of the copy
+## could say the move (SourceFile._common_move) and each part's line was
+## rewritten in every copy of its sub-model (exactsave).
 func _dragged_to(by: Transform3D, was: Transform3D) -> Transform3D:
-	var to: Transform3D = by * was
-	to = Transform3D(to.basis.orthonormalized(), to.origin)
+	var to: Transform3D = Transform3D(by.basis.orthonormalized(), by.origin) * was
 	return _tidy(to, BrickLattice.is_square_to_grid(to.basis))
 
 
@@ -1597,7 +1924,7 @@ var refused_by := PackedInt64Array()
 ## Put every selected brick where ``to`` says, as one step, or none of
 ## them if any would go through another brick or the floor.
 func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> int:
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty():
 		return 0
 	# A joint locked that the move would turn or slide refuses it whole
@@ -2068,11 +2395,23 @@ func replace_bricks(changes: Array, words: String) -> Vector2i:
 		return Vector2i(0, refused)
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
-	selection.clear()
-	for brick_id: int in changed:
-		selection[brick_id] = true
-	selection_changed.emit(selection.size())
+	_select_changed(changed)
 	return Vector2i(changed.size(), refused)
+
+
+## The parts an edit just changed selected, those on show at the step the
+## timeline shows, the rest held with them ([method hold_unseen]): a
+## session's replace_parts with all_steps left the person's selection
+## holding two later parts, and the line said "2 selected" of nothing on
+## show (stepreview F7).
+func _select_changed(changed: PackedInt64Array) -> void:
+	selection.clear()
+	_let_go.clear()
+	for brick_id: int in changed:
+		if not lattice.ahead.has(brick_id):
+			selection[brick_id] = true
+	selection_changed.emit(selection.size())
+	hold_unseen(changed)
 
 
 ## A replace's swaps kept as one step, and selected: [how many, how many
@@ -2085,10 +2424,7 @@ func _replaced(part_id: String, steps: Array, swapped: PackedInt64Array,
 	_history.append({"undo": "group", "steps": steps, "words": "swapped %s for %s" % [
 		_many(swapped.size()), Inventory._tidy(info.name) if info != null else part_id]})
 	_redo.clear()
-	selection.clear()
-	for brick_id: int in swapped:
-		selection[brick_id] = true
-	selection_changed.emit(selection.size())
+	_select_changed(swapped)
 	return Vector2i(swapped.size(), refused)
 
 
@@ -2098,7 +2434,7 @@ func _replaced(part_id: String, steps: Array, swapped: PackedInt64Array,
 ## All or nothing, one step. Returns how many, or zero when it would run
 ## into something.
 func mirror_selection(axis: int) -> int:
-	var made: PackedInt64Array = mirror_bricks(_living_selection(), axis)
+	var made: PackedInt64Array = mirror_bricks(_moving_selection(), axis)
 	if made.is_empty():
 		return 0
 	selection.clear()
@@ -2680,7 +3016,7 @@ func name_group(name: String) -> int:
 ## Studio's hinge tool does this; here a hinged wing could only stand at
 ## the angle it was put down at.
 func swing_selection(degrees: float) -> int:
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty() or is_zero_approx(degrees):
 		return 0
 	var joint: Dictionary = _joint_of(alive)
@@ -2702,7 +3038,6 @@ func swing_selection(degrees: float) -> int:
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		var to: Transform3D = around * brick.transform
-		to = Transform3D(to.basis.orthonormalized(), to.origin)
 		var packed: PackedInt32Array = boxes_for(library.mesh_for(brick.part_id), to)
 		for other: int in lattice.blockers_boxes(packed):
 			if not partners.has(other):
@@ -2909,7 +3244,7 @@ func hold_copy(parts: Array) -> int:
 ## pointer's line a drag began on ([from, way]): one part dragged alone goes
 ## on by the joint it was picked up by there ([member carry_grip]).
 func lift_selection(grab: Array = []) -> int:
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _moving_selection()
 	if alive.is_empty():
 		return 0
 	# Lifted, one side of a locked joint would leave the other (jointlock).
@@ -5957,12 +6292,17 @@ func hold_figure(parts: Array, called: String) -> void:
 	held_figure = parts.duplicate()
 	held_figure_name = called if not called.strip_edges().is_empty() else "Minifig"
 	held_face = "up"
+	_figure_followers = []
+	_figure_lift = {}
 
 
 ## Go back to holding the part that was held before.
 func drop_figure() -> void:
 	held_figure = []
 	held_figure_name = ""
+	# What of it stayed on the model stays where it stands.
+	_figure_followers = []
+	_figure_lift = {}
 	_hide_figure_ghosts()
 
 
@@ -6019,8 +6359,12 @@ func figure_fits(parts: Array, at: Transform3D) -> bool:
 ## Put a figure's parts in the world and the lattice, as one group, and
 ## return their numbers. No history: whoever calls it decides what an
 ## undo takes back.
-func put_figure(parts: Array, called: String, at: Transform3D) -> PackedInt64Array:
-	var group: String = unused_group(called)
+func put_figure(parts: Array, called: String, at: Transform3D,
+		as_lifted: bool = false) -> PackedInt64Array:
+	# [param as_lifted]: the rest of the figure is still on the model under
+	# [param called] (Builder._figure_followers), so its own name, and each
+	# part the step and sub-model it was lifted from.
+	var group: String = called if as_lifted else unused_group(called)
 	var ids := PackedInt64Array()
 	for item: Dictionary in parts:
 		var where: Transform3D = at * (item["at"] as Transform3D)
@@ -6028,6 +6372,9 @@ func put_figure(parts: Array, called: String, at: Transform3D) -> PackedInt64Arr
 		if brick_id == 0:
 			continue
 		world.get_brick(brick_id).group = group
+		if as_lifted:
+			world.get_brick(brick_id).unit = str(item.get("unit", ""))
+			world.get_brick(brick_id).step = int(item.get("step", -1))
 		lattice.occupy_boxes(brick_id,
 			boxes_for(library.mesh_for(str(item["part"])), where))
 		ids.append(brick_id)
@@ -6088,17 +6435,48 @@ func figure_of(brick_id: int) -> PackedInt64Array:
 
 
 func _place_figure() -> int:
-	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform)
+	# A figure lifted at a step with parts still to come: one figure still,
+	# under its own name and each part in its own step, and those parts
+	# brought where it went (_lift_figure).
+	# Only straight after the lift that left them: an edit or another model
+	# since, and they stay where they stand.
+	if _history.is_empty() or not is_same(_history.back(), _figure_lift):
+		_figure_followers = []
+	var following: bool = not _figure_followers.is_empty()
+	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform,
+		following)
 	if ids.is_empty():
 		return 0
 	var steps: Array = []
 	for brick_id: int in ids:
-		world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
+		if not following:
+			world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
 		steps.append({"undo": "remove", "brick": brick_id})
+	riding_later = 0
+	for follower: Dictionary in _figure_followers:
+		var brick: BrickWorld.Brick = world.get_brick(int(follower["brick"]))
+		if brick == null:
+			continue
+		var to: Transform3D = _ghost_transform * (follower["at"] as Transform3D)
+		steps.append({"undo": "move", "brick": brick.id, "transform": brick.transform})
+		lattice.release(brick.id)
+		world.move_brick(brick.id, to)
+		lattice.occupy_boxes(brick.id, boxes_for(library.mesh_for(brick.part_id), to))
+		riding_later += 1
+	_figure_followers = []
 	_history.append({"undo": "group", "steps": steps})
 	_redo.clear()
 	placed.emit(ids[0], held_figure_name)
 	return ids[0]
+
+
+## The parts of a figure lifted at a step that the step has not put on:
+## left on the model, each {brick, at} where it stands in the figure's
+## frame, to go where the figure is put down. Empty for any other.
+var _figure_followers: Array = []
+## The history step of the last figure lifted off the model, while it is
+## held: its undo lets go of it, and its followers go only with it.
+var _figure_lift: Dictionary = {}
 
 
 ## Take a whole figure off the model and hold it, facing the way it
@@ -6117,9 +6495,19 @@ func _lift_figure(brick_id: int) -> bool:
 	var parts: Array = []
 	var steps: Array = []
 	var unpicked: bool = false
+	_figure_followers = []
 	for brick: BrickWorld.Brick in bricks:
+		# At a step, a part of it the timeline has not put on stays on the
+		# model in its own step, and goes where the figure is put down
+		# ([method _place_figure]): X over the torso at step 3 lifted the
+		# head of step 4 too, put down in step 3 (stepreview F5).
+		if is_ahead(brick.id):
+			_figure_followers.append({"brick": brick.id,
+				"at": home.affine_inverse() * brick.transform})
+			continue
 		parts.append({"part": brick.part_id, "color": brick.color_code,
-			"at": home.affine_inverse() * brick.transform})
+			"at": home.affine_inverse() * brick.transform, "step": brick.step,
+			"unit": brick.unit})
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
 			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})
@@ -6129,9 +6517,13 @@ func _lift_figure(brick_id: int) -> bool:
 		removed.emit(brick.id)
 	if unpicked:
 		selection_changed.emit(selection.size())
-	_history.append({"undo": "group", "steps": steps})
+	var lift: Dictionary = {"undo": "group", "steps": steps}
+	_history.append(lift)
 	_redo.clear()
+	var following: Array = _figure_followers
 	hold_figure(parts, (bricks[0] as BrickWorld.Brick).group)
+	_figure_followers = following
+	_figure_lift = lift
 	held_rotation = BrickLattice.turns_about(BrickLattice.snap_basis(home.basis), "up")
 	_hovered = 0
 	return true

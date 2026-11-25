@@ -268,6 +268,22 @@ def record(kind: str, name: str, built: str, at: str, passed: list[str]) -> Path
     return f
 
 
+def oldest(names: list[str], proofs: list[dict], now: float | None = None) -> list[str]:
+    """[names] in the order a night with too little time should prove them:
+    those with no proof of the last MAX_AGE_H hours, then those proven over
+    12 hours ago, then the rest, each lot in the order given (nightly.sh gives
+    them the longest first). What the night's time leaves out is then what a
+    release proved that day (nightreds, 2026-11-24: every check took 9.5 hours
+    for a 4-hour night)."""
+    now = time.time() if now is None else now
+    newest: dict[str, float] = {}
+    for r in proofs:
+        for n in r.get("passed", []):
+            newest[n] = max(newest.get(n, 0.0), float(r.get("time", 0)))
+    lot = lambda n: 0 if n not in newest else 1 if now - newest[n] > 12 * 3600 else 2  # noqa: E731
+    return sorted(names, key=lot)
+
+
 def passed_in(outs: list[Path]) -> list[str]:
     """The checks a battery's files say passed: NAME exit=0 lines, a later
     file (a check run again alone) over an earlier one."""
@@ -362,6 +378,9 @@ def main() -> int:
         s.add_argument("--every", action="store_true", help="carry nothing over (the full list)")
         if kind == "probes":
             s.add_argument("--list", default="tools/suite/headless.txt")
+    o = sub.add_parser("oldest", help="the names given, those proven longest ago first (nightly.sh's order)")
+    o.add_argument("kind", choices=("checks", "probes"))
+    o.add_argument("names", nargs="*")
     n = sub.add_parser("never-live", help="those of the checks named whose script refuses brickworks.diy")
     n.add_argument("--tree", required=True)
     n.add_argument("names", nargs="*")
@@ -376,6 +395,10 @@ def main() -> int:
 
     if a.cmd == "never-live":
         print(" ".join(never_live(Path(a.tree).resolve(), a.names)))
+        return 0
+
+    if a.cmd == "oldest":
+        print(" ".join(oldest(a.names, records(a.kind))))
         return 0
 
     if a.cmd == "record":

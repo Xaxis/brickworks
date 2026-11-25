@@ -943,9 +943,17 @@ func _tell_page() -> void:
 	# edit, a frame drawn, an answer, a check's question: Wake), then every
 	# TELL_RESTING_MS: twice a second, a still phone at a quarter speed
 	# spent 5 to 13 ms of a frame on it for nobody (idlesleep).
-	if moment == _told_moment and not Wake.owed(_told_page_at) and Wake.on \
+	# A control left out because it had moved or come since the telling
+	# before (_page_places) is owed the next half second's, a few times:
+	# held to TELL_RESTING_MS, Sign in's address and Disconnect came two
+	# seconds after they stood still, and the checks that read them first
+	# found nothing (account, oauth; nightly 2026-11-24).
+	var settling: bool = _places_unsettled and _places_settling < PLACES_SETTLING
+	if moment == _told_moment and not Wake.owed(_told_page_at) and not settling and Wake.on \
 			and now - _told_page_at < TELL_RESTING_MS:
 		return
+	if settling:
+		_places_settling += 1
 	_told_page_at = now
 	_told_moment = moment
 	_hear_look_ask()
@@ -1460,6 +1468,7 @@ func _page_controls() -> Dictionary:
 func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> Dictionary:
 	var seen: Dictionary = {}
 	var where: Dictionary = {}
+	var withheld: bool = false
 	for name: String in named:
 		var control: Control = named[name]
 		if control == null or not control.is_visible_in_tree():
@@ -1479,32 +1488,52 @@ func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> 
 		# Cut off by a list it is in, scrolled past it: on a phone held
 		# sideways at 130% Settings' Interface size stood under the list's
 		# foot, behind Done, inside the window, and a tap meant for it
-		# pressed Done (app_a11y, uifix). Said, so a check scrolls to it.
-		if _cut_off(control):
+		# pressed Done (app_a11y, uifix). Said, so a check scrolls to it,
+		# with the part of the list that shows, where a wheel turned scrolls
+		# it: the Share form's List it in the gallery lay wholly under the
+		# form's foot, and every place a check could guess beside it was the
+		# foot, a field or the view (nightreds, 2026-11-24).
+		var cut_by: Control = _cut_off(control)
+		if cut_by != null:
 			at["clipped"] = true
+			var list: Rect2 = to_window * cut_by.get_global_rect()
+			at["list"] = {"x": roundi(list.get_center().x / per_css), "y": roundi(list.get_center().y / per_css),
+				"w": roundi(list.size.x / per_css), "h": roundi(list.size.y / per_css)}
 		seen[name] = at
 		if _told_places.get(name, {}) == at:
 			where[name] = at
+		else:
+			withheld = true
 	_told_places = seen
+	_places_unsettled = withheld
+	if not withheld:
+		_places_settling = 0
 	return where
 
 
 ## Where each control was at the last telling (_page_places).
 var _told_places: Dictionary = {}
+## Whether the last telling left a control out for having moved or come
+## since the one before, and how many tellings since have been owed for it
+## (_tell_page): at most PLACES_SETTLING, so a control that never stands
+## still (a bar filling) costs a resting phone no telling more than that.
+var _places_unsettled: bool = false
+var _places_settling: int = 0
+const PLACES_SETTLING := 3
 
 
-## Whether something [param control] is in that clips what it holds (a
-## list that scrolls, a drawer) shows less than all of it. By more than two
-## units: a list scrolls by whole units, and one 455.7 tall scrolled to its
-## end left its last row 1.1 under its foot (the assistant's at 150%).
-static func _cut_off(control: Control) -> bool:
+## What [param control] is in that clips what it holds (a list that
+## scrolls, a drawer) and shows less than all of it, or null. By more than
+## two units: a list scrolls by whole units, and one 455.7 tall scrolled to
+## its end left its last row 1.1 under its foot (the assistant's at 150%).
+static func _cut_off(control: Control) -> Control:
 	var rect: Rect2 = control.get_global_rect()
 	var up: Control = control.get_parent() as Control
 	while up != null:
 		if up.clip_contents and not up.get_global_rect().grow(2.0).encloses(rect):
-			return true
+			return up
 		up = up.get_parent() as Control
-	return false
+	return null
 
 
 ## The model's parts by number, each once, the first 300: worked out again
@@ -3475,6 +3504,9 @@ func _steps_revealed(ids: Dictionary) -> void:
 				ahead[brick.id] = true
 	_ahead_key = -1
 	_builder.lattice.ahead = ahead
+	# ...nor is it selected: a step back lets go of what it takes off.
+	if _builder.keep_shown() > 0:
+		_say_selected(_builder.selection.size(), _said_whole)
 	if ids.is_empty() and _verbs != null:
 		_verbs.apply_hidden()
 	else:
@@ -3494,19 +3526,31 @@ func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void
 			showing[order[n]] = true
 		_steps_revealed(showing)
 		return
+	# The parts this step put on or took off, when the order is the one the
+	# last step had: all keep_shown looks at (stepreview F3). Another order,
+	# the whole selection.
+	var changed: Variant = null
 	if key != _ahead_key:
 		_ahead_key = key
 		_ahead = {}
 		for n: int in range(count, order.size()):
 			_ahead[order[n]] = true
 	else:
+		var flipped := PackedInt64Array()
 		for n: int in range(mini(count, _ahead_count), maxi(count, _ahead_count)):
+			flipped.append(order[n])
 			if n >= count:
 				_ahead[order[n]] = true
 			else:
 				_ahead.erase(order[n])
+		changed = flipped
 	_ahead_count = count
 	_builder.lattice.ahead = _ahead
+	# A selection holds only what the step shows (Builder.shown_only): a step
+	# back lets go of the parts it takes off, and the line says what is
+	# selected now (stepreview F7).
+	if _builder.keep_shown(changed) > 0:
+		_say_selected(_builder.selection.size(), _said_whole)
 	# What the world's rebuild said before, when a step was a rebuild: a
 	# selection's outline round what is on show, and what is under a still
 	# pointer.
@@ -3520,6 +3564,39 @@ func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void
 var _ahead: Dictionary = {}
 var _ahead_key: int = -1
 var _ahead_count: int = 0
+## The sub-assembly the selection was all of when it last changed (""
+## for none), which a step's line names again ([method _say_selected]).
+var _said_whole: String = ""
+
+
+## The line for [param count] selected, all of [param whole] at this level
+## ("" for no one sub-assembly): its name, and at a step of the timeline how
+## many of its parts are on. Said again at a step that changes the
+## selection, counted from the kept index, so a step never reads the whole
+## selection again: "72 of its 149 parts on" stayed after a step on put 86
+## on (stepreview F7).
+func _say_selected(count: int, whole: String) -> void:
+	var of_all: int = _verbs.assemblies.bricks_under(whole).size() \
+		if not whole.is_empty() and _builder.at_a_step() and _verbs != null \
+			and _verbs.assemblies != null else 0
+	if count == 0:
+		_bar.say("")
+	elif of_all > count:
+		_bar.say("%s selected, %d of its %d parts on at this step — double-click edits inside a sub-assembly"
+			% [Assemblies.label(whole), count, of_all])
+	elif not whole.is_empty():
+		# A click took a sub-assembly whole: which, and the way to one
+		# of its parts, as a phone's line says (PhoneShell.hint, in a
+		# finger's words: hold, then Edit inside; a phone's double tap
+		# turns, so it is left to say it, never "double-tap"). "149
+		# selected — … C paints" at a set's fifth step, its house taken
+		# whole, said neither, and a colour then painted 149 parts
+		# (appwalk).
+		_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
+			% [Assemblies.label(whole), count])
+	else:
+		_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
+			% count)
 
 
 ## The longest a frame took, ms (Performance.TIME_PROCESS, the most of the
@@ -4122,6 +4199,7 @@ func _enter_build(page: int = -1) -> void:
 		(_build_mode.get("make") as Control).call("adopt", viewer_card)
 	_build_mode.open()
 	_camera.seen = _build_mode.free_rect
+	_camera.covered = Callable()
 	if page < 0:
 		page = int(BuildSteps.recall(_viewing).get("page", 0))
 	# A frame for the bars to be laid out, so the view is framed between them.
@@ -4491,6 +4569,7 @@ func _leave_build() -> void:
 	_build_faded_part = 0
 	_build_outline.show_selection({})
 	_camera.seen = _model_rect
+	_camera.covered = _model_covered
 	_share_view.show_bar(true)
 	_gizmo.visible = bool(_build_left.get("cube", true))
 	if not _party_pages:
@@ -6998,6 +7077,7 @@ func _build_ui() -> void:
 	# the window behind the columns (CadCamera.seen): with one column open
 	# the model sat 168 units to the side of the room it had.
 	_camera.seen = _model_rect
+	_camera.covered = _model_covered
 	_camera.lens_moved.connect(_hover_again)
 
 	# View, Split: the model straight on beside this column, in the model's
@@ -7055,6 +7135,10 @@ func _build_ui() -> void:
 	# A part put down while the timeline shows the author's steps goes in
 	# the step it is on.
 	_builder.place_step = _steps.place_step
+	# The step an edit reaches no further than, for what an edit says.
+	_builder.step_showing = func() -> int:
+		var at: Instructions.Step = _steps.current_step()
+		return at.number if at != null else -1
 	middle.add_child(_steps)
 	# The line over a phone's model kept above the bar as it opens, grows
 	# with a step's parts and goes: it was placed once, over the bar's five
@@ -7370,6 +7454,8 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	# Select all asked again at a step: the timeline to its end, every step.
+	_verbs.every_step = _steps.to_end
 	# A copy is the account's that made it (EditVerbs.account_changed).
 	_verbs.account = func() -> String: return _account.user_id if _account != null else ""
 	add_child(_verbs)
@@ -7650,21 +7736,10 @@ func _build_ui() -> void:
 		_look_under_again()
 		var whole: String = _verbs.assemblies.selected_assembly() \
 			if count > 1 and _phone == null and _verbs != null and _verbs.assemblies != null else ""
-		if count == 0:
-			_bar.say("")
-		elif not whole.is_empty():
-			# A click took a sub-assembly whole: which, and the way to one
-			# of its parts, as a phone's line says (PhoneShell.hint, in a
-			# finger's words: hold, then Edit inside; a phone's double tap
-			# turns, so it is left to say it, never "double-tap"). "149
-			# selected — … C paints" at a set's fifth step, its house taken
-			# whole, said neither, and a colour then painted 149 parts
-			# (appwalk).
-			_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
-				% [Assemblies.label(whole), count])
-		else:
-			_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
-				% count))
+		# Kept for a step's saying it again (_steps_revealed_upto): a step
+		# changes a sub-assembly's parts on show, never which it is.
+		_said_whole = whole
+		_say_selected(count, whole))
 	# The world is redrawn whenever anything in it changes, which
 	# includes a selected brick being removed by undo or replaced by the
 	# assistant. Without redrawing the outline then, it is a box round
@@ -9538,6 +9613,15 @@ func _model_rect() -> Rect2:
 	return rect
 
 
+## How much of the top of the model's room the notices strip lies over
+## (CadCamera.covered): framed, the model is kept clear of it, while the
+## view stays centred on the whole room.
+func _model_covered() -> float:
+	if _over_model == null or not _over_model.is_inside_tree():
+		return 0.0
+	return maxf(0.0, _over_model.get_global_rect().position.y - _model_rect().position.y)
+
+
 ## How wide Simulate's column is: the panel's own width, its words wrapped
 ## at 320, with its margins.
 const SIMULATE_WIDTH := 360.0
@@ -9775,8 +9859,13 @@ func _show_notices() -> void:
 	for note: Node in _notices.get_child(0).get_children():
 		any = any or (note as Control).visible
 	# On a phone the drawer down the left takes the screen beside its rail,
-	# and the strip, squeezed beside it, ran off the screen: it waits.
-	_notices.visible = any and not (_phone != null and not Phone.wide() and _bin_dock.is_open())
+	# and the strip, squeezed beside it, ran off the screen: it waits. So
+	# for the assistant's down the right: the month's challenge line kept
+	# its least width in the model's column, and at 150% the assistant's
+	# drawer opened beside it, two thirds off a 390 phone (app_a11y,
+	# nightreds 2026-11-24).
+	var drawer: bool = _bin_dock.is_open() or (_chat_dock != null and _chat_dock.is_open())
+	_notices.visible = any and not (_phone != null and not Phone.wide() and drawer)
 	if _phone != null and any:
 		_for_a_finger(_notices)
 
@@ -11637,13 +11726,18 @@ func _open_theirs() -> void:
 	_theirs_opened = true
 	var placed: int = await _bar.open_with_progress(path)
 	if placed >= 0:
+		_bringing_theirs = true
 		_bar.opened.emit(placed)
+		_bringing_theirs = false
 		_bar.say("Opened %s, the model you saved last%s" % [_cloud.newest,
 			ModelBar.unshown_words(_store)])
 
 
 ## Whether [method _open_theirs] has opened one this start.
 var _theirs_opened: bool = false
+## While [method _open_theirs] says its model is open: the first screen's
+## Continue is about it, so it stays up (_studio_start_now).
+var _bringing_theirs: bool = false
 
 
 # -- the studio's first screen (studiostart) ------------------------------------------
@@ -11760,6 +11854,15 @@ func _studio_start_now() -> Control:
 		_touch.size_panel(_studio_start)
 	_bar.started_new.connect(func() -> void: _studio_start.call("close", "edited"))
 	_bar.cleared.connect(func() -> void: _studio_start.call("close", "edited"))
+	# Another model opened, by File, Open, a file picked or dropped, or a
+	# session's open_model: it is what the person came to, so the screen
+	# goes, as the notices over the model go (FirstActs, ReloadOffer). Left
+	# up, it covered the model opened behind it, and a phone's welcome
+	# still said the example car was there (m338reds). Not for the model
+	# the app brings back itself (_open_theirs): Continue is about that one.
+	_bar.opened.connect(func(_bricks: int) -> void:
+		if not _bringing_theirs:
+			_studio_start.call("close", "edited"))
 	return _studio_start
 
 
@@ -11925,8 +12028,12 @@ func _grab_on_joint(brick_id: int) -> bool:
 	# Turn, Colour and Delete stayed greyed after a drag on the car's
 	# headlight, which turns on its one stud where a brick on two is carried
 	# (appwalk; phonedrag's "a dragged part ends unselected"). A second finger
-	# puts the selection back as it was (_second_finger).
-	if _grab_drag.is_grabbing() and not _builder.selection.has(brick_id):
+	# puts the selection back as it was (_second_finger). Not while Motions
+	# records: the drag is a pose it keeps as keys, not a part being worked
+	# on, and a door swung on 1484-1 put 152 parts in the selection
+	# mid-recording (phonepanels; m338reds).
+	var recording: bool = _pose_made != null and bool(_pose_made.call("is_recording"))
+	if _grab_drag.is_grabbing() and not recording and not _builder.selection.has(brick_id):
 		_builder.select_brick(brick_id, false)
 	return true
 
@@ -12482,7 +12589,9 @@ func _dress_for_phone() -> void:
 	# (_make_chat sizes it then).
 	if _chat_made != null:
 		_touch.size_panel(_chat_made)
-	_chat_dock.toggled.connect(func(_open: bool) -> void: _fit_drawers())
+	_chat_dock.toggled.connect(func(_open: bool) -> void:
+		_show_notices()
+		_fit_drawers())
 	_bin_dock.toggled.connect(Callable(_phone, &"dock_toggled"))
 	_tool_column.visibility_changed.connect(Callable(_phone, &"dock_toggled"))
 	_bin_dock.toggled.connect(func(_open: bool) -> void:
@@ -12897,8 +13006,12 @@ func _nudge(screen_way: Vector3) -> void:
 
 
 func _nudge_by(cells: Vector3i) -> void:
-	if _builder.move_selection(cells) > 0:
+	var moved: int = _builder.move_selection(cells)
+	if moved > 0:
 		_on_model_edited()
+		# At a step, the sub-assembly whole: said, its later parts too.
+		if _builder.riding_later > 0:
+			_bar.say("moved %s — %s" % [EditVerbs._parts(moved), _builder.riding_said()])
 	else:
 		_bar.say("no room that way")
 

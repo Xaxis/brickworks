@@ -120,6 +120,14 @@
       "tests": []
     },
     {
+      "id": "api:GET /api/otp?op=ways",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s '<deployment>/api/otp?op=ways' -H 'authorization: Bearer <session>'",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "api:GET /api/plans",
       "kind": "api",
       "entry": "api/plans.js",
@@ -140,6 +148,22 @@
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
+    },
+    {
+      "id": "api:GET /auth/github",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/github?then=/gallery'",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:GET /auth/google",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -o /dev/null -w '%{http_code} %{redirect_url}\\n' '<deployment>/auth/google?then=/gallery'   (302 to Google with the client, or to /profile?...&failed=off without keys)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "api:GET/POST /api/people",
@@ -256,6 +280,22 @@
         "tests/test_comment_mentions.py",
         "tests/test_relay_signed_out.py"
       ]
+    },
+    {
+      "id": "api:POST /api/otp?op=way_bind",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_bind' -H 'authorization: Bearer <a code's session>'   (410 with no GitHub sign-in waiting; 403 for a session that is not a code's of the last five minutes)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "api:POST /api/otp?op=way_take",
+      "kind": "api",
+      "entry": "api/_ways.js",
+      "reach": "curl -s -X POST '<deployment>/api/otp?op=way_take'   (410 with nothing to take)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "api:POST /api/plans",
@@ -1604,6 +1644,14 @@
       "entry": "tools/web/clients_check.mjs",
       "reach": "tools/release/live_db.sh you node tools/web/clients_check.mjs --url=<relay_server or deployment>   (with .env sourced; BW_BYPASS for a preview)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:exactsave probe",
+      "kind": "cli",
+      "entry": "src/dev/exactsave_probe.gd",
+      "reach": "tools/probe.sh exactsave_probe [--keep=DIR] [--cases=1,5]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; the paste with a part of the original moved, reopened exact; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place; a sub-model placed once moved and turned 30 degrees whole, the one line placing it changed)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -3759,6 +3807,14 @@
       "tests": []
     },
     {
+      "id": "cli:stepedit probe",
+      "kind": "cli",
+      "entry": "src/dev/stepedit_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepedit_probe   (346-2 at step 5: the house clicked and painted, Select all and Delete, a session's edit refused then all_steps, each undone, saved and opened again part by part; PROBE_SIZE=390x844 by a tap)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:stepnames probe",
       "kind": "cli",
       "entry": "src/dev/stepnames_probe.gd",
@@ -3772,6 +3828,14 @@
       "entry": "src/dev/stepnames2_probe.gd",
       "reach": "tools/probe.sh stepnames2_probe   (headless; SN2_ONLY=letters,refuse,undo,sub,held: name_of letter by letter, a letter of a hundred accents keeping four, 80 letters with an emoji or accents, zero-width and direction characters alone no name; such a name refused over MCP and in Name the step\u2026, which stays up saying why; 14 name edits, MCP and by hand, each one undo, undone to the steps and the file as the plain save; the same name again no undo; sub.ldr's \"Both wings on\" on the first step built in it in the plan, caption, Build it, list and booklet; a stepless file's first step edit numbering its held part with the part before it, undone to the stepless file)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:stepreview probe",
+      "kind": "cli",
+      "entry": "src/dev/stepreview_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepreview_probe   (346-2 at a step: the house nudged, turned and dragged whole, its later parts with it; line and properties counts; print_part, make_unique, move_part on a later part refused; a paint's copies said; a minifig lifted at a step; a step's time; PROBE_SIZE=390x844)",
+      "area": "building",
       "tests": []
     },
     {
@@ -4335,6 +4399,30 @@
       "entry": "src/dev/viewfloor_probe.gd",
       "reach": "tools/probe.sh viewfloor_probe   (windowed, 390x844 by its header; -- --measure prints and fails nothing; pictures in shots/viewfloor/)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:ways app probe",
+      "kind": "cli",
+      "entry": "src/dev/ways_app_probe.gd",
+      "reach": "node tools/web/relay_server.mjs 11703 --ways-stand-in & BRICKWORKS_API=http://127.0.0.1:11703 WAYS_APP_EMAIL=delivered+x@resend.dev tools/probe.sh ways_app_probe   (headless; delete the account it prints; in tools/suite/out.txt)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:ways browser flow",
+      "kind": "cli",
+      "entry": "tools/web/ways_flow.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11702 --ways-stand-in --owner=$OWNER & node tools/web/ways_flow.mjs --url=http://127.0.0.1:11702 --owner=$OWNER --out=shots/ways",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:ways check",
+      "kind": "cli",
+      "entry": "tools/web/ways_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 11701 --ways-stand-in --owner=$OWNER & node tools/web/ways_check.mjs --url=http://127.0.0.1:11701 --owner=$OWNER   (OWNER a delivered+...@resend.dev throwaway)",
+      "area": "account",
       "tests": []
     },
     {
@@ -7102,6 +7190,17 @@
       "tests": []
     },
     {
+      "id": "ui:edit at a step",
+      "kind": "ui",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (B, Author's steps, Next to a step; a click on a sub-assembly takes its parts on so far, \"N of its M parts on at this step\"; C, Delete, a move reach those alone; Select all twice takes every step)",
+      "area": "building",
+      "tests": [
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
+      ]
+    },
+    {
       "id": "ui:enter this month's challenge",
       "kind": "ui",
       "entry": "web/model-page.js",
@@ -7261,6 +7360,20 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Cable, hose or chain\u2026, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building",
       "tests": []
+    },
+    {
+      "id": "ui:how you sign in",
+      "kind": "ui",
+      "entry": "web/settings.js",
+      "reach": "<deployment>/settings#ways-part signed in",
+      "area": "account",
+      "tests": [
+        "tests/test_adminclaude.py",
+        "tests/test_announce.py",
+        "tests/test_billing_pay.py",
+        "tests/test_console.py",
+        "tests/test_owner_notify.py"
+      ]
     },
     {
       "id": "ui:installing the site",
@@ -8219,6 +8332,22 @@
       "tests": []
     },
     {
+      "id": "ui:sign in with github",
+      "kind": "ui",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with GitHub (where GITHUB_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:sign in with google",
+      "kind": "ui",
+      "entry": "api/_ways.js",
+      "reach": "<deployment>/profile signed out, Sign in, Sign in with Google (where GOOGLE_CLIENT_ID/SECRET are in Vercel and the console's switch is on); on a checkout: relay_server.mjs --ways-stand-in, then ways_flow.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "ui:sign in with orangecheck",
       "kind": "ui",
       "entry": "web/account.js",
@@ -8606,6 +8735,14 @@
       "entry": "web/admin-plans.js",
       "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the console's sign-in switches",
+      "kind": "ui",
+      "entry": "web/admin-switches.js",
+      "reach": "<deployment>/admin#switches as MASTER_EMAIL, Sign in with Google and GitHub (on a checkout: relay_server.mjs --ways-stand-in --owner=<throwaway>)",
+      "area": "account",
       "tests": []
     },
     {

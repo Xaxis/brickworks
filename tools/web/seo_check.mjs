@@ -192,13 +192,15 @@ async function get(address, apiDir = path.join(root, "api")) {
       signal: AbortSignal.timeout(60_000) });
     const type = answer.headers.get("content-type") || "";
     const body = Buffer.from(await answer.arrayBuffer());
-    return { status: answer.status, type, html: body.toString("utf8"), size: body.length };
+    return { status: answer.status, type, html: body.toString("utf8"), size: body.length,
+      location: answer.headers.get("location") || "" };
   }
   const asked = `${where.pathname}${where.search}`;
   if (where.pathname.startsWith("/api/people")) {
     const said = await standIn.serverAsk(apiDir, { name: "people", query: Object.fromEntries(where.searchParams) });
     return { status: said.status, type: String(said.headers["content-type"] || ""), html: said.html,
-      size: said.bytes ? said.bytes.length : Buffer.byteLength(said.html || "") };
+      size: said.bytes ? said.bytes.length : Buffer.byteLength(said.html || ""),
+      location: String(said.headers.location || "") };
   }
   const said = await standIn.serverPage(apiDir, asked);
   return { status: said.status, type: String(said.headers["content-type"] || ""), html: said.html,
@@ -211,7 +213,8 @@ const headOf = (html) => html.split("</head>")[0];
 const blocksOf = (html) => [...headOf(html).matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
 const canonicalOf = (html) => unescape(/<link rel="canonical" href="([^"]+)">/.exec(html)?.[1] || "");
 const nextOf = (html) => unescape(/<link rel="next" href="([^"]+)">/.exec(headOf(html))?.[1] || "");
-const headingOf = (html) => unescape(/<h1>([\s\S]*?)<\/h1>/.exec(html)?.[1] || "");
+// A page's h1 carries a class since pagekit (3cfdbeabe, 11-23: obj-title).
+const headingOf = (html) => unescape(/<h1(?:\s[^>]*)?>([\s\S]*?)<\/h1>/.exec(html)?.[1] || "");
 /// The number in a page's [data-stat=kind], 0 when it is hidden at none,
 /// null when the page does not show that number at all.
 const statOf = (html, kind) => {
@@ -287,10 +290,21 @@ function readData(vocab, html, type) {
   return { data: mine[0], problems: [...conformance(vocab, mine[0]), ...shut.map((one) => `robots.txt keeps out ${one.replace(origin, "")}`)] };
 }
 
+/// A picture a crawler can fetch: Brickworks' own avatar is a 302 to its
+/// mark (682b29b06, 11-23), so a redirect on this site is followed, as a
+/// crawler does; one that leaves the site, or a third hop, is not.
 async function picture(address, what) {
-  const got = await get(address);
+  let at = address, got = await get(at);
+  const hops = [];
+  while (got.status >= 300 && got.status < 400 && hops.length < 2) {
+    const to = got.location ? new URL(got.location, new URL(at, origin)) : null;
+    if (!to || to.origin !== new URL(origin).origin) break;
+    hops.push(`${got.status} to ${to.pathname}`);
+    at = to.href;
+    got = await get(at);
+  }
   check(got.status === 200 && /^image\//.test(got.type) && got.size > 0,
-    `${what}: its image answers as a picture (${address.replace(origin, "")}: ${got.status}, ${got.type}, ${got.size} bytes)`);
+    `${what}: its image answers as a picture (${address.replace(origin, "")}: ${hops.length ? `${hops.join(", ")}, ` : ""}${got.status}, ${got.type}, ${got.size} bytes)`);
 }
 
 async function profile(vocab, address, { images }) {

@@ -78,6 +78,7 @@ api:Resend's word on each mail  # Resend's webhook, for the owner's Mail; nobody
 ui:the console's plans and revenue  # the owner's, on the admin page
 ui:the console's mail  # the owner's, on the admin page
 ui:the console's connector  # the owner's, on the admin page (a person's own connector is in the docs)
+ui:the console's sign-in switches  # the owner's, on the admin page (signing in with Google or GitHub is in account.md)
 ui:the console's site  # the owner's, on the admin page
 ui:the console's moderation  # the owner's, on the admin page (what a person reports is in the docs)
 ui:the console's challenges  # the owner's, on the admin page (the challenge a person enters is in challenges.md)

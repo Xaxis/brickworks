@@ -414,6 +414,7 @@ const TARGETS = {
   notice_clear: () => ["setting", "notice"],
   phone_rules: () => ["setting", "phone"],
   phone_engine: () => ["setting", "phone_nothreads"],
+  sign_in_switch: (_, b) => ["setting", `sign_in_${b.with}`],
   run_cron: (q) => ["cron", q.job],
   export: (q) => ["account", q.account],
   delete_account: (q) => ["account", q.account],

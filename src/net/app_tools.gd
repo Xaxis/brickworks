@@ -774,6 +774,7 @@ func definitions() -> Array:
 				"to": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
 					"description": "a point in studs (x y z, as move_part says where a joint is): the part drawn there by its chain of joints"},
 				"picture": {"type": "boolean", "description": "true: the whole model pictured after the move (a ball's turn seen along its axis), what moved edged; left out, words alone"},
+				"all_steps": HandTools.ALL_STEPS,
 			}},
 		},
 		{
@@ -1405,6 +1406,7 @@ func definitions() -> Array:
 					"description": "a sticker from the library, by id, to stick on the side= face"},
 				"colour": {"type": "integer",
 					"description": "the film's LDraw colour for sticker_part; white (15) when omitted"},
+				"all_steps": HandTools.ALL_STEPS,
 			}},
 		},
 		{
@@ -1416,6 +1418,7 @@ func definitions() -> Array:
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"assembly": {"type": "string"},
 				"brick": {"type": "integer", "description": "a part in the copy, by its number"},
+				"all_steps": HandTools.ALL_STEPS,
 			}},
 		},
 		{
@@ -1925,6 +1928,19 @@ static func _appended(answer: Variant, text: String) -> Variant:
 
 ## Why [param tool] is not done now, before it begins, or "".
 func refusal(tool: String, input: Dictionary) -> String:
+	# all_steps read at the edge into a real bool, or refused before anything
+	# runs (Builder.all_steps_read): "true" was a script error in
+	# replace_parts, which then answered nothing (stepreview F2).
+	var unread: String = Builder.all_steps_read(input)
+	if not unread.is_empty():
+		return unread
+	# A part of a later step than the person's timeline shows, named to
+	# change: refused unless all_steps (Builder.later_refusal), as edit_model
+	# and mirror_parts are. print_part repainted a window edit_model would
+	# not recolour (stepreview F4).
+	var later: String = _later_named(tool, input)
+	if not later.is_empty():
+		return later
 	# A bench's run (DesignMemory.holding): a picture or a model from a link
 	# can be the answer a design is judged against, as one from Commons or
 	# the gallery can ([method _fetch] is reached only past here).
@@ -1949,6 +1965,28 @@ func refusal(tool: String, input: Dictionary) -> String:
 		return ("Not now — the person asked about the parts they selected, and this would "
 			+ "change more than those. Change them with edit_selection.")
 	return ""
+
+
+## The tools that change one part they name, and the argument naming it by
+## its number: refused for a part of a later step ([method _later_named]).
+const NAMES_A_PART: Dictionary = {"print_part": "brick", "make_unique": "brick",
+	"move_part": "part"}
+
+
+## Why [param tool] is not run on the part [param input] names: a part the
+## person's timeline has not put on yet, and no all_steps. "" otherwise, and
+## for a part named by its name rather than its number.
+func _later_named(tool: String, input: Dictionary) -> String:
+	if not NAMES_A_PART.has(tool) or app == null:
+		return ""
+	var builder: Builder = app.get("_builder")
+	var named: Variant = input.get(str(NAMES_A_PART[tool]))
+	if builder == null or named == null:
+		return ""
+	if not (named is int or named is float or (named is String and str(named).strip_edges().is_valid_int())):
+		return ""
+	return builder.later_refusal([int(str(named).strip_edges()) if named is String else int(named)],
+		input.get("all_steps"))
 
 
 ## The tools that change the model.
@@ -8751,6 +8789,10 @@ static func _replace_parts_definition() -> Dictionary:
 				# ownswap (APP_UX10 #2)
 				"mine": {"type": "boolean",
 					"description": "true: the lots the person owns too few of (their collection, as submit_design mine=true counts it), each swapped for a part or colour of their own that keeps the look, or said to have none; the owned share before and after and what is still missing said; no find= or replace= with it"},
+				# stepedit: at a step of the timeline, later steps' parts are left out.
+				"all_steps": {"type": "boolean", "description": ("while the person's timeline "
+					+ "shows a step, the parts of later steps, not on their screen yet, are left "
+					+ "out and counted; true finds and changes them too")},
 			}},
 	}
 
@@ -8884,8 +8926,16 @@ func _replace_parts(input: Dictionary) -> String:
 		if put_back < 0:
 			return "Nothing changed: %s." % Later.script(&"FindReplace").HELD_WORDS
 	put_back += first
-	var found: Dictionary = finder.call("find", find, where)
+	# At a step of the person's timeline, parts of later steps are left out
+	# and counted (FindReplace.find_among), unless the call says all_steps.
+	var builder: Builder = app.get("_builder")
+	var every: bool = input.get("all_steps") is bool and bool(input["all_steps"])
+	var found: Dictionary = builder.in_every_step(func() -> Dictionary:
+		return finder.call("find", find, where)) if every else finder.call("find", find, where)
 	var listed: String = finder.call("listed", found)
+	if int(found.get("later", 0)) > 0:
+		listed += (" They are in steps after the one the person's timeline shows, not on their "
+			+ "screen yet; all_steps: true finds them too.")
 	if (found["ids"] as Array).is_empty():
 		return listed
 	var changes: bool = not str(put["part"]).is_empty() or int(put["color"]) >= 0

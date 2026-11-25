@@ -219,6 +219,16 @@ export function sessionEnded(id, value = {}) {
   sessions.set(id, { at: Date.now(), gone: true, read: Promise.resolve({ ...value, exists: false }) });
 }
 
+/// The way, google or github, that started session [id] (api/_ways.js
+/// keep, supabase/sign_in_ways.sql), or null: an emailed code's,
+/// orangecheck's, a test password's. Throws when the database cannot be
+/// asked.
+export async function sessionWay(id) {
+  const { db } = await import("./_db.js");
+  const way = await db("rpc/way_session_of", { method: "POST", body: { session: id }, seconds: SESSION_READ_S });
+  return way === "google" || way === "github" ? way : null;
+}
+
 /// What this instance has read of sessions, forgotten (for tests).
 export function forgetSessions() {
   sessions.clear();

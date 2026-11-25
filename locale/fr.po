@@ -17786,3 +17786,92 @@ msgstr "collez à nouveau pour réessayer"
 
 msgid "paste stopped"
 msgstr "collage arrêté"
+
+msgid "Sign in with %s"
+msgstr "Se connecter avec %s"
+
+msgid "What is that?"
+msgstr "Qu'est-ce que c'est ?"
+
+msgid "Taking you to %s to sign in…"
+msgstr "Direction %s pour vous connecter…"
+
+msgid "Finish signing in with %s in your browser."
+msgstr "Terminez la connexion avec %s dans votre navigateur."
+
+msgid "Signing in with %s is not offered here. Sign in with your email instead."
+msgstr "La connexion avec %s n'est pas proposée ici. Connectez-vous plutôt avec votre e-mail."
+
+msgid "Brickworks could not wait for %s on this computer. Sign in with your email instead."
+msgstr "Brickworks n'a pas pu attendre %s sur cet ordinateur. Connectez-vous plutôt avec votre e-mail."
+
+msgid "%s did not answer in time. Sign in with %s again."
+msgstr "%s n'a pas répondu à temps. Reconnectez-vous avec %s."
+
+msgid "Signing in with %s was cancelled there."
+msgstr "La connexion avec %s a été annulée là-bas."
+
+msgid "%s gave no verified email address of yours. Sign in with a code we email you instead."
+msgstr "%s n'a donné aucune adresse e-mail vérifiée à votre nom. Connectez-vous plutôt avec un code que nous vous envoyons par e-mail."
+
+msgid "%s is unlinked from your account. Sign in with a code we email you, then link it again in Settings."
+msgstr "%s est dissocié de votre compte. Connectez-vous avec un code que nous vous envoyons par e-mail, puis associez-le à nouveau dans les Réglages."
+
+msgid "Signing in with %s is not offered here just now. Sign in with a code we email you."
+msgstr "La connexion avec %s n'est pas proposée ici pour le moment. Connectez-vous avec un code que nous vous envoyons par e-mail."
+
+msgid "A lot of people are signing in just now. Try again in a minute."
+msgstr "Beaucoup de personnes se connectent en ce moment. Réessayez dans une minute."
+
+msgid "%s did not sign you in just now. Try again in a minute, or sign in with a code we email you."
+msgstr "%s ne vous a pas connecté pour le moment. Réessayez dans une minute, ou connectez-vous avec un code que nous vous envoyons par e-mail."
+
+msgid "Could not sign in with %s just now (%d). Try again in a minute."
+msgstr "Impossible de se connecter avec %s pour le moment (%d). Réessayez dans une minute."
+
+msgid "Signing in without orangecheck also makes your orangecheck account."
+msgstr "Vous connecter sans orangecheck crée aussi votre compte orangecheck."
+
+msgid "Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead."
+msgstr "Google ne se porte garant que des adresses Gmail et Google Workspace. Connectez-vous plutôt avec un code que nous vous envoyons par e-mail."
+
+msgid "This address has a Brickworks account already. Sign in with a code we email you. To sign in with %s here from then on, sign in with it once on the Brickworks website."
+msgstr "Cette adresse a déjà un compte Brickworks. Connectez-vous avec un code que nous vous envoyons par e-mail. Pour vous connecter ici avec %s par la suite, utilisez-le une fois sur le site de Brickworks."
+msgid "%s selected, %d of its %d parts on at this step"
+msgstr "%s sélectionné, %d de ses %d pièces posées à cette étape"
+
+msgid "selected the %d parts on up to step %d"
+msgstr "les %d pièces posées jusqu'à l'étape %d sélectionnées"
+
+msgid "selected the %d parts on at this step"
+msgstr "les %d pièces posées à cette étape sélectionnées"
+
+msgid "%d more in later steps are left out"
+msgstr "%d autres des étapes suivantes sont laissées de côté"
+
+msgid "Select all again takes every step"
+msgstr "Tout sélectionner une seconde fois prend toutes les étapes"
+
+msgid "%d in later steps left out."
+msgstr "%d des étapes suivantes laissées de côté."
+
+msgid "moved %s"
+msgstr "%s déplacé"
+
+msgid "moving %s"
+msgstr "déplacement de %s"
+
+msgid "%d of them in later steps, not on the screen yet, went with it"
+msgstr "%d d'entre elles, des étapes suivantes, pas encore à l'écran, ont suivi"
+
+msgid "%s more in its other copies"
+msgstr "%s de plus dans ses autres copies"
+
+msgid "%s more in its other copies, in a later step"
+msgstr "%s de plus dans ses autres copies, à une étape suivante"
+
+msgid "Sub-assembly of %d parts, %d on at this step"
+msgstr "Sous-ensemble de %d pièces, %d posées à cette étape"
+
+msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
+msgstr "Sous-ensemble de %d pièces, %d posées à cette étape, %d à l'intérieur"

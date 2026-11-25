@@ -405,6 +405,9 @@ const SUPERSEDED := "superseded"
 ## for this one alone, and keeps the digits for the others.
 const WRONG_CODE := "That code is wrong or has expired. Check it, or ask for a new one."
 
+## Google and GitHub by their names, as the sign-in's buttons say them.
+const WAY_NAMES := {"google": "Google", "github": "GitHub"}
+
 
 ## Sign in with orangecheck, on the desktop: orangecheck opens in the
 ## person's browser ([OrangecheckSignIn]), and the code it sends back here
@@ -455,6 +458,75 @@ func sign_in_with_orangecheck() -> String:
 		if typeof(body) == TYPE_DICTIONARY and (body as Dictionary).has("error"):
 			return str((body as Dictionary)["error"])
 		return "Could not sign in with orangecheck just now (%d). Try again in a minute." % int(reply.get("code", 0))
+	_signed_in_with(body as Dictionary)
+	return ""
+
+
+## Sign in with Google or GitHub ([param name] "google" or "github"), on the
+## desktop: the deployment's own sign-in with it opens in the person's
+## browser ([OrangecheckSignIn] with its way), which comes back here with a
+## code sealed for this run's verifier; the deployment opens it for that
+## verifier alone (api/_ways.js ?op=way_app) and answers with the session.
+## Their orangecheck account is made on the server, as for any sign-in.
+## Empty on success, [constant SUPERSEDED] when a newer sign-in took over,
+## or something to show.
+func sign_in_with_way(name: String) -> String:
+	var said: String = WAY_NAMES.get(name, "")
+	if said.is_empty() or deployment == null or not bool(deployment.ways_offered.get(name, false)):
+		return "Signing in with %s is not offered here. Sign in with your email instead." % (said if not said.is_empty() else name)
+	_stop_orangecheck()
+	var listener := OrangecheckSignIn.new()
+	listener.way = name
+	listener.way_base = Deployment.api_base()
+	listener.open_browser = opens_browser
+	add_child(listener)
+	_orangecheck = listener
+	orangecheck_link = listener.start()
+	if orangecheck_link.is_empty():
+		_stop_orangecheck()
+		return "Brickworks could not wait for %s on this computer. Sign in with your email instead." % said
+	var answer: Dictionary = await listener.answered
+	if _orangecheck == listener:
+		_orangecheck = null
+		orangecheck_link = ""
+	listener.queue_free()
+	match str(answer.get("reason", "")):
+		"":
+			pass
+		"cancelled":
+			return SUPERSEDED
+		"timeout":
+			return "%s did not answer in time. Sign in with %s again." % [said, said]
+		"denied", "access_denied":
+			return "Signing in with %s was cancelled there." % said
+		"unverified":
+			return "%s gave no verified email address of yours. Sign in with a code we email you instead." % said
+		"vouch":
+			return "Google vouches only for Gmail and Google Workspace addresses. Sign in with a code we email you instead."
+		"confirm":
+			return ("This address has a Brickworks account already. Sign in with a code we email you. To sign in "
+				+ "with %s here from then on, sign in with it once on the Brickworks website.") % said
+		"unlinked":
+			return ("%s is unlinked from your account. Sign in with a code we email you, "
+				+ "then link it again in Settings.") % said
+		"off":
+			return "Signing in with %s is not offered here just now. Sign in with a code we email you." % said
+		"busy":
+			return "A lot of people are signing in just now. Try again in a minute."
+		_:
+			return "%s did not sign you in just now. Try again in a minute, or sign in with a code we email you." % said
+
+	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/otp?op=way_app",
+		PackedStringArray(["content-type: application/json"]), HTTPClient.METHOD_POST,
+		JSON.stringify({"code": answer["code"], "code_verifier": answer["code_verifier"]}))
+	var body: Variant = reply.get("body")
+	if int(reply.get("code", 0)) == 0:
+		return "Could not reach Brickworks to sign in. Check your connection."
+	if int(reply.get("code", 0)) != 200 or typeof(body) != TYPE_DICTIONARY \
+			or not (body as Dictionary).has("access_token"):
+		if typeof(body) == TYPE_DICTIONARY and (body as Dictionary).has("error"):
+			return str((body as Dictionary)["error"])
+		return "Could not sign in with %s just now (%d). Try again in a minute." % [said, int(reply.get("code", 0))]
 	_signed_in_with(body as Dictionary)
 	return ""
 
