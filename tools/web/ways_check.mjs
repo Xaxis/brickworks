@@ -529,15 +529,24 @@ try {
   await viaWay("google", workspace(warm));
   const span = Date.now() - t0;
   const raced = [];
-  for (let n = 0; n < 20; n += 1) {
-    const r = address(`race${n}`);
+  // An Unlink that itself failed (a 503: Supabase slow to read the session,
+  // said to the person, nothing done) is no race: that try is made again
+  // with a new account, at most 3 times, and counted.
+  const unlinkFailed = [];
+  for (let n = 0; n < 20;) {
+    const r = address(`race${n}${unlinkFailed.length ? `r${unlinkFailed.length}` : ""}`);
     const rCode = await signIn(r);
     const delay = Math.round((span * 1.33 * n) / 19);
     const [way, off] = await Promise.all([viaWay("google", workspace(r)),
       wait(delay).then(() => call("/api/otp?op=ways", { method: "POST", token: rCode.token, body: { with: "google", on: false } }))]);
-    raced.push({ rCode, way, off, delay });
     // The verify bucket is everyone's on this box: a sign-in every few seconds.
     await wait(2500);
+    if (off.status !== 200 && unlinkFailed.length < 3) {
+      unlinkFailed.push(`${delay}:${off.status}`);
+      continue;
+    }
+    raced.push({ rCode, way, off, delay });
+    n += 1;
   }
   await wait(5500);
   // A sign-in Supabase did not answer in time (failed=failed, said in the
@@ -558,7 +567,8 @@ try {
       outcomes.other += 1;
     }
   }
-  console.log(`  --    a whole sign-in took ${span} ms; Unlinks sent 0 to ${raced.at(-1).delay} ms in: ${JSON.stringify(outcomes)}`);
+  console.log(`  --    a whole sign-in took ${span} ms; Unlinks sent 0 to ${raced.at(-1).delay} ms in: ${JSON.stringify(outcomes)}`
+    + `${unlinkFailed.length ? `; made again, the Unlink itself refused: ${unlinkFailed.join(" ")}` : ""}`);
   check(`11. an Unlink racing a first Google sign-in: off in ${outcomes.off} of 20, ${outcomes.handed} handed out before it and ended, `
     + `${outcomes.refused} refused, ${outcomes.alive} left alive (F7)`, outcomes.off === 20 && outcomes.alive === 0
     && outcomes.handed >= 1 && outcomes.refused >= 1, raced.map((one) => `${one.delay}:${one.off.status}:${(one.way.back || one.way.start)?.location?.slice(0, 90)}`).join(" "));
