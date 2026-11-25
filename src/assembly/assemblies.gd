@@ -2602,13 +2602,21 @@ func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictiona
 	var on: Array = []
 	for pair: Array in made["swapped"]:
 		var brick_id: int = int(pairs[int(pair[0]["id"])])
-		if _put_back(pair) or not _free(brick_id, "gone", twin, other, then, claimed):
+		# Its twin taken off by the step itself: a part of a copy picked up
+		# from outside it is lifted with its twins (the lift's own follow), and
+		# put down where it stood, or a stud along its length, it stands in its
+		# own box and reads as swapped. Its twin, off already, was not free to
+		# take off, and the new one was laid nowhere: the copy lost the part
+		# (room390, Wing#2 left with 2 of its 3). Laid as a part put down is.
+		var taken: bool = world.get_brick(brick_id) == null and then.get(brick_id) != null
+		if not taken and (_put_back(pair) or not _free(brick_id, "gone", twin, other, then, claimed)):
 			continue
 		var was: Dictionary = twin[brick_id]
 		var laid: Array = _laid(fit, str(pair[1]["part"]), pair[1]["at"])
 		if _put_already(other, laid, then, claimed, matched):
 			continue
-		off.append(brick_id)
+		if not taken:
+			off.append(brick_id)
 		# In the colour it is given where both copies had the one it replaces
 		# in one colour; else in this copy's colour for it. On the line of the
 		# one it replaces where the edited copy's is (a Replace, _swap), else
