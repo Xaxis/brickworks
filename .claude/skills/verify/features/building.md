@@ -2003,7 +2003,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   so it never tears, and says how many went with it (`Builder.
   _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). A minifig
   lifted at a step leaves its later parts on the model and moves them with
-  it on put-down (`_figure_followers`). `keep_shown` looks only at the parts
+  it on put-down (`_figure_followers`); aimed, it is seated with them, and
+  they hold nothing up where they stand (`Builder._going_now`, `settle_figure`'s
+  `going`). A minifig lifted off the model keeps the person's steps
+  (stepfast2, 2026-11-25): while it is in hand the timeline is not worked out
+  again (`Builder.holds_lifted_figure`, `Main._on_model_edited`,
+  `ModelStore.looks_follow_edit`) and step edits wait (`Shell._steps_wait`);
+  put down anywhere, each part goes back into its own step, sub-model and
+  file line (`put_figure`'s `as_lifted`), and lift and put-down are one Undo
+  ("moved N parts"); let go of, the edit is heard then (`figure_let_go`). A
+  save made in hand writes the model without it, each file's steps as they
+  were. Probe: `PROBE_SIZE=1280x720 tools/probe.sh stepfast2_probe` (a figure
+  in its own sub-model lifted at its step and at the last: in hand, put back,
+  put elsewhere, saved, undone once; aimed back where it stood on a brick;
+  its later plate over a cone or round brick judged as the plate on show),
+  and at `390x844`. `keep_shown` looks only at the parts
   a step flipped and tells the selection's listeners once, 0.3 s after the
   stepping stops (`SETTLE_SECONDS`); the line is said at once. A sub-assembly taken whole is its parts
   on so far and says so ("House selected, 56 of its 149 parts on at this step
