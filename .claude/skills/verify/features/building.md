@@ -1988,7 +1988,22 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   each way, and where it stood: a part lifted from a copy takes its twins off
   with it, and one put down in its own box reads as swapped, so its twin,
   off already, is laid again as a part put down is (`Assemblies._follow`,
-  room390: Wing#2 was left with 2 of its 3). The pointer is steered by where
+  room390: Wing#2 was left with 2 of its 3), and only a twin that lift's
+  follow took off (`Assemblies._follow_took`, its steps marked "followed"
+  as `after_edit` folds them in): a twin the person lifted too is theirs.
+  One step that changes two copies of a sub-model by hand (both twins of a
+  part, Alt-A taking every copy's, dragged or nudged) is made only where the
+  two still lie on each other part for part after the follow
+  (`Assemblies._unlike_by_hand`): along a mirrored copy's axis, a turned
+  copy's, or with a third copy, it is refused, "Moved in two copies of Wing
+  at once, and differently: move it in one and the others follow, or use
+  Build › Make this copy unique", and the ghost is red with those words
+  before the click (`Assemblies._twins_in_hand`, the twins found by where
+  each stood when lifted, Carry's "was"); along the axis a mirror keeps, or
+  back where they stood, it goes through and an untouched third copy gets
+  it once (wingfix2, wingreview3 F1: 7 parts became 9 and Save kept them;
+  F2: a part lost or doubled). `wf2_probe` (headless) holds it, with
+  wingreview3's follow table. The pointer is steered by where
   the hand stands, and the check fails if the brick went down anywhere else;
   each drop is undone, redone and undone again, the model compared part by
   part. Make unique cuts a copy loose (a session's `make_unique`,

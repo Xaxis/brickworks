@@ -3665,8 +3665,11 @@ func _going_down() -> Array:
 		return _going
 	_going = []
 	for item: Dictionary in carrying.items:
+		# And where a part lifted off the model stood (Carry.framed's "was"):
+		# two twins in one hand are found by it (Assemblies.room_in_copies).
 		_going.append([str(item["part"]), item["at"], place_group if not carrying.lifted
-			else Assemblies.path_from(str(item.get("group", "")), str(item.get("unit", "")))])
+			else Assemblies.path_from(str(item.get("group", "")), str(item.get("unit", ""))),
+			item.get("was") if carrying.lifted else null])
 	return _going
 
 

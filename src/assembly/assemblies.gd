@@ -1561,6 +1561,10 @@ func after_edit() -> int:
 		return 0
 	var steps: Array = followed[0]
 	if not steps.is_empty():
+		# Kept as the follow's, not the person's: a lift's follow takes a twin
+		# off, and the put that ends the drag reads that as the follow's to lay
+		# again, a twin the person lifted as the person's ([member _follow_took]).
+		_mark_followed(steps)
 		builder.extend_last(steps)
 		# The step as it is kept now: a step of one entry is made a group to
 		# take them, a step after_edit had not seen, and asked again it
@@ -1672,7 +1676,9 @@ func no_copies_follow() -> void:
 ##
 ## Where some copy cannot take it ([method _cannot_take]: a part of it locked,
 ## or no room for what it lays or moves), nothing follows, [[], 0], and
-## [member refused] says why: the caller takes the step back.
+## [member refused] says why: the caller takes the step back. So too where
+## the step changed two copies by hand and they no longer lie on each other
+## ([method _unlike_by_hand]): one definition cannot be both.
 func copies_follow(step: Dictionary) -> Array:
 	refused = ""
 	var paths_touched: Dictionary = {}
@@ -1692,6 +1698,8 @@ func copies_follow(step: Dictionary) -> Array:
 	if not _any_copied(order):
 		return [[], 0]
 	var then: Dictionary = _before(step)
+	_follow_took = {}
+	_took_by_follow(step, _follow_took)
 	var moved: Dictionary = _moved_by(step)
 	var units: Dictionary = _units_named(step)
 	_from_ensured(step, then, units)
@@ -1699,6 +1707,8 @@ func copies_follow(step: Dictionary) -> Array:
 	# then every change made. Laid as each changed, a car's copy, its wheels
 	# given the change already, no longer lay on the car as it was.
 	var plans: Array = []
+	## Each copy the step changed in part (not whole): path -> true.
+	var in_part: Dictionary = {}
 	_syncing = true
 	_begin_pass()
 	for path: String in order:
@@ -1707,6 +1717,7 @@ func copies_follow(step: Dictionary) -> Array:
 		var made: Dictionary = _made_in(path, then, units)
 		if made.is_empty():
 			continue
+		in_part[path] = true
 		var was: Array = made["then"]
 		for other: String in copies_of(path):
 			var twin: Array = _content_then(other, then)
@@ -1733,7 +1744,9 @@ func copies_follow(step: Dictionary) -> Array:
 	# Made in every copy, and then asked of each as it stands, every copy's
 	# change among the others: one a copy cannot take is taken back from all
 	# of them, and the caller takes back the edit (after_edit).
-	refused = _cannot_take(back, locked, plans, then)
+	refused = _unlike_by_hand(plans, then, in_part)
+	if refused.is_empty():
+		refused = _cannot_take(back, locked, plans, then)
 	if not refused.is_empty():
 		for taking: Dictionary in back:
 			builder._apply(taking)
@@ -1744,6 +1757,97 @@ func copies_follow(step: Dictionary) -> Array:
 	_indexed = false
 	_syncing = false
 	return [back, followed.size()]
+
+
+## The parts an earlier follow folded into the step being followed took off,
+## by number ([method copies_follow] reads them, [method _mark_followed] marks
+## them): a lift's follow takes each lifted part's twins off, and the put that
+## ends the drag lays the part again in their copies ([method _follow]). A twin
+## the person lifted is not among them, and is theirs to put down: read as the
+## follow's, both twins dragged along a mirrored copy's axis were each laid
+## again in the other copy, beside the one the person put there, and 7 parts
+## became 9 (wingreview3 F1).
+var _follow_took: Dictionary = {}
+
+
+## Each of [param steps] (what a follow did) marked "followed", inside groups.
+static func _mark_followed(steps: Array) -> void:
+	for one: Variant in steps:
+		if one is Dictionary:
+			(one as Dictionary)["followed"] = true
+			_mark_followed((one as Dictionary).get("steps", []))
+
+
+static func _took_by_follow(step: Dictionary, out: Dictionary) -> void:
+	if str(step.get("undo", "")) == "add" and bool(step.get("followed", false)):
+		out[int(step.get("was", 0))] = true
+	for inner: Variant in step.get("steps", []):
+		if inner is Dictionary:
+			_took_by_follow(inner, out)
+
+
+## Why the step cannot stand where it changed two copies of one sub-model by
+## hand, each in part, and after the follow they no longer lie on each other
+## part for part as they did before it ([param plans], [method
+## copies_follow]): the words for [member refused], "" where every such pair
+## still does. A sub-model's copies are one definition, and one step cannot
+## make it two shapes: both twins of a part dragged a stud along a mirrored
+## copy's axis go opposite ways in it, and, three copies or a turned one, the
+## follow laid one copy's change into the other and into the third beside its
+## own, a part doubled or lost (wingreview3 F2). Both dragged along the axis
+## the mirror keeps agree, and go through. Asked only of a copy changed by
+## hand ([method _changed_by_hand]): one changed by the follow alone is the
+## follow's to make like the rest, which [method _cannot_take] then asks of.
+## The ghost says it before the click ([method room_in_copies], its twins).
+func _unlike_by_hand(plans: Array, then: Dictionary, in_part: Dictionary) -> String:
+	var by_hand: Dictionary = _changed_by_hand(then)
+	var now: Dictionary = {}
+	for plan: Array in plans:
+		var path: String = plan[0]
+		var other: String = plan[1]
+		if not in_part.has(other) or not by_hand.has(other):
+			continue
+		for one: String in [path, other]:
+			if not now.has(one):
+				now[one] = content(one)
+		var mine: Array = now[path]
+		var theirs: Array = now[other]
+		if mine.size() != theirs.size() or _laid_on(mine, theirs, plan[2]).size() != mine.size():
+			return unlike_words(path)
+	return ""
+
+
+## Every path the step [param then] reads ([method _before]) changed a part
+## in itself, not by a follow folded into it ([member _follow_took]): moved,
+## painted or taken off what stood there, or put a part down in it, and each
+## path round those: path -> true.
+func _changed_by_hand(then: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for brick_id: int in then:
+		if _follow_took.has(brick_id):
+			continue
+		var was: Variant = then[brick_id]
+		var at: String = ""
+		if was == null:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick == null:
+				continue
+			at = path_of(brick)
+		else:
+			at = path_from(str((was as Dictionary)["group"]), str((was as Dictionary)["unit"]))
+		var path: String = ""
+		for segment: String in segments(at):
+			path = join(path, segment)
+			out[path] = true
+	return out
+
+
+## An edit refused for changing two copies of the sub-model at [param path]
+## differently in one step ([method _unlike_by_hand]), said, with the two
+## ways round it.
+func unlike_words(path: String) -> String:
+	return "Moved in two copies of %s at once, and differently: move it in one and the others follow, or use Build › Make this copy unique" \
+		% definition(leaf(path))
 
 
 ## Why the copies cannot take what their follow did, [param back] the steps
@@ -1982,6 +2086,8 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 			level_of[into] = _changed_level(into)
 		var level: String = level_of[into]
 		going.append([real, at, level])
+		(plan["was"] as Array).append((item[3] as Transform3D) * library.moved_by(str(item[0]))
+			if item.size() > 3 and item[3] is Transform3D else null)
 		if not level.is_empty():
 			if not by_level.has(level):
 				by_level[level] = []
@@ -2001,6 +2107,21 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 	if pairs.is_empty():
 		return ""
 	var frame: Transform3D = ask.get("frame", Transform3D.IDENTITY)
+	# Both twins of a part in hand, lifted from two copies: each must go where
+	# the other, laid by the copies' fit, goes, or the copies are two shapes
+	# and the click is refused (_unlike_by_hand). Said before the click: a
+	# drag of both along a mirrored copy's axis was green, and put down a
+	# part twice in every copy (wingreview3 F1, F2).
+	if plan["twins"] == null:
+		plan["twins"] = _twins_in_hand(plan)
+	for twin: Array in plan["twins"]:
+		var one: Array = going[int(twin[0])]
+		var mate: Array = going[int(twin[1])]
+		var laid: Array = _laid(twin[2], str(one[0]), frame * (one[1] as Transform3D))
+		var there: Transform3D = frame * (mate[1] as Transform3D)
+		if str(laid[0]) != str(mate[0]) or (laid[1] as Transform3D).origin.distance_to(there.origin) > 0.6 \
+				or not _same_place(str(mate[0]), laid[1], there):
+			return unlike_words(str(twin[3]))
 	var down: Array = ask["down"]
 	var blocks: Dictionary = ask["blocks"]
 	var laid_already: Dictionary = ask["laid"]
@@ -2061,11 +2182,46 @@ func _hand_plan(items: Array) -> Dictionary:
 	var key: Array = _copies_state() + [world.generation(), scenery.size(), entered]
 	if _plan.is_empty() or not is_same(_plan["items"], items) or _plan["key"] != key:
 		_plan = {"items": items, "key": key, "read": 0, "going": [], "by_level": {},
-			"level_of": {}, "pairs": null}
+			"level_of": {}, "pairs": null, "was": [], "twins": null}
 	return _plan
 
 
 var _plan: Dictionary = {}
+
+
+## The twins in a hand ([method _hand_plan]'s [param plan], read whole):
+## parts lifted from two copies of one sub-model that stood on each other,
+## as the copies lie ([method _copies_laid]): [the one's index in "going",
+## its twin's, the fit from the one's copy to the twin's, the one's copy] each.
+## By where each stood when lifted ("was"); none for a hand from one copy.
+func _twins_in_hand(plan: Dictionary) -> Array:
+	var out: Array = []
+	var by_level: Dictionary = plan["by_level"]
+	if by_level.size() < 2:
+		return out
+	var going: Array = plan["going"]
+	var was: Array = plan["was"]
+	for level: String in by_level:
+		for copy: Array in _copies_laid(level):
+			var other: String = copy[0]
+			if not by_level.has(other):
+				continue
+			var theirs: Dictionary = {}
+			for k: int in by_level[other]:
+				if was[k] != null:
+					if not theirs.has(going[k][0]):
+						theirs[going[k][0]] = []
+					(theirs[going[k][0]] as Array).append(k)
+			for k: int in by_level[level]:
+				if was[k] == null:
+					continue
+				var laid: Array = _laid(copy[1], str(going[k][0]), was[k])
+				for j: int in theirs.get(laid[0], []):
+					if (was[j] as Transform3D).origin.distance_to((laid[1] as Transform3D).origin) <= 0.6 \
+							and _same_place(str(laid[0]), laid[1], was[j]):
+						out.append([k, j, copy[1], level])
+						break
+	return out
 
 
 ## A side of the blocks [method _put_down] files boxes under, in cells: four
@@ -2608,7 +2764,10 @@ func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictiona
 		# own box and reads as swapped. Its twin, off already, was not free to
 		# take off, and the new one was laid nowhere: the copy lost the part
 		# (room390, Wing#2 left with 2 of its 3). Laid as a part put down is.
-		var taken: bool = world.get_brick(brick_id) == null and then.get(brick_id) != null
+		# Only what that follow took ([member _follow_took]): a twin the person
+		# lifted too is theirs, put down where they put it.
+		var taken: bool = world.get_brick(brick_id) == null and then.get(brick_id) != null \
+			and _follow_took.has(brick_id)
 		if not taken and (_put_back(pair) or not _free(brick_id, "gone", twin, other, then, claimed)):
 			continue
 		var was: Dictionary = twin[brick_id]

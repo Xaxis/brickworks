@@ -15032,6 +15032,10 @@ msgstr "Pas de place dans %s : déplacez ce qui gêne à cet endroit, ou utilise
 msgid "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique"
 msgstr "Pas de place dans %s : elle passerait sous le sol. Montez cette copie, ou utilisez Construire › Rendre cette copie unique"
 
+# Both twins of a part changed in one step, two copies of one sub-model made two shapes: refused (wingfix2)
+msgid "Moved in two copies of %s at once, and differently: move it in one and the others follow, or use Build › Make this copy unique"
+msgstr "Déplacée dans deux copies de %s à la fois, et différemment : déplacez-la dans une seule, les autres suivent, ou utilisez Construire › Rendre cette copie unique"
+
 # keptbuilt (APP_UX9 #6)
 msgid "Built"
 msgstr "Monté"

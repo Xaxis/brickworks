@@ -46,5 +46,7 @@ restep            # a tool, not a check: moves the shipped models' part lines am
 setbin_time       # judges a time the box's load decides: the biggest sets' bins drawn against the whole library's, run by hand when the bin changes (appux B10)
 altbuilds         # a measure with a site half: tools/web/altbuilds_probe.mjs writes its --pairs= file (real library models against real sets) first, then tools/probe.sh altbuilds_probe --pairs=DIR/pairs.json (altbuilds)
 challenge_rules   # needs tools/challenge_rules_check.mjs's fixtures, read from the live project in a rolled-back transaction with its keys: run as its header says, -- --fixtures=DIR (challengestudio)
+wr3               # wingreview3's review probe: its follow table runs in wf2 every time; its meets and ask cases measure wingfin's 4-stud blocks and wingplace's ask against the code they replaced, copied into it, a one-off (bench/results/wingreview3-2026-11-25), WR3_CASES=follow,meets,ask
 # Failing on the code as it is (2026-10-22), each a unit to fix:
 open_time         # a measure: a big set's first picture and full open in the window, on the GPU, from the open's start (open222, walk180 A8)
+wr3_room          # room_steady at an interface size and in a language (-- --lang=de --wr3size=1.5): at 320 and 390 in de/fr/es at 150% the window's column and the status bar are wider than the window, and a phone's top bar in fr at 150% once Redo shows (wingreview3 F3, F5, 2026-11-25)
