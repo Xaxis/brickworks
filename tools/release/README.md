@@ -586,11 +586,14 @@ whose branch is not on main. "Its commit is on main" alone also describes a
 running agent that has not committed yet, and two agents lost their work to
 a cleanup that checked only that (2026-10-16).
 
-`tools/release/archive_out.sh [--dry]` moves release-out's old output, never
-deleting it: the releases older than the newest 8 (`RELEASE_KEEP`) and any
-other entry untouched for 3 days (`RELEASE_IDLE_DAYS`) go to
+`tools/release/archive_out.sh [--dry]` moves release-out's old output: the
+releases older than the newest 8 (`RELEASE_KEEP`) and any other entry
+untouched for 3 days (`RELEASE_IDLE_DAYS`) go to
 `~/brickworks-archive/release-out` (`RELEASE_ARCHIVE`), on the root disk, and
-`release-out/archive` links there. A running train's output, a hold and the
+`release-out/archive` links there. In the archive, screenshots (png, webp, ppm)
+go after 14 days (`RELEASE_SHOT_DAYS`); logs, JSON and the rest stay, since
+those are what the docs cite. The archive had reached 113 GB, 110 GB of it
+preview PNGs, with / at 4% free (2026-11-24). A running train's output, a hold and the
 archive stay. train.sh runs it once a release is live: release-out had grown to
 61 GB in 25,000 entries with /mnt/Projects at 93% (2026-11-11).
 
