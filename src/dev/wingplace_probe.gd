@@ -540,7 +540,8 @@ func _many_in_hand() -> void:
 	for n: int in 2000:
 		var at := Transform3D(Basis.IDENTITY, Vector3(20.0 * (n % 50), 8.0, 20.0 * (n / 50)))
 		var brick_id: int = _world.add_brick("3024", 4, at)
-		Builder.set_path(_world.get_brick(brick_id), "Big#1")
+		# By the instance: on the class, set_path is the script resource's own.
+		_builder.set_path(_world.get_brick(brick_id), "Big#1")
 		ids.append(brick_id)
 	await _frames(2)
 	var items: Array = []
