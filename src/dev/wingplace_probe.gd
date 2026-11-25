@@ -756,7 +756,12 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 			var predicted: String = "" if asked == null else str(asked)
 			var fits: bool = _builder.can_place()
 			moving += 0 if _camera.call("_at_target") else 1
-			var room_key: String = "%s %s" % [str((_main.call("_model_rect") as Rect2).size.snappedf(0.1)),
+			# And the room's top and the status bar's width: a bar wider than
+			# the window widened the header's row, which came onto one line
+			# and moved the room's top (room390).
+			var room_rect: Rect2 = _main.call("_model_rect")
+			var room_key: String = "%s top %.0f, bar %.0f wide, lens %s" % [str(room_rect.size.snappedf(0.1)),
+				room_rect.position.y, (_shell.status as Control).size.x,
 				str((_camera.get("_shift") as Vector2).snappedf(0.1))]
 			rooms[room_key] = int(rooms.get(room_key, 0)) + 1
 			if not fits and predicted.is_empty():
