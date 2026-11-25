@@ -441,23 +441,26 @@ func _mpd() -> void:
 func _castle() -> void:
 	print("\n== castle: models/castle.ldr, saved unedited, then Plan steps and Save")
 	var file: String = FileAccess.get_file_as_string(CASTLE)
-	await _open(CASTLE)
+	# The castle as a person's saved model: opened from disk, Save pressed.
 	var called: String = "SK2R castle unedited"
 	_forget(called)
-	_store.title = called
-	var ok: bool = _store.save_as(called)
-	var saved_path: String = ModelStore.saved_path(called)
-	var saved: String = FileAccess.get_file_as_string(saved_path)
-	_check("castle: opened and saved unedited (%s), the file byte for byte (%d / %d bytes)"
-		% [ok, saved.length(), file.length()], ok and saved == file)
+	var path: String = ModelStore.saved_path(called)
+	_write(path, file)
+	await _reopen(path)
+	var ok: bool = await _bar.call("_on_save")
+	var name: String = _bar.model_name()
+	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(name))
+	_check("castle: opened from disk and Save pressed (%s, as \"%s\"), the file byte for byte (%d / %d bytes)"
+		% [ok, name, saved.length(), file.length()], ok and saved == file)
 	if saved != file:
 		_first_diff(file, saved)
-	await _reopen(saved_path)
+	await _reopen(ModelStore.saved_path(name))
 	var again: String = _store.to_text(_store.title, true)
 	_check("castle: ...opened again from that save and written whole, byte for byte (%d / %d bytes)"
 		% [again.length(), file.length()], again == file)
 	if again != file:
 		_first_diff(file, again)
+	_forget(name)
 	_forget(called)
 	await _planned_and_saved("castle", CASTLE, file)
 

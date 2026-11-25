@@ -1271,27 +1271,52 @@ static func _step_on(world: BrickWorld, under: Array, section: String, skip: Dic
 ## read Orthanc's 10,119 parts three times and made an item of each, 40 to
 ## 70 ms a follow where a frame is 16 (sk2fix's fixtime, failing since).
 static func step_counts(world: BrickWorld, section: String, skip: Dictionary = {}) -> Dictionary:
-	var counts: Dictionary = {}
+	var by_step := PackedInt32Array()   ## step -> how many of the section's parts
 	var total: int = 0
 	var leaves: Dictionary = {}     ## each part's path, as paths_in reads them
 	var least: Dictionary = {}      ## each stepped part's path -> its least step (lowest_under)
 	var mine: Dictionary = {}       ## a path -> whether its section is [param section]
+	# The parts come a copy at a time (BrickWorld keeps them in the file's
+	# order), so a path's maps are read and written once a run of its parts,
+	# not once a part: once a part, it was still 18 to 35 ms on Orthanc.
+	var run: String = ""            ## the path of the run of parts being read
+	var here: bool = false
+	var low: int = -1               ## the least step of the run's parts so far
+	var started: bool = false
+	var skipping: bool = not skip.is_empty()
 	for brick: BrickWorld.Brick in world.bricks():
-		if skip.has(brick.id):
+		if skipping and skip.has(brick.id):
 			continue
-		var path: String = Assemblies.path_from(brick.group, brick.unit)
-		leaves[path] = 0
+		var at: String = brick.unit if not brick.unit.is_empty() \
+			else ("" if brick.group.is_empty() else brick.group + "#1")    # Assemblies.path_of
+		if not started or at != run:
+			if low >= 0:
+				least[run] = mini(int(least.get(run, low)), low)
+			started = true
+			run = at
+			low = -1
+			leaves[run] = 0
+			var known: Variant = mine.get(run)
+			if known == null:
+				known = home(world, run) == section
+				mine[run] = known
+			here = known
 		var step: int = brick.step
 		if step < 0:
 			continue
-		least[path] = mini(int(least.get(path, step)), step)
-		var here: Variant = mine.get(path)
-		if here == null:
-			here = home(world, path) == section
-			mine[path] = here
+		if low < 0 or step < low:
+			low = step
 		if here:
-			counts[step] = int(counts.get(step, 0)) + 1
+			if step >= by_step.size():
+				by_step.resize(step + 64)
+			by_step[step] += 1
 			total += 1
+	if low >= 0:
+		least[run] = mini(int(least.get(run, low)), low)
+	var counts: Dictionary = {}
+	for step: int in by_step.size():
+		if by_step[step] > 0:
+			counts[step] = by_step[step]
 	var lowest: Dictionary = _up_paths(least)
 	var placed: Dictionary = _up_paths(leaves)
 	for path: String in placed:
