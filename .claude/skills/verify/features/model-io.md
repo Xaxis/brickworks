@@ -1055,7 +1055,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   every section, carried part file and held part's file of the host, a
   sub-model file's name without its extension too); its author's steps come
   with it, its root in the step it was put down in where the host has steps;
-  its parts the app cannot show are kept in their sub-model and step
+  into a host nobody gave steps, the host first keeps the steps it was shown,
+  the baseplate (scenery) planned as no part of them, and the floor's step
+  never makes the host one with steps (`Builder._bring_steps`,
+  `_brought_stepped`; sk2review2 F1, `SK2R_ONLY=plate tools/probe.sh
+  sk2review_probe`); its parts the app cannot show are kept in their sub-model and step
   (`ModelStore._held_put`, kinds `unseen`/`absent`/`awaited`) and move, copy
   and undo with it; its maker is written in its sub-model's header (the
   file's `0 Author:`/`0 !LICENSE`, else the library's or gallery's credit);
