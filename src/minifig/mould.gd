@@ -42,7 +42,12 @@ const THIN := 2.5
 ## The lock fades to nothing over this many LDU beyond what it protects.
 const FADE := 2.0
 
-const TOOLS: Array[String] = ["pull", "push", "inflate", "smooth", "pinch", "flatten", "grab"]
+## Grow and Shrink are "inflate" and "shrink": each corner straight out of
+## the surface or straight into it, a region swollen or slimmed.
+const TOOLS: Array[String] = ["pull", "push", "inflate", "shrink", "smooth", "pinch", "flatten",
+	"grab"]
+## How many strokes Undo goes back.
+const UNDO_STEPS := 100
 
 ## The part it was made from: its placement on a figure is this part's.
 var base: String = ""
@@ -139,6 +144,37 @@ static func of_part(library: PartLibrary, part_id: String, slot: String = "") ->
 		mould.grip = [Vector3(held[0], -held[1], -held[2]),
 			Vector3(held[3], -held[4], -held[5]).normalized()]
 	mould._settle()
+	return mould
+
+
+## Whether [param part_id] is a shape made here that can be sculpted on: a
+## mould, or one's own part from a 3D file, worn or held as a real part is.
+## Not a print: sculpted, its picture would be lost.
+static func sculpts_on(library: PartLibrary, part_id: String) -> bool:
+	var text: String = str(library.custom.get(part_id, ""))
+	if text.is_empty() or text.contains("!TEXMAP"):
+		return false
+	var real: String = PartPrints.base_in(text)
+	return (text.contains(PartPrints.MOULDED_BY) or text.contains(PartPrints.IMPORTED_BY)) \
+		and not real.is_empty() and library.parts.has(real)
+
+
+## A mould of a mould or a 3D file's hair made before, to sculpt it further:
+## its own shape and connectors, standing for the real part it stands for
+## (the part a figure places it as), so what is made of it is made from that
+## part, never a chain of made ones. Null as [method of_part] is.
+static func of_made(library: PartLibrary, part_id: String, slot: String = "") -> Mould:
+	var real: String = PartPrints.base_in(str(library.custom.get(part_id, "")))
+	var mould: Mould = of_part(library, part_id, slot)
+	if mould == null or real.is_empty() or not library.parts.has(real):
+		return mould
+	mould.base = real
+	mould.name = Minifig._plain(library.parts[real].name).trim_prefix("~").trim_prefix("=")
+	var held: Array = MinifigData.GRIPS.get(real, [])
+	if not held.is_empty():
+		mould.grip = [Vector3(held[0], -held[1], -held[2]),
+			Vector3(held[3], -held[4], -held[5]).normalized()]
+		mould._settle()
 	return mould
 
 
@@ -412,10 +448,14 @@ func _refresh_faces() -> void:
 	_picker_stale = false
 
 
-## Begin a stroke: one undo step from here to its end.
-func begin() -> void:
-	_undo.append(positions.duplicate())
-	if _undo.size() > 40:
+## Begin a stroke: one undo step from here to its end. [param whole] for a
+## change of the surface's corners and triangles themselves (Finer): its
+## step keeps all of them, as a stroke's keeps only where the corners are.
+## Up to figmould every step kept only the corners' places, and Undo after
+## Finer put back fewer corners than its triangles named.
+func begin(whole: bool = false) -> void:
+	_undo.append(_state(whole))
+	if _undo.size() > UNDO_STEPS:
 		_undo.pop_front()
 	_redo.clear()
 
@@ -424,22 +464,84 @@ func can_undo() -> bool:
 	return not _undo.is_empty()
 
 
+func can_redo() -> bool:
+	return not _redo.is_empty()
+
+
 func undo() -> bool:
 	if _undo.is_empty():
 		return false
-	_redo.append(positions.duplicate())
-	positions = _undo.pop_back()
-	_changed()
+	var step: Dictionary = _undo.pop_back()
+	_redo.append(_state(step.has("triangles")))
+	_restore(step)
 	return true
 
 
 func redo() -> bool:
 	if _redo.is_empty():
 		return false
-	_undo.append(positions.duplicate())
-	positions = _redo.pop_back()
-	_changed()
+	var step: Dictionary = _redo.pop_back()
+	_undo.append(_state(step.has("triangles")))
+	_restore(step)
 	return true
+
+
+## The stroke begun last taken back as if it had never been, with no step to
+## redo: a second finger come down turns the view, and what the first had
+## begun to sculpt is not kept.
+func cancel_stroke() -> void:
+	if _undo.is_empty():
+		return
+	_grab = {}
+	_restore(_undo.pop_back())
+
+
+## What one undo step keeps. The triangles, their colours and creases are
+## made anew by Finer, never changed in place, so a step holds them as they
+## are; the corners' places and their rest are changed in place, so it holds
+## copies. While the lattice is on, its handles too: a handle's drag is one
+## step, and the part is bent from where they are.
+func _state(whole: bool) -> Dictionary:
+	var out: Dictionary = {"positions": positions.duplicate()}
+	if not _lattice_at.is_empty():
+		out["lattice_at"] = _lattice_at.duplicate()
+		out["lattice_rest"] = _lattice_rest
+		out["lattice_box"] = _lattice_box
+	if whole:
+		out["triangles"] = triangles
+		out["colors"] = colors
+		out["two_sided"] = two_sided
+		out["creases"] = creases
+		out["locks"] = locks
+		out["mirrors"] = mirrors
+		out["rest"] = rest.duplicate()
+	return out
+
+
+func _restore(step: Dictionary) -> void:
+	var whole: bool = step.has("triangles")
+	if whole:
+		triangles = step["triangles"]
+		colors = step["colors"]
+		two_sided = step["two_sided"]
+		creases = step["creases"]
+		locks = step["locks"]
+		mirrors = step["mirrors"]
+		rest = step["rest"]
+	positions = step["positions"]
+	if whole:
+		_find_neighbours()
+	if not _lattice_at.is_empty():
+		if step.has("lattice_at") and (step["lattice_rest"] as PackedVector3Array).size() \
+				== positions.size():
+			_lattice_at = step["lattice_at"]
+			_lattice_rest = step["lattice_rest"]
+			_lattice_box = step["lattice_box"]
+		else:
+			# Back before the lattice was put round it: put round it again,
+			# as it is now, its handles at rest.
+			lattice_begin()
+	_changed()
 
 
 ## One dab of a brush at a point of the surface: [param radius] in LDU,
@@ -488,6 +590,8 @@ func _dab(tool: String, at: Vector3, normal: Vector3, radius: float, strength: f
 				p -= facing * step * free
 			"inflate":
 				p += normals[v] * step * free
+			"shrink":
+				p -= normals[v] * step * free
 			"smooth":
 				var mean := Vector3.ZERO
 				for other: int in neighbours[v]:
@@ -571,9 +675,10 @@ func _changed() -> void:
 
 
 ## Start bending the whole part with a lattice of 3 x 3 x 3 handles round
-## it. Returns the handles' places.
+## it. Returns the handles' places. Putting it round changes nothing, so it
+## is no step of its own: each handle's drag is ([method begin] as it is
+## taken hold of).
 func lattice_begin() -> PackedVector3Array:
-	begin()
 	var box := AABB(positions[0], Vector3.ZERO)
 	for p: Vector3 in positions:
 		box = box.expand(p)
@@ -642,7 +747,7 @@ func lattice_end() -> void:
 ## corners a brush can move — until none is, or the mould has as many
 ## triangles as it may. Returns how many triangles it has.
 func refine(longest: float = FINEST * 2.0) -> int:
-	begin()
+	begin(true)
 	for _pass: int in 6:
 		if triangles.size() / 3 >= MOST_TRIANGLES:
 			break
@@ -842,6 +947,72 @@ func _ldraw(v: int) -> Vector3:
 	var p: Vector3 = positions[v]
 	return Vector3(snappedf(p.x, 1.0 / 64.0), snappedf(-p.y, 1.0 / 64.0),
 		snappedf(-p.z, 1.0 / 64.0))
+
+
+## The mould as it is now, to keep while it is being made (MouldEditor's
+## draft): every corner and triangle and what fixes them, exactly. Not its
+## undo steps: what comes back after a reload is the shape, not its history.
+func to_draft() -> Dictionary:
+	return {"version": 1, "base": base, "name": name, "category": category,
+		"positions": positions, "triangles": triangles, "colors": colors, "two_sided": two_sided,
+		"locks": locks, "mirrors": mirrors, "creases": creases, "connectors": connectors,
+		"on_head": on_head, "grip": grip, "rest": rest}
+
+
+## A mould kept by [method to_draft], or null when [param kept] is not one
+## whole and in itself: a draft cut short or from another build is let go,
+## never opened half.
+static func from_draft(kept: Variant) -> Mould:
+	if not (kept is Dictionary) or int((kept as Dictionary).get("version", 0)) != 1:
+		return null
+	var d: Dictionary = kept
+	var wanted: Dictionary = {"positions": TYPE_PACKED_VECTOR3_ARRAY,
+		"triangles": TYPE_PACKED_INT32_ARRAY, "colors": TYPE_PACKED_INT32_ARRAY,
+		"two_sided": TYPE_PACKED_BYTE_ARRAY, "locks": TYPE_PACKED_FLOAT32_ARRAY,
+		"mirrors": TYPE_PACKED_INT32_ARRAY, "creases": TYPE_PACKED_INT32_ARRAY,
+		"rest": TYPE_PACKED_VECTOR3_ARRAY, "connectors": TYPE_ARRAY, "grip": TYPE_ARRAY,
+		"base": TYPE_STRING, "name": TYPE_STRING, "category": TYPE_STRING, "on_head": TYPE_BOOL}
+	for key: String in wanted:
+		if typeof(d.get(key)) != wanted[key]:
+			return null
+	var mould := Mould.new()
+	mould.positions = d["positions"]
+	mould.triangles = d["triangles"]
+	var corners: int = mould.positions.size()
+	var faces: int = mould.triangles.size() / 3
+	if corners == 0 or mould.triangles.size() % 3 != 0 or faces == 0 \
+			or faces > MOST_TRIANGLES * 2 or (d["colors"] as PackedInt32Array).size() != faces \
+			or (d["two_sided"] as PackedByteArray).size() != faces \
+			or (d["locks"] as PackedFloat32Array).size() != corners \
+			or (d["mirrors"] as PackedInt32Array).size() != corners \
+			or (d["rest"] as PackedVector3Array).size() != corners \
+			or (d["creases"] as PackedInt32Array).size() % 2 != 0:
+		return null
+	for n: int in mould.triangles:
+		if n < 0 or n >= corners:
+			return null
+	for n: int in d["creases"] as PackedInt32Array:
+		if n < 0 or n >= corners:
+			return null
+	for p: Vector3 in mould.positions:
+		if not p.is_finite():
+			return null
+	mould.base = d["base"]
+	mould.name = d["name"]
+	mould.category = d["category"]
+	mould.colors = d["colors"]
+	mould.two_sided = d["two_sided"]
+	mould.locks = d["locks"]
+	mould.mirrors = d["mirrors"]
+	mould.creases = d["creases"]
+	mould.rest = d["rest"]
+	mould.connectors = d["connectors"]
+	mould.on_head = d["on_head"]
+	mould.grip = d["grip"]
+	mould._find_neighbours()
+	mould.recompute_normals()
+	mould._picker_stale = true
+	return mould
 
 
 ## Make the part, add it to the library and keep it: {"id", "problem"}.

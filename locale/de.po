@@ -8318,6 +8318,142 @@ msgstr "Wähle ein Teil aus, um seine bedruckten Varianten zu sehen; Teile einer
 msgid "%s has no printed or stickered versions in the library"
 msgstr "Von %s gibt es in der Bibliothek keine bedruckten oder beklebten Varianten"
 
+# The mould maker (Make a mould…): its brushes and tips, its words for a desk and a finger, and what it keeps while a mould is made (figmould)
+msgid "Pull"
+msgstr "Ziehen"
+
+msgid "Push"
+msgstr "Drücken"
+
+msgid "Smooth"
+msgstr "Glätten"
+
+msgid "Pinch"
+msgstr "Kneifen"
+
+msgid "Flatten"
+msgstr "Abflachen"
+
+msgid "Grab"
+msgstr "Greifen"
+
+msgid "Draw the surface out towards you"
+msgstr "Zieh die Oberfläche zu dir heraus"
+
+msgid "Press the surface in"
+msgstr "Drück die Oberfläche ein"
+
+msgid "Grow it: swell where the brush is, each point straight out"
+msgstr "Wachsen lassen: unter dem Pinsel anschwellen, jeder Punkt gerade nach außen"
+
+msgid "Shrink it: slim where the brush is, each point straight in"
+msgstr "Schrumpfen lassen: unter dem Pinsel verschlanken, jeder Punkt gerade nach innen"
+
+msgid "Even out bumps and ridges"
+msgstr "Beulen und Grate ausgleichen"
+
+msgid "Draw the surface together into a crease or a ridge"
+msgstr "Die Oberfläche zu einer Falte oder einem Grat zusammenziehen"
+
+msgid "Flatten it to the plane under the brush"
+msgstr "Auf die Ebene unter dem Pinsel abflachen"
+
+msgid "Take hold of it and drag it about"
+msgstr "Pack sie und zieh sie herum"
+
+msgid "Dome"
+msgstr "Kuppel"
+
+msgid "Club"
+msgstr "Keule"
+
+msgid "Save mould"
+msgstr "Form speichern"
+
+msgid "Size (LDU)"
+msgstr "Größe (LDU)"
+
+msgid "Symmetry"
+msgstr "Symmetrie"
+
+msgid "Lattice"
+msgstr "Gitter"
+
+msgid "Check walls"
+msgstr "Wände prüfen"
+
+msgid "Finer"
+msgstr "Feiner"
+
+msgid "Brush strength"
+msgstr "Pinselstärke"
+
+msgid "The part being shaped"
+msgstr "Das Teil, das geformt wird"
+
+msgid "A part number, or dome (to wear) or club (to hold)"
+msgstr "Eine Teilenummer, oder dome (zum Tragen) oder club (zum Halten)"
+
+msgid "Start again from this part (Undo goes back)"
+msgstr "Neu mit diesem Teil beginnen (Rückgängig geht zurück)"
+
+msgid "A plain cap to wear, with a hair piece's socket"
+msgstr "Eine schlichte Kappe zum Tragen, mit der Aufnahme eines Haarteils"
+
+msgid "A plain bar to hold with a ball on the end, held where a sword is"
+msgstr "Ein schlichter Stab zum Halten mit einer Kugel am Ende, gehalten, wo ein Schwert gehalten wird"
+
+msgid "Make the part, keep it, and put it on the figure"
+msgstr "Das Teil herstellen, behalten und der Figur anziehen"
+
+msgid "Back to the figure; the mould is kept as it is for next time"
+msgstr "Zurück zur Figur; die Form bleibt für das nächste Mal, wie sie ist"
+
+msgid "How far the brush reaches, in LDU (2.5 to a millimetre)"
+msgstr "Wie weit der Pinsel reicht, in LDU (2,5 auf einen Millimeter)"
+
+msgid "Every stroke on both sides of the part's middle"
+msgstr "Jeder Strich auf beiden Seiten der Mitte des Teils"
+
+msgid "27 handles round the part: drag one to bend the whole part"
+msgstr "27 Griffe um das Teil: Zieh an einem, um das ganze Teil zu biegen"
+
+msgid "Mark in red where the part is thinner than 1 mm"
+msgstr "Rot markieren, wo das Teil dünner als 1 mm ist"
+
+msgid "More corners where the surface is coarse, for finer detail (Undo takes it back)"
+msgstr "Mehr Ecken, wo die Oberfläche grob ist, für feinere Einzelheiten (Rückgängig nimmt es zurück)"
+
+msgid "Take the last stroke back"
+msgstr "Den letzten Strich zurücknehmen"
+
+msgid "Drag on the part to sculpt, off it to turn it; wheel to come closer. Blue is its connection, which stays as it is."
+msgstr "Zieh auf dem Teil, um es zu formen, daneben, um es zu drehen; mit dem Mausrad kommst du näher. Blau ist seine Verbindung, die bleibt, wie sie ist."
+
+msgid "Drag on the part to sculpt, off it to turn it; two fingers turn it, and pinch to come closer. Blue is its connection, which stays as it is."
+msgstr "Zieh auf dem Teil, um es zu formen, daneben, um es zu drehen; zwei Finger drehen es, und mit zwei Fingern zoomst du. Blau ist seine Verbindung, die bleibt, wie sie ist."
+
+msgid "That part has no geometry to sculpt."
+msgstr "Dieses Teil hat keine Geometrie zum Formen."
+
+msgid "Make a mould from %s"
+msgstr "Form aus %s modellieren"
+
+msgid "Make a mould from your %s"
+msgstr "Form aus deinem Teil „%s“ modellieren"
+
+msgid "Your %s, to shape further. Saved, it is a new part; the one before stays."
+msgstr "Dein Teil „%s“, zum Weiterformen. Gespeichert ist es ein neues Teil; das vorige bleibt."
+
+msgid "Your mould from before, as you left it. Start begins again from %s; Undo goes back to it."
+msgstr "Deine Form von vorhin, wie du sie gelassen hast. „Los geht's“ beginnt neu mit %s; Rückgängig führt zu ihr zurück."
+
+msgid "Building the mould…"
+msgstr "Die Form wird gebaut…"
+
+msgid "%d triangles · about %d kB in a file"
+msgstr "%d Dreiecke · etwa %d kB in einer Datei"
+
 # The part maker: its families, sizes and studs, and the line saying what the part is, its pieces where ", " lists them
 msgid "Make a part"
 msgstr "Teil erstellen"

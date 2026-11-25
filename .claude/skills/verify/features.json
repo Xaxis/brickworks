@@ -7646,7 +7646,7 @@
       "id": "ui:mould maker",
       "kind": "ui",
       "entry": "src/minifig/mould_editor.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd   (by hand: M, a Headgear or hand slot, Make a mould\u2026)",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd; tools/probe.sh figmould_probe -- --pictures=DIR, and with PROBE_SIZE=390x844 by touch   (by hand: M, a Headgear or hand slot, Make a mould\u2026)",
       "area": "minifig",
       "tests": []
     },

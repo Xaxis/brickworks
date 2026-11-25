@@ -31,7 +31,16 @@ lib:add a minifig
 
 ### Make a mould {#mould}
 
-For headgear or something to hold that does not exist, choose its slot and **Make a mould…**. Drag on the part to sculpt it with the brushes down the left (pull, push, inflate, smooth, pinch, flatten, grab), with symmetry on both sides; what joins it to the figure is locked. **Save mould** makes the part and puts it on the figure.
+For hair, a hat or a helmet that does not exist, or something to hold, choose its slot and **Make a mould…**. It starts from the real part in the slot, so it always fits: its socket is that part's, on the head's stud, and nothing can be pushed into the head.
+
+1. Drag on the part to shape it with the brushes: **Pull**, **Push**, **Grow** and **Shrink** a region, **Smooth**, **Pinch**, **Flatten** and **Grab**. **Symmetry** is on from the start, so a stroke on one side is made on the other too. Drag beside the part to turn it.
+2. On a phone or a tablet the part is above the brushes. One finger shapes it, and two fingers turn it and pinch to come closer. A second finger never dents it.
+3. Every stroke is one step of **Undo** ([[Ctrl+Z]]). So are **Finer**, a **Lattice** handle and starting again from another part.
+4. Name it and **Save mould**. It goes on the figure and into the parts bin under **Custom**, under the name you gave it.
+
+Nothing you shape is lost. **Close**, a reload or a closed tab keeps the mould as it is, and **Make a mould…** in that slot opens it again until you save it.
+
+On a figure wearing a mould, or hair brought in from a 3D file, **Make a mould…** shapes that hair further. Saving makes a new part, and the one before stays as it was.
 
 <!-- covers
 ui:mould maker

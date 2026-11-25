@@ -259,9 +259,21 @@ the model, and the design assistant doing the same with `add_minifig`.
   the head, the inside turned to the head and within an LDU of it
   (`head_depth`, 3626c's cylinder, rounded top and stud; `head_outward`); fading
   to 0 over 2 LDU (`FADE`). Brushes (`dab`): pull and push along the brush's
-  facing, inflate along each corner's own, smooth to the neighbours, pinch to the
+  facing, inflate (Grow) and shrink along each corner's own normal, out and in,
+  smooth to the neighbours, pinch to the
   middle, flatten to the plane, each weighted by a smoothstep falloff and the
-  corner's freedom; with symmetry the same dab mirrored in X. `grab` and `drag`
+  corner's freedom; with symmetry the same dab mirrored in X. Every step
+  (`begin`) keeps the corners' places, and Finer's (`begin(true)`) the
+  triangles, colours, creases, locks, mirrors and rest too, so Undo after
+  Finer is the mesh before it to the bit; with the lattice on a step keeps
+  its handles, one step a handle's drag (`lattice_begin` is none). Up to
+  figmould Undo after Finer put back fewer corners than the triangles named.
+  `cancel_stroke` takes the last step back with no Redo (a second finger).
+  `to_draft` / `from_draft` keep a mould whole (every array, connectors, grip)
+  for `var_to_bytes`; a draft cut short, mis-sized or out of range is null.
+  `sculpts_on` / `of_made`: a mould or a 3D file's hair made here (its
+  MOULDED_BY or IMPORTED_BY line names a real part) is sculpted on further,
+  standing for that real part (its base and grip), never a chain. `grab` and `drag`
   move what is under the brush with the pointer; the lattice (`lattice_begin`,
   `lattice_move`) is 27 handles round the part bending it by quadratic Bernstein
   weights, the mirrored handle moved with symmetry. After every change nothing
@@ -279,14 +291,34 @@ the model, and the design assistant doing the same with `add_minifig`.
 - `mould maker` (`src/minifig/mould_editor.gd`, `MouldEditor`): "Make a mould…"
   beside the search in the Headgear, Headgear extra, Neck, Back, In right hand and
   In left hand slots (`MinifigDialog.MOULDED`), opened on the slot's part (3901
-  or 3847 when it is empty, a dome when neither). Start from a part number,
-  Dome or Club; tools Pull, Push, Inflate, Smooth, Pinch, Flatten, Grab; Size
-  (LDU) and Strength; Symmetry (on); Lattice (handles drawn over the part, a
-  handle dragged in the view's plane); Check walls (red under 1 mm, the thinnest
-  said); Finer; Undo and Redo (Ctrl+Z). Drag on the part to sculpt, off it or
-  with the right button to turn it, the wheel to come closer; a ring shows the
-  brush; locked corners are tinted blue and a faint head shows the fit. Save mould
-  builds it ("Building the mould…" said first) and puts it on the figure.
+  or 3847 when it is empty, a dome when neither; a mould or a 3D file's hair the
+  figure wears is opened on itself, "Your mould: Quiff, to shape further").
+  Start from a part number, Dome or Club, each an Undo step: Undo past it goes
+  back into the mould before (`_earlier`, `_later`). Tools Pull, Push, Grow,
+  Shrink, Smooth, Pinch, Flatten, Grab; Size (LDU) and Strength; Symmetry (on);
+  Lattice (handles drawn over the part, a handle dragged in the view's plane, one
+  step a drag); Check walls (red under 1 mm, the thinnest said); Finer (a step);
+  Undo and Redo (Ctrl+Z). Drag on the part to sculpt, off it or with the right
+  button to turn it, the wheel (or a trackpad's pinch and two-finger swipe) to
+  come closer and turn; a ring shows the brush; locked corners are tinted blue
+  and a faint head shows the fit. Under 760 units across (a phone) it is laid out
+  for a finger (`_arrange`, `laid_narrow`): title and Close, the name and Save
+  mould, the part, then the brushes as a row that scrolls and the rest under it,
+  sized by TouchSizing; two fingers turn it and pinch to come closer, and a
+  second finger down while the first sculpts takes that stroke back
+  (`cancel_stroke`). The mould is kept for the tab (`TabSession.path("moulds/
+  <slot>.draft")`, or `MouldEditor.drafts`) after every stroke, Finer, Undo,
+  start and close, and a typed name 0.4 s after; Make a mould… in that slot
+  opens on it ("Your mould from before, as you left it…") until Save mould,
+  which lets it go. Nothing of the person's in it (opened and closed untouched)
+  keeps nothing. Save mould builds it ("Building the mould…" said first) and
+  puts it on the figure. `figmould_probe` (1280 and `PROBE_SIZE=390x844`, by
+  touch) is the whole way: strokes each one exact step, Finer and Dome undone,
+  a pinch, closed and reopened, an editor made anew from the draft, saved,
+  worn, an STL hair worn and opened in the maker, placed, saved, reopened, saved
+  again to the same bytes, and read where neither part was made with the same
+  corners and place; `--pictures=DIR` adds three moulds beside their real hair
+  pieces, rendered light and dark.
 - `parts from 3D files` (`src/parts/mesh_part.gd`, `MeshPart`, a Later class):
   an STL (binary or ASCII; Z up, turned upright) or an OBJ read with
   `MeshFile` and refused in a sentence when it is not closed (an edge used an
