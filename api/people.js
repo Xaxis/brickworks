@@ -29,6 +29,15 @@
 //                                 (api/_avatars.js)
 //   POST ?op=avatar_remove        (session) that picture taken off: the
 //                                 avatar made from the handle again
+//   POST ?op=mould                (session) {id, slot, text}: a mould made in
+//                                 the studio's minifig builder, kept on the
+//                                 caller's account (api/_moulds.js), held to
+//                                 what a mould is before anything is kept
+//   GET  ?op=moulds               (session) the caller's moulds, without
+//                                 their text: what Edit profile's maker lists
+//   GET  ?op=mould&id=M           mould M's text: the caller's own, or one a
+//                                 shown avatar wears; kept by the browser
+//                                 for good (an id is its text)
 //   POST ?op=likes_choice         (session) {shows}: show on my profile the
 //                                 models I liked
 //   POST ?op=showcase             (session) {links?, banner?, pins?}: what
@@ -298,6 +307,8 @@ import {
   likesCount, recipeShape,
 } from "./_avatars.js";
 import { withFaces } from "./_faces.js";
+import { MouldRefusal, keepMould, mouldOf, mouldText, mouldsOf, wearsOwn } from "./_moulds.js";
+import { ownMould } from "./_minifig_parts.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
 // counted as countedSaid: "1 part", "1.234 Teile", in the page's language.
@@ -329,7 +340,7 @@ export const MOST_FAVOURITES = 2000;
 // How often a person may do each thing: [an hour, a day].
 export const LIMITS = { profile: [20, 60], like: [300, 2000], favourite: [300, 2000],
   collection: [20, 60], collect: [300, 3000], report: [6, 20], photo: [12, 40], photo_hide: [60, 300],
-  showcase: [20, 60], avatar: [12, 40], likes_choice: [20, 60], people_find: [600, 3000] };
+  showcase: [20, 60], avatar: [12, 40], likes_choice: [20, 60], people_find: [600, 3000], mould: [60, 200] };
 // What a profile shows besides its name (supabase/profile_shows.sql).
 export const MOST_LINKS = 2;
 export const MOST_PINS = 3;
@@ -734,6 +745,11 @@ async function saveAvatar(request, response) {
   if (body.minifig !== undefined && body.minifig !== null && !recipe) {
     throw new Refusal("that is not a minifigure the maker makes: a face, hair or a hat, a print and colours from its lists");
   }
+  // A hair of their own only if it is theirs: a mould kept on this account
+  // for a minifigure's hair (api/_moulds.js).
+  if (recipe && ownMould(recipe.hd) && !(await wearsOwn(account, recipe.hd))) {
+    throw new Refusal("that hair is not one of your own moulds: save it in the studio's minifig builder, signed in, first", 403);
+  }
   const kept = await keepAvatar(account, body.picture, String(body.type || ""), async () => {
     const person = (await db(`people?account=eq.${account}&select=handle`))[0];
     if (!person) throw new Refusal("make your profile first: a name and a handle", 409);
@@ -750,6 +766,41 @@ async function dropOwnAvatar(request, response) {
   const account = await signedIn(request);
   await counted(account, "avatar");
   return response.status(200).json(await dropAvatar(account));
+}
+
+// ---------------------------------------------------------------------------
+// Your own moulds (api/_moulds.js, supabase/own_moulds.sql).
+
+/// POST ?op=mould {id, slot, text}: a mould the studio saved, kept on the
+/// caller's account.
+async function saveMould(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  const mould = mouldOf(request.body);
+  return response.status(200).json(await keepMould(account, mould, () => counted(account, "mould")));
+}
+
+/// GET ?op=moulds: the caller's moulds, without their text.
+async function ownMoulds(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
+  const account = await signedIn(request);
+  return response.status(200).json(await mouldsOf(account));
+}
+
+/// GET ?op=mould&id=M: its text, for its owner or for anybody while a shown
+/// avatar wears it. An id is its text, so a browser keeps it for good and
+/// never asks again; the CDN never keeps it (it may be somebody's alone).
+async function mouldServe(request, response) {
+  const account = bearer(request) ? await signedIn(request) : null;
+  const found = await mouldText(String(request.query?.id || ""), account, shownPublicly);
+  if (!found) {
+    response.setHeader("Cache-Control", "private, no-store");
+    return response.status(404).json({ error: "there is no mould of that name you may see" });
+  }
+  // No Vary on the session: the text is the id's whoever asks, and the
+  // token a browser sends is new every hour.
+  response.setHeader("Cache-Control", "private, max-age=31536000, immutable");
+  return response.status(200).json({ id: String(request.query.id), text: found.text });
 }
 
 // The minifigure made from a handle never changes (web/card.js minifigOf),
@@ -2100,6 +2151,8 @@ async function handler(request, response) {
       if (op === "challenge_page") return await challengePage(request, response);
       if (op === "likes") return await likes(request, response);
       if (op === "avatar") return await avatarServe(request, response);
+      if (op === "moulds") return await ownMoulds(request, response);
+      if (op === "mould") return await mouldServe(request, response);
       if (op === "marks") return await marks(request, response);
       if (op === "favourites") return await favourites(request, response);
       if (op === "collection") return await collection(request, response);
@@ -2153,6 +2206,7 @@ async function handler(request, response) {
       if (op === "showcase") return await saveShowcase(request, response);
       if (op === "avatar") return await saveAvatar(request, response);
       if (op === "avatar_remove") return await dropOwnAvatar(request, response);
+      if (op === "mould") return await saveMould(request, response);
       if (op === "likes_choice") return await saveLikesChoice(request, response);
       if (op === "like") return await toggle(request, response, "model_likes");
       if (op === "favourite") return await toggle(request, response, "model_favourites");
@@ -2203,7 +2257,7 @@ async function handler(request, response) {
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {
     if (trouble instanceof AuthError || trouble instanceof Refusal || trouble instanceof Unacceptable
-        || trouble instanceof BuildRefusal || trouble instanceof AvatarRefusal) {
+        || trouble instanceof BuildRefusal || trouble instanceof AvatarRefusal || trouble instanceof MouldRefusal) {
       return response.status(trouble.status).json({ error: trouble.message });
     }
     console.error("people:", trouble.message);
