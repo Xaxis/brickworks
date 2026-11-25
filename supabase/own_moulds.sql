@@ -63,7 +63,10 @@ comment on table public.own_moulds is
     '(supabase/own_moulds.sql, api/_moulds.js).';
 
 -- At most 40 moulds and 24 MB an account. A mould saved again (the same id)
--- replaces its row and is counted once.
+-- replaces its row and is counted once. Saves to one account take turns: the
+-- lock is held until the save's transaction ends, and the count after it
+-- (a new statement, so a new snapshot) sees the save before it. Without it
+-- two saves at the same moment both counted 39 and both were kept.
 create or replace function public.own_moulds_cap() returns trigger
     language plpgsql
     set search_path = public
@@ -72,6 +75,7 @@ declare
     many   integer;
     weight bigint;
 begin
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('own_moulds ' || new.account::text, 0));
     select count(*), coalesce(sum(bytes), 0) into many, weight
         from public.own_moulds where account = new.account and id <> new.id;
     if many >= 40 then

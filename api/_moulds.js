@@ -166,8 +166,20 @@ export async function keepMould(account, mould, check) {
       + `${MOST_KEPT / 1048576} MB: it is kept in the studio, and not on the site`, 409);
   }
   await check();
-  await db("own_moulds?on_conflict=account,id", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
-    body: { account, ...mould, at: new Date().toISOString() } });
+  try {
+    await db("own_moulds?on_conflict=account,id", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal",
+      body: { account, ...mould, at: new Date().toISOString() } });
+  } catch (trouble) {
+    // Another save to this account came first and took the room counted
+    // above: the table's own cap (own_moulds_cap, which saves to one account
+    // pass in turn) refused this one. Every other check the table makes,
+    // mouldOf made first.
+    if (/: 400$/.test(String(trouble?.message || ""))) {
+      throw new MouldRefusal(`your account has room for ${MOST_MOULDS} moulds and ${MOST_KEPT / 1048576} MB of them, `
+        + "and another save took the last of it: this one is kept in the studio, and not on the site", 409);
+    }
+    throw trouble;
+  }
   return { kept: true, id: mould.id };
 }
 
