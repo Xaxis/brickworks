@@ -286,12 +286,19 @@ func _status_fits(when: String) -> void:
 		var label: Label = found as Label
 		if not label.is_visible_in_tree() or label.text.is_empty():
 			continue
-		var whole: float = label.get_theme_font("font").get_string_size(label.text,
+		# As it is drawn: a Label holds the English and draws its translation
+		# (Language's _get_message). Measured as held, a German bar's "5 bricks ·
+		# stands up" (111) was a cut where "5 Steine · steht" (86) fitted
+		# (wingreview3 F4), and a real cut in a longer translation went unseen.
+		var drawn: String = label.atr(label.text)
+		var whole: float = label.get_theme_font("font").get_string_size(drawn,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size("font_size")).x
 		var room: float = label.size.x - label.get_theme_stylebox("normal").get_minimum_size().x
+		# A line past the window's edge is cut there, whatever its own size.
+		room = minf(room, window.x - label.get_global_rect().position.x)
 		if whole > room + 0.5 and label.text_overrun_behavior != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS \
 				and label.text_overrun_behavior != TextServer.OVERRUN_TRIM_WORD:
-			cut.append("\"%s\" (%.0f in %.0f)" % [label.text.left(30), whole, room])
+			cut.append("\"%s\" (%.0f in %.0f)" % [drawn.left(30), whole, room])
 	_check("the status bar fits the window %s (%s in %.0f; past the edge %s; cut mid-word %s)"
 		% [when, str(bar), window.x, str(past), str(cut)],
 		bar.end.x <= window.x + 0.5 and past.is_empty() and cut.is_empty())
