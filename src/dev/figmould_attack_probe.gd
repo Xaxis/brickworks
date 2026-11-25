@@ -145,6 +145,7 @@ func _drafts() -> void:
 	editor.open("3901", "headwear", 0)
 	await process_frame
 	_ok(editor.mould != null and editor.mould.base == "3901", "Make a mould… opens on 3901")
+	_words(editor)
 	_stroke(editor.mould)
 	var shaped: PackedVector3Array = editor.mould.positions.duplicate()
 	editor._name.text = "Quiff"
@@ -218,6 +219,33 @@ func _drafts() -> void:
 		"  saved, nothing is kept for next time")
 	editor.queue_free()
 	await process_frame
+
+
+## Every word the maker shows, as it shows them (keys filled in, the part's
+## name in its title), has its translation in German, French and Spanish;
+## and the sentences it says as it goes.
+func _words(editor: MouldEditor) -> void:
+	var shown: Dictionary = {}
+	for node: Node in editor.find_children("*", "Control", true, false):
+		var control: Control = node
+		for said: String in [control.tooltip_text, str(control.accessibility_name),
+				control.get("text") if (control is Button or control is Label) else ""]:
+			if not said.strip_edges().is_empty() and not said in [editor._counts.text]:
+				shown[said] = true
+	for said: String in [MouldEditor.FINGER_HINT, "Building the mould…", "There is no part 3901x.",
+			"Fetching 3901's geometry…", "That part has no geometry to sculpt.",
+			"Make a mould from your Quiff", "Your Quiff, to shape further. Saved, it is a new part; the one before stays.",
+			"Your mould from before, as you left it. Start begins again from 3901; Undo goes back to it.",
+			"Your mould from before could not be read back, so this begins again from 3901.",
+			"%d triangles · about %d kB in a file" % [2287, 160]]:
+		shown[said] = true
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var missing: Array = shown.keys().filter(func(said: String) -> bool:
+			return Language.says(said).is_empty())
+		_ok(missing.is_empty(), "in %s every one of the maker's %d words is translated (%d not: %s)"
+			% [code, shown.size(), missing.size(), ", ".join(PackedStringArray(missing.slice(0, 10)))])
+	Language.apply("en")
 
 
 ## A pull on the hair's free crown, as one step.
