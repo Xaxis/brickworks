@@ -477,11 +477,12 @@ func _first_ghost() -> String:
 		return "(nothing in hand)"
 	# And where the model's middle is drawn, and the view's size: a view
 	# that moved under a still pointer.
-	return "%s (middle drawn at %s in %s; eye %s, lens %s, at rest %s)" % [
+	return "%s (middle drawn at %s in %s; eye %s, lens %s, at rest %s; room %s, bar %s \"%s\")" % [
 		str((_hand_frame() * ((going[0] as Array)[1] as Transform3D)).origin.snappedf(0.1)),
 		str(_screen(Vector3.ZERO).snappedf(0.1)), str(_camera.get_viewport().get_visible_rect().size),
 		str(_camera.global_position.snappedf(0.01)), str((_camera.get("_shift") as Vector2).snappedf(0.01)),
-		_camera.call("_at_target")]
+		_camera.call("_at_target"), str(_main.call("_model_rect")),
+		str((_shell.status as Control).get_global_rect()), _shell.status.fields()["message"].left(20)]
 
 
 ## Frames until an ask the aim began is answered (30 at most), as a person's
@@ -691,8 +692,13 @@ func _drag_sweep(what: String, editing: String) -> void:
 				if put and _tree.ids_under("Wing#2").size() == 3:
 					green_put += 1
 				elif wrong.size() < 6:
-					wrong.append("green drag to %s: %s (\"%s\")\n        %s" % [str(Vector3(x, 0, z)),
-						"moved" if put else "not moved", _tree.refused, told])
+					wrong.append("green drag to %s: %s (\"%s\")\n        %s\n        Wing#2 after: %s" % [
+						str(Vector3(x, 0, z)), "moved" if put else "not moved", _tree.refused, told,
+						str(Array(_tree.ids_under("Wing#2")).map(func(i: int) -> String:
+							var b: BrickWorld.Brick = _world.get_brick(i)
+							if b == null:
+								return "%d gone" % i
+							return "%s at %s" % [b.part_id, str(b.transform.origin.snappedf(0.1))]))])
 			elif carried and not predicted.is_empty():
 				red += 1
 				red_put += 1 if put else 0
@@ -733,6 +739,8 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 	var wrong: Array = []
 	var shown: Array = []
 	var slowest: int = 0
+	var moving: int = 0
+	var rooms: Dictionary = {}
 	for x: int in range(int(box.position.x) - 60, int(box.end.x) + 61, 20):
 		for z: int in range(int(box.position.z) - 60, int(box.end.z) + 61, 20):
 			var at: Vector2 = _screen(Vector3(float(x), 0.0, float(z)))
@@ -747,6 +755,10 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 			var asked: Variant = _builder.get("copies_refuse")
 			var predicted: String = "" if asked == null else str(asked)
 			var fits: bool = _builder.can_place()
+			moving += 0 if _camera.call("_at_target") else 1
+			var room_key: String = "%s %s" % [str((_main.call("_model_rect") as Rect2).size.snappedf(0.1)),
+				str((_camera.get("_shift") as Vector2).snappedf(0.1))]
+			rooms[room_key] = int(rooms.get(room_key, 0)) + 1
 			if not fits and predicted.is_empty():
 				continue
 			# What one aim's ask costs, unbounded, here; and, for a place the
@@ -829,6 +841,8 @@ func _sweep(what: String, twins: int, again: Callable = Callable()) -> void:
 				await _frames(2)
 	print("    %s: %d places green, %d of them put down with the twin; %d red for the copy, %d put down, %d said as it turned red, %d refused in the same words; the slowest ask %d us"
 		% [what, green, green_put, red, red_put, red_said, same_words, slowest])
+	print("      the view not at rest at %d reads; the model's room and lens at the reads: %s" % [moving,
+		str(rooms)])
 	for one: String in wrong:
 		print("      " + one)
 	for one: String in shown:
