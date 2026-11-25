@@ -4637,7 +4637,14 @@ with a part in hand a digit is a typed move, never a view: the check lets the
 part go, presses 1 and takes it back with Q before walking into the sky, and
 walks only inside the model's part of the window. Pressing 1 in hand typed
 "1", the view stayed above the model, and the walk ended on the first build's
-offer, whose button's pointer rightly won: m228.) So do `finish`
+offer, whose button's pointer rightly won: m228.) A wheel step that fails,
+or each with `--wheel-trace`, prints the app's view (distance, yaw, focus)
+before and after the wheels, how many wheels reached the canvas, what the
+page and the app have under the pointer, and leaves
+`web_wheel_<step>_<n>x.png`. A canvas that lost its WebGL context (the
+browser's GPU process ended: SwiftShader crashed under the check in rel-m340's
+run and nightreds', 2026-11-24, and every print after read 0.00) is said so,
+"not measured", and not judged by its pixels: run it again. So do `finish`
 (`shots/finishes_<renderer>.png`, a row of one real colour per finish, and
 `finishes_shot_<renderer>.png`, the same in the critique render) and
 `true colour` (`shots/true_colour_<renderer>.png`, with the sampled boxes drawn). `shot` also times a
