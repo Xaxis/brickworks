@@ -597,15 +597,22 @@ func _ask_cases() -> void:
 	print("  parts with shapes: %s" % ", ".join(parts))
 	var lines := PackedStringArray(["0 FILE main.ldr", "0 Main", "0 Name: main.ldr", "0 Author: Brickworks", "",
 		"1 16 0 0 0 1 0 0 0 1 0 0 0 1 big.ldr",
-		"1 16 -1200 0 0 -1 0 0 0 1 0 0 0 1 big.ldr",
-		"1 16 0 0 1400 0 0 1 0 1 0 -1 0 0 big.ldr",
-		"0", "0 NOFILE", "0 FILE big.ldr", "0 Big", "0 Name: big.ldr", "0 Author: Brickworks", ""])
+		"1 16 -3000 0 0 -1 0 0 0 1 0 0 0 1 big.ldr",
+		# Turned a quarter where the first stands: its twins land among the
+		# first's parts and the hand's.
+		"1 16 0 0 0 0 0 1 0 1 0 -1 0 0 big.ldr"])
 	var turns: Array = ["1 0 0 0 1 0 0 0 1", "0 0 1 0 1 0 -1 0 0", "-1 0 0 0 1 0 0 0 -1",
 		"0 0 -1 0 1 0 1 0 0", "1 0 0 0 0 -1 0 1 0", "1 0 0 0 0 1 0 -1 0", "0 1 0 -1 0 0 0 0 1"]
+	# The model's own loose parts where the mirrored copy stands.
+	for n: int in 400:
+		lines.append("1 7 %s %s %s %s %s.dat" % [_num(-3000 + rng.randi_range(-50, 50) * 20.0),
+			_num(-rng.randi_range(0, 12) * 8.0), _num(rng.randi_range(-50, 50) * 20.0),
+			turns[rng.randi_range(0, turns.size() - 1)], parts[rng.randi_range(0, parts.size() - 1)]])
+	lines.append_array(["0", "0 NOFILE", "0 FILE big.ldr", "0 Big", "0 Name: big.ldr", "0 Author: Brickworks", ""])
 	for n: int in 1500:
-		var x: float = rng.randi_range(-25, 25) * 20.0 + (5.0 if rng.randf() < 0.08 else 0.0)
-		var z: float = rng.randi_range(-25, 25) * 20.0 + (10.0 if rng.randf() < 0.3 else 0.0)
-		var y: float = -rng.randi_range(0, 30) * 8.0 + (4.0 if rng.randf() < 0.05 else 0.0)
+		var x: float = rng.randi_range(-50, 50) * 20.0 + (5.0 if rng.randf() < 0.08 else 0.0)
+		var z: float = rng.randi_range(-50, 50) * 20.0 + (10.0 if rng.randf() < 0.3 else 0.0)
+		var y: float = -rng.randi_range(0, 12) * 8.0 + (4.0 if rng.randf() < 0.05 else 0.0)
 		lines.append("1 %d %s %s %s %s %s.dat" % [rng.randi_range(0, 15), _num(x), _num(y), _num(z),
 			turns[rng.randi_range(0, turns.size() - 1)], parts[rng.randi_range(0, parts.size() - 1)]])
 	lines.append_array(["0", "0 NOFILE"])
@@ -621,17 +628,22 @@ func _ask_cases() -> void:
 	var shown: int = 0
 	var slow_new: int = 0
 	var slow_old: int = 0
+	var reasons: Dictionary = {}
 	for h: int in 300:
 		var items: Array = []
 		var size: int = rng.randi_range(1, 12) if h % 10 != 0 else rng.randi_range(40, 120)
 		for k: int in size:
+			# Each on a spot of its own, 3 studs apart, so a hand is not in
+			# its own way; some a hair off the grid.
 			var at := Transform3D(Basis(Vector3.UP, rng.randi_range(0, 3) * PI * 0.5),
-				Vector3(rng.randi_range(-3, 3) * 20.0, -rng.randi_range(0, 3) * 8.0, rng.randi_range(-3, 3) * 20.0))
+				Vector3((k % 6) * 60.0 + (5.0 if rng.randf() < 0.1 else 0.0), (k / 36) * 40.0,
+					((k / 6) % 6) * 60.0))
 			items.append([parts[rng.randi_range(0, parts.size() - 1)], at, "Big#1"])
 		for f: int in 3:
 			var frame := Transform3D(Basis(Vector3.UP, rng.randi_range(0, 3) * PI * 0.5),
-				Vector3(rng.randi_range(-25, 25) * 20.0 + (10.0 if f == 2 else 0.0), -rng.randi_range(0, 30) * 8.0,
-					rng.randi_range(-25, 25) * 20.0))
+				# World y is up (LdrModel.FLIP): on the ground or above it.
+				Vector3(rng.randi_range(-50, 50) * 20.0 + (10.0 if f == 2 else 0.0), rng.randi_range(0, 16) * 8.0,
+					rng.randi_range(-50, 50) * 20.0))
 			var world_items: Array = items.map(func(i: Array) -> Array:
 				return [i[0], frame * (i[1] as Transform3D), i[2]])
 			var t0: int = Time.get_ticks_usec()
@@ -651,6 +663,8 @@ func _ask_cases() -> void:
 			asked += 1
 			if str(fresh) != "":
 				red += 1
+				var why: String = str(fresh).left(40)
+				reasons[why] = int(reasons.get(why, 0)) + 1
 			if str(fresh) != str(old) or str(stepped) != str(old):
 				differ += 1
 				if shown < 6:
@@ -658,6 +672,7 @@ func _ask_cases() -> void:
 					print("  differs: hand %d frame %d (%d parts): new \"%s\", stepped \"%s\", old \"%s\"" % [h, f,
 						items.size(), str(fresh), str(stepped), str(old)])
 	_tree.leave_to("")
+	print("  red for: %s" % str(reasons))
 	_check("ask: %d asks (%d hands, 3 frames each): %d red; %d differ from wingplace's; %d us new, %d us old in all"
 		% [asked, 300, red, differ, slow_new, slow_old], differ == 0 and red > 20 and red < asked)
 	_table.append("%-40s %s" % ["ask vs wingplace's", "pass" if differ == 0 else "FAIL"])
