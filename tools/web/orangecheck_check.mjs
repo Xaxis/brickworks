@@ -210,9 +210,11 @@ async function route() {
   return signInRoute;
 }
 
-// Each call from an address of its own (2001:db8::/32 is for documentation),
-// unless it says which: the rate limit is checked on its own, below.
-const anywhere = () => `2001:db8::${randomBytes(4).toString("hex").replace(/(.{4})/, "$1:")}`;
+// Each call from a network of its own (2001:db8::/32 is for documentation),
+// unless it says which: the rate limit is checked on its own, below. A
+// network is an IPv6 /64 (api/_ways.js networkOf, signin5), so the /64
+// differs, not only the address in it.
+const anywhere = () => `2001:db8:${randomBytes(4).toString("hex").replace(/(.{4})/, "$1:")}::1`;
 
 // Supabase redeems 30 sign-in links from one address at once, then one
 // every 10 s, and every agent on this machine shares the address (step 4
