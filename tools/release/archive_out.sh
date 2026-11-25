@@ -1,6 +1,7 @@
 #!/bin/bash
 # Moves release-out's old output to the archive. In the archive, screenshots go
-# after $RELEASE_SHOT_DAYS (14) days; logs, JSON and everything else stay.
+# after $RELEASE_SHOT_DAYS (14) days; logs, JSON and everything else stay. So do
+# they in bench/results run folders idle that long, unless a doc cites the folder.
 #   archive_out.sh [--dry]
 # It moves the releases (rel-mNNN*) older than the newest $RELEASE_KEEP (8)
 # and any other entry, a unit's preview say, that nothing has touched for
@@ -72,6 +73,28 @@ if [ -d "$AR" ]; then
     find "$AR/" -mindepth 1 -type d -empty -delete 2>/dev/null
   fi
 fi
+# bench/results grew by ~590 run folders a fortnight (49 GB over 14 days old on
+# 2026-11-24). The docs cite some by name or glob (bench/results/2026-10-12-d5*/...):
+# those keep their pictures.
+BR=$(realpath -m "${BENCH_RESULTS:-$R/bench/results}")
+cited=$(grep -rhoE 'bench/results/[A-Za-z0-9_.*-]+' "$R/docs" "$R/tools" "$R"/*.md 2>/dev/null | sed 's#bench/results/##' | sort -u)
+for d in "$BR"/*/; do
+  name=$(basename "$d")
+  [ "$name" = release-out ] && continue
+  [ -L "${d%/}" ] && continue
+  cite=0
+  while IFS= read -r pat; do
+    [ -n "$pat" ] && [ "$pat" != '*' ] && [[ $name == $pat ]] && { cite=1; break; }
+  done <<< "$cited"
+  [ "$cite" = 1 ] && continue
+  [ -n "$(find "$d" -mmin "-$SHOT" -print -quit 2>/dev/null)" ] && continue
+  if [ "$dry" = 1 ]; then
+    c=$(find "$d" -type f \( -name '*.png' -o -name '*.webp' -o -name '*.ppm' \) | wc -l)
+  else
+    c=$(ionice -c3 nice -n 19 find "$d" -type f \( -name '*.png' -o -name '*.webp' -o -name '*.ppm' \) -print -delete | wc -l)
+  fi
+  shots=$((shots + c))
+done
 k=""; [ "$kept" -gt 0 ] && k="; $kept of a running train kept"
-[ "$shots" -gt 0 ] && k="$k; $([ "$dry" = 1 ] && echo would delete || echo deleted) $shots screenshots over ${RELEASE_SHOT_DAYS:-14} days old"
+[ "$shots" -gt 0 ] && k="$k; $([ "$dry" = 1 ] && echo would delete || echo deleted) $shots screenshots over ${RELEASE_SHOT_DAYS:-14} days old (archive and uncited bench runs)"
 echo "archive_out: moved $moved entries to $AR (releases before rel-m${cut:-?} and others idle ${RELEASE_IDLE_DAYS:-3} days)$k"

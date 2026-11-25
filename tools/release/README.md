@@ -592,7 +592,9 @@ untouched for 3 days (`RELEASE_IDLE_DAYS`) go to
 `~/brickworks-archive/release-out` (`RELEASE_ARCHIVE`), on the root disk, and
 `release-out/archive` links there. In the archive, screenshots (png, webp, ppm)
 go after 14 days (`RELEASE_SHOT_DAYS`); logs, JSON and the rest stay, since
-those are what the docs cite. The archive had reached 113 GB, 110 GB of it
+those are what the docs cite. The same goes for `bench/results` run folders
+idle 14 days, except folders a doc cites by name or glob, which keep their
+pictures. The archive had reached 113 GB, 110 GB of it
 preview PNGs, with / at 4% free (2026-11-24). A running train's output, a hold and the
 archive stay. train.sh runs it once a release is live: release-out had grown to
 61 GB in 25,000 entries with /mnt/Projects at 93% (2026-11-11).
