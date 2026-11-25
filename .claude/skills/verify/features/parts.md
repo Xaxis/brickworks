@@ -388,7 +388,9 @@ geometry in front of them.
   app fetches it (`PageFetch`) and reads it on a worker. The model page's Parts list
   (`parts.json`'s `lot_pictures`, `web/part-pictures.js`) takes its lots from
   it as the list nears the screen or its tab opens, never in the first
-  screen's load. So Build it's step, the studio's step bar, the part-step card
+  screen's load; a lot it lacks, or every lot while the file is being drawn,
+  the page draws itself in the same look (its shader carries `drawLot`'s
+  light, pen, framing and black family). So Build it's step, the studio's step bar, the part-step card
   and the parts list show each lot at once (`peek` finds it), and
   `PartThumbnails` draws live only what the file lacks; a file that comes
   after a page was laid gives its waiting tiles theirs at once
@@ -408,7 +410,12 @@ geometry in front of them.
   `pictures_drawn_here`, `pictures_from_file`, and `pictures_laid` [n, of]:
   n == of means every picture was drawn in the step's own first frame
   (bench/results/partpics-2026-11-24/pair.mjs times it against another
-  deployment at the same moment, by WebGL fences).
+  deployment at the same moment, by WebGL fences). The file's squares
+  against the page's own drawing of the same lots: `deltae.mjs --site=URL
+  --models=A,B` (the list read twice, the second time with `lot_pictures`
+  taken out of `parts.json`; `--drawer=FILE` draws with a worktree's
+  `part-pictures.js`), then `deltae.py DIR` (CIELAB dE of each lot's mean
+  colour, median and worst).
 - `palette`: every colour can be chosen by hand, grouped by kind of plastic
   (solid; transparent; chrome, metallic, pearl; glitter, opal, speckle, glow,
   rubber, fabric), greys first and then round the colour wheel. What sets are
