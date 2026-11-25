@@ -1164,10 +1164,19 @@ var riding_later: int = 0
 ##    edited) whose parts on show are all selected: Select all, a box.
 ## Moving with the rest, none of them is in its way. An edit that changes
 ## what a part is (a colour, Delete, Replace, Cut) reaches only the parts on
-## show ([method _living_selection]).
+## show ([method _living_selection]). Says how many of them are later parts
+## ([member riding_later]).
 func _moving_selection() -> PackedInt64Array:
 	var alive: PackedInt64Array = _living_selection()
-	riding_later = 0
+	var moving: PackedInt64Array = _moving_of(alive)
+	riding_later = moving.size() - alive.size()
+	return moving
+
+
+## What a rigid move of [param alive], the selection's parts on show, moves
+## ([method _moving_selection]), told nobody: what the Hinge and the
+## handles' rings ask of the joint a swing would turn.
+func _moving_of(alive: PackedInt64Array) -> PackedInt64Array:
 	if alive.is_empty() or not at_a_step() or _every_step > 0:
 		return alive
 	var moving: Dictionary = {}
@@ -1201,7 +1210,6 @@ func _moving_selection() -> PackedInt64Array:
 						moving[member] = true
 	if moving.size() == alive.size():
 		return alive
-	riding_later = moving.size() - alive.size()
 	return PackedInt64Array(moving.keys())
 
 
@@ -1546,14 +1554,29 @@ func _lock_places(by: Transform3D) -> Dictionary:
 const HINGED_MOST := 60
 
 
+## What a swing of the selection would turn ([method swing_selection]):
+## its parts on show and, at a step, the later parts that go with them; empty
+## for none, or for more than [constant HINGED_MOST]. The Hinge and the
+## handles' rings ask its joint. Asked of the parts on show alone, a click
+## at step 40 of 10030 on its biggest sub-assembly (31 of 2,927 on) read
+## the joints of those 31 against the rest, its 2,896 later parts among
+## them: a joint no swing turns, and 50 ms of the click (stepfast).
+func _swinging() -> PackedInt64Array:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty() or alive.size() > HINGED_MOST:
+		return PackedInt64Array()
+	var moving: PackedInt64Array = _moving_of(alive)
+	return moving if moving.size() <= HINGED_MOST else PackedInt64Array()
+
+
 ## How far the selection stands turned about the joint it hangs from, in
 ## degrees off square, -45 to 45; null when it hangs from none
 ## ([method _joint_of]). What the properties' Hinge shows and types over.
 func hinge_angle() -> Variant:
-	var alive: PackedInt64Array = _living_selection()
+	var alive: PackedInt64Array = _swinging()
 	# What swings on a hinge is a handful of parts; asked of everything
 	# selected, the joints of a whole big model would be read at Ctrl-A.
-	if alive.is_empty() or alive.size() > HINGED_MOST:
+	if alive.is_empty():
 		return null
 	var joint: Dictionary = _joint_of(alive)
 	if joint.is_empty():
@@ -1848,8 +1871,8 @@ func drag_end(by: Transform3D, words: String = "") -> int:
 ## axis}, where a handle's rings stand by default; empty for none, or for a
 ## selection too big to ask ([constant HINGED_MOST]).
 func hung_from() -> Dictionary:
-	var alive: PackedInt64Array = _living_selection()
-	if alive.is_empty() or alive.size() > HINGED_MOST:
+	var alive: PackedInt64Array = _swinging()
+	if alive.is_empty():
 		return {}
 	var joint: Dictionary = _joint_of(alive)
 	if joint.is_empty():

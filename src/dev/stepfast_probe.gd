@@ -1,6 +1,7 @@
 ## stepfast: a big pick at a step, timed and taken apart, and a minifigure's
 ## later parts checked where they land.
 ##
+##   godot --path . --resolution 1280x720 --script src/dev/stepfast_probe.gd
 ##   PROBE_SIZE=1280x720 tools/probe.sh stepfast_probe --case=pick      10030 at step 40
 ##   PROBE_SIZE=1280x720 tools/probe.sh stepfast_probe                  the figure (all but pick)
 ##   PROBE_SIZE=390x844 tools/probe.sh stepfast_probe                   the same on a phone
@@ -178,6 +179,37 @@ func _pick() -> void:
 	var tree: Variant = _verbs.assemblies.tree()
 	pieces.append("tree %.1f (%s)" % [(Time.get_ticks_usec() - t) / 1000.0, tree != null])
 	_result("pick.main_ms", ", ".join(pieces))
+	# The properties' own, piece by piece, as _refresh runs them.
+	var inspector: Object = _shell.inspector
+	var assemblies: Assemblies = _verbs.assemblies
+	var bricks: Array[BrickWorld.Brick] = []
+	for brick_id: int in _builder.selection:
+		bricks.append(_world.get_brick(brick_id))
+	var props := PackedStringArray()
+	for piece: Array in [["_show_credit", []], ["_state_of", [bricks]], ["_buttons_for", [true]],
+			["_show_many", [bricks]], ["_show_assembly", [whole, bricks.size()]]]:
+		if not inspector.has_method(str(piece[0])):
+			continue
+		t = Time.get_ticks_usec()
+		inspector.callv(str(piece[0]), piece[1])
+		props.append("%s %.1f" % [piece[0], (Time.get_ticks_usec() - t) / 1000.0])
+	t = Time.get_ticks_usec()
+	var copies: int = assemblies.copies_of(whole).size()
+	props.append("copies_of %.1f (%d)" % [(Time.get_ticks_usec() - t) / 1000.0, copies])
+	t = Time.get_ticks_usec()
+	var paths: int = assemblies.paths().size()
+	props.append("paths %.1f (%d)" % [(Time.get_ticks_usec() - t) / 1000.0, paths])
+	t = Time.get_ticks_usec()
+	var hinge: Variant = _builder.hinge_angle()
+	props.append("hinge_angle %.1f (%s)" % [(Time.get_ticks_usec() - t) / 1000.0, hinge])
+	t = Time.get_ticks_usec()
+	var all_of: int = assemblies.bricks_under(whole).size()
+	props.append("bricks_under %.1f (%d)" % [(Time.get_ticks_usec() - t) / 1000.0, all_of])
+	t = Time.get_ticks_usec()
+	inspector.set("_shown", "")
+	inspector.call("_refresh", true)
+	props.append("_refresh whole %.1f" % ((Time.get_ticks_usec() - t) / 1000.0))
+	_result("pick.inspector_ms", ", ".join(props))
 	_builder.clear_selection()
 	await _frames(4)
 
@@ -194,18 +226,9 @@ func _figland() -> void:
 	var placed: int = await _bar.open_with_progress(HELD_LATER)
 	_bar.opened.emit(placed)
 	await _frames(30)
-	var torso: int = 0
-	var plate: int = 0
-	var wall: Dictionary = {}
-	for brick: BrickWorld.Brick in _world.bricks():
-		if brick.part_id.begins_with("973"):
-			torso = brick.id
-		if brick.part_id == "3023":
-			plate = brick.id
-		if brick.part_id == "3003":
-			wall[brick.id] = true
-	if not _check("the fixture has a torso, a held plate and a wall (#%d, #%d, %d)" % [torso, plate, wall.size()],
-			torso != 0 and plate != 0 and wall.size() == 3):
+	var found: Dictionary = _fig_parts()
+	if not _check("the fixture has a torso, a held plate and a wall (%s)" % str(found),
+			int(found["torso"]) != 0 and int(found["plate"]) != 0 and (found["wall"] as Array).size() == 3):
 		return
 	_shell.run("timeline")
 	for _n: int in 600:
@@ -213,28 +236,21 @@ func _figland() -> void:
 			break
 		await process_frame
 	await _frames(6)
-	_steps.to_start()
-	await _frames(4)
-	var found: bool = false
-	for _n: int in 16:
-		_steps.step_forward()
-		await _frames(6)
-		if not _ahead(torso) and _ahead(plate):
-			found = true
-			break
+	var at_step: bool = await _to_plate_step()
 	var at: Instructions.Step = _steps.current_step()
 	if not _check("step %d: the figure on, its plate to come, the wall on" % (at.number if at != null else -1),
-			found and wall.keys().all(func(id: int) -> bool: return not _ahead(id))):
+			at_step and (found["wall"] as Array).all(func(id: int) -> bool: return not _ahead(id))):
 		return
 	_verbs.set_mode("select")
 	_builder.clear_selection()
 	await _frames(4)
 	var depth: int = _builder.history_depth()
-	var plate_was: Transform3D = _world.get_brick(plate).transform
-	var start: Dictionary = _full()
+	var start: Array = _signed(_full())
+	var plate_was: Transform3D = _world.get_brick(int(found["plate"])).transform
 	# X over the torso: the parts on show in hand, the plate left on the model
 	# to go where the figure goes.
-	var going: Dictionary = await _lift(torso)
+	var going: Dictionary = await _lift(int(found["torso"]))
+	var plate: int = int(found["plate"])
 	var plate_at: Transform3D = going.get(plate, Transform3D.IDENTITY)
 	_result("figland.lift", "lifted %s: a figure of %d parts in hand, %d to come with it (the plate %s)"
 		% [_builder.is_holding_figure(), _builder.held_figure.size(), going.size(),
@@ -244,12 +260,13 @@ func _figland() -> void:
 		return
 	# Aimed so the plate lands in the wall: first anywhere near, then moved by
 	# what is between where the plate would land and the wall.
-	var wall_at: Vector3 = _world.get_brick(int(wall.keys()[1])).transform.origin
+	var wall: Array = found["wall"]
+	var wall_at: Vector3 = _world.get_brick(int(wall[1])).transform.origin
 	var first: Transform3D = await _aim_figure(Vector3(wall_at.x, 0, wall_at.z))
 	var lands: Vector3 = (first * plate_at).origin
 	var spot := Vector3(wall_at.x - (lands.x - first.origin.x), 0, wall_at.z - (lands.z - first.origin.z))
 	var ghost: Transform3D = await _aim_figure(spot)
-	var plate_part: Lbm.PartMesh = (_main.get("_library") as PartLibrary).mesh_for("3023")
+	var plate_part: Lbm.PartMesh = (_main.get("_library") as PartLibrary).mesh_for(_world.get_brick(plate).part_id)
 	var in_wall: Array = Array(_builder.lattice.blockers_boxes(_builder.boxes_for(plate_part, ghost * plate_at),
 		0, going)).filter(func(id: int) -> bool: return wall.has(id))
 	# Asked by name: a tree from before stepfast has no third argument, and
@@ -273,13 +290,15 @@ func _figland() -> void:
 	# refusal a figure in a part always had.
 	_builder.undo()
 	await _frames(4)
-	_check("undoing the lift puts the figure back as it was", _changed(start, _full()).is_empty()
+	_check("undoing the lift puts the figure back as it was", _signed(_full()) == start
 		and not _builder.is_holding_figure())
 	_steps.step_forward()
 	await _frames(6)
-	var on: bool = not _ahead(plate)
-	var shown: Dictionary = await _lift(torso)
-	var with_plate: bool = _builder.held_figure.any(func(item: Dictionary) -> bool: return str(item["part"]) == "3023")
+	found = _fig_parts()
+	var on: bool = not _ahead(int(found["plate"]))
+	var shown: Dictionary = await _lift(int(found["torso"]))
+	var with_plate: bool = _builder.held_figure.any(func(item: Dictionary) -> bool:
+		return str(item["part"]).begins_with("3023"))
 	var now: Dictionary = await _refused_at(spot, "plate on show")
 	_check("at the next step (the plate on %s, in hand %s, %d to come), the same aim is refused the same way"
 		% [on, with_plate, shown.size()], on and with_plate and shown.is_empty() and not bool(now["valid"])
@@ -288,25 +307,57 @@ func _figland() -> void:
 		later["said"] == now["said"])
 	_builder.undo()
 	await _frames(4)
-	_steps.step_back()
-	await _frames(6)
 	# Put down clear: the plate goes with it.
-	going = await _lift(torso)
-	var clear_spot := Vector3(spot.x - 200, 0, spot.z + 200)
-	var clear: Transform3D = await _aim_figure(clear_spot)
+	var back: bool = await _to_plate_step()
+	found = _fig_parts()
+	plate = int(found["plate"])
+	going = await _lift(int(found["torso"]))
+	plate_at = going.get(plate, Transform3D.IDENTITY)
+	var clear: Transform3D = await _aim_figure(Vector3(spot.x - 200, 0, spot.z + 200))
 	var put: int = _builder.place()
 	await _frames(4)
-	var plate_now: Transform3D = _world.get_brick(plate).transform
-	_result("figland.clear", "put down clear at %s: #%d, the plate %s, held as it was %s, its step %d, holding %s"
-		% [str(clear.origin.snapped(Vector3.ONE)), put, "moved" if not plate_now.is_equal_approx(plate_was) else "where it was",
-			plate_now.is_equal_approx(clear * plate_at), _world.get_brick(plate).step, _builder.is_holding_figure()])
+	var plate_now: Transform3D = _world.get_brick(plate).transform if _world.get_brick(plate) != null \
+		else Transform3D.IDENTITY
+	_result("figland.clear", "back at the plate's step %s; put down clear at %s: #%d, %d to come with it, the plate %s, held as it was %s"
+		% [back, str(clear.origin.snapped(Vector3.ONE)), put, going.size(),
+			"moved" if not plate_now.is_equal_approx(plate_was) else "where it was",
+			plate_now.is_equal_approx(clear * plate_at)])
 	_check("put down clear, the figure goes down and its plate with it",
-		put != 0 and plate_now.is_equal_approx(clear * plate_at) and not _builder.is_holding_figure())
+		back and put != 0 and going.has(plate) and plate_now.is_equal_approx(clear * plate_at))
 	await _pic3("FL2_put_down_clear")
 	while _builder.history_depth() > depth:
 		_builder.undo()
 		await _frames(2)
-	_check("undone, every part is back where it was", _changed(start, _full()).is_empty())
+	_check("undone, every part is back where it was", _signed(_full()) == start)
+
+
+## From the first step, forward to the step that has the figure on and its
+## plate still to come: false when no step does.
+func _to_plate_step() -> bool:
+	_builder.clear_selection()
+	_steps.to_start()
+	await _frames(4)
+	for _n: int in 16:
+		var found: Dictionary = _fig_parts()
+		if not _ahead(int(found["torso"])) and _ahead(int(found["plate"])):
+			return true
+		_steps.step_forward()
+		await _frames(6)
+	return false
+
+
+## The fixture's torso, held plate and wall bricks by id, found again after
+## an undo (a part put back may come back under another number).
+func _fig_parts() -> Dictionary:
+	var out: Dictionary = {"torso": 0, "plate": 0, "wall": []}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id.begins_with("973"):
+			out["torso"] = brick.id
+		if brick.part_id.begins_with("3023"):
+			out["plate"] = brick.id
+		if brick.part_id == "3003":
+			(out["wall"] as Array).append(brick.id)
+	return out
 
 
 ## X over [param torso]: the figure in hand. The parts of it to come, id ->
@@ -322,7 +373,7 @@ func _lift(torso: int) -> Dictionary:
 
 
 ## The figure in hand aimed at [param spot] and a click to put it down:
-## {valid, put, ghosts_valid (every ghost drawn as fitting), changed, said}.
+## {valid, put, ghosts_valid (any ghost drawn as fitting), changed, said}.
 func _refused_at(spot: Vector3, what: String) -> Dictionary:
 	var before: Dictionary = _full()
 	await _aim_figure(spot)

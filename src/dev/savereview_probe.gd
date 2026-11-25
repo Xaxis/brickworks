@@ -247,6 +247,28 @@ func _case_timing() -> void:
 			print("  TM many_%s save %d: %.0f ms (%s)" % ["mixed" if mixed else "plain", k,
 				(Time.get_ticks_usec() - began) / 1000.0, _store.last_whole.left(60) if not _store.last_whole.is_empty()
 				else "a patch"])
+		for k: int in 3:
+			print("  TM many_%s pieces %d: %s" % ["mixed" if mixed else "plain", k, _save_pieces()])
+
+
+## A Save's pieces timed alone, as it asks them: the patch of the file, and
+## live's write it falls to when the patch is refused.
+func _save_pieces() -> String:
+	var asked: Dictionary = _store.call("_source_asked", _store.title)
+	if asked.is_empty() or asked.get("source") == null:
+		return "no file to patch"
+	var source: SourceFile = asked["source"]
+	var library: PartLibrary = asked["library"]
+	var began: int = Time.get_ticks_usec()
+	var plan: SourceFile.Plan = source.patch(asked["bricks"], asked["lift"], asked["waiting"], library,
+		asked["unit_steps"], asked.get("held", {}))
+	var patch_ms: float = (Time.get_ticks_usec() - began) / 1000.0
+	began = Time.get_ticks_usec()
+	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting_lines"], library,
+		asked["unit_steps"], asked.get("held", {}))
+	var write_ms: float = (Time.get_ticks_usec() - began) / 1000.0
+	return "patch %.0f ms (%s), live's write %.0f ms (%s)" % [patch_ms,
+		"a patch" if plan.why.is_empty() else plan.why.left(50), write_ms, "none" if written == null else "written"]
 
 
 ## [param count] copies of a three-part sub-model on a grid, every other one
@@ -807,8 +829,9 @@ func _paste_inner(def: String, n: int) -> String:
 
 ## What [param what] names (ids) copied, then pasted while editing inside the
 ## [param n]th copy of [param into_def] (Assemblies.enter, what a
-## double-click does): the paste goes into that copy. Every part put down
-## must be in it.
+## double-click does): the paste goes into that copy, and into each other
+## copy of its sub-model as copies follow. Every part put down must be in a
+## copy of it, and as many in the one entered as were copied.
 func _paste_entered(into_def: String, n: int, what: Callable) -> String:
 	var into: Array = _copy(into_def, n)
 	var ids: Array = what.call()
@@ -825,12 +848,21 @@ func _paste_entered(into_def: String, n: int, what: Callable) -> String:
 	_verbs.assemblies.leave_to("")
 	await _frames(3)
 	var inside: int = 0
+	var in_copies: int = 0
+	var def: String = Assemblies.definition(Assemblies.leaf(str(into[0])))
 	for id: Variant in put["ids"]:
 		var brick: BrickWorld.Brick = _world.get_brick(int(id))
-		if brick != null and Assemblies.within(brick.unit, str(into[0])):
+		if brick == null:
+			continue
+		if Assemblies.within(brick.unit, str(into[0])):
 			inside += 1
-	_ok(not (put["ids"] as Array).is_empty() and inside == (put["ids"] as Array).size(),
-		"pasted inside %s: %d of %d put down are in it" % [into[0], inside, (put["ids"] as Array).size()])
+		for segment: String in Assemblies.segments(brick.unit):
+			if Assemblies.definition(segment) == def:
+				in_copies += 1
+				break
+	_ok(inside == ids.size() and in_copies == (put["ids"] as Array).size(),
+		"pasted inside %s: %d of the %d copied in it, %d of the %d put down in a copy of %s" % [into[0], inside,
+			ids.size(), in_copies, (put["ids"] as Array).size(), def])
 	return "" if (put["ids"] as Array).is_empty() else "%d parts copied, pasted inside %s: %d put down, units %s" % [
 		ids.size(), into[0], (put["ids"] as Array).size(), _units_of(put["ids"])]
 
