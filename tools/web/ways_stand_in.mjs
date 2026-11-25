@@ -11,12 +11,38 @@
 // it only for the deployment's client id and secret, its redirect address,
 // and the verifier whose S256 is that challenge, as the real ones do.
 //
-//   GET  /__ways/state             {provisions, deletes, revoked, tokens}
+//   GET  /__ways/state             {provisions, deletes, revoked, tokens, pages}
 //   POST /__ways/oc {mode}         up, down (503), or slow (20 s, then up)
+//   GET  /__ways/authorize/<way>   Google's or GitHub's sign-in page, for a
+//                                  check's browser: straight back to this
+//                                  relay's callback with the code codeFor
+//                                  makes for the person its x-ways-who
+//                                  header names (WHO_HEADER).
+//
+// A check's browser is sent there, never to Google or GitHub (signin5,
+// signreview2 SR4): a request that carries WHO_HEADER has the Location of
+// /auth/<way> put on this relay (keepHere). A route in the browser for the
+// provider's page cannot do it: Playwright 1.63 continues the hop of a
+// redirect it already follows without asking any route, so ways_flow's
+// routes never ran and its runs reached the real accounts.google.com.
+// The flows' Chromium cannot resolve either provider's host at all
+// (tools/web/browser.mjs NO_PROVIDERS), so a hop that escapes fails here.
 //
 // The keys are the stand-in's own, set over whatever .env has, so nothing
 // here is ever sent anywhere with a real one.
 import { createHash, randomBytes } from "node:crypto";
+
+/// The header a check's browser context sends (extraHTTPHeaders): who signs
+/// in at the stand-in's page, {google: {email, verified, hd?}, github:
+/// {email, verified, emails?, id?}}, as JSON in base64url.
+export const WHO_HEADER = "x-ways-who";
+
+/// [who] as WHO_HEADER carries it.
+export const whoHeader = (who) => Buffer.from(JSON.stringify(who || {})).toString("base64url");
+
+// Google's and GitHub's sign-in pages, as api/_ways.js WAYS sends people
+// to them.
+const PAGES = { google: "https://accounts.google.com/o/oauth2/v2/auth", github: "https://github.com/login/oauth/authorize" };
 
 export const KEYS = {
   GOOGLE_CLIENT_ID: "stand-in.apps.googleusercontent.com",
@@ -26,7 +52,7 @@ export const KEYS = {
   OC_CONNECT_KEY: "oc_connect_stand_in",
 };
 
-const state = { provisions: [], deletes: [], revoked: [], tokens: 0, mode: "up" };
+const state = { provisions: [], deletes: [], revoked: [], tokens: 0, pages: 0, mode: "up" };
 const made = new Map();
 const github = new Map();
 let realFetch = null;
@@ -153,8 +179,53 @@ export function standInWays() {
   console.log("ways stand-in: Google, GitHub and orangecheck Connect answered here");
 }
 
-/// /__ways/...: what a check reads and sets.
-export function waysRoute(url, method, body) {
+/// [response]'s redirect to Google's or GitHub's sign-in page put on this
+/// relay's stand-in for it (/__ways/authorize/<way>, its query kept), when
+/// [headers] are a check's browser's (WHO_HEADER). A request without it,
+/// a script's, is sent where the deployment sends it.
+export function keepHere(response, headers) {
+  if (!headers?.[WHO_HEADER]) return;
+  const set = response.setHeader.bind(response);
+  response.setHeader = (name, value) => {
+    if (String(name).toLowerCase() === "location") {
+      for (const [way, page] of Object.entries(PAGES)) {
+        if (String(value).startsWith(`${page}?`)) value = `/__ways/authorize/${way}${String(value).slice(page.length)}`;
+      }
+    }
+    return set(name, value);
+  };
+}
+
+/// The stand-in's sign-in page: back to [url]'s redirect_uri, which must be
+/// this relay's own callback for the way ([headers].host), with the code for
+/// whom WHO_HEADER names (an unverified nobody, unnamed) and the state.
+function page(way, url, headers) {
+  let back;
+  try {
+    back = new URL(url.searchParams.get("redirect_uri") || "");
+  } catch {
+    back = null;
+  }
+  if (!back || back.host !== String(headers?.host || "") || back.pathname !== `/auth/callback/${way}`) {
+    return { status: 400, value: { error: "the redirect_uri is not this relay's callback" } };
+  }
+  let who = {};
+  try {
+    who = JSON.parse(Buffer.from(String(headers?.[WHO_HEADER] || ""), "base64url").toString("utf8")) || {};
+  } catch {
+    who = {};
+  }
+  state.pages += 1;
+  back.searchParams.set("code", codeFor(url.href, who[way] || { email: "nobody@example.com", verified: false }));
+  back.searchParams.set("state", url.searchParams.get("state") || "");
+  return { status: 302, location: back.toString() };
+}
+
+/// /__ways/...: what a check reads and sets, and the stand-in's sign-in
+/// page.
+export function waysRoute(url, method, body, headers = {}) {
+  const asked = /^\/__ways\/authorize\/(google|github)$/.exec(url.pathname);
+  if (asked && method === "GET") return page(asked[1], url, headers);
   if (url.pathname === "/__ways/state" && method === "GET") {
     return { status: 200, value: { ...state, made: Object.fromEntries(made) } };
   }

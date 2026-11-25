@@ -24,7 +24,7 @@ Or press **Sign in with orangecheck**: it opens its own window and takes a Bitco
 
 ![The site's Sign in to Brickworks dialog: the Email box with Email me a code, then Sign in with Google, Sign in with GitHub and Sign in with orangecheck, and the line Signing in without orangecheck also makes your orangecheck account, with What is that?](/docs/img/account-sign-in.webp "Signing in on the site: a code by email, Google, GitHub or orangecheck.")
 
-You stay signed in on that device until you sign out. [Settings](/settings) › **How you sign in** lists each way that signs you in: a code to your address always does; **Unlink** takes Google or GitHub off, and signs out wherever it signed you in, and **Link again** puts it back. To sign in with orangecheck as well as your email, [Settings](/settings) › **orangecheck** › **Link orangecheck**; it first sends a code to your email, to be sure it is you ([Settings](/docs/profiles#settings)).
+You stay signed in on that device until you sign out. [Settings](/settings) › **How you sign in** lists each way that signs you in: a code to your address always does; **Unlink** takes Google or GitHub off, signs out wherever it signed you in, and disconnects any AI app you connected while signed in with it, and **Link again** puts it back. To sign in with orangecheck as well as your email, [Settings](/settings) › **orangecheck** › **Link orangecheck**; it first sends a code to your email, to be sure it is you ([Settings](/docs/profiles#settings)).
 
 <!-- covers
 ui:sign in with google

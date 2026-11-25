@@ -273,6 +273,15 @@ function appOf(query) {
 // to the address is never limited by these, so the words point to it.
 export const LIMITS = { minutes: 15, account: 5, network: 30 };
 
+/// What each count is kept under in way_attempts (way_may_try): a provider
+/// account's, by its id, a network's (networkOf), and an orangecheck id's
+/// (api/orangecheck.js, as many as a provider account's).
+export const COUNTED = {
+  account: (name, id) => `back ${name} ${id}`,
+  network: (network) => `in ${network}`,
+  orangecheck: (did) => `oc ${did}`,
+};
+
 /// The network [request] came from, as one key: an IPv4 address, or an
 /// IPv6 address's first 64 bits (a person is given a /64 whole, and could
 /// count afresh at every address of it). Vercel sets x-forwarded-for, and
@@ -393,8 +402,8 @@ export async function wayBack(request, response) {
   if (isMaster({ email: who.email })) return failed(response, name, "code_only", start);
   // Counted now that Google or GitHub has said who it is (SR2): the
   // account, then the network it came from.
-  const often = await counted(`back ${name} ${who.id}`, LIMITS.account)
-    || await counted(`in ${networkOf(request)}`, LIMITS.network);
+  const often = await counted(COUNTED.account(name, who.id), LIMITS.account)
+    || await counted(COUNTED.network(networkOf(request)), LIMITS.network);
   if (often) return failed(response, name, often, start);
 
   let minted;

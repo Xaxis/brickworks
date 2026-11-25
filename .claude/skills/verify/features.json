@@ -2682,6 +2682,14 @@
       "tests": []
     },
     {
+      "id": "cli:orangecheck counts check",
+      "kind": "cli",
+      "entry": "tools/web/oc_often_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:orangecheck desktop flow",
       "kind": "cli",
       "entry": "tools/web/oc_native_flow.mjs",

@@ -608,6 +608,13 @@
     },
     {
       "kind": "cli",
+      "label": "orangecheck counts check",
+      "entry": "tools/web/oc_often_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
       "label": "orangecheck browser flow",
       "entry": "tools/web/oc_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc",

@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, ui:sign in with google, ui:sign in with github, ui:how you sign in, ui:the console's sign-in switches, api:GET /auth/google, api:GET /auth/github, api:POST /api/otp?op=way_take, api:POST /api/otp?op=way_bind, api:GET /api/otp?op=ways, cli:ways check, cli:ways browser flow, cli:ways app probe, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down, ui:setting the weekly quick build, ui:the quick build in the studio, cli:prompt probe, ui:the month's challenge in the studio, ui:Enter from Share, cli:challenge line probe, cli:challenge rules probe -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, ui:sign in with google, ui:sign in with github, ui:how you sign in, ui:the console's sign-in switches, api:GET /auth/google, api:GET /auth/github, api:POST /api/otp?op=way_take, api:POST /api/otp?op=way_bind, api:GET /api/otp?op=ways, cli:ways check, cli:ways browser flow, cli:ways app probe, cli:orangecheck check, cli:orangecheck counts check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down, ui:setting the weekly quick build, ui:the quick build in the studio, cli:prompt probe, ui:the month's challenge in the studio, ui:Enter from Share, cli:challenge line probe, cli:challenge rules probe -->
 
 ## Sub-features
 
@@ -746,11 +746,16 @@ they have. A Claude connector belongs to the account that switched it on.
   address, then `?op=way_bind` (a code's session of the last five minutes,
   that account alone, once) keeps GitHub's id (`way_bind`), and GitHub signs it in
   from then on. The owner's address (`MASTER_EMAIL`) is refused
-  `failed=code_only` before anything is made or minted (signin4, F8). How
-  often (signin4, F9; `LIMITS`, `way_may_try`, counted before anything is
-  spent, refused ones not counted, a network an IPv4 address or an IPv6 /64,
-  `networkOf`): in 15 minutes 30 starts and 10 ways back per network, 5 per
-  Google or GitHub account, else `failed=often`. Refused
+  `failed=code_only` before anything is made or minted (signin4, F8). One
+  start, one way back (signin5, SR2): the start's sealed id (`i`) is spent
+  at its callback before the provider is asked or anything counted, so its
+  cookie sent again is `failed=again`. How often (signin4 F9, signin5 SR2;
+  `LIMITS`, `COUNTED`, `way_may_try`, refused ones not counted, a network
+  an IPv4 address or an IPv6 /64, `networkOf`): only sign-ins Google or
+  GitHub vouched for are counted, before anything is made or minted, in 15
+  minutes 5 per Google or GitHub account, then 30 per network, else
+  `failed=often`; starts and made-up ways back count nothing, so no visitor
+  without an account can lock a shared network out. Refused
   (`failed=again|denied|unverified|vouch|confirm|unlinked|off|busy|code_only|often|failed`)
   it lands on the dialog with words for why (`wayFailed`). The desktop app:
   `Account.sign_in_with_way` with `OrangecheckSignIn.way` opens
@@ -763,12 +768,18 @@ they have. A Claude connector belongs to the account that switched it on.
   off. `ways check` (`tools/web/ways_check.mjs` against
   `relay_server.mjs --ways-stand-in`, which stands in for both providers'
   token and address calls and for Connect) and `ways browser flow`
-  (`tools/web/ways_flow.mjs`, the same relay, Playwright routing
-  accounts.google.com and github.com's authorize to the callback) prove it at
+  (`tools/web/ways_flow.mjs`, the same relay: its contexts send
+  `x-ways-who`, so the relay sends their sign-ins to the stand-in's own
+  provider page, `/__ways/authorize/<way>`, never Google's or GitHub's, and
+  `tools/web/browser.mjs` `NO_PROVIDERS` makes both hosts unresolvable in
+  the flows' Chromium; its 10 counts 0 requests to either and proves an
+  escape fails, signin5 SR4) prove it at
   1280 and 390 (each sign-in from a network of its own, `x-forwarded-for`:
-  the limits count across runs and relays; ways_check 10-12 prove the
-  owner's refusal, an Unlink racing a first sign-in 20 times, and the
-  limits with a second person signing in meanwhile); `ways app probe` (`src/dev/ways_app_probe.gd`, the same
+  the limits count across runs and relays; ways_check 10-13 prove the
+  owner's refusal, an Unlink racing a first sign-in 20 times, the
+  limits with a second person signing in meanwhile, 40 starts and one start
+  replayed 11 times locking no one out, and a connection a GitHub session
+  approved ended by its Unlink); `ways app probe` (`src/dev/ways_app_probe.gd`, the same
   relay) drives the desktop's form, its listener and `?op=way_app` round trip
   headless. A real round trip needs the owner's clients (the console's
   steps).
@@ -777,8 +788,12 @@ they have. A Claude connector belongs to the account that switched it on.
   (always), Google and GitHub as `on` (signed in with it), `off` (Unlink:
   `way_set`, `supabase/way_links.sql`, in one step: `way_links` "off",
   which the callback refuses, GitHub's id dropped, and every session the
-  way started ended with its refresh token; this one too, when it was one:
-  `signed_out`, and the page signs out and asks for a code) or `never`
+  way started ended with its refresh token, and every AI app's connection
+  a session of the way approved, its codes too: `oauth_codes.way` and
+  `oauth_grants.way`, `supabase/way_grants.sql`, set at approve from
+  `way_sessions` and re-asked under the same lock after `/oauth/token`
+  writes one, signin5 SR1; Settings redraws its connections; this one too,
+  when it was one: `signed_out`, and the page signs out and asks for a code) or `never`
   (`way_links_of`); Link again lifts it. An orangecheck-only account gets
   409. The owner's account is offered neither. Settings'
   orangecheck part says when Connect made the account.
@@ -910,6 +925,23 @@ set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
 node tools/web/oc_echo_check.mjs
 ```
+
+How often orangecheck signs in (signin5, signreview2 SR3: each sign-in
+spends one of Supabase's verifies from the server's address): `orangecheck
+counts check` drives `api/orangecheck.js`'s own handler against the real
+counters (`oc_may_try` by network, `networkOf`; `way_may_try` under
+`COUNTED.orangecheck`, after the token checks out and is spent, before
+`oc_account_of`), with orangecheck's token check and everything after the
+counts stood in for, so nothing is made or minted (about 10 s; it fails 2
+of 4 on signin4's code):
+
+```sh
+set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs
+```
+
+It ends "all passed": one orangecheck id 5 times in 15 minutes from 5
+networks, then refused in words (429); another id goes; 20 addresses of
+one IPv6 /64 go and the 21st is refused, another /64's goes.
 
 `oc_echo_check` needs no .env and reaches nothing off this machine (about
 10 s): this checkout's button on one local address, orangecheck's window

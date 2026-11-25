@@ -28,6 +28,14 @@ export const SOFTWARE = [
   "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
 ];
 
+/// Google's and GitHub's sign-in pages never answer a check: their hosts
+/// resolve to nothing in the flows' Chromium, so a sign-in that escapes the
+/// relay's stand-in (tools/web/ways_stand_in.mjs) fails on this machine and
+/// never reaches a real provider (signin5, signreview2 SR4: ways_flow's runs
+/// reached the real accounts.google.com, since Playwright routes no hop of
+/// a redirect it already follows).
+export const NO_PROVIDERS = ["--host-resolver-rules=MAP accounts.google.com ~NOTFOUND, MAP github.com ~NOTFOUND"];
+
 /// WebKit's environment, drawing in software too: Mesa's llvmpipe, never
 /// the GPU (phonetruth, 2026-11-18). Playwright's WebKit on Linux is WPE,
 /// whose WebGL is Mesa's; asked for software, it opens no render node.
@@ -170,7 +178,7 @@ export async function launch(options = {}) {
   // routes are Playwright's own (page_routes.mjs).
   const browser = engine === "webkit"
     ? await webkit.launch({ ...signals, ...rest, env: { ...process.env, ...WEBKIT_SOFTWARE, ...(rest.env || {}) } })
-    : await chromium.launch({ ...signals, ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
+    : await chromium.launch({ ...signals, ...rest, args: [...SOFTWARE, ...NO_PROVIDERS, ...(rest.args || [])] });
   const made = browser.newContext.bind(browser);
   // Every page of every context takes a dropped picture again (steady_shots.mjs).
   const steady = (context) => { context.on("page", (page) => steadyShots(page)); return context; };

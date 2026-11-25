@@ -61,7 +61,7 @@ import { db, reach } from "./_db.js";
 import { mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
-import { LIMITS, networkOf } from "./_ways.js";
+import { COUNTED, LIMITS, networkOf } from "./_ways.js";
 import {
   checkToken, codeOf, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, spendToken, tradeCode,
 } from "./_oc.js";
@@ -196,7 +196,7 @@ async function signInWith(token, response, request = null) {
   let often;
   try {
     often = (await db("rpc/way_may_try", { method: "POST",
-      body: { try_key: `oc ${did}`, per: LIMITS.account, window_minutes: LIMITS.minutes } })) !== true;
+      body: { try_key: COUNTED.orangecheck(did), per: LIMITS.account, window_minutes: LIMITS.minutes } })) !== true;
   } catch (trouble) {
     console.error(`orangecheck: not counted: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");

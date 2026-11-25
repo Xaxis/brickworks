@@ -49,8 +49,13 @@
 //      and no session of Google's left alive.
 //  12. One GitHub account in a loop, and one network with many (F9): each
 //      refused at its limit before anything is spent, while another
-//      person's sign-in goes through; starts too; an IPv6 /64 counts as one
-//      network.
+//      person's sign-in goes through; an IPv6 /64 counts as one network.
+//      Nothing a visitor can do without an account counts (signin5, SR2):
+//      40 starts from one network, or one start's cookie sent 11 times
+//      (GitHub asked once), and the next person there signs in.
+//  13. A Claude connection approved from a GitHub session ends with
+//      GitHub's Unlink (signin5, SR1): its tools and its refresh refused;
+//      one approved by a code's session stays.
 // Every sign-in comes from a network of its own (x-forwarded-for, as Vercel
 // sets it), but 12's, which share theirs on purpose: the limits count
 // across runs and relays for 15 minutes. Every account made is deleted at
@@ -59,7 +64,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { codeFor, githubId, KEYS } from "./ways_stand_in.mjs";
 import { deleteAccount, mintCode, mintSession } from "./session.mjs";
 import { signedInJustNow } from "../../api/_oc.js";
-import { googleVouches, LIMITS, networkOf } from "../../api/_ways.js";
+import { COUNTED, googleVouches, LIMITS, networkOf } from "../../api/_ways.js";
 
 const arg = (name, fallback = "") => (process.argv.find((a) => a.startsWith(`--${name}=`)) || "").slice(name.length + 3) || fallback;
 const site = arg("url", "http://127.0.0.1:11701").replace(/\/+$/, "");
@@ -612,26 +617,94 @@ try {
   const moved = await viaWay("github", { email: x, verified: true }, { from: `2001:db8:${r16()}:${r16()}::1` });
   check("12. the same GitHub account from another network: refused too", /failed=often/.test(moved.back?.location || "") && !moved.take,
     moved.back?.location);
-  // netA has had LIMITS.account + 3 ways back: others from it fill it to LIMITS.back.
+  // A network is counted only for sign-ins Google or GitHub vouched for
+  // (signin5, SR2): the loop's refused ones did not count. netA has had at
+  // most LIMITS.account; filled here to one short of LIMITS.network, as so
+  // many other accounts would have (a Supabase verify each: spared), the
+  // next account from it signs in and the one after is refused.
+  const crowded = COUNTED.network(net(`${netA}::1`));
+  for (let n = 0; n < LIMITS.network && (await rpc("way_may_try", { try_key: crowded, per: LIMITS.network - 1,
+    window_minutes: LIMITS.minutes })) === true; n += 1);
   const crowd = [];
-  for (let n = 0; n < LIMITS.back - LIMITS.account - 3 + 1; n += 1) {
+  for (let n = 0; n < 2; n += 1) {
     crowd.push(await viaWay("github", { email: address(`crowd${n}`), verified: true }, { from: `${netA}:ffff::${n + 1}` }));
   }
-  check(`12. other GitHub accounts from that network: signed in up to its ${LIMITS.back}, then refused`,
-    crowd.slice(0, -1).every((one) => one.took?.status === 200) && /failed=often/.test(crowd.at(-1).back?.location || "") && !crowd.at(-1).take,
+  check(`12. other GitHub accounts from that network: signed in up to its ${LIMITS.network}, then refused`,
+    crowd[0].took?.status === 200 && /failed=often/.test(crowd[1].back?.location || "") && !crowd[1].take,
     crowd.map((one) => one.back?.location?.slice(0, 60)).join(" "));
+  // Starts are not counted: as many as anyone likes from one network, and
+  // the next person's there, the page's and the app's, go to GitHub.
   const netS = `2001:db8:${r16()}:${r16()}`;
   const fresh = () => new URLSearchParams({ then: "/", take: challengeOf(b64url(randomBytes(32))) });
   const starts = [];
-  for (let n = 0; n < LIMITS.start + 1; n += 1) starts.push(await call(`/auth/github?${fresh()}`, { from: `${netS}::${n + 1}` }));
+  for (let n = 0; n < 40; n += 1) starts.push(await call(`/auth/github?${fresh()}`, { from: `${netS}::${n + 1}` }));
   const toGitHub = starts.filter((one) => one.status === 302 && one.location.startsWith("https://github.com/")).length;
-  const startElse = await call(`/auth/github?${fresh()}`, { from: network() });
-  const appOften = await call(`/auth/github?${new URLSearchParams({ app: loop, state: "oftenstate123", code_challenge: challengeOf(b64url(randomBytes(32))) })}`,
+  const appThere = await call(`/auth/github?${new URLSearchParams({ app: loop, state: "oftenstate123", code_challenge: challengeOf(b64url(randomBytes(32))) })}`,
     { from: `${netS}::ffff` });
-  check(`12. starts from one network: ${toGitHub} to GitHub, then refused in words, the app's too; another network's goes`,
-    toGitHub === LIMITS.start && /failed=often/.test(starts.at(-1).location) && startElse.location.startsWith("https://github.com/")
-    && new URL(appOften.location || "http://x/").searchParams.get("error") === "often",
-    `${toGitHub} ${starts.at(-1).location} ${startElse.location.slice(0, 40)} ${appOften.location}`);
+  const person = address("afterstarts");
+  const personIn = await viaWay("github", { email: person, verified: true }, { from: `${netS}::fffe` });
+  check(`12. ${starts.length} starts from one network: every one to GitHub; then the app's start there, and a person's sign-in`,
+    toGitHub === starts.length && appThere.location.startsWith("https://github.com/") && personIn.took?.status === 200
+    && personIn.took.json?.user?.email === person, `${toGitHub} ${appThere.location.slice(0, 60)} ${JSON.stringify(personIn.back)}`);
+  // One start, one way back: its cookie sent again, with made-up codes, is
+  // refused before GitHub is asked, and counts nothing; a person on that
+  // network then signs in.
+  const netR = network();
+  const once = await call(`/auth/github?${fresh()}`, { from: netR });
+  const onceCookie = valueOf(cookieNamed(once.cookies, "bw_way_github"));
+  const onceState = new URL(once.location).searchParams.get("state");
+  const tokensBefore = (await stand()).tokens;
+  const replays = [];
+  for (let n = 0; n < 11; n += 1) {
+    replays.push((await call(`/auth/callback/github?${new URLSearchParams({ code: `junk${n}`, state: onceState })}`,
+      { cookie: onceCookie, from: netR })).location);
+  }
+  const githubAsked = (await stand()).tokens - tokensBefore;
+  const why = replays.map((one) => new URL(one, "http://x").searchParams.get("failed"));
+  const neighbour = address("afterreplay");
+  const neighbourIn = await viaWay("github", { email: neighbour, verified: true }, { from: netR });
+  check("12. one start's cookie sent 11 times: GitHub asked once (refused it), the other 10 refused before, and a person there signs in",
+    why[0] === "failed" && why.slice(1).every((one) => one === "again") && githubAsked === 1
+    && neighbourIn.took?.status === 200 && neighbourIn.took.json?.user?.email === neighbour,
+    `${why.join(",")} GitHub asked ${githubAsked}; ${JSON.stringify(neighbourIn.back)}`);
+
+  // 13. Unlink and Claude's connections (SR1).
+  {
+  const c = address("conn");
+  const cHub = await viaWay("github", { email: c, verified: true });
+  const cCode = await signIn(c);
+  const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+  const reg = await call("/oauth/register", { method: "POST", body: { client_name: "ways_check's client", redirect_uris: [CALLBACK],
+    token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] } });
+  const client = reg.json?.client_id;
+  /// A connection approved as [token]'s session: {access, refresh}.
+  const connect = async (token) => {
+    const verifier = b64url(randomBytes(32));
+    const approved = await call("/api/oauth?op=approve", { method: "POST", token, body: { response_type: "code", client_id: client,
+      redirect_uri: CALLBACK, code_challenge: challengeOf(verifier), code_challenge_method: "S256", state: "s13",
+      resource: `${site}/api/mcp`, scope: "build" } });
+    const code = approved.json?.redirect ? new URL(approved.json.redirect).searchParams.get("code") : "";
+    const tokens = await call("/oauth/token", { method: "POST", body: { grant_type: "authorization_code", code, redirect_uri: CALLBACK,
+      client_id: client, code_verifier: verifier, resource: `${site}/api/mcp` } });
+    return { access: tokens.json?.access_token || "", refresh: tokens.json?.refresh_token || "" };
+  };
+  const tools = async (access) => (await fetch(`${site}/api/mcp`, { method: "POST", headers: { authorization: `Bearer ${access}`,
+    accept: "application/json, text/event-stream", "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) }).then((reply) => reply.text().then(() => reply.status)));
+  const renewal = (refresh) => call("/oauth/token", { method: "POST", body: { grant_type: "refresh_token", refresh_token: refresh,
+    client_id: client, resource: `${site}/api/mcp` } });
+  const viaHub = await connect(cHub.took?.json?.access_token || "");
+  const viaCode = await connect(cCode.token);
+  const before = [await tools(viaHub.access), await tools(viaCode.access)];
+  const unlinked = await call("/api/otp?op=ways", { method: "POST", token: cHub.took?.json?.access_token || "",
+    body: { with: "github", on: false } });
+  const after = [await tools(viaHub.access), await tools(viaCode.access)];
+  const renewed = [await renewal(viaHub.refresh), await renewal(viaCode.refresh)];
+  check("13. Unlink GitHub: the connection its session approved lists no tools and renews no more; a code's connection keeps working",
+    reg.status === 201 && before.every((one) => one === 200) && unlinked.status === 200 && after[0] === 401 && after[1] === 200
+    && renewed[0].status === 400 && renewed[0].json?.error === "invalid_grant" && renewed[1].status === 200,
+    `${reg.status} before ${before} unlink ${unlinked.status} after ${after} renewed ${renewed.map((one) => `${one.status} ${one.json?.error || ""}`)}`);
+  }
 } catch (trouble) {
   check("the check finished", false, String(trouble?.stack || trouble).slice(0, 600));
 } finally {
