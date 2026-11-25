@@ -2506,14 +2506,17 @@ and soft, on paper that mirrors nothing.
 
 **The floor** (`RenderSettings.floor`, `StudioRender.PRODUCT_FLOOR`,
 `_floor_of`; path_tracer.glsl's photo version, `floor_kept` and
-`floor_over`): where the sweep is the shadow catcher, it is drawn as a
-product photograph's. Exposed past white (`FLOOR_OVER` 1.6 on a white
+`floor_over`): on the bare seamless paper (the shadow catcher, with no
+table's relief and no surface of its own), it is drawn as a product
+photograph's. Exposed past white (`FLOOR_OVER` 1.6 on a white
 sweep), so only the shade near the model shows; that shade cooled toward
 the fill's daylight as it deepens; the light the parts send down onto it
 (a blocked sample traces the part and lights it) laid on in their colour;
 and glossy (`FLOOR_F0` 0.04, `FLOOR_GLOSS` 0.3), the model mirrored in
-it a little and blurred. A table or a lit stage is its own surface and
-is left as it was. The photo version is the marks version with this, so
+it a little and blurred. A lit stage, a table's relief and a surface are
+their own and left as they were: the judge saw the floor only on the
+bare seamless, and with it on the gallery card's desk (CardPhoto.LOOK, a
+table on the catcher) took a pink bounce and a gloss nobody judged. The photo version is the marks version with this, so
 the plain and marks versions compile to the same SPIR-V as before.
 
 **Handled plastic** (judged, taken out). Each part's gloss a shade its

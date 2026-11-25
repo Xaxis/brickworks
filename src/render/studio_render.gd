@@ -219,8 +219,8 @@ const PRODUCT_POLISH := 0.0
 const PRODUCT_SCUFF := 0.0
 ## A set photographed (photoreal19, RenderSettings.floor; path_tracer.glsl's
 ## photo version): the floor a product photograph's set stands on, on the
-## shadow catcher (glossy, exposed past white, its shade cool and coloured
-## by the model). On: the solo judge called the sweep's shots photographs
+## bare seamless (glossy, exposed past white, its shade cool and coloured
+## by the model; [method _floor_of] says where). On: the solo judge called the sweep's shots photographs
 ## more often with it in both classes, the sets +0.012 (95%: +0.003 to
 ## +0.021) and the close-ups +0.025 (+0.001 to +0.059), docs/RENDERING.md 5u.
 const PRODUCT_FLOOR := 1.0
@@ -3115,10 +3115,14 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 
 
 ## The floor a set photographed stands on (photoreal19) that [param
-## settings] ask for, 0 for none: only in the product look, where the sweep
-## is the shadow catcher (a table is its own).
+## settings] ask for, 0 for none: only in the product look, on the bare
+## seamless paper the judge saw it on, where the sweep is the shadow
+## catcher with no table's relief and no surface of its own. A lit stage
+## is its own, and so is the gallery card's desk (CardPhoto.LOOK, a table
+## on the catcher), which was not judged with it.
 func _floor_of(settings: RenderSettings) -> float:
-	if settings.look != "product" or not _catches(settings):
+	if settings.look != "product" or not _catches(settings) or settings.surface != 0 \
+			or _own(settings.table, PRODUCT_TABLE) > 0.0:
 		return 0.0
 	return maxf(_own(settings.floor, PRODUCT_FLOOR), 0.0)
 
