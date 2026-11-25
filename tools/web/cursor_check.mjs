@@ -601,6 +601,10 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale, dia
   const told = (s) => `distance ${Number(s.distance).toFixed(1)}, yaw ${Number(s.yaw).toFixed(3)}, `
     + `focus ${(s.focus || []).map((f) => Number(f).toFixed(1)).join(" ")}, at app ms ${s.said}`;
   async function scrolled(what, point, regions, shouldMove, around = null) {
+    if (lostSaid) {
+      console.log(`  FAIL  ${what}: not measured (the canvas's WebGL context is lost)`);
+      return;
+    }
     await page.mouse.move(point.x, point.y);
     // As long before as after: the ghost goes when the pointer leaves the
     // model, and at a device ratio of two in software that is a frame or
