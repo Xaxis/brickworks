@@ -85,9 +85,15 @@
 //
 // How often (F9): each sign-in spends one of Supabase's verifies from this
 // server's own address (api/_minted.js), shared by everyone's Google,
-// GitHub and orangecheck sign-ins, so each start and each way back is
-// counted first (LIMITS, below), and one GitHub account in a loop is
-// refused before it spends any.
+// GitHub and orangecheck sign-ins, so each one Google or GitHub has said
+// who it is is counted before it spends one (LIMITS, below), and one GitHub
+// account in a loop is refused before it spends any. Nothing that costs
+// nothing is counted, so that no one can use up a shared network's count
+// without an account of either (signin5, signreview2 SR2).
+//
+// A Claude connection approved from a Google or GitHub session is that
+// way's (api/oauth.js codeFor, its way): its Unlink ends it too, with the
+// sessions, in the same step (signin5, SR1).
 
 import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from "node:crypto";
 import { afterAnswer } from "./_after.js";
@@ -231,6 +237,9 @@ export function safeThen(then) {
 const LOOPBACK = /^http:\/\/127\.0\.0\.1:\d{1,5}\/[A-Za-z0-9._~/-]*$/;
 const APP_STATE = /^[A-Za-z0-9_-]{8,128}$/;
 const CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
+// A start's id, 16 random bytes (wayStart): one sealed before it has none,
+// and is refused (all such would share one id).
+const START_ID = /^[A-Za-z0-9_-]{22}$/;
 const VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
 
 function appOf(query) {
@@ -250,15 +259,19 @@ function appOf(query) {
 //   site, the app, a phone, and two tries more): a loop of it takes 5 of
 //   the 90, never the 30 at once;
 // - one network (an IPv4 address, or an IPv6 /64, which one person holds
-//   whole) comes back at most 10 times, for a household or a class signing
-//   in together: with many accounts, 10 of the 90;
-// - and starts at most 30 times, since a start costs nothing but Google's
-//   or GitHub's page, and people press one, go back, and press the other.
-// Each is counted before anything is spent (the way back: the network
-// first, then, once Google or GitHub has said who it is, the account), and
-// what is refused is not counted. A code to the address is never limited
-// by these, so the words point to it.
-export const LIMITS = { minutes: 15, account: 5, back: 10, start: 30 };
+//   whole) comes back signed in at most 30 times, with as many accounts,
+//   for a class or an office signing in together.
+// Both are counted once Google or GitHub has said who it is, the account
+// first, before anything is made or minted, and what is refused is not
+// counted. Nothing before is (signreview2 SR2): a start costs nothing but
+// the provider's page, and a way back is the one its start was for, its
+// start's id spent first (wayBack), so a start cookie sent again is
+// refused before Google or GitHub is asked. Counted by network, either let
+// one visitor with no account lock everyone on a school's, an office's or a
+// phone carrier's address out. Each made-up way back costs one start, and
+// one call of Google's or GitHub's token endpoint, which refuses it. A code
+// to the address is never limited by these, so the words point to it.
+export const LIMITS = { minutes: 15, account: 5, network: 30 };
 
 /// The network [request] came from, as one key: an IPv4 address, or an
 /// IPv6 address's first 64 bits (a person is given a /64 whole, and could
@@ -323,11 +336,10 @@ export async function wayStart(request, response) {
   if (!keys || !(await waysOffered(request))[name]) return failed(response, name, "off", { t: then, a: app });
   const take = app ? "" : String(request.query?.take || "");
   if (!app && !CHALLENGE.test(take)) return failed(response, name, "again", { t: then });
-  const refused = await counted(`start ${networkOf(request)}`, LIMITS.start);
-  if (refused) return failed(response, name, refused, { t: then, a: app });
   const verifier = b64url(randomBytes(32));
+  // i: its id, spent at its way back, which it buys once (SR2).
   const start = { w: name, s: b64url(randomBytes(16)), v: verifier, n: b64url(randomBytes(16)), t: then, a: app, k: take,
-    x: Date.now() + 600_000 };
+    i: b64url(randomBytes(16)), x: Date.now() + 600_000 };
   const to = new URLSearchParams({
     client_id: keys.id,
     redirect_uri: callbackOf(request, name),
@@ -359,8 +371,16 @@ export async function wayBack(request, response) {
   const code = String(request.query?.code || "");
   const keys = way.keys();
   if (!code || code.length > 2048 || !keys) return failed(response, name, keys ? "failed" : "off", start);
-  const network = await counted(`back ${networkOf(request)}`, LIMITS.back);
-  if (network) return failed(response, name, network, start);
+  // One start, one way back (SR2): its id spent before Google or GitHub is
+  // asked or anything counted, so its cookie sent again, by anyone, is
+  // refused here, at no cost to the start's network.
+  if (!START_ID.test(String(start.i || ""))) return failed(response, name, "again", start);
+  try {
+    if (!(await spend(start))) return failed(response, name, "again", start);
+  } catch (trouble) {
+    console.error(`ways: the start was not spent: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    return failed(response, name, "failed", start);
+  }
 
   let who;
   try {
@@ -371,7 +391,10 @@ export async function wayBack(request, response) {
   }
   // The owner's account: by a code alone (F8). Nothing is made or minted.
   if (isMaster({ email: who.email })) return failed(response, name, "code_only", start);
-  const often = await counted(`back ${name} ${who.id}`, LIMITS.account);
+  // Counted now that Google or GitHub has said who it is (SR2): the
+  // account, then the network it came from.
+  const often = await counted(`back ${name} ${who.id}`, LIMITS.account)
+    || await counted(`in ${networkOf(request)}`, LIMITS.network);
   if (often) return failed(response, name, often, start);
 
   let minted;

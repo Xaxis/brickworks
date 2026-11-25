@@ -46,7 +46,12 @@
 // worked out from the id: anybody could work it out too and make that
 // account first, and the first sign-in would walk into it. Nothing is ever
 // mailed there (api/otp.js refuses the domain, api/_comments.js skips it).
-// Rate limited per address in the database, as codes are.
+// Rate limited per network in the database, as codes are, and per
+// orangecheck id once its token checks out, as a Google or GitHub account
+// is (signin5, signreview2 SR3): each sign-in spends one of Supabase's
+// verifies from this server's address (api/_minted.js), shared with
+// everyone's Google and GitHub sign-ins, and one orangecheck account in a
+// loop from a few addresses emptied it.
 
 import { noted } from "./_noted.js";
 import { afterAnswer } from "./_after.js";
@@ -56,6 +61,7 @@ import { db, reach } from "./_db.js";
 import { mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
+import { LIMITS, networkOf } from "./_ways.js";
 import {
   checkToken, codeOf, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, spendToken, tradeCode,
 } from "./_oc.js";
@@ -108,10 +114,6 @@ async function endSession(access) {
     headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, authorization: `Bearer ${access}` } }).catch(() => null);
 }
 
-function addressOf(request) {
-  return (request.headers["x-forwarded-for"] || "").split(",")[0].trim() || request.socket?.remoteAddress || "";
-}
-
 const say = (response, status, error, more = {}) => response.status(status).json({ error, ...more });
 
 function bodyOf(request) {
@@ -123,13 +125,15 @@ function bodyOf(request) {
   }
 }
 
-/// Whether [request]'s address may try another sign-in, answered when not.
+/// Whether [request]'s network may try another sign-in, answered when not.
 /// Counted before anything else is asked, so a stranger cannot make this
 /// server ask orangecheck and the database for them as often as they like.
+/// The network as Google's and GitHub's are counted (api/_ways.js
+/// networkOf): an IPv6 /64, which one person holds whole, is one.
 async function counted(request, response) {
   let may;
   try {
-    may = await db("rpc/oc_may_try", { method: "POST", body: { from_ip: addressOf(request) } });
+    may = await db("rpc/oc_may_try", { method: "POST", body: { from_ip: networkOf(request) } });
   } catch (trouble) {
     console.error(`orangecheck: ${String(trouble?.message || trouble).slice(0, 120)}`);
     say(response, 503, "Brickworks could not start a sign-in just now. Try again in a minute.");
@@ -184,6 +188,21 @@ async function signInWith(token, response, request = null) {
   } catch (trouble) {
     console.error(`orangecheck: not spent: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
+  }
+  // And counted by orangecheck id, before anything is made or minted (SR3):
+  // as many as one Google or GitHub account signs in (api/_ways.js LIMITS),
+  // from however many addresses. Refused when it cannot be counted, as the
+  // network's count is.
+  let often;
+  try {
+    often = (await db("rpc/way_may_try", { method: "POST",
+      body: { try_key: `oc ${did}`, per: LIMITS.account, window_minutes: LIMITS.minutes } })) !== true;
+  } catch (trouble) {
+    console.error(`orangecheck: not counted: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
+  }
+  if (often) {
+    return say(response, 429, "Too many sign-ins with this orangecheck account just now. Wait a few minutes and try again.");
   }
 
   let account;

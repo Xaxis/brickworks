@@ -303,7 +303,10 @@ async function ways(given = null) {
         }
         // The list from the answer first, then what was done: said before
         // it, the old row stood beside the words a moment (signin3 flow).
+        // Unlinked, the AI apps' connections it approved went with it
+        // (signin5): their list again too.
         await ways(took ? done : null);
+        if (took && state === "on") claude().catch(() => null);
         $("ways-status").textContent = took
           ? state === "on" ? say("{way} no longer signs you in here. A code we email you still does.", { way: WAY_NAMES[name] })
             : say("{way} signs you in here again.", { way: WAY_NAMES[name] })

@@ -63,12 +63,13 @@
 // connection. A client that proves itself (a secret, or a signed
 // assertion) keeps one refresh token, good for 90 days from its last use.
 // Disconnect in the app deletes the connection, and every token of it goes
-// with it.
+// with it. A connection approved from a sign-in by orangecheck, Google or
+// GitHub is that sign-in's too: unlinking that way ends it (codeFor).
 
 import { noted } from "./_noted.js";
 import { timingSafeEqual } from "node:crypto";
 import { ASSERTION_TYPE, assertionTrouble, claimedClient, givenKeys, keysAt } from "./_assertion.js";
-import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
+import { AuthError, authConfigured, bearer, sessionWay, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import {
   CLAUDE_AI, SCOPE, clientLabel, hadClaude, isClaude, originOf, rememberClaude, resourceOf, secret, sha256,
@@ -432,17 +433,37 @@ async function orangecheckOf(claims) {
     ? { oc_did: session.did, oc_rh: session.rh, oc_aud: session.aud, oc_iat: session.iat } : {};
 }
 
+/// The way that started the session approving, Google or GitHub (api/
+/// _ways.js), carried over as orangecheck's is: unlinking that way deletes
+/// the codes and connections it approved, with its sessions, in one step
+/// (supabase/way_grants.sql way_set; signreview2 SR1: a connection approved
+/// by a GitHub sign-in taken over outlived its Unlink). Nothing for a
+/// code's. Throws when it cannot be read, so nothing is approved unmarked.
+async function wayOf(claims) {
+  const way = claims.session_id ? await sessionWay(claims.session_id) : null;
+  return way ? { way } : {};
+}
+
+/// Whether [way] still signs [owner] in (supabase/way_grants.sql way_on):
+/// "on", as every session it handed out found it, read under the lock an
+/// Unlink holds, so an Unlink under way is waited for. Off is unlinked; no
+/// row, linked again since, which a session from before never was.
+async function wayStillOn(owner, way) {
+  return (await db("rpc/way_on", { method: "POST", body: { account: owner, way } })) === true;
+}
+
 /// Where the person goes back to with a code for [asked], as [owner],
 /// signed in as [claims].
 async function codeFor(asked, owner, origin, claims) {
   const code = secret("bwk");
+  const [oc, way] = await Promise.all([orangecheckOf(claims), wayOf(claims)]);
   await db("oauth_codes", {
     method: "POST",
     body: {
       hash: sha256(code), client_id: asked.client.client_id, owner,
       redirect_uri: asked.redirect, code_challenge: asked.challenge,
       resource: asked.resource, scope: asked.scope, expires_at: iso(CODE_TTL_S * 1000),
-      ...(await orangecheckOf(claims)),
+      ...oc, ...way,
     },
   });
   await db(`oauth_clients?client_id=eq.${encodeURIComponent(asked.client.client_id)}`, {
@@ -664,9 +685,19 @@ async function token(request, response, origin) {
         owner: row.owner, client_id: client.client_id, client_name: client.client_name,
         redirect_uri: row.redirect_uri, resource: row.resource, scope: row.scope, used_at: iso(),
         oc_did: row.oc_did ?? null, oc_rh: row.oc_rh ?? null, oc_aud: row.oc_aud ?? null, oc_iat: row.oc_iat ?? null,
+        ...(row.way ? { way: row.way } : {}),
       },
       prefer: "return=representation",
     });
+    // Approved from a Google or GitHub session: only while that way still
+    // signs the account in. Its Unlink deletes such codes and connections
+    // (way_set); this is for one that came between the code's read and the
+    // connection's write. Asked after the write, under the Unlink's lock:
+    // an Unlink before it is seen here, and one after it deletes this.
+    if (row.way && !(await wayStillOn(row.owner, row.way))) {
+      await db(`oauth_grants?id=eq.${grant.id}`, { method: "DELETE" });
+      return oauthError(response, 400, "invalid_grant", "the Google or GitHub sign-in that approved this was unlinked");
+    }
     const tokens = await issue(grant);
     await tellTabs(row.owner, clientLabel(grant)).catch(() => {});
     if (client.client_id === CLAUDE_AI) await rememberClaude(row.owner).catch(() => {});
