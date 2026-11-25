@@ -1936,73 +1936,82 @@ func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
 ## between the two had its mirrored twin on it: the web's assembly flow put
 ## down nothing.
 ##
-## [param ask]: {"items": [[part id, where in the world, the sub-assembly it
-## goes into ([member entered] when not given)], ...]} the first time, each
-## asked of the copies of the innermost one round it the follow changes in
-## part ([method _changed_level]: a copy lifted whole is asked of the one
-## round it), and the same Dictionary again until it is answered, as the ask is
+## [param ask]: {"items": [[part id, where, the sub-assembly it goes into
+## ([member entered] when not given)], ...], "frame": what the items' places
+## are in (the world where not given)} the first time, each asked of the
+## copies of the innermost one round it the follow changes in part
+## ([method _changed_level]: a copy lifted whole is asked of the one round
+## it), and the same Dictionary again until it is answered, as the ask is
 ## kept in it. Each call goes on for [param budget_us] microseconds at most
-## (0, no bound) after the copies' fits are read ([method _copies_laid],
-## once a model, the follow's own cost for one click), and gives null where
-## it is not done: a big hand is asked over several frames, never answered
-## "room" for having been cut short.
+## (0, no bound), one step at least, and gives null where it is not done: a
+## big hand is asked over several frames, never answered "room" for having
+## been cut short. What the hand is ([method _hand_plan]) is read once while
+## the same items are asked, under the same clock: a drag's aims move only
+## the frame.
 func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 	var items: Array = ask.get("items", [])
 	if items.is_empty():
 		return ""
-	if not ask.has("pairs"):
-		## Each item as the world puts it down, [part, where, its level].
-		var going: Array = []
-		## Each item's level ([method _changed_level]) -> the items going there.
-		var by_level: Dictionary = {}
-		## Each path the items go into -> its level, found once an ask.
-		var level_of: Dictionary = {}
-		for item: Array in items:
-			# As the world puts it down: a retired number is the part that
-			# replaced it, where its stub puts it (BrickWorld._place), so a
-			# 3023 in hand is a 3023b in the copy and its twins, named so.
-			var real: String = library.resolve(str(item[0]))
-			var at: Transform3D = (item[1] as Transform3D) * library.moved_by(str(item[0]))
-			var into: String = str(item[2]) if item.size() > 2 else entered
-			if not level_of.has(into):
-				level_of[into] = _changed_level(into)
-			var level: String = level_of[into]
-			going.append([real, at, level])
-			if not level.is_empty():
-				if not by_level.has(level):
-					by_level[level] = []
-				(by_level[level] as Array).append([real, at])
-		# Each copy with what goes into it, the newest copy first, as the
-		# follow's refusal reads them (copies_follow: back newest first), so
-		# the words name the same one.
-		var pairs: Array = []
-		for level: String in by_level:
-			var copies: Array = _copies_laid(level)
-			for c: int in range(copies.size() - 1, -1, -1):
-				for one: Array in by_level[level]:
-					pairs.append([copies[c], one])
-		if pairs.is_empty():
-			return ""
-		## [part, cells, the copy it goes into] of each part going down so far:
-		## the hand's own first, read under the clock below (a 200-part hand
-		## was 200 cell reads before it started).
-		ask.merge({"pairs": pairs, "going": going, "down": [], "cells": 0, "laid": {}, "next": 0})
 	var started: int = Time.get_ticks_usec()
-	var pairs: Array = ask["pairs"]
-	var going_down: Array = ask["going"]
-	var down: Array = ask["down"]
-	var laid_already: Dictionary = ask["laid"]
+	var plan: Dictionary = _hand_plan(items)
+	if not is_same(ask.get("plan"), plan):
+		## [part, cells, the copy it goes into] of each part going down so far,
+		## the hand's own first, and each one's place in it by the blocks its
+		## cells reach ([method _meets]).
+		ask.merge({"plan": plan, "down": [], "blocks": {}, "cells": 0, "laid": {}, "next": 0}, true)
 	# One step at least each call, so a slow box still gets there.
 	var did: int = 0
-	while int(ask["cells"]) < going_down.size():
+	var going: Array = plan["going"]
+	var by_level: Dictionary = plan["by_level"]
+	var level_of: Dictionary = plan["level_of"]
+	while int(plan["read"]) < items.size():
 		if budget_us > 0 and did > 0 and Time.get_ticks_usec() - started > budget_us:
 			return null
 		did += 1
-		var one: Array = going_down[int(ask["cells"])]
+		var item: Array = items[int(plan["read"])]
+		plan["read"] = int(plan["read"]) + 1
+		# As the world puts it down: a retired number is the part that
+		# replaced it, where its stub puts it (BrickWorld._place), so a
+		# 3023 in hand is a 3023b in the copy and its twins, named so.
+		var real: String = library.resolve(str(item[0]))
+		var at: Transform3D = (item[1] as Transform3D) * library.moved_by(str(item[0]))
+		var into: String = str(item[2]) if item.size() > 2 else entered
+		if not level_of.has(into):
+			level_of[into] = _changed_level(into)
+		var level: String = level_of[into]
+		going.append([real, at, level])
+		if not level.is_empty():
+			if not by_level.has(level):
+				by_level[level] = []
+			(by_level[level] as Array).append(going.size() - 1)
+	if plan["pairs"] == null:
+		# Each copy with what goes into it, the newest copy first, as the
+		# follow's refusal reads them (copies_follow: back newest first), so
+		# the words name the same one.
+		var made: Array = []
+		for level: String in by_level:
+			var copies: Array = _copies_laid(level)
+			for c: int in range(copies.size() - 1, -1, -1):
+				for k: int in by_level[level]:
+					made.append([copies[c], k])
+		plan["pairs"] = made
+	var pairs: Array = plan["pairs"]
+	if pairs.is_empty():
+		return ""
+	var frame: Transform3D = ask.get("frame", Transform3D.IDENTITY)
+	var down: Array = ask["down"]
+	var blocks: Dictionary = ask["blocks"]
+	var laid_already: Dictionary = ask["laid"]
+	while int(ask["cells"]) < going.size():
+		if budget_us > 0 and did > 0 and Time.get_ticks_usec() - started > budget_us:
+			return null
+		did += 1
+		var one: Array = going[int(ask["cells"])]
 		ask["cells"] = int(ask["cells"]) + 1
 		var mine: Lbm.PartMesh = library.mesh_for(str(one[0]))
 		if mine != null:
-			down.append([str(one[0]), builder.boxes_for(mine, one[1]), str(one[2])])
+			var own: PackedInt32Array = builder.boxes_for(mine, frame * (one[1] as Transform3D))
+			_put_down(down, blocks, [str(one[0]), own, str(one[2])], _blocks_of(own))
 	while int(ask["next"]) < pairs.size():
 		if budget_us > 0 and did > 0 and Time.get_ticks_usec() - started > budget_us:
 			return null
@@ -2010,9 +2019,9 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 		var n: int = int(ask["next"])
 		ask["next"] = n + 1
 		var copy: Array = pairs[n][0]
-		var item: Array = pairs[n][1]
+		var item: Array = going[int(pairs[n][1])]
 		var other: String = copy[0]
-		var laid: Array = _laid(copy[1], str(item[0]), item[1])
+		var laid: Array = _laid(copy[1], str(item[0]), frame * (item[1] as Transform3D))
 		var at: Transform3D = laid[1]
 		var mesh: Lbm.PartMesh = library.mesh_for(str(laid[0]))
 		# Laid once in each copy, as _put_already keeps it.
@@ -2028,19 +2037,91 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 		if blocker != 0:
 			return room_words(other, blocker)
 		var cells: PackedInt32Array = builder.boxes_for(mesh, at)
+		var reach: Array[Vector3i] = _blocks_of(cells)
 		for pass_n: int in 2:
-			var met: String = ""
-			for one: Array in down:
-				if not within(str(one[2]), str(copy[3])) \
-						and BrickLattice.shared_cells(cells, one[1]) > 0:
-					met = str(one[0])
-					break
+			var met: String = _meets(down, blocks, cells, reach, str(copy[3]))
 			if met.is_empty():
 				break
 			if pass_n == 1 or not _round_out(copy):
 				return _room_words_part(other, met)
-		down.append([str(laid[0]), cells, other])
+		_put_down(down, blocks, [str(laid[0]), cells, other], reach)
 	return ""
+
+
+## What [method room_in_copies] reads of a hand once, whatever its frame:
+## each item's part as the world puts it down, its place in the hand and its
+## level ([method _changed_level]), and the copies each is asked of. Kept
+## while the same items are asked and the model, its tree, the lift and the
+## level edited are as they were: a drag's every aim moves only the frame,
+## and a 200-part hand read afresh at each aim was 4 ms of every frame of the
+## drag before the ask's clock began (wingfin, 2026-11-24).
+func _hand_plan(items: Array) -> Dictionary:
+	var key: Array = _copies_state() + [world.generation(), scenery.size(), entered]
+	if _plan.is_empty() or not is_same(_plan["items"], items) or _plan["key"] != key:
+		_plan = {"items": items, "key": key, "read": 0, "going": [], "by_level": {},
+			"level_of": {}, "pairs": null}
+	return _plan
+
+
+var _plan: Dictionary = {}
+
+
+## A side of the blocks [method _put_down] files boxes under, in cells: four
+## studs.
+const _BLOCK := 4 * BrickLattice.CELLS_PER_STUD
+
+
+## [param one] ([part, cells, the copy it goes into]) put at the end of
+## [param down], and its index filed in [param blocks] under each block its
+## cells reach ([param reach], [method _blocks_of]).
+static func _put_down(down: Array, blocks: Dictionary, one: Array, reach: Array[Vector3i]) -> void:
+	var k: int = down.size()
+	down.append(one)
+	for block: Vector3i in reach:
+		if blocks.has(block):
+			(blocks[block] as PackedInt32Array).append(k)
+		else:
+			blocks[block] = PackedInt32Array([k])
+
+
+## The part of the first of [param down] that shares a cell with
+## [param cells], those going into [param copy] or inside it left out; "" for
+## none. Asked only of those filed under a block the cells reach
+## ([param reach]): each twin laid looked through every part going down, the
+## hand's and every twin before it, 60,000 comparisons an aim for a 200-part
+## hand and one copy.
+static func _meets(down: Array, blocks: Dictionary, cells: PackedInt32Array,
+		reach: Array[Vector3i], copy: String) -> String:
+	var first: int = -1
+	for block: Vector3i in reach:
+		var near: Variant = blocks.get(block)
+		if near == null:
+			continue
+		for k: int in near as PackedInt32Array:
+			if first >= 0 and k >= first:
+				continue
+			var one: Array = down[k]
+			if not within(str(one[2]), copy) and BrickLattice.shared_cells(cells, one[1]) > 0:
+				first = k
+	return "" if first < 0 else str((down[first] as Array)[0])
+
+
+## Each block of [constant _BLOCK] cells a side that [param cells] (boxes of
+## six) reaches.
+static func _blocks_of(cells: PackedInt32Array) -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	var seen: Dictionary = {}
+	var n: int = 0
+	while n < cells.size():
+		for x: int in range(floori(cells[n] / float(_BLOCK)), floori((cells[n + 3] - 1) / float(_BLOCK)) + 1):
+			for y: int in range(floori(cells[n + 1] / float(_BLOCK)), floori((cells[n + 4] - 1) / float(_BLOCK)) + 1):
+				for z: int in range(floori(cells[n + 2] / float(_BLOCK)), floori((cells[n + 5] - 1) / float(_BLOCK)) + 1):
+					var block := Vector3i(x, y, z)
+					if not seen.has(block):
+						seen[block] = true
+						out.append(block)
+		n += 6
+	return out
 
 
 ## [method room_words] for a part not down yet, [param part_id]: one going
@@ -2065,8 +2146,8 @@ func _room_words_part(path: String, part_id: String) -> String:
 ## the model, its tree and the level being edited stay as they are: the ghost
 ## asks at every move.
 func _copies_laid(level: String) -> Array:
-	var lifted: bool = builder.is_carrying() and builder.carrying.lifted and builder._lift_on_top()
-	var key: Array = [world.revision, BrickWorld.paths_written, world.brick_count(), lifted]
+	var key: Array = _copies_state()
+	var lifted: bool = bool(key[3])
 	if key != _copies_key:
 		_copies_key = key
 		_copies_kept = {}
@@ -2169,6 +2250,14 @@ func _fits_round(level: String, outer: String) -> bool:
 			_end_pass()
 	_rounds_fit[key] = fits
 	return fits
+
+
+## What [method _copies_laid] and [method _hand_plan] are kept for: the model,
+## its tree, and whether parts lifted off it are in hand (they are read as
+## they stood before the lift).
+func _copies_state() -> Array:
+	var lifted: bool = builder.is_carrying() and builder.carrying.lifted and builder._lift_on_top()
+	return [world.revision, BrickWorld.paths_written, world.brick_count(), lifted]
 
 
 var _copies_key: Array = []

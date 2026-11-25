@@ -1963,7 +1963,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and is asked of the copies of the innermost one round it that keeps a
   part, `Assemblies._changed_level`: a copy dragged whole asks nothing of its
   own twins, and Wing#2 dragged whole at the model's level is never red; 200
-  of a 2,000-part sub-assembly's parts are asked within 4 ms; a number typed
+  of a 2,000-part sub-assembly's parts lifted and dragged cost an aim under
+  2 ms of ask, the hand read once and under the ask's clock
+  (`Assemblies._hand_plan`, `Builder._going_down` the same array each aim)
+  and a twin met only by what goes down near it (`Assemblies._meets`); a number typed
   on a red spot says why, and a paste or a lift's hint never covers the why,
   `EditVerbs._click_line`): every green ghost is put down (or moved)
   with its twin, every red one takes nothing and said why, each drawn as it

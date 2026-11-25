@@ -259,11 +259,15 @@ func _beside() -> void:
 func _cut_short(words: String) -> void:
 	if not _tree.has_method("room_in_copies"):
 		return
+	# In the world: _going_down's places are in the hand's frame.
 	var item: Array = (_builder.call("_going_down") as Array)[0]
+	var frame: Transform3D = _builder.carrying.get("_frame") if _builder.is_carrying() \
+		else _builder.get("_ghost_transform")
+	var at: Transform3D = frame * (item[1] as Transform3D)
 	var items: Array = []
 	for n: int in 4:
-		items.append([item[0], (item[1] as Transform3D).translated(Vector3(2000.0 + 200.0 * n, 0.0, 0.0))])
-	items.append(item)
+		items.append([item[0], at.translated(Vector3(2000.0 + 200.0 * n, 0.0, 0.0))])
+	items.append([item[0], at, item[2]])
 	var ask: Dictionary = {"items": items}
 	var calls: int = 0
 	var answer: Variant = null
@@ -528,11 +532,19 @@ func _whole_copy_drag() -> void:
 	_builder.clear_selection()
 
 
-## 200 parts of a 2,000-part sub-assembly in hand, asked of its copies: each
-## path is walked up once an ask, on the index, not a copy of the
-## sub-assembly's parts for each part (review L1: ~400k copies an aim).
+## 200 parts of a 2,000-part sub-assembly lifted into hand and dragged, aimed
+## as the pointer aims them (Builder.update_preview): the copies' ask each aim
+## makes (Builder._ask_copies), the least of three. The bar is 2 ms an aim:
+## a frame at 60 Hz is 16.7 ms, the aim alone took up to 3 ms on 10179, the
+## ask's clock takes up to 4 ms more where a copy is asked
+## (Builder.COPIES_ASK_US), drawing needs the rest, and a drag pays it every
+## frame. The hand is read once (Assemblies._hand_plan, under the ask's
+## clock), and an aim moves only its frame. Up to wingfin every aim read each
+## part's place and level afresh before the clock (and its cells, to
+## a749390f3: 4,006 us for these 200 in bar5), and Builder made all 200
+## placements again: about 2 ms of work an aim at equal load (wingfin).
 func _many_in_hand() -> void:
-	if not _tree.has_method("_changed_level"):
+	if not _tree.has_method("room_in_copies"):
 		return
 	_main.call("clear_model")
 	await _frames(3)
@@ -540,23 +552,47 @@ func _many_in_hand() -> void:
 	for n: int in 2000:
 		var at := Transform3D(Basis.IDENTITY, Vector3(20.0 * (n % 50), 8.0, 20.0 * (n / 50)))
 		var brick_id: int = _world.add_brick("3024", 4, at)
+		_builder.register(brick_id, "3024", at)
 		# By the instance: on the class, set_path is the script resource's own.
 		_builder.set_path(_world.get_brick(brick_id), "Big#1")
 		ids.append(brick_id)
 	await _frames(2)
-	var items: Array = []
-	for n: int in 200:
-		items.append(["3024", _world.get_brick(ids[n]).transform.translated(Vector3(0, 400, 0)), "Big#1"])
-	var best: int = 1 << 40
-	for _try: int in 3:
-		var began: int = Time.get_ticks_usec()
-		_tree.call("room_in_copies", {"items": items}, 4000)
-		best = mini(best, Time.get_ticks_usec() - began)
-	# No copy of Big: what is timed is finding where each part goes (its
-	# level walked once, off the index), before any copy is asked; the
-	# hand's own cells are read under the ask's clock since a749390f3+1.
-	_check("200 of a 2,000-part sub-assembly's parts in hand asked where they go in %d us, the least of three (%d under it)"
-		% [best, _tree.ids_under("Big#1").size()], best < 2000 and _tree.ids_under("Big#1").size() == 2000)
+	_select_only(ids.slice(0, 200))
+	var began: int = Time.get_ticks_usec()
+	var lifted: int = _builder.lift_selection()
+	var lift_us: int = Time.get_ticks_usec() - began
+	var room: Callable = _builder.copies_room
+	var way := Vector3(0.05, -1.0, 0.02).normalized()
+	# Each aim made as the pointer makes it, the copies not asked, and then
+	# the ask it makes (Builder._ask_copies) timed alone: the carry's own aim
+	# of 200 parts is 11 to 17 ms here, and what the ask adds is lost in it.
+	# The first reads the hand, timed once, beside the lift.
+	var first_us: int = 0
+	var most: int = 0
+	var asked: int = 0
+	for k: int in 13:
+		var origin := Vector3(80.0 + 37.0 * k, 900.0, 280.0 + 23.0 * (k % 5))
+		var least: int = 1 << 40
+		var was_asked: bool = false
+		var tries: int = 3 if k > 0 else 1
+		for t: int in tries:
+			# A ray a hair off each time: the carry's own aim is kept per ray.
+			_builder.copies_room = Callable()
+			_builder.update_preview(origin + Vector3(0.001 * t, 0.0, 0.0), way)
+			_builder.copies_room = room
+			began = Time.get_ticks_usec()
+			_builder.call("_ask_copies")
+			least = mini(least, Time.get_ticks_usec() - began)
+			was_asked = was_asked or not (_builder.get("_copies_asked") as Array).is_empty()
+		if k == 0:
+			first_us = least
+			continue
+		most = maxi(most, least)
+		if was_asked:
+			asked += 1
+	_check("200 of a 2,000-part sub-assembly's parts lifted and dragged: the copies' ask takes at most %d us of an aim, the least of three (%d lifted, %d of 12 aims asked; the hand read at the first, %d us; the lift %d us)"
+		% [most, lifted, asked, first_us, lift_us], lifted == 200 and asked == 12 and most < 2000)
+	_builder.cancel_carry()
 	_main.call("clear_model")
 	await _frames(3)
 

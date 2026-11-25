@@ -3282,7 +3282,8 @@ func _ask_copies() -> void:
 		_copies_asked = asked
 		_copies_hand = hand
 		copies_refuse = ""
-		_copies_ask = {} if asked.is_empty() else {"items": _going_down()}
+		_copies_ask = {} if asked.is_empty() else {"items": _going_down(),
+			"frame": carrying._frame if is_carrying() else _ghost_transform}
 	if not _copies_ask.is_empty():
 		var answer: Variant = copies_room.call(_copies_ask, COPIES_ASK_US)
 		if answer == null:
@@ -3308,20 +3309,35 @@ func _ask_copies() -> void:
 	_drawn_red = red
 
 
-## What a click would put down now, [part id, where, the sub-assembly it
-## goes into] each, as [method _put_carried] puts it: the part in hand where
-## its ghost is, or each part carried where the carry puts it. A part lifted
-## off the model goes back into its own (one picked in the tree and dragged,
-## the sub-assembly round it not entered); anything else into
-## [member place_group], the one being edited. "" for the model itself.
+## What a click would put down, [part id, where in the hand's frame, the
+## sub-assembly it goes into] each, as [method _put_carried] puts it: the
+## part in hand where its ghost is, or each part carried where the carry puts
+## it (the frame: the ghost's, the carry's). A part lifted off the model goes
+## back into its own (one picked in the tree and dragged, the sub-assembly
+## round it not entered); anything else into [member place_group], the one
+## being edited. "" for the model itself. Made once a hand, the same array
+## each aim (Assemblies._hand_plan keeps what it read of it): every aim of a
+## drag made the hand's placements afresh, 200 of them with their cells.
 func _going_down() -> Array:
+	var hand: Variant = carrying.items if is_carrying() else null
+	var key: Array = [place_group, carrying.lifted] if is_carrying() else [place_group, held_part]
+	if is_same(hand, _going_hand) and key == _going_key:
+		return _going
+	_going_hand = hand
+	_going_key = key
 	if not is_carrying():
-		return [[held_part, _ghost_transform, place_group]]
-	var out: Array = []
-	for item: Dictionary in carrying.placements(self):
-		out.append([str(item["part"]), item["at"], place_group if not carrying.lifted
+		_going = [[held_part, Transform3D.IDENTITY, place_group]]
+		return _going
+	_going = []
+	for item: Dictionary in carrying.items:
+		_going.append([str(item["part"]), item["at"], place_group if not carrying.lifted
 			else Assemblies.path_from(str(item.get("group", "")), str(item.get("unit", "")))])
-	return out
+	return _going
+
+
+var _going: Array = []
+var _going_hand: Variant = null
+var _going_key: Array = []
 
 
 func _aim_single(origin: Vector3, direction: Vector3) -> void:
