@@ -434,8 +434,12 @@ func _spot_landing(part_at: Transform3D, target: Vector3) -> Vector3:
 
 
 ## The figure in hand aimed straight down at [param spot]: where it would stand.
+## Aimed last in the frame it returns in, as a tap aims where it lands and puts
+## down in one frame: at 390 x 844 after an Undo, the frames between the aim
+## and the click stood the figure 80 LDU off the spot asked.
 func _aim_figure(spot: Vector3) -> Transform3D:
 	for _n: int in 4:
 		_builder.update_preview(spot + Vector3(0, 4000, 0), Vector3.DOWN)
 		await process_frame
+	_builder.update_preview(spot + Vector3(0, 4000, 0), Vector3.DOWN)
 	return _builder.get("_ghost_transform")
