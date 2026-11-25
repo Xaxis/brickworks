@@ -12652,9 +12652,10 @@ func _size_for_a_finger() -> void:
 			_fit_tool_panel(panel as Control))
 	# What the app is busy with is one line, its end cut short where the
 	# screen is: "Drawing the steps…" ran 500 points past a tablet's edge.
+	# At a word, never inside one.
 	for found: Node in _shell.status.find_children("*", "Label", true, false):
 		(found as Label).clip_text = true
-		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 
 
 ## The tools' column on a touch screen: beside the model where the screen
