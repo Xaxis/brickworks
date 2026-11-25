@@ -6460,7 +6460,15 @@ func _place_figure() -> int:
 		lattice.occupy_boxes(brick.id, boxes_for(library.mesh_for(brick.part_id), to))
 		riding_later += 1
 	_figure_followers = []
-	_history.append({"undo": "group", "steps": steps})
+	var step: Dictionary = {"undo": "group", "steps": steps}
+	if lifted:
+		# One move: what lifted it and what put it down undo together, as a
+		# carried move's do (_put_carried). Undone in two, the first took the
+		# figure off the model, and the timeline was worked out without it.
+		steps.append_array(_history.pop_back()["steps"])
+		_figure_lift = {}
+		step["words"] = "moved %s" % _many(ids.size() + riding_later)
+	_history.append(step)
 	_redo.clear()
 	placed.emit(ids[0], held_figure_name)
 	return ids[0]

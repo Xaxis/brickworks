@@ -16,7 +16,9 @@
 ##           in hand (its steps, the step it is at, the plate drawn or not), a
 ##           save made then, and put down where it stood and somewhere else:
 ##           each part's step and sub-model, the timeline's steps and the saved
-##           file's, against the model as it opened.
+##           file's, against the model as it opened; then one Undo, which puts
+##           it back where it stood. Saved in hand and then put back, saved
+##           again: the file as opened.
 ##   home    a figure on a 2 x 4 brick, its head and held plate to come, aimed
 ##           back where it stood and a quarter turned there: it stands on the
 ##           brick, as on a clear spot, never on its own head (fastreview F1).
@@ -171,6 +173,7 @@ func _replan() -> void:
 			var depth: int = _builder.history_depth()
 			var before: Dictionary = _model()
 			var steps_were: String = _timeline()
+			var ids_were: String = _timeline(true)
 			var f: Dictionary = _ids()
 			var torso_was: Transform3D = _world.get_brick(int(f["torso"])).transform
 			var plate: int = int(f["plate"])
@@ -181,8 +184,16 @@ func _replan() -> void:
 			var in_hand: String = _timeline()
 			var plate_drawn: String = "in hand" if _world.get_brick(plate) == null \
 				else ("drawn" if not _ahead(plate) else "not drawn")
+			# The timeline by brick: the parts in hand are off the model, so by
+			# name they read as gone.
+			_check("%s %s: in hand, the timeline's steps are the person's, at the step it was (%s / %s)"
+				% [where, put, in_hand, steps_were], _timeline(true) == ids_were)
+			if not at_last:
+				_check("fig %s: in hand, its plate still to come is not drawn (%s)" % [put, plate_drawn],
+					plate_drawn == "not drawn")
 			if put == "hand":
-				# A save made with the figure in hand.
+				# A save made with the figure in hand, then put back where it
+				# stood and saved again.
 				var name: String = "stepfast2 replan in hand %s" % where
 				_store.title = name
 				var file_held: String = _saved_steps(name)
@@ -191,13 +202,19 @@ func _replan() -> void:
 				if not at_last:
 					await _shot("R1_in_hand_at_fig_step")
 				_check("%s: X over the torso holds the figure" % where, held)
-				_check("%s: in hand, the timeline's steps are the person's, at the step it was (%s / %s)"
-					% [where, in_hand, steps_were], _same_steps(in_hand, steps_were))
-				if not at_last:
-					_check("fig: in hand, its plate still to come is not drawn (%s)" % plate_drawn,
-						plate_drawn == "not drawn")
-				_check("%s: saved in hand, the file's steps are the person's but the figure's parts in hand (%s / %s)"
+				_check("%s: saved in hand, each file's steps as opened, the figure's parts in hand not in them (%s / %s)"
 					% [where, file_held, file_opened], _steps_but_figure(file_held, file_opened))
+				await _aim(Vector3(torso_was.origin.x, 0, torso_was.origin.z))
+				var back: int = _builder.place()
+				await _frames(6)
+				name = "stepfast2 replan in hand then back %s" % where
+				_store.title = name
+				var file_back: String = _saved_steps(name)
+				var moved: Array = _differ(before, _model(), true)
+				_result("replan.%s.hand_back" % where, "put back #%d; the timeline %s; parts not in their own step and sub-model: %s; saved: %s"
+					% [back, _timeline(), moved, file_back])
+				_check("%s: put back after a save in hand, every part in its own step and sub-model (%d not), the file's steps as opened (%s)"
+					% [where, moved.size(), file_back], back != 0 and moved.is_empty() and file_back == file_opened)
 			else:
 				var spot: Vector3 = Vector3(torso_was.origin.x, 0, torso_was.origin.z) if put == "home" \
 					else Vector3(-120, 0, 120)
@@ -225,6 +242,15 @@ func _replan() -> void:
 					_same_steps(steps_after, steps_were))
 				_check("%s %s: saved, the file's steps as opened (%s)" % [where, put, file_put],
 					file_put == file_opened)
+				# One Undo, the figure still in hand as a click left it: it is
+				# back where it stood, never off the model.
+				await _verbs.press("undo")
+				await _frames(4)
+				var undone: Array = _signed(_model())
+				_result("replan.%s.%s_undo" % [where, put], "one Undo: %d parts (were %d), the timeline %s"
+					% [undone.size(), before.size(), _timeline()])
+				_check("%s %s: one Undo puts the figure back where it stood, the timeline as it was (%s)"
+					% [where, put, _timeline()], undone == _signed(before) and _same_steps(_timeline(), steps_were))
 			if _builder.is_holding_figure():
 				_builder.drop_figure()
 			while _builder.history_depth() > depth:
@@ -242,14 +268,16 @@ static func _same_steps(a: String, b: String) -> bool:
 
 
 ## A file saved with the figure in hand against the file as opened: the same
-## steps in every file but the figure's parts on show, gone, and no other.
+## steps in every file, but the figure's parts (and the line placing its
+## sub-model, with the whole of it in hand) gone, and no other.
 static func _steps_but_figure(held: String, opened: String) -> bool:
-	var figure: PackedStringArray = PackedStringArray(["3815", "3816", "3817", "973", "3818", "3819", "3626b"])
+	var figure: PackedStringArray = PackedStringArray(["3815", "3816", "3817", "973", "3818", "3819",
+		"3626b", "3023", "fig"])
 	var drop: Callable = func(text: String) -> String:
 		var out := PackedStringArray()
 		for section: String in text.split(" | "):
 			var kept := PackedStringArray()
-			for word: String in section.split(" "):
+			for word: String in section.split(" ", false):
 				if not figure.has(word):
 					kept.append(word)
 			out.append(" ".join(kept))
@@ -519,15 +547,16 @@ static func _differ(before: Dictionary, after: Dictionary, moved: bool) -> Array
 	return out
 
 
-## The timeline: how many steps, the step it is at, and each step's parts.
-func _timeline() -> String:
+## The timeline: how many steps, the step it is at, and each step's parts, by
+## name, or with [param by_id] by brick number.
+func _timeline(by_id: bool = false) -> String:
 	var at: Instructions.Step = _steps.current_step()
 	var out := PackedStringArray()
 	for step: Instructions.Step in _steps.steps():
 		var parts := PackedStringArray()
 		for brick_id: int in step.brick_ids:
 			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-			parts.append(brick.part_id.get_basename() if brick != null else "#gone")
+			parts.append(str(brick_id) if by_id else brick.part_id.get_basename() if brick != null else "#gone")
 		parts.sort()
 		out.append("%d:%s" % [step.number, ",".join(parts)])
 	return "%d steps at %d [%s]" % [_steps.steps().size(), at.number if at != null else -1, " ".join(out)]
