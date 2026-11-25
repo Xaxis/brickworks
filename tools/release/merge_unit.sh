@@ -18,7 +18,9 @@ cd "$W" || exit 1
 # Held until the last gate is done: ship.sh refuses a worktree whose merge
 # is still checking, as m26 was shipped while its tool list was (2026-10-14).
 LOCK="$(git rev-parse --git-dir)/merging"; touch "$LOCK"; trap 'rm -f "$LOCK"' EXIT
-ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
+# The author every commit must carry (Vercel seat-checks it): never written here.
+AUTHOR=$(bash "$HERE/author.sh") || exit 1
+ID=(-c user.name=Xaxis -c "user.email=$AUTHOR")
 # Untracked files Godot's import made (.uid) that the branch also carries
 # would stop the merge: take them out first. The branch's committed one
 # wins even when it differs: the import here made its own for a script the

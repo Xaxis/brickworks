@@ -637,7 +637,7 @@ again() {
   for p in $(git -C "$W" rev-parse "$1^@"); do args+=(-p "${first:-$p}"); first=""; done
   GIT_AUTHOR_NAME=$(git -C "$W" log -1 --format=%an "$1") GIT_AUTHOR_EMAIL=$(git -C "$W" log -1 --format=%ae "$1") \
     GIT_AUTHOR_DATE=$(git -C "$W" log -1 --format=%aD "$1") \
-    git -C "$W" -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit-tree "$1^{tree}" "${args[@]}" -m "$2"
+    git -C "$W" -c user.name=Xaxis -c "user.email=$(bash "$HERE/author.sh")" commit-tree "$1^{tree}" "${args[@]}" -m "$2"
 }
 
 # --- the train itself (stage starts it as `run TAG`) ---

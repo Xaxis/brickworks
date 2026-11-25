@@ -795,7 +795,9 @@ def packages(versions: list[str], platforms: list[str], out: Path) -> int:
                 "tools/update_check.py: the updater's What's new reads this.\n" % version, 1))
             subprocess.run([sys.executable, "tools/release.py", "version", "--set", version], cwd=tree,
                            check=True)
-            subprocess.run(["git", "-c", "user.name=Xaxis", "-c", "user.email=william.neeley@gmail.com",
+            author = subprocess.run(["bash", "tools/release/author.sh"], capture_output=True, text=True,
+                                    check=True).stdout.strip()
+            subprocess.run(["git", "-c", "user.name=Xaxis", "-c", "user.email=" + author,
                             "commit", "-q", "-m", "Test version %s for tools/update_check.py" % version,
                             "VERSION", "project.godot", "CHANGELOG.md"], cwd=tree, check=True)
             subprocess.run([sys.executable, "tools/release.py", "build", "--assets=%s" % small,

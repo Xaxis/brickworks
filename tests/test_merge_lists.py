@@ -15,7 +15,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ID = ["-c", "user.name=Xaxis", "-c", "user.email=william.neeley@gmail.com"]
+ID = ["-c", "user.name=Xaxis", "-c", "user.email=xaxis@example.invalid"]
 HEADLESS = "tools/suite/headless.txt"
 OUT = "tools/suite/out.txt"
 LATER = "supabase/later.tsv"
@@ -61,7 +61,7 @@ def sides(tmp: Path, base: dict, ours: dict, theirs: dict) -> Path:
 
 
 def merge_unit(repo: Path) -> subprocess.CompletedProcess:
-    env = dict(os.environ, MERGE_ONLY="1")
+    env = dict(os.environ, MERGE_ONLY="1", BW_COMMIT_EMAIL="xaxis@example.invalid")
     return subprocess.run(["bash", str(ROOT / "tools/release/merge_unit.sh"), str(repo), "unit",
                            "Merge: the unit"], cwd=repo, env=env, capture_output=True, text=True)
 
