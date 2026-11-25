@@ -36,7 +36,7 @@
 // the token is taken as the window's is: checkToken, then the same
 // sign-in.
 
-import { forgetSessions, isTestAccount, sessionEnded, sessionOf, sessionWay } from "./_auth.js";
+import { AuthError, forgetSessions, isTestAccount, sessionEnded, sessionOf, standingOf } from "./_auth.js";
 import { db } from "./_db.js";
 import { audiences, nativeOffered, ocConfigured, ocHosts } from "./_oc_config.js";
 import {
@@ -503,19 +503,23 @@ const FRESH_SECONDS = 300;
 /// code sent). Nor is a password, but a test account's
 /// (tools/web/session.mjs), whose address nobody can receive mail at:
 /// anybody signed in could set a password on their account (oc188's
-/// review, H1; supabase/no_new_ways_in.sql now refuses it). Throws when
-/// either record cannot be read.
+/// review, H1; supabase/no_new_ways_in.sql now refuses it).
+///
+/// All of it from one read of the session as it is now (api/_auth.js
+/// standingOf), never a held one: a way's session, read gone, was read as a
+/// code's while another instance held it alive (signin6, the class of
+/// signreview3 R1). Throws AuthError 401 when the session is gone, and
+/// throws when it cannot be read: whoever asked refuses.
 export async function codeOf(claims) {
-  const [session, way] = claims.session_id
-    ? await Promise.all([sessionOf(claims.session_id), sessionWay(claims.session_id)]) : [null, null];
+  const standing = await standingOf(claims);
+  if (!standing.exists) throw new AuthError("You were signed out. Sign in again.");
   const amr = Array.isArray(claims.amr) ? claims.amr : [];
-  const bound = Boolean(session && session.bound);
-  const recent = (one) => Boolean(one && session && session.exists && !bound && !way
-    && Date.now() / 1000 - Number(one.timestamp) <= FRESH_SECONDS);
+  const coded = standing.by === "code";
+  const recent = (one) => Boolean(one && coded && Date.now() / 1000 - Number(one.timestamp) <= FRESH_SECONDS);
   const fresh = recent(amr.find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims))));
   const address = String(claims.email || "").trim().toLowerCase();
   const emailed = recent(amr.find((one) => one?.method === "otp")) && address && !madeUp(address) ? address : null;
-  return { bound, way, fresh, emailed };
+  return { bound: Boolean(standing.bound), way: standing.way, fresh, emailed };
 }
 
 /// Whether a Claude connection approved while signed in with orangecheck

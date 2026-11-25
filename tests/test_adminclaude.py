@@ -230,7 +230,8 @@ def test_only_drafts_are_written() -> None:
     # read), and the read functions PostgREST answers as POST.
     assert got["writes"] == ["POST admin_claude_drafts", "POST rpc/admin_claude_hold", "POST rpc/admin_claude_month",
                              "POST rpc/admin_claude_settle", "POST rpc/admin_mail", "POST rpc/beta_testers_list",
-                             "POST rpc/site_releases_list", "POST social_rules", "POST social_sends"]
+                             "POST rpc/session_standing", "POST rpc/site_releases_list", "POST social_rules",
+                             "POST social_sends"]
     assert got["sends"]["statuses"] == ["draft"] and got["sends"]["made"] == got["sends"]["drafts_marked"]
 
 

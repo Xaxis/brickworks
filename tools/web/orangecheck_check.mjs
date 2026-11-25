@@ -211,9 +211,9 @@ async function route() {
 }
 
 // Each call from a network of its own (2001:db8::/32 is for documentation),
-// unless it says which: the rate limit is checked on its own, below. A
-// network is an IPv6 /64 (api/_ways.js networkOf, signin5), so the /64
-// differs, not only the address in it.
+// unless it says which. Nothing counts by network since signin6 (each
+// orangecheck id is counted, tools/web/oc_often_check.mjs); below, tries
+// from one address are shown counted by nothing.
 const anywhere = () => `2001:db8:${randomBytes(4).toString("hex").replace(/(.{4})/, "$1:")}::1`;
 
 // Supabase redeems 30 sign-in links from one address at once, then one
@@ -1598,12 +1598,15 @@ try {
   check("without an audience, nobody signs in with orangecheck", noAudience.status === 503, `${noAudience.status}`);
   process.env.OC_AUDIENCE = AUD;
 
-  // Twenty tries from one address in a quarter of an hour, then no more.
+  // Tries that are not a token are refused by what they are, and counted
+  // by nothing (signin6, signreview3 R3): signin5 counted 20 a network
+  // before reading them, so junk from a school's address shut its people
+  // out. Only an orangecheck id whose token checks out is counted.
   const from = anywhere();
   const tries = [];
-  for (let n = 0; n < 21; n += 1) tries.push((await call(handler, { token: "not.a.token" }, { ip: from })).status);
-  check("twenty tries from one address, the next refused", tries.slice(0, 20).every((s) => s === 401) && tries[20] === 429,
-    tries.join(" "));
+  for (let n = 0; n < 25; n += 1) tries.push((await call(handler, { token: "not.a.token" }, { ip: from })).status);
+  check("25 tries that are not a token from one address: each refused, none counted (never 429)",
+    tries.every((s) => s === 401), tries.join(" "));
 
   // Only POST ?op=signin.
   const wrong = await call(handler, { token: token().jwt }, { method: "GET" });

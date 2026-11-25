@@ -85,21 +85,28 @@
 //
 // How often (F9): each sign-in spends one of Supabase's verifies from this
 // server's own address (api/_minted.js), shared by everyone's Google,
-// GitHub and orangecheck sign-ins, so each one Google or GitHub has said
-// who it is is counted before it spends one (LIMITS, below), and one GitHub
-// account in a loop is refused before it spends any. Nothing that costs
-// nothing is counted, so that no one can use up a shared network's count
-// without an account of either (signin5, signreview2 SR2).
+// GitHub and orangecheck sign-ins, so each Google or GitHub account is
+// counted (LIMITS, below) right before it would spend one, once Google or
+// GitHub has said who it is and the way is vetted, and one in a loop is
+// refused before it spends any. Nothing is counted before that, and
+// nothing per network (signin6, signreview2 SR2, signreview3 R2): a count
+// anyone can fill from a school's or a carrier's address, with free
+// accounts or none, locks out everyone there, and a try it refused used up
+// the person's own count.
 //
 // A Claude connection approved from a Google or GitHub session is that
-// way's (api/oauth.js codeFor, its way): its Unlink ends it too, with the
-// sessions, in the same step (signin5, SR1).
+// way's: the code names the session, and is traded only while the session
+// is there and its way still on, asked under the Unlink's lock, which then
+// ends the connection with the sessions (api/oauth.js; signin6, SR1, R1).
+// Whatever this file hands out on a session's say (a session taken, GitHub's
+// id kept, Unlink's "this was you") asks that session as it is, never a
+// held answer (api/_auth.js standingOf).
 
 import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from "node:crypto";
 import { afterAnswer } from "./_after.js";
-import { AuthError, bearer, isMaster, sessionEnded, sessionWay, verify } from "./_auth.js";
+import { AuthError, bearer, isMaster, sessionEnded, standingOf, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
-import { mintedSession } from "./_minted.js";
+import { claimsOf as tokenClaims, mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { originOf } from "./_oauth.js";
 import { scopeOf, settingOf } from "./_settings.js";
@@ -254,38 +261,32 @@ function appOf(query) {
 // Supabase allows the server's address 30 verifies at once and then one
 // each 10 s: 90 in a quarter of an hour, for everyone's Google, GitHub and
 // orangecheck sign-ins together, and a sign-in that finds none left reads
-// "busy". So in any 15 minutes:
-// - one Google or GitHub account comes back signed in at most 5 times (the
-//   site, the app, a phone, and two tries more): a loop of it takes 5 of
-//   the 90, never the 30 at once;
-// - one network (an IPv4 address, or an IPv6 /64, which one person holds
-//   whole) comes back signed in at most 30 times, with as many accounts,
-//   for a class or an office signing in together.
-// Both are counted once Google or GitHub has said who it is, the account
-// first, before anything is made or minted, and what is refused is not
-// counted. Nothing before is (signreview2 SR2): a start costs nothing but
-// the provider's page, and a way back is the one its start was for, its
-// start's id spent first (wayBack), so a start cookie sent again is
-// refused before Google or GitHub is asked. Counted by network, either let
-// one visitor with no account lock everyone on a school's, an office's or a
-// phone carrier's address out. Each made-up way back costs one start, and
-// one call of Google's or GitHub's token endpoint, which refuses it. A code
-// to the address is never limited by these, so the words point to it.
-export const LIMITS = { minutes: 15, account: 5, network: 30 };
+// "busy". So one Google or GitHub account, or one orangecheck id, comes
+// back signed in at most 5 times in any 15 minutes (the site, the app, a
+// phone, and two tries more): a loop of it takes 5 of the 90, never the 30
+// at once. Counted per identity its provider has verified, and only there
+// (api/_minted.js, right before the verify): never per network, nor before
+// anyone is known (signin6). A start costs nothing but the provider's page,
+// and a way back is the one its start was for, its start's id spent first
+// (wayBack), so a start cookie sent again is refused before Google or
+// GitHub is asked. Each made-up way back costs one start, and one call of
+// Google's or GitHub's token endpoint, which refuses it (signreview3 N1). A
+// code to the address is never limited by these, so the words point to it.
+export const LIMITS = { minutes: 15, account: 5 };
 
 /// What each count is kept under in way_attempts (way_may_try): a provider
-/// account's, by its id, a network's (networkOf), and an orangecheck id's
-/// (api/orangecheck.js, as many as a provider account's).
+/// account's, by its id, and an orangecheck id's (api/orangecheck.js, as
+/// many as a provider account's).
 export const COUNTED = {
   account: (name, id) => `back ${name} ${id}`,
-  network: (network) => `in ${network}`,
   orangecheck: (did) => `oc ${did}`,
 };
 
 /// The network [request] came from, as one key: an IPv4 address, or an
-/// IPv6 address's first 64 bits (a person is given a /64 whole, and could
-/// count afresh at every address of it). Vercel sets x-forwarded-for, and
-/// overwrites one sent with the request.
+/// IPv6 address's first 64 bits. Nothing counts by it since signin6; kept
+/// for the checks that prove so, which fill signin5's count of a network
+/// under this key and sign in from it all the same (tools/web/ways_check.mjs
+/// 12, signreview3's attack3.mjs).
 export function networkOf(request) {
   const said = String(request?.headers?.["x-forwarded-for"] || "").split(",")[0].trim()
     || String(request?.socket?.remoteAddress || "");
@@ -296,21 +297,6 @@ export function networkOf(request) {
   const right = tail === null ? [] : tail ? tail.split(":") : [];
   const groups = tail === null ? left : [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right];
   return `${groups.slice(0, 4).map((group) => group.replace(/^0+(?=.)/, "")).join(":")}::/64`;
-}
-
-/// [key] counted as one more try: null when it is under [per] tries in
-/// LIMITS.minutes, else why not, as failed() says it: often, or failed
-/// when the count could not be asked (refused then, as a code's limit is,
-/// so that a limiter out of reach never lets everything through).
-async function counted(key, per) {
-  try {
-    const may = await db("rpc/way_may_try", { method: "POST",
-      body: { try_key: key, per, window_minutes: LIMITS.minutes } });
-    return may === true ? null : "often";
-  } catch (trouble) {
-    console.error(`ways: not counted: ${String(trouble?.message || trouble).slice(0, 160)}`);
-    return "failed";
-  }
 }
 
 /// Where a refused sign-in goes: back to the app with its error, or to the
@@ -400,20 +386,19 @@ export async function wayBack(request, response) {
   }
   // The owner's account: by a code alone (F8). Nothing is made or minted.
   if (isMaster({ email: who.email })) return failed(response, name, "code_only", start);
-  // Counted now that Google or GitHub has said who it is (SR2): the
-  // account, then the network it came from.
-  const often = await counted(COUNTED.account(name, who.id), LIMITS.account)
-    || await counted(COUNTED.network(networkOf(request)), LIMITS.network);
-  if (often) return failed(response, name, often, start);
 
   let minted;
   let made = false;
   try {
     made = await accountFor(who.email);
-    minted = await mintedSession(who.email, { vet: (user) => vetFor(name, who, user, made) });
+    // Counted by this Google or GitHub account alone, once the way is
+    // vetted, right before Supabase's verify is spent (signin6).
+    minted = await mintedSession(who.email, { vet: (user) => vetFor(name, who, user, made),
+      count: { key: COUNTED.account(name, who.id), per: LIMITS.account, minutes: LIMITS.minutes } });
   } catch (trouble) {
     if (trouble?.unlinked) return failed(response, name, "unlinked", start);
     if (trouble?.confirm) return confirmFirst(request, response, name, who, trouble.account, start);
+    if (trouble?.often) return failed(response, name, "often", start);
     console.error(`ways: no session: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return failed(response, name, trouble?.busy ? "busy" : "failed", start);
   }
@@ -494,16 +479,20 @@ function confirmFirst(request, response, name, who, account, start) {
 
 const GONE = "That sign-in took too long or was finished already. Sign in again.";
 
-/// [held] handed over, the first time its id is redeemed.
+/// [held] handed over, the first time its id is redeemed, and only while
+/// its session is there, as its way's, read as it is now: an Unlink in the
+/// two minutes since the callback ended it (signin6).
 async function handOver(held, response) {
   let first;
+  let standing;
   try {
     first = await spend(held);
+    standing = first ? await standingOf(tokenClaims(held.s.access_token)) : null;
   } catch (trouble) {
     console.error(`ways: not handed over: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return response.status(503).json({ error: "Brickworks could not finish signing you in just now. Sign in again in a minute." });
   }
-  if (!first) return response.status(410).json({ error: GONE });
+  if (!first || !standing?.exists || standing.way !== held.s.with) return response.status(410).json({ error: GONE });
   return response.status(200).json(held.s);
 }
 
@@ -554,6 +543,7 @@ export async function wayBind(request, response) {
     return response.status(410).json({ error: "That GitHub sign-in took too long, or was for another account. Sign in with GitHub again." });
   }
   try {
+    // Asked of the session as it is now (codeOf: standingOf): gone, 401.
     const { codeOf } = await import("./_oc.js");
     if (!(await codeOf(claims)).emailed) {
       return response.status(403).json({ error: "Sign in with a code we email you first.", fresh: false });
@@ -566,6 +556,7 @@ export async function wayBind(request, response) {
     }
     if (bound !== "on") throw new Error(`way_bind said ${JSON.stringify(bound)}`);
   } catch (trouble) {
+    if (trouble instanceof AuthError) return response.status(trouble.status).json({ error: trouble.message });
     console.error(`ways: GitHub not kept: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return response.status(502).json({ error: "Brickworks could not keep GitHub for you just now. Sign in with GitHub again in a minute." });
   }
@@ -595,8 +586,9 @@ export async function waysRoute(request, response) {
       const name = String(body?.with || "");
       if (!WAYS[name] || typeof body?.on !== "boolean") return response.status(422).json({ error: "Google or GitHub, on or off." });
       if (!code) return response.status(409).json({ error: "This account signs in only with orangecheck." });
-      // Whether this session is one the way started, read before it ends.
-      you = !body.on && claims.session_id ? (await sessionWay(claims.session_id)) === name : false;
+      // Whether this session is one the way started, read as it is now,
+      // before it ends.
+      you = !body.on ? (await standingOf(claims)).way === name : false;
       // Unlinked: off, GitHub's id let go, and every session the way started
       // ended (F2), in one step that waits for a sign-in of the same way, or
       // makes it wait (F7). Linked again: as never used, so GitHub asks a

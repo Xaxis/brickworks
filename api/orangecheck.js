@@ -12,7 +12,7 @@
 //   window to open: a one-time code orangecheck sent the person's browser
 //   back to the app with, at 127.0.0.1. Traded at orangecheck for the token
 //   the window would have given (api/_oc.js tradeCode), then exactly as
-//   ?op=signin: counted, checked, spent, the same account, the same
+//   ?op=signin: checked, spent, counted, the same account, the same
 //   session. Only where it is offered (api/_oc_config.js nativeOffered).
 //
 //   With a sign-in (/settings, web/settings.js):
@@ -46,12 +46,12 @@
 // worked out from the id: anybody could work it out too and make that
 // account first, and the first sign-in would walk into it. Nothing is ever
 // mailed there (api/otp.js refuses the domain, api/_comments.js skips it).
-// Rate limited per network in the database, as codes are, and per
-// orangecheck id once its token checks out, as a Google or GitHub account
-// is (signin5, signreview2 SR3): each sign-in spends one of Supabase's
-// verifies from this server's address (api/_minted.js), shared with
-// everyone's Google and GitHub sign-ins, and one orangecheck account in a
-// loop from a few addresses emptied it.
+// Rate limited per orangecheck id once its token checks out, as a Google or
+// GitHub account is (signin5, signreview2 SR3), and by nothing else
+// (signin6: never per network, nor before the token is read): each sign-in
+// spends one of Supabase's verifies from this server's address
+// (api/_minted.js), shared with everyone's Google and GitHub sign-ins, and
+// one orangecheck account in a loop from a few addresses emptied it.
 
 import { noted } from "./_noted.js";
 import { afterAnswer } from "./_after.js";
@@ -61,7 +61,7 @@ import { db, reach } from "./_db.js";
 import { mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
-import { COUNTED, LIMITS, networkOf } from "./_ways.js";
+import { COUNTED, LIMITS } from "./_ways.js";
 import {
   checkToken, codeOf, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, spendToken, tradeCode,
 } from "./_oc.js";
@@ -98,14 +98,18 @@ async function dropAccount(account) {
 /// one-time link for its address, redeemed at once, each step naming
 /// [account]. An account its id signs in to and not marked as having
 /// orangecheck is marked first, so the session's own token carries the mark
-/// and has every request asked after (oc188's review, L1).
-async function sessionFor(account) {
+/// and has every request asked after (oc188's review, L1). Counted by
+/// orangecheck id [did] alone, right before the verify (SR3, signin6): as
+/// many as one Google or GitHub account signs in (api/_ways.js LIMITS),
+/// from however many addresses, and never by network.
+async function sessionFor(account, did) {
   const who = await reach("auth GET admin/users", 10, `${supabase()}/auth/v1/admin/users/${account}`, {
     headers: admin() });
   const user = await who.json().catch(() => ({}));
   if (!who.ok || user.id !== account || !user.email) throw new Error(`auth: the account was not read: ${who.status}`);
   if (user.app_metadata?.orangecheck !== true) await mark(account, true);
-  return mintedSession(user.email, { account });
+  return mintedSession(user.email, { account,
+    count: { key: COUNTED.orangecheck(did), per: LIMITS.account, minutes: LIMITS.minutes } });
 }
 
 async function endSession(access) {
@@ -125,29 +129,16 @@ function bodyOf(request) {
   }
 }
 
-/// Whether [request]'s network may try another sign-in, answered when not.
-/// Counted before anything else is asked, so a stranger cannot make this
-/// server ask orangecheck and the database for them as often as they like.
-/// The network as Google's and GitHub's are counted (api/_ways.js
-/// networkOf): an IPv6 /64, which one person holds whole, is one.
-async function counted(request, response) {
-  let may;
-  try {
-    may = await db("rpc/oc_may_try", { method: "POST", body: { from_ip: networkOf(request) } });
-  } catch (trouble) {
-    console.error(`orangecheck: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    say(response, 503, "Brickworks could not start a sign-in just now. Try again in a minute.");
-    return false;
-  }
-  if (may !== true) say(response, 429, "Too many sign-ins tried from here. Wait a few minutes and try again.");
-  return may === true;
-}
+// Nothing is counted before the token checks out, and nothing per network
+// (signin6, signreview3 R3): a token that is not one is refused by its
+// signature or audience here, which asks nobody, and a network's count let
+// anyone with junk shut out everyone on a school's or a carrier's address.
+// One that checks out is counted by its orangecheck id (sessionFor).
 
 async function signIn(request, response) {
   if (!ocConfigured()) return say(response, 503, "Signing in with orangecheck is unavailable here. Sign in with your email instead.");
   const body = bodyOf(request);
   const token = typeof body?.token === "string" ? body.token.trim() : "";
-  if (token && !(await counted(request, response))) return;
   return signInWith(token, response, request);
 }
 
@@ -167,7 +158,6 @@ async function native(request, response) {
   if (!CODE.test(code) || !VERIFIER.test(verifier) || !LOOPBACK.test(redirect)) {
     return say(response, 422, "The sign-in did not come through from orangecheck. Try again.");
   }
-  if (!(await counted(request, response))) return;
   const traded = await tradeCode({ code, verifier, redirect });
   if (!traded.token) return say(response, traded.status, traded.error, traded.more);
   return signInWith(traded.token, response, request);
@@ -189,22 +179,6 @@ async function signInWith(token, response, request = null) {
     console.error(`orangecheck: not spent: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
   }
-  // And counted by orangecheck id, before anything is made or minted (SR3):
-  // as many as one Google or GitHub account signs in (api/_ways.js LIMITS),
-  // from however many addresses. Refused when it cannot be counted, as the
-  // network's count is.
-  let often;
-  try {
-    often = (await db("rpc/way_may_try", { method: "POST",
-      body: { try_key: COUNTED.orangecheck(did), per: LIMITS.account, window_minutes: LIMITS.minutes } })) !== true;
-  } catch (trouble) {
-    console.error(`orangecheck: not counted: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
-  }
-  if (often) {
-    return say(response, 429, "Too many sign-ins with this orangecheck account just now. Wait a few minutes and try again.");
-  }
-
   let account;
   let made = false;
   let followed = null;
@@ -242,10 +216,14 @@ async function signInWith(token, response, request = null) {
       made = account === fresh;
       if (!account) throw new Error("the claim named no account");
     }
-    minted = await sessionFor(account);
+    minted = await sessionFor(account, did);
   } catch (trouble) {
+    if (trouble?.often) {
+      return say(response, 429, "Too many sign-ins with this orangecheck account just now. Wait a few minutes and try again.");
+    }
     console.error(`orangecheck: no session: ${String(trouble?.message || trouble).slice(0, 160)}`);
     if (trouble?.again) return say(response, 409, "Your Brickworks account changed just now. Sign in with orangecheck again.");
+    if (trouble?.uncounted) return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
     if (trouble?.busy) return say(response, 503, "A lot of people are signing in just now. Try again in a minute.");
     return say(response, 502, "Brickworks could not finish the sign-in just now. Try again in a minute.");
   }

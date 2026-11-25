@@ -183,7 +183,9 @@ export async function verify(token, request = null) {
 // instance reads for itself, so a session ended is refused within
 // SESSION_HELD_MS everywhere, and at once by an instance that had not read
 // it in that time. Shared with api/_oc.js, which asks the same of an
-// orangecheck session.
+// orangecheck session. That is enough for an ordinary request, since
+// nothing it does outlives the session; whatever hands out authority asks
+// standingOf (below) instead, which is never held.
 const sessions = new Map();
 export const SESSION_HELD_MS = 5000;
 // How long that read is waited for. It is in the way of every signed-in
@@ -219,25 +221,34 @@ export function sessionEnded(id, value = {}) {
   sessions.set(id, { at: Date.now(), gone: true, read: Promise.resolve({ ...value, exists: false }) });
 }
 
-/// The way, google or github, that started session [id] (api/_ways.js
-/// keep, supabase/sign_in_ways.sql), or null: an emailed code's,
-/// orangecheck's, a test password's. Throws when the database cannot be
-/// asked.
-export async function sessionWay(id) {
+/// The session behind [claims] as it is now, in one read of the database
+/// and never a held one (signin6: no authority is given on a cached answer
+/// about a session): {exists, way, bound, did, rh, aud, iat, linked, by}
+/// (supabase/approving_session.sql session_standing). way is google or
+/// github when either started it (api/_ways.js keep), bound when
+/// orangecheck did (oc_sessions), each written down before the session was
+/// handed out, so a session with neither is a code's. by says which, and
+/// only from what was read: "code" (amr otp, or a test account's password,
+/// whose address nobody receives mail at), "google", "github",
+/// "orangecheck", or null for a session that is gone or nobody's way (a
+/// password elsewhere). A session read gone is remembered gone here.
+/// Throws when the database cannot be asked: whoever asked refuses.
+export async function standingOf(claims) {
+  if (!claims?.session_id) return { exists: false, by: null };
   const { db } = await import("./_db.js");
-  const way = await db("rpc/way_session_of", { method: "POST", body: { session: id }, seconds: SESSION_READ_S });
-  return way === "google" || way === "github" ? way : null;
-}
-
-/// Who started the session behind [claims], when it was not a code to its
-/// address (or a test account's password): "google" or "github"
-/// (way_sessions), "orangecheck" (bound, oc_sessions), else null. The
-/// owner's console opens to none of them (signin4, F8). Throws when the
-/// database cannot be asked.
-export async function startedBy(claims) {
-  if (!claims?.session_id) return null;
-  const [session, way] = await Promise.all([sessionOf(claims.session_id), sessionWay(claims.session_id)]);
-  return way || (session?.bound ? "orangecheck" : null);
+  const read = await db("rpc/session_standing", { method: "POST", body: { session: claims.session_id },
+    seconds: SESSION_READ_S });
+  if (!read || typeof read.exists !== "boolean") throw new Error("auth: the session's standing was not readable");
+  if (read.exists === false) {
+    sessionEnded(claims.session_id);
+    return { ...read, by: null };
+  }
+  const way = read.way === "google" || read.way === "github" ? read.way : null;
+  if (read.way != null && !way) throw new Error("auth: a session started by a way not known here");
+  const amr = Array.isArray(claims.amr) ? claims.amr : [];
+  const coded = amr.some((one) => one?.method === "otp")
+    || (amr.some((one) => one?.method === "password") && isTestAccount(claims));
+  return { ...read, way, by: way || (read.bound ? "orangecheck" : coded ? "code" : null) };
 }
 
 /// What this instance has read of sessions, forgotten (for tests).

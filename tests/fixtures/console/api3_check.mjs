@@ -84,8 +84,10 @@ try {
       return new Response(JSON.stringify({ outcome: "done", job: url.pathname }), { status: 200 });
     }
     const call = /^\/rest\/v1\/rpc\/([a-z_]+)$/.exec(url.pathname);
-    // The world answers the deletion's own stand-ins (oc_connect_leaving...).
-    if (url.origin === SUPABASE_URL && call && !["oc_connect_leaving", "admission_snapshot_get", "admission_snapshot_put"].includes(call[1])) {
+    // The world answers the deletion's own stand-ins (oc_connect_leaving...)
+    // and the session (there, a code's).
+    if (url.origin === SUPABASE_URL && call && !["oc_connect_leaving", "oc_session_of", "session_standing", "admission_snapshot_get",
+      "admission_snapshot_put"].includes(call[1])) {
       try {
         return new Response(JSON.stringify(await rpc(call[1], JSON.parse(String(init.body || "{}")))), { status: 200 });
       } catch (trouble) {

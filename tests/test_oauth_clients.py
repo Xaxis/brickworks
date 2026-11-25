@@ -534,44 +534,83 @@ return {
     assert got["notAnObject"] == {"brickworks/who": "Grok"}
 
 
-def test_a_connection_approved_from_google_or_github_is_kept_only_while_that_way_is() -> None:
-    """signin5 (signreview2 SR1): a code approved from a Google or GitHub
-    session carries its way, and /oauth/token asks way_on after writing
-    the connection, under the Unlink's lock. Unlinked: refused and the
-    connection deleted. way_on unanswered: refused (503) and deleted too,
-    never kept with no tokens. A code's own session (no way): way_on is
-    never asked, and the connection is kept."""
+def test_a_code_is_traded_only_while_the_session_that_approved_it_is_there_as_its_ways() -> None:
+    """signin6 (signreview2 SR1, signreview3 R1): a code names the session
+    that approved it, and /oauth/token asks the database, in one step
+    under the way's lock, whether that session is still there, the
+    account's, and its way still signs the account in, writing the
+    connection and its tokens only then (oauth_code_grant). A session
+    ended (an Unlink, Sign out everywhere), unlinked, somebody else's, or a
+    code naming none (made before codes named one) is refused, and nothing
+    is written: never taken for a code's own. Nothing writes a connection
+    but that one step. The tokens returned are the ones written."""
     got = run(CONNECT + """
 const { createHash } = await import('node:crypto');
 const CALLBACK = 'https://claude.ai/api/mcp/auth_callback';
-const exchange = async (way, state) => {
+const exchange = async ({ way = null, on = true, there = true, others = false, named = true } = {}) => {
   const owner = randomUUID();
+  const session = randomUUID();
+  if (there) w.sessions.set(session, { owner: others ? randomUUID() : owner, way });
+  if (way) w.ways.set(`${owner} ${way}`, on);
   const code = randomBytes(32).toString('base64url');
   const verifier = randomBytes(32).toString('base64url');
   w.tables.oauth_codes.push({ hash: sha256(code), client_id: CLAUDE, owner, redirect_uri: CALLBACK,
     code_challenge: createHash('sha256').update(verifier).digest('base64url'), resource: `${ORIGIN}/api/mcp`,
-    scope: 'build', expires_at: new Date(Date.now() + 60e3).toISOString(), ...(way ? { way } : {}) });
-  if (way) w.ways.set(`${owner} ${way}`, state);
-  const asked = w.calls.filter((c) => c.endsWith('/rpc/way_on')).length;
+    scope: 'build', expires_at: new Date(Date.now() + 60e3).toISOString(), ...(named ? { session_id: session } : {}) });
   const got = await askOAuth({ method: 'POST', query: { op: 'token' }, body: { grant_type: 'authorization_code', code,
     code_verifier: verifier, redirect_uri: CALLBACK, client_id: CLAUDE, resource: `${ORIGIN}/api/mcp` } });
   const kept = w.tables.oauth_grants.filter((g) => g.owner === owner);
-  return { status: got.status, error: got.json.error || null, access: /^bwa_/.test(got.json.access_token || ''),
-    kept: kept.length, way: kept[0]?.way ?? null, tokens: w.tables.oauth_tokens.filter((t) => kept.some((g) => g.id === t.grant_id)).length,
-    asked: w.calls.filter((c) => c.endsWith('/rpc/way_on')).length - asked };
+  const tokens = w.tables.oauth_tokens.filter((t) => kept.some((g) => g.id === t.grant_id));
+  const hashes = [got.json.access_token, got.json.refresh_token].filter(Boolean).map(sha256);
+  return { status: got.status, error: got.json.error || null, kept: kept.length, way: kept[0]?.way ?? null,
+    session: kept.length ? kept[0].session_id === session : null, tokens: tokens.length,
+    theirs: hashes.length === 2 && hashes.every((h) => tokens.some((t) => t.hash === h)) };
 };
-return {
-  on: await exchange('github', true),
-  unlinked: await exchange('github', false),
-  unanswered: await exchange('google', 'fail'),
-  code: await exchange(null),
+const out = {
+  code: await exchange(),
+  github: await exchange({ way: 'github' }),
+  google: await exchange({ way: 'google' }),
+  unlinked: await exchange({ way: 'github', on: false }),
+  gone: await exchange({ there: false }),
+  others: await exchange({ others: true }),
+  unnamed: await exchange({ named: false }),
 };
+out.written = w.calls.filter((c) => c.startsWith('POST') && c.endsWith('/rest/v1/oauth_grants')).length;
+return out;
 """)
     if got is None:
         return
-    assert got["on"] == {"status": 200, "error": None, "access": True, "kept": 1, "way": "github", "tokens": 2, "asked": 1}
-    assert got["unlinked"] == {"status": 400, "error": "invalid_grant", "access": False, "kept": 0, "way": None,
-                               "tokens": 0, "asked": 1}
-    assert got["unanswered"] == {"status": 503, "error": "temporarily_unavailable", "access": False, "kept": 0,
-                                 "way": None, "tokens": 0, "asked": 1}
-    assert got["code"] == {"status": 200, "error": None, "access": True, "kept": 1, "way": None, "tokens": 2, "asked": 0}
+    ok = {"status": 200, "error": None, "kept": 1, "session": True, "tokens": 2, "theirs": True}
+    assert got["code"] == {**ok, "way": None}
+    assert got["github"] == {**ok, "way": "github"}
+    assert got["google"] == {**ok, "way": "google"}
+    refused = {"status": 400, "error": "invalid_grant", "kept": 0, "way": None, "session": None, "tokens": 0,
+               "theirs": False}
+    for name in ("unlinked", "gone", "others", "unnamed"):
+        assert got[name] == refused, (name, got[name])
+    assert got["written"] == 0
+
+
+def test_a_refresh_whose_connection_is_deleted_under_it_is_refused_for_good() -> None:
+    """signreview3 N2: an Unlink, Disconnect or Sign out everywhere that
+    deletes the connection while a refresh is being answered leaves its
+    new tokens nothing to belong to (their key refuses them, 409): the
+    answer is invalid_grant, so the client asks the person again, never a
+    503 it would retry for ever."""
+    got = run(CONNECT + """
+const out = {};
+for (const [name, id] of [['claude', CLAUDE]]) {
+  const { grant, refresh: r0 } = connect(id);
+  w.hooks.beforeTokens = () => {
+    w.tables.oauth_grants = w.tables.oauth_grants.filter((g) => g.id !== grant.id);
+  };
+  const raced = await refresh({ refresh_token: r0, client_id: id });
+  w.hooks.beforeTokens = null;
+  out[name] = { raced: [raced.status, raced.error, raced.access], tokens:
+    w.tables.oauth_tokens.filter((t) => t.grant_id === grant.id && t.replaced_at === null).length };
+}
+return out;
+""")
+    if got is None:
+        return
+    assert got["claude"] == {"raced": [400, "invalid_grant", False], "tokens": 0}

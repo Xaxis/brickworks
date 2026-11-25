@@ -14,11 +14,16 @@
 //   const w = await world({ billing: "test" });
 //   const token = await w.signIn({ sub: "u1", email: "ada@example.com" });
 
-import { webcrypto } from "node:crypto";
+import { randomUUID, webcrypto } from "node:crypto";
 import { Readable } from "node:stream";
 import { ADMISSION_URL, FAKE_KEY, fakeAdmission } from "./fake_admission.mjs";
 
 export const SUPABASE_URL = "https://db.test";
+
+/// The reads of a session that signIn signs (api/_auth.js sessionOf and
+/// standingOf), answered by the world: a fixture that answers the rest of
+/// the database itself hands these on.
+export const SESSION_READS = new Set(["/rest/v1/rpc/oc_session_of", "/rest/v1/rpc/session_standing"]);
 
 const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
 
@@ -166,10 +171,14 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
         if (snap.at) snapshots.set(key, JSON.stringify({ ...snap, at: snap.at - ms }));
       }
     },
+    /// A signed session for [claims]: a code's, of a session that is there
+    /// (its session_id answered by rpc/oc_session_of and session_standing
+    /// as a code's), unless [claims] say otherwise.
     async signIn(claims) {
       const header = b64url(JSON.stringify({ alg: "ES256", kid: "k1", typ: "JWT" }));
       const body = b64url(JSON.stringify({ aud: "authenticated", iss: `${SUPABASE_URL}/auth/v1`,
-        exp: Math.floor(Date.now() / 1000) + 3600, email_verified: true, amr: [{ method: "otp" }], ...claims }));
+        exp: Math.floor(Date.now() / 1000) + 3600, email_verified: true, amr: [{ method: "otp" }],
+        session_id: randomUUID(), ...claims }));
       const signature = await webcrypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, signer.privateKey,
         new TextEncoder().encode(`${header}.${body}`));
       return `${header}.${body}.${b64url(signature)}`;
@@ -264,6 +273,12 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     }
     // No orangecheck account made by Connect (supabase/orangecheck_connect_leaving.sql).
     if (url.pathname === "/rest/v1/rpc/oc_connect_leaving") return json(200, false);
+    // Every session signIn signs is there, and a code's (api/_auth.js
+    // sessionOf and standingOf).
+    if (url.pathname === "/rest/v1/rpc/oc_session_of") return json(200, { exists: true, bound: false, linked: false });
+    if (url.pathname === "/rest/v1/rpc/session_standing") {
+      return json(200, { exists: true, way: null, bound: false, linked: false });
+    }
     if (url.pathname === "/rest/v1/rpc/plan_consent_note" && !self.noConsents) {
       consents.push(asked);
       return json(200);

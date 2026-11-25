@@ -547,6 +547,7 @@ async function deleteAccount(request, response) {
       try {
         asked = await codeOf(claims);
       } catch (trouble) {
+        if (trouble instanceof AuthError) return response.status(trouble.status).json({ error: trouble.message });
         console.error(`account: whose sign-in: ${String(trouble?.message || trouble).slice(0, 120)}`);
         return response.status(502).json({ error: NOT_DELETED });
       }

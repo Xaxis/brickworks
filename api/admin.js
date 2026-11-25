@@ -239,7 +239,7 @@
 // the project's key, which has not come back.
 
 import { noted } from "./_noted.js";
-import { AuthError, authConfigured, bearer, isMaster, startedBy, verify } from "./_auth.js";
+import { AuthError, authConfigured, bearer, isMaster, standingOf, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
 import { modelHash } from "./_directory.js";
 import { BuildRefusal, photoFileForAdmin, photosReported, removePhoto } from "./_builds.js";
@@ -332,15 +332,18 @@ async function handler(request, response) {
   // orangecheck started, which a provider account taken over could start.
   // Google and GitHub refuse the owner's address (api/_ways.js); this holds
   // a session of theirs made before the address was the owner's, and one
-  // orangecheck started, linked or not.
-  let started;
+  // orangecheck started, linked or not. Asked of the session as it is now
+  // (standingOf), never a held answer, and only a code's opens it: one gone,
+  // or that nothing says is a code's, does not (signin6).
+  let standing;
   try {
-    started = await startedBy(claims);
+    standing = await standingOf(claims);
   } catch (trouble) {
     console.error(`admin: the sign-in was not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(503).json({ error: "Brickworks could not check your sign-in just now. Try again in a minute." });
   }
-  if (started) {
+  if (!standing.exists) return response.status(401).json({ error: "You were signed out. Sign in again." });
+  if (standing.by !== "code") {
     return response.status(403).json({ error: "The console opens only when you sign in with a code we email you. "
       + "Sign out, then sign in with a code.", code_only: true });
   }

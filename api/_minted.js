@@ -10,7 +10,7 @@
 // racing) can each spoil the other's: the one refused asks again, after a
 // moment that differs each time.
 
-import { reach } from "./_db.js";
+import { db, reach } from "./_db.js";
 
 function supabase() {
   return String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -36,10 +36,31 @@ export function claimsOf(jwt) {
 /// Throws with spoiled after four links spoiled in a row, with busy when
 /// Supabase's verify answered 429 (it counts redemptions by address, and
 /// every one of these is this server's).
-export async function mintedSession(email, { account = null, vet = null } = {}) {
+///
+/// [count], {key, per, minutes}: the one limit on minted sign-ins
+/// (signin6), per identity that its provider has verified (a Google or
+/// GitHub account, an orangecheck id: api/_ways.js COUNTED), never per
+/// network. Counted once, after [vet] passes and right before the verify it
+/// protects, so a try refused for any reason, this one included, counts
+/// nothing. Over it: throws with often, and nothing is redeemed. When the
+/// count cannot be asked: throws with uncounted, and nothing is either.
+export async function mintedSession(email, { account = null, vet = null, count = null } = {}) {
+  let counted = !count;
+  const once = async () => {
+    if (counted) return;
+    let may;
+    try {
+      may = await db("rpc/way_may_try", { method: "POST",
+        body: { try_key: count.key, per: count.per, window_minutes: count.minutes } });
+    } catch (trouble) {
+      throw Object.assign(new Error(`auth: not counted: ${String(trouble?.message || trouble).slice(0, 120)}`), { uncounted: true });
+    }
+    if (may !== true) throw Object.assign(new Error("auth: too many sign-ins of this identity"), { often: true });
+    counted = true;
+  };
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await redeemed(email, account, vet);
+      return await redeemed(email, account, vet, once);
     } catch (trouble) {
       if (attempt >= 4 || !trouble.spoiled) throw trouble;
       await new Promise((done) => setTimeout(done, 100 + Math.random() * 400 * attempt));
@@ -47,7 +68,7 @@ export async function mintedSession(email, { account = null, vet = null } = {}) 
   }
 }
 
-async function redeemed(email, account, vet) {
+async function redeemed(email, account, vet, once) {
   const link = await reach("auth POST admin/generate_link", 10, `${supabase()}/auth/v1/admin/generate_link`, {
     method: "POST", headers: admin(),
     body: JSON.stringify({ type: "magiclink", email }) });
@@ -56,6 +77,7 @@ async function redeemed(email, account, vet) {
   const id = made.id || made.user?.id;
   if (!link.ok || !hashed || !id || (account && id !== account)) throw new Error(`auth: no link: ${link.status}`);
   if (vet) await vet(made.user || made);
+  await once();
   const verify = await reach("auth POST verify", 10, `${supabase()}/auth/v1/verify`, {
     method: "POST",
     headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" },

@@ -749,13 +749,14 @@ they have. A Claude connector belongs to the account that switched it on.
   `failed=code_only` before anything is made or minted (signin4, F8). One
   start, one way back (signin5, SR2): the start's sealed id (`i`) is spent
   at its callback before the provider is asked or anything counted, so its
-  cookie sent again is `failed=again`. How often (signin4 F9, signin5 SR2;
-  `LIMITS`, `COUNTED`, `way_may_try`, refused ones not counted, a network
-  an IPv4 address or an IPv6 /64, `networkOf`): only sign-ins Google or
-  GitHub vouched for are counted, before anything is made or minted, in 15
-  minutes 5 per Google or GitHub account, then 30 per network, else
-  `failed=often`; starts and made-up ways back count nothing, so no visitor
-  without an account can lock a shared network out. Refused
+  cookie sent again is `failed=again`. How often (signin4 F9, signin6;
+  `LIMITS`, `COUNTED`, `way_may_try` in `api/_minted.js` `mintedSession`
+  `count`): only sign-ins Google or GitHub vouched for, once the way is
+  vetted and right before Supabase's verify, 5 per Google or GitHub
+  account in 15 minutes, else `failed=often`; nothing per network
+  (signreview3 R3), and starts and made-up ways back count nothing, so no
+  visitor can lock a shared network out. Handed over (`?op=way_take`) only
+  while its session is there as the way's (`standingOf`), else 410. Refused
   (`failed=again|denied|unverified|vouch|confirm|unlinked|off|busy|code_only|often|failed`)
   it lands on the dialog with words for why (`wayFailed`). The desktop app:
   `Account.sign_in_with_way` with `OrangecheckSignIn.way` opens
@@ -789,11 +790,16 @@ they have. A Claude connector belongs to the account that switched it on.
   `way_set`, `supabase/way_links.sql`, in one step: `way_links` "off",
   which the callback refuses, GitHub's id dropped, and every session the
   way started ended with its refresh token, and every AI app's connection
-  a session of the way approved, its codes too: `oauth_codes.way` and
-  `oauth_grants.way`, `supabase/way_grants.sql`, set at approve from
-  `way_sessions` and re-asked under the same lock after `/oauth/token`
-  writes one, which is deleted if the way is off (400) or the ask
-  unanswered (503), signin5 SR1, `tests/test_oauth_clients.py`; Settings
+  a session of the way approved, its codes too (signin6,
+  `supabase/approving_session.sql`, `DESIGN.txt` in
+  bench/results/signin6-2026-11-25): a code names the session that
+  approved it (`oauth_codes.session_id`, a key of `auth.sessions`, so a
+  code for a session gone is refused at approve, 401, and deleted with
+  it), and `/oauth/token` trades it only through `oauth_code_grant`, which
+  under the way's lock asks whether that session is there, the account's,
+  and its way on, and writes the connection and its tokens in that step,
+  or nothing (400): never taken for a code's when nothing says what it is.
+  `tests/test_oauth_clients.py`; Settings
   redraws its connections; this one too,
   when it was one: `signed_out`, and the page signs out and asks for a code) or `never`
   (`way_links_of`); Link again lifts it. An orangecheck-only account gets
@@ -929,21 +935,22 @@ node tools/web/oc_echo_check.mjs
 ```
 
 How often orangecheck signs in (signin5, signreview2 SR3: each sign-in
-spends one of Supabase's verifies from the server's address): `orangecheck
-counts check` drives `api/orangecheck.js`'s own handler against the real
-counters (`oc_may_try` by network, `networkOf`; `way_may_try` under
-`COUNTED.orangecheck`, after the token checks out and is spent, before
-`oc_account_of`), with orangecheck's token check and everything after the
-counts stood in for, so nothing is made or minted (about 10 s; it fails 2
-of 4 on signin4's code):
+spends one of Supabase's verifies from the server's address; signin6: by
+orangecheck id alone, never by network): `orangecheck counts check` drives
+`api/orangecheck.js`'s own handler against the real counter (`way_may_try`
+under `COUNTED.orangecheck`, in `api/_minted.js` right before the verify),
+with orangecheck's token check, the account, its link and the verify
+stood in for, so nothing is made or minted (about 10 s):
 
 ```sh
 set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs
 ```
 
 It ends "all passed": one orangecheck id 5 times in 15 minutes from 5
-networks, then refused in words (429); another id goes; 20 addresses of
-one IPv6 /64 go and the 21st is refused, another /64's goes.
+networks, then refused in words (429) with no verify asked; another id
+goes; 40 tokens that are not one from one network ask nothing of the
+database and a real sign-in there goes; 25 ids from one IPv6 /64 and 25
+from one IPv4 address all go.
 
 `oc_echo_check` needs no .env and reaches nothing off this machine (about
 10 s): this checkout's button on one local address, orangecheck's window

@@ -47,9 +47,10 @@
 //  11. An Unlink racing a first Google sign-in, 20 times, the Unlink sent
 //      at a different moment of the sign-in each time (F7): off every time,
 //      and no session of Google's left alive.
-//  12. One GitHub account in a loop, and one network with many (F9): each
-//      refused at its limit before anything is spent, while another
-//      person's sign-in goes through; an IPv6 /64 counts as one network.
+//  12. One GitHub account in a loop (F9): refused at its limit before
+//      anything is spent, from any network, while another person's sign-in
+//      goes through. Nothing is counted by network (signin6, signreview3
+//      R3): a network whose old count is full still signs people in.
 //      Nothing a visitor can do without an account counts (signin5, SR2):
 //      40 starts from one network, or one start's cookie sent 11 times
 //      (GitHub asked once), and the next person there signs in.
@@ -57,14 +58,14 @@
 //      GitHub's Unlink (signin5, SR1): its tools and its refresh refused;
 //      one approved by a code's session stays.
 // Every sign-in comes from a network of its own (x-forwarded-for, as Vercel
-// sets it), but 12's, which share theirs on purpose: the limits count
+// sets it), but 12's, which share theirs on purpose. The limits count
 // across runs and relays for 15 minutes. Every account made is deleted at
 // the end.
 import { createHash, randomBytes } from "node:crypto";
 import { codeFor, githubId, KEYS } from "./ways_stand_in.mjs";
 import { deleteAccount, mintCode, mintSession } from "./session.mjs";
 import { signedInJustNow } from "../../api/_oc.js";
-import { COUNTED, googleVouches, LIMITS, networkOf } from "../../api/_ways.js";
+import { googleVouches, LIMITS, networkOf } from "../../api/_ways.js";
 
 const arg = (name, fallback = "") => (process.argv.find((a) => a.startsWith(`--${name}=`)) || "").slice(name.length + 3) || fallback;
 const site = arg("url", "http://127.0.0.1:11701").replace(/\/+$/, "");
@@ -578,12 +579,7 @@ try {
     + `${outcomes.refused} refused, ${outcomes.alive} left alive (F7)`, outcomes.off === 20 && outcomes.alive === 0
     && outcomes.handed >= 1 && outcomes.refused >= 1, raced.map((one) => `${one.delay}:${one.off.status}:${(one.way.back || one.way.start)?.location?.slice(0, 90)}`).join(" "));
 
-  // 12. How often (F9).
-  const net = (x) => networkOf({ headers: { "x-forwarded-for": x } });
-  check("12. a network is an IPv4 address, or an IPv6 /64 however it is written; the first of x-forwarded-for",
-    net("203.0.113.9") === "203.0.113.9" && net("::ffff:203.0.113.9") === "203.0.113.9" && net("203.0.113.9, 10.0.0.1") === "203.0.113.9"
-    && net("2001:db8:1:2::1") === net("2001:0DB8:0001:0002:ffff:ffff:ffff:9") && net("2001:db8:1:2::1") !== net("2001:db8:1:3::1")
-    && net("2001:db8::1") === net("2001:db8:0:0:1::"), `${net("2001:db8:1:2::1")} ${net("2001:db8::1")}`);
+  // 12. How often (F9): by the GitHub account alone (signin6).
   const r16 = () => randomBytes(2).toString("hex");
   const netA = `2001:db8:${r16()}:${r16()}`;
   const x = address("loop");
@@ -617,20 +613,19 @@ try {
   const moved = await viaWay("github", { email: x, verified: true }, { from: `2001:db8:${r16()}:${r16()}::1` });
   check("12. the same GitHub account from another network: refused too", /failed=often/.test(moved.back?.location || "") && !moved.take,
     moved.back?.location);
-  // A network is counted only for sign-ins Google or GitHub vouched for
-  // (signin5, SR2): the loop's refused ones did not count. netA has had at
-  // most LIMITS.account; filled here to one short of LIMITS.network, as so
-  // many other accounts would have (a Supabase verify each: spared), the
-  // next account from it signs in and the one after is refused.
-  const crowded = COUNTED.network(net(`${netA}::1`));
-  for (let n = 0; n < LIMITS.network && (await rpc("way_may_try", { try_key: crowded, per: LIMITS.network - 1,
-    window_minutes: LIMITS.minutes })) === true; n += 1);
+  // Nothing is counted by network (signin6, signreview3 R3): signin5's
+  // count of netA, under its own key, filled past the 30 it allowed, as 30
+  // throwaway GitHub accounts there would have (a Supabase verify each:
+  // spared), and two other people's GitHub accounts there still sign in.
+  const crowded = `in ${networkOf({ headers: { "x-forwarded-for": `${netA}:ffff::1` } })}`;
+  let filled = 0;
+  while (filled < 40 && (await rpc("way_may_try", { try_key: crowded, per: 30, window_minutes: LIMITS.minutes })) === true) filled += 1;
   const crowd = [];
   for (let n = 0; n < 2; n += 1) {
     crowd.push(await viaWay("github", { email: address(`crowd${n}`), verified: true }, { from: `${netA}:ffff::${n + 1}` }));
   }
-  check(`12. other GitHub accounts from that network: signed in up to its ${LIMITS.network}, then refused`,
-    crowd[0].took?.status === 200 && /failed=often/.test(crowd[1].back?.location || "") && !crowd[1].take,
+  check(`12. that network's old count full (${filled} of 30): two other people's GitHub accounts there sign in all the same`,
+    filled === 30 && crowd.every((one, n) => one.took?.status === 200 && one.took.json?.user?.email === address(`crowd${n}`)),
     crowd.map((one) => one.back?.location?.slice(0, 60)).join(" "));
   // Starts are not counted: as many as anyone likes from one network, and
   // the next person's there, the page's and the app's, go to GitHub.

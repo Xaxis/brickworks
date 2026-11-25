@@ -38,9 +38,19 @@ export async function world() {
   const calls = [];
   // Codes, connections and their tokens, as rows (supabase/oauth.sql).
   const tables = { oauth_codes: [], oauth_grants: [], oauth_tokens: [] };
-  // way_on's answer for "<account> <way>" (supabase/way_grants.sql): true
-  // while that way signs the account in; "fail" answers 500. Unset: false.
+  // The sessions there are, by id (auth.sessions): {owner, way}, way the
+  // one that started it ("google", "github") or null, and {oc_did, oc_rh,
+  // oc_aud, oc_iat} when orangecheck did (oc_sessions). A code names one
+  // (supabase/approving_session.sql): its key refuses any other (409).
+  const sessions = new Map();
+  // Whether "<account> <way>" signs the account in (way_links' state 'on'):
+  // true, or unset or false for not.
   const ways = new Map();
+  // Called before oauth_tokens' rows are written, as another request
+  // could act just then: a test deletes a connection under a refresh here.
+  const hooks = { beforeTokens: null };
+  const grantRow = (body) => ({ id: randomUUID(), owner: body.owner, client_id: body.client,
+    client_name: body.client_name, redirect_uri: body.redirect_uri, resource: body.resource, scope: body.scope });
   const documents = new Map([
     [CHATGPT, {
       client_id: CHATGPT, client_uri: "https://chatgpt.com/",
@@ -73,9 +83,24 @@ export async function world() {
       spent.set(body.token_id, body.until);
       return json(200, true);
     }
-    if (url.pathname === "/rest/v1/rpc/way_on") {
-      const on = ways.get(`${body.account} ${body.way}`);
-      return on === "fail" ? json(500, { message: "the test world's way_on fails" }) : json(200, on === true);
+    // A code's connection and its two tokens, written only while the
+    // session that approved it is there, the account's, and its way still
+    // signs the account in; or nothing, and why (oauth_code_grant).
+    if (url.pathname === "/rest/v1/rpc/oauth_code_grant") {
+      if (!body.session || !body.owner) return json(200, { refused: "unknown" });
+      const session = sessions.get(body.session);
+      if (!session || session.owner !== body.owner) return json(200, { refused: "gone" });
+      if (session.way && ways.get(`${body.owner} ${session.way}`) !== true) return json(200, { refused: "unlinked" });
+      const oc = session.oc_did ? { oc_did: session.oc_did, oc_rh: session.oc_rh, oc_aud: session.oc_aud,
+        oc_iat: session.oc_iat } : { oc_did: null, oc_rh: null, oc_aud: null, oc_iat: null };
+      const grant = { ...grantRow(body), way: session.way, session_id: body.session, ...oc };
+      tables.oauth_grants.push(grant);
+      tables.oauth_tokens.push(
+        { id: randomUUID(), hash: body.access_hash, grant_id: grant.id, kind: "access", replaced_at: null,
+          expires_at: body.access_until },
+        { id: randomUUID(), hash: body.refresh_hash, grant_id: grant.id, kind: "refresh", replaced_at: null,
+          expires_at: body.refresh_until });
+      return json(200, { grant: grant.id, way: session.way, ...oc });
     }
     if (url.pathname.startsWith("/rest/v1/rpc/")) return json(204);
     if (url.pathname === "/rest/v1/oauth_clients") {
@@ -104,7 +129,15 @@ export async function world() {
       if (method === "GET") return json(200, found);
       if (method === "POST") {
         const added = (Array.isArray(body) ? body : [body]).map((row) => ({ id: randomUUID(), ...row }));
-        table.push(...added);
+        // The foreign keys: a code's to its session, a token's to its
+        // connection. Refused whole, as PostgREST answers 23503.
+        if (url.pathname.endsWith("/oauth_tokens") && hooks.beforeTokens) await hooks.beforeTokens(added);
+        const orphan = url.pathname.endsWith("/oauth_codes")
+          ? added.some((row) => row.session_id != null && !sessions.has(row.session_id))
+          : url.pathname.endsWith("/oauth_tokens")
+            && added.some((row) => !tables.oauth_grants.some((g) => g.id === row.grant_id));
+        if (orphan) return json(409, { code: "23503", message: "violates foreign key constraint" });
+        tables[url.pathname.replace("/rest/v1/", "")].push(...added);
         return json(201, added);
       }
       if (method === "PATCH") {
@@ -124,7 +157,7 @@ export async function world() {
   };
 
   return {
-    calls, clients, spent, documents, keys, chatgptKey, tables, ways,
+    calls, clients, spent, documents, keys, chatgptKey, tables, sessions, ways, hooks,
     /// A request with these headers, as Vercel hands one over.
     request: (headers = {}) => ({ method: "POST", headers, query: {} }),
     /// A client assertion: [claims] over the usual ones, signed by [pair]
