@@ -248,6 +248,7 @@ func _beside() -> void:
 	_tree.enter("")
 	await _frames(2)
 	await _drag_sweep("a brick of the wing picked out from outside it and dragged", "")
+	await _nudges()
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
 
@@ -417,6 +418,63 @@ func _big() -> void:
 		% [told_wrong.size(), aims], aims > 0 and told_wrong.is_empty())
 	await _key(KEY_ESCAPE)
 	_tree.enter("")
+
+
+## The wing's brick picked out from outside the wing and dragged along its
+## own plate: a stud along its length each way, and back where it stood. The
+## part put down there stands in its own box, so the follow reads it as one
+## swapped for another, and the twin the lift had taken off with it was put
+## down nowhere: Wing#2 held 2 parts after a drag that landed so, 1 or 2 of
+## about 50 in the sweep, by where the view stood (room390). Each time, the
+## twin stands mirrored where the brick does.
+func _nudges() -> void:
+	_tree.enter("")
+	await _frames(2)
+	for along: int in [-20, 20, 0]:
+		var brick: int = _of_part("Wing#1", "3004")
+		if brick == 0:
+			_check("the wing's brick is there to drag", false)
+			return
+		var was: Vector3 = _world.get_brick(brick).transform.origin
+		# Its top, where the press takes it (_on).
+		var top: float = was.y
+		var from: Vector2 = _on(brick)
+		var by: Vector2 = _screen(Vector3(was.x + along, top, was.z)) - _screen(Vector3(was.x, top, was.z))
+		var to: Vector2 = from + by
+		var depth: int = _builder.history_depth()
+		var parts: int = _count()
+		_select_only([brick])
+		await _move(from)
+		_button(from, true)
+		await _frames(2)
+		var last: Vector2 = from
+		# Out and back, so a drop where it stood is a drag too.
+		for next: Vector2 in [from + Vector2(0, -30), from + Vector2(0, -15), to + Vector2(0, -5), to]:
+			await _drag_move(last, next)
+			last = next
+		await _drag_move(last, to + Vector2(1, 0))
+		await _asked()
+		var told: String = _told(_builder.is_carrying())
+		_button(to + Vector2(1, 0), false)
+		await _frames(4)
+		var put: bool = _builder.history_depth() > depth
+		var now: int = _of_part("Wing#1", "3004")
+		var at: Vector3 = _world.get_brick(now).transform.origin if now != 0 else Vector3.INF
+		var twin: Array = Array(_tree.ids_under("Wing#2")).filter(func(i: int) -> bool:
+			return _world.get_brick(i).part_id.begins_with("3004"))
+		var twin_at: Vector3 = _world.get_brick(int(twin[0])).transform.origin if twin.size() == 1 \
+			else Vector3.INF
+		_check("the wing's brick dragged %s from outside the wing (to %s, from %s): its twin with it (Wing#2 %d parts, its 3004 at %s; %d parts, were %d)\n        %s"
+			% ["a stud along" if along != 0 else "back where it stood", str(at.snappedf(0.1)),
+			str(was.snappedf(0.1)), _tree.ids_under("Wing#2").size(), str(twin_at.snappedf(0.1)),
+			_count(), parts, told],
+			(put or along == 0) and _tree.ids_under("Wing#2").size() == 3 and _count() == parts
+			and twin_at.is_equal_approx(Vector3(-20.0 - at.x, at.y, at.z)))
+		if put:
+			await _key(KEY_Z, true)
+			await _frames(2)
+		if _builder.is_carrying():
+			await _key(KEY_ESCAPE)
 
 
 ## What the ask saw, for a run read back: the hand, the copies it fits and
