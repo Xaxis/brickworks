@@ -1,0 +1,58 @@
+signin6, 2026-11-25: how a sign-in's authority is checked (a root redesign after signreview2 and signreview3)
+
+The one missing fact behind SR1, R1 and their siblings: nothing a session issued named that session, so each use
+had to guess where its authority came from, from rows that vanish with the session, and a guess that found
+nothing read as "an emailed code's" (fail open). And each guess was made on its own read, some cached, at its own
+moment. The second missing rule: counts were taken before anyone was known, and by network.
+
+INVARIANTS, each in one sentence, and where each is enforced.
+
+1. Every code and connection names the session that approved it.
+   oauth_codes.session_id (a key of auth.sessions, on delete cascade: a code goes with its session) and
+   oauth_grants.session_id, written at approve (api/oauth.js codeFor) and at the exchange (oauth_code_grant).
+
+2. Every use of a code asks, under the lock of the way that started its session, whether that session still
+   exists and which way started it, and writes the connection in that same step or nothing; anything unknown is
+   refused. supabase/approving_session.sql oauth_code_grant, called by /oauth/token: Google's or GitHub's session
+   under way_set's lock (and its way still "on"), orangecheck's under oc_unlink's (its id still the account's),
+   the session row itself held (key share) so no Unlink, oc_unlink or Sign out everywhere can land between the
+   check and the write; a code's own session needs only to exist. Gone, unlinked or unreadable: invalid_grant or
+   503, and no connection. An orangecheck one is then asked orangecheck's ended list too (grantStanding). The
+   connection's tokens are written in the same transaction, so one deleted under it is never half made (N2).
+
+3. No credential is issued on a cached answer about a session.
+   verify()'s 5 s read (api/_auth.js sessionOf) lets an ordinary request through, and nothing it does outlives
+   the session. Everything that hands out authority reads the session live, in one statement
+   (session_standing: exists, way, orangecheck binding), or has the database check it in the write itself:
+   a code (its foreign key), a connection (oauth_code_grant), a session handed over (wayTake, wayApp), an
+   emailed code's freshness (api/_oc.js codeOf: linking and unlinking orangecheck, GitHub's bind, deleting an
+   orangecheck account, the address Connect is told is verified), Unlink's "this session" (waysRoute), the
+   console (byCode). A session that reads gone is refused, and remembered gone on that instance.
+
+4. Nothing is counted before a claim is verified, and nothing is counted per network; the limits are per
+   verified identity, which is what bounds a loop.
+   One count, 5 a quarter-hour, per provider account ("back <way> <id>") or orangecheck id ("oc <did>"), taken
+   once per sign-in inside api/_minted.js, right before the one thing it protects (Supabase's verify, shared
+   by every minted sign-in), after the way is vetted: a refused try (unlinked, confirm, too often) counts
+   nothing. Starts, callbacks, junk tokens and the app's trades count nothing (each made-up callback costs one
+   refused call at the provider: signreview3 N1). The emailed code's limits on mail sent (may_ask_for_code, 4 an
+   address and 20 a machine) are not sign-in counts and are not changed here.
+
+5. The owner's console is reached only by the emailed code.
+   api/admin.js: the live session must exist, have no way and no orangecheck binding, and carry amr "otp" (a
+   test account's password stands in for it only at resend.dev, as everywhere); Google and GitHub refuse the
+   owner's address before anything is made (api/_ways.js), and a connection's bwa_ token is no session.
+
+REMOVED (the patch layers this replaces)
+- api/oauth.js: orangecheckOf, wayOf, wayStillOn (rpc/way_on), the exchange's oc_account_of check, the code's
+  way and oc_* marks, and the exchange's separate token insert. The refresh's lost race (tokens for a deleted
+  connection) answers invalid_grant, not 502.
+- api/_auth.js: sessionWay and startedBy (two reads at two moments, one cached) -> standingOf, byCode.
+- api/_ways.js: the network count (LIMITS.network, COUNTED.network) and counted(); the count is _minted.js's.
+- api/orangecheck.js: counted() (oc_may_try, per network, before the token was read) and its own per-id count.
+- Left in the database, unused by this code (additive only): way_on, way_session_of, oc_may_try, and the
+  way/oc_* columns of oauth_codes. way_set and oc_unlink still delete by way and by id, now always right.
+- networkOf stays exported only because signreview3's attack3.mjs imports it; nothing counts by it.
+
+ORDER: supabase/approving_session.sql is applied before this code runs: without session_standing or
+oauth_code_grant every grant of authority fails closed (503), never open.
