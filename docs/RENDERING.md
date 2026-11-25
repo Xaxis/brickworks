@@ -2493,6 +2493,67 @@ ladder is therefore one draw of each pair of names. Fresh names for every
 ask, and a folder outside the checkout, would make its verdicts samples
 (tools/design_ladder.py, place_one and order; realset.ask and shown).
 
+## 5u. A set photographed, not floating (photoreal19)
+
+Close-ups were called photographs about 0.6 of the time, whole sets 0.03
+to 0.10, and every set verdict named "a seamless pure white infinite
+background" and "flawless uniform plastic with no wear or dust". Beside
+the set photographs the judge holds, our sets differ in what they stand
+on: the photographs' sweep is clipped white like ours, but glossy, the
+model's colours bounced and faintly mirrored under it, its shade a cool
+lavender and tight to the model. Ours was a neutral grey shade, broad
+and soft, on paper that mirrors nothing.
+
+**The floor** (`RenderSettings.floor`, `StudioRender.PRODUCT_FLOOR`,
+`_floor_of`; path_tracer.glsl's photo version, `floor_kept` and
+`floor_over`): where the sweep is the shadow catcher, it is drawn as a
+product photograph's. Exposed past white (`FLOOR_OVER` 1.6 on a white
+sweep), so only the shade near the model shows; that shade cooled toward
+the fill's daylight as it deepens; the light the parts send down onto it
+(a blocked sample traces the part and lights it) laid on in their colour;
+and glossy (`FLOOR_F0` 0.04, `FLOOR_GLOSS` 0.3), the model mirrored in
+it a little and blurred. A table or a lit stage is its own surface and
+is left as it was. The photo version is the marks version with this, so
+the plain and marks versions compile to the same SPIR-V as before.
+
+**Handled plastic** (judged, taken out). Each part's gloss a shade its
+own, soft dull patches, hairline scratches where it was rubbed, specks
+of dust on what faces up, a hazed windscreen and a deeper sink. It moved
+no set (+0.002), and it lost two close-ups in every draw: grey_1x3 0.80
+to 0.38, red_slope_2x4 0.82 to 0.62. Its dulled patches evened out the
+scuffs the judge had read as real ("small dust specks and scuffs on the
+top face") and the slope's glinting grain ("an even noise pattern"). A
+version that only adds marks drew within 0.7% of the pixels of the
+close-ups, its specks lost in what a top mirrors. Neither is kept; the
+first is a81721153.
+
+**The logo is not drawn mirrored.** black_2x4's camera looks at every
+stud from the far side: its renders' logos read upside down, as the
+photograph's do, and turned half a turn they read LEGO, which a mirrored
+logo never does (bench/results/photoreal19-2026-11-24/logo). Crisp
+upside-down italic letters read as mirrored; the photograph's are worn
+soft.
+
+**Judged** (photoreal16's solo judge, fresh names, draws 11 to 14 of
+the 10 shots from locked snapshots of a81721153, 2 trials, 4 rounds,
+2,000 verdicts, 0 errors; bench/results/photoreal19-2026-11-24):
+
+| arm | mean (95%) | against src, all shots | close-ups | sets |
+|---|---|---|---|---|
+| src (the app's defaults) | 0.395 (0.182 to 0.612) | | | |
+| src again (twin) | 0.397 | +0.000 | +0.000 | +0.000 |
+| floor | 0.412 (0.196 to 0.633) | +0.020 (+0.005 to +0.043) | +0.025 (+0.001 to +0.059) | +0.012 (+0.003 to +0.021) |
+| handled skin | 0.334 (0.153 to 0.535) | -0.062 (-0.156 to +0.005) | -0.104 (-0.249 to +0.007) | +0.002 (+0.001 to +0.003) |
+| both | 0.380 (0.186 to 0.597) | -0.015 (-0.100 to +0.039) | -0.035 (-0.169 to +0.061) | +0.014 (+0.005 to +0.023) |
+
+The floor leads src on every shot it changes, in nearly every draw:
+three_2x2_top 0.55 to 0.64 (4 draws of 4), red_slope_2x4 0.82 to 0.86
+(4 of 4), set_6532 0.058 to 0.078 and set_6657 0.048 to 0.070 (4 of 4
+each), set_6512 and set_6660 by a few thousandths (4 of 4). The table
+shots are the same pictures. So it is on: `PRODUCT_FLOOR` is 1. The sets
+are still far from the photographs (0.06 against 0.93): every set
+verdict still names flawless plastic and a seamless backdrop.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

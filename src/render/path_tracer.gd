@@ -80,7 +80,7 @@ var _marked_shader: RID
 var _marked_pipeline: RID
 var _marked_sbt: RID
 ## The shader's "photo" version (photoreal19): the marks version with a set
-## photographed, its floor and its parts' handled skin ([member photo]),
+## photographed, the floor it stands on ([member photo]),
 ## made the first time a picture asks for it. Neither the plain nor the
 ## marks version reads either, so their pictures are as they were.
 var _photo_shader: RID
@@ -176,11 +176,9 @@ var sink: float = 0.0
 ## the shader's "marks" version.
 var marked: bool = false
 ## Whether the picture asks for a set photographed (photoreal19,
-## RenderSettings.floor and skin), set before [method stage]: it is then
-## traced by the shader's "photo" version, and [member skin] goes to the
-## closest hit with each moulded part (its record's box_max.w, 1 plus it).
+## RenderSettings.floor), set before [method stage]: it is then
+## traced by the shader's "photo" version.
 var photo: bool = false
-var skin: float = 0.0
 ## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
 ## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
 var _fitted: Dictionary = {}
@@ -485,8 +483,6 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 		if material != null and material.get_shader_parameter("part_body_top") != null:
 			body_top = minf(float(material.get_shader_parameter("part_body_top")), box_max.y)
 		var moulded: float = 1.0 if product else 0.0
-		if product and photo:
-			moulded += clampf(skin, 0.0, 1.0)
 		var whole: Transform3D = batch.global_transform
 		var buffer: PackedFloat32Array = multimesh.buffer
 		var stride: int = 12 + (4 if multimesh.use_colors else 0) \

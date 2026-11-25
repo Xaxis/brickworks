@@ -217,13 +217,13 @@ const PRODUCT_PEEL := 0.0
 const PRODUCT_SINK := 0.0
 const PRODUCT_POLISH := 0.0
 const PRODUCT_SCUFF := 0.0
-## A set photographed (photoreal19, RenderSettings floor and skin;
-## path_tracer.glsl's photo version): the floor a product photograph's set
-## stands on (glossy, exposed past white, its shade cool and coloured by the
-## model) and the parts' handled skin (dust, hairlines, uneven gloss, sink).
-## Each 0 unless asked until the photo bench's judge keeps it.
-const PRODUCT_FLOOR := 0.0
-const PRODUCT_SKIN := 0.0
+## A set photographed (photoreal19, RenderSettings.floor; path_tracer.glsl's
+## photo version): the floor a product photograph's set stands on, on the
+## shadow catcher (glossy, exposed past white, its shade cool and coloured
+## by the model). On: the solo judge called the sweep's shots photographs
+## more often with it in both classes, the sets +0.012 (95%: +0.003 to
+## +0.021) and the close-ups +0.025 (+0.001 to +0.059), docs/RENDERING.md 5u.
+const PRODUCT_FLOOR := 1.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2689,9 +2689,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.sink = float(breakup[3])
 	_tracer.marked = _tracer.product and (_own(settings.rubbed, PRODUCT_RUBBED) > 0.0
 		or not _matched(settings).is_empty())
-	var photographed: Array = _photographed(settings)
-	_tracer.photo = _tracer.product and (float(photographed[0]) > 0.0 or float(photographed[1]) > 0.0)
-	_tracer.skin = float(photographed[1])
+	_tracer.photo = _tracer.product and _floor_of(settings) > 0.0
 	# The product look's picture has the samples' grain taken out
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.
@@ -3112,19 +3110,17 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	var breakup: Array = _breakup(settings) if worn else [0.0, 0.0, 0.0, 0.0]
 	data.append_array([float(breakup[0]), float(breakup[1]), float(breakup[2]), float(breakup[3])])
 	# A set photographed (photoreal19), read only by the photo version.
-	var photographed: Array = _photographed(settings)
-	data.append_array([float(photographed[0]), float(photographed[1]), 0.0, 0.0])
+	data.append_array([_floor_of(settings), 0.0, 0.0, 0.0])
 	return data
 
 
-## A set photographed (photoreal19) that [param settings] ask for: [the
-## floor, the skin], each 0 for none. Only in the product look, and the
-## floor only where the sweep is the shadow catcher (a table is its own).
-func _photographed(settings: RenderSettings) -> Array:
-	if settings.look != "product":
-		return [0.0, 0.0]
-	var floor: float = maxf(_own(settings.floor, PRODUCT_FLOOR), 0.0) if _catches(settings) else 0.0
-	return [floor, clampf(_own(settings.skin, PRODUCT_SKIN), 0.0, 1.0)]
+## The floor a set photographed stands on (photoreal19) that [param
+## settings] ask for, 0 for none: only in the product look, where the sweep
+## is the shadow catcher (a table is its own).
+func _floor_of(settings: RenderSettings) -> float:
+	if settings.look != "product" or not _catches(settings):
+		return 0.0
+	return maxf(_own(settings.floor, PRODUCT_FLOOR), 0.0)
 
 
 ## How bright the large source (photoreal14) that [param settings] ask for

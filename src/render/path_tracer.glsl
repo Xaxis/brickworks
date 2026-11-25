@@ -39,7 +39,7 @@ photo = "#define PHOTO";
 #version 460
 VERSION_DEFINES
 // The "photo" version (photoreal19) is the marks version with a set
-// photographed: its floor and its parts' handled skin (scene.photo).
+// photographed: the floor it stands on (scene.photo).
 #ifdef PHOTO
 #define MARKS
 #endif
@@ -201,9 +201,7 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 #ifdef PHOTO
 	// A set photographed (photoreal19): the floor it stands on as a product
 	// photograph's (x, 0 the shadow catcher as before, 1 a glossy sweep exposed
-	// past white, the model's colour bounced on it, its shade cool), and its
-	// parts' handled skin (y, 0 none, 1 years in a box: dust, hairlines, uneven
-	// gloss). zw unused.
+	// past white, the model's colour bounced on it, its shade cool). yzw unused.
 	vec4 photo;
 #endif
 } scene;
@@ -1016,99 +1014,6 @@ void sparse_scuffs(vec3 local, uint which, float amount, inout vec3 body, inout 
 }
 #endif
 
-#ifdef PHOTO
-// -- a handled part's skin (photoreal19) ----------------------------------------
-// What years in a box and on a carpet leave on ABS, sized as it is on the part
-// (LDU, 0.4 mm), each part its own way by its own number, never a pattern that
-// repeats from one part or one face to the next. The set photographs' verdicts
-// name "scuffs and uneven gloss", "dust"; ours "flawless uniform plastic with no
-// wear or dust". Each piece is faint, so a close-up holds:
-//   its gloss uneven: a part a shade duller or glossier than the next (a bell),
-//     and soft patches where a fingertip or a cloth went, a few mm across;
-//   micro-scratches: hairlines a few hundredths of a millimetre wide, every way,
-//     dense where the part was rubbed and none elsewhere. No pixel of a set
-//     resolves one: in what a face mirrors they are a haze in streaks;
-//   dust: a few specks a tenth to a third of a millimetre on what faces up, grey
-//     and matt, so a black part shows them light and a white one a hair darker,
-//     never a bright point (a judge called bright flecks fireflies, photoreal1).
-// The sink a moulded face has over its middle is the closest hit's (moulded()).
-
-// Micro-scratches round a point of a face (its own uv, LDU): 0 to 1, how much
-// of the point a hairline covers. Three families of lines each part's own way,
-// each line a few LDU long, as a fingernail or a neighbour's corner leaves them.
-float hairlines(vec2 uv, uint which) {
-	float mark = 0.0;
-	for (int k = 0; k < 3; k++) {
-		float angle = part_unit(which, 101u + uint(k)) * PI;
-		vec2 along = vec2(cos(angle), sin(angle));
-		vec2 across = vec2(-along.y, along.x);
-		// Lines 0.03 LDU wide (12 microns), about 0.9 LDU apart, broken into
-		// lengths of 1 to 6 LDU by a slow noise along them.
-		float a = dot(uv, along);
-		float c = dot(uv, across) / 0.9 + gloss_noise(vec3(a * 0.15, float(k) * 3.1, float(which & 1023u) * 0.37));
-		float line = 1.0 - smoothstep(0.012, 0.035, abs(fract(c) - 0.5) * 0.9);
-		float runs = smoothstep(0.35, 0.6, gloss_noise(vec3(a / 2.2, floor(c) * 1.37 + float(k) * 7.0,
-			float(which & 1023u) * 0.71)));
-		mark = max(mark, line * runs);
-	}
-	return mark;
-}
-
-void handled_skin(vec3 local, vec3 ng, uint which, float amount, inout vec3 body, inout Surface s) {
-	vec3 f = hit.face;
-	vec3 t = normalize(cross(abs(f.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), f));
-	vec3 b = cross(f, t);
-	vec2 uv = vec2(dot(local, t), dot(local, b));
-	vec3 own = vec3(part_unit(which, 91u), part_unit(which, 92u), part_unit(which, 93u)) * 97.0;
-	// How much this part was handled: most a little, some a lot.
-	float handled = amount * (0.3 + 0.7 * part_unit(which, 94u));
-	// Its polish its own: a bell of a part's gloss, sd about a fifth.
-	s.coat_roughness *= exp2(0.5 * part_bell(which, 95u) * amount);
-	// Soft patches a fingertip or a cloth dulled, 3 to 8 mm across.
-	float smudge = smoothstep(0.2, 0.7, gloss_noise(local / 9.0 + own))
-		* smoothstep(-0.2, 0.5, gloss_noise(local / 23.0 + own.zxy));
-	s.coat_roughness = mix(s.coat_roughness, max(s.coat_roughness, 0.14), 0.7 * smudge * handled);
-	// Rubbed where it was rubbed: the hairlines in patches.
-	float rubbed = smoothstep(0.0, 0.6, gloss_noise(local / 14.0 + own.yzx)) * handled;
-	if (rubbed > 0.0) {
-		float line = hairlines(uv, which) * rubbed;
-		s.coat_roughness = mix(s.coat_roughness, 0.3, 0.8 * line);
-	}
-	// Dust on what faces up: in cells 3 LDU across, a speck in some.
-	float up = smoothstep(0.3, 0.9, ng.y);
-	if (up > 0.0) {
-		vec3 cell = floor(local / 3.0);
-		uint h = pcg(uint(int(cell.x) + 4096) * 73856093u ^ uint(int(cell.y) + 4096) * 19349663u
-			^ uint(int(cell.z) + 4096) * 83492791u ^ which * 2654435761u);
-		float chance = float(h & 0xffffu) / 65535.0;
-		if (chance < 0.22 * amount * up) {
-			vec3 centre = (cell + 0.15 + 0.7 * vec3(float((h >> 16) & 255u), float((h >> 24) & 255u),
-				part_unit(which, h & 1023u) * 255.0) / 255.0) * 3.0;
-			float radius = 0.06 + 0.22 * fract(chance * 37.1);
-			vec3 d = local - centre;
-			float off = length(d - f * dot(d, f));
-			float cover = (1.0 - smoothstep(0.55 * radius, radius, off)) * 0.85;
-			if (cover > 0.0) {
-				body = mix(body, vec3(0.42, 0.4, 0.37), cover);
-				s.coat *= 1.0 - cover;
-				s.roughness = mix(s.roughness, 0.9, cover);
-			}
-		}
-	}
-}
-
-// A clear part's handled skin (photoreal19): the same hairlines, where a
-// windscreen was rubbed, scatter a little of the light that falls on it, as a
-// set photograph's windscreens show them ("scratches and haze").
-float glass_haze(vec3 local, vec3 face, uint which, float amount) {
-	vec3 t = normalize(cross(abs(face.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), face));
-	vec3 b = cross(face, t);
-	vec3 own = vec3(part_unit(which, 91u), part_unit(which, 92u), part_unit(which, 93u)) * 97.0;
-	float rubbed = smoothstep(-0.2, 0.5, gloss_noise(local / 14.0 + own.yzx)) * amount;
-	return rubbed * (0.25 + hairlines(vec2(dot(local, t), dot(local, b)), which));
-}
-#endif
-
 // textured: the hit is on a straight slope's face (closest_hit's grain);
 // which: the part's own number (info.z: its body, print and window alike),
 // so no two parts are worn alike and one part is worn as one; ng: the
@@ -1287,11 +1192,6 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 		}
 		if (scene.breakup.y > 0.0) {
 			sparse_scuffs(local, which, scene.breakup.y, body, s);
-		}
-#endif
-#ifdef PHOTO
-		if (scene.photo.y > 0.0) {
-			handled_skin(local, ng, which, scene.photo.y, body, s);
 		}
 #endif
 		if (textured < 0.0) {
@@ -2278,13 +2178,6 @@ void main() {
 						radiance += carried * 0.08 * scene.wear.x * sky_light(n);
 					}
 				}
-#ifdef PHOTO
-				if (scene.photo.y > 0.0 && !inside) {
-					// A handled windscreen's haze (photoreal19).
-					radiance += carried * 0.05 * glass_haze(hit.local, hit.face, thing.info.z, scene.photo.y)
-						* sky_light(n);
-				}
-#endif
 				vec3 tint = sqrt(max(thing.colour.rgb, vec3(0.0)));
 				// A clear neon glowing in the Dark light: light of its own,
 				// on every face the path goes through.
@@ -2564,12 +2457,6 @@ uint part_key = 0u;
 float peel_amount = 0.0;
 float sink_amount = 0.0;
 #endif
-#ifdef PHOTO
-// A handled part's skin (photoreal19, scene.photo.y), which the closest hit
-// reads from the part's record: box_max.w is 1 plus it on a moulded part.
-float skin_amount = 0.0;
-#endif
-
 float wave_noise(vec3 p);
 
 // The edge's rounding where it is hit (photoreal13): a moulded edge is
@@ -2930,14 +2817,7 @@ vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	}
 	if (bent == n && max(abs(n.x), max(abs(n.y), abs(n.z))) > 0.97) {
 		vec3 off = at - (box_min.xyz + high) * 0.5;
-#ifdef PHOTO
-		// A handled part's skin (photoreal19): its faces sink two to four times
-		// as far, each part its own, as a thick old moulding's do.
-		float own_sink = 1.0 + skin_amount * (1.0 + 2.0 * float(part_key & 255u) / 255.0);
-		bent = normalize(n - (off - n * dot(off, n)) * SINK * own_sink);
-#else
 		bent = normalize(n - (off - n * dot(off, n)) * SINK);
-#endif
 	}
 	vec3 s = at / 14.0;
 	vec3 wave = vec3(wave_noise(s), wave_noise(s + vec3(5.2, 1.3, 7.1)), wave_noise(s + vec3(2.9, 8.4, 3.3)));
@@ -2964,9 +2844,6 @@ void main() {
 #ifdef MARKS
 	peel_amount = float((codes >> 16) & 255u) / 100.0;
 	sink_amount = float((codes >> 24) & 127u) / 100.0;
-#endif
-#ifdef PHOTO
-	skin_amount = clamp(instances[which].box_max.w - 1.0, 0.0, 1.0);
 #endif
 	logo_grime = 0.0;
 	uvec4 mesh = meshes[instances[which].info.x];
