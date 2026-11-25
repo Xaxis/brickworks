@@ -1629,9 +1629,10 @@ func turn_selection_by(degrees: float) -> int:
 	var around: Transform3D = Transform3D(Basis.IDENTITY, pivot) \
 		* Transform3D(Basis(Vector3.UP, deg_to_rad(degrees)), Vector3.ZERO) \
 		* Transform3D(Basis.IDENTITY, -pivot)
+	# The turn is square already; each part keeps its own turn as its file
+	# rounded it, turned with the rest ([method _dragged_to]).
 	var turned: int = _reposition(func(at: Transform3D) -> Transform3D:
 		var to: Transform3D = around * at
-		to = Transform3D(to.basis.orthonormalized(), to.origin)
 		return _tidy(to, BrickLattice.is_square_to_grid(to.basis)),
 		"turned %s %d°" % [_many(alive.size()), roundi(degrees)])
 	if turned > 0:
@@ -1661,7 +1662,6 @@ func turn_selection_basis(turn: Basis, words: String = "") -> int:
 		* Transform3D(turn, Vector3.ZERO) * Transform3D(Basis.IDENTITY, -middle)
 	return _reposition(func(at: Transform3D) -> Transform3D:
 		var to: Transform3D = around * at
-		to = Transform3D(to.basis.orthonormalized(), to.origin)
 		return _tidy(to, BrickLattice.is_square_to_grid(to.basis)),
 		words if not words.is_empty() else "turned %s" % _many(alive.size()))
 
@@ -1731,9 +1731,13 @@ func drag_places(by: Transform3D) -> Dictionary:
 	return out
 
 
+## The move made square, not the part: a part keeps the turn its file
+## rounded (10030's 0.951/0.308) turned with the rest. Each part made square
+## moved each of a copy's parts by its own turn, so no line of the copy
+## could say the move (SourceFile._common_move) and each part's line was
+## rewritten in every copy of its sub-model (exactsave).
 func _dragged_to(by: Transform3D, was: Transform3D) -> Transform3D:
-	var to: Transform3D = by * was
-	to = Transform3D(to.basis.orthonormalized(), to.origin)
+	var to: Transform3D = Transform3D(by.basis.orthonormalized(), by.origin) * was
 	return _tidy(to, BrickLattice.is_square_to_grid(to.basis))
 
 
@@ -3012,7 +3016,6 @@ func swing_selection(degrees: float) -> int:
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		var to: Transform3D = around * brick.transform
-		to = Transform3D(to.basis.orthonormalized(), to.origin)
 		var packed: PackedInt32Array = boxes_for(library.mesh_for(brick.part_id), to)
 		for other: int in lattice.blockers_boxes(packed):
 			if not partners.has(other):

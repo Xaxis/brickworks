@@ -1307,6 +1307,193 @@ func _one_each(groups: Dictionary, dead_copies: Dictionary) -> bool:
 	return true
 
 
+## Each outermost copy [param bricks] are in that the file never placed, of a
+## sub-model the file has a section for: a copy put down by a paste, path ->
+## true ([method _copy_line] writes its line).
+func _new_copy_roots(bricks: Array) -> Dictionary:
+	var defs: Dictionary = {}
+	for path: String in unit_sections:
+		defs[Assemblies.definition(Assemblies.leaf(path))] = true
+	var out: Dictionary = {}
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		if not brick.origin.is_empty() or brick.unit.is_empty():
+			continue
+		var path: String = ""
+		for segment: String in Assemblies.segments(brick.unit):
+			path = Assemblies.join(path, segment)
+			if unit_sections.has(path):
+				continue
+			if defs.has(Assemblies.definition(segment)):
+				out[path] = true
+			break
+	return out
+
+
+## The copy of [param roots] ([method _new_copy_roots]) [param unit] is in,
+## or "".
+static func _new_root_of(roots: Dictionary, unit: String) -> String:
+	if roots.is_empty() or unit.is_empty():
+		return ""
+	var path: String = ""
+	for segment: String in Assemblies.segments(unit):
+		path = Assemblies.join(path, segment)
+		if roots.has(path):
+			return path
+	return ""
+
+
+## The one line placing the copy at [param root], put down with [param
+## parts] ([brick, its place in the file's coordinates] each) and never
+## placed by the file, as a copy of the sub-model the file has of its name:
+## [section, text, step, bricks] for [method patch]'s new lines, or why it
+## is none. It lies exactly where the file's own copy of it, [i]as the file
+## has it[/i], lies moved: every part, nested copies too, by the copy it is
+## in within it, in its colour and turned as it is (each a hundredth of an
+## LDU and a ten-thousandth of a turn, [method _same]), so its frame is that
+## copy's frame as read moved, never fitted, and the line says the file's own
+## turn where the move did not turn it. Not where the file's copy holds a
+## part the app cannot show or one on its way ([param unseen]), is
+## mirrored or taken off ([param dead]); nor in a sub-model placed more than
+## once, where a line would put it in each. Read back by [method gate], each
+## part where it is.
+func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary,
+		unseen: Dictionary, steps_now: Dictionary) -> Variant:
+	var parent: String = Assemblies.parent_of(root)
+	if not parent.is_empty() and (not unit_sections.has(parent) or dead.has(parent)):
+		return "a copy put down inside one the file never placed"
+	var section: String = _section_of(parent)
+	if not parent.is_empty() and int(copies.get(section, 1)) > 1:
+		return "a copy put down inside a sub-model placed more than once"
+	var def: String = Assemblies.definition(Assemblies.leaf(root))
+	var theirs: Array = []
+	for path: String in unit_sections:
+		if Assemblies.definition(Assemblies.leaf(path)) == def and not dead.has(path) \
+				and not unseen.has(path) and unit_lines.has(path) and unit_frames.has(path):
+			theirs.append(path)
+	theirs.sort()
+	# Its parts by the kinds of copy each is in within it, what it is and its
+	# colour: a copy's copies inside are numbered after every copy of their
+	# kind, so a pasted car's wings are Wing#3 and #4 where the file's car
+	# has #1 and #2. Which of them lies on which is asked of the move below.
+	var mine: Dictionary = {}
+	for entry: Array in parts:
+		var brick: BrickWorld.Brick = entry[0]
+		if CustomParts.is_skin(brick.part_id):
+			return "a copy put down holds a piece of a flexible part"
+		_add_to(mine, "%s|%s|%d" % [_kinds_in(brick.unit.substr(root.length())), brick.part_id,
+			brick.color_code], entry)
+	var why: String = "the file has no copy of %s it may be laid on" % def
+	for copy: String in theirs:
+		var reads: Dictionary = {}
+		var count: int = 0
+		var plain: bool = true
+		for origin: String in by_origin:
+			var read: Read = by_origin[origin]
+			if read.unit != copy and not read.unit.begins_with(copy + "/"):
+				continue
+			if read.mirrored:
+				plain = false
+				break
+			_add_to(reads, "%s|%s|%d" % [_kinds_in(read.unit.substr(copy.length())), read.part_id,
+				read.colour], read)
+			count += 1
+		if not plain:
+			why = "the file's %s is mirrored" % copy
+			continue
+		if count != parts.size() or reads.size() != mine.size():
+			why = "%d parts against the %d of the file's %s" % [parts.size(), count, copy]
+			continue
+		var laid: Variant = _moved_onto(mine, reads)
+		if laid == null:
+			why = "it does not lie as the file's %s does" % copy
+			continue
+		# Each copy inside it on one of the file's copy, and each part of one
+		# on the same: a part moved from one wing to the other, where it
+		# lies, is the other wing's in the file.
+		var onto: Dictionary = {}
+		var from: Dictionary = {}
+		var same_copies: bool = true
+		for pair: Array in (laid as Array)[1]:
+			var a: String = ((pair[0] as Array)[0] as BrickWorld.Brick).unit.substr(root.length())
+			var b: String = (pair[1] as Read).unit.substr(copy.length())
+			if str(onto.get(a, b)) != b or str(from.get(b, a)) != a:
+				same_copies = false
+				break
+			onto[a] = b
+			from[b] = a
+		if not same_copies:
+			why = "its copies inside are not the file's %s's" % copy
+			continue
+		# The file's frame of its copy, moved as its parts were.
+		var at: Transform3D = ((laid as Array)[0] as Transform3D) * (unit_frames[copy] as Transform3D)
+		var line: String = lines[int(unit_lines[copy])].strip_edges()
+		var words: PackedStringArray = _words(line)
+		if at.basis.determinant() < 0.0 or words.size() < 15:
+			why = "the file's %s is mirrored" % copy
+			continue
+		var local: Transform3D = (frames.get(parent, Transform3D.IDENTITY) as Transform3D).affine_inverse() * at
+		# Its colour as its parts are: the file's copy's own, or the colour
+		# that copy's line hands down where the two are placed apart.
+		var token: String = words[1]
+		var hand: int = int(unit_colours.get(copy, 16))
+		var parent_hand: int = int(unit_colours.get(parent, 16)) if not parent.is_empty() else 16
+		if token == "16" and _section_of(Assemblies.parent_of(copy)) != section and hand != parent_hand:
+			token = _colour_token(hand)
+		var text: String = "1 %s %s %s" % [token, _numbers_for(words, local), LdrModel.reference_of(line)]
+		var bricks: Array = parts.map(func(entry: Array) -> BrickWorld.Brick: return entry[0])
+		var step: int = int(steps_now.get(root, -1)) if authored else -1
+		return [section, text, step, bricks]
+	return "a copy put down is not the file's %s: %s" % [def, why]
+
+
+## How [param mine] (key -> [[brick, place]]) lies on [param reads] (key ->
+## [Read]), the same keys: [the move that lays each of [param reads] on one
+## of [param mine], as its rarest part says it ([method _same] for every
+## one), and each [mine's entry, the Read it lies on]], or null.
+static func _moved_onto(mine: Dictionary, reads: Dictionary) -> Variant:
+	var rarest: String = ""
+	for key: String in mine:
+		if not reads.has(key) or (reads[key] as Array).size() != (mine[key] as Array).size():
+			return null
+		if rarest.is_empty() or (mine[key] as Array).size() < (mine[rarest] as Array).size():
+			rarest = key
+	if rarest.is_empty():
+		return null
+	var anchor: Transform3D = ((mine[rarest] as Array)[0] as Array)[1]
+	for candidate: Read in reads[rarest]:
+		var moved: Transform3D = anchor * candidate.at.affine_inverse()
+		var lies: bool = true
+		var pairs: Array = []
+		for key: String in mine:
+			var left: Array = (reads[key] as Array).duplicate()
+			for entry: Array in mine[key]:
+				var hit: int = -1
+				for n: int in left.size():
+					if _same(moved * (left[n] as Read).at, entry[1] as Transform3D):
+						hit = n
+						break
+				if hit < 0:
+					lies = false
+					break
+				pairs.append([entry, left[hit]])
+				left.remove_at(hit)
+			if not lies:
+				break
+		if lies:
+			return [moved, pairs]
+	return null
+
+
+## [param rest], a path inside a copy ("/Wing#3/Flap#2"), by the kinds of
+## copy alone ("/Wing/Flap").
+static func _kinds_in(rest: String) -> String:
+	var out: String = ""
+	for segment: String in Assemblies.segments(rest):
+		out += "/" + Assemblies.definition(segment)
+	return out
+
+
 static func _colour_token(code: int) -> String:
 	return "0x%07X" % code if LdrModel.is_direct_colour(code) else str(code)
 
@@ -1446,6 +1633,13 @@ class Plan extends RefCounted:
 	var now: Dictionary = {}
 	## The parts with no line: [[brick, its place]].
 	var fresh: Array = []
+	## Each copy put down that the file never placed, of a sub-model the
+	## file has (a paste): its path -> the reference its one new line names
+	## ([method SourceFile._copy_line]). Its parts are in [member copied],
+	## brick id -> [brick, its place], not in [member fresh]: read back
+	## through that line, they are its sub-model's lines, in its steps.
+	var new_copies: Dictionary = {}
+	var copied: Dictionary = {}
 	## The file's lines taken out, and those rewritten or moved.
 	var gone: Dictionary = {}
 	var changed: Dictionary = {}
@@ -1716,9 +1910,23 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	if not _why_never.is_empty():
 		return _no(plan, _why_never)
 	var back := Transform3D(Basis.IDENTITY, -lift)
+	# A copy put down of a sub-model the file has (a paste) is one line
+	# placing that sub-model ([method _copy_line]), its parts none of their
+	# own. Up to exactsave it was "a copy the file never placed", and the
+	# file was written whole: every line of 10030-1 written again for a paste
+	# of all of it, its parts fitted and 76 of them moved (appfix S1).
+	plan.new_copies = _new_copy_roots(bricks)
+	var in_copy: Dictionary = {}    ## a new copy -> [[brick, its place]]
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		var at: Transform3D = back * brick.transform
+		var root: String = _new_root_of(plan.new_copies, brick.unit)
+		if not root.is_empty():
+			if not brick.origin.is_empty():
+				return _no(plan, "a part read from the file is in a copy the file never placed")
+			plan.copied[brick.id] = [brick, at]
+			_add_to(in_copy, root, [brick, at])
+			continue
 		if brick.origin.is_empty():
 			plan.fresh.append([brick, at])
 			continue
@@ -1735,6 +1943,8 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	for unit: String in steps_now:
 		if int(steps_now[unit]) == AuthorSteps.IN_PARENT:
 			return _no(plan, "a copy is built in its parent's steps")
+		if not _new_root_of(plan.new_copies, unit).is_empty():
+			continue
 		if not unit_steps.has(unit) or not unit_lines.has(unit):
 			return _no(plan, "a copy the file never placed")
 
@@ -1952,7 +2162,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	for line: int in plan.gone:
 		if rewrites.has(line):
 			return _no(plan, "a line both taken out and kept")
-	var unplaced: String = _left_unplaced(plan.gone, plan.fresh.size())
+	var unplaced: String = _left_unplaced(plan.gone, plan.fresh.size() + plan.copied.size())
 	if not unplaced.is_empty():
 		return _no(plan, unplaced)
 	# A part the app cannot show, or one still on its way, is in the step
@@ -1986,6 +2196,24 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		return _no(plan, str(groups[""]))
 	if not _one_each(groups, dead_copies):
 		return _no(plan, "a new part in one copy of a sub-model and not another")
+	# Each copy put down of a sub-model the file has: the one line placing it,
+	# in the order they were put down. A reader numbers the copies inside
+	# them in the order it reads them, and the paste numbered them in the
+	# order it put their parts down (Assemblies.group_for_copy).
+	var copy_paths: Array = in_copy.keys()
+	copy_paths.sort()
+	for root: String in copy_paths:
+		var made: Variant = _copy_line(root, in_copy[root], frames, dead_copies,
+			waits_under.merged(hidden_under), steps_now)
+		if made is String:
+			return _no(plan, str(made))
+		var group: Array = made
+		plan.new_copies[root] = LdrModel.reference_of(str(group[1]))
+		var first: int = -1
+		for entry: Array in in_copy[root]:
+			var id: int = (entry[0] as BrickWorld.Brick).id
+			first = id if first < 0 else mini(first, id)
+		groups["%s|%d|copy %019d|%s" % [group[0], int(group[2]), first, root]] = group
 	var fresh_steps: Dictionary = {}    ## section -> the steps of its new lines
 	for key: String in groups:
 		_add_to(fresh_steps, str(groups[key][0]), int(groups[key][2]))
@@ -3085,7 +3313,7 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 				if not _is_placing(said) or (plan.new_bricks.get(n, []) as Array).is_empty():
 					return "a new line places no new part (%s)" % said.strip_edges().left(60)
 				var why: String = _new_as_written(said, plan.new_bricks[n] as Array,
-					n == plan.out.size() - 1)
+					n == plan.out.size() - 1, plan.new_copies)
 				if not why.is_empty():
 					return why
 			_:
@@ -3180,8 +3408,22 @@ func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Diction
 ## file would read as 0), or 16 in a copy that hands its parts of 16 that
 ## colour ([method _fresh_lines]), its number as "part.dat", the file's line
 ## end unless it is the text's [param at_end]; "".
-func _new_as_written(said: String, bricks: Array, at_end: bool) -> String:
+func _new_as_written(said: String, bricks: Array, at_end: bool, copies_put: Dictionary = {}) -> String:
 	var words: PackedStringArray = _words(said)
+	# A copy put down ([method _copy_line]): the line names its sub-model,
+	# and read back, each of its parts is where it is ([method _read_back_kept]).
+	var root: String = _new_root_of(copies_put, (bricks[0] as BrickWorld.Brick).unit) \
+		if not bricks.is_empty() else ""
+	if not root.is_empty():
+		for item: Variant in bricks:
+			if _new_root_of(copies_put, (item as BrickWorld.Brick).unit) != root:
+				return "a new line places parts of two copies put down"
+		if LdrModel.reference_of(said) != str(copies_put[root]):
+			return "a new line names %s, and its copy is of %s" % [LdrModel.reference_of(said).left(60),
+				str(copies_put[root]).left(60)]
+		if not at_end and said.ends_with("\r") != _crlf:
+			return "a new line ends another way than the file's"
+		return ""
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		var handed: bool = words[1] == "16" and not brick.unit.is_empty() \
@@ -3261,6 +3503,8 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 	var seen := Plan.new()
 	seen.now = plan.now
 	seen.fresh = plan.fresh
+	seen.new_copies = plan.new_copies
+	seen.copied = plan.copied
 	seen.gone = plan.gone
 	seen.changed = plan.changed
 	seen.steps_gone = plan.steps_gone
@@ -3577,6 +3821,17 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 	var fresh_at: Dictionary = {}
 	for entry: Array in plan.fresh:
 		fresh_at[(entry[0] as BrickWorld.Brick).id] = entry
+	# A copy put down's parts too, each read back through its line: in its
+	# sub-model's steps, as the file has them, which no step of the model's
+	# says ([method _copy_line]).
+	fresh_at.merge(plan.copied)
+	# Each new line's parts by their copy, part and colour: a copy put down
+	# is thousands of parts on one line.
+	var on_new: Dictionary = {}     ## "line|unit|part|colour" -> [brick]
+	for n: int in plan.new_bricks:
+		for brick: Variant in plan.new_bricks[n]:
+			var mine: BrickWorld.Brick = brick
+			_add_to(on_new, "%d|%s|%s|%d" % [n, mine.unit, mine.part_id, mine.color_code], mine)
 	var placements: Array = model.flatten(library.parts if library != null else {})
 	# Each section's steps as numbers from its first with anything in it,
 	# read back and in the model: a ROTSTEP at a sub-model's head, before its
@@ -3629,15 +3884,15 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 			_as_opened(placement, library)
 		if leaf_new >= 0:
 			var matched: bool = false
-			for brick: Variant in plan.new_bricks.get(leaf_new, []):
+			for brick: Variant in on_new.get("%d|%s|%s|%d" % [leaf_new, placement.unit,
+					placement.part_id, placement.color_code], []):
 				var mine: BrickWorld.Brick = brick
-				if not fresh_left.has(mine.id) or mine.unit != placement.unit:
+				if not fresh_left.has(mine.id):
 					continue
 				var entry: Array = fresh_at[mine.id]
-				if mine.part_id == placement.part_id and mine.color_code == placement.color_code \
-						and _close_to(entry[1] as Transform3D, placement.transform) \
-						and (mine.step < 0 or _same_step(mine.step, placement.step,
-							_section_of(mine.unit), lead_world, lead_file)):
+				if _close_to(entry[1] as Transform3D, placement.transform) \
+						and (mine.step < 0 or plan.copied.has(mine.id) or _same_step(mine.step,
+							placement.step, _section_of(mine.unit), lead_world, lead_file)):
 					fresh_left.erase(mine.id)
 					matched = true
 					break
@@ -3683,6 +3938,10 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		return "read back without %d new part%s" % [fresh_left.size(), "" if fresh_left.size() == 1 else "s"]
 	if authored:
 		for path: String in steps_now:
+			# A copy inside a copy put down is in that one's sub-model's steps.
+			var root: String = _new_root_of(plan.new_copies, path)
+			if not root.is_empty() and root != path:
+				continue
 			if model.unit_steps.has(path) and not _same_step(int(steps_now[path]),
 					int(model.unit_steps[path]), _section_of(Assemblies.parent_of(path)),
 					lead_world, lead_file):

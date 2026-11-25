@@ -7346,6 +7346,13 @@
       "entry": "src/dev/stepreview_probe.gd",
       "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepreview_probe   (346-2 at a step: the house nudged, turned and dragged whole, its later parts with it; line and properties counts; print_part, make_unique, move_part on a later part refused; a paint's copies said; a minifig lifted at a step; a step's time; PROBE_SIZE=390x844)",
       "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "exactsave probe",
+      "entry": "src/dev/exactsave_probe.gd",
+      "reach": "tools/probe.sh exactsave_probe [--keep=DIR] [--cases=1,5]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; the paste with a part of the original moved, reopened exact; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place; a sub-model placed once moved and turned 30 degrees whole, the one line placing it changed)",
+      "area": "model-io"
     }
   ]
 }
