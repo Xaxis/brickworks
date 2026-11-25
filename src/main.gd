@@ -7400,6 +7400,8 @@ func _build_ui() -> void:
 	# Once a frame, not once a part (_edited_soon).
 	_builder.placed.connect(func(_id: int, _part: String) -> void: _edited_soon())
 	_builder.removed.connect(func(_id: int) -> void: _edited_soon())
+	# A figure lifted off and let go of in hand: off the model now, as taken off.
+	_builder.figure_let_go.connect(_edited_soon)
 	# Watch it go up, in the order it would be built, rather than find
 	# it already there.
 	_playback = BuildPlayback.new()
@@ -10171,8 +10173,11 @@ func _on_model_edited() -> void:
 	# The timeline in the author's steps shows the model as it now is: a
 	# part put down in the step showing, an undone step edit. (Worked out,
 	# it is the order it was when opened, as it always was: on Orthanc the
-	# working out takes five seconds.)
-	if _steps != null and _steps.is_playing_back() and _steps.mode() == StepsBar.AUTHORS:
+	# working out takes five seconds.) Not while a figure lifted off it is in
+	# hand: it is in none of the steps until it is put down, back in its own,
+	# or let go of (Builder.holds_lifted_figure, figure_let_go).
+	if _steps != null and _steps.is_playing_back() and _steps.mode() == StepsBar.AUTHORS \
+			and not _builder.holds_lifted_figure():
 		_steps.refresh()
 
 

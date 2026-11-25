@@ -4105,7 +4105,9 @@ func _close_step(level: String, skip: Dictionary) -> String:
 ## as the person's (sk2review F2). The same for the timeline, the keys and
 ## every session's tool, as all come here. "" when nothing is held.
 func _steps_wait() -> String:
-	if builder != null and builder.is_carrying():
+	# A figure lifted off (X over it) is in no step too, the timeline's steps
+	# kept as they were for it (Builder.holds_lifted_figure).
+	if builder != null and (builder.is_carrying() or builder.holds_lifted_figure()):
 		return "the parts in hand are in no step: put them down, or press Escape, first"
 	return ""
 

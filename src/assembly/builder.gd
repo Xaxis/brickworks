@@ -6197,25 +6197,50 @@ func set_hand_state(state: Dictionary) -> void:
 ## Hold a figure to put down: its parts in its own frame, as
 ## Minifig.assemble gives them, and the name its parts will carry.
 func hold_figure(parts: Array, called: String) -> void:
+	var let_go: bool = holds_lifted_figure()
 	held_figure = parts.duplicate()
 	held_figure_name = called if not called.strip_edges().is_empty() else "Minifig"
 	held_face = "up"
 	_figure_followers = []
 	_figure_lift = {}
+	if let_go:
+		figure_let_go.emit()
 
 
 ## Go back to holding the part that was held before.
 func drop_figure() -> void:
+	var let_go: bool = holds_lifted_figure()
 	held_figure = []
 	held_figure_name = ""
 	# What of it stayed on the model stays where it stands.
 	_figure_followers = []
 	_figure_lift = {}
 	_hide_figure_ghosts()
+	if let_go:
+		figure_let_go.emit()
 
 
 func is_holding_figure() -> bool:
 	return not held_figure.is_empty()
+
+
+## Whether the figure in hand was lifted off the model by the newest step, so
+## it is in no step until it is put down, where each of its parts goes back in
+## its own step and sub-model ([method _place_figure]). Meanwhile the person's
+## steps stand as they were: the timeline is not worked out again without it
+## (Main._on_model_edited), no step edit is made (Shell._steps_wait), and the
+## steps it emptied keep their looks (ModelStore.looks_follow_edit). Worked
+## out again, the timeline lost the figure's steps while it was in hand and
+## drew its parts still to come, which then held its feet up (stepfast2).
+func holds_lifted_figure() -> bool:
+	return is_holding_figure() and not _figure_lift.is_empty() and not _history.is_empty() \
+		and is_same(_history.back(), _figure_lift)
+
+
+## A figure lifted off the model was let go of without being put down: its
+## parts stay off the model, and the lift is an edit like any other now
+## (Main._edited_soon).
+signal figure_let_go
 
 
 ## Where a figure facing a quarter turn would stand, aimed at a point:
@@ -6321,9 +6346,10 @@ func _going_now() -> Dictionary:
 ## undo takes back.
 func put_figure(parts: Array, called: String, at: Transform3D,
 		as_lifted: bool = false) -> PackedInt64Array:
-	# [param as_lifted]: the rest of the figure is still on the model under
-	# [param called] (Builder._figure_followers), so its own name, and each
-	# part the step and sub-model it was lifted from.
+	# [param as_lifted]: the figure lifted off the model by the step before,
+	# moved: its own name (the rest of it may still be on the model under it,
+	# Builder._figure_followers), and each part the step, sub-model and file
+	# line it was lifted from, as parts carried keep theirs (_put_carried).
 	var group: String = called if as_lifted else unused_group(called)
 	var ids := PackedInt64Array()
 	for item: Dictionary in parts:
@@ -6335,6 +6361,7 @@ func put_figure(parts: Array, called: String, at: Transform3D,
 		if as_lifted:
 			world.get_brick(brick_id).unit = str(item.get("unit", ""))
 			world.get_brick(brick_id).step = int(item.get("step", -1))
+			world.get_brick(brick_id).origin = str(item.get("origin", ""))
 		lattice.occupy_boxes(brick_id,
 			boxes_for(library.mesh_for(str(item["part"])), where))
 		ids.append(brick_id)
@@ -6403,16 +6430,24 @@ func _place_figure() -> int:
 	# the rest of it (_figure_fits_with_followers).
 	if _followers_now().is_empty():
 		_figure_followers = []
-	var following: bool = not _figure_followers.is_empty()
+	# Any figure lifted off the model, put down by the next click, is moved:
+	# each part in the step and sub-model it came from, as a part carried is.
+	# Put down anew, a figure lifted out of its own sub-model with its steps
+	# went into the main model, every part of it in the step showing
+	# (stepfast2: live does so on any move of a figure).
+	var lifted: bool = holds_lifted_figure()
 	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform,
-		following)
+		lifted)
 	if ids.is_empty():
 		return 0
 	var steps: Array = []
 	for brick_id: int in ids:
-		if not following:
+		if not lifted:
 			world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
-		steps.append({"undo": "remove", "brick": brick_id})
+		# Moved, a model whose steps are the app's own follows it as a part
+		# carried and put down (ModelStore._bricks_edited).
+		steps.append({"undo": "remove", "brick": brick_id, "moved": true} if lifted
+			else {"undo": "remove", "brick": brick_id})
 	riding_later = 0
 	for follower: Dictionary in _figure_followers:
 		var brick: BrickWorld.Brick = world.get_brick(int(follower["brick"]))
@@ -6468,7 +6503,7 @@ func _lift_figure(brick_id: int) -> bool:
 			continue
 		parts.append({"part": brick.part_id, "color": brick.color_code,
 			"at": home.affine_inverse() * brick.transform, "step": brick.step,
-			"unit": brick.unit})
+			"unit": brick.unit, "origin": brick.origin})
 		steps.append({"undo": "add", "part": brick.part_id,
 			"color": brick.color_code, "transform": brick.transform,
 			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})

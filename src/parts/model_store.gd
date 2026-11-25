@@ -4493,13 +4493,14 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 ## change to a selection. Not for an undo or a redo, whose step has it in
 ## already (Builder.settled), nor while parts lifted off are held: put down,
 ## they go back in the steps they came from (Builder.lift_selection), and the
-## step that keeps both is asked then.
+## step that keeps both is asked then. A figure lifted off the same
+## (Builder.holds_lifted_figure): its lift is asked only if it is let go of.
 func looks_follow_edit() -> void:
 	if builder == null or world == null:
 		return
 	var step: Dictionary = builder.last_step()
 	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
-			or builder.is_carrying():
+			or builder.is_carrying() or builder.holds_lifted_figure():
 		return
 	var held: Array = _held_placements()
 	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
