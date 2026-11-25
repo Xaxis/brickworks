@@ -3,7 +3,7 @@
 Making a minifigure from real LDraw parts, slot by slot, standing it on a stud in
 the model, and the design assistant doing the same with `add_minifig`.
 
-<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, lib:parts from 3D files, ui:own part from a 3D file, cli:figure prints and moulds in a browser, cli:held items probe -->
+<!-- covers: ui:minifig builder, lib:minifig assembly, lib:add a minifig, cli:measure minifig offsets, cli:minifig browser flow, lib:custom moulds, ui:mould maker, lib:parts from 3D files, ui:own part from a 3D file, cli:figure prints and moulds in a browser, cli:held items probe, lib:moulds sent to your account, cli:sitehair probe -->
 
 ## Sub-features
 
@@ -348,6 +348,20 @@ the model, and the design assistant doing the same with `add_minifig`.
   again to the same bytes, and read where neither part was made with the same
   corners and place; `--pictures=DIR` adds three moulds beside their real hair
   pieces, rendered light and dark.
+- `moulds sent to your account` (`src/account/moulds_on_account.gd`,
+  `MouldsOnAccount`, sitehair 2026-11-25): signed in, Save mould also sends
+  the mould's own text to the account (POST `/api/people?op=mould`, web.md
+  `your own moulds on your account`), for the site's minifig maker to wear,
+  and the builder's summary says "Kept on your account too: wear it in the
+  site's minifig maker (Edit profile)." (`KEPT`), or "Kept in the studio
+  only: <why>" in the server's words or its own (signed out, not reached).
+  One saved signed out or out of reach is sent the next time the builder
+  opens signed in (`sweep`: the account's list asked once a run, what it
+  lacks sent). The builder has the app's `Account` (`MinifigDialog.account`,
+  set in `Main._make_figures`). `sitehair_probe` (headless; a relay of the
+  checkout and a throwaway's token, as `tools/web/sitehair_flow.mjs` gives
+  it; SKIPPED without) drives it: kept signed in with its triangles and
+  bytes and its text back exactly, nothing sent signed out, the sweep once.
 - `parts from 3D files` (`src/parts/mesh_part.gd`, `MeshPart`, a Later class):
   an STL (binary or ASCII; Z up, turned upright) or an OBJ read with
   `MeshFile` and refused in a sentence when it is not closed (an edge used an

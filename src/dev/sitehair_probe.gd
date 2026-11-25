@@ -3,10 +3,7 @@
 ## api/_moulds.js, supabase/own_moulds.sql).
 ##
 ##   BRICKWORKS_API=http://127.0.0.1:PORT BW_PROBE_TOKEN=T BW_PROBE_USER=U BW_MOULD_OUT=FILE \
-##     godot --path . --resolution 1280x800 --script src/dev/sitehair_probe.gd -- --pictures=DIR
-##
-## --pictures: the builder with the figure wearing the first mould, as the
-## studio shows it (studio_mould_<width>.png).
+##     godot --headless --path . --script src/dev/sitehair_probe.gd
 ##
 ## PORT is a relay serving this checkout's api (tools/web/relay_server.mjs),
 ## T and U a throwaway account's access token and id
@@ -41,10 +38,6 @@ func _initialize() -> void:
 func _run() -> void:
 	_token = OS.get_environment("BW_PROBE_TOKEN")
 	var out: String = OS.get_environment("BW_MOULD_OUT")
-	var pictures: String = ""
-	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("--pictures="):
-			pictures = arg.trim_prefix("--pictures=")
 	_forget(PROBE_DIR)
 	CustomParts.dir = PROBE_DIR + "parts/"
 	MouldEditor.drafts = PROBE_DIR + "drafts/"
@@ -74,13 +67,6 @@ func _run() -> void:
 		file.close()
 		print("  its text, %d bytes, written to %s" % [text.to_utf8_buffer().size(), out])
 	_ok(_figures.figure.part("headwear") == first, "  the figure wears it (%s)" % _figures.figure.part("headwear"))
-	if not pictures.is_empty() and DisplayServer.get_name() != "headless":
-		await _frames(90)
-		DirAccess.make_dir_recursive_absolute(pictures)
-		var image: Image = root.get_texture().get_image()
-		var file_name: String = pictures.path_join("studio_mould_%d.png" % image.get_width())
-		image.save_png(file_name)
-		print("  the studio's picture: %s" % file_name)
 	if _token.is_empty():
 		print("\nsitehair probe: SKIPPED (no BW_PROBE_TOKEN: the mould was made, nothing was sent)")
 		_forget(PROBE_DIR)

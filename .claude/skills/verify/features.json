@@ -3708,6 +3708,22 @@
       "tests": []
     },
     {
+      "id": "cli:sitehair browser flow",
+      "kind": "cli",
+      "entry": "tools/web/sitehair_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sitehair_flow.mjs --url=<preview> --out=DIR   (preview check sitehair; or on a relay with --mould=FILE: a mould made in the studio at /app, kept on the account, worn in the site's maker, on her profile, comment and page at 1280 and 390, another account refused, hostile moulds refused in words, bytes per avatar view)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:sitehair probe",
+      "kind": "cli",
+      "entry": "src/dev/sitehair_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:PORT BW_PROBE_TOKEN=T BW_PROBE_USER=U godot --headless --path . --script src/dev/sitehair_probe.gd   (a relay of this checkout and a throwaway's token: saved signed in it is kept, signed out it is not, the sweep sends what the account lacks once; without a token SKIPPED, BW_MOULD_OUT=FILE writes the mould's text)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "cli:smalls12 probe",
       "kind": "cli",
       "entry": "src/dev/smalls12_probe.gd",
@@ -5409,6 +5425,14 @@
       "tests": []
     },
     {
+      "id": "lib:moulds sent to your account",
+      "kind": "lib",
+      "entry": "src/account/moulds_on_account.gd",
+      "reach": "godot --path .  (signed in, the figure builder, Headgear, Make a mould\u2026, Save mould: the summary says \"Kept on your account too\"; one saved signed out is sent the next time the builder opens signed in)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "lib:moving a body on its joint",
       "kind": "lib",
       "entry": "src/assembly/grab.gd",
@@ -6264,6 +6288,14 @@
       "entry": "src/assembly/mechanism.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=worms   (by hand: turn 42042-1_Tower-Crane's winch worm round and its spool turns an eighth a turn; drag the spool and it is held, said)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:your own moulds on your account",
+      "kind": "lib",
+      "entry": "api/_moulds.js",
+      "reach": "POST /api/people?op=mould {id, slot, text} signed in (the studio sends it; refused in words: over 2 MB 413, a line not 0/2/3, a number not finite or past 400 LDU, an id not its text's digest, past 40 moulds or 24 MB an account 409); GET ?op=moulds (your own, no text); GET ?op=mould&id=M (yours, or one a shown avatar wears; private, immutable; 404 else); supabase/own_moulds.sql (RLS, no grants to anon or authenticated)",
+      "area": "web",
       "tests": []
     },
     {
@@ -7327,6 +7359,14 @@
       "entry": "src/ui/grab_drag.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd   (by hand: Select tool, drag a part that hangs on a hinge, clip, turntable, pin, axle, ball or round stud)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:hair of your own in the site's minifig maker",
+      "kind": "ui",
+      "entry": "web/minifig-maker.js",
+      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig, Hair and hats   (Your own first, with its filter, each drawn from its triangles in the colour chosen, tools/viewer/minifig.js mouldSurfaces; worn in its base hair's colour, seated as the base is; Save keeps the picture with recipe hd = the mould's id, refused 403 unless it is one of yours; none yet: a line to Make a mould\u2026 in the studio)",
+      "area": "web",
       "tests": []
     },
     {

@@ -7243,6 +7243,41 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "your own moulds on your account",
+      "entry": "api/_moulds.js",
+      "reach": "POST /api/people?op=mould {id, slot, text} signed in (the studio sends it; refused in words: over 2 MB 413, a line not 0/2/3, a number not finite or past 400 LDU, an id not its text's digest, past 40 moulds or 24 MB an account 409); GET ?op=moulds (your own, no text); GET ?op=mould&id=M (yours, or one a shown avatar wears; private, immutable; 404 else); supabase/own_moulds.sql (RLS, no grants to anon or authenticated)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "hair of your own in the site's minifig maker",
+      "entry": "web/minifig-maker.js",
+      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig, Hair and hats   (Your own first, with its filter, each drawn from its triangles in the colour chosen, tools/viewer/minifig.js mouldSurfaces; worn in its base hair's colour, seated as the base is; Save keeps the picture with recipe hd = the mould's id, refused 403 unless it is one of yours; none yet: a line to Make a mould… in the studio)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "moulds sent to your account",
+      "entry": "src/account/moulds_on_account.gd",
+      "reach": "godot --path .  (signed in, the figure builder, Headgear, Make a mould…, Save mould: the summary says \"Kept on your account too\"; one saved signed out is sent the next time the builder opens signed in)",
+      "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "sitehair probe",
+      "entry": "src/dev/sitehair_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:PORT BW_PROBE_TOKEN=T BW_PROBE_USER=U godot --headless --path . --script src/dev/sitehair_probe.gd   (a relay of this checkout and a throwaway's token: saved signed in it is kept, signed out it is not, the sweep sends what the account lacks once; without a token SKIPPED, BW_MOULD_OUT=FILE writes the mould's text)",
+      "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "sitehair browser flow",
+      "entry": "tools/web/sitehair_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sitehair_flow.mjs --url=<preview> --out=DIR   (preview check sitehair; or on a relay with --mould=FILE: a mould made in the studio at /app, kept on the account, worn in the site's maker, on her profile, comment and page at 1280 and 390, another account refused, hostile moulds refused in words, bytes per avatar view)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "sign in with google",
       "entry": "api/_ways.js",

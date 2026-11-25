@@ -46,9 +46,12 @@ A mould starts from a part of up to 18,000 triangles. A bigger one, such as a st
 
 On a figure wearing a mould, or hair brought in from a 3D file, **Make a mould…** shapes that hair further. Saving makes a new part, and the one before stays as it was.
 
+Signed in, a hair you save is also kept on your account, and the builder says so: "Kept on your account too". Wear it on your avatar in the site's minifig maker, under **Edit profile › Make a minifig › Hair and hats › Your own** ([your minifig](/docs/profiles#avatar)). If you saved it signed out, or Brickworks could not be reached, the builder says why, and sends it the next time you open the builder signed in. An account keeps up to 40 moulds of up to 2 MB each.
+
 <!-- covers
 ui:mould maker
 lib:custom moulds
+lib:moulds sent to your account
 -->
 
 For hair you already have as a 3D file, choose **Headgear** and **Your own…**: see [A part from a 3D file](#own-part). It is seated on the head and worn like any hair.

@@ -32,7 +32,7 @@ Everybody starts with a minifig made from their handle: a face, hair or a hat an
 
 - **Skin**: the LEGO® skin tones, yellow and eight more from light nougat to dark brown, then a few fantasy ones. The head, the hands and any bare skin a print shows (a sun top, shorts) take it.
 - **Face**: 65 faces, smiling, laughing, scared, asleep, with glasses, sunglasses, beards and freckles. **Glasses**, **Beards**, **Freckles** and **Two faces** narrow the list; on a two-faced head, **Show the other face** turns it round.
-- **Hair and hats**: 54 hair pieces (short, long, curly, tied up) in a hair colour or any colour, and 54 hats, helmets and headgear.
+- **Hair and hats**: 54 hair pieces (short, long, curly, tied up) in a hair colour or any colour, and 54 hats, helmets and headgear. Hair you shaped yourself in the studio comes first, under **Your own** ([Make a mould](/docs/figures-and-prints#mould), signed in): it sits on the head as the hair it was shaped from does, in the colour you choose. Until you have made one, a line there says how.
 - **Torso**: plain or one of 49 prints, in any colour; each print keeps its own colours.
 - **Arms and hands**: the arms' colour, or **Each arm its own colour**; the hands' colour, or your skin.
 - **Legs**: plain, printed hips, shorts, short legs, dresses and skirts, the hips and **Each leg its own colour**.
@@ -49,6 +49,8 @@ Every tab has a search, and each choice is a picture of the part in the colour y
 <!-- covers
 ui:your own picture as your avatar
 ui:a minifig of your own as your avatar
+ui:hair of your own in the site's minifig maker
+lib:your own moulds on your account
 -->
 
 ### Achievements and insights {#achievements}
