@@ -39,7 +39,7 @@ export const INDEX = "brickworks-lots";
 /// It is in every file's fingerprint (api/share.js lotsFingerprint), so a
 /// file kept, or held a year by a cache, under the old drawing is never
 /// asked for again, and the next ask draws the version anew.
-export const DRAWN = 1;
+export const DRAWN = 2;
 const OVER = 2;
 const SIZE = TILE * OVER;
 
@@ -134,7 +134,7 @@ function lit(ink, n) {
 /// app's pictures have only a shade where a part folds.
 function penOf(ink) {
   const bright = 0.2126 * ink[0] + 0.7152 * ink[1] + 0.0722 * ink[2];
-  return [...(bright < 0.12 ? [0.45, 0.45, 0.45] : ink.slice(0, 3).map((c) => c * 0.62)), 0.6];
+  return [...(bright < 0.12 ? [0.45, 0.45, 0.45] : ink.slice(0, 3).map((c) => c * 0.62)), 0.45];
 }
 
 const smooth = (a, b, x) => {
@@ -253,10 +253,11 @@ export function drawLot(part, own, palette = {}) {
         const step = Math.max(Math.abs(near[l] + near[rr] - 2 * near[at]), Math.abs(near[u] + near[d] - 2 * near[at]));
         line = Math.max(smooth(0.22, 0.5, fold), smooth(0.004, 0.012, step)) * fine;
       }
+      // The pen's colour is straight, so it is laid at its own strength.
       const o = pen[3] * line;
-      big[at * 4] = pen[0] * line + r * a * (1 - o);
-      big[at * 4 + 1] = pen[1] * line + g * a * (1 - o);
-      big[at * 4 + 2] = pen[2] * line + b * a * (1 - o);
+      big[at * 4] = pen[0] * o + r * a * (1 - o);
+      big[at * 4 + 1] = pen[1] * o + g * a * (1 - o);
+      big[at * 4 + 2] = pen[2] * o + b * a * (1 - o);
       big[at * 4 + 3] = o + a * (1 - o);
     }
   }
