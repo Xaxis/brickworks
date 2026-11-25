@@ -6226,29 +6226,32 @@ func is_holding_figure() -> bool:
 ## row of them — and rests on the highest surface under either foot.
 ## Given its [param parts] (a figure's, "part" and "at" each), never down
 ## a stud past its foot ([method stud_feet_lift]): legs on two cones.
+## [param going]: bricks on the model that go with it ([method _going_now]),
+## which hold nothing up where they stand now.
 func settle_figure(target: Vector3, rotation: int,
-		hit: BrickLattice.Hit = null, parts: Array = []) -> Transform3D:
+		hit: BrickLattice.Hit = null, parts: Array = [], going: Dictionary = {}) -> Transform3D:
 	var basis: Basis = BrickLattice.basis_for("up", rotation)
 	var footprint := Vector2i(1, 2) if posmod(rotation, 2) == 1 else Vector2i(2, 1)
 	var snapped: Vector3 = BrickLattice.snap_to_studs(target, footprint)
 	var half := Vector3(footprint.x, 0.0, footprint.y) * (BrickLattice.STUD * 0.5)
 	var from: Vector3i = BrickLattice.to_cell(snapped - half)
 	var to: Vector3i = BrickLattice.to_cell(snapped + half)
-	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
+	var rest_cell: int = GROUND_CELL + lattice.rise_onto(PackedInt32Array([from.x, GROUND_CELL, from.z,
+		to.x, GROUND_CELL + 1, to.z]), GROUND_CELL, 0, 0, going)
 	if hit != null and hit.is_valid() and hit.normal.y == 0:
 		rest_cell = maxi(rest_cell, hit.adjacent().y)
 	var at := Transform3D(basis, Vector3(snapped.x, rest_cell * BrickLattice.CELL, snapped.z))
-	at.origin.y += figure_lift(parts, at)
+	at.origin.y += figure_lift(parts, at, going)
 	return at
 
 
 ## How far a figure's [param parts] standing at [param at] are down studs
 ## past their feet ([method stud_feet_lift]).
-func figure_lift(parts: Array, at: Transform3D) -> float:
+func figure_lift(parts: Array, at: Transform3D, going: Dictionary = {}) -> float:
 	var placed: Array = []
 	for item: Dictionary in parts:
 		placed.append([str(item["part"]), at * (item["at"] as Transform3D)])
-	return stud_feet_lift(placed) if not placed.is_empty() else 0.0
+	return stud_feet_lift(placed, going) if not placed.is_empty() else 0.0
 
 
 ## Whether a figure fits where it would stand: every part's geometry to
@@ -6278,9 +6281,7 @@ func _figure_fits_with_followers(at: Transform3D) -> bool:
 	var followers: Array = _followers_now()
 	if followers.is_empty():
 		return figure_fits(held_figure, at)
-	var going: Dictionary = {}
-	for follower: Dictionary in followers:
-		going[int(follower["brick"])] = true
+	var going: Dictionary = _going_now()
 	if not figure_fits(held_figure, at, going):
 		return false
 	for follower: Dictionary in followers:
@@ -6304,6 +6305,15 @@ func _followers_now() -> Array:
 	if _figure_followers.is_empty() or _history.is_empty() or not is_same(_history.back(), _figure_lift):
 		return []
 	return _figure_followers
+
+
+## [method _followers_now] by brick: where they stand now is in nobody's way,
+## and holds nothing up.
+func _going_now() -> Dictionary:
+	var going: Dictionary = {}
+	for follower: Dictionary in _followers_now():
+		going[int(follower["brick"])] = true
+	return going
 
 
 ## Put a figure's parts in the world and the lattice, as one group, and
@@ -6495,7 +6505,17 @@ func _preview_figure(origin: Vector3, direction: Vector3) -> void:
 			_ghost_valid = false
 			return
 		target = landing
-	_ghost_transform = settle_figure(target, held_rotation, hit, held_figure)
+	# Its parts still to come stand where they go, not where they stood: no
+	# floor under its feet, and down a stud as the parts in hand are. Left
+	# where they stood, a figure aimed back there stood on its own head to
+	# come, 104 LDU up, and its plate to come was refused over studs the
+	# plate on show seats on (fastreview F1, F2).
+	var whole: Array = held_figure.duplicate()
+	for follower: Dictionary in _followers_now():
+		var brick: BrickWorld.Brick = world.get_brick(int(follower["brick"]))
+		if brick != null:
+			whole.append({"part": brick.part_id, "at": follower["at"]})
+	_ghost_transform = settle_figure(target, held_rotation, hit, whole, _going_now())
 	_ghost_valid = _figure_fits_with_followers(_ghost_transform)
 	for n: int in held_figure.size():
 		if n >= _figure_ghosts.size():
