@@ -1988,7 +1988,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   each way, and where it stood: a part lifted from a copy takes its twins off
   with it, and one put down in its own box reads as swapped, so its twin,
   off already, is laid again as a part put down is (`Assemblies._follow`,
-  room390: Wing#2 was left with 2 of its 3). Make unique cuts a copy loose (a session's `make_unique`,
+  room390: Wing#2 was left with 2 of its 3). The pointer is steered by where
+  the hand stands, and the check fails if the brick went down anywhere else;
+  each drop is undone, redone and undone again, the model compared part by
+  part. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,
