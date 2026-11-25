@@ -1352,13 +1352,17 @@ static func _new_root_of(roots: Dictionary, unit: String) -> String:
 ## in within it, in its colour and turned as it is (each a hundredth of an
 ## LDU and a ten-thousandth of a turn, [method _same]), so its frame is that
 ## copy's frame as read moved, never fitted, and the line says the file's own
-## turn where the move did not turn it. Not where the file's copy holds a
-## part the app cannot show or one on its way ([param unseen]), is
-## mirrored or taken off ([param dead]); nor in a sub-model placed more than
+## turn where the move did not turn it. Not where the file's copy is
+## mirrored or taken off ([param dead]), nor one [param theirs_of] leaves
+## out ([method _copies_to_lay_on]); nor in a sub-model placed more than
 ## once, where a line would put it in each. Read back by [method gate], each
-## part where it is.
+## part where it is. [param under] is [method patch]'s copy path -> the
+## origins of the parts in it: a copy tried costs its own parts, never the
+## file's. Each copy walked every part of the file and every copy's path,
+## and 600 pasted copies against 600 of the file's, half of them mirrored,
+## held a Save up 3 s before it fell to the whole write (savereview F1).
 func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary,
-		unseen: Dictionary, steps_now: Dictionary) -> Variant:
+		theirs_of: Dictionary, steps_now: Dictionary, under: Dictionary) -> Variant:
 	var parent: String = Assemblies.parent_of(root)
 	if not parent.is_empty() and (not unit_sections.has(parent) or dead.has(parent)):
 		return "a copy put down inside one the file never placed"
@@ -1366,12 +1370,7 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 	if not parent.is_empty() and int(copies.get(section, 1)) > 1:
 		return "a copy put down inside a sub-model placed more than once"
 	var def: String = Assemblies.definition(Assemblies.leaf(root))
-	var theirs: Array = []
-	for path: String in unit_sections:
-		if Assemblies.definition(Assemblies.leaf(path)) == def and not dead.has(path) \
-				and not unseen.has(path) and unit_lines.has(path) and unit_frames.has(path):
-			theirs.append(path)
-	theirs.sort()
+	var theirs: Array = theirs_of.get(def, [])
 	# Its parts by the kinds of copy each is in within it, what it is and its
 	# colour: a copy's copies inside are numbered after every copy of their
 	# kind, so a pasted car's wings are Wing#3 and #4 where the file's car
@@ -1388,10 +1387,8 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 		var reads: Dictionary = {}
 		var count: int = 0
 		var plain: bool = true
-		for origin: String in by_origin:
+		for origin: String in under.get(copy, []):
 			var read: Read = by_origin[origin]
-			if read.unit != copy and not read.unit.begins_with(copy + "/"):
-				continue
 			if read.mirrored:
 				plain = false
 				break
@@ -1445,6 +1442,20 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 		var step: int = int(steps_now.get(root, -1)) if authored else -1
 		return [section, text, step, bricks]
 	return "a copy put down is not the file's %s: %s" % [def, why]
+
+
+## The file's copies a paste may be laid on ([method _copy_line]), asked
+## once a patch: definition -> their paths in order, none taken off ([param
+## dead]), holding a part the app cannot show or one on its way ([param
+## unseen]), or without a line and a frame of its own.
+func _copies_to_lay_on(dead: Dictionary, unseen: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for path: String in unit_sections:
+		if not dead.has(path) and not unseen.has(path) and unit_lines.has(path) and unit_frames.has(path):
+			_add_to(out, Assemblies.definition(Assemblies.leaf(path)), path)
+	for def: String in out:
+		(out[def] as Array).sort()
+	return out
 
 
 ## How [param mine] (key -> [[brick, place]]) lies on [param reads] (key ->
@@ -2202,9 +2213,10 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	# order it put their parts down (Assemblies.group_for_copy).
 	var copy_paths: Array = in_copy.keys()
 	copy_paths.sort()
+	var theirs_of: Dictionary = _copies_to_lay_on(dead_copies, waits_under.merged(hidden_under)) \
+		if not copy_paths.is_empty() else {}
 	for root: String in copy_paths:
-		var made: Variant = _copy_line(root, in_copy[root], frames, dead_copies,
-			waits_under.merged(hidden_under), steps_now)
+		var made: Variant = _copy_line(root, in_copy[root], frames, dead_copies, theirs_of, steps_now, under)
 		if made is String:
 			return _no(plan, str(made))
 		var group: Array = made
