@@ -36,14 +36,15 @@ const PATH := "^/m/[A-Za-z0-9]{10}/v/[1-9][0-9]{0,5}/parts\\.png\\?f=[0-9a-f]{12
 static var said: Dictionary = {}
 
 ## The file the open model's share answer names, not asked for yet, and the
-## pictures it is for. Asked for only when Build it, the step bar or a part's
-## card lays its tiles ([method want]): a model only looked at costs nothing.
+## pictures it is for. Asked for only when Build it or a part's card lays its
+## tiles, or a step is taken in the step bar ([method want]): a model only
+## looked at costs nothing.
 static var _offered: String = ""
 static var _offered_to: WeakRef = null
 
 
 ## The model [param body] (a share answer, SharedModels.fetch) is open: its
-## lot pictures are to be asked for when its parts are first shown. Taken at
+## lot pictures are to be asked for when someone builds it. Taken at
 ## once where the page fetched them already, which it does only for a link
 ## that opens Build it (src/boot/shell.html).
 static func offer(body: Dictionary, thumbnails: PartThumbnails) -> void:
@@ -58,8 +59,8 @@ static func offer(body: Dictionary, thumbnails: PartThumbnails) -> void:
 		want()
 
 
-## The offered file asked for and taken, once: called as tiles of the open
-## model's parts are laid, before they look for their pictures.
+## The offered file asked for and taken, once: called as Build it's tiles are
+## laid, before they look for their pictures, and as a step is taken.
 static func want() -> void:
 	if _offered.is_empty() or _offered_to == null:
 		return

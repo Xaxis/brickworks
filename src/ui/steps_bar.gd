@@ -254,6 +254,10 @@ static var _kept_at: Dictionary = {}
 func _ready() -> void:
 	visible = false
 	set_process(true)
+	# A shared model's lot pictures asked for once someone takes a step:
+	# a phone shows the bar, at the last step, to everyone who only looks at
+	# the model, and that look fetches nothing (LotPictures.want).
+	stepped.connect(func() -> void: LotPictures.want())
 	_build()
 	if _compact:
 		get_viewport().size_changed.connect(_fit_compact, CONNECT_DEFERRED)
@@ -688,8 +692,6 @@ func _lay_strip() -> void:
 			thumbnails.watch(self, [] as Array[ThumbTile])
 		return
 	var pt: float = Phone.per_point(get_viewport()) if is_inside_tree() else 1.0
-	# The model's lot pictures asked for the first time any are shown.
-	LotPictures.want()
 	for lot: Dictionary in lots:
 		var cell := HBoxContainer.new()
 		cell.add_theme_constant_override("separation", roundi(2.0 * pt))

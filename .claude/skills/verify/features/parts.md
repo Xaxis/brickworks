@@ -375,9 +375,10 @@ geometry in front of them.
   (`no-store`) at once and draws it after answering (`drawLotPictures`, once
   per instance), and that visitor's tiles show their part's shape and are
   drawn live. Asked only when someone opens Build it or the steps
-  (`LotPictures.offer` as a link opens, `want()` from `BuildMode` and
-  `StepsBar._lay_strip` with the bar's parts shown, and `PartStep`): a page
-  that only looks at the model never fetches it. The page fetches it beside
+  (`LotPictures.offer` as a link opens, `want()` from `BuildMode`, `PartStep`
+  and the first step taken in `StepsBar`, its `stepped`): a page that only
+  looks at the model never fetches it, though a phone shows the step bar's
+  last step with its parts (those few drawn live, as before). The page fetches it beside
   the model only for a link to Build it (`&build`, `src/boot/shell.html`), and
   reads it there on the browser's own threads (`window.brickworksLots`
   {bytes, pixels, width, height}); the app takes the pixels as they are, no
