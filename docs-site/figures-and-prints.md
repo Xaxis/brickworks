@@ -31,6 +31,8 @@ lib:add a minifig
 
 ### Make a mould {#mould}
 
+![Make a mould on a minifigure's hair: the brushes down the left (Pull, Push, Grow, Shrink, Smooth, Pinch, Flatten and Grab), Size and Strength, Symmetry on, and the hair on the figure's head in the middle, with Start from, Dome, Club, its name and Save mould along the top.](/docs/img/figures-mould.webp "Headgear › Make a mould…: the hair shaped on the figure's own head, every stroke one step of Undo.")
+
 For hair, a hat or a helmet that does not exist, or something to hold, choose its slot and **Make a mould…**. It starts from the real part in the slot, so it always fits: its socket is that part's, on the head's stud, and nothing can be pushed into the head.
 
 1. Drag on the part to shape it with the brushes: **Pull**, **Push**, **Grow** and **Shrink** a region, **Smooth**, **Pinch**, **Flatten** and **Grab**. **Symmetry** is on from the start, so a stroke on one side is made on the other too. Drag beside the part to turn it.
