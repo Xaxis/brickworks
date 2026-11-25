@@ -141,7 +141,8 @@ cp "$HERE/releases_repo/README.md" "$seed/README.md"
 cp "$HERE/releases_repo/release.yml" "$seed/.github/workflows/release.yml"
 git -C "$seed" init -q -b main
 git -C "$seed" add README.md .github/workflows/release.yml
-git -C "$seed" -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit -q -F - <<'MSG' || fail "could not commit the README"
+AUTHOR=$(bash "$HERE/author.sh") || fail "no commit author"
+git -C "$seed" -c user.name=Xaxis -c "user.email=$AUTHOR" commit -q -F - <<'MSG' || fail "could not commit the README"
 Keep Brickworks' downloads public, wherever its source is
 
 The download page at brickworks.diy links to the releases here. The
