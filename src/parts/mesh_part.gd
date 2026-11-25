@@ -196,16 +196,21 @@ static func read(bytes: PackedByteArray, file_name: String,
 	if bytes.size() > MOST_BYTES:
 		out.problem = MeshFile.too_large(out.file, bytes.size(), MOST_BYTES) + "."
 		return out
-	# Counted before it is read: reading every triangle of a file takes about
-	# a second for each 45,000 (an OBJ of a million under the size above took
-	# 22 s, figmould), so one plainly past what may be brought is refused first.
-	var counted: int = _triangles_at_least(bytes, kind)
-	if counted > MOST_BROUGHT:
+	# Refused as it is read, the moment it is past what may be brought: reading
+	# every triangle of a file takes about a second for each 45,000, and a count
+	# made before reading missed faces of many corners and lines begun with a
+	# space, so a million triangles took two minutes to be refused (figreview).
+	var mesh: MeshFile = MeshFile.read(bytes, out.file, extras, MOST_BROUGHT)
+	if mesh.past_most > 0:
 		out.problem = ("%s has at least %s triangles. A part can be made from at most %s: reduce "
 			+ "it in your 3D program first (Blender's Decimate modifier does it).") % [out.file,
-			_count(counted), _count(MOST_BROUGHT)]
+			_count(mesh.past_most), _count(MOST_BROUGHT)]
 		return out
-	var mesh: MeshFile = MeshFile.read(bytes, out.file, extras)
+	if mesh.corners_past_most > 0:
+		out.problem = ("%s has more than %s corners, more than a part of at most %s triangles could "
+			+ "use: reduce it in your 3D program first (Blender's Decimate modifier does it).") % [
+			out.file, _count(3 * MOST_BROUGHT), _count(MOST_BROUGHT)]
+		return out
 	if not mesh.error.is_empty():
 		# A sentence's first letter, but a file's name as it is: "zero.stl
 		# has no surfaces", not "Zero.stl".
@@ -213,11 +218,6 @@ static func read(bytes: PackedByteArray, file_name: String,
 			else mesh.error[0].to_upper() + mesh.error.substr(1)) + "."
 		return out
 	out.file_triangles = mesh.triangle_count()
-	if out.file_triangles > MOST_BROUGHT:
-		out.problem = ("%s has %s triangles. A part can be made from at most %s: reduce it in your "
-			+ "3D program first (Blender's Decimate modifier does it).") % [out.file,
-			_count(out.file_triangles), _count(MOST_BROUGHT)]
-		return out
 	# STL is drawn Z up, as printers have it; OBJ Y up.
 	var upright := Basis.IDENTITY if mesh.up == "+Y" else UPRIGHT_FROM_Z
 	var points := PackedVector3Array()
@@ -228,22 +228,6 @@ static func read(bytes: PackedByteArray, file_name: String,
 	if out.problem.is_empty():
 		out.guess_fit()
 	return out
-
-
-## How many triangles a file has at the least, counted without reading
-## them: a binary STL's own count when its size agrees, a text STL's
-## facets, an OBJ's faces (each one triangle or more). 0 when it cannot say.
-static func _triangles_at_least(bytes: PackedByteArray, kind: String) -> int:
-	if kind == "stl" and bytes.size() >= 84 and 84 + 50 * bytes.decode_u32(80) == bytes.size():
-		return bytes.decode_u32(80)
-	# As bytes, not UTF-8: the words counted are ASCII, and a binary file is
-	# never complained about as text.
-	var text: String = bytes.get_string_from_ascii()
-	if kind == "stl":
-		return text.count("endfacet")
-	if kind == "obj":
-		return text.count("\nf ") + text.count("\nf\t") + (1 if text.begins_with("f ") else 0)
-	return 0
 
 
 ## Corners three to a triangle, welded into one surface and checked:

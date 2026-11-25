@@ -36,6 +36,11 @@ const AUTHOR := "Brickworks mould maker"
 ## in a few seconds.
 const FINEST := 1.6
 const MOST_TRIANGLES := 9000
+## The most triangles a part may have to be shaped here, and a draft read
+## back. A part over it is refused in words before it is opened: 56823, a
+## string of 143,996, held the maker five seconds and its draft could never
+## be kept (figreview).
+const MOST_OPENED := MOST_TRIANGLES * 2
 ## How thin a wall can be before it is marked: LEGO's own walls are 1.6
 ## mm; under 1 mm a moulding is fragile and fills badly.
 const THIN := 2.5
@@ -82,9 +87,12 @@ const HEAD_MARGIN := 1.0
 var _undo: Array = []
 var _redo: Array = []
 var _grab: Dictionary = {}
-var _lattice_rest := PackedVector3Array()
+## The lattice: its handles now, the box it was put round, and what a drag
+## bends from: the corners and the handles as they were when the step began.
 var _lattice_at := PackedVector3Array()
 var _lattice_box := AABB()
+var _lattice_rest := PackedVector3Array()
+var _lattice_from := PackedVector3Array()
 ## Its triangles as the engine winds them, for picking, and a grid of them
 ## for how thick it is; remade when it changes (see Rays: the engine's own
 ## TriangleMesh did not always give the nearest hit).
@@ -145,6 +153,23 @@ static func of_part(library: PartLibrary, part_id: String, slot: String = "") ->
 			Vector3(held[3], -held[4], -held[5]).normalized()]
 	mould._settle()
 	return mould
+
+
+## How many triangles [param part_id] is drawn with: the catalogue's count,
+## known before its geometry is fetched or welded, or its geometry's when the
+## catalogue has none. Over [constant MOST_OPENED], it is not opened.
+static func triangles_in(library: PartLibrary, part_id: String) -> int:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if info == null:
+		return 0
+	if info.triangles > 0:
+		return info.triangles
+	var count: int = 0
+	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+	if mesh != null:
+		for surface: ArrayMesh in mesh.surfaces:
+			count += surface.surface_get_array_index_len(0) / 3
+	return count
 
 
 ## Whether [param part_id] is a shape made here that can be sculpted on: a
@@ -458,6 +483,7 @@ func begin(whole: bool = false) -> void:
 	if _undo.size() > UNDO_STEPS:
 		_undo.pop_front()
 	_redo.clear()
+	_lattice_from_here()
 
 
 func can_undo() -> bool:
@@ -505,7 +531,6 @@ func _state(whole: bool) -> Dictionary:
 	var out: Dictionary = {"positions": positions.duplicate()}
 	if not _lattice_at.is_empty():
 		out["lattice_at"] = _lattice_at.duplicate()
-		out["lattice_rest"] = _lattice_rest
 		out["lattice_box"] = _lattice_box
 	if whole:
 		out["triangles"] = triangles
@@ -532,11 +557,10 @@ func _restore(step: Dictionary) -> void:
 	if whole:
 		_find_neighbours()
 	if not _lattice_at.is_empty():
-		if step.has("lattice_at") and (step["lattice_rest"] as PackedVector3Array).size() \
-				== positions.size():
+		if step.has("lattice_at"):
 			_lattice_at = step["lattice_at"]
-			_lattice_rest = step["lattice_rest"]
 			_lattice_box = step["lattice_box"]
+			_lattice_from_here()
 		else:
 			# Back before the lattice was put round it: put round it again,
 			# as it is now, its handles at rest.
@@ -683,12 +707,12 @@ func lattice_begin() -> PackedVector3Array:
 	for p: Vector3 in positions:
 		box = box.expand(p)
 	_lattice_box = box.grow(2.0)
-	_lattice_rest = positions.duplicate()
 	_lattice_at = PackedVector3Array()
 	for i: int in 3:
 		for j: int in 3:
 			for k: int in 3:
 				_lattice_at.append(_lattice_box.position + _lattice_box.size * Vector3(i, j, k) * 0.5)
+	_lattice_from_here()
 	return _lattice_at.duplicate()
 
 
@@ -696,8 +720,25 @@ func lattice_handles() -> PackedVector3Array:
 	return _lattice_at.duplicate()
 
 
+## What the lattice bends from is the part as it is now, and its handles
+## where they are: every step begins here ([method begin]), so a handle
+## taken bends the corners Finer made and the strokes made since, as they
+## are. Up to figfix it bent the corners it saw when it was put on: after
+## Finer a drag stopped at the first new corner (an index past the old
+## count) and tore the surface, and a brush stroke was undone by the next
+## handle's drag (figreview).
+func _lattice_from_here() -> void:
+	if _lattice_at.is_empty():
+		return
+	_lattice_rest = positions.duplicate()
+	_lattice_from = _lattice_at.duplicate()
+
+
 ## Move handle [param index] to [param to]; with symmetry its mirror moves
-## the mirrored way. The part follows, as far as its locks let it.
+## the mirrored way. The part follows, as far as its locks let it: each
+## corner by the handles' moves since the step began, weighted by where in
+## the lattice's box it was then. A corner a stroke took past the box moves
+## as the box's side nearest it, never further than a handle does.
 func lattice_move(index: int, to: Vector3, symmetry: bool) -> void:
 	if _lattice_at.is_empty():
 		return
@@ -709,13 +750,13 @@ func lattice_move(index: int, to: Vector3, symmetry: bool) -> void:
 			_lattice_at[other] = Vector3(-to.x, to.y, to.z)
 		else:
 			_lattice_at[index].x = 0.0
-	var rest: PackedVector3Array = PackedVector3Array()
-	for i: int in 3:
-		for j: int in 3:
-			for k: int in 3:
-				rest.append(_lattice_box.position + _lattice_box.size * Vector3(i, j, k) * 0.5)
+	var moved := PackedVector3Array()
+	moved.resize(27)
+	for n: int in 27:
+		moved[n] = _lattice_at[n] - _lattice_from[n]
 	for v: int in positions.size():
-		var s: Vector3 = (_lattice_rest[v] - _lattice_box.position) / _lattice_box.size
+		var s: Vector3 = ((_lattice_rest[v] - _lattice_box.position) / _lattice_box.size) \
+			.clamp(Vector3.ZERO, Vector3.ONE)
 		var shift := Vector3.ZERO
 		var bs: Array[float] = _bernstein(s.x)
 		var bt: Array[float] = _bernstein(s.y)
@@ -723,8 +764,7 @@ func lattice_move(index: int, to: Vector3, symmetry: bool) -> void:
 		for i: int in 3:
 			for j: int in 3:
 				for k: int in 3:
-					var n: int = i * 9 + j * 3 + k
-					shift += (_lattice_at[n] - rest[n]) * (bs[i] * bt[j] * bu[k])
+					shift += moved[i * 9 + j * 3 + k] * (bs[i] * bt[j] * bu[k])
 		positions[v] = _lattice_rest[v] + shift * (1.0 - locks[v])
 	_keep_off_head()
 	_changed()
@@ -737,6 +777,7 @@ static func _bernstein(t: float) -> Array[float]:
 func lattice_end() -> void:
 	_lattice_at = PackedVector3Array()
 	_lattice_rest = PackedVector3Array()
+	_lattice_from = PackedVector3Array()
 
 
 # -- finer -------------------------------------------------------------------------
@@ -798,6 +839,8 @@ func refine(longest: float = FINEST * 2.0) -> int:
 		# pass reads them.
 		_settle()
 	_settle()
+	# The lattice, if it is on, bends the new corners too.
+	_lattice_from_here()
 	return triangles.size() / 3
 
 
@@ -888,16 +931,16 @@ func named(title: String) -> Array:
 ## The part file: the sculpted triangles, the base part's connectors as
 ## they were, its creases.
 func text(id: String, title: String) -> String:
-	# No control character of the name reaches the part's lines: a carriage
-	# return in it would start a line of its own in a program that reads
-	# them ("\r0 FILE ..."), whatever brought it (a draft read back, a check).
-	var words: String = ""
-	for n: int in title.length():
-		var code: int = title.unicode_at(n)
-		words += " " if code < 32 or (code >= 127 and code < 160) else title[n]
-	words = words.strip_edges()
+	# No control character of any word written reaches the part's lines: a
+	# carriage return would start a line of its own in a program that reads
+	# them ("\r0 FILE ..."), whatever brought it (a title, a draft read back,
+	# someone else's part's name or category).
+	var words: String = CustomParts.one_line(title)
+	var called: String = CustomParts.one_line(name)
+	var kind: String = CustomParts.one_line(category)
+	var from: String = CustomParts.one_line(base)
 	var out := PackedStringArray()
-	out.append("0 %s, Custom Mould %s" % [name, words if not words.is_empty() else id])
+	out.append("0 %s, Custom Mould %s" % [called, words if not words.is_empty() else id])
 	out.append("0 Name: %s.dat" % id)
 	out.append("0 Author: " + AUTHOR)
 	out.append("0 !LDRAW_ORG Unofficial_Part")
@@ -905,11 +948,11 @@ func text(id: String, title: String) -> String:
 	out.append("")
 	out.append("0 BFC CERTIFY CCW")
 	out.append("")
-	out.append("0 !CATEGORY " + (category if not category.is_empty() else "Minifig Accessory"))
+	out.append("0 !CATEGORY " + (kind if not kind.is_empty() else "Minifig Accessory"))
 	out.append("0 !KEYWORDS Brickworks, custom mould")
 	out.append("")
-	out.append("%s from=%s triangles=%d" % [PartPrints.MOULDED_BY, base, triangles.size() / 3])
-	out.append("0 // Sculpted in Brickworks from %s.dat of the LDraw Parts Library (CC BY 4.0)," % base)
+	out.append("%s from=%s triangles=%d" % [PartPrints.MOULDED_BY, from, triangles.size() / 3])
+	out.append("0 // Sculpted in Brickworks from %s.dat of the LDraw Parts Library (CC BY 4.0)," % from)
 	out.append("0 // its connectors kept exactly where the part has them.")
 	out.append("")
 	out.append("0 // Connectors, for programs that read them")
@@ -988,7 +1031,7 @@ static func from_draft(kept: Variant) -> Mould:
 	var corners: int = mould.positions.size()
 	var faces: int = mould.triangles.size() / 3
 	if corners == 0 or mould.triangles.size() % 3 != 0 or faces == 0 \
-			or faces > MOST_TRIANGLES * 2 or (d["colors"] as PackedInt32Array).size() != faces \
+			or faces > MOST_OPENED or (d["colors"] as PackedInt32Array).size() != faces \
 			or (d["two_sided"] as PackedByteArray).size() != faces \
 			or (d["locks"] as PackedFloat32Array).size() != corners \
 			or (d["mirrors"] as PackedInt32Array).size() != corners \

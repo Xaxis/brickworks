@@ -8454,6 +8454,15 @@ msgstr "Deine Form von vorhin, wie du sie gelassen hast. „Los geht's“ beginn
 msgid "Your mould from before could not be read back, so this begins again from %s."
 msgstr "Deine Form von vorhin ließ sich nicht wieder lesen, darum beginnt dies neu mit %s."
 
+msgid "Your mould could not be kept: there is no room on the disk."
+msgstr "Deine Form ließ sich nicht aufbewahren: Auf dem Datenträger ist kein Platz mehr."
+
+msgid "%s has %s triangles, and the maker shapes parts of up to %s."
+msgstr "%s hat %s Dreiecke, und hier lassen sich Teile mit bis zu %s formen."
+
+msgid "%s has more than %s corners, more than a part of at most %s triangles could use: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s hat mehr als %s Ecken, mehr als ein Teil aus höchstens %s Dreiecken brauchen kann: verringere sie zuerst in deinem 3D-Programm (Blenders Decimate-Modifier tut das)."
+
 msgid "Building the mould…"
 msgstr "Die Form wird gebaut…"
 

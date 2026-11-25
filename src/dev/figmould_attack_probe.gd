@@ -91,9 +91,11 @@ func _files() -> void:
 	at = Time.get_ticks_msec()
 	var fine: MeshPart = MeshPart.read(obj_million, "million.obj")
 	var took: int = Time.get_ticks_msec() - at
-	_ok(fine.problem.contains("1,002,528") and fine.problem.contains("at most 120,000") and took < 2000,
-		"an OBJ of a million triangles is refused in a sentence before it is read, in %d ms "
-			% took + "(22,206 ms when it was read first): %s" % fine.problem)
+	# Refused as it is read, once it is past what a part may be made from
+	# (figfix: a count before reading missed some layouts).
+	_ok(fine.problem.contains("at most 120,000") and took < 2000,
+		"an OBJ of a million triangles is refused in a sentence as it is read, in %d ms "
+			% took + "(22,206 ms when it was read whole first): %s" % fine.problem)
 
 	var kept: PackedStringArray = DirAccess.get_files_at(CustomParts.dir) \
 		if DirAccess.dir_exists_absolute(CustomParts.dir) else PackedStringArray()
@@ -245,7 +247,8 @@ func _words(editor: MouldEditor) -> void:
 			"Make a mould from your Quiff", "Your Quiff, to shape further. Saved, it is a new part; the one before stays.",
 			"Your mould from before, as you left it. Start begins again from 3901; Undo goes back to it.",
 			"Your mould from before could not be read back, so this begins again from 3901.",
-			"%d triangles · about %d kB in a file" % [2287, 160]]:
+			"%d triangles · about %d kB in a file" % [2287, 160], MouldEditor.NOT_KEPT,
+			"56823 has 143,996 triangles, and the maker shapes parts of up to 18,000."]:
 		shown[said] = true
 	for code: String in ["de", "fr", "es"]:
 		Language.apply(code)

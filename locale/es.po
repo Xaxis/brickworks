@@ -8454,6 +8454,15 @@ msgstr "Tu molde de antes, tal como lo dejaste. Empezar vuelve a empezar con %s;
 msgid "Your mould from before could not be read back, so this begins again from %s."
 msgstr "Tu molde de antes no se pudo volver a leer, así que esto vuelve a empezar con %s."
 
+msgid "Your mould could not be kept: there is no room on the disk."
+msgstr "Tu molde no se pudo guardar: no queda espacio en el disco."
+
+msgid "%s has %s triangles, and the maker shapes parts of up to %s."
+msgstr "%s tiene %s triángulos, y aquí se pueden modelar piezas de hasta %s."
+
+msgid "%s has more than %s corners, more than a part of at most %s triangles could use: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s tiene más de %s vértices, más de los que puede usar una pieza de como mucho %s triángulos: redúcelo antes en tu programa 3D (el modificador Decimate de Blender lo hace)."
+
 msgid "Building the mould…"
 msgstr "Construyendo el molde…"
 

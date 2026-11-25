@@ -44,6 +44,8 @@ static var drafts: String = ""
 
 ## How long after a word typed in the name the draft is written.
 const DRAFT_AFTER_MS := 400
+## Said when the mould as it is could not be kept: the draft before stays.
+const NOT_KEPT := "Your mould could not be kept: there is no room on the disk."
 ## Narrower than this, in the interface's units, the part is over the
 ## brushes rather than beside them (a phone has 720).
 const NARROW := 760.0
@@ -210,6 +212,8 @@ func _start_from(part_id: String) -> void:
 	if not library.parts.has(wanted):
 		_status.text = "There is no part %s." % wanted
 		return
+	if _too_big(wanted):
+		return
 	# A mould or a 3D file's hair made before is sculpted on further, as it
 	# is; saved, it is a new part, and the one before stays as it was.
 	if Mould.sculpts_on(library, wanted):
@@ -223,6 +227,8 @@ func _start_from(part_id: String) -> void:
 		return
 	wanted = PartPrints.mould_of(library, wanted)
 	_from.text = wanted
+	if _too_big(wanted):
+		return
 	if library.mesh_for(wanted) == null and library.request_mesh(wanted, true):
 		_status.text = "Fetching %s's geometry…" % wanted
 		_waiting_for = wanted
@@ -233,7 +239,29 @@ func _start_from(part_id: String) -> void:
 func _on_fetched(part_id: String) -> void:
 	if part_id == _waiting_for:
 		_waiting_for = ""
-		_take(Mould.of_part(library, part_id, slot))
+		if not _too_big(part_id):
+			_take(Mould.of_part(library, part_id, slot))
+
+
+## Whether [param part_id] has more triangles than the maker shapes, said
+## if it has: it is not opened (Mould.MOST_OPENED). The mould shown stays.
+func _too_big(part_id: String) -> bool:
+	var faces: int = Mould.triangles_in(library, part_id)
+	if faces <= Mould.MOST_OPENED:
+		return false
+	_status.text = "%s has %s triangles, and the maker shapes parts of up to %s." % [part_id,
+		_grouped(faces), _grouped(Mould.MOST_OPENED)]
+	return true
+
+
+## A count with its thousands set apart: 143,996.
+static func _grouped(n: int) -> String:
+	var digits: String = str(n)
+	var out: String = ""
+	while digits.length() > 3:
+		out = "," + digits.right(3) + out
+		digits = digits.left(digits.length() - 3)
+	return digits + out
 
 
 ## A mould begun: the one before it is kept, for Undo to go back into.
@@ -305,15 +333,26 @@ func _keep_draft() -> void:
 		return
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	TabSession.writing(path)
-	# Written beside it and put in its place whole: a tab closed or a power cut
-	# mid-write leaves the draft before, never one cut short.
-	var file: FileAccess = FileAccess.open(path + ".new", FileAccess.WRITE)
-	if file == null:
-		return
-	file.store_buffer(var_to_bytes({"mould": mould.to_draft(), "title": _name.text,
-		"slot": slot}))
-	file.close()
-	DirAccess.rename_absolute(path + ".new", path)
+	# Written beside it, read back whole, and only then put in its place: a tab
+	# closed or a power cut mid-write, or a full disk that takes only part of
+	# it, leaves the draft before. Up to figfix a write the disk cut short was
+	# moved over the good draft unasked, and the next open let it go
+	# (figreview: all the unsaved work lost).
+	var bytes: PackedByteArray = var_to_bytes({"mould": mould.to_draft(), "title": _name.text,
+		"slot": slot})
+	var beside: String = path + ".new"
+	var file: FileAccess = FileAccess.open(beside, FileAccess.WRITE)
+	var written: bool = file != null and file.store_buffer(bytes)
+	if file != null:
+		file.close()
+	written = written and FileAccess.get_file_as_bytes(beside).size() == bytes.size() \
+		and DirAccess.rename_absolute(beside, path) == OK
+	if not written:
+		if FileAccess.file_exists(beside):
+			DirAccess.remove_absolute(beside)
+		_status.text = NOT_KEPT
+	elif _status.text == NOT_KEPT:
+		_status.text = ""
 
 
 func _keep_draft_soon() -> void:
@@ -328,7 +367,8 @@ func _drop_draft() -> void:
 
 ## What was kept for this slot: {mould, title}, or {} when nothing was, or
 ## {lost: true} when what was is not a whole mould (damaged on the disk, or
-## from another build), which is let go and said.
+## from another build), which is said and set aside as .unread beside it,
+## never deleted: a newer build's draft is one this build cannot read.
 func _kept() -> Dictionary:
 	var path: String = _draft_path()
 	if not FileAccess.file_exists(path):
@@ -337,7 +377,10 @@ func _kept() -> Dictionary:
 	var made: Mould = Mould.from_draft((kept as Dictionary).get("mould")) \
 		if kept is Dictionary else null
 	if made == null:
-		_drop_draft()
+		if FileAccess.file_exists(path + ".unread"):
+			DirAccess.remove_absolute(path + ".unread")
+		if DirAccess.rename_absolute(path, path + ".unread") != OK:
+			_drop_draft()
 		return {"lost": true}
 	return {"mould": made, "title": str((kept as Dictionary).get("title", ""))}
 

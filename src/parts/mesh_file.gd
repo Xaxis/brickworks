@@ -63,6 +63,17 @@ var name: String = ""
 ## Which way the file's maker had up, by its kind: "+Y" or "+Z".
 var up: String = "+Y"
 var error: String = ""
+## The most triangles this read takes ([method read]'s [param most]), and,
+## when a file has more, how many it had when the read stopped: a reader
+## stops as soon as it is past the most, whatever the file's layout, never
+## after reading it whole. A count made before reading missed OBJ faces of
+## many corners and lines begun with a space, and a million triangles took
+## two minutes to be refused (figreview).
+var most: int = MOST_TRIANGLES
+var past_most: int = 0
+## Or the corners it had when it stopped, past three for each of the most
+## triangles: more than any file of that many could use.
+var corners_past_most: int = 0
 
 
 func triangle_count() -> int:
@@ -96,10 +107,12 @@ func colour_at(t: int, b: Vector3) -> Color:
 
 
 ## Read a model. Never null: a file that could not be read comes back with
-## [member error] saying why, in words a person can act on.
+## [member error] saying why, in words a person can act on. One of more than
+## [param most] triangles is refused as it is read ([member past_most]).
 static func read(bytes: PackedByteArray, file_name: String,
-		extras: Dictionary = {}) -> MeshFile:
+		extras: Dictionary = {}, most: int = MOST_TRIANGLES) -> MeshFile:
 	var out := MeshFile.new()
+	out.most = most
 	out.name = file_name.get_file().get_basename()
 	var kind: String = file_name.get_extension().to_lower()
 	if bytes.is_empty():
@@ -138,14 +151,19 @@ static func read(bytes: PackedByteArray, file_name: String,
 			return out
 	if out.error == NOT_A_NUMBER:
 		out.error = NOT_A_NUMBER % file_name.get_file()
+	if out.past_most == 0 and out.corners_past_most == 0 and out.triangle_count() > most:
+		# A reader the engine runs whole (glTF, FBX): counted once it is done.
+		out.past_most = out.triangle_count()
+	if out.past_most > 0:
+		out.error = "%s has at least %d triangles; at most %d can be brought in" % [
+			file_name.get_file(), out.past_most, most]
+	elif out.corners_past_most > 0:
+		out.error = "%s has more than %d corners, more than %d triangles could use; at most that many can be brought in" \
+			% [file_name.get_file(), 3 * most, most]
 	if not out.error.is_empty():
 		return out
 	if out.triangle_count() == 0:
 		out.error = "%s has no surfaces in it" % file_name.get_file()
-		return out
-	if out.triangle_count() > MOST_TRIANGLES:
-		out.error = "%s has %d triangles; at most %d can be brought in" % [
-			file_name.get_file(), out.triangle_count(), MOST_TRIANGLES]
 		return out
 	# A corner whose place is not a number (a "nan" or an endless one), read
 	# here and nowhere later: a box drawn round the corners passes over it
@@ -269,6 +287,9 @@ static func _obj(text: String, extras: Dictionary, out: MeshFile) -> void:
 					out.error = NOT_A_NUMBER
 					return
 				v.append(Vector3(words[1].to_float(), words[2].to_float(), words[3].to_float()))
+				if v.size() > 3 * out.most:
+					out.corners_past_most = v.size()
+					return
 				# Colour after the position, as ZBrush, MeshLab and most
 				# scanners write it.
 				if words.size() >= 7:
@@ -316,6 +337,9 @@ static func _obj(text: String, extras: Dictionary, out: MeshFile) -> void:
 							given_normals = false
 					out.texture_of.append(int(material[1]))
 					placed.append(1 if on_picture else 0)
+					if placed.size() > out.most:
+						out.past_most = placed.size()
+						return
 	if not given_normals:
 		out.normals = PackedVector3Array()
 	# One picture picked with an OBJ and named by no material is its
@@ -435,6 +459,9 @@ static func _stl(bytes: PackedByteArray, out: MeshFile) -> void:
 	if bytes.size() >= 84:
 		var count: int = bytes.decode_u32(80)
 		if 84 + 50 * count == bytes.size():
+			if count > out.most:
+				out.past_most = count
+				return
 			for t: int in count:
 				var at: int = 84 + 50 * t + 12
 				for corner: int in 3:
@@ -455,6 +482,9 @@ static func _stl(bytes: PackedByteArray, out: MeshFile) -> void:
 				return
 			out.positions.append(Vector3(words[1].to_float(), words[2].to_float(),
 				words[3].to_float()))
+			if out.positions.size() > 3 * out.most:
+				out.past_most = (out.positions.size() + 2) / 3
+				return
 	out.positions.resize(out.positions.size() / 3 * 3)
 
 
@@ -613,13 +643,13 @@ static func _ply(bytes: PackedByteArray, out: MeshFile) -> void:
 				1.0, 1.0][int(property[1])] if role >= 6 else 1.0)
 			if list and (indices < 0 or property[0] in ["vertex_indices", "vertex_index"]):
 				indices = k
-		if what == "vertex" and count > 3 * MOST_TRIANGLES:
+		if what == "vertex" and count > 3 * out.most:
 			out.error = "that PLY has %d vertices; at most %d can be brought in" % [count,
-				3 * MOST_TRIANGLES]
+				3 * out.most]
 			return
-		if what == "face" and count > MOST_TRIANGLES:
+		if what == "face" and count > out.most:
 			out.error = "that PLY has %d faces; at most %d triangles can be brought in" % [count,
-				MOST_TRIANGLES]
+				out.most]
 			return
 		if not reader.has(count * least, count * properties.size()):
 			out.error = "that PLY says it has %d %s, and is cut short before them" % [count, plural]
@@ -667,9 +697,9 @@ static func _ply(bytes: PackedByteArray, out: MeshFile) -> void:
 				if tint:
 					tints.append(Color(slot[6], slot[7], slot[8]))
 			elif what == "face":
-				if corners.size() > 3 * MOST_TRIANGLES:
+				if corners.size() > 3 * out.most:
 					out.error = "that PLY has more than %d triangles, more than can be brought in" \
-						% MOST_TRIANGLES
+						% out.most
 					return
 				if tint:
 					for _t: int in (corners.size() - started) / 3:
@@ -763,9 +793,9 @@ class ThreeMF extends RefCounted:
 			if not out.error.is_empty():
 				return
 			total += each
-			if total > MOST_TRIANGLES:
+			if total > out.most:
 				out.error = "that 3MF lays more than %d triangles, more than can be brought in" \
-					% MOST_TRIANGLES
+					% out.most
 				return
 		for item: Array in top.items:
 			lay(item[0], int(item[1]), item[2], 0)
@@ -827,7 +857,7 @@ class ThreeMF extends RefCounted:
 		for part: Array in object.parts:
 			sum += triangles(part[0] if not str(part[0]).is_empty() else path, int(part[1]),
 				depth + 1)
-			if not out.error.is_empty() or sum > MOST_TRIANGLES:
+			if not out.error.is_empty() or sum > out.most:
 				return sum
 		object.triangles = sum
 		return sum
@@ -1149,9 +1179,9 @@ static func _vox(bytes: PackedByteArray, out: MeshFile) -> void:
 		for side: int in 6:
 			if _vox_open(grid, box, cell, side, index + steps[side]):
 				faces += 1
-	if 2 * faces > MOST_TRIANGLES:
+	if 2 * faces > out.most:
 		out.error = "that .vox shows %d faces of voxels; at most %d triangles can be brought in" \
-			% [faces, MOST_TRIANGLES]
+			% [faces, out.most]
 		return
 	for index: int in filled:
 		var cell := Vector3i(index % box.x, (index / box.x) % box.y, index / (box.x * box.y))

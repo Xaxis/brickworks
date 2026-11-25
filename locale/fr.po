@@ -8454,6 +8454,15 @@ msgstr "Votre moule de tout à l'heure, tel que vous l'avez laissé. Commencer r
 msgid "Your mould from before could not be read back, so this begins again from %s."
 msgstr "Votre moule de tout à l'heure n'a pas pu être relu, alors celui-ci repart de %s."
 
+msgid "Your mould could not be kept: there is no room on the disk."
+msgstr "Votre moule n'a pas pu être gardé : il n'y a plus de place sur le disque."
+
+msgid "%s has %s triangles, and the maker shapes parts of up to %s."
+msgstr "%s a %s triangles, et on ne peut façonner ici que des pièces d'au plus %s."
+
+msgid "%s has more than %s corners, more than a part of at most %s triangles could use: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s a plus de %s sommets, plus qu'une pièce d'au plus %s triangles ne peut en utiliser : réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
+
 msgid "Building the mould…"
 msgstr "Construction du moule…"
 
