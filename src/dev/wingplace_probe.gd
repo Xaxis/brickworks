@@ -443,6 +443,7 @@ func _nudges() -> void:
 		var to: Vector2 = from + by
 		var depth: int = _builder.history_depth()
 		var parts: int = _count()
+		var before: Dictionary = _parts_now()
 		_select_only([brick])
 		await _move(from)
 		_button(from, true)
@@ -471,8 +472,19 @@ func _nudges() -> void:
 			(put or along == 0) and _tree.ids_under("Wing#2").size() == 3 and _count() == parts
 			and twin_at.is_equal_approx(Vector3(-20.0 - at.x, at.y, at.z)))
 		if put:
+			# The step the follow grew comes back exactly, both ways.
+			var after: Dictionary = _parts_now()
 			await _key(KEY_Z, true)
 			await _frames(2)
+			var undone: Dictionary = _parts_now()
+			await _key(KEY_Z, true, true)
+			await _frames(2)
+			var redone: Dictionary = _parts_now()
+			await _key(KEY_Z, true)
+			await _frames(2)
+			_check("...undone it is the model as it was, part for part (%s), redone as it was after (%s), undone again (%s)"
+				% [_parts_diff(before, undone), _parts_diff(after, redone), _parts_diff(before, _parts_now())],
+				undone == before and redone == after and _parts_now() == before)
 		if _builder.is_carrying():
 			await _key(KEY_ESCAPE)
 
@@ -580,6 +592,18 @@ func _parts_now() -> Dictionary:
 			at.basis.z.snappedf(0.01)])]
 		out[key] = int(out.get(key, 0)) + 1
 	return out
+
+
+## What differs between two _parts_now() readings: "same", or the keys
+## missing (-) and the keys extra (+).
+func _parts_diff(want: Dictionary, got: Dictionary) -> String:
+	var missing: Array = want.keys().filter(func(k: String) -> bool:
+		return int(got.get(k, 0)) < int(want[k]))
+	var extra: Array = got.keys().filter(func(k: String) -> bool:
+		return int(want.get(k, 0)) < int(got[k]))
+	if missing.is_empty() and extra.is_empty():
+		return "same"
+	return "- %s + %s" % [str(missing), str(extra)]
 
 
 ## The box round the wing being edited, on the ground.
