@@ -552,8 +552,11 @@ func _many_in_hand() -> void:
 		var began: int = Time.get_ticks_usec()
 		_tree.call("room_in_copies", {"items": items}, 4000)
 		best = mini(best, Time.get_ticks_usec() - began)
-	_check("200 of a 2,000-part sub-assembly's parts asked in %d us, the least of three (%d under it)"
-		% [best, _tree.ids_under("Big#1").size()], best < 4000 and _tree.ids_under("Big#1").size() == 2000)
+	# No copy of Big: what is timed is finding where each part goes (its
+	# level walked once, off the index), before any copy is asked; the
+	# hand's own cells are read under the ask's clock since a749390f3+1.
+	_check("200 of a 2,000-part sub-assembly's parts in hand asked where they go in %d us, the least of three (%d under it)"
+		% [best, _tree.ids_under("Big#1").size()], best < 2000 and _tree.ids_under("Big#1").size() == 2000)
 	_main.call("clear_model")
 	await _frames(3)
 

@@ -1951,8 +1951,8 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 	if items.is_empty():
 		return ""
 	if not ask.has("pairs"):
-		## [part, cells, the copy it goes into] of each part going down so far.
-		var down: Array = []
+		## Each item as the world puts it down, [part, where, its level].
+		var going: Array = []
 		## Each item's level ([method _changed_level]) -> the items going there.
 		var by_level: Dictionary = {}
 		## Each path the items go into -> its level, found once an ask.
@@ -1967,9 +1967,7 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 			if not level_of.has(into):
 				level_of[into] = _changed_level(into)
 			var level: String = level_of[into]
-			var mesh: Lbm.PartMesh = library.mesh_for(real)
-			if mesh != null:
-				down.append([real, builder.boxes_for(mesh, at), level])
+			going.append([real, at, level])
 			if not level.is_empty():
 				if not by_level.has(level):
 					by_level[level] = []
@@ -1985,15 +1983,30 @@ func room_in_copies(ask: Dictionary, budget_us: int = 0) -> Variant:
 					pairs.append([copies[c], one])
 		if pairs.is_empty():
 			return ""
-		ask.merge({"pairs": pairs, "down": down, "laid": {}, "next": 0})
+		## [part, cells, the copy it goes into] of each part going down so far:
+		## the hand's own first, read under the clock below (a 200-part hand
+		## was 200 cell reads before it started).
+		ask.merge({"pairs": pairs, "going": going, "down": [], "cells": 0, "laid": {}, "next": 0})
 	var started: int = Time.get_ticks_usec()
 	var pairs: Array = ask["pairs"]
+	var going_down: Array = ask["going"]
 	var down: Array = ask["down"]
 	var laid_already: Dictionary = ask["laid"]
-	while int(ask["next"]) < pairs.size():
-		# One at least each call, so a slow box still gets there.
-		if budget_us > 0 and int(ask["next"]) > 0 and Time.get_ticks_usec() - started > budget_us:
+	# One step at least each call, so a slow box still gets there.
+	var did: int = 0
+	while int(ask["cells"]) < going_down.size():
+		if budget_us > 0 and did > 0 and Time.get_ticks_usec() - started > budget_us:
 			return null
+		did += 1
+		var one: Array = going_down[int(ask["cells"])]
+		ask["cells"] = int(ask["cells"]) + 1
+		var mine: Lbm.PartMesh = library.mesh_for(str(one[0]))
+		if mine != null:
+			down.append([str(one[0]), builder.boxes_for(mine, one[1]), str(one[2])])
+	while int(ask["next"]) < pairs.size():
+		if budget_us > 0 and did > 0 and Time.get_ticks_usec() - started > budget_us:
+			return null
+		did += 1
 		var n: int = int(ask["next"])
 		ask["next"] = n + 1
 		var copy: Array = pairs[n][0]
