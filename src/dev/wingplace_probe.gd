@@ -436,11 +436,8 @@ func _nudges() -> void:
 			_check("the wing's brick is there to drag", false)
 			return
 		var was: Vector3 = _world.get_brick(brick).transform.origin
-		# Its top, where the press takes it (_on).
-		var top: float = was.y
+		var want: Vector3 = was + Vector3(along, 0, 0)
 		var from: Vector2 = _on(brick)
-		var by: Vector2 = _screen(Vector3(was.x + along, top, was.z)) - _screen(Vector3(was.x, top, was.z))
-		var to: Vector2 = from + by
 		var depth: int = _builder.history_depth()
 		var parts: int = _count()
 		var before: Dictionary = _parts_now()
@@ -450,13 +447,24 @@ func _nudges() -> void:
 		await _frames(2)
 		var last: Vector2 = from
 		# Out and back, so a drop where it stood is a drag too.
-		for next: Vector2 in [from + Vector2(0, -30), from + Vector2(0, -15), to + Vector2(0, -5), to]:
+		for next: Vector2 in [from + Vector2(0, -30), from + Vector2(0, -15), from]:
 			await _drag_move(last, next)
 			last = next
-		await _drag_move(last, to + Vector2(1, 0))
+		# Steered by where the hand stands: the pointer aims at the surface
+		# under it, never at the brick's own top, so a screen offset alone
+		# lands it elsewhere (c1 at 1280 put it at z -100).
+		for _n: int in 8:
+			var hand: Vector3 = _hand_at()
+			if hand.is_equal_approx(want) or hand == Vector3.INF:
+				break
+			var next: Vector2 = last + _screen(want) - _screen(hand)
+			await _drag_move(last, next)
+			last = next
+		await _drag_move(last, last + Vector2(1, 0))
+		last += Vector2(1, 0)
 		await _asked()
 		var told: String = _told(_builder.is_carrying())
-		_button(to + Vector2(1, 0), false)
+		_button(last, false)
 		await _frames(4)
 		var put: bool = _builder.history_depth() > depth
 		var now: int = _of_part("Wing#1", "3004")
@@ -465,12 +473,13 @@ func _nudges() -> void:
 			return _world.get_brick(i).part_id.begins_with("3004"))
 		var twin_at: Vector3 = _world.get_brick(int(twin[0])).transform.origin if twin.size() == 1 \
 			else Vector3.INF
-		_check("the wing's brick dragged %s from outside the wing (to %s, from %s): its twin with it (Wing#2 %d parts, its 3004 at %s; %d parts, were %d)\n        %s"
+		# Put where it was aimed, or this asked nothing of the follow.
+		_check("the wing's brick dragged %s from outside the wing (to %s, wanted %s, from %s): its twin with it (Wing#2 %d parts, its 3004 at %s; %d parts, were %d)\n        %s"
 			% ["a stud along" if along != 0 else "back where it stood", str(at.snappedf(0.1)),
-			str(was.snappedf(0.1)), _tree.ids_under("Wing#2").size(), str(twin_at.snappedf(0.1)),
-			_count(), parts, told],
-			(put or along == 0) and _tree.ids_under("Wing#2").size() == 3 and _count() == parts
-			and twin_at.is_equal_approx(Vector3(-20.0 - at.x, at.y, at.z)))
+			str(want), str(was.snappedf(0.1)), _tree.ids_under("Wing#2").size(),
+			str(twin_at.snappedf(0.1)), _count(), parts, told],
+			(put or along == 0) and at.is_equal_approx(want) and _tree.ids_under("Wing#2").size() == 3
+			and _count() == parts and twin_at.is_equal_approx(Vector3(-20.0 - at.x, at.y, at.z)))
 		if put:
 			# The step the follow grew comes back exactly, both ways.
 			var after: Dictionary = _parts_now()
@@ -537,6 +546,14 @@ func _told(carried: bool) -> String:
 ## hands it to the ask: the carry's frame, or the ghost's for a part in hand.
 func _hand_frame() -> Transform3D:
 	return _builder.carrying.get("_frame") if _builder.is_carrying() else _builder.get("_ghost_transform")
+
+
+## Where the first part in hand would go down, in the world; INF with none.
+func _hand_at() -> Vector3:
+	var going: Array = _builder.call("_going_down")
+	if going.is_empty():
+		return Vector3.INF
+	return (_hand_frame() * ((going[0] as Array)[1] as Transform3D)).origin
 
 
 ## Where the first part going down would be put, in the world: what a
