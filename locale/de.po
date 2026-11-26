@@ -17363,8 +17363,8 @@ msgstr "Das Thema der Frage in Talk öffnen"
 msgid "Post the question in Talk's Help, with the model in 3D at this step and the parts you picked lit"
 msgstr "Die Frage in der Hilfe von Talk stellen, mit dem Modell in 3D bei diesem Bauschritt und den gewählten Teilen hervorgehoben"
 
-msgid "Builders answer on the parts, and the answers light them here"
-msgstr "Bauende antworten an den Teilen, und die Antworten heben sie hier hervor"
+msgid "Builders answer on the parts, and the answers light them here."
+msgstr "Bauende antworten an den Teilen, und die Antworten heben sie hier hervor."
 
 msgid "How should I build step %d?"
 msgstr "Wie baue ich Bauschritt %d?"
@@ -17378,14 +17378,14 @@ msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, in 3D gezeigt"
 msgid "Asks in Talk's Help about the whole model, shown in 3D"
 msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, in 3D gezeigt"
 
-msgid "Pick parts first to have them lit"
-msgstr "Wähle zuerst Teile, damit sie hervorgehoben werden"
+msgid "Pick parts first to have them lit."
+msgstr "Wähle zuerst Teile, damit sie hervorgehoben werden."
 
-msgid "Asks in Talk's Help about step %d, with %s lit in 3D"
-msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s in 3D hervorgehoben"
+msgid "Asks in Talk's Help about step %d, with %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s in 3D hervorgehoben."
 
-msgid "Asks in Talk's Help about the whole model, with %s lit in 3D"
-msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s in 3D hervorgehoben"
+msgid "Asks in Talk's Help about the whole model, with %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s in 3D hervorgehoben."
 
 msgid "%d more"
 msgstr "%d weitere"

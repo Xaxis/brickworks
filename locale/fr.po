@@ -17363,8 +17363,8 @@ msgstr "Ouvrir la discussion de la question dans Talk"
 msgid "Post the question in Talk's Help, with the model in 3D at this step and the parts you picked lit"
 msgstr "Publier la question dans l’Aide de Talk, avec le modèle en 3D à cette étape et les pièces choisies en surbrillance"
 
-msgid "Builders answer on the parts, and the answers light them here"
-msgstr "Les constructeurs répondent sur les pièces, et les réponses les mettent en surbrillance ici"
+msgid "Builders answer on the parts, and the answers light them here."
+msgstr "Les constructeurs répondent sur les pièces, et les réponses les mettent en surbrillance ici."
 
 msgid "How should I build step %d?"
 msgstr "Comment construire l’étape %d ?"
@@ -17378,14 +17378,14 @@ msgstr "Demande dans l’Aide de Talk à propos de l’étape %d, montrée en 3D
 msgid "Asks in Talk's Help about the whole model, shown in 3D"
 msgstr "Demande dans l’Aide de Talk à propos du modèle entier, montré en 3D"
 
-msgid "Pick parts first to have them lit"
-msgstr "Choisissez d’abord des pièces pour les mettre en surbrillance"
+msgid "Pick parts first to have them lit."
+msgstr "Choisissez d’abord des pièces pour les mettre en surbrillance."
 
-msgid "Asks in Talk's Help about step %d, with %s lit in 3D"
-msgstr "Demande dans l’Aide de Talk à propos de l’étape %d, avec %s en surbrillance en 3D"
+msgid "Asks in Talk's Help about step %d, with %s lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos de l’étape %d, avec %s en surbrillance en 3D."
 
-msgid "Asks in Talk's Help about the whole model, with %s lit in 3D"
-msgstr "Demande dans l’Aide de Talk à propos du modèle entier, avec %s en surbrillance en 3D"
+msgid "Asks in Talk's Help about the whole model, with %s lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos du modèle entier, avec %s en surbrillance en 3D."
 
 msgid "%d more"
 msgstr "%d de plus"
