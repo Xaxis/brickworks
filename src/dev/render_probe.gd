@@ -362,6 +362,13 @@ func _played(method: String) -> void:
 	traced.transparent = false
 	_say("played: a traced Best leaves the wear to the tracer",
 		not traced.traced_here() or StudioRender._raster_wear(traced) == none)
+	# photoreal27: the raster's Best raises the stud logo, as the tracer does;
+	# Good's single frame does not.
+	var good: RenderSettings = settings.copy()
+	good.quality = RenderSettings.Quality.GOOD
+	_say("played: Best's raster raises the stud logos, Good's does not",
+		StudioRender._raster_logos(settings) and not StudioRender._raster_logos(good)
+		and (not traced.traced_here() or not StudioRender._raster_logos(traced)))
 	var plate: int = _world.bricks()[0].id
 	var new_image: Image = await _render.render(_world, settings)
 	var new_at: Transform3D = _render.staged_transform(plate)
@@ -390,20 +397,26 @@ func _played(method: String) -> void:
 		new_at.origin.distance_to(played_at.origin),
 		rad_to_deg(new_at.basis.get_rotation_quaternion().angle_to(played_at.basis.get_rotation_quaternion()))],
 		not new_at.is_equal_approx(played_at) and new_at.origin.distance_to(played_at.origin) < 1.5)
-	# Forward+ never draws the same frames twice to the byte (New then New:
-	# 50 to 100 pixels a level apart, on the base too), so New again is
-	# within 2 levels everywhere; wear left behind moves the plate by more.
+	# Forward+ never draws the same frames twice to the byte, and now and then
+	# a few pixels move 8 or 9 levels with no Played with between (New, a
+	# view from the front, New: photoreal27), so New again is asked what
+	# Played with leaves behind if anything: the plate seated exact again,
+	# and its pale grey as warm as New's was.
 	var again: Image = await _render.render(_world, settings)
-	var most: float = 0.0
+	var again_at: Transform3D = _render.staged_transform(plate)
+	var still := Vector2.ZERO
+	var counted: int = 0
 	if again != null:
-		for y: int in again.get_height():
-			for x: int in again.get_width():
+		for y: int in range(0, new_image.get_height(), 2):
+			for x: int in range(0, new_image.get_width(), 2):
 				var was: Color = new_image.get_pixel(x, y)
 				var now: Color = again.get_pixel(x, y)
-				most = maxf(most, maxf(maxf(absf(was.r - now.r), absf(was.g - now.g)),
-					maxf(absf(was.b - now.b), absf(was.a - now.a))))
-	_say("played: New again draws as it did (at most %.0f levels off)" % (most * 255.0),
-		again != null and most * 255.0 <= 2.5)
+				if was.a > 0.95 and now.a > 0.95 and absf(was.r - was.b) < 0.06 and was.get_luminance() > 0.45:
+					still += Vector2((was.r + was.g) * 0.5 - was.b, (now.r + now.g) * 0.5 - now.b)
+					counted += 1
+		still /= maxf(float(counted), 1.0)
+	_say("played: New again draws as it did (seated exact, warmth %.3f -> %.3f)" % [still.x, still.y],
+		again != null and again_at.is_equal_approx(new_at) and absf(still.y - still.x) < 0.005)
 
 
 func _turntable(method: String) -> void:
