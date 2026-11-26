@@ -236,6 +236,17 @@ func _full_pictures() -> void:
 	_camera.frame(_world.model_bounds())
 	await _settle()
 	await _frames(60)
+	# Opened in Full, Simple | Full whole in the window: at 390 the name kept
+	# the switch's room, and Full stood cut off at the edge.
+	var screen := Rect2(Vector2.ZERO, root.get_visible_rect().size).grow(0.5)
+	var off: Array = []
+	var named: Dictionary = _header_controls()
+	for key: String in named:
+		var control: Control = named[key] as Control
+		if control != null and control.is_visible_in_tree() and not screen.encloses(control.get_global_rect()):
+			off.append(key)
+	_check("the header's controls inside the window in Full (%d named; off: %s)" % [named.size(), ", ".join(off)],
+		off.is_empty() and named.has("controls_full"))
 	await _shot("full_car")
 	_main.call("clear_model")
 	await _frames(10)

@@ -340,6 +340,10 @@ func _build() -> void:
 		app.call("use_controls", layer))
 	top_row.add_child(_switch)
 	AppHeader.show_controls(_switch, app.call("controls_layer") if app.has_method("controls_layer") else &"full")
+	# Its words are measured only once it is drawn: the bar shared again
+	# then, or the name kept the room the switch needed, and a phone 390
+	# across that opened in Full had Full cut off at its edge.
+	_switch.minimum_size_changed.connect(_share_top, CONNECT_DEFERRED)
 	if AppHeader.web_layout:
 		_menu = Button.new()
 		_menu.name = "phone_app_menu"
@@ -431,6 +435,7 @@ func _build() -> void:
 	_context = _sheet("This part", true)
 	_show_simple()
 	_lay_pill()
+	_share_top.call_deferred()
 	laid_out.emit()
 
 
@@ -602,7 +607,7 @@ func _row_share() -> float:
 ## the bar wanted 294: Redo stood half off the screen (app_a11y, uifix).
 func _share_top() -> void:
 	var redo: Button = _tool_buttons.get("redo")
-	if _top == null or redo == null or simple:
+	if _top == null or redo == null or simple or _name == null or _name.get_parent() == null:
 		return
 	var row: HBoxContainer = _name.get_parent() as HBoxContainer
 	var gap: float = row.get_theme_constant("separation")
