@@ -32,7 +32,7 @@ ui:simple's controls swapped in live
 3. Drag a part out of the tray onto the model. A ghost shows where it will go, a little above your finger so you can see it, and it snaps to the studs.
 4. Let go to put it down. Let go over the tray to put nothing down.
 
-You can also tap a part in the tray, then tap the model wherever one should go; tap the part in the tray again to stop.
+You can also tap a part in the tray, then tap the model where one should go. Its see-through ghost shows where it will sit: tap the ghost to put it down, tap somewhere else to show it there instead, or drag the ghost where you want it and let go. With a mouse, the ghost follows the pointer and a click puts it down. Tap the part in the tray again to stop.
 
 A new model in Simple starts on a 16 x 16 plate that fills the view. If there is no room where you let go, nothing goes down and Simple says so.
 

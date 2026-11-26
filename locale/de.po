@@ -18321,6 +18321,12 @@ msgstr "Loslassen, um ihn abzusetzen · über dem Papierkorb, um ihn zu löschen
 msgid "Tap the model to put one there"
 msgstr "Tippe aufs Modell, um einen dort abzusetzen"
 
+msgid "Tap where it goes"
+msgstr "Tippe dorthin, wo er hin soll"
+
+msgid "Tap it to put it down · drag it to move it"
+msgstr "Tippe ihn an, um ihn abzusetzen · zieh ihn, um ihn zu verschieben"
+
 msgid "Drag a brick onto the model · two fingers turn the view"
 msgstr "Zieh einen Stein aufs Modell · zwei Finger drehen die Ansicht"
 

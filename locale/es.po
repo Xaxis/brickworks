@@ -18321,6 +18321,12 @@ msgstr "Suelta para colocarla · sobre la papelera para eliminarla"
 msgid "Tap the model to put one there"
 msgstr "Toca el modelo para poner una ahí"
 
+msgid "Tap where it goes"
+msgstr "Toca donde va"
+
+msgid "Tap it to put it down · drag it to move it"
+msgstr "Tócala para colocarla · arrástrala para moverla"
+
 msgid "Drag a brick onto the model · two fingers turn the view"
 msgstr "Arrastra una pieza al modelo · dos dedos giran la vista"
 

@@ -117,6 +117,16 @@ var _group: int = 0
 var _colour: int = 4
 ## The brick a tap on the tray chose: a tap on the model puts one there.
 var _chosen: String = ""
+## A finger's tap with a brick chosen shows its ghost where it would go and
+## waits: a tap on the ghost puts it down, a tap elsewhere shows it there
+## instead, a drag from it carries it. A finger hides where it lands, and
+## aimed unseen the tapper's bricks went down a stud off 6 times in 9. A
+## mouse's ghost follows the pointer, so its click puts one down at once.
+var _ghost_shown: bool = false
+## A finger that came down on the shown ghost, and the point that aimed it
+## there (its foot on the screen) as the finger came down.
+var _ghost_drag: bool = false
+var _ghost_from: Vector2 = Vector2.ZERO
 ## The tile a press in the tray's gaps went to (_foot_input).
 var _foot_tile: Control = null
 ## Each tile's picture: [part, colour] it was drawn in.
@@ -795,6 +805,7 @@ func tile_at(point: Vector2) -> Control:
 
 func _tap_tile(part: String) -> void:
 	counts["tapped"] += 1
+	_ghost_shown = false
 	_chosen = "" if _chosen == part else part
 	_dress_tiles()
 	if not _chosen.is_empty():
@@ -845,9 +856,10 @@ func _aim(at: Vector2) -> void:
 	app.call("_refresh_preview", at)
 
 
-func _drop_from_tray(at: Vector2, finger: Vector2) -> void:
+func _drop_from_tray(at: Vector2, finger: Vector2, from: String = "tray") -> void:
 	var builder: Builder = app.get("_builder")
-	last_drop = {"aimed": at, "put": [], "from": "tray"}
+	_ghost_shown = false
+	last_drop = {"aimed": at, "put": [], "from": from}
 	if builder == null:
 		return
 	if _over_ui(at) or _foot.get_global_rect().has_point(finger) or (app.get("_store") as ModelStore).laying:
@@ -863,8 +875,14 @@ func _drop_from_tray(at: Vector2, finger: Vector2) -> void:
 ## One of the part in hand put down where [param at] aims, seated, or
 ## refused and said so.
 func _place_at(at: Vector2) -> void:
-	var builder: Builder = app.get("_builder")
 	app.call("_aim_at", at)
+	_put_down()
+
+
+## One of the part in hand put down where its ghost stands, seated, or
+## refused and said so.
+func _put_down() -> void:
+	var builder: Builder = app.get("_builder")
 	last_drop["valid"] = builder.can_place()
 	last_drop["ghost"] = builder.ghost_transform()
 	var id: int = builder.place() if builder.can_place() else 0
@@ -906,6 +924,46 @@ func _held() -> String:
 	if builder == null or verbs == null or builder.is_carrying() or verbs.mode != "place":
 		return ""
 	return builder.held_part
+
+
+## Whether a tap's ghost is up, waiting for a tap on it to go down.
+func ghost_waits() -> bool:
+	var builder: Builder = app.get("_builder")
+	return _ghost_shown and builder != null and builder.has_preview() and not _held().is_empty()
+
+
+## The ghost's box on the screen; empty while there is none.
+func ghost_rect() -> Rect2:
+	var box: AABB = _ghost_box()
+	if box.size == Vector3.ZERO:
+		return Rect2()
+	var camera: CadCamera = app.get("_camera")
+	var rect := Rect2(camera.unproject_position(box.position), Vector2.ZERO)
+	for n: int in 8:
+		rect = rect.expand(camera.unproject_position(box.get_endpoint(n)))
+	return rect
+
+
+func _ghost_box() -> AABB:
+	var builder: Builder = app.get("_builder")
+	if builder == null or not builder.has_preview():
+		return AABB()
+	var part: Lbm.PartMesh = builder.library.mesh_for(builder.held_part)
+	return builder.ghost_transform() * part.bounds if part != null else AABB()
+
+
+## Whether a finger at [param at] is on the shown ghost, a fingertip's
+## slack round it.
+func _on_ghost(at: Vector2) -> bool:
+	return ghost_waits() and ghost_rect().grow(p(6.0)).has_point(at)
+
+
+## The point on the screen that aims the ghost where it stands: the middle
+## of its foot, on what it stands on.
+func _ghost_foot() -> Vector2:
+	var box: AABB = _ghost_box()
+	var camera: CadCamera = app.get("_camera")
+	return camera.unproject_position(Vector3(box.get_center().x, box.position.y, box.get_center().z))
 
 
 ## The tray's choice let go of, and the tool Select's again.
@@ -1014,7 +1072,8 @@ func _double_tapped(at: Vector2) -> void:
 	var verbs: EditVerbs = app.get("_verbs")
 	var builder: Builder = app.get("_builder")
 	var brick: int = verbs.brick_at(at)
-	if brick != 0 and builder.selection.has(brick) and _chosen.is_empty():
+	# A part in hand: its two taps showed it and put it down, and turn nothing.
+	if brick != 0 and builder.selection.has(brick) and _held().is_empty():
 		turn_selected()
 
 
@@ -1030,12 +1089,14 @@ func hint() -> String:
 	var finger: bool = Phone.on()
 	if _moving:
 		return atr("Let go to put it down · over the bin to delete it")
-	if _tray_dragging:
+	if _tray_dragging or (_ghost_drag and _travel > p(SLOP)):
 		return atr("Let go to put it down")
 	if builder != null and builder.is_carrying():
 		return atr("Tap where the copy goes")
+	if ghost_waits():
+		return atr("Tap it to put it down · drag it to move it")
 	if not _held().is_empty():
-		return atr("Tap the model to put one there")
+		return atr("Tap where it goes") if finger else atr("Tap the model to put one there")
 	if builder != null and not builder.selection.is_empty():
 		return atr("Drag it to move it · tap a colour to paint it")
 	return atr("Drag a brick onto the model · two fingers turn the view") if finger \
@@ -1169,6 +1230,11 @@ func _press(at: Vector2, index: int) -> void:
 	_turning_view = false
 	_left_one = 0
 	_brick = _brick_near(at)
+	# Down on the ghost a tap showed: the finger's to carry, not a brick's.
+	_ghost_drag = index != -2 and _on_ghost(at)
+	if _ghost_drag:
+		_ghost_from = _ghost_foot()
+		_brick = 0
 	var builder: Builder = app.get("_builder")
 	# A copy in hand rides the finger from where it comes down.
 	if builder.is_carrying():
@@ -1180,6 +1246,14 @@ func _press(at: Vector2, index: int) -> void:
 func _second_finger() -> void:
 	_others += 1
 	_brick = 0
+	if _ghost_drag:
+		# The shown ghost carried: put back, as a second finger puts back
+		# what the first had.
+		_ghost_drag = false
+		_ghost_shown = false
+		(app.get("_builder") as Builder).hide_preview()
+		counts["cancelled"] += 1
+		last_drop = {"put": [], "from": "tap", "why": "a second finger"}
 	if _moving:
 		_moving = false
 		var verbs: EditVerbs = app.get("_verbs")
@@ -1194,6 +1268,12 @@ func _drag(at: Vector2) -> void:
 	_at = at
 	_travel = maxf(_travel, at.distance_to(_down))
 	var builder: Builder = app.get("_builder")
+	if _ghost_drag:
+		# The ghost moves as the finger does, from where it stood, and comes
+		# up over the finger as the drag goes on, as one out of the tray.
+		if _travel > p(SLOP):
+			_aim(_aimed(_ghost_from + (at - _down), _travel))
+		return
 	if not _moving and _brick != 0 and _travel > p(SLOP):
 		_start_move()
 	if _moving:
@@ -1267,6 +1347,8 @@ func _release(at: Vector2) -> void:
 	_others = 0
 	var brick: int = _brick
 	_brick = 0
+	var ghost_drag: bool = _ghost_drag
+	_ghost_drag = false
 	var camera: CadCamera = app.get("_camera")
 	if _turning_view:
 		_turning_view = false
@@ -1280,6 +1362,11 @@ func _release(at: Vector2) -> void:
 		_end_move(at)
 		return
 	var tap: bool = _travel <= p(SLOP)
+	if ghost_drag and not tap:
+		# The shown ghost carried by the finger: down where it is let go, as
+		# one out of the tray.
+		_drop_from_tray(_aimed(_ghost_from + (at - _down), _travel), at, "tap")
+		return
 	# A copy in hand: put down where the finger aims, tapped or dragged.
 	if builder.is_carrying() and verbs.mode != "place":
 		var aim: Vector2 = at if tap else _aimed(at, p(RAMP))
@@ -1292,14 +1379,27 @@ func _release(at: Vector2) -> void:
 		return
 	if not tap:
 		return
-	# A tap with a brick chosen on the tray, or a part in hand: one put down
-	# where it landed.
+	# A tap with a brick chosen on the tray, or a part in hand: a mouse's
+	# click puts one down where its ghost was; a finger's tap shows the ghost
+	# there, and a tap on that ghost puts it down.
 	if not _held().is_empty():
 		if not _chosen.is_empty():
 			_take(_chosen)
 		last_drop = {"aimed": at, "put": [], "from": "tap"}
-		_place_at(at)
-		builder.hide_preview()
+		if mouse:
+			_ghost_shown = false
+			_place_at(at)
+			builder.hide_preview()
+		elif _on_ghost(at):
+			last_drop["aimed"] = _ghost_foot()
+			_put_down()
+			if not (last_drop["put"] as Array).is_empty():
+				_ghost_shown = false
+				builder.hide_preview()
+		else:
+			_aim(at)
+			_ghost_shown = builder.has_preview()
+			last_drop["shown"] = _ghost_shown
 		return
 	var under: int = verbs.brick_at(at) if mouse else brick
 	if under == 0:
@@ -1389,6 +1489,8 @@ func _cancel_press() -> void:
 	_finger = -1
 	_mouse = false
 	_brick = 0
+	_ghost_drag = false
+	_ghost_shown = false
 	_moved_from.clear()
 	if _tray_dragging:
 		_tray_dragging = false

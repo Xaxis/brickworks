@@ -30,7 +30,9 @@
 ##   5. one finger on empty space turns nothing and says how, a finger
 ##      within a fingertip of a part takes it, two fingers turn and zoom;
 ##      Fit frames;
-##   6. a tap on a brick of the tray, then a tap on the model, puts one there;
+##   6. a tap on a brick of the tray, then a tap on the model, shows its
+##      ghost there; a tap elsewhere shows it there instead, a tap on it puts
+##      it down, a drag from it carries it;
 ##   7. Simple | Full in the header: one tap each way, remembered, the
 ##      model byte for byte;
 ##   8. a new sketch on a 16 x 16 plate framed to fill the view, a stud
@@ -487,10 +489,43 @@ func _tap_tap() -> void:
 	await _tap_at(tile.get_global_rect().get_center())
 	await _frames(3)
 	_check("a tap on a brick of the tray chooses it", str(_simple.call("chosen_brick")) == "3004")
+	# A finger hides where it lands: its tap shows the ghost there first.
+	await _tap_at(_base_point(-0.3, 0.2))
+	await _frames(3)
+	_check("a tap on the model shows where it goes, nothing down yet (%d)" % (_world.brick_count() - before),
+		_world.brick_count() == before and bool(_simple.call("ghost_waits")))
+	_check("...and says how: \"%s\"" % _simple.call("hint"), str(_simple.call("hint")).contains("Tap it"))
+	var first: Transform3D = _builder.ghost_transform()
 	await _tap_at(_base_point(0.1, 0.0))
 	await _frames(3)
-	_check("a tap on the model puts one there (%d)" % (_world.brick_count() - before),
-		_world.brick_count() == before + 1)
+	_check("a tap elsewhere shows it there instead, still nothing down",
+		_world.brick_count() == before and bool(_simple.call("ghost_waits"))
+		and not _builder.ghost_transform().origin.is_equal_approx(first.origin))
+	var shown: Transform3D = _builder.ghost_transform()
+	await _tap_at((_simple.call("ghost_rect") as Rect2).get_center())
+	await _frames(3)
+	var put: Array = (_simple.get("last_drop") as Dictionary).get("put", [])
+	_check("a tap on the ghost puts it down where it showed (%d)" % (_world.brick_count() - before),
+		_world.brick_count() == before + 1 and put.size() == 1
+		and _world.get_brick(int(put[0])).transform.origin.is_equal_approx(shown.origin))
+	# Shown again, and carried by a drag from it: down where it is let go.
+	await _tap_at(_base_point(-0.3, -0.2))
+	await _frames(3)
+	var from: Vector2 = (_simple.call("ghost_rect") as Rect2).get_center()
+	var lift: float = Phone.px(root, float(_simple.get("lift_points")))
+	var to: Vector2 = from + Vector2(Phone.px(root, 60.0), lift)
+	_touch(0, from, true)
+	await process_frame
+	await _drag_along(0, from, to, 10)
+	await _frames(2)
+	var carried: Transform3D = _builder.ghost_transform()
+	_touch(0, to, false)
+	await _frames(3)
+	put = (_simple.get("last_drop") as Dictionary).get("put", [])
+	_check("a drag from the ghost carries it, down where let go (%d)" % (_world.brick_count() - before),
+		_world.brick_count() == before + 2 and put.size() == 1
+		and _world.get_brick(int(put[0])).transform.origin.is_equal_approx(carried.origin)
+		and not carried.origin.is_equal_approx(shown.origin))
 	await _tap_at(tile.get_global_rect().get_center())
 	await _frames(3)
 	_check("a tap on it again lets it go", str(_simple.call("chosen_brick")).is_empty())
@@ -1062,6 +1097,51 @@ func _press_named(what: String, walker: Dictionary, out: Dictionary) -> void:
 	_note("%s pressed" % what)
 
 
+## After a tap on the model: its ghost, shown where the tap landed, looked
+## at; right, a tap on it puts it down; off, a drag from it carries it there,
+## put right while the finger is down as a drag out of the tray is, and let
+## go. A tap that misses the ghost shows it where it landed instead, and it
+## is looked at again.
+func _tapped_ghost_down(walker: Dictionary, ideal: Variant, out: Dictionary) -> void:
+	var sigma: float = float(walker["sigma"])
+	var nudges: int = int(walker["nudges"])
+	for look: int in nudges + 3:
+		_seconds += LOOK
+		if not bool(_simple.call("ghost_waits")):
+			return
+		var shown: Rect2 = _simple.call("ghost_rect")
+		var off: Vector2 = _ghost_off(ideal)
+		var on: Vector2 = _landed(shown.get_center(), sigma)
+		_seconds += _fitts(_rest, shown)
+		out["touches"] = int(out["touches"]) + 1
+		if off == Vector2.ZERO or look > nudges:
+			await _tap_at(on)
+			_seconds += TAP
+			_rest = on
+			await _frames(2)
+			continue
+		var lift: float = Phone.px(root, float(_simple.get("lift_points")))
+		var finger: Vector2 = on + off + Vector2(0, lift) + _noise(sigma * 0.5)
+		_touch(0, on, true)
+		await process_frame
+		await _drag_along(0, on, finger, 8)
+		await _frames(2)
+		_seconds += FITTS_A + FITTS_B * log(off.length() / Phone.px(root, 8.0) + 1.0) / log(2.0)
+		for nudge: int in nudges:
+			_seconds += LOOK
+			var still: Vector2 = _ghost_off(ideal)
+			if still == Vector2.ZERO or _hidden_by_finger(finger):
+				break
+			var to: Vector2 = finger + still + _noise(sigma * 0.5)
+			await _drag_along(0, finger, to, 4)
+			_seconds += FITTS_A + FITTS_B * log(still.length() / Phone.px(root, 8.0) + 1.0) / log(2.0)
+			finger = to
+		_touch(0, finger, false)
+		_rest = finger
+		await _frames(3)
+		return
+
+
 func _note(words: String) -> void:
 	_walk_log.append("%5.1f s  %s" % [_seconds, words])
 
@@ -1133,6 +1213,7 @@ func _place_one(walker: Dictionary, n: int, how: String, slip: bool, out: Dictio
 		_rest = target
 		out["touches"] = int(out["touches"]) + 1
 		await _frames(2)
+		await _tapped_ghost_down(walker, ideal, out)
 		# A tapper tapped the tray again to let it go, once a brick is down.
 		await _undo_tray_choice()
 	else:

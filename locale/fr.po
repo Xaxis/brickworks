@@ -18321,6 +18321,12 @@ msgstr "Lâche pour la poser · sur la corbeille pour la supprimer"
 msgid "Tap the model to put one there"
 msgstr "Touche le modèle pour en poser une là"
 
+msgid "Tap where it goes"
+msgstr "Touche là où elle va"
+
+msgid "Tap it to put it down · drag it to move it"
+msgstr "Touche-la pour la poser · fais-la glisser pour la déplacer"
+
 msgid "Drag a brick onto the model · two fingers turn the view"
 msgstr "Fais glisser une brique sur le modèle · deux doigts font tourner la vue"
 

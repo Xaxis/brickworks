@@ -4034,7 +4034,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   points, and lifting puts it there (`Main._drop_dragged`'s rules, refused:
   "No room there") with a 14-LDU drop drawn onto its studs over 160 ms; let
   go over the tray or a second finger down puts nothing down; a tap on a
-  tile then a tap on the model puts one there. One finger builds and two
+  tile then a finger's tap on the model shows its ghost there and waits
+  (`SimpleLayer.ghost_waits`): a tap on the ghost puts it down, a tap
+  elsewhere shows it there, a drag from it carries it and lets go as from
+  the tray (a mouse's click puts one down at once). One finger builds and two
   move the view: a tap on a placed part selects it (Turn, Copy, Delete come
   up on the right), a drag moves it with what rests on it and lets it snap
   again, over the red bin that shows while it moves it is deleted; Turn is a
