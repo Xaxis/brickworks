@@ -55,6 +55,11 @@ var _colour_note: Label
 var _swatches: Dictionary = {}           ## code -> PartsBin.Swatch
 var _shelf: VBoxContainer
 var _summary: Label
+## The question for moulds made here signed out (MouldsOnAccount.unclaimed):
+## its words, and its two answers.
+var _claim: VBoxContainer
+var _claim_words: Label
+var _claim_ids: Array[String] = []
 var _rng := RandomNumberGenerator.new()
 
 var _viewport: SubViewport
@@ -133,8 +138,40 @@ func open() -> void:
 	_name.text = figure.name
 	_sight.forget()
 	_refresh_all()
-	# Moulds made while signed out or out of reach, to the account now.
-	MouldsOnAccount.sweep(account, library)
+	_to_account()
+
+
+## The moulds this person made signed in and their account lacks, sent; and
+## the ones made here signed out, asked about (MouldsOnAccount).
+func _to_account() -> void:
+	_claim.visible = false
+	if account == null or not account.signed_in():
+		return
+	await MouldsOnAccount.sweep(account, library)
+	_claim_ids = MouldsOnAccount.unclaimed(account)
+	if _claim_ids.is_empty() or not visible:
+		return
+	_claim_words.text = MouldsOnAccount.ASK_ONE if _claim_ids.size() == 1 \
+		else MouldsOnAccount.ASK_MANY % _claim_ids.size()
+	_claim.visible = true
+
+
+## "Put on my account": the moulds asked about are this person's.
+func _claim_them() -> void:
+	_claim.visible = false
+	var ids: Array[String] = _claim_ids.duplicate()
+	_claim_ids.clear()
+	var said: Array = await MouldsOnAccount.claim(account, ids)
+	var words: String = MouldsOnAccount.CLAIMED % int(said[0]) if str(said[1]).is_empty() \
+		else MouldsOnAccount.NOT_KEPT % str(said[1])
+	_summary.text = "%s · %s" % [_summary.text, words] if not _summary.text.is_empty() else words
+
+
+## "Not mine": never asked of this account again.
+func _not_mine() -> void:
+	_claim.visible = false
+	MouldsOnAccount.decline(account, _claim_ids)
+	_claim_ids.clear()
 
 
 func close() -> void:
@@ -436,6 +473,21 @@ func _build_figure() -> Control:
 	_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_summary)
 
+	_claim = VBoxContainer.new()
+	_claim.add_theme_constant_override("separation", 4)
+	_claim.visible = false
+	column.add_child(_claim)
+	_claim_words = Label.new()
+	_claim_words.add_theme_font_size_override("font_size", 12)
+	_claim_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_claim.add_child(_claim_words)
+	var answers := HBoxContainer.new()
+	answers.add_theme_constant_override("separation", 8)
+	_claim.add_child(answers)
+	_button(answers, MouldsOnAccount.PUT_ON, _claim_them,
+		"Send them to the account signed in now, for the site's minifig maker")
+	_button(answers, MouldsOnAccount.NOT_MINE, _not_mine, "Keep them in the studio only, and ask no more")
+
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)
 	buttons.alignment = BoxContainer.ALIGNMENT_END
@@ -528,8 +580,9 @@ func _arrange() -> void:
 		_put(_name_row, _column, 1)
 		_put(_frame, _column, 2)
 		_put(_summary, _column, 3)
-		_put(_body, _column, 4)
-		_put(_actions, _column, 5)
+		_put(_claim, _column, 4)
+		_put(_body, _column, 5)
+		_put(_actions, _column, 6)
 		_put(_slots_scroll, _bench, 0)
 		_put(_kept, _bench, 1)
 		_put(_shelf_scroll, _bench, 2)
@@ -540,9 +593,10 @@ func _arrange() -> void:
 		_put(_slots_scroll, _body, 0)
 		_put(_frame, _figure_column, 0)
 		_put(_summary, _figure_column, 1)
-		_put(_actions, _figure_column, 2)
-		_put(_kept, _figure_column, 3)
-		_put(_shelf_scroll, _figure_column, 4)
+		_put(_claim, _figure_column, 2)
+		_put(_actions, _figure_column, 3)
+		_put(_kept, _figure_column, 4)
+		_put(_shelf_scroll, _figure_column, 5)
 		_column.move_child(_name_row, -1)
 		_body.move_child(_bench, -1)
 	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL if stacked else Control.SIZE_FILL
@@ -996,13 +1050,24 @@ func mould_editor() -> MouldEditor:
 	return _mould_editor
 
 
-## A mould saved, kept on the account too (MouldsOnAccount), and said
-## after what the figure is made of.
+## A mould saved: written in this device's ledger as made by whoever is
+## signed in, kept on their account too (MouldsOnAccount), and said after
+## what the figure is made of. Signed out, it stays in the studio, and the
+## builder says so.
 func _mould_to_account(ids: Array, slot: String) -> void:
-	if ids.is_empty() or slot.is_empty() or account == null or not account.signed_in():
+	if ids.is_empty() or slot.is_empty():
 		return
-	var why: String = await MouldsOnAccount.send(account, str(ids[0]), slot)
-	mould_on_account = why
+	var id: String = str(ids[0])
+	var replaces: String = _mould_editor.remade if _mould_editor != null else ""
+	MouldsOnAccount.made(id, slot, account, replaces)
+	var why: String = MouldsOnAccount.SIGNED_OUT
+	if account != null and account.signed_in():
+		why = await MouldsOnAccount.send(account, id, slot, replaces)
+		mould_on_account = why
+		if not why.is_empty() and why != MouldsOnAccount.NO_ROOM and why != MouldsOnAccount.TOO_BIG \
+				and why != MouldsOnAccount.NOT_A_MOULD:
+			# Not through: the next opening of the builder sends it.
+			MouldsOnAccount.swept_for = ""
 	var words: String = MouldsOnAccount.KEPT if why.is_empty() else MouldsOnAccount.NOT_KEPT % why
 	_summary.text = "%s · %s" % [_summary.text, words] if not _summary.text.is_empty() else words
 

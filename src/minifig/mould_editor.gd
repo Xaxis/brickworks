@@ -53,6 +53,9 @@ const NARROW := 760.0
 var library: PartLibrary
 var slot: String = ""
 var colour_code: int = 70
+## The mould of the person's own the last one saved was shaped further
+## from, or "": read when [signal made] is said (MouldsOnAccount).
+var remade: String = ""
 
 var mould: Mould
 
@@ -1129,6 +1132,7 @@ func _save_mould() -> void:
 		_keep_draft()
 		return
 	_status.text = "Saved as %s." % result["id"]
+	remade = mould.remakes if mould.remakes != str(result["id"]) else ""
 	# Made: what was kept while it was made is let go, and nothing of it is
 	# brought back next time.
 	_drop_draft()

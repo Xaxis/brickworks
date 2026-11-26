@@ -7260,14 +7260,14 @@
       "kind": "lib",
       "label": "moulds sent to your account",
       "entry": "src/account/moulds_on_account.gd",
-      "reach": "godot --path .  (signed in, the figure builder, Headgear, Make a mould…, Save mould: the summary says \"Kept on your account too\"; one saved signed out is sent the next time the builder opens signed in)",
+      "reach": "godot --path .  (signed in, the figure builder, Headgear, Make a mould…, Save mould: the summary says \"Kept on your account too\"; one saved signed out is only asked about, \"Put on my account\" or \"Not mine\", the next time the builder opens signed in; a mould a model brought is never sent)",
       "area": "minifig"
     },
     {
       "kind": "cli",
       "label": "sitehair probe",
       "entry": "src/dev/sitehair_probe.gd",
-      "reach": "BRICKWORKS_API=http://127.0.0.1:PORT BW_PROBE_TOKEN=T BW_PROBE_USER=U godot --headless --path . --script src/dev/sitehair_probe.gd   (a relay of this checkout and a throwaway's token: saved signed in it is kept, signed out it is not, the sweep sends what the account lacks once; without a token SKIPPED, BW_MOULD_OUT=FILE writes the mould's text)",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:PORT BW_PROBE_TOKEN=T BW_PROBE_USER=U godot --headless --path . --script src/dev/sitehair_probe.gd   (a relay of this checkout and a throwaway's token: saved signed in it is kept, signed out it is not and is asked about, a carried one never sent, a remake replaces, a refused one not sent again, the refusals' words in de/fr/es; without a token SKIPPED, BW_MOULD_OUT=FILE writes the mould's text)",
       "area": "minifig"
     },
     {

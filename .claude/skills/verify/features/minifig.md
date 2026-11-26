@@ -354,14 +354,29 @@ the model, and the design assistant doing the same with `add_minifig`.
   `your own moulds on your account`), for the site's minifig maker to wear,
   and the builder's summary says "Kept on your account too: wear it in the
   site's minifig maker (Edit profile)." (`KEPT`), or "Kept in the studio
-  only: <why>" in the server's words or its own (signed out, not reached).
-  One saved signed out or out of reach is sent the next time the builder
-  opens signed in (`sweep`: the account's list asked once a run, what it
-  lacks sent). The builder has the app's `Account` (`MinifigDialog.account`,
-  set in `Main._make_figures`). `sitehair_probe` (headless; a relay of the
-  checkout and a throwaway's token, as `tools/web/sitehair_flow.mjs` gives
-  it; SKIPPED without) drives it: kept signed in with its triangles and
-  bytes and its text back exactly, nothing sent signed out, the sweep once.
+  only: <why>" in the app's own words (`NO_ROOM`, `TOO_BIG`, `NOT_A_MOULD`,
+  `TOO_MANY`, `NOT_OPEN`, `SIGNED_OUT`..., each in locale/*.po; mapped from
+  the answer's `code`). Only the person's own (hairfix, hairreview H1): a
+  ledger beside the made parts (`ledger_path()`, `own_moulds.json`) holds
+  each mould made with Save mould and who was signed in (`made`); the sweep
+  (`sweep`, once a run an account, again after a send that did not get
+  through) sends that account's unsent entries only, never a mould a model
+  brought (in no ledger) or one made under another account. Moulds made
+  signed out are asked about when the builder opens signed in
+  (`unclaimed`; `_claim` row, "Put on my account" `claim` / "Not mine"
+  `decline`). Refused for what it is (400, 413) a mould is not sent again;
+  refused for room (409) it goes once the list shows room (L3). Shaped
+  further from one of the person's own (`Mould.remakes`, kept in the draft;
+  `MouldEditor.remade`), it is sent with `replaces`. The builder has the
+  app's `Account` (`MinifigDialog.account`, set in `Main._make_figures`).
+  `sitehair_probe` (headless; a relay of the checkout and a throwaway's
+  token, as `tools/web/sitehair_flow.mjs` gives it; SKIPPED without) drives
+  it: kept signed in with its triangles and bytes and its text back exactly;
+  nothing sent signed out; asked, then sent once said to be hers; a carried
+  one never sent; a remake replaces; a refused one not sent again; the
+  refusals' words in de, fr and es. `hairreview_carry_probe` (BW_CARRIED,
+  two tokens) opens a model carrying somebody else's mould and hands the
+  device to a second account: `0 FINDINGS`.
 - `parts from 3D files` (`src/parts/mesh_part.gd`, `MeshPart`, a Later class):
   an STL (binary or ASCII; Z up, turned upright) or an OBJ read with
   `MeshFile` and refused in a sentence when it is not closed (an edge used an

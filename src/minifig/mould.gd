@@ -56,6 +56,9 @@ const UNDO_STEPS := 100
 
 ## The part it was made from: its placement on a figure is this part's.
 var base: String = ""
+## The mould of the person's own this one is shaped further from, or "":
+## saved, it takes that one's place on their account (MouldsOnAccount).
+var remakes: String = ""
 var name: String = ""
 var category: String = ""
 var positions := PackedVector3Array()
@@ -194,6 +197,10 @@ static func of_made(library: PartLibrary, part_id: String, slot: String = "") ->
 	if mould == null or real.is_empty() or not library.parts.has(real):
 		return mould
 	mould.base = real
+	# A mould shaped further, not a 3D file's hair: saved, it is the newer
+	# of the same mould.
+	if part_id.begins_with("bw-") and part_id.contains("-m-"):
+		mould.remakes = part_id
 	mould.name = Minifig._plain(library.parts[real].name).trim_prefix("~").trim_prefix("=")
 	var held: Array = MinifigData.GRIPS.get(real, [])
 	if not held.is_empty():
@@ -1003,7 +1010,7 @@ func _ldraw(v: int) -> Vector3:
 ## draft): every corner and triangle and what fixes them, exactly. Not its
 ## undo steps: what comes back after a reload is the shape, not its history.
 func to_draft() -> Dictionary:
-	return {"version": 1, "base": base, "name": name, "category": category,
+	return {"version": 1, "base": base, "remakes": remakes, "name": name, "category": category,
 		"positions": positions, "triangles": triangles, "colors": colors, "two_sided": two_sided,
 		"locks": locks, "mirrors": mirrors, "creases": creases, "connectors": connectors,
 		"on_head": on_head, "grip": grip, "rest": rest}
@@ -1048,6 +1055,8 @@ static func from_draft(kept: Variant) -> Mould:
 		if not p.is_finite():
 			return null
 	mould.base = d["base"]
+	# A draft kept before hairfix has none: it remakes nothing.
+	mould.remakes = str(d.get("remakes", ""))
 	mould.name = d["name"]
 	mould.category = d["category"]
 	mould.colors = d["colors"]

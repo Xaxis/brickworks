@@ -8478,6 +8478,42 @@ msgstr "Brickworks n'a pas pu être joint"
 msgid "Brickworks could not take it just now (%d)"
 msgstr "Brickworks n'a pas pu le prendre pour l'instant (%d)"
 
+msgid "your account has room for 40 moulds and 24 MB of them: remove one in the site's minifig maker (Edit profile, Hair and hats), and this one goes the next time the builder opens"
+msgstr "votre compte a de la place pour 40 moules et 24 Mo en tout : retirez-en un dans le créateur de minifigurines du site (Modifier le profil, Cheveux et chapeaux), et celui-ci part à la prochaine ouverture de l'atelier"
+
+msgid "it is bigger than the site keeps: 2 MB and 18,000 triangles at most"
+msgstr "il est plus gros que ce que le site garde : 2 Mo et 18 000 triangles au plus"
+
+msgid "the site would not keep its file: save it again"
+msgstr "le site n'a pas voulu garder son fichier : enregistrez-le à nouveau"
+
+msgid "more moulds than the site takes in an hour: it goes the next time the builder opens"
+msgstr "plus de moules que le site n'en prend en une heure : il part à la prochaine ouverture de l'atelier"
+
+msgid "moulds on your account are not open on Brickworks yet"
+msgstr "les moules sur votre compte ne sont pas encore ouverts sur Brickworks"
+
+msgid "1 mould made here while nobody was signed in is kept in the studio only. Is it yours?"
+msgstr "1 moule fait ici sans personne de connecté est gardé dans le studio seulement. Est-il à vous ?"
+
+msgid "%d moulds made here while nobody was signed in are kept in the studio only. Are they yours?"
+msgstr "%d moules faits ici sans personne de connecté sont gardés dans le studio seulement. Sont-ils à vous ?"
+
+msgid "Put on my account"
+msgstr "Mettre sur mon compte"
+
+msgid "Not mine"
+msgstr "Pas à moi"
+
+msgid "Kept on your account too: %d of them."
+msgstr "Gardés aussi sur votre compte : %d d'entre eux."
+
+msgid "Send them to the account signed in now, for the site's minifig maker"
+msgstr "Les envoyer au compte connecté maintenant, pour le créateur de minifigs du site"
+
+msgid "Keep them in the studio only, and ask no more"
+msgstr "Les garder dans le studio seulement, sans plus demander"
+
 msgid "%s has %s triangles, and the maker shapes parts of up to %s."
 msgstr "%s a %s triangles, et on ne peut façonner ici que des pièces d'au plus %s."
 
