@@ -3252,6 +3252,15 @@ var last_whole: String = ""
 ## Whether someone else's file is patched at all: false writes it as live
 ## does, for a probe to hold the two side by side.
 static var patch_files: bool = true
+## Whether someone else's file is written over itself at all: false sends
+## every save of it to the whole write, as any change no patch can say does,
+## for a probe to hold the whole write to the file (the reviews' flag).
+static var write_over_files: bool = true
+## Whether a whole write of someone else's file keeps the file's line for
+## each line it writes from one that still says it (SourceFile.kept_said):
+## false writes every line anew, as pre261 did, for a probe to hold the two
+## side by side.
+static var keep_file_lines: bool = true
 ## The sources [signal lines_left_out] was said for, by instance id.
 var _left_out_said: Dictionary = {}
 
@@ -4199,7 +4208,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# worker with a [param pace], the frames going on: made in one,
 	# 8466-1's 36 MB were 1.3 to 3 s of a browser's after every part that
 	# arrived as it opened.
-	var asked: Dictionary = {} if _writing_whole else _source_asked(title)
+	var asked: Dictionary = {} if _writing_whole or not write_over_files else _source_asked(title)
+	if not write_over_files and not _writing_whole and _live_source() != null:
+		last_whole = "every save written whole (write_over_files)"
 	if not asked.is_empty():
 		asked["drops_said"] = _left_out_said.has((asked["source"] as SourceFile).get_instance_id())
 		var kept: Variant
@@ -4418,13 +4429,20 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	var sectioned: Dictionary = LdrModel.built_sections(placements, instances, unit_steps,
 		world.section_files, steps, world.kept_lines) if not instances.is_empty() else {}
 	var units_written: Dictionary = sectioned.get("units", unit_steps)
+	# Someone else's file written whole: each line written from a line of the
+	# file (a part's origin, a copy's line) is that line where it still says
+	# it, read back to be sure (SourceFile.kept_said). The writer says which
+	# line each is from; nothing is paired by place, step or words after.
+	var tally: Dictionary = {}
+	var keep: Callable = _live_source().kept_said.bind(library, tally) \
+		if _live_source() != null and not _writing_whole and keep_file_lines else Callable()
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
 		unit_steps, known, steps, tree.lines_written(world, instances, back, units_written),
 		world.section_files, tree.lines_within(world, instances, back, units_written),
-		world.kept_lines, sectioned) \
+		world.kept_lines, sectioned, keep) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
-			world.section_files, world.kept_lines)
+			world.section_files, world.kept_lines, keep)
 	# Not the app's own steps read back from its file (BrickWorld.steps_own):
 	# kept, and still no one's, the file says no more than it did.
 	if authored and not model.steps_own:
@@ -4436,7 +4454,15 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		# And what it holds that is not on the baseplate, kept: each where
 		# the model now stands (held_place), those the app cannot show as
 		# well as those on their way.
-		text = _live_source().carried_into(text, waiting, held_place)
+		text = _live_source().carried_into(text, waiting, held_place, keep)
+		# Each line not kept that it was written from, said (a probe reads it).
+		if keep.is_valid():
+			var why: String = _kept_said(tally)
+			_live_source().kept_why = why
+			_live_source().kept_counts = {"kept": int(tally.get("kept", 0)),
+				"kept_words": int(tally.get("kept_words", 0)), "anew": (tally.get("anew", []) as Array).size()}
+			if not why.is_empty():
+				last_whole += ("; " if not last_whole.is_empty() else "") + why
 		# And each sub-model of the file nothing in the model is read
 		# through, as the file had it: one it never placed, and one whose
 		# last copy was taken off (kt5check F5).
@@ -4475,6 +4501,21 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			drops = source.left_out_of(whole)
 		_say_left_out(source, drops)
 	made.append(text)
+
+
+## What a whole write's [param tally] (SourceFile.kept_said) says of the lines
+## it did not keep: "" when every one written from a line of the file that
+## still says it is that line; else how many were written anew, the first
+## few by their lines and why their read-back differed.
+static func _kept_said(tally: Dictionary) -> String:
+	var anew: Array = tally.get("anew", [])
+	if anew.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for pair: Array in anew.slice(0, 3):
+		named.append("line %d: %s" % [int(pair[0]) + 1, str(pair[1])])
+	return "%d line%s written anew, read back otherwise as the file's (%s%s)" % [anew.size(),
+		"" if anew.size() == 1 else "s", "; ".join(named), "; ..." if anew.size() > 3 else ""]
 
 
 ## [param text] with how the booklet shows each step written into it
@@ -5346,18 +5387,59 @@ static func _set_said(text: String) -> String:
 ## Worked out in one go, it held a browser for seconds on Orthanc: "when I
 ## clicked 'Save and then new' it seemingly froze the app" (the owner,
 ## 2026-10-13). "" when the job was cancelled.
-func to_text_paced(title: String, job: Working.Job) -> String:
+##
+## Of the model [param model] ([method model_now]) the press was made on, its
+## own when not given: "" with [member refused] saying so when another is on
+## the baseplate by the time it would be written ([method _another_opened]).
+func to_text_paced(title: String, job: Working.Job, model: int = -1) -> String:
+	var mine: int = model_now() if model < 0 else model
+	if _another_opened(mine):
+		return ""
 	if not paces():
 		return to_text(title, true)
+	# Another model opened or begun while the order is worked out stops the
+	# work at its next slice: each slice after an await read bricks of the
+	# world as it is then, gone, and every one of them was a script error
+	# (wholetext2_probe paced_during open).
+	var stop: Callable = func() -> void: job.cancel()
+	world.cleared.connect(stop)
 	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
 		world, world.library, scenery, {}, job)
-	if job.cancelled or steps.is_empty():
+	world.cleared.disconnect(stop)
+	# Asked first, so the words say it when that is why the work stopped.
+	if _another_opened(mine) or job.cancelled or steps.is_empty():
 		return ""
 	job.say("Writing %s parts…" % Working.comma(world.brick_count() - scenery.size()))
 	job.count(0, 0)
 	await job.next()
+	if _another_opened(mine):
+		return ""
 	return to_text(title, true, AuthorSteps.numbers_of(world, steps, scenery,
 		AuthorSteps.in_place_plan(world, steps)))
+
+
+## Which model is on the baseplate: another once one is opened over it or a
+## new one begun, each of which clears the world (BrickWorld.generation). A
+## save takes it at the press and writes nothing once it is another.
+func model_now() -> int:
+	return world.generation()
+
+
+## What a save, an export or a share says when another model was put on the
+## baseplate while it was being written: nothing was written.
+const ANOTHER_OPENED := "not saved: another model was opened"
+
+
+## Whether the model on the baseplate is no longer [param model] ([method
+## model_now]), saying so in [member refused]. A Save of 10030-1 that waited
+## on a worker wrote the model opened meanwhile under 10030-1's name, in the
+## app and over the person's file on disk (wholereview2 F1); Export's write
+## did so at the base too, in the frames its bar was shown in.
+func _another_opened(model: int) -> bool:
+	if model_now() == model:
+		return false
+	refused = ANOTHER_OPENED
+	return true
 
 
 ## A model this big has its build order worked out a slice at a time when
@@ -5389,25 +5471,37 @@ const SAID_WRITING_FROM := 2000
 ## The model's text with its build order, for an export or a share: on a
 ## big model worked out a slice at a time, the status bar saying
 ## [param doing] and counting, with Cancel ([method to_text_paced]). ""
-## when it was cancelled.
-func text_for_file(title: String, doing: String) -> String:
+## when it was cancelled, or when another model than [param model] (the one
+## the press was made on, [method model_now]; now's when not given) is on the
+## baseplate by then, [member refused] saying so.
+func text_for_file(title: String, doing: String, model: int = -1) -> String:
+	var mine: int = model_now() if model < 0 else model
+	if _another_opened(mine):
+		return ""
 	if not says_writing():
 		return to_text(title, true)
 	var job: Working.Job = Working.begin(doing, 0, true)
 	await job.shown()
-	var text: String = await to_text_paced(title, job)
+	var text: String = await to_text_paced(title, job, mine)
 	job.end()
-	return "" if job.cancelled else text
+	return "" if _another_opened(mine) or job.cancelled else text
 
 
 ## [method save_as], its build order worked out a slice at a time
-## ([method to_text_paced]). False when it was not saved, cancelled too.
-func save_as_paced(name: String, job: Working.Job, over: bool = false) -> bool:
+## ([method to_text_paced]). False when it was not saved, cancelled too, and
+## when another model than [param model] (the one the press was made on,
+## [method model_now]; now's when not given) is on the baseplate by the time
+## it would be written, [member refused] saying so: written, it was that
+## model under this one's name, and the store's name was set to this one's.
+func save_as_paced(name: String, job: Working.Job, over: bool = false, model: int = -1) -> bool:
+	var mine: int = model_now() if model < 0 else model
 	var clean: String = _safe_name(name)
 	if clean.is_empty():
 		return false
 	var path: String = SAVE_DIR + clean + ".ldr"
 	if _saved_over_another(path, name, over) or _saved_over_elsewhere(path, name):
+		return false
+	if _another_opened(mine):
 		return false
 	var was: Array = [title, _known_path]
 	# Unedited: its file's text, written in this frame, with no order
@@ -5417,8 +5511,8 @@ func save_as_paced(name: String, job: Working.Job, over: bool = false) -> bool:
 	if _kept_now(path, name):
 		ok = _store_kept(path)
 	else:
-		var text: String = await to_text_paced(name, job)
-		if text.is_empty() or job.cancelled:
+		var text: String = await to_text_paced(name, job, mine)
+		if _another_opened(mine) or text.is_empty() or job.cancelled:
 			return false
 		ok = _write(path, name, true, text, true)
 	if ok:
@@ -5571,10 +5665,13 @@ func export_to(path: String, title: String = "Model") -> bool:
 
 ## [method export_to] from a person's press: a big model's build order
 ## worked out a slice at a time, said and counted ([method text_for_file]).
-## False when it was cancelled or not written.
-func export_paced(path: String, title: String = "Model") -> bool:
-	var text: String = await text_for_file(title, "Exporting %s…" % path.get_file())
-	return not text.is_empty() and _export_text(path, text)
+## False when it was cancelled or not written, and when another model than
+## [param model] (the press's, [method model_now]) is on the baseplate by then
+## ([method text_for_file]): the file the person chose is left as it was.
+func export_paced(path: String, title: String = "Model", model: int = -1) -> bool:
+	var mine: int = model_now() if model < 0 else model
+	var text: String = await text_for_file(title, "Exporting %s…" % path.get_file(), mine)
+	return not text.is_empty() and not _another_opened(mine) and _export_text(path, text)
 
 
 func _export_text(path: String, text: String) -> bool:

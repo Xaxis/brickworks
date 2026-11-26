@@ -476,15 +476,22 @@ func run_tested() -> void:
 	_testing = true
 	_redraw_line()
 	var revision: int = store.world.revision
+	# The model pressed on: one opened while it is written or tested is not
+	# given this one's finding (ModelStore.model_now).
+	var press: int = store.model_now()
 	var title: String = store.title if not store.title.is_empty() else "Model"
-	var text: String = await store.text_for_file(title, "Writing “%s” to test it…" % title)
+	var text: String = await store.text_for_file(title, "Writing “%s” to test it…" % title, press)
+	if text.is_empty():
+		_testing = false
+		_redraw_line()
+		return
 	var job: Working.Job = Working.begin("Testing “%s” as a publish would…" % title)
 	await job.shown()
 	var made: Dictionary = await SharedPages.attach_tested(text, library, store, job)
 	job.end()
 	_testing = false
 	var found: Dictionary = made.get("tested", {})
-	if found.has("tests") and store.world.revision == revision:
+	if found.has("tests") and store.world.revision == revision and store.model_now() == press:
 		found_tested(found["tests"], revision)
 	_redraw_line()
 

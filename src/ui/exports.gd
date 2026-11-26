@@ -183,18 +183,25 @@ func studio_io(asking: bool = false) -> String:
 	if store == null or world.brick_count() - scenery.size() <= 0:
 		say.call("nothing to export")
 		return ""
+	# The model asked for: one opened while the person chooses where, or while
+	# it is written, is not written as this one (ModelStore.model_now).
+	var model: int = store.model_now()
 	var to: String = await _where(_file("io"), asking)
 	if to.is_empty():
 		return ""
 	say.call("writing the Studio file…")
-	var text: String = await store.text_for_file(str(named.call()), "Writing the Studio file…")
+	var text: String = await store.text_for_file(str(named.call()), "Writing the Studio file…",
+		model)
 	if text.is_empty():
-		say.call("stopped writing the Studio file")
+		say.call(_stopped(model, "stopped writing the Studio file"))
 		return ""
 	# A headless run draws nothing (Picture.possible), and a Studio file
 	# without its picture is still the model.
 	var thumbnail := PackedByteArray()
 	var image: Image = await picture.take(STUDIO_THUMBNAIL)
+	if store.model_now() != model:
+		say.call(_stopped(model, ""))
+		return ""
 	if image != null and not image.is_empty():
 		thumbnail = image.save_png_to_buffer()
 	var bytes: PackedByteArray = StudioIo.pack(text, thumbnail, ModelStore.count_in(text),
@@ -316,11 +323,19 @@ func _whole_model(doing: String) -> SubmodelFile.Whole:
 	if store == null or world.brick_count() - scenery.size() <= 0:
 		say.call("nothing to export")
 		return null
-	var text: String = await store.text_for_file(str(named.call()), doing)
+	var model: int = store.model_now()
+	var text: String = await store.text_for_file(str(named.call()), doing, model)
 	if text.is_empty():
-		say.call("stopped exporting")
+		say.call(_stopped(model, "stopped exporting"))
 		return null
 	return SubmodelFile.read(text, library.parts if library != null else {})
+
+
+## What an export that wrote nothing says: that another model than
+## [param model] (the one asked for, ModelStore.model_now) was opened, when
+## one was, else [param words].
+func _stopped(model: int, words: String) -> String:
+	return "not exported: another model was opened" if store.model_now() != model else words
 
 
 ## What a sub-model's file holds, in words: "24 parts, 6 steps, 2 sub-models".

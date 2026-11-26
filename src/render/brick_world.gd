@@ -189,6 +189,11 @@ signal rebuilt(brick_count: int, batch_count: int, triangle_count: int)
 ## Emitted when the build animation's reveal ends for any reason: played
 ## out, stopped, or overtaken by a change to the model.
 signal reveal_ended
+## Emitted once everything is taken off ([method clear]): another model is
+## on the baseplate from here on ([method generation]). A save of the one
+## before stops its work on hearing it (ModelStore.to_text_paced): its
+## steps were read from bricks no longer here.
+signal cleared
 
 ## Goes up by one with every change to what the model is: a brick added,
 ## removed, moved or recoloured, or the world cleared. Not with what is
@@ -855,6 +860,7 @@ func clear(keep_numbers: bool = false) -> void:
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
+	cleared.emit()
 
 
 ## Show only these bricks, hiding the rest. An empty set shows all of
