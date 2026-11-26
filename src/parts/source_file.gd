@@ -578,16 +578,21 @@ func unplaced_into(text: String, origins: Array) -> String:
 ## [param origins] as [method unplaced_into] takes them.
 func _unplaced(origins: Array) -> Array:
 	var used: Dictionary = {main_key: true}
+	# Each line once: a copy's line begins the origin of every part in it, and
+	# read again for each, 10030-1's 3,000 origins took a third of a second of
+	# every whole write.
+	var seen: Dictionary = {}
 	for origin: Variant in origins + unshown_origins.keys():
 		for at: String in str(origin).split("/", false):
 			var n: int = at.to_int()
-			if n < 0 or n >= original.size():
+			if n < 0 or n >= original.size() or seen.has(n):
 				continue
+			seen[n] = true
 			used[_sec[n]] = true
 			# And what the line names: a part the file carries as a section.
 			var words: PackedStringArray = _words(original[n])
 			if words.size() >= 15 and words[0] == "1":
-				used[LdrModel._key(LdrModel.reference_of(original[n]))] = true
+				used[LdrModel._key(_name_in(original[n], words))] = true
 	return sections.keys().filter(func(key: String) -> bool:
 		return not used.has(key))
 
