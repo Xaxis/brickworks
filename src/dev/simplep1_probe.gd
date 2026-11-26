@@ -416,10 +416,14 @@ func _finger_map() -> void:
 	await _frames(SEAT_WAIT)
 	if _map == "b":
 		# A finger beside a part, within a fingertip: the part's.
+		# Seen first: the move above went to a point of the plate that a
+		# Fit on two parts leaves off the screen (r3: no point of it seen).
+		await _press_fit()
 		var now: Transform3D = _world.get_brick(id).transform
 		var beside: Vector2 = _beside(id, 14.0)
 		var off_it: bool = beside.x < INF and _verbs.brick_at(beside) == 0
-		print("  measure beside %s, on a part there: %d (the part %d)" % [beside, _verbs.brick_at(beside) if off_it else -1, id])
+		print("  measure beside %s, on a part there: %d (the part %d, its picture %s)" % [beside,
+			_verbs.brick_at(beside) if off_it else -1, id, _screen_box(_box_of(id))])
 		if off_it:
 			await _one_finger(beside, _base_point(-0.25, 0.2) + Vector2(0, Phone.px(root, float(_simple.get("lift_points")))))
 			await _frames(4)
