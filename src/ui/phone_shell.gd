@@ -73,6 +73,9 @@ var _name: LineEdit
 var _switch: PanelContainer
 ## Simple's controls are up (set_simple): only the header is this shell's.
 var simple: bool = false
+## The sheets open when Simple came, each with how it stood: opened again
+## when Full is back.
+var _simple_left_sheets: Dictionary = {}
 var _colour_button: Button
 var _tool_buttons: Dictionary = {}
 var _sheets: Array[Sheet] = []
@@ -444,11 +447,24 @@ func _build() -> void:
 ## rest is put away, the sheets closed, the row, the line and Fit hidden
 ## (SimpleLayer has its own); back in Full, all of it as it was.
 func set_simple(yes: bool) -> void:
+	if yes == simple:
+		return
 	simple = yes
 	if yes:
+		# Put away, each as it stood, and opened again on the way back as it
+		# was (simplereview's phone case: the parts sheet open in Full was
+		# shut on return). Not a part's menu: its part may be gone by then.
+		_simple_left_sheets.clear()
 		for sheet: Sheet in _sheets:
 			if sheet.is_open():
-				sheet.close()
+				if sheet != _context:
+					_simple_left_sheets[sheet] = sheet.state
+				sheet.close(false)
+	else:
+		for sheet: Sheet in _simple_left_sheets:
+			if is_instance_valid(sheet) and not sheet.is_open():
+				sheet.open(str(_simple_left_sheets[sheet]))
+		_simple_left_sheets.clear()
 	_show_simple()
 	_share_top()
 	laid_out.emit()

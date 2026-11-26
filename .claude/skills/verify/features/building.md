@@ -4002,7 +4002,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Into Simple the header stays (the desktop's goes plain, `set_simple`: the
   menus and name away; the phone's keeps its mark, the switch and Menu) and
   the rest of the studio's own controls (the desktop's column, the phone's
-  foot row, pill and buttons) are put away, each as it was, and Simple's
+  foot row, pill and buttons, an open sheet but a part's menu opened again
+  on the way back) are put away, each as it was, and Simple's
   layer goes over the model with the notices strip lent to it; the model is
   framed in Simple's room, under the header and over the tray, and Full's
   view comes back on leaving if Simple's was not moved. The model, its
