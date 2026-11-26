@@ -608,10 +608,10 @@ func _step(step: Variant) -> void:
 		for n: int in mini(int(one.get("parts", parts.size())), parts.size()):
 			var p: LdrModel.Placement = parts[n]
 			builder.register(world.add_brick(p.part_id, p.color_code, p.transform), p.part_id, p.transform)
-		for _n: int in 600:
-			await process_frame
-			if not _loading():
-				break
+		# add_brick places each part before it returns; a frame draws them. (It
+		# waited on docs_shots_probe's _loading(), which asked a BrickWorld.loading()
+		# no build had: one frame, always.)
+		await process_frame
 	elif one.has("recent"):
 		# The shelf a person's last parts are on, these first, and shown.
 		var ids: Array = one["recent"]
