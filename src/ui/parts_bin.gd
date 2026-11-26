@@ -3254,10 +3254,24 @@ func _tiles_across() -> int:
 		# the margins either side, which are the margins to its left.
 		room = get_viewport().get_visible_rect().size.x - 2.0 * _scroll.get_global_rect().position.x \
 			- _scroll.get_v_scroll_bar().get_combined_minimum_size().x
-		return clampi(floori((room + gap) / (_z(74) + gap)), 1, COLUMNS)
+		return clampi(floori((room + gap) / (_tile_wide() + gap)), 1, COLUMNS)
 	# A tile is _z(74) across (_make_cell): as many as the column holds, four
 	# where a column is given the bin, fewer in a narrow window's drawer.
-	return maxi(1, floori((room + gap) / (_z(74) + gap)))
+	return maxi(1, floori((room + gap) / (_tile_wide() + gap)))
+
+
+## The least a tile is across: 74, and by a finger its "+N" (a fingertip)
+## with a word of its name beside it. A fingertip left a tablet's tile of 82
+## 33 units for its name, and "Ladrillo" (37) and "… 3069b" (40) were cut
+## inside (wide150b): such a bin shows a tile fewer to a line.
+func _tile_wide() -> float:
+	if not by_finger:
+		return _z(74)
+	return maxf(_z(74), least + _z(2.0) + _z(NAME_BESIDE) + _z(6))
+
+
+## The room a finger's tile keeps for its name beside its "+N" (_tile_wide).
+const NAME_BESIDE := 40.0
 
 
 ## How many tiles a search shows at once, before the rest are added as the
@@ -3704,7 +3718,7 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 ## one where it stands (_show_more).
 func _new_tile() -> Button:
 	var button: Button = _new_part_button()
-	button.custom_minimum_size = Vector2(_z(74), _z(84))
+	button.custom_minimum_size = Vector2(_tile_wide(), _z(84))
 
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -3745,16 +3759,15 @@ func _new_tile() -> Button:
 	if by_finger:
 		# A part with prints folded under it has its "+N" at the foot's right
 		# end, a fingertip (_fold_badge): the name keeps to the room beside
-		# it, shown only on such a tile (_bind_tile), and a word wider than
-		# that room is said a size smaller (_fit_name). Hidden, the name has
-		# the foot's width, as it had alone under the picture. Over the
-		# picture's foot instead, the "+N" was where a finger taps a tile,
-		# and a tap on a part unfolded its prints (wide150b).
+		# it, shown only on such a tile (_bind_tile), a word or more
+		# (_tile_wide). Hidden, the name has the foot's width, as it had
+		# alone under the picture. Over the picture's foot instead, the "+N"
+		# was where a finger taps a tile, and a tap on a part unfolded its
+		# prints (wide150b).
 		var foot := HBoxContainer.new()
 		foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		foot.add_theme_constant_override("separation", 0)
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.set_meta("shrinks", true)
 		foot.add_child(label)
 		var beside := Control.new()
 		beside.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4122,32 +4135,9 @@ static var SIZE_WORDS := RegEx.create_from_string("(\\d) x (?=\\d)")
 func _fit_name(label: Label, width: float) -> void:
 	if width <= 1.0:
 		return
-	if label.has_meta("shrinks"):
-		_size_to_words(label, width)
 	var text: String = _name_text(label, width, str(label.get_meta("number", "")))
 	if label.text != text:
 		label.text = text
-
-
-## A finger's tile's name in eleven-unit type, or a size smaller where its
-## longest word is wider than [param width], down to nine: beside a "+N" a
-## tablet's tile gave its name 33 units, and "Platte" (35) was cut inside.
-## A word wider still is cut as any name is (fit_lines).
-func _size_to_words(label: Label, width: float) -> void:
-	var font: Font = label.get_theme_font("font")
-	var size: int = ceili(_z(11))
-	var smallest: int = ceili(_z(9))
-	var widest: String = ""
-	var longest: float = 0.0
-	for word: String in str(label.get_meta("name", "")).split(" ", false):
-		var across: float = font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		if across > longest:
-			longest = across
-			widest = word
-	while size > smallest and font.get_string_size(widest, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
-		size -= 1
-	if label.get_theme_font_size("font_size") != size:
-		label.add_theme_font_size_override("font_size", size)
 
 
 ## What [param label] reads at [param width], [param number] after its name.
@@ -4194,7 +4184,7 @@ static func _fit_key(name: String, after: String, width: float, lines: int, from
 func _name_width(label: Label) -> float:
 	if label.size.x > 1.0:
 		return label.size.x
-	return _z(74) - _z(6) if int(label.get_meta("lines", NAME_LINES)) > 1 \
+	return _tile_wide() - _z(6) if int(label.get_meta("lines", NAME_LINES)) > 1 \
 		else maxf(_scroll.size.x * 0.5, _z(120))
 
 

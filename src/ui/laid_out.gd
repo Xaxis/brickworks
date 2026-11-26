@@ -46,8 +46,11 @@ static func into_view(scroll: ScrollContainer, control: Control) -> void:
 ## its outermost container is pinned in), less each panel's and margin's
 ## sides, each scroller's bar, and what each row it sits in gives the rest of
 ## that row. Never read off c's own width, nor its holders', which a box wider
-## than its room holds wide with it.
+## than its room holds wide with it. Nothing (0) out of a window: a phone's
+## bin fitted its chips as it was moved into its sheet (ux15_phone).
 static func offered(c: Control) -> float:
+	if not c.is_inside_tree():
+		return 0.0
 	var chain: Array[Control] = [c]
 	while chain[-1].get_parent() is Container:
 		chain.append(chain[-1].get_parent() as Control)
@@ -121,11 +124,18 @@ static func hold_a_word(c: Control, at_least: float = 0.0, whole: bool = false) 
 	if whole:
 		# What the window leaves it changes with the window and its columns.
 		c.item_rect_changed.connect(fit, CONNECT_DEFERRED)
-		var on_window := func() -> void:
-			if not c.get_viewport().size_changed.is_connected(fit):
-				c.get_viewport().size_changed.connect(fit, CONNECT_DEFERRED)
+		# Heard only while it is in a window: still connected to the window
+		# once freed, the window's next resize called it with nothing.
+		var watch := func() -> void:
+			var view: Viewport = c.get_viewport()
+			if view != null and not view.size_changed.is_connected(fit):
+				view.size_changed.connect(fit, CONNECT_DEFERRED)
+		var unwatch := func() -> void:
+			var view: Viewport = c.get_viewport()
+			if view != null and view.size_changed.is_connected(fit):
+				view.size_changed.disconnect(fit)
+		c.tree_entered.connect(watch)
+		c.tree_exiting.connect(unwatch)
 		if c.is_inside_tree():
-			on_window.call()
-		else:
-			c.tree_entered.connect(on_window, CONNECT_ONE_SHOT)
+			watch.call()
 	fit.call()

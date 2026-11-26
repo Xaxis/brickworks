@@ -59,7 +59,7 @@ func _notification(what: int) -> void:
 ## no word is cut: at 150% on a phone the banner was 264 units in a window
 ## of 232, and the window's column as wide (wingreview3 F5).
 func _fit() -> void:
-	if _words == null or not visible:
+	if _words == null or not visible or not is_inside_tree():
 		return
 	var room: float = floorf(_offered() - get_theme_stylebox("panel").get_minimum_size().x
 		- float((_words.get_parent() as HBoxContainer).get_theme_constant("separation"))

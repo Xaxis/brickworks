@@ -404,10 +404,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   fingertip (`ModelBar._fold_menus`); the editing banner's words wrap beside
   Done, measured by what the window leaves it (`LaidOut.offered`); a
   category chip wider than its row is cut at a word with its whole name in
-  its tooltip (`PartsBin._fit_chips`); a finger's tile's name whose longest
-  word is wider than the room beside its "+N" is a size smaller
-  (`PartsBin._size_to_words`), the "+N" kept at the foot, off the picture
-  a finger taps (`ux15_phone_probe --phone` p16); the status bar's hint gives Working its
+  its tooltip (`PartsBin._fit_chips`); a finger's tile is never narrower
+  than its "+N" and a word of its name beside it, so a bin shows a tile
+  fewer to a line (`PartsBin._tile_wide`), the "+N" kept at the foot, off
+  the picture a finger taps (`ux15_phone_probe --phone` p16); a phone's busy
+  line gives way as the desktop's (`StatusBar`); the status bar's hint gives Working its
   place (`StatusBar`, `Working.give_way`); the desktop's step bar stops at
   55% of the window and scrolls (`StepsBar._cap_height`); a phone's step bar
   keeps its widest sign whole (`StepsBar._fit_thumbs`); the bin and colours
