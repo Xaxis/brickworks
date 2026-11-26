@@ -845,10 +845,7 @@ func _perf2() -> void:
 	var t: int = Time.get_ticks_usec()
 	var whole: String = _verbs.assemblies.selected_assembly()
 	parts["selected_assembly"] = Time.get_ticks_usec() - t
-	t = Time.get_ticks_usec()
-	if _verbs.assemblies.has_method("parts_beyond") and not whole.is_empty():
-		_verbs.assemblies.call("parts_beyond", whole)
-	parts["parts_beyond"] = Time.get_ticks_usec() - t
+	# (parts_beyond, timed here too, went with c61134fd4.)
 	var inspector: Inspector = _shell.inspector
 	if inspector != null:
 		inspector.set("_shown", "")

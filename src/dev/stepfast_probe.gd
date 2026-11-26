@@ -71,6 +71,7 @@ func _run() -> void:
 	_shell = _main.get("_shell")
 	_bar = _main.get("_bar")
 	print("stepfast_probe: a %s window, laid out for a %s, case %s, code %s" % [_size, _layout, _case,
+		# callcheck: dynamic, it names the code it runs on, an older build's too (_followers_now went in eb4babd0f)
 		"stepfast" if _builder.has_method("_followers_now") else (
 			"stepfix" if _builder.has_method("later_refusal") else "before stepfix")])
 	if _case == "pick":
