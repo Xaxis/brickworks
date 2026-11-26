@@ -552,7 +552,7 @@ func _build() -> void:
 	# words: whole, in French at 150% it held the bin 330 units wide.
 	_only_made.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_only_made.add_theme_font_size_override("font_size", 12)
-	LaidOut.hold_a_word(_only_made)
+	LaidOut.hold_a_word(_only_made, 0.0, true)
 	FocusGuard.by_keyboard(_only_made)
 	_only_made.set_pressed_no_signal(bool(ShellPrefs.value("bin_only_made")))
 	_only_made.toggled.connect(func(on: bool) -> void:
@@ -831,17 +831,15 @@ func _fit_shelves() -> int:
 ## wide as the row and cut at a word with "…", its whole name its tooltip:
 ## in French at 150% "Minifig Headwear 826" was 240 units, and held a 282
 ## phone's parts sheet past the screen's edge (wide150b). A finger's sheet
-## sets its least by its rows, so its room is the window's less the
-## margins either side, as its tiles' (_tiles_across).
+## is as wide as its rows ask, so the room is what the window leaves the
+## row (LaidOut.offered), and where narrower the chips' window's own.
 func _fit_chips() -> void:
 	if _category_row == null or _category_scroll == null or not _category_scroll.is_inside_tree():
 		return
-	var bar: float = _category_scroll.get_v_scroll_bar().get_combined_minimum_size().x
-	var room: float = _category_scroll.size.x - bar
-	if by_finger:
-		var across: float = get_viewport().get_visible_rect().size.x \
-			- 2.0 * _category_scroll.get_global_rect().position.x - bar
-		room = across if room <= 0.0 else minf(room, across)
+	var room: float = LaidOut.offered(_category_row)
+	if _category_scroll.size.x > 0.0:
+		room = minf(room, _category_scroll.size.x
+			- _category_scroll.get_v_scroll_bar().get_combined_minimum_size().x)
 	if room <= 0.0:
 		return
 	for child: Node in _category_row.get_children():

@@ -72,33 +72,12 @@ func _fit() -> void:
 	_words.custom_minimum_size.x = maxf(room, 0.0) if wraps else 0.0
 
 
-## The width the window leaves this banner: the window's, less what each row
-## it sits in gives the rest of that row (the columns either side of the
-## model) and each panel's margins. Never read off the strip's own width,
-## which is the banner's where the banner is the wider: measured so, at 150%
-## the words kept the room they had taken and the column stayed 316 units
-## in a window of 300 (wide150b).
+## The width the window leaves this banner (LaidOut.offered). Never read off
+## the strip's own width, which is the banner's where the banner is the
+## wider: measured so, at 150% the words kept the room they had taken and
+## the column stayed 316 units in a window of 300 (wide150b).
 func _offered() -> float:
-	var chain: Array[Control] = [self]
-	while chain[-1].get_parent() is Container:
-		chain.append(chain[-1].get_parent() as Control)
-	var across: float = get_viewport().get_visible_rect().size.x
-	if chain[-1].get_parent() is Control:
-		across = minf(across, (chain[-1].get_parent() as Control).size.x)
-	for n: int in range(chain.size() - 1, 0, -1):
-		var holder: Control = chain[n]
-		var held: Control = chain[n - 1]
-		if holder is PanelContainer:
-			across -= holder.get_theme_stylebox("panel").get_minimum_size().x
-		elif holder is MarginContainer:
-			across -= float(holder.get_theme_constant("margin_left") + holder.get_theme_constant("margin_right"))
-		elif holder is HBoxContainer:
-			var gap: float = float(holder.get_theme_constant("separation"))
-			for other: Node in holder.get_children():
-				var beside: Control = other as Control
-				if beside != null and beside != held and beside.visible and not beside.top_level:
-					across -= beside.get_combined_minimum_size().x + gap
-	return across
+	return LaidOut.offered(self)
 
 
 func _show(path: String) -> void:
