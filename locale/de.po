@@ -18335,3 +18335,31 @@ msgstr "Bei diesem Konto meldest du dich nur mit einem Code an, den wir dir mail
 
 msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
 msgstr "Gerade gab es zu viele Anmeldungen mit %s. Versuch es in ein paar Minuten noch einmal oder melde dich mit einem Code an, den wir dir mailen."
+
+# pubbind: an act begun on one model, another opened before it ended
+msgid "Not entered: another model was opened."
+msgstr "Nicht eingereicht: ein anderes Modell wurde geöffnet."
+
+msgid "Another model was opened meanwhile."
+msgstr "Inzwischen wurde ein anderes Modell geöffnet."
+
+msgid "Published “%s” at %s, but another model was opened meanwhile: the link was not given to it."
+msgstr "„%s“ unter %s veröffentlicht, aber inzwischen wurde ein anderes Modell geöffnet: Es hat den Link nicht bekommen."
+
+msgid "Not asked: another model was opened."
+msgstr "Nicht gefragt: ein anderes Modell wurde geöffnet."
+
+msgid "Not taken down: another model was opened."
+msgstr "Nicht zurückgezogen: ein anderes Modell wurde geöffnet."
+
+msgid "Taken down: the link now says the model is no longer shared."
+msgstr "Zurückgezogen: Der Link sagt jetzt, dass das Modell nicht mehr geteilt wird."
+
+msgid "“%s” was not copied into your models: another model was opened"
+msgstr "„%s“ wurde nicht in deine Modelle kopiert: ein anderes Modell wurde geöffnet"
+
+msgid "not cleared: another model was opened"
+msgstr "nicht geleert: ein anderes Modell wurde geöffnet"
+
+msgid "Stopped: another model was opened, and nothing more was built"
+msgstr "Angehalten: ein anderes Modell wurde geöffnet, und es wurde nichts mehr gebaut"

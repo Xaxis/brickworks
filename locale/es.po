@@ -18335,3 +18335,31 @@ msgstr "Esta cuenta solo inicia sesión con un código que te enviamos por corre
 
 msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
 msgstr "Demasiados inicios de sesión con %s ahora mismo. Vuelve a intentarlo en unos minutos o inicia sesión con un código que te enviamos por correo."
+
+# pubbind: an act begun on one model, another opened before it ended
+msgid "Not entered: another model was opened."
+msgstr "No se ha inscrito: se abrió otro modelo."
+
+msgid "Another model was opened meanwhile."
+msgstr "Mientras tanto se abrió otro modelo."
+
+msgid "Published “%s” at %s, but another model was opened meanwhile: the link was not given to it."
+msgstr "«%s» publicado en %s, pero mientras tanto se abrió otro modelo: no se le dio el enlace."
+
+msgid "Not asked: another model was opened."
+msgstr "No preguntado: se abrió otro modelo."
+
+msgid "Not taken down: another model was opened."
+msgstr "No se ha retirado: se abrió otro modelo."
+
+msgid "Taken down: the link now says the model is no longer shared."
+msgstr "Retirado: el enlace dice ahora que el modelo ya no se comparte."
+
+msgid "“%s” was not copied into your models: another model was opened"
+msgstr "«%s» no se copió en tus modelos: se abrió otro modelo"
+
+msgid "not cleared: another model was opened"
+msgstr "no se ha vaciado: se abrió otro modelo"
+
+msgid "Stopped: another model was opened, and nothing more was built"
+msgstr "Detenido: se abrió otro modelo, y no se construyó nada más"

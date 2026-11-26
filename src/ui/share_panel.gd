@@ -252,6 +252,16 @@ var _question_said: String = ""
 ## revision then. A question about it as it still is needs no new version.
 var _published_for: String = ""
 var _published_revision: int = -1
+## The model the panel's name, words and link were last shown for
+## (ModelStore.model_now): -1 before it is first shown.
+var _shown_for: int = -1
+## What an act begun on one model says when another was opened before it
+## could send: nothing was sent (ModelStore.ANOTHER_OPENED's words).
+const NOT_PUBLISHED := "Not published: another model was opened."
+const NOT_ENTERED := "Not entered: another model was opened."
+## Said after what an act did for the model it was pressed on, when another
+## was opened before the server answered.
+const ANOTHER_MEANWHILE := "Another model was opened meanwhile."
 ## The link whose state (published, work in progress) has been read.
 var _checked_for: String = ""
 var _link_box: VBoxContainer
@@ -271,6 +281,10 @@ func setup() -> void:
 	# new one begun, starts the box afresh, never asking it about the other.
 	store.loaded.connect(func(_title: String, _bricks: int) -> void: _question_afresh())
 	store.begun.connect(func(_title: String) -> void: _question_afresh())
+	# And the panel's name, words and link are the new model's, while it is
+	# open: a Publish pressed next publishes that one as it is.
+	store.loaded.connect(func(_title: String, _bricks: int) -> void: _follow_model())
+	store.begun.connect(func(_title: String) -> void: _follow_model())
 	var backing := StyleBoxFlat.new()
 	backing.bg_color = Color(0.10, 0.11, 0.13, 0.98)
 	backing.border_color = Color(1, 1, 1, 0.14)
@@ -844,6 +858,17 @@ func open() -> void:
 	visible = not visible
 	if not visible:
 		return
+	_show_model()
+
+
+## The panel for the model on the baseplate: its name, its link and what
+## was said of it. Shown when the panel opens, and again when another model
+## is opened under it (setup), so nothing typed or ticked for one model is
+## published with another (self_attack, hubprogram F1). [param said] is put
+## in the status line in place of what the link's state would say: what an
+## act begun on the model before became.
+func _show_model(said: String = "") -> void:
+	_shown_for = store.model_now()
 	var title: String = str(named.call())
 	_name.text = "" if title == ModelStore.UNTITLED else title
 	# A model never named that is one sub-assembly or figure is called what
@@ -868,12 +893,12 @@ func open() -> void:
 		wip = false
 		_list.button_pressed = false
 		_list.disabled = false
-		_status.text = _waiting_words()
+		_status.text = _waiting_words() if said.is_empty() else said
 		if not account.changed.is_connected(_on_account):
 			account.changed.connect(_on_account)
 	else:
-		_status.text = "This model has a link. Publish again to update what it shows."
-		_check_link(store.share_id, fresh)
+		_status.text = "This model has a link. Publish again to update what it shows." if said.is_empty() else said
+		_check_link(store.share_id, fresh, said.is_empty())
 	_follow_age()
 	_ask_prompt()
 	# Its way as the app knows who laid its parts; the rules ticked afresh.
@@ -959,12 +984,19 @@ func publish_and_enter() -> void:
 		return
 	var c: Dictionary = challenge_line.get("challenge")
 	var way: String = str(_way.get_item_metadata(maxi(0, _way.selected)))
+	# The model whose rules were ticked: one opened while it is entered is
+	# neither published nor entered in its place.
+	var press: int = store.model_now()
 	# An entry is a model in the gallery with its designer's name on it.
 	_list.button_pressed = true
 	if not _credit.button_pressed:
 		_credit.button_pressed = true
 	if _author.text.strip_edges().is_empty():
 		await _suggest_author()
+		if store.model_now() != press:
+			_fail(NOT_ENTERED)
+			_after_another(press)
+			return
 	if _author.text.strip_edges().is_empty():
 		_author.grab_focus()
 		_fail("Say the name to credit under Show who made it: an entry has its designer's name on it.")
@@ -974,37 +1006,54 @@ func publish_and_enter() -> void:
 	_follow_enter()
 	await publish()
 	entering = ""
-	if state != "published" or store.share_id.is_empty():
+	if state != "published" or store.share_id.is_empty() or store.model_now() != press:
 		_follow_enter()
 		return
+	# Its link as published, entered whatever is opened while the server answers.
+	var id: String = store.share_id
 	var token: String = await account.access_token()
-	var answer: Dictionary = await shared.enter(token, store.share_id, way)
+	if store.model_now() != press:
+		_fail("%s %s" % [_status.text.strip_edges(), NOT_ENTERED])
+		_after_another(press)
+		return
+	var answer: Dictionary = await shared.enter(token, id, way)
 	var said: Variant = answer.get("body")
 	var title: String = str(c.get("title", ""))
+	# What the server said is the model before's, whatever is open now: the
+	# entry is kept for its link alone (_entry_for), never shown as the
+	# entry of the model open now, and the panel shows that one, saying so.
+	var here: bool = store.model_now() == press
 	if int(answer.get("code", 0)) == 201:
-		entry = {"way": way}
-		_entry_for = store.share_id
+		if here:
+			entry = {"way": way}
+		_entry_for = id
 		var page: String = str(c.get("page", ""))
 		var how: String = "built with the assistant" if way == "assistant" else "built by hand"
 		enter_said = ("Entered in %s, %s. It is on the challenge's page: %s." % [title, how,
 			page.trim_prefix("https://")]) if not page.is_empty() \
 			else "Entered in %s, %s. It is on the challenge's page." % [title, how]
 	elif said is Dictionary and str((said as Dictionary).get("refused", "")) == "entered":
-		entry = {"way": way}
-		_entry_for = store.share_id
+		if here:
+			entry = {"way": way}
+		_entry_for = id
 		enter_said = "It is in %s already." % title
 	else:
 		enter_said = "Published, not entered: %s" % SharedModels.trouble(answer,
 			"Brickworks could not enter it just now. Press Enter again in a minute.")
 	_status.text = "%s %s" % [_status.text.strip_edges(), enter_said]
+	if not here:
+		_status.text += " " + ANOTHER_MEANWHILE
+		_after_another(press)
+		return
 	_follow_enter()
 
 
 ## Whether the model's link is up or was taken down, so the buttons say
 ## the right thing. Asked of the account's own list, which is small. And,
 ## the first time the panel opens on it, what the link says about the
-## model, to change or keep.
-func _check_link(id: String, words: bool = true) -> void:
+## model, to change or keep. [param say] false keeps the status line's
+## words (_show_model's said).
+func _check_link(id: String, words: bool = true, say: bool = true) -> void:
 	var token: String = await account.access_token()
 	if token.is_empty():
 		return
@@ -1028,6 +1077,9 @@ func _check_link(id: String, words: bool = true) -> void:
 			# As its link says it: shown only where its owner chose.
 			_say_made.button_pressed = bool((one as Dictionary).get("made_with_shown", false))
 			_follow_age()
+			_show_link(id)
+			if not say:
+				return
 			_status.text = ("Shared at this link. Publish again to update what it shows."
 				if up else "Taken down. Publish again to bring it back at the same link.")
 			if up and _list.button_pressed:
@@ -1037,7 +1089,6 @@ func _check_link(id: String, words: bool = true) -> void:
 			if wip:
 				_status.text = "Shared as work in progress. Share progress posts the next version; " \
 					+ "Publish as finished ends it."
-			_show_link(id)
 			return
 
 
@@ -1129,6 +1180,36 @@ static func one_assembly(world: BrickWorld, scenery: Dictionary) -> String:
 	return name
 
 
+## Another model opened, or a new one begun, while the panel is open: it
+## shows that one. A publish, a take-down, an entry or a question under way
+## is about the model it was pressed on, and shows the new one when it ends
+## (_after_another).
+func _follow_model() -> void:
+	if not visible or _shown_for == store.model_now() or state in ["publishing", "unpublishing"] \
+			or ask_state == "asking" or not entering.is_empty():
+		return
+	_show_model()
+
+
+## An act pressed on model [param press] has ended with another on the
+## baseplate: the panel shows that one, saying what the act became.
+func _after_another(press: int) -> void:
+	if visible and store.model_now() != press:
+		_show_model(_status.text)
+
+
+## Whether another model than [param press] is on the baseplate, a publish
+## then stopped before it sends anything, saying so.
+func _not_on(press: int) -> bool:
+	if store.model_now() == press:
+		return false
+	_publish.disabled = false
+	_fail(NOT_PUBLISHED)
+	_follow_age()
+	_after_another(press)
+	return true
+
+
 ## Publish the model as it stands, at its own link if it has one; [as_wip]
 ## marks it work in progress (Share progress), listed and credited.
 func publish(as_wip: bool = false) -> void:
@@ -1176,10 +1257,19 @@ func publish(as_wip: bool = false) -> void:
 	var model: String = await store.text_for_file(name, "Writing “%s” for its link…" % name, press)
 	if model.is_empty():
 		_publish.disabled = false
-		_fail("Not published: another model was opened." if store.model_now() != press
-			else "Stopped before it was published.")
+		_fail(NOT_PUBLISHED if store.model_now() != press else "Stopped before it was published.")
 		_follow_age()
+		_after_another(press)
 		return
+	# What else is the model's own, taken with its text from the model the
+	# press was made on: the steps and tests below take a minute on a big
+	# one, and another model opened meanwhile has its own link, its own remix
+	# and its own moves (wholereview3 F1: 10030-1 was sent as the other's
+	# next version, and the other was given its link).
+	var link_id: String = store.share_id
+	var remixed: Array = [store.remixed_from, store.remixed_from_version]
+	var made_by: Dictionary = made_fields()
+	var its_moves: Variant = moves_of.call() if moves_of.is_valid() else null
 	# Whom it credits, when it is somebody else's (a model the Library
 	# opened: ModelStore.credit), carried in it as a saved file carries it:
 	# the site then says who modelled it and credits them in its licence
@@ -1197,6 +1287,8 @@ func publish(as_wip: bool = false) -> void:
 	steps_job.end()
 	model = str(made["text"])
 	tested = made["tested"]
+	if _not_on(press):
+		return
 	# The four tests' finding, for the challenge's Tested rule on the model
 	# as it was when this publish began.
 	if challenge_line != null and tested.has("tests"):
@@ -1207,14 +1299,16 @@ func publish(as_wip: bool = false) -> void:
 		body["tested"] = tested
 	# What moves in it, from its joints: "Moves: steering, boom" on its card,
 	# and what its link lets anybody take hold of.
-	if moves_of.is_valid():
-		moves = moves_of.call()
+	if its_moves != null:
+		moves = its_moves
 		body["moves"] = Array(moves)
 	# Ticked a moment ago, the profile's name may still be on its way
 	# (_suggest_author asks the server): waited for, so a quick Publish
 	# is credited too.
 	if _credit.button_pressed and _author.text.strip_edges().is_empty():
 		await _suggest_author()
+		if _not_on(press):
+			return
 	var author: String = _author.text.strip_edges()
 	if _credit.button_pressed and not author.is_empty():
 		body["author"] = author
@@ -1224,15 +1318,15 @@ func publish(as_wip: bool = false) -> void:
 		body["cutout"] = Marshalls.raw_to_base64(pictures["cutout"])
 	if not (pictures["thumb"] as PackedByteArray).is_empty():
 		body["thumb"] = Marshalls.raw_to_base64(pictures["thumb"])
-	body.merge(made_fields())
+	body.merge(made_by)
 	# What its page and the gallery say about it: said every time, so a
 	# box emptied empties it there too.
 	body["description"] = _about.text.strip_edges()
 	body["tags"] = _tags.text.strip_edges()
 	body["kind"] = _kind_id()
 	body["licence"] = _licence_id()
-	if not store.share_id.is_empty():
-		body["id"] = store.share_id
+	if not link_id.is_empty():
+		body["id"] = link_id
 	body["listed"] = _list.button_pressed and not _list.disabled
 	# Kept out of this week's quick build only when its box was unticked:
 	# the server enters a copy of the template by default.
@@ -1240,10 +1334,10 @@ func publish(as_wip: bool = false) -> void:
 		body["prompt_out"] = true
 	# Work in progress, or not: a link that was one is finished by this.
 	body["wip"] = as_wip
-	if not store.remixed_from.is_empty():
-		body["remixed_from"] = store.remixed_from
-		if store.remixed_from_version > 0:
-			body["remixed_from_version"] = store.remixed_from_version
+	if not str(remixed[0]).is_empty():
+		body["remixed_from"] = remixed[0]
+		if int(remixed[1]) > 0:
+			body["remixed_from_version"] = remixed[1]
 	# What changed, for a link already up: its next version's words.
 	var note: String = _note.text.strip_edges()
 	if body.has("id") and _note.visible and not note.is_empty():
@@ -1253,6 +1347,9 @@ func publish(as_wip: bool = false) -> void:
 	# else's link, or another account shared it on this device — or one
 	# that has gone: the model gets a link of its own.
 	if int(answer["code"]) in [403, 404] and body.has("id"):
+		# Nothing went up: not sent again once another model is open.
+		if _not_on(press):
+			return
 		body.erase("id")
 		# A first version: nothing it changed from.
 		body.erase("note")
@@ -1262,8 +1359,18 @@ func publish(as_wip: bool = false) -> void:
 	if not int(answer["code"]) in [200, 201] or not reply is Dictionary:
 		_fail(SharedModels.trouble(answer, "Brickworks could not publish it just now."))
 		_follow_age()
+		_after_another(press)
 		return
 	var said: Dictionary = reply
+	# Up, but another model is on the baseplate now: the link is the one
+	# published, never given to the model open now, whose next Publish would
+	# then put it on that page. Said with the link, which is not lost.
+	if store.model_now() != press:
+		_fail("Published “%s” at %s, but another model was opened meanwhile: the link was not given to it."
+			% [name, str(said.get("url", SharedModels.link_for(str(said.get("id", ""))))).trim_prefix("https://")])
+		_follow_age()
+		_after_another(press)
+		return
 	store.share_id = str(said.get("id", ""))
 	# Its card a photograph, drawn now the publish has answered (_card_after):
 	# not waited for.
@@ -1440,19 +1547,28 @@ func ask_builders() -> void:
 	_ask.disabled = true
 	_ask.text = "Asking…"
 	_ask_open.visible = false
+	# The model asked about, with its step and parts: one opened while the
+	# question waits is never published, nor asked about, in its place.
+	var press: int = store.model_now()
 	if account.renewing:
 		_status.text = Account.waiting_words("It is asked")
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_ask_fail("Sign in to Brickworks to ask in Talk.")
 		return
+	if _ask_moved(press):
+		return
 	# The link's state read first, so a work in progress publishes as one.
 	if not store.share_id.is_empty() and _checked_for != store.share_id:
 		await _check_link(store.share_id, false)
+		if _ask_moved(press):
+			return
 	var revision: int = store.world.revision
 	if store.share_id.is_empty() or state != "published" or _published_for != store.share_id \
 			or _published_revision != revision:
 		await publish(wip and not store.share_id.is_empty())
+		if _ask_moved(press):
+			return
 		if state != "published" or store.share_id.is_empty():
 			_ask_fail("Not asked: %s" % _status.text if not _status.text.is_empty()
 				else "Not asked: it could not be published just now.")
@@ -1491,6 +1607,20 @@ func ask_builders() -> void:
 	_question_said = ""
 	_fresh_ask()
 	asked.emit(made)
+	_after_another(press)
+
+
+## Whether another model than [param press] is on the baseplate, the
+## question then not asked, saying so, and its box started afresh for the
+## model open now (_question_afresh).
+func _ask_moved(press: int) -> bool:
+	if store.model_now() == press:
+		return false
+	ask_state = "failed"
+	_question_afresh()
+	_ask_fail("Not asked: another model was opened.")
+	_after_another(press)
+	return true
 
 
 ## Another model open, or a new one begun: the box back to the question
@@ -1519,13 +1649,27 @@ func _ask_fail(words: String) -> void:
 func unpublish() -> void:
 	if store.share_id.is_empty() or state in ["publishing", "unpublishing"]:
 		return
+	# The link pressed on: one opened while the session is renewed is never
+	# taken down in its place.
+	var press: int = store.model_now()
+	var id: String = store.share_id
 	var token: String = await account.access_token()
 	if token.is_empty():
 		_fail("Sign in to Brickworks to take it down.")
 		return
+	if store.model_now() != press:
+		_fail("Not taken down: another model was opened.")
+		_after_another(press)
+		return
 	state = "unpublishing"
 	_status.text = "Taking it down…"
-	var answer: Dictionary = await shared.unpublish(token, store.share_id)
+	var answer: Dictionary = await shared.unpublish(token, id)
+	if store.model_now() != press:
+		state = "failed"
+		_status.text = ("Taken down: the link now says the model is no longer shared. " + ANOTHER_MEANWHILE
+			if int(answer["code"]) == 200 else SharedModels.trouble(answer, "Brickworks could not take it down just now."))
+		_after_another(press)
+		return
 	if int(answer["code"]) != 200:
 		state = "published"
 		_fail(SharedModels.trouble(answer, "Brickworks could not take it down just now."))

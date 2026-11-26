@@ -5319,9 +5319,16 @@ func _open_link(link: String, discard: bool) -> String:
 	store.remixed_from_version = maxi(int(body.get("version", 0)), 0)
 	store.credit = SharedModels.credit_of(body, id)
 	bar.opened.emit(int(result["placed"]))
+	# The copy on the baseplate: a model the person opens while its parts
+	# arrive is never saved in their models under the link's name (pubbind).
+	var copy: int = store.model_now()
 	var since: int = Time.get_ticks_msec()
-	while not store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+	while not store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000 \
+			and store.model_now() == copy:
 		await app.get_tree().create_timer(0.3).timeout
+	if store.model_now() != copy:
+		return ("%s was opened, but another model was opened in the app before its parts arrived, so the "
+			+ "copy was not saved in the person's models. Open the link again to make it.") % name
 	if not store.awaited.is_empty():
 		return ("%s is open, but %d of its parts did not arrive, so it is not saved yet: "
 			+ "save_model once they have.") % [name, store.awaited.size()]
