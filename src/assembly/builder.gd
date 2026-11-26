@@ -6492,11 +6492,14 @@ func _words_for(step: Dictionary) -> String:
 		for each: Dictionary in inner:
 			kinds[str(each.get("undo", ""))] = true
 		var count: int = inner.size()
+		# Each line one whole pattern with its place, never words joined: a
+		# language has an entry for "placed %s" (locale/*.po), and none can
+		# have one for a verb set before a count by "%s %s" (langsweep).
 		if kinds.size() == 1:
 			var only: String = kinds.keys()[0]
-			var verb: String = {"remove": "placed", "add": "removed", "recolor": "painted",
-				"move": "moved"}.get(only, "changed")
-			return "%s %s" % [verb, _many(count)]
+			var said: String = {"remove": "placed %s", "add": "removed %s", "recolor": "painted %s",
+				"move": "moved %s"}.get(only, "changed %s")
+			return said % _many(count)
 		if kinds.has("remove") and kinds.has("add"):
 			return "moved %s" % _many(count / 2)
 		return "changed %s" % _many(count)

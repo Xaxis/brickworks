@@ -85,9 +85,12 @@ func _show(path: String) -> void:
 	if not visible:
 		return
 	var copies: int = assemblies.copies_of(path).size()
-	_words.text = "Editing %s%s" % [Assemblies.label(path),
-		"" if copies == 0 else "  ·  %s follow%s" % [
-			"its copy" if copies == 1 else "%d copies" % copies, "s" if copies == 1 else ""]]
+	# Whole lines, each with an entry in every language: "follow%s" with an
+	# "s" put after it had none, and German read the banner in English
+	# (langsweep). The parts " · " joins are found one by one (Language).
+	var editing: String = "Editing %s" % Assemblies.label(path)
+	_words.text = editing if copies == 0 else "%s  ·  %s" % [editing,
+		"its copy follows" if copies == 1 else "%d copies follow" % copies]
 	_words.tooltip_text = ("What you put down goes into it, and a click takes one part of it. "
 		+ "Every other copy is changed with it, mirrored where it is mirrored. "
 		+ "Esc or Done when finished.")

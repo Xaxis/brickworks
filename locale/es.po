@@ -17878,3 +17878,152 @@ msgstr "Subconjunto de %d piezas, %d puestas en este paso, %d dentro"
 
 msgid "More menus"
 msgstr "Más menús"
+
+# Words the studio makes at the moment (langsweep): what an undo takes back,
+# History's rows, the banner inside a sub-assembly, a phone's line and row.
+msgid "placed %s"
+msgstr "colocación de %s"
+
+msgid "removed %s"
+msgstr "retirada de %s"
+
+msgid "removed %d"
+msgstr "retirada de %d"
+
+msgid "painted %s"
+msgstr "pintado de %s"
+
+msgid "changed %s"
+msgstr "cambio de %s"
+
+msgid "turned %s"
+msgstr "giro de %s"
+
+msgid "turned %s %d°"
+msgstr "giro de %s de %d°"
+
+msgid "tipped %s over"
+msgstr "vuelco de %s"
+
+msgid "seated %s on their studs"
+msgstr "%s asentadas en sus espigas"
+
+msgid "swapped %s for %s"
+msgstr "cambio de %s por %s"
+
+msgid "made %s the sub-model %s"
+msgstr "%s convertidas en el submodelo %s"
+
+msgid "took %s out of its sub-model"
+msgstr "%s sacadas de su submodelo"
+
+msgid "took %s out of its sub-assembly"
+msgstr "%s sacadas de su subconjunto"
+
+msgid "swung %s on its joint"
+msgstr "giro de %s sobre su articulación"
+
+msgid "pasted %s"
+msgstr "pegado de %s"
+
+msgid "moved %s %s LDU"
+msgstr "desplazamiento de %s de %s LDU"
+
+msgid "mirrored %s"
+msgstr "reflejo de %s"
+
+msgid "unlocked %s"
+msgstr "desbloqueo de %s"
+
+msgid "put down %s"
+msgstr "colocación de %s"
+
+msgid "a row of %d copies"
+msgstr "una fila de %d copias"
+
+msgid "Undo %s"
+msgstr "Deshacer: %s"
+
+msgid "Back to before: %s"
+msgstr "Volver a antes de: %s"
+
+msgid "Editing %s"
+msgstr "Editando %s"
+
+msgid "its copy follows"
+msgstr "su copia lo sigue"
+
+msgid "%d copies follow"
+msgstr "%d copias lo siguen"
+
+msgid "%s (copy %d)"
+msgstr "%s (copia %d)"
+
+msgid "Stop editing inside it"
+msgstr "Dejar de editar dentro"
+
+msgid "What you put down goes into it, and a click takes one part of it. Every other copy is changed with it, mirrored where it is mirrored. Esc or Done when finished."
+msgstr "Lo que coloques entra en él, y un clic toma una pieza suya. Cada otra copia cambia con él, reflejada donde está reflejada. Esc o Listo al terminar."
+
+msgid "Tip"
+msgstr "Volcar"
+
+msgid "Lay the part on its side"
+msgstr "Tumbar la pieza de lado"
+
+msgid "Turn the part a quarter"
+msgstr "Girar la pieza un cuarto de vuelta"
+
+msgid "Selected · drag to move · Select adds more · hold for actions"
+msgstr "Seleccionada · arrastra para mover · Seleccionar añade más · mantén pulsado para acciones"
+
+msgid "%d selected · drag to move · Select adds more · hold for actions"
+msgstr "Selección: %d · arrastra para mover · Seleccionar añade más · mantén pulsado para acciones"
+
+msgid "%d selected · tap parts to add or take out · Select when done"
+msgstr "Selección: %d · toca piezas para añadirlas o quitarlas · Seleccionar al terminar"
+
+msgid "Tap parts to select them · Select when done"
+msgstr "Toca piezas para seleccionarlas · Seleccionar al terminar"
+
+msgid "Tap to put %s down · drag turns the view · two fingers turn and zoom"
+msgstr "Toca para colocar %s · arrastrar gira la vista · dos dedos giran y hacen zoom"
+
+msgid "Tap where it goes · Select puts it back"
+msgstr "Toca donde va · Seleccionar la devuelve"
+
+msgid "Tap a part to take it off · Select when done"
+msgstr "Toca una pieza para quitarla · Seleccionar al terminar"
+
+msgid "Tap a part to paint it"
+msgstr "Toca una pieza para pintarla"
+
+msgid "Parts to pick one · tap a part to select · drag turns the view · pinch zooms"
+msgstr "Piezas para tomar una · toca una pieza para seleccionarla · arrastrar gira la vista · pellizca para hacer zoom"
+
+msgid "%s selected, %d of its %d parts on at this step · hold, then Edit inside, to change one"
+msgstr "%s seleccionado, %d de sus %d piezas puestas en este paso · mantén pulsado y luego Editar dentro para cambiar una"
+
+msgid "%s selected, %d parts · hold, then Edit inside, to change one"
+msgstr "%s seleccionado, %d piezas · mantén pulsado y luego Editar dentro para cambiar una"
+
+msgid "About, feedback, finding a command, the website, the docs and your account"
+msgstr "Acerca de, comentarios, buscar un comando, el sitio web, la documentación y tu cuenta"
+
+msgid "About, feedback, finding a command, the website, the docs and your account, and back to brickworks.diy"
+msgstr "Acerca de, comentarios, buscar un comando, el sitio web, la documentación y tu cuenta, y volver a brickworks.diy"
+
+msgid "Click a face, an edge or a corner to look from there; drag to turn the view"
+msgstr "Haz clic en una cara, una arista o una esquina para mirar desde ahí; arrastra para girar la vista"
+
+msgid "click for a step, hold to keep turning, or drag"
+msgstr "haz clic para un paso, mantén para seguir girando, o arrastra"
+
+msgid "Slide the view — drag this, or click one of its arrows"
+msgstr "Desplazar la vista — arrastra esto o haz clic en una de sus flechas"
+
+msgid "click, hold, or drag up and down"
+msgstr "haz clic, mantén o arrastra arriba y abajo"
+
+msgid "Fit the selection, or the whole model"
+msgstr "Encuadrar la selección, o todo el modelo"
