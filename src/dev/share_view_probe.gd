@@ -1260,6 +1260,35 @@ func _the_panel(text: String) -> void:
 	await panel.publish()
 	_ok(fake.published[-1].get("listed") == false and not str(panel._status.text).contains("gallery"),
 		"unticked and published again: not listed (%s)" % panel._status.text)
+	# A person's press on List it in the gallery ticks Show who made it, and
+	# a quick Publish waits for the profile's name (sitewalk3): a new
+	# member's listed first build had no name, so was on no profile.
+	panel._credit.button_pressed = false
+	panel._author.text = ""
+	panel._list.button_pressed = true
+	panel._list.pressed.emit()
+	_ok(panel._credit.button_pressed and panel._author.visible,
+		"pressed by the person, List it in the gallery ticks Show who made it too")
+	await panel.publish()
+	_ok(fake.published[-1].get("listed") == true and str(fake.published[-1].get("author", "")) == "Probe Builder",
+		"...and published at once, it goes out listed with the profile's name (%s)" % fake.published[-1].get("author", ""))
+	panel._credit.button_pressed = false
+	panel._list.button_pressed = false
+	panel._list.pressed.emit()
+	_ok(not panel._credit.button_pressed, "unticking the gallery leaves Show who made it as it was")
+	panel._list.button_pressed = true
+	_ok(not panel._credit.button_pressed, "...and a listing set by the panel itself (no press) ticks nothing")
+	panel._list.button_pressed = false
+	# Unticked by the person first, it stays so when they list it.
+	panel._credit.button_pressed = false
+	panel._credit.pressed.emit()
+	panel._list.button_pressed = true
+	panel._list.pressed.emit()
+	_ok(not panel._credit.button_pressed and panel._credit_chosen,
+		"Show who made it unticked by the person stays unticked when they then list it")
+	panel._list.button_pressed = false
+	panel._credit_chosen = false
+	await panel.publish()
 	store.remixed_from = "0r1g1nM0de"
 	await panel.publish()
 	_ok(str(fake.published[-1].get("remixed_from", "")) == "0r1g1nM0de",

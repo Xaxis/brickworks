@@ -61,9 +61,16 @@ export function guardPhoneOpens(root = document) {
     // A press before the owner's number came: it is waited on (two seconds
     // at most, then the measured one), and the same choice made with it.
     document.documentElement.dataset.phoneWarnWaited = "1";
+    // Under the number, the press goes on as the link's own, so what else
+    // listens to it still hears it (web/follow.js asks a visitor signed out
+    // to sign in before a copy: location.assign went past that to the
+    // studio's sign-in, sitewalk3).
     Promise.race([hearing, new Promise((done) => { setTimeout(done, 2000); })]).then(() => {
       if (parts > most) ask(parts, name, at.href);
-      else location.assign(at.href);
+      else if (link.isConnected) {
+        link.dataset.phoneWarned = "under";
+        link.click();
+      } else location.assign(at.href);
     });
   }, true);
 }

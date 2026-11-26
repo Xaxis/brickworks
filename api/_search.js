@@ -434,6 +434,7 @@ export function search(items, q, keep = () => true) {
   const slots = query.slots;
   const needed = slots.filter((slot) => !slot.small).length;
   const themes = themesFilled(index, query);
+  const typed = wordsOf(q).join(" ");
   const found = [];
   let full = false;
   for (let i = 0; i < items.length; i += 1) {
@@ -508,11 +509,28 @@ export function search(items, q, keep = () => true) {
     const soft = 0.5 * cover + Math.log10(row.own + 1) / 4 + (row.year ? (row.year - 1950) / 300 : 0);
     // Its third place is whether it is out of the theme the query is the
     // whole name of, when that theme is what the words mean (below).
+    // Its fourth place: whether it is the set named exactly what was typed
+    // (below): its name's words typed whole and nothing else, spelt right,
+    // and best of all word for word, its small words too ("House with Car",
+    // not WEETABIX4-1 "House and Car").
+    const exact = tier === 1 && big > 0 && ones(covered & row.bits) === big && quality >= 1
+      ? (wordsOf(items[i].name).join(" ") === typed ? 0 : 0.5) : 1;
     found.push({ item: items[i], at: i, matched, numbered: numbered && every, whole: named === 1, gear: row.gear,
-      key: [gear, tier, 0, -quality, -soft] });
+      exact, own: row.own, key: [gear, tier, 0, 1, -quality, -soft] });
   }
   // Every word in some, so only those; else the ones with the most.
   const kept = full ? found.filter((one) => one.matched === needed) : found;
+  // The set named exactly what was typed first, when it is at least a tenth
+  // the size of the biggest set found: "House with Car" is 346-2 House with
+  // Car (167 parts), which came third under 60398-1 Family House and
+  // Electric Car, five times its size and 54 years newer (sitewalk3,
+  // 2026-11-26; three walks typed it). A tenth keeps "batmobile" the
+  // 2,051-part Tumbler's, not the 68-part 30455-1 Batmobile's: the size
+  // rule this ranking keeps everywhere else.
+  if (full) {
+    const most = kept.reduce((top, one) => (one.gear ? top : Math.max(top, one.own || 0)), 0);
+    for (const one of kept) if (one.exact < 1 && !one.gear && (one.own || 0) * 10 >= most) one.key[3] = one.exact;
+  }
   if (!full) for (const one of kept) one.key.unshift(-one.matched);
   // A query that is a theme's whole name ("city", "trains", "marvel") is
   // that theme: its sets before those with the word only in their name

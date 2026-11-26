@@ -12,6 +12,14 @@
 // (delivered+bw-firstminute-…@resend.dev, deleted after), the code minted
 // with the admin API and typed as a person types the one emailed:
 //
+//   site       the press on the model's page: the site asks at once, over
+//              the page (web/follow.js, sitewalk3: the studio had loaded
+//              for 23 to 31 s to ask the same), and signed in there the
+//              studio opens with the copy
+//
+// The other ways come by the studio's own link (/app?copy=…, as from a new
+// tab or another site), to its own sign-in:
+//
 //   code       a new account by the studio's own sign-in: the code, the age
 //              question, the beta's welcome (Not now), as a stranger meets them
 //   returning  an account made before (password grant), by the code
@@ -50,7 +58,7 @@ const site = new URL(String(args.url || "http://127.0.0.1:11520")).origin;
 const out = path.resolve(String(args.out || "shots/firstminute"));
 const bypass = process.env.BW_BYPASS || "";
 const SIZES = String(args.sizes || "1280,390").split(",").map(Number).filter(Boolean);
-const WAYS = String(args.ways || "code,returning,reload,profile,tab2").split(",").filter(Boolean);
+const WAYS = String(args.ways || "site,code,returning,reload,profile,tab2").split(",").filter(Boolean);
 const before = Boolean(args.before);
 const BAR_S = 180;
 const SAMPLE = "Car";
@@ -241,7 +249,12 @@ async function answerStudio(page, press) {
 
 // The site's sign-in dialog, by email, and whatever a new account is asked
 // after it there (the age question, the beta's welcome, First steps).
-async function codeOnSite(page, email) {
+// [leaves]: the press goes on from the model's page once all that is
+// answered (the site way), so a moment with no dialog between the sign-in's
+// and the age question's is not the end: done only when the page has left
+// /m/ (its first unit preview, 2026-11-26, read that moment as done and
+// left the age question open over the page for 60 s).
+async function codeOnSite(page, email, { leaves = false } = {}) {
   await page.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 30000 });
   await page.fill("dialog.sign-in input[type=email], dialog.sign-in input", email);
   await page.click('dialog.sign-in button[type="submit"]');
@@ -265,7 +278,7 @@ async function codeOnSite(page, email) {
       // Skipped to the end, as a person in a hurry to get back does.
       const skip = page.locator("dialog.first-steps[open] button", { hasText: /Skip|Not now|Done|Close|Back to/i }).last();
       await skip.click().catch(() => page.keyboard.press("Escape"));
-    } else if (!open && page.url().includes("/m/")) {
+    } else if (!open && page.url().includes("/m/") && !leaves) {
       return true;
     }
     await page.waitForTimeout(700);
@@ -391,22 +404,48 @@ async function walk(width, way) {
     await shot(page, "model-page");
     const open = page.locator(`a.cta[href*="/app?copy=${id}"]`).first();
     const t0 = Date.now();
-    if (phone) await open.tap();
-    else await open.click();
-    // The phone's warning of a big model, if it asks: Open it anyway.
-    await page.locator("dialog[open] button", { hasText: /Open it anyway/ }).click({ timeout: 4000 }).catch(() => {});
-    const gated = await until(page, () => (window.brickworksAccount || {}).gated === true, 240);
-    result.gate_s = Math.round((Date.now() - t0) / 1000);
-    const behind = await look(page);
-    result.behind = behind.share.title || "";
-    check(`the sign-in screen, ${result.gate_s} s after the press, over "${result.behind}"`, Boolean(gated));
-    await page.waitForTimeout(2500);
-    await shot(page, "sign-in");
-    if (!before) check(`behind it, the model asked for, not the example car: "${(await look(page)).share.title}"`,
-      (await look(page)).share.title === modelName);
+    if (way === "site") {
+      // Pressed on the page, signed out: the site asks at once, over the
+      // model's page (web/follow.js, sitewalk3), where the studio used to
+      // load for 23 to 31 s to ask the same; signed in there, the press goes
+      // on to the studio with the copy.
+      if (phone) await open.tap();
+      else await open.click();
+      const asked = await page.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 10000 })
+        .then(() => Date.now() - t0, () => null);
+      result.ask_ms = asked;
+      const lead = await page.locator("dialog.sign-in[open] .lead").textContent().catch(() => "");
+      check(`${tag}: Open in the studio asks on the page in ${asked} ms, the page still the model's (${new URL(page.url()).pathname}): "${lead}"`,
+        asked !== null && asked < 2000 && new URL(page.url()).pathname === `/m/${id}` && /own copy in the studio/.test(lead || ""));
+      await shot(page, "site-asks");
+      result.answered = await codeOnSite(page, email, { leaves: true });
+      await page.locator("dialog[open] button", { hasText: /Open it anyway/ }).click({ timeout: 4000 }).catch(() => {});
+      await page.waitForURL(/\/app\?/, { timeout: 60000 }).catch(() => {});
+      check(`${tag}: signed in, on to the studio with the copy (${new URL(page.url()).pathname}${new URL(page.url()).search})`,
+        page.url().includes(`/app?copy=${id}`) || page.url().includes("/app"));
+      result.gate_s = Math.round((Date.now() - t0) / 1000);
+    } else {
+      // The studio's own sign-in, for a stranger who comes by the studio's
+      // link itself (a new tab, a link from elsewhere): the press on the
+      // page asks there first since sitewalk3, so the link is opened.
+      await page.goto(`${site}/app?copy=${id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
+    }
+    const gated = way === "site" ? true : await until(page, () => (window.brickworksAccount || {}).gated === true, 240);
+    if (way !== "site") {
+      result.gate_s = Math.round((Date.now() - t0) / 1000);
+      const behind = await look(page);
+      result.behind = behind.share.title || "";
+      check(`the sign-in screen, ${result.gate_s} s after the press, over "${result.behind}"`, Boolean(gated));
+      await page.waitForTimeout(2500);
+      await shot(page, "sign-in");
+      if (!before) check(`behind it, the model asked for, not the example car: "${(await look(page)).share.title}"`,
+        (await look(page)).share.title === modelName);
+    }
     const p = press(page);
     const into = page;
-    if (way === "code" || way === "returning") {
+    if (way === "site") {
+      result.answered_studio = await answerStudio(page, p);
+    } else if (way === "code" || way === "returning") {
       await codeInStudio(page, p, email);
       await shot(page, "code-typed");
       result.answered = await answerStudio(page, p);

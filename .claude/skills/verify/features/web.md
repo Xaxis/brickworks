@@ -4435,7 +4435,11 @@ plan with Claude as the client.
   the words no other theme has, puts that theme's sets first when it holds
   most of what was found ("city", not "dinosaurs"); real sets before Gear,
   Books, Promotional and key chains unless asked; then own parts, the sets
-  packed in it not counted, and year, 25 years about twice the parts).
+  packed in it not counted, and year, 25 years about twice the parts). A
+  set named exactly what was typed (word for word first, then its big words
+  alone) goes first among its tier when it is at least a tenth the size of
+  the biggest set found ("house with car" is 346-2, "batmobile" still the
+  big ones: sitewalk3).
   `searchCatalog` uses it, `askSets` sorts `match` ("Best match") whenever
   `q` is typed and no order is asked, and answers `near` (no set has every
   word: those with the most) and `meant` ("milenium falcon" is millennium
@@ -8340,6 +8344,14 @@ sends the LDraw with the made part and print and no link line, the author, and
 a 1200 x 630 PNG; the link kept with the model and sent back on the next
 publish (no author once unticked); not listed unless List it in the gallery is
 ticked, then sent `listed: true` with the panel saying so, unticked sent false;
+pressed by the person, List it in the gallery ticks Show who made it too and a
+Publish at once waits for the profile's name (a listed build with no name is
+on no profile and in no feed: sitewalk3), unticking it or the panel setting it
+ticks nothing, and a Show who made it the person unticked for this model stays
+unticked; List it in the gallery sits under Show who made it, at the form's
+top, so a phone shows it without scrolling the form (under the licence it lay
+below the form's foot at 390 x 844: `askhelp_probe` at PROBE_SIZE=390x844
+with --pictures shows the panel);
 a copy's `remixed_from` sent, kept in its saves on a line LDraw ignores beside
 the link's and read back when it opens; Unpublish; another account's link
 replaced; Clear and new work forget both. The viewer's about line ends
@@ -9837,7 +9849,13 @@ and `ui:a copy's first acts` (`src/ui/first_acts.gd`; firstminute,
 2026-11-23). A model page's Open in Brickworks (`/app?copy=<id>`) opens that
 model at start in place of the example car or the model saved last, whoever
 is signed in; signed out, behind the sign-in screen titled "Sign in to make
-it yours" with "“<name>” opens as your own copy…". Once signed in it is
+it yours" with "“<name>” opens as your own copy…". From the site, a
+signed-out press on any `/app?copy=` link (the page's Open in the studio, a
+card's Remix) asks on the page first (`web/follow.js`, the header script:
+`askToSignIn` "Sign in to open your own copy in the studio…", `later`), and
+goes on to the studio only once signed in; closed, it stays on the page
+(sitewalk3, 2026-11-26: the studio took 23-31 s to load only to show that
+screen). Once signed in it is
 saved into their models under the name its page gives it, not the
 file's first line (`ModelStore.unused_name`), credited (`remixed_from`,
 `credit`), framed, and the address loses `copy=` once the sign-in screen
@@ -9869,7 +9887,10 @@ visit's Show the assistant waits for another visit while `_copying`.
   saved change, each way in (`code`, `returning`, `reload`, `profile`,
   `tab2`) with a throwaway address (codes minted with the admin API,
   `/api/otp` answered in the browser), timed against 180 s, the change
-  made on parts the app says are drawn (`brickworksLayout.targets`); the asked-for
+  made on parts the app says are drawn (`brickworksLayout.targets`); way
+  `site` (first) presses the page's Open in the studio signed out and wants
+  the site's own sign-in on the page within 2 s, then the studio with the
+  copy, no sign-in screen there; the asked-for
   model after sign-in, the example car counted at every look, copies
   counted by the files the studio writes (`brickworksWrote`, kept in
   localStorage `fm.writes`). `--before` on an older build records what it
