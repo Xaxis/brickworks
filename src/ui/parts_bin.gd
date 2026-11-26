@@ -470,8 +470,12 @@ func _build() -> void:
 	# The status line, and at its end how the parts are shown, as a file
 	# window keeps its views at its foot: with their prints or without, as
 	# tiles or as rows. In a row of their own they would take a row of tiles.
-	var foot := HBoxContainer.new()
-	foot.add_theme_constant_override("separation", int(_z(6)))
+	# A flow: where the line's longest word and the two do not fit side by
+	# side, List and then Prints go onto a line under it. A row gave the
+	# line less than a word on a 320 phone at 150%, "hergestellte" cut.
+	var foot := HFlowContainer.new()
+	foot.add_theme_constant_override("h_separation", int(_z(6)))
+	foot.add_theme_constant_override("v_separation", int(_z(4)))
 	root.add_child(foot)
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", ceili(_z(12)))
@@ -482,6 +486,7 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(_status)
+	LaidOut.hold_a_word(_status)
 	# Studio's button that shows or hides printed and stickered parts: one
 	# click and the bin is plain parts, a minifigure's thousands of printed
 	# torsos and heads with it.
@@ -541,6 +546,7 @@ func _build() -> void:
 	# words: whole, in French at 150% it held the bin 330 units wide.
 	_only_made.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_only_made.add_theme_font_size_override("font_size", 12)
+	LaidOut.hold_a_word(_only_made)
 	FocusGuard.by_keyboard(_only_made)
 	_only_made.set_pressed_no_signal(bool(ShellPrefs.value("bin_only_made")))
 	_only_made.toggled.connect(func(on: bool) -> void:
@@ -877,6 +883,11 @@ func _build_swatches() -> void:
 		title.text = group[0]
 		title.add_theme_font_size_override("font_size", 11)
 		title.modulate = Color(1, 1, 1, 0.7)
+		# At a word onto a second line in a narrow column: whole, in German
+		# "Glitter, opal, …" held the colours 364 wide in a 340 dock, and the
+		# bin's buttons above were cut at its edge (wide150b).
+		title.autowrap_mode = TextServer.AUTOWRAP_WORD
+		LaidOut.hold_a_word(title)
 		_palette.add_child(title)
 		if not now.is_empty():
 			_palette.add_child(_flow_of(now))
@@ -3674,34 +3685,18 @@ func _new_tile() -> Button:
 	# Brighter than the number was: words are read, a number glanced at.
 	label.modulate = Color(1, 1, 1, 0.86)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var font: Font = label.get_theme_font("font")
-	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
-		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
+	label.custom_minimum_size.y = _name_tall()
 	# Fitted to the tile's width as it is laid out (_bind_tile fits it to the
 	# width a tile is made at, so its first frame already reads), and told
 	# apart from the names beside it again at that width.
 	label.resized.connect(func() -> void:
 		_fit_name(label, label.size.x)
 		_tell_apart_soon())
-	if by_finger:
-		# A part with prints folded under it has its "+N" at the foot's right
-		# end, a fingertip (_fold_badge): the name keeps to the room beside
-		# it, shown only on such a tile (_bind_tile). Hidden, the name has
-		# the foot's width, as it had alone under the picture.
-		var foot := HBoxContainer.new()
-		foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		foot.add_theme_constant_override("separation", 0)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		foot.add_child(label)
-		var beside := Control.new()
-		beside.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		beside.custom_minimum_size.x = least + _z(2.0)
-		beside.visible = false
-		foot.add_child(beside)
-		box.add_child(foot)
-		button.set_meta("beside", beside)
-	else:
-		box.add_child(label)
+	# The name has the tile's whole width. By a finger a part with prints
+	# folded under it has its "+N" over the picture's foot, a fingertip
+	# (_fold_badge): beside it at the foot's end the name kept 33 units of a
+	# tablet's tile, "Platte" 35 cut inside (wide150b).
+	box.add_child(label)
 
 	# A star in the corner for a part kept in Favourites.
 	var star: TextureRect = Icons.picture(STAR, _z(14.0), Icons.density(self))
@@ -3751,8 +3746,6 @@ func _bind_tile(button: Button, info: PartLibrary.PartInfo, key: String = "") ->
 	# after every tile of the page is bound: _show_more).
 	label.remove_meta("from")
 	label.remove_meta("number")
-	if button.has_meta("beside"):
-		(button.get_meta("beside") as Control).visible = _folds.has(info.id)
 
 	(button.get_meta("star") as Control).visible = PartShelf.is_favourite(info.id)
 	# Its "+N", kept hidden while its part has nothing folded under it: made
@@ -4185,6 +4178,13 @@ func _fold_badge(info: PartLibrary.PartInfo) -> Button:
 	return badge
 
 
+## How tall a tile's name is: its NAME_LINES lines in eleven-unit type.
+func _name_tall() -> float:
+	var font: Font = get_theme_font("font", "Label")
+	var spacing: float = float(get_theme_constant("line_spacing", "Label"))
+	return ceilf(font.get_height(ceili(_z(11))) * NAME_LINES + spacing * (NAME_LINES - 1))
+
+
 func _new_fold_badge() -> Button:
 	var badge := Button.new()
 	badge.focus_mode = Control.FOCUS_NONE
@@ -4196,7 +4196,8 @@ func _new_fold_badge() -> Button:
 		badge.custom_minimum_size = across
 		badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 		badge.offset_right = -_z(2.0)
-		badge.offset_bottom = -_z(2.0)
+		# Over the picture's foot, the name's lines under it clear.
+		badge.offset_bottom = -_z(2.0) - _name_tall()
 		badge.offset_left = badge.offset_right - across.x
 		badge.offset_top = badge.offset_bottom - across.y
 		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -5915,9 +5916,7 @@ func _assembly_cell(entry: Dictionary) -> Control:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.max_lines_visible = NAME_LINES
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
-	var font: Font = label.get_theme_font("font")
-	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
-		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
+	label.custom_minimum_size.y = _name_tall()
 	box.add_child(label)
 	mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	mark.offset_left = _z(4.0)

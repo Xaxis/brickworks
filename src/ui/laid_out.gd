@@ -40,3 +40,38 @@ static func into_view(scroll: ScrollContainer, control: Control) -> void:
 	await settled(scroll)
 	if is_instance_valid(scroll) and is_instance_valid(control) and control.is_visible_in_tree():
 		scroll.ensure_control_visible(control)
+
+
+## [param c], a Label or Button whose words wrap at a word, never narrower
+## than its longest word inside its face (and beside a checkbox's box): in a
+## row it is given that much, in a flow it goes onto a line of its own, and
+## no word of it is cut inside. A wrapping control asks for no width of its
+## own, and in a narrow column its row gave it less than a word: "fabricadas"
+## in 45 of 61, "hergestellte" in 72 of 87 (wide150b). Measured again when its
+## words change, in another language too (minimum_size_changed).
+static func hold_a_word(c: Control) -> void:
+	var fit := func() -> void:
+		if not is_instance_valid(c) or not c.is_inside_tree():
+			return
+		var text: String = ""
+		var beside: float = 0.0
+		if c is Label:
+			text = c.atr((c as Label).text)
+		elif c is Button:
+			var button: Button = c as Button
+			text = button.atr(button.text)
+			var box: Texture2D = button.get_theme_icon("unchecked") if button is CheckBox else button.icon
+			if box != null and (button is CheckBox or button.vertical_icon_alignment == VERTICAL_ALIGNMENT_CENTER):
+				beside = box.get_width() + button.get_theme_constant("h_separation")
+		var font: Font = c.get_theme_font("font")
+		var size: int = c.get_theme_font_size("font_size")
+		var longest: float = 0.0
+		for word: String in text.replace("\n", " ").split(" ", false):
+			longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
+		var least: float = ceilf(longest + beside + c.get_theme_stylebox("normal").get_minimum_size().x)
+		if absf(c.custom_minimum_size.x - least) > 0.5:
+			c.custom_minimum_size.x = least
+	c.minimum_size_changed.connect(fit)
+	c.theme_changed.connect(fit)
+	c.tree_entered.connect(fit)
+	fit.call()

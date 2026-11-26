@@ -17875,3 +17875,6 @@ msgstr "Subconjunto de %d piezas, %d puestas en este paso"
 
 msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
 msgstr "Subconjunto de %d piezas, %d puestas en este paso, %d dentro"
+
+msgid "More menus"
+msgstr "Más menús"

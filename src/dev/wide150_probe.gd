@@ -280,6 +280,16 @@ func _fits() -> void:
 		var why: String = _cut(c, shown)
 		if not why.is_empty():
 			cut.append(why)
+		# What a clipping box (a side panel's holder, a scroller) holds wider
+		# than itself, and why, for the lines its cut words make.
+		if c.clip_contents and not (c is ScrollContainer and (c as ScrollContainer).horizontal_scroll_mode
+				!= ScrollContainer.SCROLL_MODE_DISABLED):
+			for child: Node in c.get_children():
+				var held: Control = child as Control
+				if held != null and held.is_visible_in_tree() and not held.top_level \
+						and held.get_combined_minimum_size().x > c.size.x + 0.5:
+					print("    (%s, %s: %s %.0f wide holds %s %.0f%s)" % [_config, _doing, _named(c), c.size.x,
+						_named(held), held.get_combined_minimum_size().x, _widest_inside(held, 5)])
 	# Named by the innermost: a row past the edge puts its column past it too,
 	# and the row is what gives way or does not.
 	var past: PackedStringArray = []
@@ -293,6 +303,13 @@ func _fits() -> void:
 			var shown: Rect2 = outside[c]
 			past.append("%s x%.1f-%.1f y%.1f-%.1f" % [_named(c), shown.position.x, shown.end.x,
 				shown.position.y, shown.end.y])
+			# What holds it so: its least and its children's.
+			var held: PackedStringArray = []
+			for child: Node in c.get_children():
+				if child is Control and (child as Control).is_visible_in_tree():
+					held.append("%s %s" % [_named(child as Control), (child as Control).get_combined_minimum_size()])
+			print("    (%s, %s: %s least %s holds %s)" % [_config, _doing, _named(c), c.get_combined_minimum_size(),
+				", ".join(_most(PackedStringArray(held)))])
 	_check("%s, %s: %d controls shown, every one inside the %.1f x %.1f window%s" % [_config, _doing,
 		seen, window.size.x, window.size.y, "" if past.is_empty() else
 		" — past it: " + "; ".join(_most(past))], past.is_empty())
@@ -363,7 +380,11 @@ func _cut(c: Control, shown: Rect2) -> String:
 		var face: String = "disabled" if button.disabled else ("pressed" if button.button_pressed
 			else "normal")
 		room = button.size.x - button.get_theme_stylebox(face).get_minimum_size().x
-		if button.icon != null and not button.expand_icon:
+		# Its picture takes from the words' width only beside them: over or
+		# under them (a phone's row), or centred under them, it does not.
+		if button.icon != null and not button.expand_icon \
+				and button.vertical_icon_alignment == VERTICAL_ALIGNMENT_CENTER \
+				and button.icon_alignment != HORIZONTAL_ALIGNMENT_CENTER:
 			room -= button.icon.get_width() + button.get_theme_constant("h_separation")
 		font = button.get_theme_font("font")
 		font_size = button.get_theme_font_size("font_size")

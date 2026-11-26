@@ -1681,7 +1681,11 @@ class Sheet extends PanelContainer:
 			tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 			grid.add_child(tile)
 		_list.add_child(grid)
+		grid.set_meta("most_columns", grid.columns)
 		_fewer_columns(grid)
+		# Fitted again to the width it is laid out at: the sheet's own, which
+		# on a tablet is narrower than the window's guess (wide150b).
+		grid.resized.connect(_fewer_columns.bind(grid))
 
 	## Fewer tiles to a line while a word of one is wider than a tile: its
 	## words wrap at a word and never inside one. At 150% in French two to
@@ -1697,12 +1701,17 @@ class Sheet extends PanelContainer:
 		for tile: Node in tiles:
 			for word: String in (tile as Button).text.replace("\n", " ").split(" ", false):
 				longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
-		# Inside the sheet's own margins and its scroller's.
-		var across: float = minf(_room().x, phone.p(560)) - phone.p(40)
+		# The grid's own width once laid out (its wrapping tiles ask for
+		# little, so it is the sheet's); before, the sheet's inside its own
+		# margins and its scroller's.
+		var across: float = grid.size.x if grid.size.x > 0.0 else minf(_room().x, phone.p(560)) - phone.p(40)
 		var gap: float = float(grid.get_theme_constant("h_separation"))
 		var margins: float = first.get_theme_stylebox("normal").get_minimum_size().x
-		while grid.columns > 1 and (across - gap * (grid.columns - 1)) / grid.columns - margins < longest:
-			grid.columns -= 1
+		var columns: int = int(grid.get_meta("most_columns", grid.columns))
+		while columns > 1 and (across - gap * (columns - 1)) / columns - margins < longest:
+			columns -= 1
+		if grid.columns != columns:
+			grid.columns = columns
 
 	func _row(words: String, command: String) -> Button:
 		var row := Button.new()
