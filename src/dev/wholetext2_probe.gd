@@ -439,8 +439,9 @@ func _case_paced_during(how: String) -> void:
 
 
 ## 10030-1, one part moved: a one-frame save through the whole write
-## (save_model) and the autosave's text (written over frames), each with the
-## file's lines kept and plain, in turn, three rounds.
+## (save_model), the text alone (to_text) and the autosave's text (written
+## over frames), each with the file's lines kept and plain, in turn, five
+## rounds, each in the other order.
 func _case_time() -> void:
 	print("\ntime: 10030-1, one part moved, saved through the whole write")
 	await _open(SET)
@@ -451,12 +452,19 @@ func _case_time() -> void:
 	var at: String = ProjectSettings.globalize_path(PROBE_DIR + "wt2-time.mpd")
 	var took: Dictionary = {"kept": [], "plain": []}
 	var frames: Dictionary = {"kept": [], "plain": []}
+	var written: Dictionary = {"kept": [], "plain": []}
 	var texts: Dictionary = {}
-	for _round: int in 3:
-		for kept: bool in [true, false]:
+	for round: int in 5:
+		# Each round in the other order, so neither always goes first.
+		for kept: bool in ([true, false] if round % 2 == 0 else [false, true]):
 			var how: String = "kept" if kept else "plain"
 			ModelStore.write_over_files = false
 			ModelStore.keep_file_lines = kept
+			# The text alone, with no file written.
+			var wrote: int = Time.get_ticks_usec()
+			_store.to_text(_store.title, true)
+			(written[how] as Array).append((Time.get_ticks_usec() - wrote) / 1000)
+			await _frames(3)
 			var began: int = Time.get_ticks_usec()
 			var saved: bool = bool(_main.call("save_model", at))
 			(took[how] as Array).append((Time.get_ticks_usec() - began) / 1000)
@@ -479,9 +487,11 @@ func _case_time() -> void:
 			ModelStore.keep_file_lines = true
 			await _frames(5)
 	var original: String = _text_of(SET)
-	print("  time: save_model in one frame, kept %s ms, plain %s ms" % [str(took["kept"]), str(took["plain"])])
-	print("  time: the autosave's longest frame, kept %s ms, plain %s ms" % [str(frames["kept"]),
-		str(frames["plain"])])
+	for pair: Array in [["save_model in one frame", took], ["to_text alone", written],
+			["the autosave's longest frame", frames]]:
+		var times: Dictionary = pair[1]
+		print("  time: %s, kept %s ms (least %d), plain %s ms (least %d)" % [pair[0], str(times["kept"]),
+			(times["kept"] as Array).min(), str(times["plain"]), (times["plain"] as Array).min()])
 	for how: String in ["kept", "plain"]:
 		_kept("time-%s.mpd" % how, texts[how])
 		var diff: Dictionary = _line_diff(original, texts[how])

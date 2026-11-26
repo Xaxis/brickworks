@@ -3071,8 +3071,16 @@ func kept_said(line: int, written: String, part: String, library: PartLibrary,
 	var mine: PackedStringArray = _words(written)
 	var theirs: PackedStringArray = _words(said)
 	var numbers: Variant = _numbers_of(mine)
-	if numbers == null or _numbers_of(theirs) == null:
+	var file_numbers: Variant = _numbers_of(theirs)
+	if numbers == null or file_numbers == null:
 		return written
+	# The file's words saying it as the whole write does, but for how each is
+	# spelled (1.00000, a tab, the name's capitals): read alike, so the file's
+	# line, with no reading back. 10030-1 written whole after one part moved
+	# is 2,450 such lines, which the read-back below took a while for each.
+	if _says_alike(said, written, theirs, mine, file_numbers, numbers):
+		tally["kept"] = int(tally.get("kept", 0)) + 1
+		return said
 	var colour: int = LdrModel._colour(mine[1])
 	var painted: bool = colour != LdrModel._colour(theirs[1])
 	var local: Transform3D = LdrModel.to_transform(numbers)
@@ -3097,6 +3105,28 @@ func kept_said(line: int, written: String, part: String, library: PartLibrary,
 	var counted: String = "kept" if out == said else "kept_words"
 	tally[counted] = int(tally.get(counted, 0)) + 1
 	return out
+
+
+## Whether placing lines [param a] and [param b] (their words and numbers
+## given) say one thing as an open reads them: one colour, one name as LDraw
+## compares names, and each number within [constant ALIKE] of the other's.
+## Read alike, each becomes the same part, colour, place and turn through
+## the same reading (ModelStore._as_placed).
+static func _says_alike(a: String, b: String, a_words: PackedStringArray,
+		b_words: PackedStringArray, a_numbers: PackedFloat64Array, b_numbers: PackedFloat64Array) -> bool:
+	if LdrModel._colour(a_words[1]) != LdrModel._colour(b_words[1]):
+		return false
+	for k: int in 12:
+		if absf(a_numbers[k] - b_numbers[k]) > ALIKE:
+			return false
+	return LdrModel._key(LdrModel.reference_of(a)) == LdrModel._key(LdrModel.reference_of(b))
+
+
+## How far apart two numbers of a placing line may be and still say one thing
+## (LDU, or a turn's element): [constant TURN], within which a patch keeps a
+## turn's number of the file as the part's ([method _line_for]), and a
+## hundredth of NEAR, within which it keeps a place's.
+const ALIKE := TURN
 
 
 ## Why [param given] opens otherwise than [param written], each a line placing

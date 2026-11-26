@@ -5404,7 +5404,8 @@ func to_text_paced(title: String, job: Working.Job, model: int = -1) -> String:
 	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
 		world, world.library, scenery, {}, job)
 	world.cleared.disconnect(stop)
-	if job.cancelled or steps.is_empty() or _another_opened(mine):
+	# Asked first, so the words say it when that is why the work stopped.
+	if _another_opened(mine) or job.cancelled or steps.is_empty():
 		return ""
 	job.say("Writing %s parts…" % Working.comma(world.brick_count() - scenery.size()))
 	job.count(0, 0)
@@ -5481,7 +5482,7 @@ func text_for_file(title: String, doing: String, model: int = -1) -> String:
 	await job.shown()
 	var text: String = await to_text_paced(title, job, mine)
 	job.end()
-	return "" if job.cancelled or _another_opened(mine) else text
+	return "" if _another_opened(mine) or job.cancelled else text
 
 
 ## [method save_as], its build order worked out a slice at a time
@@ -5509,7 +5510,7 @@ func save_as_paced(name: String, job: Working.Job, over: bool = false, model: in
 		ok = _store_kept(path)
 	else:
 		var text: String = await to_text_paced(name, job, mine)
-		if text.is_empty() or job.cancelled or _another_opened(mine):
+		if _another_opened(mine) or text.is_empty() or job.cancelled:
 			return false
 		ok = _write(path, name, true, text, true)
 	if ok:
