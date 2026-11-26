@@ -1928,13 +1928,34 @@ func frame_corners(box: AABB, margin: float = 1.05) -> void:
 		return
 	right = right.normalized()
 	var up: Vector3 = back.cross(right)
-	var need: float = 0.0
+	# Each corner across, up and toward the eye from the focus.
+	var corners: Array[Vector3] = []
 	for n: int in 8:
 		var from_focus: Vector3 = box.get_endpoint(n) - _target_focus
-		var nearer: float = from_focus.dot(back)
-		need = maxf(need, nearer + absf(from_focus.dot(right)) / wide)
-		need = maxf(need, nearer + absf(from_focus.dot(up)) / tall)
-	_target_distance = clampf(need * margin, min_distance, max_distance)
+		corners.append(Vector3(from_focus.dot(right), from_focus.dot(up), from_focus.dot(back)))
+	# The box's middle is not its picture's: its near side is drawn larger
+	# than its far side, and fitted about the middle a plate seen from above
+	# left a third of a 1280 x 800 room empty over it. The focus is moved in
+	# the view's plane until the picture is as far from each side of the room
+	# as from the other, the distance found again each time.
+	var shift := Vector2.ZERO
+	var far: float = 0.0
+	for _again: int in 4:
+		far = 0.0
+		for corner: Vector3 in corners:
+			far = maxf(far, corner.z + absf(corner.x - shift.x) / wide)
+			far = maxf(far, corner.z + absf(corner.y - shift.y) / tall)
+		far *= margin
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		for corner: Vector3 in corners:
+			var depth: float = maxf(far - corner.z, 0.001)
+			var seen := Vector2((corner.x - shift.x) / depth, (corner.y - shift.y) / depth)
+			low = low.min(seen)
+			high = high.max(seen)
+		shift += (low + high) * 0.5 * far
+	_target_focus += right * shift.x + up * shift.y
+	_target_distance = clampf(far, min_distance, max_distance)
 	_keep_over_floor(line)
 
 
