@@ -255,7 +255,16 @@ they have. A Claude connector belongs to the account that switched it on.
   orangecheck account Connect made, photos, pictures, feedback's files,
   then the auth user and everything keyed to it. `POST /api/account?op=delete`
   for its person; `POST /api/admin?op=delete_account&account=U {confirm,
-  reason}` for the owner at their request: `confirm` must be its address
+  reason}` for the owner at their request. Both pass the one rule
+  (signin7, `api/_oc.js` `stepUp`): the session read live (gone 401, not
+  readable 503) and a code emailed in the last five minutes, whatever
+  started the session (else 403 `fresh: false`; /settings sends the code
+  and asks for it in the delete form, the console says to sign in again by
+  code); an orangecheck-only account, a fresh orangecheck sign-in as
+  itself instead. So does an age answer under 13 for an account older
+  than half an hour (a newer one is deleted at once). Proof:
+  bench/results/signin7-2026-11-26 `run_4b.sh` (signreview4's attack4b Y,
+  Z). For the console's delete: `confirm` must be its address
   (case and spaces aside, else 422), never the owner's own (403), 404 when
   it is gone; the audit keeps its address. `POST ?op=export&account=U`
   (`admin_export`: at most 1000 rows a table and `more` for the rest, values
@@ -802,7 +811,13 @@ they have. A Claude connector belongs to the account that switched it on.
   `tests/test_oauth_clients.py`; Settings
   redraws its connections; this one too,
   when it was one: `signed_out`, and the page signs out and asks for a code) or `never`
-  (`way_links_of`); Link again lifts it. An orangecheck-only account gets
+  (`way_links_of`); Link again lifts it, and only an `off` row (a way
+  signing in already is left as it is). Link again passes the one rule
+  (signin7, `api/_oc.js` `stepUp`: the session read live and a code of the
+  last five minutes, else 403 `fresh: false`, and Settings sends a code and
+  shows `#ways-code`, then "Thank you. Now press Link again."); Unlink reads
+  the session live alone (a session gone is 401). Both tell the address
+  (`tell`, a Resend test address "dry"). An orangecheck-only account gets
   409. The owner's account is offered neither. Settings'
   orangecheck part says when Connect made the account.
 - `the console's sign-in switches` (signin3; `/admin#switches` "Sign in with
@@ -810,7 +825,8 @@ they have. A Claude connector belongs to the account that switched it on.
   /api/admin?op=switches` `ways`, `POST /api/admin?op=sign_in_switch {with,
   on}` into `site_settings` `sign_in_google|sign_in_github` per scope,
   audited `setting`): each one's keys by whether they are here, its state,
-  Turn it on/off (on refused without keys, 409), and five steps for the
+  Turn it on/off (on refused without keys, 409; either refused 403 `fresh:
+  false` without a code of the last five minutes, signin7), and five steps for the
   owner to make the client and paste its keys into Vercel, hidden once on.
   The four variables are listed in Deployment variables.
 - `sign in with orangecheck on the desktop` (2026-10-24, oc237;

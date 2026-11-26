@@ -945,8 +945,8 @@ async function deleteAccount(body) {
   const answer = await call("/api/account?op=delete", { method: "POST", body });
   $("delete-go").disabled = false;
   if (answer.status === 403 && answer.body.fresh === false) {
-    // Signed in with orangecheck, to an account with its own email: a code
-    // to it first, as unlinking asks (api/account.js).
+    // Not signed in by a code of the last five minutes, whatever started
+    // this session: a code to the address first (api/_oc.js stepUp).
     try {
       const to = await sendCode(email());
       $("delete-code-said").textContent = say("The code we emailed to {to}", { to });

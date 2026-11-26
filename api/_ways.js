@@ -45,8 +45,12 @@
 //   POST ?op=ways {with, on}            Google or GitHub unlinked (on false:
 //                                       it no longer signs in to this
 //                                       account, and every session it
-//                                       started ends) or linked again. The
-//                                       code to the address always stays.
+//                                       started ends; the session read
+//                                       live) or linked again (a code of
+//                                       the last five minutes first,
+//                                       api/_oc.js stepUp). The address is
+//                                       told of either. The code to the
+//                                       address always stays.
 //
 // Each is offered where its keys are (GOOGLE_CLIENT_ID and
 // GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET, in
