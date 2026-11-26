@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, cli:wingplace probe, cli:room steady probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe, cli:wide150 probe, cli:studio words probe -->
 
 ## Sub-features
 
@@ -144,10 +144,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   said nothing, and undoing a sub-assembly made changes nothing on screen. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
   and so does the selection (its ids would name the new model's bricks).
-  Undo with parts lifted off the model in hand (Move, a drag) is that lift:
-  they go back where they were and are let go, as Esc does ("put back where it
-  was"). Undoing the lift's step under the hand left them held, and the next
-  click put a second of each down (phonefingers_probe, section 3). On a phone
+  Undo with parts lifted off the model in hand (Move, a drag, a minifig by X)
+  while the lift is the newest thing done is that lift: they go back where
+  they were and are let go, as Esc does ("put back where it was";
+  `Builder.lift_newest`). Undoing the lift's step under the hand left them
+  held, and the next click put a second of each down (phonefingers_probe,
+  section 3). On a phone
   a two-finger tap undoes and three redo, the same verbs (`finger taps to
   undo and redo and turn`, view.md).
   A part an undo or redo puts back keeps its number (`BrickWorld.add_brick`
@@ -397,6 +399,28 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   holds the numbers to site.css; `appchrome probe` (windowed) opens every
   mode in both layouts at 1280 x 800 and 390 x 844 and compares the
   header's rect, mark and right controls with the viewer's.
+- `the studio's rows give way` (wide150b 2026-11-25): no row of the studio is
+  wider than its window, in any language at 100% or 150%, and no word is cut
+  inside (a cut is at a word, with "…"). The header's menus fold into "…"
+  (`more_menus`), the last first, before the row's points drop below a
+  fingertip (`ModelBar._fold_menus`); the editing banner's words wrap beside
+  Done, measured by what the window leaves it (`LaidOut.offered`); a
+  category chip wider than its row is cut at a word with its whole name in
+  its tooltip (`PartsBin._fit_chips`); a finger's tile is never narrower
+  than its "+N" and a word of its name beside it, so a bin shows a tile
+  fewer to a line (`PartsBin._tile_wide`), the "+N" kept at the foot, off
+  the picture a finger taps (`ux15_phone_probe --phone` p16); a phone's busy
+  line gives way as the desktop's (`StatusBar`); the status bar's hint gives Working its
+  place (`StatusBar`, `Working.give_way`); the desktop's step bar stops at
+  55% of the window and scrolls (`StepsBar._cap_height`); a phone's step bar
+  keeps its widest sign whole (`StepsBar._fit_thumbs`); the bin and colours
+  have no least of their own, their buttons and toggles go onto a line under
+  in flows, and a wrapping box or label is never narrower than its longest
+  word (`LaidOut.hold_a_word`), the colours' "Only parts made in it" one line
+  where the window leaves it room (its `whole`); a phone's row drops its words, then shrinks
+  its pictures (`PhoneShell._share_row`); a sheet's tiles go fewer to a line
+  (`Sheet._fewer_columns`). `wide150 probe` (windowed) walks en/de/fr/es at
+  both sizes at 320, 390, 768, 1024 and 1280 wide, desktop and `--phone`.
 - `find a command` (`src/ui/command_palette.gd`, `Shell.palette`): Ctrl+/
   (and Ctrl+Shift+P on the desktop; a browser keeps that one), or the app
   menu's Find a command…, opens a box over the model with the keys in it.
@@ -1135,8 +1159,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   ground, one on another, a turned 1 x 2 plate, and two parts carried by
   Ctrl+D, each read off the bar, clicked down and measured. Where the fields
   would not all fit beside the line on the left, the zoom goes first, then
-  the snap and turn, then the size (`StatusBar._fit`), so none runs past the
-  window's edge.
+  the snap and turn, then the size, the weight and the selection, then where
+  the part in hand goes, and last the counts (`StatusBar._fit`), so the bar is
+  never wider than the window; its lines are cut at a word, never inside one.
+  A bar wider than the window widened the window's whole column, the header
+  with it: at 390 points the header's row came onto one line from two while
+  the bar was 623 units or more, and the model's room jumped 22 units after
+  each put and undo (room390). `room_steady_probe` (windowed, 390x844; `--
+  --phone` for the phone's layout, PROBE_SIZE=1280x800 too) puts parts down
+  and undoes them 20 times, on the ground and inside a copied wing, reads
+  every frame's layout, and fails on any change of the room's height, a
+  column wider than the window, or a status line cut mid-word; its pictures
+  are before and after a put.
 - `model size and weight` (`src/assembly/model_size.gd`, APP_UX5 modelinfo):
   the model's size beside its counts on the status bar, the car's "4.5 ×
   10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm" (the plates to the
@@ -1672,6 +1706,20 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   sign-in screen's two steps first) and a status line in each language.
   `tests/test_locale.py` checks the files (places kept, LEGO® an adjective,
   no language short of another).
+  Words made while the studio is used are each one whole English pattern
+  filled with `%` ("placed %s", "Editing %s  ·  %s"), never a verb or an
+  "s" joined on, so each has its entry (langsweep: German read "rückgängig
+  gemacht: placed Plate 1 x 2" and the banner in English). `studio words
+  probe` (headless, the desktop's then a phone's layout in a run of its
+  own) uses the studio in en, de, fr and es: a part in hand, a put, a move
+  by a key, an undo, a redo, History's rows, inside a copied sub-assembly
+  (its banner), a put and an undo there, a delete and a save. It fails on
+  any line said (status line, a phone's toast) or shown (labels, buttons,
+  tooltips, the phone's line and row) with no entry or with words of the
+  interface kept in English; names (parts, colours, the model, a
+  sub-model), keys and brands pass. `--words-to=FILE` writes every line
+  read (lang, English, drawn), so the English can be compared byte for
+  byte with a run of the commit before.
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
   (`parts_open`, and the right column's tab, `assistant_open` or else
   `properties_open`, for a wide window; `narrow_side`, "parts", "properties"
@@ -1933,7 +1981,78 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   followed, or taken back, before the session reads the model
   (`Together.settle_edit`, `Main._settle_edit`), so nothing refused is sent
   and nothing waits a frame. Find and replace shares the lock rule
-  (`Assemblies.locked_twins`). `followfix_probe` holds it. Make unique cuts a copy loose (a session's `make_unique`,
+  (`Assemblies.locked_twins`). `followfix_probe` holds it. The ghost asks
+  the same before the click (wingplace): inside an edited sub-assembly with
+  copies, whatever is in hand (a part from the bin, dragged from it, moved
+  by a typed number, a paste, a clone, a part dragged inside it) is laid in
+  each copy as the follow will lay it (`Assemblies.room_in_copies`: the
+  follow's `best_match`, `_laid` and `in_the_way`, a retired number laid as
+  the part that replaced it, a copy's own parts and those of a copy round it
+  that lies on the one round the edited copy left out as `_own_copy` leaves
+  them, newest copy first; each copy's fit read once per model and level,
+  the parts in hand where they stood, still the model's, listed last in the
+  hand's order as the put's follow reads them, `Assemblies._hand_then`, and
+  a copy whose every part is in hand counted as moved whole,
+  `Assemblies._keeps_one`; the hand's old cells free to the ask as at the
+  click, `BrickLattice.hand_free`; wingkeep: after handkeep2 a lift made no
+  step and the ask died on the gone `_lift_on_top`, green where the click
+  refused), and a part X took into hand is asked as the move it is, in its
+  own sub-model, at the model's level too (`Builder._going_down`), and where one has no room the
+  ghost is red, `Builder.can_place` false (the pointer,
+  `brickworksState.can_place` and a session's hand tool say so, the typed
+  number's line names why) and the bar says why as it turns red, in the
+  words the click's refusal says (`Builder.copies_refuse`,
+  `copies_refused`); an aim asks for 4 ms a frame (`COPIES_ASK_US`) and an
+  ask not done goes on next frame where it stopped, the ghost as it was till
+  then, never "room" for being cut short; a click is still the follow's to
+  judge. Not asked: locked parts in a copy (the click's refusal says those),
+  train-track sleepers laid with a track, and parts whose shape is still on
+  its way. Ctrl+D lays a copy beside (ux14), and a
+  mirrored copy beside its original leaves a strip between them where a
+  part's twin lands on it: the web's assembly flow put down nothing there
+  from rel-m324 and nobody saw why. `wingplace_probe` (windowed) aims a plate
+  from the bin and a pasted brick all round such a wing, and drags the wing's
+  own brick there, once inside the wing and once picked out from outside it
+  (a lifted part goes back into its own sub-assembly, `Builder._going_down`,
+  and is asked of the copies of the innermost one round it that keeps a
+  part, `Assemblies._changed_level`: a copy dragged whole asks nothing of its
+  own twins, and Wing#2 dragged whole at the model's level is never red; 200
+  of a 2,000-part sub-assembly's parts lifted and dragged cost an aim under
+  2 ms of ask, the hand read once and under the ask's clock
+  (`Assemblies._hand_plan`, `Builder._going_down` the same array each aim)
+  and a twin met only by what goes down near it (`Assemblies._meets`); a number typed
+  on a red spot says why, and a paste or a lift's hint never covers the why,
+  `EditVerbs._click_line`): every green ghost is put down (or moved)
+  with its twin, every red one takes nothing and said why, each drawn as it
+  is; an ask cut a microsecond at a time answers as one in one go; on 10179
+  what the ask adds to the app's own aim stays under a frame and each ghost
+  says what its click does; plus a plate put down inside fresh and after a
+  save and an open, the reopened file compared part by part. And the wing's
+  brick picked out from outside the wing and dropped a stud along its length,
+  each way, and where it stood: a part lifted from a copy takes its twins off
+  with it, and one put down in its own box reads as swapped, so its twin,
+  off already, is laid again as a part put down is (`Assemblies._follow`,
+  room390: Wing#2 was left with 2 of its 3), and only a twin that lift's
+  follow took off (`Assemblies._follow_took`, its steps marked "followed"
+  as `after_edit` folds them in): a twin the person lifted too is theirs.
+  One step that changes two copies of a sub-model by hand (both twins of a
+  part, Alt-A taking every copy's, dragged or nudged) is made only where the
+  two still lie on each other part for part after the follow
+  (`Assemblies._unlike_by_hand`): along a mirrored copy's axis, a turned
+  copy's, or with a third copy, it is refused, "Moved in two copies of Wing
+  at once, and differently: move it in one and the others follow, or use
+  Build › Make this copy unique", and the ghost is red with those words
+  before the click (`Assemblies._twins_in_hand`, the twins found by where
+  each stood when lifted, Carry's "was"); along the axis a mirror keeps, or
+  back where they stood, it goes through and an untouched third copy gets
+  it once (wingfix2, wingreview3 F1: 7 parts became 9 and Save kept them;
+  F2: a part lost or doubled). `wf2_probe` (headless) holds it, with
+  wingreview3's follow table, and X's part typed a stud along: the other copy
+  follows, and where its twin has no room the ghost says "No room in ..."
+  first; `wf2_shots_probe` pictures both at 1280 and 390. The pointer is steered by where
+  the hand stands, and the check fails if the brick went down anywhere else;
+  each drop is undone, redone and undone again, the model compared part by
+  part. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,
@@ -2001,9 +2120,60 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   show; a rigid move of a sub-assembly taken whole (an arrow, a turn, a
   drag, a lift and put-down, Mirror) moves all of it, its later parts too,
   so it never tears, and says how many went with it (`Builder.
-  _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). A minifig
-  lifted at a step leaves its later parts on the model and moves them with
-  it on put-down (`_figure_followers`). `keep_shown` looks only at the parts
+  _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). What is
+  in hand never leaves the model's file until it is put down (handkeep,
+  2026-11-25): a minifig lifted by X (the innermost copy round the part that
+  is a figure, `Builder.figure_of`: X over a car's driver lifts the driver)
+  and a selection picked up (`lift_selection`) go into the hand, each part
+  still the model's where it stood, in its step, sub-model and file line,
+  drawn nowhere and out of the lattice (`Builder._take_into_hand`,
+  `BrickWorld.take_in_hand`). So the autosave, Ctrl+S, close, export, share
+  and a session's read and save tools write it where it stood, a crash or a
+  reload finds it there, it counts as unsaved work (`ModelStore.
+  has_unsaved_work`), the timeline is never worked out without it, and the
+  lift is no step in the history. Put down, each part is the same part
+  moved, one "move" step each in one Undo ("moved N parts"), a figure's
+  later parts with it (`_figure_parts`), seated and judged whole
+  (`_figure_whole`), and aimed back within a stud of where it stood, where
+  the studs nearest do not take it, back exactly where it stood, each part
+  to the place it had (`_figure_home`, `_ghost_at_home`: a driver sat off
+  the studs goes back in its seat). A step edit waits while anything is in hand, as for a copy
+  (`Shell._steps_wait`); put down past the step showing, the timeline goes to
+  that step and says so ("moved N parts to step 4", `Main._show_put_unseen`).
+  Every let-go puts back first and changes nothing: Escape, Undo while the
+  lift is the newest thing done (`Builder.lift_newest`), lifting another
+  figure, a tool chosen, Open/New/reload (`forget_history`), and any change
+  to a part in hand by something else (a session's edit, an undo reaching
+  it: `BrickWorld.hand_touched`, `Builder._hand_touched`, `_apply`). An edit
+  between the lift and the put-down is its own step: two Undos, the file
+  byte for byte. Every path in or out of the hand goes through it
+  (handkeep2, 2026-11-26): X over one plain part lifts it into hand too
+  (`Builder.holds_lifted_part`, put down as a move by `_put_lifted_part`), never
+  off the model; what is in hand keeps its cells in the way of everything but
+  the hand's own ghost (`BrickLattice.take_in_hand`, `_hand_cells`,
+  `hand_free`), so no paste, add or nudge lands where it stood; every new hold
+  lets go first (`Carry.hold`'s `let_go`, the `held_part` setter, a bin part);
+  the model's turn lets go before it turns (`BrickWorld.rotate_model`); a part
+  put back ends the step reveal so the timeline draws it at its own step
+  (`put_from_hand`); a session's undo takes back its own step and leaves the
+  person's lift (`Builder.undo(false)`, `EditVerbs.press(name, false)`,
+  `history_words(n, false)`); Connect refuses a figure's part. A held part's
+  place or colour written round the hand counts in `BrickWorld.round_the_hand`
+  with an error; `tests/test_hand_paths.py` fails when new code writes a
+  part outside BrickWorld, a BrickWorld write skips `_hand_change`, the hand's
+  doors are opened elsewhere, a lift removes or records, or a session presses
+  the person's undo: its probes are `figreview3_probe` (every case) and
+  `handkeep2_probe` (X turned, let go by a bin part, Undo per actor, the held
+  cells, the guard). Probes: `PROBE_SIZE=1280x720 tools/probe.sh handkeep_probe
+  --case=between` (a carried selection with a session's edit and a nudge
+  between: Escape, put down, Undo), and `--case=kill --kind=carry|figure`
+  then `--case=reopen` with one `PROBE_DATA` (the autosave in hand, the
+  process killed, the model opened again: nothing lost); `figreview2_probe`
+  (every case); `PROBE_SIZE=1280x720 tools/probe.sh stepfast2_probe` (a
+  figure in its own sub-model lifted at its step and at the last: in hand,
+  put back, put elsewhere, saved, undone once; aimed back where it stood on a
+  brick; its later plate over a cone or round brick judged as the plate on
+  show), and at `390x844`. `keep_shown` looks only at the parts
   a step flipped and tells the selection's listeners once, 0.3 s after the
   stepping stops (`SETTLE_SECONDS`); the line is said at once. A sub-assembly taken whole is its parts
   on so far and says so ("House selected, 56 of its 149 parts on at this step

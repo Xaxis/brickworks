@@ -310,7 +310,10 @@ picture the assistant is shown.
   that part, not of the window. A column folding or opening glides the model
   to the new middle (the camera's own easing, following the column's slide)
   and holds still while any button or finger is down, so a drag never loses
-  what it grabbed; the ghost is re-aimed as it glides (`lens_moved`).
+  what it grabbed; the ghost is re-aimed as it glides (`lens_moved`, told
+  once each step is on the camera: told before, the ghost rested a step
+  behind, a stud from where a click at 390 x 844 put the part, and
+  `wingplace_probe`'s sweeps put a part down on red; wingfin, 2026-11-24).
   Sliding the camera instead (`h_offset` in perspective, tried 2026-10-12)
   looked at the model 10° from the side. Godot's `project_ray_normal` and
   `project_position` assume a centred frustum and are 0.09 rad out at 168
@@ -3385,6 +3388,24 @@ picture the assistant is shown.
   LABEL=DIR` measures each close-up's face mottle, highlight-line wobble,
   mirrored outlines and the dip by a stud's foot, photograph against
   render (shots.json `breakup`).
+- `a set photographed: its floor` (`RenderSettings.floor`,
+  `StudioRender.PRODUCT_FLOOR` 1, `_floor_of`; path_tracer.glsl's photo
+  version, `floor_kept`, `floor_over`, `FLOOR_OVER` 1.6, `FLOOR_F0`,
+  `FLOOR_GLOSS`; photoreal19, docs/RENDERING.md 5u): at Best in the Product
+  look on the bare seamless (the shadow catcher, no lit stage, no table's
+  relief, no surface; so not the gallery card's desk), the floor a product
+  photograph's set stands on: exposed past white on a white
+  sweep, the shade near the model cooled and coloured by the light the
+  parts send down, and glossy, the model faintly mirrored in it. Traced by
+  the shader's photo version (the marks version with the floor), so the
+  plain and marks versions compile as before. On: the solo judge called the
+  sweep's shots photographs more often with it, sets +0.012 (95%: +0.003 to
+  +0.021), close-ups +0.025 (+0.001 to +0.059). Check: `tools/probe.sh
+  photoreal_probe -- --tag=T --without=floor` draws the parent commit's
+  pictures byte for byte; without it set_6532's shade under the model is
+  cooler and its whites whiter, and the table shots (grey_1x3, black_2x4,
+  green_plate_macro) are the same bytes either way. `card_probe --only=1,5,20`
+  draws the cut-outs byte for byte and the cards without the floor.
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong
@@ -4637,7 +4658,14 @@ with a part in hand a digit is a typed move, never a view: the check lets the
 part go, presses 1 and takes it back with Q before walking into the sky, and
 walks only inside the model's part of the window. Pressing 1 in hand typed
 "1", the view stayed above the model, and the walk ended on the first build's
-offer, whose button's pointer rightly won: m228.) So do `finish`
+offer, whose button's pointer rightly won: m228.) A wheel step that fails,
+or each with `--wheel-trace`, prints the app's view (distance, yaw, focus)
+before and after the wheels, how many wheels reached the canvas, what the
+page and the app have under the pointer, and leaves
+`web_wheel_<step>_<n>x.png`. A canvas that lost its WebGL context (the
+browser's GPU process ended: SwiftShader crashed under the check in rel-m340's
+run and nightreds', 2026-11-24, and every print after read 0.00) is said so,
+"not measured", and not judged by its pixels: run it again. So do `finish`
 (`shots/finishes_<renderer>.png`, a row of one real colour per finish, and
 `finishes_shot_<renderer>.png`, the same in the critique render) and
 `true colour` (`shots/true_colour_<renderer>.png`, with the sampled boxes drawn). `shot` also times a

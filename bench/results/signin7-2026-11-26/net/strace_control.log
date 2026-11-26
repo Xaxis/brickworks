@@ -1,0 +1,65 @@
+1192252 connect(31, {sa_family=AF_UNIX, sun_path="/run/dbus/system_bus_socket"}, 29) = 0
+1192252 connect(41, {sa_family=AF_UNIX, sun_path="/run/user/1000/bus"}, 20) = 0
+1192265 connect(13, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+1192265 connect(13, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+1192265 connect(14, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+1192265 connect(14, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+1192287 connect(15, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+1192251 connect(62, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+1192251 connect(62, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+1192251 connect(62, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+1192251 connect(62, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.66.147.243")}, 16) = 0
+1192251 connect(62, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+1192251 connect(62, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.20.23.154")}, 16) = 0
+1192287 connect(16, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.66.147.243")}, 16) = -1 EINPROGRESS (Operation now in progress)
+1192280 --- SIGTERM {si_signo=SIGTERM, si_code=SI_USER, si_pid=1192245, si_uid=1000} ---
+1192305 +++ killed by SIGTERM +++
+1192302 +++ killed by SIGTERM +++
+1192301 +++ killed by SIGTERM +++
+1192300 +++ killed by SIGTERM +++
+1192299 +++ killed by SIGTERM +++
+1192343 +++ killed by SIGTERM +++
+1192340 +++ killed by SIGTERM +++
+1192280 +++ killed by SIGTERM +++
+1192248 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=1192280, si_uid=1000, si_status=SIGTERM, si_utime=2 /* 0.02 s */, si_stime=3 /* 0.03 s */} ---
+1192287 connect(19, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+1192450 --- SIGTERM {si_signo=SIGTERM, si_code=SI_USER, si_pid=1192245, si_uid=1000} ---
+1192454 +++ killed by SIGTERM +++
+1192481 +++ killed by SIGTERM +++
+1192451 +++ killed by SIGTERM +++
+1192486 +++ killed by SIGTERM +++
+1192455 +++ killed by SIGTERM +++
+1192453 +++ killed by SIGTERM +++
+1192253 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1192268, si_uid=1000, si_status=0, si_utime=2 /* 0.02 s */, si_stime=3 /* 0.03 s */} ---
+1192452 +++ killed by SIGTERM +++
+1192450 +++ killed by SIGTERM +++
+1192248 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=1192450, si_uid=1000, si_status=SIGTERM, si_utime=2 /* 0.02 s */, si_stime=6 /* 0.06 s */} ---
+1192350 --- SIGTERM {si_signo=SIGTERM, si_code=SI_USER, si_pid=1192245, si_uid=1000} ---
+1192361 +++ killed by SIGTERM +++
+1192351 +++ killed by SIGTERM +++
+1192348 +++ killed by SIGTERM +++
+1192336 +++ killed by SIGTERM +++
+1192335 +++ killed by SIGTERM +++
+1192347 +++ killed by SIGTERM +++
+1192333 +++ killed by SIGTERM +++
+1192329 +++ killed by SIGTERM +++
+1192327 +++ killed by SIGTERM +++
+1192325 +++ killed by SIGTERM +++
+1192322 +++ killed by SIGTERM +++
+1192328 +++ killed by SIGTERM +++
+1192321 +++ killed by SIGTERM +++
+1192349 +++ killed by SIGTERM +++
+1192324 +++ killed by SIGTERM +++
+1192320 +++ killed by SIGTERM +++
+1192331 +++ killed by SIGTERM +++
+1192332 +++ killed by SIGTERM +++
+1192330 +++ killed by SIGTERM +++
+1192334 +++ killed by SIGTERM +++
+1192350 +++ killed by SIGTERM +++
+1192323 +++ killed by SIGTERM +++
+1192326 +++ killed by SIGTERM +++
+1192319 +++ killed by SIGTERM +++
+1192265 +++ killed by SIGTERM +++
+1192247 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=1192265, si_uid=1000, si_status=SIGTERM, si_utime=5 /* 0.05 s */, si_stime=9 /* 0.09 s */} ---
+1192112 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1192245, si_uid=1000, si_status=0, si_utime=6 /* 0.06 s */, si_stime=15 /* 0.15 s */} ---
+1192111 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1192112, si_uid=1000, si_status=0, si_utime=48 /* 0.48 s */, si_stime=13 /* 0.13 s */} ---

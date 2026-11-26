@@ -102,7 +102,9 @@
 // GitHub, and have the orangecheck account made around each sign-in, with
 // no client of either and no real orangecheck account; /__ways/state says
 // what each was asked, POST /__ways/oc {mode: up | down | slow} sets
-// Connect's answer. --owner=EMAIL is the console's owner here (MASTER_EMAIL),
+// Connect's answer. A browser whose requests carry x-ways-who signs in at
+// the stand-in's own Google and GitHub pages, /__ways/authorize/<way>, and
+// never goes near the providers'. --owner=EMAIL is the console's owner here (MASTER_EMAIL),
 // a throwaway, never the owner's own account.
 //
 // --hold=talk holds supabase/talk.sql in a Postgres of this machine's own,
@@ -454,7 +456,11 @@ http.createServer(async (incoming, outgoing) => {
     } catch {
       body = {};
     }
-    const said = waysStoodIn.waysRoute(url, incoming.method, body) || { status: 404, value: { error: "not found" } };
+    const said = waysStoodIn.waysRoute(url, incoming.method, body, incoming.headers) || { status: 404, value: { error: "not found" } };
+    if (said.location) {
+      outgoing.writeHead(said.status, { location: said.location, "cache-control": "no-store" });
+      return outgoing.end();
+    }
     outgoing.writeHead(said.status, { "content-type": "application/json", "cache-control": "no-store" });
     return outgoing.end(JSON.stringify(said.value));
   }
@@ -599,6 +605,10 @@ http.createServer(async (incoming, outgoing) => {
     get writableFinished() { return outgoing.writableFinished; },
     get destroyed() { return outgoing.destroyed; },
   };
+  // A check's browser signing in with Google or GitHub goes to the
+  // stand-in's page on this relay, never the provider's (ways_stand_in.mjs
+  // keepHere, signin5).
+  if (waysStoodIn && mapped && mapped[2] === "way_start") waysStoodIn.keepHere(response, incoming.headers);
   try {
     await asking.run(String(url.searchParams.get("op") || url.pathname), () => handler(request, response));
   } catch (trouble) {

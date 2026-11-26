@@ -3559,6 +3559,9 @@ msgstr "%d Teile zu %d zusammengefügt"
 msgid "Connect moves one part: put down what is in hand first"
 msgstr "Verbinden bewegt ein Teil: lege zuerst ab, was du in der Hand hast"
 
+msgid "Connect moves one part, not a minifigure: lift the figure to move it whole"
+msgstr "Verbinden bewegt ein Teil, keine Minifigur: heb die Figur an, um sie ganz zu bewegen"
+
 msgid "Connect: aim the part at the model first, then %s"
 msgstr "Verbinden: richte das Teil zuerst auf das Modell, dann %s"
 
@@ -8317,6 +8320,214 @@ msgstr "Wähle ein Teil aus, um seine bedruckten Varianten zu sehen; Teile einer
 
 msgid "%s has no printed or stickered versions in the library"
 msgstr "Von %s gibt es in der Bibliothek keine bedruckten oder beklebten Varianten"
+
+# The mould maker (Make a mould…): its brushes and tips, its words for a desk and a finger, and what it keeps while a mould is made (figmould)
+msgid "Pull"
+msgstr "Ziehen"
+
+msgid "Push"
+msgstr "Drücken"
+
+msgid "Smooth"
+msgstr "Glätten"
+
+msgid "Pinch"
+msgstr "Kneifen"
+
+msgid "Flatten"
+msgstr "Abflachen"
+
+msgid "Grab"
+msgstr "Greifen"
+
+msgid "Draw the surface out towards you"
+msgstr "Zieh die Oberfläche zu dir heraus"
+
+msgid "Press the surface in"
+msgstr "Drück die Oberfläche ein"
+
+msgid "Grow it: swell where the brush is, each point straight out"
+msgstr "Wachsen lassen: unter dem Pinsel anschwellen, jeder Punkt gerade nach außen"
+
+msgid "Shrink it: slim where the brush is, each point straight in"
+msgstr "Schrumpfen lassen: unter dem Pinsel verschlanken, jeder Punkt gerade nach innen"
+
+msgid "Even out bumps and ridges"
+msgstr "Beulen und Grate ausgleichen"
+
+msgid "Draw the surface together into a crease or a ridge"
+msgstr "Die Oberfläche zu einer Falte oder einem Grat zusammenziehen"
+
+msgid "Flatten it to the plane under the brush"
+msgstr "Auf die Ebene unter dem Pinsel abflachen"
+
+msgid "Take hold of it and drag it about"
+msgstr "Pack sie und zieh sie herum"
+
+msgid "Dome"
+msgstr "Kuppel"
+
+msgid "Club"
+msgstr "Keule"
+
+msgid "Save mould"
+msgstr "Form speichern"
+
+msgid "Size (LDU)"
+msgstr "Größe (LDU)"
+
+msgid "Symmetry"
+msgstr "Symmetrie"
+
+msgid "Lattice"
+msgstr "Gitter"
+
+msgid "Check walls"
+msgstr "Wände prüfen"
+
+msgid "Finer"
+msgstr "Feiner"
+
+msgid "Brush strength"
+msgstr "Pinselstärke"
+
+msgid "The part being shaped"
+msgstr "Das Teil, das geformt wird"
+
+msgid "A part number, or dome (to wear) or club (to hold)"
+msgstr "Eine Teilenummer, oder dome (zum Tragen) oder club (zum Halten)"
+
+msgid "Start again from this part (Undo goes back)"
+msgstr "Neu mit diesem Teil beginnen (Rückgängig geht zurück)"
+
+msgid "A plain cap to wear, with a hair piece's socket"
+msgstr "Eine schlichte Kappe zum Tragen, mit der Aufnahme eines Haarteils"
+
+msgid "A plain bar to hold with a ball on the end, held where a sword is"
+msgstr "Ein schlichter Stab zum Halten mit einer Kugel am Ende, gehalten, wo ein Schwert gehalten wird"
+
+msgid "Make the part, keep it, and put it on the figure"
+msgstr "Das Teil herstellen, behalten und der Figur anziehen"
+
+msgid "Back to the figure; the mould is kept as it is for next time"
+msgstr "Zurück zur Figur; die Form bleibt für das nächste Mal, wie sie ist"
+
+msgid "How far the brush reaches, in LDU (2.5 to a millimetre)"
+msgstr "Wie weit der Pinsel reicht, in LDU (2,5 auf einen Millimeter)"
+
+msgid "Every stroke on both sides of the part's middle"
+msgstr "Jeder Strich auf beiden Seiten der Mitte des Teils"
+
+msgid "27 handles round the part: drag one to bend the whole part"
+msgstr "27 Griffe um das Teil: Zieh an einem, um das ganze Teil zu biegen"
+
+msgid "Mark in red where the part is thinner than 1 mm"
+msgstr "Rot markieren, wo das Teil dünner als 1 mm ist"
+
+msgid "More corners where the surface is coarse, for finer detail (Undo takes it back)"
+msgstr "Mehr Ecken, wo die Oberfläche grob ist, für feinere Einzelheiten (Rückgängig nimmt es zurück)"
+
+msgid "Take the last stroke back (%s)"
+msgstr "Den letzten Strich zurücknehmen (%s)"
+
+msgid "Put it back (%s)"
+msgstr "Wieder zurücklegen (%s)"
+
+msgid "Drag on the part to sculpt, off it to turn it; wheel to come closer. Blue is its connection, which stays as it is."
+msgstr "Zieh auf dem Teil, um es zu formen, daneben, um es zu drehen; mit dem Mausrad kommst du näher. Blau ist seine Verbindung, die bleibt, wie sie ist."
+
+msgid "Drag on the part to sculpt, off it to turn it; two fingers turn it, and pinch to come closer. Blue is its connection, which stays as it is."
+msgstr "Zieh auf dem Teil, um es zu formen, daneben, um es zu drehen; zwei Finger drehen es, und mit zwei Fingern zoomst du. Blau ist seine Verbindung, die bleibt, wie sie ist."
+
+msgid "That part has no geometry to sculpt."
+msgstr "Dieses Teil hat keine Geometrie zum Formen."
+
+msgid "Make a mould from %s"
+msgstr "Form aus %s modellieren"
+
+msgid "Make a mould from your %s"
+msgstr "Form aus deinem Teil „%s“ modellieren"
+
+msgid "Your %s, to shape further. Saved, it is a new part; the one before stays."
+msgstr "Dein Teil „%s“, zum Weiterformen. Gespeichert ist es ein neues Teil; das vorige bleibt."
+
+msgid "Your mould from before, as you left it. Start begins again from %s; Undo goes back to it."
+msgstr "Deine Form von vorhin, wie du sie gelassen hast. „Los geht's“ beginnt neu mit %s; Rückgängig führt zu ihr zurück."
+
+msgid "Your mould from before could not be read back, so this begins again from %s."
+msgstr "Deine Form von vorhin ließ sich nicht wieder lesen, darum beginnt dies neu mit %s."
+
+msgid "Your mould could not be kept: there is no room on the disk."
+msgstr "Deine Form ließ sich nicht aufbewahren: Auf dem Datenträger ist kein Platz mehr."
+
+msgid "Kept on your account too: wear it in the site's minifig maker (Edit profile)."
+msgstr "Auch in deinem Konto aufbewahrt: Trage sie im Minifiguren-Baukasten der Website (Profil bearbeiten)."
+
+msgid "Kept in the studio only: %s"
+msgstr "Nur im Studio aufbewahrt: %s"
+
+msgid "sign in to keep it on your account"
+msgstr "melde dich an, um sie in deinem Konto aufzubewahren"
+
+msgid "it is not kept on this device"
+msgstr "sie ist auf diesem Gerät nicht aufbewahrt"
+
+msgid "sign in again to keep it on your account"
+msgstr "melde dich erneut an, um sie in deinem Konto aufzubewahren"
+
+msgid "Brickworks could not be reached"
+msgstr "Brickworks war nicht erreichbar"
+
+msgid "Brickworks could not take it just now (%d)"
+msgstr "Brickworks konnte sie gerade nicht annehmen (%d)"
+
+msgid "your account has room for 40 moulds and 24 MB of them: remove one in the site's minifig maker (Edit profile, Hair and hats), and this one goes the next time the builder opens"
+msgstr "dein Konto hat Platz für 40 Formen und 24 MB davon: Entferne eine im Minifiguren-Baukasten der Website (Profil bearbeiten, Haare und Hüte), dann geht diese beim nächsten Öffnen des Baukastens hinüber"
+
+msgid "it is bigger than the site keeps: 2 MB and 18,000 triangles at most"
+msgstr "sie ist größer, als die Website aufbewahrt: höchstens 2 MB und 18.000 Dreiecke"
+
+msgid "the site would not keep its file: save it again"
+msgstr "die Website wollte ihre Datei nicht aufbewahren: Speichere sie noch einmal"
+
+msgid "more moulds than the site takes in an hour: it goes the next time the builder opens"
+msgstr "mehr Formen, als die Website in einer Stunde annimmt: Sie geht beim nächsten Öffnen des Baukastens hinüber"
+
+msgid "moulds on your account are not open on Brickworks yet"
+msgstr "Formen in deinem Konto gibt es bei Brickworks noch nicht"
+
+msgid "1 mould made here while nobody was signed in is kept in the studio only. Is it yours?"
+msgstr "1 Form, die hier ohne Anmeldung gemacht wurde, ist nur im Studio aufbewahrt. Ist sie deine?"
+
+msgid "%d moulds made here while nobody was signed in are kept in the studio only. Are they yours?"
+msgstr "%d Formen, die hier ohne Anmeldung gemacht wurden, sind nur im Studio aufbewahrt. Sind es deine?"
+
+msgid "Put on my account"
+msgstr "In mein Konto"
+
+msgid "Not mine"
+msgstr "Nicht meine"
+
+msgid "Kept on your account too: %d of them."
+msgstr "Auch in deinem Konto aufbewahrt: %d davon."
+
+msgid "Send them to the account signed in now, for the site's minifig maker"
+msgstr "Sie an das jetzt angemeldete Konto senden, für den Minifiguren-Baukasten der Website"
+
+msgid "Keep them in the studio only, and ask no more"
+msgstr "Sie nur im Studio behalten und nicht mehr fragen"
+
+msgid "%s has %s triangles, and the maker shapes parts of up to %s."
+msgstr "%s hat %s Dreiecke, und hier lassen sich Teile mit bis zu %s formen."
+
+msgid "%s has more than %s corners, more than a part of at most %s triangles could use: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s hat mehr als %s Ecken, mehr als ein Teil aus höchstens %s Dreiecken brauchen kann: verringere sie zuerst in deinem 3D-Programm (Blenders Decimate-Modifier tut das)."
+
+msgid "Building the mould…"
+msgstr "Die Form wird gebaut…"
+
+msgid "%d triangles · about %d kB in a file"
+msgstr "%d Dreiecke · etwa %d kB in einer Datei"
 
 # The part maker: its families, sizes and studs, and the line saying what the part is, its pieces where ", " lists them
 msgid "Make a part"
@@ -15032,6 +15243,10 @@ msgstr "Kein Platz in %s: verschiebe, was dort im Weg ist, oder nutze Bauen › 
 msgid "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique"
 msgstr "Kein Platz in %s: es käme unter den Boden. Heb diese Kopie an, oder nutze Bauen › Diese Kopie eigenständig machen"
 
+# Both twins of a part changed in one step, two copies of one sub-model made two shapes: refused (wingfix2)
+msgid "Moved in two copies of %s at once, and differently: move it in one and the others follow, or use Build › Make this copy unique"
+msgstr "In zwei Kopien von %s zugleich verschoben, und verschieden: verschiebe es in einer, die anderen folgen, oder nutze Bauen › Diese Kopie eigenständig machen"
+
 # keptbuilt (APP_UX9 #6)
 msgid "Built"
 msgstr "Aufgebaut"
@@ -17363,8 +17578,8 @@ msgstr "Das Thema der Frage in Talk öffnen"
 msgid "Post the question in Talk's Help, with the model in 3D at this step and the parts you picked lit"
 msgstr "Die Frage in der Hilfe von Talk stellen, mit dem Modell in 3D bei diesem Bauschritt und den gewählten Teilen hervorgehoben"
 
-msgid "Builders answer on the parts, and the answers light them here"
-msgstr "Bauende antworten an den Teilen, und die Antworten heben sie hier hervor"
+msgid "Builders answer on the parts, and the answers light them here."
+msgstr "Bauende antworten an den Teilen, und die Antworten heben sie hier hervor."
 
 msgid "How should I build step %d?"
 msgstr "Wie baue ich Bauschritt %d?"
@@ -17378,20 +17593,53 @@ msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, in 3D gezeigt"
 msgid "Asks in Talk's Help about the whole model, shown in 3D"
 msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, in 3D gezeigt"
 
-msgid "Pick parts first to have them lit"
-msgstr "Wähle zuerst Teile, damit sie hervorgehoben werden"
+msgid "Pick parts first to have them lit."
+msgstr "Wähle zuerst Teile, damit sie hervorgehoben werden."
 
-msgid "Asks in Talk's Help about step %d, with %s lit in 3D"
-msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s in 3D hervorgehoben"
+msgid "Asks in Talk's Help about step %d, with %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s in 3D hervorgehoben."
 
-msgid "Asks in Talk's Help about the whole model, with %s lit in 3D"
-msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s in 3D hervorgehoben"
+msgid "Asks in Talk's Help about the whole model, with %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s in 3D hervorgehoben."
 
 msgid "%d more"
 msgstr "%d weitere"
 
 msgid "a part"
 msgstr "ein Teil"
+
+# Ask's line with two, three, or three and more parts picked, each in a place
+# of its own, and each part as main.gd's _ask_context names it: the part's name
+# (PartWords) and its colour's.
+msgid "Asks in Talk's Help about step %d, with %s and %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s und %s in 3D hervorgehoben."
+
+msgid "Asks in Talk's Help about the whole model, with %s and %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s und %s in 3D hervorgehoben."
+
+msgid "Asks in Talk's Help about step %d, with %s, %s and %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s, %s und %s in 3D hervorgehoben."
+
+msgid "Asks in Talk's Help about the whole model, with %s, %s and %s lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s, %s und %s in 3D hervorgehoben."
+
+msgid "Asks in Talk's Help about step %d, with %s, %s, %s and %d more lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach Bauschritt %d, mit %s, %s, %s und %d weiteren in 3D hervorgehoben."
+
+msgid "Asks in Talk's Help about the whole model, with %s, %s, %s and %d more lit in 3D."
+msgstr "Fragt in der Hilfe von Talk nach dem ganzen Modell, mit %s, %s, %s und %d weiteren in 3D hervorgehoben."
+
+msgid "the %s in %s"
+msgstr "%s (%s)"
+
+msgid "the %s in its own colour"
+msgstr "%s (eigene Farbe)"
+
+msgid "a part in %s"
+msgstr "ein Teil (%s)"
+
+msgid "a part in its own colour"
+msgstr "ein Teil (eigene Farbe)"
 
 msgid "Asking in Talk"
 msgstr "Wird in Talk gefragt"
@@ -17635,6 +17883,9 @@ msgstr "%s ist keine 3D-Datei, aus der sich hier ein Teil machen lässt: wähle 
 msgid "%s has %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
 msgstr "%s hat %s Dreiecke. Ein Teil lässt sich aus höchstens %s machen: verringere sie zuerst in deinem 3D-Programm (Blenders Decimate-Modifier tut das)."
 
+msgid "%s has at least %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s hat mindestens %s Dreiecke. Ein Teil lässt sich aus höchstens %s machen: verringere sie zuerst in deinem 3D-Programm (Blenders Decimate-Modifier tut das)."
+
 msgid "%s has no size: its points are all in one place, on one line or one flat sheet."
 msgstr "%s hat keine Größe: seine Punkte liegen alle an einer Stelle, auf einer Linie oder in einer flachen Ebene."
 
@@ -17858,6 +18109,9 @@ msgstr "%d aus späteren Schritten ausgelassen."
 msgid "moved %s"
 msgstr "%s verschoben"
 
+msgid "lifted %s"
+msgstr "%s angehoben"
+
 msgid "moving %s"
 msgstr "%s wird verschoben"
 
@@ -17875,3 +18129,160 @@ msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut"
 
 msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
 msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut, %d darin"
+
+msgid "More menus"
+msgstr "Weitere Menüs"
+
+# Words the studio makes at the moment (langsweep): what an undo takes back,
+# History's rows, the banner inside a sub-assembly, a phone's line and row.
+msgid "placed %s"
+msgstr "%s platziert"
+
+msgid "removed %s"
+msgstr "%s entfernt"
+
+msgid "removed %d"
+msgstr "%d entfernt"
+
+msgid "painted %s"
+msgstr "%s eingefärbt"
+
+msgid "changed %s"
+msgstr "%s geändert"
+
+msgid "turned %s"
+msgstr "%s gedreht"
+
+msgid "turned %s %d°"
+msgstr "%s um %d° gedreht"
+
+msgid "tipped %s over"
+msgstr "%s gekippt"
+
+msgid "seated %s on their studs"
+msgstr "%s auf ihre Noppen gesetzt"
+
+msgid "swapped %s for %s"
+msgstr "%s gegen %s getauscht"
+
+msgid "made %s the sub-model %s"
+msgstr "%s zum Untermodell %s gemacht"
+
+msgid "took %s out of its sub-model"
+msgstr "%s aus seinem Untermodell genommen"
+
+msgid "took %s out of its sub-assembly"
+msgstr "%s aus seiner Baugruppe genommen"
+
+msgid "swung %s on its joint"
+msgstr "%s am Gelenk geschwenkt"
+
+msgid "pasted %s"
+msgstr "%s eingefügt"
+
+msgid "moved %s %s LDU"
+msgstr "%s um %s LDU verschoben"
+
+msgid "mirrored %s"
+msgstr "%s gespiegelt"
+
+msgid "unlocked %s"
+msgstr "%s entsperrt"
+
+msgid "put down %s"
+msgstr "%s abgesetzt"
+
+msgid "a row of %d copies"
+msgstr "eine Reihe aus %d Kopien"
+
+msgid "Undo %s"
+msgstr "Rückgängig: %s"
+
+msgid "Back to before: %s"
+msgstr "Zurück vor: %s"
+
+msgid "Editing %s"
+msgstr "%s wird bearbeitet"
+
+msgid "its copy follows"
+msgstr "seine Kopie folgt"
+
+msgid "%d copies follow"
+msgstr "%d Kopien folgen"
+
+msgid "%s (copy %d)"
+msgstr "%s (Kopie %d)"
+
+msgid "Stop editing inside it"
+msgstr "Bearbeiten darin beenden"
+
+msgid "What you put down goes into it, and a click takes one part of it. Every other copy is changed with it, mirrored where it is mirrored. Esc or Done when finished."
+msgstr "Was du absetzt, kommt hinein, und ein Klick nimmt ein Teil davon. Jede andere Kopie ändert sich mit, gespiegelt, wo sie gespiegelt ist. Esc oder Fertig, wenn du fertig bist."
+
+msgid "Tip"
+msgstr "Kippen"
+
+msgid "Lay the part on its side"
+msgstr "Das Teil auf die Seite legen"
+
+msgid "Turn the part a quarter"
+msgstr "Das Teil um eine Vierteldrehung drehen"
+
+msgid "Selected · drag to move · Select adds more · hold for actions"
+msgstr "Ausgewählt · ziehen zum Verschieben · Auswählen nimmt weitere dazu · halten für Aktionen"
+
+msgid "%d selected · drag to move · Select adds more · hold for actions"
+msgstr "%d ausgewählt · ziehen zum Verschieben · Auswählen nimmt weitere dazu · halten für Aktionen"
+
+msgid "%d selected · tap parts to add or take out · Select when done"
+msgstr "%d ausgewählt · Teile antippen zum Dazunehmen oder Herausnehmen · Auswählen, wenn fertig"
+
+msgid "Tap parts to select them · Select when done"
+msgstr "Teile antippen, um sie auszuwählen · Auswählen, wenn fertig"
+
+msgid "Tap to put %s down · drag turns the view · two fingers turn and zoom"
+msgstr "Antippen, um %s abzusetzen · Ziehen dreht die Ansicht · zwei Finger drehen und zoomen"
+
+msgid "Tap where it goes · Select puts it back"
+msgstr "Antippen, wo es hinkommt · Auswählen legt es zurück"
+
+msgid "Tap a part to take it off · Select when done"
+msgstr "Ein Teil antippen, um es abzunehmen · Auswählen, wenn fertig"
+
+msgid "Tap a part to paint it"
+msgstr "Ein Teil antippen, um es einzufärben"
+
+msgid "Parts to pick one · tap a part to select · drag turns the view · pinch zooms"
+msgstr "Teile, um eines zu nehmen · ein Teil antippen zum Auswählen · Ziehen dreht die Ansicht · zwei Finger zoomen"
+
+msgid "%s selected, %d of its %d parts on at this step · hold, then Edit inside, to change one"
+msgstr "%s ausgewählt, %d seiner %d Teile in diesem Schritt verbaut · halten, dann Innen bearbeiten, um eines zu ändern"
+
+msgid "%s selected, %d parts · hold, then Edit inside, to change one"
+msgstr "%s ausgewählt, %d Teile · halten, dann Innen bearbeiten, um eines zu ändern"
+
+msgid "About, feedback, finding a command, the website, the docs and your account"
+msgstr "Über, Feedback, einen Befehl finden, die Website, die Dokumentation und dein Konto"
+
+msgid "About, feedback, finding a command, the website, the docs and your account, and back to brickworks.diy"
+msgstr "Über, Feedback, einen Befehl finden, die Website, die Dokumentation und dein Konto, und zurück zu brickworks.diy"
+
+msgid "Click a face, an edge or a corner to look from there; drag to turn the view"
+msgstr "Eine Fläche, eine Kante oder eine Ecke anklicken, um von dort zu schauen; ziehen dreht die Ansicht"
+
+msgid "click for a step, hold to keep turning, or drag"
+msgstr "klicken für einen Schritt, halten zum Weiterdrehen, oder ziehen"
+
+msgid "Slide the view — drag this, or click one of its arrows"
+msgstr "Ansicht verschieben — dies ziehen oder einen seiner Pfeile anklicken"
+
+msgid "click, hold, or drag up and down"
+msgstr "klicken, halten oder auf und ab ziehen"
+
+msgid "Fit the selection, or the whole model"
+msgstr "Auswahl einpassen, oder das ganze Modell"
+msgid "This account signs in only with a code we email you."
+msgstr "Bei diesem Konto meldest du dich nur mit einem Code an, den wir dir mailen."
+
+msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
+msgstr "Gerade gab es zu viele Anmeldungen mit %s. Versuch es in ein paar Minuten noch einmal oder melde dich mit einem Code an, den wir dir mailen."

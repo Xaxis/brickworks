@@ -1,0 +1,13 @@
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_account_erase.py .............
+
+13 passed in 2.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_console3.py ........................
+
+24 passed in 6.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_feedback.py .................
+
+17 passed in 4.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_console2.py ..............
+
+14 passed in 5.2s  (tools/minitest.py, not pytest)
+68 passed in 7.8s over 4 files  (tools/minitest.py, not pytest)

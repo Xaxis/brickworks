@@ -63,7 +63,11 @@
 // connection. A client that proves itself (a secret, or a signed
 // assertion) keeps one refresh token, good for 90 days from its last use.
 // Disconnect in the app deletes the connection, and every token of it goes
-// with it.
+// with it. Every code names the session that approved it, and the code is
+// traded only while that session is there, asked under the lock of the way
+// that started it: a connection approved from a sign-in by orangecheck,
+// Google or GitHub is that sign-in's too, and unlinking that way ends it
+// (codeFor, token; signin6).
 
 import { noted } from "./_noted.js";
 import { timingSafeEqual } from "node:crypto";
@@ -421,30 +425,32 @@ async function check(request, response, origin) {
   });
 }
 
-/// What a sign-in with orangecheck carries over to a connection it
-/// approves (2026-10-23, supabase/orangecheck.sql): its id, rh, aud and
-/// iat, so the connection ends when that sign-in is ended everywhere on
-/// orangecheck, or the id is unlinked. Nothing for any other sign-in.
-async function orangecheckOf(claims) {
-  if (claims.app_metadata?.orangecheck !== true || !claims.session_id) return {};
-  const session = await db("rpc/oc_session_of", { method: "POST", body: { session: claims.session_id } });
-  return session && session.bound
-    ? { oc_did: session.did, oc_rh: session.rh, oc_aud: session.aud, oc_iat: session.iat } : {};
-}
+const SIGNED_OUT = "You were signed out. Sign in again.";
 
-/// Where the person goes back to with a code for [asked], as [owner],
-/// signed in as [claims].
-async function codeFor(asked, owner, origin, claims) {
+/// Where the person goes back to with a code for [asked], signed in as
+/// [claims]: or null when their session is gone. The code names the
+/// session that approved it (signin6, supabase/approving_session.sql): a
+/// key of auth.sessions, so the database writes it only while that session
+/// is there, whatever any instance holds about it, and deletes it with the
+/// session. Nothing about where the session came from is written here: the
+/// exchange asks the session itself (token, oauth_code_grant).
+async function codeFor(asked, claims, origin) {
+  if (!claims.session_id) return null;
   const code = secret("bwk");
-  await db("oauth_codes", {
-    method: "POST",
-    body: {
-      hash: sha256(code), client_id: asked.client.client_id, owner,
-      redirect_uri: asked.redirect, code_challenge: asked.challenge,
-      resource: asked.resource, scope: asked.scope, expires_at: iso(CODE_TTL_S * 1000),
-      ...(await orangecheckOf(claims)),
-    },
-  });
+  try {
+    await db("oauth_codes", {
+      method: "POST",
+      body: {
+        hash: sha256(code), client_id: asked.client.client_id, owner: claims.sub, session_id: claims.session_id,
+        redirect_uri: asked.redirect, code_challenge: asked.challenge,
+        resource: asked.resource, scope: asked.scope, expires_at: iso(CODE_TTL_S * 1000),
+      },
+    });
+  } catch (trouble) {
+    // The session's key refused (23503, 409): signed out, or unlinked.
+    if (/: 409$/.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
   await db(`oauth_clients?client_id=eq.${encodeURIComponent(asked.client.client_id)}`, {
     method: "PATCH", body: { used_at: iso() },
   });
@@ -457,7 +463,8 @@ async function approve(request, response, origin) {
   const asked = await authorization(fields(request), origin);
   if (asked.refuse) return response.status(400).json({ refuse: asked.refuse });
   if (asked.back) return response.status(200).json({ redirect: asked.back });
-  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin, claims) });
+  const redirect = await codeFor(asked, claims, origin);
+  return redirect ? response.status(200).json({ redirect }) : response.status(401).json({ error: SIGNED_OUT });
 }
 
 /// Asked by the page before it asks the person: has this account allowed
@@ -481,7 +488,8 @@ async function remembered(request, response, origin) {
     + `&redirect_uri=eq.${encodeURIComponent(asked.redirect)}`
     + `&resource=eq.${encodeURIComponent(asked.resource)}&select=id&limit=1`);
   if (!allowed || !allowed.length) return response.status(200).json({ ask: true });
-  return response.status(200).json({ redirect: await codeFor(asked, claims.sub, origin, claims) });
+  const redirect = await codeFor(asked, claims, origin);
+  return redirect ? response.status(200).json({ redirect }) : response.status(401).json({ error: SIGNED_OUT });
 }
 
 async function deny(request, response, origin) {
@@ -582,26 +590,34 @@ function sha256Base64Url(value) {
   return Buffer.from(sha256(value), "hex").toString("base64url");
 }
 
+/// The token endpoint's answer for [access] and [refresh].
+function tokensOf(access, refresh, scope) {
+  return { access_token: access, token_type: "Bearer", expires_in: ACCESS_TTL_S, refresh_token: refresh,
+    scope: scope || SCOPE };
+}
+
 /// A new access token for [grant], with a new refresh token, or with
-/// [kept], the one the client holds and keeps.
+/// [kept], the one the client holds and keeps; null when the connection
+/// was deleted under it (an Unlink, Disconnect, Sign out everywhere): its
+/// tokens' key to it refuses them (409), and the answer is invalid_grant,
+/// never a "try again" that cannot succeed (signreview3 N2).
 async function issue(grant, kept = "") {
   const access = secret("bwa");
   const refresh = kept || secret("bwr");
-  await db("oauth_tokens", {
-    method: "POST",
-    body: [
-      { hash: sha256(access), grant_id: grant.id, kind: "access", expires_at: iso(ACCESS_TTL_S * 1000) },
-      ...(kept ? [] : [{ hash: sha256(refresh), grant_id: grant.id, kind: "refresh",
-        expires_at: iso(REFRESH_TTL_S * 1000) }]),
-    ],
-  });
-  return {
-    access_token: access,
-    token_type: "Bearer",
-    expires_in: ACCESS_TTL_S,
-    refresh_token: refresh,
-    scope: grant.scope || SCOPE,
-  };
+  try {
+    await db("oauth_tokens", {
+      method: "POST",
+      body: [
+        { hash: sha256(access), grant_id: grant.id, kind: "access", expires_at: iso(ACCESS_TTL_S * 1000) },
+        ...(kept ? [] : [{ hash: sha256(refresh), grant_id: grant.id, kind: "refresh",
+          expires_at: iso(REFRESH_TTL_S * 1000) }]),
+      ],
+    });
+  } catch (trouble) {
+    if (/: 409$/.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
+  return tokensOf(access, refresh, grant.scope);
 }
 
 /// The person's open tabs hear that Claude has just been connected, so the
@@ -651,24 +667,45 @@ async function token(request, response, origin) {
     if (given.resource !== undefined && resourceAsked(given.resource, origin) !== row.resource) {
       return oauthError(response, 400, "invalid_target", "resource is not the one the code was issued for");
     }
-    // Approved while signed in with orangecheck: only while that id is
-    // still the account's. Unlinking deletes such codes too
-    // (supabase/orangecheck.sql oc_unlink); this is for one read before it
-    // (oc188's review, L2).
-    if (row.oc_did && (await db("rpc/oc_account_of", { method: "POST", body: { did: row.oc_did } })) !== row.owner) {
-      return oauthError(response, 400, "invalid_grant", "the orangecheck sign-in that approved this was unlinked");
-    }
-    const [grant] = await db("oauth_grants", {
+    // The session that approved it, asked as it is now, under the lock of
+    // the way that started it (way_set's for Google and GitHub, oc_unlink's
+    // for orangecheck), and the connection written with that way, and its
+    // tokens, in the same step, or nothing (supabase/approving_session.sql
+    // oauth_code_grant; signin6). So an Unlink, an orangecheck unlink or
+    // Sign out everywhere before it is seen here, and one after it deletes
+    // what it wrote. A session gone, unlinked, or not known (a code from
+    // before codes named one) is refused: never taken for a code's.
+    const access = secret("bwa");
+    const refresh = secret("bwr");
+    const made = await db("rpc/oauth_code_grant", {
       method: "POST",
       body: {
-        owner: row.owner, client_id: client.client_id, client_name: client.client_name,
-        redirect_uri: row.redirect_uri, resource: row.resource, scope: row.scope, used_at: iso(),
-        oc_did: row.oc_did ?? null, oc_rh: row.oc_rh ?? null, oc_aud: row.oc_aud ?? null, oc_iat: row.oc_iat ?? null,
+        session: row.session_id ?? null, owner: row.owner, client: client.client_id,
+        client_name: client.client_name ?? null, redirect_uri: row.redirect_uri, resource: row.resource,
+        scope: row.scope ?? null, access_hash: sha256(access), access_until: iso(ACCESS_TTL_S * 1000),
+        refresh_hash: sha256(refresh), refresh_until: iso(REFRESH_TTL_S * 1000),
       },
-      prefer: "return=representation",
     });
-    const tokens = await issue(grant);
-    await tellTabs(row.owner, clientLabel(grant)).catch(() => {});
+    if (!made?.grant) {
+      return oauthError(response, 400, "invalid_grant", made?.refused === "unlinked"
+        ? "the sign-in that approved this was unlinked" : "the sign-in that approved this has ended");
+    }
+    // Approved from an orangecheck sign-in: and not ended everywhere on
+    // orangecheck since, as its session is asked on every request (api/
+    // _oc.js sessionStanding), or the connection is not kept.
+    if (made.oc_rh) {
+      const { grantStanding } = await import("./_oc.js");
+      const standing = await grantStanding(made);
+      if (standing !== "live") {
+        await db(`oauth_grants?id=eq.${made.grant}`, { method: "DELETE" }).catch(() => {});
+        return standing === "revoked"
+          ? oauthError(response, 400, "invalid_grant", "the orangecheck sign-in that approved this was ended")
+          : oauthError(response, 503, "temporarily_unavailable", "try again in a minute");
+      }
+    }
+    const tokens = tokensOf(access, refresh, row.scope);
+    await tellTabs(row.owner, clientLabel({ client_id: client.client_id, client_name: client.client_name,
+      redirect_uri: row.redirect_uri })).catch(() => {});
     if (client.client_id === CLAUDE_AI) await rememberClaude(row.owner).catch(() => {});
     if (Math.random() < 0.1) await db("rpc/oauth_sweep", { method: "POST", body: {} }).catch(() => {});
     return response.status(200).json(tokens);
@@ -728,7 +765,9 @@ async function token(request, response, origin) {
         method: "PATCH", body: { expires_at: iso(REFRESH_TTL_S * 1000) },
       });
     }
-    return response.status(200).json(await issue(grant, held ? presented : ""));
+    const renewed = await issue(grant, held ? presented : "");
+    if (!renewed) return oauthError(response, 400, "invalid_grant", "that refresh token is no longer good");
+    return response.status(200).json(renewed);
   }
 
   return oauthError(response, 400, "unsupported_grant_type",

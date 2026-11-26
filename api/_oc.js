@@ -36,7 +36,7 @@
 // the token is taken as the window's is: checkToken, then the same
 // sign-in.
 
-import { forgetSessions, isTestAccount, sessionEnded, sessionOf, sessionWay } from "./_auth.js";
+import { AuthError, forgetSessions, isTestAccount, sessionEnded, sessionOf, standingOf } from "./_auth.js";
 import { db } from "./_db.js";
 import { audiences, nativeOffered, ocConfigured, ocHosts } from "./_oc_config.js";
 import {
@@ -503,19 +503,117 @@ const FRESH_SECONDS = 300;
 /// code sent). Nor is a password, but a test account's
 /// (tools/web/session.mjs), whose address nobody can receive mail at:
 /// anybody signed in could set a password on their account (oc188's
-/// review, H1; supabase/no_new_ways_in.sql now refuses it). Throws when
-/// either record cannot be read.
+/// review, H1; supabase/no_new_ways_in.sql now refuses it).
+///
+/// All of it from one read of the session as it is now (api/_auth.js
+/// standingOf), never a held one: a way's session, read gone, was read as a
+/// code's while another instance held it alive (signin6, the class of
+/// signreview3 R1). Throws AuthError 401 when the session is gone, and
+/// throws when it cannot be read: whoever asked refuses.
 export async function codeOf(claims) {
-  const [session, way] = claims.session_id
-    ? await Promise.all([sessionOf(claims.session_id), sessionWay(claims.session_id)]) : [null, null];
+  const standing = await standingOf(claims);
+  if (!standing.exists) throw new AuthError("You were signed out. Sign in again.");
   const amr = Array.isArray(claims.amr) ? claims.amr : [];
-  const bound = Boolean(session && session.bound);
-  const recent = (one) => Boolean(one && session && session.exists && !bound && !way
-    && Date.now() / 1000 - Number(one.timestamp) <= FRESH_SECONDS);
+  const coded = standing.by === "code";
+  const recent = (one) => Boolean(one && coded && Date.now() / 1000 - Number(one.timestamp) <= FRESH_SECONDS);
   const fresh = recent(amr.find((one) => one?.method === "otp" || (one?.method === "password" && isTestAccount(claims))));
   const address = String(claims.email || "").trim().toLowerCase();
   const emailed = recent(amr.find((one) => one?.method === "otp")) && address && !madeUp(address) ? address : null;
-  return { bound, way, fresh, emailed };
+  return { bound: Boolean(standing.bound), way: standing.way, fresh, emailed };
+}
+
+// ---------------------------------------------------------------------------
+// The one rule for a change to how an account signs in, or to end it
+// (signin7, signreview4 R4-1).
+
+export const CONFIRM_FIRST = "Confirm it is you first, with a code we email you.";
+const NOT_CHECKED = "Brickworks could not check your sign-in just now, so nothing was changed. Try again in a minute.";
+
+/// Whether the session behind [claims] may give its account a way in, or
+/// end the account: Delete account (and an age answer that deletes it), Link
+/// again, linking orangecheck, keeping GitHub's id, the console's delete and
+/// its sign-in switches; and whatever changes how it signs in from here on
+/// (unlinking orangecheck). Two things, for every kind of session alike: the
+/// session as it is now (codeOf, one live read: gone is 401, unreadable 503,
+/// never verify()'s held answer, which passed for up to 5 s after an Unlink
+/// had ended the session, R4-1 Z1 and L1), and a sign-in by a code emailed
+/// to the account in the last five minutes (codeOf's fresh), which no
+/// session Google, GitHub or orangecheck started can be (Y1, Y2). An account
+/// whose address is made up (orangecheck's own, api/orangecheck.js) takes no
+/// code: its proof is [orangecheck], a fresh sign-in with orangecheck as the
+/// id this account has, checked and spent here. {asked} (codeOf's answer)
+/// when it may; otherwise {status, body} to answer with: 401 signed out,
+/// 403 {fresh: false} (or {orangecheck: true}), 503 when it cannot be read.
+/// Unlinking Google or GitHub takes a way away and gives none: it asks the
+/// session as it is now alone (api/_ways.js waysRoute), so a way's own
+/// session can still end itself.
+export async function stepUp(claims, { orangecheck = undefined } = {}) {
+  let asked;
+  try {
+    asked = await codeOf(claims);
+  } catch (trouble) {
+    if (trouble instanceof AuthError) return { status: trouble.status, body: { error: trouble.message } };
+    console.error(`auth: a change's sign-in was not read: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { status: 503, body: { error: NOT_CHECKED } };
+  }
+  if (madeUp(claims.email)) {
+    if (orangecheck === undefined) {
+      return { status: 403, body: { error: "Sign in with orangecheck again first, as this account.", orangecheck: true } };
+    }
+    const proved = await sameOrangecheck(claims, orangecheck);
+    return proved || { asked };
+  }
+  if (!asked.fresh) return { status: 403, body: { error: CONFIRM_FIRST, fresh: false } };
+  return { asked };
+}
+
+/// [token], a fresh sign-in with orangecheck, checked as the id [claims]'
+/// account has and spent: null when it is, else {status, body}.
+async function sameOrangecheck(claims, token) {
+  const checked = await checkToken(token);
+  if (!checked.session) return { status: checked.status, body: { error: checked.error, ...(checked.more || {}) } };
+  try {
+    const whose = await db("rpc/oc_account_of", { method: "POST", body: { did: checked.session.did_oc } });
+    if (whose !== claims.sub) {
+      return { status: 403, body: { error: "That orangecheck sign-in is not this account's. Sign in with the one you use here." } };
+    }
+    if (!(await spendToken(checked.session.jti, checked.session.exp))) {
+      return { status: 409, body: { error: "That sign-in was used already. Sign in with orangecheck again." } };
+    }
+  } catch (trouble) {
+    console.error(`orangecheck: a change's sign-in was not checked: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return { status: 502, body: { error: NOT_CHECKED } };
+  }
+  await endToken(String(token).trim());
+  return null;
+}
+
+const SENDER = "Brickworks <noreply@brickworks.diy>";
+
+/// What every notice of a change to how an account signs in ends with.
+export const AFTER = "If this was not you, sign in to Brickworks with an emailed code and change it in Settings: "
+  + "https://brickworks.diy/settings";
+
+/// The account's own address told of a change to how it signs in: "sent",
+/// "dry" for a test address (Resend's, which reaches nobody), or "failed".
+/// orangecheck's link and unlink, and Google's and GitHub's Unlink and Link
+/// again (signreview4 N4).
+export async function tell(email, subject, text) {
+  if (/@resend\.dev$/i.test(email)) return "dry";
+  const key = process.env.RESEND_API_KEY;
+  if (!key || !email || madeUp(email)) return "failed";
+  try {
+    const reply = await fetch("https://api.resend.com/emails", {
+      method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [email], subject, text,
+        tags: [{ name: "kind", value: "sign_in_notice" }] }),
+      signal: AbortSignal.timeout(10000) });
+    if (!reply.ok) console.error(`orangecheck: Resend refused a notice: ${reply.status}`);
+    return reply.ok ? "sent" : "failed";
+  } catch (trouble) {
+    console.error(`orangecheck: a notice did not go: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return "failed";
+  }
 }
 
 /// Whether a Claude connection approved while signed in with orangecheck

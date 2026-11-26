@@ -3665,6 +3665,10 @@ func _view_shared() -> void:
 			"Brickworks did not answer as it should. Try again in a minute."), _view_shared)
 		return
 	var shared: Dictionary = answer["body"]
+	# Every lot's picture of it, drawn once by the server: asked for when
+	# Build it or the steps first lay its parts (LotPictures.want), at once
+	# where the page fetched it for a link that opens Build it.
+	LotPictures.offer(shared, _thumbnails)
 	var name: String = str(shared.get("name", "A shared model"))
 	var author: String = str(shared["author"]) if shared.get("author") is String else ""
 	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
@@ -4113,8 +4117,13 @@ func _ask_context() -> Dictionary:
 			var info: PartLibrary.PartInfo = _library.parts.get(str(one["part"]))
 			var colour: PartLibrary.BrickColor = _library.colors.get(int(one["colour"]))
 			var said: String = pins.part_said(info.name if info != null else "")
-			one["words"] = ("the %s" % said if not said.is_empty() else "a part") \
-				+ (", %s" % colour.name.replace("_", " ").to_lower() if colour != null else "")
+			# Each its own pattern of the locale's, "the %s in %s", its two
+			# places a part's name and a colour's, which PartWords says: with a
+			# comma for the colour ("the 2 × 4 brick, red"), a list of two
+			# parts could not be told from one, and stayed English (greenreds).
+			var hue: String = colour.name.replace("_", " ").to_lower() if colour != null else ""
+			one["words"] = ("the %s in %s" % [said, hue] if not hue.is_empty() else "the %s in its own colour" % said) \
+				if not said.is_empty() else ("a part in %s" % hue if not hue.is_empty() else "a part in its own colour")
 			parts.append(one)
 	return {"step": _timeline_page(), "parts": parts}
 
@@ -4969,6 +4978,9 @@ func _maybe_copy() -> void:
 			_bar.say("could not copy it: " + SharedModels.trouble(answer, "Brickworks did not answer"))
 			return
 		var shared: Dictionary = answer["body"]
+		# Its lots' pictures for the studio's step bar, as the viewer's
+		# (_view_shared).
+		LotPictures.offer(shared, _thumbnails)
 		name = str(shared.get("name", "Shared model"))
 		if not _sample_untouched and _store.has_unsaved_work():
 			_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
@@ -5141,6 +5153,7 @@ func _open_asked(placed: int) -> int:
 	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
 		return 0
 	var shared: Dictionary = answer["body"]
+	LotPictures.offer(shared, _thumbnails)
 	var name: String = str(shared.get("name", "Shared model"))
 	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
 	if not str(result["error"]).is_empty():
@@ -7400,6 +7413,12 @@ func _build_ui() -> void:
 	# Once a frame, not once a part (_edited_soon).
 	_builder.placed.connect(func(_id: int, _part: String) -> void: _edited_soon())
 	_builder.removed.connect(func(_id: int) -> void: _edited_soon())
+	# What was in hand back where it stood, let go of by something else (a
+	# session's edit to one of its parts, another lift, an Open): drawn again
+	# there, the ghost gone.
+	_builder.hand_put_back.connect(func(_count: int) -> void:
+		_edited_soon()
+		_refresh_preview.call_deferred())
 	# Watch it go up, in the order it would be built, rather than find
 	# it already there.
 	_playback = BuildPlayback.new()
@@ -8166,6 +8185,8 @@ func _make_figures() -> void:
 	_figures_made = figures
 	figures.library = _library
 	figures.thumbnails = _thumbnails
+	# A mould saved signed in is kept on the account too (MouldsOnAccount).
+	figures.set("account", _account)
 	_add_to_hud(figures)
 	_inset(figures, 1040.0, 660.0)
 	get_viewport().size_changed.connect(func() -> void: _inset(figures, 1040.0, 660.0))
@@ -10171,9 +10192,37 @@ func _on_model_edited() -> void:
 	# The timeline in the author's steps shows the model as it now is: a
 	# part put down in the step showing, an undone step edit. (Worked out,
 	# it is the order it was when opened, as it always was: on Orthanc the
-	# working out takes five seconds.)
+	# working out takes five seconds.) Parts in hand are the model's, each in
+	# its own step where it stood, so it is never worked out without them
+	# (Builder._take_into_hand).
 	if _steps != null and _steps.is_playing_back() and _steps.mode() == StepsBar.AUTHORS:
 		_steps.refresh()
+	# A figure put down where the timeline does not show it (its step after
+	# the one showing): stepped on to it, and said (figreview2 F6).
+	if _steps != null and not _builder.put_unseen.is_empty():
+		_show_put_unseen()
+
+
+## A figure put down in its own step, after the one the timeline shows
+## (Builder.put_unseen): the timeline goes to that step, which shows it, and
+## the line says where it went. Put down after a step back, it was in no step
+## shown, and nothing said so (figreview2 F6).
+func _show_put_unseen() -> void:
+	var ids: PackedInt64Array = _builder.put_unseen
+	_builder.put_unseen = PackedInt64Array()
+	if not _steps.is_playing_back() or _builder.shown_only(ids).size() == ids.size():
+		return
+	var steps: Array[Instructions.Step] = _steps.steps()
+	var last: Instructions.Step = null
+	for step: Instructions.Step in steps:
+		for brick_id: int in ids:
+			if step.brick_ids.has(brick_id):
+				last = step
+				break
+	if last == null:
+		return
+	_steps.refresh(last.number, last.callout_step if last.callout > 0 else 0, steps)
+	_bar.say("moved %s to step %d" % [Builder._many(ids.size()), last.number])
 
 
 ## [method _on_model_edited] at the end of this frame, once however many
@@ -12652,9 +12701,10 @@ func _size_for_a_finger() -> void:
 			_fit_tool_panel(panel as Control))
 	# What the app is busy with is one line, its end cut short where the
 	# screen is: "Drawing the steps…" ran 500 points past a tablet's edge.
+	# At a word, never inside one.
 	for found: Node in _shell.status.find_children("*", "Label", true, false):
 		(found as Label).clip_text = true
-		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 
 
 ## The tools' column on a touch screen: beside the model where the screen
@@ -13649,9 +13699,18 @@ func _key_pressed(key: InputEventKey) -> void:
 			if _figures_made != null and _figures_made.visible:
 				_figures.close()
 				return
+			# A figure lifted off the model goes back where it stood, as a
+			# carried selection does (figreview2 F2).
 			if _builder.is_holding_figure():
-				_builder.drop_figure()
-				_bar.say("")
+				_bar.say("put back where it was" if _builder.drop_figure() else "")
+				_refresh_preview()
+				return
+			# So does a part lifted by X, whatever tool is on.
+			if _builder.holds_lifted_part():
+				_builder.put_hand_back()
+				_bar.say("put back where it was")
+				if _verbs != null:
+					_verbs.set_mode("select")
 				_refresh_preview()
 				return
 			if _elements_made != null and _elements_made.visible:

@@ -230,7 +230,10 @@ func own_undo(again: bool = false) -> void:
 
 
 ## A button on the edit bar, by name: the same thing its key does.
-func press(name: String) -> void:
+## [param person] false for a session's undo or redo (AppTools): the person's
+## hand is theirs, and a session's undo takes back the newest step recorded,
+## leaving in hand what they lifted (Builder.undo).
+func press(name: String, person: bool = true) -> void:
 	if together != null and together.live and (name == "undo" or name == "redo"):
 		var words: String = together.undo(name == "redo")
 		if not words.is_empty():
@@ -239,20 +242,21 @@ func press(name: String) -> void:
 		aim_again.call()
 		return
 	# Undo with a part Connect took off the model in hand is that taking off.
-	if name == "undo" and mode == "connect" and connect_tool.holds() \
+	if person and name == "undo" and mode == "connect" and connect_tool.holds() \
 			and not connect_tool.from_hand():
 		set_mode("select")
 		say.call("put back where it was")
 		return
-	# So is Undo with parts lifted off the model in hand, the lift the last
-	# step: they go back where they were and are let go, as Esc does.
-	# Undoing the lift's step under the hand put them back and left them
-	# held, and the next tap put a second of each down (phonefingers: a
-	# two-finger tap while carrying). A step recorded since (the person's
-	# Claude) is undone as ever, the parts still in hand.
-	if name == "undo" and builder.is_carrying() and builder.carrying.lifted \
-			and builder._lift_on_top():
-		put_away()
+	# So is Undo with parts lifted off the model in hand, the lift the newest
+	# thing done (Builder.lift_newest): they go back where they were and are
+	# let go, as Esc does, a figure, a selection or a part. A step recorded
+	# since (the person's Claude) is undone as ever, the parts still in hand.
+	if person and name == "undo" and builder.lift_newest():
+		if builder.is_carrying():
+			put_away()
+		elif builder.drop_figure() or builder.put_hand_back() > 0:
+			aim_again.call()
+			say.call("put back where it was")
 		return
 	match name:
 		"undo":
@@ -261,7 +265,7 @@ func press(name: String) -> void:
 			# Said, whatever it was: undoing a sub-assembly made changes
 			# nothing a person can see, and the line said nothing either.
 			var opened: String = reopen_words.call(false) if builder.history_depth() == 0 else ""
-			if builder.undo():
+			if builder.undo(person):
 				edited.call()
 				say.call("undid: %s" % builder.redo_words())
 			elif opened.is_empty() or not await reopen.call(false):
@@ -958,9 +962,18 @@ func _hold_pasted(parts: Array, lines: Dictionary, frames: Dictionary, held: Arr
 	builder.carrying.frames = frames
 	builder.carrying.held = held
 	aim_again.call()
-	say.call(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
-		% _parts(parts.size()))
+	say.call(_click_line(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
+		% _parts(parts.size())))
 	return parts.size()
+
+
+## [param line], a hint that a click puts down what is in hand, unless the
+## ghost is red for another copy of the sub-assembly (Builder.copies_refuse):
+## then the click puts nothing down, and the line says why. The hint is said
+## after the aim that asked the copies, so it wrote over the why (wingplace).
+## An answer that comes later is said as it comes (Shell, copies_refused).
+func _click_line(line: String) -> String:
+	return line if builder.copies_refuse.is_empty() else builder.copies_refuse
 
 
 ## The parts of [param parts] whose shape is not here: in a browser, those it
@@ -1140,8 +1153,8 @@ func lift(grab: Array = []) -> int:
 	if not builder.is_carrying():
 		return 0
 	aim_again.call()
-	say.call(Keymap.filled("moving %s — click to put down, {rotate_held|turns}, Esc puts back")
-		% _parts(count) + (" — " + builder.riding_said() if builder.riding_later > 0 else ""))
+	say.call(_click_line(Keymap.filled("moving %s — click to put down, {rotate_held|turns}, Esc puts back")
+		% _parts(count) + (" — " + builder.riding_said() if builder.riding_later > 0 else "")))
 	return count
 
 
@@ -1379,6 +1392,11 @@ func set_mode(to: String) -> void:
 		put_away()
 	if mode == "connect":
 		connect_tool.end()
+	# A part lifted by X is drawn only as the Place tool's ghost: another tool
+	# puts it back where it stood, as Escape does. Left in hand, it was drawn
+	# nowhere until a tool came back to Place.
+	if to != "place" and builder.holds_lifted_part():
+		builder.put_hand_back()
 	mode = to
 	adding = false
 	if (to == "move" or to == "rotate") and handles == null:
@@ -1853,6 +1871,16 @@ func _ready() -> void:
 		if _pattern != null:
 			_pattern.hide_copies()
 		return _typed_preview(what)
+	# Room here and none in another copy: the field says why, as the bar
+	# does, not "Enter puts it down"; Enter still goes to the follow.
+	typed.advice = func(what: Dictionary) -> String:
+		return "" if _handles_typing() or what.has("copies") else builder.copies_refuse
+	# An ask answered after the field read its number (a big hand, asked over
+	# frames): the field says it then.
+	if builder != null:
+		builder.copies_refused.connect(func(_words: String) -> void:
+			if typed.is_open():
+				typed.again())
 	typed.apply = func(what: Dictionary) -> bool:
 		if _handles_typing():
 			return handles.typed_apply(what)
@@ -2001,6 +2029,9 @@ func _hand_on_screen() -> Rect2:
 func _typed_preview(what: Dictionary) -> String:
 	var fits: bool = builder.typed_hand(what["move"], float(what["turn"]), float(what["tilt"]),
 		-_level_right())
+	# Room here and none in another copy: the ghost is red and the bar says
+	# why (Builder.copies_refuse, wingplace), but Enter, like a click, goes
+	# to the follow, which decides.
 	return "" if fits else "no room there"
 
 

@@ -356,6 +356,66 @@ geometry in front of them.
   fetched, in that order; `PartLibrary.prefer` puts their fetches ahead of ones
   scrolled past, behind only a part somebody clicked. `request()` still draws a
   picture wanted outside a grid, after the tiles in sight.
+- `lot pictures` (partpics, 2026-11-24; `api/_lot_pictures.js`,
+  `api/share.js lotPicturesOf`, `src/net/lot_pictures.gd`,
+  `PartThumbnails.take_sheet`): a shared model's lots, every one drawn once by
+  the server into one PNG, `/m/X/v/N/parts.png?f=F` (96 px squares, 16 across,
+  the index `{tile, across, of, lots: [[part, colour]...]}` in its
+  `brickworks-lots` tEXt chunk; F the first 12 hex of the SHA-1 of the drawing's
+  number (`DRAWN`, one more whenever `drawLot` draws otherwise) and the version
+  file, so neither a republished version nor a file drawn the old way is ever
+  taken). Drawn as the app draws its own (`PartThumbnails`: its framing, and
+  its light as measured from its pictures by `src/dev/lot_look_probe.gd`,
+  see-through lots solid as the app draws them), in plain JS, as the version
+  is published (`afterAnswer`), and kept as `X.lotsN.png` beside the model
+  (deleted with the model's files at a take-down). Served with `Cache-Control:
+  public, max-age=31536000, s-maxage=31536000, immutable`, so Vercel's edge
+  keeps it and the bucket is read once per edge (`x-vercel-cache: HIT` on a
+  second fetch); a version with nothing kept yet answers 202 `{drawing: true}`
+  (`no-store`) at once and draws it after answering (`drawLotPictures`, once
+  per instance), and that visitor's tiles show their part's shape and are
+  drawn live. Asked only when someone opens Build it or the steps
+  (`LotPictures.offer` as a link opens, `want()` from `BuildMode`, `PartStep`
+  and the first step taken in `StepsBar`, its `stepped`): a page that only
+  looks at the model never fetches it, though a phone shows the step bar's
+  last step with its parts (those few drawn live, as before). The page
+  fetches it and reads it on the browser's own threads
+  (`window.brickworksLotsAsk`, giving `window.brickworksLots` {bytes, pixels,
+  width, height}, `src/boot/shell.html`): beside the model for a link to
+  Build it (`&build`), else when the app asks; the app takes the pixels as
+  they are, no frame waited on: waiting on frames for the fetch and a read of
+  its own, it took the file 5-10 s after asking at load 70. Off the web the
+  app fetches it (`PageFetch`) and reads it on a worker. The model page's Parts list
+  (`parts.json`'s `lot_pictures`, `web/part-pictures.js`) takes its lots from
+  it as the list nears the screen or its tab opens, never in the first
+  screen's load; a lot it lacks, or every lot while the file is being drawn,
+  the page draws itself in the same look (its shader carries `drawLot`'s
+  light, pen, framing and black family). So Build it's step, the studio's step bar, the part-step card
+  and the parts list show each lot at once (`peek` finds it), and
+  `PartThumbnails` draws live only what the file lacks; a file that comes
+  after a page was laid gives its waiting tiles theirs at once
+  (`take_sheet_image`), even one being drawn.
+  The booklet draws its parts in its own page pictures at print size, so it
+  does not take these 96 px squares. Before, step 1 of Survey Ship at 390
+  showed counts over empty boxes for 8.5 s (billbuilds). Tiles still waiting
+  show their part's shape (`ThumbTile.sketch_for`, PartSketch), never an empty
+  box. Check: `node tools/web/lot_pictures_try.mjs MODEL.ldr OUT.png` then
+  `godot --headless --path . --script src/dev/lot_pictures_test.gd --
+  --sheet=OUT.png` (11 checks: index, every lot to hand at once, each its own
+  square, a broken file refused); its look against the app's,
+  `PROBE_COMPAT=1 tools/probe.sh lot_look_probe --sheet=OUT.png` (lightness
+  and fill per lot, opaque and see-through, within 0.8-1.25 at the median);
+  in a browser, `brickworksShare.build`'s
+  `lot_pictures` ({url, lots, ms, from: "page, read"|page|asked}),
+  `pictures_drawn_here`, `pictures_from_file`, and `pictures_laid` [n, of]:
+  n == of means every picture was drawn in the step's own first frame
+  (bench/results/partpics-2026-11-24/pair.mjs times it against another
+  deployment at the same moment, by WebGL fences). The file's squares
+  against the page's own drawing of the same lots: `deltae.mjs --site=URL
+  --models=A,B` (the list read twice, the second time with `lot_pictures`
+  taken out of `parts.json`; `--drawer=FILE` draws with a worktree's
+  `part-pictures.js`), then `deltae.py DIR` (CIELAB dE of each lot's mean
+  colour, median and worst).
 - `palette`: every colour can be chosen by hand, grouped by kind of plastic
   (solid; transparent; chrome, metallic, pearl; glitter, opal, speckle, glow,
   rubber, fabric), greys first and then round the colour wheel. What sets are

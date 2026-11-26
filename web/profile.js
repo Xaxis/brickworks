@@ -659,7 +659,11 @@ $("avatar-make").addEventListener("click", async () => {
   const { makeMinifig } = await import("/minifig-maker.js");
   const { base64Of } = await import("/picture.js");
   const start = (pictureOf() && mine?.avatar?.minifig) || minifigOf(handleOf() || $("handle").value);
-  const made = await makeMinifig($("minifig-dialog"), start);
+  // A hair of their own removed that the avatar wore: the avatar's figure
+  // as the account has it now, so the maker opens on it next time.
+  const made = await makeMinifig($("minifig-dialog"), start, { avatarChanged: (minifig) => {
+    if (mine?.avatar) mine.avatar.minifig = minifig;
+  } });
   if (!made) return;
   $("avatar-make").disabled = true;
   note.textContent = say("Saving your minifig…");

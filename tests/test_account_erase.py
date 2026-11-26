@@ -15,7 +15,11 @@ Admission and Supabase (tests/fixtures/billing/), through the real client
 - a deletion that stopped after Admission erased the account finishes when
   asked again, ending nothing twice;
 - an answer under 13 (?op=age) deletes the account by the very same steps,
-  Admission first, and with Admission down deletes nothing.
+  Admission first, and with Admission down deletes nothing;
+- only a session signed in by a code emailed in the last five minutes
+  deletes (api/_oc.js stepUp): every test's person signs in by one
+  (world.mjs signIn), and a session Google, GitHub or orangecheck started,
+  or a code's older than that, is refused with nothing asked or deleted.
 """
 
 from __future__ import annotations
@@ -25,6 +29,8 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 ADMISSION = "https://admission.test"
@@ -222,6 +228,46 @@ return { down, held, said, age, asked, deleted: w.deleted, erased: w.admission.e
     def steps(calls: list[str], sub: str) -> list[str]:
         return [c.replace(sub, "<id>") for c in calls if not re.search(r"jwks|rpc/age_of|otp_requests", c)]
     assert steps(age, bo) == steps(got["asked"], ada) and erase_of("<id>") in steps(age, bo)
+
+
+CONFIRM_FIRST = {"error": "Confirm it is you first, with a code we email you.", "fresh": False}
+
+
+@pytest.mark.parametrize("way,ago", [("google", 0), ("github", 0), ("orangecheck", 0), ("code", 301)])
+def test_only_a_code_of_the_last_five_minutes_deletes(way: str, ago: int) -> None:
+    # signin7's rule (api/_oc.js stepUp, signreview4 R4-1): a session Google,
+    # GitHub or orangecheck started is never one, however new, nor a code's
+    # once five minutes have gone. Each is refused before anything is asked:
+    # nothing at Admission, nothing of the account read or deleted, its Pro
+    # plan still running. The same account's code four minutes old then
+    # deletes it, so the refusal was the session's and nothing else's.
+    got = run(f"""
+process.env.OC_PROJECT_KEY = 'ock_test_project';
+process.env.OC_SIGNING_SECRET = 'signing-secret-for-this-test-only';
+w.admission.subscribe(ADA.sub);
+await billing.entitlementOf(ADA.sub);
+const by = async (way, ago) => askAccount({{ method: 'POST', query: {{ op: 'delete' }},
+  headers: {{ authorization: `Bearer ${{await w.signIn(ADA, {{ by: way, ago }})}}` }}, body: {{ confirm: ADA.email }} }});
+const from = w.calls.length;
+const said = await by({json.dumps(way)}, {ago});
+// The sign-in's own reads aside, and the copy entitlementOf keeps after its read above.
+const touched = w.calls.slice(from).filter((c) => !/jwks|oc_session_of|session_standing|me\\.ochk\\.io|admission_snapshot_put/.test(c));
+const before = {{ deleted: [...w.deleted], erasures: [...w.admission.erasures],
+  plan: (await billing.entitlementOf(ADA.sub)).subscription?.status ?? null }};
+const feed = w.calls.filter((c) => c === 'GET https://me.ochk.io/api/integrator/revocations').length;
+const fresh = await by('code', 240);
+return {{ said, touched, before, feed, fresh, deleted: w.deleted }};
+""", billing="test")
+    if got is None:
+        return
+    assert got["said"] == {"status": 403, "json": CONFIRM_FIRST}, got["said"]
+    assert got["touched"] == [], got["touched"]
+    assert got["before"] == {"deleted": [], "erasures": [], "plan": "active"}
+    if way == "orangecheck":
+        # Asked after at orangecheck and found live there: the refusal is the step-up's, not the sign-in's.
+        assert got["feed"] == 1
+    assert got["fresh"]["status"] == 200 and got["fresh"]["json"]["deleted"] is True
+    assert got["deleted"] == ["7d6c1a2e-0000-4000-8000-00000000ada0"]
 
 
 def test_its_photos_go_with_their_card_copies() -> None:

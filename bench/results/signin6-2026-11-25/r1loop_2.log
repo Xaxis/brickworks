@@ -1,0 +1,12 @@
+  ok      round 1: Unlink 200 in 624 ms; 19 approves (200x2 401x17), 2 gave a code, 1 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 2: Unlink 200 in 699 ms; 26 approves (200x2 401x24), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 3: Unlink 200 in 630 ms; 24 approves (200x2 401x22), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 4: Unlink 200 in 655 ms; 25 approves (200x2 401x23), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 5: Unlink 200 in 715 ms; 24 approves (200x2 401x22), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 6: Unlink 200 in 805 ms; 25 approves (200x2 401x23), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 7: Unlink 200 in 689 ms; 23 approves (200x2 401x21), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 8: Unlink 200 in 691 ms; 25 approves (200x2 401x23), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 9: Unlink 200 in 659 ms; 24 approves (200x2 401x22), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  ok      round 10: Unlink 200 in 1126 ms; 26 approves (200x2 401x24), 2 gave a code, 0 after the Unlink answered; every code traded: 400x2; 6 s on, of 0 issued, tools/list 0, refresh 0
+  --      accounts made: 10, deleted (or never made): 10
+r1loop: 0 of 10 rounds kept a connection; 0 codes traded of 20 made (1 made after the Unlink answered)

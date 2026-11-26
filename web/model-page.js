@@ -810,7 +810,7 @@ function startParts(section) {
         // swatches once what draws them is here.
         drawer.then((made) => {
           try {
-            pictures = (made && body.root && made.partPictures(body.root, body.colours)) || false;
+            pictures = (made && body.root && made.partPictures(body.root, body.colours, body.lot_pictures)) || false;
           } catch {
             pictures = false;
           }

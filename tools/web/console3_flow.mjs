@@ -219,7 +219,7 @@ try {
 
   // --- 3. The new sections ----------------------------------------------------------
   console.log("3. Moderation, Challenges, Data, Switches");
-  const { page, context } = await open("/admin?tests=1", { width: 1280, who: owner, label: "owner" });
+  let { page, context } = await open("/admin?tests=1", { width: 1280, who: owner, label: "owner" });
   check("the console shown to the owner, Find in its bar", await shown(page) && await until(page, () => !document.getElementById("find").hidden));
   await go(page, "moderation/queue");
   const reportRow = page.locator("#reports tr").filter({ has: page.locator(`a[href="/m/${ids[0]}"]`) }).first();
@@ -467,6 +467,13 @@ try {
   const refresh = await fetch(`${SUPABASE}/auth/v1/token?grant_type=refresh_token`, { method: "POST",
     headers: { apikey: PUBLISHABLE, "content-type": "application/json" }, body: JSON.stringify({ refresh_token: s.kept.refresh_token }) });
   check(`...its sign-in no longer renews: ${refresh.status}`, refresh.status >= 400 && refresh.status < 500);
+
+  // Deleting an account asks a sign-in of the last five minutes (signin7,
+  // api/_oc.js stepUp): the owner signs in again first, as the console says.
+  await context.close();
+  ({ page, context } = await open("/admin?tests=1", { width: 1280, label: "owner again",
+    who: await mintSession(process.env.MASTER_EMAIL, { age: false, welcome: false }) }));
+  check("the console shown to the owner again", await shown(page));
 
   await go(page, `people/${d.kept.user_id}`);
   await until(page, (email) => document.getElementById("sheet-title").textContent === email, d.kept.email);

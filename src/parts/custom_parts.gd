@@ -455,6 +455,20 @@ static func own_name(name: String) -> bool:
 		and not name.contains("..") and not name.contains(":") and not name.begins_with(".")
 
 
+## [param words] as words of one line of a part's file: each control
+## character a space, and none at either end. Someone else's part
+## carried in a model may hold a carriage return in its name or category,
+## which this app reads as a space and a program ending lines at one reads as
+## a new line: "\r0 FILE evil.dat" in a name became a part and a file inside
+## a mould made from it (figreview).
+static func one_line(words: String) -> String:
+	var out: String = ""
+	for n: int in words.length():
+		var code: int = words.unicode_at(n)
+		out += " " if code < 32 or (code >= 127 and code < 160) else words[n]
+	return out.strip_edges()
+
+
 ## A part built from its LDraw text, as [method add] builds it.
 static func _built(library: PartLibrary, text: String, id: String,
 		others: Dictionary) -> RefCounted:
@@ -483,13 +497,14 @@ static func _built(library: PartLibrary, text: String, id: String,
 	return built
 
 
-## What the catalogue would say about a built part.
+## What the catalogue would say about a built part. Its name and category
+## read once into words of ours, each one line ([method one_line]).
 static func info_for(built: RefCounted) -> PartLibrary.PartInfo:
 	var info := PartLibrary.PartInfo.new()
 	info.id = built.id
-	info.name = built.name
+	info.name = one_line(built.name)
 	info.category = "Custom"
-	info.ldraw_category = built.category
+	info.ldraw_category = one_line(built.category)
 	info.custom = true
 	info.kind = "Unofficial_Part"
 	info.mesh_hash = "custom/" + built.id

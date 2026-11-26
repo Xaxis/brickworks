@@ -376,6 +376,8 @@ const PLAIN: Dictionary = {"à": "a", "â": "a", "ä": "a", "á": "a", "ç": "c"
 	"ú": "u", "ù": "u", "û": "u", "ü": "u", "ß": "ss", "œ": "oe"}
 
 ## A size or a count as LDraw writes it: 2, 1×2, 1 x 2 x 0.667, 1/2, 4L, 12V, #3.
+## A plain part as PinPlace.part_said words it: its size, then its kind.
+static var PLAIN_SAID := RegEx.create_from_string("^(\\d+(?: × \\d+){1,2}) ([a-z]+(?: [a-z]+)?)$")
 static var NUMBER := RegEx.create_from_string(
 	"^(#?\\d+(\\.\\d+)?(/\\d+)?|\\.\\d+)( ?[x×] ?(\\d+(\\.\\d+)?(/\\d+)?|\\.\\d+))*(L|V|mm)?$")
 ## The nouns by their English, singular and plural: -> [entry, whether plural].
@@ -396,11 +398,18 @@ static func said(text: String, code: String) -> String:
 
 
 ## A part's name, as LDraw writes it or the bin shows it ("Brick 1×2",
-## "Plate 1 x 2 with Door Rail"), in [param code]'s language, or "".
+## "Plate 1 x 2 with Door Rail"), in [param code]'s language, or "". Also
+## as a pin and Ask the builders say a plain one after "the" ("2 × 4
+## brick", PinPlace.part_said), said as the name it was made from ("Stein
+## 2 × 4"): until greenreds those words were found nowhere, and Ask's line
+## and a pin's place stayed English in every language.
 static func part(name: String, code: String) -> String:
 	var lang: int = int(LANGUAGES.get(code, -1))
 	if lang < 0:
 		return ""
+	var plain: RegExMatch = PLAIN_SAID.search(name)
+	if plain != null and KINDS.has(plain.get_string(2)):
+		name = plain.get_string(2).capitalize() + " " + plain.get_string(1)
 	var written: PackedStringArray = _words_of(name)
 	var at: int = 0
 	var brands := PackedStringArray()

@@ -191,18 +191,28 @@ await click((await placeOf("Wing#1")) || wingAt);
 check(`a click on the wing takes all of it (${(await state()).selected})`, (await state()).selected === 2);
 await key("Control+d", 1000);
 await report("Ctrl-D");
-// Low on the right: the properties panel covers the model's top right, and
-// a click there is the panel's (its Edit inside, under a selected wing).
-const otherSide = spot(150, 60);
-await page.mouse.move(otherSide.x - 2, otherSide.y, { steps: 4 });
-await wait(500);
-await page.mouse.move(otherSide.x, otherSide.y, { steps: 2 });
-await wait(500);
-await click(otherSide);
-await report("put down");
 now = await until((s) => Object.keys(s.tree || {}).includes("Wing#2"), 8);
-check(`put down, the copy is a second Wing (${JSON.stringify(now.tree)})`,
+check(`Ctrl-D puts the copy down beside it, a second Wing (${JSON.stringify(now.tree)})`,
   parts((now.tree || {})["Wing#2"]).length === 2);
+// ...selected, to be dragged where it goes (ux14): to the body's other side,
+// low on the right, as the properties panel covers the model's top right.
+// Left beside the wing and mirrored there, the two wings stood a stud
+// apart, and a plate put down between them had its twin on it (wingplace).
+const otherSide = spot(150, 60);
+const copyAt = (await placeOf("Wing#2")) || spot(-170, 40);
+await page.mouse.move(copyAt.x, copyAt.y, { steps: 3 });
+await wait(400);
+await page.mouse.down();
+await page.mouse.move(otherSide.x, otherSide.y, { steps: 16 });
+await wait(600);
+await page.mouse.up();
+await wait(1200);
+await report("dragged over");
+const body = await placeOf("Body#1");
+const moved = await placeOf("Wing#2");
+check(`...and dragged to the body's other side (the copy at ${JSON.stringify(moved)}, the body at ${JSON.stringify(body)})`,
+  moved !== undefined && body !== undefined && moved.x > body.x
+    && parts((await tree())["Wing#2"]).length === 2);
 // The copy selected, mirrored where it stands.
 if ((await state()).selected !== 2) await click((await placeOf("Wing#2")) || otherSide);
 await key("Shift+m", 1500);

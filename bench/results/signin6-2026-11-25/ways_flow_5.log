@@ -1,0 +1,36 @@
+heavy: waiting: waits for the load: 62 threads want a CPU, gate 30
+heavy: brickworks in slot.15 at load 30, 77043 MB free
+  ok    1. 1280: Sign in with Google and with GitHub, each with its mark, as tall and wide as Email me a code
+  ok    1. 1280: no box; one line that signing in makes the orangecheck account, with what that is
+  ok    1. 1280: nothing sideways
+  ok    1. 1280: the dialog still open at its picture
+  ok    1. 390: Sign in with Google and with GitHub, each with its mark, as tall and wide as Email me a code
+  ok    1. 390: no box; one line that signing in makes the orangecheck account, with what that is
+  ok    1. 390: nothing sideways
+  ok    1. 390: the dialog still open at its picture
+  ok    2. Sign in with Google: back on the very page, signed in, as the account a code signs in to
+  ok    3. Sign in with GitHub, a new address: signed in on /profile, asked its age first
+  ok    3. its age answered over 13: its orangecheck account made, with the address, for orangecheck to check
+  ok    4. 1280: How you sign in: the code to the address, GitHub signing in, Google not used yet
+  ok    4. 1280: the orangecheck part says the account signing in made
+  ok    4. 1280: nothing sideways
+  ok    4. 390: How you sign in: the code to the address, GitHub signing in, Google not used yet
+  ok    4. 390: the orangecheck part says the account signing in made
+  ok    4. 390: nothing sideways
+  ok    4. Unlink GitHub, signed in with it: signed out, asked for a code in words
+  ok    5. an address Google has not verified: back to the sign-in, with why
+  ok    7. 1280: GitHub to the account a code made: no session, the dialog asks a code this once
+  ok    7. 1280: the code typed: back on the very page, signed in to that account, GitHub's id kept for it
+  ok    7. 1280: and GitHub signs it in from then on
+  ok    6. 1280: the console's Sign in with Google and GitHub: each on, its keys here, its steps put away
+  ok    6. 390: the console's Sign in with Google and GitHub: each on, its keys here, its steps put away
+  ok    8. 1280: the owner's address with Google: back to the sign-in, told it signs in only with a code, not signed in
+  ok    8. 390: the owner's address with Google: back to the sign-in, told it signs in only with a code, not signed in
+  ok    9. 1280: refused for signing in too often: the dialog says so, and that a code still signs in
+  ok    9. 390: refused for signing in too often: the dialog says so, and that a code still signs in
+  --    requests to Google's or GitHub's hosts: 0; provider pages answered by the stand-in: 7 seen, 7 answered
+  ok    10. no request of any sign-in went to Google's or GitHub's hosts
+  ok    10. every provider's page was the relay's stand-in
+  ok    10. this Chromium cannot reach Google's or GitHub's sign-in at all
+  ok    no refusal from the page's security policy, and no error
+ways_flow: all passed (pictures in /mnt/Projects/brickworks/.claude/worktrees/signin6/bench/results/signin6-2026-11-25/shots_5)

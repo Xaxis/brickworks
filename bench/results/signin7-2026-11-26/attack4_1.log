@@ -1,0 +1,25 @@
+L. Link again, from the session the Unlink has just ended
+  ok      L1. round 1: the intruder's Google session, ended by the Unlink but still read as signed in, sends Link again; Google then signs the intruder in again: Unlink 200 {"code":true,"google":"off","github":"never","offered":{"google":true,"github":true}} in 919 ms; the intruder's watch 43 reads; Link again 401 357 ms after the Unlink answered {"error":"You were signed out. Sign in again."}; Google for the person now: off; the old session now 401; Google again: unlinked
+  ok      L1. round 2: the intruder's Google session, ended by the Unlink but still read as signed in, sends Link again; Google then signs the intruder in again: Unlink 200 {"code":true,"google":"off","github":"never","offered":{"google":true,"github":true}} in 960 ms; the intruder's watch 43 reads; Link again 401 261 ms after the Unlink answered {"error":"You were signed out. Sign in again."}; Google for the person now: off; the old session now 401; Google again: unlinked
+  ok      L1. round 3: the intruder's Google session, ended by the Unlink but still read as signed in, sends Link again; Google then signs the intruder in again: Unlink 200 {"code":true,"google":"off","github":"never","offered":{"google":true,"github":true}} in 1002 ms; the intruder's watch 45 reads; Link again 401 78 ms after the Unlink answered {"error":"You were signed out. Sign in again."}; Google for the person now: off; the old session now 401; Google again: unlinked
+  --      L: 0 of 3 Unlinks undone by the session they ended
+B. Supabase's verify out while one person tries Google
+  ok      B1. ten tries while Supabase's verify answers 429 (nothing minted, "busy" each time): each spent one of the person's ten, so when verify is back they are refused as too often for up to 15 minutes: while out: busy x10; once back: failed
+C. faults on what hands out authority
+  ok      C1. Google's session handed over while session_standing is slow 16 s: refused, nothing handed over: take 503 in 15178 ms: {"error":"Brickworks could not finish signing you in just now. Sign in again in a minute."}
+  ok      C1. Google's session handed over while session_standing is the pooler's 503: refused, nothing handed over: take 503 in 169 ms: {"error":"Brickworks could not finish signing you in just now. Sign in again in a minute."}
+  ok      C2. once it clears, the person's next Google sign-in goes through (nobody is stuck): signed-in
+  ok      C3. the owner's console while session_standing fails, then is slow past 15 s: 503 each, and 200 once it clears: fail 503 (250 ms); slow 503 (15004 ms); none 200 (1718 ms)
+  ok      C4. Unlink while session_standing fails: refused (5xx), Google left on: 502 {"error":"Brickworks could not read how you sign in just now. Try again in a minute."}; Google now on
+  ok      C5. the exchange's reply lost after oauth_code_grant ran: Claude is told 5xx and gets no tokens; the code cannot be traded again: lost 502 temporarily_unavailable; again 400 invalid_grant; connections 0 -> 1 (a written connection nobody holds a token of)
+  ok      C6. the exchange refused by the pooler: 5xx, nothing handed out; the person's next Connect works (nobody is stuck): refused 502; next 200, tools/list 200
+  ok      C7. Unlink then ends every connection Google's session approved, the one written behind a lost reply included: Unlink 200; connections now 0; C6's: tools/list 401, refresh 400
+D. sessions ending under their connections
+  --      D1. a code's session approves a connection (200), then signs out (204): the connection: tools/list 200, refresh 200 (it outlives a sign-out, as approving_session.sql says it should)
+  ok      D2. Google's session approves, then signs out: the connection lives on as Google's, and Unlink still ends it: trade 200; sign-out 204; after it: tools/list 200, refresh 200; Unlink 200; after it: tools/list 401, refresh 400
+  ok      D3. a code whose session signs out before the exchange: refused (it went with the session): approve 200, sign-out 204, trade 400 invalid_grant that code is unknown, used or expired
+  ok      D4. the account deleted: D1's connection lists nothing and renews no more: deleted true
+F. orangecheck's app sign-in with made-up codes (nothing counted before orangecheck is asked)
+  ok      F1. forty POSTs of ?op=native with made-up codes, one network, no account: each one makes this server call orangecheck's token endpoint with Brickworks' project key; nothing bounds it: answers 401 x10, 429 x30; orangecheck's token endpoint asked 10 times
+  --      accounts named: 7, deleted now (or gone before): 6
+attack4: 0 finding line(s)

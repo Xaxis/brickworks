@@ -1,0 +1,11 @@
+== signin6 bars at 541172113, 22:58:32Z
+== signreview2's attack 22:58:34Z, sha256 28e3864972ecbb15
+sr2 exit 0 23:01:41Z: attack: 0 finding line(s)
+deleted: false
+-- resting 240s for the verify bucket
+== attack3 V,S,N,W,T,O,K 23:05:43Z, sha256 fcbbe100ff29d065
+attack3 V,S,N,W,T,O,K exit 0 23:09:58Z: attack3: 1 finding line(s)
+-- resting 120s for the verify bucket
+== attack3 X 23:11:58Z, sha256 fcbbe100ff29d065
+attack3 X exit 0 23:12:45Z: attack3: 0 finding line(s)
+-- resting 120s for the verify bucket

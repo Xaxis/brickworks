@@ -231,8 +231,11 @@ func _move_and_put_back() -> void:
 	await _frames(2)
 	var before: Array = _snapshot()
 	await _key(KEY_X)
-	_check("X picks the selection up (%d left standing)" % _count(),
-		_builder.is_carrying() and _builder.carrying.lifted and _count() == 6)
+	# In hand, the three are still the model's where they stood, drawn nowhere
+	# (handkeep): the model keeps all 9.
+	_check("X picks the selection up (%d in hand, %d in the model)" % [_world.hand().size(), _count()],
+		_builder.is_carrying() and _builder.carrying.lifted and _world.hand().size() == 3
+		and _count() == 9)
 	var spot: Vector2 = _screen(Vector3(210, 0, -130))
 	await _move(spot)
 	await _move(spot + Vector2(1, 0))

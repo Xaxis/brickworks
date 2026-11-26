@@ -1352,13 +1352,23 @@ static func _new_root_of(roots: Dictionary, unit: String) -> String:
 ## in within it, in its colour and turned as it is (each a hundredth of an
 ## LDU and a ten-thousandth of a turn, [method _same]), so its frame is that
 ## copy's frame as read moved, never fitted, and the line says the file's own
-## turn where the move did not turn it. Not where the file's copy holds a
-## part the app cannot show or one on its way ([param unseen]), is
-## mirrored or taken off ([param dead]); nor in a sub-model placed more than
-## once, where a line would put it in each. Read back by [method gate], each
-## part where it is.
+## turn where the move did not turn it. A mirrored copy, or one holding a
+## mirrored copy, is laid so too: its parts are read in their other hand
+## (Assemblies.unmirror), as the paste holds them, so the move that lays them
+## is a turn and a shift, and the line keeps the file's mirroring matrix,
+## moved. Up to pasteexact either was written whole, and every line of the
+## sections round them written again (0.951 as 0.9510001, 3023 as 3023b).
+## Not where the file's copy is taken off ([param dead]), nor one [param
+## theirs_of] leaves out ([method _copies_to_lay_on]); nor in a sub-model
+## placed more than once, where a line would put it in each. Read back by
+## [method gate], each part where it is. [param under] is [method patch]'s
+## copy path -> the origins of the parts in it: a copy tried costs its own
+## parts, never the file's. Each copy walked every part of the file and
+## every copy's path, and 600 pasted copies against 600 of the file's, half
+## of them mirrored, held a Save up 3 s before it fell to the whole write
+## (savereview F1).
 func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary,
-		unseen: Dictionary, steps_now: Dictionary) -> Variant:
+		theirs_of: Dictionary, steps_now: Dictionary, under: Dictionary) -> Variant:
 	var parent: String = Assemblies.parent_of(root)
 	if not parent.is_empty() and (not unit_sections.has(parent) or dead.has(parent)):
 		return "a copy put down inside one the file never placed"
@@ -1366,12 +1376,7 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 	if not parent.is_empty() and int(copies.get(section, 1)) > 1:
 		return "a copy put down inside a sub-model placed more than once"
 	var def: String = Assemblies.definition(Assemblies.leaf(root))
-	var theirs: Array = []
-	for path: String in unit_sections:
-		if Assemblies.definition(Assemblies.leaf(path)) == def and not dead.has(path) \
-				and not unseen.has(path) and unit_lines.has(path) and unit_frames.has(path):
-			theirs.append(path)
-	theirs.sort()
+	var theirs: Array = theirs_of.get(def, [])
 	# Its parts by the kinds of copy each is in within it, what it is and its
 	# colour: a copy's copies inside are numbered after every copy of their
 	# kind, so a pasted car's wings are Wing#3 and #4 where the file's car
@@ -1387,25 +1392,18 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 	for copy: String in theirs:
 		var reads: Dictionary = {}
 		var count: int = 0
-		var plain: bool = true
-		for origin: String in by_origin:
+		for origin: String in under.get(copy, []):
 			var read: Read = by_origin[origin]
-			if read.unit != copy and not read.unit.begins_with(copy + "/"):
-				continue
-			if read.mirrored:
-				plain = false
-				break
 			_add_to(reads, "%s|%s|%d" % [_kinds_in(read.unit.substr(copy.length())), read.part_id,
 				read.colour], read)
 			count += 1
-		if not plain:
-			why = "the file's %s is mirrored" % copy
-			continue
 		if count != parts.size() or reads.size() != mine.size():
 			why = "%d parts against the %d of the file's %s" % [parts.size(), count, copy]
 			continue
 		var laid: Variant = _moved_onto(mine, reads)
-		if laid == null:
+		# A paste moves and turns what it copied, never mirrors it: a move
+		# that mirrors is two copies alike by chance of their parts' shapes.
+		if laid == null or ((laid as Array)[0] as Transform3D).basis.determinant() < 0.0:
 			why = "it does not lie as the file's %s does" % copy
 			continue
 		# Each copy inside it on one of the file's copy, and each part of one
@@ -1429,8 +1427,8 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 		var at: Transform3D = ((laid as Array)[0] as Transform3D) * (unit_frames[copy] as Transform3D)
 		var line: String = lines[int(unit_lines[copy])].strip_edges()
 		var words: PackedStringArray = _words(line)
-		if at.basis.determinant() < 0.0 or words.size() < 15:
-			why = "the file's %s is mirrored" % copy
+		if words.size() < 15:
+			why = "the file's line placing %s could not be read" % copy
 			continue
 		var local: Transform3D = (frames.get(parent, Transform3D.IDENTITY) as Transform3D).affine_inverse() * at
 		# Its colour as its parts are: the file's copy's own, or the colour
@@ -1445,6 +1443,20 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 		var step: int = int(steps_now.get(root, -1)) if authored else -1
 		return [section, text, step, bricks]
 	return "a copy put down is not the file's %s: %s" % [def, why]
+
+
+## The file's copies a paste may be laid on ([method _copy_line]), asked
+## once a patch: definition -> their paths in order, none taken off ([param
+## dead]), holding a part the app cannot show or one on its way ([param
+## unseen]), or without a line and a frame of its own.
+func _copies_to_lay_on(dead: Dictionary, unseen: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for path: String in unit_sections:
+		if not dead.has(path) and not unseen.has(path) and unit_lines.has(path) and unit_frames.has(path):
+			_add_to(out, Assemblies.definition(Assemblies.leaf(path)), path)
+	for def: String in out:
+		(out[def] as Array).sort()
+	return out
 
 
 ## How [param mine] (key -> [[brick, place]]) lies on [param reads] (key ->
@@ -2202,9 +2214,10 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	# order it put their parts down (Assemblies.group_for_copy).
 	var copy_paths: Array = in_copy.keys()
 	copy_paths.sort()
+	var theirs_of: Dictionary = _copies_to_lay_on(dead_copies, waits_under.merged(hidden_under)) \
+		if not copy_paths.is_empty() else {}
 	for root: String in copy_paths:
-		var made: Variant = _copy_line(root, in_copy[root], frames, dead_copies,
-			waits_under.merged(hidden_under), steps_now)
+		var made: Variant = _copy_line(root, in_copy[root], frames, dead_copies, theirs_of, steps_now, under)
 		if made is String:
 			return _no(plan, str(made))
 		var group: Array = made
@@ -3950,20 +3963,17 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 	return ""
 
 
-## [param placement] as ModelStore's open makes it the part it puts down: a
-## Studio number as LDraw's, a retired number the part it became, a part
-## of one colour as it is now, a stub's part in the stub's colour. A
-## mirrored copy's part is read as the open
-## read it ([method _read_back_kept]).
+## [param placement] as ModelStore's open makes it the part it puts down, by
+## the open's own code (ModelStore._as_placed): a Studio number as LDraw's, a
+## retired number the part it became, a part of one colour as it is now, a
+## stub's part in the stub's colour, and a mirrored copy's part in its other
+## hand where its reflection is. A mirrored part of the file's own lines is
+## read back as the open read it before this ([method _read_back_kept]); one
+## here is in a copy put down, on its new line ([method _copy_line]).
 static func _as_opened(placement: LdrModel.Placement, library: PartLibrary) -> void:
 	if library == null:
 		return
-	placement.part_id = ModelStore.studio_part(placement.part_id, library)
-	ModelStore.as_moved(placement, library)
-	var colour: int = library.current_colour(placement.part_id)
-	if colour >= 0:
-		placement.part_id = library.current(placement.part_id)
-		placement.color_code = colour
+	ModelStore._as_placed([placement], library, true)
 
 
 ## Why [param text] may not go over the file for the model [param bricks]
@@ -4312,16 +4322,19 @@ static func _numbers_for(words: PackedStringArray, local: Transform3D) -> String
 	return " ".join(out)
 
 
-## [param value] as a line says it: a place to four places, a turn's
-## number to six significant digits, a whole number as one, never "-0".
+## [param value] as a line says it: a place in the fewest of four places that
+## is the number held (LdrModel._number_text), a turn's number to six
+## significant digits, a whole number as one, never "-0". A place to four
+## places always wrote a part pasted at 10,000.37 LDU as 10540.3701, which
+## other programs read as a ten-thousandth further than the part is.
 static func _number_said(value: float, place: bool) -> String:
 	if value == floorf(value) and absf(value) < 1e9:
 		return str(int(value))
-	var places: int = 4
-	if not place:
-		if absf(value) < 5e-7:
-			return "0"
-		places = clampi(5 - floori(log(absf(value)) / log(10.0)), 0, 12)
+	if place:
+		return LdrModel._number_text(value, 4)
+	if absf(value) < 5e-7:
+		return "0"
+	var places: int = clampi(5 - floori(log(absf(value)) / log(10.0)), 0, 12)
 	var shown: String = String.num(value, places).rstrip("0").rstrip(".")
 	return "0" if shown == "-0" or shown.is_empty() else shown
 

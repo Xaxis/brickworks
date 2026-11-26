@@ -571,7 +571,8 @@ static func _held_where(builder: Builder, library: PartLibrary) -> String:
 	return said + "; its ghost under the pointer takes x %s to %s, z %s to %s, y %s to %s plates, %s" % [
 		_n(low.x / STUD), _n(high.x / STUD), _n(low.z / STUD), _n(high.z / STUD),
 		_n(low.y / PLATE), _n(high.y / PLATE),
-		"where a click puts it down" if builder.can_place() else "where it cannot go down"]
+		"where a click puts it down" if builder.can_place() else "where it cannot go down" \
+			+ ("" if builder.copies_refuse.is_empty() else " (%s)" % builder.copies_refuse)]
 
 
 func _reference_words(reference: ReferenceImage) -> String:

@@ -1,0 +1,13 @@
+ways stand-in: Google, GitHub and orangecheck Connect answered here
+the deployment's functions on http://127.0.0.1:12115/api/
+orangecheck: Connect made no account: unavailable 503
+account: no orangecheck account made at a sign-in: unavailable
+ways: google gave no address: Google token: 400 invalid_grant
+ways: google gave no address: Google: no verified address
+ways: google gave no address: Google: not the authority for that address
+ways: google gave no address: Google: not the authority for that address
+ways: google gave no address: Google: not the authority for that address
+ways: github gave no address: GitHub: no verified address that takes mail
+ways: github gave no address: GitHub: no verified address that takes mail
+ways: github gave no address: GitHub: an address that is not plain ASCII
+ways: github gave no address: GitHub token: 200 bad_verification_code

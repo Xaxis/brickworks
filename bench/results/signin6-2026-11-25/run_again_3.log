@@ -1,0 +1,13 @@
+== signin6 again at d64396492, 00:33:41Z
+== attack3 X 00:33:42Z, sha256 fcbbe100ff29d065
+attack3 X exit 0 00:34:33Z: attack3: 0 finding line(s)
+-- resting 120s for the verify bucket
+== ways_check 00:36:34Z
+ways_check exit 0 00:42:51Z: ways_check: all passed
+-- resting 240s for the verify bucket
+== orangecheck_check 00:46:51Z
+orangecheck_check exit 1 00:51:19Z: orangecheck_check: 161 passed, 2 failed
+left (bw-sr3-): 0
+left (bw-ways-): 0
+left (bw-oc-): 0
+== done 00:51:20Z

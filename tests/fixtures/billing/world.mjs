@@ -14,11 +14,18 @@
 //   const w = await world({ billing: "test" });
 //   const token = await w.signIn({ sub: "u1", email: "ada@example.com" });
 
-import { webcrypto } from "node:crypto";
+import { randomUUID, webcrypto } from "node:crypto";
 import { Readable } from "node:stream";
 import { ADMISSION_URL, FAKE_KEY, fakeAdmission } from "./fake_admission.mjs";
 
 export const SUPABASE_URL = "https://db.test";
+/// orangecheck's me host (api/_oc_config.js ocHosts, OC_ME_ORIGIN unset).
+const OC_ME = "https://me.ochk.io";
+
+/// The reads of a session that signIn signs (api/_auth.js sessionOf and
+/// standingOf), answered by the world: a fixture that answers the rest of
+/// the database itself hands these on.
+export const SESSION_READS = new Set(["/rest/v1/rpc/oc_session_of", "/rest/v1/rpc/session_standing"]);
 
 const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
 
@@ -166,10 +173,31 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
         if (snap.at) snapshots.set(key, JSON.stringify({ ...snap, at: snap.at - ms }));
       }
     },
-    async signIn(claims) {
+    /// Sessions a way started, by session_id: {way} for Google's or
+    /// GitHub's (api/_ways.js keep), {bound, linked, rh, aud, iat} for
+    /// orangecheck's (oc_sessions). Every other session signIn signs is a
+    /// code's.
+    sessions: new Map(),
+    /// A signed session for [claims], of a session that is there: by
+    /// default a code emailed and entered just now, as Supabase writes one
+    /// (amr otp, its time), so a session that may delete its account
+    /// (api/_oc.js stepUp: a code of the last five minutes). [ago], seconds
+    /// since that code. [by] "google", "github" or "orangecheck": a session
+    /// that way started instead, as each is minted from a one-time link
+    /// (amr otp too) and written down as its way's, which no step-up takes.
+    /// [claims] say otherwise where they say anything.
+    async signIn(claims, { by = "code", ago = 0 } = {}) {
+      const now = Math.floor(Date.now() / 1000);
+      const session = randomUUID();
+      if (by === "google" || by === "github") self.sessions.set(session, { way: by });
+      else if (by === "orangecheck") {
+        self.sessions.set(session, { bound: true, linked: true, rh: `rh-${session}`, aud: "https://brickworks.test",
+          iat: now - ago });
+      } else if (by !== "code") throw new Error(`no such way to sign in: ${by}`);
       const header = b64url(JSON.stringify({ alg: "ES256", kid: "k1", typ: "JWT" }));
       const body = b64url(JSON.stringify({ aud: "authenticated", iss: `${SUPABASE_URL}/auth/v1`,
-        exp: Math.floor(Date.now() / 1000) + 3600, email_verified: true, amr: [{ method: "otp" }], ...claims }));
+        exp: now + 3600, email_verified: true, amr: [{ method: "otp", timestamp: now - ago }],
+        session_id: session, ...(by === "orangecheck" ? { app_metadata: { orangecheck: true } } : {}), ...claims }));
       const signature = await webcrypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, signer.privateKey,
         new TextEncoder().encode(`${header}.${body}`));
       return `${header}.${body}.${b64url(signature)}`;
@@ -180,6 +208,11 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     const url = new URL(String(input));
     self.calls.push(`${(init.method || "GET").toUpperCase()} ${url.origin}${url.pathname}`);
     if (url.origin === ADMISSION_URL) return admission.fetch(input, init);
+    // orangecheck's list of sessions ended there (api/_oc.js sessionStanding,
+    // asked only where a test gives the project its keys): none.
+    if (url.origin === OC_ME && url.pathname === "/api/integrator/revocations") {
+      return json(200, { v: 1, tokens: [], accounts: {}, handles: {}, at: Math.floor(Date.now() / 1000) });
+    }
     if (url.origin !== SUPABASE_URL) throw new TypeError(`nothing here answers ${url.origin}`);
     if (url.pathname === "/auth/v1/.well-known/jwks.json") return json(200, { keys: [jwk] });
     const user = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(url.pathname);
@@ -264,6 +297,15 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     }
     // No orangecheck account made by Connect (supabase/orangecheck_connect_leaving.sql).
     if (url.pathname === "/rest/v1/rpc/oc_connect_leaving") return json(200, false);
+    // Every session signIn signs is there: a code's, or the way's that
+    // started it (api/_auth.js sessionOf and standingOf).
+    const started = self.sessions.get(asked.session) || {};
+    if (url.pathname === "/rest/v1/rpc/oc_session_of") {
+      return json(200, { exists: true, bound: false, linked: false, ...(started.bound ? started : {}) });
+    }
+    if (url.pathname === "/rest/v1/rpc/session_standing") {
+      return json(200, { exists: true, way: null, bound: false, linked: false, ...started });
+    }
     if (url.pathname === "/rest/v1/rpc/plan_consent_note" && !self.noConsents) {
       consents.push(asked);
       return json(200);

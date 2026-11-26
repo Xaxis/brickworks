@@ -173,6 +173,13 @@ export const PALETTE = [0, 72, 71, 15, 4, 320, 25, 484, 191, 14, 226, 368, 27, 1
   1, 272, 212, 379, 431, 85, 30, 31, 26, 5, 29, 430, 353, 402, 424, 19, 28, 371, 84, 92, 78, 422, 370, 70, 308, 326, 82, 80,
   297, 315, 316];
 export const HAIR_COLOURS = [0, 308, 70, 370, 84, 28, 19, 371, 191, 484, 402, 71, 15];
+// A hair of the person's own (sitehair, 2026-11-25): a mould they made in the
+// studio's minifig builder, named as the app names it (CustomParts.named,
+// bw-<part>-m-<twenty hex digits of its text>), kept on their account
+// (supabase/own_moulds.sql). A recipe may wear one as its hair; the API
+// keeps such a recipe only for the mould's owner (api/people.js).
+export const OWN_MOULD = /^bw-[0-9a-z]{0,10}-m-[0-9a-f]{20}$/;
+export const ownMould = (value) => typeof value === "string" && OWN_MOULD.test(value);
 // See-through ones, for a helmet's bowl or a wing.
 export const CLEAR = [47, 43, 33, 36, 46];
 
@@ -259,13 +266,14 @@ export function figureShape(recipe) {
   const part = (value, list) => value === "" || has(ids(list), value);
   const body = (value) => value === SKIN || colour(value);
   const ok = has(SKINS, r.sk) && has(ids(FACES), r.fa) && (r.fb === 0 || r.fb === 1)
-    && part(r.hd, HAIR) && colour(r.hc) && part(r.nk, NECKS) && colour(r.nc)
+    && (part(r.hd, HAIR) || ownMould(r.hd)) && colour(r.hc) && part(r.nk, NECKS) && colour(r.nc)
     && has(ids(TORSOS), r.to) && colour(r.tc) && body(r.ar) && body(r.al) && body(r.hr) && body(r.hl)
     && has(ids(LEGS), r.lg) && colour(r.hp) && colour(r.rr) && colour(r.ll)
     && part(r.ir, HELD) && colour(r.ic) && part(r.il, HELD) && colour(r.jc)
     && Array.isArray(r.po) && r.po.length === POSE_RANGE.length
     && r.po.every((n, at) => Number.isInteger(n) && n >= POSE_RANGE[at][0] && n <= POSE_RANGE[at][1])
-    && backgroundOf(r.bg) !== null && (r.fr === 0 || r.fr === 1) && [r.hd, r.nk, r.ir, r.il].every(id);
+    && backgroundOf(r.bg) !== null && (r.fr === 0 || r.fr === 1) && (id(r.hd) || ownMould(r.hd))
+    && [r.nk, r.ir, r.il].every(id);
   if (!ok) return null;
   return { v: 2, sk: r.sk, fa: r.fa, fb: r.fb, hd: r.hd, hc: r.hc, nk: r.nk, nc: r.nc, to: r.to, tc: r.tc, ar: r.ar,
     al: r.al, hr: r.hr, hl: r.hl, lg: r.lg, hp: r.hp, rr: r.rr, ll: r.ll, ir: r.ir, ic: r.ic, il: r.il, jc: r.jc,

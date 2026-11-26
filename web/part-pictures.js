@@ -3,10 +3,12 @@
 //
 // A builder scans a parts list by picture, not by name. Until rel-m180 the
 // list showed Rebrickable's photos, which had every visitor's browser ask a
-// third party for each part; then only a swatch. Pictures made ahead of
-// time are out (src/ui/part_thumbnails.gd: 24,731 parts in 322 colours), and
-// so is a sheet a publish renders, which every model shared before it would
-// lack. What every model's page already has is each part's geometry: content
+// third party for each part; then only a swatch. Pictures of every part made
+// ahead of time are out (src/ui/part_thumbnails.gd: 24,731 parts in 322
+// colours); a model's own lots, drawn by the server the first time anybody
+// asks and kept (api/_lot_pictures.js, partpics), are not: a lot that file
+// holds is shown from it, and what follows draws the rest, as it drew every
+// lot before. What every model's page already has is each part's geometry: content
 // named (api/_parts.js gives each lot its mesh), immutable, a year in the
 // browser's cache, in the store the app and the viewer fetch it from. So a
 // lot is drawn here, as the app's parts bin draws one: a small square,
@@ -108,6 +110,7 @@ precision mediump float;
 uniform sampler2D facts;
 uniform vec2 texel;
 uniform vec4 pen;
+uniform float fine;
 varying vec2 at;
 vec3 read(vec2 p) {
   vec4 t = texture2D(facts, p);
@@ -125,15 +128,16 @@ void main() {
   else if (here) {
     float fold = max(max(distance(c.xy, l.xy), distance(c.xy, r.xy)), max(distance(c.xy, u.xy), distance(c.xy, d.xy)));
     float step = max(abs(l.z + r.z - 2.0 * c.z), abs(u.z + d.z - 2.0 * c.z));
-    line = max(smoothstep(0.22, 0.5, fold), smoothstep(0.004, 0.012, step));
+    line = max(smoothstep(0.22, 0.5, fold), smoothstep(0.004, 0.012, step)) * fine;
   }
   gl_FragColor = pen * line;
 }`;
-// Lit as the bin lights a part: the face towards the key light in the
-// part's own colour, the others a step and two darker, so a brick's top,
-// front and side part. A dark part's lit faces are lifted a little and a
-// light one's dimmed, as PartThumbnails._light_for tames its lights, or
-// black and white would each be one flat shape.
+// Lit as the app lights its own pictures of a part, and as the server draws
+// a model's lots (api/_lot_pictures.js lit, whose DARK and LIGHT these are):
+// per channel, so much of the colour for any face, for facing the key and
+// for facing the fill, a light colour given less, and the key's white glint.
+// The list shows a model's lots from the server's file, and draws here only
+// those it does not hold (or all, until it is drawn): one look, either way.
 const FRAGMENT = `
 precision mediump float;
 uniform vec4 ink;
@@ -145,42 +149,109 @@ void main() {
   vec3 n = normalize(facing);
   if (!gl_FrontFacing) n = -n;
   float bright = dot(ink.rgb, vec3(0.2126, 0.7152, 0.0722));
-  float tame = 1.0 - 0.3 * clamp((bright - 0.6) / 0.4, 0.0, 1.0);
-  float k = max(dot(n, key), 0.0);
-  float f = max(dot(n, fill), 0.0);
-  vec3 lit = ink.rgb * (0.58 + tame * (0.62 * k + 0.3 * f));
-  lit += (1.0 - bright) * 0.16 * k;
-  float shine = pow(max(dot(n, normalize(key + eye)), 0.0), 48.0) * 0.22;
-  gl_FragColor = vec4(min(lit + shine, 1.0) * ink.a, ink.a);
+  float t = clamp((bright - 0.5) / 0.45, 0.0, 1.0);
+  vec3 a = mix(vec3(1.043, 1.085, 1.155), vec3(0.881, 0.902, 0.977), t);
+  vec3 k = mix(vec3(0.704, 0.65, 0.59), vec3(0.238, 0.203, 0.107), t);
+  vec3 f = mix(vec3(0.19, 0.167, 0.188), vec3(0.082, 0.095, 0.087), t);
+  float shine = 0.4 * pow(max(dot(n, normalize(key + eye)), 0.0), 24.0);
+  vec3 lit = ink.rgb * (a + k * max(dot(n, key), 0.0) + f * max(dot(n, fill), 0.0));
+  gl_FragColor = vec4(min(lit + shine, 1.0), 1.0);
 }`;
 
-/// A colour as the page was given it, "rrggbb" or "rrggbbaa", as [r, g, b, a]
-/// from 0 to 1; null for anything else.
+/// A colour as the page was given it, "rrggbb" or "rrggbbaa", as the app
+/// draws it (shownOf), [r, g, b, 1] from 0 to 1; null for anything else. One
+/// you can see through is drawn as one you cannot, as the app draws it.
 function inkOf(hex) {
   if (!/^[0-9a-f]{6}([0-9a-f]{2})?$/i.test(String(hex || ""))) return null;
   const at = (i) => parseInt(hex.slice(i, i + 2), 16) / 255;
-  // You can see through it, and see it: never less than two thirds there.
-  return [at(0), at(2), at(4), hex.length === 8 ? Math.max(at(6), 0.66) : 1];
+  return [...shownOf([at(0), at(2), at(4)]), 1];
 }
 
-/// The lines' colour on a part of colour [ink], premultiplied, as LDraw's
-/// edge colours go: grey on black and the darkest colours, a dark shade of
-/// the colour on the rest.
+/// What the app draws for a palette value (PartLibrary.shown_for, and
+/// api/_lot_pictures.js shownOf): the value, except the black family, dark
+/// and nearly grey in OKLab, which keeps its lightness and loses three
+/// quarters of its tint, so black reads black and not navy.
+function shownOf(ink) {
+  const lin = ink.map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const cube = (x) => Math.sign(x) * Math.abs(x) ** (1 / 3);
+  const l = cube(0.4122214708 * lin[0] + 0.5363325363 * lin[1] + 0.0514459929 * lin[2]);
+  const m = cube(0.2119034982 * lin[0] + 0.6806995451 * lin[1] + 0.1073969566 * lin[2]);
+  const s = cube(0.0883024619 * lin[0] + 0.2817188376 * lin[1] + 0.6299787005 * lin[2]);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const b = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  if (L >= 0.35 || Math.hypot(a, b) >= 0.04) return ink;
+  const [A, B] = [a * 0.25, b * 0.25];
+  const l2 = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m2 = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s2 = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  return [4.0767416621 * l2 - 3.3077115913 * m2 + 0.2309699292 * s2,
+    -1.2684380046 * l2 + 2.6097574011 * m2 - 0.3413193965 * s2,
+    -0.0041960863 * l2 - 0.7034186147 * m2 + 1.707614701 * s2].map((c) => {
+    const v = Math.min(Math.max(c, 0), 1);
+    return v < 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055;
+  });
+}
+
+/// The lines' colour on a part of colour [ink], premultiplied, as the
+/// server's (api/_lot_pictures.js penOf): grey on the darkest, a darker
+/// shade of the colour on the rest, and light, as the app's pictures have
+/// only a shade where a part folds.
 function penOf(ink) {
   const bright = 0.2126 * ink[0] + 0.7152 * ink[1] + 0.0722 * ink[2];
-  const line = bright < 0.12 ? [0.5, 0.5, 0.5] : ink.slice(0, 3).map((c) => c * 0.4);
-  const alpha = 0.9;
+  const line = bright < 0.12 ? [0.45, 0.45, 0.45] : ink.slice(0, 3).map((c) => c * 0.62);
+  const alpha = 0.45;
   return [...line.map((c) => c * alpha), alpha];
+}
+
+/// The index a file of lot pictures carries (api/_lot_pictures.js: its
+/// "brickworks-lots" tEXt chunk), {tile, across, lots}, or null.
+function sheetIndex(bytes) {
+  const word = (at) => ((bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) | bytes[at + 3]) >>> 0;
+  const text = (from, to) => String.fromCharCode(...bytes.subarray(from, to));
+  for (let at = 8; at + 8 <= bytes.length;) {
+    const length = word(at);
+    const type = text(at + 4, at + 8);
+    if (type === "IDAT" || type === "IEND" || at + 12 + length > bytes.length) return null;
+    if (type === "tEXt") {
+      const body = bytes.subarray(at + 8, at + 8 + length);
+      const zero = body.indexOf(0);
+      if (zero > 0 && text(at + 8, at + 8 + zero) === "brickworks-lots") {
+        try {
+          const index = JSON.parse(new TextDecoder().decode(body.subarray(zero + 1)));
+          return index && Array.isArray(index.lots) && index.tile > 0 && index.across > 0 ? index : null;
+        } catch {
+          return null;
+        }
+      }
+    }
+    at += 12 + length;
+  }
+  return null;
 }
 
 /// What draws the list's pictures: geometry from [root] (the store, ending
 /// in "/"), a surface's own colour from [colours] ({code: hex}). Null where
-/// there is no store to draw from.
-export function partPictures(root, colours = {}) {
+/// there is no store to draw from. [sheet] is where the server drew every
+/// lot already (parts.json's lot_pictures, partpics): a lot it holds is
+/// shown from it, and only one it does not is drawn here.
+export function partPictures(root, colours = {}, sheet = "") {
   if (typeof root !== "string" || !/^(https?:)?\//.test(root)) return null;
   const ratio = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
   const px = Math.round(SHOWN * ratio);
   const size = px * OVER;
+  // The file, once: its picture and each lot's square, by part and colour.
+  const fromSheet = typeof sheet === "string" && /^\/m\/[A-Za-z0-9]{10}\/v\/[1-9][0-9]{0,5}\/parts[.]png[?]f=[0-9a-f]{12}$/.test(sheet)
+    && typeof createImageBitmap === "function"
+    ? fetch(sheet).then((answer) => (answer.ok ? answer.arrayBuffer() : null)).then(async (bytes) => {
+      const index = bytes && sheetIndex(new Uint8Array(bytes));
+      if (!index) return null;
+      const picture = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+      const cells = new Map(index.lots.map(([part, colour], n) =>
+        [`${part}:${colour}`, [(n % index.across) * index.tile, Math.floor(n / index.across) * index.tile]]));
+      return { picture, cells, tile: index.tile };
+    }).catch(() => null)
+    : null;
   const drawn = new Map();      // part:colour -> its canvas
   const jobs = new Map();       // part:colour -> {lot, pics, started}, to be drawn
   const geometry = new Map();   // hash -> Promise of its buffers on the card
@@ -338,7 +409,9 @@ export function partPictures(root, colours = {}) {
   function upload(part) {
     const gl = context();
     if (!gl) throw new Error("no WebGL");
-    // Framed tight round the part as the camera sees it, a little room left.
+    // Framed as the app frames it (PartThumbnails._frame, and the server's
+    // drawLot): on the middle of the part's box, as wide as 1.06 of the box's
+    // half diagonal each way, so a part is as big in its square as there.
     const lo = [Infinity, Infinity, Infinity];
     const hi = [-Infinity, -Infinity, -Infinity];
     const surfaces = [];
@@ -347,11 +420,9 @@ export function partPictures(root, colours = {}) {
       if (!surface.index.length) continue;
       if (surface.index instanceof Uint32Array && !gl.getExtension("OES_element_index_uint")) throw new Error("too big");
       for (let v = 0; v < p.length; v += 3) {
-        const at = [p[v], p[v + 1], p[v + 2]];
-        const seen = [dot(at, RIGHT), dot(at, UP), dot(at, EYE)];
         for (let k = 0; k < 3; k++) {
-          if (seen[k] < lo[k]) lo[k] = seen[k];
-          if (seen[k] > hi[k]) hi[k] = seen[k];
+          if (p[v + k] < lo[k]) lo[k] = p[v + k];
+          if (p[v + k] > hi[k]) hi[k] = p[v + k];
         }
       }
       const buffer = (target, data) => {
@@ -366,9 +437,11 @@ export function partPictures(root, colours = {}) {
           buffer(gl.ELEMENT_ARRAY_BUFFER, surface.index)] });
     }
     if (!surfaces.length) throw new Error("nothing to draw");
-    const half = Math.max(hi[0] - lo[0], hi[1] - lo[1], 1) * 0.5 * 1.08;
-    const deep = Math.max(hi[2] - lo[2], 1) * 0.5 * 1.02;
-    const mid = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+    const centre = [0, 1, 2].map((k) => (lo[k] + hi[k]) / 2);
+    const radius = Math.max(Math.hypot(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]) * 0.5, 4);
+    const half = radius * 1.06;
+    const deep = radius * 1.02;
+    const mid = [dot(centre, RIGHT), dot(centre, UP), dot(centre, EYE)];
     // Column by column: x along RIGHT, y along UP, nearer the eye less deep.
     const view = new Float32Array([
       RIGHT[0] / half, UP[0] / half, -EYE[0] / deep, 0,
@@ -376,44 +449,32 @@ export function partPictures(root, colours = {}) {
       RIGHT[2] / half, UP[2] / half, -EYE[2] / deep, 0,
       -mid[0] / half, -mid[1] / half, mid[2] / deep, 1,
     ]);
-    return { surfaces, view };
+    // Lines as fine as the app's shade where a part folds: a part shrunk to
+    // fit its square, a big plate's hundred studs, would be its lines alone.
+    const fine = Math.min(Math.max(0.6 / (2 * half / size), 0.3), 1);
+    return { surfaces, view, fine };
   }
 
   /// Each surface of [part] drawn by [using] (a program with a view), its
-  /// colour, where it takes one, [inks][s]; [through]: only those you can
-  /// see through, else only those you cannot, or (null) all.
-  function surfaces(part, using, inks, through) {
+  /// colour, where it takes one, [inks][s].
+  function surfaces(part, using, inks) {
     gl.useProgram(using.program);
     gl.uniformMatrix4fv(using.view, false, part.view);
     gl.enableVertexAttribArray(1);
     for (let s = 0; s < part.surfaces.length; s++) {
       const surface = part.surfaces[s];
-      if (through !== null && (inks[s][3] < 1) !== through) continue;
       if (using.ink) gl.uniform4fv(using.ink, inks[s]);
       gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffers[0]);
       gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffers[1]);
       gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, surface.buffers[2]);
-      const type = surface.wide ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
-      if (through) {
-        gl.enable(gl.BLEND);
-        gl.depthMask(false);
+      if (surface.twoSided) gl.disable(gl.CULL_FACE);
+      else {
         gl.enable(gl.CULL_FACE);
-        for (const side of [gl.FRONT, gl.BACK]) {
-          gl.cullFace(side);
-          gl.drawElements(gl.TRIANGLES, surface.count, type, 0);
-        }
-        gl.disable(gl.BLEND);
-        gl.depthMask(true);
-      } else {
-        if (surface.twoSided) gl.disable(gl.CULL_FACE);
-        else {
-          gl.enable(gl.CULL_FACE);
-          gl.cullFace(gl.BACK);
-        }
-        gl.drawElements(gl.TRIANGLES, surface.count, type, 0);
+        gl.cullFace(gl.BACK);
       }
+      gl.drawElements(gl.TRIANGLES, surface.count, surface.wide ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, 0);
     }
     gl.disableVertexAttribArray(1);
   }
@@ -426,19 +487,18 @@ export function partPictures(root, colours = {}) {
     // Where each pixel faces and how near it is, every surface alike.
     gl.bindFramebuffer(gl.FRAMEBUFFER, factsTarget);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    surfaces(part, facts, inks, null);
+    surfaces(part, facts, inks);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    // The part lit: what you cannot see through first, then what you can,
-    // its far side before its near, over it.
+    // The part lit, the nearest surface seen.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    surfaces(part, shaded, inks, false);
-    surfaces(part, shaded, inks, true);
+    surfaces(part, shaded, inks);
     // Its lines over it.
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.enable(gl.BLEND);
     gl.useProgram(lines.program);
     gl.uniform4fv(lines.pen, penOf(own));
+    gl.uniform1f(lines.fine, part.fine);
     gl.bindBuffer(gl.ARRAY_BUFFER, corners);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -550,10 +610,30 @@ export function partPictures(root, colours = {}) {
       if (!lot || !/^[0-9a-f]{8,64}$/.test(String(lot.mesh || ""))) return giveUp(pic);
       const key = `${lot.mesh}:${lot.colour}`;
       if (drawn.has(key)) return place(pic, drawn.get(key));
-      if (broken) return giveUp(pic);
-      if (!near) return ask(pic, lot);
-      wanted.set(pic, lot);
-      near.observe(pic);
+      const live = () => {
+        if (drawn.has(key)) return place(pic, drawn.get(key));
+        if (broken) return giveUp(pic);
+        if (!near) return ask(pic, lot);
+        wanted.set(pic, lot);
+        near.observe(pic);
+      };
+      if (!fromSheet) return live();
+      // From the file the server drew, where it has the lot; else drawn here.
+      fromSheet.then((made) => {
+        const cell = made && made.cells.get(`${lot.part}:${lot.colour}`);
+        if (!cell) return live();
+        if (!drawn.has(key)) {
+          const canvas = document.createElement("canvas");
+          canvas.width = px;
+          canvas.height = px;
+          canvas.setAttribute("aria-hidden", "true");
+          const pen = canvas.getContext("2d");
+          pen.imageSmoothingQuality = "high";
+          pen.drawImage(made.picture, cell[0], cell[1], made.tile, made.tile, 0, 0, px, px);
+          drawn.set(key, canvas);
+        }
+        return place(pic, drawn.get(key));
+      });
     },
     /// The rows asked for so far are gone (the list drawn again): none of
     /// them watched any more, nor waiting its turn. A picture under way is

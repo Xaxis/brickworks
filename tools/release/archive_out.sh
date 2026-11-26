@@ -1,5 +1,7 @@
 #!/bin/bash
-# Moves release-out's old output to the archive, never deleting it.
+# Moves release-out's old output to the archive. In the archive, screenshots go
+# after $RELEASE_SHOT_DAYS (14) days; logs, JSON and everything else stay. So do
+# they in bench/results run folders idle that long, unless a doc cites the folder.
 #   archive_out.sh [--dry]
 # It moves the releases (rel-mNNN*) older than the newest $RELEASE_KEEP (8)
 # and any other entry, a unit's preview say, that nothing has touched for
@@ -9,7 +11,9 @@
 # A train still running, a hold and the archive itself are never moved.
 #
 # Why: release-out had grown to 61 GB in 25,000 entries, with /mnt/Projects at
-# 93% (2026-11-11). train.sh runs this once a release is live. The last five
+# 93% (2026-11-11). train.sh runs this once a release is live. The archive then
+# grew to 113 GB on the root disk in two weeks (2026-11-24, / at 4% free), 110 GB
+# of it preview PNGs that nothing reads again; the docs cite only logs and JSON. The last five
 # _prod.log files (ship_minutes) and the live release's _lead.out (status)
 # are always among the releases kept.
 set -u
@@ -18,6 +22,7 @@ R=$(dirname "$(git -C "$HERE" rev-parse --path-format=absolute --git-common-dir)
 RO=$(realpath -m "${RELEASE_OUT:-$R/bench/results/release-out}")
 AR=${RELEASE_ARCHIVE:-$HOME/brickworks-archive/release-out}
 KEEP=${RELEASE_KEEP:-8}
+SHOT=$(( ${RELEASE_SHOT_DAYS:-14} * 1440 ))
 IDLE=$(( ${RELEASE_IDLE_DAYS:-3} * 1440 ))
 dry=0; [ "${1:-}" = --dry ] && dry=1
 [ -d "$RO" ] || { echo "archive_out: no $RO"; exit 0; }
@@ -57,7 +62,41 @@ for e in *; do
 done
 if [ "$dry" = 0 ] && [ -d "$AR" ]; then
   ln -sfn "$AR" "$RO/archive"
-  [ -e "$RO/README.archive" ] || printf 'Older release and unit-preview output is moved (never deleted) by tools/release/archive_out.sh to\n%s\nrelease-out/archive links there: release-out/X is then release-out/archive/X.\n' "$AR" > "$RO/README.archive"
+  [ -e "$RO/README.archive" ] || printf 'Older release and unit-preview output is moved (screenshots deleted after ${RELEASE_SHOT_DAYS:-14} days, the rest kept) by tools/release/archive_out.sh to\n%s\nrelease-out/archive links there: release-out/X is then release-out/archive/X.\n' "$AR" > "$RO/README.archive"
 fi
+shots=0
+if [ -d "$AR" ]; then
+  if [ "$dry" = 1 ]; then
+    shots=$(find "$AR/" -type f \( -name '*.png' -o -name '*.webp' -o -name '*.ppm' \) -mmin "+$SHOT" 2>/dev/null | wc -l)
+  else
+    shots=$(ionice -c3 nice -n 19 find "$AR/" -type f \( -name '*.png' -o -name '*.webp' -o -name '*.ppm' \) -mmin "+$SHOT" -print -delete 2>/dev/null | wc -l)
+    find "$AR/" -mindepth 1 -type d -empty -delete 2>/dev/null
+  fi
+fi
+# bench/results grew by ~590 run folders a fortnight (49 GB over 14 days old on
+# 2026-11-24). The docs cite some by name or glob (bench/results/2026-10-12-d5*/...):
+# those keep their pictures.
+BR=$(realpath -m "${BENCH_RESULTS:-$R/bench/results}")
+cited=$(grep -rhoE 'bench/results/[A-Za-z0-9_.*-]+' "$R/docs" "$R/tools" "$R"/*.md 2>/dev/null | sed 's#bench/results/##' | sort -u)
+for d in "$BR"/*/; do
+  name=$(basename "$d")
+  [ "$name" = release-out ] && continue
+  [ -L "${d%/}" ] && continue
+  cite=0
+  while IFS= read -r pat; do
+    # A cited path may be a glob (bench/results/design3*), so $pat stays unquoted on purpose.
+    # shellcheck disable=SC2053
+    [ -n "$pat" ] && [ "$pat" != '*' ] && [[ $name == $pat ]] && { cite=1; break; }
+  done <<< "$cited"
+  [ "$cite" = 1 ] && continue
+  [ -n "$(find "$d" -mmin "-$SHOT" -print -quit 2>/dev/null)" ] && continue
+  if [ "$dry" = 1 ]; then
+    c=$(find "$d" -type f \( -name '*.png' -o -name '*.webp' -o -name '*.ppm' \) | wc -l)
+  else
+    c=$(ionice -c3 nice -n 19 find "$d" -type f \( -name '*.png' -o -name '*.webp' -o -name '*.ppm' \) -print -delete | wc -l)
+  fi
+  shots=$((shots + c))
+done
 k=""; [ "$kept" -gt 0 ] && k="; $kept of a running train kept"
+[ "$shots" -gt 0 ] && k="$k; $([ "$dry" = 1 ] && echo would delete || echo deleted) $shots screenshots over ${RELEASE_SHOT_DAYS:-14} days old (archive and uncited bench runs)"
 echo "archive_out: moved $moved entries to $AR (releases before rel-m${cut:-?} and others idle ${RELEASE_IDLE_DAYS:-3} days)$k"

@@ -379,6 +379,12 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	assemblies.edit_refused.connect(bar.say_over)
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
+	# ...and the ghost red where a copy has no room for its twin, why said as
+	# it turns so, before the click it would refuse (wingplace).
+	builder.copies_room = assemblies.room_in_copies
+	builder.copies_refused.connect(func(words: String) -> void:
+		if bar.status_text() != words:
+			bar.say(words))
 	# A model put into this one comes in hand as a paste does (intomodel).
 	bar.hold_parts = verbs.hold
 	# Whatever replaces the model leaves no assembly being edited.
@@ -420,6 +426,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 		_menus.append(_menu(str(menu[0]), menu[1]))
 	for button: MenuButton in _menus:
 		bar.menus.add_child(button)
+	_fold_into(bar.more)
 	var app_menu: PopupMenu = bar.mark.get_popup()
 	_fill(app_menu, APP_MENU)
 	app_menu.id_pressed.connect(_on_id)
@@ -1880,10 +1887,53 @@ func item_index(popup: PopupMenu, name: String) -> int:
 	return -1
 
 
+## The menu bar's "…" (ModelBar.more): each menu the row has no room for,
+## in its order, as a row opening the same commands, kept in step with the
+## menus by [method _fill_again]. Dressed as the menus are.
+func _fold_into(more: MenuButton) -> void:
+	_dress_menu(more)
+	var popup: PopupMenu = more.get_popup()
+	popup.add_theme_font_size_override("font_size", 13)
+	for menu: Array in MENUS:
+		var sub := PopupMenu.new()
+		sub.name = "folded_" + str(menu[0]).to_lower()
+		_fill(sub, menu[1])
+		sub.id_pressed.connect(_on_id)
+		sub.about_to_popup.connect(func() -> void: _refresh(sub))
+		popup.add_child(sub)
+		_folded.append(sub)
+	popup.about_to_popup.connect(func() -> void:
+		popup.clear(false)
+		for n: int in _menus.size():
+			if not _menus[n].visible:
+				popup.add_submenu_node_item(str(MENUS[n][0]), _folded[n], SUBMENU_ID + n))
+	bar.menus_folded.connect(func() -> void:
+		var held: PackedStringArray = []
+		for button: MenuButton in _menus:
+			if not button.visible:
+				held.append(button.atr(button.text))
+		more.tooltip_text = ", ".join(held))
+	bar.refit()
+
+
+## Each menu's rows in "…", for the menus it holds (_fold_into).
+var _folded: Array[PopupMenu] = []
+
+
 ## A menu on the bar, from its list of commands.
 func _menu(title: String, items: Array) -> MenuButton:
 	var button := MenuButton.new()
 	button.text = title
+	_dress_menu(button)
+	var popup: PopupMenu = button.get_popup()
+	_fill(popup, items)
+	popup.id_pressed.connect(_on_id)
+	popup.about_to_popup.connect(func() -> void: _refresh(popup))
+	return button
+
+
+## A menu's look on the bar: its words, no face until pointed at.
+func _dress_menu(button: MenuButton) -> void:
 	button.flat = true
 	button.switch_on_hover = true
 	button.focus_mode = Control.FOCUS_NONE
@@ -1904,11 +1954,6 @@ func _menu(title: String, items: Array) -> MenuButton:
 		button.add_theme_stylebox_override(state, face)
 	button.add_theme_color_override("font_color", Color(1, 1, 1, 0.86))
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
-	var popup: PopupMenu = button.get_popup()
-	_fill(popup, items)
-	popup.id_pressed.connect(_on_id)
-	popup.about_to_popup.connect(func() -> void: _refresh(popup))
-	return button
 
 
 func _fill(popup: PopupMenu, items: Array) -> void:
@@ -2037,6 +2082,10 @@ func _fill_again() -> void:
 		var popup: PopupMenu = _menus[n].get_popup()
 		popup.clear(true)
 		_fill(popup, MENUS[n][1])
+	# And each menu's rows in "…", folded where the menu bar is narrow.
+	for n: int in _folded.size():
+		_folded[n].clear(true)
+		_fill(_folded[n], MENUS[n][1])
 	# The app's menu too: Beta hub is in it for a tester alone.
 	var app_menu: PopupMenu = bar.mark.get_popup()
 	app_menu.clear(true)
@@ -4105,7 +4154,12 @@ func _close_step(level: String, skip: Dictionary) -> String:
 ## as the person's (sk2review F2). The same for the timeline, the keys and
 ## every session's tool, as all come here. "" when nothing is held.
 func _steps_wait() -> String:
-	if builder != null and builder.is_carrying():
+	# Parts lifted off the model into hand (X over a figure, a selection
+	# picked up) are the model's, each in its step where it stood
+	# (Builder._take_into_hand), but are being moved: steps planned now would
+	# be planned with them where they stood, not where they go. So a step
+	# edit waits for the move, as it waits for a copy in hand.
+	if builder != null and (builder.is_carrying() or builder.holds_lifted_figure()):
 		return "the parts in hand are in no step: put them down, or press Escape, first"
 	return ""
 
@@ -4449,6 +4503,8 @@ func controls_by_name() -> Dictionary:
 	var out: Dictionary = {}
 	for button: MenuButton in _menus:
 		out["menu_" + button.text.to_lower()] = button
+	if bar != null and bar.more.visible:
+		out["more_menus"] = bar.more
 	if toolbar != null:
 		out.merge(toolbar.controls_by_name())
 	if inspector != null:

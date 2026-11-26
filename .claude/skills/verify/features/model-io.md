@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:wirekeep probe, cli:open faults probe, cli:askfirst probe, ui:missing and moved parts on open, cli:movedparts probe, cli:movedparts phone probe, cli:mvreview probe, cli:exactsave probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:wirekeep probe, cli:open faults probe, cli:askfirst probe, ui:missing and moved parts on open, cli:movedparts probe, cli:movedparts phone probe, cli:mvreview probe, cli:exactsave probe, cli:pasteexact probe, cli:mirrorsave probe -->
 
 ## Sub-features
 
@@ -496,13 +496,28 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
   paints 42079-1's rope, saves, opens another file, comes back to it
   yellow), `keep_text` and `kt3r` (each save a patch keeping every line
-  the edit did not touch, or live's write), `exactsave` (a model reopens
+  the edit did not touch, or live's write), `mirrorsave` (a sub-model's
+  own lines stay the file's whatever copy comes first: each copy's frame is
+  read from where each part's line puts it (ModelStore._as_placed's
+  read_as), not where its reflection stands, a section written from a
+  copy writes each part as its line had it in either hand while the line
+  holds (Assemblies.as_lined, Assemblies.line_of: a part swapped by Find and
+  Replace says nothing of its copy's frame), and the Mirror tool carries the
+  record, so a copy mirrored in place changes only the line placing it;
+  `mirrorreview` runs mirrors on y and z, mirrored-and-turned copies, parts
+  on the plane, a mirror in a mirror, Find and Replace, paste, undo/redo and
+  Claude's mirror_parts, both forms), `exactsave` (a model reopens
   exactly: a whole write keeps each copy's frame as the file read it, not
   one fitted to its parts, and mirrors only where the file does; a paste of
   copies of the file's own sub-models is a patch, one line placing each
   copy, laid on the file's own copy as it reads: 10030-1 pasted whole saves
   byte for byte plus 3 lines, and twelve sets with rounded matrices take one
-  part's move as that line alone), `wholekeep` (a save written
+  part's move as that line alone), `pasteexact` (a paste saved and reopened
+  three times is where it was put down, the file's lines byte for byte and
+  each later save the first: a mirrored copy, or one holding a mirrored
+  copy, is a patch too, its parts laid in their other hand; up to pasteexact
+  it was written whole, and the sections round it were written again),
+  `wholekeep` (a save written
   whole keeps each line the file carried that the app does not read beside
   the line it was beside, `LdrModel.kept_lines`: comments, other programs'
   lines, TEXMAP blocks round their parts, moved as their parts move, and the
@@ -1055,7 +1070,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   every section, carried part file and held part's file of the host, a
   sub-model file's name without its extension too); its author's steps come
   with it, its root in the step it was put down in where the host has steps;
-  its parts the app cannot show are kept in their sub-model and step
+  into a host nobody gave steps, the host first keeps the steps it was shown,
+  the baseplate (scenery) planned as no part of them, and the floor's step
+  never makes the host one with steps (`Builder._bring_steps`,
+  `_brought_stepped`; sk2review2 F1, `SK2R_ONLY=plate tools/probe.sh
+  sk2review_probe`); its parts the app cannot show are kept in their sub-model and step
   (`ModelStore._held_put`, kinds `unseen`/`absent`/`awaited`) and move, copy
   and undo with it; its maker is written in its sub-model's header (the
   file's `0 Author:`/`0 !LICENSE`, else the library's or gallery's credit);

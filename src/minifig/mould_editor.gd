@@ -4,13 +4,29 @@
 ##
 ## The part in the middle, big: drag on it to sculpt, drag off it (or with
 ## the right button) to turn it, the wheel to come closer. Brushes down
-## the left — pull, push, inflate, smooth, pinch, flatten, grab — with a
-## size in LDU and a strength; symmetry makes every stroke on both sides;
-## the lattice puts 27 handles round the part to bend all of it at once;
-## "Finer" gives the surface more corners where it is coarse. What is
-## locked is tinted blue — the inside that rests on the head, a socket, a
-## bar — and no brush moves it. "Check walls" marks in red where the part
-## is thinner than a millimetre.
+## the left — pull, push, grow, shrink, smooth, pinch, flatten, grab — with
+## a size in LDU and a strength; symmetry, on from the start, makes every
+## stroke on both sides; the lattice puts 27 handles round the part to bend
+## all of it at once; "Finer" gives the surface more corners where it is
+## coarse. What is locked is tinted blue — the inside that rests on the
+## head, a socket, a bar — and no brush moves it. "Check walls" marks in red
+## where the part is thinner than a millimetre.
+##
+## By finger (figmould): on a phone the part is over the brushes, which are
+## a row of their own, and the rest under them. One finger sculpts on the
+## part and turns the view off it; two fingers turn it and pinch to come
+## closer. A second finger that comes down while the first is sculpting
+## takes the stroke it had begun back: a pinch never dents the part.
+##
+## Every stroke is one step of Undo, and so are Finer, a lattice handle's
+## drag and starting again from another part: Undo past a fresh start goes
+## back into the mould begun before it. Up to figmould, Start, Dome and Club
+## threw the sculpting away, and Undo after Finer put back fewer corners
+## than its triangles named.
+##
+## Nothing made is lost by closing it, a reload, or the tab going: the mould
+## as it is is kept for this tab after every stroke ([member drafts]), and
+## Make a mould… in the same slot opens on it again until it is saved.
 ##
 ## Start from the part in the slot, any part by number, or a dome (to wear)
 ## or a club (to hold). "Save mould" makes the part, keeps it, and puts it
@@ -21,9 +37,25 @@ extends PanelContainer
 signal made(ids: Array, slot: String)
 signal closed()
 
+## Where the moulds being made are kept, one a slot, or "" for this tab's
+## own folder (TabSession): a reload keeps the tab's, and another tab has
+## its own. A probe points it at a folder of its own.
+static var drafts: String = ""
+
+## How long after a word typed in the name the draft is written.
+const DRAFT_AFTER_MS := 400
+## Said when the mould as it is could not be kept: the draft before stays.
+const NOT_KEPT := "Your mould could not be kept: there is no room on the disk."
+## Narrower than this, in the interface's units, the part is over the
+## brushes rather than beside them (a phone has 720).
+const NARROW := 760.0
+
 var library: PartLibrary
 var slot: String = ""
 var colour_code: int = 70
+## The mould of the person's own the last one saved was shaped further
+## from, or "": read when [signal made] is said (MouldsOnAccount).
+var remade: String = ""
 
 var mould: Mould
 
@@ -32,6 +64,7 @@ var _name: LineEdit
 var _from: LineEdit
 var _status: Label
 var _counts: Label
+var _hint: Label
 var _tools: Dictionary = {}
 var _tool: String = "pull"
 var _size: HSlider
@@ -42,10 +75,36 @@ var _walls: CheckBox
 var _save: Button
 var _waiting_for: String = ""
 
+# The pieces laid out for a desk or a finger ([method _arrange]).
+var _column: VBoxContainer
+var _header: HBoxContainer
+var _body: HBoxContainer
+var _tools_column: VBoxContainer
+var _from_words: Label
+var _start: Button
+var _dome: Button
+var _club: Button
+var _called: Label
+var _close: Button
+var _size_words: Label
+var _strength_words: Label
+var _finer: Button
+var _undo_row: HBoxContainer
+var _undo_button: Button
+var _redo_button: Button
+var _separator: HSeparator
+var _finger_scroll: ScrollContainer
+var _finger: VBoxContainer
+var _name_row: HBoxContainer
+var _tool_strip: ScrollContainer
+var _tool_row: HBoxContainer
+var _rows: Array[HBoxContainer] = []
+var _narrow: int = -1
+
 var _viewport: SubViewport
 var _frame: SubViewportContainer
 var _camera: Camera3D
-var _body: MeshInstance3D
+var _body_mesh: MeshInstance3D
 var _head: MeshInstance3D
 var _ring: MeshInstance3D
 var _handles: Array[MeshInstance3D] = []
@@ -63,26 +122,83 @@ var _grab_plane := Plane()
 var _last_dab := Vector3(INF, INF, INF)
 var _as_made: Dictionary = {}         ## part id -> its share under 1 mm
 
+## Fingers on the view (touch index -> where), and whether two of them are
+## turning it: the first one's own clicks, which the engine makes of it,
+## then sculpt nothing until every finger is up.
+var _fingers: Dictionary = {}
+var _gesture: bool = false
+var _gesture_from: Array = []          ## [spread, middle, reach, turn, tilt]
+
+## Moulds begun again from (Start, Dome, Club), the last newest, and those
+## undone back out of: Undo past a fresh start goes into the one before it.
+var _earlier: Array[Mould] = []
+var _later: Array[Mould] = []
+## Opened on what was kept: worth keeping before any stroke of this visit.
+var _restored: bool = false
+var _draft_at: int = 0
+
 
 func _ready() -> void:
 	visible = false
 	_build()
 	if library != null:
 		library.fetched.connect(_on_fetched)
+	get_viewport().size_changed.connect(_arrange)
+	_arrange()
+	if Phone.on():
+		_for_a_finger.call_deferred()
 
 
-## Open on a part: what the slot holds, or the part to start from.
+## In the layout for a finger, its words in points and every button a
+## fingertip each way, as the panels over the model are (TouchSizing).
+func _for_a_finger() -> void:
+	var touch: Node = get_tree().get_first_node_in_group(TouchSizing.SELF)
+	if touch is TouchSizing:
+		(touch as TouchSizing).size_panel(self)
+
+
+## Open on a part: what the slot holds, or the part to start from. A mould
+## of the slot's begun before and not saved opens instead, as it was left.
 func open(part_id: String, for_slot: String, colour: int) -> void:
 	slot = for_slot
 	colour_code = colour
 	HudFront.show_panel(self)
+	_arrange()
 	_name.text = ""
+	_earlier.clear()
+	_later.clear()
+	_restored = false
+	# What this opening makes starts here: the mould of an opening before
+	# (saved, or let go) is no step of this one's Undo, nor kept with it.
+	mould = null
+	_body_mesh.mesh = null
+	var kept: Dictionary = _kept()
+	if kept.has("lost"):
+		_start_from(part_id)
+		if mould != null and _status.text.is_empty():
+			_status.text = "Your mould from before could not be read back, so this begins again from %s." \
+				% _from.text
+		return
+	if not kept.is_empty():
+		_set_mould(kept["mould"])
+		_frame_it()
+		_restored = true
+		_name.text = str(kept.get("title", ""))
+		_from.text = PartPrints.mould_of(library, part_id) if library.parts.has(part_id) \
+			and not Mould.sculpts_on(library, part_id) else part_id
+		_title.text = "Make a mould from %s" % mould.name
+		_status.text = ("Your mould from before, as you left it. Start begins again from %s; "
+			+ "Undo goes back to it.") % _from.text
+		_show()
+		return
 	_start_from(part_id)
 
 
+## Back to the figure. What is being made is kept for next time.
 func close() -> void:
 	if not visible:
 		return
+	_keep_draft()
 	visible = false
 	closed.emit()
 
@@ -99,8 +215,23 @@ func _start_from(part_id: String) -> void:
 	if not library.parts.has(wanted):
 		_status.text = "There is no part %s." % wanted
 		return
+	if _too_big(wanted):
+		return
+	# A mould or a 3D file's hair made before is sculpted on further, as it
+	# is; saved, it is a new part, and the one before stays as it was.
+	if Mould.sculpts_on(library, wanted):
+		var own: String = PartPrints.made_title(library.parts[wanted].name)
+		_take(Mould.of_made(library, wanted, slot))
+		if mould != null and mould.base != wanted:
+			_from.text = wanted
+			_title.text = "Make a mould from your %s" % own
+			_status.text = "Your %s, to shape further. Saved, it is a new part; the one before stays." \
+				% own
+		return
 	wanted = PartPrints.mould_of(library, wanted)
 	_from.text = wanted
+	if _too_big(wanted):
+		return
 	if library.mesh_for(wanted) == null and library.request_mesh(wanted, true):
 		_status.text = "Fetching %s's geometry…" % wanted
 		_waiting_for = wanted
@@ -111,31 +242,161 @@ func _start_from(part_id: String) -> void:
 func _on_fetched(part_id: String) -> void:
 	if part_id == _waiting_for:
 		_waiting_for = ""
-		_take(Mould.of_part(library, part_id, slot))
+		if not _too_big(part_id):
+			_take(Mould.of_part(library, part_id, slot))
 
 
+## Whether [param part_id] has more triangles than the maker shapes, said
+## if it has: it is not opened (Mould.MOST_OPENED). The mould shown stays.
+func _too_big(part_id: String) -> bool:
+	var faces: int = Mould.triangles_in(library, part_id)
+	if faces <= Mould.MOST_OPENED:
+		return false
+	_status.text = "%s has %s triangles, and the maker shapes parts of up to %s." % [part_id,
+		_grouped(faces), _grouped(Mould.MOST_OPENED)]
+	return true
+
+
+## A count with its thousands set apart: 143,996.
+static func _grouped(n: int) -> String:
+	var digits: String = str(n)
+	var out: String = ""
+	while digits.length() > 3:
+		out = "," + digits.right(3) + out
+		digits = digits.left(digits.length() - 3)
+	return digits + out
+
+
+## A mould begun: the one before it is kept, for Undo to go back into.
 func _take(made: Mould) -> void:
 	if made == null:
 		_status.text = "That part has no geometry to sculpt."
 		return
-	mould = made
 	# Corners enough for a brush to shape, where it is free to.
-	mould.refine(Mould.FINEST * 2.0)
-	mould._undo.clear()
+	made.refine(Mould.FINEST * 2.0)
+	made._undo.clear()
+	if mould != null:
+		_earlier.append(mould)
+		_later.clear()
+	_set_mould(made)
 	_title.text = "Make a mould from %s" % mould.name
 	_from.text = mould.base if not mould.name.ends_with("Dome") and not mould.name.ends_with("Club") \
 		else mould.name.get_slice(" ", mould.name.get_slice_count(" ") - 1).to_lower()
-	_lattice.button_pressed = false
 	_walls.button_pressed = false
 	_status.text = ""
+	_frame_it()
+	_show()
+	_keep_draft()
+
+
+## [param other] in the view in place of the mould shown, its lattice put
+## away first.
+func _set_mould(other: Mould) -> void:
+	_lattice.button_pressed = false
+	mould = other
+	_head.visible = mould.on_head
+	_walls.set_pressed_no_signal(false)
+	mould.thickness = PackedFloat32Array()
+
+
+func _frame_it() -> void:
 	var box := AABB(mould.positions[0], Vector3.ZERO)
 	for p: Vector3 in mould.positions:
 		box = box.expand(p)
 	_centre = box.get_center()
 	_reach = maxf(box.size.length() * 2.2, 60.0)
-	_head.visible = mould.on_head
-	_show()
 	_aim()
+
+
+# -- kept while it is made -----------------------------------------------------------
+
+
+func _draft_path() -> String:
+	var folder: String = drafts if not drafts.is_empty() else TabSession.path("moulds/")
+	return folder.path_join((slot if not slot.is_empty() else "part") + ".draft")
+
+
+## Whether there is anything of the person's to keep: a stroke, a start
+## from another part, words in its name, or a mould opened as it was kept.
+func _worth_keeping() -> bool:
+	return mould != null and (_restored or mould.can_undo() or not _earlier.is_empty()
+		or not _name.text.strip_edges().is_empty())
+
+
+## The mould as it is, kept for this tab; or nothing kept, when there is
+## nothing of the person's in it (a mould opened and closed untouched is not
+## brought back over the next part they choose).
+func _keep_draft() -> void:
+	_draft_at = 0
+	if mould == null:
+		return
+	var path: String = _draft_path()
+	if not _worth_keeping():
+		_drop_draft()
+		return
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	TabSession.writing(path)
+	# Written beside it, read back whole, and only then put in its place: a tab
+	# closed or a power cut mid-write, or a full disk that takes only part of
+	# it, leaves the draft before. Up to figfix a write the disk cut short was
+	# moved over the good draft unasked, and the next open let it go
+	# (figreview: all the unsaved work lost).
+	var bytes: PackedByteArray = var_to_bytes({"mould": mould.to_draft(), "title": _name.text,
+		"slot": slot})
+	var beside: String = path + ".new"
+	var file: FileAccess = FileAccess.open(beside, FileAccess.WRITE)
+	var written: bool = file != null and file.store_buffer(bytes)
+	if file != null:
+		file.close()
+	written = written and FileAccess.get_file_as_bytes(beside).size() == bytes.size() \
+		and DirAccess.rename_absolute(beside, path) == OK
+	if not written:
+		if FileAccess.file_exists(beside):
+			DirAccess.remove_absolute(beside)
+		_status.text = NOT_KEPT
+	elif _status.text == NOT_KEPT:
+		_status.text = ""
+
+
+func _keep_draft_soon() -> void:
+	_draft_at = Time.get_ticks_msec()
+
+
+func _drop_draft() -> void:
+	var path: String = _draft_path()
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+
+
+## What was kept for this slot: {mould, title}, or {} when nothing was, or
+## {lost: true} when what was is not a whole mould (damaged on the disk, or
+## from another build), which is said and set aside as .unread beside it,
+## never deleted: a newer build's draft is one this build cannot read.
+func _kept() -> Dictionary:
+	var path: String = _draft_path()
+	if not FileAccess.file_exists(path):
+		return {}
+	var kept: Variant = bytes_to_var(FileAccess.get_file_as_bytes(path))
+	var made: Mould = Mould.from_draft((kept as Dictionary).get("mould")) \
+		if kept is Dictionary else null
+	if made == null:
+		if FileAccess.file_exists(path + ".unread"):
+			DirAccess.remove_absolute(path + ".unread")
+		if DirAccess.rename_absolute(path, path + ".unread") != OK:
+			_drop_draft()
+		return {"lost": true}
+	return {"mould": made, "title": str((kept as Dictionary).get("title", ""))}
+
+
+func _process(_delta: float) -> void:
+	if _draft_at > 0 and Time.get_ticks_msec() - _draft_at >= DRAFT_AFTER_MS:
+		_keep_draft()
+
+
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_APPLICATION_PAUSED,
+			NOTIFICATION_APPLICATION_FOCUS_OUT] and visible:
+		_keep_draft()
 
 
 # -- building the panel --------------------------------------------------------------
@@ -151,53 +412,56 @@ func _build() -> void:
 		backing.set("content_margin_" + side, 14)
 	add_theme_stylebox_override("panel", backing)
 
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	add_child(column)
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	column.add_child(header)
+	_column = VBoxContainer.new()
+	_column.add_theme_constant_override("separation", 8)
+	add_child(_column)
+	_header = HBoxContainer.new()
+	_header.add_theme_constant_override("separation", 8)
+	_column.add_child(_header)
 	_title = Label.new()
 	_title.add_theme_font_size_override("font_size", 15)
 	_title.clip_text = true
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(_title)
-	var from_words := Label.new()
-	from_words.text = "Start from"
-	from_words.add_theme_font_size_override("font_size", 12)
-	from_words.modulate = Color(1, 1, 1, 0.7)
-	header.add_child(from_words)
+	_header.add_child(_title)
+	_from_words = Label.new()
+	_from_words.text = "Start from"
+	_from_words.add_theme_font_size_override("font_size", 12)
+	_from_words.modulate = Color(1, 1, 1, 0.7)
+	_header.add_child(_from_words)
 	_from = LineEdit.new()
 	_from.custom_minimum_size = Vector2(110, 0)
 	_from.placeholder_text = "3901, dome, club"
 	_from.tooltip_text = "A part number, or dome (to wear) or club (to hold)"
 	_from.text_submitted.connect(func(text: String) -> void: _start_from(text))
-	header.add_child(_from)
-	_button(header, "Start", func() -> void: _start_from(_from.text),
-		"Start again from this part")
-	_button(header, "Dome", func() -> void: _start_from("dome"),
+	_header.add_child(_from)
+	_start = _button(_header, "Start", func() -> void: _start_from(_from.text),
+		"Start again from this part (Undo goes back)")
+	_dome = _button(_header, "Dome", func() -> void: _start_from("dome"),
 		"A plain cap to wear, with a hair piece's socket")
-	_button(header, "Club", func() -> void: _start_from("club"),
+	_club = _button(_header, "Club", func() -> void: _start_from("club"),
 		"A plain bar to hold with a ball on the end, held where a sword is")
-	var called := Label.new()
-	called.text = "Name"
-	called.add_theme_font_size_override("font_size", 12)
-	called.modulate = Color(1, 1, 1, 0.7)
-	header.add_child(called)
+	_called = Label.new()
+	_called.text = "Name"
+	_called.add_theme_font_size_override("font_size", 12)
+	_called.modulate = Color(1, 1, 1, 0.7)
+	_header.add_child(_called)
 	_name = LineEdit.new()
 	_name.placeholder_text = "Quiff"
 	_name.custom_minimum_size = Vector2(140, 0)
-	header.add_child(_name)
-	_save = _button(header, "Save mould", _save_mould,
+	_name.text_changed.connect(func(_text: String) -> void: _keep_draft_soon())
+	_header.add_child(_name)
+	_save = _button(_header, "Save mould", _save_mould,
 		"Make the part, keep it, and put it on the figure")
 	_save.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
-	_button(header, "Close", close, "Back to the figure without saving (Escape)")
+	_close = _button(_header, "Close", close,
+		"Back to the figure; the mould is kept as it is for next time (Escape)")
 
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", 12)
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(body)
-	body.add_child(_build_tools())
+	_body = HBoxContainer.new()
+	_body.add_theme_constant_override("separation", 12)
+	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_column.add_child(_body)
+	_tools_column = _build_tools()
+	_body.add_child(_tools_column)
 	_frame = SubViewportContainer.new()
 	_frame.accessibility_name = "The part being shaped"
 	_frame.stretch = true
@@ -205,35 +469,68 @@ func _build() -> void:
 	_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_frame.custom_minimum_size = Vector2(480, 380)
 	_frame.gui_input.connect(_on_view_input)
-	body.add_child(_frame)
+	_body.add_child(_frame)
 	_build_view()
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 12)
 	_status.modulate = Color(1.0, 0.86, 0.6)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_status)
+	_column.add_child(_status)
+
+	# What only the layout for a finger has, filled by _arrange.
+	_name_row = HBoxContainer.new()
+	_name_row.add_theme_constant_override("separation", 8)
+	_finger_scroll = ScrollContainer.new()
+	_finger_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_finger_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_finger = VBoxContainer.new()
+	_finger.add_theme_constant_override("separation", 8)
+	_finger.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_finger_scroll.add_child(_finger)
+	_tool_strip = ScrollContainer.new()
+	_tool_strip.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_tool_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tool_row = HBoxContainer.new()
+	_tool_row.add_theme_constant_override("separation", 4)
+	_tool_strip.add_child(_tool_row)
+	_finger.add_child(_tool_strip)
+	for n: int in 5:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		_finger.add_child(row)
+		_rows.append(row)
+	for spare: Node in [_name_row, _finger_scroll]:
+		add_child(spare)
+		(spare as Control).visible = false
 
 
-func _build_tools() -> Control:
+const NAMES: Dictionary = {"pull": "Pull", "push": "Push", "inflate": "Grow", "shrink": "Shrink",
+	"smooth": "Smooth", "pinch": "Pinch", "flatten": "Flatten", "grab": "Grab"}
+const TIPS: Dictionary = {
+	"pull": "Draw the surface out towards you",
+	"push": "Press the surface in",
+	"inflate": "Grow it: swell where the brush is, each point straight out",
+	"shrink": "Shrink it: slim where the brush is, each point straight in",
+	"smooth": "Even out bumps and ridges",
+	"pinch": "Draw the surface together into a crease or a ridge",
+	"flatten": "Flatten it to the plane under the brush",
+	"grab": "Take hold of it and drag it about",
+}
+const DESK_HINT := ("Drag on the part to sculpt, off it to turn it; wheel to come closer. "
+	+ "Blue is its connection, which stays as it is.")
+const FINGER_HINT := ("Drag on the part to sculpt, off it to turn it; two fingers turn it, "
+	+ "and pinch to come closer. Blue is its connection, which stays as it is.")
+
+
+func _build_tools() -> VBoxContainer:
 	var column := VBoxContainer.new()
 	column.custom_minimum_size = Vector2(170, 0)
 	column.add_theme_constant_override("separation", 4)
 	var group := ButtonGroup.new()
-	var names: Dictionary = {"pull": "Pull", "push": "Push", "inflate": "Inflate",
-		"smooth": "Smooth", "pinch": "Pinch", "flatten": "Flatten", "grab": "Grab"}
-	var tips: Dictionary = {
-		"pull": "Draw the surface out towards you",
-		"push": "Press the surface in",
-		"inflate": "Swell it, each point straight out",
-		"smooth": "Even out bumps and ridges",
-		"pinch": "Draw the surface together into a crease or a ridge",
-		"flatten": "Flatten it to the plane under the brush",
-		"grab": "Take hold of it and drag it about",
-	}
 	for tool: String in Mould.TOOLS:
 		var button := Button.new()
-		button.text = names[tool]
-		button.tooltip_text = tips[tool]
+		button.text = NAMES[tool]
+		button.tooltip_text = TIPS[tool]
 		button.toggle_mode = true
 		button.button_group = group
 		button.focus_mode = Control.FOCUS_NONE
@@ -243,22 +540,27 @@ func _build_tools() -> Control:
 		column.add_child(button)
 		_tools[tool] = button
 	(_tools["pull"] as Button).set_pressed_no_signal(true)
-	column.add_child(HSeparator.new())
-	column.add_child(_words("Size (LDU)"))
+	_separator = HSeparator.new()
+	column.add_child(_separator)
+	_size_words = _words("Size (LDU)")
+	column.add_child(_size_words)
 	_size = HSlider.new()
 	_size.min_value = 2
 	_size.max_value = 24
 	_size.value = 7
 	_size.focus_mode = Control.FOCUS_NONE
 	_size.tooltip_text = "How far the brush reaches, in LDU (2.5 to a millimetre)"
+	_size.accessibility_name = "Brush size"
 	column.add_child(_size)
-	column.add_child(_words("Strength"))
+	_strength_words = _words("Strength")
+	column.add_child(_strength_words)
 	_strength = HSlider.new()
 	_strength.min_value = 0.05
 	_strength.max_value = 1.0
 	_strength.step = 0.05
 	_strength.value = 0.5
 	_strength.focus_mode = Control.FOCUS_NONE
+	_strength.accessibility_name = "Brush strength"
 	column.add_child(_strength)
 	_symmetry = CheckBox.new()
 	_symmetry.text = "Symmetry"
@@ -292,31 +594,120 @@ func _build_tools() -> Control:
 			mould.thickness = PackedFloat32Array()
 		_show())
 	column.add_child(_walls)
-	_button(column, "Finer", func() -> void:
-		if mould != null:
-			mould.refine(Mould.FINEST)
-			_show(), "More corners where the surface is coarse, for finer detail")
-	var undo_row := HBoxContainer.new()
-	column.add_child(undo_row)
-	Keymap.tell(_button(undo_row, "Undo", _undo, ""), "Take the last stroke back ({undo})")
-	Keymap.tell(_button(undo_row, "Redo", _redo, ""), "Put it back ({redo})")
+	_finer = _button(column, "Finer", _make_finer,
+		"More corners where the surface is coarse, for finer detail (Undo takes it back)")
+	_undo_row = HBoxContainer.new()
+	column.add_child(_undo_row)
+	_undo_button = _button(_undo_row, "Undo", _undo, "")
+	Keymap.tell(_undo_button, "Take the last stroke back ({undo})")
+	_redo_button = _button(_undo_row, "Redo", _redo, "")
+	Keymap.tell(_redo_button, "Put it back ({redo})")
 	_counts = Label.new()
 	_counts.add_theme_font_size_override("font_size", 11)
 	_counts.modulate = Color(1, 1, 1, 0.6)
 	_counts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(_counts)
-	var hint := Label.new()
-	hint.text = ("Drag on the part to sculpt, off it to turn it; wheel to come closer. "
-		+ "Blue is its connection, which stays as it is.")
-	hint.add_theme_font_size_override("font_size", 11)
-	hint.modulate = Color(1, 1, 1, 0.55)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(hint)
+	_hint = Label.new()
+	_hint.text = DESK_HINT
+	_hint.add_theme_font_size_override("font_size", 11)
+	_hint.modulate = Color(1, 1, 1, 0.55)
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_hint)
 	return column
 
 
-## The share of the part as LEGO made it under 1 mm thick, or -1 for a
-## mould from nothing. Worked out once a part.
+# -- laid out for the room ---------------------------------------------------------------
+
+
+## Beside each other at a desk; on a phone the part over the brushes, which
+## are a row a finger scrolls, and the rest under them. The same controls
+## moved, never made again, so each works as it does at a desk.
+func _arrange() -> void:
+	if _column == null or not is_inside_tree():
+		return
+	var room: Vector2 = get_viewport().get_visible_rect().size
+	var narrow: bool = room.x < NARROW
+	if _narrow == int(narrow):
+		if narrow:
+			_frame.custom_minimum_size = Vector2(0, maxf(220.0, room.y * 0.38))
+		return
+	_narrow = int(narrow)
+	if narrow:
+		_put(_title, _header, 0)
+		_put(_close, _header, 1)
+		_put(_called, _name_row, 0)
+		_put(_name, _name_row, 1)
+		_put(_save, _name_row, 2)
+		_put(_name_row, _column, 1)
+		_put(_frame, _column, 2)
+		_put(_finger_scroll, _column, 3)
+		_column.move_child(_status, -1)
+		for tool: String in Mould.TOOLS:
+			_put(_tools[tool], _tool_row, _tool_row.get_child_count())
+		var rows: Array = [
+			[_undo_button, _redo_button, _symmetry, _finer],
+			[_size_words, _size],
+			[_strength_words, _strength],
+			[_lattice, _walls],
+			[_from_words, _from, _start, _dome, _club],
+		]
+		for n: int in rows.size():
+			for k: int in (rows[n] as Array).size():
+				_put(rows[n][k], _rows[n], k)
+		_put(_counts, _finger, _finger.get_child_count())
+		_put(_hint, _finger, _finger.get_child_count())
+		_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_from.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_size.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_strength.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_size.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_strength.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_name.custom_minimum_size.x = 0.0
+		_from.custom_minimum_size.x = 0.0
+		_frame.custom_minimum_size = Vector2(0, maxf(220.0, room.y * 0.38))
+		_frame.size_flags_vertical = Control.SIZE_FILL
+		_hint.text = FINGER_HINT
+		for side: Side in [SIDE_LEFT, SIDE_TOP]:
+			set_offset(side, 4)
+		for side: Side in [SIDE_RIGHT, SIDE_BOTTOM]:
+			set_offset(side, -4)
+	else:
+		var order: Array = [_title, _from_words, _from, _start, _dome, _club, _called, _name, _save,
+			_close]
+		for n: int in order.size():
+			_put(order[n], _header, n)
+		_put(_body, _column, 1)
+		_put(_frame, _body, 1)
+		var column: Array = []
+		for tool: String in Mould.TOOLS:
+			column.append(_tools[tool])
+		column.append_array([_separator, _size_words, _size, _strength_words, _strength, _symmetry,
+			_lattice, _walls, _finer, _undo_row, _counts, _hint])
+		for n: int in column.size():
+			_put(column[n], _tools_column, n)
+		_put(_undo_button, _undo_row, 0)
+		_put(_redo_button, _undo_row, 1)
+		_column.move_child(_status, -1)
+		for flexible: Control in [_name, _from, _size, _strength]:
+			flexible.size_flags_horizontal = Control.SIZE_FILL
+			flexible.size_flags_vertical = Control.SIZE_FILL
+		_name.custom_minimum_size.x = 140.0
+		_from.custom_minimum_size.x = 110.0
+		_frame.custom_minimum_size = Vector2(480, 380)
+		_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		_hint.text = DESK_HINT
+	_body.visible = not narrow
+	_name_row.visible = narrow
+	_finger_scroll.visible = narrow
+	_separator.visible = not narrow
+
+
+static func _put(node: Node, parent: Node, index: int) -> void:
+	if node.get_parent() != parent:
+		node.reparent(parent, false)
+	parent.move_child(node, mini(index, parent.get_child_count() - 1))
+
+
 func _as_made_thin() -> float:
 	if mould == null or not library.parts.has(mould.base) or mould.name.ends_with("Dome") \
 			or mould.name.ends_with("Club"):
@@ -375,9 +766,9 @@ func _build_view() -> void:
 	_material = StandardMaterial3D.new()
 	_material.vertex_color_use_as_albedo = true
 	_material.roughness = 0.35
-	_body = MeshInstance3D.new()
-	_body.material_override = _material
-	_viewport.add_child(_body)
+	_body_mesh = MeshInstance3D.new()
+	_body_mesh.material_override = _material
+	_viewport.add_child(_body_mesh)
 	# The head it is worn on, faint, so the fit can be seen.
 	_head = MeshInstance3D.new()
 	var head_material := StandardMaterial3D.new()
@@ -413,7 +804,7 @@ func _build_view() -> void:
 func _show() -> void:
 	if mould == null:
 		return
-	_body.mesh = mould.mesh()
+	_body_mesh.mesh = mould.mesh()
 	var colour: PartLibrary.BrickColor = library.color(colour_code)
 	_material.albedo_color = Color(colour.rgb, 1.0)
 	_counts.text = "%d triangles · about %d kB in a file" % [mould.triangle_count(),
@@ -432,14 +823,53 @@ func _choose_tool(tool: String) -> void:
 	(_tools[tool] as Button).set_pressed_no_signal(true)
 
 
+## A step of the person's begun on the mould shown: what was undone out of,
+## past a fresh start, is let go, as a stroke after Undo lets go of Redo.
+func _begin_step(whole: bool = false) -> void:
+	mould.begin(whole)
+	_later.clear()
+
+
+func _make_finer() -> void:
+	if mould == null:
+		return
+	# Its own step, the corners and triangles as they were (Mould.refine).
+	_later.clear()
+	var before: int = mould.triangle_count()
+	mould.refine(Mould.FINEST)
+	if mould.triangle_count() == before:
+		# Nothing to split: no step of its own.
+		mould._undo.pop_back()
+	_show()
+	_keep_draft()
+
+
 func _undo() -> void:
-	if mould != null and mould.undo():
-		_show()
+	if mould == null:
+		return
+	if not mould.undo():
+		if _earlier.is_empty():
+			return
+		_later.append(mould)
+		_set_mould(_earlier.pop_back())
+		_from.text = mould.base
+		_title.text = "Make a mould from %s" % mould.name
+	_show()
+	_keep_draft()
 
 
 func _redo() -> void:
-	if mould != null and mould.redo():
-		_show()
+	if mould == null:
+		return
+	if not mould.redo():
+		if _later.is_empty():
+			return
+		_earlier.append(mould)
+		_set_mould(_later.pop_back())
+		_from.text = mould.base
+		_title.text = "Make a mould from %s" % mould.name
+	_show()
+	_keep_draft()
 
 
 func _on_lattice(on: bool) -> void:
@@ -476,7 +906,7 @@ func _place_handles() -> void:
 		_handles[n].position = at[n]
 
 
-# -- sculpting with the mouse -----------------------------------------------------------
+# -- sculpting by mouse and finger -------------------------------------------------------
 
 
 ## The ray under a point of the view.
@@ -488,6 +918,46 @@ func _ray(at: Vector2) -> Array:
 
 func _on_view_input(event: InputEvent) -> void:
 	if mould == null:
+		return
+	if event is InputEventScreenTouch:
+		var touch: InputEventScreenTouch = event
+		if touch.pressed:
+			_fingers[touch.index] = touch.position
+		else:
+			_fingers.erase(touch.index)
+		if _fingers.size() >= 2 and not _gesture:
+			_begin_gesture()
+		elif _fingers.is_empty():
+			_gesture = false
+		accept_event()
+		return
+	if event is InputEventScreenDrag:
+		var drag: InputEventScreenDrag = event
+		if _fingers.has(drag.index):
+			_fingers[drag.index] = drag.position
+		if _gesture and _fingers.size() >= 2:
+			_two_fingers()
+		accept_event()
+		return
+	if event is InputEventMagnifyGesture:
+		_reach = clampf(_reach / maxf(0.05, (event as InputEventMagnifyGesture).factor), 20.0, 800.0)
+		_aim()
+		accept_event()
+		return
+	if event is InputEventPanGesture:
+		var pan: InputEventPanGesture = event
+		_turn -= pan.delta.x * 0.05
+		_tilt = clampf(_tilt + pan.delta.y * 0.05, -1.4, 1.4)
+		_aim()
+		accept_event()
+		return
+	# The first finger's own clicks, while two turn the view.
+	if _gesture:
+		if event is InputEventMouseButton and not (event as InputEventMouseButton).pressed:
+			_sculpting = false
+			_turning = false
+			_handle = -1
+		accept_event()
 		return
 	if event is InputEventMouseButton:
 		var button: InputEventMouseButton = event
@@ -518,11 +988,41 @@ func _on_view_input(event: InputEvent) -> void:
 		accept_event()
 
 
+## A second finger down: what the first had begun is taken back, and the two
+## turn the view from here.
+func _begin_gesture() -> void:
+	if _sculpting or _handle >= 0:
+		mould.cancel_stroke()
+		_show()
+	_sculpting = false
+	_turning = false
+	_handle = -1
+	_ring.visible = false
+	_gesture = true
+	var two: Array = _fingers.values().slice(0, 2)
+	_gesture_from = [maxf(1.0, (two[0] as Vector2).distance_to(two[1])),
+		((two[0] as Vector2) + (two[1] as Vector2)) * 0.5, _reach, _turn, _tilt]
+
+
+## Two fingers: apart or together comes closer or goes back, both moved
+## together turn it.
+func _two_fingers() -> void:
+	var two: Array = _fingers.values().slice(0, 2)
+	var spread: float = maxf(1.0, (two[0] as Vector2).distance_to(two[1]))
+	var middle: Vector2 = ((two[0] as Vector2) + (two[1] as Vector2)) * 0.5
+	var moved: Vector2 = middle - (_gesture_from[1] as Vector2)
+	_reach = clampf(float(_gesture_from[2]) * float(_gesture_from[0]) / spread, 20.0, 800.0)
+	_turn = float(_gesture_from[3]) - moved.x * 0.01
+	_tilt = clampf(float(_gesture_from[4]) + moved.y * 0.01, -1.4, 1.4)
+	_aim()
+
+
 func _press(at: Vector2) -> void:
 	var ray: Array = _ray(at)
 	if _lattice.button_pressed:
 		_handle = _handle_under(at)
 		if _handle >= 0:
+			_begin_step()
 			_grab_plane = Plane(-_camera.global_transform.basis.z,
 				mould.lattice_handles()[_handle])
 			return
@@ -535,8 +1035,9 @@ func _press(at: Vector2) -> void:
 		_grab_at = hit["at"]
 		_grab_plane = Plane(-_camera.global_transform.basis.z, _grab_at)
 		mould.grab(_grab_at, _size.value, _symmetry.button_pressed)
+		_later.clear()
 		return
-	mould.begin()
+	_begin_step()
 	_last_dab = Vector3(INF, INF, INF)
 	_dab(hit)
 
@@ -572,6 +1073,7 @@ func _dab(hit: Dictionary) -> void:
 
 
 func _release() -> void:
+	var stroke: bool = _sculpting or _handle >= 0
 	_sculpting = false
 	_turning = false
 	_handle = -1
@@ -579,6 +1081,8 @@ func _release() -> void:
 	if _walls.button_pressed:
 		mould.walls()
 		_show()
+	if stroke:
+		_keep_draft()
 
 
 func _hover(at: Vector2) -> void:
@@ -625,8 +1129,20 @@ func _save_mould() -> void:
 	_save.disabled = false
 	if not str(result["problem"]).is_empty():
 		_status.text = "Not saved: %s." % result["problem"]
+		_keep_draft()
 		return
 	_status.text = "Saved as %s." % result["id"]
+	remade = mould.remakes if mould.remakes != str(result["id"]) else ""
+	# Made: what was kept while it was made is let go, and nothing of it is
+	# brought back next time.
+	_drop_draft()
+	_restored = false
+	_earlier.clear()
+	_later.clear()
+	mould._undo.clear()
+	mould._redo.clear()
+	_name.text = ""
+	_draft_at = 0
 	made.emit([result["id"]], slot)
 	close()
 
@@ -675,6 +1191,10 @@ func turn_to(turn: float, tilt: float, reach: float = -1.0) -> void:
 	_aim()
 
 
+func reach() -> float:
+	return _reach
+
+
 func choose_tool(tool: String) -> void:
 	_choose_tool(tool)
 
@@ -684,16 +1204,17 @@ func set_brush(size: float, strength: float) -> void:
 	_strength.value = strength
 
 
+## Whether it is laid out for a finger, the part over the brushes.
+func laid_narrow() -> bool:
+	return _narrow == 1
+
+
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"mould_view": _frame, "mould_name": _name, "mould_save": _save,
 		"mould_from": _from, "mould_symmetry": _symmetry, "mould_lattice": _lattice,
-		"mould_walls": _walls}
+		"mould_walls": _walls, "mould_close": _close, "mould_dome": _dome, "mould_club": _club,
+		"mould_finer": _finer, "mould_start": _start, "mould_undo": _undo_button,
+		"mould_redo": _redo_button}
 	for tool: String in _tools:
 		named["mould_tool_" + tool] = _tools[tool]
-	for button: Node in find_children("*", "Button", true, false):
-		match (button as Button).text:
-			"Close": named["mould_close"] = button
-			"Dome": named["mould_dome"] = button
-			"Club": named["mould_club"] = button
-			"Finer": named["mould_finer"] = button
 	return named

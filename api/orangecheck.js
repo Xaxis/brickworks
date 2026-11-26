@@ -12,7 +12,7 @@
 //   window to open: a one-time code orangecheck sent the person's browser
 //   back to the app with, at 127.0.0.1. Traded at orangecheck for the token
 //   the window would have given (api/_oc.js tradeCode), then exactly as
-//   ?op=signin: counted, checked, spent, the same account, the same
+//   ?op=signin: checked, spent, counted, the same account, the same
 //   session. Only where it is offered (api/_oc_config.js nativeOffered).
 //
 //   With a sign-in (/settings, web/settings.js):
@@ -46,19 +46,26 @@
 // worked out from the id: anybody could work it out too and make that
 // account first, and the first sign-in would walk into it. Nothing is ever
 // mailed there (api/otp.js refuses the domain, api/_comments.js skips it).
-// Rate limited per address in the database, as codes are.
+// Rate limited per orangecheck id once its token checks out, as a Google or
+// GitHub account is (signin5, signreview2 SR3), and by nothing else
+// (signin6: never per network, nor before the token is read): each sign-in
+// spends one of Supabase's verifies from this server's address
+// (api/_minted.js), shared with everyone's Google and GitHub sign-ins, and
+// one orangecheck account in a loop from a few addresses emptied it.
 
 import { noted } from "./_noted.js";
 import { afterAnswer } from "./_after.js";
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
-import { mintedSession } from "./_minted.js";
+import { clientAddress, counted, givenBack, mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { scopeOf } from "./_settings.js";
+import { COUNTED, LIMITS } from "./_ways.js";
 import {
-  checkToken, codeOf, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, spendToken, tradeCode,
+  AFTER, checkToken, codeOf, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, spendToken, stepUp, tell, tradeCode,
 } from "./_oc.js";
+import { networkOf } from "./_ways.js";
 
 function supabase() {
   return String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -92,24 +99,24 @@ async function dropAccount(account) {
 /// one-time link for its address, redeemed at once, each step naming
 /// [account]. An account its id signs in to and not marked as having
 /// orangecheck is marked first, so the session's own token carries the mark
-/// and has every request asked after (oc188's review, L1).
-async function sessionFor(account) {
+/// and has every request asked after (oc188's review, L1). Counted by
+/// orangecheck id [did] alone, right before the verify (SR3, signin6): as
+/// many as one Google or GitHub account signs in (api/_ways.js LIMITS),
+/// from however many addresses, and never by network.
+async function sessionFor(account, did, from = null) {
   const who = await reach("auth GET admin/users", 10, `${supabase()}/auth/v1/admin/users/${account}`, {
     headers: admin() });
   const user = await who.json().catch(() => ({}));
   if (!who.ok || user.id !== account || !user.email) throw new Error(`auth: the account was not read: ${who.status}`);
   if (user.app_metadata?.orangecheck !== true) await mark(account, true);
-  return mintedSession(user.email, { account });
+  return mintedSession(user.email, { account,
+    count: { key: COUNTED.orangecheck(did), per: LIMITS.account, minutes: LIMITS.minutes }, from });
 }
 
 async function endSession(access) {
   await fetch(`${supabase()}/auth/v1/logout?scope=local`, {
     method: "POST", signal: AbortSignal.timeout(10000),
     headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, authorization: `Bearer ${access}` } }).catch(() => null);
-}
-
-function addressOf(request) {
-  return (request.headers["x-forwarded-for"] || "").split(",")[0].trim() || request.socket?.remoteAddress || "";
 }
 
 const say = (response, status, error, more = {}) => response.status(status).json({ error, ...more });
@@ -123,27 +130,16 @@ function bodyOf(request) {
   }
 }
 
-/// Whether [request]'s address may try another sign-in, answered when not.
-/// Counted before anything else is asked, so a stranger cannot make this
-/// server ask orangecheck and the database for them as often as they like.
-async function counted(request, response) {
-  let may;
-  try {
-    may = await db("rpc/oc_may_try", { method: "POST", body: { from_ip: addressOf(request) } });
-  } catch (trouble) {
-    console.error(`orangecheck: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    say(response, 503, "Brickworks could not start a sign-in just now. Try again in a minute.");
-    return false;
-  }
-  if (may !== true) say(response, 429, "Too many sign-ins tried from here. Wait a few minutes and try again.");
-  return may === true;
-}
+// Nothing is counted before the token checks out, and nothing per network
+// (signin6, signreview3 R3): a token that is not one is refused by its
+// signature or audience here, which asks nobody, and a network's count let
+// anyone with junk shut out everyone on a school's or a carrier's address.
+// One that checks out is counted by its orangecheck id (sessionFor).
 
 async function signIn(request, response) {
   if (!ocConfigured()) return say(response, 503, "Signing in with orangecheck is unavailable here. Sign in with your email instead.");
   const body = bodyOf(request);
   const token = typeof body?.token === "string" ? body.token.trim() : "";
-  if (token && !(await counted(request, response))) return;
   return signInWith(token, response, request);
 }
 
@@ -163,11 +159,35 @@ async function native(request, response) {
   if (!CODE.test(code) || !VERIFIER.test(verifier) || !LOOPBACK.test(redirect)) {
     return say(response, 422, "The sign-in did not come through from orangecheck. Try again.");
   }
-  if (!(await counted(request, response))) return;
+  // A code can be told from a made-up one only by asking orangecheck, one
+  // call each with Brickworks' project key (signreview4 R4-3: forty made-up
+  // codes, forty calls). So each network's trades are counted before one is
+  // made, and each given back once orangecheck takes its code: what stays
+  // counted is every call that did not sign anyone in (a code refused, or
+  // orangecheck not answering, which a loop would ask again and again), ten
+  // a quarter-hour a network. A real sign-in is refused only on a network
+  // someone fills with made-up codes, and the window, the site and a code
+  // still work there.
+  const key = NATIVE_REFUSED.key(networkOf(request));
+  let one;
+  try {
+    one = await counted(key, NATIVE_REFUSED.per, NATIVE_REFUSED.minutes);
+  } catch (trouble) {
+    console.error(`orangecheck: a code's trade not counted: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
+  }
+  if (!one) {
+    return say(response, 429, "Too many app sign-ins that did not come through from this network just now. "
+      + "Sign in with orangecheck on brickworks.diy, or with a code we email you, or try again in a quarter of an hour.");
+  }
   const traded = await tradeCode({ code, verifier, redirect });
+  if (traded.token) await givenBack(key, one);
   if (!traded.token) return say(response, traded.status, traded.error, traded.more);
   return signInWith(traded.token, response, request);
 }
+
+// The app's codes orangecheck refused, counted by network (native).
+const NATIVE_REFUSED = { key: (network) => `native refused ${network}`, per: 10, minutes: 15 };
 
 /// [token], orangecheck's, checked and exchanged for a Brickworks session,
 /// answered: the window's sign-in and the app's alike. An account made
@@ -185,7 +205,6 @@ async function signInWith(token, response, request = null) {
     console.error(`orangecheck: not spent: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
   }
-
   let account;
   let made = false;
   let followed = null;
@@ -223,10 +242,14 @@ async function signInWith(token, response, request = null) {
       made = account === fresh;
       if (!account) throw new Error("the claim named no account");
     }
-    minted = await sessionFor(account);
+    minted = await sessionFor(account, did, clientAddress(request));
   } catch (trouble) {
+    if (trouble?.often) {
+      return say(response, 429, "Too many sign-ins with this orangecheck account just now. Wait a few minutes and try again.");
+    }
     console.error(`orangecheck: no session: ${String(trouble?.message || trouble).slice(0, 160)}`);
     if (trouble?.again) return say(response, 409, "Your Brickworks account changed just now. Sign in with orangecheck again.");
+    if (trouble?.uncounted) return say(response, 503, "Brickworks could not finish the sign-in just now. Try again in a minute.");
     if (trouble?.busy) return say(response, 503, "A lot of people are signing in just now. Try again in a minute.");
     return say(response, 502, "Brickworks could not finish the sign-in just now. Try again in a minute.");
   }
@@ -282,30 +305,29 @@ async function mark(account, on) {
   if (!reply.ok) throw new Error(`auth: the account was not marked: ${reply.status}`);
 }
 
-const SENDER = "Brickworks <noreply@brickworks.diy>";
-
-/// The account's own address told of a change to how it signs in: "sent",
-/// "dry" for a test address (Resend's, which reaches nobody), or "failed".
-async function tell(email, subject, text) {
-  if (/@resend\.dev$/i.test(email)) return "dry";
-  const key = process.env.RESEND_API_KEY;
-  if (!key || !email || madeUp(email)) return "failed";
+/// The account asking, from its sign-in, as signedInAs; for a change to how
+/// it signs in (link, unlink), only once it passes the one rule (api/_oc.js
+/// stepUp: the session as it is now, and a code of the last five minutes),
+/// answered here when it does not. null when answered.
+async function changing(request, response) {
+  let claims;
   try {
-    const reply = await fetch("https://api.resend.com/emails", {
-      method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [email], subject, text,
-        tags: [{ name: "kind", value: "sign_in_notice" }] }),
-      signal: AbortSignal.timeout(10000) });
-    if (!reply.ok) console.error(`orangecheck: Resend refused a notice: ${reply.status}`);
-    return reply.ok ? "sent" : "failed";
+    claims = await verify(bearer(request), request);
   } catch (trouble) {
-    console.error(`orangecheck: a notice did not go: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    return "failed";
+    say(response, trouble instanceof AuthError ? trouble.status : 401, trouble.message);
+    return null;
   }
+  // An orangecheck account keeps orangecheck: refused below as it was,
+  // before any code is asked of an address that takes none.
+  if (!madeUp(claims.email)) {
+    const may = await stepUp(claims);
+    if (may.status) {
+      response.status(may.status).json(may.body);
+      return null;
+    }
+  }
+  return signedInAs(request, response);
 }
-
-const AFTER = "If this was not you, sign in to Brickworks with an emailed code and change it in Settings: "
-  + "https://brickworks.diy/settings";
 
 async function signedInAs(request, response) {
   try {
@@ -333,11 +355,10 @@ async function status(request, response) {
 
 async function link(request, response) {
   if (!ocConfigured()) return say(response, 503, "Signing in with orangecheck is not set up here.");
-  const who = await signedInAs(request, response);
+  const who = await changing(request, response);
   if (!who) return;
   if (who.only) return say(response, 409, "This account signs in with orangecheck already.");
   if (who.did) return say(response, 409, "This account has orangecheck linked already. Unlink it first.");
-  if (!who.fresh) return say(response, 403, "Confirm it is you first, with a code we email you.", { fresh: false });
   const body = bodyOf(request);
   const token = typeof body?.token === "string" ? body.token.trim() : "";
   const checked = await checkToken(token);
@@ -363,11 +384,10 @@ async function link(request, response) {
 }
 
 async function unlink(request, response) {
-  const who = await signedInAs(request, response);
+  const who = await changing(request, response);
   if (!who) return;
   if (who.only) return say(response, 409, "This account signs in only with orangecheck, so it keeps it.");
   if (!who.did) return say(response, 404, "orangecheck is not linked to this account.");
-  if (!who.fresh) return say(response, 403, "Confirm it is you first, with a code we email you.", { fresh: false });
   let gone;
   try {
     gone = await db("rpc/oc_unlink", { method: "POST", body: { account: who.claims.sub } });

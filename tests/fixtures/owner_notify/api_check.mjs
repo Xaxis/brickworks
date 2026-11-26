@@ -15,7 +15,7 @@
 // ok, saw}]}, every check by name.
 import { randomUUID } from "node:crypto";
 import { Readable } from "node:stream";
-import { SUPABASE_URL, world } from "../billing/world.mjs";
+import { SESSION_READS, SUPABASE_URL, world } from "../billing/world.mjs";
 import { signWebhook, WEBHOOK_SECRET } from "../billing/fake_admission.mjs";
 import { BOUND, afterHow, settled } from "../../../api/_after.js";
 
@@ -72,7 +72,7 @@ globalThis.fetch = async (input, init = {}) => {
     sent.push({ ...body(), key: String(init.headers?.authorization || ""), once: init.headers?.["Idempotency-Key"] });
     return flags.resendDown ? reply(500, { message: "down" }) : reply(200, { id: `re_${sent.length}` });
   }
-  if (url.origin !== SUPABASE_URL) return worldFetch(input, init);
+  if (url.origin !== SUPABASE_URL || SESSION_READS.has(url.pathname)) return worldFetch(input, init);
   const path = url.pathname;
   const eq = (name) => /^eq\.(.*)$/.exec(url.searchParams.get(name) || "")?.[1] ?? null;
   if (path === "/rest/v1/rpc/admin_audit_note") {

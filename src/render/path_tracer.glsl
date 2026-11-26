@@ -32,11 +32,17 @@
 
 plain = "";
 marks = "#define MARKS";
+photo = "#define PHOTO";
 
 #[raygen]
 
 #version 460
 VERSION_DEFINES
+// The "photo" version (photoreal19) is the marks version with a set
+// photographed: the floor it stands on (scene.photo).
+#ifdef PHOTO
+#define MARKS
+#endif
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -191,6 +197,12 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	// picks up (y, 0 none, 1 as measured). The surface's waviness and sink
 	// are the closest hit's (each part's record, PathTracer.peel and sink).
 	vec4 breakup;
+#endif
+#ifdef PHOTO
+	// A set photographed (photoreal19): the floor it stands on as a product
+	// photograph's (x, 0 the shadow catcher as before, 1 a glossy sweep exposed
+	// past white, the model's colour bounced on it, its shade cool). yzw unused.
+	vec4 photo;
 #endif
 } scene;
 
@@ -1887,6 +1899,109 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 	return sum;
 }
 
+#ifdef PHOTO
+// -- the floor a set is photographed on (photoreal19) ----------------------------
+// The set photographs (6532's and 6660's) stand the model on a white sweep in a
+// tent, and what they show of it is not the shadow catcher's grey ratio:
+//   it is exposed past white: the open sweep clipped, so the broad soft shadow a
+//     tent's walls leave is gone and only the shade near the model shows, deepest
+//     where a tyre or a corner meets the floor;
+//   the shade is cool: lit by the walls and the room once the model keeps the
+//     panel from it (photoreal10 measured it 3 to 4 b* bluer than the lit white);
+//   the model's colour falls on it: a yellow bumper leaves a warm glow under it, a
+//     red chassis a pink one, light the parts send down onto the floor;
+//   the sweep is glossy (a vinyl or an acrylic sheet), so the model's underside
+//     and the tyres where they stand are mirrored in it, faint and blurred.
+// [param amount] 0 the catcher as before, 1 all of these as measured.
+const float FLOOR_OVER = 1.6;
+const float FLOOR_F0 = 0.04;
+const float FLOOR_GLOSS = 0.3;
+
+// How much of an open sweep's light a point of it keeps (shadow_marked's ratio,
+// rgb), with the light the parts send down added: a way blocked by a part
+// brings that part's own light towards the floor.
+vec3 floor_kept(vec3 at, vec3 n, float amount) {
+	vec3 kept = vec3(0.0);
+	vec3 seen = vec3(0.0);
+	vec3 bounced = vec3(0.0);
+	float all = 0.0;
+	int lights = int(scene.look.y);
+	for (int i = 0; i < lights; i++) {
+		Light light = scene.lights[i];
+		vec3 l = in_cone(light.toward.xyz, light.toward.w, rand2());
+		float c = max(dot(n, l), 0.0) * luminance(light.colour.rgb);
+		if (c <= 0.0) {
+			continue;
+		}
+		vec3 let = light.colour.w > 0.5 ? through_masked(at, l, 1e7, MASK_SOLID) : vec3(1.0);
+		all += c;
+		kept += c * let;
+	}
+	if (scene.near_colour.w > 0.0) {
+		float far;
+		float half_angle;
+		vec3 toward = near_way(at, far, half_angle);
+		vec3 l = in_cone(toward, half_angle, rand2());
+		float c = max(dot(n, l), 0.0) * luminance(near_light(at));
+		if (c > 0.0) {
+			vec3 let = through_masked(at, l, far, MASK_SOLID);
+			all += c;
+			kept += c * let;
+		}
+	}
+	for (int k = 0; k < 4; k++) {
+		vec3 l;
+		float own = 0.0;
+		if (k % 2 == 1) {
+			l = cosine_around(n, rand2());
+		} else if (tent()) {
+			l = tent_own_pick();
+		} else if (scene.sky.w > 0.5) {
+			l = place_pick(rand2(), own);
+		} else {
+			l = cosine_around(n, rand2());
+		}
+		float facing = max(dot(n, l), 0.0);
+		if (facing <= 0.0) {
+			continue;
+		}
+		float first = tent() ? tent_own_pdf(l)
+			: (scene.sky.w > 0.5 ? place_pdf(l) : facing / PI);
+		float c = luminance(sky_light(l)) * facing / max(first + facing / PI, 1e-6);
+		vec3 let = through_masked(at, l, 1e7, MASK_SOLID);
+		all += c;
+		kept += c * let;
+		if (k % 2 == 1 && max(let.r, max(let.g, let.b)) <= 0.0
+				&& trace(at, l, 1e7, MASK_SOLID, gl_RayFlagsOpaqueEXT)) {
+			// The part there, lit as the eye would see it from the floor: its
+			// light down this way over the cosine's pick (the sum over four
+			// samples is twice the light, as all is).
+			Instance thing = instances[hit.instance];
+			vec3 p = at + l * hit.t;
+			vec3 pg = dot(hit.geometric, -l) < 0.0 ? -hit.geometric : hit.geometric;
+			vec3 pn = dot(hit.normal, pg) < 0.0 ? -hit.normal : hit.normal;
+			Surface ps = surface_of(thing, p, hit.local, hit.unused, thing.info.z, hit.geometric);
+			bounced += direct(ps, p + pg * 0.02, pn, -l) * PI;
+		}
+	}
+	if (all <= 0.0) {
+		return vec3(1.0);
+	}
+	float lost = clamp(1.0 - luminance(kept) / all, 0.0, 1.0);
+	vec3 cool = max(mix(vec3(1.0), DAYLIGHT_FILL, amount), vec3(0.05));
+	cool /= luminance(cool);
+	return kept / all * mix(vec3(1.0), cool, lost) + amount * bounced / all;
+}
+
+// How far past white a sweep is exposed: a white one FLOOR_OVER at 1, a
+// coloured one not at all (a photographer clips only a white backdrop).
+float floor_over(float amount) {
+	vec3 back = scene.background.rgb;
+	float white = smoothstep(0.8, 0.97, min(back.r, min(back.g, back.b)));
+	return mix(1.0, FLOOR_OVER, amount * white);
+}
+#endif
+
 void main() {
 	ivec2 pixel = ivec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y + pass.row);
 	vec2 size = scene.size.xy;
@@ -1933,11 +2048,28 @@ void main() {
 		int bounces = 0;
 		vec4 first = vec4(0.0, 0.0, 0.0, 4.0);
 		bool met = false;
+#ifdef PHOTO
+		// A way the glossy floor mirrored (photoreal19): it looks for the
+		// model alone, and where it finds none it sees the sweep's own white.
+		bool floor_mirror = false;
+		vec3 floor_open = vec3(0.0);
+#endif
 		for (int event = 0; event < most + 8; event++) {
 			// A bounce towards the large source passes the sweep (lit_mask).
 			uint seen = !straight && lit_mask(way) == MASK_SOLID ? 0xFFu & ~MASK_SWEEP : 0xFFu;
+#ifdef PHOTO
+			if (floor_mirror) {
+				seen = 0xFFu & ~MASK_SWEEP;
+			}
+#endif
 			if (!trace(from, way, 1e7, seen, gl_RayFlagsOpaqueEXT)) {
 				met = true;
+#ifdef PHOTO
+				if (floor_mirror) {
+					radiance += carried * floor_open;
+					break;
+				}
+#endif
 				if (straight && scene.stage.x > 0.5 && scene.look.w < -0.5) {
 					// Nothing past a staged surface's white card: the card alone
 					// is metered (photoreal7).
@@ -2082,6 +2214,10 @@ void main() {
 				sharp = true;
 				continue;
 			}
+#ifdef PHOTO
+			// The mirrored way has found the model: lit as any bounce is.
+			floor_mirror = false;
+#endif
 			if ((!straight || scene.stage.w > 0.5) && thing.info.y == KIND_SWEEP && scene.look.x > 0.5
 					&& (scene.sky.w > 0.5 || scene.stage.w > 0.5) && at.y - scene.sweep_origin.y > 2.0) {
 				// In a photographed place the backdrop is a table, not a
@@ -2110,6 +2246,32 @@ void main() {
 				vec3 flat_at = at - scene.sweep_origin.xyz;
 				float along = length(flat_at.xz) + max(flat_at.y, 0.0);
 				float lit = 1.0 - scene.sweep.y * smoothstep(scene.sweep.z, scene.sweep.w, along);
+#ifdef PHOTO
+				if (scene.photo.x > 0.0) {
+					// The floor a set is photographed on (photoreal19): exposed
+					// past white, its shade cool and coloured by the model, and
+					// glossy, the model mirrored in it.
+					float amount = scene.photo.x;
+					vec3 open = scene.background.rgb * lit * lit * table_paper(at, scene.wear.z) * table_falloff(at);
+					vec3 shown = open * min(floor_kept(at + ng * 0.02, n, amount) * floor_over(amount), vec3(1.0));
+					vec3 h = ggx_normal(n, v, FLOOR_GLOSS * FLOOR_GLOSS, rand2());
+					vec3 mirrored = reflect(way, h);
+					float f = schlick(vec3(FLOOR_F0), max(dot(v, h), 0.0)).x * amount;
+					if (dot(mirrored, ng) <= 0.0 || f <= 0.0) {
+						radiance += carried * shown;
+						break;
+					}
+					radiance += carried * (1.0 - f) * shown;
+					carried *= f;
+					floor_open = open;
+					floor_mirror = true;
+					from = at + ng * 0.02;
+					way = mirrored;
+					straight = false;
+					sharp = true;
+					continue;
+				}
+#endif
 #ifdef MARKS
 				// The table's relief, its light falling off across it, and its
 				// shade's colour (photoreal10).
@@ -2186,6 +2348,9 @@ void main() {
 
 #version 460
 VERSION_DEFINES
+#ifdef PHOTO
+#define MARKS
+#endif
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -2214,6 +2379,9 @@ void main() {
 
 #version 460
 VERSION_DEFINES
+#ifdef PHOTO
+#define MARKS
+#endif
 #extension GL_EXT_ray_tracing : require
 
 struct Hit {
@@ -2289,7 +2457,6 @@ uint part_key = 0u;
 float peel_amount = 0.0;
 float sink_amount = 0.0;
 #endif
-
 float wave_noise(vec3 p);
 
 // The edge's rounding where it is hit (photoreal13): a moulded edge is
