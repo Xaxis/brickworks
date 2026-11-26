@@ -2808,10 +2808,32 @@ as New. Now the raster's Product plastic draws it from the same RenderSettings l
   times the tracer's shift from New. The tracer's motes come out of its denoise as part of the film,
   so here the film takes their share evenly. Drawn sharp, they read as grit on every top.
 - The stage seats each part as the tracer seats its copy, by `PathTracer.seat`.
-- New's uniforms are 0, so its bytes are as before: byte for byte against the baseline on the four
+- New's uniforms are 0, so its bytes are as before: byte for byte against the baseline on all eleven
   shots drawn.
 
 The note under Plastic no longer says Played with needs path tracing.
+
+**The stud logo in the browser.** The judge named "studs with no LEGO logo" in 332 of the browser's 480
+New verdicts. The raster's Product plastic now raises the tracer's logo (`stud_logo`, stroke for stroke,
+the same way round) at Best only (`stud_logos`, `StudioRender._raster_logos`). Best's 32 averaged
+frames resolve letters finer than a pixel, where Quick's and Good's single frame would alias.
+
+**What the judge said of the browser's Best.** photoreal16's solo judge, the ten shots, one draw (the
+raster draws the same picture at every draw: 11 and 12 match to 2 pixels in a million), 6 trials by 8
+rounds, 48 verdicts a picture, two pools (seeds 271 and 272). Every browser picture sits at the floor:
+0.03 to 0.17 called a photograph, against the photographs' 0.93.
+
+| against New (95%) | all shots | close-ups | sets |
+|---|---|---|---|
+| Played with, pool 1 | +0.010 (+0.001 to +0.024) | +0.016 (+0.001 to +0.038) | +0.001 |
+| Played with, pool 2 | +0.009 (+0.001 to +0.023) | +0.016 (+0.003 to +0.036) | 0.000 |
+| New with the logo | +0.006 (-0.000 to +0.017) | +0.012 (+0.002 to +0.026) | -0.001 |
+| Played with and the logo | +0.019 (+0.003 to +0.040) | +0.031 (+0.006 to +0.061) | +0.002 |
+
+The logo takes "no logo" from 349 verdicts to 200 (New) and from 329 to 166 (Played with). The judge
+then reads it as "mirrored" or "garbled" in 25 and 50, as it read the tracer's. green_plate_macro gains
+the most (+0.045, +0.092 with Played with). No shot falls by more than the pools differ on an unchanged
+picture: set_6532's Played with is -0.001 in one pool and -0.004 in the other.
 
 ## 6. Web and desktop
 

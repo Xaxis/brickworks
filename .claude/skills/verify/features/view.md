@@ -3169,7 +3169,12 @@ picture the assistant is shown.
   (`BrickWorld.product`, `PRODUCT_SHADERS`; `PLASTIC_PRODUCT` in
   `plastic_body.gdshaderinc`: a clear coat over the plastic, edges of the
   part's body box and studs' top rims rounded by a bent normal (`bevelled`,
-  `stud_rim`), chrome and metal reflecting the studio's sky; clear parts in
+  `stud_rim`), at Best where nothing traces rays the LEGO logo raised on
+  every stud's top as the tracer draws it (`stud_logo` under the uniform
+  `stud_logos`, set by `StudioRender._raster_logos`; photoreal27,
+  docs/RENDERING.md 5ab; Quick and Good draw plain studs; render_probe's
+  "Best's raster raises the stud logos, Good's does not"), chrome and metal
+  reflecting the studio's sky; clear parts in
   two passes, `plastic_product_glass` multiplying what is behind by what
   each surface lets through, every surface, so a clear part's own walls and
   tubes and the clear parts behind it show, then the reflections added on
