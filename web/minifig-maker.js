@@ -29,6 +29,7 @@
 // browser (it is kept for good: an id is its text).
 import { appAt, say } from "/card.js";
 import { call } from "/account.js";
+import { ask } from "/kit.js";
 import {
   AVATAR_COLOURS, CLEAR, COLOURS, FACES, GRADIENTS, HAIR, HAIR_COLOURS, HELD, LEGS, NECKS, PALETTE, PLAIN, POSES, POSE_RANGE,
   REAL_SKINS, SCENES, SKIN, SKINS, STARTERS, TILE, TORSOS, backgroundOf, figureShape, fromLayers, ownMould, tileGroups, tilesHash,
@@ -38,18 +39,22 @@ import {
 const HAIR_SLOTS = ["headwear"];
 
 /// The person's own hair, kept on their account: [{id, name, base}], none
-/// when they have none or it cannot be asked.
+/// when they have none; null when it cannot be asked (so nothing worn is
+/// taken for gone).
 async function ownHair() {
   const answer = await call("/api/people?op=moulds").catch(() => null);
-  if (!answer || answer.status !== 200 || !Array.isArray(answer.body?.moulds)) return [];
+  if (!answer || answer.status !== 200 || !Array.isArray(answer.body?.moulds)) return null;
   return answer.body.moulds.filter((one) => ownMould(one?.id) && HAIR_SLOTS.includes(one.slot))
     .map(({ id, name, base }) => ({ id, base: String(base || ""), name: shortName(String(name || id)) || id }));
 }
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 /// The studio's first line, "<the part's name>, Custom Mould <its title>",
-/// as its title; a long one shown cut, with an ellipsis (its file keeps it).
+/// as its title; a long one shown cut at a whole character, an emoji or a
+/// letter and its accent never halved, with an ellipsis (its file keeps it).
 function shortName(line) {
   const title = line.replace(/^.*,\s*Custom Mould\s+/i, "").trim();
-  return title.length > 60 ? `${title.slice(0, 59)}…` : title;
+  const each = [...graphemes.segment(title)].map(({ segment }) => segment);
+  return each.length > 60 ? `${each.slice(0, 59).join("")}…` : title;
 }
 
 /// The text of the mould [id], as the account keeps it: once a browser.
@@ -339,7 +344,9 @@ const sheets = () => Object.fromEntries(Object.entries(tileGroups()).map(([group
 /// The maker in [dialog] (web/profile.html #minifig-dialog), starting from
 /// [start] (a recipe of either version): resolves {recipe, blob} once Save
 /// has drawn it, or null when it is closed without saving.
-export function makeMinifig(dialog, start) {
+/// [options]: {avatarChanged(minifig)}, told when a hair of their own is
+/// removed that their saved avatar wore, with its figure as it is now.
+export function makeMinifig(dialog, start, options = {}) {
   const $ = (id) => dialog.querySelector(`#${id}`);
   const names = NAMES();
   const colourNames = COLOUR_NAMES();
@@ -450,6 +457,8 @@ export function makeMinifig(dialog, start) {
       ...(own.length ? [["own", say("Your own")]] : []), ...Object.entries(styleNames)])}`
       + (own.length ? group(say("Your own"), "hd", own.map((one) => ownTile(one)).join(""),
         ownOf(recipe.hd) ? nameOf(recipe.hd) : "")
+        + (ownOf(recipe.hd) ? `<p class="mf-own-remove"><button type="button" class="cta ghost small danger" id="mf-own-remove">`
+          + `${esc(say("Remove “{name}” from your account", { name: nameOf(recipe.hd) }))}</button></p>` : "")
         : `<p class="note mf-own-none">${esc(say("Shape hair of your own in the studio's minifig builder (Headgear, Make a mould…), signed in: it is here the moment you save it."))} `
           + `<a href="${esc(appAt())}">${esc(say("Open the studio"))}</a></p>`)
       + group(say("Hair and hats"), "hd", noneTile("hd", !recipe.hd, say("No hair")) + HAIR.map(([id, style]) =>
@@ -566,6 +575,40 @@ export function makeMinifig(dialog, start) {
   }
   // The part a hair of their own was shaped from: its style and first colour.
   const baseOf = (id) => HAIR.find(([one]) => one === (ownOf(id)?.base ?? id));
+  // A hair of their own taken off the account (hairfix, hairreview H2):
+  // asked first, then gone from the list, and from the figure and every
+  // step Undo goes back to, which wear the part it was shaped from instead.
+  // Their avatar, if it wore it, wears that part too (api/_moulds.js
+  // removeMould); its picture is drawn again when they save.
+  async function removeOwn(id) {
+    const one = ownOf(id);
+    if (!one) return;
+    const base = HAIR.find(([part]) => part === one.base);
+    const instead = base ? nameOf(base[0]) : say("no hair");
+    if (!(await ask({ title: say("Remove “{name}” from your account?", { name: one.name }),
+      body: say("The studio keeps it, and so does every model that uses it. Your minifig wears {part} in its place.", { part: instead }),
+      yes: say("Remove"), danger: true }))) return;
+    const note = $("minifig-note");
+    const answer = await call("/api/people?op=mould_remove", { method: "POST", body: { id } }).catch(() => null);
+    if (!answer || (answer.status !== 200 && answer.status !== 404)) {
+      note.textContent = answer?.status === 429 ? say("That is a lot of removing in a short time: try again in an hour.")
+        : say("That did not work just now. Try again in a minute.");
+      return;
+    }
+    own = own.filter((mould) => mould.id !== id);
+    dialog.dataset.own = String(own.length);
+    const plain = base ? base[0] : "";
+    for (let k = 0; k < history.length; k++) if (history[k].hd === id) history[k] = { ...history[k], hd: plain };
+    const wore = recipe.hd === id;
+    if (wore) recipe = { ...recipe, hd: plain };
+    tools();
+    drawFigure();
+    refresh();
+    if (answer.body?.minifig) options.avatarChanged?.(answer.body.minifig);
+    note.textContent = answer.body?.minifig
+      ? say("Removed. Your avatar wore it: it wears {part} now, and Save draws its picture again.", { part: instead })
+      : say("Removed “{name}” from your account.", { name: one.name });
+  }
   const hairColours = () => {
     const style = baseOf(recipe.hd)?.[1];
     return style && HATS.has(style) ? [...PALETTE, ...CLEAR] : [...HAIR_COLOURS, ...PALETTE.filter((code) => !HAIR_COLOURS.includes(code))];
@@ -802,6 +845,7 @@ export function makeMinifig(dialog, start) {
     if (frameButton) return change({ ...recipe, fr: Number(frameButton.dataset.frame) }, { redraw: false });
     const stance = event.target.closest("[data-stance]");
     if (stance) return change({ ...recipe, po: recipe.po.map((n, k) => (k === 5 ? Number(stance.dataset.stance) : n)) });
+    if (event.target.closest("#mf-own-remove")) return removeOwn(recipe.hd);
     if (event.target.closest("#mf-lock")) {
       if (locks.has(tab)) locks.delete(tab); else locks.add(tab);
       lockButton();
@@ -901,7 +945,16 @@ export function makeMinifig(dialog, start) {
         fetch("/minifig/figure.json").then((answer) => (answer.ok ? answer.json() : Promise.reject(new Error(`figure.json: ${answer.status}`)))),
         fetch("/api/account").then((answer) => answer.json()).catch(() => ({})), ownHair()]);
       if (!module.webglWorks()) throw new Error("no 3D");
-      own = theirs;
+      own = theirs || [];
+      // A hair of their own the account no longer keeps (removed in another
+      // tab): the figure opens without it, whole, and says so.
+      if (theirs && ownMould(recipe.hd) && !ownOf(recipe.hd)) {
+        const gone = recipe.hd;
+        recipe = { ...recipe, hd: "" };
+        for (let k = 0; k < history.length; k++) if (history[k].hd === gone) history[k] = { ...history[k], hd: "" };
+        drawFigure();
+        $("minifig-note").textContent = say("Your own hair is no longer on your account, so your minifig wears none.");
+      }
       if (own.length) {
         dialog.dataset.own = String(own.length);
         if (tab === "hair") refresh();

@@ -3001,14 +3001,21 @@ plan with Claude as the client.
   finite or past 400 LDU, more than 18,000 triangles, no `Moulded by
   Brickworks: from=`, a `Name:` not its id, and an id not the digest of its
   own text (`idOf`, as `CustomParts.named` makes it). At most 40 moulds and
-  24 MB an account (409, and the table's trigger `own_moulds_cap`); the
-  same id replaced. GET `?op=moulds` is yours without text; GET
-  `?op=mould&id=M` is yours, or one a shown avatar wears
-  (`profile_avatars.minifig->>hd`, index `profile_avatars_worn_hair`), with
-  `private, max-age=31536000, immutable` (an id is its text), else 404.
-  `?op=avatar` refuses a recipe whose `hd` is a mould not kept on the
-  caller's account (403). An avatar is still the picture the maker drew,
-  so no page view reads a mould; the maker reads one once a browser.
+  24 MB an account (409 `code: room`, saying where to remove one, and the
+  table's trigger `own_moulds_cap`, told apart from any other 400 by its
+  words, `db()`'s `said`); the same id replaced; `replaces` (a remake) takes
+  the one it was shaped from off unless the avatar wears it. Every refusal
+  has a `code` the studio words itself. The list name is cut at a whole
+  grapheme (`cutAtGrapheme`, hairreview M2) and a lone surrogate refused.
+  POST `?op=mould_remove {id}` takes one off (404 for none of yours); one
+  the avatar wears leaves the avatar's recipe on the part it was shaped
+  from (`removeMould`). GET `?op=moulds` is yours without text, with `most`
+  (the room); GET `?op=mould&id=M` is yours alone (hairreview M1), counted
+  (`mould_read`), `private, max-age=31536000, immutable` (an id is its
+  text), else 404 `no-store`. `?op=avatar` refuses a recipe whose `hd` is a
+  mould not kept on the caller's account (403). An avatar is the picture
+  the maker drew, so no page view reads a mould; the maker reads one once a
+  browser.
 - `hair of your own in the site's minifig maker` (`web/minifig-maker.js`
   `ownHair`/`ownTile`/`drawOwn`, `tools/viewer/minifig.js`
   `mouldSurfaces`/`part`, `web/minifig-parts.js` `ownMould`): Hair and
@@ -3016,7 +3023,12 @@ plan with Claude as the client.
   each drawn from its triangles (`img[data-own]`) in the colour chosen;
   worn, it comes in the colour of the hair it was shaped from and is seated
   as that part is; `dataset.own` the count. None yet: a line
-  (`.mf-own-none`) to Make a mould… in the studio.
+  (`.mf-own-none`) to Make a mould… in the studio. One of your own chosen,
+  `#mf-own-remove` ("Remove “name” from your account") asks, then
+  `op=mould_remove`: gone from the list, and from the figure and its undo
+  steps, which wear the part it was shaped from; a saved avatar that wore
+  it is told to `makeMinifig`'s `avatarChanged` (web/profile.js). A worn
+  hair no longer listed (removed in another tab) opens as none, in words.
 - `sitehair browser flow` (`tools/web/sitehair_flow.mjs`, preview check
   `[sitehair]`): on a preview, Ada makes a mould in the studio at `/app`
   (the figure builder, Headgear, Make a mould…, a pull, Save mould) and her
@@ -3024,8 +3036,10 @@ plan with Claude as the client.
   table with his own sign-in; hostile moulds refused in words; she wears it
   in the site's maker and saves; its text read once, then from the
   browser's cache; her profile, comment and page show it at 1280 and 390,
-  each view's bytes measured and no mould read; worn, Bo and a visitor may
-  read it, Bo's copy is his own. `beside_1280.png`/`beside_390.png` put
+  each view's bytes measured and no mould read; worn, Bo and a visitor
+  still get 404 for its text, Bo's copy is his own; a title cut through an
+  emoji kept; Remove in the maker at 390 (one not worn) and 1280 (the worn
+  one: figure and saved avatar on 3901, the maker opens whole again). `beside_1280.png`/`beside_390.png` put
   each picture beside the studio's. On a relay (no web build), `--mould=FILE`
   keeps the text `src/dev/sitehair_probe.gd` wrote (`BW_MOULD_OUT`).
 - `minifig avatar layers` (`tools/web/minifig_layers.mjs`): every layer of

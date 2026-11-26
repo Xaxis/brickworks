@@ -25,12 +25,18 @@
 //    after a reload, the browser's cache answers.
 // 6. Her profile, her comment and her page show it, at 1280 and 390 (the
 //    maker too), with the bytes each avatar view reads, and no mould read.
-// 7. Now worn, Bo and a signed-out visitor can read it; Bo's copy is his own
-//    and hers is as it was.
+// 7. Worn, Bo and a signed-out visitor still cannot read its text (hairfix,
+//    hairreview M1: an avatar is its picture); Bo's copy of the same text is
+//    his own and hers is as it was.
+// 8. Remove (hairfix, hairreview H2): at 390, one of hers not worn, from the
+//    maker: asked first, gone from the list and the account. At 1280, the
+//    one her avatar wears: her minifig and her saved avatar wear the hair it
+//    was shaped from, and the maker opens again whole. Pictures.
 // Pictures beside the studio's: beside_1280.png, beside_390.png.
 import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { HAIR, PLAIN } from "../../web/minifig-parts.js";
+import { idOf } from "../../api/_moulds.js";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -156,7 +162,7 @@ async function studio() {
     writeFileSync(path.join(out, "sitehair_probe.log"), `${ran.stdout}\n${ran.stderr}`);
     const said = String(ran.stdout).split("\n").filter((line) => /^(PASS|FAIL) /.test(line));
     for (const line of said) console.log(`        studio: ${line}`);
-    check(`the studio saved her mould signed in, kept nothing signed out and sent what the account lacked: `
+    check(`the studio saved her mould signed in, kept nothing signed out, asked before sending it, and replaced a remake: `
       + `${said.filter((l) => l.startsWith("PASS")).length} passed, exit ${ran.status}`,
       ran.status === 0 && said.length > 0 && !said.some((l) => l.startsWith("FAIL")));
     return /^0 Name: (\S+)\.dat$/m.exec(readFileSync(file, "utf8"))?.[1] || "";
@@ -300,6 +306,28 @@ try {
   check(`signed out: ${r.status} "${r.json?.error}"`, r.status === 401);
   const still = await api(`/api/people?op=mould&id=${id}`, { token: ada.access_token });
   check("her mould is as it was", still.json?.text === text);
+  {
+    // A title whose 120th UTF-16 unit is half an emoji (hairreview M2):
+    // kept, its list name cut at a whole character.
+    const lines = text.split(id).join("\u0000").split("\n");
+    lines[0] = `0 Minifig Hair Male, Custom Mould ${"a".repeat(87)}\u{1F525} quiff`;
+    const holed = lines.join("\n");
+    const other = idOf(holed.split("\u0000").join(""), "\u0000\u0000never\u0000", "3901");
+    r = await api("/api/people?op=mould", { method: "POST", token: ada.access_token,
+      body: { id: other, slot: "headwear", text: holed.split("\u0000").join(other) } });
+    const name = (await listed(ada)).find((one) => one.id === other)?.name || "";
+    check(`a title cut through an emoji: ${r.status}, its list name ${[...name].length} characters, whole `
+      + `(${name.isWellFormed()})`, r.status === 200 && name.isWellFormed() && [...name].length <= 120);
+    r = await api("/api/people?op=mould_remove", { method: "POST", token: ada.access_token, body: { id: other } });
+    check(`removed again by its own op: ${r.status}`, r.status === 200 && r.json?.removed === true);
+    r = await api("/api/people?op=mould_remove", { method: "POST", token: ada.access_token, body: { id: other } });
+    check(`removed twice: ${r.status} "${r.json?.error}"`, r.status === 404 && words(r.json));
+    r = await api("/api/people?op=mould_remove", { method: "POST", body: { id } });
+    check(`removed signed out: ${r.status}`, r.status === 401);
+    r = await api("/api/people?op=mould_remove", { method: "POST", token: bo.access_token, body: { id } });
+    check(`Bo removing hers: ${r.status}, and hers is still there`, r.status === 404
+      && (await listed(ada)).some((one) => one.id === id));
+  }
 
   console.log("5. The site's maker: Your own, worn, saved");
   const base = HAIR.find(([one]) => one === "3901");
@@ -452,16 +480,78 @@ try {
     await context.close();
   }
 
-  console.log("7. Worn, it may be read by whoever sees it; Bo's copy is his own");
+  console.log("7. Worn, its text is still hers alone; Bo's copy is his own");
   r = await api(`/api/people?op=mould&id=${id}`, { token: bo.access_token });
-  check(`Bo reads the hair her avatar wears: ${r.status}`, r.status === 200 && r.json?.text === text);
+  check(`Bo reading the hair her avatar wears: ${r.status} "${r.json?.error}"`, r.status === 404);
   r = await api(`/api/people?op=mould&id=${id}`);
-  check(`so does a visitor signed out: ${r.status}`, r.status === 200 && r.json?.text === text);
+  check(`a visitor signed out: ${r.status}, "${r.cache}"`, r.status === 404 && /no-store/.test(r.cache));
   const was = (await listed(ada)).find((one) => one.id === id);
   r = await api("/api/people?op=mould", { method: "POST", token: bo.access_token, body: { id, slot: "headwear", text } });
   check(`Bo keeping the same text keeps his own copy: ${r.status}`, r.status === 200);
   const now = (await listed(ada)).find((one) => one.id === id);
   check(`hers is as it was (${now?.at})`, now?.at === was?.at && (await listed(bo)).length === 1);
+
+  console.log("8. Remove, in the maker: one not worn at 390, the worn one at 1280");
+  const removeIn = async (page, one) => {
+    await page.click("[role=tab][data-tab=hair]");
+    const tile = `label.mf-tile.own:has(input[name=mf-hd][value='${one}'])`;
+    if (!(await page.locator(`${tile} input:checked`).count())) await page.click(tile);
+    await until(page, () => Boolean(document.querySelector("#mf-own-remove")), null, 10000);
+    await page.locator("#mf-own-remove").scrollIntoViewIfNeeded();
+    const asked = page.waitForResponse((a) => a.url().includes("op=mould_remove"), { timeout: 30000 }).catch(() => null);
+    await page.click("#mf-own-remove");
+    const question = await until(page, () => Boolean(document.querySelector("dialog.ask[open]")), null, 10000);
+    const said = await page.evaluate(() => document.querySelector("dialog.ask[open]")?.textContent.trim() || "");
+    await page.locator("dialog.ask[open] .actions button").first().click();
+    const answer = await asked;
+    await until(page, () => Boolean(document.querySelector("#minifig-note")?.textContent.trim()), null, 10000);
+    return { question, words: said, status: answer?.status(), body: answer ? await answer.json().catch(() => null) : null,
+      note: await page.evaluate(() => document.querySelector("#minifig-note")?.textContent.trim() || ""),
+      tile: await page.locator(tile).count(), recipe: await recipeIn(page) };
+  };
+  const others = (await listed(ada)).filter((one) => one.id !== id && /^bw-3901-m-/.test(one.id));
+  if (others.length) {
+    const one = others[0].id;
+    const { page, context } = await open("/profile", { width: 390, theme: "light", session: asAda(), label: "remove 390 light" });
+    await until(page, () => document.documentElement.dataset.profile === "ready", null, 60000);
+    await page.click("#edit");
+    await until(page, () => document.querySelector("dialog#edit-dialog[open]"));
+    await page.click("#avatar-make");
+    check("390: the maker drew her figure", await makerReady(page));
+    const gone = await removeIn(page, one);
+    check(`390: Remove asks first ("${gone.words.slice(0, 120)}"), then ${gone.status}: "${gone.note}"; its tile gone (${gone.tile}), `
+      + `her figure wears ${gone.recipe?.hd}`, gone.question && gone.status === 200 && gone.tile === 0 && gone.recipe?.hd === "3901"
+      && !(await listed(ada)).some((m) => m.id === one) && gone.body?.minifig === null);
+    await shot(page, "remove_390_light.png", "remove_390");
+    await page.click("#minifig-cancel");
+    await context.close();
+  } else {
+    check("390: a second mould of hers to remove (the studio's probe made one)", false);
+  }
+  {
+    const { page, context } = await open("/profile", { width: 1280, theme: "dark", session: asAda(), label: "remove 1280 dark" });
+    await until(page, () => document.documentElement.dataset.profile === "ready", null, 60000);
+    await page.click("#edit");
+    await until(page, () => document.querySelector("dialog#edit-dialog[open]"));
+    await page.click("#avatar-make");
+    check("1280: the maker opens on her own hair", await makerReady(page) && (await recipeIn(page))?.hd === id);
+    const gone = await removeIn(page, id);
+    const me = await api("/api/people?op=me", { token: ada.access_token });
+    const avatar = me.json?.avatar || me.json?.profile?.avatar || null;
+    check(`1280: the one her avatar wears removed: ${gone.status}, "${gone.note}"; her figure wears ${gone.recipe?.hd}, `
+      + `her saved avatar ${gone.body?.minifig?.hd} (account: ${avatar?.minifig?.hd})`, gone.status === 200 && gone.recipe?.hd === "3901"
+      && gone.body?.minifig?.hd === "3901" && (!avatar || avatar.minifig?.hd === "3901"));
+    await shot(page, "remove_1280_dark.png", "remove_1280");
+    await page.click("#minifig-cancel");
+    await page.waitForTimeout(300);
+    await page.click("#avatar-make");
+    const whole = await makerReady(page);
+    const note = await page.evaluate(() => document.querySelector("#minifig-note")?.textContent.trim() || "");
+    check(`1280: opened again, it is whole, on the hair it was shaped from (${(await recipeIn(page))?.hd}, "${note}")`,
+      whole && (await recipeIn(page))?.hd === "3901" && note === "");
+    await page.click("#minifig-cancel");
+    await context.close();
+  }
 } finally {
   for (const [who, email] of [[ada, adaEmail], [bo, boEmail]]) {
     if (who) check(`${email.split("+")[1].split("@")[0]}'s account deleted`, await deleteAccount(email));
