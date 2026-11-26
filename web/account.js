@@ -735,8 +735,13 @@ export function feedCountHeard(ms) {
   });
 }
 
-// The calls on their way: First steps, put off for what a new person
-// pressed, are offered once its call is answered (offerFirstSteps).
+// What the page is doing for what a person pressed: its calls on their way,
+// the account looked up (age) and the name asked before a public act
+// (nameFirst), its script's loading included. First steps, put off for what
+// a new person pressed, are offered once it is all done (offerFirstSteps):
+// a comment's name step uncounted, they came between the comment's last call
+// and its name's dialog, and the dialog opened over them (firststeps,
+// 2026-11-26).
 let calling = 0;
 
 /// A call to the site's own API with the sign-in, as JSON: {status, body}.
@@ -1214,9 +1219,8 @@ let beta = null;
 /// What the server keeps of this sign-in's age: {ask, over_13}, or null
 /// when nobody is signed in or it does not ask here.
 export async function age() {
-  const access = await token();
-  if (!access) return null;
-  const said = await json(await fetch("/api/account", { headers: { authorization: `Bearer ${access}` } }));
+  if (!(await token())) return null;
+  const said = (await call("/api/account")).body || {};
   beta = said.signed_in && said.beta ? said.beta : null;
   profileSaid = said.signed_in && said.profile !== undefined ? { of: accountId(), profile: said.profile } : null;
   return said.signed_in && said.age ? said.age : null;
@@ -1244,17 +1248,22 @@ export async function nameFirst() {
   if (!signedIn()) return null;
   const id = accountId();
   if (named && named.of === id) return named.profile;
-  const now = await age().catch(() => null);
-  if (!profileSaid || profileSaid.of !== id) return null;
-  let profile = profileSaid.profile;
-  if (!profile) {
-    if (now && now.over_13 !== true) return null;
-    const made = await import("/first-steps.js")
-      .then((steps) => steps.firstSteps({ pending: true, profileOnly: true })).catch(() => null);
-    profile = made && made.profile ? made.profile : null;
+  calling += 1;
+  try {
+    const now = await age().catch(() => null);
+    if (!profileSaid || profileSaid.of !== id) return null;
+    let profile = profileSaid.profile;
+    if (!profile) {
+      if (now && now.over_13 !== true) return null;
+      const made = await import("/first-steps.js")
+        .then((steps) => steps.firstSteps({ pending: true, profileOnly: true })).catch(() => null);
+      profile = made && made.profile ? made.profile : null;
+    }
+    if (profile) named = { of: id, profile };
+    return profile;
+  } finally {
+    calling -= 1;
   }
-  if (profile) named = { of: id, profile };
-  return profile;
 }
 
 /// Whether the last age() heard the beta is open for this account: a page
@@ -1314,8 +1323,12 @@ export async function askAgeIfAsked({ pending = false } = {}) {
 // this one went (the app's sign-in on /profile goes back to the app at
 // once).
 const STEPS_DUE = "brickworks.first_steps_due";
-// A moment for the page to start what was pressed; then quiet for one
-// look in a row, and offered regardless after the longest wait.
+// A moment for the page to start what was pressed; then quiet for two
+// looks in a row. A call that never answers is waited for no longer than
+// the longest wait; a dialog open is a person answering it (their name, a
+// list to keep it in), and a snackbar under it is never seen, so it is
+// waited out however long it takes. A comment's Make your profile took a
+// newcomer more than the 20 s, and First steps came and went under it.
 const STEPS_LATER_MS = 1000;
 const STEPS_QUIET_MS = 250;
 const STEPS_LONGEST_MS = 20000;
@@ -1343,7 +1356,8 @@ async function offerFirstSteps() {
   const pause = (ms) => new Promise((done) => setTimeout(done, ms));
   await pause(STEPS_LATER_MS);
   const giveUp = Date.now() + STEPS_LONGEST_MS;
-  while ((calling > 0 || document.querySelector("dialog[open]")) && Date.now() < giveUp) await pause(STEPS_QUIET_MS);
+  const busy = () => document.querySelector("dialog[open]") || (calling > 0 && Date.now() < giveUp);
+  for (let quiet = 0; quiet < 2; quiet = busy() ? 0 : quiet + 1) await pause(STEPS_QUIET_MS);
   const address = stepsDue();
   if (!address || !signedIn() || address !== email()) return;
   keepStepsDue("");
