@@ -1164,7 +1164,11 @@ func _flush_when_due() -> void:
 		var batch: Batch = _batches.get(key)
 		if batch != null:
 			_rebuild(batch, key)
-		if pace.due() and not _dirty.is_empty():
+		if pace.due():
+			# The rest, or once all is written, what reads the model after
+			# a change (rebuilt: its counts, the model tree, the inspector,
+			# 41-54 ms on Orthanc), in the next frame: after a slice spent,
+			# the end of Lay's finish on Orthanc was 106 ms (greenreds).
 			_rebuild_queued = true
 			if not get_tree().process_frame.is_connected(_flush_when_due):
 				get_tree().process_frame.connect(_flush_when_due, CONNECT_ONE_SHOT)
