@@ -22506,12 +22506,15 @@ var _save_advice: String = ""
 var _pieces_advised: bool = false
 
 
-## Saving a design built from outside waits, twice at most, until no part of
-## it collides by its real shape or rests with nothing holding it (ExactCheck):
-## the design is handed over when it is saved, and BrickBench refuses a build
-## for one of either. "" lets it save.
+## Saving a design built from outside never waits on a part that collides by
+## its real shape or rests with nothing holding it (ExactCheck): those parts
+## are taken off as one edit (undo puts them back), everything else is saved,
+## and the answer names each one (_save_advice). It waited, twice at most,
+## until none was left, and the bench's own save at a session's end is one
+## call: design42's 42061 telehandler, 45 minutes and 138 parts, was refused
+## over one Technic gear not held and left no model at all. "" lets it save.
 func _exact_save_gate() -> String:
-	if _exact_save_refusals >= MOST_EXACT_REFUSALS or world == null or world.brick_count() == 0:
+	if world == null or world.brick_count() == 0:
 		return ""
 	_strict_mine = true
 	var model: Model = _model_from_world()
@@ -22521,7 +22524,10 @@ func _exact_save_gate() -> String:
 	if faults.is_empty() and not brickbench:
 		_save_advice = _pieces_advice(report)
 		return ""
-	if faults.is_empty():
+	if not faults.is_empty():
+		_save_advice = await _saved_without(model, report, faults)
+		return ""
+	if _exact_save_refusals < MOST_EXACT_REFUSALS:
 		var apart: PackedStringArray = _held_in_the_hand(model)
 		if apart.is_empty():
 			return ""
@@ -22533,9 +22539,45 @@ func _exact_save_gate() -> String:
 			+ "Each of these stays on only by studs gripped in its tube or caught where it "
 			+ "is:\n  - %s\nJoin each to the rest by its studs as said, then save again."
 			% "\n  - ".join(apart))
-	_exact_save_refusals += 1
-	progress.emit("not saved: parts collide or hang loose")
-	return "Not saved yet. %s\nThen save again." % faults
+	return ""
+
+
+## The parts [param report] finds not held, and the later of each pair that
+## collides, taken off [param model]'s world as one edit (undo puts them back),
+## so the save that follows writes everything else: the words that say which
+## and why, for the save's answer. Where taking them off would itself be
+## refused, the model is saved as it stands, and the words say what to fix.
+func _saved_without(model: Model, report: Dictionary, faults: String) -> String:
+	var unheld: Array = []
+	var colliding: Array = []
+	for pair: Array in [[report.get("unheld", []), unheld], [report.get("colliding", []), colliding]]:
+		for item: Variant in pair[0]:
+			var index: int = int(item)
+			if index < 0 or index >= model.placements.size():
+				continue
+			var placement: Placement = model.placements[index]
+			if placement.id != 0 and not (pair[1] as Array).has(placement.id):
+				(pair[1] as Array).append(placement.id)
+	var fix: String = faults.trim_prefix("Fix these first, with edit_model: a build with one of them "
+		+ "is refused by BrickBench's check, and in the hand it jams or falls apart.\n")
+	for off: Array in [unheld + colliding.filter(func(id: int) -> bool: return not unheld.has(id)),
+			unheld]:
+		if off.is_empty() or off.size() >= world.brick_count():
+			continue
+		var before: int = world.brick_count()
+		await _run_tool({"name": "edit_model", "input": {"remove": off, "picture": false}})
+		if world.brick_count() == before - off.size():
+			progress.emit("saved without %d parts that collide or hang loose" % off.size())
+			return ("Saved without %s, taken off the model as one edit (undo puts %s back): "
+				% [_numbers(PackedInt64Array(off)), "it" if off.size() == 1 else "them"]
+				+ "in the hand %s. Everything else is in the file. What the check found:\n%s\n"
+				% ["it jams or falls away" if off.size() == 1 else "they jam or fall away", fix]
+				+ "Put %s back where %s held (attachment_points lists a part's holes and studs), "
+				% ["it" if off.size() == 1 else "them", "it is" if off.size() == 1 else "they are"]
+				+ "then save again.")
+	progress.emit("saved; parts collide or hang loose")
+	return ("Saved as it stands, with parts that would jam or fall away in the hand: fix these "
+		+ "with edit_model, then save again.\n%s" % fix)
 
 
 ## A person's save, of a model our own joints find in pieces that nothing

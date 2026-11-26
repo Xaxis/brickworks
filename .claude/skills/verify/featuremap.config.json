@@ -7444,6 +7444,13 @@
       "entry": "tools/web/oc_often_check.mjs",
       "reach": "set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs",
       "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "save_whole probe",
+      "entry": "src/dev/save_whole_probe.gd",
+      "reach": "tools/probe.sh save_whole_probe   (headless: in a bench run, as realset's last save is, a beam frame on wheels saves whole with nothing said; a 24-tooth gear in the air beside it, not held, and save_model is not refused: the file holds the frame's every part and not the gear, the answer names the gear by its number and why, the gear is taken off as one edit and undo puts it back; a person's save writes it whole as before)",
+      "area": "model-io"
     }
   ]
 }
