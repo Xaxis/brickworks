@@ -3384,9 +3384,15 @@ plan with Claude as the client.
   `CUE_WORDS`, through say()); `#loop-stop` (aria-pressed) pauses and plays.
   Made by `python3 tools/site/hero_capture.py` (the probe
   `src/dev/hero_capture_probe.gd` plays `tools/site/hero_capture.json` in
-  the studio at a fixed 30 fps, windowed on the GPU through tools/probe.sh;
+  the studio at a fixed 30 fps, windowed on the GPU through tools/probe.sh:
+  `tools/site/hero_house.ldr` built by hand on its plate, a set's steps,
+  a turn, and its render made off camera and shown full-frame;
   `--frames=DIR` cuts a run's frames, `--out=DIR` a trial elsewhere,
+  `--sheets=DIR` 4 x 3 contact sheets of each cut to look at,
   `--check` the files and the page's cues against `web/hero/studio.json`).
+  It refuses a cut whose words in sight (the probe's `texts.json`) show a
+  path, the session's names, a form's placeholder or work under way:
+  `python3 tools/minitest.py tests/test_hero_capture.py` plants one.
   Check: `node tools/web/hero_check.mjs --dir=web` (or `--dir=OUT
   [--from=<preview>]`, or `--url=<deployment>`) `[--out=DIR]`: at 1280 and
   390, light and dark, the width's poster by the load, the loop after it

@@ -1,0 +1,16 @@
+0 A little house and its tree
+0 Name: hero_house.ldr
+0 Author: Brickworks
+0 The home page's loop builds this by hand (tools/site/hero_capture.json): the plate is down
+0 before the loop begins, and each part after it is taken from the bin and dropped on its studs.
+0 Each layer is built from the back as the view sees it (from the front left): a part in front
+0 put down first hides the studs the one behind it goes on, as it would from a person.
+1 2 0 -8 0 1 0 0 0 1 0 0 0 1 3036.dat
+1 15 -20 -32 20 1 0 0 0 1 0 0 0 1 3001.dat
+1 15 -20 -32 -20 1 0 0 0 1 0 0 0 1 3001.dat
+1 15 0 -56 0 0 0 1 0 1 0 -1 0 0 3001.dat
+1 15 -40 -56 0 0 0 1 0 1 0 -1 0 0 3001.dat
+1 4 -20 -80 10 -1 0 0 0 1 0 0 0 -1 3037.dat
+1 4 -20 -80 -10 1 0 0 0 1 0 0 0 1 3037.dat
+1 70 60 -32 -20 1 0 0 0 1 0 0 0 1 3941.dat
+1 2 60 -80 -20 1 0 0 0 1 0 0 0 1 3942c.dat
