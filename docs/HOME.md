@@ -6,88 +6,95 @@ same in the browser and at the deploy) and `web/home-find.js`, on the design
 system (docs/DESIGN_SYSTEM.md); its first posts are written in at the deploy
 by `tools/web/home_shelf.mjs`.
 
-## The hero: our mark in bricks (hero3d, 2026-11-23)
+## The hero: the studio at work (herostudio, 2026-11-26)
 
-The owner, 23 Nov: "obviously the hero should in some way contain a
-brilliant 3D variation of our logo or something to do with LEGO". The best
-product pages lead with the product, alive; here that is a model built in
-our CAD, turning in the page, that opens in the studio.
+The owner, 26 Nov, for somebody signed out: the studio itself, alive, a
+first screen a lot better than it was, and the mark in bricks moved to the
+header. What BrickLink Studio, Mecabricks, Rebrickable, Figma and Linear
+put on their first screens, and what this one does better, is
+docs/HERO.md.
 
-- **The model.** The mark (web/icon.svg: a cube with one corner cut away)
-  in 189 real LEGO® parts, written by `tools/web/hero_mark.mjs` into
-  `models/brickworks_mark.ldr` (one of the app's examples, Tested:
-  `src/dev/tested_models_probe.gd`) and `web/hero/`: a 12-stud cube, 30
-  plates tall, its cut 6 studs and 15 plates; outer faces Yellow, Blue and
-  Red, the cut's walls Dark Blue and Dark Red and its floor Pearl Gold
-  tiles; bricks and plates bonded a course across the one under it, each
-  course a step. The front corner, where two seen faces meet, is the red
-  face's all the way up, so the colours meet on one straight edge as the
-  logo's do (bonded red and blue in turn it read as a zip; the lead, 23
-  Nov); the other corners take the colour of the one face seen. Run it again after a change (`--check` says whether the
-  files are what it writes; it also writes the piece count into
-  `web/index.html` and into the line's words in `web/_lang/*.json`).
-- **Where.** Large, and short enough that a laptop's first screen (1280 x
-  800, over the beta bar) shows at least 60% of each first-row picture of
-  the feed, real builds plainly seen beside it, and a phone's shows its
-  first picture begun (the lead, 23 Nov; tools/web/landing_check.mjs). From
-  900 px the words on the left and the model beside both lines of the
-  title: a 400 px stage (the bricks about 340 px tall) rising 47 px under
-  the header, the bricks starting 9 px below its edge, and over the band's
-  bottom padding, with Built in Brickworks · 189 pieces · **Open it in the
-  studio** one line on its baseline, under the bricks' lowest corner. Under
-  900 px a compact band over the words: the model at 45% of the width, its
-  line beside it, a word a row. The line names it a build, never the logo
-  (docs/TRADEMARKS.md, Decision 1).
-- **Open it in the studio** opens the gallery's copy as any shared model's
-  Open does (`/app?view=<id>`), once the project's account lists it (the
-  last entry of `tools/web/gallery_seeds/seeds.json`; publishing it is a
-  production write, so the lead's): `tools/web/home_shelf.mjs` finds it at
-  the deploy and writes the link in. Until then it opens the app's own
-  copy (`/app?model=res://models/brickworks_mark.ldr`), behind the sign-in
-  for a stranger.
-- **Drawn by the site's viewer** (`tools/viewer/hero.js`, built into
-  `web/viewer3d.js`): each part's own shape from the app's .lbm, less its
-  inside and underneath, the studs drawn only where nothing sits on them
-  (about 8,000 triangles). The plastic is lit as in a studio: a soft key
-  light with its real shadow on the ground and in the cut, a fill, a rim
-  and the room in the gloss, worked out where they are seen (a prefiltered
-  map's look-ups were half of each frame in software); the seam between
-  bricks drawn dark, as the gap between real bricks reads. The ground's
-  shadow fades out by 235 LDU round the mark, so it ends softly inside the
-  picture. Transparent, on the page's own background, light or dark.
-  While bricks fly it draws 0.7 of the pixels across, the studs of a brick
-  in the air with 8 sides (the part's own has 16) and none under a brick
-  leaving: in software the studs in the air were a quarter of a frame.
-- **Alive.** Once a visit (sessionStorage) it assembles in about 2.5 s,
-  from the poster's own picture: the finished mark's bricks leave up and
-  out of the picture, the top course first, then come down from over its
-  top a course at a time, each falling as a dropped thing does, landing
-  with the smallest bounce. Nothing appears in mid-air (each starts over
-  the picture's top, which fades what crosses it) and a brick in the air
-  casts no shadow (the key's shadows begin at the mark's reach). Then it
-  sways slowly
-  about the mark's own view, resting after 45 s with nobody near it. A drag
-  or a touch across turns it and it settles back; focused, the arrow keys
-  turn it (Home puts it back); a brick lifts under a mouse. Asked for less
-  motion: built and still, turned by hand only.
-- **Fast.** The first paint is its poster, in the HTML (`web/img/hero/`,
-  WebP with a clear ground, so one picture serves light and dark; the
-  stage's one shape, 460 / 414, at 222, 444 and 888 px across; `tools/web/hero_poster.mjs` draws them with the same
-  code). `web/landing.js` asks for the viewer only after the page's load,
-  at idle, with the hero on the screen, on a device with WebGL 2, four
-  cores and not saving data; a device that draws the finished mark slower
-  than 40 ms a frame keeps the poster (the assembly's middle frame takes
-  about four fifths of that, so it is seen at 30 frames a second or more),
-  as does any trouble. The 3D fades in
-  over the poster, the same drawing, so nothing moves (CLS 0).
+- **What it says.** One headline, "Design LEGO® models in your browser";
+  one line, "A free CAD with every LDraw part. Drop bricks on studs, follow
+  the steps, render it like a photo and share it with other builders."; one
+  primary action, **Start building, free** (`/app`); one secondary, **See
+  what people build** (`/gallery`); under them "Nothing to install, on a
+  computer, a tablet or a phone" and How it compares with Studio. A visitor
+  is shown no search (the gallery has its own, a click away); signed in the
+  band is the search alone, as before.
+- **The loop.** The real studio, recorded from the app itself:
+  `src/dev/hero_capture_probe.gd` plays `tools/site/hero_capture.json` in
+  the studio at a fixed 30 frames a second, a pointer (a fingertip on the
+  phone) drawn where it presses: a little house and its tree
+  (`tools/site/hero_house.ldr`) built on its plate on the studio's grid
+  floor, each part's colour and tile taken from the bin, turned with R and
+  dropped where its ghost snaps onto the studs, framed to stand at about
+  60% of the view; a sports car's 35 building steps played one by one, the
+  car fitted to the view; the car turned; then its render. The render is
+  made off camera (Best, the product look, on a wooden table) and shown
+  full-frame, pushed in slowly, never its dialog. `tools/site/hero_capture.py`
+  cuts it into a loop with no seam (each part crossfaded into the next,
+  the end back to the empty plate) twice: the desktop's (16:10, 1440 x 900)
+  and the phone's (9:16, 720 x 1280, the phone studio), each AV1 with an
+  H.264 copy for a browser without AV1, each no bigger than the plan's
+  bytes (about 1 MB on a computer, 0.45 MB on a phone), with its poster
+  (WebP, full and half width: the house built, in the studio). Nothing
+  private or half-done is filmed: the probe keeps every word in sight at
+  each recorded frame, and the tool refuses a cut showing a path on the
+  computer, the session's names, a form's placeholder or a word of work
+  under way, before it encodes anything (`tests/test_hero_capture.py`).
+  Run it again when the studio's look changes:
+  `python3 tools/site/hero_capture.py --sheets=DIR` (the capture is a
+  windowed run on the GPU, through tools/probe.sh; the sheets are 4 x 3
+  contact sheets of each cut, to look at before it ships); `--check` says
+  whether the files and the page agree.
+- **Where.** From 900 px the words on the left and the loop beside them,
+  in a browser window's frame, the band's yellow light behind it; under
+  600 px the words, then the phone's cut under them in a phone's frame, no
+  taller than half the window; between, the desktop's cut under the
+  words. The feed's first post just under the fold (begun within 1.3
+  windows of the top).
+- **Fast.** The first paint is the poster, in the HTML with its size given
+  (`fetchpriority=high`; `<picture>` picks the width's cut). `web/landing.js`
+  asks for the loop only once the page is in (its load), the browser idle
+  and the loop in view, and fades it in over its poster once it plays, the
+  same picture, so nothing moves (CLS 0). Somebody who asked for less
+  motion, or to save data, keeps the poster and the loop is never asked
+  for; so does a browser that will not play it. Signed in, the band is not
+  shown and nothing of it is asked for.
+- **Captions and Pause.** "Drop a brick on the studs", "Follow the steps"
+  and "Render it like a photo" over the loop as it comes to each (`data-cues-desktop` and `data-cues-phone` on
+  `#hero-loop`, written by hero_capture.py), in the page's language, and
+  not read out: the poster's description tells the whole of it. Muted,
+  looping, inline, never with controls; Pause (44 px, named, pressed while
+  paused) stops it and its captions until Play (WCAG 2.2.2).
 
-`tools/web/hero_check.mjs` proves it at both sizes, light and dark: the
-poster at first paint (its picture taken with the viewer held back, so it
-is the page before any 3D), the viewer asked after the load, the assembly's
-frames timed to a WebGL fence, the sway, a drag, the keys, a brick lifting,
-the stage named and Open it in the studio a link into the app, no layout
-shift, a second visit not assembling again, less motion, and no WebGL
-keeping the poster with no error.
+## The header's mark (herostudio, 2026-11-26)
+
+The header's mark, 30 px on every page, turns as the mark in bricks
+(hero3d's model, below): 30 frames of one turn of it, side by side in one
+picture (`web/img/hero/mark-turn.webp`, 47 KB), drawn by
+`tools/site/mark_turn.mjs` with the hero's own drawing
+(`tools/viewer/hero.js`, its `pose()`), the first frame the mark as
+`web/icon.svg` draws it. At rest the chip is icon.svg. `web/theme.js` asks
+for `web/mark.js` once the page has loaded (on a page with the site's
+header, for somebody who has not asked for less motion). mark.js fetches
+the picture and turns the mark once as a visit begins (sessionStorage),
+and again when a pointer comes onto it or it takes the keyboard's focus.
+CSS steps through the picture (`web/site.css`, `mark-turn`), so no page
+asks for three.js for it. Neither the script nor the picture is in the
+first screen's bytes, or in an embed's script budget
+(`tests/test_embed_script_budget.py`: theme.js is every page's head
+script). Run mark_turn.mjs again after hero_mark.mjs or the hero's drawing
+changes.
+
+`tools/web/hero_check.mjs` proves both at 1280 and 390, light and dark: the
+width's poster drawn by the load, the loop asked for after it and playing
+(the width's cut, AV1 or H.264, muted, looping, inline, under 1.5 MB), its
+captions changing, Pause and Play, no layout shift, no three.js; the mark
+in bricks in the header turning once as a visit begins, not on the next
+page, again on a hover; less motion and saving data keeping the poster with
+no loop asked for and a mark that never turns.
 
 ## Now: the feed (homefeed, 2026-11-23)
 
@@ -98,20 +105,16 @@ do, and the decisions taken from them, are docs/SOCIAL.md section 11.
 
 What a stranger sees, at 390 x 844 and at 1280 x 800:
 
-1. **One band, one line**, beside the hero (above). "Build, share and find LEGO® models", one
-   sentence ("A free CAD in your browser. Every build here was made in it:
-   open one, change it, build it."), the search over models, builders and
-   real sets, and **Start building**. Signed in, the band is the same
-   search alone, with **Share a build** (`/app?share`: the studio's share
-   panel for their last model) and Share a file beside it, over the tabs
-   (homefix, 2026-11-23). The band's foot keeps the page's rhythm: 48 px
-   (`--s-7`) from its last line down to its edge and from the edge to
-   the feed's heading, as an inner page's head and body are (24, `--s-5`,
-   on a phone, whose first post still starts within 600 px); from 900 px
-   the mark is as tall as an 800 px window leaves it (280 to 400 px), so
-   the first row of builds still shows.
-2. **The feed**, at once under it (the first post begun in the first
-   screen, under the hero): one stream of posts, a column on a phone, two from 700 px,
+1. **One band**, the hero (above): its headline, its line, Start building,
+   free and See what people build, and the studio's loop. Signed in, the
+   band is the search alone (models, builders and real sets), with **Share
+   a build** (`/app?share`: the studio's share panel for their last model)
+   and Share a file beside it, over the tabs (homefix, 2026-11-23). The
+   band's foot keeps the page's rhythm: 48 px (`--s-7`) from its last line
+   down to its edge and from the edge to the feed's heading, as an inner
+   page's head and body are (24, `--s-5`, on a phone).
+2. **The feed**, at once under it (the first post just under the fold):
+   one stream of posts, a column on a phone, two from 700 px,
    three from 1100 and four from 1560. This week's pick first, then Top and
    New in turn, the month's challenge third with its entries, then a Talk
    thread with its latest reply, the studio to try, more builds, another
@@ -168,23 +171,38 @@ build needs, Build something today.
 - **Nothing moves.** `web/landing.js` asks each answer again once the page
   is idle, tells each post there its counts and newest comment in the room
   it holds, and puts the rest in under them; a post's parts hold their
-  room from the first frame.
+  room from the first frame; the loop fades in over its own poster.
 - **Nothing slower.** The first picture loads at once (`fetchpriority=high`),
-  the rest lazily; three.js only on a 3D turn; the studio only on Try it
-  here; the search's script only once the field is used.
+  the rest lazily; the loop only after the load; three.js only on a 3D
+  turn; the studio only on Try it here; the search's script only once the
+  field is used.
 - AI second: no title or first screen says AI; the assistant is one pill.
 - LEGO® an adjective, the disclaimer in the footer (tests/test_trademarks.py).
 - de, fr, es: every new word has its entry (`tools/site_lang.py --check`).
 
-`tools/web/landing_check.mjs` (every deploy) proves the first screen: the
-search and Start building whole at both sizes, light and dark, a phone's
-first post's picture begun in it and 60% of each of a laptop's first-row
-pictures in it (over the beta bar), its pictures drawn, no layout shift,
-Show more, the search, the challenge third at the latest, Talk's posts and
-the sets. `tools/web/homefeed_check.mjs` drives each post: the served
+`tools/web/landing_check.mjs` (every deploy) proves the first screen: Start
+building, free and See what people build whole at both sizes, light and
+dark, and no search for a visitor; the studio's loop whole on a laptop and
+begun on a phone; the feed's first post within 1.3 windows (over the beta
+bar); its pictures drawn, no layout shift, Show more, the search as
+somebody signed in has it, the challenge third at the latest, Talk's posts
+and the sets. `tools/web/homefeed_check.mjs` drives each post: the served
 HTML's links, Like, a comment and Follow asking to sign in, 3D, Try it
 here, and signed in, the tabs, a like, a comment and a follow made, and a
 visitor signing in from a like.
+
+## Before: our mark in bricks (hero3d, 2026-11-23)
+
+The owner, 23 Nov: "obviously the hero should in some way contain a
+brilliant 3D variation of our logo or something to do with LEGO". The mark
+(web/icon.svg: a cube with one corner cut away) in 189 real LEGO® parts,
+written by `tools/web/hero_mark.mjs` into `models/brickworks_mark.ldr` (one
+of the app's examples) and `web/hero/`, drawn by the site's viewer
+(`tools/viewer/hero.js` in `web/viewer3d.js`) beside the words: it
+assembled a course at a time once a visit, swayed, turned under a drag,
+with its poster first and the viewer asked for after the load. It showed
+our mark, not our product; since herostudio it is the header's mark, and
+the hero is the studio at work.
 
 ## Before: the community first (landing, 2026-11-22)
 

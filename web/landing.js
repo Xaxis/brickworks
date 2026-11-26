@@ -857,46 +857,125 @@ function near(id, work, margin = "150% 0px") {
 // with their list) came with the first screen, which shows none of them.
 near("sets", sets);
 
-// --- the hero: our mark in bricks, in 3D -------------------------------------
+// --- the hero: the studio at work --------------------------------------------
 
-// The mark's 3D in its poster's place (hero3d, 2026-11-23; web/viewer3d.js
-// hero3d, three.js and all, which a post's 3D turn uses too): asked for only
-// once the page is in (its load), the browser idle and the hero on the
-// screen, on a device that draws in 3D and has not asked to save data. One
-// that draws the finished mark slower than SLOW ms a frame keeps the poster
-// (software, an old phone): the assembly's middle frame takes about four
-// fifths of that, so whoever sees it move sees 30 frames a second or more.
-// Any trouble on the way keeps it too; a check that must turn it on a slow
-// machine says otherwise in sessionStorage "brickworks.hero.slow" (ms).
-// Signed in, the band is not shown and none of it is asked for. <html data-hero>: what it came to (poster, loading,
-// 3d, kept-slow, kept-failed), which tools/web/hero_check.mjs reads.
-const heroStage = document.getElementById("hero-stage");
-const SLOW = (() => { try { return Number(sessionStorage.getItem("brickworks.hero.slow")) || 40; } catch { return 40; } })();
-function heroCan() {
-  if (navigator.connection?.saveData || (navigator.hardwareConcurrency || 4) < 4 || (navigator.deviceMemory || 4) < 2) return false;
-  try {
-    const gl = document.createElement("canvas").getContext("webgl2");
-    gl?.getExtension("WEBGL_lose_context")?.loseContext();
-    return Boolean(gl);
-  } catch {
-    return false;
-  }
+// The loop of the real studio over its poster (herostudio, 2026-11-26;
+// tools/site/hero_capture.py makes both): asked for only once the page is in
+// (its load), the browser idle and the loop in view, so its bytes never
+// compete with the first screen's. The desktop's cut, or under 600 px the
+// phone's, as the poster's <source> picks; AV1 where the browser plays it,
+// else H.264. Muted, looping, inline, never with controls; the poster stays
+// for someone who asked for less motion or to save data, and wherever the
+// browser will not play it (it fades in only once it plays, so nothing
+// moves). Its captions follow the loop (#hero-loop's data-cues-*), and
+// Pause stops it and its captions until Play. Signed in, the band is not
+// shown and none of it is asked for. <html data-hero>: what it came to
+// (poster, still, loading, playing, paused, kept-failed), which
+// tools/web/hero_check.mjs reads.
+const heroLoop = document.getElementById("hero-loop");
+const PHONE_CUT = matchMedia("(width < 600px)");
+const CUE_WORDS = {
+  drop: () => say("Drop a brick on the studs"),
+  steps: () => say("Follow the steps"),
+  render: () => say("Render it like a photo"),
+};
+function loopCan() {
+  return !matchMedia("(prefers-reduced-motion: reduce)").matches && !navigator.connection?.saveData;
+}
+/// [seconds, [[from, word], ...]] from a data-cues-* value ("17.2;0:drop,5.1:steps").
+function cuesOf(value) {
+  const [seconds, words = ""] = String(value || "").split(";");
+  const cues = words.split(",").filter(Boolean).map((cue) => cue.split(":")).map(([t, w]) => [Number(t), w])
+    .filter(([t, w]) => Number.isFinite(t) && CUE_WORDS[w]);
+  return [Number(seconds) || 0, cues];
+}
+function heroVideo() {
+  const frame = heroLoop.querySelector(".loop-frame");
+  const say1 = document.getElementById("loop-say");
+  const stop = document.getElementById("loop-stop");
+  const video = document.createElement("video");
+  video.className = "loop-video";
+  video.muted = true;
+  video.defaultMuted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.autoplay = true;
+  video.preload = "auto";
+  video.disablePictureInPicture = true;
+  video.setAttribute("muted", "");
+  video.setAttribute("playsinline", "");
+  video.setAttribute("aria-hidden", "true");
+  video.tabIndex = -1;
+  let cut = "";
+  let cues = [0, []];
+  const pick = () => {
+    const now = PHONE_CUT.matches ? "phone" : "desktop";
+    if (now === cut) return;
+    cut = now;
+    cues = cuesOf(heroLoop.dataset[now === "phone" ? "cuesPhone" : "cuesDesktop"]);
+    const av1 = video.canPlayType('video/mp4; codecs="av01.0.08M.08"');
+    video.src = `/img/hero/studio-${cut}.${av1 ? "av1" : "h264"}.mp4`;
+    video.dataset.cut = cut;
+    if (!stop.hidden && stop.getAttribute("aria-pressed") === "true") return;
+    video.play().catch(() => {});
+  };
+  // The caption of the moment: shown, changed, a little after each cue.
+  let said = "";
+  const caption = () => {
+    const at = video.currentTime;
+    let word = "";
+    for (const [from, w] of cues[1]) if (at >= from) word = w;
+    if (word === said) return;
+    said = word;
+    say1.classList.remove("shown");
+    setTimeout(() => {
+      if (said !== word) return;
+      say1.textContent = word ? CUE_WORDS[word]() : "";
+      say1.classList.toggle("shown", Boolean(word));
+    }, 160);
+  };
+  video.addEventListener("timeupdate", caption);
+  video.addEventListener("playing", () => {
+    heroLoop.classList.add("live");
+    stop.hidden = false;
+    html.dataset.hero = "playing";
+  });
+  // A browser that said it plays AV1 and then cannot (no decoder after all)
+  // is given the H.264 cut; one that plays neither keeps the poster.
+  video.addEventListener("error", () => {
+    if (video.src.endsWith(".av1.mp4")) {
+      video.src = `/img/hero/studio-${cut}.h264.mp4`;
+      video.play().catch(() => {});
+      return;
+    }
+    html.dataset.hero = "kept-failed";
+    heroLoop.classList.remove("live");
+    video.remove();
+  });
+  // Signed in, the band is the search alone: the loop is not shown, so it stops.
+  addEventListener("brickworks:signed-in", () => video.pause());
+  addEventListener("brickworks:signed-out", () => {
+    if (stop.getAttribute("aria-pressed") !== "true") video.play().catch(() => {});
+  });
+  stop.addEventListener("click", () => {
+    const paused = stop.getAttribute("aria-pressed") !== "true";
+    stop.setAttribute("aria-pressed", String(paused));
+    if (paused) { video.pause(); html.dataset.hero = "paused"; } else video.play().catch(() => {});
+  });
+  PHONE_CUT.addEventListener("change", pick);
+  frame.insertBefore(video, say1);
+  pick();
 }
 function hero() {
-  if (!heroStage || heroStage.offsetParent === null) return;
-  if (!heroCan()) { html.dataset.hero = "poster"; return; }
+  if (!heroLoop || heroLoop.offsetParent === null) return;
+  if (!loopCan()) { html.dataset.hero = "still"; return; }
   html.dataset.hero = "loading";
-  import("/viewer3d.js")
-    .then((made) => made.hero3d(heroStage, { scene: heroStage.dataset.scene, slow: SLOW,
-      name: say("The Brickworks mark in 3D, built in LEGO® bricks. Drag to turn it; with it focused, the arrow keys turn it.") }))
-    .then((made) => made.ready)
-    .then((live) => { html.dataset.hero = live ? "3d" : "kept-slow"; })
-    .catch(() => { html.dataset.hero = "kept-failed"; });
+  try { heroVideo(); } catch { html.dataset.hero = "kept-failed"; }
 }
-if (heroStage) {
+if (heroLoop) {
   html.dataset.hero = "poster";
   const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));
-  const whenIn = () => idle(() => near("hero-stage", hero, "0px"), { timeout: 2500 });
+  const whenIn = () => idle(() => near("hero-loop", hero, "0px"), { timeout: 2500 });
   if (document.readyState === "complete") whenIn();
   else addEventListener("load", whenIn, { once: true });
 }
