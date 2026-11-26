@@ -872,7 +872,6 @@ const CUE_WORDS = {
   drop: () => say("Drop a brick on the studs"),
   steps: () => say("Follow the steps"),
   render: () => say("Render it like a photo"),
-  share: () => say("Share it with a link"),
 };
 function loopCan() {
   return !matchMedia("(prefers-reduced-motion: reduce)").matches && !navigator.connection?.saveData;

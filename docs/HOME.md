@@ -25,18 +25,29 @@ docs/HERO.md.
 - **The loop.** The real studio, recorded from the app itself:
   `src/dev/hero_capture_probe.gd` plays `tools/site/hero_capture.json` in
   the studio at a fixed 30 frames a second, a pointer (a fingertip on the
-  phone) drawn where it presses: bricks taken from the parts bin and
-  dropped onto studs, a sports car's 35 building steps played one by one,
-  the car turned, then rendered as a photograph, then shared, its link
-  made. `tools/site/hero_capture.py` cuts it into a loop with no seam (each
-  part crossfaded into the next, the end into the start) twice: the
-  desktop's (16:10, 1440 x 900) and the phone's (9:16, 720 x 1280, the
-  phone studio), each AV1 with an H.264 copy for a browser without AV1,
-  each under 1.45 MB, with its poster (WebP, full and half width, the car
-  built). Run it again when the studio's look changes:
-  `python3 tools/site/hero_capture.py` (the capture is a windowed run on
-  the GPU, through tools/probe.sh); `--check` says whether the files and
-  the page agree.
+  phone) drawn where it presses: a little house and its tree
+  (`tools/site/hero_house.ldr`) built on its plate on the studio's grid
+  floor, each part's colour and tile taken from the bin, turned with R and
+  dropped where its ghost snaps onto the studs, framed to stand at about
+  60% of the view; a sports car's 35 building steps played one by one, the
+  car fitted to the view; the car turned; then its render. The render is
+  made off camera (Best, the product look, on a wooden table) and shown
+  full-frame, pushed in slowly, never its dialog. `tools/site/hero_capture.py`
+  cuts it into a loop with no seam (each part crossfaded into the next,
+  the end back to the empty plate) twice: the desktop's (16:10, 1440 x 900)
+  and the phone's (9:16, 720 x 1280, the phone studio), each AV1 with an
+  H.264 copy for a browser without AV1, each no bigger than the plan's
+  bytes (about 1 MB on a computer, 0.45 MB on a phone), with its poster
+  (WebP, full and half width: the house built, in the studio). Nothing
+  private or half-done is filmed: the probe keeps every word in sight at
+  each recorded frame, and the tool refuses a cut showing a path on the
+  computer, the session's names, a form's placeholder or a word of work
+  under way, before it encodes anything (`tests/test_hero_capture.py`).
+  Run it again when the studio's look changes:
+  `python3 tools/site/hero_capture.py --sheets=DIR` (the capture is a
+  windowed run on the GPU, through tools/probe.sh; the sheets are 4 x 3
+  contact sheets of each cut, to look at before it ships); `--check` says
+  whether the files and the page agree.
 - **Where.** From 900 px the words on the left and the loop beside them,
   in a browser window's frame, the band's yellow light behind it; under
   600 px the words, then the phone's cut under them in a phone's frame, no
@@ -51,9 +62,8 @@ docs/HERO.md.
   motion, or to save data, keeps the poster and the loop is never asked
   for; so does a browser that will not play it. Signed in, the band is not
   shown and nothing of it is asked for.
-- **Captions and Pause.** "Drop a brick on the studs", "Follow the steps",
-  "Render it like a photo" and "Share it with a link" over the loop as it
-  comes to each (`data-cues-desktop` and `data-cues-phone` on
+- **Captions and Pause.** "Drop a brick on the studs", "Follow the steps"
+  and "Render it like a photo" over the loop as it comes to each (`data-cues-desktop` and `data-cues-phone` on
   `#hero-loop`, written by hero_capture.py), in the page's language, and
   not read out: the poster's description tells the whole of it. Muted,
   looping, inline, never with controls; Pause (44 px, named, pressed while

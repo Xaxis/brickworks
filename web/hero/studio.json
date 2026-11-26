@@ -1,0 +1,58 @@
+{
+	"cuts": {
+		"desktop": {
+			"size": [
+				1440,
+				900
+			],
+			"seconds": 17.67,
+			"cues": [
+				[
+					0.0,
+					"drop"
+				],
+				[
+					8.67,
+					"steps"
+				],
+				[
+					14.07,
+					"render"
+				]
+			],
+			"files": [
+				"studio-desktop-1440.webp",
+				"studio-desktop-720.webp",
+				"studio-desktop.av1.mp4",
+				"studio-desktop.h264.mp4"
+			]
+		},
+		"phone": {
+			"size": [
+				720,
+				1280
+			],
+			"seconds": 13.83,
+			"cues": [
+				[
+					0.0,
+					"drop"
+				],
+				[
+					5.47,
+					"steps"
+				],
+				[
+					10.23,
+					"render"
+				]
+			],
+			"files": [
+				"studio-phone-360.webp",
+				"studio-phone-720.webp",
+				"studio-phone.av1.mp4",
+				"studio-phone.h264.mp4"
+			]
+		}
+	}
+}

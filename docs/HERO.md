@@ -53,7 +53,7 @@ fading in from a blur. On a phone the headline breaks into four lines.
   itself, recorded from the app, not a mock.
 - From Studio, words timed to the picture's beats: captions over the loop
   as it comes to each ("Drop a brick on the studs", "Follow the steps",
-  "Render it like a photo", "Share it with a link").
+  "Render it like a photo").
 - From Figma, a poster first, a pause anybody can find, and stillness for
   somebody who asked for less motion.
 - From Rebrickable, two clear actions and the community's real builds
@@ -66,11 +66,12 @@ fading in from a blur. On a phone the headline breaks into four lines.
   studio in the browser, on a computer, a tablet or a phone, with nothing
   to download (a free account, signed in with a code we email). Studio's
   first screen is a download; its phone page turns a phone away.
-- **The whole story in one loop.** Bricks dropped onto studs, a model's
-  steps played, the model rendered like a photograph, then shared with a
-  link, in about 20 seconds; Studio tells three of those in 26 s, Figma
-  and Linear one each, Mecabricks and Rebrickable none (one still each).
-- **Light.** Each cut is under 1.5 MB (AV1, with H.264 for a browser
+- **The whole story in one loop.** A little house built brick by brick
+  onto its studs, a model's steps played, the model rendered like a
+  photograph, in under 20 seconds; Studio tells the same three in 26 s,
+  Figma and Linear one each, Mecabricks and Rebrickable none (one still
+  each). It ends on the finished picture, never on a form.
+- **Light.** Each cut is about 1 MB or less (AV1, with H.264 for a browser
   without it), asked for only after the page's load, with a sharp poster
   drawn first; Studio's 21.5 MB video, with sound, starts as the page does
   and shows nothing until it comes. Somebody saving data, or asking for less
