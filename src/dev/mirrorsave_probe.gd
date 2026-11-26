@@ -84,7 +84,11 @@ const MS_CASES: Array = [
 ## The edits: a part put down in Main, beside the copies (only Main's text
 ## changes, by the part's line); the 3003 of the first copy nudged a cell,
 ## the other copies following (one line of the sub-model changes).
-const MS_EDITS: Array = ["put in main", "nudge in the first copy"]
+## And the first copy mirrored in place, every part of it across x through
+## its middle (the Mirror tool, Shift+M): the line placing it changes hands,
+## its section's lines none (Builder.mirror_bricks carries where each part's
+## line is).
+const MS_EDITS: Array = ["put in main", "nudge in the first copy", "mirror the first copy"]
 
 
 func _run() -> void:
@@ -169,21 +173,37 @@ func _case(name: String, text: String, edit: String) -> void:
 		changed_part = "3003.dat"
 		if not _check("%s: the part moved" % name, moved > 0):
 			return
+	elif edit == "mirror the first copy":
+		var plate: BrickWorld.Brick = _first_plate()
+		var path: String = Assemblies.path_of(plate)
+		var ids := PackedInt64Array()
+		for brick: BrickWorld.Brick in _world.bricks():
+			if Assemblies.path_of(brick) == path:
+				ids.append(brick.id)
+		var made: PackedInt64Array = _builder.mirror_bricks(ids, 0)
+		await _edited()
+		await _frames(2)
+		said = "%s mirrored in place across x, %d of %d parts" % [path, made.size(), ids.size()]
+		# Its reference changes hands; its section, not at all.
+		changed_in = "car.ldr" if path.contains("/") else "main.ldr"
+		changed_part = "wing.ldr"
+		if not _check("%s: the copy mirrored" % name, not made.is_empty() and made.size() == ids.size()):
+			return
 	print("  %s" % said)
-	var parts: PackedStringArray = _parts_now()
+	var parts: Array = _parts_placed()
 	var first: String = _save()
 	var again: String = _save()
 	_check("%s: saved twice in the session, the same" % name, again == first)
-	_compare(name, "saved", text, first, changed_in, changed_part)
+	_compare(name, "saved", text, first, changed_in, changed_part, edit == "mirror the first copy")
 	_dump(name, 0, text)
 	_dump(name, 1, first)
 	var last: String = first
 	var saves: int = 1
 	for round: String in ["opened again and saved", "opened a third time and saved"]:
 		await _open(last)
-		var reopened: PackedStringArray = _parts_now()
-		var lost: PackedStringArray = _missing(parts, reopened)
-		var extra: PackedStringArray = _missing(reopened, parts)
+		var reopened: Array = _parts_placed()
+		var lost: PackedStringArray = _not_in(parts, reopened)
+		var extra: PackedStringArray = _not_in(reopened, parts)
 		_check("%s: %s, every part where it was (%d parts; %d not, %d new%s)" % [name, round,
 			reopened.size(), lost.size(), extra.size(),
 			"" if lost.is_empty() else ": " + ", ".join(lost.slice(0, 3)) + " | " + ", ".join(extra.slice(0, 3))],
@@ -259,9 +279,11 @@ static func _dump(name: String, n: int, text: String) -> void:
 
 ## Each placement of a sub-model in [param saved] is its line in
 ## [param text]; each sub-model's part lines are its lines there but the one
-## the edit changed, which differs only in [param changed_part]'s line.
+## the edit changed, which differs only in [param changed_part]'s line. With
+## [param mirrored] (a copy mirrored in place), only the line placing that
+## copy in [param changed_in] differs.
 func _compare(name: String, what: String, text: String, saved: String,
-		changed_in: String, changed_part: String) -> void:
+		changed_in: String, changed_part: String, mirrored: bool = false) -> void:
 	var was: Dictionary = _sections(text)
 	var now: Dictionary = _sections(saved)
 	for section: String in was:
@@ -272,6 +294,30 @@ func _compare(name: String, what: String, text: String, saved: String,
 		var b: PackedStringArray = now[section]
 		var refs_a: PackedStringArray = _refs(a, true)
 		var refs_b: PackedStringArray = _refs(b, true)
+		if mirrored:
+			# A copy mirrored whole changes no section's own parts: each line as
+			# it was, in the order the app's steps, worked out again, build them
+			# (pre261 orders three copies' wing so too), a retired number as the
+			# number it moved to where a plain copy writes it, as a whole write
+			# always has (ModelStore.as_moved).
+			var own_was: PackedStringArray = _as_now(_refs(a, false))
+			var own_now: PackedStringArray = _as_now(_refs(b, false))
+			_check("%s: %s, %s's parts by its own lines, in any order (%s; were %s)" % [name, what,
+				section, " / ".join(_refs(b, false)), " / ".join(_refs(a, false))],
+				_missing(own_was, own_now).is_empty() and _missing(own_now, own_was).is_empty())
+			# The line placing the copy mirrored changes hands, and no other;
+			# inside a car, the other car's twin follows it, and the line
+			# placing that car says how (main's and car's lines are the
+			# writer's to choose there; the wing's own lines are not).
+			var went: PackedStringArray = _missing(refs_a, refs_b)
+			var new: PackedStringArray = _missing(refs_b, refs_a)
+			if section == changed_in and not changed_in.begins_with("car"):
+				_check("%s: %s, %s's lines as they were but the mirrored copy's (gone %s; new %s)" % [name,
+					what, section, " / ".join(went), " / ".join(new)], went.size() == 1 and new.size() == 1)
+			elif not was.has("car.ldr"):
+				_check("%s: %s, %s places its sub-models by its own lines (%s; were %s)" % [name, what,
+					section, " / ".join(refs_b), " / ".join(refs_a)], went.is_empty() and new.is_empty())
+			continue
 		# The app's own steps are worked out again after an edit, and the
 		# section the edit changed lists its copies in the order they are
 		# built: each line as it was, in any order (pre261 orders three
@@ -324,6 +370,18 @@ static func _refs(lines: PackedStringArray, models: bool) -> PackedStringArray:
 	return out
 
 
+## Part lines with each part named as the library has it now (a retired
+## number as the number it moved to, PartLibrary.resolve).
+func _as_now(lines: PackedStringArray) -> PackedStringArray:
+	var out := PackedStringArray()
+	for line: String in lines:
+		var w: PackedStringArray = line.split(" ", false)
+		var part: String = w[w.size() - 1].get_basename()
+		w[w.size() - 1] = _library.resolve(part) + ".dat"
+		out.append(" ".join(w))
+	return out
+
+
 ## What of [param a] [param b] has not, counted.
 static func _missing(a: PackedStringArray, b: PackedStringArray) -> PackedStringArray:
 	var left: Dictionary = {}
@@ -338,11 +396,12 @@ static func _missing(a: PackedStringArray, b: PackedStringArray) -> PackedString
 	return out
 
 
-## Every part, in the file's coordinates: part, colour, place and turn, so a
-## part written in the other hand reads differently.
-func _parts_now() -> PackedStringArray:
+## Every part, in the file's coordinates: {"key": part, colour, place and
+## turn, so a part written in the other hand reads differently; "where":
+## part, colour and place; "part"; "at"}.
+func _parts_placed() -> Array:
 	var back := Transform3D(Basis.IDENTITY, -(_store.call("_lift_now") as Vector3))
-	var out := PackedStringArray()
+	var out: Array = []
 	for brick: BrickWorld.Brick in _world.bricks():
 		# The baseplate laid under the model is the app's, laid again at each
 		# open to the model's size.
@@ -350,10 +409,40 @@ func _parts_now() -> PackedStringArray:
 			continue
 		var at: Transform3D = back * brick.transform
 		var b: Basis = at.basis
-		out.append("%s c%d at %s turn %s %s %s" % [brick.part_id, brick.color_code,
-			str(at.origin.snappedf(0.01)), str(b.x.snappedf(0.001)), str(b.y.snappedf(0.001)),
-			str(b.z.snappedf(0.001))])
-	out.sort()
+		var where: String = "%s c%d at %s" % [brick.part_id, brick.color_code,
+			str(at.origin.snappedf(0.01))]
+		out.append({"key": "%s turn %s %s %s" % [where, str(b.x.snappedf(0.001)),
+			str(b.y.snappedf(0.001)), str(b.z.snappedf(0.001))], "where": where,
+			"part": brick.part_id, "at": at})
+	return out
+
+
+## The keys of [param a] ([method _parts_placed]) with no part of [param b] where
+## it is: the same part in its colour at its place, turned as it is or, for
+## a part the same turned on itself, filling the same cells
+## (Assemblies._same_place). A plain brick in a turned copy mirrored in
+## place is turned a half on itself by the Mirror tool and back by the open
+## (each the reflection), and is where it was.
+func _not_in(a: Array, b: Array) -> PackedStringArray:
+	var used: Dictionary = {}
+	var out := PackedStringArray()
+	for one: Dictionary in a:
+		var hit: int = -1
+		for n: int in b.size():
+			if not used.has(n) and (b[n] as Dictionary)["key"] == one["key"]:
+				hit = n
+				break
+		if hit < 0:
+			for n: int in b.size():
+				var other: Dictionary = b[n]
+				if not used.has(n) and other["where"] == one["where"] \
+						and _shell.assemblies._same_place(str(one["part"]), one["at"], other["at"]):
+					hit = n
+					break
+		if hit < 0:
+			out.append(one["key"])
+		else:
+			used[hit] = true
 	return out
 
 

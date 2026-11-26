@@ -2522,8 +2522,25 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		lattice.occupy_boxes(new_id, item["boxes"])
 		steps.push_front({"undo": "remove", "brick": new_id})
 		made.append(new_id)
+		item["made"] = new_id
 		if not bool(item["exact"]):
 			no_image.append(new_id)
+	var flip := Basis.IDENTITY
+	flip[axis] = -flip[axis]
+	var reflect := Transform3D(flip, Vector3.ZERO)
+	reflect.origin[axis] = 2.0 * across
+	# And where each part a file placed has its line, mirrored with it
+	# (BrickWorld.kept_lines' "read_as"), so a copy mirrored whole is read in
+	# the mirror image of its frame (Assemblies._read_vote), its section as
+	# the file had it. Left as the open put it, a mirrored copy mirrored back
+	# read no one frame, and its section went out in the window's.
+	if not copy:
+		var lined: Dictionary = _lines_mirrored(plan, reflect)
+		if not lined.is_empty():
+			steps.append({"undo": "keptlines", "lines": world.kept_lines})
+			var kept: Dictionary = world.kept_lines.duplicate()
+			kept["read_as"] = lined
+			world.kept_lines = kept
 	_history.append({"undo": "group", "steps": steps,
 		"words": ("mirrored a copy of %s" if copy else "mirrored %s") % _many(made.size())})
 	_redo.clear()
@@ -2532,15 +2549,38 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 	# (Assemblies.frames_carried). Up to 2026-11-11 its light was found again
 	# from its parts and left where no reflection put it (pccheck FX).
 	if not copy and not world.section_frames.is_empty():
-		var flip := Basis.IDENTITY
-		flip[axis] = -flip[axis]
-		var reflect := Transform3D(flip, Vector3.ZERO)
-		reflect.origin[axis] = 2.0 * across
 		var moved: Dictionary = {}
 		for brick_id: int in made:
 			moved[brick_id] = reflect
 		Assemblies.frames_carried(self, moved)
 	return made
+
+
+## [BrickWorld.kept_lines]' "read_as" (ModelStore._as_placed) with each
+## part of [param plan] a file placed (its origin) mirrored by [param
+## reflect]: the turn from the part put down to where its line puts it, that
+## place mirrored, so a part put down otherwise than its line (a mirrored
+## copy's reflection) or as it (a plain copy's) is read where the mirror
+## takes its line. {} where no part of it has a line.
+func _lines_mirrored(plan: Array, reflect: Transform3D) -> Dictionary:
+	var read_as: Dictionary = world.kept_lines.get("read_as", {})
+	var out: Dictionary = read_as.duplicate()
+	var changed: bool = false
+	for item: Dictionary in plan:
+		var brick: BrickWorld.Brick = item["brick"]
+		var made: BrickWorld.Brick = world.get_brick(int(item.get("made", 0)))
+		if made == null or brick.origin.is_empty():
+			continue
+		var had: Array = read_as.get(brick.origin, [])
+		var turn := Transform3D.IDENTITY
+		var named: String = brick.part_id
+		if not had.is_empty() and str(had[0]) == brick.part_id:
+			turn = had[1]
+			named = str(had[2])
+		out[brick.origin] = [made.part_id,
+			made.transform.affine_inverse() * reflect * brick.transform * turn, named]
+		changed = true
+	return out if changed else {}
 
 
 ## Whether [param packed], where [param brick]'s mirror image goes, runs
