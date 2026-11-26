@@ -1014,13 +1014,9 @@ void sparse_scuffs(vec3 local, uint which, float amount, inout vec3 body, inout 
 }
 #endif
 
-// How rough a rounding's gloss is at least (photoreal18, PathTracer.rims).
-const float ROUNDING_SATIN = 0.3;
-
-// textured: 1 on a straight slope's face (closest_hit's grain), 2 to 3.5 on
-// a rounding (PathTracer.rims), over 3.5 on a raised letter, below 0 grime
-// in a logo's lee; which: the part's own number (info.z: its body, print and
-// window alike), so no two parts are worn alike and one part is worn as one; ng: the
+// textured: the hit is on a straight slope's face (closest_hit's grain);
+// which: the part's own number (info.z: its body, print and window alike),
+// so no two parts are worn alike and one part is worn as one; ng: the
 // face's own normal in the world, for the dust that settles on tops.
 Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint which, vec3 ng) {
 	Surface s;
@@ -1153,7 +1149,7 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			s.coat_roughness = mix(s.coat_roughness, 0.4, scuffed * scuff_age);
 			body = mix(body, body * 1.08 + vec3(0.015), scuffed * scuff_age);
 		}
-		if (textured > 0.5 && textured < 1.5) {
+		if (textured > 0.5) {
 			// A slope's face is roughened in the mould: the same skin, no
 			// mirror, each bump of its grain a small glint.
 			s.coat = 1.0;
@@ -1184,13 +1180,6 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 				s.coat_roughness = 0.3 * mix(1.0, 0.55 + 1.1 * own_stud, scene.variety.z);
 			}
 		}
-		if (textured > 1.5 && textured < 3.5) {
-			// A rounding is satin (photoreal18): a quarter millimetre of
-			// curve under a polished skin's ripple turns through the whole
-			// room, so it shows the lights round it as one soft line, never
-			// the dark between them as a ruled black outline.
-			s.coat_roughness = max(s.coat_roughness, ROUNDING_SATIN);
-		}
 #ifdef MARKS
 		if (scene.marks.x > 0.0) {
 			// Handled wear where hands and stacking touch (photoreal9), not
@@ -1198,7 +1187,7 @@ Surface surface_of(Instance thing, vec3 at, vec3 local, float textured, uint whi
 			// procedural texture" on a part alone.
 			gathered_wear(local, thing.box_min, thing.box_max, ng, own, which, scene.marks.x, body, s);
 		}
-		if (scene.breakup.x > 0.0 && (textured < 0.5 || textured > 1.5)) {
+		if (scene.breakup.x > 0.0 && textured < 0.5) {
 			polish_split(local, thing.box_min, thing.box_max, which, scene.breakup.x, s);
 		}
 		if (scene.breakup.y > 0.0) {
@@ -1349,67 +1338,6 @@ bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
 	return hit.t >= 0.0;
 }
 
-// Light leaving a rounding (photoreal18, PathTracer.rims). A moulded part's
-// edges and stud rims are drawn rounded on its mesh's sharp corners: the
-// normal turns towards the next face, but the point stays on the flat face.
-// Half of what that turned normal looks out at lies past the face's own
-// plane, and a path that way met the sliver of corner the rounding cuts off:
-// the face it left, then the next face from inside. So a rounding was shaded
-// darker than either face beside it, part of the dark line along every edge
-// that judges called "crisp dark edge outlines". On the
-// real part that sliver is not there, and paths leave from the round surface
-// under it (the raygen moves them there): a path leaving a rounding passes
-// the sliver. [member leaving] is the part a path leaves from a rounding (-1
-// none); its box and how far its roundings reach.
-int leaving = -1;
-vec4 leaving_low;
-vec4 leaving_high;
-float leaving_reach = 0.0;
-
-// Whether a point of the part being left ([param local], its own space) is in
-// the sliver of one of its roundings: within [member leaving_reach] of two of
-// its body's faces at once (an edge's), or of a stud's top and its side (a
-// rim's).
-bool in_rounding(vec3 local) {
-	vec3 low = leaving_low.xyz;
-	vec3 high = vec3(leaving_high.x, min(leaving_high.y, leaving_low.w), leaving_high.z);
-	vec3 d = min(local - low, high - local);
-	if (all(greaterThan(d, vec3(-0.1)))) {
-		float nearest = min(d.x, min(d.y, d.z));
-		float furthest = max(d.x, max(d.y, d.z));
-		if (d.x + d.y + d.z - nearest - furthest < leaving_reach) {
-			return true;
-		}
-	}
-	if (local.y > leaving_low.w + 0.5 && local.y > leaving_high.y - leaving_reach - 0.1) {
-		vec2 centre = leaving_low.xz + 10.0 + 20.0 * floor((local.xz - leaving_low.xz) / 20.0);
-		float r = length(local.xz - centre);
-		return r > 6.0 - leaving_reach && r < 6.2;
-	}
-	return false;
-}
-
-// trace(), passing the sliver of the rounding a path leaves; hit.t from
-// [param from] all the same.
-bool trace_out(vec3 from, vec3 way, float far, uint mask, uint flags) {
-	float gone = 0.0;
-	for (int k = 0; k < 4; k++) {
-		if (!trace(from + way * gone, way, far - gone, mask, flags)) {
-			return false;
-		}
-		if (leaving < 0 || int(hit.instance) != leaving || !in_rounding(hit.local)) {
-			hit.t += gone;
-			return true;
-		}
-		gone += hit.t + 0.01;
-		if (gone >= far) {
-			return false;
-		}
-	}
-	hit.t += gone;
-	return true;
-}
-
 // Clear plastic's absorption, per LDU, for the product look (photoreal2): a
 // part's colour is what light keeps after GLASS_DEPTH of it (two walls of a
 // brick, about 3 mm), and light keeps exp(-absorbed * distance) of itself
@@ -1425,7 +1353,7 @@ vec3 absorbed(vec3 colour) {
 // How much light gets through from a point towards a light [far] away:
 // none past anything solid, tinted by the clear plastic on the way.
 vec3 through_masked(vec3 from, vec3 way, float far, uint solid) {
-	if (trace_out(from, way, far, solid,
+	if (trace(from, way, far, solid,
 			gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT)) {
 		return vec3(0.0);
 	}
@@ -2134,9 +2062,7 @@ void main() {
 				seen = 0xFFu & ~MASK_SWEEP;
 			}
 #endif
-			bool found = trace_out(from, way, 1e7, seen, gl_RayFlagsOpaqueEXT);
-			leaving = -1;
-			if (!found) {
+			if (!trace(from, way, 1e7, seen, gl_RayFlagsOpaqueEXT)) {
 				met = true;
 #ifdef PHOTO
 				if (floor_mirror) {
@@ -2358,24 +2284,6 @@ void main() {
 				break;
 			}
 			Surface s = surface_of(thing, at, hit.local, hit.unused, thing.info.z, hit.geometric);
-			// Paths leave a rounding or a raised letter from the real surface
-			// (photoreal18), not the flat face drawn over it: a rounding's is
-			// under the face, back along its normal (closest hit's
-			// rounded_under), and what leaves it passes the sliver of corner
-			// the rounding cuts off, as far as edge_round reaches (ROUND, 0.6
-			// LDU, strayed by the part's edge amount); a letter's is over the
-			// plate (lifted), so what leaves its side low meets the plate.
-			vec3 real = vec3(0.0);
-			if (hit.unused > 1.5 && hit.unused < 3.5) {
-				leaving = int(hit.instance);
-				leaving_low = thing.box_min;
-				leaving_high = thing.box_max;
-				float strays = float((thing.info.w >> 8) & 255u) / 100.0;
-				leaving_reach = min(0.6 * (1.0 + 1.5 * strays), 2.0) + 0.1;
-				real = -(dot(hit.normal, v) < 0.0 ? -hit.normal : hit.normal) * (hit.unused - 2.0);
-			} else if (hit.unused > 3.5) {
-				real = (dot(hit.geometric, v) < 0.0 ? -hit.geometric : hit.geometric) * (hit.unused - 4.0);
-			}
 			// The sweep is brought to its colour for the eye alone, as the
 			// window brings it (StudioRender meters its level), and by
 			// scaling what it shows, so its shadows keep their depth. As
@@ -2387,7 +2295,7 @@ void main() {
 			}
 			straight = false;
 			radiance += carried * s.emission;
-			from = at + ng * 0.02 + real;
+			from = at + ng * 0.02;
 			radiance += carried * direct(s, from, n, v);
 			// The model's own lights light what they shine on, as the window's
 			// draft draws them (StudioRender's lamps bounce nothing): on the
@@ -2542,19 +2450,6 @@ const float ROUND = 0.6;
 // own number (info.z).
 float edge_amount = 0.0;
 uint part_key = 0u;
-// Plastic that carries light (photoreal18, PathTracer.rims and letters, in
-// the w of the part's box's top corner: 1 + 2 rims + 512 letters, each in
-// hundredths), and whether the hit is on a rounding (an edge's or a stud's
-// rim), for the raygen's surface_of.
-float rims_amount = 0.0;
-float letters_amount = 0.0;
-float rounding = 0.0;
-// Whether the hit is on a raised letter's stroke, when letters are drawn.
-float lettered = 0.0;
-// Where the real surface is (LDU): a rounding's under the flat face, back
-// along its normal; a raised letter's over the plate.
-float rounded_under = 0.0;
-float lifted = 0.0;
 #ifdef MARKS
 // Moulded ABS's own unevenness (photoreal15, PathTracer.peel and sink in
 // info.w's third and fourth bytes, in hundredths; 0 for none): its skin's
@@ -2738,29 +2633,6 @@ float logo_height(vec2 p, float soft) {
 	return 0.2 * smoothstep(0.36 + soft, 0.18, logo_distance(p));
 }
 
-// The letters as the mould raises them (photoreal18): each stroke a thin
-// ridge LETTER_HALF either side of its middle (0.24 mm across) and
-// LETTER_HIGH tall, rounded over its whole width with no flat top, so each
-// stroke reads as one line, its crest catching what the plate mirrors and
-// its sides what is round it, as the photographs' strokes do. The
-// flat-topped letters were the plate's own colour on top with two dark
-// flanks: every stroke outlined, which judges called "outlined text" and "a
-// drawn decal".
-const float LETTER_HALF = 0.3;
-const float LETTER_HIGH = 0.2;
-
-float letter_ridge(vec2 p) {
-	float d = logo_distance(p);
-	return d < LETTER_HALF ? LETTER_HIGH * 0.5 * (1.0 + cos(3.14159265 * d / LETTER_HALF)) : 0.0;
-}
-
-float letters_at(vec2 p, float soft) {
-	if (letters_amount <= 0.0) {
-		return logo_height(p, soft);
-	}
-	return mix(logo_height(p, soft), letter_ridge(p), min(letters_amount, 1.0));
-}
-
 vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 	if (n.y < 0.97 || at.y < body_top + 0.5 || abs(at.y - box_max.y) > 0.3) {
 		return n;
@@ -2795,20 +2667,13 @@ vec3 stud_logo(vec3 at, vec3 n, vec3 box_min, vec3 box_max, float body_top) {
 		float d = logo_distance(p);
 		logo_grime = stud_variety * key_hash(centre, 23u) * smoothstep(0.75, 0.4, d)
 			* smoothstep(0.15, 0.3, d);
-		if (letters_amount > 0.0) {
-			// At the foot of a thin raised stroke, never up its side.
-			logo_grime *= smoothstep(LETTER_HALF, LETTER_HALF + 0.1, d);
-		}
 	}
 	// About 9 LDU across, as the real one's 3.6 mm.
 	const float e = 0.05;
-	float dx = (letters_at(p + vec2(e, 0.0), soft) - letters_at(p - vec2(e, 0.0), soft)) / (2.0 * e);
-	float dy = (letters_at(p + vec2(0.0, e), soft) - letters_at(p - vec2(0.0, e), soft)) / (2.0 * e);
+	float dx = (logo_height(p + vec2(e, 0.0), soft) - logo_height(p - vec2(e, 0.0), soft)) / (2.0 * e);
+	float dy = (logo_height(p + vec2(0.0, e), soft) - logo_height(p - vec2(0.0, e), soft)) / (2.0 * e);
 	dx *= depth;
 	dy *= depth;
-	if (letters_amount > 0.0) {
-		lifted = letters_at(p, soft) * depth;
-	}
 	// The injection gate on some studs, as a judge saw on a photograph's
 	// and missed on ours: where the plastic went in, a small round nub in a
 	// shallow ring half a millimetre across (three_2x2_top's photograph;
@@ -2944,24 +2809,11 @@ vec3 sunk(vec3 at, vec3 n, vec4 lo, vec4 hi) {
 vec3 moulded(vec3 at, vec3 n, vec4 box_min, vec4 box_max) {
 	vec3 high = vec3(box_max.x, min(box_max.y, box_min.w), box_max.z);
 	vec3 bent = bevelled(at, n, box_min.xyz, high);
-	bool edge = bent != n;
-	if (!edge) {
+	if (bent == n) {
 		bent = stud_rim(at, n, box_min.xyz, box_max.xyz, box_min.w);
-	}
-	rounding = dot(bent, n) < 0.9995 ? 1.0 : 0.0;
-	if (rounding > 0.5 && rims_amount > 0.0 && max(abs(n.x), max(abs(n.y), abs(n.z))) > 0.97) {
-		// (A slope's face is rounded towards the box's sides, not from a
-		// middle a radius in: its real surface is left where it is drawn.)
-		float radius = edge ? edge_round(at) : ROUND;
-		// bevelled and stud_rim turn the normal from the rounding's own
-		// middle, a radius in from both faces, so the round surface is a
-		// radius from there: radius / cos(turn) away along the normal at the
-		// flat face's point, radius at the surface's.
-		rounded_under = radius * (1.0 / max(dot(bent, n), 0.5) - 1.0);
 	}
 	if (bent == n) {
 		bent = stud_logo(at, n, box_min.xyz, box_max.xyz, box_min.w);
-		lettered = letters_amount > 0.0 && bent != n ? 1.0 : 0.0;
 	}
 	if (bent == n && max(abs(n.x), max(abs(n.y), abs(n.z))) > 0.97) {
 		vec3 off = at - (box_min.xyz + high) * 0.5;
@@ -2994,13 +2846,6 @@ void main() {
 	sink_amount = float((codes >> 24) & 127u) / 100.0;
 #endif
 	logo_grime = 0.0;
-	rounding = 0.0;
-	lettered = 0.0;
-	rounded_under = 0.0;
-	lifted = 0.0;
-	uint moulding = uint(max(instances[which].box_max.w, 0.0) + 0.5);
-	rims_amount = float((moulding >> 1) & 255u) / 100.0;
-	letters_amount = float((moulding >> 9) & 255u) / 100.0;
 	uvec4 mesh = meshes[instances[which].info.x];
 	uint first = mesh.y + uint(gl_PrimitiveID) * 3u;
 	uint a = mesh.x + indices[first];
@@ -3038,12 +2883,6 @@ void main() {
 		}
 		if (logo_grime > 0.0 && hit.unused < 0.5) {
 			hit.unused = -logo_grime;
-		}
-		if (rims_amount > 0.0 && rounding > 0.5 && hit.unused == 0.0) {
-			hit.unused = 2.0 + min(rounded_under * length(gl_ObjectToWorldEXT * vec4(0.0, 1.0, 0.0, 0.0)), 0.99);
-		}
-		if (lettered > 0.5 && hit.unused == 0.0) {
-			hit.unused = 4.0 + min(lifted * length(gl_ObjectToWorldEXT * vec4(0.0, 1.0, 0.0, 0.0)), 0.99);
 		}
 	}
 	// Normals go by the inverse transpose: v * M is transpose(M) * v.
