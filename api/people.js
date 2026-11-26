@@ -29,15 +29,20 @@
 //                                 (api/_avatars.js)
 //   POST ?op=avatar_remove        (session) that picture taken off: the
 //                                 avatar made from the handle again
-//   POST ?op=mould                (session) {id, slot, text}: a mould made in
-//                                 the studio's minifig builder, kept on the
-//                                 caller's account (api/_moulds.js), held to
-//                                 what a mould is before anything is kept
+//   POST ?op=mould                (session) {id, slot, text, replaces?}: a
+//                                 mould made in the studio's minifig
+//                                 builder, kept on the caller's account
+//                                 (api/_moulds.js), held to what a mould is
+//                                 before anything is kept; in place of
+//                                 replaces, the one it was shaped from
+//   POST ?op=mould_remove         (session) {id}: that mould taken off the
+//                                 caller's account; an avatar wearing it
+//                                 wears the part it was shaped from
 //   GET  ?op=moulds               (session) the caller's moulds, without
 //                                 their text: what Edit profile's maker lists
-//   GET  ?op=mould&id=M           mould M's text: the caller's own, or one a
-//                                 shown avatar wears; kept by the browser
-//                                 for good (an id is its text)
+//   GET  ?op=mould&id=M           (session) the caller's own mould M's text,
+//                                 nobody else's; kept by the browser for
+//                                 good (an id is its text)
 //   POST ?op=likes_choice         (session) {shows}: show on my profile the
 //                                 models I liked
 //   POST ?op=showcase             (session) {links?, banner?, pins?}: what
@@ -307,7 +312,7 @@ import {
   likesCount, recipeShape,
 } from "./_avatars.js";
 import { withFaces } from "./_faces.js";
-import { MouldRefusal, keepMould, mouldOf, mouldText, mouldsOf, wearsOwn } from "./_moulds.js";
+import { MouldRefusal, keepMould, mouldOf, mouldText, mouldsOf, removeMould, wearsOwn } from "./_moulds.js";
 import { ownMould } from "./_minifig_parts.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
@@ -340,7 +345,8 @@ export const MOST_FAVOURITES = 2000;
 // How often a person may do each thing: [an hour, a day].
 export const LIMITS = { profile: [20, 60], like: [300, 2000], favourite: [300, 2000],
   collection: [20, 60], collect: [300, 3000], report: [6, 20], photo: [12, 40], photo_hide: [60, 300],
-  showcase: [20, 60], avatar: [12, 40], likes_choice: [20, 60], people_find: [600, 3000], mould: [60, 200] };
+  showcase: [20, 60], avatar: [12, 40], likes_choice: [20, 60], people_find: [600, 3000], mould: [60, 200],
+  mould_read: [240, 1000], mould_remove: [60, 300] };
 // What a profile shows besides its name (supabase/profile_shows.sql).
 export const MOST_LINKS = 2;
 export const MOST_PINS = 3;
@@ -787,14 +793,24 @@ async function ownMoulds(request, response) {
   return response.status(200).json(await mouldsOf(account));
 }
 
-/// GET ?op=mould&id=M: its text, for its owner or for anybody while a shown
-/// avatar wears it. An id is its text, so a browser keeps it for good and
-/// never asks again; the CDN never keeps it (it may be somebody's alone).
+/// POST ?op=mould_remove {id}: that mould taken off the caller's account.
+async function dropMould(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const account = await signedIn(request);
+  await counted(account, "mould_remove");
+  return response.status(200).json(await removeMould(account, request.body));
+}
+
+/// GET ?op=mould&id=M: its text, for its owner alone (hairreview M1: a worn
+/// mould of 2 MB was read by anybody, uncached, unlimited). An id is its
+/// text, so a browser keeps it for good and never asks again; the CDN never
+/// keeps it. Each read is counted, as a look for people is.
 async function mouldServe(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
   const account = bearer(request) ? await signedIn(request) : null;
-  const found = await mouldText(String(request.query?.id || ""), account, shownPublicly);
+  if (account) await counted(account, "mould_read");
+  const found = await mouldText(String(request.query?.id || ""), account);
   if (!found) {
-    response.setHeader("Cache-Control", "private, no-store");
     return response.status(404).json({ error: "there is no mould of that name you may see" });
   }
   // No Vary on the session: the text is the id's whoever asks, and the
@@ -2207,6 +2223,7 @@ async function handler(request, response) {
       if (op === "avatar") return await saveAvatar(request, response);
       if (op === "avatar_remove") return await dropOwnAvatar(request, response);
       if (op === "mould") return await saveMould(request, response);
+      if (op === "mould_remove") return await dropMould(request, response);
       if (op === "likes_choice") return await saveLikesChoice(request, response);
       if (op === "like") return await toggle(request, response, "model_likes");
       if (op === "favourite") return await toggle(request, response, "model_favourites");
@@ -2258,7 +2275,10 @@ async function handler(request, response) {
   } catch (trouble) {
     if (trouble instanceof AuthError || trouble instanceof Refusal || trouble instanceof Unacceptable
         || trouble instanceof BuildRefusal || trouble instanceof AvatarRefusal || trouble instanceof MouldRefusal) {
-      return response.status(trouble.status).json({ error: trouble.message });
+      // A mould's refusal says what kind it is too, for the studio to say
+      // in its own words, in the person's language.
+      return response.status(trouble.status).json(trouble instanceof MouldRefusal
+        ? { error: trouble.message, code: trouble.code } : { error: trouble.message });
     }
     console.error("people:", trouble.message);
     return response.status(502).json({ error: "Brickworks could not reach its storage just now. Try again in a minute." });
