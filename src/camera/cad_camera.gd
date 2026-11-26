@@ -1901,6 +1901,43 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 	framed.emit(_target_focus)
 
 
+## Frame [param box] by its corners as the view's direction sees them, not by
+## the ball round it: a flat plate seen from above is far less tall than its
+## ball, and framed by the ball Simple's new 16 x 16 plate took 43% of a
+## 1280 x 800 window's room. Each corner kept inside the part of the window
+## the model is seen in, with [param margin] to spare, as [method frame]'s.
+func frame_corners(box: AABB, margin: float = 1.05) -> void:
+	var line: float = _floor_line()
+	frame(box, margin)
+	if box.size.length_squared() <= 0.0 or projection == Camera3D.PROJECTION_ORTHOGONAL:
+		return
+	var seen_size: Vector2 = seen_rect().size
+	if covered.is_valid():
+		var over: float = maxf(0.0, float(covered.call()))
+		seen_size.y = maxf(seen_size.y * 0.5, seen_size.y - 2.0 * over)
+	# How far off the middle a point may be, for each unit it is away: the
+	# lens spans the window's height (Camera3D keeps the height), and the
+	# focus is in the middle of the seen part (_put_lens).
+	var per: float = tan(deg_to_rad(fov) * 0.5) / _room().y
+	var wide: float = per * seen_size.x
+	var tall: float = per * seen_size.y
+	# The view's own axes where it is going, as look_at makes them.
+	var back: Vector3 = _eye_at(_target_pitch, 1.0, Vector3.ZERO).normalized()
+	var right: Vector3 = (_target_frame * Vector3.UP).cross(back)
+	if right.length_squared() < 0.000001:
+		return
+	right = right.normalized()
+	var up: Vector3 = back.cross(right)
+	var need: float = 0.0
+	for n: int in 8:
+		var from_focus: Vector3 = box.get_endpoint(n) - _target_focus
+		var nearer: float = from_focus.dot(back)
+		need = maxf(need, nearer + absf(from_focus.dot(right)) / wide)
+		need = maxf(need, nearer + absf(from_focus.dot(up)) / tall)
+	_target_distance = clampf(need * margin, min_distance, max_distance)
+	_keep_over_floor(line)
+
+
 ## Point the camera from a named direction, keeping the focus: of the model
 ## the right way up.
 func set_view(view: String) -> void:

@@ -538,11 +538,13 @@ func _frame() -> void:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	var sketch: bool = world.brick_count() - store.scenery.size() == 0
-	# A new sketch's plate fills the view: the ball round a flat square
-	# frames it whole, its diagonal across the room as the default view
-	# turns it (0.92 cut its corners off at 390, 1.15 left a ring of
-	# nothing round it).
-	camera.frame(box, 1.05 if sketch else 1.15)
+	# A new sketch's plate fills the view: framed by its corners, as a flat
+	# square is far less tall than the ball round it (by the ball it took 43%
+	# of a 1280 x 800 window's room).
+	if sketch:
+		camera.frame_corners(box, 1.08)
+	else:
+		camera.frame(box, 1.15)
 	_set_far(camera.get("_target_distance"))
 	_framed_pose = _pose(camera)
 

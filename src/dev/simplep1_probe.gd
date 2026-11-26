@@ -423,10 +423,13 @@ func _finger_map() -> void:
 	var view: Transform3D = _camera.global_transform
 	var at_before: Transform3D = _world.get_brick(id).transform
 	await _one_finger(empty_at, empty_at + Vector2(Phone.px(root, 90.0), 0.0))
+	# What it said last, read before the view is waited on: at 1280 under a
+	# loaded box the wait outlasted the words' 2.6 s on the line.
+	var said: String = str(_simple.get("_said"))
 	await _settle()
 	var turned: bool = _view_moved(view)
 	_check("one finger on empty space turns nothing", not turned)
-	_check("...and says how: \"%s\"" % _said(), _said().to_lower().contains("two fingers"))
+	_check("...and says how: \"%s\"" % said, said.to_lower().contains("two fingers"))
 	_check("...and moves no part", _world.get_brick(id).transform.is_equal_approx(at_before))
 	await _press_fit()
 	# A finger on the part moves it, in both.
