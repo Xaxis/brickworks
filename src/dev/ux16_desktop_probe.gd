@@ -435,7 +435,10 @@ func _set_changed() -> void:
 	await _step("p20_04_door_clicked", "the door clicked")
 	var took: int = _builder.selection.size()
 	print("UX16 door click took %d (%s) hint \"%s\"" % [took, _status(), _hint()])
-	_check16("a click on the door takes the door (%d)" % took, took == 1)
+	# A click takes the whole sub-assembly, as Studio's does; the words must
+	# say how to get inside it (ux16 kept this, and said why in WALK.md).
+	_check16("a click on the door takes the door, or says how to (%d, %s)" % [took, _status()],
+		took == 1 or _status().contains("double-click edits inside"))
 	# Down to the door alone, as the line says.
 	if took > 1:
 		await _key(KEY_ENTER)
