@@ -204,6 +204,13 @@ func p(points: float) -> float:
 	return points * _k
 
 
+## Another language: the bars' words are as wide as it says them.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _row != null and is_inside_tree():
+		_share_top()
+		_share_row()
+
+
 ## Laid out again for a new size (a phone turned): the bin and the name
 ## field are Main's and the bar's, taken out first and put back.
 func _rebuild() -> void:
@@ -530,8 +537,7 @@ func _tool(what: String, word: String, icon: String) -> Button:
 		PhoneShell._pin(drawn, 0.0, 0.0, 1.0, 1.0, Rect2())
 		button.add_child(drawn)
 		# Room above the word for the picture, in the window's units.
-		var blank := Image.create(1, maxi(1, roundi(p(24))), false, Image.FORMAT_RGBA8)
-		button.icon = ImageTexture.create_from_image(blank)
+		button.icon = _row_picture(button, p(24))
 		if what == "colour":
 			_colour_button = button
 	button.pressed.connect(_chose.bind(what))
@@ -602,30 +608,59 @@ func _share_row() -> void:
 	var inside: float = get_viewport().get_visible_rect().size.x - p(8) * 2.0
 	var each: float = share if wide else maxf(share, floorf(inside / TOOLS.size()))
 	var fits: bool = true
+	var wants: Dictionary = {}
+	var whole: float = 0.0
 	for tool: Array in TOOLS:
 		var button: Button = _tool_buttons.get(str(tool[0]))
 		if button == null:
 			continue
 		button.custom_minimum_size.x = share
-		# Its picture inside its share, within its face's margins: at 150% on
-		# a 320 phone the pictures held the row past the window (wide150b).
-		var path: String = str(button.get_meta("icon_path", ""))
-		if not path.is_empty():
-			var inside_face: float = share - button.get_theme_stylebox("normal").get_minimum_size().x
-			var picture: Texture2D = Icons.icon_for(path, p(24), Icons.density(self))
-			if picture.get_width() > inside_face:
-				picture = Icons.icon_for(path, floorf(p(24) * inside_face / picture.get_width()),
-					Icons.density(self))
-			button.icon = picture
+		# Measured as it is said: in German "Auswählen" is 75 where "Select"
+		# is 41, and it was cut in a 54 share (wide150b).
 		var font: Font = button.get_theme_font("font")
-		var needs: float = font.get_string_size(str(tool[1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
-			button.get_theme_font_size("font_size")).x + p(2) * 2.0
+		var needs: float = ceilf(font.get_string_size(button.atr(str(tool[1])), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			button.get_theme_font_size("font_size")).x + p(2) * 2.0)
 		fits = fits and needs <= each
+		wants[button] = maxf(share, needs)
+		whole += maxf(share, needs)
+	# A tablet's row, centred with room either side, keeps its words: each
+	# button as wide as its word while the row fits the window. In German
+	# its 40-unit shares dropped them on a screen 1,152 wide.
+	if wide and not fits and whole <= inside:
+		fits = true
+		for button: Button in wants:
+			button.custom_minimum_size.x = float(wants[button])
+	# Each picture inside its share, within its face's margins, and with its
+	# word inside the bar's height (ROW): the row's words go first, then its
+	# pictures shrink, and the bar never grows. At 150% on a 320 phone the
+	# pictures held the row past the window; at 100% on a 390 phone a picture
+	# and its word asked 1.5 units more and the bar's foot was under the
+	# screen's (wide150b).
+	var tall: float = p(ROW) - _row.get_theme_stylebox("panel").get_minimum_size().y
 	for tool: Array in TOOLS:
 		var button: Button = _tool_buttons.get(str(tool[0]))
-		if button != null:
-			button.text = str(tool[1]) if fits else ""
-			button.tooltip_text = "" if fits else str(tool[1])
+		if button == null:
+			continue
+		button.text = str(tool[1]) if fits else ""
+		button.tooltip_text = "" if fits else str(tool[1])
+		var picture: Texture2D = _row_picture(button, p(24))
+		button.icon = picture
+		var high: float = floorf(p(24) - maxf(0.0, button.get_combined_minimum_size().y - tall))
+		var inside_face: float = button.custom_minimum_size.x - button.get_theme_stylebox("normal").get_minimum_size().x
+		if picture.get_width() > inside_face:
+			high = minf(high, floorf(p(24) * inside_face / picture.get_width()))
+		if high < p(24):
+			button.icon = _row_picture(button, high)
+
+
+## A row button's picture [param high] units tall: its own icon, or for
+## Colour and More, which draw their own over the word (RowPicture), a blank
+## that keeps the room for it.
+func _row_picture(button: Button, high: float) -> Texture2D:
+	var path: String = str(button.get_meta("icon_path", ""))
+	if not path.is_empty():
+		return Icons.icon_for(path, high, Icons.density(self))
+	return ImageTexture.create_from_image(Image.create(1, maxi(1, roundi(high)), false, Image.FORMAT_RGBA8))
 
 
 ## What a button of the row does: the desktop's own command or verb.
@@ -946,13 +981,16 @@ func _lay_pill() -> void:
 	# model is 210 points high, and the line's two took a quarter of it.
 	var widest: float = minf(free.size.x - p(24), p(380) if room.y >= room.x else p(640))
 	var font: Font = _pill_words.get_theme_font("font")
-	var line: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
+	# Measured as it is said: in English "undid" fitted where "rückgängig"
+	# did not (wide150b).
+	var said: String = _pill_words.atr(words)
+	var line: float = font.get_string_size(said, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
 	var inner: float = minf(line + p(2), widest - p(24))
 	# Not shown in a room narrower than its longest word: beside a tablet's
 	# open panel at 150% the line was a column a word wide, "rückgängig"
 	# cut inside (wide150b).
 	var longest: float = 0.0
-	for word: String in words.split(" ", false):
+	for word: String in said.split(" ", false):
 		longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x)
 	var room_for_words: bool = inner >= ceilf(longest)
 	# Each set only when it is another: laid out every frame, a value set

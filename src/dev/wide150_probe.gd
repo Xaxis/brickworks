@@ -308,8 +308,8 @@ func _fits() -> void:
 			for child: Node in c.get_children():
 				if child is Control and (child as Control).is_visible_in_tree():
 					held.append("%s %s" % [_named(child as Control), (child as Control).get_combined_minimum_size()])
-			print("    (%s, %s: %s least %s holds %s)" % [_config, _doing, _named(c), c.get_combined_minimum_size(),
-				", ".join(_most(PackedStringArray(held)))])
+			print("    (%s, %s: %s least %s holds %s;%s)" % [_config, _doing, _named(c), c.get_combined_minimum_size(),
+				", ".join(_most(PackedStringArray(held))), _widest_inside(c, 8)])
 	_check("%s, %s: %d controls shown, every one inside the %.1f x %.1f window%s" % [_config, _doing,
 		seen, window.size.x, window.size.y, "" if past.is_empty() else
 		" — past it: " + "; ".join(_most(past))], past.is_empty())

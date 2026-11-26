@@ -4452,6 +4452,14 @@
       "tests": []
     },
     {
+      "id": "cli:wide150 probe",
+      "kind": "cli",
+      "entry": "src/dev/wide150_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh wide150_probe [--phone] [--w150langs=en,de,fr,es] [--w150sizes=1.0,1.5] --pictures=DIR   (the studio's rows give way: nothing wider than its window and no word cut inside, in each language at 100% and 150%, at rest, puts and undos, the wing, the step bar, the side docks or a phone's sheets; a matrix of FAILs at the end; also 320x700, 768x1024, 1024x768, 1280x720)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:wip browser flow",
       "kind": "cli",
       "entry": "tools/web/wip_flow.mjs",
