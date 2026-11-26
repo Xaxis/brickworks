@@ -1,6 +1,8 @@
 ## wingfix2's pictures: both twins of a part in hand over a wing placed
 ## straight and mirrored, aimed a stud along the mirror's axis (red, the
-## bar's words) and along the axis it keeps (green), each before the click.
+## bar's words) and along the axis it keeps (green), each before the click;
+## and one part taken into hand by X, typed a stud along where the mirrored
+## twin has no room (red, the bar's words).
 ##
 ##   godot --path . --resolution 1280x800 --script src/dev/wf2_shots_probe.gd
 ##
@@ -58,6 +60,22 @@ func _run() -> void:
 		await _picture("%s_%d" % [spec[0], int(size.x)])
 		_builder.cancel_carry()
 		await _edited()
+	# One part X took into hand, typed a stud along where the mirrored copy's
+	# twin has no room (wingkeep): red with the words before the click.
+	await _open(_wing_file([STRAIGHT, MIRRORED]))
+	var block := Transform3D(Basis.IDENTITY, Vector3(-130, 32, 10))
+	_builder.register(_world.add_brick("3005", 15, block), "3005", block)
+	await _frames(30)
+	var mode: String = _verbs.mode
+	var aimed: Variant = _x_aim(_in(_copy_at(_placed_by(STRAIGHT)), "3004").id, Vector3(20, 0, 0))
+	await _frames(20)
+	var refused: String = str(_builder.get("copies_refuse"))
+	var heard: String = str(_shell.status.fields()["message"])
+	_check("x_twin_blocked at %dx%d: the ghost red with the words (\"%s\"; aimed %s; the bar \"%s\")"
+		% [size.x, size.y, refused.left(80), str(aimed), heard.left(60)],
+		aimed is Vector3 and refused.begins_with("No room in ") and heard == refused)
+	await _picture("x_twin_blocked_%d" % int(size.x))
+	_x_done(mode)
 	print("\nwf2 shots: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
 	_world.clear()
