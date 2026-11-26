@@ -94,12 +94,17 @@ func _run() -> void:
 	# BrickBench pieces gate refuses twice and then saves (a first run of this
 	# probe): not this. World units are LDU, y up; the left rail's top is at
 	# y 40, its holes along z 8 to 208.
-	# Lying on the left rail, lowered a little at a time until the check
-	# finds it resting there, not held (42061's fault); one that collides is
-	# the fallback, the same edit taking it off.
+	# On its edge against the left rail's outer face, resting on nothing, moved
+	# in a little at a time until the check finds it there and not held
+	# (42061's fault); then lying on the rail (a gear laid flat on a face with
+	# no stud is only advice, set down, the first run found); one that collides
+	# is the fallback, the same edit taking it off.
 	var gear: int = 0
 	var where: String = ""
 	var spots: Array = []
+	for out: float in [-6.0, -5.0, -4.5, -4.0, -3.5]:
+		spots.append(["on its edge against the left rail at x %s" % out, Basis(Vector3.UP, PI / 2.0),
+			Vector3(out, 60, 100)])
 	for height: int in [48, 47, 46, 45, 44, 43, 42, 41, 40]:
 		spots.append(["lying on the left rail at y %d" % height, Basis(Vector3.RIGHT, PI / 2.0),
 			Vector3(10, height, 100)])
