@@ -1717,8 +1717,9 @@ are Brickworks' to have first.
   builds, Talk's threads with their latest reply, the month's challenge
   with its entries, the studio to try, builders to follow, photos of real
   builds. Signed out, one band over it says what Brickworks is in a line,
-  with the search and Start building, and nothing else stands between a
-  visitor and the first post (within 600 px on a phone).
+  with Start building and See what people build beside a loop of the
+  studio at work (herostudio, 2026-11-26; docs/HOME.md), the first post
+  just under the fold (within 1.3 windows, on a phone too).
 - **Signed in: For you, Following and New** (Reddit's and Instagram's
   tabs). For you is the stream asked as them (their likes, nobody they
   blocked); Following is what the people they follow made (`/feed`'s own

@@ -332,3 +332,11 @@ window.brickworksCountingNo = (driven = true) => {
     // A browser without these counts nothing; the page is as it was.
   }
 })();
+
+// The header's mark turns (web/mark.js), asked for once the page is in.
+addEventListener("load", () => {
+  if (!document.querySelector(".site-head .mark") || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const turns = document.createElement("script");
+  turns.src = "/mark.js";
+  document.head.append(turns);
+}, { once: true });

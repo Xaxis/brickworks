@@ -3365,33 +3365,50 @@ plan with Claude as the client.
   arrows move, Enter opens the row moved to or sends the search to
   `/gallery?q=` in the page's language, Escape closes. landing_check's
   `search`.
-- `home hero` (hero3d, 2026-11-23; docs/HOME.md "The hero"): the Brickworks
-  mark in 189 LEGO® parts, `#hero-stage` in `#hero-mark` (from 900 px a 400 px
-  stage beside the words, rising 47 px under the header, its line
-  `#hero-credit` one line on the bricks' baseline; under,
-  45% of the width over the words, the line beside it). `tools/web/hero_mark.mjs`
+- `home hero` (herostudio, 2026-11-26; docs/HOME.md "The hero", docs/HERO.md
+  the competitors): signed out, `#home` is the h1 "Design LEGO® models in
+  your browser", one `.lede`, `.home-acts` with `a.start` (Start building,
+  free, `/app`) and `a.see` (See what people build, `/gallery`) and no
+  search (`.find` is signed-in only), and `#hero-loop`, the studio at work:
+  from 900 px beside the words in a window frame (5fr/7fr), under 600 px a
+  9:16 phone frame under them. Its poster `.loop-poster` is in the HTML
+  (`<picture>`: `web/img/hero/studio-phone-{360,720}.webp` under 600 px,
+  else `studio-desktop-{720,1440}.webp`); `web/landing.js` `hero()` adds a
+  muted, looping, inline `<video>` after the load, at idle, in view, from
+  `/img/hero/studio-{desktop|phone}.{av1|h264}.mp4` (AV1 where
+  `canPlayType` says so), faded in on `playing` (`.hero-loop.live`); none
+  under prefers-reduced-motion or `navigator.connection.saveData`.
+  `<html data-hero>`: poster, still, loading, playing, paused,
+  kept-failed. `#loop-say` shows the caption of the moment from
+  `data-cues-desktop` / `data-cues-phone` ("seconds;t:word,..."; words in
+  `CUE_WORDS`, through say()); `#loop-stop` (aria-pressed) pauses and plays.
+  Made by `python3 tools/site/hero_capture.py` (the probe
+  `src/dev/hero_capture_probe.gd` plays `tools/site/hero_capture.json` in
+  the studio at a fixed 30 fps, windowed on the GPU through tools/probe.sh;
+  `--frames=DIR` cuts a run's frames, `--out=DIR` a trial elsewhere,
+  `--check` the files and the page's cues against `web/hero/studio.json`).
+  Check: `node tools/web/hero_check.mjs --dir=web` (or `--dir=OUT
+  [--from=<preview>]`, or `--url=<deployment>`) `[--out=DIR]`: at 1280 and
+  390, light and dark, the width's poster by the load, the loop after it
+  and playing (cut, codec, muted/loop/inline, under 1.5 MB), captions
+  changing, Pause and Play, CLS 0, no three.js; the header mark; less
+  motion and save-data keeping the poster with no loop asked for.
+- `header mark` (herostudio, 2026-11-26): `.site-head .mark .chip` on every
+  page, 30 px, is `web/icon.svg` at rest and, while `.turning`, the mark
+  in bricks stepping through the 30 frames of
+  `web/img/hero/mark-turn.webp` (site.css; `tools/site/mark_turn.mjs` draws
+  it with `hero3d` `pose()` from `web/hero/mark.json`, after
+  `tools/web/hero_mark.mjs` and `node tools/viewer/build.mjs`).
+  `web/theme.js` adds `web/mark.js` at the page's load (a page with
+  `.site-head .mark`, never under prefers-reduced-motion); mark.js asks for
+  the frames, waits for their decode, then adds `.turning` (CSS
+  `mark-turn`, steps(30), 1.15 s) once a visit (sessionStorage
+  `brickworks.mark`) and on a pointer coming onto it or a focus. Kept out
+  of theme.js for the embed's 24 KB script budget. `tools/web/hero_mark.mjs`
   writes `models/brickworks_mark.ldr` (an app example; Tested by
-  `src/dev/tested_models_probe.gd`), `web/hero/mark.ldr`, `web/hero/mark.json`
-  (the scene with its trimmed shapes and studs) and the count in
-  `#hero-pieces` and in `web/_lang/*.json`'s words for the line; `--check`
-  says whether they are what it writes.
-  `tools/web/hero_poster.mjs` draws `web/img/hero/mark-{222,444,888}.webp`,
-  the first paint, with `hero3d` itself (run it after the mark or
-  `tools/viewer/hero.js` changes, and `node tools/viewer/build.mjs`).
-  `web/landing.js` imports `/viewer3d.js` `hero3d` after the load, at idle,
-  on screen, on a device drawing the finished mark in 40 ms or less
-  (`SLOW`; sessionStorage `brickworks.hero.slow` overrides it for a check);
-  the assembly starts from the finished mark (bricks leave up, then fall
-  back in), `.hero-stage.assembling` fading the picture's top;
-  `<html data-hero>` says poster, loading, 3d, kept-slow or kept-failed; `window.brickworksHero` {state, took, angle(), lifted()}.
-  `#hero-open` is `/app?model=res://models/brickworks_mark.ldr` until the
-  gallery lists the mark (seeds.json's last entry), then home_shelf writes
-  `/app?view=<id>`. Check: `node tools/web/hero_check.mjs --dir=OUT
-  [--from=<preview>] [--out=DIR]` (OUT: `tools/site.py OUT` then
-  `home_shelf.mjs OUT --offline`) or `--url=<deployment>`: poster at first
-  paint (pictured with `/viewer3d.js` held back), viewer after the load, assembly fps to a WebGL fence (30 the bar,
-  said with the machine's frame time), sway, drag and settle, keys, a brick
-  lifting, a11y, CLS 0, no second assembly, less motion, no WebGL.
+  `src/dev/tested_models_probe.gd`), `web/hero/mark.ldr` and
+  `web/hero/mark.json`; `--check` says whether they are what it writes.
+  hero_check's `mark` lines prove it.
 - `home shelf at deploy` (`tools/web/home_shelf.mjs`, run by
   `tools/deploy.sh` after `tools/site.py`): `--from=` the answers read
   (default brickworks.diy; `ASKS`, as web/landing.js asks them signed
@@ -3399,9 +3416,7 @@ plan with Claude as the client.
   that. Writes the feed's first six posts (`decide`, home-feed.js
   `compose`) between `<!--feed-->` and `<!--/feed-->` in each language's
   copy (`filled`, the words from its `#site-words`), one picture eager,
-  copies the posts' pictures to `/img/home/`, points the hero's Open it in
-  the studio at the gallery's mark (`MARK`, `markIn`, `heroOpen`) when the
-  project's account lists it, and says how many posts of
+  copies the posts' pictures to `/img/home/`, and says how many posts of
   which kinds and whether each answer was live or kept. Never fails a
   deploy for an answer it could not read. `tests/test_home_shelf.py`
   (minitest) drives `decide` and `filled`: nothing read (the skeletons
@@ -6088,26 +6103,31 @@ plan with Claude as the client.
   `web/home-find.js`, `tools/web/home_shelf.mjs`, `web/site.css`'s `.post`;
   docs/HOME.md): the feed first since homefeed (2026-11-23, the owner:
   "turn the landing into our lego 'social media' as it simultaneously
-  advertises and integrates the CAD"). Signed out: `#home`, one band
-  (`h1` "Build, share and find LEGO® models", one line, `form#find` with
-  `#find-q`, a combobox whose `#find-list` lists models, builders and sets
-  as it is typed, and **Start building**; beside it from 900 px, above it
-  under, `#hero-mark`: see `home hero`), then `#feed`: `.feed-head` (its
-  h2, the tabs hidden) and `#stream`, the posts (see `the home page's
-  feed`), the first begun in the first screen; Show more (`#feed-more`).
-  Signed in: the band is `.home-acts` alone, the same `#find` with Share
-  a build and Share a file from another program (`.mine`) beside it, and
-  the tabs. The band's foot: `--s-7` under its last line and over the
-  feed's heading, `--s-5` on a phone (landing_check's "room", each at
-  least 24 px, the two within 8 px; homefix, 2026-11-23). Then `#beta`, `#why` (the studio, `#sets-models`
+  advertises and integrates the CAD"). Signed out: `#home`, one band (see
+  `home hero`: the h1, one line, Start building, free and See what people
+  build, `#hero-loop` beside or under them; herostudio, 2026-11-26), then
+  `#feed`: `.feed-head` (its h2, the tabs hidden) and `#stream`, the posts
+  (see `the home page's feed`), the first just under the fold; Show more
+  (`#feed-more`). Signed in: the band is `.home-acts` alone, `form#find`
+  with `#find-q` (a combobox whose `#find-list` lists models, builders and
+  sets as it is typed) with Share a build and Share a file from another
+  program (`.mine`) beside it, and the tabs. The band's foot: `--s-7`
+  under its last line and over the feed's heading, `--s-5` on a phone
+  (landing_check's "room", each at least 24 px, the two within 8 px;
+  homefix, 2026-11-23). Then `#beta`, `#why` (the studio, `#sets-models`
   four real sets live) and `#start`. `tools/web/landing_check.mjs` checks at
-  390 x 844 and 1280 x 800, light and dark: the search and Start building
-  whole in the first screen, on a phone the first post's picture begun in it
-  and on a laptop at least 60% of each first-row picture's height in it
-  (`SHOWN`; the window down to the beta bar), its pictures drawn, CLS 0.01 at most on a
-  served page, no tabs for a visitor; Show more adding posts, none twice;
-  the search's rows, arrows, Escape and Enter; the challenge's post third
-  at the latest; Talk's posts only with Talk; the four sets.
+  390 x 844 and 1280 x 800, light and dark: the band's actions exactly
+  `/app` then `/gallery`, both whole in the first screen, no search for a
+  visitor; `#hero-loop` whole on a laptop, begun on a phone; the feed's
+  first post within `BELOW` (1.3) windows of the top (the window down to
+  the beta bar), its pictures drawn, CLS 0.01 at most on a served page, no
+  tabs for a visitor; Show more adding posts, none twice; the search (as
+  signed in) its rows, arrows, Escape and Enter; the challenge's post
+  third at the latest; Talk's posts only with Talk; the four sets.
+  Before that, homefeed's band (2026-11-23): "Build, share and find LEGO®
+  models", the search and Start building signed out too, beside
+  `#hero-mark`, the mark in bricks in 3D (hero3d), and a laptop's first
+  row of builds 60% in the first screen.
   `--file=web/index.html` (no server) wants the skeletons to give way to
   words, never stand empty.
   Before that, landing (2026-11-22): the community first: `#challenge`

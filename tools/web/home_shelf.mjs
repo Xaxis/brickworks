@@ -42,11 +42,6 @@ export const ASKS = {
   latest: "/api/people?op=latest",
 };
 export { EAGER, FIRST };
-/// The hero's model (web/index.html #hero-open, hero3d) where the gallery
-/// lists it, the project's own account's (tools/web/gallery_seeds), to open
-/// as any visitor opens a shared model; until it is listed, the link opens
-/// the app's own copy (models/brickworks_mark.ldr), behind the sign-in.
-export const MARK = { ask: "/api/share?op=list&page=1&q=Brickworks%20mark", name: "The Brickworks mark", handle: "brickworks" };
 
 const args = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsWith("--")).map((a) => {
   const [k, ...rest] = a.slice(2).split("=");
@@ -145,19 +140,6 @@ export function filled(page, code, items, copied) {
     .replace('<div class="stream" id="stream" data-stream="skeleton"', '<div class="stream" id="stream" data-stream="served"');
 }
 
-/// The hero's model's id in [answer] (MARK.ask's), or null.
-export function markIn(answer) {
-  const found = (answer?.models || []).find((m) => m.name === MARK.name && m.by?.handle === MARK.handle);
-  return found && /^[A-Za-z0-9]{10}$/.test(found.id) ? found.id : null;
-}
-
-/// [page] with the hero's Open it in the studio opening shared model [id],
-/// as the gallery's Open does (the page's language kept).
-export function heroOpen(page, id) {
-  if (!id || !/^[A-Za-z0-9]{10}$/.test(id)) return page;
-  return page.replace(/(id="hero-open" href="\/app\?(?:[^"]*?&amp;)?)model=res:\/\/models\/brickworks_mark\.ldr/, `$1view=${id}`);
-}
-
 /// Only what a first screen and its posts show, of each answer, to keep.
 function kept(name, answer) {
   if (name === "top" || name === "newest") return { models: (answer.models || []).slice(0, FIRST + 4) };
@@ -186,12 +168,8 @@ async function main() {
     said.push(`${name}: ${live ? "live" : given[name] ? `kept (${snapshot.at || "?"})` : "none"}`);
   }
   const items = decide(given);
-  const markLive = args.offline ? null : await ask(MARK.ask);
-  const mark = markIn(markLive) || markIn(snapshot.answers?.[MARK.ask]);
-  said.push(`the hero's model: ${mark ? `/app?view=${mark}${markIn(markLive) ? "" : " (kept)"}` : "not in the gallery, the app's own copy"}`);
   if (args.save && !args.offline) {
     const keep = Object.fromEntries(Object.entries(ASKS).filter(([name]) => given[name]).map(([name, path]) => [path, kept(name, given[name])]));
-    if (markIn(markLive)) keep[MARK.ask] = { models: markLive.models.filter((m) => m.id === mark).map(({ id, name, by }) => ({ id, name, by })) };
     writeFileSync(SNAPSHOT, `${JSON.stringify({ at: new Date().toISOString().slice(0, 10), answers: keep }, null, 1)}\n`);
   }
   const copied = args.offline ? new Map() : await copyPictures(picturesOf(items), join(out, "img/home"));
@@ -199,7 +177,7 @@ async function main() {
   for (const code of LANGS) {
     const where = join(out, code, "index.html");
     if (!existsSync(where)) continue;
-    writeFileSync(where, heroOpen(filled(readFileSync(where, "utf8"), code, items, copied), mark));
+    writeFileSync(where, filled(readFileSync(where, "utf8"), code, items, copied));
     pages += 1;
   }
   const kinds = items.map((item) => item.kind).join(", ");

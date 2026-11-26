@@ -243,24 +243,10 @@ scene.triangles = all.reduce((sum, p) => sum + bodyOf.get(scene.meshes.find((m) 
   + shownStuds * stud.count;
 const json = `${JSON.stringify(scene)}\n`;
 
-// The home says how many pieces it is (web/index.html #hero-pieces), and so
-// does each language's word for its line (web/_lang/*.json, the English as
-// its key and the language's own); the pages in each language are
-// tools/site_lang.py's to write from them.
-const home = join(ROOT, "web/index.html");
-const homeNow = readFileSync(home, "utf8");
-const homeMade = homeNow.replace(/(<span id="hero-pieces">)\d+ pieces(<\/span>)/, `$1${all.length} pieces$2`);
-if (homeMade === homeNow && !homeNow.includes(`<span id="hero-pieces">${all.length} pieces</span>`)) {
-  throw new Error("hero_mark: web/index.html has no #hero-pieces to say the count in");
-}
+// The mark's model, for the app (models/) and for the header's turn
+// (web/hero/, drawn by tools/site/mark_turn.mjs into web/img/hero/mark-turn.webp).
 const outputs = [[join(ROOT, "models/brickworks_mark.ldr"), text], [join(ROOT, "web/hero/mark.ldr"), text],
-  [join(ROOT, "web/hero/mark.json"), json], [home, homeMade]];
-for (const lang of ["de", "fr", "es"]) {
-  const file = join(ROOT, `web/_lang/${lang}.json`);
-  const now = readFileSync(file, "utf8");
-  if (!now.includes('id=\\"hero-pieces\\">')) throw new Error(`hero_mark: ${file} has no #hero-pieces line`);
-  outputs.push([file, now.replace(/(id=\\"hero-pieces\\">)\d+/g, `$1${all.length}`)]);
-}
+  [join(ROOT, "web/hero/mark.json"), json]];
 const pieces = {};
 for (const p of all) pieces[p.kind] = (pieces[p.kind] || 0) + 1;
 const said = `${all.length} pieces (${Object.entries(pieces).map(([k, n]) => `${n} ${k}s`).join(", ")}), `

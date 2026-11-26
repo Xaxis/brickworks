@@ -10,9 +10,11 @@
   gallery's and Talk's own seeds). Each build's post is a way into the
   studio: Open in the studio, Remix, Build it and Parts, a 3D turn of it on
   a hover or a tap, and how it was made, each a link to that feature's docs.
-  Signed out, one band over it says what Brickworks is, with the search and
-  Start building; a post in the stream opens the studio itself in the feed
-  on a tap. Signed in, the same search with Share a build beside it, and
+  Signed out, one band over it says what Brickworks is, with Start
+  building, free and See what people build beside a loop of the studio at
+  work (herostudio, 2026-11-26; docs/HOME.md, docs/HERO.md); a post in the
+  stream opens the studio itself in the feed on a tap. Signed in, the
+  search with Share a build beside it, and
   the tabs For you, Following and New. Under the feed: the beta while it
   is open, the studio (the app's picture and five things a build needs),
   and one last offer. No title or
@@ -75,96 +77,81 @@
 <style>
 /* Only layout here; every control, panel, card and post is site.css's. */
 
-/* The first screen (homefeed, 2026-11-23; docs/SOCIAL.md section 11): the
-   feed. Signed out, one band over it says what Brickworks is in a line,
-   with the search and Start building; signed in (<html data-signed>,
-   web/theme.js, before the first frame) the band is the search alone with
-   Share a build beside it, over the feed's tabs, For you, Following and
-   New. Laid out so a phone's first post starts within 600 px and a
-   laptop's first row of pictures is whole in its first screen, above the
-   beta bar. */
+/* The first screen (herostudio, 2026-11-26; homefeed's feed under it).
+   Signed out: what Brickworks is, shown working: one line, one sentence,
+   Start building and See what people build, and beside them (under them
+   on a phone) a loop of the real studio, bricks dropped on studs, the
+   steps played, a photo-real render and a share, with the feed's first
+   builds just under the fold. Signed in (<html data-signed>, web/theme.js,
+   before the first frame) the band is the search alone with Share a build
+   beside it, over the feed's tabs, For you, Following and New. */
 .home-band { padding: clamp(16px, 2vw, 24px) 0 var(--s-7); }
-/* The words on the left and the mark in bricks beside them from 900 px,
-   large (up to 400 px, rising into the header's shadow), its line on the
-   mark's own baseline; under that a compact band
-   over the words, the mark at 45% of the width with its line beside it
-   (hero3d, 2026-11-23). Both keep the band short enough that a laptop's
-   first screen shows at least 60% of each first-row picture of the feed
-   and a phone's shows its first picture begun (tools/web/landing_check.mjs).
-   The yellow's light behind the mark. */
-.home-hero { display: grid; gap: var(--s-3); align-items: center; }
-.hero-mark { margin: 0; min-width: 0; display: flex; align-items: flex-end; gap: var(--s-3); }
-@media (width < 900px) { .hero-mark { order: -1; } }
+/* From 900 px the words on the left and the loop beside them, the larger,
+   the yellow's light behind it; under that the words over the loop. */
+.home-hero { display: grid; gap: var(--s-5); align-items: center; }
 @media (width >= 900px) {
-	.home-band { padding: 16px 0 var(--s-7); background-image: radial-gradient(26% 85% at 82% 48%, color-mix(in srgb, var(--yellow) 18%, transparent), transparent 72%), var(--studs); }
-	.home-hero { grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-6); }
-	/* Up 47 px under the header (the stage's empty top: the bricks begin
-	   9 px under the header's edge; the header, over it, keeps its own
-	   clicks): the mark as large as it can be with the band no taller. */
-	.hero-mark { position: relative; flex-direction: column; align-items: center; gap: 0; margin: -47px 0 0; }
+	.home-band { padding: clamp(24px, 3vw, 40px) 0 var(--s-7); background-image: radial-gradient(34% 80% at 74% 50%, color-mix(in srgb, var(--yellow) 16%, transparent), transparent 72%), var(--studs); }
+	.home-hero { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 4vw, 64px); }
 }
-/* The mark: its poster in the HTML, its size given, so the page is whole
-   at its first paint and nothing moves when the 3D takes the poster's
-   place (web/landing.js, web/viewer3d.js hero3d); the poster is the same
-   drawing at the same shape. */
-.hero-stage {
-	position: relative; flex: none; width: 45%; aspect-ratio: 460 / 414; border-radius: var(--r-3);
-	touch-action: pan-y; -webkit-tap-highlight-color: transparent; outline-offset: 2px;
+/* The loop: its poster in the HTML, its size given (16:10, a phone's 9:16
+   under 600 px), so the page is whole at its first paint and nothing moves
+   when the video takes the poster's place (web/landing.js), the same
+   picture. A browser's window round the desktop's, the app's own address
+   in its bar; a phone's rounded glass round the phone's. */
+.hero-loop { position: relative; margin: 0; min-width: 0; }
+.loop-frame { position: relative; overflow: hidden; }
+.loop-frame img, .loop-frame video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+.loop-frame video { position: absolute; left: 0; bottom: 0; opacity: 0; transition: opacity 0.4s ease; }
+.hero-loop.live .loop-frame video { opacity: 1; }
+@media (width < 600px) {
+	/* At most half the window high, so most of it is in the first screen
+	   under the words and the feed begins just under it. */
+	.hero-loop { justify-self: center; width: min(100%, calc(min(50vh, 440px) * 9 / 16 + 12px)); }
+	.hero-loop .window { display: none; }
+	.hero-loop.shot { border-radius: var(--r-4); border: 6px solid var(--panel-hi); }
+	.loop-frame { border-radius: var(--r-3); }
+	.loop-frame img, .loop-frame video { aspect-ratio: 9 / 16; }
 }
-/* From 900 px as tall as the window leaves it, 400 px at most: the band's
-   foot and the feed's head keep the page's rhythm (homefix, 2026-11-23,
-   the owner: "you fucked up the consistent spacing above 'What builders
-   are making'"; its line sat on the band's edge and the heading on the
-   line) and a laptop's 800 px still shows the first row of builds. */
-@media (width >= 900px) {
-	.hero-stage { width: auto; height: clamp(280px, 100vh - 500px, 400px); }
-	/* Its focus ring round the mark and its line, from the header's edge
-	   down (the stage's top is under the header). */
-	@supports selector(:has(a)) {
-		.hero-stage:focus-visible { outline: none; }
-		.hero-mark:has(> .hero-stage:focus-visible)::after {
-			content: ""; position: absolute; inset: 31px 0 0; border-radius: var(--r-3);
-			box-shadow: inset 0 0 0 3px var(--focus); pointer-events: none;
-		}
-	}
+/* What the loop is doing now, in a word or three (#hero-loop's cues, the
+   page's language), over its foot; and the way to stop it, as anything
+   that moves for longer than five seconds has (WCAG 2.2.2). Each on a
+   ground of its own over the picture, as a card's like and Save are. */
+.loop-say {
+	position: absolute; left: 14px; bottom: 14px; margin: 0; padding: 7px 13px; border-radius: var(--r-pill);
+	background: var(--panel); color: var(--ink); font-size: var(--t-small); font-weight: 650; letter-spacing: -0.01em;
+	box-shadow: 0 1px 3px var(--shade);
+	opacity: 0; transform: translateY(4px); transition: opacity 0.3s ease, transform 0.3s ease; pointer-events: none;
 }
-.hero-stage img, .hero-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.hero-stage img { object-fit: contain; }
-.hero-canvas { opacity: 0; transition: opacity 0.35s ease; }
-.hero-stage.live { cursor: grab; }
-.hero-stage.held { cursor: grabbing; }
-.hero-stage.live .hero-canvas { opacity: 1; }
-.hero-stage.live .hero-poster { opacity: 0; transition: opacity 0.3s ease 0.1s; }
-/* While it assembles, what crosses the picture's top fades in, so no brick
-   appears in mid-air (tools/viewer/hero.js). */
-.hero-stage.assembling .hero-canvas { -webkit-mask-image: linear-gradient(transparent, #000 7%); mask-image: linear-gradient(transparent, #000 7%); }
-/* Its line, naming it a build: what it is, and the way into the studio
-   with it. A word a row beside the phone's mark; on a laptop one line on
-   the mark's baseline, in the stage's empty foot under the bricks, so it
-   takes no row of its own. */
-.hero-credit { display: flex; flex-direction: column; gap: 2px; margin: 0; padding-bottom: var(--s-2); color: var(--ink-soft); font-size: var(--t-small); line-height: 1.4; }
-.hero-credit a { color: var(--ink); font-weight: 600; }
-.hero-credit .hero-sep { display: none; margin-inline: 0.45em; color: var(--ink-faint); }
-@media (width >= 900px) {
-	.hero-credit { position: relative; flex-direction: row; gap: 0; margin-top: -19px; padding: 0; white-space: nowrap; }
-	.hero-credit .hero-sep { display: inline; }
+.loop-say.shown { opacity: 1; transform: none; }
+.loop-stop {
+	position: absolute; right: 10px; bottom: 10px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0;
+	border-radius: 50%; border: 0; background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px var(--shade); cursor: pointer;
+	opacity: 0; transition: opacity 0.2s ease;
 }
-/* The line at --t-h1, a page title's size. */
+.loop-stop[hidden] { display: none; }
+.hero-loop.live .loop-stop, .loop-stop:focus-visible { opacity: 1; }
+.loop-stop:hover { background: var(--panel-hi); }
+.loop-stop svg { width: 18px; height: 18px; fill: currentColor; }
+.loop-stop .play { display: none; }
+.loop-stop[aria-pressed="true"] .play { display: block; }
+.loop-stop[aria-pressed="true"] .pause { display: none; }
+@media (width < 600px) { .loop-say { left: 10px; bottom: 10px; font-size: var(--t-tiny); } }
+/* The line a page title's size (the token scale's --t-h1), the sentence a lede's. */
 .home-words h1 {
-	margin: 0 0 var(--s-2); max-width: 22ch; font-size: var(--t-h1); line-height: 1.02; letter-spacing: -0.04em; font-weight: 760;
+	margin: 0 0 var(--s-3); max-width: 20ch; font-size: var(--t-h1); line-height: 1.04; letter-spacing: -0.04em; font-weight: 780;
 	text-wrap: balance;
 }
-.home-words .lede { margin: 0 0 var(--s-4); max-width: 60ch; }
-/* A laptop's band: the line and the sentence each one line, so the feed's
-   first row of pictures is whole on the first screen, over the beta bar. */
-@media (width >= 900px) { .home-words h1, .home-words .lede { max-width: none; } }
-/* The search and Start building in a row, the search taking what is left;
-   on a phone one over the other, each the whole width, signed in Share a
-   build and Share a file too, as one group (one of its own width beside
-   one the whole width on two lines looked like two things). All at the
-   44 px every field and button is (docs/DESIGN_SYSTEM.md). */
+.home-words .lede { margin: 0 0 var(--s-5); max-width: 46ch; text-wrap: pretty; }
+/* Signed out, Start building and See what people build in a row (the
+   search is a signed-in band's: a visitor's first screen has one way in
+   and one way to look round, herostudio); signed in, the search taking
+   what is left of the row with Share a build and Share a file beside it.
+   On a phone one over the other, each the whole width, as one group (one
+   of its own width beside one the whole width on two lines looked like two
+   things). All at the 44 px every field and button is (docs/DESIGN_SYSTEM.md). */
 .home-acts { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: flex-start; max-width: 720px; }
 .find { position: relative; flex: 1 1 320px; min-width: 0; }
+:root:not([data-signed="in"]) .home-acts > .find { display: none; }
 .home-acts > .cta { flex: none; }
 .home-acts > .mine { display: none; }
 @media (width < 600px) {
@@ -207,8 +194,9 @@
    tabs under it. The heading is kept for a screen reader. */
 :root[data-signed="in"] .home-band { padding: clamp(16px, 3vw, 32px) 0 0; background: none; }
 :root[data-signed="in"] .home-hero { display: block; }
-:root[data-signed="in"] .hero-mark, :root[data-signed="in"] .home-words .lede,
-:root[data-signed="in"] .home-words .note, :root[data-signed="in"] .home-acts > .start { display: none; }
+:root[data-signed="in"] .hero-loop, :root[data-signed="in"] .home-words .lede,
+:root[data-signed="in"] .home-words .note, :root[data-signed="in"] .home-acts > .start,
+:root[data-signed="in"] .home-acts > .see { display: none; }
 :root[data-signed="in"] .home-words h1 {
 	position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
@@ -223,11 +211,11 @@
    inner page's body is under its head (site.css .page-hero, .page-body). */
 .home-feed { padding: var(--s-7) 0 var(--section); }
 :root[data-signed="in"] .home-feed { padding-top: var(--s-5); border-top: 0; }
-/* A phone's: the same rhythm a step down (--s-5 each side of the line),
-   and the mark from the header's edge (its poster's own top is its room),
-   so its first post still starts within 600 px (homefeed_check.mjs). */
+/* A phone's: the same rhythm a step down (--s-5 each side of the line and
+   over the headline), so the feed's first post starts just under the fold
+   with the loop over it (landing_check.mjs BELOW, homefeed_check.mjs). */
 @media (width < 600px) {
-	.home-band { padding-top: 0; padding-bottom: var(--s-5); }
+	.home-band { padding-top: var(--s-5); padding-bottom: var(--s-5); }
 	.home-feed { padding-top: var(--s-5); }
 }
 .feed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); margin: 0 0 var(--s-4); border-bottom: 1px solid var(--line); }
@@ -335,17 +323,18 @@
 </header>
 
 <main id="main">
-	<!-- The band over the feed, signed out (homefeed, 2026-11-23): what
-	     Brickworks is in a line, a search over models, builders and sets
-	     (web/home-find.js, asked for once the field is used) and Start
-	     building, which opens the studio. Signed in, the search alone with
-	     Share a build and Share a file beside it (.mine), over the feed's
-	     tabs (<html data-signed>, web/theme.js; homefix, 2026-11-23). -->
+	<!-- The band over the feed, signed out (herostudio, 2026-11-26;
+	     homefeed's before it): what Brickworks is in a headline and a
+	     line, Start building, free (the studio) and See what people build
+	     (the gallery), and the studio's loop. Signed in, the search alone
+	     (web/home-find.js, asked for once the field is used) with Share a
+	     build and Share a file beside it (.mine), over the feed's tabs
+	     (<html data-signed>, web/theme.js; homefix, 2026-11-23). -->
 	<section class="home-band halo" id="home" aria-labelledby="hero-h">
 		<div class="wrap wide home-hero">
 			<div class="home-words">
-				<h1 id="hero-h">Build, share and find <em>LEGO® models</em></h1>
-				<p class="lede">A free CAD in your browser. Every build here was made in it: open one, change it, build it.</p>
+				<h1 id="hero-h">Design <em>LEGO® models</em> in your browser</h1>
+				<p class="lede">A free CAD with every LDraw part. Drop bricks on studs, follow the steps, render it like a photo and share it with other builders.</p>
 				<div class="home-acts">
 					<!-- Sent, it is the gallery's search (models, builders and
 					     tags); as it is typed, sets and builders as well. -->
@@ -360,28 +349,38 @@
 						</label>
 						<div class="find-list" id="find-list" role="listbox" aria-label="What the search finds" hidden></div>
 					</form>
-					<a class="cta start" href="/app">Start building <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta start" href="/app">Start building, free <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost see" href="/gallery">See what people build</a>
 					<a class="cta mine" href="/app?share" id="share-build">Share a build <span class="arrow" aria-hidden="true">→</span></a>
 					<a class="cta ghost mine" href="/share-model">Share a file from another program</a>
 				</div>
-				<p class="note">Free, with nothing to install. <a href="/compare">How it compares with Studio</a></p>
+				<p class="note">Nothing to install, on a computer, a tablet or a phone. <a href="/compare">How it compares with Studio</a></p>
 			</div>
-			<!-- Our mark built in LEGO® bricks (hero3d, 2026-11-23;
-			     tools/web/hero_mark.mjs, web/hero/): its poster, drawn by the
-			     same code as its 3D (tools/web/hero_poster.mjs), until
-			     web/landing.js lets the 3D take its place, once the page is
-			     drawn, the hero is in view and the browser is idle, on a
-			     device that draws it smoothly. Open it in the studio is the
-			     gallery's Open of it (tools/web/home_shelf.mjs writes its
-			     link at the deploy), else the app's own example. -->
-			<figure class="hero-mark" id="hero-mark">
-				<div class="hero-stage" id="hero-stage" data-scene="/hero/mark.json" tabindex="0" role="application"
-					aria-roledescription="3D view" aria-label="The Brickworks mark, built in LEGO® bricks">
-					<img class="hero-poster" src="/img/hero/mark-444.webp" srcset="/img/hero/mark-222.webp 222w, /img/hero/mark-444.webp 444w, /img/hero/mark-888.webp 888w"
-						sizes="(min-width: 900px) 444px, 45vw" width="444" height="400" fetchpriority="high" decoding="async"
-						alt="The Brickworks mark built in LEGO® bricks: a cube of yellow, red and blue bricks with one corner cut away, the cut’s faces a shade darker">
+			<!-- The studio at work (herostudio, 2026-11-26): a loop played in
+			     the real app and taken from its window by
+			     tools/site/hero_capture.py (src/dev/hero_capture_probe.gd),
+			     a desktop's (16:10) and, under 600 px, a phone's (9:16). Its
+			     poster, the loop's own frame, is the first paint; web/landing.js
+			     puts the video over it once the page is in, the browser idle
+			     and the loop in view, unless the visitor asked for less motion
+			     or to save data. Its cues (written by hero_capture.py): the
+			     loop's seconds, then when each caption begins. -->
+			<figure class="hero-loop shot" id="hero-loop" data-cues-desktop="18.67;0:drop,5.43:steps,9.63:render,14.7:share" data-cues-phone="12.77;0:drop,3.57:steps,9.37:share">
+				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
+				<div class="loop-frame">
+					<picture>
+						<source media="(width < 600px)" srcset="/img/hero/studio-phone-360.webp 360w, /img/hero/studio-phone-720.webp 720w" sizes="260px" width="720" height="1280">
+						<img class="loop-poster" src="/img/hero/studio-desktop-1440.webp" srcset="/img/hero/studio-desktop-720.webp 720w, /img/hero/studio-desktop-1440.webp 1440w"
+							sizes="(width >= 900px) 56vw, calc(100vw - 48px)" width="1440" height="900" fetchpriority="high" decoding="async"
+							alt="The Brickworks studio at work: bricks taken from the parts bin and dropped onto studs, a sports car’s building steps played one by one, the car turned and rendered like a photograph, then shared with a link.">
+					</picture>
+					<p class="loop-say" id="loop-say" aria-hidden="true"></p>
+					<button type="button" class="loop-stop" id="loop-stop" aria-pressed="false" hidden>
+						<svg class="pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+						<svg class="play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+						<span class="visually-hidden">Pause the studio’s loop</span>
+					</button>
 				</div>
-				<figcaption class="hero-credit">Built in Brickworks<span class="hero-sep" aria-hidden="true">·</span><span id="hero-pieces">189 pieces</span><span class="hero-sep" aria-hidden="true">·</span><a id="hero-open" href="/app?model=res://models/brickworks_mark.ldr">Open it in the studio</a></figcaption>
 			</figure>
 		</div>
 	</section>
