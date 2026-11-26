@@ -118,7 +118,7 @@ lib:blocking a person
 
 ## Your feed {#feed}
 
-[brickworks.diy/feed](/feed) is what the people you follow made, newest first: new models, new versions, photos of builds, and models added to lists you follow. With nothing new it shows **Latest on Brickworks** and designers to follow. In the app, **Account** says how many posts are new (*Account · 3*), with **Open your feed**.
+[brickworks.diy/feed](/feed) is what the people you follow made, newest first: new models, new versions, photos of builds, and models added to lists you follow. Your own work is in it too, as soon as you post it: a model you list in the gallery, a new version of one, a photo of your build, a challenge entry, each said *You shared…* and never counted as new. With nothing new from anyone else it shows **Latest on Brickworks** and designers to follow under your own. The home page's **Following** tab is the same feed. In the app, **Account** says how many posts are new (*Account · 3*), with **Open your feed**.
 
 <!-- covers
 ui:your feed page

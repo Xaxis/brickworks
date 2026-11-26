@@ -475,7 +475,12 @@ they have. A Claude connector belongs to the account that switched it on.
   "Publishing means you agree to the guidelines" (`share_guidelines`, opens
   `/guidelines` on the deployment). For an account under 13 List it in the
   gallery and Show who made it are off, with a line why; `page_state` says
-  `list_disabled`, `credit_disabled`, `young` and `guidelines`.
+  `list_disabled`, `credit_disabled`, `young` and `guidelines`. Listed with
+  Show who made it unticked (feedself, 2026-11-26), one line under the two
+  (`_unnamed`, `_follow_unnamed`, `page_state` `unnamed`): "Listed without
+  your name, it will not be on your profile or in your followers' feeds.",
+  in de/fr/es (`locale/*.po`); gone with the name shown or the listing off.
+  `share_view_probe` checks all three and draws `8c_listed_unnamed.png`.
   **Pictures for both themes** (2026-10-24, docs/SOCIAL.md U15): beside that
   PNG, which link previews on other sites keep, the same render with nothing
   behind the model (`cutout`, a PNG under the same limit) for the model's

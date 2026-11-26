@@ -2296,7 +2296,23 @@ plan with Claude as the client.
   Brickworks: `#latest-models` cards, `#latest-photos` a `.build-grid`)
   when signed out (`#signed-out`, Sign in), following nobody (`#nobody`)
   or with nothing in 90 days (`#quiet`). `html[data-feed]` is `ready`,
-  `signed-out`, `not-yet` or `failed`. The 60-word lede is gone.
+  `signed-out`, `not-yet` or `failed`. The 60-word lede is gone. Since
+  feedself (2026-11-26, `supabase/feed_self.sql`, from sitewalk3's newcomer
+  who posted and found the feed empty) your own work is in it too:
+  `own_page` beside `follow_page`, put together in time order to the
+  microsecond (`withOwn`), each row `mine` and said "You ..." (`feedSaid`;
+  one listed without your name says it is on no profile and in no
+  follower's feed), never New (`isNew`) and never counted
+  (`feed_new_count` unchanged); `li.feed-row.mine[data-mine=yes]`. Rows
+  that are all yours count as empty: `#nobody` (now under `#rows`) and
+  Latest still show. The home's Following tab draws them with
+  `data-mine="yes"` and no Follow (`feedItem`, `buildPostHtml` `mine`),
+  and says how to fill it while nobody else is in it. Before the file is
+  applied the feed is as it was. Proof: `tools/feed_self_try.sql` (dry
+  run: only the viewer's listed work, not link-only, unpublished or taken
+  out, nor anyone else's), `tests/test_feed_self.py`, and `feed_flow` step
+  4b (Ada's own feed at 390 and 1280, and her nameless sketch kept out of
+  Bob's).
 - `follow a person and the count on Account` (`web/follow.js`): loaded by
   every page with the site's header, the model page and `/u/`, `/c/`.
   `button[data-follow]` shown once `?op=follows` answers (Follow, Following,
