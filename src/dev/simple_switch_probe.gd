@@ -197,7 +197,7 @@ func _case_layer() -> void:
 			var least: float = Phone.px(root, Phone.TARGET) - 0.5
 			_ok(full.size.y >= least and full.size.x >= least, "Full is a fingertip each way: %s" % full.size)
 	_ok(str(ShellPrefs.value("controls")) == "simple", "remembered: simple")
-	_same("into Simple", before, _state(), false)
+	_into("into Simple", before, _state())
 	await _picture("simple")
 	if full != null:
 		full.pressed.emit()
@@ -250,7 +250,7 @@ func _case_model(tag: String, path: String) -> void:
 		into.append(_timed(&"simple"))
 		await _frames(3)
 		if n == 0:
-			_same("%s: into Simple" % tag, before, _state(), false)
+			_into("%s: into Simple" % tag, before, _state())
 		back.append(_timed(&"full"))
 		await _frames(3)
 	_same("%s: and back to Full, three times over" % tag, before, _state())
@@ -323,7 +323,7 @@ func _case_steps() -> void:
 	await _frames(4)
 	_ok(not _steps.is_playing_back(), "into Simple: the timeline put away")
 	_ok((_builder.lattice.ahead as Dictionary).is_empty(), "the whole model shown")
-	_ok(_builder.selection.keys() == picked, "the selection kept: %s" % [_builder.selection.keys()])
+	_ok(_builder.selection.is_empty(), "Full's selection %s set aside in Simple: %s" % [picked, _builder.selection.keys()])
 	_exact("the model as it was", opened, _records_all())
 	await _main.call("_toggle_steps")
 	await _frames(4)
@@ -576,7 +576,7 @@ func _edits(plan: Dictionary, switch: bool) -> Dictionary:
 		var before: Dictionary = _state()
 		_main.call("use_controls", &"simple")
 		await _frames(3)
-		_same("into Simple after an edit in Full", before, _state(), false)
+		_into("into Simple after an edit in Full", before, _state())
 		_builder.clear_selection()
 	var put: int = await _add_part(plan["spot"])
 	if put == 0:
@@ -668,6 +668,21 @@ func _same(said: String, was: Dictionary, now: Dictionary, camera: bool = true) 
 			differ.append(key)
 	_ok(differ.is_empty(), "%s: the model, selection, undo, hand, tool, save%s as they were%s"
 		% [said, " and camera" if camera else "", "" if differ.is_empty() else " (differ: %s)" % ", ".join(differ)])
+
+
+## Into Simple: everything of [method _same] but the camera and the
+## selection, and nothing chosen. Full's selection is set aside, not acted on
+## (simple2, simplereview2 S1): Simple acts on what is chosen in Simple, and
+## Full has its own back on leaving if nothing was chosen meanwhile.
+func _into(said: String, was: Dictionary, now: Dictionary) -> void:
+	var differ := PackedStringArray()
+	for key: String in was:
+		if key != "camera" and key != "selection" and str(was[key]) != str(now[key]):
+			differ.append(key)
+	_ok(differ.is_empty(), "%s: the model, undo, hand, tool, save as they were%s"
+		% [said, "" if differ.is_empty() else " (differ: %s)" % ", ".join(differ)])
+	_ok((now["selection"] as Array).is_empty(), "%s: Full's selection set aside, nothing chosen in Simple (%s)"
+		% [said, now["selection"]])
 
 
 ## Every line of [param original] nobody touched is in [param saved], byte for

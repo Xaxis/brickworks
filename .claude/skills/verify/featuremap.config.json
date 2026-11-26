@@ -7465,6 +7465,13 @@
       "entry": "src/dev/simplep1_probe.gd",
       "reach": "PROBE_SIZE=390x844 tools/probe.sh simplep1_probe -- [--tablet] [--desktop] [--checks=0] [--walks=0] [--lifts=0,32,56,80] [--full [--desktop]] --pictures=DIR   (windowed; Simple's checks, three newcomer walks, Full's pictures; numbers in DIR/*.json)",
       "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simple2 probe",
+      "entry": "src/dev/simple2_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simple2_probe -- [--tablet] [--desktop] [--case=offworld,fitone,movedoff,setaside,keys,header] --pictures=DIR   (windowed; Simple's world, what it acts on, Full's header with Simple in More or \"…\")",
+      "area": "building"
     }
   ]
 }

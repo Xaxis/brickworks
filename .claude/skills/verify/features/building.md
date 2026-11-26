@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, cli:wingplace probe, cli:room steady probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe, cli:wide150 probe, cli:studio words probe, ui:simple's controls swapped in live, cli:simple_switch probe, ui:simple mode, cli:simplep1 probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, cli:wingplace probe, cli:room steady probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe, cli:wide150 probe, cli:studio words probe, ui:simple's controls swapped in live, cli:simple_switch probe, ui:simple mode, cli:simplep1 probe, cli:simple2 probe -->
 
 ## Sub-features
 
@@ -4037,8 +4037,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   layer goes over the model with the notices strip lent to it; the model is
   framed in Simple's room, under the header and over the tray, and Full's
   view comes back on leaving if Simple's was not moved. The model, its
-  undo, the selection, the sub-assembly being edited, the tool, what is in
-  hand, a drag under way and the save are the same objects either side. The
+  undo, the sub-assembly being edited, the tool, what is in Full's hand and
+  the save are the same objects either side; Full's selection is set aside
+  in Simple (nothing chosen there) and back in Full if nothing was chosen in
+  Simple meanwhile, and Simple's own moment (a tray drag, a ghost, a move)
+  is let go of at the switch, a moved part back where it was. The
   timeline is put away going in (the whole model shown; its key opens
   nothing in Simple) and opens again on the same step coming back
   (`StepsBar.show_step`). A finger's hold opens nothing in Simple, nor a
@@ -4093,7 +4096,32 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   and left as they are, said once per model ("Simple leaves N parts as they
   are...") and again when one is tapped. With Full picked nothing of it is
   made (`Later`) and the studio is the same to the pixel but the header's
-  switch.
+  switch. Simple owns three things (simple2, after simplereview2's S1-S6):
+  what it acts on (`SimpleLayer.acts_on`: every verb, the colours, Turn,
+  Copy, Delete, a drag and the kept keys Delete, Ctrl+D and Fit via
+  `run_key`, on what is chosen in Simple, never a part it leaves alone;
+  Full's selection is set aside going in and back on leaving if nothing was
+  chosen meanwhile; a drag chooses the brick the finger moved, not its
+  riders); its world (`world_box`: the plate or an opened model's own
+  floor with what is built on it; a ghost, a drop or a move only over it or
+  on a part, else nothing goes down and "Put it on the plate or on a brick";
+  first framing, Fit and the far cap from it); and one reset of the moment
+  (`reset`: the tray's choice, a ghost, a move, fingers, a half-made
+  gesture), run going in and out, on every open and New, and by Escape
+  before Full's ladder. `Main._hover_again` aims nothing in Simple. Where
+  Full's header has no room for Simple | Full (a phone 390 across, a narrow
+  window, a long language), the switch is put away rather than take Redo or
+  fold a menu, and Simple is a tile of More or a row of "…"
+  (`Shell` command `simple_mode`, `ModelBar.switch_folded`).
+- `simple2 probe` (`src/dev/simple2_probe.gd`; `PROBE_SIZE=390x844
+  tools/probe.sh simple2_probe -- --pictures=DIR`, `--tablet` at 820x1180,
+  `--desktop` at 1280x800; `--case=offworld,fitone,movedoff,setaside,keys,header`):
+  drops let go off the plate put nothing down and say why, a tap off it
+  shows no ghost; Fit after one brick keeps the plate whole; a brick dragged
+  off the plate goes back, no step, still chosen; Full's selection set aside
+  in Simple and back in Full; Delete and Ctrl+D on what Simple chose; Full's
+  header keeps Redo and every menu it had, Simple in More or "…", in
+  en/de/fr/es. Runs on `simplereview2_probe`'s start (`_start`).
 - `simplep1 probe` (`src/dev/simplep1_probe.gd`; `PROBE_SIZE=390x844
   tools/probe.sh simplep1_probe -- --pictures=DIR`, `PROBE_SIZE=430x932`,
   `PROBE_SIZE=820x1180 ... --tablet`, `PROBE_SIZE=1280x800 ... --desktop

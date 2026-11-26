@@ -474,6 +474,10 @@ func _show_simple() -> void:
 	if _top == null:
 		return
 	AppHeader.show_controls(_switch, &"simple" if simple else &"full")
+	# In Simple the switch is the way back, on the bar always; in Full the bar
+	# keeps it only where there is room (_share_top).
+	if simple and _switch != null:
+		_switch.visible = true
 	for control: Control in [_row, _pill, _fit, _name, _tool_buttons.get("undo"), _tool_buttons.get("redo")]:
 		if control != null:
 			control.visible = not simple
@@ -635,11 +639,20 @@ func _share_top() -> void:
 	var rest: float = 0.0
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		var counted: bool = control == redo or (control == _assistant and _assistant_wanted)
+		var counted: bool = control == redo or (control == _assistant and _assistant_wanted) \
+			or control == _switch
 		if control == _name or (not control.visible and not counted):
 			continue
 		rest += control.get_combined_minimum_size().x + gap + 1.0
 	var room: float = inside - rest
+	# Simple | Full on the bar only where it costs the name none of its width
+	# and Redo its place: at 390 it took Redo into More and 152 units of the
+	# name (simplereview2 A). Otherwise Simple is a tile of More (_fill_more).
+	if _switch != null:
+		var switch_wide: float = _switch.get_combined_minimum_size().x + gap + 1.0
+		_switch.visible = room >= p(WIDE_NAME if wide else NAME)
+		if not _switch.visible:
+			room += switch_wide
 	redo.visible = room >= p(NAME_LEAST)
 	if not redo.visible:
 		room += redo.get_combined_minimum_size().x + gap
@@ -1293,6 +1306,10 @@ func _fill_more() -> void:
 	for item: String in shell._shown(QUICK):
 		if shell.command(item) != null:
 			quick.append(item)
+	# Simple, where the bar has no room for Simple | Full (_share_top): the
+	# last tile, in the place the tiles leave empty at 390.
+	if not simple and _switch != null and not _switch.visible and shell.command("simple_mode") != null:
+		quick.append("simple_mode")
 	_more.add_tiles(quick)
 	for menu: Array in Shell.touch_menus():
 		var name: String = str(menu[0])

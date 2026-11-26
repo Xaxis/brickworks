@@ -18383,3 +18383,9 @@ msgstr "Einfach lässt %d Teile, wie sie sind (in Baugruppen, schräg oder biegs
 
 msgid "Simple leaves that part as it is: Full changes it"
 msgstr "Einfach lässt dieses Teil, wie es ist: Voll ändert es"
+
+msgid "Simple mode"
+msgstr "Einfacher Modus"
+
+msgid "Put it on the plate or on a brick"
+msgstr "Setz ihn auf die Grundplatte oder auf einen Stein"

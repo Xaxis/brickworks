@@ -39,6 +39,23 @@
 ## A part Simple cannot edit (in a sub-assembly or a figure, tilted, or a
 ## piece of a bendy part: [method left_alone]) is shown and left alone: a
 ## finger on it takes nothing, and entering Simple says so once.
+##
+## Simple owns three things while it is up, and reads none of them from Full
+## (simple2: simplereview2's S1-S6 were each Full's copy carried in):
+##   what it acts on   [method acts_on], the only thing a colour, Turn, Copy,
+##                     Delete or a move asks: the parts chosen in Simple, never
+##                     one it leaves alone. Full's selection is set aside on
+##                     the way in and comes back in Full if nothing was chosen.
+##   its world         [method world_box]: the plate (an opened model's own
+##                     floor and footprint) with the bricks on it. A brick is
+##                     offered only over it or on a part ([method _offered]),
+##                     and Fit, the first framing and how far the view pulls
+##                     back are all taken from it.
+##   the moment        [method reset]: what is in hand (the tray's choice, a
+##                     ghost, the fingers counted, a gesture half made) let go
+##                     of, on entering and leaving, every open and New, and
+##                     Escape; framed and told what is left alone where a
+##                     model is new to it.
 class_name SimpleLayer
 extends Control
 
@@ -169,6 +186,29 @@ var _told_left: Dictionary = {}
 ## Full's camera, put back as it was when Simple did not move it (left).
 var _camera_was: Dictionary = {}
 var _framed_pose: Array = []
+## The world's generation Simple last framed (a big model's [signal
+## ModelStore.shown] frames it before its open is over, as Full does).
+var _framed_gen: int = -1
+
+## Full's selection, set aside on the way in, of the world's generation it
+## was made in; brought back on the way out unless something was chosen in
+## Simple meanwhile ([member _chose_here]).
+var _full_selection: Array = []
+var _full_gen: int = -1
+var _chose_here: bool = false
+## Simple's own changes to the selection, which are not a person's choice to
+## hear of (_on_selection).
+var _picking: bool = false
+var _prune_queued: bool = false
+## [method acts_on]'s answer, kept until the model or the selection changes.
+var _acts: Array = []
+var _acts_key: Array = []
+## [method world_box] and [method _ground_rect]'s, likewise.
+var _box_kept: AABB = AABB()
+var _ground_kept: Rect2 = Rect2()
+var _world_key: Array = []
+## The brick a finger is moving: what is chosen once it is down (S6).
+var _moving_brick: int = 0
 
 ## What a check reads of the last drop: where it was aimed, whether it
 ## went down, and the parts it put down or moved.
@@ -204,9 +244,33 @@ func _ready() -> void:
 		bar.said.connect(_hear)
 		# A new model begun in Simple is a sketch: on a small plate, framed.
 		bar.started_new.connect(func() -> void:
-			if is_visible_in_tree():
+			if _up():
 				new_sketch())
+		# Every open (the bar's, the store's list, a link, the connector's
+		# open_model): the moment let go of, the model framed in Simple's
+		# world and what it leaves alone said (S4). Connected after Main's,
+		# so Simple's framing is the last.
+		bar.opened.connect(func(_bricks: int) -> void:
+			if _up():
+				reset(_framed_gen != (app.get("_world") as BrickWorld).generation())
+				_tell_left_alone())
+	var store: ModelStore = app.get("_store")
+	if store != null:
+		# A big model on the screen before it is whole: framed then, as Full
+		# frames it, and not again when its open is over.
+		store.shown.connect(func() -> void:
+			if _up():
+				reset(true))
+	if builder != null:
+		builder.selection_changed.connect(_on_selection)
 	set_process(true)
+
+
+## Whether Simple's controls are the ones up (Main.use_controls): false from
+## the moment the switch back to Full begins, so what it does on the way out
+## is not taken for a choice made in Simple.
+func _up() -> bool:
+	return is_visible_in_tree() and StringName(app.call("controls_layer")) == &"simple"
 
 
 func p(points: float) -> float:
@@ -490,34 +554,51 @@ func foot_height() -> float:
 
 
 ## Simple's controls just put in place: the camera's fingers its (one finger
-## builds, two move the view), a new sketch on its small plate, the model
-## framed whole in the room left it, and what it leaves alone said once.
+## builds, two move the view), Full's selection set aside, a new sketch on its
+## small plate, and the moment begun afresh: framed whole in Simple's world
+## and what it leaves alone said once.
 func entered() -> void:
 	var camera: CadCamera = app.get("_camera")
+	var builder: Builder = app.get("_builder")
 	_camera_was = {"phone": camera.phone, "touch_over": camera.touch_over,
 		"finger_taken": camera.finger_taken, "far": camera.max_distance, "pose": _pose(camera)}
 	camera.phone = true
 	camera.touch_over = Callable(app, &"_over_panel_at")
 	camera.finger_taken = finger_taken
+	# What Full had selected is never what Simple acts on (S1): set aside, and
+	# back in Full as it was unless something is chosen here.
+	_full_selection = builder.selection.keys()
+	_full_gen = (app.get("_world") as BrickWorld).generation()
+	_pick([])
+	_chose_here = false
 	_lay_out()
 	_sketch()
-	# The model framed and its left-alone parts counted a frame later: each
-	# reads every part, and the switch is the controls' work alone, whatever
-	# the model's size (10030 took it to 18.8 ms at 390 under load).
+	reset(false)
+	# Framed and its left-alone parts counted a frame later: each reads every
+	# part, and the switch is the controls' work alone, whatever the model's
+	# size (10030 took it to 18.8 ms at 390 under load).
 	_settle_in.call_deferred()
 
 
 func _settle_in() -> void:
-	if not is_visible_in_tree():
-		return
-	_frame()
-	_tell_left_alone()
+	if _up():
+		_frame()
+		_tell_left_alone()
 
 
-## Back to Full: the camera's fingers the studio's again, and its view as
-## Full left it if Simple's was not moved.
+## Back to Full: the moment let go of, the camera's fingers the studio's
+## again, its view as Full left it if Simple's was not moved, and Full's
+## selection back where nothing was chosen in Simple.
 func left() -> void:
-	_cancel_press()
+	reset(false)
+	var builder: Builder = app.get("_builder")
+	var world: BrickWorld = app.get("_world")
+	if not _chose_here and _full_gen == world.generation():
+		builder.clear_selection()
+		for id: Variant in _full_selection:
+			if world.get_brick(int(id)) != null and not builder.selection.has(int(id)):
+				builder.select_brick(int(id), true)
+	_full_selection = []
 	var camera: CadCamera = app.get("_camera")
 	if _camera_was.is_empty():
 		return
@@ -528,6 +609,61 @@ func left() -> void:
 	if str(_pose(camera)) == str(_framed_pose):
 		_set_pose(camera, _camera_was["pose"])
 	_camera_was = {}
+
+
+## The moment let go of: the tray's choice and what it put in hand, a ghost
+## shown, a tray drag, a move (put back where it was), a turn of the view by
+## the mouse, the fingers counted and any gesture half made. Called on
+## entering and leaving Simple, on every open and New, and by Escape: one
+## place, so no way in leaves any of it behind (S3, S5). Full's own hand (a
+## part picked in Full, a lift) is Full's, and is left as it is. With
+## [param frame_too], a model new to Simple's view: framed in its world and
+## told what it leaves alone.
+func reset(frame_too: bool = false) -> void:
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	if _moving:
+		verbs.put_away()
+	if _turning_view:
+		(app.get("_camera") as CadCamera).end_drag(MOUSE_BUTTON_LEFT)
+	var own_hand: bool = not _chosen.is_empty() or _tray_dragging
+	var ghost: bool = _ghost_shown or _ghost_drag
+	_moving = false
+	_moving_brick = 0
+	_turning_view = false
+	_finger = -1
+	_mouse = false
+	_brick = 0
+	_left_one = 0
+	_others = 0
+	_travel = 0.0
+	_hinted = false
+	_ghost_drag = false
+	_ghost_shown = false
+	_tray_part = ""
+	_tray_dragging = false
+	_tray_travel = 0.0
+	_foot_tile = null
+	_touches.clear()
+	_moved_from.clear()
+	if _bin != null:
+		_bin.modulate = Color.WHITE
+	_chosen = ""
+	_dress_tiles()
+	if own_hand:
+		_put_hand_away()
+	elif ghost and builder != null:
+		builder.hide_preview()
+	if frame_too and _up():
+		_frame()
+		_tell_left_alone()
+
+
+## Whether Simple holds anything of the moment: Escape lets go of it first,
+## before Full's ladder (Main).
+func has_moment() -> bool:
+	return not _chosen.is_empty() or _tray_dragging or _ghost_shown or _ghost_drag or _moving \
+		or _turning_view
 
 
 ## A model with nothing on it yet and nothing done to it is a new sketch:
@@ -549,27 +685,105 @@ func _sketch() -> void:
 	app.call("_lay_baseplate")
 
 
-## The model framed in Simple's room, the view kept from pulling back so far
-## a stud is under [constant LEAST_STUD] points, unless the model itself
-## needs that much room to be seen whole.
+## Simple's world framed in its room: the plate and the bricks together
+## ([method world_box]), by their corners, as a flat plate is far less tall
+## than the ball round it (by the ball a new sketch's plate took 43% of a
+## 1280 x 800 window's room). Framed on the bricks alone, Fit after one brick
+## ran the plate off the screen (S2). The view is then kept from pulling
+## back so far a stud is under [constant LEAST_STUD] points, unless the world
+## itself needs that much room to be seen whole (S4: 10030-1 opened in
+## Simple was seen from inside).
 func _frame() -> void:
 	var camera: CadCamera = app.get("_camera")
 	camera.max_distance = float(_camera_was.get("far", 40000.0))
-	var box: AABB = app.call("_built_bounds")
+	var box: AABB = world_box()
 	if box.size.length_squared() <= 0.0:
 		return
-	var world: BrickWorld = app.get("_world")
-	var store: ModelStore = app.get("_store")
-	var sketch: bool = world.brick_count() - store.scenery.size() == 0
-	# A new sketch's plate fills the view: framed by its corners, as a flat
-	# square is far less tall than the ball round it (by the ball it took 43%
-	# of a 1280 x 800 window's room).
-	if sketch:
-		camera.frame_corners(box, 1.08)
-	else:
-		camera.frame(box, 1.15)
+	camera.frame_corners(box, 1.08)
 	_set_far(camera.get("_target_distance"))
 	_framed_pose = _pose(camera)
+	_framed_gen = (app.get("_world") as BrickWorld).generation()
+
+
+## Simple's world: what the model stands on (the plate, or an opened model's
+## own floor: its own baseplate, the plates laid under it, the grid) with
+## everything built on it; with no floor, what is built alone.
+func world_box() -> AABB:
+	_know_world()
+	return _box_kept
+
+
+## Where a part may stand on the ground in Simple's world, seen from above:
+## the floor's area, or with no floor the model's own footprint. A part off it is offered
+## only where it stands on a part ([method _offered]).
+func _ground_rect() -> Rect2:
+	_know_world()
+	return _ground_kept
+
+
+func _know_world() -> void:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var floor: FloorLayer = app.get("_floor")
+	if world == null or store == null:
+		return
+	var area: AABB = floor.area if floor != null and store.model_floor.kind != ModelFloor.NONE else AABB()
+	var key: Array = [world.generation(), world.revision, world.brick_count(), store.scenery.size(), area]
+	if key == _world_key:
+		return
+	_world_key = key
+	var built: AABB = app.call("_model_bounds")
+	var box := AABB()
+	var ground := Rect2()
+	if area.size.x > 0.0 and area.size.z > 0.0:
+		# The plates' tops are the ground; their studs and their thickness
+		# round it, as they are drawn.
+		box = AABB(area.position - Vector3(0.0, BrickLattice.PLATE, 0.0),
+			area.size + Vector3(0.0, BrickLattice.PLATE + FloorLayer.STUD_HIGH, 0.0))
+		ground = Rect2(area.position.x, area.position.z, area.size.x, area.size.z)
+	if built.size.length_squared() > 0.0:
+		box = built if box.size == Vector3.ZERO else box.merge(built)
+		# With no floor, the model's own footprint is its ground; never
+		# added to a floor's, or each part put at its edge would widen it.
+		if ground.size == Vector2.ZERO:
+			ground = Rect2(built.position.x, built.position.z, built.size.x, built.size.z)
+	if box.size == Vector3.ZERO:
+		box = app.call("_built_bounds")
+	_box_kept = box
+	_ground_kept = ground
+
+
+## Whether the ghost, or what a finger carries, stands where Simple offers a
+## part: on the plate (in Simple's world, [method _ground_rect]) or on a
+## part. Off it, beyond the plate's edge or out at the horizon, the studio's
+## own aim had found the endless ground (S2: a tray drag let go over the sky
+## put a brick 56 studs off): refused there as over the tray.
+func _offered() -> bool:
+	var builder: Builder = app.get("_builder")
+	if builder == null or not builder.has_preview():
+		return false
+	var middle: Vector2
+	if builder.is_carrying():
+		if not builder.carrying.stands_on_ground(builder):
+			return true
+		var pivot: Vector3 = builder.carrying.pivot()
+		middle = Vector2(pivot.x, pivot.z)
+	else:
+		var box: AABB = _ghost_box()
+		if box.size == Vector3.ZERO:
+			return false
+		# Its foot over the ground's top: on a part, which holds it, wherever
+		# that part is.
+		if box.position.y > float(Builder.GROUND_CELL * BrickLattice.CELL) + ON_GROUND:
+			return true
+		middle = Vector2(box.get_center().x, box.get_center().z)
+	var ground: Rect2 = _ground_rect()
+	return ground.size != Vector2.ZERO and ground.grow(0.5).has_point(middle)
+
+
+## LDU over the ground's top a foot still stands on it: under a plate's
+## height, so a part on a plate never counts.
+const ON_GROUND := 4.0
 
 
 ## How far back the view may go: where a stud is LEAST_STUD points, or the
@@ -586,10 +800,11 @@ func fit() -> void:
 	_frame()
 
 
-## A new model in Simple: on the sketch's plate, framed (ModelBar.started_new).
+## A new model in Simple: on the sketch's plate, the moment begun afresh and
+## framed (ModelBar.started_new).
 func new_sketch() -> void:
 	_sketch()
-	_frame()
+	reset(true)
 
 
 ## The least a stud can be drawn now, in points, as far back as the view may
@@ -619,7 +834,9 @@ static func _set_pose(camera: CadCamera, pose: Array) -> void:
 ## What Simple leaves alone said once a model, plainly.
 func _tell_left_alone() -> void:
 	var world: BrickWorld = app.get("_world")
-	if world == null or _told_left.has(world.generation()):
+	# Not while a big model is still being laid: counted once it is whole
+	# (its open's end, ModelBar.opened).
+	if world == null or _told_left.has(world.generation()) or (app.get("_store") as ModelStore).laying:
 		return
 	# Counted once a model, none or some: a switch back and forth on a set
 	# of thousands counts nothing again.
@@ -662,8 +879,10 @@ func _on_swatch(code: int) -> void:
 	var builder: Builder = app.get("_builder")
 	if builder != null:
 		builder.held_color = code
-		# A brick selected takes it: the recolour, one step to undo.
-		if not builder.selection.is_empty() and not builder.is_carrying():
+		# A brick chosen takes it: the recolour, one step to undo.
+		var ids: Array = acts_on()
+		if not ids.is_empty() and not builder.is_carrying():
+			_pick(ids)
 			var painted: int = builder.paint_selection(code)
 			if painted > 0:
 				counts["painted"] += 1
@@ -773,7 +992,7 @@ func _tile_input(event: InputEvent, tile: Control, part: String) -> void:
 		_tray_travel = maxf(_tray_travel, motion.global_position.distance_to(_tray_from))
 		if not _tray_dragging and _tray_travel > p(SLOP):
 			_tray_dragging = true
-			_select_none()
+			_pick([])
 			_take(part)
 		if _tray_dragging:
 			_aim(_aimed(motion.global_position, p(RAMP)))
@@ -822,7 +1041,7 @@ func _tap_tile(part: String) -> void:
 	_chosen = "" if _chosen == part else part
 	_dress_tiles()
 	if not _chosen.is_empty():
-		_select_none()
+		_pick([])
 		_take(_chosen)
 		var builder: Builder = app.get("_builder")
 		if builder != null:
@@ -857,8 +1076,8 @@ func _mouse_now() -> bool:
 	return _mouse or (not _tray_part.is_empty() and _touches.is_empty() and not Phone.on())
 
 
-## The ghost aimed at [param at]: on the nearest legal studs, or out of
-## sight over the interface.
+## The ghost aimed at [param at]: on the nearest legal studs in Simple's
+## world, or out of sight over the interface and off the world (S2).
 func _aim(at: Vector2) -> void:
 	var builder: Builder = app.get("_builder")
 	if builder == null:
@@ -867,6 +1086,8 @@ func _aim(at: Vector2) -> void:
 		builder.hide_preview()
 		return
 	app.call("_refresh_preview", at)
+	if builder.has_preview() and not _offered():
+		builder.hide_preview()
 
 
 func _drop_from_tray(at: Vector2, finger: Vector2, from: String = "tray") -> void:
@@ -886,16 +1107,28 @@ func _drop_from_tray(at: Vector2, finger: Vector2, from: String = "tray") -> voi
 
 
 ## One of the part in hand put down where [param at] aims, seated, or
-## refused and said so.
+## refused and said so: off Simple's world nothing goes down (S2).
 func _place_at(at: Vector2) -> void:
 	app.call("_aim_at", at)
 	_put_down()
 
 
+## A part let go of off Simple's world: nothing put down, said why.
+func _off_world() -> void:
+	counts["cancelled"] += 1
+	last_drop["why"] = "off the plate"
+	_say(atr("Put it on the plate or on a brick"))
+
+
 ## One of the part in hand put down where its ghost stands, seated, or
-## refused and said so.
+## refused and said so; a ghost off Simple's world, whoever aimed it,
+## puts nothing down.
 func _put_down() -> void:
 	var builder: Builder = app.get("_builder")
+	if builder.has_preview() and not _offered():
+		_off_world()
+		builder.hide_preview()
+		return
 	last_drop["valid"] = builder.can_place()
 	last_drop["ghost"] = builder.ghost_transform()
 	var id: int = builder.place() if builder.can_place() else 0
@@ -996,26 +1229,81 @@ func _unchoose() -> void:
 # -- a selected brick's buttons --------------------------------------------------------
 
 
-func _selected() -> Array:
+## What every verb of Simple acts on (a colour, Turn, Copy, Delete, a move,
+## the keys it keeps): the parts chosen in Simple, by a finger's tap, the
+## brick a finger moved, a copy or a paste put down; still on the model, and
+## never a part Simple leaves alone. While Simple is up the selection is its
+## own: Full's is set aside on the way in (entered), so what Full had chosen
+## is never this (S1).
+func acts_on() -> Array:
 	var builder: Builder = app.get("_builder")
-	return builder.selection.keys() if builder != null else []
+	var world: BrickWorld = app.get("_world")
+	if builder == null or world == null:
+		return []
+	var key: Array = [world.generation(), world.revision, builder.selection.hash()]
+	if key != _acts_key:
+		_acts_key = key
+		_acts = []
+		for id: Variant in builder.selection:
+			if world.get_brick(int(id)) != null and left_alone(int(id)).is_empty():
+				_acts.append(int(id))
+	return _acts.duplicate()
 
 
-func _select_none() -> void:
+## The selection made [param ids], each a part Simple may act on: what a tap,
+## a move and Copy choose, and what every verb narrows it to before it acts.
+func _pick(ids: Array) -> void:
 	var builder: Builder = app.get("_builder")
-	if builder != null and not builder.selection.is_empty():
+	if builder == null:
+		return
+	_picking = true
+	var keep: Dictionary = {}
+	for id: Variant in ids:
+		if left_alone(int(id)).is_empty():
+			keep[int(id)] = true
+	if builder.selection.size() != keep.size() or not keep.keys().all(func(id: int) -> bool:
+			return builder.selection.has(id)):
 		builder.clear_selection()
+		for id: int in keep:
+			if not builder.selection.has(id):
+				builder.select_brick(id, true)
+	_picking = false
+	if _up():
+		_chose_here = true
 
 
-## Turn: the selected brick a quarter about up, where it stands. Where there
+## The selection changed while Simple is up (a key's paste, an undo, a check):
+## a choice made in Simple, kept to the parts it may act on.
+func _on_selection(_count: int) -> void:
+	if _picking or not _up():
+		return
+	_chose_here = true
+	if not _prune_queued:
+		_prune_queued = true
+		_prune.call_deferred()
+
+
+func _prune() -> void:
+	_prune_queued = false
+	var builder: Builder = app.get("_builder")
+	if not _up() or builder == null or builder.is_carrying():
+		return
+	var ids: Array = acts_on()
+	if ids.size() != builder.selection.size():
+		_pick(ids)
+
+
+## Turn: the brick chosen a quarter about up, where it stands. Where there
 ## is no room to turn, what is in the way is lit and it stays as it was (the
 ## studio's turn takes it into hand instead, and a newcomer's next colour
 ## then painted nothing: appwalk's proposal 2).
 func turn_selected() -> int:
 	var builder: Builder = app.get("_builder")
 	var verbs: EditVerbs = app.get("_verbs")
-	if builder == null or builder.selection.is_empty() or builder.is_carrying():
+	var ids: Array = acts_on()
+	if builder == null or ids.is_empty() or builder.is_carrying():
 		return 0
+	_pick(ids)
 	var turned: int = builder.turn_selection_by(90.0)
 	if turned == 0:
 		verbs.call("_flash", builder.refused_by)
@@ -1033,8 +1321,10 @@ func turn_selected() -> int:
 func copy_selected() -> int:
 	var builder: Builder = app.get("_builder")
 	var verbs: EditVerbs = app.get("_verbs")
-	if builder == null or builder.selection.is_empty() or builder.is_carrying():
+	var ids: Array = acts_on()
+	if builder == null or ids.is_empty() or builder.is_carrying():
 		return 0
+	_pick(ids)
 	var copied: int = verbs.duplicate_beside()
 	if copied > 0:
 		counts["copied"] += 1
@@ -1042,22 +1332,41 @@ func copy_selected() -> int:
 			_say(atr("Tap where the copy goes"))
 		else:
 			var put: Array = builder.selection.keys()
+			_pick(put)
 			_seat(put)
 			_say(atr("A copy beside it: drag it where it goes"))
 	return copied
 
 
-## Delete: the selection taken off, one step to undo.
+## Delete: what Simple acts on taken off, one step to undo.
 func delete_selected() -> int:
 	var builder: Builder = app.get("_builder")
-	if builder == null or builder.selection.is_empty() or builder.is_carrying():
+	var ids: Array = acts_on()
+	if builder == null or ids.is_empty() or builder.is_carrying():
 		return 0
+	_pick(ids)
 	var gone: int = builder.remove_selection()
 	if gone > 0:
 		counts["deleted"] += 1
 		_edited()
 		_say(atr("Deleted"))
 	return gone
+
+
+## A key Simple keeps (Main.SIMPLE_KEEPS) that acts on parts or frames the
+## view, run as Simple's own verb: Delete and Duplicate on what it acts on,
+## Fit on its world, as its buttons do. True when it was one of those.
+func run_key(command: String) -> bool:
+	match command:
+		"fit", "fit_model":
+			fit()
+		"delete":
+			delete_selected()
+		"duplicate":
+			copy_selected()
+		_:
+			return false
+	return true
 
 
 func _edited() -> void:
@@ -1067,7 +1376,7 @@ func _edited() -> void:
 
 
 func _run(what: String) -> void:
-	_cancel_press()
+	reset(false)
 	var shell: Shell = app.get("_shell")
 	if shell != null:
 		shell.run(what)
@@ -1088,10 +1397,9 @@ func _double_tapped(at: Vector2) -> void:
 	if not is_visible_in_tree():
 		return
 	var verbs: EditVerbs = app.get("_verbs")
-	var builder: Builder = app.get("_builder")
 	var brick: int = verbs.brick_at(at)
 	# A part in hand: its two taps showed it and put it down, and turn nothing.
-	if brick != 0 and builder.selection.has(brick) and _held().is_empty():
+	if brick != 0 and acts_on().has(brick) and _held().is_empty():
 		turn_selected()
 
 
@@ -1115,7 +1423,7 @@ func hint() -> String:
 		return atr("Tap it to put it down · drag it to move it")
 	if not _held().is_empty():
 		return atr("Tap where it goes") if finger else atr("Tap the model to put one there")
-	if builder != null and not builder.selection.is_empty():
+	if not acts_on().is_empty():
 		return atr("Drag it to move it · tap a colour to paint it")
 	return atr("Drag a brick onto the model · two fingers turn the view") if finger \
 		else atr("Drag a brick onto the model · drag the view to turn it")
@@ -1315,7 +1623,8 @@ func _drag(at: Vector2) -> void:
 		_say(atr("Two fingers turn the view"))
 
 
-## The press's brick lifted to follow the finger, with what rests on it
+## The press's brick lifted to follow the finger, alone of what is chosen
+## (a drag acts on the brick the finger moved, S1), with what rests on it
 ## unless that is a part Simple leaves alone.
 func _start_move() -> void:
 	var camera: CadCamera = app.get("_camera")
@@ -1324,8 +1633,7 @@ func _start_move() -> void:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	_unchoose()
-	if not builder.selection.has(_brick):
-		builder.select_brick(_brick, false)
+	_pick([_brick])
 	var found: Dictionary = Carry.riders(world, builder.lattice, builder.selection.keys(), store.scenery,
 		builder.takes, builder.locked)
 	var alone: bool = false
@@ -1344,10 +1652,10 @@ func _start_move() -> void:
 		if brick != null:
 			_moved_from[int(id)] = brick.transform
 	_moving = verbs.drag_start(_brick, false, alone, [camera.ray_origin(_down), camera.ray_normal(_down)])
+	_moving_brick = _brick if _moving else 0
 	if not _moving:
 		_moved_from.clear()
 		_brick = 0
-		return
 
 
 func _bin_lit(at: Vector2) -> void:
@@ -1385,13 +1693,19 @@ func _release(at: Vector2) -> void:
 		# one out of the tray.
 		_drop_from_tray(_aimed(_ghost_from + (at - _down), _travel), at, "tap")
 		return
-	# A copy in hand: put down where the finger aims, tapped or dragged.
+	# A copy in hand: put down where the finger aims, tapped or dragged; off
+	# Simple's world it stays in hand.
 	if builder.is_carrying() and verbs.mode != "place":
 		var aim: Vector2 = at if tap else _aimed(at, p(RAMP))
 		last_drop = {"aimed": aim, "put": [], "from": "copy"}
+		_aim(aim)
+		if not builder.has_preview():
+			_off_world()
+			return
 		app.call("_drop_dragged", aim)
 		if not builder.is_carrying():
 			counts["put"] += 1
+			_pick(builder.selection.keys())
 			last_drop["put"] = builder.selection.keys()
 			_seat(builder.selection.keys())
 		return
@@ -1418,6 +1732,8 @@ func _release(at: Vector2) -> void:
 			_aim(at)
 			_ghost_shown = builder.has_preview()
 			last_drop["shown"] = _ghost_shown
+			if not _ghost_shown and not _over_ui(at):
+				_off_world()
 		return
 	var under: int = verbs.brick_at(at) if mouse else brick
 	if under == 0:
@@ -1425,14 +1741,14 @@ func _release(at: Vector2) -> void:
 	if under != 0 and not left_alone(under).is_empty():
 		counts["left_alone"] += 1
 		_say(atr("Simple leaves that part as it is: Full changes it"))
-		builder.clear_selection()
+		_pick([])
 		return
 	if under != 0:
-		builder.select_brick(under, false)
+		_pick([under])
 		counts["selected"] += 1
 		_colour_of(under)
 		return
-	builder.clear_selection()
+	_pick([])
 
 
 ## The colour strip showing the colour of [param brick_id], selected.
@@ -1454,12 +1770,12 @@ func _end_move(at: Vector2) -> void:
 	var aim: Vector2 = _aimed(at, _travel)
 	last_drop = {"aimed": aim, "put": [], "from": "model"}
 	var ids: Array = _moved_from.keys()
+	var finger_brick: int = _moving_brick
+	_moving_brick = 0
 	# Over the bin: put back and taken off, one step to undo.
 	if _bin.get_global_rect().grow(p(8.0)).has_point(at):
 		builder.cancel_carry()
-		builder.clear_selection()
-		for id: int in ids:
-			builder.select_brick(id, true)
+		_pick(ids)
 		var gone: int = builder.remove_selection()
 		counts["binned"] += 1
 		last_drop["why"] = "the bin"
@@ -1469,13 +1785,21 @@ func _end_move(at: Vector2) -> void:
 		_say(atr("Deleted"))
 		_put_hand_away()
 		return
-	# Over the tray: put back where it was.
-	if _foot.get_global_rect().has_point(at) or _over_ui(aim):
+	# Over the tray, or off Simple's world: put back where it was.
+	var off: bool = false
+	if not (_foot.get_global_rect().has_point(at) or _over_ui(aim)):
+		_aim(aim)
+		off = not builder.has_preview()
+	if off or _foot.get_global_rect().has_point(at) or _over_ui(aim):
 		verbs.put_away()
-		counts["cancelled"] += 1
-		last_drop["why"] = "over the tray"
+		if off:
+			_off_world()
+		else:
+			counts["cancelled"] += 1
+			last_drop["why"] = "over the tray"
 		_moved_from.clear()
 		_put_hand_away()
+		_pick([finger_brick])
 		return
 	app.call("_drop_dragged", aim)
 	var moved: Array = []
@@ -1492,29 +1816,8 @@ func _end_move(at: Vector2) -> void:
 		last_drop["why"] = "no room"
 	_moved_from.clear()
 	_put_hand_away()
-
-
-## Whatever a finger was doing let go of, put back: the switch to Full or a
-## button pressed mid-drag.
-func _cancel_press() -> void:
-	if _moving:
-		var verbs: EditVerbs = app.get("_verbs")
-		verbs.put_away()
-	if _turning_view:
-		(app.get("_camera") as CadCamera).end_drag(MOUSE_BUTTON_LEFT)
-	_moving = false
-	_turning_view = false
-	_finger = -1
-	_mouse = false
-	_brick = 0
-	_ghost_drag = false
-	_ghost_shown = false
-	_moved_from.clear()
-	if _tray_dragging:
-		_tray_dragging = false
-		_tray_part = ""
-		_put_hand_away()
-	_unchoose()
+	# The brick the finger moved is what is chosen, not what rode on it (S6).
+	_pick([finger_brick])
 
 
 ## The part under [param at] Simple can edit, or the nearest within a
@@ -1585,7 +1888,7 @@ func _process(_delta: float) -> void:
 	if shell != null and _undo != null:
 		_undo.disabled = not shell.can("undo")
 		_redo.disabled = not shell.can("redo")
-	var picked: bool = builder != null and not builder.selection.is_empty() and not builder.is_carrying()
+	var picked: bool = builder != null and not builder.is_carrying() and not acts_on().is_empty()
 	for button: Button in [_turn, _copy, _delete]:
 		if button.visible != (picked and not _moving):
 			button.visible = picked and not _moving

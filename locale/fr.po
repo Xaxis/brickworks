@@ -18383,3 +18383,9 @@ msgstr "Simple laisse %d pièces telles quelles (dans des sous-ensembles, inclin
 
 msgid "Simple leaves that part as it is: Full changes it"
 msgstr "Simple laisse cette pièce telle quelle : Complet la modifie"
+
+msgid "Simple mode"
+msgstr "Mode Simple"
+
+msgid "Put it on the plate or on a brick"
+msgstr "Pose-la sur la plaque ou sur une brique"

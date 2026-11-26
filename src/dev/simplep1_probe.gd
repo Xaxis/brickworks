@@ -568,6 +568,36 @@ func _header_controls() -> Dictionary:
 	return (_main.get("_bar") as Node).call("controls_by_name")
 
 
+## Where Full's bar has no room for Simple | Full (a phone 390 across, a
+## narrow window), Simple from More's tile or "…"'s row, as a person
+## reaches it, with Redo kept on the phone's bar (simple2, simplereview2 A).
+func _simple_from_more() -> void:
+	if _phone != null:
+		var redo: Control = (_phone.get("_tool_buttons") as Dictionary).get("redo")
+		_check("...Full's bar without the switch keeps Redo", redo != null and redo.is_visible_in_tree())
+		_phone.call("_chose", "more")
+		await _frames(20)
+		var tile: Button = _phone.find_child("quick_simple_mode", true, false) as Button
+		_check("...Simple a tile of More", tile != null and tile.is_visible_in_tree())
+		await _shot("switch_more")
+		if tile != null:
+			await _tap_at(tile.get_global_rect().get_center())
+			if StringName(_main.get("_layer")) != &"simple":
+				tile.pressed.emit()
+		return
+	var bar: ModelBar = _main.get("_bar")
+	_check("...\"…\" on the bar for it", bar.more.is_visible_in_tree() and bool(bar.switch_folded))
+	var popup: PopupMenu = bar.more.get_popup()
+	popup.about_to_popup.emit()
+	var at: int = -1
+	for n: int in popup.item_count:
+		if popup.get_item_text(n) == "Simple mode":
+			at = n
+	_check("...Simple a row of \"…\"", at != -1)
+	if at != -1:
+		popup.id_pressed.emit(popup.get_item_id(at))
+
+
 func _the_switch() -> void:
 	await _fresh()
 	await _put("3001", 4, _base_point(0.0, 0.0))
@@ -601,7 +631,10 @@ func _the_switch() -> void:
 		_check("...the phone's foot row back", row != null and row.is_visible_in_tree())
 	await _settle()
 	await _shot("switch_full")
-	await _tap_at(simple.get_global_rect().get_center())
+	if simple.is_visible_in_tree():
+		await _tap_at(simple.get_global_rect().get_center())
+	else:
+		await _simple_from_more()
 	await _frames(8)
 	_check("one tap on Simple: Simple again, remembered", StringName(_main.get("_layer")) == &"simple"
 		and _simple.is_visible_in_tree() and str(ShellPrefs.value("controls")) == "simple")

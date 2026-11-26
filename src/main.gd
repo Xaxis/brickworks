@@ -7721,7 +7721,7 @@ func _build_ui() -> void:
 	# Simple's controls from the start, where the device was left in it or
 	# the address asks (use_controls).
 	if _viewing.is_empty() and _controls_wanted() == &"simple":
-		use_controls.call_deferred(&"simple")
+		call_deferred("use_controls", &"simple")
 	# The keys sheet lists the keys the menus show, and the strip reads the
 	# keymap, which knows the menus' keys now.
 	if _hint != null:
@@ -13406,6 +13406,12 @@ func _refresh_preview(at: Vector2 = Vector2.INF) -> void:
 func _hover_again() -> void:
 	if _marquee.is_drawing() or _camera.is_turning() or _camera.is_sliding():
 		return
+	# Simple aims on its own events alone (SimpleLayer._aim): a finger's
+	# ghost stands where the tap put it, and the pointer a finger left is
+	# stale. Aimed again here as the lens eased after the switch, it put
+	# simple1's one stray part where that pointer was (simplereview2 C).
+	if _layer == &"simple":
+		return
 	var at: Vector2 = _pointer()
 	if _over_panel_at(at):
 		_builder.hide_preview()
@@ -13611,7 +13617,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if meant == null:
 			return
 		if meant is String:
-			if not key.echo and not _store.laying and (_layer != &"simple" or meant in SIMPLE_KEEPS):
+			if not key.echo and not _store.laying and (_layer != &"simple" or meant in SIMPLE_KEEPS) \
+					and not (_layer == &"simple" and bool(_simple.call("run_key", meant))):
 				_key_action(meant)
 			return
 		key = meant
@@ -13621,6 +13628,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var command: String = _shell.command_for_key(key) \
 		if _shell != null and _viewing.is_empty() and not key.echo else ""
 	if _layer == &"simple" and not _simple_keeps(key, command):
+		return
+	# The kept keys that act on parts or frame the view are Simple's own verbs
+	# there, on what it acts on and its world (SimpleLayer.run_key).
+	if _layer == &"simple" and not _store.laying and bool(_simple.call("run_key", command)):
 		return
 	# While a model is being laid, only the keys that turn or zoom the view
 	# (Shell.WHILE_LAYING): nothing reads it or changes it until it is down.
@@ -13899,6 +13910,11 @@ func _key_pressed(key: InputEventKey) -> void:
 			# A box being drawn is the innermost of all: the button is
 			# still down. Thrown away, and the release that ends the
 			# drag is not taken for a click.
+			# In Simple, its moment first (the tray's choice, a ghost, a
+			# move): let go of, and nothing below it (simplereview2 S3).
+			if _layer == &"simple" and bool(_simple.call("has_moment")):
+				_simple.call("reset", false)
+				return
 			if _grabbing:
 				_grabbing = false
 				_grab_drag.cancel()

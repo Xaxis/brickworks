@@ -18383,3 +18383,9 @@ msgstr "Sencillo deja %d piezas como están (en subconjuntos, inclinadas o flexi
 
 msgid "Simple leaves that part as it is: Full changes it"
 msgstr "Sencillo deja esa pieza como está: Completo la cambia"
+
+msgid "Simple mode"
+msgstr "Modo Sencillo"
+
+msgid "Put it on the plate or on a brick"
+msgstr "Ponlo sobre la placa o sobre un ladrillo"

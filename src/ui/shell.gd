@@ -1628,6 +1628,11 @@ func _define() -> void:
 	_ticked("split_view", func() -> bool:
 		var split: SplitView = app.get("_split")
 		return split != null and split.is_showing())
+	# Simple | Full's Simple where the header has no room for the switch: More
+	# on a phone's Full, "…" on a narrow window's (simple2, simplereview2 A).
+	_add("simple_mode", "Simple mode", 0, func() -> void: app.call("use_controls", &"simple"),
+		func() -> bool: return str(app.get("_viewing")).is_empty(),
+		"Big bricks and fingers: tray, colours, drag to build")
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
 	_ticked("full_screen", func() -> bool:
 		return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN \
@@ -1904,11 +1909,20 @@ func _fold_into(more: MenuButton) -> void:
 		sub.about_to_popup.connect(func() -> void: _refresh(sub))
 		popup.add_child(sub)
 		_folded.append(sub)
+	popup.id_pressed.connect(_on_id)
 	popup.about_to_popup.connect(func() -> void:
 		popup.clear(false)
 		for n: int in _menus.size():
 			if not _menus[n].visible:
-				popup.add_submenu_node_item(str(MENUS[n][0]), _folded[n], SUBMENU_ID + n))
+				popup.add_submenu_node_item(str(MENUS[n][0]), _folded[n], SUBMENU_ID + n)
+		# Simple | Full put away by a row too narrow for it (ModelBar's
+		# switch_folded): Simple here, so no menu folded for it.
+		if bar.switch_folded:
+			if popup.item_count > 0:
+				popup.add_separator()
+			if not _ids.has("simple_mode"):
+				_ids.append("simple_mode")
+			popup.add_item(command("simple_mode").words, _ids.find("simple_mode")))
 	bar.menus_folded.connect(func() -> void:
 		var held: PackedStringArray = []
 		for button: MenuButton in _menus:
