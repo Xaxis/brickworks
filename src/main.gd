@@ -557,6 +557,15 @@ var _turning: PivotMark
 var _tools: TouchTools
 ## The phone's own bars and sheets, on a phone only (Phone.on).
 var _phone: Control
+## The controls over the model (use_controls): &"full", the studio's own,
+## the phone's or the desktop's as the device was found at the start, or
+## &"simple", Simple's (SimpleLayer), made the first time it is asked for.
+var _layer: StringName = &"full"
+var _simple: Control
+## What going into Simple put away to come back as it was, back in Full:
+## the timeline, open on a step ({} when it was not open), and where the
+## notices strip stood in its column.
+var _simple_left: Dictionary = {}
 ## Every dialog and panel over the model sized and placed for a finger,
 ## where the phone's layout is (TouchSizing).
 var _touch: TouchSizing
@@ -957,6 +966,7 @@ func _tell_page() -> void:
 	_told_page_at = now
 	_told_moment = moment
 	_hear_look_ask()
+	_hear_controls_ask()
 	var telling: int = Time.get_ticks_usec()
 	var ratio: Variant = JavaScriptBridge.eval("window.devicePixelRatio", true)
 	var per_css: float = float(ratio) if ratio != null and float(ratio) > 0.0 else 1.0
@@ -1004,6 +1014,8 @@ func _tell_page() -> void:
 	lap = _lap(laps, "before_state", lap)
 	JavaScriptBridge.eval("window.brickworksState = %s" % JSON.stringify({
 		"bricks": _world.brick_count() - _store.scenery.size(),
+		# The controls over the model, "full" or "simple" (use_controls).
+		"controls": String(_layer),
 		# Parts of a model just opened still on their way over the network
 		# (ModelStore.awaited): a browser check waits for none, rather than
 		# for the count to hold still between two looks, which it does
@@ -1312,6 +1324,116 @@ func _phone_wanted() -> bool:
 	return Phone.on() and _viewing.is_empty()
 
 
+## The controls over the model: &"full" or &"simple".
+func controls_layer() -> StringName:
+	return _layer
+
+
+## The controls over the model swapped while the model is open (Simple's
+## plan, bench/results/simplemode-2026-11-24/PLAN.md): &"simple" puts
+## Simple's layer (SimpleLayer) in place of the studio's own, the phone's
+## or the desktop's, and &"full" brings those back. Only the controls go:
+## the model, its undo, the selection, the sub-assembly being edited, the
+## tool, what is in hand (a part, a figure, a lift), a drag under way, the
+## camera and the save are the same objects either side, so nothing is
+## converted and nothing can be lost by it. The words being typed in a field
+## are its own first, as a field left is. The timeline is put away going in,
+## the whole model shown, as Simple shows it, and comes back on the step it
+## was on. Remembered on the device (ShellPrefs "controls"). Not in a
+## shared model's viewer, whose controls are its own. False when it is not.
+func use_controls(layer: StringName) -> bool:
+	if layer != &"full" and layer != &"simple":
+		return false
+	if not _viewing.is_empty() or _bar == null:
+		return false
+	ShellPrefs.put("controls", String(layer))
+	if layer == _layer:
+		return true
+	get_viewport().gui_release_focus()
+	var column: Control = _bar.get_parent()
+	if layer == &"simple":
+		if _simple == null:
+			_simple = Later.make(&"SimpleLayer")
+			_simple.app = self
+			$HUD.add_child(_simple)
+		# Over the studio's own controls and under every panel and dialog
+		# made since, the sign-in screen last.
+		var under: int = column.get_index()
+		if _phone != null:
+			under = maxi(under, _phone.get_index())
+		$HUD.move_child(_simple, under + 1 if _simple.get_index() > under else under)
+		_simple_left = {"steps": _timeline_left(), "notices_at": _notices.get_index()}
+		_notices.reparent(_simple.get("notices_slot"), false)
+		column.visible = false
+		if _phone != null:
+			_phone.visible = false
+		_simple.visible = true
+		_layer = layer
+	else:
+		_layer = layer
+		_simple.visible = false
+		var middle: Control = _over_model.get_parent()
+		_notices.reparent(middle, false)
+		middle.move_child(_notices, int(_simple_left.get("notices_at", 0)))
+		column.visible = true
+		if _phone != null:
+			_phone.visible = true
+		var steps: Dictionary = _simple_left.get("steps", {})
+		_simple_left = {}
+		if not steps.is_empty():
+			_timeline_back(steps)
+	_show_notices()
+	_hover_again()
+	return true
+
+
+## Simple wanted from the start: this device was left in it, or the address
+## (?controls=simple in a browser) or the command line (--controls=simple)
+## asks for it, which is remembered. Hidden: nothing in the window offers
+## it yet.
+func _controls_wanted() -> StringName:
+	var asked: String = _argument("--controls")
+	if OS.has_feature("web"):
+		var said: Variant = JavaScriptBridge.eval(
+			"new URLSearchParams(location.search).get('controls') || ''", true)
+		asked = str(said) if said != null else ""
+	if asked == "simple" or asked == "full":
+		ShellPrefs.put("controls", asked)
+	return &"simple" if str(ShellPrefs.value("controls")) == "simple" else &"full"
+
+
+## The timeline put away for Simple, the whole model shown: where it was,
+## to open it there again ({} when it was not open). Being worked out, it is
+## opened again from the start of its work.
+func _timeline_left() -> Dictionary:
+	if _steps == null:
+		return {}
+	if _steps.is_starting():
+		_steps.cancel_start()
+		return {"mode": _steps.mode(), "number": -1, "inside": 0, "shown": -1}
+	if not _steps.is_playing_back():
+		return {}
+	var at: Instructions.Step = _steps.current_step()
+	var left: Dictionary = {"mode": _steps.mode(), "number": at.number if at != null else -1,
+		"inside": at.callout_step if at != null else 0, "shown": _steps.shown()}
+	_steps.stop()
+	return left
+
+
+## The timeline open again on the step [param left] says (_timeline_left),
+## whatever was put down or taken off in Simple meanwhile.
+func _timeline_back(left: Dictionary) -> void:
+	if _world.brick_count() == 0 or _steps.is_playing_back() or _steps.is_starting():
+		return
+	if not await _steps.start(_world, _library, _store.scenery, true):
+		return
+	# Back in Simple before the steps were worked out: put away again.
+	if _layer == &"simple":
+		_simple_left["steps"] = _timeline_left()
+		return
+	_steps.show_step(int(left["number"]), int(left["inside"]), int(left["shown"]))
+
+
 ## The colours of the first few parts selected, for the page.
 func _selected_colours() -> Array:
 	var out: Array = []
@@ -1388,6 +1510,8 @@ func _page_controls() -> Dictionary:
 	if _phone != null:
 		# Over the bar's: its mark is hidden, and the phone's is the app's menu.
 		named.merge(_phone.controls_by_name(), true)
+	if _simple != null:
+		named.merge(_simple.call("controls_by_name"))
 	if _mosaic_made != null and _mosaic_made.visible:
 		named.merge(_mosaic.controls_by_name())
 	if _controls_made != null:
@@ -2696,6 +2820,17 @@ func _hear_look_ask() -> void:
 			_budget.unpin()
 	if int(asked.get("look", 0)) > 0:
 		_budget.look(clampi(int(asked["look"]), 1, 60))
+
+
+## The page's word to swap the controls while Simple is hidden (a check's,
+## or somebody trying it from the browser's console):
+## window.brickworksUseControls = "simple" or "full", heard as the page is
+## told and cleared (use_controls).
+func _hear_controls_ask() -> void:
+	var said: Variant = JavaScriptBridge.eval("(function () { var a = window.brickworksUseControls;"
+		+ " window.brickworksUseControls = undefined; return a === undefined ? '' : String(a); })()", true)
+	if said != null and not str(said).is_empty():
+		use_controls(StringName(str(said)))
 
 
 static func _argument(prefix: String) -> String:
@@ -7077,8 +7212,11 @@ func _build_ui() -> void:
 	var notes := VBoxContainer.new()
 	notes.add_theme_constant_override("separation", 4)
 	_notices.add_child(notes)
+	# A note enters the tree again when the strip is lent to Simple's layer
+	# and back (use_controls): connected once.
 	notes.child_entered_tree.connect(func(note: Node) -> void:
-		(note as Control).visibility_changed.connect(_show_notices))
+		if not (note as Control).visibility_changed.is_connected(_show_notices):
+			(note as Control).visibility_changed.connect(_show_notices))
 	middle.add_child(_notices)
 
 	var spacer := Control.new()
@@ -7301,6 +7439,10 @@ func _build_ui() -> void:
 	# The comments on parts of a model with a link, for its builder.
 	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _look_for_pins())
 	_store.begun.connect(func(_name: String) -> void: _look_for_pins())
+	# A timeline put away for Simple opens again on its step for that model
+	# only, not for one opened or begun in Simple (use_controls).
+	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _simple_left.erase("steps"))
+	_store.begun.connect(func(_name: String) -> void: _simple_left.erase("steps"))
 	# And again while the studio is open, for a pin written meanwhile.
 	var pins_clock := Timer.new()
 	pins_clock.name = "PinsAgain"
@@ -7532,6 +7674,10 @@ func _build_ui() -> void:
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
+	# Simple's controls from the start, where the device was left in it or
+	# the address asks (use_controls).
+	if _viewing.is_empty() and _controls_wanted() == &"simple":
+		use_controls.call_deferred(&"simple")
 	# The keys sheet lists the keys the menus show, and the strip reads the
 	# keymap, which knows the menus' keys now.
 	if _hint != null:
@@ -9618,6 +9764,9 @@ func _room_beside(opening: SideDock) -> float:
 ## banner showed, and the next double-click, meant for the wing inside the
 ## plane, found the plane's body there (assembly_probe).
 func _model_rect() -> Rect2:
+	# In Simple, the window Simple's layer leaves it (use_controls).
+	if _layer == &"simple":
+		return _simple.model_room(get_viewport().get_visible_rect())
 	var rect: Rect2 = _over_model.get_global_rect()
 	var top: float = (_over_model.get_parent() as Control).get_global_rect().position.y
 	rect = Rect2(rect.position.x, top, rect.size.x, rect.end.y - top)
@@ -9640,6 +9789,9 @@ func _model_rect() -> Rect2:
 func _model_covered() -> float:
 	if _over_model == null or not _over_model.is_inside_tree():
 		return 0.0
+	# In Simple the notices lie over the top of the window (SimpleLayer).
+	if _layer == &"simple":
+		return _notices.size.y if _notices.is_visible_in_tree() else 0.0
 	return maxf(0.0, _over_model.get_global_rect().position.y - _model_rect().position.y)
 
 
@@ -9886,6 +10038,9 @@ func _show_notices() -> void:
 	# drawer opened beside it, two thirds off a 390 phone (app_a11y,
 	# nightreds 2026-11-24).
 	var drawer: bool = _bin_dock.is_open() or (_chat_dock != null and _chat_dock.is_open())
+	# In Simple the drawers are put away with the rest (use_controls).
+	if _layer == &"simple":
+		drawer = false
 	_notices.visible = any and not (_phone != null and not Phone.wide() and drawer)
 	if _phone != null and any:
 		_for_a_finger(_notices)
@@ -10135,6 +10290,11 @@ func _toggle_steps(resume: bool = true) -> void:
 		_steps.stop()
 		return
 	if _world.brick_count() == 0:
+		return
+	# Simple shows the whole model, its timeline put away with Full's
+	# controls (use_controls): a key opening it there hid steps behind a bar
+	# nobody could see.
+	if _layer == &"simple":
 		return
 	await _steps.start(_world, _library, _store.scenery, resume)
 
@@ -12814,6 +12974,9 @@ func _on_phone_hold() -> void:
 	if _touch_index == -1 or _camera.fingers() > 1 or _store.laying or _grabbing \
 			or _dragging_part:
 		return
+	# Simple has no timed hold: the sheet it opens is the phone's, put away.
+	if _layer == &"simple":
+		return
 	_press_brick = 0
 	if _builder.is_carrying():
 		_verbs.put_away()
@@ -13114,15 +13277,21 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _props_dock, _chat_dock, _bar, _gizmo, _notices,
-			_tool_column]:
-		if panel != null and panel.visible \
-				and panel.get_global_rect().has_point(point):
+	# In Simple the studio's own panels are put away, open or not: only
+	# Simple's layer, with the notices in it, and what is over everything.
+	if _layer == &"simple":
+		if _simple.covers(point):
 			return true
-	if _shell != null and _shell.covers(point):
-		return true
-	if _phone != null and _phone.covers(point):
-		return true
+	else:
+		for panel: Control in [_bin_dock, _props_dock, _chat_dock, _bar, _gizmo, _notices,
+				_tool_column]:
+			if panel != null and panel.visible \
+					and panel.get_global_rect().has_point(point):
+				return true
+		if _shell != null and _shell.covers(point):
+			return true
+		if _phone != null and _phone.covers(point):
+			return true
 	if _build_mode != null and _build_mode.covers(point):
 		return true
 	# These cover the model rather than sitting beside it, so anywhere

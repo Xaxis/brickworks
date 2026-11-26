@@ -4976,6 +4976,20 @@
     },
     {
       "kind": "ui",
+      "label": "simple's controls swapped in live",
+      "entry": "src/ui/simple_layer.gd",
+      "reach": "hidden for now (Simple's phase 0): ?controls=simple in a browser's address or --controls=simple on the command line, remembered on the device (ShellPrefs controls); live from the page with window.brickworksUseControls = \"simple\" or \"full\" (brickworksState.controls says which); Main.use_controls(&\"simple\" | &\"full\") puts Simple's layer (SimpleLayer: the notices and Full studio, so far) in place of the studio's own, the phone's or the desktop's, and back, the model, undo, selection, hand, a drag, the camera and the save untouched; the timeline put away going in and back on its step (StepsBar.show_step)  (tools/probe.sh simple_switch_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simple_switch probe",
+      "entry": "src/dev/simple_switch_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh simple_switch_probe; PROBE_SIZE=390x844 tools/probe.sh simple_switch_probe; --case=layer|models|steps|hand|drag|typing|start; --pictures=DIR   (windowed, 1280x720 by its header)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "a set from a photo",
       "entry": "src/ui/collection_dialog.gd",
       "reach": "godot --path .  (Build, My collection…, What I own: Photo… beside Add sets, a photo of a box, a booklet's cover or a minifigure; asked of Brickognize's /predict/sets/ and /predict/figs/ at once, the top three offered, one pressed adds it; a minifigure kept among the sets by BrickLink's number and name, its parts not counted)",

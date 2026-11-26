@@ -154,6 +154,10 @@ const DEFAULTS: Dictionary = {
 	# Whether this computer was told it runs the simpler graphics mode
 	# (GraphicsMode.to_say): once, not at every start.
 	"said_simpler_graphics": false,
+	# The controls over the model (Main.use_controls): "full", the studio's
+	# own, or "simple", Simple's. Hidden for now: set by ?controls= in a
+	# browser's address or --controls= on the command line.
+	"controls": "full",
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

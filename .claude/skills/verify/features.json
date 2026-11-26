@@ -3735,6 +3735,14 @@
       "tests": []
     },
     {
+      "id": "cli:simple_switch probe",
+      "kind": "cli",
+      "entry": "src/dev/simple_switch_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh simple_switch_probe; PROBE_SIZE=390x844 tools/probe.sh simple_switch_probe; --case=layer|models|steps|hand|drag|typing|start; --pictures=DIR   (windowed, 1280x720 by its header)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:site check",
       "kind": "cli",
       "entry": "tools/web/site_check.mjs",
@@ -8475,6 +8483,14 @@
       "entry": "src/ui/sign_in_gate.gd",
       "reach": "godot --path .  (first open, signed out)  /  godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:simple's controls swapped in live",
+      "kind": "ui",
+      "entry": "src/ui/simple_layer.gd",
+      "reach": "hidden for now (Simple's phase 0): ?controls=simple in a browser's address or --controls=simple on the command line, remembered on the device (ShellPrefs controls); live from the page with window.brickworksUseControls = \"simple\" or \"full\" (brickworksState.controls says which); Main.use_controls(&\"simple\" | &\"full\") puts Simple's layer (SimpleLayer: the notices and Full studio, so far) in place of the studio's own, the phone's or the desktop's, and back, the model, undo, selection, hand, a drag, the camera and the save untouched; the timeline put away going in and back on its step (StepsBar.show_step)  (tools/probe.sh simple_switch_probe)",
+      "area": "building",
       "tests": []
     },
     {

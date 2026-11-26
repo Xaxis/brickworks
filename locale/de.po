@@ -18286,3 +18286,10 @@ msgstr "Bei diesem Konto meldest du dich nur mit einem Code an, den wir dir mail
 
 msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
 msgstr "Gerade gab es zu viele Anmeldungen mit %s. Versuch es in ein paar Minuten noch einmal oder melde dich mit einem Code an, den wir dir mailen."
+
+# Simple
+msgid "Full studio"
+msgstr "Ganzes Studio"
+
+msgid "Every tool of the studio, the same model"
+msgstr "Alle Werkzeuge des Studios, dasselbe Modell"

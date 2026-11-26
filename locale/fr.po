@@ -18286,3 +18286,10 @@ msgstr "Ce compte se connecte uniquement avec un code que nous vous envoyons par
 
 msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
 msgstr "Trop de connexions avec %s en ce moment. Réessayez dans quelques minutes, ou connectez-vous avec un code que nous vous envoyons par e-mail."
+
+# Simple
+msgid "Full studio"
+msgstr "Studio complet"
+
+msgid "Every tool of the studio, the same model"
+msgstr "Tous les outils du studio, le même modèle"
