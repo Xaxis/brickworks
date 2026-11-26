@@ -604,7 +604,9 @@ func _dress_name() -> void:
 		shown = Label.new()
 		shown.name = "shown_name"
 		shown.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		shown.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
+		# Forced: Godot adds no "…" to fewer than six letters left, and
+		# "Wide probe" read "Wide", as if that were the whole name.
+		shown.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE
 		shown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_name.add_child(shown)
 		_name.text_changed.connect(_show_name.unbind(1))

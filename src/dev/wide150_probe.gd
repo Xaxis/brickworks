@@ -360,7 +360,8 @@ func _cut(c: Control, shown: Rect2) -> String:
 		# Wrapped onto more lines than it shows, its last line is cut short:
 		# by letters ("1×2 avec rai…") unless at a word.
 		if wraps and label.get_line_count() > label.get_visible_line_count() \
-				and overrun != TextServer.OVERRUN_TRIM_WORD and overrun != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS:
+				and overrun != TextServer.OVERRUN_TRIM_WORD and overrun != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS \
+				and overrun != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE:
 			return "%s: \"%s\" wrapped onto %d lines, %d shown, cut by letters" % [_named(c),
 				text.replace("\n", " ").left(40), label.get_line_count(), label.get_visible_line_count()]
 		if label.uppercase:
@@ -417,7 +418,7 @@ func _cut(c: Control, shown: Rect2) -> String:
 			longest = w
 			long_word = word
 	var at_words: bool = wraps or overrun == TextServer.OVERRUN_TRIM_WORD \
-		or overrun == TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
+		or overrun == TextServer.OVERRUN_TRIM_WORD_ELLIPSIS or overrun == TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE
 	if at_words and longest <= room + 1.0:
 		return ""
 	if at_words:
