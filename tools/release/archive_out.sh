@@ -84,6 +84,8 @@ for d in "$BR"/*/; do
   [ -L "${d%/}" ] && continue
   cite=0
   while IFS= read -r pat; do
+    # A cited path may be a glob (bench/results/design3*), so $pat stays unquoted on purpose.
+    # shellcheck disable=SC2053
     [ -n "$pat" ] && [ "$pat" != '*' ] && [[ $name == $pat ]] && { cite=1; break; }
   done <<< "$cited"
   [ "$cite" = 1 ] && continue
