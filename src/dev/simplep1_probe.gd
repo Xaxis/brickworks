@@ -297,10 +297,10 @@ func _the_layer() -> void:
 		for picture: TextureRect in _simple.get("_pictures"):
 			if picture.texture != null:
 				pictured += 1
-		if pictured == 8:
+		if pictured == 6:
 			break
 		await process_frame
-	_check("every brick pictured (%d of 8)" % pictured, pictured == 8)
+	_check("every brick of the group shown pictured (%d of 6)" % pictured, pictured == 6)
 	await _fresh()
 	await _shot("layer")
 

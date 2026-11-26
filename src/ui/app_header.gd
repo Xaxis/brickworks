@@ -180,14 +180,23 @@ static func dress_switch(frame: PanelContainer, pt: float, finger: bool) -> void
 	face.set_border_width_all(maxi(1, roundi(pt)))
 	face.set_corner_radius_all(roundi(10.0 * pt))
 	face.set_content_margin_all(3.0 * pt)
+	# A finger's: each button the whole 44 points tall, the frame's padding
+	# at the sides alone (a tap on the padding over a 36-point button pressed
+	# nothing).
+	# Its line drawn just outside, so the whole is still the header's 44.
+	if finger:
+		face.content_margin_top = 0.0
+		face.content_margin_bottom = 0.0
+		face.expand_margin_top = maxf(1.0, roundf(pt))
+		face.expand_margin_bottom = maxf(1.0, roundf(pt))
 	frame.add_theme_stylebox_override("panel", face)
 	var row: HBoxContainer = frame.get_child(0) as HBoxContainer
 	row.add_theme_constant_override("separation", maxi(1, roundi(2.0 * pt)))
 	for child: Node in row.get_children():
 		var button: Button = child as Button
-		# The site's 36 px, a finger's 44 under 600 px; less the frame's
-		# padding and line, so the whole is the header's other controls'.
-		button.custom_minimum_size = Vector2(0.0, ((TARGET if finger else 36.0) - 8.0) * pt)
+		# The site's 36 px, less the frame's padding and line so the whole is
+		# the header's other controls'; a finger's 44 each.
+		button.custom_minimum_size = Vector2(0.0, (TARGET if finger else 36.0 - 8.0) * pt)
 		button.add_theme_font_override("font", word_font(button))
 		button.add_theme_font_size_override("font_size", roundi((15.0 if finger else 14.5) * pt))
 		for colour: String in ["font_color", "font_focus_color", "font_hover_color"]:

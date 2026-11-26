@@ -529,9 +529,11 @@ func _frame() -> void:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	var sketch: bool = world.brick_count() - store.scenery.size() == 0
-	# A new sketch's plate fills the view: framed by the plate, a sphere round
-	# a flat square left a ring of nothing round it.
-	camera.frame(box, 0.92 if sketch else 1.15)
+	# A new sketch's plate fills the view: the ball round a flat square
+	# frames it whole, its diagonal across the room as the default view
+	# turns it (0.92 cut its corners off at 390, 1.15 left a ring of
+	# nothing round it).
+	camera.frame(box, 1.05 if sketch else 1.15)
 	_set_far(camera.get("_target_distance"))
 	_framed_pose = _pose(camera)
 
@@ -1207,15 +1209,22 @@ func _start_move() -> void:
 	for rider: Variant in found["riders"]:
 		if not left_alone(int(rider)).is_empty():
 			alone = true
-	_moving = verbs.drag_start(_brick, false, alone, [camera.ray_origin(_down), camera.ray_normal(_down)])
-	if not _moving:
-		_brick = 0
-		return
+	# What the finger carries, read before the lift: once lifted it is in
+	# hand, and the selection no longer names it (a drag into the bin
+	# deleted nothing).
+	var carried: Array = builder.selection.keys()
+	if not alone:
+		carried.append_array(found["riders"])
 	_moved_from.clear()
-	for id: Variant in builder.selection:
+	for id: Variant in carried:
 		var brick: BrickWorld.Brick = world.get_brick(int(id))
 		if brick != null:
 			_moved_from[int(id)] = brick.transform
+	_moving = verbs.drag_start(_brick, false, alone, [camera.ray_origin(_down), camera.ray_normal(_down)])
+	if not _moving:
+		_moved_from.clear()
+		_brick = 0
+		return
 
 
 func _bin_lit(at: Vector2) -> void:
