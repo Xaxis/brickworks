@@ -88,8 +88,11 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   the cubes facing one way at one depth one shell (`Plan._cube_shells`,
   `_cube_shell`), and a cube with the one past it at the same height facing
   out too, the two one shell two cubes deep (`CUBE_DEEP`, the shell's
-  `"depth"`), each cube the side's outermost with the core three studs
-  behind it (`CUBE_BACK`) and no cap or ledge a plate or two thick on it unless the
+  `"depth"`), each cube the side's outermost with a stud of core behind it
+  (`CUBE_BACK`; where less than three, `CUBE_HOLDS`, only where that core runs
+  on into the model past the cube, `_runs_on`, `CUBE_REACH`), its plates none
+  that a side-stud brick's studs stand into (every one in the column,
+  `stud_tops`), and no cap or ledge a plate or two thick on it unless the
   cap runs on back over the core behind the cube, on the core there, laid as a design's
   curved side is (`lay_shell`, its up turned out) and held by bricks with side
   studs (30414, 11211, 87087) in the core's wall behind each cube's top row
@@ -185,9 +188,13 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   lattice joins to what it rests on; the forty-stud bunny upright had a 1 x 1
   brick so) taken out together and said, never the body. Weighed again: given a stand
   after all if it would tip or all but (`needs_help`), and a joint past its
-  working load propped (`_prop`) if that leaves fewer: a pillar under the
-  piece beyond the joint, near its centre of mass, onto the model
-  (`_beyond`, `_prop_under`), else under the part beyond the joint; with
+  working load propped (`_propped`, `_prop`) if that leaves fewer: the piece
+  beyond the joint tied back across the plane it meets the rest on side by
+  side (`Laid.bond`, `BOND_TIES` levels), else a pillar under it, near its
+  centre of mass, onto the model (`_beyond`, `_prop_under`), else under the
+  part beyond the joint; each round weighed and kept only if better, and a
+  second round of pillars alone for what is still past its load (a tie skips
+  the rest of its piece's joints until the next weighing); with
   sides turned, slivers of three parts or fewer at the core's top taken out
   before the check (`Plan.caps_apart`).
   The report: `coverage`, `lost` (regions of the model no part fills, a
@@ -431,6 +438,9 @@ XDG_DATA_HOME=<scratch> godot --headless --path . --script src/dev/snot_gaps.gd 
 #   says why the cubes there stayed upright, GAPS_BUILD=1 lays it with Brickify.build too.
 #   2026-10-21 on the fifth round's code, the blue bunny at 20 studs: 70 cells of 2,072 lost
 #   against upright's 10, 43 of them cut off before the stitch. On snot85: 46 lost.
+#   block:24 lays brickify_probe's turned block. 2026-11-26 (snot8): 201 cells of 6,480
+#   "a shell's plate, no part of it there" on snot7 (96.5% in a part), 27 once a shell
+#   keeps clear of every side-stud brick's studs (99.2%; pre261 99.7%).
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
 #   I, the file dialog answered with the bunny, 32 typed into the size, Brickify
 #   clicked: one sub-assembly "bunny" holding every part (its side panels inside it),
