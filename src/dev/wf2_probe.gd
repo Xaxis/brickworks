@@ -8,7 +8,10 @@
 ## through, every copy the same shape after, each copy's part where its own
 ## copy put it, and the untouched third copy given it once. Parts of two
 ## copies that are not twins (one's 1 x 2, the other's 2 x 2) each go into
-## both. Then wingreview3's own follow table (wr3_probe), whole.
+## both. One part taken into hand by X and typed a stud along is a move too
+## (wingkeep): the other copy follows, and where its twin has no room the
+## ghost is red with the words before the click. Then wingreview3's own
+## follow table (wr3_probe), whole.
 ##
 ##   godot --headless --path . --script src/dev/wf2_probe.gd
 ##
@@ -26,7 +29,10 @@ const UNLIKE := "Moved in two copies of Wing at once, and differently"
 
 ## [name, placement lines, the parts picked ([copy index, part] each), how
 ## ("drag": lifted and put down, as wr3_probe's; "nudge": moved a stud by the
-## keys), the move (world LDU), "made" or "refused"].
+## keys; "x": the one part taken into hand by X, its ghost typed there and
+## clicked), the move (world LDU), "made" or "refused", and optionally what
+## is done first (wr3_probe's "blocker") and the refusal's first words
+## ([constant UNLIKE] where not given)].
 const WF2_LIST: Array = [
 	["drag both, three copies +z (they agree)", [STRAIGHT, MIRRORED, BEHIND],
 		[[0, "3004"], [1, "3004"]], "drag", Vector3(0, 0, 20), "made"],
@@ -52,6 +58,10 @@ const WF2_LIST: Array = [
 		[[0, "3004"], [1, "3004"]], "nudge", Vector3(20, 0, 0), "refused"],
 	["nudge both, a turned copy +x", [STRAIGHT, TURNED],
 		[[0, "3004"], [1, "3004"]], "nudge", Vector3(20, 0, 0), "refused"],
+	["X one +x, the other follows", [STRAIGHT, MIRRORED],
+		[[0, "3004"]], "x", Vector3(20, 0, 0), "made"],
+	["X one +x, the twin's spot taken", [STRAIGHT, MIRRORED],
+		[[0, "3004"]], "x", Vector3(20, 0, 0), "refused", "blocker", "No room in "],
 ]
 
 
@@ -134,6 +144,8 @@ func _wf2_case(one: Array) -> void:
 	var how: String = one[3]
 	var by: Vector3 = one[4]
 	var want: String = one[5]
+	var prep: String = str(one[6]) if one.size() > 6 else ""
+	var unlike: String = str(one[7]) if one.size() > 7 else UNLIKE
 	var only: String = OS.get_environment("WF2_ONLY")
 	if not only.is_empty() and not name.contains(only):
 		return
@@ -145,6 +157,12 @@ func _wf2_case(one: Array) -> void:
 		_check("%s: every copy found (%s)" % [name, str(paths)], false)
 		_table.append("%-52s %s" % [name, "FAIL"])
 		return
+	if prep == "blocker":
+		# wr3_probe's: a 1 x 1 brick of the model's own where the mirrored
+		# copy's twin would go.
+		var block := Transform3D(Basis.IDENTITY, Vector3(-130, 32, 10))
+		_builder.register(_world.add_brick("3005", 15, block), "3005", block)
+		await _frames(2)
 	var ids: Array = []
 	## [part, where in its copy's frame it goes] of each part picked.
 	var goes: Array = []
@@ -163,6 +181,8 @@ func _wf2_case(one: Array) -> void:
 	_asked_red = ""
 	if how == "drag":
 		said = await _lift_put(ids, by)
+	elif how == "x":
+		said = await _x_put(int(ids[0]), by)
 	else:
 		_pick(ids)
 		var cells := Vector3i(roundi(by.x / BrickLattice.CELL), roundi(by.y / BrickLattice.CELL),
@@ -179,17 +199,19 @@ func _wf2_case(one: Array) -> void:
 		_builder.history_depth(), count_before, _world.brick_count(), bar.left(160)])
 	for k: int in paths.size():
 		print("  %s now, in its frame: %s" % [paths[k], ", ".join(_local_parts(paths[k], frames[k]))])
-	if how == "drag":
+	# A ghost stands in hand for a drag and for X's part; a nudge has none.
+	var ghost: bool = how != "nudge"
+	if ghost:
 		print("  the ghost's ask before the click: \"%s\"" % asked)
 	var ok: bool = _check("%s: %s (history %d -> %d)" % [name, want, depth, _builder.history_depth()],
 		made == (want == "made"))
-	if how == "drag":
+	if ghost:
 		ok = _check("%s: the ghost red before the click exactly where the click is refused (\"%s\")"
 			% [name, asked.left(100)], asked.is_empty() == made) and ok
 	if want == "refused":
 		ok = _check("%s: the ghost and the bar say why (ghost \"%s\", bar \"%s\")" % [name,
-			asked.left(60), bar.left(60)], (how != "drag" or asked.begins_with(UNLIKE))
-			and bar.begins_with(UNLIKE)) and ok
+			asked.left(60), bar.left(60)], (not ghost or asked.begins_with(unlike))
+			and bar.begins_with(unlike)) and ok
 		ok = _check("%s: the file byte for byte" % name, after == before) and ok
 		for p: String in paths:
 			ok = _check("%s: %s as it was" % [name, p], _wr_parts(p) == per_before[p]) and ok
@@ -235,3 +257,33 @@ func _wf2_case(one: Array) -> void:
 			print("    after: %s\n    reopened: %s" % [str(kept), str(reopened)])
 	_table.append("%-52s %s" % [name, "pass" if ok else "FAIL"])
 	_tree.leave_to("")
+
+
+## Taken into hand by X (Builder.lift_brick: still the model's where it
+## stood), its ghost aimed from above where it stood and typed the rest of
+## the way to [param by] along (TypedEntry: pin_hand, typed_hand), the copies'
+## ask answered as each aim makes it (Builder._ask_copies), and clicked. What
+## happened, said.
+func _x_put(brick_id: int, by: Vector3) -> String:
+	_builder.clear_selection()
+	var stood: Vector3 = _world.get_brick(brick_id).transform.origin
+	if not _builder.lift_brick(brick_id) or not _builder.holds_lifted_part():
+		return "not taken into hand"
+	_builder.update_preview(stood + Vector3(0, 400, 0), Vector3.DOWN)
+	var aimed: Variant = _builder.ghost_place()
+	if aimed == null or not _builder.pin_hand():
+		_builder.put_hand_back()
+		return "no ghost where it stood"
+	var fits: bool = _builder.typed_hand(stood + by - (aimed as Vector3), 0.0, 0.0, Vector3.RIGHT)
+	for _n: int in 200:
+		_builder.call("_ask_copies")
+		if (_builder.get("_copies_ask") as Dictionary).is_empty():
+			break
+	_asked_red = str(_builder.get("copies_refuse"))
+	var at: Variant = _builder.ghost_place()
+	var put: int = _builder.place()
+	await _edited()
+	await _frames(2)
+	_builder.unpin_hand()
+	_builder.put_hand_back()
+	return "X: aimed at %s, typed to %s (fits %s), put %d" % [str(aimed), str(at), fits, put]
