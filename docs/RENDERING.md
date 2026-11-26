@@ -2654,6 +2654,62 @@ colour stays as it is: 43, 46, 7 and 15 keep LDConfig's values. The set renders 
 against their photographs' 0.93. What the photographs earn is age and variation (named in 0.71 and 0.88 of
 their verdicts); no render earns either.
 
+## 5z. Every tell at once, then each taken out (photoreal25)
+
+Each lever alone had moved the judge by about zero, while it names five or six tells on every render.
+So this round put them all on at once, each at the strength its own round measured best:
+
+- **F**: the fitted focus (5x);
+- **C**: each set's own plastic (5y);
+- **W**: wear and age. On the sets that is shots.json's age, handling 1.0, dust 0.4 and seating 2.5. On the
+  close-ups it is rubbed 1.0 and their dust;
+- **K**: the camera: 1024 samples, shots.json's grain, vignette and aberration, and JPEG at the
+  photographs' own quality (75 on Rebrickable's set pictures, 90 on the close-ups) with sharpen 0.6 on
+  the close-ups;
+- **E**: photoreal18's rounded edges, on the sets only.
+
+Then it took each one out in turn. All pools used photoreal16's solo judge on ten shots, draws 11 to 16;
+the files are in bench/results/photoreal25-2026-11-26.
+
+| against src (95%) | photographed sets | close-ups | all ten shots |
+|---|---|---|---|
+| all five levers | +0.113 (+0.055 to +0.153) | -0.047 (-0.161 to +0.028) | +0.006 (-0.069 to +0.070) |
+| src again (twin) | +0.002 (-0.002 to +0.006) | -0.009 | +0.005 |
+
+The sets moved about ten times as far as any single lever had (the floor's +0.012 in 5u): 6532 0.08 to
+0.21, 6657 0.07 to 0.12, 6660 0.05 to 0.20, each in 6 of 6 draws, in two pools with two seeds. The ten-shot number did not move, because grey_1x3 (-0.27) and
+three_2x2_top (-0.10) fell as far.
+
+What each lever carries (all minus all-without-it, paired by draw, on the photographed sets):
+
+| lever | carries | read |
+|---|---|---|
+| W wear and age | +0.092 (+0.030 to +0.134) | carries it: 6532 +0.11, 6660 +0.13, 6657 +0.03, 6 of 6 each |
+| E rounded edges | +0.024 (+0.004 to +0.051) | 6532 only (+0.053), as in photoreal18 (+0.027) |
+| K camera | +0.015 (-0.017 to +0.040) | 6657 only (+0.037) |
+| F focus | -0.020 (-0.083 to +0.024) | nothing; 6532 is better without it |
+| C plastic | -0.026 (-0.046 to -0.006) | costs: the cream fit loses 6532 again |
+
+The words agree. With W out, wear stops being a photo tell (0.17 to 0.01) and so does "variation in the
+plastic" (0.12 to 0.00).
+
+**Nothing becomes a default.** W is the photographed sets' history (thirty-year-old, handled plastic):
+bench content. A user's new model is not dusty or yellowed. E helps one set, and photoreal18 measured
+three_2x2_top -0.106 with it on a close-up, so as a default a close-up would get worse. The port was taken
+back out (3e36ec52d), because even off it moves the default bytes by up to 6 levels on 0.23% of
+pixels. The close-ups' own wear and camera are bench content too: W costs three_2x2_top and black_2x4,
+and K costs grey_1x3. The car is in no arm, and its pictures are the same bytes in every arm.
+
+The sets still stand at 0.12 to 0.21 against their photographs' 0.93. The tells no lever touched are now
+the most named:
+
+- the stage: seamless pure white with an idealised soft shadow, named in 0.99 of the verdicts, while the
+  photographs' shadows are a photo tell in 0.83;
+- the edges ("crisp, uniform edge bevels", 0.90);
+- the wear itself, read as "procedural-looking micro-scratches".
+
+The judge now names a render tool more often (0.30 to 0.40).
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
