@@ -232,12 +232,15 @@ export function sessionEnded(id, value = {}) {
 /// whose address nobody receives mail at), "google", "github",
 /// "orangecheck", or null for a session that is gone or nobody's way (a
 /// password elsewhere). A session read gone is remembered gone here.
-/// Throws when the database cannot be asked: whoever asked refuses.
+/// Throws when the database cannot be asked: whoever asked refuses. Given
+/// the ordinary read's time, not SESSION_READ_S: it is in the way only of
+/// what hands out authority, never of every call, and a stall of this box
+/// or its network past 3 s (the database ran these reads in at most 71 ms
+/// over 170,000 calls, signin6) is waited out rather than refused.
 export async function standingOf(claims) {
   if (!claims?.session_id) return { exists: false, by: null };
   const { db } = await import("./_db.js");
-  const read = await db("rpc/session_standing", { method: "POST", body: { session: claims.session_id },
-    seconds: SESSION_READ_S });
+  const read = await db("rpc/session_standing", { method: "POST", body: { session: claims.session_id } });
   if (!read || typeof read.exists !== "boolean") throw new Error("auth: the session's standing was not readable");
   if (read.exists === false) {
     sessionEnded(claims.session_id);

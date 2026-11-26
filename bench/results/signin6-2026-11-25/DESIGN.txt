@@ -28,7 +28,11 @@ INVARIANTS, each in one sentence, and where each is enforced.
    for wayTake and wayApp: there, and its way's, or 410), an emailed code's freshness (api/_oc.js codeOf:
    linking and unlinking orangecheck, GitHub's bind, deleting an orangecheck account, the address Connect is
    told is verified; gone, 401), Unlink's "this session" (waysRoute), the console (api/admin.js, standingOf's
-   by). A session that reads gone is refused, and remembered gone on that instance.
+   by). A session that reads gone is refused, and remembered gone on that instance. That live read waits the
+   ordinary 15 s, not verify()'s 3 s: run 2 met box stalls past 3 s (load 52 on 24 cores) while the database
+   ran these reads in at most 71 ms over 170,000 calls (slow.mjs). Unchanged (s5review, not authority): when
+   verify()'s own read stalls, a GET goes on and a write is refused 503 (ways_check 8 and attack3 X round 1
+   of run 2: the Unlink itself answered 503, nothing was unlinked).
 
 4. Nothing is counted before a claim is verified, and nothing is counted per network; the limits are per
    verified identity, which is what bounds a loop.

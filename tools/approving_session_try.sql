@@ -39,6 +39,10 @@ select public.oauth_code_grant('00000000-0000-4000-8000-000000000602', '00000000
 update public.way_links set state = 'off' where account = '00000000-0000-4000-8000-0000000006a0' and way = 'github';
 select public.oauth_code_grant('00000000-0000-4000-8000-000000000606', '00000000-0000-4000-8000-0000000006a0', 'approving-session-try-0001', 'a try', 'https://claude.ai/api/mcp/auth_callback', 'https://brickworks.diy/api/mcp', 'build', md5('a6') || md5('6a'), now() + interval '1 hour', md5('r6') || md5('6r'), now() + interval '90 days') as github_off;
 update public.way_links set state = 'on' where account = '00000000-0000-4000-8000-0000000006a0' and way = 'github';
+-- An orangecheck binding whose id is not the account's (no unlink leaves one, and oc_bind_session makes none): unlinked.
+update public.oc_sessions set did_oc = 'did:oc:000000000000000000000000000006ff' where session_id = '00000000-0000-4000-8000-000000000604';
+select public.oauth_code_grant('00000000-0000-4000-8000-000000000604', '00000000-0000-4000-8000-0000000006a0', 'approving-session-try-0001', 'a try', 'https://claude.ai/api/mcp/auth_callback', 'https://brickworks.diy/api/mcp', 'build', md5('o4') || md5('4o'), now() + interval '1 hour', md5('q4') || md5('4q'), now() + interval '90 days') as oc_not_the_accounts;
+update public.oc_sessions set did_oc = 'did:oc:000000000000000000000000000006a0' where session_id = '00000000-0000-4000-8000-000000000604';
 -- orangecheck unlinked: its sessions, connection and codes go; the exchange for it is refused.
 select (public.oc_unlink('00000000-0000-4000-8000-0000000006a0') - 'did')::text as oc_unlinked;
 select public.oauth_code_grant('00000000-0000-4000-8000-000000000604', '00000000-0000-4000-8000-0000000006a0', 'approving-session-try-0001', 'a try', 'https://claude.ai/api/mcp/auth_callback', 'https://brickworks.diy/api/mcp', 'build', md5('a4b') || md5('b4a'), now() + interval '1 hour', md5('r4b') || md5('b4r'), now() + interval '90 days') as oc_after_unlink;

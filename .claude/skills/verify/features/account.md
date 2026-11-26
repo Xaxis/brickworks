@@ -993,11 +993,14 @@ factor refused; a new person signing in by a code from `api/otp.js` itself
 making no account, as once sign-up is off; an
 unlink racing a sign-in leaves no session (409), and a binding whose did
 is gone is ended (M1); an unmarked account's session carries the mark
-(L1); a code approved in an orangecheck sign-in refused once its did is
-not the owner's, and deleted by unlinking (L2); deleting from an
+(L1); a connection approved in an orangecheck sign-in made while it
+stands, then unlinking ends that sign-in and takes its codes (their rows
+gone with the session) and its connection, so neither is exchanged nor
+renewed after (L2); deleting from an
 orangecheck sign-in asks for a fresh code (L4); production's one audience;
 keys unreadable 503; a `{min_sats, min_days}` rule letting a backed account
-in; `/api/account`'s offer; twenty tries from one address, the next 429;
+in; `/api/account`'s offer; 25 tries that are not a token from one
+address, each 401 and never 429 (nothing is counted before the token checks out);
 step 4: a sign-in's handle kept, a merged did signing in to the account
 the old one had and only that, the old did's session ended, handles naming
 nobody or two accounts, more than 16, a linked then unlinked did; Connect
