@@ -52,6 +52,10 @@ var turns: int = 0
 ## Whether the parts came off the model (a move, which Escape undoes) or
 ## are a copy (which Escape simply puts away).
 var lifted: bool = false
+## Called when parts that came off the model are let go of without being put
+## down ([method drop], or a copy taken up over them): Builder puts them back
+## where they stood, still the model's (Builder._take_into_hand).
+var let_go: Callable = Callable()
 ## Whether another copy stays in hand after one is put down: a clone and a
 ## duplicate (Ctrl-D) go on being put, as Studio's Clone does, until Esc or
 ## a right click, as a part from the bin always has; a paste and a move go
@@ -107,17 +111,21 @@ func _ready() -> void:
 
 
 ## The parts of these bricks, in a frame of their own, ready to hold, and
-## the line each was read from, which a lift puts back down with it
+## the line each was read from. [param lifting]: each with its id, as
+## "brick", for a lift, which puts down the parts themselves, moved
 ## (Builder._put_carried).
 static func gather(world: BrickWorld, from: PartLibrary,
-		ids: Array) -> Array:
+		ids: Array, lifting: bool = false) -> Array:
 	var placed: Array = []
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick != null and from.mesh_for(brick.part_id) != null:
-			placed.append({"part": brick.part_id, "color": brick.color_code,
+			var item: Dictionary = {"part": brick.part_id, "color": brick.color_code,
 				"at": brick.transform, "group": brick.group, "unit": brick.unit,
-				"step": brick.step, "origin": brick.origin})
+				"step": brick.step, "origin": brick.origin}
+			if lifting:
+				item["brick"] = brick_id
+			placed.append(item)
 	return framed(placed, from)
 
 
@@ -194,6 +202,11 @@ static func phase_of(pivot: Vector3) -> float:
 
 ## Take these parts in hand.
 func hold(parts: Array, came_off_the_model: bool) -> void:
+	# A copy (a paste, a duplicate, a model put in whole) taken in hand: what
+	# is lifted off the model goes back where it stood first, a figure or a
+	# part lifted by X as a selection carried (Builder's let_go).
+	if not came_off_the_model and let_go.is_valid():
+		let_go.call()
 	items = parts.duplicate(true)
 	turns = 0
 	lifted = came_off_the_model
@@ -215,8 +228,11 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	_build_ghost()
 
 
-## Let go of whatever is held, without putting it anywhere.
+## Let go of whatever is held, without putting it anywhere: parts lifted off
+## the model go back where they stood ([member let_go]).
 func drop() -> void:
+	if lifted and let_go.is_valid():
+		let_go.call()
 	items = []
 	lifted = false
 	repeats = false
@@ -381,7 +397,7 @@ func fits_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> bool:
 		roundi(origin.y / BrickLattice.CELL),
 		roundi((origin.z - _reference.z) / BrickLattice.CELL))
 	return not whole.is_empty() and _lowest(whole) + shift.y >= Builder.GROUND_CELL \
-		and not lattice.collides_moved(whole, covers[3], covers[4], shift)
+		and not _meets_model(lattice, whole, covers, shift)
 
 
 ## The frame moved by [param by] and the ghost shown there: where
@@ -389,6 +405,19 @@ func fits_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> bool:
 func stand_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> void:
 	_frame.origin += by
 	_stand(lattice, builder)
+
+
+## Whether the group's cover [param whole] moved [param shift] cells meets
+## anything on the model. Parts lifted off it are the hand's, and the cells
+## they stood in are theirs to go back into; a copy's are not, and the cells
+## of whatever is in hand stay in its way (BrickLattice.hand_free).
+func _meets_model(lattice: BrickLattice, whole: PackedInt32Array, covers: Array,
+		shift: Vector3i) -> bool:
+	var was_free: bool = lattice.hand_free
+	lattice.hand_free = lifted
+	var meets: bool = lattice.collides_moved(whole, covers[3], covers[4], shift)
+	lattice.hand_free = was_free
+	return meets
 
 
 ## Whether the group fits where its frame is now, and its ghost shown there.
@@ -400,7 +429,7 @@ func _stand(lattice: BrickLattice, builder: Builder) -> void:
 		roundi(_frame.origin.y / BrickLattice.CELL),
 		roundi((_frame.origin.z - _reference.z) / BrickLattice.CELL))
 	_valid = not whole.is_empty() and _lowest(whole) + shift.y >= Builder.GROUND_CELL \
-		and not lattice.collides_moved(whole, covers[3], covers[4], shift)
+		and not _meets_model(lattice, whole, covers, shift)
 	_aimed = true
 	_ghost.transform = _frame
 	_ghost.visible = true
@@ -535,7 +564,7 @@ func _aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	shift.y = rise
 
 	_frame = _frame_at(Vector3(at.x, rise * BrickLattice.CELL, at.z))
-	_valid = not lattice.collides_moved(whole, covers[3], covers[4], shift)
+	_valid = not _meets_model(lattice, whole, covers, shift)
 	_aimed = true
 	_ghost.transform = _frame
 	_ghost.visible = true
@@ -712,6 +741,7 @@ func placements(builder: Builder) -> Array:
 			"unit": item.get("unit", ""),
 			"step": item.get("step", -1),
 			"origin": item.get("origin", ""),
+			"brick": int(item.get("brick", 0)),
 			"at": _frame * (item["at"] as Transform3D),
 			"boxes": builder.boxes_for(library.mesh_for(str(item["part"])),
 				_frame * (item["at"] as Transform3D)) if _posed

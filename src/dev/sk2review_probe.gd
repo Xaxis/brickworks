@@ -1322,6 +1322,12 @@ func _put_ids(step: Dictionary) -> Array:
 	for inner: Variant in step.get("steps", [step]):
 		if inner is Dictionary and str((inner as Dictionary).get("undo", "")) == "remove":
 			out.append(int((inner as Dictionary)["brick"]))
+	# From handkeep a part picked up and put down is the same part moved: its
+	# put-down's steps are moves, none a part put down anew.
+	if out.is_empty():
+		for inner: Variant in step.get("steps", [step]):
+			if inner is Dictionary and str((inner as Dictionary).get("undo", "")) == "move":
+				out.append(int((inner as Dictionary)["brick"]))
 	return out
 
 

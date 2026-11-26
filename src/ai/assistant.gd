@@ -1490,7 +1490,8 @@ func cancel() -> void:
 		_scoped = false
 		if focus != null and not focus.step.is_empty() \
 				and is_same(builder.last_step(), focus.step):
-			builder.undo()
+			# That step, not the person's lift (Builder.undo).
+			builder.undo(false)
 			focus.step = {}
 	else:
 		_restore()

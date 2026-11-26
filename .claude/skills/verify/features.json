@@ -2989,6 +2989,7 @@
         "tests/fixtures/insights/db_check.mjs",
         "tests/fixtures/insights/frame_check.mjs",
         "tests/test_docs_site.py",
+        "tests/test_hand_paths.py",
         "tests/test_photoreal_bench.py"
       ]
     },
@@ -5496,7 +5497,9 @@
       "entry": "src/assembly/grab.gd",
       "reach": "godot --headless --path . --script src/dev/grab_probe.gd",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_hand_paths.py"
+      ]
     },
     {
       "id": "lib:moving a chain of joints",

@@ -3559,6 +3559,9 @@ msgstr "%d piezas unidas en %d"
 msgid "Connect moves one part: put down what is in hand first"
 msgstr "Conectar mueve una pieza: suelta primero lo que tienes en la mano"
 
+msgid "Connect moves one part, not a minifigure: lift the figure to move it whole"
+msgstr "Conectar mueve una pieza, no una minifigura: levanta la figura para moverla entera"
+
 msgid "Connect: aim the part at the model first, then %s"
 msgstr "Conectar: apunta primero la pieza al modelo, luego %s"
 
@@ -18105,6 +18108,9 @@ msgstr "%d de pasos posteriores omitidos."
 
 msgid "moved %s"
 msgstr "%s movido"
+
+msgid "lifted %s"
+msgstr "%s levantado"
 
 msgid "moving %s"
 msgstr "moviendo %s"

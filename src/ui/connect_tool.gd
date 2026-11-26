@@ -113,6 +113,11 @@ func take(brick_id: int) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	if brick == null or builder.is_locked(brick_id):
 		return false
+	# A figure's part lifts the whole figure (X does), which Connect cannot
+	# offer points of: it was left lifted, drawn nowhere (figreview3 F6).
+	if not builder.figure_of(brick_id).is_empty():
+		say.call("Connect moves one part, not a minifigure: lift the figure to move it whole")
+		return false
 	var at: Transform3D = brick.transform
 	var depth: int = builder.history_depth()
 	if not builder.lift_brick(brick_id):
@@ -315,6 +320,9 @@ func _put_back() -> void:
 	_depth = -1
 	builder.connect_picking = false
 	builder.unpin_hand()
+	# Lifted into hand, it goes back where it stood through the hand, which
+	# records nothing; what was recorded since (none should be) is undone.
+	builder.put_hand_back()
 	while builder.history_depth() > depth and builder.undo():
 		pass
 	edited.call()

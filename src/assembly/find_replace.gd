@@ -746,13 +746,11 @@ const HELD_WORDS := "a part is in hand and cannot go back where it was: put it d
 ## The parts lifted off the model and still in hand put back where they were,
 ## as Escape puts them, before a replace: how many went back, 0 for none in
 ## hand (a part from the bin or a paste stays in hand, as the model has not
-## got it), -1 for a lift another step has been laid over since, which
-## Escape would put away rather than back.
+## got it). Whatever was done since the lift, they are the model's where they
+## stood (Builder._take_into_hand), so they always can.
 func put_back_held() -> int:
 	if builder == null or not builder.is_carrying() or not builder.carrying.lifted:
 		return 0
-	if not builder._lift_on_top():
-		return -1
 	var count: int = builder.carrying.items.size()
 	builder.cancel_carry()
 	return count

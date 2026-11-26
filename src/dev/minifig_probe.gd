@@ -1425,8 +1425,10 @@ func _on_a_stud() -> void:
 	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)
 	builder.rotate_held(0)
 	var lifted: bool = builder.lift_hovered()
-	_check("X lifts the whole figure off (%d bricks left)" % world.brick_count(),
-		lifted and builder.is_holding_figure() and world.brick_count() == 2)
+	# From handkeep the figure is in hand and still the model's, where it
+	# stood, until it is put down: what is not in hand is the two plates.
+	_check("X lifts the whole figure off (%d bricks left)" % _not_in_hand(),
+		lifted and builder.is_holding_figure() and _not_in_hand() == 2)
 	builder.update_preview(Vector3(-60, 400, 50), Vector3.DOWN)
 	var again: int = builder.place()
 	var moved_ids: PackedInt64Array = builder.figure_of(again)
@@ -1497,7 +1499,7 @@ func _new_slots_stand() -> void:
 	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)
 	var lifted: bool = builder.lift_hovered()
 	_check("X lifts it whole, its frame found from its torso and flippers",
-		lifted and builder.is_holding_figure() and world.brick_count() == 1)
+		lifted and builder.is_holding_figure() and _not_in_hand() == 1)
 	builder.update_preview(Vector3(40, 400, 10), Vector3.DOWN)
 	var again: int = builder.place()
 	builder.drop_figure()
@@ -1516,6 +1518,11 @@ func _new_slots_stand() -> void:
 			return b.group == "Frogman"), library)
 		and _same_shape(_relative(back_ids), placed))
 	await process_frame
+
+
+## The parts on the model not in hand: before handkeep a lift took them off.
+func _not_in_hand() -> int:
+	return world.brick_count() - (world.hand().size() if world.has_method("hand") else 0)
 
 
 func _snapshot() -> Array:

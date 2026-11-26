@@ -230,7 +230,10 @@ func own_undo(again: bool = false) -> void:
 
 
 ## A button on the edit bar, by name: the same thing its key does.
-func press(name: String) -> void:
+## [param person] false for a session's undo or redo (AppTools): the person's
+## hand is theirs, and a session's undo takes back the newest step recorded,
+## leaving in hand what they lifted (Builder.undo).
+func press(name: String, person: bool = true) -> void:
 	if together != null and together.live and (name == "undo" or name == "redo"):
 		var words: String = together.undo(name == "redo")
 		if not words.is_empty():
@@ -239,20 +242,21 @@ func press(name: String) -> void:
 		aim_again.call()
 		return
 	# Undo with a part Connect took off the model in hand is that taking off.
-	if name == "undo" and mode == "connect" and connect_tool.holds() \
+	if person and name == "undo" and mode == "connect" and connect_tool.holds() \
 			and not connect_tool.from_hand():
 		set_mode("select")
 		say.call("put back where it was")
 		return
-	# So is Undo with parts lifted off the model in hand, the lift the last
-	# step: they go back where they were and are let go, as Esc does.
-	# Undoing the lift's step under the hand put them back and left them
-	# held, and the next tap put a second of each down (phonefingers: a
-	# two-finger tap while carrying). A step recorded since (the person's
-	# Claude) is undone as ever, the parts still in hand.
-	if name == "undo" and builder.is_carrying() and builder.carrying.lifted \
-			and builder._lift_on_top():
-		put_away()
+	# So is Undo with parts lifted off the model in hand, the lift the newest
+	# thing done (Builder.lift_newest): they go back where they were and are
+	# let go, as Esc does, a figure, a selection or a part. A step recorded
+	# since (the person's Claude) is undone as ever, the parts still in hand.
+	if person and name == "undo" and builder.lift_newest():
+		if builder.is_carrying():
+			put_away()
+		elif builder.drop_figure() or builder.put_hand_back() > 0:
+			aim_again.call()
+			say.call("put back where it was")
 		return
 	match name:
 		"undo":
@@ -261,7 +265,7 @@ func press(name: String) -> void:
 			# Said, whatever it was: undoing a sub-assembly made changes
 			# nothing a person can see, and the line said nothing either.
 			var opened: String = reopen_words.call(false) if builder.history_depth() == 0 else ""
-			if builder.undo():
+			if builder.undo(person):
 				edited.call()
 				say.call("undid: %s" % builder.redo_words())
 			elif opened.is_empty() or not await reopen.call(false):
@@ -1388,6 +1392,11 @@ func set_mode(to: String) -> void:
 		put_away()
 	if mode == "connect":
 		connect_tool.end()
+	# A part lifted by X is drawn only as the Place tool's ghost: another tool
+	# puts it back where it stood, as Escape does. Left in hand, it was drawn
+	# nowhere until a tool came back to Place.
+	if to != "place" and builder.holds_lifted_part():
+		builder.put_hand_back()
 	mode = to
 	adding = false
 	if (to == "move" or to == "rotate") and handles == null:

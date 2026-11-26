@@ -1133,6 +1133,12 @@ func _parts_with_awaited() -> int:
 ## Whether starting a new model would lose anything: bricks that are not
 ## in a saved model under this name, exactly as they stand.
 func has_unsaved_work() -> bool:
+	# Parts lifted into hand and not put down are a move begun: the file has
+	# them where they stood, and closing would lose the move, so it asks.
+	# Up to handkeep, a figure in hand after Ctrl+S was nothing unsaved, and
+	# closing lost it (figreview2 F3).
+	if builder != null and builder.holds_lift():
+		return true
 	# A view saved, changed or taken out since the model was opened or saved
 	# (SavedViews) is the person's work, whatever else is as it was: the
 	# file is the only place it is kept.
@@ -4520,15 +4526,15 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 ## so an undo brings them back. Called once each step of the history is made: by hand
 ## (Main._on_model_edited), by a session (CommandSocket), by the assistant's
 ## change to a selection. Not for an undo or a redo, whose step has it in
-## already (Builder.settled), nor while parts lifted off are held: put down,
-## they go back in the steps they came from (Builder.lift_selection), and the
-## step that keeps both is asked then.
+## already (Builder.settled). Parts lifted into hand are the model's where
+## they stood until put down, and make no step (Builder._take_into_hand): an
+## edit made while they are held follows as any other, and so does the move
+## that puts them down.
 func looks_follow_edit() -> void:
 	if builder == null or world == null:
 		return
 	var step: Dictionary = builder.last_step()
-	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
-			or builder.is_carrying():
+	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed):
 		return
 	var held: Array = _held_placements()
 	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))

@@ -144,10 +144,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   said nothing, and undoing a sub-assembly made changes nothing on screen. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
   and so does the selection (its ids would name the new model's bricks).
-  Undo with parts lifted off the model in hand (Move, a drag) is that lift:
-  they go back where they were and are let go, as Esc does ("put back where it
-  was"). Undoing the lift's step under the hand left them held, and the next
-  click put a second of each down (phonefingers_probe, section 3). On a phone
+  Undo with parts lifted off the model in hand (Move, a drag, a minifig by X)
+  while the lift is the newest thing done is that lift: they go back where
+  they were and are let go, as Esc does ("put back where it was";
+  `Builder.lift_newest`). Undoing the lift's step under the hand left them
+  held, and the next click put a second of each down (phonefingers_probe,
+  section 3). On a phone
   a two-finger tap undoes and three redo, the same verbs (`finger taps to
   undo and redo and turn`, view.md).
   A part an undo or redo puts back keeps its number (`BrickWorld.add_brick`
@@ -2110,9 +2112,60 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   show; a rigid move of a sub-assembly taken whole (an arrow, a turn, a
   drag, a lift and put-down, Mirror) moves all of it, its later parts too,
   so it never tears, and says how many went with it (`Builder.
-  _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). A minifig
-  lifted at a step leaves its later parts on the model and moves them with
-  it on put-down (`_figure_followers`). `keep_shown` looks only at the parts
+  _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). What is
+  in hand never leaves the model's file until it is put down (handkeep,
+  2026-11-25): a minifig lifted by X (the innermost copy round the part that
+  is a figure, `Builder.figure_of`: X over a car's driver lifts the driver)
+  and a selection picked up (`lift_selection`) go into the hand, each part
+  still the model's where it stood, in its step, sub-model and file line,
+  drawn nowhere and out of the lattice (`Builder._take_into_hand`,
+  `BrickWorld.take_in_hand`). So the autosave, Ctrl+S, close, export, share
+  and a session's read and save tools write it where it stood, a crash or a
+  reload finds it there, it counts as unsaved work (`ModelStore.
+  has_unsaved_work`), the timeline is never worked out without it, and the
+  lift is no step in the history. Put down, each part is the same part
+  moved, one "move" step each in one Undo ("moved N parts"), a figure's
+  later parts with it (`_figure_parts`), seated and judged whole
+  (`_figure_whole`), and aimed back within a stud of where it stood, where
+  the studs nearest do not take it, back exactly where it stood, each part
+  to the place it had (`_figure_home`, `_ghost_at_home`: a driver sat off
+  the studs goes back in its seat). A step edit waits while anything is in hand, as for a copy
+  (`Shell._steps_wait`); put down past the step showing, the timeline goes to
+  that step and says so ("moved N parts to step 4", `Main._show_put_unseen`).
+  Every let-go puts back first and changes nothing: Escape, Undo while the
+  lift is the newest thing done (`Builder.lift_newest`), lifting another
+  figure, a tool chosen, Open/New/reload (`forget_history`), and any change
+  to a part in hand by something else (a session's edit, an undo reaching
+  it: `BrickWorld.hand_touched`, `Builder._hand_touched`, `_apply`). An edit
+  between the lift and the put-down is its own step: two Undos, the file
+  byte for byte. Every path in or out of the hand goes through it
+  (handkeep2, 2026-11-26): X over one plain part lifts it into hand too
+  (`Builder.holds_lifted_part`, put down as a move by `_put_lifted_part`), never
+  off the model; what is in hand keeps its cells in the way of everything but
+  the hand's own ghost (`BrickLattice.take_in_hand`, `_hand_cells`,
+  `hand_free`), so no paste, add or nudge lands where it stood; every new hold
+  lets go first (`Carry.hold`'s `let_go`, the `held_part` setter, a bin part);
+  the model's turn lets go before it turns (`BrickWorld.rotate_model`); a part
+  put back ends the step reveal so the timeline draws it at its own step
+  (`put_from_hand`); a session's undo takes back its own step and leaves the
+  person's lift (`Builder.undo(false)`, `EditVerbs.press(name, false)`,
+  `history_words(n, false)`); Connect refuses a figure's part. A held part's
+  place or colour written round the hand counts in `BrickWorld.round_the_hand`
+  with an error; `tests/test_hand_paths.py` fails when new code writes a
+  part outside BrickWorld, a BrickWorld write skips `_hand_change`, the hand's
+  doors are opened elsewhere, a lift removes or records, or a session presses
+  the person's undo: its probes are `figreview3_probe` (every case) and
+  `handkeep2_probe` (X turned, let go by a bin part, Undo per actor, the held
+  cells, the guard). Probes: `PROBE_SIZE=1280x720 tools/probe.sh handkeep_probe
+  --case=between` (a carried selection with a session's edit and a nudge
+  between: Escape, put down, Undo), and `--case=kill --kind=carry|figure`
+  then `--case=reopen` with one `PROBE_DATA` (the autosave in hand, the
+  process killed, the model opened again: nothing lost); `figreview2_probe`
+  (every case); `PROBE_SIZE=1280x720 tools/probe.sh stepfast2_probe` (a
+  figure in its own sub-model lifted at its step and at the last: in hand,
+  put back, put elsewhere, saved, undone once; aimed back where it stood on a
+  brick; its later plate over a cone or round brick judged as the plate on
+  show), and at `390x844`. `keep_shown` looks only at the parts
   a step flipped and tells the selection's listeners once, 0.3 s after the
   stepping stops (`SETTLE_SECONDS`); the line is said at once. A sub-assembly taken whole is its parts
   on so far and says so ("House selected, 56 of its 149 parts on at this step
