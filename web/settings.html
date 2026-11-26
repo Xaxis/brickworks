@@ -358,6 +358,11 @@
 							<h2>How you sign in</h2>
 							<p id="ways-said">Each of these signs you in to this one account, with the same address.</p>
 							<ul class="connections" id="ways"></ul>
+							<form class="code-form" id="ways-code" hidden>
+								<label><span id="ways-code-said">The code we emailed you</span>
+									<input id="ways-code-field" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
+								<div class="actions"><button class="cta" type="submit" id="ways-code-go">Confirm</button></div>
+							</form>
 							<p class="said" id="ways-status" role="status"></p>
 						</div>
 					</div>

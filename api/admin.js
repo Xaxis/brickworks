@@ -274,6 +274,9 @@ import { announceDrop, announceEdit, announceKeep, announceLimit, announceMailAd
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+// The console's acts that end an account or change how anybody signs in:
+// each asks a code of the last five minutes too (stepUp, below).
+const STEP_UP = new Set(["delete_account", "sign_in_switch"]);
 
 function project() {
   return (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -392,6 +395,18 @@ async function handler(request, response) {
   // lends them: ?op=constructor, __proto__ or hasOwnProperty is an op
   // nobody made, answered 404 and never audited as an act (c3review).
   const act = Object.hasOwn(acts, op) ? acts[op] : null;
+  // Ending an account, and turning a way to sign in on or off for everyone,
+  // pass the one rule (api/_oc.js stepUp, signin7) besides the console's
+  // own: a code of the last five minutes, so a session of the owner's left
+  // open, or its refresh copied, cannot do either.
+  if (request.method === "POST" && act && STEP_UP.has(op)) {
+    const { stepUp } = await import("./_oc.js");
+    const may = await stepUp(claims);
+    if (may.status) {
+      return response.status(may.status).json(may.status === 403 ? { error: "Confirm it is you first: sign out, then sign in "
+        + "again with a code we email you, and press this within five minutes.", fresh: false } : may.body);
+    }
+  }
   if (request.method === "POST" && act) {
     return audited(op, act, request, response, claims, (error) => (error instanceof AuthError
       || error instanceof BuildRefusal || error instanceof AvatarRefusal || error instanceof SocialRefusal

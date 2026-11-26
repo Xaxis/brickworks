@@ -106,7 +106,7 @@ import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } f
 import { afterAnswer } from "./_after.js";
 import { AuthError, bearer, isMaster, sessionEnded, standingOf, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
-import { claimsOf as tokenClaims, mintedSession } from "./_minted.js";
+import { claimsOf as tokenClaims, clientAddress, mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { originOf } from "./_oauth.js";
 import { scopeOf, settingOf } from "./_settings.js";
@@ -397,7 +397,7 @@ export async function wayBack(request, response) {
     // Counted by this Google or GitHub account alone, once the way is
     // vetted, right before Supabase's verify is spent (signin6).
     minted = await mintedSession(who.email, { vet: (user) => vetFor(name, who, user, made),
-      count: { key: COUNTED.account(name, who.id), per: LIMITS.account, minutes: LIMITS.minutes } });
+      count: { key: COUNTED.account(name, who.id), per: LIMITS.account, minutes: LIMITS.minutes }, from: clientAddress(request) });
   } catch (trouble) {
     if (trouble?.unlinked) return failed(response, name, "unlinked", start);
     if (trouble?.confirm) return confirmFirst(request, response, name, who, trouble.account, start);
@@ -546,9 +546,13 @@ export async function wayBind(request, response) {
     return response.status(410).json({ error: "That GitHub sign-in took too long, or was for another account. Sign in with GitHub again." });
   }
   try {
-    // Asked of the session as it is now (codeOf: standingOf): gone, 401.
-    const { codeOf } = await import("./_oc.js");
-    if (!(await codeOf(claims)).emailed) {
+    // The one rule (api/_oc.js stepUp): the session as it is now (gone,
+    // 401) and a code of the last five minutes; and that code an emailed
+    // one, never a test account's password.
+    const { stepUp } = await import("./_oc.js");
+    const may = await stepUp(claims);
+    if (may.status && may.status !== 403) return response.status(may.status).json(may.body);
+    if (may.status || !may.asked.emailed) {
       return response.status(403).json({ error: "Sign in with a code we email you first.", fresh: false });
     }
     done();
@@ -583,21 +587,54 @@ export async function waysRoute(request, response) {
   const code = !/@oc\.brickworks\.diy$/i.test(String(claims.email || ""));
   let links;
   let you = false;
+  let changed = null;
   try {
     if (request.method === "POST") {
       const body = bodyOf(request);
       const name = String(body?.with || "");
       if (!WAYS[name] || typeof body?.on !== "boolean") return response.status(422).json({ error: "Google or GitHub, on or off." });
       if (!code) return response.status(409).json({ error: "This account signs in only with orangecheck." });
-      // Whether this session is one the way started, read as it is now,
-      // before it ends.
-      you = !body.on ? (await standingOf(claims)).way === name : false;
-      // Unlinked: off, GitHub's id let go, and every session the way started
-      // ended (F2), in one step that waits for a sign-in of the same way, or
-      // makes it wait (F7). Linked again: as never used, so GitHub asks a
-      // code once more before it signs in.
-      await db("rpc/way_set", { method: "POST", body: { account: claims.sub, way: name, turned_on: body.on } });
-      if (you) sessionEnded(claims.session_id);
+      if (body.on) {
+        // Linked again gives the account a way in: the one rule (api/_oc.js
+        // stepUp, signin7), the session as it is now and a code of the last
+        // five minutes, so neither the way's own session nor one an Unlink
+        // has just ended can undo the Unlink (signreview4 R4-1 L1).
+        const { stepUp } = await import("./_oc.js");
+        const may = await stepUp(claims);
+        if (may.status) return response.status(may.status).json(may.body);
+        // Only a way unlinked is linked again, as never used, so GitHub asks
+        // a code once more before it signs in. One signing in already (a
+        // stale tab that still shows Unlinked) is left as it is: way_set
+        // would have dropped its row, and GitHub's id with it (N3).
+        if ((await linksOf(claims.sub))[name]?.state === "off") {
+          await db("rpc/way_set", { method: "POST", body: { account: claims.sub, way: name, turned_on: true } });
+          changed = "on";
+        }
+      } else {
+        // Unlinked takes a way away and gives none, so it asks the session
+        // as it is now alone (standingOf, never verify()'s held read): one
+        // gone is 401 here too; and whether it is one the way started, before
+        // it ends. Off, GitHub's id let go, and every session the way started
+        // ended (F2), in one step that waits for a sign-in of the same way, or
+        // makes it wait (F7).
+        const standing = await standingOf(claims);
+        if (!standing.exists) return response.status(401).json({ error: "You were signed out. Sign in again." });
+        you = standing.way === name;
+        await db("rpc/way_set", { method: "POST", body: { account: claims.sub, way: name, turned_on: false } });
+        changed = "off";
+        if (you) sessionEnded(claims.session_id);
+      }
+      // The address told, as orangecheck's link and unlink tell it (N4).
+      if (changed) {
+        const told = String(claims.email || "");
+        afterAnswer(async () => {
+          const { AFTER, tell } = await import("./_oc.js");
+          await tell(told, changed === "on" ? `${SAID[name]} signs you in to Brickworks again`
+            : `${SAID[name]} no longer signs you in to Brickworks`, changed === "on"
+            ? `${SAID[name]} was linked to your Brickworks account again just now, so it can sign you in. ${AFTER}`
+            : `${SAID[name]} was unlinked from your Brickworks account just now, and the sign-ins it started were ended. ${AFTER}`);
+        }, "ways: notice");
+      }
     }
     links = await linksOf(claims.sub);
   } catch (trouble) {

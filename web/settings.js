@@ -32,6 +32,7 @@ const $ = (id) => document.getElementById(id);
 // last digit; deleting the account never goes by itself.
 const ocCode = codeBoxes({ field: $("oc-code-field"), say, onFilled: () => $("oc-code").requestSubmit() });
 const deleteCode = codeBoxes({ field: $("delete-code"), say });
+const waysCode = codeBoxes({ field: $("ways-code-field"), say, onFilled: () => $("ways-code").requestSubmit() });
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 // A date as the page's language writes one: "30 October 2026".
 const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
@@ -290,6 +291,13 @@ async function ways(given = null) {
       end.addEventListener("click", async () => {
         end.disabled = true;
         const done = await call("/api/otp?op=ways", { method: "POST", body: { with: name, on: state !== "on" } }).catch(() => null);
+        // Linked again only by a code emailed just now (api/_oc.js stepUp,
+        // signin7): sent, and asked for here, then Link again once more.
+        if (done && done.status === 403 && done.body?.fresh === false) {
+          end.disabled = false;
+          await askWaysCode();
+          return;
+        }
         const took = done && done.status === 200;
         // Unlinked, what it signed in ends, this session too when it was one
         // (api/_ways.js waysRoute): signed out here, and asked for a code.
@@ -318,6 +326,44 @@ async function ways(given = null) {
     list.append(make("li", "", make("span", "way-row", title, make("small", "", where)), end));
   }
 }
+
+/// A code to this account's own address, for Link again: a tab left open,
+/// or a session Google or GitHub started, is not enough to give the account
+/// a way in again.
+async function askWaysCode() {
+  $("ways-status").textContent = "";
+  try {
+    const to = await sendCode(email());
+    $("ways-code-said").textContent = say("The code we emailed to {to}", { to });
+    $("ways-code").hidden = false;
+    waysCode.size(codeLength());
+    waysCode.clear();
+    $("ways-status").textContent = say("Confirm it is you, then press Link again.");
+  } catch (trouble) {
+    $("ways-status").textContent = trouble.message;
+  }
+}
+
+$("ways-code").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!waysCode.complete((words) => { $("ways-status").textContent = words; })) return;
+  $("ways-code-go").disabled = true;
+  waysCode.busy(true);
+  try {
+    await redeem(email(), $("ways-code-field").value);
+    waysCode.busy(false);
+    $("ways-code").hidden = true;
+    await ways();
+    $("ways-status").textContent = say("Thank you. Now press Link again.");
+    [...$("ways").querySelectorAll("button")].find((one) => one.textContent === say("Link again"))?.focus();
+  } catch (trouble) {
+    waysCode.busy(false);
+    $("ways-status").textContent = trouble.message;
+    if (trouble.wrong) waysCode.refuse();
+  } finally {
+    $("ways-code-go").disabled = false;
+  }
+});
 
 /// orangecheck on this account: linked or not, and the way to change it.
 /// Linking and unlinking each ask for a code emailed just now; then Link
