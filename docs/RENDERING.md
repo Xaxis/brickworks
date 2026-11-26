@@ -2783,6 +2783,62 @@ On the sets it is +0.18 (6532 +0.21, 6660 +0.26, 6657 +0.06, each in 6 of 6 draw
 becomes a photo tell. On new single parts it costs: grey_1x3 -0.60, black_2x4 -0.47, three_2x2_top
 -0.19. That is why it is a choice for a model that has been played with, and never the default.
 
+## 5ab. The stud logo's hand, and Played with in the browser (photoreal27)
+
+**The logo is right.** The judge called black_2x4's logo "mirrored" in 27 to 46 of 48 verdicts
+(photoreal26's pool), and never the photograph's. Turned by the same angle, the render's stud and the
+photograph's both read "LEGO" upright, left to right, and three_2x2_top's top view reads upright in
+both. The text runs along the stud's +z with its letters' tops toward +x, and z × x is +y, toward the
+eye: right in the part's own space, and Godot's space is LDraw's turned, never mirrored. Only the path
+tracer draws a logo (the raster's parts have plain studs), so there was nothing to fix. What the judge
+reads as mirrored is near upside-down text with crisp, doubled strokes.
+
+**Played with where nothing traces rays.** A browser, the simpler graphics mode, a card without ray
+tracing and a picture on nothing all draw Best by averaging raster frames, and Played with drew there
+as New. Now the raster's Product plastic draws it from the same RenderSettings levers
+(`StudioRender._raster_wear`):
+
+- `plastic_body.gdshaderinc` under `PLASTIC_PRODUCT` takes `wear_age`, `wear_dust` and
+  `wear_handling`, and copies the tracer's own wear: whites and greys yellowed, each part its own amount
+  (a number per part from where it stands on the stage, `wear_stage`); handled patches; finger marks;
+  hairline scratches; and knocked edges. Where the coat is worn, the gloss is blurred rather than
+  taken away.
+- Dust is only what Played with adds beyond New's. The tracer's New already carries `PRODUCT_DUST`'s
+  film, and the raster's New stands for it. The whole of `PLAYED_DUST` turned every top milky, three
+  times the tracer's shift from New. The tracer's motes come out of its denoise as part of the film,
+  so here the film takes their share evenly. Drawn sharp, they read as grit on every top.
+- The stage seats each part as the tracer seats its copy, by `PathTracer.seat`.
+- New's uniforms are 0, so its bytes are as before: byte for byte against the baseline on all eleven
+  shots drawn.
+
+The note under Plastic no longer says Played with needs path tracing.
+
+**The stud logo in the browser.** The judge named "studs with no LEGO logo" in 332 of the browser's 480
+New verdicts. The raster's Product plastic now raises the tracer's logo (`stud_logo`, stroke for stroke,
+the same way round) at Best only (`stud_logos`, `StudioRender._raster_logos`). Best's 32 averaged
+frames resolve letters finer than a pixel, where Quick's and Good's single frame would alias.
+
+**What the judge said of the browser's Best.** photoreal16's solo judge, the ten shots, one draw (the
+raster draws the same picture at every draw: 11 and 12 match to 2 pixels in a million), 6 trials by 8
+rounds, 48 verdicts a picture, three pools (seeds 271, 272 and 273). Every browser picture sits at the
+floor: 0.03 to 0.17 called a photograph, against the photographs' 0.93.
+
+| against New (95%) | all shots | close-ups | sets |
+|---|---|---|---|
+| Played with, pool 1 | +0.010 (+0.001 to +0.024) | +0.016 (+0.001 to +0.038) | +0.001 |
+| Played with, pool 2 | +0.009 (+0.001 to +0.023) | +0.016 (+0.003 to +0.036) | 0.000 |
+| New with the logo, pool 2 | +0.006 (-0.000 to +0.017) | +0.012 (+0.002 to +0.026) | -0.001 |
+| New with the logo, pool 3 | +0.007 (+0.000 to +0.019) | +0.013 (+0.002 to +0.030) | -0.001 |
+| Played with and the logo, pool 2 | +0.019 (+0.003 to +0.040) | +0.031 (+0.006 to +0.061) | +0.002 |
+| Played with and the logo, pool 3 | +0.019 (+0.003 to +0.041) | +0.032 (+0.007 to +0.063) | +0.001 |
+
+The judge names the studs (no logo, plain) as a render's tell in 331 and 327 of New's 480 verdicts, and
+in 114 and 99 once the logo is drawn; Played with's 318 become 110 and 112. It reads the logo as
+"mirrored" in 71 of 960, all but 5 on black_2x4: from that camera the word is upside down, as it is in
+the photograph, and both read LEGO turned half round. green_plate_macro gains the most (+0.045 and
++0.055; +0.092 and +0.097 with Played with). No shot falls in both pools by more than the pools differ
+on an unchanged pair: set_6532's Played with is -0.001 in one pool and -0.004 in the other.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

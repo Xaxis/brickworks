@@ -89,6 +89,7 @@ func _run() -> void:
 
 	# What _start does, without the request it ends in.
 	assistant._busy = true
+	assistant._run_generation = assistant.world.generation()
 	assistant._brief = "A barn owl as a detailed LEGO display model"
 	assistant._messages = [{"role": "user", "content": "a barn owl"}]
 

@@ -39,6 +39,7 @@ func _initialize() -> void:
 	# Pretend a design is running. No network: what is being tested is
 	# the bookkeeping around the loop, not the loop.
 	assistant._busy = true
+	assistant._run_generation = assistant.world.generation()
 	assistant._messages = [{"role": "user", "content": "a boat"}]
 
 	var took: bool = assistant.design("a rocket")

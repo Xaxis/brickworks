@@ -461,6 +461,12 @@ var _glow_nodes: Array[OmniLight3D] = []
 ## How much the glowing plastics give off in the picture being drawn: GLOW in
 ## the Dark light, nothing otherwise.
 var _glow: float = 0.0
+## Played with as the raster draws it in the picture being drawn
+## (photoreal27, _raster_wear): age, dust, handling, seating and play.
+var _wear: Array = [0.0, 0.0, 0.0, 0.0, 0.0]
+## Whether this picture's raster frames raise the logo on every stud
+## (_raster_logos, plastic_body's stud_logos).
+var _logos: bool = false
 var _floor_view: SubViewport
 var _fence: SubViewport
 var _floor_camera: Camera3D
@@ -1345,9 +1351,9 @@ static func _draw_alone(views: Array) -> void:
 
 ## Copy the model on to the stage, a slice a frame (FramePace), unless what
 ## is there already is it.
-func _stage_model(world: BrickWorld) -> bool:
+func _stage_model(world: BrickWorld, seating: float = 0.0, play: float = 0.0) -> bool:
 	var wanted: Array = [world.get_instance_id(), world.generation(), world.revision,
-		scenery.size(), scenery.hash(), _hidden_hash(world), _stage.product]
+		scenery.size(), scenery.hash(), _hidden_hash(world), _stage.product, seating, play]
 	if wanted == _staged:
 		return true
 	_staged = []
@@ -1368,12 +1374,17 @@ func _stage_model(world: BrickWorld) -> bool:
 				return false
 			if world.revision != wanted[2]:
 				_stage.release_drawing()
-				return await _stage_model(world)
+				return await _stage_model(world, seating, play)
 		if scenery.has(brick.id) or brick.hidden:
 			continue
 		if _step.is_empty():
 			_doing("staging")
-		_staged_ids[brick.id] = _stage.add_brick(brick.part_id, brick.color_code, brick.transform)
+		# Played with where the raster draws it (photoreal27): each part
+		# seated its own way, as the tracer seats its own copy.
+		var at: Transform3D = brick.transform
+		if seating > 0.0:
+			at = PathTracer.seat(at, PathTracer._part_key(at), seating, play)
+		_staged_ids[brick.id] = _stage.add_brick(brick.part_id, brick.color_code, at)
 	_stage.release_drawing()
 	# The batches are written on the frame after.
 	await get_tree().process_frame
@@ -1415,7 +1426,9 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		progress.emit(0.0, "fetching the photographed light")
 		await WebPacks.need(WebPacks.HDRI)
 	progress.emit(0.0, "setting up the model")
-	if not await _stage_model(world):
+	_wear = _raster_wear(settings)
+	_logos = _raster_logos(settings)
+	if not await _stage_model(world, _wear[3], _wear[4]):
 		return false
 	if _line_asked != null and not await _line_staged():
 		return false
@@ -1458,7 +1471,13 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		while plastic != null:
 			plastic.set_shader_parameter("room", 0.0 if dark else 1.0)
 			plastic.set_shader_parameter("glow", _glow)
+			if _stage.product:
+				plastic.set_shader_parameter("wear_age", _wear[0])
+				plastic.set_shader_parameter("wear_dust", _wear[1])
+				plastic.set_shader_parameter("wear_handling", _wear[2])
+				plastic.set_shader_parameter("stud_logos", 1.0 if _logos else 0.0)
 			plastic = plastic.next_pass as ShaderMaterial
+	_wear_frame()
 	# What the window's own light makes of this model from here: the
 	# lightness every other choice is exposed to match.
 	# Not in the Dark light, which is as dark as it is: metered to the
@@ -2457,6 +2476,7 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 	_traced_last = plan.traced
 	if plan.traced:
 		return await _traced(settings, plan, from, to, words)
+	_wear_frame()
 	var shot: Shot = last_shot
 	var picture: Vector2i = Vector2i(maxi(settings.size.x, 1), maxi(settings.size.y, 1))
 	var tiles: Array[Rect2i] = _tiles(picture)
@@ -3284,6 +3304,55 @@ static func _own(asked: float, fallback: float) -> float:
 ## played with for years.
 static func _plastic(settings: RenderSettings, new: float, played: float) -> float:
 	return played if settings.plastic == "played" else new
+
+
+## Played with where Best is not path traced (photoreal27): in a browser, the
+## simpler graphics mode, a card that traces no rays, a picture with nothing
+## behind it. The raster's Product plastic draws the tracer's wear
+## (plastic_body's wear_*) and the stage seats each part its own way, by the
+## same levers and the same numbers: PLAYED_AGE, PLAYED_DUST,
+## PLAYED_HANDLING, PLAYED_SEATING with Played with, and an age, dust,
+## handling or seating asked for by number. New draws none of it, as the
+## raster always drew the product look. The dust is what lies beyond New's:
+## the tracer's New already carries PRODUCT_DUST's film, which the raster's
+## New (kept byte for byte) stands for; the whole of PLAYED_DUST here turned
+## every top milky, three times the tracer's shift from New (photoreal27).
+## [age, dust, handling, seating, play], all 0 unless the picture is a
+## raster Best in the Product look.
+static func _raster_wear(settings: RenderSettings) -> Array:
+	if settings.look != "product" or settings.quality != RenderSettings.Quality.BEST \
+			or settings.traced_here():
+		return [0.0, 0.0, 0.0, 0.0, 0.0]
+	var played: bool = settings.plastic == "played"
+	var seating: float = _own(settings.seating, PLAYED_SEATING if played else 0.0)
+	return [_own(settings.age, PLAYED_AGE if played else 0.0),
+		maxf(0.0, _own(settings.dust, PLAYED_DUST if played else 0.0) - PRODUCT_DUST),
+		_own(settings.handling, PLAYED_HANDLING if played else 0.0),
+		seating, _own(settings.play, PRODUCT_PLAY) if seating > 0.0 else 0.0]
+
+
+## Whether the raster's Best raises the logo on every stud, as the tracer
+## does (photoreal27): the Product look at Best, where nothing traces rays.
+## Quick and Good draw one frame, finer than which the letters alias.
+static func _raster_logos(settings: RenderSettings) -> bool:
+	return settings.look == "product" and settings.quality == RenderSettings.Quality.BEST \
+		and not settings.traced_here()
+
+
+## Where the stage stands in the window this frame, for the raster's wear and
+## logos: each part's own numbers are keyed to its place on the stage, so a
+## turntable's frames wear each part alike (plastic_body's wear_stage).
+func _wear_frame() -> void:
+	if not _stage.product or (float(_wear[0]) + float(_wear[1]) + float(_wear[2]) <= 0.0
+			and not _logos):
+		return
+	var into_stage := Projection(_stage.global_transform.affine_inverse())
+	for batch: Node in _stage.get_children():
+		if batch is MultiMeshInstance3D:
+			var plastic := (batch as MultiMeshInstance3D).material_override as ShaderMaterial
+			while plastic != null:
+				plastic.set_shader_parameter("wear_stage", into_stage)
+				plastic = plastic.next_pass as ShaderMaterial
 
 
 ## Whether the traced picture's sweep is a shadow catcher (photoreal2): the

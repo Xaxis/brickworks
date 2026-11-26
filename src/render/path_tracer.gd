@@ -392,7 +392,17 @@ static func _part_key(place: Transform3D) -> int:
 
 
 func _seated(place: Transform3D, key: int) -> Transform3D:
-	if seating <= 0.0 or not product:
+	if not product:
+		return place
+	return seat(place, key, seating, play)
+
+
+## [param place] as a part seated [param seating] off exact sits, its own way
+## by its [param key] ([method _part_key]), with LEGO's own [param play]: the
+## tracer's seating, and the raster's when it draws Played with
+## (StudioRender, photoreal27), the same numbers either way.
+static func seat(place: Transform3D, key: int, seating: float, play: float) -> Transform3D:
+	if seating <= 0.0:
 		return place
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2654435761 * (key + 1) + 97
