@@ -687,27 +687,33 @@ async function challenge() {
   const tile = document.getElementById("challenge");
   if (!tile) return;
   const answer = await shelves;
+  // A tab pressed while this was asked drew the stream again and took this
+  // post away: that draw says it again of its own post (sitewalk3,
+  // 2026-11-26: New pressed as the home came threw "Cannot set properties
+  // of null" here).
+  if (!tile.isConnected) return;
+  const part = (id) => tile.querySelector(`#${id}`);
   const c = answer?.challenge && !answer.challenge.test && ["open", "upcoming"].includes(answer.challenge.state) ? answer.challenge : null;
   html.dataset.challenge = c ? (c.state === "open" ? "open" : "next") : "none";
   if (!c) return;
   const open = c.state === "open";
   const [badge, left, go] = open ? standing(c) : [say("Coming next"), say("Opens {day}", { day: days(c.starts_on, c.starts_on) }), ""];
-  document.getElementById("challenge-when").textContent = badge;
-  const leftBadge = document.getElementById("challenge-left");
+  part("challenge-when").textContent = badge;
+  const leftBadge = part("challenge-left");
   leftBadge.textContent = left;
   leftBadge.hidden = false;
-  const name = document.getElementById("challenge-h");
+  const name = part("challenge-h");
   name.textContent = String(c.title || "");
   name.lang = "en";
-  const brief = document.getElementById("challenge-brief");
+  const brief = part("challenge-brief");
   if (c.brief) {
     brief.textContent = String(c.brief);
     brief.lang = "en";
   }
   // Its days in place of the line held for them, so nothing under it moves.
   const span = days(c.starts_on, c.ends_on);
-  if (span) document.getElementById("challenge-days").textContent = span;
-  const link = document.getElementById("challenge-go");
+  if (span) part("challenge-days").textContent = span;
+  const link = part("challenge-go");
   if (go) link.textContent = go;
   if (c.id) link.href = `${langAt()}/challenge`;
 }

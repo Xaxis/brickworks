@@ -562,10 +562,9 @@ func _do(step: Dictionary) -> void:
 		var placed: int = int(_main.call("_open", str(step["open"])))
 		if placed <= 0:
 			_failed.append("%s opened no parts" % step["open"])
-		for _n: int in 600:
-			await process_frame
-			if not _loading():
-				break
+		# An open places its parts before it returns; a frame draws them. (It
+		# waited on BrickWorld.loading(), which no build had: one frame, always.)
+		await process_frame
 		_stop_playback()
 	elif step.has("run"):
 		var name: String = step["run"]
@@ -658,12 +657,6 @@ func _do(step: Dictionary) -> void:
 			_failed.append("%s was never %s" % [path, str(step.get("is"))])
 	else:
 		_failed.append("a step this probe does not know: %s" % JSON.stringify(step))
-
-
-## Whether the model is still coming in: parts still being drawn in.
-func _loading() -> bool:
-	var world: BrickWorld = _main.get("_world")
-	return world != null and world.has_method("loading") and bool(world.call("loading"))
 
 
 ## Models saved here before the picture, each at a fixed time. File, Open
