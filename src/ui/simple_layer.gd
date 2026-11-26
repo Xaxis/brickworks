@@ -51,9 +51,11 @@ const LIT := Color(0.36, 0.6, 1.0, 1.0)
 
 ## How far over the finger the ghost is aimed, in points: a fingertip
 ## hides what is under it, so the brick rides above it, as a phone's block
-## puzzles lift their piece over the thumb. A drag eases into it over its
-## first [constant RAMP] points, so a part taken off the model does not
-## jump. Tuned by the walks (WALKS.md); 0 aims at the fingertip.
+## puzzles lift their piece over the thumb. A part taken off the model eases
+## into it over the drag's first [constant RAMP] points, so it does not
+## jump; a brick out of the tray is over the finger at once (eased, a
+## place just over the tray was aimed into it and refused, walk 2). Tuned
+## by the walks (WALKS.md); 0 aims at the fingertip.
 var lift_points: float = 56.0
 const RAMP := 40.0
 
@@ -369,7 +371,7 @@ func _tile_input(event: InputEvent, tile: Control, part: String) -> void:
 			_tap_tile(part)
 			return
 		_tray_dragging = false
-		_drop_from_tray(_aimed(button.global_position, _tray_travel))
+		_drop_from_tray(_aimed(button.global_position, p(RAMP)))
 		return
 	if motion != null and _tray_part == part and (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 		tile.accept_event()
@@ -378,7 +380,7 @@ func _tile_input(event: InputEvent, tile: Control, part: String) -> void:
 			_tray_dragging = true
 			_take(part)
 		if _tray_dragging:
-			_aim(_aimed(motion.global_position, _tray_travel))
+			_aim(_aimed(motion.global_position, p(RAMP)))
 
 
 ## A press in the tray beside every tile, in a gap or its edge: the

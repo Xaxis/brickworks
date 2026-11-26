@@ -59,6 +59,8 @@ var _desktop: bool = false
 var _full: bool = false
 var _do_checks: bool = true
 var _do_walks: bool = true
+## The round brick moved a stud and back after the ten (--moves=0: not).
+var _moves: bool = true
 var _lifts: Array = []
 var _pictures: String = "res://shots/simplep1/"
 var _size: String = ""
@@ -89,6 +91,8 @@ func _args() -> void:
 			_full = true
 		elif arg == "--checks=0":
 			_do_checks = false
+		elif arg == "--moves=0":
+			_moves = false
 		elif arg == "--walks=0":
 			_do_walks = false
 		elif arg.begins_with("--lifts="):
@@ -170,6 +174,7 @@ func _run() -> void:
 		for walker: Dictionary in WALKERS:
 			(_results["walks"] as Array).append(await _walk(walker))
 	if not _lifts.is_empty():
+		_moves = false
 		print("\n8. the ghost's height over the finger, the careful newcomer at each")
 		_results["lifts"] = []
 		for lift: float in _lifts:
@@ -413,11 +418,13 @@ func _finger_map() -> void:
 		# A finger beside a part, within a fingertip: the part's.
 		var now: Transform3D = _world.get_brick(id).transform
 		var beside: Vector2 = _beside(id, 14.0)
-		print("  measure beside %s, on the part %d" % [beside, _verbs.brick_at(beside)])
-		await _one_finger(beside, _base_point(-0.25, 0.2) + Vector2(0, Phone.px(root, float(_simple.get("lift_points")))))
-		await _frames(4)
-		_check("B: a finger 14 points beside a part takes it",
-			_verbs.brick_at(beside) == 0 and not _world.get_brick(id).transform.is_equal_approx(now))
+		var off_it: bool = beside.x < INF and _verbs.brick_at(beside) == 0
+		print("  measure beside %s, on a part there: %d (the part %d)" % [beside, _verbs.brick_at(beside) if off_it else -1, id])
+		if off_it:
+			await _one_finger(beside, _base_point(-0.25, 0.2) + Vector2(0, Phone.px(root, float(_simple.get("lift_points")))))
+			await _frames(4)
+		_check("B: a finger 14 points beside a part, off it, takes it",
+			off_it and not _world.get_brick(id).transform.is_equal_approx(now))
 		await _frames(SEAT_WAIT)
 		view = _camera.global_transform
 		await _two_fingers(_base_point(-0.2, -0.3), _base_point(0.2, -0.3), Vector2(Phone.px(root, 80.0), 0.0), 1.0)
@@ -550,14 +557,20 @@ func _walk(walker: Dictionary, tag: String = "") -> Dictionary:
 			await _wanted_turn(walker, out)
 	await _frames(SEAT_WAIT)
 	await _shot_walk("ten")
+	out["seconds"] = snappedf(_seconds, 0.1)
+	if _moves:
+		await _move_task(walker, out)
+		await _frames(SEAT_WAIT)
+		await _shot_walk("moved")
 	# The house framed whole for the picture, after the clock stops.
 	await _press_fit()
 	await _shot_walk("house")
-	out["seconds"] = snappedf(_seconds, 0.1)
 	out["log"] = _walk_log
-	print("  measure walk %s map %s: %.1f s to %d bricks, %d wrong, %d refused, %d unwanted camera moves, wanted camera tries %d, undo found %s (looked at %d), gave up %d"
-		% [_tag, _map, _seconds, out["bricks"], out["wrong"], out["refused"], out["unwanted_camera"],
-			out["wanted_camera_tries"], ("not needed" if out["undo_found"] == null else str(out["undo_found"])), out["undo_looked"], out["gave_up"]])
+	print("  measure walk %s map %s: %.1f s to %d bricks, %d wrong, %d refused, %d unwanted camera moves, wanted camera tries %d, undo found %s (looked at %d), gave up %d; then %d of 2 moves of the round brick in %.1f s, %d unwanted camera moves"
+		% [_tag, _map, float(out["seconds"]), out["bricks"], out["wrong"], out["refused"],
+			int(out["unwanted_camera"]) - int(out.get("move_unwanted_camera", 0)), out["wanted_camera_tries"],
+			("not needed" if out["undo_found"] == null else str(out["undo_found"])), out["undo_looked"], out["gave_up"],
+			int(out.get("moves", 0)), float(out.get("move_seconds", 0.0)), int(out.get("move_unwanted_camera", 0))])
 	return out
 
 
@@ -697,12 +710,33 @@ func _fix(walker: Dictionary, n: int, result: Dictionary, out: Dictionary) -> bo
 		return false
 	# Dragged where it was meant.
 	var id: int = int(result["id"])
+	match await _drag_to(walker, "brick %d" % (n + 1), id, result["ideal"], out):
+		"moved":
+			_placed[n] = id
+			return true
+		"nothing":
+			# Undo, then.
+			await _undo_by_button(walker, out)
+		"elsewhere":
+			await _undo_by_button(walker, out)
+			await _undo_by_button(walker, out)
+	return false
+
+
+## A brick on the model taken by a finger and dragged to [param ideal], the
+## ghost watched and put right as a tray's brick's is: "moved" there,
+## "nothing" moved, or moved "elsewhere". A grab that misses and turns the
+## view is an unwanted camera move, and the model is framed again by Fit.
+func _drag_to(walker: Dictionary, what: String, id: int, ideal: Transform3D, out: Dictionary) -> String:
 	var brick: BrickWorld.Brick = _world.get_brick(id)
 	if brick == null:
-		return false
+		return "nothing"
+	var others: Dictionary = {}
+	for other: BrickWorld.Brick in _world.bricks():
+		if other.id != id:
+			others[other.id] = other.transform
 	var view: Transform3D = _camera.global_transform
 	var grab: Vector2 = _landed(_top_point(id), float(walker["sigma"]))
-	var ideal: Transform3D = result["ideal"]
 	var part: Lbm.PartMesh = _library.mesh_for(brick.part_id)
 	var meant_box: AABB = ideal * part.bounds
 	var meant: Vector2 = _camera.unproject_position(meant_box.get_center())
@@ -732,26 +766,67 @@ func _fix(walker: Dictionary, n: int, result: Dictionary, out: Dictionary) -> bo
 	await _frames(2)
 	_rest = finger
 	await _frames(3)
-	if not _camera.global_transform.is_equal_approx(view):
+	var turned: bool = not _camera.global_transform.is_equal_approx(view)
+	if turned:
 		out["unwanted_camera"] = int(out["unwanted_camera"]) + 1
-		_note("brick %d: the grab missed it and turned the view" % (n + 1))
-		await _shot_walk("unwanted_fix_%d" % (n + 1))
+		_note("%s: the grab missed it and turned the view" % what)
+		await _shot_walk("unwanted_" + what.replace(" ", "_"))
 		await _recover(out)
 	brick = _world.get_brick(id)
+	var moved_other: bool = false
+	for other: int in others:
+		var now: BrickWorld.Brick = _world.get_brick(other)
+		if now == null or not now.transform.is_equal_approx(others[other]):
+			moved_other = true
+	if moved_other:
+		_seconds += NOTICE
+		_note("%s: the grab took the part beside it, moved instead" % what)
+		return "elsewhere"
 	if brick == null or brick.transform.is_equal_approx(was):
 		_seconds += NOTICE
-		_note("brick %d: the drag to put it right moved nothing" % (n + 1))
-		# Undo, then.
-		await _undo_by_button(walker, out)
-		return false
+		if not turned:
+			_note("%s: the drag moved nothing" % what)
+		return "nothing"
 	if brick.transform.origin.distance_to(ideal.origin) < 1.0:
-		_note("brick %d: dragged where it was meant" % (n + 1))
-		_placed[n] = id
-		return true
-	_note("brick %d: dragged, still not where meant" % (n + 1))
-	await _undo_by_button(walker, out)
-	await _undo_by_button(walker, out)
-	return false
+		_note("%s: dragged where it was meant" % what)
+		return "moved"
+	_seconds += NOTICE
+	_note("%s: dragged, not where meant" % what)
+	return "elsewhere"
+
+
+## The round brick on top moved a stud and back, as a newcomer puts right
+## what is already down: the smallest part to take with a finger, where a
+## miss is the view turned (A) or nothing, or the part under it (B).
+const MOVES: Array = [[9, -1.0, 0.0], [9, 1.0, 0.0]]
+
+
+func _move_task(walker: Dictionary, out: Dictionary) -> void:
+	var started: float = _seconds
+	var unwanted: int = int(out["unwanted_camera"])
+	out["moves"] = 0
+	for move: Array in MOVES:
+		var n: int = int(move[0])
+		if not _placed.has(n):
+			continue
+		var id: int = int(_placed[n])
+		for attempt: int in 3:
+			var brick: BrickWorld.Brick = _world.get_brick(id)
+			if brick == null:
+				break
+			_rng.seed = int(walker["seed"]) * 1000 + 500 + n * 10 + attempt + 3 * int(out["moves"])
+			_seconds += MENTAL
+			var ideal: Transform3D = brick.transform.translated(Vector3(float(move[1]) * 20.0, 0.0,
+				float(move[2]) * 20.0))
+			var how: String = await _drag_to(walker, "move %d of brick %d" % [int(out["moves"]) + 1, n + 1],
+				id, ideal, out)
+			if how == "moved":
+				out["moves"] = int(out["moves"]) + 1
+				break
+			if how == "elsewhere":
+				await _undo_by_button(walker, out)
+	out["move_seconds"] = snappedf(_seconds - started, 0.1)
+	out["move_unwanted_camera"] = int(out["unwanted_camera"]) - unwanted
 
 
 ## Undo, found by looking from where the finger last was outward, control by
@@ -868,9 +943,11 @@ func _ideal(part: String, colour: int, at: Vector2) -> Variant:
 	var held: String = _builder.held_part
 	var held_colour: int = _builder.held_color
 	var mode: String = _verbs.mode
-	_builder.held_part = part
+	# Taken as the tray takes it (SimpleLayer._take): a part chosen afresh
+	# is held by its own point, and set by hand it kept the last one's.
+	if _builder.held_part != part or _verbs.mode != "place":
+		_main.call("_on_part_chosen", part)
 	_builder.held_color = colour
-	_verbs.set_mode("place")
 	_main.call("_aim_at", at)
 	var ideal: Variant = _builder.ghost_transform() if _builder.can_place() else null
 	_builder.hide_preview()
@@ -1079,9 +1156,18 @@ func _top_point(id: int) -> Vector2:
 func _beside(id: int, points: float) -> Vector2:
 	var rect: Rect2 = _screen_box(_box_of(id))
 	var room: Rect2 = _camera.seen_rect()
-	var middle: Vector2 = _top_point(id) if _verbs.brick_at(_top_point(id)) == id else rect.get_center()
-	# Out from the brick's middle each way to its picture's edge, then the
-	# points beyond it: the first side in the model's room.
+	# A point of its picture: sampled over its box until one is the part.
+	var middle := Vector2.INF
+	for step: int in 81:
+		var at: Vector2 = rect.position + rect.size * Vector2((step % 9 + 0.5) / 9.0, (step / 9 + 0.5) / 9.0)
+		if _verbs.brick_at(at) == id:
+			middle = at
+			if absf(at.x - rect.get_center().x) < rect.size.x * 0.2:
+				break
+	if not (middle.x < INF):
+		return Vector2.INF
+	# Out from there each way to its picture's edge, then the points beyond
+	# it: the first side in the model's room.
 	for way: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
 		var at: Vector2 = middle
 		for _n: int in 400:
@@ -1091,7 +1177,7 @@ func _beside(id: int, points: float) -> Vector2:
 		at += way * Phone.px(root, points)
 		if room.grow(-Phone.px(root, 8.0)).has_point(at) and _verbs.brick_at(at) == 0:
 			return at
-	return middle + Vector2.RIGHT * Phone.px(root, points)
+	return Vector2.INF
 
 
 ## Empty space in the model's room: away from every part, over the
