@@ -89,15 +89,11 @@ func _run() -> void:
 	_check("...with nothing left out", not said.contains("Saved without") and world.brick_count() == parts)
 
 	print("\none gear not held: everything else is saved, and the gear is named")
-	# Where the exact check finds the gear at fault (not held, or colliding),
-	# as 42061's was. A gear in the air alone is a piece of its own, which the
-	# BrickBench pieces gate refuses twice and then saves (a first run of this
-	# probe): not this. World units are LDU, y up; the left rail's top is at
-	# y 40, its holes along z 8 to 208.
-	# On its edge against the left rail's outer face, resting on nothing, moved
-	# in a little at a time until the check finds it there and not held
-	# (42061's fault); then lying on the rail (a gear laid flat on a face with
-	# no stud is only advice, set down, the first run found); one that collides
+	# Where the exact check finds the gear not held, as 42061's was. World
+	# units are LDU, y up; the left rail's top is at y 40, its holes along z 8
+	# to 208. On its edge beside the left rail's outer face, resting on
+	# nothing, moved in a little at a time; then lying on the rail (a gear laid
+	# flat on a face with no stud is only advice, set down); one that collides
 	# is the fallback, the same edit taking it off.
 	var gear: int = 0
 	var where: String = ""
@@ -109,16 +105,21 @@ func _run() -> void:
 		spots.append(["lying on the left rail at y %d" % height, Basis(Vector3.RIGHT, PI / 2.0),
 			Vector3(10, height, 100)])
 	spots.append(["half in the left rail", Basis(), Vector3(10, 40, 100)])
+	# The gear is the session's own part, as 42061's was: the check answers
+	# for what the design placed (Assistant._exact_subject), and a part it
+	# never placed is somebody else's, which it does not judge.
 	for spot: Array in spots:
 		var tried: int = world.add_brick("3648b", 71, Transform3D(spot[1], spot[2]))
 		if tried <= 0:
 			continue
+		assistant._placed_ids.append(tried)
 		var fault: String = await _fault_of(assistant, tried)
 		print("    a gear %s: %s" % [spot[0], fault if not fault.is_empty() else "no fault"])
 		if fault == "not held" or (fault == "colliding" and spot == spots[-1]):
 			gear = tried
 			where = "%s (%s)" % [spot[0], fault]
 			break
+		assistant._placed_ids.remove_at(assistant._placed_ids.find(tried))
 		world.remove_brick(tried)
 	_check("a 24-tooth gear %s, #%d" % [where, gear], gear > 0 and world.brick_count() == parts + 1)
 	var file: String = "probe-save-whole-%d.ldr" % OS.get_process_id()
