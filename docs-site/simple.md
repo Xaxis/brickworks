@@ -52,7 +52,7 @@ Holding a finger still on a part does nothing, so a resting thumb never deletes 
 
 ## Undo, redo and the view {#view}
 
-- **Undo** and **Redo** are the big round buttons over the tray. Tap with two fingers to undo, and with three to redo.
+- **Undo** and **Redo** are the big round buttons over the tray on a phone, and up the left side on a tablet or a computer. Tap with two fingers to undo, and with three to redo.
 - Drag with **two fingers** to turn the view, and pinch to zoom. One finger never moves the view, so building never turns it by mistake.
 - **Fit**, under the header, frames the whole model again. The view never zooms out so far that the studs get too small to aim at.
 - With a mouse, the left button is your finger; drag on empty space to turn the view, and use the wheel to zoom.

@@ -4024,7 +4024,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   under it), five group tabs (Bricks, Plates, Slopes, Tiles, Specials) and
   the six parts of the group shown (`GROUPS`, 30 in all, pictures from
   `PartThumbnails` in the chosen colour). Undo and Redo as 60-point buttons
-  over the tray's corner, Fit (48) under the header. A new model in Simple
+  over the tray's corner on a phone, up the left side at the model's middle
+  where the window is 600 points or more across, Fit (48) under the header. A new model in Simple
   (and Simple entered on an empty one) stands on a 16 x 16 plate framed to
   fill the room (`new_sketch`, `ModelBar.started_new`); the view is never
   let pull back so far a stud is under 12 points (`LEAST_STUD`,

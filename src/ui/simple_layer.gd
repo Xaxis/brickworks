@@ -413,8 +413,18 @@ func _lay_out() -> void:
 	notices_slot.size = Vector2(room.x, 0.0)
 	var foot: float = room.y - p(_tray_tall)
 	var y: float = foot - p(MARGIN + 4.0) - p(BIG)
-	_undo.position = Vector2(p(MARGIN + 4.0), y)
-	_redo.position = Vector2(p(MARGIN + 4.0) + p(BIG) + p(MARGIN), y)
+	if room.x / maxf(_k, 0.001) >= ONE_ROW:
+		# Wide, a tablet's: Undo over Redo up the left side, at the middle of
+		# the model's height where a thumb holding it rests (Procreate's side
+		# bar). In the corner over a tray the width of the screen, the three
+		# newcomers' look along the colours and parts nearer them never
+		# reached it at 820 x 1180.
+		var middle: float = (top + foot) * 0.5
+		_undo.position = Vector2(p(MARGIN + 4.0), middle - p(BIG) - p(MARGIN) * 0.5)
+		_redo.position = Vector2(p(MARGIN + 4.0), middle + p(MARGIN) * 0.5)
+	else:
+		_undo.position = Vector2(p(MARGIN + 4.0), y)
+		_redo.position = Vector2(p(MARGIN + 4.0) + p(BIG) + p(MARGIN), y)
 	var act_y: float = foot - p(MARGIN + 4.0) - p(ACT) - (p(BIG) - p(ACT)) * 0.5
 	var right: float = room.x - p(MARGIN + 4.0)
 	for button: Button in [_delete, _copy, _turn]:
