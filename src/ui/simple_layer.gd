@@ -594,10 +594,13 @@ func left() -> void:
 	var builder: Builder = app.get("_builder")
 	var world: BrickWorld = app.get("_world")
 	if not _chose_here and _full_gen == world.generation():
-		builder.clear_selection()
+		# Exactly the parts Full had: select_brick takes a part's whole
+		# sub-assembly, and a second part of one toggles them all off.
+		var kept := PackedInt64Array()
 		for id: Variant in _full_selection:
-			if world.get_brick(int(id)) != null and not builder.selection.has(int(id)):
-				builder.select_brick(int(id), true)
+			if world.get_brick(int(id)) != null:
+				kept.append(int(id))
+		builder._select_changed(kept)
 	_full_selection = []
 	var camera: CadCamera = app.get("_camera")
 	if _camera_was.is_empty():
