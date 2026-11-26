@@ -952,9 +952,9 @@ static func aimed_at(sites: Array, held: Array, from: Vector3, way: Vector3,
 	# An axle's two ends both reach along its whole shaft, so a point of it
 	# is aimed at by both alike, and which was the nearer was the rounding
 	# of the pointer's line: a belt wheel held over the middle of 8841-1's
-	# axle went onto the other end at each motion of a pixel, turned round,
-	# and lost what R and T had chosen (connectfix). The end the hand is on
-	# stays while it is aimed as near.
+	# axle went onto the other end at about every other pixel the pointer
+	# moved, a new joint to Builder, which undid what R and T had chosen
+	# (connectfix). The end the hand is on stays while it is aimed as near.
 	if best != null and kept != null and kept != best and one_shaft(kept, best) \
 			and kept_off <= best_off + 0.5 and absf(kept_along - best_along) <= 0.5:
 		return kept

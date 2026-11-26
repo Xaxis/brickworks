@@ -501,8 +501,8 @@ func _walk() -> void:
 		var exact: bool = _exact_ghost(want)
 		# Its turn kept as the hand drifts along the axle, uncounted: a belt
 		# wheel over the middle of the axle went onto the axle's other end at
-		# a pixel's move, turned round, and lost what R had chosen
-		# (connectfix). The walk had passed only by where its pixel fell.
+		# a pixel's move, which undid what R had chosen (connectfix). The walk
+		# had passed only by where its pixel fell.
 		if index == 25:
 			var drift: Array = await _drift_along(site, at)
 			_check("8841-1 #25 %s keeps its turn as the pointer drifts along the axle: turned otherwise at %d of %d places on it"
