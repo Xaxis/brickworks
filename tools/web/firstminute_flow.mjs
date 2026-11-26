@@ -249,7 +249,12 @@ async function answerStudio(page, press) {
 
 // The site's sign-in dialog, by email, and whatever a new account is asked
 // after it there (the age question, the beta's welcome, First steps).
-async function codeOnSite(page, email) {
+// [leaves]: the press goes on from the model's page once all that is
+// answered (the site way), so a moment with no dialog between the sign-in's
+// and the age question's is not the end: done only when the page has left
+// /m/ (its first unit preview, 2026-11-26, read that moment as done and
+// left the age question open over the page for 60 s).
+async function codeOnSite(page, email, { leaves = false } = {}) {
   await page.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 30000 });
   await page.fill("dialog.sign-in input[type=email], dialog.sign-in input", email);
   await page.click('dialog.sign-in button[type="submit"]');
@@ -273,7 +278,7 @@ async function codeOnSite(page, email) {
       // Skipped to the end, as a person in a hurry to get back does.
       const skip = page.locator("dialog.first-steps[open] button", { hasText: /Skip|Not now|Done|Close|Back to/i }).last();
       await skip.click().catch(() => page.keyboard.press("Escape"));
-    } else if (!open && page.url().includes("/m/")) {
+    } else if (!open && page.url().includes("/m/") && !leaves) {
       return true;
     }
     await page.waitForTimeout(700);
@@ -413,7 +418,7 @@ async function walk(width, way) {
       check(`${tag}: Open in the studio asks on the page in ${asked} ms, the page still the model's (${new URL(page.url()).pathname}): "${lead}"`,
         asked !== null && asked < 2000 && new URL(page.url()).pathname === `/m/${id}` && /own copy in the studio/.test(lead || ""));
       await shot(page, "site-asks");
-      result.answered = await codeOnSite(page, email);
+      result.answered = await codeOnSite(page, email, { leaves: true });
       await page.locator("dialog[open] button", { hasText: /Open it anyway/ }).click({ timeout: 4000 }).catch(() => {});
       await page.waitForURL(/\/app\?/, { timeout: 60000 }).catch(() => {});
       check(`${tag}: signed in, on to the studio with the copy (${new URL(page.url()).pathname}${new URL(page.url()).search})`,
