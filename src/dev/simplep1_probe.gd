@@ -41,8 +41,6 @@
 ## Exits non-zero when a check fails.
 extends SceneTree
 
-const SEAT_WAIT := 24
-
 var _failures: int = 0
 var _main: Node
 var _camera: CadCamera
@@ -323,8 +321,9 @@ func _drag_from_tray() -> void:
 	print("  measure seat drawn at the first frame: %s" % ("%.1f LDU over its studs" % ((drawn[brick.id] as Transform3D).origin.y
 		- brick.transform.origin.y) if brick != null and drawn.has(brick.id) else "already down"))
 	_check("...seated by a drop drawn onto its studs, the model's brick already where it stands", seating)
-	await _frames(SEAT_WAIT)
-	_check("...and the drop is over in a moment, nothing left moved", _world.drawn_ids().is_empty())
+	var left: int = await _seat_done()
+	_check("...and the drop is over in a moment, nothing left moved (%d ms after the checks above)" % left,
+		_world.drawn_ids().is_empty() and left < 500)
 	_check("nothing in hand after: no ghost, the tool Select's", not _builder.has_preview() and _verbs.mode == "select")
 	await _shot("dropped")
 
@@ -387,13 +386,13 @@ func _undo_redo() -> void:
 func _finger_map() -> void:
 	await _fresh()
 	var id: int = await _put("3001", 4, _base_point(0.0, 0.0))
-	await _frames(SEAT_WAIT)
+	await _seat_done()
 	var empty_at: Vector2 = _empty_point()
 	var view: Transform3D = _camera.global_transform
 	var at_before: Transform3D = _world.get_brick(id).transform
 	await _one_finger(empty_at, empty_at + Vector2(Phone.px(root, 90.0), 0.0))
 	await _settle()
-	var turned: bool = not _camera.global_transform.is_equal_approx(view)
+	var turned: bool = _view_moved(view)
 	if _map == "a":
 		_check("A: one finger on empty space turns the view", turned)
 	else:
@@ -412,8 +411,8 @@ func _finger_map() -> void:
 	_check("...and the view stays (%.2f LDU, %.4f of a turn)" % [
 		_camera.global_position.distance_to(view.origin),
 		_camera.global_transform.basis.get_rotation_quaternion().angle_to(view.basis.get_rotation_quaternion()) / TAU],
-		_camera.global_transform.is_equal_approx(view))
-	await _frames(SEAT_WAIT)
+		not _view_moved(view))
+	await _seat_done()
 	if _map == "b":
 		# A finger beside a part, within a fingertip: the part's.
 		# Seen first: the move above went to a point of the plate that a
@@ -429,11 +428,11 @@ func _finger_map() -> void:
 			await _frames(4)
 		_check("B: a finger 14 points beside a part, off it, takes it",
 			off_it and not _world.get_brick(id).transform.is_equal_approx(now))
-		await _frames(SEAT_WAIT)
+		await _seat_done()
 		view = _camera.global_transform
 		await _two_fingers(_base_point(-0.2, -0.3), _base_point(0.2, -0.3), Vector2(Phone.px(root, 80.0), 0.0), 1.0)
 		await _settle()
-		_check("B: two fingers turn the view", not _camera.global_transform.is_equal_approx(view))
+		_check("B: two fingers turn the view", _view_moved(view))
 		view = _camera.global_transform
 		var distance: float = _camera.global_position.distance_to(_world.model_bounds().get_center())
 		await _two_fingers(_base_point(-0.1, -0.2), _base_point(0.1, -0.2), Vector2.ZERO, 2.0)
@@ -559,12 +558,12 @@ func _walk(walker: Dictionary, tag: String = "") -> Dictionary:
 			await _shot_walk("five")
 		if n == int(walker["turn_after"]):
 			await _wanted_turn(walker, out)
-	await _frames(SEAT_WAIT)
+	await _seat_done()
 	await _shot_walk("ten")
 	out["seconds"] = snappedf(_seconds, 0.1)
 	if _moves:
 		await _move_task(walker, out)
-		await _frames(SEAT_WAIT)
+		await _seat_done()
 		await _shot_walk("moved")
 	# The house framed whole for the picture, after the clock stops.
 	await _press_fit()
@@ -646,7 +645,7 @@ func _place_one(walker: Dictionary, n: int, how: String, slip: bool, out: Dictio
 			# Not the brick meant: no ghost of it, or a ghost of another.
 			_touch(0, finger, false)
 			await _frames(3)
-			var moved_view: bool = not _camera.global_transform.is_equal_approx(view)
+			var moved_view: bool = _view_moved(view)
 			_seconds += _fitts(start, Rect2(finger, Vector2.ONE)) + NOTICE
 			if moved_view:
 				out["unwanted_camera"] = int(out["unwanted_camera"]) + 1
@@ -770,7 +769,7 @@ func _drag_to(walker: Dictionary, what: String, id: int, ideal: Transform3D, out
 	await _frames(2)
 	_rest = finger
 	await _frames(3)
-	var turned: bool = not _camera.global_transform.is_equal_approx(view)
+	var turned: bool = _view_moved(view)
 	if turned:
 		out["unwanted_camera"] = int(out["unwanted_camera"]) + 1
 		_note("%s: the grab missed it and turned the view" % what)
@@ -891,7 +890,7 @@ func _wanted_turn(walker: Dictionary, out: Dictionary) -> void:
 		_note("wanted the view turned: the finger moved a part instead")
 		out["wrong"] = int(out["wrong"]) + 1
 		await _undo_by_button(walker, out)
-	if _camera.global_transform.is_equal_approx(view):
+	if not _view_moved(view):
 		_seconds += NOTICE + (LOOK * 2.0 if _said().to_lower().contains("two fingers") else MENTAL)
 		_note("one finger did not turn the view (said \"%s\"); two" % _said())
 		await _two_fingers(from, from + Vector2(Phone.px(root, 60.0), 0.0), by, 1.0)
@@ -899,7 +898,7 @@ func _wanted_turn(walker: Dictionary, out: Dictionary) -> void:
 		_seconds += TWO_FINGER_GESTURE
 		out["wanted_camera_tries"] = int(out["wanted_camera_tries"]) + 1
 		out["touches"] = int(out["touches"]) + 1
-	var turned: bool = not _camera.global_transform.is_equal_approx(view)
+	var turned: bool = _view_moved(view)
 	_note("view turned to look from the side: %s" % ("yes" if turned else "no"))
 	await _shot_walk("turned")
 
@@ -1328,6 +1327,26 @@ func _settle() -> void:
 func _frames(count: int) -> void:
 	for _n: int in count:
 		await process_frame
+
+
+## The seat's drop over: no part drawn away from where it stands, or a
+## second gone. Waited by the clock, as the seat runs by it (SimpleLayer's
+## SEAT_MS): a count of frames was over before it on a fast GPU (r4). Its
+## milliseconds.
+func _seat_done() -> int:
+	var from: int = Time.get_ticks_msec()
+	while not _world.drawn_ids().is_empty() and Time.get_ticks_msec() - from < 1000:
+		await process_frame
+	return Time.get_ticks_msec() - from
+
+
+## Whether the view moved as a person sees it: over half an LDU, or a
+## thousandth of a turn. Not the last of an ease settling, which an exact
+## compare counted (r4: 0.00 LDU, 0.0000 of a turn, "moved").
+func _view_moved(from: Transform3D) -> bool:
+	var now: Transform3D = _camera.global_transform
+	return now.origin.distance_to(from.origin) > 0.5 \
+		or now.basis.get_rotation_quaternion().angle_to(from.basis.get_rotation_quaternion()) > TAU * 0.001
 
 
 func _shot(name: String) -> void:
