@@ -94,17 +94,23 @@ func _run() -> void:
 	# BrickBench pieces gate refuses twice and then saves (a first run of this
 	# probe): not this. World units are LDU, y up; the left rail's top is at
 	# y 40, its holes along z 8 to 208.
+	# Lying on the left rail, lowered a little at a time until the check
+	# finds it resting there, not held (42061's fault); one that collides is
+	# the fallback, the same edit taking it off.
 	var gear: int = 0
 	var where: String = ""
-	for spot: Array in [["lying on the left rail", Basis(Vector3.RIGHT, PI / 2.0), Vector3(10, 44, 100)],
-			["on its edge on the left rail", Basis(), Vector3(10, 71, 100)],
-			["half in the left rail", Basis(), Vector3(10, 40, 100)]]:
+	var spots: Array = []
+	for height: int in [48, 47, 46, 45, 44, 43, 42, 41, 40]:
+		spots.append(["lying on the left rail at y %d" % height, Basis(Vector3.RIGHT, PI / 2.0),
+			Vector3(10, height, 100)])
+	spots.append(["half in the left rail", Basis(), Vector3(10, 40, 100)])
+	for spot: Array in spots:
 		var tried: int = world.add_brick("3648b", 71, Transform3D(spot[1], spot[2]))
 		if tried <= 0:
 			continue
 		var fault: String = await _fault_of(assistant, tried)
 		print("    a gear %s: %s" % [spot[0], fault if not fault.is_empty() else "no fault"])
-		if not fault.is_empty():
+		if fault == "not held" or (fault == "colliding" and spot == spots[-1]):
 			gear = tried
 			where = "%s (%s)" % [spot[0], fault]
 			break
