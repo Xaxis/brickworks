@@ -849,13 +849,17 @@ func end_typing() -> void:
 ## bar counting it with Cancel (ModelStore.save_as_paced): worked out in
 ## one go it held a browser for seconds on Orthanc, which is what "Save,
 ## then start new" froze on (2026-10-13).
-func _on_save() -> bool:
+func _on_save(press: int = -1) -> bool:
 	if store == null:
 		return false
 	end_typing()
 	if world.brick_count() == 0:
 		_say("nothing to save")
 		return false
+	# The model the press was made on ([param press], or now): one opened or
+	# begun while the save asks or writes is never written under this one's
+	# name (ModelStore.model_now, wholereview2 F1).
+	var model: int = store.model_now() if press < 0 else press
 	var name: String = model_name()
 	# A model nobody has named is asked what to call it first.
 	if name == ModelStore.UNTITLED and on_disk.is_empty():
@@ -863,11 +867,17 @@ func _on_save() -> bool:
 		if name.is_empty():
 			_say("not saved")
 			return false
+		if store.model_now() != model:
+			_say(ModelStore.ANOTHER_OPENED)
+			return false
 		_name.text = name
 		_name.text_changed.emit(name)
 	var saved: bool = false
 	var over: bool = false
 	while true:
+		if store.model_now() != model:
+			_say(ModelStore.ANOTHER_OPENED)
+			return false
 		if not store.says_writing():
 			saved = store.save_as(name, over)
 		elif _saving != null:
@@ -875,10 +885,14 @@ func _on_save() -> bool:
 		else:
 			_saving = Working.begin("Saving “%s”…" % name, 0, true)
 			await _saving.shown()
-			saved = await store.save_as_paced(name, _saving, over)
+			saved = await store.save_as_paced(name, _saving, over, model)
 			var stopped: bool = _saving.cancelled
 			_saving.end()
 			_saving = null
+			# Stopped by another model put on the baseplate, not by Cancel.
+			if store.model_now() != model:
+				_say(ModelStore.ANOTHER_OPENED)
+				return false
 			if stopped:
 				_say("stopped saving “%s”; nothing was written" % name)
 				return false
@@ -898,11 +912,15 @@ func _on_save() -> bool:
 	if not saved:
 		_say(store.refused if not store.refused.is_empty() else "could not save that name")
 	elif not on_disk.is_empty() and on_disk.get_file().get_basename().strip_edges() == name:
-		if await store.export_paced(on_disk, name):
-			SaveTo.wrote(on_disk)
-			_say("saved “%s” — wrote %s" % [name, on_disk])
+		var disk: String = on_disk
+		if await store.export_paced(disk, name, model):
+			SaveTo.wrote(disk)
+			_say("saved “%s” — wrote %s" % [name, disk])
+		elif store.model_now() != model:
+			_say("saved “%s” here, but did not write %s: another model was opened" % [name, disk])
+			return false
 		else:
-			_say("saved “%s” here, but could not write %s" % [name, on_disk])
+			_say("saved “%s” here, but could not write %s" % [name, disk])
 			return false
 	return saved
 
@@ -987,12 +1005,18 @@ var on_disk: String = ""
 ## chose in the platform's Save dialog (SaveTo), saved here under that name
 ## as Save does (Open, Versions), and written to the file. True when both
 ## were.
-func save_to_file(path: String) -> bool:
+## [param model]: the model the press was made on (ModelStore.model_now),
+## before the dialog; one opened since is not saved nor written.
+func save_to_file(path: String, model: int = -1) -> bool:
+	if model >= 0 and store != null and store.model_now() != model:
+		_say(ModelStore.ANOTHER_OPENED)
+		return false
+	var mine: int = store.model_now() if store != null else -1
 	var called: String = path.get_file().get_basename()
 	on_disk = path
 	_name.text = called
 	_name.text_changed.emit(called)
-	if not await _on_save():
+	if not await _on_save(mine):
 		return false
 	if model_name() == called.strip_edges():
 		return true
@@ -1001,11 +1025,12 @@ func save_to_file(path: String) -> bool:
 	# all the same, as it is named; Save writes it again only while the model
 	# keeps the file's name.
 	var name: String = model_name()
-	if await store.export_paced(path, name):
+	if await store.export_paced(path, name, mine):
 		SaveTo.wrote(path)
 		_say("saved “%s” — wrote %s" % [name, path])
 		return true
-	_say("saved “%s” here, but could not write %s" % [name, path])
+	_say("saved “%s” here, but %s %s" % [name, "did not write" if store.model_now() != mine
+		else "could not write", path + (": another model was opened" if store.model_now() != mine else "")])
 	return false
 
 
@@ -1523,11 +1548,14 @@ func _on_export() -> void:
 func export_now(into: String = "", asking: bool = false) -> String:
 	if world.brick_count() == 0:
 		return "nothing to export"
+	# The model asked for: one opened while it is written, or while the
+	# person chooses where, is not written under its name (ModelStore.model_now).
+	var model: int = store.model_now()
 	var file_name: String = SubmodelFile.titled(model_name(), ldraw_extension())
 	if OS.has_feature("web"):
-		if await store.export_paced(file_name, model_name()):
+		if await store.export_paced(file_name, model_name(), model):
 			return "downloaded %s" % file_name
-		return ""
+		return "not exported: another model was opened" if store.model_now() != model else ""
 	# Only the name's last part: a model's title is named by whoever
 	# designed it, and "../" in one would put the file somewhere else. With
 	# nobody asked (a session's export_model), the next name nothing has
@@ -1537,9 +1565,11 @@ func export_now(into: String = "", asking: bool = false) -> String:
 			file_name.replace("\\", "/").get_file()))
 	if path.is_empty():
 		return ""
-	if await store.export_paced(path, model_name()):
+	if await store.export_paced(path, model_name(), model):
 		SaveTo.wrote(path)
 		return "wrote %s%s" % [path, Download.kept_note(path)]
+	if store.model_now() != model:
+		return "did not write %s: another model was opened" % path
 	return "could not write %s" % path
 
 

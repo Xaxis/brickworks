@@ -1465,6 +1465,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   a time (`ModelStore.to_text_paced`, `text_for_file`, `save_as_paced`,
   `export_paced`; `ModelBar._on_save` returns whether it saved), with
   Cancel; "Save, then start new" starts new only once the save is made.
+  Each is bound to the model it was pressed on (`ModelStore.model_now`, the
+  world's generation, which every open and New moves on): after any wait,
+  with another model on the baseplate it writes nothing and says "not saved:
+  another model was opened" (`ModelStore.ANOTHER_OPENED`; Export, Share,
+  Studio and Test it say theirs). Up to wholetext2 a Save or Export still
+  writing when another model opened could write that model under the first
+  one's name (wholereview2 F1). `wholetext2_probe` cases `save_during`,
+  `export_during`, `text_during`, `paced_during` open another model or begin
+  New a frame into each.
   The audit is `src/dev/command_probe.gd` (windowed or headless; `--judge`
   fails a command over 250 ms of its own work in one frame that was not
   said first): every command in the shell's table on Orthanc and the car,
