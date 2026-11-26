@@ -837,6 +837,27 @@ func _case_stepesc() -> void:
 		% [wrong, wrong_end], wrong.is_empty() and wrong_end.is_empty())
 	await _drop_all()
 	await _back_to(depth)
+	# No step change at all: lifted and let go at the last step, the
+	# timeline open throughout.
+	if not await _to_step(path, "last"):
+		return
+	torso = int(_torsos()[0])
+	members = Array(_builder.figure_of(torso))
+	_builder.clear_selection()
+	_builder.lift_brick(torso)
+	await _frames(8)
+	var back_same: bool = _figure_back()
+	await _frames(8)
+	var wrong_same: Array = []
+	for brick_id: int in members:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick == null or brick.hidden:
+			wrong_same.append("#%d %s" % [brick_id, "gone" if brick == null else "hidden"])
+	_result("stepesc.same", "lifted and Escape at the last step: put back %s; not drawn %s" % [back_same, wrong_same])
+	_check("stepesc same step: Escape at the step it was lifted at, every part drawn (%s)" % [wrong_same],
+		wrong_same.is_empty())
+	await _drop_all()
+	await _back_to(depth)
 	# The same for a part carried (the red brick of the last step).
 	if not await _to_step(path, "last"):
 		return
