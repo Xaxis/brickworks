@@ -25,6 +25,11 @@ const COMMON := ["undo", "redo", "copy", "paste", "duplicate", "delete", "save",
 	"make_submodel", "enter_assembly", "timeline", "step_prev", "step_next", "mode_rotate",
 	"mode_hinge", "mode_connect", "minifig", "hide", "show_all", "fit_model", "parts_list"]
 
+## King's Castle's black knight's helmet with a chin-guard, and the helmet
+## with a neck protector the set's other knights wear.
+const SWAP_FROM := "3896"
+const SWAP_TO := "3844"
+
 var _ux16_only: PackedStringArray = []
 var _ux16_failures: int = 0
 
@@ -53,6 +58,9 @@ func _run() -> void:
 	var size: Vector2i = DisplayServer.window_get_size()
 	print("UX16 walk in a %d x %d window, mouse and keys" % [size.x, size.y])
 	BuildSteps._kept.clear()
+	# A first visit, as a person's first start of the app has it (the probe's
+	# --script would otherwise offer nothing): the example car, the tour.
+	FirstBuild.offered_for_probe = _wants16("p19")
 	if not await _up(false):
 		quit(1)
 		return
@@ -158,6 +166,34 @@ func _put_at(at: Vector3) -> void:
 	await _frames(4)
 	await _click(spot + Vector2(1, 0))
 	await _frames(12)
+
+
+func _count_of(part: String) -> int:
+	var count: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id.get_basename() == part:
+			count += 1
+	return count
+
+
+## A drag with the left button held, as a mouse sends it: each move says the
+## button is down.
+func _drag16(from: Vector2, to: Vector2, steps: int, release: bool = true) -> void:
+	await _move(from)
+	_button(from, true)
+	await _frames(3)
+	for n: int in steps:
+		var event := InputEventMouseMotion.new()
+		var at: Vector2 = from.lerp(to, float(n + 1) / steps)
+		event.position = _as_event(at)
+		event.global_position = event.position
+		event.relative = _as_event(at - from.lerp(to, float(n) / steps))
+		event.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(event)
+		await _frames(2)
+	if release:
+		_button(to, false)
+		await _frames(6)
 
 
 func _parts_count() -> int:
@@ -358,22 +394,30 @@ func _set_changed() -> void:
 	print("UX16 Ctrl+F: focus %s, status \"%s\"" % [_name(focus) if focus != null else "none", _status()])
 	_check16("Ctrl+F offers a way to find something (focus %s)" % (_name(focus) if focus != null else "none"),
 		focus is LineEdit)
-	await _key(KEY_ESCAPE)
-	_shell.run("select_find")
-	await _frames(30)
-	await _step("p20_03_find_parts", "Edit › Select by › Part number or name…")
-	var inventory: Node = _main.get("_inventory")
-	var finding: Variant = inventory.get("_find_field") if inventory != null else null
-	print("UX16 finder: %s" % (str(inventory.call("controls_by_name").keys())
-		if inventory != null and inventory.has_method("controls_by_name") else "no names"))
+	# "helmet" typed and Enter, as the field asks.
+	if focus is LineEdit:
+		(focus as LineEdit).text = "helmet chin"
+		(focus as LineEdit).text_changed.emit("helmet chin")
+		await _frames(20)
+		await _step("p20_03_find_parts", "\"helmet chin\" typed in the finder")
+		(focus as LineEdit).text_submitted.emit("helmet chin")
+		await _frames(30)
+	var found: int = _builder.selection.size()
+	var covered: Dictionary = _main.call("model_cover", 24, 16)
+	await _step("p20_03b_found", "Enter: the helmet found")
+	_check16("Enter selects what was found and shows it (%d selected, %d%% of the model covered, %s)" % [
+		found, roundi(100.0 * (covered["covered"] as Array).size() / maxf(1.0, float(covered["samples"]))),
+		_status()], found >= 1 and (covered["covered"] as Array).size() * 4 < int(covered["samples"]))
 	await _close_all()
-	# The door's own: the bin searched, the door in hand, and Replace.
+	# The knight's helmet with a chin-guard, swapped for one with a neck
+	# protector: clicked, gone inside its figure, another in hand, Replace.
 	var door: BrickWorld.Brick = null
 	for brick: BrickWorld.Brick in _world.bricks():
-		if brick.part_id.begins_with("3644"):
+		if brick.part_id.begins_with(SWAP_FROM):
 			door = brick
 			break
-	_check16("the castle has its door (3644)", door != null)
+	var had: Array = [_count_of(SWAP_FROM), _count_of(SWAP_TO)]
+	_check16("the castle has the helmet (%s)" % SWAP_FROM, door != null)
 	if door != null:
 		_camera.frame(AABB(door.transform.origin - Vector3(60, 60, 60), Vector3(120, 120, 120)), 1.6)
 		await _frames(30)
@@ -421,12 +465,12 @@ func _set_changed() -> void:
 	await _key(KEY_ESCAPE)
 	await _frames(10)
 	var selected_door: Array = _builder.selection.keys()
-	await _find_in_bin("door 1 x 4 x 6", "p20_07_bin_doors")
+	await _find_in_bin("helmet castle", "p20_07_bin_doors")
 	var grid: GridContainer = _bin.get("_grid")
 	var other: Control = null
 	for tile: Node in grid.get_children():
 		if tile is Control and (tile as Control).is_visible_in_tree() and tile.has_meta("part") \
-				and not str(tile.get_meta("part")).begins_with("3644"):
+				and str(tile.get_meta("part")) == SWAP_TO:
 			other = tile
 			break
 	if other != null:
@@ -444,11 +488,10 @@ func _set_changed() -> void:
 	if can_replace:
 		_shell.run("replace")
 		await _frames(30)
-	var swapped: BrickWorld.Brick = _world.get_brick(int(selected_door[0])) if not selected_door.is_empty() else null
 	await _step("p20_09_replaced", "Edit › Replace with the part in hand")
-	_check16("the door is swapped (%s, %s)" % [swapped.part_id if swapped != null else "gone",
-		_status()], swapped != null and not swapped.part_id.begins_with("3644")
-		or (swapped == null and _status().contains("eplace")))
+	var has: Array = [_count_of(SWAP_FROM), _count_of(SWAP_TO)]
+	_check16("the helmet is swapped (%s: %d to %d, %s: %d to %d; %s)" % [SWAP_FROM, had[0], has[0],
+		SWAP_TO, had[1], has[1], _status()], has[0] == had[0] - 1 and has[1] == had[1] + 1)
 	await _key(KEY_ESCAPE)
 	await _close_all()
 	# A sub-model moved: the drawbridge's rope or the flag, whole.
@@ -475,7 +518,7 @@ func _set_changed() -> void:
 			starts[id] = brick.transform.origin
 	if flag != null:
 		var from: Vector2 = _camera.unproject_position(flag.transform.origin)
-		await _drag(from, from + Vector2(120, 40), 12)
+		await _drag16(from, from + Vector2(120, 40), 12)
 		await _frames(20)
 	var moved: int = 0
 	for id: int in starts:
@@ -495,7 +538,15 @@ func _set_changed() -> void:
 		await process_frame
 	await _frames(30)
 	var at_open: int = _at()
+	var steps_count: int = steps.timeline_at().y
 	await _step("p20_12_timeline", "B: the timeline")
+	print("UX16 the timeline opened at step %d of %d" % [at_open, steps_count])
+	_check16("the timeline opens on the model as it is, to go back from (step %d of %d)" % [at_open,
+		steps_count], steps_count > 0 and at_open >= steps_count)
+	# To the end, as the person goes to follow the steps back.
+	await _key(KEY_END)
+	await _frames(20)
+	at_open = _at()
 	for _n: int in 3:
 		await _key(KEY_LEFT)
 		await _frames(15)
@@ -548,33 +599,39 @@ func _newer() -> void:
 		picked > 0 and _parts_count() == all_parts)
 	await _leave_steps()
 	await _close_all()
-	# A part held and put back.
+	# A part held and put back: clicked, X as the line says, then Esc.
 	var brick: BrickWorld.Brick = _brick_near(_model_middle())
-	var home: Transform3D = brick.transform if brick != null else Transform3D()
 	if brick != null:
-		var from: Vector2 = _camera.unproject_position(brick.transform.origin)
-		await _move(from)
-		_button(from, true)
-		await _frames(3)
-		for n: int in 8:
-			await _move(from + Vector2(0, -8.0 * (n + 1)))
+		await _click(_camera.unproject_position(brick.transform.origin))
 		await _frames(10)
-		await _step("p21_04_held", "a part dragged up off the model, still held")
-		print("UX16 holding: status \"%s\", hint \"%s\"" % [_status(), _hint()])
+		if not _builder.selection.is_empty():
+			brick = _world.get_brick(int(_builder.selection.keys()[0]))
+	var home: Transform3D = brick.transform if brick != null else Transform3D()
+	await _step("p21_04_clicked", "a part of the kart clicked")
+	print("UX16 clicked to hold: %d selected, status \"%s\"" % [_builder.selection.size(), _status()])
+	if brick != null:
+		await _key(KEY_X)
+		await _frames(10)
+		var away: Vector2 = _camera.unproject_position(home.origin) + Vector2(60, -30)
+		await _move(away)
+		await _frames(10)
+		await _step("p21_05_held", "X: the part in hand")
+		print("UX16 holding: in hand %s, status \"%s\", hint \"%s\"" % [_builder.is_carrying(),
+			_status(), _hint()])
+		_check16("X takes it into hand (%s)" % _builder.is_carrying(), _builder.is_carrying())
 		_check16("while held, the words say how to put it back (%s | %s)" % [_status(), _hint()],
 			(_status() + _hint()).to_lower().contains("esc"))
 		await _key(KEY_ESCAPE)
-		_button(from + Vector2(0, -64), false)
 		await _frames(20)
 		var back: BrickWorld.Brick = _world.get_brick(brick.id)
-		await _step("p21_05_put_back", "Esc while held")
+		await _step("p21_06_put_back", "Esc while held")
 		_check16("Esc puts it back where it was (%s)" % _status(), back != null
-			and back.transform.origin.distance_to(home.origin) < 0.5)
+			and back.transform.origin.distance_to(home.origin) < 0.5 and not _builder.is_carrying())
 	await _close_all()
 	# Connect on a Technic axle.
 	_main.call("clear_model")
 	await _frames(20)
-	await _find_in_bin("technic beam 5", "p21_06_bin_beam")
+	await _find_in_bin("technic beam 5", "p21_07_bin_beam")
 	await _take_first_tile("", "")
 	await _put_at(Vector3(0, 0, 0))
 	await _key(KEY_ESCAPE)
@@ -583,18 +640,18 @@ func _newer() -> void:
 	if beam != null:
 		_camera.frame(AABB(beam.transform.origin - Vector3(80, 40, 80), Vector3(160, 80, 160)), 1.4)
 		await _frames(30)
-	await _find_in_bin("technic axle 4", "p21_07_bin_axle")
+	await _find_in_bin("technic axle 4", "p21_08_bin_axle")
 	await _take_first_tile("", "")
 	if beam != null:
 		await _move(_camera.unproject_position(beam.transform.origin + Vector3(0, 12, 0)))
 		await _frames(10)
-	await _step("p21_08_axle_over_beam", "an axle in hand over the beam")
+	await _step("p21_09_axle_over_beam", "an axle in hand over the beam")
 	print("UX16 axle in hand: status \"%s\", hint \"%s\"" % [_status(), _hint()])
 	_check16("the words name Connect with an axle in hand (%s)" % _hint(),
 		_hint().contains("Connect") or _status().contains("Connect"))
 	await _key(KEY_N)
 	await _frames(20)
-	await _step("p21_09_connect", "N: Connect")
+	await _step("p21_10_connect", "N: Connect")
 	var verbs: EditVerbs = _main.get("_verbs")
 	print("UX16 Connect: mode %s, stage %s, %d points, hint \"%s\"" % [verbs.mode,
 		verbs.connect_tool.stage, verbs.connect_tool.screen_points().size(), _hint()])
@@ -607,42 +664,42 @@ func _newer() -> void:
 	_shell.run("minifig")
 	await _frames(40)
 	var dialog: Node = _main.get("_figures")
-	await _step("p21_10_minifig", "Make › Minifigure…")
+	await _step("p21_11_minifig", "Make › Minifigure…")
 	var named: Dictionary = dialog.call("controls_by_name") if dialog != null else {}
 	print("UX16 figure builder: %s" % ", ".join(named.keys()))
-	if await _press_named(named, "minifig_headgear"):
+	if await _press_named(named, "minifig_headwear"):
 		await _frames(20)
-	await _step("p21_11_headgear", "Headgear chosen")
+	await _step("p21_12_headgear", "Headgear chosen")
 	named = dialog.call("controls_by_name") if dialog != null else {}
 	var make: Variant = named.get("minifig_make")
 	_check16("Headgear offers Make a mould… in sight (%s)" % ((make as Button).text if make is Button else "none"),
 		make is Button and (make as Button).is_visible_in_tree())
 	if await _press_named(named, "minifig_make"):
 		await _frames(60)
-	await _step("p21_12_mould", "Make a mould…")
+	await _step("p21_13_mould", "Make a mould…")
 	named = dialog.call("controls_by_name") if dialog != null else {}
 	var view: Variant = named.get("mould_view")
 	if view is Control:
 		var middle: Vector2 = _centre(view as Control)
 		await _drag(middle + Vector2(0, -20), middle + Vector2(0, -70), 10)
 		await _frames(20)
-	await _step("p21_13_stroke", "a drag on the hair")
+	await _step("p21_14_stroke", "a drag on the hair")
 	var name_field: Variant = named.get("mould_name")
 	if name_field is LineEdit:
 		(name_field as LineEdit).text = "Spiky"
 		(name_field as LineEdit).text_changed.emit("Spiky")
 	if await _press_named(named, "mould_save"):
 		await _frames(60)
-	await _step("p21_14_saved_mould", "Save mould")
+	await _step("p21_15_saved_mould", "Save mould")
 	named = dialog.call("controls_by_name") if dialog != null else {}
 	var figure: Variant = dialog.get("figure") if dialog != null else null
-	var hair: String = (figure as Minifig).part("headgear") if figure is Minifig else ""
+	var hair: String = (figure as Minifig).part("headwear") if figure is Minifig else ""
 	_check16("the figure wears the mould (%s)" % hair, hair.begins_with("mould") or hair.contains("custom")
 		or not hair.is_empty() and not hair.begins_with("3901"))
 	if await _press_named(named, "minifig_place"):
 		await _frames(30)
 	if _builder.is_carrying():
 		await _put_at(Vector3(0, 0, 60))
-	await _step("p21_15_placed", "Place in model, a click")
+	await _step("p21_16_placed", "Place in model, a click")
 	await _key(KEY_ESCAPE)
 	await _close_all()
