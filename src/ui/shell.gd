@@ -2218,10 +2218,13 @@ func _fill_history(menu: PopupMenu) -> void:
 func _ask_save_as() -> void:
 	# The desktop's is the platform's Save dialog, and a file where it says.
 	if not OS.has_feature("web"):
+		# The model the press was made on: one opened while the dialog is up
+		# is not saved under the name chosen for this one (ModelStore.model_now).
+		var model: int = bar.store.model_now() if bar.store != null else -1
 		var path: String = await SaveTo.ask(SubmodelFile.named(bar.model_name(),
 			bar.ldraw_extension()), "", "Save as")
 		if not path.is_empty():
-			await bar.save_to_file(path)
+			await bar.save_to_file(path, model)
 		return
 	_save_as_name.text = bar.model_name()
 	_save_as.popup_centered()

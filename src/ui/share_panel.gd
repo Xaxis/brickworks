@@ -1098,6 +1098,10 @@ func publish(as_wip: bool = false) -> void:
 	if name.is_empty():
 		_fail("Give the model a name first.")
 		return
+	# The model the press was made on: one opened while it signs in, takes
+	# its picture or is written is not published under this one's name
+	# (ModelStore.model_now).
+	var press: int = store.model_now()
 	if as_wip and (_progress.disabled or _list.disabled):
 		_fail(_progress.tooltip_text)
 		return
@@ -1129,10 +1133,11 @@ func publish(as_wip: bool = false) -> void:
 	var png: PackedByteArray = pictures["png"]
 	_status.text = "Publishing…"
 	# A big model's build order a slice at a time, said and counted.
-	var model: String = await store.text_for_file(name, "Writing “%s” for its link…" % name)
+	var model: String = await store.text_for_file(name, "Writing “%s” for its link…" % name, press)
 	if model.is_empty():
 		_publish.disabled = false
-		_fail("Stopped before it was published.")
+		_fail("Not published: another model was opened." if store.model_now() != press
+			else "Stopped before it was published.")
 		_follow_age()
 		return
 	# Whom it credits, when it is somebody else's (a model the Library
