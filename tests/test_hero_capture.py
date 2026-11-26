@@ -78,3 +78,13 @@ def test_the_tool_refuses_before_it_encodes(tmp_path):
     assert run.returncode != 0
     assert "refused" in run.stderr and "/home/you/model.png" in run.stderr
     assert not out.exists() or not any(out.iterdir())
+
+
+def test_a_refusal_names_ten_and_counts_the_rest(tmp_path):
+    held = [[n, "Label", "wrote /tmp/claude-1000/abc/scratchpad/render.png"] for n in range(400)]
+    frames = recorded(tmp_path / "frames", CLEAN + held)
+    run = subprocess.run([sys.executable, str(TOOL), f"--frames={frames}", "--only=desktop",
+                          f"--out={tmp_path / 'out'}"], capture_output=True, text=True, timeout=120)
+    assert run.returncode != 0
+    assert run.stderr.count("refused, desktop's drop, frame") == 10
+    assert "and 390 more" in run.stderr and "400 thing(s)" in run.stderr

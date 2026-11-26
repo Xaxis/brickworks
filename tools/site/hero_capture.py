@@ -377,8 +377,11 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"hero_capture: {name} was not recorded: {told.get('why')}")
         wrong = refused(frames / name)
         if wrong:
-            for line in wrong:
+            # A status line held for 400 frames is one fault: the first ten, and a count.
+            for line in wrong[:10]:
                 print(f"hero_capture: refused, {name}'s {line}", file=sys.stderr)
+            if len(wrong) > 10:
+                print(f"hero_capture: and {len(wrong) - 10} more", file=sys.stderr)
             raise SystemExit(f"hero_capture: {name} is refused: it shows {len(wrong)} thing(s) a loop must not")
     a.out.mkdir(parents=True, exist_ok=True)
     record = json.loads(RECORD.read_text()) if RECORD.exists() else {"cuts": {}}
