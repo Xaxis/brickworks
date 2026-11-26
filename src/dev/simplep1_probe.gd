@@ -929,7 +929,7 @@ func _how_wrong(brick: BrickWorld.Brick, ideal: Transform3D, colour: int) -> Str
 
 
 func _what_is_at(at: Vector2) -> String:
-	for part: String in SimpleLayer.BRICKS:
+	for part: String in _simple.get_script().get(&"BRICKS"):
 		var tile: Control = _simple.call("tile_of", part)
 		if tile.get_global_rect().has_point(at):
 			return "tile " + part
@@ -947,7 +947,7 @@ func _visible_buttons() -> Array:
 				and button.get_global_rect().size.x > 4.0:
 			out.append(button)
 	# A tile of the tray is a control too, looked at as one.
-	for part: String in SimpleLayer.BRICKS:
+	for part: String in _simple.get_script().get(&"BRICKS"):
 		out.append(_simple.call("tile_of", part))
 	return out
 
