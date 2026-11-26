@@ -244,6 +244,10 @@ async function draw({ first = false, kept = false } = {}) {
     streamSaid.textContent = tab === "following"
       ? say("Nothing from the people you follow yet. Follow builders from their posts, and what they make comes here.")
       : say("Brickworks could not show the feed just now. Try again in a minute.");
+  } else if (tab === "following" && !followOthers) {
+    // Their own posts alone (a newcomer's first build): under them, how
+    // the tab fills.
+    streamSaid.textContent = say("Nothing from the people you follow yet. Follow builders from their posts, and what they make comes here.");
   }
   stream.setAttribute("aria-busy", "false");
   html.dataset.feedTab = tab;
@@ -255,6 +259,8 @@ async function draw({ first = false, kept = false } = {}) {
 /// seen), from [before] (the last post's time) for Show more; null when the
 /// draw went stale.
 let followBefore = null;
+// Whether Following's first page had anybody's posts but the person's own.
+let followOthers = true;
 async function following(mine, before = null) {
   // A Follow pressed a moment ago is shown pressed at once, its answer
   // still coming: asked before it, the tab said nobody was followed
@@ -270,6 +276,9 @@ async function following(mine, before = null) {
   const rows = Array.isArray(answer.body.rows) ? answer.body.rows : [];
   ended = !answer.body.more || !rows.length;
   followBefore = rows.length ? rows[rows.length - 1].at : null;
+  // Their own posts come too (supabase/feed_self.sql); with nobody else's
+  // among them, the tab still says how to fill it.
+  if (!before) followOthers = rows.some((row) => row?.mine !== true);
   // A model shared and then given a new version is one post, its newest.
   const seen = before ? shownKeys() : new Set();
   return rows.map(feedItem).filter((item) => {
