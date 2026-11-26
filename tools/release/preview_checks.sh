@@ -683,6 +683,13 @@ declare -A CMD=(
   # picture of her own instead, removed: her handle's minifig again. 1280
   # dark, the maker at 390 light; the account deleted after.
   [minifig]="tools/web/minifig_flow.mjs --url=$P --out=$S/${TAG}_minifig"
+  # Hair of your own (sitehair, 2026-11-25): throwaway Ada makes a mould in
+  # the studio at /app and her account has it; Bo cannot list, read, wear or
+  # reach it; hostile moulds refused in words; she wears it in the site's
+  # maker, its text read once and then from the browser's cache; her
+  # profile, comment and page show it at 1280 and 390, no view reading a
+  # mould and the second from the CDN; both accounts deleted after.
+  [sitehair]="tools/web/sitehair_flow.mjs --url=$P --out=$S/${TAG}_sitehair"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
   # The owner's console (/admin, console1, docs/ADMIN.md): every op it
   # added refused signed out (401) and to anybody else (404); as the owner

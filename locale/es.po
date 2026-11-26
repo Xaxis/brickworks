@@ -8457,6 +8457,63 @@ msgstr "Tu molde de antes no se pudo volver a leer, así que esto vuelve a empez
 msgid "Your mould could not be kept: there is no room on the disk."
 msgstr "Tu molde no se pudo guardar: no queda espacio en el disco."
 
+msgid "Kept on your account too: wear it in the site's minifig maker (Edit profile)."
+msgstr "Guardado también en tu cuenta: póntelo en el creador de minifiguras del sitio (Editar perfil)."
+
+msgid "Kept in the studio only: %s"
+msgstr "Guardado solo en el estudio: %s"
+
+msgid "sign in to keep it on your account"
+msgstr "inicia sesión para guardarlo en tu cuenta"
+
+msgid "it is not kept on this device"
+msgstr "no está guardado en este dispositivo"
+
+msgid "sign in again to keep it on your account"
+msgstr "vuelve a iniciar sesión para guardarlo en tu cuenta"
+
+msgid "Brickworks could not be reached"
+msgstr "No se pudo contactar con Brickworks"
+
+msgid "Brickworks could not take it just now (%d)"
+msgstr "Brickworks no pudo aceptarlo ahora mismo (%d)"
+
+msgid "your account has room for 40 moulds and 24 MB of them: remove one in the site's minifig maker (Edit profile, Hair and hats), and this one goes the next time the builder opens"
+msgstr "tu cuenta tiene sitio para 40 moldes y 24 MB en total: quita uno en el creador de minifiguras del sitio (Editar perfil, Pelo y sombreros), y este se envía la próxima vez que abras el creador"
+
+msgid "it is bigger than the site keeps: 2 MB and 18,000 triangles at most"
+msgstr "es más grande de lo que guarda el sitio: 2 MB y 18.000 triángulos como máximo"
+
+msgid "the site would not keep its file: save it again"
+msgstr "el sitio no quiso guardar su archivo: guárdalo de nuevo"
+
+msgid "more moulds than the site takes in an hour: it goes the next time the builder opens"
+msgstr "más moldes de los que el sitio acepta en una hora: se envía la próxima vez que abras el creador"
+
+msgid "moulds on your account are not open on Brickworks yet"
+msgstr "los moldes en tu cuenta aún no están abiertos en Brickworks"
+
+msgid "1 mould made here while nobody was signed in is kept in the studio only. Is it yours?"
+msgstr "1 molde hecho aquí sin nadie con la sesión iniciada se guarda solo en el estudio. ¿Es tuyo?"
+
+msgid "%d moulds made here while nobody was signed in are kept in the studio only. Are they yours?"
+msgstr "%d moldes hechos aquí sin nadie con la sesión iniciada se guardan solo en el estudio. ¿Son tuyos?"
+
+msgid "Put on my account"
+msgstr "Poner en mi cuenta"
+
+msgid "Not mine"
+msgstr "No son míos"
+
+msgid "Kept on your account too: %d of them."
+msgstr "Guardados también en tu cuenta: %d de ellos."
+
+msgid "Send them to the account signed in now, for the site's minifig maker"
+msgstr "Enviarlos a la cuenta con la sesión iniciada ahora, para el creador de minifigs del sitio"
+
+msgid "Keep them in the studio only, and ask no more"
+msgstr "Guardarlos solo en el estudio y no preguntar más"
+
 msgid "%s has %s triangles, and the maker shapes parts of up to %s."
 msgstr "%s tiene %s triángulos, y aquí se pueden modelar piezas de hasta %s."
 

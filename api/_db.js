@@ -60,7 +60,17 @@ export async function db(path, { method = "GET", body, prefer, seconds = 15 } = 
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-  if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
+  if (!answer.ok) {
+    // What the database said, for a caller that must tell its own
+    // refusal (a trigger's words) from any other: kept off the message, and
+    // not enumerable, so a log of the error never prints a row's values.
+    const trouble = new Error(`${what}: ${answer.status}`);
+    const said = await answer.text().catch(() => "");
+    let message = "";
+    try { message = String(JSON.parse(said)?.message || ""); } catch { /* not PostgREST's JSON */ }
+    Object.defineProperty(trouble, "said", { value: message, enumerable: false });
+    throw trouble;
+  }
   const text = await answer.text();
   return text ? JSON.parse(text) : null;
 }

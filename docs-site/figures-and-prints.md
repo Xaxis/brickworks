@@ -46,9 +46,21 @@ A mould starts from a part of up to 18,000 triangles. A bigger one, such as a st
 
 On a figure wearing a mould, or hair brought in from a 3D file, **Make a mould…** shapes that hair further. Saving makes a new part, and the one before stays as it was.
 
+Signed in, a hair you save is also kept on your account, and the builder says so: "Kept on your account too". Wear it on your avatar in the site's minifig maker, under **Edit profile › Make a minifig › Hair and hats › Your own** ([your minifig](/docs/profiles#avatar)). Only what you made goes to your account:
+
+- A hair is sent to the account that was signed in when you pressed **Save mould**, and to no other. If Brickworks could not be reached, the builder says so and sends it the next time you open the builder signed in to that account.
+- Hair that came inside a model someone else made stays in the studio. It is never sent to your account.
+- Signed out, the builder says "Kept in the studio only: sign in to keep it on your account". When you next open the builder signed in, it asks whether the moulds made signed out on this computer are yours. **Put on my account** sends them; **Not mine** keeps them in the studio and stops the question. The studio cannot tell who was at the computer while nobody was signed in, so only you can say. On a shared computer, they may be someone else's.
+- A hair you shape further from one of your own takes the old one's place on your account, unless your avatar wears the old one. The studio keeps both.
+
+An account keeps up to 40 moulds, 24 MB in all. A full account says so in the builder, and the hair goes once you make room. To make room, open **Edit profile › Make a minifig › Hair and hats**, choose one of **Your own** and press **Remove**. The studio and every model that uses it keep their copy. If your avatar wears it, your minifig wears the hair it was shaped from instead, and **Save** draws its picture again.
+
+Hair you saved before Brickworks kept moulds on accounts is not sent by itself, as the studio cannot tell it from hair a model brought. To put one on your account, open it in **Make a mould…**, signed in, and save it.
+
 <!-- covers
 ui:mould maker
 lib:custom moulds
+lib:moulds sent to your account
 -->
 
 For hair you already have as a 3D file, choose **Headgear** and **Your own…**: see [A part from a 3D file](#own-part). It is seated on the head and worn like any hair.
