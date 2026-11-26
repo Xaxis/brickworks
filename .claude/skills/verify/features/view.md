@@ -3385,6 +3385,24 @@ picture the assistant is shown.
   LABEL=DIR` measures each close-up's face mottle, highlight-line wobble,
   mirrored outlines and the dip by a stud's foot, photograph against
   render (shots.json `breakup`).
+- `a set photographed: its floor` (`RenderSettings.floor`,
+  `StudioRender.PRODUCT_FLOOR` 1, `_floor_of`; path_tracer.glsl's photo
+  version, `floor_kept`, `floor_over`, `FLOOR_OVER` 1.6, `FLOOR_F0`,
+  `FLOOR_GLOSS`; photoreal19, docs/RENDERING.md 5u): at Best in the Product
+  look on the bare seamless (the shadow catcher, no lit stage, no table's
+  relief, no surface; so not the gallery card's desk), the floor a product
+  photograph's set stands on: exposed past white on a white
+  sweep, the shade near the model cooled and coloured by the light the
+  parts send down, and glossy, the model faintly mirrored in it. Traced by
+  the shader's photo version (the marks version with the floor), so the
+  plain and marks versions compile as before. On: the solo judge called the
+  sweep's shots photographs more often with it, sets +0.012 (95%: +0.003 to
+  +0.021), close-ups +0.025 (+0.001 to +0.059). Check: `tools/probe.sh
+  photoreal_probe -- --tag=T --without=floor` draws the parent commit's
+  pictures byte for byte; without it set_6532's shade under the model is
+  cooler and its whites whiter, and the table shots (grey_1x3, black_2x4,
+  green_plate_macro) are the same bytes either way. `card_probe --only=1,5,20`
+  draws the cut-outs byte for byte and the cards without the floor.
 - `product look in a browser` (`tools/web/product_render_flow.mjs`): the
   web build's Product look under Compatibility, where the desktop's probe
   cannot vouch for it and where the first Product glass read the wrong

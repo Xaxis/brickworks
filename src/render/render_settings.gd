@@ -229,6 +229,12 @@ var peel: float = -1.0
 var sink: float = -1.0
 var polish: float = -1.0
 var scuff: float = -1.0
+## A set photographed (photoreal19), path traced in the product look on the
+## shadow catcher: the floor it stands on as a product photograph's (a glossy
+## sweep exposed past white, its shade cool and coloured by the model, the
+## model faintly mirrored in it). 0 the catcher as before, 1 as the set
+## photographs show it; below 0, StudioRender's PRODUCT_FLOOR.
+var floor: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.
