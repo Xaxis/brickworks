@@ -2557,6 +2557,38 @@ shots are the same pictures. So it is on: `PRODUCT_FLOOR` is 1. The sets
 are still far from the photographs (0.06 against 0.93): every set
 verdict still names flawless plastic and a seamless backdrop.
 
+## 5y. The sets' plastic as photographed (photoreal24)
+
+The lead's look at 6660 found four differences from its photograph:
+
+- the photograph's whites are warm cream, ours cool;
+- its windscreen is pale, ours saturated cyan;
+- its hook is a warm grey, ours bluish;
+- its hubs read white, ours grey.
+
+**The models are right.** The hubs are white 15 and read grey from the light: the photograph's whites sit at
+L92-98, as bright as its backdrop. The hook is old light grey 7. The app's 7 is LDConfig's #8A928D
+(L59.8). Rebrickable's #9BA19D is 6 L brighter. The photographed hook is L70.7 with b* +12: age. Old
+dark grey 8 is in none of the photographed sets.
+
+**Fitted.** The photo probe takes a shot's `"colours"` (LDraw code to hex) for that shot alone and puts
+them back after it. Each set's families were fitted by colourfit's pixel-weighted CIEDE2000. That brought
+the sets from 3.00 / 5.35 / 6.06 to 2.31 / 1.72 / 2.76 (6532, 6657, 6660). What is left is lightness: the
+photographs' exposure and floor shade, not plastic.
+
+**Judged** (photoreal16's solo judge, draws 11 to 22, 2 trials x 4 rounds; bench/results/photoreal24-2026-11-26):
+
+| arm | sets against src (95%) | 6532 | 6657 | 6660 | 6512 |
+|---|---|---|---|---|---|
+| each set's plastic fitted | +0.002 (-0.006 to +0.009) | -0.009 | +0.008 | +0.010 | same pictures |
+| paler clear tints only (43 #dafbff, 46 #ffe253) | -0.004 (-0.006 to -0.001) | same pictures | -0.006 | -0.004 | -0.006 |
+
+The fitted sets move about 0.01 each way and not at all together. The tints alone lose, and the judge
+names the pane's "glowing cyan edges": thick edges keep their colour, so a paler face sets them apart. So
+colour stays as it is: 43, 46, 7 and 15 keep LDConfig's values. The set renders still sit near 0.06
+against their photographs' 0.93. What the photographs earn is age and variation (named in 0.71 and 0.88 of
+their verdicts); no render earns either.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
