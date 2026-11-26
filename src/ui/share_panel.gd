@@ -166,6 +166,9 @@ var _kind: OptionButton
 ## Whether the kind is the owner's choice, not the guess: then a new name
 ## does not change it.
 var _kind_chosen: bool = false
+## Whether the person pressed Show who made it for this model: then ticking
+## List it in the gallery leaves it as they set it.
+var _credit_chosen: bool = false
 ## Which model the words are about: its link and its name.
 var _words_for: String = "-"
 var _licence: OptionButton
@@ -316,6 +319,7 @@ func setup() -> void:
 		_author.visible = on
 		if on and _author.text.is_empty():
 			_suggest_author())
+	_credit.pressed.connect(func() -> void: _credit_chosen = true)
 	form.add_child(_credit)
 	_author = LineEdit.new()
 	_author.placeholder_text = "The name to credit"
@@ -393,10 +397,11 @@ func setup() -> void:
 	# A new member's first build, listed from the studio, was on neither
 	# (sitewalk3, 2026-11-26: "Nothing in the gallery yet" on their profile
 	# minutes after). Only on a press (pressed, never toggled): a link's
-	# listing read back from the server leaves its credit as it was, and the
-	# box can still be unticked after.
+	# listing read back from the server leaves its credit as it was. Never
+	# over the person's own choice: unticked by them first, it stays so, and
+	# it can be unticked after.
 	_list.pressed.connect(func() -> void:
-		if _list.button_pressed and not _credit.disabled and not _credit.button_pressed:
+		if _list.button_pressed and not _credit.disabled and not _credit.button_pressed and not _credit_chosen:
 			_credit.button_pressed = true)
 	form.add_child(_list)
 	# Under it: an entry is a gallery model, so it is ticked only with it.
@@ -746,6 +751,7 @@ func _fresh_words() -> void:
 	_about.text = ""
 	_tags.text = ""
 	_kind_chosen = false
+	_credit_chosen = false
 	_set_licence("cc-by-4.0")
 	_guess_kind()
 

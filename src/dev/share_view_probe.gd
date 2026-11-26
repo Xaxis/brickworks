@@ -1279,6 +1279,15 @@ func _the_panel(text: String) -> void:
 	panel._list.button_pressed = true
 	_ok(not panel._credit.button_pressed, "...and a listing set by the panel itself (no press) ticks nothing")
 	panel._list.button_pressed = false
+	# Unticked by the person first, it stays so when they list it.
+	panel._credit.button_pressed = false
+	panel._credit.pressed.emit()
+	panel._list.button_pressed = true
+	panel._list.pressed.emit()
+	_ok(not panel._credit.button_pressed and panel._credit_chosen,
+		"Show who made it unticked by the person stays unticked when they then list it")
+	panel._list.button_pressed = false
+	panel._credit_chosen = false
 	await panel.publish()
 	store.remixed_from = "0r1g1nM0de"
 	await panel.publish()
