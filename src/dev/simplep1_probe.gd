@@ -495,15 +495,16 @@ func _tap_tap() -> void:
 	await _frames(3)
 	_check("a tap on a brick of the tray chooses it", str(_simple.call("chosen_brick")) == "3004")
 	# A finger hides where it lands: its tap shows the ghost there first.
-	await _tap_at(_base_point(-0.3, 0.2))
+	await _tap_at(_base_point(-0.5, 0.4))
 	await _frames(3)
 	_check("a tap on the model shows where it goes, nothing down yet (%d)" % (_world.brick_count() - before),
 		_world.brick_count() == before and bool(_simple.call("ghost_waits")))
 	_check("...and says how: \"%s\"" % _simple.call("hint"), str(_simple.call("hint")).contains("Tap it"))
 	var first: Transform3D = _builder.ghost_transform()
-	await _tap_at(_base_point(0.1, 0.0))
+	await _tap_at(_base_point(0.4, -0.2))
 	await _frames(3)
-	_check("a tap elsewhere shows it there instead, still nothing down",
+	_check("a tap elsewhere shows it there instead, still nothing down (%d; %s to %s)" % [
+		_world.brick_count() - before, first.origin, _builder.ghost_transform().origin],
 		_world.brick_count() == before and bool(_simple.call("ghost_waits"))
 		and not _builder.ghost_transform().origin.is_equal_approx(first.origin))
 	var shown: Transform3D = _builder.ghost_transform()
@@ -534,9 +535,11 @@ func _tap_tap() -> void:
 	await _tap_at(tile.get_global_rect().get_center())
 	await _frames(3)
 	_check("a tap on it again lets it go", str(_simple.call("chosen_brick")).is_empty())
-	await _tap_at(_base_point(-0.2, 0.0))
+	var down: int = _world.brick_count()
+	await _tap_at(_base_point(-0.2, 0.6))
 	await _frames(3)
-	_check("...and a tap on the model puts nothing down", _world.brick_count() == before + 1)
+	_check("...and a tap on the model puts nothing down (%d)" % (_world.brick_count() - down),
+		_world.brick_count() == down)
 
 
 # -- 7. the header's switch -----------------------------------------------------------

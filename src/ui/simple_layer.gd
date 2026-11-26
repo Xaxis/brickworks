@@ -123,6 +123,9 @@ var _chosen: String = ""
 ## aimed unseen the tapper's bricks went down a stud off 6 times in 9. A
 ## mouse's ghost follows the pointer, so its click puts one down at once.
 var _ghost_shown: bool = false
+## LDU round a shown ghost a tap still counts as on it: under half a stud, so
+## a tap on the studs beside it shows it there.
+const GHOST_SLACK := 8.0
 ## A finger that came down on the shown ghost, and the point that aimed it
 ## there (its foot on the screen) as the finger came down.
 var _ghost_drag: bool = false
@@ -952,10 +955,15 @@ func _ghost_box() -> AABB:
 	return builder.ghost_transform() * part.bounds if part != null else AABB()
 
 
-## Whether a finger at [param at] is on the shown ghost, a fingertip's
-## slack round it.
+## Whether a finger at [param at] is on the shown ghost, with a fingertip's
+## slack: its ray through the ghost's box grown by GHOST_SLACK. Not the box's
+## rectangle on the screen, which round a brick seen corner on takes in
+## studs beside it, where a tap meant to show it there instead.
 func _on_ghost(at: Vector2) -> bool:
-	return ghost_waits() and ghost_rect().grow(p(6.0)).has_point(at)
+	if not ghost_waits():
+		return false
+	var camera: CadCamera = app.get("_camera")
+	return _ghost_box().grow(GHOST_SLACK).intersects_ray(camera.ray_origin(at), camera.ray_normal(at)) != null
 
 
 ## The point on the screen that aims the ghost where it stands: the middle
