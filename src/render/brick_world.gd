@@ -1203,6 +1203,13 @@ func is_drawing_held() -> bool:
 	return _drawing_held > 0
 
 
+## Whether changes made are still to be drawn, with nothing holding them:
+## a rebuild going on, in slices or not yet begun (FinishBar's Lay waits
+## for it before its next slice of parts).
+func has_undrawn() -> bool:
+	return _drawing_held == 0 and not _dirty.is_empty()
+
+
 ## Whether what is here is not the whole model yet: parts going down with
 ## the drawing held, or a model drawn and still being laid ([member laying]).
 ## What reads the model as built (its weight, Grab, the pointer's part)
