@@ -1558,6 +1558,10 @@ func _named_parts(asked: String) -> Array:
 
 var _told_page: String = ""
 var _told_page_at: int = 0
+## Whether a telling was put off ([method _tell_page], at most twice a
+## second): what the page holds may be older than what is so now, and the
+## node stays awake until it has told it.
+var _page_behind: bool = false
 
 
 func _process(_delta: float) -> void:
@@ -1649,12 +1653,16 @@ func _process(_delta: float) -> void:
 	# At rest, asleep (Wake): nothing held, swung, falling, laid or settling,
 	# nothing read on a worker, the model read for a grab and its marks
 	# warmed, no shape it waits for looked at before what woke it, and the
-	# page told since. An edit, a press and a part's shape coming wake it.
+	# page told since, with no telling put off since either: a reading taken
+	# in a moment after a telling, with nothing woken by it, left the page
+	# saying "not ready" with no handles until the next input, and a check
+	# waiting for them waited out (grab held rel-m343 and live alike).
+	# An edit, a press and a part's shape coming wake it.
 	if grab == null and chain == null and _swinging == null and _falling.is_empty() \
 			and _laying == null and _settling == null and _readying < 0 and _shapes_reading < 0 \
 			and _lay_task < 0 and (world == null or (is_ready() and (not show_marks or _mark_warmed))) \
 			and (unread_shapes.is_empty() or not Wake.owed(_unread_looked_at)) \
-			and (not OS.has_feature("web") or not Wake.owed(_told_page_at)):
+			and (not OS.has_feature("web") or (not Wake.owed(_told_page_at) and not _page_behind)):
 		Wake.rest(self)
 
 
@@ -2129,12 +2137,15 @@ func _tell_page() -> void:
 		return
 	var now: int = Time.get_ticks_msec()
 	if now - _told_page_at < 500:
+		_page_behind = true
 		return
 	# Nor while the view turns and nothing is held, as the page is told
 	# (main._tell_page): a frame on a phone turning Orthanc is 400 ms long.
 	if grab == null and _swinging == null and camera.is_moving() and now - _told_page_at < 2000:
+		_page_behind = true
 		return
 	_told_page_at = now
+	_page_behind = false
 	var handles: Array = []
 	if grab == null and is_ready() and bool(JavaScriptBridge.eval("!!window.brickworksGrabAsk", true)):
 		var seen: Array = [world.revision, camera.global_transform, get_viewport().get_visible_rect().size,
