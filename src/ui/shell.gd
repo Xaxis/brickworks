@@ -979,6 +979,8 @@ func command_for_key(key: InputEventKey) -> String:
 				_by_key[accel] = name
 		# Two keys for one thing.
 		_by_key[KEY_BACKSPACE] = "delete"
+		if not _by_key.has(CTRL | KEY_Y):
+			_by_key[CTRL | KEY_Y] = "redo"
 	var accel: int = key.keycode
 	if key.ctrl_pressed or key.meta_pressed:
 		accel |= CTRL
@@ -2984,6 +2986,11 @@ func handle_key(key: InputEventKey) -> bool:
 			# draws every section apart (SectionsUi).
 			if not held and not key.alt_pressed:
 				return run("explode" if key.shift_pressed else "break_out")
+			# Ctrl+Y redoes, as Windows' own programs, Studio and Mecabricks
+			# have it, beside Ctrl+Shift+Z: a first-time builder's Ctrl+Y did
+			# nothing (ux16). A key a person gave Ctrl+Y never reaches here.
+			if held and not key.shift_pressed and not key.alt_pressed:
+				return run("redo")
 		KEY_C:
 			# C alone paints (main); Shift-C asks for a colour by name.
 			if key.shift_pressed and not held and not key.alt_pressed:

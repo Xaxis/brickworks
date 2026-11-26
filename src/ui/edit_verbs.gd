@@ -357,9 +357,36 @@ func replace() -> int:
 	if done.x > 0:
 		edited.call()
 	var named: String = Inventory._tidy(info.name) if info != null else part
-	say.call("swapped %s for %s%s" % [_parts(done.x), named,
+	# A part inside a sub-model used more than once is swapped in every copy
+	# (Assemblies.after_edit), and the line says so, as a paint's does: a
+	# knight's helmet swapped said "swapped 1 part" and all four knights
+	# had the new one (ux16's walk 2).
+	var laid: Array = []
+	_laid_in(builder.last_step(), laid)
+	var in_copies: int = 0
+	if done.x > 0:
+		for id: int in laid:
+			var brick: BrickWorld.Brick = world.get_brick(id)
+			if brick != null and brick.part_id == part:
+				in_copies += 1
+		in_copies -= done.x
+	say.call("swapped %s for %s%s%s" % [_parts(done.x), named,
+		"" if in_copies <= 0 else " — %s more in its other copies" % _parts(in_copies),
 		"" if done.y == 0 else " — %d had no room for it" % done.y])
 	return done.x
+
+
+## The parts a history step put down, groups within it too: those its undo
+## takes off.
+static func _laid_in(step: Variant, out: Array) -> void:
+	if not (step is Dictionary):
+		return
+	match str((step as Dictionary).get("undo", "")):
+		"group":
+			for inner: Variant in (step as Dictionary).get("steps", []):
+				_laid_in(inner, out)
+		"remove":
+			out.append(int((step as Dictionary).get("brick", 0)))
 
 
 ## The view, to say which way is left and right on the screen.
@@ -1636,6 +1663,17 @@ static func held_key() -> String:
 	return "Cmd" if on_mac() else "Ctrl"
 
 
+## Whether the hint says what the keys do differently where the part in hand
+## is, on a joint or a track's end: R turns it about the joint there, T puts
+## it on the other way and N picks its point. A line to read, not glance at,
+## so the status bar gives it its words' room as it does what is said: cut at
+## 1280 it showed only "Placing Technic Axle 4 on the pin hole of Technic
+## Beam 5: …", and none of the keys (ux16's walk 3).
+func hint_wants_room() -> bool:
+	return mode == "place" and builder != null \
+		and (builder.tracks.on_end or builder.is_on_joint())
+
+
 ## What the mouse will do now, in one line, for the status bar: the tool,
 ## the keys held, and what is under the pointer.
 func hint() -> String:
@@ -1669,9 +1707,12 @@ func hint() -> String:
 				return Keymap.filled("Placing %s on the end of %s: click puts it there · {rotate_held|puts its next end to the joint}%s · Esc lets go") % [
 					named, builder.tracks.target_name(builder),
 					" · a sleeper goes under the joint with it" if not builder.tracks.sleepers.is_empty() else ""]
-			# On a joint, what it is on and what R and T do there instead.
+			# On a joint, what it is on and what R and T do there instead,
+			# and Connect (N): which of its points goes on, an axle's other
+			# end or a pin's far half. Nothing said it: a builder with an
+			# axle over a beam never met Connect (ux16).
 			if builder.is_on_joint():
-				return Keymap.filled("Placing %s on %s: click puts it there · {rotate_held|turns it about the joint} · {tip_held|the other way on} · Esc lets go") % [
+				return Keymap.filled("Placing %s on %s: click puts it there · {rotate_held|turns it about the joint} · {tip_held|the other way on} · {mode_connect|picks which of its points goes on (Connect)} · Esc lets go") % [
 					named, builder.joint_words()]
 			return "Placing %s: click puts one down · type a number to move it exactly · %s, the part stays in hand · Esc lets go" % [
 				named, look]
