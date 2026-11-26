@@ -117,6 +117,23 @@ func key() -> String:
 	return PartThumbnails.key_for(part_id, color_code, printed)
 
 
+## While its picture comes, [param tile] shows its part's shape from what
+## the catalogue says of it (PartSketch), in its colour, as the parts bin's
+## tiles do: Build it's step and the studio's step bar were empty boxes
+## over their counts (partpics, 2026-11-24). Nothing where [param from]
+## has no library or the part is not in it.
+static func sketch_for(tile: ThumbTile, from: PartThumbnails) -> void:
+	if from == null or from.library == null:
+		return
+	var info: PartLibrary.PartInfo = from.library.parts.get(tile.part_id)
+	if info == null:
+		return
+	tile.sketch = info
+	var colour: PartLibrary.BrickColor = from.library.color(tile.color_code)
+	if colour != null:
+		tile.sketch_colour = colour.shown
+
+
 ## The picture has landed. Faded in over the placeholder, or over the
 ## picture it had in another colour, unless it was
 ## to hand when the tile was made: a grid redrawn for a new colour whose

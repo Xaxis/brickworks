@@ -38,7 +38,12 @@
 //                            list, as=pab (/m/X/parts-pab.csv; past 400
 //                            elements as=pab-2, /m/X/parts-pab-2.csv, and
 //                            on) a LEGO® Pick a Brick list, each to
-//                            download; with v=N, version N's
+//                            download; with v=N, version N's; as=png
+//                            (/m/X/v/N/parts.png?f=F) every lot's picture
+//                            in one file (api/_lot_pictures.js), drawn at
+//                            publishing and kept beside the model, F the
+//                            file it is of: a year in every cache; 202 while
+//                            it is drawn (drawLotPictures)
 //   GET  ?op=parts_missing&id=X  with the session: what the person is
 //                            missing of that list, and the three shops'
 //                            lists of only those (the Parts tab's What
@@ -277,7 +282,7 @@
 
 import { noted } from "./_noted.js";
 import { afterAnswer } from "./_after.js";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { cronNoted, isCron, sweepHeld } from "./_cron.js";
@@ -322,6 +327,7 @@ import {
   yearsOf,
 } from "./_sets.js";
 import { drawModel, flatLayJpeg, pngOf } from "./_flatlay.js";
+import { DRAWN as LOTS_DRAWN, indexOf as lotIndexOf, lotSheet, withGeometry } from "./_lot_pictures.js";
 import { parseLbm } from "./_lbm.js";
 import { heightOf, promptNow, promptOnPublish, runPrompts } from "./_prompts.js";
 import { indexOf as searchIndex } from "./_search.js";
@@ -2334,7 +2340,7 @@ function undeviced(file) {
 /// its parts, of the version asked for (the newest unless one is). Read as a
 /// visitor, signed out: what its page offers anybody. Kept by the CDN as the
 /// page is, so a model taken down goes with its page.
-async function download(response, op, id, asked, as, lang = "en", step = null) {
+async function download(response, op, id, asked, as, lang = "en", step = null, f = "") {
   const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
   const row = await publishedRow(id);
   if (!row) {
@@ -2346,6 +2352,19 @@ async function download(response, op, id, asked, as, lang = "en", step = null) {
   const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
   if (!shown) return fail(404, `There is no version ${asked} of this model: it has ${count(newest, "version")}.`);
   const stored = versionFile(id, shown.n, newest, "mpd");
+  // A version's lot pictures under the file they are of (?f=): the kept file
+  // answered as it is, the model's own file never read for it. Under its
+  // address it never changes, so the CDN and the browser keep it a year and
+  // the bucket is read once a deployment and region, never once a visitor.
+  if (op === "parts" && as === "png" && /^[0-9a-f]{12}$/.test(f)) {
+    const kept = await keptLotPictures(id, shown.n, f);
+    if (kept) {
+      response.setHeader("Content-Type", "image/png");
+      response.setHeader("Cache-Control", LOTS_CACHE);
+      response.setHeader("X-Content-Type-Options", "nosniff");
+      return response.status(200).end(kept);
+    }
+  }
   const file = await getFile(stored);
   if (!file) return fail(410, "This model is no longer shared.");
   const base = `${fileName(row.name, id)}${shown.n === newest ? "" : `-v${shown.n}`}`;
@@ -2358,8 +2377,93 @@ async function download(response, op, id, asked, as, lang = "en", step = null) {
     return response.status(200).end(file);
   }
   if (op === "scene" || op === "room") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`, op, step);
-  return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest }, lang);
+  if (op === "parts" && as === "png") {
+    // A link to another file's pictures (a republished link starts its
+    // versions at 1 again) is none of this one's.
+    const of = lotsFingerprint(file);
+    if (f && f !== of) return fail(404, "These are not this model's parts: open it from its page again.");
+    const kept = f ? null : await keptLotPictures(id, shown.n, of);
+    if (kept) {
+      response.setHeader("Content-Type", "image/png");
+      return response.status(200).end(kept);
+    }
+    // Not drawn yet (a version shared before they were drawn at publishing):
+    // drawn after this answer, which never waits on it. The app shows each
+    // part's shape and draws them itself meanwhile, as before.
+    if (storeRoot() && partsTable()) {
+      afterAnswer(() => drawLotPictures(id, shown.n, stored, file), "share: lot pictures");
+    }
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Retry-After", "60");
+    return response.status(202).json({ drawing: true });
+  }
+  // The list says where its lots' pictures are drawn already, so the page's
+  // Parts list shows them from that file at once (web/part-pictures.js), and
+  // Build it after it finds the file in the browser's cache.
+  return partsAnswer(response, partsOf(stored, file), base, as,
+    { id, version: shown.n, newest, lot_pictures: lotPicturesPath(id, shown.n, file) }, lang);
 }
+
+/// Which file a version's lot pictures are of, and how they were drawn: the
+/// first 12 hex of the SHA-1 of the drawing's number and the file's bytes, in
+/// their address (?f=) and in the index they carry. A file republished, or
+/// the lots drawn otherwise (DRAWN), is a new address no cache holds.
+const lotsFingerprint = (file) => createHash("sha1").update(`lots ${LOTS_DRAWN}\n`).update(file).digest("hex")
+  .slice(0, 12);
+
+/// Where the app finds version [n]'s lot pictures: the share answer says it
+/// (LotPictures), with the file they are of, so the CDN keeps them a year.
+const lotPicturesPath = (id, n, file) => `/m/${id}/v/${n}/parts.png?f=${lotsFingerprint(file)}`;
+
+/// Version [n] of [id]'s lot pictures (api/_lot_pictures.js): every lot of
+/// its parts list drawn in one PNG, [stored] the version's file's name and
+/// [file] its bytes. Drawn in plain JS on this function, never on a GPU, as
+/// the version is published and after the first ask of a version shared
+/// before that (both after their answer), from the parts' geometry in the
+/// store, and kept beside the model as X.lotsN.png, so every later ask reads
+/// that one small file and never the parts again (memory
+/// supabase-egress-restriction). Kept only nearly whole: a lot whose
+/// geometry did not come is left for the next ask to draw, past one or two
+/// that are simply not in the store. Null where this site cannot draw them.
+async function drawLotPictures(id, n, stored, file) {
+  const name = `${id}.lots${n}.png`;
+  // One draw of a file at a time in this instance: the visitors who ask
+  // while it is drawn are answered 202 and draw nothing.
+  if (lotsDrawing.has(name)) return null;
+  lotsDrawing.add(name);
+  try {
+    const parts = partsOf(stored, file);
+    const table = partsTable();
+    if (!parts || !table || !storeRoot()) return null;
+    const lots = await withGeometry(parts.lots, (mesh) => storeBytes(`${mesh}.lbm`));
+    const { png } = lotSheet(lots, paletteOf(table), lotsFingerprint(file));
+    const missing = lots.filter((lot) => !lot.bytes).length;
+    if (missing <= Math.max(2, lots.length / 50)) await putFile(name, png, "image/png");
+    return png;
+  } finally {
+    lotsDrawing.delete(name);
+  }
+}
+
+/// The files of lot pictures this instance is drawing now, by name.
+const lotsDrawing = new Set();
+
+/// Version [n] of [id]'s kept lot pictures when they are of the file whose
+/// fingerprint is [of]; null when none are kept, or they are of another
+/// file (the link republished), which is drawn again.
+async function keptLotPictures(id, n, of) {
+  const kept = await getFile(`${id}.lots${n}.png`).catch(() => null);
+  if (!kept) return null;
+  try {
+    return lotIndexOf(kept)?.of === of ? kept : null;
+  } catch {
+    return null;
+  }
+}
+
+/// How a file of lot pictures is kept under the address of the file it is
+/// of: never changed there, so held a year by the CDN and the browser.
+const LOTS_CACHE = "public, max-age=31536000, s-maxage=31536000, immutable";
 
 /// A parts list as /m/X/parts.json, .xml and .csv answer it, and a set's
 /// (/library/X/parts.json): [parts] the list (partsOf), [base] what its
@@ -2556,7 +2660,8 @@ async function read(request, response) {
     // A step of it (Ask the builders' thread, api/_asks.js): the parts built
     // by that page, where the file's carried steps say so.
     const step = op === "scene" && /^[1-9][0-9]{0,5}$/.test(String(request.query?.step || "")) ? Number(request.query.step) : null;
-    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"), step);
+    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"), step,
+      String(request.query?.f || ""));
   }
 
   if (op === "page") {
@@ -2742,6 +2847,10 @@ async function read(request, response) {
     updated_at: row.updated_at,
     version: shown.n,
     newest,
+    // Every lot's picture of this version in one file (drawLotPictures),
+    // which the app takes as it opens it, so Build it's first step shows
+    // its parts at once (src/net/lot_pictures.gd).
+    lot_pictures: lotPicturesPath(id, shown.n, model),
     versions: versions.map((one) => versionSaid(origin, id, one, newest)),
     listed: row.listed === true,
     licence: row.licence ?? null,
@@ -3965,6 +4074,9 @@ export async function publishModel(claims, body, request, { test = isTestAccount
   // counted from those needs against every set's inventory: after the
   // answer, so the publish never waits on it.
   if (needsKept) afterAnswer(() => keepAlts(id, keyed(needs || []), { library }), "share: alternate builds");
+  // Its lots' pictures drawn now and kept (drawLotPictures), after the
+  // answer: the first person to press Build it finds them made.
+  afterAnswer(() => drawLotPictures(id, n, `${id}.mpd`, Buffer.from(model, "utf8")), "share: lot pictures");
   const movesKept = await keepMoves(id, owner, moves, motions);
   const madeKept = await keepMadeWith(id, owner, madeWith);
   const shownKept = await keepMadeShown(id, owner, shownAsked);
@@ -4143,7 +4255,7 @@ export async function unpublishModel(owner, id) {
   const versions = await db(`share_versions?model=eq.${id}&select=n`);
   await deleteFiles([`${id}.mpd`, `${id}.png`, `${id}.cutout.png`, `${id}.webp`,
     ...versions.flatMap((one) => [`${id}.v${one.n}.mpd`, `${id}.v${one.n}.png`, `${id}.v${one.n}.cutout.png`,
-      `${id}.v${one.n}.webp`])]);
+      `${id}.v${one.n}.webp`, `${id}.lots${one.n}.png`])]);
   await db(`share_versions?model=eq.${id}`, { method: "DELETE" });
   return { id, published: false, versions: versions.length };
 }

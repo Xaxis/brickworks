@@ -254,6 +254,10 @@ static var _kept_at: Dictionary = {}
 func _ready() -> void:
 	visible = false
 	set_process(true)
+	# A shared model's lot pictures asked for once someone takes a step:
+	# a phone shows the bar, at the last step, to everyone who only looks at
+	# the model, and that look fetches nothing (LotPictures.want).
+	stepped.connect(func() -> void: LotPictures.want())
 	_build()
 	if _compact:
 		get_viewport().size_changed.connect(_fit_compact, CONNECT_DEFERRED)
@@ -699,6 +703,8 @@ func _lay_strip() -> void:
 		var ready: Texture2D = thumbnails.peek(tile.part_id, tile.color_code) if thumbnails != null else null
 		if ready != null:
 			tile.show_picture(ready, false)
+		else:
+			ThumbTile.sketch_for(tile, thumbnails)
 		cell.add_child(tile)
 		var count := Label.new()
 		count.text = "%dx" % int(lot["count"])
