@@ -124,6 +124,7 @@ ahead
 art_plan
 autosave_paths
 balance
+side_studs
 brickify_buy
 build_steps
 cabin_glass
