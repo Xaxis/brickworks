@@ -239,7 +239,9 @@ func _big_button(what: String) -> Button:
 		var round := StyleBoxFlat.new()
 		round.bg_color = Color(0.36, 0.6, 1.0, 0.55) if state.contains("pressed") \
 			else Color(0.11, 0.12, 0.14, 0.86 if state != "disabled" else 0.55)
-		round.set_corner_radius_all(ceili(p(BIG * 0.5)))
+		# Under half its size: at half or over, a bordered StyleBoxFlat drew a
+		# seam down the middle (walk 2's pictures).
+		round.set_corner_radius_all(floori(p(BIG * 0.5) - 1.0))
 		round.border_color = Color(1, 1, 1, 0.14)
 		round.set_border_width_all(1)
 		button.add_theme_stylebox_override(state, round)

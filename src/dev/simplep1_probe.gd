@@ -1083,6 +1083,9 @@ func _fresh() -> void:
 	_simple.call("_on_swatch", 4)
 	_camera.set_view("default")
 	await _settle()
+	# Framed as a new model opens, not at the last check's zoom: the
+	# tablet's walks began a stud's width from the plate (walk 2).
+	await _press_fit()
 	_say_nothing()
 
 
