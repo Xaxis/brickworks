@@ -166,6 +166,9 @@ var _kind: OptionButton
 ## Whether the kind is the owner's choice, not the guess: then a new name
 ## does not change it.
 var _kind_chosen: bool = false
+## Whether the person pressed Show who made it for this model: then ticking
+## List it in the gallery leaves it as they set it.
+var _credit_chosen: bool = false
 ## Which model the words are about: its link and its name.
 var _words_for: String = "-"
 var _licence: OptionButton
@@ -316,12 +319,59 @@ func setup() -> void:
 		_author.visible = on
 		if on and _author.text.is_empty():
 			_suggest_author())
+	_credit.pressed.connect(func() -> void: _credit_chosen = true)
 	form.add_child(_credit)
 	_author = LineEdit.new()
 	_author.placeholder_text = "The name to credit"
 	_author.max_length = 60
 	_author.visible = false
 	form.add_child(_author)
+
+	# Off unless ticked: a link is for whoever it is sent to, and the
+	# gallery is for everybody. Under Show who made it, at the form's top:
+	# the two say where it shows and with whose name. Under the licence it
+	# lay below the scroll's foot on a phone, so a first build was published
+	# as a link only (sitewalk3, 2026-11-26, at 390 x 844).
+	_list = CheckBox.new()
+	_list.text = "List it in the gallery"
+	_list.tooltip_text = "Anyone can find it at brickworks.diy/gallery, not only people sent the link. " \
+		+ "Untick it and publish again to take it out and keep the link."
+	_list.focus_mode = Control.FOCUS_NONE
+	_list.add_theme_font_size_override("font_size", 12)
+	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
+	# Ticked by the person, it ticks Show who made it too, with the profile's
+	# name, as Enter and Share progress do: a model in the gallery with
+	# nobody's name on it is on nobody's profile and in no follower's feed.
+	# A new member's first build, listed from the studio, was on neither
+	# (sitewalk3, 2026-11-26: "Nothing in the gallery yet" on their profile
+	# minutes after). Only on a press (pressed, never toggled): a link's
+	# listing read back from the server leaves its credit as it was. Never
+	# over the person's own choice: unticked by them first, it stays so, and
+	# it can be unticked after.
+	_list.pressed.connect(func() -> void:
+		if _list.button_pressed and not _credit.disabled and not _credit.button_pressed and not _credit_chosen:
+			_credit.button_pressed = true)
+	form.add_child(_list)
+	# Under it: an entry is a gallery model, so it is ticked only with it.
+	_prompt_box = CheckBox.new()
+	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
+	_prompt_box.focus_mode = Control.FOCUS_NONE
+	_prompt_box.add_theme_font_size_override("font_size", 12)
+	_prompt_box.visible = false
+	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
+	form.add_child(_prompt_box)
+	# Off unless ticked: how it was made is the builder's to say. After the
+	# quick build's box, which belongs to List it in the gallery.
+	_say_made = CheckBox.new()
+	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
+	_say_made.focus_mode = Control.FOCUS_NONE
+	_say_made.add_theme_font_size_override("font_size", 12)
+	_say_made.visible = false
+	form.add_child(_say_made)
+	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
+		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
+	_young.visible = false
+	form.add_child(_young)
 
 	form.add_child(_line("About it (shown on its page)", 12, 0.85))
 	_about = TextEdit.new()
@@ -377,37 +427,6 @@ func setup() -> void:
 	_licence_says = _line("", 11, 0.65)
 	form.add_child(_licence_says)
 	_say_licence()
-
-	# Off unless ticked: a link is for whoever it is sent to, and the
-	# gallery is for everybody.
-	_list = CheckBox.new()
-	_list.text = "List it in the gallery"
-	_list.tooltip_text = "Anyone can find it at brickworks.diy/gallery, not only people sent the link. " \
-		+ "Untick it and publish again to take it out and keep the link."
-	_list.focus_mode = Control.FOCUS_NONE
-	_list.add_theme_font_size_override("font_size", 12)
-	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
-	form.add_child(_list)
-	# Under it: an entry is a gallery model, so it is ticked only with it.
-	_prompt_box = CheckBox.new()
-	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
-	_prompt_box.focus_mode = Control.FOCUS_NONE
-	_prompt_box.add_theme_font_size_override("font_size", 12)
-	_prompt_box.visible = false
-	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
-	form.add_child(_prompt_box)
-	# Off unless ticked: how it was made is the builder's to say. After the
-	# quick build's box, which belongs to List it in the gallery.
-	_say_made = CheckBox.new()
-	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
-	_say_made.focus_mode = Control.FOCUS_NONE
-	_say_made.add_theme_font_size_override("font_size", 12)
-	_say_made.visible = false
-	form.add_child(_say_made)
-	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
-		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
-	_young.visible = false
-	form.add_child(_young)
 
 	_note_label = _line("What changed? (shown with the new version)", 12, 0.85)
 	form.add_child(_note_label)
@@ -735,6 +754,7 @@ func _fresh_words() -> void:
 	_about.text = ""
 	_tags.text = ""
 	_kind_chosen = false
+	_credit_chosen = false
 	_set_licence("cc-by-4.0")
 	_guess_kind()
 
@@ -1098,6 +1118,10 @@ func publish(as_wip: bool = false) -> void:
 	if name.is_empty():
 		_fail("Give the model a name first.")
 		return
+	# The model the press was made on: one opened while it signs in, takes
+	# its picture or is written is not published under this one's name
+	# (ModelStore.model_now).
+	var press: int = store.model_now()
 	if as_wip and (_progress.disabled or _list.disabled):
 		_fail(_progress.tooltip_text)
 		return
@@ -1129,10 +1153,11 @@ func publish(as_wip: bool = false) -> void:
 	var png: PackedByteArray = pictures["png"]
 	_status.text = "Publishing…"
 	# A big model's build order a slice at a time, said and counted.
-	var model: String = await store.text_for_file(name, "Writing “%s” for its link…" % name)
+	var model: String = await store.text_for_file(name, "Writing “%s” for its link…" % name, press)
 	if model.is_empty():
 		_publish.disabled = false
-		_fail("Stopped before it was published.")
+		_fail("Not published: another model was opened." if store.model_now() != press
+			else "Stopped before it was published.")
 		_follow_age()
 		return
 	# Whom it credits, when it is somebody else's (a model the Library
@@ -1165,6 +1190,11 @@ func publish(as_wip: bool = false) -> void:
 	if moves_of.is_valid():
 		moves = moves_of.call()
 		body["moves"] = Array(moves)
+	# Ticked a moment ago, the profile's name may still be on its way
+	# (_suggest_author asks the server): waited for, so a quick Publish
+	# is credited too.
+	if _credit.button_pressed and _author.text.strip_edges().is_empty():
+		await _suggest_author()
 	var author: String = _author.text.strip_edges()
 	if _credit.button_pressed and not author.is_empty():
 		body["author"] = author

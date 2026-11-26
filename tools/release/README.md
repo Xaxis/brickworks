@@ -187,7 +187,11 @@ preview failed, in its battery or by turns, is judged: it holds the release
 only where the preview's mean is past live's by more than the noise, the
 wider of the two sides' spreads (max - min of their runs) and at least 2% of
 the bar; a FAIL line with no figure, only where the preview failed it in
-more runs than live; a measure live never printed, always; and the whole
+more runs than live, a line a failed run never got to (it stopped early:
+an exception, a run cut off) counted failed on its side and named in the
+verdict ("L2 never got to it": rel-m343's A/B called live's stopped run a
+pass of the three grab steps it never ran, and held a day on what live
+failed too); a measure live never printed, always; and the whole
 check, when no measure was timed on both sides (runs that could not start
 fail alike, and are no load: a worktree with no `node_modules`), unless the
 preview passed every run, said "passed N of N by turns" (rel-m301's placing
@@ -332,12 +336,17 @@ What each one guards against, all learned the hard way on 2026-10-13:
   main checkout's `.git/config`, and `merge_unit.sh` passes it on its merge;
   a merge with neither stops on a conflict. `merge_unit.sh` then runs
   `tools/check.sh --lists`, which fails a merge that leaves a probe in no
-  list, or one listed twice, or out and run both.
+  list, or one listed twice, or out and run both, or that leaves a call to
+  a method that is not there (`tools/callcheck.py`, about 2 s). handkeep2
+  took `Builder._lift_on_top` out with two callers left, Godot's check
+  passed both, and six probes went red on the train (2026-11-26).
   `tools/check.sh --dry-run` prints every command the suite would run.
 - `parse_gate.sh` parses every GDScript file the merge changed. Two units
   each added a `"dome"` key to one dictionary, git merged both without a
   conflict, and Godot could not parse `assistant.gd`. The tool-list probe
-  hung on it rather than failing.
+  hung on it rather than failing. It runs `tools/callcheck.py` over every
+  script first (exit 3, `CALL ERRORS:`), as `MERGE_GATES=ship` merges reach
+  it only at ship.
 - Probes may run at once in one checkout (`tools/probe.sh`, so
   `run_probes.sh` too): none writes `.godot`. A class list older than the
   scripts is what fails them, every script naming a class it lacks: a

@@ -137,7 +137,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   them over, `Delete` or `Backspace` removes them. `shift-click` or `Ctrl`-click
   adds to the selection; `G` takes the part under the pointer into hand, `X`
   lifts it off into hand.
-- `undo and redo`: `Cmd/Ctrl-Z` and `Cmd/Ctrl-Shift-Z`, over placements, removals,
+- `undo and redo`: `Cmd/Ctrl-Z` and `Cmd/Ctrl-Shift-Z` (and `Ctrl-Y` for redo, as
+  Windows' programs, Studio and Mecabricks have it: `Shell.handle_key`,
+  `command_for_key`; a key a person gave Ctrl+Y keeps it; ux16), over placements, removals,
   paints, nudges and whole assistant designs. Each says in the status line what
   it took back or put back ("undid: made the sub-assembly Body of 2 parts"),
   the keys and Edit's Undo alike (`EditVerbs.press`, `Builder.redo_words`): it
@@ -1162,6 +1164,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the snap and turn, then the size, the weight and the selection, then where
   the part in hand goes, and last the counts (`StatusBar._fit`), so the bar is
   never wider than the window; its lines are cut at a word, never inside one.
+  Something said (not the tool's standing hint) keeps the width its words take
+  while it stands, the fields giving way in that order and coming back when it
+  goes; on a phone's bar (under 900) as before. So does the hint of a part in
+  hand on a joint or a track's end, while it is there, as it says what R, T
+  and N do there (`EditVerbs.hint_wants_room`). The whole line is its tooltip.
+  At 1280 "no room to turn it there … Esc puts it back", Connect's "— 2
+  points, Esc stops" and an axle over a beam's "Placing Technic Axle 4 on the
+  pin hole of Technic Beam 5: …" were cut (ux16; `ux16_desktop_probe` p19/p21
+  pictures, and its p21 check "the joint's line is drawn whole").
   A bar wider than the window widened the window's whole column, the header
   with it: at 390 points the header's row came onto one line from two while
   the bar was 623 units or more, and the model's room jumped 22 units after
@@ -1454,6 +1465,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   a time (`ModelStore.to_text_paced`, `text_for_file`, `save_as_paced`,
   `export_paced`; `ModelBar._on_save` returns whether it saved), with
   Cancel; "Save, then start new" starts new only once the save is made.
+  Each is bound to the model it was pressed on (`ModelStore.model_now`, the
+  world's generation, which every open and New moves on): after any wait,
+  with another model on the baseplate it writes nothing and says "not saved:
+  another model was opened" (`ModelStore.ANOTHER_OPENED`; Export, Share,
+  Studio and Test it say theirs). Up to wholetext2 a Save or Export still
+  writing when another model opened could write that model under the first
+  one's name (wholereview2 F1). `wholetext2_probe` cases `save_during`,
+  `export_during`, `text_during`, `paced_during` open another model or begin
+  New a frame into each.
   The audit is `src/dev/command_probe.gd` (windowed or headless; `--judge`
   fails a command over 250 ms of its own work in one frame that was not
   said first): every command in the shell's table on Orthanc and the car,
@@ -1732,7 +1752,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and come back next time; a narrow window shows one column without
   forgetting how a wide one had them. Not read or written under
   `--script`, so a probe neither sees nor changes anyone's layout.
-- `replace part`: Edit, Replace with the part in hand swaps every selected part for the part in hand, each
+- `replace part`: (A part inside a sub-model used more than once is swapped in
+  every copy, and the line says "— 3 parts more in its other copies", as a
+  paint's does: `EditVerbs.replace`, `_laid_in`; ux16's walk 2, a knight's
+  helmet in King's Castle, `ux16_desktop_probe --only=p20`.)
+  Edit, Replace with the part in hand swaps every selected part for the part in hand, each
   in its own colour, centred on the stud grid for its own footprint and standing
   where the old one stood. One step; a part with no room is left. Room is asked
   with the old part standing and left out of the question
@@ -2377,7 +2401,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   bisects). A gear drives its train by the teeth (`Mechanism`, as Simulate),
   and what hangs on a driven body by a joint of its own goes round with it
   (`Grab._follow_driven`). A closed loop moves as it allows (`Linkage`, below);
-  a locked train or a loop with no freedom is said, not moved. While dragging the model
+  a locked train or a loop with no freedom is said, not moved, with the way
+  to move it anyway ("…: not moved · X takes it into hand to put anywhere",
+  `GrabDrag` keep; ux16's walk 2, King's Castle's Back Left wall on its
+  hinge pin, `ux16_desktop_probe --only=p20` then lifts it by X). While dragging the model
   is drawn moved (`BrickWorld.set_drawn`; revision, lattice and history
   untouched), weighed each 50 ms (`Balance.weigh_pose`): polygon and centre of
   mass on the floor, loaded stud joints tinted, the model leaning 4° when it
@@ -3364,7 +3391,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   join more (`_best_on_joint` stops after the first way); the click on a point and its release are eaten
   (`ConnectTool._unhandled_input`), and `place()` refuses while points are
   offered. `R` turns about the joint, `T` the other way on, `N` again picks
-  another point, `Esc` back to placing. With nothing in hand the tool waits for
+  another point, `Esc` back to placing. A part in hand on a joint says N on
+  the status line ("N picks which of its points goes on (Connect)", `EditVerbs.hint`
+  "place"): nothing named Connect where it is needed (ux16's walk 3, an axle
+  over a beam, `ux16_desktop_probe --only=p21`). With nothing in hand the tool waits for
   a part: a click takes it off the model into hand where it stands
   (`lift_brick`), and its putting down folds with that into one undo
   (`fold_since`, "connected …"); `Esc` or Undo puts it back. Studs go by the

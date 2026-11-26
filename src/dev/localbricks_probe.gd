@@ -416,10 +416,7 @@ func _build_from(numbers: PackedStringArray, pieces: int, gone: int, what: Strin
 
 func _drop_set() -> void:
 	var bin: PartsBin = _main.get("_bin")
-	if bin.has_method("drop_set"):
-		bin.call("drop_set")
-	elif bin.has_method("_drop_set"):
-		bin.call("_drop_set")
+	bin._drop_set()
 	await _frames(3)
 
 

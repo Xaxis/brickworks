@@ -10,23 +10,25 @@
 // came out 566px wide and the whole page scrolled sideways. A status
 // code cannot see that. A browser at 390px can.
 //
-// Then the first screen as a visitor opens it (homefeed, 2026-11-23,
-// docs/HOME.md; landing's shelf before it), at a phone's 390 x 844 and a
-// laptop's 1280 x 800, light and dark: the search and Start building whole
-// in the window; on a phone the first post's picture begun in it, and on a
-// laptop at least 60% of each first-row picture's height in it, real builds
-// plainly seen beside the hero (the lead, 2026-11-23), "in it" meaning over
-// the beta bar; the pictures drawn; the page moving not at all (CLS 0.01 at
-// most) as the feed's live answers come. And the band's foot in the page's
-// rhythm (homefix, 2026-11-23, the owner on its caption sitting on the line
-// and the heading under it): at least 24 px from the band's last line (the
-// mark's caption, the search's row) down to its edge and from the edge to
+// Then the first screen as a visitor opens it (herostudio, 2026-11-26,
+// docs/HOME.md; homefeed's before it), at a phone's 390 x 844 and a
+// laptop's 1280 x 800, light and dark: one primary action (Start building,
+// free) and one secondary (See what people build) whole in the window and
+// no search signed out; the studio's loop whole beside the words on a
+// laptop and begun under them on a phone; the feed's real builds just under
+// the fold, its first post begun within BELOW windows of the top, "in it"
+// meaning over the beta bar; the pictures drawn; the page moving not at all
+// (CLS 0.01 at most) as the feed's live answers come. And the band's foot in
+// the page's rhythm (homefix, 2026-11-23, the owner on its caption sitting
+// on the line and the heading under it): at least 24 px from the band's last
+// line (the loop, the actions' row) down to its edge and from the edge to
 // "What builders are making" (48 from 600 px, 24 on a phone), the two the
 // same within 8 px.
 // Signed out there are no tabs, one stream, and Show more puts more posts
-// under it, none twice. The search finding as it is typed (models, builders
-// and sets, then the gallery's and the sets' own search), its arrows and
-// Escape, and Enter sending it to the gallery. The month's challenge in the
+// under it, none twice. The search, as somebody signed in has it, finding
+// as it is typed (models, builders and sets, then the gallery's and the
+// sets' own search), its arrows and Escape, and Enter sending it to the
+// gallery. The month's challenge in the
 // stream as the gallery's front has it, third at the latest; Talk's threads
 // in the stream when Talk has any, never an empty post; the four real sets.
 // tools/web/homefeed_check.mjs drives each post's own ways (like, comment,
@@ -56,8 +58,9 @@ const bypass = process.env.VERCEL_BYPASS || process.env.BW_BYPASS;
 const live = site === null;
 // The fewest posts a first page of the feed has, with a gallery behind it.
 const FEWEST = 4;
-// The share of each first-row picture's height a laptop's first screen shows.
-const SHOWN = 0.6;
+// The feed's first post begins within this many windows of the page's top:
+// just under the fold, under the studio's loop (herostudio, 2026-11-26).
+const BELOW = 1.3;
 
 const out = args.out ? resolve(String(args.out)) : "";
 if (out) mkdirSync(out, { recursive: true });
@@ -146,9 +149,9 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 800]
   await setsStrip(label, width, height);
 }
 
-/// The first screen as it opens: the search and Start building whole in
-/// the window, the first post's picture begun in it on a phone and 60% of
-/// each first-row picture in it on a laptop (SHOWN), the pictures drawn, and
+/// The first screen as it opens: its two actions whole in the window and no
+/// search, the studio's loop whole in it on a laptop and begun on a phone,
+/// the feed's first post begun within BELOW windows, the pictures drawn, and
 /// nothing moving as the live answers come.
 async function firstScreen(label, width, height, theme) {
   const { page } = await open(width, height, { theme });
@@ -199,23 +202,35 @@ async function firstScreen(label, width, height, theme) {
       skeletons: stream?.querySelectorAll(".skeleton").length || 0,
       words: document.getElementById("stream-said")?.textContent.trim() || "",
       tabs: Boolean(document.getElementById("feed-tabs")?.offsetHeight),
-      search: whole(document.getElementById("find-q")),
+      search: Boolean(document.getElementById("find-q")?.offsetHeight),
       // The room under the band's last line and over the feed's heading.
       room: (() => {
         const band = document.getElementById("home")?.getBoundingClientRect();
         const line = document.getElementById("feed")?.getBoundingClientRect().top;
         const heading = document.getElementById("feed-h")?.getBoundingClientRect();
-        const last = [...document.querySelectorAll("#home .hero-credit, #home .home-acts, #home .note")]
+        const last = [...document.querySelectorAll("#home .hero-loop, #home .home-acts, #home .note")]
           .filter((el) => el.offsetHeight).map((el) => el.getBoundingClientRect().bottom);
         return band && heading && last.length ? { under: Math.round(band.bottom - Math.max(...last)), over: Math.round(heading.top - line) } : null;
       })(),
-      start: whole(document.querySelector('#home a[href^="/app"]')),
+      // The band's actions a visitor sees: Start building and See what people build.
+      acts: [...document.querySelectorAll("#home .home-acts > a")].filter((a) => a.offsetHeight).map((a) => a.getAttribute("href")),
+      start: whole(document.querySelector('#home .home-acts > a.start[href^="/app"]')),
+      see: whole(document.querySelector('#home .home-acts > a.see')),
+      loop: (() => {
+        const r = document.getElementById("hero-loop")?.getBoundingClientRect();
+        return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), whole: whole(document.getElementById("hero-loop")) } : null;
+      })(),
       shifts: window.__shifts || [],
     };
   });
   const moved = seen.shifts.reduce((sum, s) => sum + s.value, 0);
   if (!settled) problems.push(`${where}: the feed never settled (no data-feed-live after 30 s)`);
-  if (!seen.search) problems.push(`${where}: the search is not whole in the first screen`);
+  if (seen.search) problems.push(`${where}: a visitor is shown the search: the band's actions are Start building and See what people build`);
+  if (seen.acts.join(" ") !== "/app /gallery") problems.push(`${where}: the band's actions are ${seen.acts.join(", ") || "none"}, not Start building (/app) then See what people build (/gallery)`);
+  if (!seen.see) problems.push(`${where}: See what people build is not whole in the first screen`);
+  if (!seen.loop) problems.push(`${where}: no studio's loop (#hero-loop)`);
+  else if (width >= 900 && !seen.loop.whole) problems.push(`${where}: the studio's loop is not whole in the first screen (${seen.loop.top} to ${seen.loop.bottom} px, its foot ${seen.foot})`);
+  else if (!(seen.loop.top < seen.foot)) problems.push(`${where}: the studio's loop begins at ${seen.loop.top} px, under the first screen (its foot ${seen.foot})`);
   if (!seen.room || seen.room.under < 24 || seen.room.over < 24 || Math.abs(seen.room.under - seen.room.over) > 8) {
     problems.push(`${where}: the band's foot is out of the page's rhythm: ${seen.room ? `${seen.room.under} px under its last line, ${seen.room.over} px over the feed's heading` : "not measured"}`);
   }
@@ -225,11 +240,8 @@ async function firstScreen(label, width, height, theme) {
     if (seen.posts < FEWEST || seen.named !== seen.posts || seen.skeletons || seen.drawn !== seen.pictures) {
       problems.push(`${where}: the feed shows ${seen.posts} posts, ${seen.named} named, ${seen.drawn} of ${seen.pictures} pictures in view drawn, ${seen.skeletons} skeletons`);
     }
-    if (width < 600 && !(seen.firstPicture >= 0 && seen.firstPicture < seen.foot)) {
-      problems.push(`${where}: the first post's picture begins at ${seen.firstPicture} px, not in the first screen (its foot ${seen.foot})`);
-    }
-    if (width >= 600 && seen.rowShown < SHOWN) {
-      problems.push(`${where}: a first-row picture shows ${Math.round(seen.rowShown * 100)}% of its height in the first screen, under ${SHOWN * 100}%`);
+    if (!(seen.first >= 0 && seen.first < height * BELOW)) {
+      problems.push(`${where}: the feed's first post begins at ${seen.first} px, not just under the fold (within ${Math.round(height * BELOW)})`);
     }
   } else if (live) {
     problems.push(`${where}: the feed shows nothing with a gallery behind the page (${seen.said})`);
@@ -242,7 +254,8 @@ async function firstScreen(label, width, height, theme) {
   }
   if (out) await page.screenshot({ path: `${out}/first_${width}_${theme}.png` });
   console.log(`  ${where.padEnd(13)} feed ${seen.posts ? `${seen.posts} posts (${seen.served}, then ${seen.said}: ${seen.kinds.join(" ")}), first at ${seen.first} px, its picture at ${seen.firstPicture} (foot ${seen.foot}), first row's least shown ${Math.round(seen.rowShown * 100)}% of ${seen.row}, ${seen.whole} pictures whole` : `empty (${seen.said}: "${seen.words}")`}; `
-    + `search ${seen.search ? "in view" : "OUT"}, Start building ${seen.start ? "in view" : "OUT"}; `
+    + `actions ${seen.acts.join(" ")} (Start building ${seen.start ? "in view" : "OUT"}, See ${seen.see ? "in view" : "OUT"}), search ${seen.search ? "SHOWN" : "hidden"}; `
+    + `loop ${seen.loop ? `${seen.loop.top}-${seen.loop.bottom} px${seen.loop.whole ? " whole" : ""}` : "NONE"}; `
     + `room ${seen.room ? `${seen.room.under}/${seen.room.over} px` : "?"}; moved ${moved.toFixed(3)}`);
   await page.close();
 }
@@ -283,6 +296,9 @@ async function stream(label, width, height) {
 async function search(label, width, height) {
   const { page } = await open(width, height);
   const where = `${label} search`;
+  // The band as somebody signed in has it: the search alone (web/theme.js
+  // marks it so before the first frame for a kept sign-in).
+  await page.evaluate(() => { document.documentElement.dataset.signed = "in"; });
   await page.locator("#find-q").click();
   await page.keyboard.type("castle", { delay: 40 });
   const listed = await page.waitForFunction(() => {

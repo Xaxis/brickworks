@@ -94,6 +94,7 @@ func _run() -> void:
 	for brick: BrickWorld.Brick in bricks:
 		part_of[brick.id] = brick.part_id
 	var most: int = int(_arg("most", "60"))
+	var pieces: Array = []
 	for one: Balance.JointLoad in weighed.joints:
 		if one.ratio <= 1.0:
 			continue
@@ -122,6 +123,8 @@ func _run() -> void:
 			first = false
 		print("  beyond: %d parts, box %s .. %s" % [ids.size(), box.position, box.end])
 		print("  kinds: %s" % str(kinds))
+		pieces.append({"beyond": one.beyond, "held_by": one.held_by, "ratio": one.ratio,
+			"at": [one.at.x, one.at.y, one.at.z], "ids": ids.keys()})
 		# Every stud between the piece beyond and the rest, both ways.
 		var seen: int = 0
 		for brick: BrickWorld.Brick in bricks:
@@ -206,4 +209,66 @@ func _run() -> void:
 				var way: String = ["x", "y", "z"][thin]
 				touching[way] = int(touching.get(way, 0)) + 1
 		print("  boxes touching across, by the axis they meet on: %s" % str(touching))
+	# With --plane=AXIS:LDU (z:280), the parts across that plane (their box on
+	# both sides of it) and, by the parts' own shapes, how many studs each has
+	# in a socket of a part wholly on either side, or one of theirs in it: what
+	# ties the two sides together there (snot7).
+	if _arg("plane") != "":
+		var axis: int = "xyz".find(_arg("plane").get_slice(":", 0))
+		var at_ldu: float = float(_arg("plane").get_slice(":", 1))
+		var near: float = float(_arg("near", "100"))
+		var boxes_of: Dictionary = {}
+		for brick: BrickWorld.Brick in bricks:
+			boxes_of[brick.id] = brick.transform * _library.mesh_for(brick.part_id).bounds
+		var side := func(id: int) -> int:
+			var b: AABB = boxes_of[id]
+			if b.end[axis] <= at_ldu + 0.5:
+				return 0
+			if b.position[axis] >= at_ldu - 0.5:
+				return 1
+			return -1
+		var ties: int = 0
+		var plain: int = 0
+		for brick: BrickWorld.Brick in bricks:
+			if side.call(brick.id) != -1:
+				continue
+			var studs := Vector2i.ZERO
+			for other: BrickWorld.Brick in bricks:
+				var s: int = side.call(other.id)
+				if s < 0 or not (boxes_of[brick.id] as AABB).grow(8.0).intersects(boxes_of[other.id]):
+					continue
+				for pair: Array in [[brick, other], [other, brick]]:
+					var whose: BrickWorld.Brick = pair[0]
+					var into: BrickWorld.Brick = pair[1]
+					for connector: Lbm.Connector in _library.mesh_for(whose.part_id).connectors:
+						if connector.kind != "stud" or connector.gender != "male":
+							continue
+						if Joints.socket_at(into.transform, _library.mesh_for(into.part_id),
+								whose.transform * connector.position,
+								(whose.transform.basis * connector.axis).normalized()):
+							studs[s] += 1
+			var b: AABB = boxes_of[brick.id]
+			if (b.get_center() - Vector3(b.get_center()[0] if axis != 0 else at_ldu, b.get_center().y,
+					b.get_center()[2] if axis != 2 else at_ldu)).length() > near:
+				continue
+			if studs.x > 0 and studs.y > 0:
+				ties += 1
+			plain += 1
+			print("  across %s = %.0f: %s #%d at %s, studs into each side %d and %d" % [_arg("plane").get_slice(
+				":", 0), at_ldu, brick.part_id, brick.id, b.position.snapped(Vector3.ONE * 0.1), studs.x, studs.y])
+		print("plane %s: %d parts across, %d of them with studs into both sides" % [_arg("plane"), plain, ties])
+	# With --dump=FILE, every part (its id, part, face, colour, box in LDU, y
+	# down) and each piece beyond a joint past its load, as JSON, for reading
+	# the plane a piece meets the rest on (snot7).
+	if _arg("dump") != "":
+		var parts: Array = []
+		for brick: BrickWorld.Brick in bricks:
+			var placement: Assistant.Placement = model.placements[brick.id - 1]
+			var b: AABB = brick.transform * _library.mesh_for(brick.part_id).bounds
+			parts.append({"id": brick.id, "part": brick.part_id, "face": placement.face,
+				"color": placement.color, "box": [b.position.x, b.position.y, b.position.z, b.end.x, b.end.y,
+				b.end.z]})
+		var file := FileAccess.open(_arg("dump"), FileAccess.WRITE)
+		file.store_string(JSON.stringify({"parts": parts, "pieces": pieces}))
+		file.close()
 	quit(0)

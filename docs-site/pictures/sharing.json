@@ -44,7 +44,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and Share progress side by side, and the guidelines.",
+   "alt": "The Share this model panel: Name, Show who made it with the name to credit, List it in the gallery, About it, Tags and Kind side by side, Licence with what it lets others do, then Publish and Share progress side by side, and the guidelines.",
    "caption": "File › Share…, before it is published.",
    "features": [
     "ui:share panel"

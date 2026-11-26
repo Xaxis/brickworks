@@ -3,13 +3,11 @@
 // page. The owner: "obviously the hero should in some way contain a
 // brilliant 3D variation of our logo or something to do with LEGO".
 //
-// Built into web/viewer3d.js with the rest of the site's viewer (inline.js),
-// which web/landing.js imports only once the page is drawn, the hero is on
-// the screen and the browser is idle, on a device that draws in 3D; until
-// then, and for good on one that cannot, the page shows its poster, a
-// picture of the finished model drawn by this same code
-// (tools/web/hero_poster.mjs), so the model takes the poster's place without
-// a jump. Once a visit (sessionStorage), it assembles: the bricks come down
+// Since herostudio (2026-11-26) the home's hero is the studio at work and
+// the mark is the header's, drawn by this code into one picture of a turn
+// (tools/site/mark_turn.mjs, with pose()); no page loads it live. Built into
+// web/viewer3d.js with the rest of the site's viewer (inline.js). As the
+// hero it was, once a visit (sessionStorage), it assembles: the bricks come down
 // into place a course at a time, the app's own steps (each course is one),
 // in about 2.5 s; then it sways slowly about the mark's own view. A drag or a
 // touch across turns it and it settles back; the arrow keys turn it, focused;
@@ -130,8 +128,8 @@ function plastic(box = null) {
 /// poster's place. [given]: scene (web/hero/mark.json's address), still
 /// (no motion: prefers-reduced-motion), assemble (false: finished at once),
 /// name (what the stage is called once it turns), timed (each frame drawn to the end,
-/// for a check), keep (the drawing kept, and nothing moving: the poster's
-/// picture, tools/web/hero_poster.mjs), slow
+/// for a check), keep (the drawing kept, and nothing moving: the header's
+/// pictures, tools/site/mark_turn.mjs), slow
 /// (ms: a frame drawn slower than this is a device too weak for it, and
 /// the poster stays).
 export async function hero3d(stage, given = {}) {
@@ -649,6 +647,10 @@ export async function hero3d(stage, given = {}) {
       stage.classList.remove("live");
     },
     picture: (type = "image/webp", quality = 0.9) => { draw(performance.now() / 1000); return canvas.toDataURL(type, quality); },
+    // Turned [round] radians about its up from its own view (and [up] over
+    // it), for a picture of it turned: the header's turning mark
+    // (tools/site/mark_turn.mjs, herostudio).
+    pose: (round = 0, up = 0) => { off.round = round; off.up = up; off.vRound = 0; off.vUp = 0; },
   };
 }
 

@@ -208,7 +208,7 @@ const THEIRS_HOME = ".post.build .post-title, .post.talk .post-title, .post.talk
   + ".post [lang=''], .post:is(.build, .try) .post-pic img";
 const PAGES = [
   { name: "home", path: "", title: "Brickworks — a CAD for LEGO® models, in your browser",
-    heading: "#hero-h", says: "Build, share and find <em>LEGO® models</em>", theirs: THEIRS_HOME },
+    heading: "#hero-h", says: "Design <em>LEGO® models</em> in your browser", theirs: THEIRS_HOME },
   { name: "download", path: "/download", title: "Brickworks for the desktop, coming soon",
     heading: "#get-h", says: "The desktop app is coming soon" },
   { name: "plans", path: "/plans", title: "Plans · Brickworks" },

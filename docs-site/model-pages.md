@@ -162,7 +162,7 @@ ui:change a model with your Claude
 
 ## Open in the studio: a copy to change {#open}
 
-**Open in the studio** opens the studio with this model on the baseplate, never the example car. Signed out, it is there behind the studio's sign-in, which says it opens as your own copy: sign in with your email's code or with orangecheck (a new account answers the age question first) and you come back to it. Signed in, the copy is saved in your models under the model's name, credited to this page (its page says *Remixed from* once you [share it](/docs/sharing#remix)), and framed whole. The page you came from stays as it was.
+**Open in the studio** opens the studio with this model on the baseplate, never the example car. Signed out, it asks you to sign in right there on the page, before the studio loads: sign in with your email's code or with orangecheck (a new account answers the age question first) and the studio opens with your copy. Close it and you stay on the page. A link to the studio from elsewhere asks the same, on the studio's own sign-in. Signed in, the copy is saved in your models under the model's name, credited to this page (its page says *Remixed from* once you [share it](/docs/sharing#remix)), and framed whole. The page you came from stays as it was.
 
 The first time, three things to do with it are offered along the top of the model: **Recolour a part** takes the Paint tool, so a colour and then a part paints it; **Add a part** opens the parts with their search ready; **Build it** plays the timeline from the first step. Your first change, [[Esc]] or **×** puts that line away, and it is not offered again.
 

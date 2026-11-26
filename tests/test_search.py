@@ -75,6 +75,19 @@ def test_death_star_is_the_death_star_not_a_death_trooper() -> None:
 
 
 @needs_catalogue
+def test_a_set_named_exactly_what_was_typed_is_first_unless_ten_times_smaller() -> None:
+    said = found("house with car", "batmobile")
+    # 346-2 House with Car (167 parts) came third, under 60398-1 Family
+    # House and Electric Car, five times its size and 54 years newer
+    # (sitewalk3, 2026-11-26: three walks typed its name).
+    assert said["house with car"]["top"][0]["set"] == "346-2", said["house with car"]["top"][:3]
+    # A tenth is the line: 30455-1 Batmobile (68 parts) stays under the
+    # Batmobiles thirty times its size.
+    top = [one["set"] for one in said["batmobile"]["top"][:3]]
+    assert "30455-1" not in top and {"76139-1", "76240-1", "76355-1"} & set(top), top
+
+
+@needs_catalogue
 def test_words_run_together_or_apart_find_the_same_sets() -> None:
     said = found("deathstar", "firetruck", "fire truck", "xwing", "x wing")
     # "deathstar" found nothing; it is the death star, and says so.

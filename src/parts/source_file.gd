@@ -230,12 +230,15 @@ func unshown(placements: Array) -> Dictionary:
 ## parts still on their way, in the file's coordinates. [param place] says
 ## where a place the file has stands now, in them (ModelStore.held_place:
 ## where the drives kept since moved the model), as the file has it when
-## not given.
-func carried_into(text: String, waiting: Array, place: Callable = Callable()) -> String:
+## not given. [param keep]: what each line placing one is written as, from
+## the file's line it is from (as LdrModel.write_tree takes it: [method
+## kept_said]); each as written when not given.
+func carried_into(text: String, waiting: Array, place: Callable = Callable(),
+		keep: Callable = Callable()) -> String:
 	var parts: Array = _to_carry(waiting)
 	if parts.is_empty():
 		return text
-	var carried: Array = _carried(parts, place)
+	var carried: Array = _carried(parts, place, keep)
 	var refs: PackedStringArray = carried[0]
 	var needed: Dictionary = carried[1]
 	var out: String = _as_sections(text)
@@ -411,8 +414,9 @@ func _reference_of(placement: LdrModel.Placement) -> String:
 
 ## What [method carried_into] puts in for [param parts]: [the lines placing
 ## them, in the model's section, and each section of the file those name and
-## what those draw on, key -> true].
-func _carried(parts: Array, place: Callable = Callable()) -> Array:
+## what those draw on, key -> true]. Each line as [param keep] gives it, from
+## the file's line it is from, where given.
+func _carried(parts: Array, place: Callable = Callable(), keep: Callable = Callable()) -> Array:
 	var shown_sections: Dictionary = _shown_sections()
 	var refs := PackedStringArray()
 	var placed_units: Dictionary = {}
@@ -427,16 +431,24 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 			var section: String = str(unit_sections[unit])
 			needed[section] = true
 			var frame: Transform3D = unit_frames[unit]
-			refs.append("1 %s %s %s" % [_colour_token(int(unit_colours.get(unit, 16))),
+			var copy_line: String = "1 %s %s %s" % [_colour_token(int(unit_colours.get(unit, 16))),
 				LdrModel._line_numbers(place.call(frame) if place.is_valid() else frame),
-				_file_name(section)])
+				_file_name(section)]
+			# Its line in the file where the copy is the model's own (its line
+			# in the model's section): elsewhere that line is in another frame.
+			if keep.is_valid() and not unit.contains("/") and unit_lines.has(unit):
+				copy_line = str(keep.call(int(unit_lines[unit]), copy_line, ""))
+			refs.append(copy_line)
 			continue
 		var reference: String = _reference_of(placement)
 		if sections.has(LdrModel._key(reference)):
 			needed[LdrModel._key(reference)] = true
-		refs.append("1 %s %s %s" % [_colour_token(placement.color_code),
+		var part_line: String = "1 %s %s %s" % [_colour_token(placement.color_code),
 			LdrModel._line_numbers(place.call(placement.transform) if place.is_valid()
-				else placement.transform), reference])
+				else placement.transform), reference]
+		if keep.is_valid() and placement.unit.is_empty() and placement.line >= 0:
+			part_line = str(keep.call(placement.line, part_line, placement.part_id))
+		refs.append(part_line)
 	# And what those sections draw on that the file carries.
 	var todo: Array = needed.keys()
 	while not todo.is_empty():
@@ -566,16 +578,21 @@ func unplaced_into(text: String, origins: Array) -> String:
 ## [param origins] as [method unplaced_into] takes them.
 func _unplaced(origins: Array) -> Array:
 	var used: Dictionary = {main_key: true}
+	# Each line once: a copy's line begins the origin of every part in it, and
+	# read again for each, 10030-1's 3,000 origins took a third of a second of
+	# every whole write.
+	var seen: Dictionary = {}
 	for origin: Variant in origins + unshown_origins.keys():
 		for at: String in str(origin).split("/", false):
 			var n: int = at.to_int()
-			if n < 0 or n >= original.size():
+			if n < 0 or n >= original.size() or seen.has(n):
 				continue
+			seen[n] = true
 			used[_sec[n]] = true
 			# And what the line names: a part the file carries as a section.
 			var words: PackedStringArray = _words(original[n])
 			if words.size() >= 15 and words[0] == "1":
-				used[LdrModel._key(LdrModel.reference_of(original[n]))] = true
+				used[LdrModel._key(_name_in(original[n], words))] = true
 	return sections.keys().filter(func(key: String) -> bool:
 		return not used.has(key))
 
@@ -3019,6 +3036,184 @@ func _line_for(line: int, part: String, colour: int, painted: bool, local: Trans
 		token = reference
 	var said_colour: String = _colour_token(colour) if painted else words[1]
 	return "1 %s %s %s" % [said_colour, _numbers_for(words, local * by.affine_inverse()), token]
+
+
+## Why a whole write's lines were not all kept (ModelStore._text_into): "" when
+## every line it wrote from a line of the file that still says it is that
+## line. For a probe to read; a save says it in ModelStore.last_whole.
+var kept_why: String = ""
+## And how many of its lines were the file's ("kept"), in the file's words
+## ("kept_words") and written anew ("anew"), for a probe to weigh what the
+## keeping cost.
+var kept_counts: Dictionary = {}
+
+
+## The line a whole write of the model (ModelStore) writes for [param
+## written], which it wrote from this file's line [param line]: a part's line
+## (LdrModel.Placement.origin, its last), [param part] the part it places, or
+## the line placing a copy of a sub-model, [param part] "". No line is looked
+## for: the writer says which line each is from.
+##
+## The file's line, byte for byte, where it says what [param written] says,
+## as a patch keeps a part nobody changed. Otherwise [param written] with each
+## word of the file's line that still says it, as a patch writes a part it
+## changed ([method _line_for]): the number the file used while it is still
+## this part, its colour as it said it, its place and its turn where they are
+## still the part's. A whole write wrote every one of them anew: one part
+## moved in 10030-1 was 2,471 of its 4,712 lines rewritten (pastereview2 P2),
+## and the read-back of a guess at which line each was from could not see a
+## wrong guess (wholereview, wholereview2).
+##
+## And read back as the open reads a line (LdrModel.parse's words, then
+## ModelStore._as_placed): one that would open as another part, colour,
+## place or turn than [param written] is [param written], the whole write's
+## own, and [param tally] says so ("anew": [[the line, why]]). [param tally]
+## counts too: "kept", the file's lines; "kept_words", lines of its words.
+func kept_said(line: int, written: String, part: String, library: PartLibrary,
+		tally: Dictionary) -> String:
+	if line < 0 or line >= lines.size():
+		return written
+	var said: String = lines[line].trim_suffix("\r")
+	if said == written:
+		tally["kept"] = int(tally.get("kept", 0)) + 1
+		return said
+	var mine: PackedStringArray = _words(written)
+	var theirs: PackedStringArray = _words(said)
+	# The file's words saying it as the whole write does, but for how each is
+	# spelled (1.00000, a tab, the name's capitals): read alike, so the file's
+	# line, with no reading back. 10030-1 written whole after one part moved
+	# is 2,450 such lines, which the read-back below took a while for each.
+	if _says_alike(said, written, theirs, mine):
+		tally["kept"] = int(tally.get("kept", 0)) + 1
+		return said
+	# Alike but for its colour (a part painted, a copy the write hands its
+	# section's colour by 16): the file's line in the write's colour, as a
+	# patch writes a part only painted. 264 of 10030-1's lines, read back.
+	if _says_alike(said, written, theirs, mine, false):
+		tally["kept_words"] = int(tally.get("kept_words", 0)) + 1
+		return _recoloured(said, theirs[1], mine[1])
+	var numbers: Variant = _numbers_of(mine)
+	if numbers == null or _numbers_of(theirs) == null:
+		return written
+	var colour: int = LdrModel._colour(mine[1])
+	var painted: bool = colour != LdrModel._colour(theirs[1])
+	var local: Transform3D = LdrModel.to_transform(numbers)
+	var given: Variant = null
+	if part.is_empty():
+		# A copy's line: the name the file gives the section it places, where
+		# it names that one (as LDraw compares names).
+		var named: String = LdrModel.reference_of(written)
+		var reference: String = LdrModel.reference_of(said)
+		given = "1 %s %s %s" % [_colour_token(colour) if painted else theirs[1],
+			_numbers_for(theirs, local), reference if LdrModel._key(reference) == LdrModel._key(named)
+			else named]
+	else:
+		given = _line_for(line, part, colour, painted, local, library)
+	if given == null:
+		return written
+	var out: String = said if _words(str(given)) == theirs else str(given)
+	# Its words now saying what the whole write's do: read alike, it opens
+	# alike, with no reading back either.
+	var why: String = "" if _says_alike(out, written, _words(out), mine) \
+		else _reads_otherwise(out, written, part.is_empty(), library)
+	if not why.is_empty():
+		(tally.get_or_add("anew", []) as Array).append([line, why])
+		return written
+	var counted: String = "kept" if out == said else "kept_words"
+	tally[counted] = int(tally.get(counted, 0)) + 1
+	return out
+
+
+## Whether placing lines [param a] and [param b] (their words given) say one
+## thing as an open reads them: one colour, one name as LDraw compares names,
+## and each number within [constant ALIKE] of the other's. Read alike, each
+## becomes the same part, colour, place and turn through the same reading
+## (ModelStore._as_placed). A word spelled alike is not read again: on every
+## line of a big file the same 0s and 1s and names, and reading each line's
+## name a character at a time was most of what a whole write's keeping cost.
+## Not [param colour]: alike in all but the colour. Each a line the open
+## read as placing something, or the whole write wrote: its twelve numbers
+## are numbers (LdrModel.parse carries a line with one that is not).
+static func _says_alike(a: String, b: String, a_words: PackedStringArray,
+		b_words: PackedStringArray, colour: bool = true) -> bool:
+	if a_words.size() < 15 or b_words.size() < 15 or a_words[0] != "1" or b_words[0] != "1":
+		return false
+	if colour and a_words[1] != b_words[1] \
+			and LdrModel._colour(a_words[1]) != LdrModel._colour(b_words[1]):
+		return false
+	for k: int in range(2, 14):
+		if a_words[k] != b_words[k] and absf(a_words[k].to_float() - b_words[k].to_float()) > ALIKE:
+			return false
+	return LdrModel._key(_name_in(a, a_words)) == LdrModel._key(_name_in(b, b_words))
+
+
+## Placing line [param line] with its colour word [param was] said as [param
+## now], every other byte as it was: the word after the line's first, "1",
+## with only spaces between them.
+static func _recoloured(line: String, was: String, now: String) -> String:
+	var at: int = line.find(was, line.find("1") + 1)
+	return line.substr(0, at) + now + line.substr(at + was.length())
+
+
+## The name placing line [param line] gives (LdrModel.reference_of), from its
+## [param words] where one space parts each of the name's: the line ends in
+## them joined only then, as a longer name ending so would have more letters.
+static func _name_in(line: String, words: PackedStringArray) -> String:
+	var named: String = " ".join(words.slice(14))
+	return named if line.rstrip(LdrModel.SPACE).ends_with(named) else LdrModel.reference_of(line)
+
+
+## How far apart two numbers of a placing line may be and still say one thing
+## (LDU, or a turn's element): [constant TURN], within which a patch keeps a
+## turn's number of the file as the part's ([method _line_for]), and a
+## hundredth of NEAR, within which it keeps a place's.
+const ALIKE := TURN
+
+
+## Why [param given] opens otherwise than [param written], each a line placing
+## a part (or a copy of a sub-model: [param copy]), read as the open reads a
+## line: "" where both are one part (or one section), in one colour, at one
+## place, turned alike.
+static func _reads_otherwise(given: String, written: String, copy: bool,
+		library: PartLibrary) -> String:
+	var a: Variant = _opened_as(given, copy, library)
+	var b: Variant = _opened_as(written, copy, library)
+	if a == null or b == null:
+		return "it could not be read back"
+	var mine: LdrModel.Placement = a
+	var whole: LdrModel.Placement = b
+	if mine.reference != whole.reference and (copy or mine.part_id != whole.part_id):
+		return "read back, it is %s, not %s" % [mine.reference, whole.reference]
+	if mine.color_code != whole.color_code:
+		return "read back, it is in %d, not %d" % [mine.color_code, whole.color_code]
+	if not _close_to(mine.transform, whole.transform):
+		return "read back, it is not where the part is"
+	return ""
+
+
+## Line [param line] as the open makes it what it puts down: its words as
+## LdrModel.parse reads them, then a part (not a copy: [param copy]) as
+## ModelStore._as_placed makes it the part, colour and place it puts down
+## ([method _as_opened]). Null for a line that places nothing.
+static func _opened_as(line: String, copy: bool, library: PartLibrary) -> Variant:
+	var words: PackedStringArray = _words(line)
+	var numbers: Variant = _numbers_of(words)
+	if numbers == null:
+		return null
+	var colour: int = LdrModel._colour(words[1])
+	if colour == LdrModel.UNREADABLE_COLOUR:
+		return null
+	var named: String = " ".join(words.slice(14))
+	if not line.strip_edges().ends_with(named):
+		named = LdrModel.reference_of(line)
+	var part_id: String = named.replace("\\", "/").to_lower().get_file()
+	if part_id.ends_with(".dat") or part_id.ends_with(".ldr"):
+		part_id = part_id.substr(0, part_id.length() - 4)
+	var placement := LdrModel.Placement.new(part_id, colour, LdrModel.to_transform(numbers), 0)
+	placement.reference = LdrModel._key(named)
+	if not copy:
+		_as_opened(placement, library)
+	return placement
 
 
 ## The line that gives the part read from [param origin] its colour: the

@@ -2515,6 +2515,12 @@ msgstr "%s dreht es um das Gelenk"
 msgid "%s the other way on"
 msgstr "%s andersherum"
 
+msgid "%s picks which of its points goes on (Connect)"
+msgstr "%s wählt, mit welchem seiner Punkte es ansetzt (Verbinden)"
+
+msgid "%s takes it into hand to put anywhere"
+msgstr "%s nimmt es in die Hand, um es überall abzusetzen"
+
 msgid "Orbit: drag turns the view"
 msgstr "Ansicht drehen: Ziehen dreht die Ansicht"
 
@@ -18010,6 +18016,21 @@ msgstr "„%s“ ist bereits ein gespeichertes Modell, und dies ist nicht dieses
 
 msgid "not saved: “%s” is a saved model already"
 msgstr "nicht gespeichert: „%s“ ist bereits ein gespeichertes Modell"
+
+msgid "not saved: another model was opened"
+msgstr "nicht gespeichert: ein anderes Modell wurde geöffnet"
+
+msgid "saved “%s” here, but did not write %s: another model was opened"
+msgstr "„%s“ hier gespeichert, aber %s nicht geschrieben: ein anderes Modell wurde geöffnet"
+
+msgid "did not write %s: another model was opened"
+msgstr "%s nicht geschrieben: ein anderes Modell wurde geöffnet"
+
+msgid "not exported: another model was opened"
+msgstr "nicht exportiert: ein anderes Modell wurde geöffnet"
+
+msgid "Not published: another model was opened."
+msgstr "Nicht veröffentlicht: ein anderes Modell wurde geöffnet."
 
 msgid "could not copy “%s”"
 msgstr "„%s“ konnte nicht kopiert werden"

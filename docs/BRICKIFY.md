@@ -117,7 +117,12 @@ studs, against a greedy stack of standard bricks and legolization:
    the 30% a side's lean laid nearer, not more cubes. 2026-11-26, its eighth
    round: Balance weighs side studs as top studs (a headlight brick's was
    misread, now right), and the core a stud deep still fails: the fox's
-   piece hangs from one stud and the figure's hands float, both real.*
+   piece hangs from one stud and the figure's hands float, both real. Its
+   ninth round: a piece met side by side is tied back across the plane, a
+   cube on a stud of core turned only where that core runs on, and the core
+   a stud deep holds as the default: 44.8% of the fourteen's steep faces
+   turned at 48 studs from 39.6%, 6.7% nearer than studs up from 5.6%, every
+   one whole, none past its load, in at most 1.06 times the parts.*
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
 7. **Buy it, or build it from what you own**: booklet, wanted list, price,
@@ -3694,7 +3699,149 @@ on the GPU: studs up, `pre261`, then the core a stud deep. 3DBenchy's bow
 turns (23% to 31% of its steep faces); Bob and the bunny change little to
 the eye. Front views with the runs.*
 
+### The ninth round: tied back across the thin core, the core a stud deep holds (2026-11-26)
+
+The eighth round's two causes taken up, and the core a stud deep made the
+default. Units `snot7` (from the eighth round's `fd9fa8a5`: the bond, the
+cube rule, the default, `0073022a`) and `snot8` (`pre261` merged at
+`b7489338`, two faults mended, `9d5fa9b4`). The fourteen at 48 studs laid
+from locked snapshots, `pre261` (`snot7base`) and this (`snot8final`), the
+two arms of each set started at the same moment, and measured by the arms'
+own `cubes_why`, `bar.py`, `hold.py` and `means.py`; the four slowest timed
+again as pairs, both builds started together in one heavy slot, three each.
+Scripts, runs and logs in `bench/results/snot8-2026-11-26`.
+
+**In short. GO.** At 48 studs the fourteen turn 44.8% of their steep faces
+(`pre261` 39.6%), lay them 6.7% nearer the model than studs up (5.6%),
+turn less on none and lay nearer on 11. Every one is one piece and passes
+its check with no joint past its load, 97.4% or more in a part, in at most
+1.055 times the parts, and the six timed as pairs take at most 1.24 times
+(median). The three (Bob, the bunny, 3DBenchy) turn 49.2%, 7.8% nearer
+(`pre261` 45.9%, 7.1%): more than any round before with its guardrails
+held, and still far from the 80% and 30% the plan asks.
+
+**The bond** (`Brickify.Laid.bond`). Where a piece meets the rest side by
+side along a plane with no stud across it, a builder ties it back with a
+plate or brick laid across, and Brickify now does the same: a plain plate or
+brick of the piece and one of the rest beside it, of one colour, laid again
+as that level of the two with a part of the core's that crosses the plane, a
+stud or more on each side and its studs in both (a brick whose course is
+not the other's is laid as the three plates it is). The strongest
+tie first (the most studs on its weaker side, then the fewest parts more),
+then each as far up or down the plane from those laid as there is, two
+plates or more apart: three levels for a joint past its load (`BOND_TIES`,
+in the props, before a pillar), two for a piece nothing holds
+(`BOND_TIES_LOOSE`, in the mend, before it takes the piece out).
+`bond_probe` builds each case by hand and reads every tie off the parts' own
+connectors (16 checks). The fox's head, hung from one stud of a 1 x 3 plate
+at 10.3 times its load, is tied back: nothing of the fox is past its load.
+
+**The cube rule** (`Shapes.Plan`). A cube is turned with a stud of core
+behind it (`CUBE_BACK` 1, was 3); backed by less than three
+(`CUBE_HOLDS`), only where the studded core behind it runs on into the
+model for 600 plates (`CUBE_REACH`, `_runs_on`) without passing through the
+cube or another shell. A stud deep, the figure's right hand, set a stud back
+from its arm, was turned at its front and held to the arm through that cube
+alone; it is refused there now (4 cubes, `cut`), and the figure mends 7
+parts out (studs up 6, the eighth round 39).
+
+**Two faults `snot8` mended.**
+
+- *The turned block's studs.* `brickify_probe`'s turned block at 24 studs
+  was 96.5% in a part, under the 97%: 201 of its 6,480 studs and plates were
+  a shell's, with no part of the shell there (`snot_gaps.gd -- block:24`). A
+  cube's shell gives up the plates over the side-stud bricks other shells
+  laid in the core, as their studs stand into those plates, but it read
+  those bricks by column, and a shell lays one every second row: only the
+  last one laid in a column was seen. A stud deep, the block's shells facing
+  +z lie a step in front of others; they took 15 plates over those bricks'
+  studs, the parts there were let go at the last lay, after the core had
+  been laid without them, and the prune let go of what they held. Every brick
+  in a column is seen now, in the plain shells' rule too: the block 99.2%
+  in a part (`pre261` 99.7%), the forty-stud bunny 99.1% (98.8%).
+- *What a tie leaves past its load.* `snot7`'s own runs had the toy car with
+  seven joints past their load at 34 times (a 1 x 2 plate's column under a
+  fender) and Smithsonian-2 one at 1.1, where `pre261` had none. The props
+  tie first, and a tie lays the parts beside its joint again, so the rest of
+  that piece's joints wait for the next weighing; with one weighed round, the
+  toy car, tied once, was no better, and the whole round was undone. A second
+  weighed round now lays pillars alone for what is left: the toy car 6 parts
+  propping and none past, Smithsonian-2 4 tied and 4 propping and none past.
+
+**The fourteen at 48 studs**, `pre261` against this, laid at the same moment:
+
+| Model | Steep faces turned | Nearer than studs up | Parts (x `pre261`) | In a part | Mended |
+|---|---|---|---|---|---|
+| Bob | 56% → 56% | +9.5% → +9.7% | 4,067 (1.000) | 99.3% → 99.3% | 1 → 1 |
+| Stanford bunny | 59% → 60% | +9.1% → +9.5% | 6,629 (1.013) | 99.4% → 99.5% | 1 → 1 |
+| 3DBenchy | 23% → 31% | +1.6% → +3.4% | 3,159 (1.013) | 99.6% → 99.5% | 1 → 1 |
+| Armadillo | 49% → 51% | +5.2% → +6.3% | 3,698 (1.010) | 98.4% → 98.2% | 0 → 4 |
+| Avocado | 58% → 59% | +6.0% → +6.3% | 4,373 (1.005) | 98.9% → 99.2% | 0 → 0 |
+| Figure | 24% → 31% | -4.4% → -2.6% | 2,678 (0.999) | 98.7% → 98.3% | 6 → 7 |
+| Fox | 47% → 53% | +14.3% → +15.3% | 1,027 (1.019) | 98.4% → 97.8% | 8 → 8 |
+| Milk truck | 69% → 69% | +23.5% → +23.7% | 3,885 (0.996) | 99.5% → 99.5% | 0 → 0 |
+| Objaverse | 4% → 4% | +0.0% → +0.3% | 10,875 (1.010) | 97.0% → 97.5% | 351 → 221 |
+| Smithsonian-1 | 23% → 40% | +1.0% → +6.0% | 6,207 (1.055) | 99.0% → 97.4% | 3 → 0 |
+| Smithsonian-2 | 14% → 14% | -3.2% → -5.0% | 633 (0.969) | 99.1% → 98.4% | 9 → 18 |
+| Spot | 63% → 64% | +12.9% → +12.9% | 5,241 (1.003) | 99.1% → 99.1% | 0 → 0 |
+| Toy car | 31% → 47% | +4.9% → +8.5% | 3,131 (1.020) | 98.3% → 97.5% | 20 → 20 |
+| Utah teapot | 35% → 47% | +5.7% → +7.0% | 3,611 (1.031) | 99.4% → 99.4% | 0 → 0 |
+| **The fourteen** | **39.6% → 44.8%** | **+5.6% → +6.7%** | 1.132 → 1.147 x studs up | | |
+
+It turns less on none and lays nearer on 11 (`snot7` 44.9%, +6.7%, nearer on
+10). The turned block's fix changes no model of the fourteen but by a few
+parts: each is in a part as much as on `snot7` or 0.2 points more (Benchy,
+the bunny, Smithsonian-1, Spot, the teapot, the avocado). Smithsonian-1
+turns most (23% to 40%: 1,305 of its steep faces were refused for want of
+core behind them, three studs on `pre261`; a stud deep, 78) and gives up most in a part (99.0% to 97.4%; not
+traced here, `snot_gaps.gd` would say which). Smithsonian-2 lays a little
+farther (-3.2% to -5.0%) on the same 14% turned, and mends 18 parts out
+against 9, as on `snot7`.
+
+**The guardrails.** Every one of the fourteen is one piece, its check
+passing, with no joint past its working load (`pre261` had two on Objaverse
+and one on the fox; `snot7` seven on the toy car and one on Smithsonian-2),
+97% or more in a part (least Smithsonian-1 97.4%, Objaverse and the toy car
+97.5%), and at most 1.055 times `pre261`'s parts.
+
+**Time.** The bench's two arms start together but lay their models in turn,
+`pre261`'s with studs up beside each, so a model's two builds meet other
+loads: there Smithsonian-2 took 1.64 times on `snot7` doing the same work,
+and on this the toy car and the teapot 1.69. So the four slowest of `snot7`'s
+runs, and the toy car and Smithsonian-2 from this one, were laid again as
+pairs, both builds started together in one heavy slot (together 85% to 99%
+of the longer's span), three each, at loads of 37 to 107:
+
+| Model | `pre261` | This | Each pair | Median |
+|---|---|---|---|---|
+| Utah teapot | 23.4-32.5 s | 27.4-36.6 s | 1.16, 1.17, 1.12 | 1.16 |
+| Spot | 34.7-38.4 s | 35.4-39.5 s | 1.02, 1.02, 1.03 | 1.02 |
+| Armadillo | 34.3-42.9 s | 42.0-60.6 s | 1.22, 1.24, 1.41 | 1.24 |
+| Smithsonian-1 | 66.6-92.4 s | 68.9-106.2 s | 1.06, 1.03, 1.15 | 1.06 |
+| Toy car | 117.4-132.2 s | 121.4-142.0 s | 1.13, 1.07, 1.03 | 1.07 |
+| Smithsonian-2 | 23.9-38.3 s | 29.7-49.4 s | 1.16, 1.29, 1.24 | 1.24 |
+
+Each is within 1.5 times. The armadillo is the slowest, its third pair the
+widest (1.41) at the lightest load; where its time goes was not traced.
+
 ### Proof
+
+The ninth round's runs (`snot8`, 2026-11-26), every one from the locked
+snapshot `snot8final` at `9d5fa9b4`:
+
+- `brickify_probe` (headless): all 84 pass. The turned block at 24 studs
+  99.2% in a part (`snot7` 96.5%, a FAIL); every other model in it as much
+  as on `snot7` or more (the forty-stud bunny 99.1%, `snot7` 98.8%).
+- `bond_probe` 16, `side_studs_probe` 25, `snot_probe` 11, `shapes_probe`
+  84, `brickify_buy_probe` 25, `brickify_worker_probe` 12,
+  `techniques_probe` 116, `face_probe` 30, `stability_probe` 9,
+  `balance_probe` and `stabletruth_probe`: all pass. `brickify_ui_probe` on
+  the GPU: all 21 pass.
+- `tools/release/ci_gate.sh`: passes (python 2,359 passed, 75 skipped;
+  `test_insights` once `api/_insights_names.js` knew `bond_probe`);
+  `tools/site_lang.py --check`: 84 pages in 3 languages.
+- The fourteen and the time pairs, above; `snot_gaps.gd -- block:24` on
+  the turned block before and after the stud tops' fix in `diag/`.
 
 The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the
 armadillo's joint at `95d179ba`):
@@ -3829,6 +3976,18 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the ninth round (2026-11-26): the core a stud deep is the default,
+44.8% of the fourteen's steep faces turned at 48 studs (39.6% on `pre261`)
+and 6.7% nearer than studs up (5.6%), every guardrail held. Still far from
+80% and 30%; the levers named after the seventh round stand (3DBenchy's
+walls, a side's lean laid nearer). Besides:
+
+- **Smithsonian-1's share in a part** went from 99.0% to 97.4%, the nearest
+  of the fourteen to its 97%; `snot_gaps.gd` would say where.
+- **The turned block's last 27 plates** (0.4%) are its shells' own plates
+  that their trial lay left with no part (the two shells 95% and 96%
+  covered in it), not taken up here.
 
 After the eighth round (2026-11-26): Balance weighs side studs by the rule
 for top studs (a headlight's was the one it misread), and the core a stud

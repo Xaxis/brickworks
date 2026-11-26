@@ -783,6 +783,34 @@ document.addEventListener("click", (event) => {
   }).catch(() => { location.href = link.href; });
 });
 
+// A link that copies a model into the studio (/app?copy=<id>: a model
+// page's Open in the studio, a card's Remix), pressed signed out: the
+// studio makes the copy only for an account, so it loaded for 23 s at 1280
+// and 31 s on a phone and then said "Sign in to make it yours" over the
+// model (sitewalk3, 2026-11-26, the visitor from a shared link). Asked here
+// at once instead, over the page, as a like is; signed in, the press goes
+// on as it was meant (the link clicked again, so a phone's warning about a
+// big model still asks first, web/phone-warn.js); Not now leaves them on
+// the page, where Build it and the 3D view need no account. A click meant
+// for a new tab, and a page whose scripts never ran, still go to the
+// studio, which asks there.
+document.addEventListener("click", (event) => {
+  const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+  if (!link || signedIn() || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey
+    || event.shiftKey || event.altKey) return;
+  const at = new URL(link.href, location.href);
+  if (at.origin !== location.origin || !/^(?:\/(?:de|fr|es))?\/app$/.test(at.pathname) || !at.searchParams.has("copy")) return;
+  event.preventDefault();
+  askToSignIn(say("Sign in to open your own copy in the studio: it is saved in your models, to change as you like. "
+    + "We email you a code, no password."), { later: true })
+    .then((yes) => {
+      if (!yes || !signedIn()) return;
+      if (link.isConnected) link.click();
+      else location.assign(link.href);
+    })
+    .catch(() => { location.href = link.href; });
+});
+
 // Send feedback (web/feedback.js): the footer's link, the account menu's
 // and /feedback's buttons, each a[data-feedback] or button[data-feedback]
 // ("bug", "idea" or "question" chooses it first). And the menus' Report a

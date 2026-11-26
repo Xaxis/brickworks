@@ -736,15 +736,13 @@ func _style_to_gatehouse() -> void:
 # -- pagesetup2: kept, said, small, and styles taken away ---------------------------
 
 
-## A style taken away: remove_style where there is one, forget_style (the
-## probe's own, before it) where not.
+## A style taken away, where the sheet can take one away. (forget_style,
+## its name before e3fb795c2, is in no build this probe runs on.)
 func _forget(name: String) -> void:
 	if _sheet == null:
 		return
 	if _has(_sheet, "remove_style"):
 		_sheet.call("remove_style", name)
-	elif _has(_sheet, "forget_style"):
-		_sheet.call("forget_style", name)
 
 
 ## How many arguments [param script]'s [param method] takes, -1 when it has
