@@ -1587,7 +1587,8 @@ static func _origin(chain: String, line: int) -> String:
 ## A model whose bricks belong to groups goes out as a multi-part
 ## document, a sub-model per group, which is how LDraw says "this is the
 ## gatehouse": Studio, LeoCAD and LPub all show it as an assembly, and it
-## comes back in here with every brick in its group.
+## comes back in here with every brick in its group. [param keep]: what a
+## line written from a line of the file is written as ([method _write_one]).
 ##
 ## [param frames] gives a group a frame of its own, group -> Transform3D:
 ## its sub-model is then written in that frame and placed by it, the way
@@ -1632,7 +1633,8 @@ static func carried_text(embedded: Dictionary) -> String:
 static func write_ldr(
 	placements: Array, title: String = "Model", author_name: String = "",
 	frames: Dictionary = {}, embedded: Dictionary = {}, parts: Dictionary = {},
-	steps: Dictionary = {}, files: Dictionary = {}, carried: Dictionary = {}
+	steps: Dictionary = {}, files: Dictionary = {}, carried: Dictionary = {},
+	keep: Callable = Callable()
 ) -> String:
 	var groups: Array[String] = []
 	for item: Variant in placements:
@@ -1656,7 +1658,7 @@ static func write_ldr(
 		_split_blocks(kept_out, written_at)
 	if groups.is_empty() and embedded.is_empty():
 		return _write_one(placements, title, author_name, [], "", [], [], [], steps.get("", []),
-			PackedStringArray(), {}, _kept_anchors(placements), [], kept_out, main_key)
+			PackedStringArray(), {}, _kept_anchors(placements), [], kept_out, main_key, {}, keep)
 
 	var main_file: String = _main_file(title, parts, files)
 	var file_of: Dictionary = _file_names(groups, main_file, parts, files)
@@ -1669,7 +1671,7 @@ static func write_ldr(
 	var text: String = "0 FILE " + main_file + "\n" \
 		+ _write_one(loose, title, author_name, refs, main_file, [], [], [],
 			steps.get("", []) if groups.is_empty() else [], PackedStringArray(), {},
-			_kept_anchors(loose), [], kept_out, main_key) + "0 NOFILE\n"
+			_kept_anchors(loose), [], kept_out, main_key, {}, keep) + "0 NOFILE\n"
 	for group: String in groups:
 		var own: Array = placements.filter(func(p: Placement) -> bool:
 			return p.group == group)
@@ -1684,7 +1686,7 @@ static func write_ldr(
 		text += "0 FILE " + str(file_of[group]) + "\n" \
 			+ _write_one(own, group, author_name, [],
 				str(file_of[group]), [], [], [], [], PackedStringArray(), {}, _kept_anchors(own), [],
-				kept_out, _key(str(files[group])) if files.has(group) else "\n") + "0 NOFILE\n"
+				kept_out, _key(str(files[group])) if files.has(group) else "\n", {}, keep) + "0 NOFILE\n"
 	return text + carried_text(embedded)
 
 
@@ -1722,12 +1724,14 @@ static func write_ldr(
 ## they are written with (its path) -> the lines, in the coordinates of the
 ## section that builds it (Assemblies.lines_written): after the first IN_META
 ## line naming that copy, as [method parse] reads them back (within_lines).
+## [param keep]: what a line written from a line of the file is written as
+## ([method _write_one]).
 static func write_tree(
 	placements: Array, title: String, author_name: String,
 	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},
 	parts: Dictionary = {}, steps: Dictionary = {}, kept: Dictionary = {},
 	files: Dictionary = {}, kept_within: Dictionary = {}, carried: Dictionary = {},
-	sectioned: Dictionary = {}
+	sectioned: Dictionary = {}, keep: Callable = Callable()
 ) -> String:
 	# Each copy built in the model's own steps whose section the file had
 	# ([method built_sections], [param sectioned]): that section still, its
@@ -1863,7 +1867,7 @@ static func write_tree(
 			ref_steps.call(""), loose.map(func(p: Placement) -> String:
 				return _within_of(p.unit, "")), ref_within.call(""), steps.get("", []),
 			PackedStringArray(), kept_in.call(""), _kept_anchors(loose), ref_anchors.call(""),
-			kept_out, main_key, flat_lines.get("", {})) \
+			kept_out, main_key, flat_lines.get("", {}), keep) \
 		+ "0 NOFILE\n"
 	for def: String in defs:
 		var master: String = masters[def]
@@ -1886,7 +1890,7 @@ static func write_tree(
 				ref_steps.call(master), own.map(func(p: Placement) -> String: return p.within),
 				ref_within.call(master), steps.get(def, []), kept.get(def, PackedStringArray()),
 				kept_in.call(master), _kept_anchors(own), ref_anchors.call(master), kept_out,
-				_key(str(files[def])) if files.has(def) else "\n", flat_lines.get(master, {})) \
+				_key(str(files[def])) if files.has(def) else "\n", flat_lines.get(master, {}), keep) \
 			+ "0 NOFILE\n"
 	return text + carried_text(embedded)
 
@@ -2423,13 +2427,16 @@ static func steps_written(placements: Array, instances: Dictionary = {},
 ## after its first line, as they are (write_tree). [param kept_in]: the lines
 ## kept with a copy built in its steps, by the copy as its IN line names it,
 ## each written once, after the first IN line naming it; one with no part of
-## its own goes in before the first line of a copy inside it.
+## its own goes in before the first line of a copy inside it. [param keep]:
+## (the file's line a line is written from, the line as written, its part's
+## number or "" for a copy's) -> the line to write (SourceFile.kept_said, a
+## save of someone else's file); not given, each as written.
 static func _write_one(placements: Array, title: String, author_name: String,
 		refs: Array[String], file_name: String = "", ref_steps: Array = [],
 		within: Array = [], ref_within: Array = [], steps: Array = [],
 		kept: PackedStringArray = PackedStringArray(), kept_in: Dictionary = {},
 		anchors: Array = [], ref_anchors: Array = [], carried: Dictionary = {},
-		key: String = "\n", in_lines: Dictionary = {}) -> String:
+		key: String = "\n", in_lines: Dictionary = {}, keep: Callable = Callable()) -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
 	# Whose a section is and on what terms, where it is someone else's
@@ -2590,6 +2597,12 @@ static func _write_one(placements: Array, title: String, author_name: String,
 			lines.append_array(_kept_moved(above.slice(app_cut), was, item[6], swap))
 		else:
 			lines.append_array(_kept_moved(above, was, item[6], swap))
+		# Written from the file's line [param anchor] (a part's origin, the
+		# line placing a copy): that line, where [param keep] finds it says
+		# what this one does (SourceFile.kept_said).
+		if keep.is_valid() and anchor >= 0 and int(item[1]) != 2:
+			text = str(keep.call(anchor, text, (placements[int(item[2])] as Placement).part_id
+				if int(item[1]) == 1 else ""))
 		lines.append(text)
 		if anchor >= 0 and carried.has("after"):
 			var below: Array = (carried["after"] as Dictionary).get(anchor, [])

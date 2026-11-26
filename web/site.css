@@ -360,7 +360,21 @@ a:focus-visible { border-radius: var(--r-1); }
 	flex: 0 1 auto; min-width: 44px; height: var(--control-h); padding: 0 4px; overflow: hidden;
 	flex-wrap: wrap; align-content: flex-start; row-gap: 0; line-height: var(--control-h);
 }
-.site-head .mark .chip { margin-block: 9px; }
+/* The header's chip at rest is icon.svg; .turning (web/mark.js: once the
+   page is in as a visit begins, and on a hover or a focus) is our mark built
+   in bricks turning once (herostudio, 2026-11-26; tools/site/mark_turn.mjs):
+   30 frames side by side in one picture, the first the mark as icon.svg
+   draws it. The picture is asked for after the page's load, never in the
+   first screen's bytes, and never for someone who asked for less motion. */
+.site-head .mark .chip { width: 30px; height: 30px; margin-block: 7px; }
+/* 30 frames of 30 px: the last step's end is the first frame again. */
+@keyframes mark-turn { from { background-position-x: 0; } to { background-position-x: -900px; } }
+@media (prefers-reduced-motion: no-preference) {
+	.site-head .mark .chip.turning {
+		background: url(/img/hero/mark-turn.webp) 0 0 / 900px 30px no-repeat;
+		animation: mark-turn 1.15s steps(30);
+	}
+}
 /* The nav fills the bar after the mark: its four links in the middle of
    what is left, Open the app and your account at the far right (the
    first link and Open the app each take half the room that is over). */

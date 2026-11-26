@@ -201,8 +201,16 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 #ifdef PHOTO
 	// A set photographed (photoreal19): the floor it stands on as a product
 	// photograph's (x, 0 the shadow catcher as before, 1 a glossy sweep exposed
-	// past white, the model's colour bounced on it, its shade cool). yzw unused.
+	// past white, the model's colour bounced on it, its shade cool). The stage
+	// fitted to the set photographs (photoreal26): how much of the tent's soft
+	// boxes' light reaches the floor (y, 1 all), how far past white a white
+	// sweep is exposed (z), and how much of the key's light reaches it (w).
 	vec4 photo;
+	// The shade's colour as it deepens (rgb, its luminance 1) and how much of
+	// the light the parts send down the floor shows (w, 1 all).
+	vec4 photo_shade;
+	// The floor's gloss: its reflectance head on (x) and roughness (y).
+	vec4 photo_gloss;
 #endif
 } scene;
 
@@ -1913,9 +1921,25 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 //   the sweep is glossy (a vinyl or an acrylic sheet), so the model's underside
 //     and the tyres where they stand are mirrored in it, faint and blurred.
 // [param amount] 0 the catcher as before, 1 all of these as measured.
-const float FLOOR_OVER = 1.6;
-const float FLOOR_F0 = 0.04;
-const float FLOOR_GLOSS = 0.3;
+// How far past white, the shade's colour, the bounce and the gloss are the
+// scene's (StudioRender's FLOOR_* and the fitted PRODUCT_STAGE_*, photoreal26).
+
+// The tent's light as the floor sees it (photoreal26): its soft boxes, low
+// behind the model, at scene.photo.y of their own light. A product
+// photographer's strip boxes are gridded to light the model, not the floor in
+// front of it, so the set photographs' shade lies under and behind the model;
+// at their whole light ours lay in front of it, towards the camera.
+vec3 floor_sky(vec3 way) {
+	if (!tent() || way.y < 0.0) {
+		return sky_light(way);
+	}
+	vec3 to_eye = normalize(scene.origin.xyz - scene.sweep_origin.xyz);
+	float port = smoothstep(0.978, 0.988, dot(way, to_eye));
+	bool within;
+	float box = tent_box(way, within) * scene.lamp_info.w * scene.photo.y;
+	return scene.sky.rgb * (TENT_FILL + box
+		+ scene.lamp_info.z * smoothstep(TENT_COS_OUT, TENT_COS_IN, way.y)) * (1.0 - 0.97 * port);
+}
 
 // How much of an open sweep's light a point of it keeps (shadow_marked's ratio,
 // rgb), with the light the parts send down added: a way blocked by a part
@@ -1926,10 +1950,12 @@ vec3 floor_kept(vec3 at, vec3 n, float amount) {
 	vec3 bounced = vec3(0.0);
 	float all = 0.0;
 	int lights = int(scene.look.y);
+	// The tent's key on the floor at scene.photo.w of its light (photoreal26).
+	float key_share = tent() ? scene.photo.w : 1.0;
 	for (int i = 0; i < lights; i++) {
 		Light light = scene.lights[i];
 		vec3 l = in_cone(light.toward.xyz, light.toward.w, rand2());
-		float c = max(dot(n, l), 0.0) * luminance(light.colour.rgb);
+		float c = max(dot(n, l), 0.0) * luminance(light.colour.rgb) * key_share;
 		if (c <= 0.0) {
 			continue;
 		}
@@ -1967,7 +1993,7 @@ vec3 floor_kept(vec3 at, vec3 n, float amount) {
 		}
 		float first = tent() ? tent_own_pdf(l)
 			: (scene.sky.w > 0.5 ? place_pdf(l) : facing / PI);
-		float c = luminance(sky_light(l)) * facing / max(first + facing / PI, 1e-6);
+		float c = luminance(floor_sky(l)) * facing / max(first + facing / PI, 1e-6);
 		vec3 let = through_masked(at, l, 1e7, MASK_SOLID);
 		all += c;
 		kept += c * let;
@@ -1988,17 +2014,17 @@ vec3 floor_kept(vec3 at, vec3 n, float amount) {
 		return vec3(1.0);
 	}
 	float lost = clamp(1.0 - luminance(kept) / all, 0.0, 1.0);
-	vec3 cool = max(mix(vec3(1.0), DAYLIGHT_FILL, amount), vec3(0.05));
+	vec3 cool = max(mix(vec3(1.0), scene.photo_shade.rgb, amount), vec3(0.05));
 	cool /= luminance(cool);
-	return kept / all * mix(vec3(1.0), cool, lost) + amount * bounced / all;
+	return kept / all * mix(vec3(1.0), cool, lost) + amount * scene.photo_shade.w * bounced / all;
 }
 
-// How far past white a sweep is exposed: a white one FLOOR_OVER at 1, a
+// How far past white a sweep is exposed: a white one scene.photo.z at 1, a
 // coloured one not at all (a photographer clips only a white backdrop).
 float floor_over(float amount) {
 	vec3 back = scene.background.rgb;
 	float white = smoothstep(0.8, 0.97, min(back.r, min(back.g, back.b)));
-	return mix(1.0, FLOOR_OVER, amount * white);
+	return mix(1.0, scene.photo.z, amount * white);
 }
 #endif
 
@@ -2254,9 +2280,9 @@ void main() {
 					float amount = scene.photo.x;
 					vec3 open = scene.background.rgb * lit * lit * table_paper(at, scene.wear.z) * table_falloff(at);
 					vec3 shown = open * min(floor_kept(at + ng * 0.02, n, amount) * floor_over(amount), vec3(1.0));
-					vec3 h = ggx_normal(n, v, FLOOR_GLOSS * FLOOR_GLOSS, rand2());
+					vec3 h = ggx_normal(n, v, scene.photo_gloss.y * scene.photo_gloss.y, rand2());
 					vec3 mirrored = reflect(way, h);
-					float f = schlick(vec3(FLOOR_F0), max(dot(v, h), 0.0)).x * amount;
+					float f = schlick(vec3(scene.photo_gloss.x), max(dot(v, h), 0.0)).x * amount;
 					if (dot(mirrored, ng) <= 0.0 || f <= 0.0) {
 						radiance += carried * shown;
 						break;

@@ -112,8 +112,10 @@ function row(one, eager = false) {
   const item = document.createElement("li");
   // The site's one row (site.css .list-row): who, what and when, the
   // thing under the words.
-  item.className = `list-row feed-row${one.new ? " new" : ""}`;
+  item.className = `list-row feed-row${one.new ? " new" : ""}${one.mine === true ? " mine" : ""}`;
   item.dataset.kind = String(one.kind || "");
+  // Your own work (supabase/feed_self.sql): its line says "You ...".
+  if (one.mine === true) item.dataset.mine = "yes";
   const face = one.by && one.by.handle ? parsed(avatarHtml({ handle: one.by.handle, name: one.by.name, picture: one.by.picture })) : null;
   if (face) item.append(toProfile(one.by, face, { tabindex: "-1", "aria-hidden": "true", class: "row-face" }));
   const what = document.createElement("p");
@@ -269,7 +271,10 @@ async function page(mine) {
   showTabCounts(state);
   if (first) {
     const following = Array.isArray(answer.body.following) ? answer.body.following : null;
-    const empty = $("rows").children.length === 0;
+    // Empty of anybody else's: your own work alone (a newcomer's first
+    // build) is shown with what a feed of nobody shows under it, the ask
+    // to follow somebody and Latest on Brickworks.
+    const empty = ![...$("rows").children].some((one) => one.dataset.mine !== "yes");
     $("nobody").hidden = !(empty && following !== null && following.length === 0);
     $("quiet").hidden = !(empty && $("nobody").hidden);
     const skip = new Set([...(following || []), ...(state?.me?.handle ? [state.me.handle] : [])]);

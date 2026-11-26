@@ -34,6 +34,7 @@ daylight          # a measuring tool for one file and box; patterns runs its fun
 technique_sheet   # pictures for a person, no pass or fail
 gallery           # pictures of every shipped model for a person, no pass or fail
 docs_shots        # the docs' pictures for tools/docs_shots.py, a window a picture: no pass or fail of its own, and every one together is past ten minutes
+hero_capture      # the home's loop for tools/site/hero_capture.py: thousands of frames on the GPU, pictures with no verdict of their own; hero_check judges the page
 anim_walk         # an audit: every answer printed for a person, no pass or fail
 ux12_walk         # five people's walks pictured for a person at 1280x800 and 390x844 (ux12), with a few checks after: past ten minutes
 ux15_phone        # three people on a phone (ux15): the steps followed, a model built from scratch, a set's own version; pictures at 390x844, 430x932 and 360x780, past ten minutes

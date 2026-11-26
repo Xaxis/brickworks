@@ -4543,6 +4543,9 @@ msgstr "Les autres peuvent le regarder et le construire pour eux-mêmes, et vous
 msgid "List it in the gallery"
 msgstr "Le publier dans la galerie"
 
+msgid "Listed without your name, it will not be on your profile or in your followers' feeds."
+msgstr "Publié sans votre nom, il ne sera ni sur votre profil ni dans le fil de vos abonnés."
+
 msgid "Anyone can find it at brickworks.diy/gallery, not only people sent the link. Untick it and publish again to take it out and keep the link."
 msgstr "Tout le monde peut le trouver sur brickworks.diy/gallery, pas seulement ceux qui ont reçu le lien. Décochez et publiez à nouveau pour l'en retirer et garder le lien."
 
@@ -5856,6 +5859,31 @@ msgstr "Plastique brillant aux bords arrondis, pièces transparentes qui dévien
 
 msgid "The plastic and the light as the window draws them."
 msgstr "Le plastique et la lumière tels que la fenêtre les dessine."
+
+# The plastic new or played with (photoreal26), Render's Plastic row: New as
+# plastic is, not as a file is (msgctxt "plastic").
+msgid "Plastic"
+msgstr "Plastique"
+
+msgctxt "plastic"
+msgid "New"
+msgstr "Neuf"
+
+msgctxt "plastic"
+msgid "Played with"
+msgstr "Usagé"
+
+msgid "Straight from the box."
+msgstr "Tout juste sorti de la boîte."
+
+msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way. Drawn so at Best, in the Product look."
+msgstr "Un set avec lequel on a joué des années : blancs un peu jaunis, poussière sur le dessus, chaque pièce posée à sa façon. Dessiné ainsi en Meilleure, rendu Photo produit."
+
+msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way"
+msgstr "Un set avec lequel on a joué des années : blancs un peu jaunis, poussière sur le dessus, chaque pièce posée à sa façon"
+
+msgid "Drawn so at Best, in the Product look"
+msgstr "Dessiné ainsi en Meilleure, rendu Photo produit"
 
 msgid "%d frames, %s s at %d a second, as an animated WebP."
 msgstr "%d images, %s s à %d par seconde, en WebP animé."
@@ -18016,6 +18044,21 @@ msgstr "« %s » est déjà un modèle enregistré, et ce n'est pas celui-ci : n
 
 msgid "not saved: “%s” is a saved model already"
 msgstr "non enregistré : « %s » est déjà un modèle enregistré"
+
+msgid "not saved: another model was opened"
+msgstr "non enregistré : un autre modèle a été ouvert"
+
+msgid "saved “%s” here, but did not write %s: another model was opened"
+msgstr "« %s » enregistré ici, mais %s n'a pas été écrit : un autre modèle a été ouvert"
+
+msgid "did not write %s: another model was opened"
+msgstr "%s n'a pas été écrit : un autre modèle a été ouvert"
+
+msgid "not exported: another model was opened"
+msgstr "non exporté : un autre modèle a été ouvert"
+
+msgid "Not published: another model was opened."
+msgstr "Non publié : un autre modèle a été ouvert."
 
 msgid "could not copy “%s”"
 msgstr "« %s » n'a pas pu être copié"

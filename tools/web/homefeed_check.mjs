@@ -8,7 +8,9 @@
 //      (a crawler reads them), each build's links to its page and the
 //      studio's four verbs, one picture asked for at once and the rest lazy.
 //   2. The first screen: the line that says what Brickworks is, Start
-//      building, and the first post begun within 600 px on a phone; no tabs.
+//      building, and on a phone the first post begun just under the fold,
+//      within 1.3 windows (the studio's loop over it, herostudio; 600 px
+//      before); no tabs.
 //   3. Each build's post: its picture, who made it with Follow, how it was
 //      made as pills to the docs, like, comments and share, and Open in the
 //      studio, Remix, Build it and Parts to the studio's own addresses.
@@ -207,7 +209,7 @@ try {
     });
     check(`2. ${label}: the line "${first.line.slice(0, 60)}…", Start building in view, the first post at ${first.first} px`
       + `${first.strip ? ` (${first.first - first.strip} under the beta strip)` : ""}, no tabs or Share`,
-      first.band && first.start && first.first >= 0 && (width >= 600 || first.first - first.strip <= 600) && !first.tabs && !first.share);
+      first.band && first.start && first.first >= 0 && (width >= 600 || first.first - first.strip <= height * 1.3) && !first.tabs && !first.share);
     await shot(page, `first-${label}.png`);
 
     // --- 3. A build's post --------------------------------------------------
@@ -263,17 +265,13 @@ try {
       Boolean(followAsks) && Math.abs(still - followAt) <= 2);
 
     // --- 5. 3D ----------------------------------------------------------------
-    // Nothing of a post's 3D before its tap: no model's scene and not the
-    // 3D view's stylesheet. three.js (web/viewer3d.js) is the hero's too
-    // (hero3d, 2026-11-23), which asks for it once the page is idle with
-    // the mark on screen: asked before the tap only when the hero says it
-    // went for it (<html data-hero> past "poster").
-    const hero = await page.evaluate(() => document.documentElement.dataset.hero || "");
+    // Nothing of a post's 3D before its tap: no model's scene, not the 3D
+    // view's stylesheet and not three.js (web/viewer3d.js), which nothing
+    // on the home's first screen asks for since the hero became the
+    // studio's loop (herostudio, 2026-11-26).
     const early = asked.filter((url) => /\/viewer3d\.js|\/scene\.json|\/view3d\.css/.test(new URL(url).pathname));
-    const postsOwn = early.filter((url) => !/\/viewer3d\.js$/.test(new URL(url).pathname));
-    const shared = early.length - postsOwn.length;
-    const before3d = postsOwn.length + (shared && (!hero || hero === "poster") ? shared : 0);
-    const said3d = `${postsOwn.map((url) => new URL(url).pathname).join(" ") || "no scene"}; three.js ${shared ? `asked ${shared}x, by the hero (${hero || "nothing said"})` : "not asked"}`;
+    const before3d = early.length;
+    const said3d = early.map((url) => new URL(url).pathname).join(" ") || "nothing";
     // The picture's 3D button, at its foot (web/home-feed.js, the card's
     // .turn): brought to the middle first, where neither the sticky header
     // nor the beta bar at the window's foot is over it.

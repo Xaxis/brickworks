@@ -124,6 +124,13 @@ var jpeg: float = -1.0
 var age: float = -1.0
 var dust: float = -1.0
 var paper: float = -1.0
+## The plastic as a person picks it (photoreal26), in the product look at
+## Best, path traced: "new", straight from the box, or "played", a set
+## played with for years: whites and greys yellowed, each part handled and
+## seated its own way, dust on its tops (StudioRender.PLAYED_*, photoreal25's
+## wear and age). An age, dust, handling or seating asked for above wins.
+const PLASTICS: Dictionary = {"new": "New", "played": "Played with"}
+var plastic: String = "new"
 ## What that grain is (photoreal5), for the photo bench to match the surface
 ## each photograph's parts stand on: 0 a paper's or a card's fibres, 1 a
 ## matte desk's specks and smudges; and drawn by [member table]
@@ -235,6 +242,19 @@ var scuff: float = -1.0
 ## model faintly mirrored in it). 0 the catcher as before, 1 as the set
 ## photographs show it; below 0, StudioRender's PRODUCT_FLOOR.
 var floor: float = -1.0
+## That floor fitted to the set photographs' stage (photoreal26): how much of
+## the tent's soft boxes' light and of its key's the floor shows (0 none, 1
+## all), how far past white it is exposed (1 none), its shade's colour (0 a
+## daylight fill's blue, 1 the photographs' lavender), how much of the light
+## the parts bounce down it shows, and its gloss (reflectance head on and
+## roughness). Below 0, StudioRender's PRODUCT_FLOOR_*.
+var floor_boxes: float = -1.0
+var floor_over: float = -1.0
+var floor_key: float = -1.0
+var floor_shade: float = -1.0
+var floor_bounce: float = -1.0
+var floor_f0: float = -1.0
+var floor_rough: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.
@@ -383,7 +403,7 @@ const PRESETS_FILE := "user://render_presets.cfg"
 ## where the window looked from nor a probe's switches.
 const PRESET_KEEPS: Array[String] = ["quality", "look", "size", "transparent", "backdrop",
 	"backdrop_gradient", "lighting", "light_turn", "contact_shadow", "view", "saved_view",
-	"focal_mm", "f_stop", "focus", "samples", "frames", "fps", "stage"]
+	"focal_mm", "f_stop", "focus", "samples", "frames", "fps", "stage", "plastic"]
 
 
 ## These choices as a preset keeps them: words, numbers and the backdrop's
@@ -441,6 +461,10 @@ func use_preset(said: Dictionary) -> String:
 			"stage":
 				if value is String and (str(value).is_empty() or StudioRender.STAGES.has(str(value))):
 					stage = str(value)
+					continue
+			"plastic":
+				if PLASTICS.has(str(value)):
+					plastic = str(value)
 					continue
 			"light_turn":
 				if number and absf(float(value)) <= 180.0:

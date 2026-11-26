@@ -156,7 +156,8 @@ function saidHtml(id, said, count) {
 /// here, as it is drawn: compose() and feedItem() say no words, so the
 /// deploy's posts (tools/web/home_shelf.mjs, one compose for every
 /// language) are in each copy's (rel-m324's /de said "this week’s pick").
-export function buildPostHtml(model, { eager = false, said = null, line = "", pick = false } = {}) {
+/// [mine] the person's own (Following's, feedItem): no Follow beside them.
+export function buildPostHtml(model, { eager = false, said = null, line = "", pick = false, mine = false } = {}) {
   const id = String(model.id);
   if (!MODEL.test(id)) return "";
   const name = String(model.name || say("A model"));
@@ -195,8 +196,8 @@ export function buildPostHtml(model, { eager = false, said = null, line = "", pi
       : say("A copy of it in the studio, yours to change"))}">${escapeHtml(say("Remix"))}</a>`
     + `<a class="cta ghost small" href="${escapeHtml(appAt(`view=${id}&build`))}" data-verb="build" title="${escapeHtml(say("Build it with real bricks, one step at a time"))}">${escapeHtml(say("Build it"))}</a>`
     + `<a class="cta ghost small" href="${page}#parts" data-verb="parts" title="${escapeHtml(say("Its parts, to list and to buy"))}">${escapeHtml(say("Parts"))}</a></p>`;
-  return `<article class="post build" data-kind="build" data-id="${id}"${pick ? ' data-pick="yes"' : ""} aria-labelledby="post-${id}">`
-    + headHtml(model.by, `${escapeHtml(what)}${when ? ` · ${when}` : ""}`, { follow: true, author: String(model.author || "") })
+  return `<article class="post build" data-kind="build" data-id="${id}"${pick ? ' data-pick="yes"' : ""}${mine ? ' data-mine="yes"' : ""} aria-labelledby="post-${id}">`
+    + headHtml(model.by, `${escapeHtml(what)}${when ? ` · ${when}` : ""}`, { follow: !mine, author: String(model.author || "") })
     + `<div class="post-pic"><a class="pic" href="${page}" tabindex="-1" aria-hidden="true" data-scene="/m/${id}/scene.json">${image}</a>`
     + `${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}`
     + `<button type="button" class="icon-btn small turn" data-turn="${id}" aria-label="${escapeHtml(say("Turn {name} in 3D", { name }))}">`
@@ -320,8 +321,9 @@ export function photoPostHtml(photo) {
   const model = String(photo.model_name || say("a model"));
   const width = Number(photo.width) || 4;
   const height = Number(photo.height) || 3;
-  return `<article class="post photo" data-kind="photo" data-photo="${id}" aria-labelledby="photo-${id}">`
-    + headHtml(photo.by, `${escapeHtml(say("built it for real"))}${photo.at ? ` · ${timeHtml(photo.at)}` : ""}`, { follow: true })
+  const mine = photo.mine === true;
+  return `<article class="post photo" data-kind="photo" data-photo="${id}"${mine ? ' data-mine="yes"' : ""} aria-labelledby="photo-${id}">`
+    + headHtml(photo.by, `${escapeHtml(say("built it for real"))}${photo.at ? ` · ${timeHtml(photo.at)}` : ""}`, { follow: !mine })
     + `<div class="post-pic"><a class="pic" href="${at}/m/${escapeHtml(String(photo.model))}#photo-${id}" tabindex="-1" aria-hidden="true">`
     + `<img src="${escapeHtml(photoSrc(id, { card: true }))}" alt="${escapeHtml(say("A build of {name}", { name: model }))}" width="${width}" height="${height}" loading="lazy" decoding="async"></a></div>`
     + `<div class="post-words"><h3 class="post-title" id="photo-${id}"><a href="${at}/m/${escapeHtml(String(photo.model))}#photo-${id}">`
@@ -341,7 +343,7 @@ export function postSkeletonHtml() {
 
 /// One item of the stream as HTML.
 export function postHtml(item, { eager = false } = {}) {
-  if (item.kind === "build") return buildPostHtml(item.model, { eager, said: item.said, line: item.line, pick: item.pick });
+  if (item.kind === "build") return buildPostHtml(item.model, { eager, said: item.said, line: item.line, pick: item.pick, mine: item.mine });
   if (item.kind === "talk") return talkPostHtml(item.thread);
   if (item.kind === "challenge") return challengePostHtml(item.challenge, item.entries, item.week);
   if (item.kind === "try") return tryPostHtml(item.model);
@@ -449,11 +451,14 @@ export function compose(given, { tab = "foryou", skip = new Set() } = {}) {
 /// A row of the signed-in feed (/api/people?op=feed's, api/_follows.js) as
 /// an item: a model or a version with its card, a photo of a build.
 export function feedItem(row) {
+  // The person's own (supabase/feed_self.sql): drawn as theirs, no Follow.
+  const mine = row?.mine === true;
   if (row?.kind === "photo" && row.photo && PHOTO.test(String(row.photo.id))) {
-    return { kind: "photo", photo: { ...row.photo, model: row.model, model_name: row.name, by: row.by, at: row.at, words: row.said } };
+    return { kind: "photo", photo: { ...row.photo, model: row.model, model_name: row.name, by: row.by, at: row.at, words: row.said, mine } };
   }
   if (row?.card && MODEL.test(String(row.card.id)) && pictureOf(row.card)) {
-    return { kind: "build", model: { ...row.card, by: row.card.by || row.by }, line: ["version", "entry"].includes(row.kind) ? row.kind : "" };
+    return { kind: "build", model: { ...row.card, by: row.card.by || row.by }, line: ["version", "entry"].includes(row.kind) ? row.kind : "",
+      mine };
   }
   return null;
 }

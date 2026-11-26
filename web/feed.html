@@ -95,7 +95,7 @@
 			<div class="page-head">
 				<div class="page-title">
 					<h1>Your feed</h1>
-					<p class="lede">New models, versions and photos of builds from the designers you follow.</p>
+					<p class="lede">New models, versions and photos of builds from the designers you follow, and your own.</p>
 				</div>
 			</div>
 			<nav class="tabs" aria-label="What is new for you">
@@ -131,12 +131,14 @@
 					<p class="lede">Sign in and follow the designers whose models you like: what they make comes here.</p>
 					<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
 				</section>
+				<p class="state" id="not-yet" hidden>Following and the feed are not open on Brickworks yet.</p>
+				<!-- Your own work first (feed.js: a newcomer's first build), then
+				     what a feed with nobody else's in it says. -->
+				<ol class="list-rows feed-list" id="rows" aria-label="Your feed"></ol>
+				<div class="pager" id="older-line" hidden><button class="cta ghost pager-more" type="button" id="older">Older</button></div>
 				<p class="state" id="nobody" hidden>You follow nobody yet. Follow a designer and their new
 					models, new versions and photos of their builds come here.</p>
 				<p class="state" id="quiet" hidden>Nothing new from the people you follow in the last 90 days.</p>
-				<p class="state" id="not-yet" hidden>Following and the feed are not open on Brickworks yet.</p>
-				<ol class="list-rows feed-list" id="rows" aria-label="Your feed"></ol>
-				<div class="pager" id="older-line" hidden><button class="cta ghost pager-more" type="button" id="older">Older</button></div>
 				<p class="said" id="said" role="status"></p>
 				<section class="latest" id="latest" hidden aria-labelledby="latest-title">
 					<div class="scroller-head">

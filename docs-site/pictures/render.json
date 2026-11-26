@@ -33,6 +33,29 @@
    "features": ["lib:product look", "lib:moulded edges"]
   },
   {
+   "id": "render-played",
+   "source": "app",
+   "setup": [
+    {"open": "res://models/boat.ldr"},
+    {"frames": 300},
+    {"run": "render", "after": 30},
+    {"click": "_render._quality.2", "after": 20},
+    {"click": "_render._looks.1", "after": 20},
+    {"click": "_render._plastics.1", "after": 20},
+    {"call": "_render._view.select", "args": [0]},
+    {"call": "_render._view.emit_signal", "args": ["item_selected", 0], "after": 20},
+    {"click": "_render._picture_button", "after": 30},
+    {"until": "_render._working", "is": "", "frames": 2400},
+    {"frames": 30}
+   ],
+   "settle": 60,
+   "crop": "_render._preview",
+   "pad": 0,
+   "alt": "The boat rendered at Best in the Product look with Plastic › Played with: its white hull a little yellowed, each part its own amount, dust on its tops, each part seated its own way.",
+   "caption": "Plastic › Played with: the boat as a set played with for years.",
+   "features": ["ui:plastic new or played with"]
+  },
+  {
    "id": "render-stage",
    "source": "app",
    "setup": [

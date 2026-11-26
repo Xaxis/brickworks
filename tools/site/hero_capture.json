@@ -1,0 +1,118 @@
+{
+	"about": "The home page's loop of the studio at work (herostudio, recaptured by herostudio2, 2026-11-26): what src/dev/hero_capture_probe.gd plays in the real app and tools/site/hero_capture.py cuts into web/img/hero/studio-*. Each segment's setup is done unrecorded, then its steps recorded; segments meet by a crossfade (fade frames) unless one says join. speed takes every nth frame. caption names the words the page shows over it (web/landing.js CUE_WORDS); a segment with none keeps the one before. A little house and its tree (tools/site/hero_house.ldr) is built by hand on its plate, framed to stand at about 60% of the view when it is done; a set's steps play with the car fitted to the view; the car turns; then its render, made off camera (picture), is shown full-frame and pushed in slowly, and the loop fades back to the empty plate. Never a dialog, a form or a word of work under way: hero_capture.py refuses a cut whose words (texts.json) show one. bytes caps each cut's files at what herostudio's were.",
+	"cuts": {
+		"desktop": {
+			"window": "1680x1050",
+			"scale": 1.5,
+			"out": [1440, 900],
+			"bytes": {"av1": 1000000, "h264": 820000},
+			"poster": {"segment": "drop", "at": "end"},
+			"loop_fade": 18,
+			"segments": [
+				{
+					"name": "drop", "caption": "drop", "speed": 1.5,
+					"setup": [
+						{"floor": "grid"},
+						{"run": "new", "after": 30},
+						{"lay": "res://tools/site/hero_house.ldr", "parts": 1},
+						{"recent": ["3001", "3037", "3941", "3942c"], "after": 10},
+						{"look": {"yaw": -0.61, "pitch": 0.5}},
+						{"frame_on": "res://tools/site/hero_house.ldr", "margin": 1.0, "after": 60},
+						{"glide": {"xy": [0.62, 0.5]}, "frames": 1}
+					],
+					"steps": [
+						{"frames": 8},
+						{"drop": "res://tools/site/hero_house.ldr", "from": 1,
+							"pace": {"swatch": 10, "tile": 10, "glide": 14, "turn": 5, "wait": 2, "after": 5}},
+						{"key": "Escape"},
+						{"glide": {"xy": [0.86, 0.42]}, "frames": 14}
+					],
+					"hold": 24
+				},
+				{
+					"name": "steps", "caption": "steps", "speed": 2.0,
+					"setup": [
+						{"key": "Escape"},
+						{"open": "res://models/sports_car.ldr"},
+						{"run": "timeline", "after": 40},
+						{"fit": 0.68, "after": 40},
+						{"glide": {"button": "Next", "in": "_steps"}, "frames": 1}
+					],
+					"steps": [
+						{"frames": 4},
+						{"repeat": {"tap": {"button": "Next", "in": "_steps"}, "frames": 1, "wait": 0}, "times": 34, "every": 1}
+					],
+					"hold": 30
+				},
+				{
+					"name": "turn",
+					"setup": [
+						{"tap": {"button": "Done", "in": "_steps"}, "frames": 1, "after": 30},
+						{"fit": 1.12, "after": 40},
+						{"glide": {"xy": [0.78, 0.36]}, "frames": 1}
+					],
+					"steps": [{"turn": [-240, 16], "frames": 48, "drag": true, "after": 4}],
+					"hold": 4
+				},
+				{
+					"name": "render", "caption": "render", "still": "render.png", "seconds": 3.6, "push": 1.07, "fade": 18,
+					"setup": [{"picture": "render", "size": [1920, 1200], "quality": "best", "look": "product", "stage": "wood", "view": "hero"}]
+				}
+			]
+		},
+		"phone": {
+			"window": "780x1386",
+			"scale": 2.0,
+			"phone": true,
+			"out": [720, 1280],
+			"bytes": {"av1": 455000, "h264": 355000},
+			"poster": {"segment": "drop", "at": "end"},
+			"loop_fade": 18,
+			"segments": [
+				{
+					"name": "drop", "caption": "drop", "speed": 1.5,
+					"setup": [
+						{"frames": 200},
+						{"floor": "grid"},
+						{"run": "new", "after": 30},
+						{"lay": "res://tools/site/hero_house.ldr", "parts": 1},
+						{"look": {"yaw": -0.61, "pitch": 0.5}},
+						{"frame_on": "res://tools/site/hero_house.ldr", "margin": 1.1, "after": 60}
+					],
+					"steps": [
+						{"frames": 8},
+						{"drop": "res://tools/site/hero_house.ldr", "from": 1,
+							"pace": {"tile": 10, "glide": 4, "turn": 4, "wait": 3, "after": 10}},
+						{"key": "Escape", "after": 6},
+						{"tap": {"xy": [0.5, 0.86]}, "frames": 10}
+					],
+					"hold": 30
+				},
+				{
+					"name": "steps", "caption": "steps", "speed": 2.0,
+					"setup": [
+						{"open": "res://models/sports_car.ldr"},
+						{"run": "timeline", "after": 40},
+						{"fit": 1.08, "after": 40}
+					],
+					"steps": [{"repeat": {"key": "Right"}, "times": 34, "every": 1}],
+					"hold": 30
+				},
+				{
+					"name": "turn",
+					"setup": [
+						{"run": "timeline", "after": 30},
+						{"fit": 1.08, "after": 40},
+						{"glide": {"xy": [0.7, 0.45]}, "frames": 1}
+					],
+					"steps": [{"turn": [-240, 16], "frames": 48, "drag": true, "after": 4}],
+					"hold": 4
+				},
+				{
+					"name": "render", "caption": "render", "still": "render.png", "seconds": 3.6, "push": 1.07, "fade": 18,
+					"setup": [{"picture": "render", "size": [1080, 1920], "quality": "best", "look": "product", "stage": "wood", "view": "hero"}]
+				}
+			]
+		}
+	}
+}

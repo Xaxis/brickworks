@@ -126,6 +126,104 @@ PLACED = ("parts: 9 of 11 put where their ghosts stood; 2 of 4 as the file has t
           "  (storage mirror: 170 cache (5.0 MB); the bucket asked 0 time(s))")
 
 
+# grab_flow's lines as rel-m343's A/B printed them (2026-11-26), shortened.
+GRAB_START = [
+    "  ok    the app came up  [13s]",
+    "  ok    the crane opened: 29 parts  [50s]",
+    "  ok    the arm and the turret are there to take hold of: 3937 on its turntable, 3795 on its hinge  [54s]",
+    "  ok    while the button is down the arm turns on its hinge: 37.8° (the Plate 2 x 6, 2 parts on its hinge)  [65s]",
+    "  ok    the app's own work in a drag frame stays under 33 ms: worst 5.79 ms  [65s]",
+    "  ok    a crank of the four-bar is there to take hold of (3937 on its turntable, 3673 on its pin)  [79s]",
+]
+GRAB_WENT = [
+    "  ok    the loop carried what the crank does not hold: 32316, 32524 moved  [86s]",
+    "  ok    the pendulum's beam is there to take hold of  [94s]",
+    "  ok    the beam turns out on its free pin: 66.8°  [94s]",
+    "  ok    the flywheel is there to take hold of (3937 on its turntable, 3673 on its pin)  [115s]",
+    "  ok    the flywheel turns on its axle while the button is down: 106.6° (the Technic Gear 40 Tooth)  [119s]",
+]
+GRAB_STUCK = [
+    "  FAIL  the loop carried what the crank does not hold: nothing moved  [107s]",
+    "  FAIL  the pendulum's beam is there to take hold of  [128s]",
+    "  FAIL  the flywheel is there to take hold of (none)  [148s]",
+]
+GRAB_END = ["  ok    the tube and its arm opened: 58 parts  [124s]", "  ok    no script errors ()  [137s]"]
+# Stopped by the same race a step earlier: the rest of the flow never ran.
+GRAB_STOPPED = GRAB_START[:5] + ["  FAIL  stopped: Cannot read properties of null (reading 'handles')  [85s]",
+                                 "        picture: /tmp/brickworks-release/rel-m343_ab_grab_L2_grab_web/stopped.png",
+                                 "  ok    no script errors ()  [85s]"]
+
+
+def _grab(*parts: list[str]) -> tuple[int, list]:
+    lines = [one for part in parts for one in part]
+    return int(any(" FAIL " in one for one in lines)), tj.read_log("\n".join(lines), 0)
+
+
+def test_a_line_a_run_never_got_to_is_not_run_and_failed_on_its_side():
+    # rel-m343's grab: P1 passed, live's L2 stopped early on the race, L3
+    # passed, P4 failed the three steps. Counted as passes, L2's unrun lines
+    # made live 0 of 2 against the preview's 1 of 2, and the A/B held.
+    went, stuck, stopped = _grab(GRAB_START, GRAB_WENT, GRAB_END), _grab(GRAB_START, GRAB_STUCK, GRAB_END), \
+        _grab(GRAB_STOPPED)
+    runs = [("P", *went, "P1"), ("L", *stopped, "L2"), ("L", *went, "L3"), ("P", *stuck, "P4")]
+    ships, lines = tj.judge([], runs)
+    assert ships, lines
+    assert lines[0] == ("ships past: the preview no worse than brickworks.diy beyond the noise (2 runs on the "
+                        "preview, 2 on brickworks.diy; L2 on brickworks.diy never got to 3 of the lines judged, "
+                        "each counted failed there)"), lines
+    assert lines[1:] == [
+        "the loop carried what the crank does not hold: nothing moved: failed 1 of 2, 1 of 2 (L2 never got to it): "
+        "no worse",
+        "the pendulum's beam is there to take hold of: failed 1 of 2, 1 of 2 (L2 never got to it): no worse",
+        "the flywheel is there to take hold of (none): failed 1 of 2, 1 of 2 (L2 never got to it): no worse"], lines
+    # The same runs without the names: each by its side and place.
+    ships, lines = tj.judge([], [run[:3] for run in runs])
+    assert ships and "L2 on brickworks.diy never got to 3" in lines[0], lines
+    # Live through to its end in both runs: the preview's three are its own.
+    held, lines = tj.judge([], [("P", *went, "P1"), ("L", *went, "L2"), ("L", *went, "L3"), ("P", *stuck, "P4")])
+    assert not held and all(line.endswith("failed 1 of 2, 0 of 2: worse") for line in lines[1:]), lines
+    assert "never got to" not in lines[0], lines
+
+
+def test_the_preview_stopping_early_holds_and_a_run_that_went_on_is_never_not_run():
+    went, stuck, stopped = _grab(GRAB_START, GRAB_WENT, GRAB_END), _grab(GRAB_START, GRAB_STUCK, GRAB_END), \
+        _grab(GRAB_STOPPED)
+    # The preview's P1 stopped where live went through: its stop is the
+    # preview's own, and the steps after it failed on the preview's side.
+    # Live's L3 failed a line of its own and went on: it got past the stop.
+    slow = _grab([line.replace("ok    the app's own work in a drag frame stays under 33 ms: worst 5.79",
+                               "FAIL  the app's own work in a drag frame stays under 33 ms: worst 41.2")
+                  for line in GRAB_START], GRAB_WENT, GRAB_END)
+    held, lines = tj.judge([], [("P", *stopped, "P1"), ("L", *went, "L2"), ("L", *slow, "L3"), ("P", *stuck, "P4")])
+    assert not held, lines
+    assert lines[0].startswith("holds: ") and "P1 on the preview never got to 3 of the lines judged" in lines[0], lines
+    assert "L2 on" not in lines[0] and "L3 on" not in lines[0], lines
+    said = {line.split(": failed")[0]: line for line in lines[1:]}
+    assert said["stopped: Cannot read properties of null (reading 'handles')"].endswith(
+        "failed 1 of 2, 0 of 2: worse"), said
+    assert said["the pendulum's beam is there to take hold of"].endswith(
+        "failed 2 of 2, 0 of 2 (P1 never got to it): worse"), said
+    # A run that passed went to its end, whatever it printed: never not run
+    # (here live's run takes no flywheel at all).
+    bare = _grab(GRAB_START, GRAB_WENT[:3], GRAB_END)
+    held, lines = tj.judge([], [("P", *went, "P1"), ("L", *bare, "L2"), ("L", *bare, "L3"), ("P", *stuck, "P4")])
+    assert not held and "never got to" not in "\n".join(lines), lines
+
+
+def test_the_command_line_names_each_run_as_live_ab_does(tmp_path):
+    logs = {}
+    for name, parts in (("P1", (GRAB_START, GRAB_WENT, GRAB_END)), ("L2", (GRAB_STOPPED,)),
+                        ("L3", (GRAB_START, GRAB_WENT, GRAB_END)), ("r1P4", (GRAB_START, GRAB_STUCK, GRAB_END))):
+        logs[name] = tmp_path / ("rel-m343_ab_grab_%s_grab.log" % name)
+        logs[name].write_text("\n".join(line for part in parts for line in part))
+    done = subprocess.run([sys.executable, str(ROOT / "tools/release/timing_judge.py"),
+                           "--run", "P", "0", str(logs["P1"]), "--run", "L", "1", str(logs["L2"]),
+                           "--run", "L", "0", str(logs["L3"]), "--run", "P", "1", str(logs["r1P4"])],
+                          capture_output=True, text=True)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "L2 on brickworks.diy never got to 3 of the lines judged" in done.stdout, done.stdout
+
+
 def test_a_check_with_no_measure_that_passes_every_run_by_turns_ships():
     # rel-m301's placing: the battery's run ended exit 1 with no FAIL line,
     # and P L L P each exited 0 printing no ok or FAIL line at all. It held,
