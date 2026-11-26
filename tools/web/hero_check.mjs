@@ -121,7 +121,7 @@ const loopNow = (page) => page.evaluate(() => {
   return {
     hero: document.documentElement.dataset.hero || "",
     video: video ? { src: video.currentSrc || video.src, cut: video.dataset.cut, muted: video.muted, loop: video.loop,
-      inline: video.playsInline, controls: video.controls, paused: video.paused, time: video.currentTime,
+      inline: video.playsInline, controls: video.controls, paused: video.paused, time: video.currentTime, length: video.duration,
       shown: getComputedStyle(video).opacity === "1", w: video.videoWidth, h: video.videoHeight } : null,
     caption: say?.classList.contains("shown") ? say.textContent.trim() : "",
     stop: stop && !stop.hidden ? { pressed: stop.getAttribute("aria-pressed"), name: stop.textContent.trim().replace(/\s+/g, " ") } : null,
@@ -183,9 +183,15 @@ for (const [label, width, height] of [["laptop", 1280, 800], ["phone", 390, 844]
       await page.locator("#loop-stop").click();
       await page.waitForTimeout(1200);
       const p3 = await loopNow(page);
-      played = p3.stop?.pressed === "false" && !p3.video?.paused && p3.video?.time > (p2.video?.time ?? 0);
+      // On, or round the loop's end to its start: herostudio2's last caption comes at 14 s of 17.7, so a
+      // pause after it can be 16.6 s in, and 1.2 s of play later 0.1 s in.
+      const from = p2.video?.time ?? 0;
+      const to = p3.video?.time ?? 0;
+      const length = p3.video?.length;
+      const ahead = (Number.isFinite(length) && length > 0 ? (to - from + length) % length : to - from) > 0.2;
+      played = p3.stop?.pressed === "false" && !p3.video?.paused && ahead;
       if (!paused) problems.push(`${where}: Pause did not stop the loop (${JSON.stringify(p1.stop)}, ${p1.hero})`);
-      if (!played) problems.push(`${where}: Play did not start it again`);
+      if (!played) problems.push(`${where}: Play did not start it again (${p2.video?.time?.toFixed(2)} s, then ${p3.video?.time?.toFixed(2)} s of ${p3.video?.length?.toFixed(2)})`);
       if (!/pause/i.test(s.stop.name)) problems.push(`${where}: the loop's button is named "${s.stop.name}"`);
     } else problems.push(`${where}: no Pause beside the playing loop`);
     // Nothing moved; no three.js.
