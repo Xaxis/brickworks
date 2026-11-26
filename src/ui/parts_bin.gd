@@ -3742,11 +3742,29 @@ func _new_tile() -> Button:
 	label.resized.connect(func() -> void:
 		_fit_name(label, label.size.x)
 		_tell_apart_soon())
-	# The name has the tile's whole width. By a finger a part with prints
-	# folded under it has its "+N" over the picture's foot, a fingertip
-	# (_fold_badge): beside it at the foot's end the name kept 33 units of a
-	# tablet's tile, "Platte" 35 cut inside (wide150b).
-	box.add_child(label)
+	if by_finger:
+		# A part with prints folded under it has its "+N" at the foot's right
+		# end, a fingertip (_fold_badge): the name keeps to the room beside
+		# it, shown only on such a tile (_bind_tile), and a word wider than
+		# that room is said a size smaller (_fit_name). Hidden, the name has
+		# the foot's width, as it had alone under the picture. Over the
+		# picture's foot instead, the "+N" was where a finger taps a tile,
+		# and a tap on a part unfolded its prints (wide150b).
+		var foot := HBoxContainer.new()
+		foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		foot.add_theme_constant_override("separation", 0)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.set_meta("shrinks", true)
+		foot.add_child(label)
+		var beside := Control.new()
+		beside.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		beside.custom_minimum_size.x = least + _z(2.0)
+		beside.visible = false
+		foot.add_child(beside)
+		box.add_child(foot)
+		button.set_meta("beside", beside)
+	else:
+		box.add_child(label)
 
 	# A star in the corner for a part kept in Favourites.
 	var star: TextureRect = Icons.picture(STAR, _z(14.0), Icons.density(self))
@@ -3796,6 +3814,8 @@ func _bind_tile(button: Button, info: PartLibrary.PartInfo, key: String = "") ->
 	# after every tile of the page is bound: _show_more).
 	label.remove_meta("from")
 	label.remove_meta("number")
+	if button.has_meta("beside"):
+		(button.get_meta("beside") as Control).visible = _folds.has(info.id)
 
 	(button.get_meta("star") as Control).visible = PartShelf.is_favourite(info.id)
 	# Its "+N", kept hidden while its part has nothing folded under it: made
@@ -4102,9 +4122,32 @@ static var SIZE_WORDS := RegEx.create_from_string("(\\d) x (?=\\d)")
 func _fit_name(label: Label, width: float) -> void:
 	if width <= 1.0:
 		return
+	if label.has_meta("shrinks"):
+		_size_to_words(label, width)
 	var text: String = _name_text(label, width, str(label.get_meta("number", "")))
 	if label.text != text:
 		label.text = text
+
+
+## A finger's tile's name in eleven-unit type, or a size smaller where its
+## longest word is wider than [param width], down to nine: beside a "+N" a
+## tablet's tile gave its name 33 units, and "Platte" (35) was cut inside.
+## A word wider still is cut as any name is (fit_lines).
+func _size_to_words(label: Label, width: float) -> void:
+	var font: Font = label.get_theme_font("font")
+	var size: int = ceili(_z(11))
+	var smallest: int = ceili(_z(9))
+	var widest: String = ""
+	var longest: float = 0.0
+	for word: String in str(label.get_meta("name", "")).split(" ", false):
+		var across: float = font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		if across > longest:
+			longest = across
+			widest = word
+	while size > smallest and font.get_string_size(widest, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
+		size -= 1
+	if label.get_theme_font_size("font_size") != size:
+		label.add_theme_font_size_override("font_size", size)
 
 
 ## What [param label] reads at [param width], [param number] after its name.
@@ -4246,8 +4289,7 @@ func _new_fold_badge() -> Button:
 		badge.custom_minimum_size = across
 		badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 		badge.offset_right = -_z(2.0)
-		# Over the picture's foot, the name's lines under it clear.
-		badge.offset_bottom = -_z(2.0) - _name_tall()
+		badge.offset_bottom = -_z(2.0)
 		badge.offset_left = badge.offset_right - across.x
 		badge.offset_top = badge.offset_bottom - across.y
 		badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
