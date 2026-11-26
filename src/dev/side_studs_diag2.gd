@@ -4,7 +4,7 @@ extends SceneTree
 ## between it and any other part by the parts' own shapes (socket at the stud's
 ## foot), so a part held by a side stud the check misses shows (snot6).
 ##
-##   SNOT_TRY=back1 godot --headless --path . --script src/dev/side_studs_diag2.gd -- --mesh=FILE --up=Y --studs=48
+##   godot --headless --path . --script src/dev/side_studs_diag2.gd -- --mesh=FILE --up=Y --studs=48
 
 var _library: PartLibrary
 var _checker: Assistant
@@ -133,4 +133,17 @@ func _run() -> void:
 	for index: Variant in asked:
 		lowest = minf(lowest, (boxes[int(index)] as AABB).position.y)
 	print("loose parts' lowest y %.1f LDU (y down, the floor the largest)" % lowest)
+	# With --dump=FILE, every part (its index, part, face, colour, box in LDU)
+	# and the loose ones, as JSON, for reading where they meet the rest (snot7).
+	if _arg("dump") != "":
+		var parts: Array = []
+		for n: int in model.placements.size():
+			var p: Assistant.Placement = model.placements[n]
+			var b: AABB = boxes[n]
+			parts.append({"id": n, "part": p.part, "face": p.face, "color": p.color, "box": [b.position.x,
+				b.position.y, b.position.z, b.end.x, b.end.y, b.end.z]})
+		var file := FileAccess.open(_arg("dump"), FileAccess.WRITE)
+		file.store_string(JSON.stringify({"parts": parts, "pieces": [{"ids": asked.keys(), "beyond": -1,
+			"held_by": -1, "ratio": 0.0, "at": [0, 0, 0]}]}))
+		file.close()
 	quit(0)

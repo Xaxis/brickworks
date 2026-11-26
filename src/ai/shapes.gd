@@ -2900,14 +2900,16 @@ class Plan extends RefCounted:
 		# side flanks' 1 x 4s by the parts' real shapes, which the lattice,
 		# taking every stud for one into a socket, could not see. That column
 		# is the core's, laid upright on the studs.
-		var studs_up: Dictionary = {}    ## Vector2i column -> the plate they stand into
+		# Every side-stud brick in the column, not the last one read: a shell
+		# has one every second row.
+		var studs_up: Dictionary = {}    ## Vector2i column -> true: studs stand into this shell's rows
 		for one: Dictionary in anchors:
-			for cell: Vector2i in one["_cells"]:
-				studs_up[cell] = int(one["y"]) + int(one["_h"])
+			var into: int = int(one["y"]) + int(one["_h"])
+			if into >= bottom and into < top:
+				for cell: Vector2i in one["_cells"]:
+					studs_up[cell] = true
 		for key: Variant in mine.keys():
-			var column := Vector2i((key as Vector3i).x, (key as Vector3i).z)
-			if studs_up.has(column) and int(studs_up[column]) >= bottom \
-					and int(studs_up[column]) < top:
+			if studs_up.has(Vector2i((key as Vector3i).x, (key as Vector3i).z)):
 				mine.erase(key)
 		for key: Variant in mine:
 			taken[key] = true
@@ -3030,9 +3032,19 @@ class Plan extends RefCounted:
 	const CUBE_LEAST := 4
 	const CUBE_KEEPS := 0.6
 	## How deep the core behind a cube, not turned itself, has to be, studs.
-	## A fox at 48 studs, two studs deep, hung its head on two joints past
-	## their load more than upright; three, as many as upright.
-	const CUBE_BACK := 3
+	## A fox at 48 studs, a stud or two deep, hung its head on joints past
+	## their load, the head meeting the body side by side with no stud across
+	## the plane between: tied back across it now (Brickify.Laid.bond), a
+	## stud is enough (snot7, 2026-11-26).
+	const CUBE_BACK := 1
+	## A core this deep behind a cube, studs, holds it whatever lies past it;
+	## one shallower, only where it runs on into the model ([constant
+	## CUBE_REACH]).
+	const CUBE_HOLDS := 3
+	## How far, in plates of the model, the core behind a cube backed by less
+	## than [constant CUBE_HOLDS] has to run on past it (_runs_on): a hand's
+	## worth and more.
+	const CUBE_REACH := 600
 	## How many cubes deep one shell runs, out from the innermost, where a
 	## cube and the one past it at the same height both face out. One deep, a
 	## side leaning out down a cube's height left the inner cube upright, the
@@ -3215,6 +3227,43 @@ class Plan extends RefCounted:
 				shelled.erase(plate)
 				given_back[plate] = true
 
+	## Whether the model's core behind the cube of [param cells] (from plate
+	## [param j0] up a cube's height, facing [param facing]) runs on into the
+	## model for [constant CUBE_REACH] plates without passing through the
+	## cube, a shell's plates or [param mine] (the plates of the cubes this
+	## shell takes already), by the core's studded plates ([method body]): a
+	## top tile or one under a shell holds nothing beside it. A stud deep, a
+	## figure's hand turned at its front, the hand set a stud back from its
+	## arm, was held to the arm through the cube alone, and met it besides only
+	## under two tiles: what was left of it came away.
+	func _runs_on(cells: Array[Vector2i], j0: int, facing: Vector2i, mine: Dictionary) -> bool:
+		var own: Dictionary = {}
+		for cell: Vector2i in cells:
+			for j: int in range(j0, j0 + CUBE_PLATES):
+				own[Vector3i(cell.x, j, cell.y)] = true
+		var seen: Dictionary = {}
+		var stack: Array[Vector3i] = []
+		var core := func(p: Vector3i) -> bool:
+			var over := p + Vector3i(0, 1, 0)
+			return not own.has(p) and not seen.has(p) and not shelled.has(p) and not taken.has(p) \
+				and not mine.has(p) and body(Vector2i(p.x, p.z), p.y) and not own.has(over) \
+				and not mine.has(over)
+		for cell: Vector2i in cells:
+			var back: Vector2i = cell - facing
+			for j: int in range(j0, j0 + CUBE_PLATES):
+				var p := Vector3i(back.x, j, back.y)
+				if core.call(p):
+					seen[p] = true
+					stack.append(p)
+		while not stack.is_empty() and seen.size() < CUBE_REACH:
+			var p: Vector3i = stack.pop_back()
+			for step: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+					Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+				if core.call(p + step):
+					seen[p + step] = true
+					stack.append(p + step)
+		return seen.size() >= CUBE_REACH
+
 	## Whether the model has a plate in cube [param c].
 	func _cube_has_model(c: Vector3i) -> bool:
 		var j0: int = c.y * CUBE_PLATES + _phase
@@ -3271,6 +3320,7 @@ class Plan extends RefCounted:
 			var empty: Array[Vector3i] = []
 			var beyond: int = 0
 			var backed: int = 0
+			var backed_deep: int = 0
 			var inmost: int = 1 << 30
 			for cell: Vector2i in cells:
 				inmost = mini(inmost, _lane(cell, facing, along).y)
@@ -3313,12 +3363,14 @@ class Plan extends RefCounted:
 						beyond += 1
 					if inner:
 						var deep_enough: bool = true
-						for k: int in range(1, CUBE_BACK + 1):
+						for k: int in range(1, CUBE_HOLDS + 1):
 							var back: Vector2i = cell - facing * k
 							deep_enough = deep_enough and at(back, j) >= 0 \
 								and not shelled.has(Vector3i(back.x, j, back.y))
+							if k == CUBE_BACK and deep_enough:
+								backed += 1
 						if deep_enough:
-							backed += 1
+							backed_deep += 1
 					if at(cell, j) < 0:
 						if not taken.has(key):
 							empty.append(key)
@@ -3331,6 +3383,13 @@ class Plan extends RefCounted:
 				var why: String = "beyond" if beyond > 0 else ("backed" if plates.size() >= CUBE_LEAST else "few")
 				_why_not[why] = int(_why_not.get(why, 0)) + 1
 				_why_at.append([c.x, j0, c.z, why])
+				continue
+			# Backed only by a core shallower than [constant CUBE_HOLDS]: kept
+			# where that core runs on into the model past the cube, not only
+			# through it.
+			if backed_deep < CUBE_STUDS * CUBE_PLATES * 6 / 10 and not _runs_on(cells, j0, facing, mine):
+				_why_not["cut"] = int(_why_not.get("cut", 0)) + 1
+				_why_at.append([c.x, j0, c.z, "cut"])
 				continue
 			kept.append(c)
 			for key: Vector3i in plates:
@@ -3345,21 +3404,24 @@ class Plan extends RefCounted:
 		if kept.is_empty():
 			return {}
 		# Not over a side-stud brick another shell laid, its studs up into
-		# this one's plates (as _shell keeps clear).
-		var studs_up: Dictionary = {}
+		# this one's plates (as _shell keeps clear). Every one in a column: a
+		# shell's side studs are a brick every second row, and kept by column
+		# only the last one laid was seen. The core a stud deep, a turned block's
+		# shells facing +z took 15 plates over the studs of the side-stud
+		# bricks of the shells a step behind them; their parts there were let
+		# go once the core was laid, and 3.1% of the block was in no part
+		# (96.5%, then 99.2%).
+		var stud_tops: Dictionary = {}    ## Vector3i: the plate a side-stud brick's studs stand into
 		for one: Dictionary in anchors:
 			for cell: Vector2i in one["_cells"]:
-				studs_up[cell] = int(one["y"]) + int(one["_h"])
+				stud_tops[Vector3i(cell.x, int(one["y"]) + int(one["_h"]), cell.y)] = true
 		for key: Variant in mine.keys():
-			var p: Vector3i = key
-			var column := Vector2i(p.x, p.z)
-			if studs_up.has(column) and int(studs_up[column]) == p.y:
+			if stud_tops.has(key):
 				mine.erase(key)
 		# Nor the air over one, which the shell may otherwise reach into.
 		var clear: Array[Vector3i] = []
 		for key: Vector3i in outside:
-			var column := Vector2i(key.x, key.z)
-			if studs_up.has(column) and int(studs_up[column]) == key.y:
+			if stud_tops.has(key):
 				taken[key] = true
 			else:
 				clear.append(key)
