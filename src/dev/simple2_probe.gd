@@ -2,6 +2,7 @@
 ## moment (simplereview2 S1-S6, A). Each act is a finger's touch (or the
 ## mouse's, on a desktop) through the app, as simplereview2_probe's.
 ##
+##   godot --path . --resolution 390x844 --script src/dev/simple2_probe.gd
 ##   PROBE_SIZE=390x844 tools/probe.sh simple2_probe -- --pictures=DIR
 ##   PROBE_SIZE=820x1180 tools/probe.sh simple2_probe -- --tablet --pictures=DIR
 ##   PROBE_SIZE=1280x800 tools/probe.sh simple2_probe -- --desktop --pictures=DIR
@@ -17,6 +18,11 @@
 ##             and Delete hidden; back in Full, Full's selection again.
 ##   keys      (a desktop) Delete and Ctrl+D on what Simple chose; with nothing
 ##             chosen, Delete takes nothing.
+##   fingers   (a phone or tablet) two fingers down in Simple and lifted in
+##             Full, and down in Full and lifted in Simple: nothing undone,
+##             and after, a tap still chooses and two fingers tapped still
+##             undo (simplereview2 S5: the lift was the other side's
+##             two-finger tap, and took back the last brick).
 ##   header    Full's header: on a phone, Redo on the bar and, where the
 ##             switch is not, Simple a tile of More; on a desktop every menu
 ##             the row had before the switch, Simple a row of "…" where the
@@ -32,10 +38,10 @@ func _probe_name() -> String:
 
 
 func _run() -> void:
-	if not await _start("offworld,fitone,movedoff,setaside,keys,header"):
+	if not await _start("offworld,fitone,movedoff,setaside,keys,fingers,header"):
 		return
-	for one: String in ["offworld", "fitone", "movedoff", "setaside", "keys", "header"]:
-		if not _cases.has(one) or (one == "keys" and not _desktop):
+	for one: String in ["offworld", "fitone", "movedoff", "setaside", "keys", "fingers", "header"]:
+		if not _cases.has(one) or (one == "keys" and not _desktop) or (one == "fingers" and _desktop):
 			continue
 		print("\n== %s" % one)
 		match one:
@@ -49,6 +55,8 @@ func _run() -> void:
 				await _case_setaside()
 			"keys":
 				await _case_keys()
+			"fingers":
+				await _case_fingers()
 			"header":
 				await _case_header()
 	print("\n%s: %s" % [_probe_name(), "all passed" if _failures == 0 else "%d failed" % _failures])
@@ -227,6 +235,60 @@ func _case_keys() -> void:
 	await _key(KEY_DELETE)
 	_check("...Delete takes off the copy chosen (%d parts)" % _plain_ids().size(),
 		_plain_ids().size() == parts and copy.size() == 1 and _world.get_brick(int(copy[0])) == null)
+
+
+## Two fingers put down under one set of controls and lifted under the
+## other, [param into] first (&"full" or &"simple"): the model and its undo
+## as they were.
+func _fingers_across(into: StringName, back: StringName, at: Vector2) -> void:
+	var t0: String = _text()
+	var depth: int = _builder.history_depth()
+	var step := Vector2(Phone.px(root, 60.0), 0.0)
+	_touch(0, at, true)
+	_touch(1, at + step, true)
+	await _frames(3)
+	_main.call("use_controls", into)
+	await _frames(3)
+	_touch(0, at, false)
+	_touch(1, at + step, false)
+	await _frames(4)
+	_check("two fingers down, the switch into %s, lifted there: nothing undone (%d steps, was %d)"
+		% [into, _builder.history_depth(), depth], _text() == t0 and _builder.history_depth() == depth)
+	_main.call("use_controls", back)
+	await _frames(6)
+	await _settle()
+
+
+func _case_fingers() -> void:
+	await _fresh()
+	var a: int = await _put("3001", 4, _base_point(0.0, 0.0))
+	await _seat_done()
+	if not _check("a 2 x 4 down", a != 0):
+		return
+	_builder.clear_selection()
+	await _frames(2)
+	await _fingers_across(&"full", &"simple", _empty_point())
+	await _tap_at(_top_point(a))
+	await _frames(3)
+	_check("...back in Simple a tap chooses the brick (%s)" % str(_builder.selection.keys()),
+		_builder.selection.size() == 1 and _builder.selection.has(a))
+	_builder.clear_selection()
+	_main.call("use_controls", &"full")
+	await _frames(6)
+	await _fingers_across(&"simple", &"simple", _empty_point())
+	await _tap_at(_top_point(a))
+	await _frames(3)
+	_check("...in Simple after, a tap chooses the brick (%s)" % str(_builder.selection.keys()),
+		_builder.selection.size() == 1 and _builder.selection.has(a))
+	_builder.clear_selection()
+	await _frames(2)
+	var before: String = _text()
+	var at: Vector2 = _empty_point()
+	await _fingers_down_up([at, at + Vector2(Phone.px(root, 40.0), 0.0)])
+	_check("...and two fingers tapped in Simple still undo the brick", _text() != before and _world.get_brick(a) == null)
+	await _press_button("redo")
+	await _frames(3)
+	_check("...Redo: back, byte for byte", _text() == before)
 
 
 func _case_header() -> void:

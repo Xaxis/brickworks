@@ -3739,7 +3739,7 @@
       "id": "cli:simple2 probe",
       "kind": "cli",
       "entry": "src/dev/simple2_probe.gd",
-      "reach": "PROBE_SIZE=390x844 tools/probe.sh simple2_probe -- [--tablet] [--desktop] [--case=offworld,fitone,movedoff,setaside,keys,header] --pictures=DIR   (windowed; Simple's world, what it acts on, Full's header with Simple in More or \"\u2026\")",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simple2_probe -- [--tablet] [--desktop] [--case=offworld,fitone,movedoff,setaside,keys,fingers,header] --pictures=DIR   (windowed; Simple's world, what it acts on, fingers across the switch, Full's header with Simple in More or \"\u2026\")",
       "area": "building",
       "tests": []
     },

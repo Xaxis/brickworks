@@ -4126,19 +4126,23 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   on a part, else nothing goes down and "Put it on the plate or on a brick";
   first framing, Fit and the far cap from it); and one reset of the moment
   (`reset`: the tray's choice, a ghost, a move, fingers, a half-made
-  gesture), run going in and out, on every open and New, and by Escape
-  before Full's ladder. `Main._hover_again` aims nothing in Simple. Where
+  gesture, and the camera's fingers by `CadCamera.let_go_of_fingers`, so two
+  fingers put down on one side of the switch and lifted on the other are
+  nobody's tap and undo nothing), run going in and out, on every open and
+  New, and by Escape before Full's ladder. `Main._hover_again` aims nothing in Simple. Where
   Full's header has no room for Simple | Full (a phone 390 across, a narrow
   window, a long language), the switch is put away rather than take Redo or
   fold a menu, and Simple is a tile of More or a row of "…"
   (`Shell` command `simple_mode`, `ModelBar.switch_folded`).
 - `simple2 probe` (`src/dev/simple2_probe.gd`; `PROBE_SIZE=390x844
   tools/probe.sh simple2_probe -- --pictures=DIR`, `--tablet` at 820x1180,
-  `--desktop` at 1280x800; `--case=offworld,fitone,movedoff,setaside,keys,header`):
+  `--desktop` at 1280x800; `--case=offworld,fitone,movedoff,setaside,keys,fingers,header`):
   drops let go off the plate put nothing down and say why, a tap off it
   shows no ghost; Fit after one brick keeps the plate whole; a brick dragged
   off the plate goes back, no step, still chosen; Full's selection set aside
-  in Simple and back in Full; Delete and Ctrl+D on what Simple chose; Full's
+  in Simple and back in Full; Delete and Ctrl+D on what Simple chose; two
+  fingers across the switch either way undo nothing, and after it a tap
+  still chooses and two fingers tapped still undo; Full's
   header keeps Redo and every menu it had, Simple in More or "…", in
   en/de/fr/es. Runs on `simplereview2_probe`'s start (`_start`).
 - `simplep1 probe` (`src/dev/simplep1_probe.gd`; `PROBE_SIZE=390x844

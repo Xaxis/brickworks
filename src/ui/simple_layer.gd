@@ -644,7 +644,12 @@ func reset(frame_too: bool = false) -> void:
 	_tray_dragging = false
 	_tray_travel = 0.0
 	_foot_tile = null
+	# The fingers down: neither Simple's nor the camera's from here, so a
+	# gesture begun under one set of controls is not read under the other.
 	_touches.clear()
+	var camera: CadCamera = app.get("_camera")
+	if camera != null:
+		camera.let_go_of_fingers()
 	_moved_from.clear()
 	if _bin != null:
 		_bin.modulate = Color.WHITE

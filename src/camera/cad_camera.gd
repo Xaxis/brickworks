@@ -495,6 +495,26 @@ var _not_mine: Dictionary = {}
 var _left_to_app: int = 0
 
 
+## The fingers down now are no longer the camera's: whatever they began (a
+## turn, a pinch, a two- or three-finger tap) ends here, and their lift does
+## nothing. For controls swapped under them (SimpleLayer.reset): two fingers
+## put down in Simple and lifted in Full were Full's two-finger tap, and
+## undid the last brick (simplereview2 S5).
+func let_go_of_fingers() -> void:
+	if _touches.is_empty():
+		return
+	for index: int in _touches:
+		_not_mine[index] = true
+	_touches.clear()
+	_end(_doing_with)
+	_gesture_most = 0
+	_gesture_still = false
+	_was_tap = false
+	_spread = 0.0
+	_tap_up_ms = -1000000
+	_fingers_changed()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var touch: InputEventScreenTouch = event
@@ -504,7 +524,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			# A tap on a bar between two on the model is not a double tap.
 			_tap_up_ms = -1000000
 			return
-		if phone and not touch.pressed and _not_mine.has(touch.index):
+		# A finger of a number let go of whose lift went elsewhere: the new
+		# one is a new finger, the camera's.
+		if touch.pressed:
+			_not_mine.erase(touch.index)
+		elif _not_mine.has(touch.index):
 			_not_mine.erase(touch.index)
 			return
 		if touch.pressed:
