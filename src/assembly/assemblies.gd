@@ -2820,7 +2820,12 @@ func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 	anchors.sort_custom(func(x: Dictionary, y: Dictionary) -> bool:
 		return (by_part.get(x["part"], []) as Array).size() \
 			< (by_part.get(y["part"], []) as Array).size())
-	var half := Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
+	# Exactly: Basis(Vector3.UP, PI) is sin(PI) off square, 9e-8, and a copy
+	# laid on its first by it was written so, beside a first mirrored back
+	# whose parts stand turned a half on themselves: "1 16 0 0 300 1 0
+	# -0.00000009 0 1 0 0.00000009 0 1" for a line nobody touched (mirrorfix,
+	# mirrorreview F3).
+	var half := Transform3D(Basis(Vector3(-1, 0, 0), Vector3.UP, Vector3(0, 0, -1)), Vector3.ZERO)
 	var tried: int = 0
 	# Every part laid in its colour, some only filling the cells their
 	# match fills: only a way laying each turned as it is can do better,
@@ -3729,11 +3734,19 @@ func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) 
 	# where it stands, a wing placed by a mirror whose plate and brick stand
 	# at its middle said a frame that does not mirror, beside its other copy:
 	# the wing was written again from the other hand, every reference and
-	# the 3003 off its middle with it (mirrorsave, wingfix2 N1).
+	# the 3003 off its middle with it (mirrorsave, wingfix2 N1). And one
+	# whose line is no one's now ([method line_of]: swapped by Find and
+	# Replace or Use what I own) says nothing, as a part moved out of its
+	# copy says nothing: voted where it stands, in its reflection, three
+	# 3065s put for a mirrored wing's 3004s outvoted its plate and brick, and
+	# the wing was written from the other hand again (mirrorreview F2).
 	var placed_at: Transform3D = brick.transform
-	var as_read: Array = (votes["read_as"] as Dictionary).get(origin, [])
-	if not as_read.is_empty() and str(as_read[0]) == brick.part_id:
-		placed_at = brick.transform * (as_read[1] as Transform3D)
+	var read_as: Dictionary = votes["read_as"]
+	if read_as.has(origin):
+		var line: Array = line_of(read_as, origin, brick.part_id)
+		if line.is_empty():
+			return
+		placed_at = brick.transform * (line[0] as Transform3D)
 	var local := Transform3D.IDENTITY
 	var boxes: Dictionary = votes["box"]
 	var said: Dictionary = votes["said"]
@@ -3844,49 +3857,73 @@ static func _figure_frame(figures: Dictionary, path: String) -> Transform3D:
 	return Transform3D.IDENTITY
 
 
-## A part read from a mirrored reference, made one that can be built: its
-## other hand where it has one, where its reflection is. A number the
-## library moved (41770 to 41770a) as the part it moved to, where its stub
-## puts it (PartLibrary.moved_by): named "Moved to 41770a", it had no other
-## hand, and a mirrored copy's left wedge plate came back a left one turned,
-## not the right one (copyfaults3). And in the colour its stub draws it in,
-## where it gives one (ModelStore.as_moved): 86037a's 4548064b white in a
-## mirrored copy as its 4548064a is in a plain one (mvfix).
-## Each part written in the section of a copy written as a definition in a
-## frame that reflects ([method file_frames]: the frame the file placed it
-## in, by a mirror, where it is its definition's first copy the file framed
-## or one that went its own way) made the line that frame places where it
-## stands: the part its line named, as the line had it ([param read_as],
-## ModelStore._as_placed's), or for one put down since, its reflection's
-## reflection (Mirror.image, which gives a part mirrored back as it was).
-## Written as they stand, in their reflection (unmirror), each part's line in
-## the section would reflect. [param placements] are changed in place, in the
-## file's coordinates, as [param instances]' frames are; the part names
-## written that were not the parts', returned.
-static func mirrored_back(placements: Array, instances: Dictionary, unit_steps: Dictionary,
+## The line [param read_as] ([member BrickWorld.kept_lines]' "read_as",
+## ModelStore._as_placed's) has for the part put down from [param origin],
+## while it is still that part's: [the turn and shift from where the part
+## stands to where its line puts it, in the part's own axes; the part the
+## line names], or [] where it has none, or none now. A record holds while
+## the part there is the one it was put down as: in its own axes, it moves,
+## turns and is recoloured with the part, and the Mirror tool mirrors it with
+## the part (Builder._lines_mirrored). A part swapped for another (Find and
+## Replace, Use what I own, a session's replace_parts) keeps its origin, not
+## its line: the line names what was there.
+static func line_of(read_as: Dictionary, origin: String, part_id: String) -> Array:
+	var record: Array = read_as.get(origin, [])
+	if record.is_empty() or str(record[0]) != part_id:
+		return []
+	return [record[1], record[2]]
+
+
+## Each part written in the section of a copy written as a definition
+## ([method file_frames]'s "master"s) made the line its section has for it
+## in the frame the copy is written in. Where the part's line still holds
+## ([method line_of]) and does not mirror in that frame (the line's hand is
+## the frame's), the part its line named as the line placed it, whatever the
+## frame's hand: a copy placed by a mirror (mirrorsave), and one a Mirror of
+## the tool left turned rather than mirrored, its parts standing as the
+## Mirror's image of their reflections (a symmetric plate turned a half on
+## itself). Written as they stood there, every line of such a wing went out
+## turned half round, "1 1 0 -8 0 -1 0 0 0 1 0 0 0 -1 3034.dat" for the
+## file's "1 1 0 -8 0 1 0 0 0 1 0 0 0 1 3034.dat" (mirrorreview F1). In a
+## frame that does not reflect the line is the part's only where it names
+## the part as it stands: a number the library moved (41770, put down as
+## 41770a) goes out as the number it moved to, as a plain copy's always has.
+## Otherwise, in a frame that reflects, the part's reflection's reflection
+## (Mirror.image, which gives a part mirrored back as it was): written as it
+## stands, in its reflection (unmirror), its line in the section would
+## reflect. In one that does not, as it stands. [param placements] are
+## changed in place, in the file's coordinates, as [param instances]' frames
+## are; the part names written that were not the parts', returned.
+static func as_lined(placements: Array, instances: Dictionary, unit_steps: Dictionary,
 		read_as: Dictionary, library: PartLibrary) -> PackedStringArray:
 	var frames: Dictionary = {}
+	var reflecting: bool = false
 	for path: String in instances:
 		var entry: Dictionary = instances[path]
-		if bool(entry.get("master", false)) \
-				and (entry["frame"] as Transform3D).basis.determinant() < 0.0:
+		if bool(entry.get("master", false)):
 			frames[path] = entry["frame"]
+			reflecting = reflecting or (entry["frame"] as Transform3D).basis.determinant() < 0.0
 	var named := PackedStringArray()
-	if frames.is_empty():
+	if frames.is_empty() or read_as.is_empty() and not reflecting:
 		return named
 	for item: Variant in placements:
 		var placement: LdrModel.Placement = item
+		# A part with no line kept is written as it stands in a frame that
+		# does not reflect: the one test most parts stop at.
+		if not reflecting and not read_as.has(placement.origin):
+			continue
 		var home: String = LdrModel._home_in(placement.unit, unit_steps)
 		if not frames.has(home):
 			continue
+		var frame: Transform3D = frames[home]
+		var reflects: bool = frame.basis.determinant() < 0.0
 		var was: String = placement.part_id
-		var as_read: Array = read_as.get(placement.origin, [])
-		if not as_read.is_empty() and str(as_read[0]) == placement.part_id \
-				and (as_read[1] as Transform3D).basis.determinant() < 0.0:
-			placement.transform = placement.transform * (as_read[1] as Transform3D)
-			placement.part_id = str(as_read[2])
-		else:
-			var frame: Transform3D = frames[home]
+		var line: Array = line_of(read_as, placement.origin, placement.part_id)
+		if not line.is_empty() and ((line[0] as Transform3D).basis.determinant() < 0.0) == reflects \
+				and (reflects or str(line[1]) == placement.part_id):
+			placement.transform = placement.transform * (line[0] as Transform3D)
+			placement.part_id = str(line[1])
+		elif reflects:
 			var image: Dictionary = Later.script(&"Mirror").image(library, placement.part_id,
 				(frame * LdrModel.REFLECT_X).affine_inverse() * placement.transform, 0, 0.0)
 			placement.part_id = image["part"]
@@ -3896,6 +3933,14 @@ static func mirrored_back(placements: Array, instances: Dictionary, unit_steps: 
 	return named
 
 
+## A part read from a mirrored reference, made one that can be built: its
+## other hand where it has one, where its reflection is. A number the
+## library moved (41770 to 41770a) as the part it moved to, where its stub
+## puts it (PartLibrary.moved_by): named "Moved to 41770a", it had no other
+## hand, and a mirrored copy's left wedge plate came back a left one turned,
+## not the right one (copyfaults3). And in the colour its stub draws it in,
+## where it gives one (ModelStore.as_moved): 86037a's 4548064b white in a
+## mirrored copy as its 4548064a is in a plain one (mvfix).
 static func unmirror(placement: LdrModel.Placement, library: PartLibrary) -> void:
 	var real: String = library.resolve(placement.part_id)
 	var local: Transform3D = placement.local

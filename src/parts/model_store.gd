@@ -2329,8 +2329,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 ## turn and shift that take it to where its line puts it (in its own axes,
 ## so it holds wherever the part is moved), the part its line names]: a
 ## mirrored copy's part in its reflection, a retired number moved. A whole
-## write reads a copy's frame, and writes the lines of a copy placed by a
-## mirror, by those (Assemblies._read_vote, Assemblies.mirrored_back).
+## write reads a copy's frame, and writes the lines of the copy a section is
+## written from, by those while each holds (Assemblies._read_vote,
+## Assemblies.as_lined, Assemblies.line_of).
 static func _as_placed(flattened: Array, library: PartLibrary, authored: bool,
 		read_as: Dictionary = {}) -> Dictionary:
 	var mirrored_lines: Dictionary = {}
@@ -4381,13 +4382,15 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		var kept: Dictionary = _live_source().kept_keys(waiting, origins)
 		if not kept.is_empty():
 			known = known.merged(kept)
-	# A sub-model written from a copy the file placed by a mirror, in the
-	# frame the file gave it (Assemblies.file_frames): its parts as their
-	# lines have them, not their reflections (Assemblies.mirrored_back).
-	var named: PackedStringArray = Assemblies.mirrored_back(placements, instances, unit_steps,
+	# A sub-model written in the frame the file gave its copy
+	# (Assemblies.file_frames): its parts as their lines have them, not their
+	# reflections, nor the Mirror tool's images of them (Assemblies.as_lined).
+	var named: PackedStringArray = Assemblies.as_lined(placements, instances, unit_steps,
 		world.kept_lines.get("read_as", {}), library)
 	if not named.is_empty():
 		embedded.merge(_part_files(Array(named)))
+	# And bottom to top as it stands in that frame (_in_own_heights).
+	placements = _in_own_heights(placements, instances, unit_steps)
 	# One list of each section's steps, from the parts as they are written,
 	# what has not arrived and what the catalogue has not got among them: the
 	# writer writes those, and the booklet's looks go on them
@@ -5415,6 +5418,46 @@ func save_as_paced(name: String, job: Working.Job, over: bool = false) -> bool:
 		saved.emit(name)
 		return true
 	return false
+
+
+## [param placements] ([method _in_file_order]'s) with the parts of each
+## section written from a copy not standing upright ([param instances]'
+## "master"s, Assemblies.file_frames) bottom to top in that copy's frame, as
+## the section stands, each in a place one of them had: a sub-model is built
+## the same whichever of its copies it is written from. By the window's
+## heights, a wing whose first copy was placed upside down ("1 16 0 0 0 1 0
+## 0 0 -1 0 0 0 1") was listed top first, its plate after its bricks, and
+## the app's own file saved unedited was not the file (mirrorreview F4).
+## Upright, turned on the ground or mirrored, a section's heights are the
+## window's less one number, and nothing moves.
+static func _in_own_heights(placements: Array, instances: Dictionary,
+		unit_steps: Dictionary) -> Array:
+	var frames: Dictionary = {}
+	for path: String in instances:
+		var entry: Dictionary = instances[path]
+		var frame: Transform3D = entry["frame"]
+		if bool(entry.get("master", false)) \
+				and not (frame.basis.y.normalized()).is_equal_approx(Vector3.UP):
+			frames[path] = frame.affine_inverse()
+	if frames.is_empty():
+		return placements
+	var slots: Dictionary = {}
+	for n: int in placements.size():
+		var home: String = LdrModel._home_in((placements[n] as LdrModel.Placement).unit, unit_steps)
+		if frames.has(home):
+			(slots.get_or_add(home, []) as Array).append(n)
+	var ordered: Array = placements.duplicate()
+	for home: String in slots:
+		var at: Array = slots[home]
+		var keys: Array = []
+		for n: int in at:
+			var placement: LdrModel.Placement = placements[n]
+			var own: Transform3D = (frames[home] as Transform3D) * placement.transform
+			keys.append([placement.step, roundi(own.origin.y * 1000.0), n])
+		keys.sort()
+		for k: int in keys.size():
+			ordered[int(at[k])] = placements[int((keys[k] as Array)[2])]
+	return ordered
 
 
 ## [param placements] in the order a file lists them: by step, then height,

@@ -500,9 +500,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   own lines stay the file's whatever copy comes first: each copy's frame is
   read from where each part's line puts it (ModelStore._as_placed's
   read_as), not where its reflection stands, a section written from a
-  mirrored copy writes each part as its line had it
-  (Assemblies.mirrored_back), and the Mirror tool carries the record, so a
-  copy mirrored in place changes only the line placing it), `exactsave` (a model reopens
+  copy writes each part as its line had it in either hand while the line
+  holds (Assemblies.as_lined, Assemblies.line_of: a part swapped by Find and
+  Replace says nothing of its copy's frame), and the Mirror tool carries the
+  record, so a copy mirrored in place changes only the line placing it;
+  `mirrorreview` runs mirrors on y and z, mirrored-and-turned copies, parts
+  on the plane, a mirror in a mirror, Find and Replace, paste, undo/redo and
+  Claude's mirror_parts, both forms), `exactsave` (a model reopens
   exactly: a whole write keeps each copy's frame as the file read it, not
   one fitted to its parts, and mirrors only where the file does; a paste of
   copies of the file's own sub-models is a patch, one line placing each

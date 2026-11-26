@@ -2561,7 +2561,12 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 ## reflect]: the turn from the part put down to where its line puts it, that
 ## place mirrored, so a part put down otherwise than its line (a mirrored
 ## copy's reflection) or as it (a plain copy's) is read where the mirror
-## takes its line. {} where no part of it has a line.
+## takes its line. {} where no part of it has a line. One whose line is no
+## one's now (Assemblies.line_of: swapped since) stays so, named for no part:
+## taken for a line where it stands, a swapped part of a mirrored copy said
+## the reflection of its copy's frame once mirrored back; and kept as it
+## was, the mirror of a handed part swapped for its other hand put down the
+## part the record names again, and the record held for it.
 func _lines_mirrored(plan: Array, reflect: Transform3D) -> Dictionary:
 	var read_as: Dictionary = world.kept_lines.get("read_as", {})
 	var out: Dictionary = read_as.duplicate()
@@ -2571,12 +2576,16 @@ func _lines_mirrored(plan: Array, reflect: Transform3D) -> Dictionary:
 		var made: BrickWorld.Brick = world.get_brick(int(item.get("made", 0)))
 		if made == null or brick.origin.is_empty():
 			continue
-		var had: Array = read_as.get(brick.origin, [])
 		var turn := Transform3D.IDENTITY
 		var named: String = brick.part_id
-		if not had.is_empty() and str(had[0]) == brick.part_id:
-			turn = had[1]
-			named = str(had[2])
+		if read_as.has(brick.origin):
+			var line: Array = Assemblies.line_of(read_as, brick.origin, brick.part_id)
+			if line.is_empty():
+				out[brick.origin] = ["", Transform3D.IDENTITY, ""]
+				changed = true
+				continue
+			turn = line[0]
+			named = str(line[1])
 		out[brick.origin] = [made.part_id,
 			made.transform.affine_inverse() * reflect * brick.transform * turn, named]
 		changed = true
