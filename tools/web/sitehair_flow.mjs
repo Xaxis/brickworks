@@ -39,7 +39,6 @@ import { HAIR, PLAIN } from "../../web/minifig-parts.js";
 import { idOf } from "../../api/_moulds.js";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -156,9 +155,8 @@ async function studio() {
     // The desktop studio, headless, signed in as Ada against this relay:
     // its own save sends the mould (src/dev/sitehair_probe.gd).
     const file = path.join(out, "studio_mould.dat");
-    const ran = spawnSync("bash", ["tools/probe.sh", "sitehair_probe"], { cwd: work, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, BRICKWORKS_API: site, BW_PROBE_TOKEN: ada.access_token, BW_PROBE_USER: ada.kept.user_id,
-        BW_MOULD_OUT: file, PROBE_TIMEOUT: "900" } });
+    const { runStudioProbe } = await import("./sitehair_studio.mjs");
+    const ran = runStudioProbe({ work, site, token: ada.access_token, user: ada.kept.user_id, file });
     writeFileSync(path.join(out, "sitehair_probe.log"), `${ran.stdout}\n${ran.stderr}`);
     const said = String(ran.stdout).split("\n").filter((line) => /^(PASS|FAIL) /.test(line));
     for (const line of said) console.log(`        studio: ${line}`);

@@ -3041,7 +3041,9 @@ plan with Claude as the client.
   emoji kept; Remove in the maker at 390 (one not worn) and 1280 (the worn
   one: figure and saved avatar on 3901, the maker opens whole again). `beside_1280.png`/`beside_390.png` put
   each picture beside the studio's. On a relay (no web build), `--mould=FILE`
-  keeps the text `src/dev/sitehair_probe.gd` wrote (`BW_MOULD_OUT`).
+  keeps the text `src/dev/sitehair_probe.gd` wrote (`BW_MOULD_OUT`), and
+  `--probe` runs that probe as the studio (`tools/web/sitehair_studio.mjs`,
+  apart so the preview's check starts no engine: ENGINE_CHECKS).
 - `minifig avatar layers` (`tools/web/minifig_layers.mjs`): every layer of
   `MINIFIG` drawn by three.js from the parts' `.lbm` on SwiftShader, the
   other layers' parts there in depth alone; run it (under `heavy`, with
