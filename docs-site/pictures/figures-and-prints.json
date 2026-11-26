@@ -20,6 +20,48 @@
    ]
   },
   {
+   "id": "figures-mould",
+   "source": "app",
+   "setup": [
+    {
+     "run": "minifig",
+     "after": 240
+    },
+    {
+     "call": "_figures._choose_slot",
+     "args": [
+      "headwear"
+     ],
+     "after": 30
+    },
+    {
+     "call": "_figures._open_mould_editor",
+     "after": 60
+    },
+    {
+     "call": "_figures._mould_editor.turn_to",
+     "args": [
+      0.6,
+      0.3,
+      90.0
+     ],
+     "after": 30
+    },
+    {
+     "frames": 60
+    }
+   ],
+   "crop": "_figures._mould_editor",
+   "pad": 0,
+   "settle": 60,
+   "alt": "Make a mould on a minifigure's hair: the brushes down the left (Pull, Push, Grow, Shrink, Smooth, Pinch, Flatten and Grab), Size and Strength, Symmetry on, and the hair on the figure's head in the middle, with Start from, Dome, Club, its name and Save mould along the top.",
+   "caption": "Headgear › Make a mould…: the hair shaped on the figure's own head, every stroke one step of Undo.",
+   "features": [
+    "ui:mould maker",
+    "lib:custom moulds"
+   ]
+  },
+  {
    "id": "figures-print",
    "source": "app",
    "setup": [

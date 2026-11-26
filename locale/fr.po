@@ -8318,6 +8318,157 @@ msgstr "Sélectionnez une pièce pour voir ses versions imprimées ; des pièce
 msgid "%s has no printed or stickered versions in the library"
 msgstr "%s n'a pas de versions imprimées ou avec autocollant dans la bibliothèque"
 
+# The mould maker (Make a mould…): its brushes and tips, its words for a desk and a finger, and what it keeps while a mould is made (figmould)
+msgid "Pull"
+msgstr "Tirer"
+
+msgid "Push"
+msgstr "Pousser"
+
+msgid "Smooth"
+msgstr "Lisser"
+
+msgid "Pinch"
+msgstr "Pincer"
+
+msgid "Flatten"
+msgstr "Aplatir"
+
+msgid "Grab"
+msgstr "Saisir"
+
+msgid "Draw the surface out towards you"
+msgstr "Tirer la surface vers vous"
+
+msgid "Press the surface in"
+msgstr "Enfoncer la surface"
+
+msgid "Grow it: swell where the brush is, each point straight out"
+msgstr "Grossir : renfler sous le pinceau, chaque point droit vers l'extérieur"
+
+msgid "Shrink it: slim where the brush is, each point straight in"
+msgstr "Réduire : amincir sous le pinceau, chaque point droit vers l'intérieur"
+
+msgid "Even out bumps and ridges"
+msgstr "Égaliser les bosses et les arêtes"
+
+msgid "Draw the surface together into a crease or a ridge"
+msgstr "Resserrer la surface en un pli ou une arête"
+
+msgid "Flatten it to the plane under the brush"
+msgstr "L'aplatir sur le plan sous le pinceau"
+
+msgid "Take hold of it and drag it about"
+msgstr "La saisir et la déplacer"
+
+msgid "Dome"
+msgstr "Dôme"
+
+msgid "Club"
+msgstr "Massue"
+
+msgid "Save mould"
+msgstr "Enregistrer le moule"
+
+msgid "Size (LDU)"
+msgstr "Taille (LDU)"
+
+msgid "Symmetry"
+msgstr "Symétrie"
+
+msgid "Lattice"
+msgstr "Treillis"
+
+msgid "Check walls"
+msgstr "Vérifier les parois"
+
+msgid "Finer"
+msgstr "Plus fin"
+
+msgid "Brush strength"
+msgstr "Force du pinceau"
+
+msgid "The part being shaped"
+msgstr "La pièce en cours de modelage"
+
+msgid "A part number, or dome (to wear) or club (to hold)"
+msgstr "Un numéro de pièce, ou dome (à porter) ou club (à tenir)"
+
+msgid "Start again from this part (Undo goes back)"
+msgstr "Recommencer à partir de cette pièce (Annuler revient en arrière)"
+
+msgid "A plain cap to wear, with a hair piece's socket"
+msgstr "Une calotte simple à porter, avec l'emboîtement d'une chevelure"
+
+msgid "A plain bar to hold with a ball on the end, held where a sword is"
+msgstr "Une barre simple à tenir avec une boule au bout, tenue là où l'est une épée"
+
+msgid "Make the part, keep it, and put it on the figure"
+msgstr "Fabriquer la pièce, la garder et la mettre sur la figurine"
+
+msgid "Back to the figure; the mould is kept as it is for next time"
+msgstr "Retour à la figurine ; le moule est gardé tel quel pour la prochaine fois"
+
+msgid "How far the brush reaches, in LDU (2.5 to a millimetre)"
+msgstr "La portée du pinceau, en LDU (2,5 par millimètre)"
+
+msgid "Every stroke on both sides of the part's middle"
+msgstr "Chaque trait des deux côtés du milieu de la pièce"
+
+msgid "27 handles round the part: drag one to bend the whole part"
+msgstr "27 poignées autour de la pièce : faites-en glisser une pour courber toute la pièce"
+
+msgid "Mark in red where the part is thinner than 1 mm"
+msgstr "Marquer en rouge là où la pièce fait moins de 1 mm d'épaisseur"
+
+msgid "More corners where the surface is coarse, for finer detail (Undo takes it back)"
+msgstr "Plus de sommets là où la surface est grossière, pour plus de détail (Annuler le retire)"
+
+msgid "Take the last stroke back (%s)"
+msgstr "Annuler le dernier trait (%s)"
+
+msgid "Put it back (%s)"
+msgstr "Le remettre (%s)"
+
+msgid "Drag on the part to sculpt, off it to turn it; wheel to come closer. Blue is its connection, which stays as it is."
+msgstr "Faites glisser sur la pièce pour la sculpter, à côté pour la tourner ; la molette pour vous rapprocher. Le bleu est sa liaison, qui reste telle quelle."
+
+msgid "Drag on the part to sculpt, off it to turn it; two fingers turn it, and pinch to come closer. Blue is its connection, which stays as it is."
+msgstr "Faites glisser sur la pièce pour la sculpter, à côté pour la tourner ; deux doigts la tournent, et pincez pour vous rapprocher. Le bleu est sa liaison, qui reste telle quelle."
+
+msgid "That part has no geometry to sculpt."
+msgstr "Cette pièce n'a pas de géométrie à sculpter."
+
+msgid "Make a mould from %s"
+msgstr "Faire un moule à partir de %s"
+
+msgid "Make a mould from your %s"
+msgstr "Faire un moule à partir de votre pièce « %s »"
+
+msgid "Your %s, to shape further. Saved, it is a new part; the one before stays."
+msgstr "Votre pièce « %s », à façonner encore. Enregistrée, c'est une nouvelle pièce ; la précédente reste."
+
+msgid "Your mould from before, as you left it. Start begins again from %s; Undo goes back to it."
+msgstr "Votre moule de tout à l'heure, tel que vous l'avez laissé. Commencer repart de %s ; Annuler y revient."
+
+msgid "Your mould from before could not be read back, so this begins again from %s."
+msgstr "Votre moule de tout à l'heure n'a pas pu être relu, alors celui-ci repart de %s."
+
+msgid "Your mould could not be kept: there is no room on the disk."
+msgstr "Votre moule n'a pas pu être gardé : il n'y a plus de place sur le disque."
+
+msgid "%s has %s triangles, and the maker shapes parts of up to %s."
+msgstr "%s a %s triangles, et on ne peut façonner ici que des pièces d'au plus %s."
+
+msgid "%s has more than %s corners, more than a part of at most %s triangles could use: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s a plus de %s sommets, plus qu'une pièce d'au plus %s triangles ne peut en utiliser : réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
+
+msgid "Building the mould…"
+msgstr "Construction du moule…"
+
+msgid "%d triangles · about %d kB in a file"
+msgstr "%d triangles · environ %d ko dans un fichier"
+
 # The part maker: its families, sizes and studs, and the line saying what the part is, its pieces where ", " lists them
 msgid "Make a part"
 msgstr "Créer une pièce"
@@ -17634,6 +17785,9 @@ msgstr "%s n'est pas un fichier 3D dont on peut faire une pièce ici : choisisse
 
 msgid "%s has %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
 msgstr "%s a %s triangles. Une pièce peut en avoir au plus %s : réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
+
+msgid "%s has at least %s triangles. A part can be made from at most %s: reduce it in your 3D program first (Blender's Decimate modifier does it)."
+msgstr "%s a au moins %s triangles. Une pièce peut en avoir au plus %s : réduisez-le d'abord dans votre logiciel 3D (le modificateur Decimate de Blender le fait)."
 
 msgid "%s has no size: its points are all in one place, on one line or one flat sheet."
 msgstr "%s n'a pas de taille : ses points sont tous au même endroit, sur une ligne ou sur une feuille plate."

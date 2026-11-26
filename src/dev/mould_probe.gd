@@ -91,7 +91,7 @@ func _initialize() -> void:
 			mirrored = true
 	_ok(moved > 50 and furthest > 3.0, "pulled: %d corner moves, up to %.1f LDU" % [moved, furthest])
 	_ok(mirrored, "with symmetry the other side came too")
-	for tool: String in ["push", "inflate", "smooth", "pinch", "flatten"]:
+	for tool: String in ["push", "inflate", "shrink", "smooth", "pinch", "flatten"]:
 		for at: Vector3 in [Vector3(14, -4, 0), Vector3(0, 6, 0), Vector3(-10, -10, -10)]:
 			var hit: Dictionary = hair.pick(at * 4.0, -at.normalized())
 			if not hit.is_empty():
@@ -126,6 +126,7 @@ func _initialize() -> void:
 	_ok(hair.positions != sculpted, "undo takes the last change back")
 	hair.redo()
 	_ok(hair.positions == sculpted, "and redo puts it back")
+	_steps(hair)
 
 	print("\nmade into a part")
 	var made: Dictionary = hair.make(_library, "Probe Quiff")
@@ -251,6 +252,64 @@ func _initialize() -> void:
 
 ## A made part's connectors are the original's: the same kinds, places
 ## and directions, to the float.
+## Every step comes back exactly (figmould): Finer's corners and triangles,
+## a lattice handle's drag, a stroke a second finger took back; and the mould
+## kept as a draft comes back whole, a draft cut short is refused.
+func _steps(hair: Mould) -> void:
+	print("\nevery step back exactly, and kept while it is made")
+	var corners: PackedVector3Array = hair.positions.duplicate()
+	var faces: PackedInt32Array = hair.triangles.duplicate()
+	var locks: PackedFloat32Array = hair.locks.duplicate()
+	var shrunk: Dictionary = hair.pick(Vector3(0, 0, -60), Vector3(0, 0, 1))
+	if not shrunk.is_empty():
+		hair.begin()
+		hair.dab("shrink", shrunk["at"], shrunk["normal"], 9.0, 1.0, true)
+	var behind: float = 0.0
+	for v: int in hair.positions.size():
+		behind = maxf(behind, corners[v].distance_to(hair.positions[v]))
+	_ok(behind > 0.1, "shrink draws the back in (%.2f LDU)" % behind)
+	hair.undo()
+	var finer: int = hair.refine(Mould.FINEST)
+	_ok(finer > faces.size() / 3, "finer again: %d triangles to %d" % [faces.size() / 3, finer])
+	hair.undo()
+	_ok(hair.positions == corners and hair.triangles == faces and hair.locks == locks,
+		"undo after finer: every corner, triangle and lock as it was (%d corners)"
+			% hair.positions.size())
+	hair.redo()
+	_ok(hair.triangle_count() == finer, "redo makes it finer again")
+	hair.undo()
+	hair.lattice_begin()
+	hair.begin()
+	hair.lattice_move(26, hair.lattice_handles()[26] + Vector3(3, 4, 3), true)
+	var bent: PackedVector3Array = hair.positions.duplicate()
+	hair.begin()
+	hair.lattice_move(0, hair.lattice_handles()[0] + Vector3(-3, -2, -3), true)
+	hair.undo()
+	_ok(hair.positions == bent, "a lattice handle's drag is one step: undo takes back the last alone")
+	hair.undo()
+	_ok(hair.positions == corners, "and the one before it")
+	hair.lattice_end()
+	var steps: int = hair._undo.size()
+	var top: Dictionary = hair.pick(Vector3(0, 60, 0), Vector3.DOWN)
+	hair.begin()
+	if not top.is_empty():
+		hair.dab("pull", top["at"], top["normal"], 9.0, 1.0, true)
+	hair.cancel_stroke()
+	_ok(hair.positions == corners and hair._undo.size() == steps and not hair.can_redo(),
+		"a stroke taken back by a second finger: every corner as it was, no step left of it")
+	var kept: PackedByteArray = var_to_bytes(hair.to_draft())
+	var back: Mould = Mould.from_draft(bytes_to_var(kept))
+	_ok(back != null and back.positions == hair.positions and back.triangles == hair.triangles
+		and back.locks == hair.locks and back.rest == hair.rest and back.base == hair.base
+		and back.connectors == hair.connectors and back.on_head == hair.on_head,
+		"kept as a draft (%d kB) and read back: the same mould to the bit" % (kept.size() / 1024))
+	var whole: Dictionary = hair.to_draft()
+	whole["triangles"] = (whole["triangles"] as PackedInt32Array).slice(0, 7)
+	_ok(Mould.from_draft(whole) == null and Mould.from_draft(bytes_to_var(kept.slice(0, 100))) == null
+		and Mould.from_draft("nothing") == null,
+		"a draft cut short, or not a draft, is refused, never opened half")
+
+
 func _same_connectors(id: String, base: String) -> void:
 	var made: Array = _library.mesh_for(id).connectors
 	var plain: Array = _library.mesh_for(base).connectors

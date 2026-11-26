@@ -259,12 +259,32 @@ the model, and the design assistant doing the same with `add_minifig`.
   the head, the inside turned to the head and within an LDU of it
   (`head_depth`, 3626c's cylinder, rounded top and stud; `head_outward`); fading
   to 0 over 2 LDU (`FADE`). Brushes (`dab`): pull and push along the brush's
-  facing, inflate along each corner's own, smooth to the neighbours, pinch to the
+  facing, inflate (Grow) and shrink along each corner's own normal, out and in,
+  smooth to the neighbours, pinch to the
   middle, flatten to the plane, each weighted by a smoothstep falloff and the
-  corner's freedom; with symmetry the same dab mirrored in X. `grab` and `drag`
+  corner's freedom; with symmetry the same dab mirrored in X. Every step
+  (`begin`) keeps the corners' places, and Finer's (`begin(true)`) the
+  triangles, colours, creases, locks, mirrors and rest too, so Undo after
+  Finer is the mesh before it to the bit; with the lattice on a step keeps
+  its handles, one step a handle's drag (`lattice_begin` is none). Up to
+  figmould Undo after Finer put back fewer corners than the triangles named.
+  `cancel_stroke` takes the last step back with no Redo (a second finger).
+  `to_draft` / `from_draft` keep a mould whole (every array, connectors, grip)
+  for `var_to_bytes`; a draft cut short, mis-sized, out of range or past
+  `MOST_OPENED` (18,000 triangles) is null. A part past `MOST_OPENED`
+  (`triangles_in`, the catalogue's count) is not opened in the maker.
+  `sculpts_on` / `of_made`: a mould or a 3D file's hair made here (its
+  MOULDED_BY or IMPORTED_BY line names a real part) is sculpted on further,
+  standing for that real part (its base and grip), never a chain. `grab` and `drag`
   move what is under the brush with the pointer; the lattice (`lattice_begin`,
   `lattice_move`) is 27 handles round the part bending it by quadratic Bernstein
-  weights, the mirrored handle moved with symmetry. After every change nothing
+  weights, the mirrored handle moved with symmetry. It bends what is there when
+  a step begins (`_lattice_from_here`, in `begin`, after `refine` and on Undo):
+  each corner by the handles' moves since, weighed where it was then, clamped to
+  the box, so a corner a stroke took past it moves no further than a handle.
+  Up to figfix it bent the corners it saw when it was put on: after Finer a drag
+  stopped at the first new corner (a script error, the surface torn), and a
+  brush stroke was undone by the next drag (figreview). After every change nothing
   free is nearer the head than `HEAD_MARGIN` (1 LDU) or than it began
   (`_keep_off_head`). `refine` splits every edge longer than 3.2 LDU (1.6 with
   Finer) not locked at both ends through its middle, the shape unchanged, up to
@@ -279,18 +299,64 @@ the model, and the design assistant doing the same with `add_minifig`.
 - `mould maker` (`src/minifig/mould_editor.gd`, `MouldEditor`): "Make a mould…"
   beside the search in the Headgear, Headgear extra, Neck, Back, In right hand and
   In left hand slots (`MinifigDialog.MOULDED`), opened on the slot's part (3901
-  or 3847 when it is empty, a dome when neither). Start from a part number,
-  Dome or Club; tools Pull, Push, Inflate, Smooth, Pinch, Flatten, Grab; Size
-  (LDU) and Strength; Symmetry (on); Lattice (handles drawn over the part, a
-  handle dragged in the view's plane); Check walls (red under 1 mm, the thinnest
-  said); Finer; Undo and Redo (Ctrl+Z). Drag on the part to sculpt, off it or
-  with the right button to turn it, the wheel to come closer; a ring shows the
-  brush; locked corners are tinted blue and a faint head shows the fit. Save mould
-  builds it ("Building the mould…" said first) and puts it on the figure.
+  or 3847 when it is empty, a dome when neither; a mould or a 3D file's hair the
+  figure wears is opened on itself, "Your mould: Quiff, to shape further").
+  Start from a part number, Dome or Club, each an Undo step: Undo past it goes
+  back into the mould before (`_earlier`, `_later`). Tools Pull, Push, Grow,
+  Shrink, Smooth, Pinch, Flatten, Grab; Size (LDU) and Strength; Symmetry (on);
+  Lattice (handles drawn over the part, a handle dragged in the view's plane, one
+  step a drag); Check walls (red under 1 mm, the thinnest said); Finer (a step);
+  Undo and Redo (Ctrl+Z). Drag on the part to sculpt, off it or with the right
+  button to turn it, the wheel (or a trackpad's pinch and two-finger swipe) to
+  come closer and turn; a ring shows the brush; locked corners are tinted blue
+  and a faint head shows the fit. Under 760 units across (a phone) it is laid out
+  for a finger (`_arrange`, `laid_narrow`): title and Close, the name and Save
+  mould, the part, then the brushes as a row that scrolls and the rest under it,
+  sized by TouchSizing; two fingers turn it and pinch to come closer, and a
+  second finger down while the first sculpts takes that stroke back
+  (`cancel_stroke`). The mould is kept for the tab (`TabSession.path("moulds/
+  <slot>.draft")`, or `MouldEditor.drafts`) after every stroke, Finer, Undo,
+  start and close, and a typed name 0.4 s after; Make a mould… in that slot
+  opens on it ("Your mould from before, as you left it…") until Save mould,
+  which lets it go. Nothing of the person's in it (opened and closed untouched)
+  keeps nothing. Each is written beside it (`.draft.new`), read back whole, and
+  only then put in its place, so a tab closed mid-write or a full disk leaves the
+  one before, and a write that fails says "Your mould could not be kept: there is
+  no room on the disk." (`NOT_KEPT`); one that cannot be read back (damaged, out
+  of range, from another build) is said ("could not be read back, so this begins
+  again from 3901") and set aside whole as `<slot>.draft.unread`, never deleted.
+  Start from (or Make a mould… on) a part of more than 18,000 triangles is
+  refused at once in words ("56823 has 143,996 triangles, and the maker shapes
+  parts of up to 18,000."), the mould shown kept. No word a mould's file is
+  written with (its title, its base part's name and category) holds a control
+  character (`Mould.text`, `CustomParts.one_line`: a carriage return would start
+  a line of its own); a carried part's name and category are made one line where
+  the catalogue reads them (`CustomParts.info_for`). `figfix_probe` (headless)
+  drives these: two handles and a pull, Undo and Redo through them exactly, a
+  handle after a Grab past the box, Finer then a drag; a draft that cannot be
+  written or read; parts past the bound; 3D files past it; carried names.
+  `figreview_probe` (headless; case 3 by
+  bench/results/figreview-2026-11-25/disk_full.sh TREE DIR, a full disk by
+  `ulimit -f`) is the review's own. `figmould_attack_probe` (headless) attacks
+  both: hair files inside out, half turned, 300 times too big, a thousandth,
+  open, a million triangles as an STL and as a 28 MB OBJ; drafts damaged six
+  ways and one half written beside a good one; a name with "\r0 FILE". Save mould builds it ("Building the mould…" said first) and
+  puts it on the figure. `figmould_probe` (1280 and `PROBE_SIZE=390x844`, by
+  touch) is the whole way: strokes each one exact step, Finer and Dome undone,
+  a pinch, closed and reopened, an editor made anew from the draft, saved,
+  worn, an STL hair worn and opened in the maker, placed, saved, reopened, saved
+  again to the same bytes, and read where neither part was made with the same
+  corners and place; `--pictures=DIR` adds three moulds beside their real hair
+  pieces, rendered light and dark.
 - `parts from 3D files` (`src/parts/mesh_part.gd`, `MeshPart`, a Later class):
   an STL (binary or ASCII; Z up, turned upright) or an OBJ read with
   `MeshFile` and refused in a sentence when it is not closed (an edge used an
-  odd number of times), has no size, or is past 120,000 triangles. Past 9,000
+  odd number of times), has no size, or is past 120,000 triangles. The reader
+  stops as soon as it is past them (`MeshFile.read`'s `most`, `past_most`; a
+  binary STL by its own count, an OBJ also past 360,000 corners,
+  `corners_past_most`), whatever the layout, so a million triangles is refused
+  in under a second; a count made before reading missed OBJ faces of many corners
+  and lines begun with a space, read whole in up to 139 s (figreview). Past 9,000
   it is simplified (quadric edge collapse) and kept only if no point moved
   more than 1% of its longest side (`HOLDS_SHARE`, a Hausdorff bound both
   ways). A corner that is no number (NaN, endless; in text a "nan", "inf",
