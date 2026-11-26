@@ -12,14 +12,18 @@
 ##    (129a7c3ed) 76 parts came back up to 0.44 LDU off and some pins and
 ##    plates mirrored (appfix FINDINGS S1, pastereview case 3).
 ## 2. The same, pasted from another tab (Carry.whole_text, paste_from).
-## 3. A mirrored copy of a sub-model, pasted.
+## 3. A mirrored copy of a sub-model, pasted. On pre261 (e9d973192) it and 4,
+##    6 and 7 were written whole, which wrote the sections round them again
+##    (0.951 as 0.9510001, 3023 as 3023b) though nobody had moved them.
 ## 4. A copy turned off square (0.951/0.309), holding a plain and a mirrored
 ##    copy of a sub-model of its own, pasted.
 ## 5. A part at 10,000 LDU and a copy turned 30 degrees beside it, pasted
 ##    beside them.
-## 6. The whole fixture pasted, then turned a quarter in hand first (R).
-## 7. The whole fixture duplicated in place (Builder.duplicate_selection, when
-##    there is one) and a copy of it put down through the paste.
+## 6. The whole fixture pasted, turned a quarter in hand first (R).
+## 7. The turned copy duplicated beside itself (Edit › Duplicate, Ctrl+D).
+## 8. The fixture put whole into another file (a file dragged in, the
+##    session's open_model into=true).
+## 9. Two of the three parts of a copy turned 30 degrees, pasted.
 ##
 ##   godot --headless --path . --script src/dev/pasteexact_probe.gd -- [--cases=1,3] [--keep=DIR]
 ##
@@ -60,6 +64,13 @@ const FIXTURE := """0 FILE pe_main.ldr
 1 0 10 -8 0 0.951 0 0.309 0 1 0 -0.309 0 0.951 3040b.dat
 0 NOFILE
 """
+## Someone else's file of two parts, the fixture put into it whole (case 8).
+const HOST := """0 pe_host
+0 Name: pe_host.ldr
+0 Author: pasteexact_probe
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 40 -24 0 0.951 0 0.309 0 1 0 -0.309 0 0.951 3710.dat
+"""
 ## Within this of the paste's place a part is where it was put: single
 ## precision at 10,000 LDU is 0.001 apart, and a line says a place to 1/10,000.
 const NEAR := 0.002
@@ -68,7 +79,7 @@ const TURN_NEAR := 0.000002
 
 func _run() -> void:
 	await process_frame
-	var cases: String = "1,2,3,4,5,6,7"
+	var cases: String = "1,2,3,4,5,6,7,8,9"
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--keep="):
 			_keep = arg.trim_prefix("--keep=")
@@ -109,6 +120,11 @@ func _run() -> void:
 			Vector3(0, 0, -1200), 1)
 	if "7" in asked:
 		await _case_duplicate()
+	if "8" in asked:
+		await _case_put_in()
+	if "9" in asked:
+		await _case_fixture("9. two of the three parts of a copy turned 30 degrees, pasted", "some", _some_parts,
+			Vector3(10600, 0, 10400), 0)
 	_forget(PROBE_DIR)
 	print("\npasteexact_probe: %d failed, %d notes" % [_failures, _notes])
 	quit(1 if _failures > 0 else 0)
@@ -137,6 +153,36 @@ func _case_fixture(said: String, tag: String, pick: Callable, spot: Vector3, qua
 		return
 	await _paste_and_save(tag, FIXTURE, ids, [spot, spot + Vector3(0, 0, -400), spot + Vector3(400, 0, 0)],
 		quarters, false)
+
+
+## 8. The fixture put whole into another file (a file dragged in, the
+## session's open_model into=true: ModelStore.held_from), saved three times.
+func _case_put_in() -> void:
+	print("\n8. the fixture put whole into another file (a file dragged in)")
+	await _open(PROBE_DIR + "pe_fixture.mpd")
+	var theirs: Array = _records_all()
+	var host_at: String = PROBE_DIR + "pe_host.ldr"
+	_write(ProjectSettings.globalize_path(host_at), HOST)
+	await _open(host_at)
+	var held: Dictionary = await _store.held_from(FIXTURE, "pe_fixture.mpd")
+	_ok(str(held["error"]).is_empty() and (held["items"] as Array).size() == theirs.size(),
+		"held_from: %d parts in hand of the fixture's %d (%s)" % [(held["items"] as Array).size(), theirs.size(),
+			held["error"]])
+	if not str(held["error"]).is_empty():
+		return
+	var had: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		had[brick.id] = true
+	_builder.cancel_carry()
+	_builder.hold_copy(held["items"])
+	_builder.carrying.bring(held)
+	await _put([Vector3(0, 0, -400), Vector3(0, 0, -800), Vector3(600, 0, 0)])
+	var fresh: Array = _records_all().filter(func(one: Dictionary) -> bool: return not had.has(one["id"]))
+	_ok(fresh.size() == theirs.size(), "put in: %d of %d put down" % [fresh.size(), theirs.size()])
+	if fresh.size() != theirs.size():
+		return
+	_held_exact("put-in", theirs, fresh, true)
+	await _three_saves("put-in", HOST, _records_all())
 
 
 ## 7. The fixture's turned copy duplicated beside itself (Edit › Duplicate,
@@ -379,6 +425,16 @@ func _turned_copy() -> Array:
 func _far_parts() -> Array:
 	return _shown().filter(func(brick: BrickWorld.Brick) -> bool: return brick.transform.origin.x > 5000.0) \
 		.map(func(brick: BrickWorld.Brick) -> int: return brick.id)
+
+
+## Two of the three parts of the far copy of pe_plain, turned 30 degrees.
+func _some_parts() -> Array:
+	var tops: Dictionary = _tops()
+	for top: String in tops:
+		if Assemblies.definition(top) == "pe_plain" and ((tops[top] as Array)[0] as BrickWorld.Brick) \
+				.transform.origin.x > 5000.0:
+			return (tops[top] as Array).slice(0, 2).map(func(brick: BrickWorld.Brick) -> int: return brick.id)
+	return []
 
 
 func _every_part() -> Array:

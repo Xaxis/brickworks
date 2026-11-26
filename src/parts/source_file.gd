@@ -4309,16 +4309,19 @@ static func _numbers_for(words: PackedStringArray, local: Transform3D) -> String
 	return " ".join(out)
 
 
-## [param value] as a line says it: a place to four places, a turn's
-## number to six significant digits, a whole number as one, never "-0".
+## [param value] as a line says it: a place in the fewest of four places that
+## is the number held (LdrModel._number_text), a turn's number to six
+## significant digits, a whole number as one, never "-0". A place to four
+## places always wrote a part pasted at 10,000.37 LDU as 10540.3701, which
+## other programs read as a ten-thousandth further than the part is.
 static func _number_said(value: float, place: bool) -> String:
 	if value == floorf(value) and absf(value) < 1e9:
 		return str(int(value))
-	var places: int = 4
-	if not place:
-		if absf(value) < 5e-7:
-			return "0"
-		places = clampi(5 - floori(log(absf(value)) / log(10.0)), 0, 12)
+	if place:
+		return LdrModel._number_text(value, 4)
+	if absf(value) < 5e-7:
+		return "0"
+	var places: int = clampi(5 - floori(log(absf(value)) / log(10.0)), 0, 12)
 	var shown: String = String.num(value, places).rstrip("0").rstrip(".")
 	return "0" if shown == "-0" or shown.is_empty() else shown
 
