@@ -142,6 +142,8 @@ func _file(placements: Array, sections: Array, author: String) -> String:
 func _case(name: String, text: String, edit: String) -> void:
 	print("\n== %s" % name)
 	await _open(text)
+	if edit == "unedited":
+		_frames_say_hands(name, text)
 	var said: String = "nothing"
 	## The sub-model and the part whose line the edit changes ("" for none).
 	var changed_in: String = ""
@@ -194,6 +196,54 @@ func _case(name: String, text: String, edit: String) -> void:
 		last = saved
 
 
+## Each copy's frame as the open read it (Assemblies.file_frames: what the
+## writer writes a section and its references in, and what Find and Replace
+## reads to say which copy shows the other hand) reflects where the file's
+## lines placing it, from Main's down, reflect an odd number of times. Voted
+## from where the parts stand, a mirrored-first wing read as the plain one
+## and the plain one as the mirror. Copies are numbered by definition in the
+## order the file places them, depth first ("1/2": the second copy inside
+## the first).
+func _frames_say_hands(name: String, text: String) -> void:
+	var sections: Dictionary = _sections(text)
+	var want: Dictionary = {}
+	_hands_in(sections, "main.ldr", "", false, {}, want)
+	var frames: Dictionary = _shell.assemblies.file_frames()
+	var said := PackedStringArray()
+	var wrong := PackedStringArray()
+	for path: String in frames:
+		var numbers := PackedStringArray()
+		for segment: String in Assemblies.segments(path):
+			numbers.append(str(Assemblies.copy_of(segment)))
+		var key: String = "/".join(numbers)
+		var mirror: bool = ((frames[path] as Dictionary)["frame"] as Transform3D).basis.determinant() < 0.0
+		said.append("%s %s" % [key, "mirrored" if mirror else "plain"])
+		if not want.has(key) or bool(want[key]) != mirror:
+			wrong.append(path)
+	said.sort()
+	_check("%s: each copy read in the hand its lines place it in (%s; %d copies, %d in the file%s)" % [
+		name, ", ".join(said), frames.size(), want.size(),
+		"" if wrong.is_empty() else "; wrong: " + ", ".join(wrong)],
+		wrong.is_empty() and frames.size() == want.size())
+
+
+## Into [param want]: each copy [param section] places, by its numbers
+## ([method _frames_say_hands]), -> whether the lines down to it reflect.
+static func _hands_in(sections: Dictionary, section: String, above: String, odd: bool,
+		counts: Dictionary, want: Dictionary) -> void:
+	for line: String in _refs(sections.get(section, PackedStringArray()), true):
+		var w: PackedStringArray = line.split(" ", false)
+		var file: String = w[14].to_lower()
+		var b := Basis(Vector3(w[5].to_float(), w[8].to_float(), w[11].to_float()),
+			Vector3(w[6].to_float(), w[9].to_float(), w[12].to_float()),
+			Vector3(w[7].to_float(), w[10].to_float(), w[13].to_float()))
+		counts[file] = int(counts.get(file, 0)) + 1
+		var key: String = str(counts[file]) if above.is_empty() else "%s/%d" % [above, int(counts[file])]
+		var here: bool = odd != (b.determinant() < 0.0)
+		want[key] = here
+		_hands_in(sections, file, key, here, counts, want)
+
+
 ## The file opened (0) and each save (1 to 3), into MIRRORSAVE_DUMP's
 ## folder where it is given.
 static func _dump(name: String, n: int, text: String) -> void:
@@ -222,8 +272,15 @@ func _compare(name: String, what: String, text: String, saved: String,
 		var b: PackedStringArray = now[section]
 		var refs_a: PackedStringArray = _refs(a, true)
 		var refs_b: PackedStringArray = _refs(b, true)
-		_check("%s: %s, %s places its sub-models by its own lines (%s; were %s)" % [name, what, section,
-			" / ".join(refs_b), " / ".join(refs_a)], refs_a == refs_b)
+		# The app's own steps are worked out again after an edit, and the
+		# section the edit changed lists its copies in the order they are
+		# built: each line as it was, in any order (pre261 orders three
+		# copies so too).
+		var any_order: bool = section == changed_in and name.contains("the app's own")
+		_check("%s: %s, %s places its sub-models by its own lines%s (%s; were %s)" % [name, what, section,
+			", in any order" if any_order else "", " / ".join(refs_b), " / ".join(refs_a)],
+			refs_a == refs_b if not any_order
+			else _missing(refs_a, refs_b).is_empty() and _missing(refs_b, refs_a).is_empty())
 		var own_a: PackedStringArray = _refs(a, false)
 		var own_b: PackedStringArray = _refs(b, false)
 		if section != changed_in:
