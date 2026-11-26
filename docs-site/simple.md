@@ -19,7 +19,7 @@ Tap **Simple** or **Full** in the header, on a phone, a tablet or a computer. Yo
 
 Switching changes only the controls. Every part, your undo steps, what is selected and your saved file stay as they are, and the view comes back where you left it in Full.
 
-![Brickworks on a computer in Simple: the header with the Brickworks mark and Simple pressed beside Full, the plate filling the view, and the tray along the foot with its twelve colours in one row, the five group tabs and six bricks.](/docs/img/simple-desktop.webp "The same Simple on a computer: the mouse is a finger, and Full is one click away.")
+![Brickworks on a computer in Simple: the header with the Brickworks mark and Simple pressed beside Full, the empty plate in the middle of the view, and the tray along the foot with its twelve colours in one row, the five group tabs and six bricks.](/docs/img/simple-desktop.webp "The same Simple on a computer: the mouse is a finger, and Full is one click away.")
 
 <!-- covers
 ui:simple's controls swapped in live
