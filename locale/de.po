@@ -18033,3 +18033,6 @@ msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut"
 
 msgid "Sub-assembly of %d parts, %d on at this step, %d inside it"
 msgstr "Baugruppe aus %d Teilen, %d in diesem Schritt verbaut, %d darin"
+
+msgid "More menus"
+msgstr "Weitere Menüs"

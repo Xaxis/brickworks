@@ -43,6 +43,14 @@ var plain: bool = false
 var visiting: bool = false
 ## Where the menus go, between the app's menu and the model's name.
 var menus: HBoxContainer
+## "…", after the menus, holding those the row has no room for
+## ([method _fit_header]); hidden while every menu shows.
+var more: MenuButton
+## How many of the menus show on the row, the rest folded into [member
+## more]: every one until the row runs short.
+var menus_shown: int = 1 << 20
+## The menus shown on the row changed: Shell's "…" says which it holds.
+signal menus_folded
 
 const NAME := "Brickworks"
 ## The mark (web/icon.svg; this copy is tools/web/make_icons.mjs's), drawn
@@ -183,6 +191,17 @@ func _build() -> void:
 	menus.add_theme_constant_override("separation", 0)
 	menus.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(menus)
+
+	# The menus the row has no room for, each folded into this in turn, the
+	# last first (_fit_header). Shell fills it and dresses it as a menu.
+	more = MenuButton.new()
+	more.name = "more_menus"
+	more.text = "…"
+	more.accessibility_name = "More menus"
+	more.tooltip_text = "More menus"
+	more.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	more.visible = false
+	row.add_child(more)
 
 	var gap_two := Control.new()
 	gap_two.custom_minimum_size = Vector2(12, 0)
@@ -446,8 +465,19 @@ func _fit_header() -> void:
 	# Capped to keep the studio's row on one line where this bar is ever the
 	# studio's: on a phone the studio has its own top bar (PhoneShell), and
 	# this one heads only the viewer and Build it, at the full 61 points.
+	# Below the toolbar's size the menus give way instead, the last first,
+	# into "…": at 150% or in German a narrow window's row was wider than
+	# the window, and the whole column with it (wingreview3 F3).
 	if not Phone.on():
-		pt = minf(pt, _fitting_pt(gutter))
+		var count: int = _menu_buttons().size()
+		var shown: int = count
+		var fits: float = _fitting_pt(gutter, shown)
+		var least: float = minf(pt, LEAST_PT)
+		while shown > 0 and fits < least:
+			shown -= 1
+			fits = _fitting_pt(gutter, shown)
+		_fold_menus(shown)
+		pt = minf(pt, maxf(fits, 0.5))
 	points = pt
 	var density: float = Icons.density(brand)
 	add_theme_stylebox_override("panel", AppHeader.ground(pt, gutter))
@@ -466,6 +496,12 @@ func _fit_header() -> void:
 	brand.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
+## Fitted again, once its menus are in (Shell) or anything else on its row
+## has changed width.
+func refit() -> void:
+	_fit_header.call_deferred()
+
+
 var _mark_drawn_at: float = 0.0
 var _mark_drawn_pt: float = 0.0
 ## The interface's units to the header's point it is drawn at now: the
@@ -481,13 +517,16 @@ var points: float = 1.0
 ## Menu and Account on a second line there. Counted for the studio's row in
 ## every mode, the plain ones too, so the header is one size in all of them;
 ## the Claude tab is counted while it shows (the studio's alone, and only
-## where Claude reaches this tab).
-func _fitting_pt(gutter: float) -> float:
+## where Claude reaches this tab). With the first [param shown] menus on the
+## row, and "…" where any is folded; less than nothing where the units alone
+## are wider than the window.
+func _fitting_pt(gutter: float, shown: int) -> float:
 	var row: HFlowContainer = brand.get_parent()
 	var gap: float = float(row.get_theme_constant("h_separation"))
 	var font: Font = _account.get_theme_font("font")
 	# In points: the gutters and the bare mark; Menu and Account as
-	# dress_button sizes them (15-point words, 14 points either side).
+	# dress_button sizes them (15-point words, 14 points either side), in the
+	# words they are drawn in.
 	var per_pt: float = 2.0 * gutter + AppHeader.TARGET
 	# In units: every other control the studio's row shows, each with the gap
 	# before it; the menus and the model's name (at its narrowest) counted in
@@ -497,26 +536,71 @@ func _fitting_pt(gutter: float) -> float:
 	var units: float = 0.0
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		if control == null or control == brand:
+		if control == null or control == brand or control == more:
 			continue
 		var studio: bool = control == menus or control == _name
 		if not control.visible and not studio:
 			continue
 		units += gap
 		if control == _account or (home != null and control == mark):
-			per_pt += 28.0 + font.get_string_size((control as Button).text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+			var button: Button = control as Button
+			per_pt += 28.0 + font.get_string_size(button.atr(button.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
 		elif control == _name:
 			units += NAME_NARROW
 		elif control == menus:
-			for each: Node in menus.get_children():
-				var menu: Control = each as Control
-				if menu != null and menu.visible:
-					units += menu.get_combined_minimum_size().x + float(menus.get_theme_constant("separation"))
+			var buttons: Array[MenuButton] = _menu_buttons()
+			for n: int in mini(shown, buttons.size()):
+				units += _menu_width(buttons[n]) + float(menus.get_theme_constant("separation"))
+			if shown < buttons.size():
+				units += gap + _menu_width(more)
 		else:
 			units += control.get_combined_minimum_size().x
 	# A few units spare: sizes are rounded to whole units and points.
 	var room: float = get_viewport().get_visible_rect().size.x - units - 6.0
-	return maxf(room / per_pt, 0.5)
+	return room / per_pt
+
+
+## The least points to the header before the menus give way: its buttons
+## no smaller than the toolbar's under it.
+const LEAST_PT := Toolbar.BUTTON / AppHeader.TARGET
+
+
+## The menus on the row, in order (Shell's), "…" not among them.
+func _menu_buttons() -> Array[MenuButton]:
+	var out: Array[MenuButton] = []
+	for each: Node in menus.get_children():
+		if each is MenuButton:
+			out.append(each as MenuButton)
+	return out
+
+
+## [param button]'s width on the row, in the words it is drawn in, whether
+## or not it shows now: a folded menu's own least is not kept up to date.
+func _menu_width(button: Button) -> float:
+	var font: Font = button.get_theme_font("font")
+	var words: float = font.get_string_size(button.atr(button.text), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		button.get_theme_font_size("font_size")).x
+	return ceilf(words + button.get_theme_stylebox("normal").get_minimum_size().x)
+
+
+## The first [param shown] menus on the row and the rest in "…", which
+## shows only while it holds one.
+func _fold_menus(shown: int) -> void:
+	var buttons: Array[MenuButton] = _menu_buttons()
+	shown = clampi(shown, 0, buttons.size())
+	for n: int in buttons.size():
+		buttons[n].visible = n < shown
+	more.visible = shown < buttons.size() and not plain
+	if shown != menus_shown:
+		menus_shown = shown
+		menus_folded.emit()
+
+
+func _notification(what: int) -> void:
+	# Other words are other widths: the row is fitted again to them, as
+	# Settings, Language changes them.
+	if what == NOTIFICATION_TRANSLATION_CHANGED and brand != null:
+		_fit_header.call_deferred()
 
 
 ## The header plain or whole: plain for a mode that is not the studio's
@@ -527,6 +611,7 @@ func set_plain(yes: bool) -> void:
 	plain = yes
 	for part: Control in [menus, _name]:
 		part.visible = not yes
+	more.visible = not yes and menus_shown < _menu_buttons().size()
 	if _claude_tab != null:
 		_claude_tab.visible = not yes and not _claude_words.text.is_empty()
 	_fit_mark.call_deferred()

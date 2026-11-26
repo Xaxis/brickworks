@@ -194,7 +194,10 @@ func choose_colour(code: int) -> void:
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(_z(336), 0)
+	# No least of its own: as wide as its column, drawer or sheet makes it,
+	# its rows wrapping and its tiles across what that holds. Held 336 units
+	# (403 on a phone at 150%), it was cut off down its right edge in a
+	# drawer of 232 and wider than a phone's sheet (wide150b).
 	if by_finger:
 		get_tree().node_added.connect(_hands_drags)
 	_build()
@@ -222,7 +225,11 @@ func _build() -> void:
 
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", int(_z(4 if by_finger else DESK_GAP)))
-	var head := HBoxContainer.new()
+	# Its title, then Make a part, Print and Stickers: those the column has
+	# no room for beside the title go under it, whole.
+	var head := HFlowContainer.new()
+	head.add_theme_constant_override("h_separation", 4)
+	head.add_theme_constant_override("v_separation", 4)
 	# On the desktop a section of its column (PanelStack): its header, the
 	# chevron and "Parts", folds the rest away, the colours under it taking
 	# the column. A phone's parts are a sheet of their own, which folds
@@ -291,7 +298,7 @@ func _build() -> void:
 	_set_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_set_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_set_words.clip_text = true
-	_set_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_set_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_set_words.mouse_filter = Control.MOUSE_FILTER_PASS
 	_set_words.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_set_line.add_child(_set_words)
@@ -335,7 +342,7 @@ func _build() -> void:
 	_step_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_step_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_step_words.clip_text = true
-	_step_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_step_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_step_words.mouse_filter = Control.MOUSE_FILTER_PASS
 	_step_words.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_step_on = Button.new()
@@ -429,8 +436,11 @@ func _build() -> void:
 	_scroll.add_child(_grid)
 	_sight = ThumbTile.Sight.new(_scroll, _grid)
 	_scroll.resized.connect(func() -> void:
-		# Not the techniques, a list of one across (_fill_techniques).
-		if _grid.columns > 1:
+		# Not the techniques or a list, one across (_set_columns). Tiles one
+		# across too, in a drawer narrower than two: the bin has no least of
+		# its own, and a grid laid out before the column had its width stayed
+		# one across in a whole column (roomfit, wide150b).
+		if _as_tiles:
 			_grid.columns = _tiles_across())
 	# On a phone the rows above the parts scroll away with them, as a
 	# phone's lists do, and the foot stays. Stacked, they asked more than a
@@ -463,8 +473,12 @@ func _build() -> void:
 	# The status line, and at its end how the parts are shown, as a file
 	# window keeps its views at its foot: with their prints or without, as
 	# tiles or as rows. In a row of their own they would take a row of tiles.
-	var foot := HBoxContainer.new()
-	foot.add_theme_constant_override("separation", int(_z(6)))
+	# A flow: where the line's longest word and the two do not fit side by
+	# side, List and then Prints go onto a line under it. A row gave the
+	# line less than a word on a 320 phone at 150%, "hergestellte" cut.
+	var foot := HFlowContainer.new()
+	foot.add_theme_constant_override("h_separation", int(_z(6)))
+	foot.add_theme_constant_override("v_separation", int(_z(4)))
 	root.add_child(foot)
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", ceili(_z(12)))
@@ -475,6 +489,10 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(_status)
+	# Never narrower than its longest word, nor than half a phone's sheet:
+	# beside Prints and List on a 320 phone at 150% it was a column of one
+	# word to a line, eleven lines tall.
+	LaidOut.hold_a_word(_status, _z(120))
 	# Studio's button that shows or hides printed and stickered parts: one
 	# click and the bin is plain parts, a minifigure's thousands of printed
 	# torsos and heads with it.
@@ -530,7 +548,11 @@ func _build() -> void:
 	_only_made = CheckBox.new()
 	_only_made.text = "Only parts made in it"
 	_only_made.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Onto a second line at a word where the column is narrower than its
+	# words: whole, in French at 150% it held the bin 330 units wide.
+	_only_made.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_only_made.add_theme_font_size_override("font_size", 12)
+	LaidOut.hold_a_word(_only_made, 0.0, true)
 	FocusGuard.by_keyboard(_only_made)
 	_only_made.set_pressed_no_signal(bool(ShellPrefs.value("bin_only_made")))
 	_only_made.toggled.connect(func(on: bool) -> void:
@@ -587,7 +609,7 @@ func _build() -> void:
 	_colour_note.modulate = Color(1, 1, 1, 0.78)
 	_colour_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_colour_note.max_lines_visible = NOTE_LINES
-	_colour_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_colour_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_colour_note.mouse_filter = Control.MOUSE_FILTER_PASS
 	colour_box.add_child(_colour_note)
 	var font: Font = _colour_note.get_theme_font("font")
@@ -805,6 +827,38 @@ func _fit_shelves() -> int:
 	return _shelf_rows
 
 
+## Each chip whole, or where its words are wider than the chips' row, as
+## wide as the row and cut at a word with "…", its whole name its tooltip:
+## in French at 150% "Minifig Headwear 826" was 240 units, and held a 282
+## phone's parts sheet past the screen's edge (wide150b). A finger's sheet
+## is as wide as its rows ask, so the room is what the window leaves the
+## row (LaidOut.offered), and where narrower the chips' window's own.
+func _fit_chips() -> void:
+	if _category_row == null or _category_scroll == null or not _category_scroll.is_inside_tree():
+		return
+	var room: float = LaidOut.offered(_category_row)
+	if _category_scroll.size.x > 0.0:
+		room = minf(room, _category_scroll.size.x
+			- _category_scroll.get_v_scroll_bar().get_combined_minimum_size().x)
+	if room <= 0.0:
+		return
+	for child: Node in _category_row.get_children():
+		var chip := child as Button
+		if chip == null:
+			continue
+		var font: Font = chip.get_theme_font("font")
+		var whole: float = ceilf(font.get_string_size(chip.atr(chip.text), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			chip.get_theme_font_size("font_size")).x + chip.get_theme_stylebox("normal").get_minimum_size().x)
+		var cut: bool = whole > room
+		var overrun: TextServer.OverrunBehavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS if cut \
+			else TextServer.OVERRUN_NO_TRIMMING
+		if chip.text_overrun_behavior != overrun:
+			chip.text_overrun_behavior = overrun
+		var wide: float = floorf(room) if cut else least
+		if chip.custom_minimum_size.x != wide:
+			chip.custom_minimum_size.x = wide
+
+
 ## The least width of [param chip] saying [param words], as its row lays it
 ## out: said, read and put back.
 func _chip_width(chip: Button, words: String) -> float:
@@ -867,6 +921,11 @@ func _build_swatches() -> void:
 		title.text = group[0]
 		title.add_theme_font_size_override("font_size", 11)
 		title.modulate = Color(1, 1, 1, 0.7)
+		# At a word onto a second line in a narrow column: whole, in German
+		# "Glitter, opal, …" held the colours 364 wide in a 340 dock, and the
+		# bin's buttons above were cut at its edge (wide150b).
+		title.autowrap_mode = TextServer.AUTOWRAP_WORD
+		LaidOut.hold_a_word(title)
 		_palette.add_child(title)
 		if not now.is_empty():
 			_palette.add_child(_flow_of(now))
@@ -1050,6 +1109,7 @@ func _fit_palette() -> void:
 	if _palette == null or _palette_scroll == null:
 		return
 	var tall_column: float = column.size.y if column != null else size.y
+	_fit_chips()
 	# Two rows of chips, or one in a column too short to spare them, and
 	# always as many as every shelf takes (_fit_shelves).
 	if _chip_tall > 0.0:
@@ -2977,7 +3037,7 @@ func _fill_grid(folded: Array = []) -> void:
 	_hold_page(0)
 	_just_filled = true
 	_to_list_top()
-	_grid.columns = 1 if _list.button_pressed else _tiles_across()
+	_set_columns(not _list.button_pressed)
 	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
 	if folded.is_empty():
 		_fold()
@@ -3170,17 +3230,48 @@ func _first_page(listed: int = -1) -> int:
 const MORE_ROOM := 260.0
 
 
+## Whether the grid shows tiles, fitted across as the bin's width changes,
+## rather than one across: a list, the techniques (_set_columns).
+var _as_tiles: bool = true
+
+
+## The grid as tiles, as many across as the bin holds, or one across.
+func _set_columns(tiles: bool) -> void:
+	_as_tiles = tiles
+	_grid.columns = _tiles_across() if tiles else 1
+
+
 ## How many tiles a row holds: as many as the bin's width has room for, and
 ## COLUMNS at the least. The left-hand column is as wide as the model's
 ## share of the window leaves it (Main._fit_panels), and the parts go across
 ## it: four across, a laptop saw 12 of them. A phone's sheet keeps its four, for a finger.
 func _tiles_across() -> int:
-	if by_finger:
-		return COLUMNS
 	var gap: float = float(_grid.get_theme_constant("h_separation"))
 	var room: float = _scroll.size.x - _scroll.get_v_scroll_bar().get_combined_minimum_size().x
-	# A tile is _z(74) across (_make_cell).
-	return maxi(COLUMNS, floori((room + gap) / (_z(74) + gap)))
+	if by_finger:
+		# A phone's sheet: four across, or as many as its width holds. Its
+		# grid sets the scroller's least, so the width is the window's less
+		# the margins either side, which are the margins to its left.
+		room = get_viewport().get_visible_rect().size.x - 2.0 * _scroll.get_global_rect().position.x \
+			- _scroll.get_v_scroll_bar().get_combined_minimum_size().x
+		return clampi(floori((room + gap) / (_tile_wide() + gap)), 1, COLUMNS)
+	# A tile is _z(74) across (_make_cell): as many as the column holds, four
+	# where a column is given the bin, fewer in a narrow window's drawer.
+	return maxi(1, floori((room + gap) / (_tile_wide() + gap)))
+
+
+## The least a tile is across: 74, and by a finger its "+N" (a fingertip)
+## with a word of its name beside it. A fingertip left a tablet's tile of 82
+## 33 units for its name, and "Ladrillo" (37) and "… 3069b" (40) were cut
+## inside (wide150b): such a bin shows a tile fewer to a line.
+func _tile_wide() -> float:
+	if not by_finger:
+		return _z(74)
+	return maxf(_z(74), least + _z(2.0) + _z(NAME_BESIDE) + _z(6))
+
+
+## The room a finger's tile keeps for its name beside its "+N" (_tile_wide).
+const NAME_BESIDE := 40.0
 
 
 ## How many tiles a search shows at once, before the rest are added as the
@@ -3627,7 +3718,7 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 ## one where it stands (_show_more).
 func _new_tile() -> Button:
 	var button: Button = _new_part_button()
-	button.custom_minimum_size = Vector2(_z(74), _z(84))
+	button.custom_minimum_size = Vector2(_tile_wide(), _z(84))
 
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -3658,9 +3749,7 @@ func _new_tile() -> Button:
 	# Brighter than the number was: words are read, a number glanced at.
 	label.modulate = Color(1, 1, 1, 0.86)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var font: Font = label.get_theme_font("font")
-	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
-		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
+	label.custom_minimum_size.y = _name_tall()
 	# Fitted to the tile's width as it is laid out (_bind_tile fits it to the
 	# width a tile is made at, so its first frame already reads), and told
 	# apart from the names beside it again at that width.
@@ -3670,8 +3759,11 @@ func _new_tile() -> Button:
 	if by_finger:
 		# A part with prints folded under it has its "+N" at the foot's right
 		# end, a fingertip (_fold_badge): the name keeps to the room beside
-		# it, shown only on such a tile (_bind_tile). Hidden, the name has
-		# the foot's width, as it had alone under the picture.
+		# it, shown only on such a tile (_bind_tile), a word or more
+		# (_tile_wide). Hidden, the name has the foot's width, as it had
+		# alone under the picture. Over the picture's foot instead, the "+N"
+		# was where a finger taps a tile, and a tap on a part unfolded its
+		# prints (wide150b).
 		var foot := HBoxContainer.new()
 		foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		foot.add_theme_constant_override("separation", 0)
@@ -4092,7 +4184,7 @@ static func _fit_key(name: String, after: String, width: float, lines: int, from
 func _name_width(label: Label) -> float:
 	if label.size.x > 1.0:
 		return label.size.x
-	return _z(74) - _z(6) if int(label.get_meta("lines", NAME_LINES)) > 1 \
+	return _tile_wide() - _z(6) if int(label.get_meta("lines", NAME_LINES)) > 1 \
 		else maxf(_scroll.size.x * 0.5, _z(120))
 
 
@@ -4167,6 +4259,13 @@ func _fold_badge(info: PartLibrary.PartInfo) -> Button:
 	var badge: Button = _new_fold_badge()
 	_bind_fold_badge(badge, info)
 	return badge
+
+
+## How tall a tile's name is: its NAME_LINES lines in eleven-unit type.
+func _name_tall() -> float:
+	var font: Font = get_theme_font("font", "Label")
+	var spacing: float = float(get_theme_constant("line_spacing", "Label"))
+	return ceilf(font.get_height(ceili(_z(11))) * NAME_LINES + spacing * (NAME_LINES - 1))
 
 
 func _new_fold_badge() -> Button:
@@ -4632,7 +4731,7 @@ func _empty_for_rows() -> void:
 ## of it is in first, and in each the best first.
 func _fill_techniques(query: String) -> void:
 	_empty_for_rows()
-	_grid.columns = 1
+	_set_columns(false)
 	_grid.add_theme_constant_override("v_separation", int(_z(4)))
 	_techniques_shown = 0
 	var techniques: GDScript = Later.script(&"Techniques")
@@ -4703,7 +4802,7 @@ func _technique_cell(technique: Dictionary) -> Control:
 	row.add_child(words)
 	var title := Label.new()
 	title.text = techniques.title(name)
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	title.clip_text = true
 	title.add_theme_font_size_override("font_size", ceili(_z(12)))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4712,7 +4811,7 @@ func _technique_cell(technique: Dictionary) -> Control:
 	reason.text = techniques.reason(technique)
 	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reason.max_lines_visible = 2
-	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	reason.add_theme_font_size_override("font_size", ceili(_z(11)))
 	reason.modulate = Color(1, 1, 1, 0.75)
 	reason.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5665,14 +5764,14 @@ func _fill_palettes(query: String) -> void:
 	_show_shelf_line()
 	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
 	if open.is_empty():
-		_grid.columns = 1
+		_set_columns(false)
 		_grid.add_theme_constant_override("v_separation", int(_z(4)))
 		for one: Dictionary in PartShelf.palettes():
 			if needles.is_empty() or _palette_answers(one, query, needles):
 				_grid.add_child(_palette_row(one))
 		_update_status()
 		return
-	_grid.columns = 1 if _list.button_pressed else _tiles_across()
+	_set_columns(not _list.button_pressed)
 	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
 	for entry: Dictionary in open["entries"]:
 		if entry.has("ldraw"):
@@ -5770,7 +5869,7 @@ func _palette_row(one: Dictionary) -> Control:
 	var title := Label.new()
 	title.text = name
 	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	title.clip_text = true
 	title.add_theme_font_size_override("font_size", ceili(_z(12)))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5874,7 +5973,7 @@ func _assembly_cell(entry: Dictionary) -> Control:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.clip_text = true
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 		line.add_child(label)
 		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		line.add_child(mark)
@@ -5898,10 +5997,8 @@ func _assembly_cell(entry: Dictionary) -> Control:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.max_lines_visible = NAME_LINES
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	var font: Font = label.get_theme_font("font")
-	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
-		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
+	label.custom_minimum_size.y = _name_tall()
 	box.add_child(label)
 	mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	mark.offset_left = _z(4.0)

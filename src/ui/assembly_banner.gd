@@ -44,6 +44,40 @@ func _ready() -> void:
 	assemblies.entered_changed.connect(_show)
 	assemblies.changed.connect(func() -> void: _show(assemblies.entered))
 	_show(assemblies.entered)
+	# Fitted again as the window, the strip or a column beside it changes.
+	(get_parent() as Control).resized.connect(_fit, CONNECT_DEFERRED)
+	get_viewport().size_changed.connect(_fit, CONNECT_DEFERRED)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _words != null:
+		_fit.call_deferred()
+
+
+## The words on one line where the strip has room for them and Done; where
+## it has not, wrapped at a word onto the next. Done is never pushed off and
+## no word is cut: at 150% on a phone the banner was 264 units in a window
+## of 232, and the window's column as wide (wingreview3 F5).
+func _fit() -> void:
+	if _words == null or not visible or not is_inside_tree():
+		return
+	var room: float = floorf(_offered() - get_theme_stylebox("panel").get_minimum_size().x
+		- float((_words.get_parent() as HBoxContainer).get_theme_constant("separation"))
+		- _done.get_combined_minimum_size().x)
+	var font: Font = _words.get_theme_font("font")
+	var natural: float = ceilf(font.get_string_size(_words.atr(_words.text), HORIZONTAL_ALIGNMENT_LEFT,
+		-1, _words.get_theme_font_size("font_size")).x)
+	var wraps: bool = natural > room
+	_words.autowrap_mode = TextServer.AUTOWRAP_WORD if wraps else TextServer.AUTOWRAP_OFF
+	_words.custom_minimum_size.x = maxf(room, 0.0) if wraps else 0.0
+
+
+## The width the window leaves this banner (LaidOut.offered). Never read off
+## the strip's own width, which is the banner's where the banner is the
+## wider: measured so, at 150% the words kept the room they had taken and
+## the column stayed 316 units in a window of 300 (wide150b).
+func _offered() -> float:
+	return LaidOut.offered(self)
 
 
 func _show(path: String) -> void:
@@ -57,6 +91,8 @@ func _show(path: String) -> void:
 	_words.tooltip_text = ("What you put down goes into it, and a click takes one part of it. "
 		+ "Every other copy is changed with it, mirrored where it is mirrored. "
 		+ "Esc or Done when finished.")
+	# At once, before the row is laid out with the words on one line.
+	_fit()
 
 
 func controls_by_name() -> Dictionary:

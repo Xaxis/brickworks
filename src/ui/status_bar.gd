@@ -83,6 +83,20 @@ func _ready() -> void:
 	working = Working.new()
 	working.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(working)
+	# It takes the hint's place, and the fields give way, the moment it
+	# shows, before the row is laid out: done in this bar's next frame, the
+	# row held Working and the hint's 80 units together for a frame, 7 units
+	# wider than a 1280 window at 150% (wide150b, "Laying out 5 parts").
+	working.visibility_changed.connect(func() -> void:
+		if _hint == null or shell == null:
+			return
+		_hint.visible = not working.visible
+		if not work_only:
+			_fit()
+		elif working.visible:
+			# A phone's busy line has no fields to fit, and its bar kept its
+			# 150 beside Cancel: 248 units in a window of 232 at 150%.
+			working.give_way(LaidOut.offered(working)))
 	_hint = _label(row, 1.0)
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.clip_text = true
@@ -185,6 +199,8 @@ func _process(_delta: float) -> void:
 	if work_only:
 		if visible != busy:
 			visible = busy
+		if busy and working.visible:
+			working.give_way(LaidOut.offered(working))
 		Wake.rest(self)
 		return
 	# The line on the left at once, every frame: what was said, or the hint.
@@ -270,6 +286,8 @@ func _fit() -> void:
 		_settings: not narrow, _size: not _size.text.is_empty(), _selected: true}
 	var left: float = HINT_ROOM
 	if working.visible:
+		# Its bar gives way first, inside the room the bar has (Working).
+		working.give_way(room - get_theme_stylebox("panel").get_minimum_size().x)
 		left = maxf(left, working.get_combined_minimum_size().x)
 	var needed: float = get_theme_stylebox("panel").get_minimum_size().x + left
 	for label: Label in shown:
