@@ -375,6 +375,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not visible:
 		_warm_when_idle()
+		# Told it is shut first: nothing told the page while it was hidden,
+		# so window.brickworksRender said open after Escape for as long as
+		# the app slept (as Simulate's did).
+		_tell_page()
 		# Hidden and warmed (or never to be), asleep (Wake).
 		if _warm_asked or not warms_when_idle:
 			Wake.rest(self)
