@@ -3407,6 +3407,14 @@
       "tests": []
     },
     {
+      "id": "cli:room steady probe",
+      "kind": "cli",
+      "entry": "src/dev/room_steady_probe.gd",
+      "reach": "tools/probe.sh room_steady_probe   (windowed, 390x844; --phone for the phone's layout: 20 puts and undos on the ground and inside a copied wing, the model's room one height in every frame, the window's column never wider than the window, the status bar inside it with no line cut mid-word; pictures before and after a put)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:round trip probe",
       "kind": "cli",
       "entry": "src/dev/roundtrip_probe.gd",
@@ -4449,6 +4457,14 @@
       "entry": "tools/web/engine_choice.mjs",
       "reach": "heavy node tools/web/engine_choice.mjs --url=<page> --expect=on|off [--base=<base's page>] [--only=iphone,ipad,ipad_mac,mac,android,computer] --out=DIR   (nothreads: WebKit as an iPhone 13, an iPad, an iPad that says it is a Mac, a Mac; Chromium as a Pixel 7 and at 1280x800; each signed out: the engine its page asked for, window.brickworksEngine's choice, nothing of the other engine, the window up, no script error; --base: the same requests, each as often, the build's /b/<sha>/ as /b/SHA/; DIR/choice.json, exit 1 on a miss)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:wingplace probe",
+      "kind": "cli",
+      "entry": "src/dev/wingplace_probe.gd",
+      "reach": "tools/probe.sh wingplace_probe   (windowed, 1100x700: a plate put inside a wing fresh and after a save and an open; a plate from the bin and a pasted brick aimed all round a wing whose mirrored copy stands beside it, and the wing's brick dragged there, every green ghost put down or moved with its twin, every red one refused in the words it said, each drawn as it is; the wing's brick dropped a stud along and where it stood from outside the wing, its twin with it; an ask cut short answers as one in one go)",
+      "area": "building",
       "tests": []
     },
     {

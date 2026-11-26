@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:one header in every mode, cli:appchrome probe, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:ball joints by hand, ui:on by the joint it was picked up by, ui:a pose that holds its own weight, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe, cli:wingplace probe, cli:room steady probe, ui:rare lots swapped for common ones, ui:a model rebuilt from what you own, cli:rareswap probe, cli:ownswap probe, cli:rsreview probe, cli:rsreview phone probe, ui:finish the surfaces, cli:finishpass probe, cli:fpfix probe, cli:fpjudge probe, cli:seatswap probe, cli:smalls9 probe, cli:grabselect probe, ui:edit at a step, cli:stepedit probe, cli:stepreview probe, cli:paste from another tab, cli:pastereview probe, cli:pastereview flow, cli:simgrab probe -->
 
 ## Sub-features
 
@@ -1135,8 +1135,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   ground, one on another, a turned 1 x 2 plate, and two parts carried by
   Ctrl+D, each read off the bar, clicked down and measured. Where the fields
   would not all fit beside the line on the left, the zoom goes first, then
-  the snap and turn, then the size (`StatusBar._fit`), so none runs past the
-  window's edge.
+  the snap and turn, then the size, the weight and the selection, then where
+  the part in hand goes, and last the counts (`StatusBar._fit`), so the bar is
+  never wider than the window; its lines are cut at a word, never inside one.
+  A bar wider than the window widened the window's whole column, the header
+  with it: at 390 points the header's row came onto one line from two while
+  the bar was 623 units or more, and the model's room jumped 22 units after
+  each put and undo (room390). `room_steady_probe` (windowed, 390x844; `--
+  --phone` for the phone's layout, PROBE_SIZE=1280x800 too) puts parts down
+  and undoes them 20 times, on the ground and inside a copied wing, reads
+  every frame's layout, and fails on any change of the room's height, a
+  column wider than the window, or a status line cut mid-word; its pictures
+  are before and after a put.
 - `model size and weight` (`src/assembly/model_size.gd`, APP_UX5 modelinfo):
   the model's size beside its counts on the status bar, the car's "4.5 ×
   10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm" (the plates to the
@@ -1933,7 +1943,70 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   followed, or taken back, before the session reads the model
   (`Together.settle_edit`, `Main._settle_edit`), so nothing refused is sent
   and nothing waits a frame. Find and replace shares the lock rule
-  (`Assemblies.locked_twins`). `followfix_probe` holds it. Make unique cuts a copy loose (a session's `make_unique`,
+  (`Assemblies.locked_twins`). `followfix_probe` holds it. The ghost asks
+  the same before the click (wingplace): inside an edited sub-assembly with
+  copies, whatever is in hand (a part from the bin, dragged from it, moved
+  by a typed number, a paste, a clone, a part dragged inside it) is laid in
+  each copy as the follow will lay it (`Assemblies.room_in_copies`: the
+  follow's `best_match`, `_laid` and `in_the_way`, a retired number laid as
+  the part that replaced it, a copy's own parts and those of a copy round it
+  that lies on the one round the edited copy left out as `_own_copy` leaves
+  them, newest copy first; each copy's fit read once per model and level,
+  and for parts lifted off the model as the copies stood before the lift, as
+  the lift-and-put step's follow reads them), and where one has no room the
+  ghost is red, `Builder.can_place` false (the pointer,
+  `brickworksState.can_place` and a session's hand tool say so, the typed
+  number's line names why) and the bar says why as it turns red, in the
+  words the click's refusal says (`Builder.copies_refuse`,
+  `copies_refused`); an aim asks for 4 ms a frame (`COPIES_ASK_US`) and an
+  ask not done goes on next frame where it stopped, the ghost as it was till
+  then, never "room" for being cut short; a click is still the follow's to
+  judge. Not asked: locked parts in a copy (the click's refusal says those),
+  train-track sleepers laid with a track, and parts whose shape is still on
+  its way. Ctrl+D lays a copy beside (ux14), and a
+  mirrored copy beside its original leaves a strip between them where a
+  part's twin lands on it: the web's assembly flow put down nothing there
+  from rel-m324 and nobody saw why. `wingplace_probe` (windowed) aims a plate
+  from the bin and a pasted brick all round such a wing, and drags the wing's
+  own brick there, once inside the wing and once picked out from outside it
+  (a lifted part goes back into its own sub-assembly, `Builder._going_down`,
+  and is asked of the copies of the innermost one round it that keeps a
+  part, `Assemblies._changed_level`: a copy dragged whole asks nothing of its
+  own twins, and Wing#2 dragged whole at the model's level is never red; 200
+  of a 2,000-part sub-assembly's parts lifted and dragged cost an aim under
+  2 ms of ask, the hand read once and under the ask's clock
+  (`Assemblies._hand_plan`, `Builder._going_down` the same array each aim)
+  and a twin met only by what goes down near it (`Assemblies._meets`); a number typed
+  on a red spot says why, and a paste or a lift's hint never covers the why,
+  `EditVerbs._click_line`): every green ghost is put down (or moved)
+  with its twin, every red one takes nothing and said why, each drawn as it
+  is; an ask cut a microsecond at a time answers as one in one go; on 10179
+  what the ask adds to the app's own aim stays under a frame and each ghost
+  says what its click does; plus a plate put down inside fresh and after a
+  save and an open, the reopened file compared part by part. And the wing's
+  brick picked out from outside the wing and dropped a stud along its length,
+  each way, and where it stood: a part lifted from a copy takes its twins off
+  with it, and one put down in its own box reads as swapped, so its twin,
+  off already, is laid again as a part put down is (`Assemblies._follow`,
+  room390: Wing#2 was left with 2 of its 3), and only a twin that lift's
+  follow took off (`Assemblies._follow_took`, its steps marked "followed"
+  as `after_edit` folds them in): a twin the person lifted too is theirs.
+  One step that changes two copies of a sub-model by hand (both twins of a
+  part, Alt-A taking every copy's, dragged or nudged) is made only where the
+  two still lie on each other part for part after the follow
+  (`Assemblies._unlike_by_hand`): along a mirrored copy's axis, a turned
+  copy's, or with a third copy, it is refused, "Moved in two copies of Wing
+  at once, and differently: move it in one and the others follow, or use
+  Build › Make this copy unique", and the ghost is red with those words
+  before the click (`Assemblies._twins_in_hand`, the twins found by where
+  each stood when lifted, Carry's "was"); along the axis a mirror keeps, or
+  back where they stood, it goes through and an untouched third copy gets
+  it once (wingfix2, wingreview3 F1: 7 parts became 9 and Save kept them;
+  F2: a part lost or doubled). `wf2_probe` (headless) holds it, with
+  wingreview3's follow table. The pointer is steered by where
+  the hand stands, and the check fails if the brick went down anywhere else;
+  each drop is undone, redone and undone again, the model compared part by
+  part. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,

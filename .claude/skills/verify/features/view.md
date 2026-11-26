@@ -310,7 +310,10 @@ picture the assistant is shown.
   that part, not of the window. A column folding or opening glides the model
   to the new middle (the camera's own easing, following the column's slide)
   and holds still while any button or finger is down, so a drag never loses
-  what it grabbed; the ghost is re-aimed as it glides (`lens_moved`).
+  what it grabbed; the ghost is re-aimed as it glides (`lens_moved`, told
+  once each step is on the camera: told before, the ghost rested a step
+  behind, a stud from where a click at 390 x 844 put the part, and
+  `wingplace_probe`'s sweeps put a part down on red; wingfin, 2026-11-24).
   Sliding the camera instead (`h_offset` in perspective, tried 2026-10-12)
   looked at the model 10° from the side. Godot's `project_ray_normal` and
   `project_position` assume a centred frustum and are 0.09 rad out at 168

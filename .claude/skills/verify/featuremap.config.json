@@ -7353,6 +7353,20 @@
       "entry": "src/dev/exactsave_probe.gd",
       "reach": "tools/probe.sh exactsave_probe [--keep=DIR] [--cases=1,5]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; the paste with a part of the original moved, reopened exact; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place; a sub-model placed once moved and turned 30 degrees whole, the one line placing it changed)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "wingplace probe",
+      "entry": "src/dev/wingplace_probe.gd",
+      "reach": "tools/probe.sh wingplace_probe   (windowed, 1100x700: a plate put inside a wing fresh and after a save and an open; a plate from the bin and a pasted brick aimed all round a wing whose mirrored copy stands beside it, and the wing's brick dragged there, every green ghost put down or moved with its twin, every red one refused in the words it said, each drawn as it is; the wing's brick dropped a stud along and where it stood from outside the wing, its twin with it; an ask cut short answers as one in one go)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "room steady probe",
+      "entry": "src/dev/room_steady_probe.gd",
+      "reach": "tools/probe.sh room_steady_probe   (windowed, 390x844; --phone for the phone's layout: 20 puts and undos on the ground and inside a copied wing, the model's room one height in every frame, the window's column never wider than the window, the status bar inside it with no line cut mid-word; pictures before and after a put)",
+      "area": "building"
     }
   ]
 }

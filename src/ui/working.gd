@@ -399,7 +399,8 @@ func _ready() -> void:
 	_words.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
 	_words.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_words.clip_text = true
-	_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Cut short at a word, never inside one.
+	_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_words)
