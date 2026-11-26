@@ -216,6 +216,8 @@ class Words extends Translation:
 	var _key_after: RegEx = RegEx.create_from_string(r"^(.*?\S)( {3,}\S.*)$")
 	var _joins: RegEx = RegEx.create_from_string(r" · | — |\. |; | › ")
 	var _letter: RegEx = RegEx.create_from_string(r"\p{L}")
+	## What a count's place takes ("%d"), as its pattern does.
+	var _count: RegEx = RegEx.create_from_string(r"^-?\d+$")
 	## A count the interface groups in English: "1,575", "-12,000".
 	var _grouped: RegEx = RegEx.create_from_string(r"^-?\d{1,3}(?:,\d{3})+$")
 	## A colour with its finish after it, as the palette names one: "Red,
@@ -234,13 +236,18 @@ class Words extends Translation:
 			var expression: String = "^"
 			var at: int = 0
 			var quoted: Array[bool] = []
+			var pieces := PackedStringArray()
+			var counts: Array[bool] = []
 			for place: RegExMatch in _places.search_all(english):
-				expression += _escaped(english.substr(at, place.get_start() - at))
-				expression += "(-?\\d+)" if place.get_string().ends_with("d") else "(.+?)"
+				pieces.append(english.substr(at, place.get_start() - at))
+				expression += _escaped(pieces[-1])
+				counts.append(place.get_string().ends_with("d"))
+				expression += "(-?\\d+)" if counts[-1] else "(.+?)"
 				at = place.get_end()
 				quoted.append(english.substr(place.get_start() - 1, 1) == "“"
 					and english.substr(at, 1) == "”")
-			expression += _escaped(english.substr(at)) + "$"
+			pieces.append(english.substr(at))
+			expression += _escaped(pieces[-1]) + "$"
 			# Its first word, where the words before its first place have one.
 			var before: String = english.substr(0, _places.search(english).get_start())
 			var first: String = before.get_slice(" ", 0) if " " in before else ""
@@ -248,7 +255,7 @@ class Words extends Translation:
 				_patterns[first] = []
 			var own: String = _places.sub(english, "", true)
 			(_patterns[first] as Array).append([RegEx.create_from_string(expression), translated,
-				own.length(), _letter.search(own) != null, quoted])
+				own.length(), _letter.search(own) != null, quoted, pieces, counts])
 		# The most particular first: "press %s, %s, %s or %s to move it" before
 		# "press %s to move it", which would take the four keys as one.
 		for first: String in _patterns:
@@ -431,42 +438,101 @@ class Words extends Translation:
 				var found: RegExMatch = (pattern[0] as RegEx).search(text)
 				if found == null:
 					continue
-				var taken: Array[String] = []
-				var left: Array = []
-				var any: bool = false
-				var across: bool = false
+				var first_way: Array[String] = []
 				for n: int in range(1, found.get_group_count() + 1):
-					var said: String = found.get_string(n)
-					# What the English quotes is a name, kept as it is: a model's
-					# ("saved “Car”"), a file's, the words searched for; and a
-					# name a person gave (keep_name), where the entry has words
-					# of its own ("opened %s"). One with none ("%s %d") takes
-					# the interface's: the parts' Car in "Car 117" is "Auto 117"
-					# with a model named Car open.
-					if bool((pattern[4] as Array)[n - 1]) or worded and Language._is_kept_name(said):
-						taken.append(said)
+					first_way.append(found.get_string(n))
+				var ways: Array = [first_way]
+				var tried: int = 0
+				while tried < ways.size():
+					var placed: Array = _placed(pattern, ways[tried], depth, worded)
+					var taken: Array[String] = placed[0]
+					var left: Array = placed[1]
+					tried += 1
+					# One with no words of its own only where it has words of the
+					# interface in it: "Brick 1448", but not a part's name,
+					# "Technic Beam 15". A place never takes a line's parts.
+					if bool(placed[3]) or (not worded and not bool(placed[2])):
 						continue
-					# A place never takes a line's parts: "1 selected — Ctrl-C" is
-					# two of them, each found on its own.
-					across = across or _joins.search(said) != null
-					var own: String = _find(said, depth + 1, left)
-					any = any or not own.is_empty()
-					if own.is_empty() and _letter.search(said) != null:
-						left.append(said)
-					taken.append(own if not own.is_empty() else said)
-				# One with no words of its own only where it has words of the
-				# interface in it: "Brick 1448", but not a part's name,
-				# "Technic Beam 15".
-				if across or (not worded and not any):
-					continue
-				# The first that leaves nothing in English, else the first.
-				if left.is_empty():
-					return _filled(str(pattern[1]), taken)
-				if partial.is_empty():
-					partial = _filled(str(pattern[1]), taken)
-					partial_kept = left
+					# The first that leaves nothing in English, else the first.
+					if left.is_empty():
+						return _filled(str(pattern[1]), taken)
+					if partial.is_empty():
+						partial = _filled(str(pattern[1]), taken)
+						partial_kept = left
+					# Its places split where the line allows another way, a
+					# place's words having the pattern's own in them: "with %s
+					# and %s" over a part "with Black Suit and Red Tie", "the %s
+					# in %s" over "Hat with Hair in Braid" (greenreds). Tried
+					# where the first way left English, to a line's own places.
+					if tried == 1 and worded and depth < 2 and (pattern[5] as PackedStringArray).size() > 2:
+						for way: Array[String] in _splits(text, pattern[5], pattern[6], 12):
+							if way != first_way:
+								ways.append(way)
 		kept.append_array(partial_kept)
 		return partial
+
+	## [param values] in [param pattern]'s places, each found: [taken,
+	## what it left in English, whether any was found, whether one took a
+	## line's parts].
+	func _placed(pattern: Array, values: Array[String], depth: int, worded: bool) -> Array:
+		var taken: Array[String] = []
+		var left: Array = []
+		var any: bool = false
+		var across: bool = false
+		for n: int in values.size():
+			var said: String = values[n]
+			# What the English quotes is a name, kept as it is: a model's
+			# ("saved “Car”"), a file's, the words searched for; and a
+			# name a person gave (keep_name), where the entry has words
+			# of its own ("opened %s"). One with none ("%s %d") takes
+			# the interface's: the parts' Car in "Car 117" is "Auto 117"
+			# with a model named Car open.
+			if bool((pattern[4] as Array)[n]) or worded and Language._is_kept_name(said):
+				taken.append(said)
+				continue
+			# A place never takes a line's parts: "1 selected — Ctrl-C" is
+			# two of them, each found on its own.
+			across = across or _joins.search(said) != null
+			var own: String = _find(said, depth + 1, left)
+			any = any or not own.is_empty()
+			if own.is_empty() and _letter.search(said) != null:
+				left.append(said)
+			taken.append(own if not own.is_empty() else said)
+		return [taken, left, any, across]
+
+	## Every way [param text] splits into the places between [param pieces]
+	## (a pattern's own words, one more than its places; a count's place,
+	## [param counts], only digits), in order, at most [param most].
+	func _splits(text: String, pieces: PackedStringArray, counts: Array[bool], most: int) -> Array:
+		var out: Array = []
+		if text.begins_with(pieces[0]):
+			_split_from(text, pieces, counts, pieces[0].length(), [], out, most)
+		return out
+
+	func _split_from(text: String, pieces: PackedStringArray, counts: Array[bool], at: int,
+			values: Array[String], out: Array, most: int) -> void:
+		var place: int = values.size()
+		var next: String = pieces[place + 1]
+		if place + 2 == pieces.size():
+			# The last place: all that is left before the pattern's last words.
+			var end: int = text.length() - next.length()
+			if end > at and text.substr(end) == next and (not counts[place]
+					or _count.search(text.substr(at, end - at)) != null):
+				var whole: Array[String] = values.duplicate()
+				whole.append(text.substr(at, end - at))
+				out.append(whole)
+			return
+		# Two places side by side split anywhere: left to the first way.
+		if next.is_empty():
+			return
+		var end: int = text.find(next, at + 1)
+		while end >= 0 and out.size() < most:
+			var value: String = text.substr(at, end - at)
+			if not counts[place] or _count.search(value) != null:
+				var more: Array[String] = values.duplicate()
+				more.append(value)
+				_split_from(text, pieces, counts, end + next.length(), more, out, most)
+			end = text.find(next, end + 1)
 
 	## [param translated] with what was taken in its places: in order, or
 	## where "%2$s" names one.

@@ -343,6 +343,17 @@ func lay_now() -> Dictionary:
 	# folded into the finish.
 	var places: Array = []
 	var going: Dictionary = {"seen": _world.revision, "done": 0, "changed": false}
+	# Drawn whole once it is all down, as a design put down a slice at a
+	# time is (Assistant._apply), the ghosts showing it meanwhile: drawn as
+	# it went, each slice's frame was also the model's every reader after a
+	# change (its counts, the model tree, the inspector, 41-54 ms on
+	# Orthanc), and with the slice and a place's own reading went over
+	# 100 ms (greenreds). Held, the world says it is being laid, and what
+	# reads the model as built waits for it.
+	_world.hold_drawing()
+	# The model's parts by sub-model and step, counted once, not once a
+	# place (30-38 ms over Orthanc's, greenreds), kept as each place goes.
+	_groups = _count_groups()
 	for one: SurfacePass.Finding in chosen:
 		phase = "lay: check"
 		var why: String = await _why_not_laid(one, pace, job, going)
@@ -369,6 +380,8 @@ func lay_now() -> Dictionary:
 		laid += 1
 		parts += one.add.size()
 		taken += one.remove.size()
+	_groups = {}
+	_world.release_drawing()
 	job.end()
 	# What the app works out after an edit, in a frame of its own.
 	if not places.is_empty():
@@ -590,6 +603,11 @@ func _holds(one: SurfacePass.Finding, skip: Dictionary, pace: FramePace,
 func _swap_paced(one: SurfacePass.Finding, pace: FramePace, going: Dictionary) -> Array:
 	var adds: Array = _adds_of(one)
 	phase = "lay: take off"
+	for id: int in one.remove if not _groups.is_empty() else []:
+		var brick: BrickWorld.Brick = _world.get_brick(id)
+		if brick != null:
+			var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
+			_groups[key] = int(_groups.get(key, 0)) - 1
 	var taken: Array = _builder.swap_bricks(PackedInt64Array(one.remove), [])
 	going["seen"] = _world.revision
 	var put: Array = []
@@ -604,7 +622,11 @@ func _swap_paced(one: SurfacePass.Finding, pace: FramePace, going: Dictionary) -
 			if _world.revision != int(going["seen"]):
 				going["changed"] = true
 		phase = "lay: put down"
-		put.append_array(_builder.swap_bricks(PackedInt64Array(), [item]))
+		var down: Array = _builder.swap_bricks(PackedInt64Array(), [item])
+		if not down.is_empty() and not _groups.is_empty():
+			var key: String = "%s#%d" % [item["path"], int(item["step"])]
+			_groups[key] = int(_groups.get(key, 0)) + 1
+		put.append_array(down)
 		going["seen"] = _world.revision
 	return put + taken
 
@@ -682,14 +704,25 @@ static func _on_their_lines(out: Array, gone: Array, middles: Array) -> void:
 ## laid: a step two findings empty between them is empty though each left it
 ## a part (the castle's back curtain wall, fpfix).
 func _kept_by_group(gone: Array) -> Dictionary:
-	var off: Dictionary = {}
+	var out: Dictionary = _groups.duplicate() if not _groups.is_empty() else _count_groups()
 	for pair: Array in gone:
-		off[(pair[0] as BrickWorld.Brick).id] = true
+		var brick: BrickWorld.Brick = pair[0]
+		var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
+		out[key] = int(out.get(key, 0)) - 1
+	return out
+
+
+## While a Lay goes on, the model's parts by sub-model and step
+## ("path#step" -> how many): counted as it begins, kept by _swap_paced.
+var _groups: Dictionary = {}
+
+
+## The model's parts by sub-model and step, every one counted.
+func _count_groups() -> Dictionary:
 	var out: Dictionary = {}
 	for brick: BrickWorld.Brick in _world.bricks():
-		if not off.has(brick.id):
-			var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
-			out[key] = int(out.get(key, 0)) + 1
+		var key: String = "%s#%d" % [Assemblies.path_of(brick), brick.step]
+		out[key] = int(out.get(key, 0)) + 1
 	return out
 
 

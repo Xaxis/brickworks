@@ -17548,6 +17548,39 @@ msgstr "%d más"
 msgid "a part"
 msgstr "una pieza"
 
+# Ask's line with two, three, or three and more parts picked, each in a place
+# of its own, and each part as main.gd's _ask_context names it: the part's name
+# (PartWords) and its colour's.
+msgid "Asks in Talk's Help about step %d, with %s and %s lit in 3D."
+msgstr "Pregunta en la Ayuda de Talk sobre el paso %d, con %s y %s resaltados en 3D."
+
+msgid "Asks in Talk's Help about the whole model, with %s and %s lit in 3D."
+msgstr "Pregunta en la Ayuda de Talk sobre el modelo entero, con %s y %s resaltados en 3D."
+
+msgid "Asks in Talk's Help about step %d, with %s, %s and %s lit in 3D."
+msgstr "Pregunta en la Ayuda de Talk sobre el paso %d, con %s, %s y %s resaltados en 3D."
+
+msgid "Asks in Talk's Help about the whole model, with %s, %s and %s lit in 3D."
+msgstr "Pregunta en la Ayuda de Talk sobre el modelo entero, con %s, %s y %s resaltados en 3D."
+
+msgid "Asks in Talk's Help about step %d, with %s, %s, %s and %d more lit in 3D."
+msgstr "Pregunta en la Ayuda de Talk sobre el paso %d, con %s, %s, %s y %d más resaltados en 3D."
+
+msgid "Asks in Talk's Help about the whole model, with %s, %s, %s and %d more lit in 3D."
+msgstr "Pregunta en la Ayuda de Talk sobre el modelo entero, con %s, %s, %s y %d más resaltados en 3D."
+
+msgid "the %s in %s"
+msgstr "%s (%s)"
+
+msgid "the %s in its own colour"
+msgstr "%s (color propio)"
+
+msgid "a part in %s"
+msgstr "una pieza (%s)"
+
+msgid "a part in its own colour"
+msgstr "una pieza (color propio)"
+
 msgid "Asking in Talk"
 msgstr "Preguntando en Talk"
 
