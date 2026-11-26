@@ -182,8 +182,9 @@ func _run() -> void:
 	var line: LineEdit = field.get_line_edit()
 	var rect: Rect2 = line.get_global_rect()
 	_check("Turn is inside the window (%s)" % [rect], window.encloses(rect))
-	_check("Turn is in sight in its scroller, cut off by nothing it is in",
-		not bool(_main.call("_cut_off", line)))
+	var cut_by: Control = _main.call("_cut_off", line)
+	_check("Turn is in sight in its scroller, cut off by nothing it is in (%s)"
+		% ["nothing" if cut_by == null else str(cut_by.get_path())], cut_by == null)
 	if not _shots.is_empty():
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png(_shots.path_join("properties.png"))
