@@ -2348,9 +2348,6 @@ static func _as_placed(flattened: Array, library: PartLibrary, authored: bool,
 		# Before the lift is worked out from it and before it waits for
 		# geometry by the right name.
 		as_moved(placement, library)
-		if not placement.origin.is_empty() and placement.transform != lined:
-			read_as[placement.origin] = [placement.part_id,
-				placement.transform.affine_inverse() * lined, named]
 		# A part LDraw draws in one colour only, kept for old files, as the
 		# part it draws in that colour (303923, 3039 in blue): drawn the same,
 		# and the parts list and a BrickLink order name a part made now.
@@ -2358,6 +2355,12 @@ static func _as_placed(flattened: Array, library: PartLibrary, authored: bool,
 		if colour >= 0:
 			placement.part_id = library.current(placement.part_id)
 			placement.color_code = colour
+		# By the part put down: recorded by the name before, a mirrored
+		# 303923's line was never its 3039's (Assemblies.line_of), and it
+		# voted from its reflection (mirrorreview N3).
+		if not placement.origin.is_empty() and placement.transform != lined:
+			read_as[placement.origin] = [placement.part_id,
+				placement.transform.affine_inverse() * lined, named]
 	return mirrored_lines
 
 

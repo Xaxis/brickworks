@@ -3475,6 +3475,17 @@ func _read_fit(a: Array, b: Array, read: Variant, master_frame: Transform3D) -> 
 				hit = other
 				hit_alike = true
 				break
+			# Or laid as it is, their lines alike ([method _lined]): a copy a
+			# Mirror took back to its others' hand stands as the Mirror's image
+			# of its reflection, a plate on the plane turned a half on itself,
+			# and is written by its lines (as_lined). Fitted to where its parts
+			# stand instead, a copy of a wing whose every part is on its plane
+			# lay on it turned a half, and the line placing it, which nobody
+			# touched, was written turned (mirrorfix).
+			if not mirrored and _lined_alike(item, other, at):
+				hit = other
+				hit_alike = true
+				break
 			# A mirrored part is its reflection's image (Mirror.image), which
 			# may be the part turned to fill the same cells.
 			if hit.is_empty() and mirrored and _same_place(str(laid["part"]), there, other["at"]):
@@ -3491,6 +3502,35 @@ func _read_fit(a: Array, b: Array, read: Variant, master_frame: Transform3D) -> 
 ## Whether two turns are one but for a file's rounding, read and multiplied:
 ## each element within a five-hundredth. A part turned a half or a quarter
 ## on itself is a whole 1 or 2 off in some element.
+## Whether [param a], a part of the copy written as a definition, laid by
+## [param at] on [param b], a part of another copy, is where b is turned as
+## b is, where each part's line puts it ([method line_of]; where it stands,
+## for one with none): the same part named, the same place, the same turn.
+## False where neither has a line, as [method _read_fit] has already asked.
+func _lined_alike(a: Dictionary, b: Dictionary, at: Transform3D) -> bool:
+	var read_as: Dictionary = world.kept_lines.get("read_as", {})
+	if read_as.is_empty():
+		return false
+	var here: Array = _lined(a, read_as)
+	var there: Array = _lined(b, read_as)
+	if (here.size() == 3 and there.size() == 3) or str(here[1]) != str(there[1]):
+		return false
+	var laid: Transform3D = at * (here[0] as Transform3D)
+	return laid.origin.distance_to((there[0] as Transform3D).origin) <= MIRROR_NEAR \
+		and _turned_alike(laid.basis, (there[0] as Transform3D).basis)
+
+
+## Where [param item]'s line puts it, and the part it names: [where, part]
+## from its record ([method line_of]), else [where it stands, its part, false].
+func _lined(item: Dictionary, read_as: Dictionary) -> Array:
+	var brick: BrickWorld.Brick = world.get_brick(int(item.get("id", 0)))
+	if brick != null:
+		var line: Array = line_of(read_as, brick.origin, str(item["part"]))
+		if not line.is_empty():
+			return [(item["at"] as Transform3D) * (line[0] as Transform3D), str(line[1])]
+	return [item["at"], str(item["part"]), false]
+
+
 static func _turned_alike(x: Basis, y: Basis) -> bool:
 	for axis: int in 3:
 		var d: Vector3 = x[axis] - y[axis]
