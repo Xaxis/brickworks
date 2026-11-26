@@ -390,8 +390,20 @@ func _played(method: String) -> void:
 		new_at.origin.distance_to(played_at.origin),
 		rad_to_deg(new_at.basis.get_rotation_quaternion().angle_to(played_at.basis.get_rotation_quaternion()))],
 		not new_at.is_equal_approx(played_at) and new_at.origin.distance_to(played_at.origin) < 1.5)
+	# Forward+ never draws the same frames twice to the byte (New then New:
+	# 50 to 100 pixels a level apart, on the base too), so New again is
+	# within 2 levels everywhere; wear left behind moves the plate by more.
 	var again: Image = await _render.render(_world, settings)
-	_say("played: New again draws as it did", again != null and again.get_data() == new_image.get_data())
+	var most: float = 0.0
+	if again != null:
+		for y: int in again.get_height():
+			for x: int in again.get_width():
+				var was: Color = new_image.get_pixel(x, y)
+				var now: Color = again.get_pixel(x, y)
+				most = maxf(most, maxf(maxf(absf(was.r - now.r), absf(was.g - now.g)),
+					maxf(absf(was.b - now.b), absf(was.a - now.a))))
+	_say("played: New again draws as it did (at most %.0f levels off)" % (most * 255.0),
+		again != null and most * 255.0 <= 2.5)
 
 
 func _turntable(method: String) -> void:
