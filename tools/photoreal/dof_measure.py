@@ -66,7 +66,7 @@ _photo: dict = {}
 def photo_widths(shot: str) -> dict:
     if shot not in _photo:
         s = SHOTS[shot]
-        im = Image.open(ROOT / s["photo"]).convert("RGB").resize(tuple(s["size"]), Image.LANCZOS)
+        im = Image.open(ROOT / s["photo"]).convert("RGB").resize(tuple(s["size"]), Image.Resampling.LANCZOS)
         _photo[shot] = widths(shot, im, True)
     return _photo[shot]
 

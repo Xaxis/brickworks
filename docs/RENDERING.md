@@ -2557,6 +2557,71 @@ shots are the same pictures. So it is on: `PRODUCT_FLOOR` is 1. The sets
 are still far from the photographs (0.06 against 0.93): every set
 verdict still names flawless plastic and a seamless backdrop.
 
+## 5x. A photograph's focus on a whole model, fitted then judged (photoreal23)
+
+photoreal22 read every verdict since photoreal5 and found depth of field
+the set tell most tied to the judge's number (r +0.75): "everything in
+focus" on 0.58 of our set verdicts and none of the photographs'. Under
+photoreal20's and 21's lamps the focus words and the number moved
+together, and so did the colour, so those pools could not say which one
+the judge reads. This arm moves the focus alone.
+
+**Where a photograph focuses.** `tools/photoreal/dof_measure.py` measures
+an edge's width (px at 1024 wide) in boxes on the near, middle and far
+parts of each set. Each photograph is focused on its driver, in the middle
+of the model, not on its nearest feature: 6532's head 2.80 against 5.00
+near and 4.05 far, and 6660's cab 1.93 against 3.85 and 3.80. 6657's
+photograph is sharp nearly throughout (2.37 to 2.67).
+
+**The fit** (bench/results/photoreal23-2026-11-26/sweep, 112 variants of
+the product camera's softness, the f-number, the focus across the model's
+depth, and a sharpen; the miss is the RMS log ratio of the three widths):
+
+| set | photograph near / middle / far | src | fitted | miss src → fitted |
+|---|---|---|---|---|
+| 6532 | 5.00 / 2.80 / 4.05 | 5.16 / 3.07 / 3.92 | 4.91 / 2.92 / 4.20 | 0.060 → 0.033 |
+| 6660 | 3.85 / 1.93 / 3.80 | 4.26 / 2.46 / 3.95 | 4.27 / 2.26 / 3.67 | 0.151 → 0.109 |
+| 6657 | 2.67 / 2.37 / 2.65 | 3.02 / 2.62 / 2.42 | 2.65 / 2.48 / 2.74 | 0.106 → 0.032 |
+
+The fitted values are softness 0 and f/10 at 0.42 of the depth (6532), f/9.5
+at 0.5 (6660), and f/16 at 0.30 (6657). 6512's picture is itself a render
+with everything in focus, so it only lost the softness. Taking off
+`PRODUCT_SOFTNESS` sharpened 6532's driver only from 3.07 to 2.96. The
+rest of the soft middle was the focus plane sitting behind him. On 6660
+no lens gets the cab under 2.26: a sharpen of 0.3 reached 2.14, but it was
+left out, because that is the camera's processing, not its focus. The
+colour did not move (CIEDE2000 against the photographs 3.00, 5.36 and
+6.10, against src's 3.00, 5.35 and 6.06).
+
+**Judged** (photoreal16's solo judge, fresh names, the four sets at
+draws 11 to 22 from a locked snapshot of pre261 3aa31d158, 2 trials, 4
+rounds; the close-ups and the car are src's bytes):
+
+| arm | sets (95%) | against src, sets | all ten shots | set verdicts: depth of field a photo tell / "everything in focus" |
+|---|---|---|---|---|
+| src | 0.057 (0.040 to 0.074) | | | 0.40 / 0.34 |
+| src again (twin) | 0.057 | +0.000 | +0.000 | 0.37 / 0.33 |
+| focus fitted | 0.057 (0.038 to 0.076) | -0.000 (-0.003 to +0.003) | -0.000 (-0.001 to +0.001) | 0.56 / 0.20 |
+| twice the blur (another pool) | 0.065 (0.045 to 0.082) | +0.008 (+0.000 to +0.015) | +0.003 (-0.000 to +0.007) | 0.70 / 0.09 |
+
+The fitted focus changed what the judge said, and not its number. On 6532
+it named depth of field as a photo tell in 0.94 of its verdicts (src 0.70),
+"everything in focus" fell from 0.34 to 0.08, and the number stayed at 0.080.
+6660's photo tell rose from 0.14 to 0.36 and its number stayed at 0.044.
+So the r +0.75 was the lamps moving both at once. The focus words are read
+off the picture; they do not decide it.
+
+Twice the blur (half the fitted f-number, the focus kept) rose on
+every photographed set: 6660 +0.017 and 6657 +0.011 in 12 draws of 12, 6532
++0.006 in 8. Yet 0.90 of its verdicts called it "synthetic-looking
+depth-of-field blur", and 6532's far wheel goes past the photograph's
+(6.47 px against 4.05). Its all-shot interval does not clear 0. Focus is at
+most a lever of about 0.01 on sets that stand 0.87 below their
+photographs. Nothing changes: `PRODUCT_SOFTNESS` stays 0.6, the app's lens
+stays off, and tools/photoreal/shots.json keeps its lenses. Of
+photoreal22's two candidates, the plastic's colour as photographed is the
+one left to judge alone.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
