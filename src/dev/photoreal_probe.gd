@@ -34,7 +34,11 @@
 ##                      (intersection over union) grows. Writes
 ##                      shots/photoreal/<tag>/<name>_fit.json and _fit.png (the
 ##                      two outlines over each other); draws nothing else.
-##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json
+##   -- --shots=PATH    the shots from another file than tools/photoreal/shots.json;
+##                      a shot there may set the Product stage's floor
+##                      (floor_boxes, floor_over, floor_key, floor_shade,
+##                      floor_bounce, floor_f0, floor_rough: photoreal26) and
+##                      "plastic": "played" (Render's Played with, photoreal26)
 ##   -- --without=a,b   these of the shot's camera and wear (grain, vignette,
 ##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, the parts'
 ##                      batch, handling, studs and play (photoreal8), its edges'
@@ -512,11 +516,14 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 			"dust", "paper", "seating", "tone", "balance", "batch", "handling", "studs", "play",
 			"rubbed", "table", "table_light", "fill", "edge", "source", "source_rise", "source_turn",
 			"source_wide", "source_tall", "source_fall", "source_key", "source_spill",
-			"peel", "sink", "polish", "scuff", "floor"]:
+			"peel", "sink", "polish", "scuff", "floor", "floor_boxes", "floor_over", "floor_key",
+			"floor_shade", "floor_bounce", "floor_f0", "floor_rough"]:
 		if key in without:
 			settings.set(key, 0.0)
 		elif shot.has(key):
 			settings.set(key, float(shot[key]))
+	# The plastic as a person picks it in Render (photoreal26): "new" or "played".
+	settings.plastic = str(shot.get("plastic", "new"))
 	# What the photograph's parts stand on (photoreal5): 0 paper, 1 a desk.
 	settings.surface = 0 if "surface" in without else int(shot.get("surface", 0))
 	# Its staging (photoreal7): what it stands on and the key near it.

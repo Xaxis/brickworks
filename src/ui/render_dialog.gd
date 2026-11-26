@@ -78,6 +78,9 @@ var _quality: Array[Button] = []
 var _quality_note: Label
 var _looks: Array[Button] = []
 var _look_note: Label
+## The plastic, new or played with (photoreal26, RenderSettings.plastic).
+var _plastics: Array[Button] = []
+var _plastic_note: Label
 var _sizes: Array[Button] = []
 var _custom: HBoxContainer
 var _width: SpinBox
@@ -537,6 +540,18 @@ func _build() -> void:
 	_look_note = _note(right)
 	_look_note.custom_minimum_size.y = 30
 
+	# photoreal26: the plastic straight from the box, or a set played with for
+	# years, at Best in the Product look (RenderSettings.plastic).
+	_heading(right, "Plastic")
+	_plastics = _segments(right, RenderSettings.PLASTICS.values(),
+		RenderSettings.PLASTICS.keys().find(settings.plastic), func(n: int) -> void:
+			settings.plastic = str(RenderSettings.PLASTICS.keys()[n])
+			_describe()
+			_ask_preview())
+	_say_plastics()
+	_plastic_note = _note(right)
+	_plastic_note.custom_minimum_size.y = 30
+
 	_heading(right, "Size")
 	var size_names: Array = []
 	for choice: Array in SIZES:
@@ -789,9 +804,20 @@ func _say_white() -> void:
 	white.text = tr("White", "backdrop")
 
 
+## The plastic's choices in their own words: "New" as plastic is, not as a
+## file is (French "Neuf", not "Nouveau").
+func _say_plastics() -> void:
+	var keys: Array = RenderSettings.PLASTICS.keys()
+	for n: int in _plastics.size():
+		_plastics[n].auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		_plastics[n].text = tr(str(RenderSettings.PLASTICS[keys[n]]), "plastic")
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and not _backgrounds.is_empty():
 		_say_white()
+	if what == NOTIFICATION_TRANSLATION_CHANGED and not _plastics.is_empty():
+		_say_plastics()
 	# lights (APP_UX5 #7): Which's rows are words made through tr().
 	if what == NOTIFICATION_TRANSLATION_CHANGED and _lamp != null:
 		_list_lamps(_lamp.selected)
@@ -983,6 +1009,11 @@ func _describe() -> void:
 	_look_note.text = ("Glossy plastic with rounded edges, clear parts that bend the light, "
 		+ "and a studio's key, fill and rim, as a set's own pictures are."
 		if settings.look == "product" else "The plastic and the light as the window draws them.")
+	if settings.plastic == "played":
+		_plastic_note.text = ("A set played with for years: whites a little yellowed, dust on the tops, "
+			+ "each part seated its own way. Drawn so at Best, in the Product look.")
+	else:
+		_plastic_note.text = "Straight from the box."
 	var fov: float = settings.fov_degrees()
 	var kind: String = "wide" if settings.focal_mm < 35.0 else (
 		"normal" if settings.focal_mm < 70.0 else "long, flattening")
@@ -1244,6 +1275,9 @@ func _show_choices() -> void:
 	var look_at: int = RenderSettings.LOOKS.keys().find(settings.look)
 	for n: int in _looks.size():
 		_looks[n].set_pressed_no_signal(n == look_at)
+	var plastic_at: int = RenderSettings.PLASTICS.keys().find(settings.plastic)
+	for n: int in _plastics.size():
+		_plastics[n].set_pressed_no_signal(n == plastic_at)
 	var size_at: int = SIZES.size() - 1
 	for n: int in SIZES.size() - 1:
 		if SIZES[n][1] == settings.size:
@@ -1642,6 +1676,8 @@ func controls_by_name() -> Dictionary:
 		named_controls["render_bg_" + str(BACKGROUNDS[n][0]).to_lower()] = _backgrounds[n]
 	for n: int in _looks.size():
 		named_controls["render_look_" + str(RenderSettings.LOOKS.keys()[n])] = _looks[n]
+	for n: int in _plastics.size():
+		named_controls["render_plastic_" + str(RenderSettings.PLASTICS.keys()[n])] = _plastics[n]
 	for n: int in _frames.size():
 		named_controls["render_frames_" + _frames[n].text] = _frames[n]
 	for n: int in _lengths.size():

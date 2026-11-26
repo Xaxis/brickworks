@@ -65,6 +65,16 @@ lib:no two parts alike
 lib:moulded edges
 -->
 
+### New or played with {#plastic}
+
+Under **Plastic**, **New** draws the parts straight from the box, and is what Render starts with. **Played with** draws a set that has been played with for years: whites and greys a little yellowed, each part its own amount, a little dust on the tops, finger marks where hands hold it, and each part seated its own way. It changes only the picture, at Best in the Product look, never the model.
+
+![The car rendered at Best in the Product look with Plastic › Played with: its greys a little yellowed, dust on the tops of its studs, each part seated its own way.](/docs/img/render-played.webp "Plastic › Played with: the car as a set played with for years.")
+
+<!-- covers
+ui:plastic new or played with
+-->
+
 ### What it stands on {#stage}
 
 ![The Render dialog with On a wooden table chosen under Background: the draft shows the car on the table's colour; at Best in the Product look the wood's own grain is drawn and a light stands near the model.](/docs/img/render-stage.webp "Background › On a wooden table: at Best, in the Product look, the model stands on real wood.")

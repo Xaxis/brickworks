@@ -427,6 +427,20 @@ func _dialog(method: String) -> void:
 			break
 	_say("dialog: a draft is drawn without asking", drafted)
 	var controls: Dictionary = dialog.controls_by_name()
+	# photoreal26: the plastic, new unless a person picks played with, and
+	# kept in a preset.
+	var plastic_new: Button = controls.get("render_plastic_new")
+	var plastic_played: Button = controls.get("render_plastic_played")
+	_say("dialog: Plastic is New unless picked", plastic_new != null and plastic_played != null
+		and plastic_new.button_pressed and dialog.settings.plastic == "new")
+	if plastic_played != null and plastic_new != null:
+		plastic_played.pressed.emit()
+		var note: String = (dialog.get("_plastic_note") as Label).text
+		_say("dialog: Played with draws the plastic played with, and says so (%s)" % note,
+			dialog.settings.plastic == "played" and dialog.settings.preset().get("plastic") == "played"
+			and note.contains("played with"))
+		plastic_new.pressed.emit()
+		_say("dialog: New again", dialog.settings.plastic == "new")
 	(controls["render_quick"] as Button).pressed.emit()
 	(controls["render_size_custom"] as Button).pressed.emit()
 	(dialog.get("_width") as SpinBox).value = 400

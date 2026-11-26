@@ -5857,6 +5857,25 @@ msgstr "Plastique brillant aux bords arrondis, pièces transparentes qui dévien
 msgid "The plastic and the light as the window draws them."
 msgstr "Le plastique et la lumière tels que la fenêtre les dessine."
 
+# The plastic new or played with (photoreal26), Render's Plastic row: New as
+# plastic is, not as a file is (msgctxt "plastic").
+msgid "Plastic"
+msgstr "Plastique"
+
+msgctxt "plastic"
+msgid "New"
+msgstr "Neuf"
+
+msgctxt "plastic"
+msgid "Played with"
+msgstr "Usagé"
+
+msgid "Straight from the box."
+msgstr "Tout juste sorti de la boîte."
+
+msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way. Drawn so at Best, in the Product look."
+msgstr "Un set avec lequel on a joué des années : blancs un peu jaunis, poussière sur le dessus, chaque pièce posée à sa façon. Dessiné ainsi en Meilleure, rendu Photo produit."
+
 msgid "%d frames, %s s at %d a second, as an animated WebP."
 msgstr "%d images, %s s à %d par seconde, en WebP animé."
 
