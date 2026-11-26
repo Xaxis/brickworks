@@ -160,6 +160,8 @@ var playing: String = ""
 var _name: LineEdit
 var _credit: CheckBox
 var _author: LineEdit
+## Under List it in the gallery: a listing with no name is on no profile.
+var _unnamed: Label
 var _about: TextEdit
 var _tags: LineEdit
 var _kind: OptionButton
@@ -318,7 +320,8 @@ func setup() -> void:
 	_credit.toggled.connect(func(on: bool) -> void:
 		_author.visible = on
 		if on and _author.text.is_empty():
-			_suggest_author())
+			_suggest_author()
+		_follow_unnamed())
 	_credit.pressed.connect(func() -> void: _credit_chosen = true)
 	form.add_child(_credit)
 	_author = LineEdit.new()
@@ -338,7 +341,9 @@ func setup() -> void:
 		+ "Untick it and publish again to take it out and keep the link."
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.add_theme_font_size_override("font_size", 12)
-	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
+	_list.toggled.connect(func(_on: bool) -> void:
+		_follow_prompt()
+		_follow_unnamed())
 	# Ticked by the person, it ticks Show who made it too, with the profile's
 	# name, as Enter and Share progress do: a model in the gallery with
 	# nobody's name on it is on nobody's profile and in no follower's feed.
@@ -352,6 +357,12 @@ func setup() -> void:
 		if _list.button_pressed and not _credit.disabled and not _credit.button_pressed and not _credit_chosen:
 			_credit.button_pressed = true)
 	form.add_child(_list)
+	# Listed with Show who made it unticked, it is in the gallery with no
+	# name: on no profile and in no follower's feed, which nothing said
+	# (feedself, 2026-11-26). Said under the two while it is so.
+	_unnamed = _line("Listed without your name, it will not be on your profile or in your followers' feeds.", 11, 0.7)
+	_unnamed.visible = false
+	form.add_child(_unnamed)
 	# Under it: an entry is a gallery model, so it is ticked only with it.
 	_prompt_box = CheckBox.new()
 	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
@@ -634,6 +645,15 @@ func _follow_age() -> void:
 		else "Publish this version as work in progress: listed with your name, in your followers' feeds and "
 			+ "in its own Talk thread, kept out of Top and the challenges until you publish it as finished.")
 	_follow_prompt()
+	_follow_unnamed()
+
+
+## The line under List it in the gallery: shown while it is ticked and
+## Show who made it is not.
+func _follow_unnamed() -> void:
+	if _unnamed == null or _list == null or _credit == null:
+		return
+	_unnamed.visible = _list.button_pressed and not _list.disabled and not _credit.button_pressed
 
 
 ## The quick build's box as the gallery's stands: shown for a copy of an
@@ -1664,6 +1684,7 @@ func page_state() -> Dictionary:
 		"list_disabled": _list.disabled if _list != null else false,
 		"credit_disabled": _credit.disabled if _credit != null else false,
 		"young": _young.visible if _young != null else false,
+		"unnamed": _unnamed.text if _unnamed != null and _unnamed.visible else "",
 		"prompt": prompt.duplicate(), "prompt_said": prompt_said,
 		"prompt_shown": _prompt_box.visible if _prompt_box != null else false,
 		"prompt_in": _prompt_box.button_pressed if _prompt_box != null else false,

@@ -1286,7 +1286,19 @@ func _the_panel(text: String) -> void:
 	panel._list.pressed.emit()
 	_ok(not panel._credit.button_pressed and panel._credit_chosen,
 		"Show who made it unticked by the person stays unticked when they then list it")
+	# Listed with no name: one line under the two says where it is not
+	# (feedself), and goes once the name is shown or the listing is off.
+	var unnamed: String = str(panel.page_state().get("unnamed", ""))
+	_ok(unnamed.contains("not be on your profile") and unnamed.contains("followers' feeds")
+		and panel._unnamed.is_visible_in_tree(),
+		"listed with Show who made it unticked: \"%s\"" % unnamed)
+	await _settle()
+	_save("8c_listed_unnamed.png")
+	panel._credit.button_pressed = true
+	_ok(str(panel.page_state().get("unnamed", "")).is_empty(), "...gone with Show who made it ticked")
+	panel._credit.button_pressed = false
 	panel._list.button_pressed = false
+	_ok(str(panel.page_state().get("unnamed", "")).is_empty(), "...and gone with the listing off")
 	panel._credit_chosen = false
 	await panel.publish()
 	store.remixed_from = "0r1g1nM0de"

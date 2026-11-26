@@ -4543,6 +4543,9 @@ msgstr "Les autres peuvent le regarder et le construire pour eux-mêmes, et vous
 msgid "List it in the gallery"
 msgstr "Le publier dans la galerie"
 
+msgid "Listed without your name, it will not be on your profile or in your followers' feeds."
+msgstr "Publié sans votre nom, il ne sera ni sur votre profil ni dans le fil de vos abonnés."
+
 msgid "Anyone can find it at brickworks.diy/gallery, not only people sent the link. Untick it and publish again to take it out and keep the link."
 msgstr "Tout le monde peut le trouver sur brickworks.diy/gallery, pas seulement ceux qui ont reçu le lien. Décochez et publiez à nouveau pour l'en retirer et garder le lien."
 
