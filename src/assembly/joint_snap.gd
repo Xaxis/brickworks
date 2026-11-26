@@ -906,9 +906,10 @@ static func near(grid: BrickGrid, from: Vector3, way: Vector3, before: float) ->
 ## the nearer of two as near, on no brick in [param unseen] (hidden, which
 ## the pointer passes through). With none, the first of [method framed]:
 ## a hinge half of a part the line passes through the box of. Null when
-## there is none.
+## there is none. [param keep]: the end the hand is on now, kept while it is
+## aimed as near as the other end of its own shaft ([method one_shaft]).
 static func aimed_at(sites: Array, held: Array, from: Vector3, way: Vector3,
-		before: float, unseen: Dictionary = {}) -> End:
+		before: float, unseen: Dictionary = {}, keep: End = null) -> End:
 	var wanted: Dictionary = {}
 	for end: End in held:
 		for kind: String in TAKES.get(end.kind, []):
@@ -916,6 +917,9 @@ static func aimed_at(sites: Array, held: Array, from: Vector3, way: Vector3,
 	var best: End = null
 	var best_off: float = REACH
 	var best_along: float = INF
+	var kept: End = null
+	var kept_off: float = INF
+	var kept_along: float = INF
 	for site: End in sites:
 		if not wanted.has(site.kind) or unseen.has(site.brick):
 			continue
@@ -931,6 +935,10 @@ static func aimed_at(sites: Array, held: Array, from: Vector3, way: Vector3,
 		if along <= 0.0 or along > before:
 			continue
 		var off: float = ((point - from) - way * along).length()
+		if keep != null and same_end(site, keep):
+			kept = site
+			kept_off = off
+			kept_along = along
 		# A ball or a socket, a point, over a line through it as near: a
 		# steering link's socket is on its axle hole's line (32005), and a
 		# ball part aimed at the socket went into the axle hole from every
@@ -941,10 +949,35 @@ static func aimed_at(sites: Array, held: Array, from: Vector3, way: Vector3,
 			best = site
 			best_off = minf(off, best_off)
 			best_along = along
+	# An axle's two ends both reach along its whole shaft, so a point of it
+	# is aimed at by both alike, and which was the nearer was the rounding
+	# of the pointer's line: a belt wheel held over the middle of 8841-1's
+	# axle went onto the other end at each motion of a pixel, turned round,
+	# and lost what R and T had chosen (connectfix). The end the hand is on
+	# stays while it is aimed as near.
+	if best != null and kept != null and kept != best and one_shaft(kept, best) \
+			and kept_off <= best_off + 0.5 and absf(kept_along - best_along) <= 0.5:
+		return kept
 	if best != null:
 		return best
 	var framed_by: Array = framed(sites, held, from, way, before, unseen)
 	return framed_by[0] if not framed_by.is_empty() else null
+
+
+## Whether [param a] and [param b] are one end of one part down, as the
+## site grid gives it again each time the pointer moves.
+static func same_end(a: End, b: End) -> bool:
+	return a.brick == b.brick and a.kind == b.kind and a.at.is_equal_approx(b.at) \
+		and a.axis.is_equal_approx(b.axis)
+
+
+## Whether [param a] and [param b] are ends of one shaft of one part down:
+## its two ends' lines one line, either way along it.
+static func one_shaft(a: End, b: End) -> bool:
+	if a.brick != b.brick or absf(a.axis.dot(b.axis)) < 0.999:
+		return false
+	var v: Vector3 = b.at - a.at
+	return (v - a.axis * v.dot(a.axis)).length() < 0.5
 
 
 ## Of [param sites], the hinge halves a hinge of [param held] goes on whose

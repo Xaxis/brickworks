@@ -4260,6 +4260,9 @@ func _on_exact_fetched(part_id: String) -> void:
 ## of the joint the part was picked up off the model by (Grip), alone.
 func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 		hit: BrickLattice.Hit, only: Array = []) -> bool:
+	# The joint it was on, which an axle's other end, aimed at as near, does
+	# not take over (JointSnap.aimed_at).
+	var was_on: JointSnap.End = _joint_site
 	_joint_site = null
 	# Connect's chosen point alone, when there is one: a 1 x 16 on two pins
 	# by the hole the person picked, not by whichever of its 30 ways T is on.
@@ -4273,7 +4276,7 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
 	var near: Array = JointSnap.near(_joint_grid(), origin, direction, before)
 	var site: JointSnap.End = JointSnap.aimed_at(near, held, origin, direction, before,
-		lattice.unseen)
+		lattice.unseen, was_on)
 	if site != null and site.is_hinge() and not JointSnap.within_reach(site, origin, direction):
 		var framed: Array = JointSnap.framed(near, held, origin, direction, before, lattice.unseen)
 		site = null

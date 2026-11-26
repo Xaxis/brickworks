@@ -448,6 +448,10 @@ whole cycle.
 
 ### Fixed
 
+- A wheel or another part held by its hole over the middle of an axle could
+  jump between the axle's two ends as the pointer moved by a pixel: it
+  turned round each time, and what R and T had chosen was lost. It stays on
+  the end it went onto while the pointer stays on the axle, with Connect too.
 - A part in the air, touching nothing, was missed by everything that checks
   a model: the status bar, Check stability ("Stands"), Stress, and Seat parts
   ("every part is on its studs"). Each now says it by name and selects it,

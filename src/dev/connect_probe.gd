@@ -499,6 +499,16 @@ func _walk() -> void:
 		await _act_move(at)
 		var turns: int = await _turn_onto(want, at)
 		var exact: bool = _exact_ghost(want)
+		# Its turn kept as the hand drifts along the axle, uncounted: a belt
+		# wheel over the middle of the axle went onto the axle's other end at
+		# a pixel's move, turned round, and lost what R had chosen
+		# (connectfix). The walk had passed only by where its pixel fell.
+		if index == 25:
+			var drift: Array = await _drift_along(site, at)
+			_check("8841-1 #25 %s keeps its turn as the pointer drifts along the axle: turned otherwise at %d of %d places on it"
+				% [part, drift[0], drift[1]], exact and drift[1] >= DRIFT and drift[0] == 0)
+			await _again(at)
+			exact = _exact_ghost(want)
 		if exact:
 			await _act_click(at)
 		var put: BrickWorld.Brick = _newest() if exact else null
@@ -668,6 +678,33 @@ func _turn_onto(want: Transform3D, at: Vector2) -> int:
 const TURNS := [["t"], ["r"], ["R"], ["t", "r"], ["t", "R"], ["r", "r"], ["R", "R"],
 	["t", "r", "r"], ["t", "R", "R"], ["r", "r", "r"], ["R", "R", "R"], ["r", "r", "r", "r"],
 	["t", "r", "r", "r"], ["t", "R", "R", "R"], ["t", "r", "r", "r", "r"]]
+
+
+## How far the hand drifts each way along a joint's line, in pixels.
+const DRIFT := 12
+
+
+## The pointer moved along [param site]'s line as the screen shows it, a
+## pixel at a time, [constant DRIFT] each way from [param at], as a hand
+## drifts: [how many places on the joint the ghost stood turned otherwise
+## than at [param at], how many places it stood on the joint].
+func _drift_along(site: JointSnap.End, at: Vector2) -> Array:
+	var was: Basis = _builder.ghost_transform().basis
+	var way: Vector2 = _screen(site.at + site.axis * 10.0) - _screen(site.at)
+	way = way.normalized() if way.length() > 0.01 else Vector2.RIGHT
+	var turned: int = 0
+	var on: int = 0
+	for k: int in range(-DRIFT, DRIFT + 1):
+		await _move(at + way * k)
+		if not _builder.is_on_joint():
+			continue
+		on += 1
+		var now: Basis = _builder.ghost_transform().basis
+		for n: int in 3:
+			if (now[n] - was[n]).length() > EXACT_TURN:
+				turned += 1
+				break
+	return [turned, on]
 
 
 ## The pointer nudged and back, so the ghost is worked out again where it is.
