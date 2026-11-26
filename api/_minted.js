@@ -123,6 +123,9 @@ export function clientAddress(request) {
   return isIP(address) ? address : null;
 }
 
+// reach's words when no connection was made (api/_db.js): nothing sent.
+const NEVER_REACHED = /: not reached \((ECONNREFUSED|ENOTFOUND|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|UND_ERR_CONNECT_TIMEOUT)\)$/;
+
 async function redeemed(email, account, vet, once, from) {
   const link = await reach("auth POST admin/generate_link", 10, `${supabase()}/auth/v1/admin/generate_link`, {
     method: "POST", headers: admin(),
@@ -141,7 +144,10 @@ async function redeemed(email, account, vet, once, from) {
     verify = await reach("auth POST verify", 10, `${supabase()}/auth/v1/verify`, {
       method: "POST", headers, body: JSON.stringify({ type: "magiclink", token_hash: hashed }) });
   } catch (trouble) {
-    throw Object.assign(trouble instanceof Error ? trouble : new Error(String(trouble)), { unspent: true });
+    // Given back only when the verify was never reached: no connection made.
+    // A reply lost, or none within the deadline, may have spent it there.
+    const failed = trouble instanceof Error ? trouble : new Error(String(trouble));
+    throw Object.assign(failed, { unspent: NEVER_REACHED.test(failed.message) });
   }
   const session = await verify.json().catch(() => ({}));
   if (verify.status === 403 || verify.status === 401) {
