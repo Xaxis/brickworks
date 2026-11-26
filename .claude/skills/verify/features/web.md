@@ -8347,7 +8347,8 @@ ticked, then sent `listed: true` with the panel saying so, unticked sent false;
 pressed by the person, List it in the gallery ticks Show who made it too and a
 Publish at once waits for the profile's name (a listed build with no name is
 on no profile and in no feed: sitewalk3), unticking it or the panel setting it
-ticks nothing;
+ticks nothing, and a Show who made it the person unticked for this model stays
+unticked;
 a copy's `remixed_from` sent, kept in its saves on a line LDraw ignores beside
 the link's and read back when it opens; Unpublish; another account's link
 replaced; Clear and new work forget both. The viewer's about line ends
