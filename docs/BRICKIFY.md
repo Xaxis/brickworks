@@ -3675,8 +3675,9 @@ the connectors, not the lattice):
   1 x 2 plate on their side studs; the plates that ran from the arm into
   the hand are gone, and what is left of the hand meets the arm side by side
   and under tiles and slopes, no stud of either into the other (0 of the 59).
-  On `pre261` the hand's cube is refused (`backed`) and the hands are held;
-  4 other parts float.
+  On `pre261` the hands are held and 4 other parts float; a stud deep, the
+  figure's cubes refused for no core behind (`backed`) fall from 504 to 272
+  and those turned rise from 86 to 151.
 
 So the seventh round's guess, that Balance left the side studs out, was
 wrong for these: both are a thinner core leaving too few studs across a
