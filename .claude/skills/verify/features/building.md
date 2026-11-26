@@ -1476,11 +1476,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   New a frame into each.
   Publish is the model's from the press to the server's answer (pubbind):
   its link, remix and moves are taken with its text, and the model is
-  checked again after the steps and tests and after the answer. Opened
-  before the send, nothing is sent ("Not published: another model was
-  opened."); after, the model open now is given nothing and the status
-  names where the first went ("Published “A” at …, but another model was
-  opened meanwhile"). wholereview3 F1 had 10030-1 sent as the other's next
+  checked again after every wait. Opened before the send, nothing is sent
+  ("“A” was not published: another model was opened."); after, the model
+  open now is given nothing and the status names where the first went
+  ("Published “A” at …, but another model was opened meanwhile"). wholereview3 F1 had 10030-1 sent as the other's next
   version and the other given its link. The same binding: Ask in Talk,
   Enter (the entry goes to the link published), Take down (the link pressed
   on), Clear (asked about one model, never empties another), Save's
@@ -1490,9 +1489,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   stream and next tool never build on a model opened meanwhile). The share
   panel shows the model on the baseplate while it is open
   (`SharePanel._show_model`, `_follow_model`): nothing typed for one model
-  is published with another. `pubbind_probe` (headless) drives each with
-  the server stubbed; wholereview3's p3 (`wholereview3_probe
-  --cases=publish_during,publish_small`, branch wholereview3) both ways.
+  is published with another. Every act of the panel (Publish, Share
+  progress, Enter, Ask in Talk, Take down) runs between `_begin_act` and
+  `_end_act` (pubbind2): the panel holds the pressed model while any runs,
+  and every way out (done, refused, signed out, failed, another opened)
+  ends with the model open shown, the status naming the pressed model
+  ("“A” was published at … but not entered", "The question about “A” was
+  not asked: …"), in de/fr/es too. pubreview F1-F3 were exits that skipped
+  it. `pubbind_probe` (headless) drives each with the server stubbed
+  (`ask_fail`, `ask_moved`, `enter_server`, `enter_enter` are F1-F3);
+  pubreview's own probe (branch pubreview e4c8e004c); wholereview3's p3
+  (`wholereview3_probe --cases=publish_during,publish_small`, branch
+  wholereview3) both ways.
   The audit is `src/dev/command_probe.gd` (windowed or headless; `--judge`
   fails a command over 250 ms of its own work in one frame that was not
   said first): every command in the shell's table on Orthanc and the car,
