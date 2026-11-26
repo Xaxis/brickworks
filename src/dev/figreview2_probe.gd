@@ -616,7 +616,7 @@ func _escape() -> void:
 	var t1: String = _text(name)
 	_result("escape.figure", "on the model %d torsos (were 1), in the file %d; parts %d (were %d); timeline %s (was %s); depth %d (was %d); the next undo says %s"
 		% [_torsos().size(), _figure_count_in(t1), _full().size(), full0.size(), _timeline(), line0,
-			_builder.history_depth(), depth, _builder.call("undo_words") if _builder.has_method("undo_words") else "?"])
+			_builder.history_depth(), depth, ", ".join(_builder.history_words(1))])
 	_check("escape: Escape with a figure lifted off puts it back where it was, as Escape does a carried selection (%d torsos on the model)"
 		% _torsos().size(), _torsos().size() == 1)
 	await _undo()

@@ -73,7 +73,7 @@ func _run() -> void:
 	_nothing(said, "already", "the plate")
 
 	print("edit_model painting a plate the colour it is")
-	_assistant.focus_off() if _assistant.has_method("focus_off") else null
+	_assistant.unfocus()
 	var depth: int = _builder.history_depth()
 	said = str(await _assistant.use_tool("edit_model", {"recolor": [{"bricks": [plate], "color": own}],
 		"picture": false}))
