@@ -485,7 +485,13 @@ func _finger_map() -> void:
 		_check("B: two fingers turn the view", _view_moved(view))
 		view = _camera.global_transform
 		var distance: float = _camera.global_position.distance_to(_world.model_bounds().get_center())
-		await _two_fingers(_base_point(-0.1, -0.2), _base_point(0.1, -0.2), Vector2.ZERO, 2.0)
+		# In the room's middle, as a person pinches: the plate's own points,
+		# turned, put a finger on the tablet's Undo up the left side.
+		var middle: Vector2 = _seen_middle()
+		var reach := Vector2(Phone.px(root, 60.0), 0.0)
+		_check("B: the pinch's fingers are on the model, on no button",
+			not bool(_simple.call("covers", middle - reach)) and not bool(_simple.call("covers", middle + reach)))
+		await _two_fingers(middle - reach, middle + reach, Vector2.ZERO, 2.0)
 		await _settle()
 		var closer: float = _camera.global_position.distance_to(_world.model_bounds().get_center())
 		_check("B: two fingers spread zoom in (%.0f to %.0f)" % [distance, closer], closer < distance * 0.9)
