@@ -142,6 +142,10 @@ var _seen_revision: int = -1
 var _last: Dictionary = {}
 var _told_page: String = ""
 var _told_page_at: int = 0
+## Whether a telling was put off ([method _tell_page], at most twice a
+## second): what the page holds may be older than what is so now, and the
+## panel stays awake until it has told it (GrabDrag._page_behind).
+var _page_behind: bool = false
 
 ## The model's cables and the switches as worked here (Wiring), and while
 ## Play runs a motor by its power, its rate in driver turns a second, signed
@@ -678,8 +682,14 @@ func _show_pose() -> void:
 
 
 func _process(delta: float) -> void:
+	# Shut, asleep (Wake) once the page has been told so: the telling before
+	# was made while it played, and nothing told the page after, so
+	# window.brickworksSimulate said open and playing for as long as the app
+	# slept, and a check waiting on it to shut waited it out.
 	if not visible:
-		Wake.rest(self)
+		_tell_page()
+		if not _page_behind:
+			Wake.rest(self)
 		return
 	# Something else changed the model: an edit, an undo. What turns is read
 	# again from the model as it now is.
@@ -1856,8 +1866,10 @@ func _tell_page() -> void:
 		return
 	var now: int = Time.get_ticks_msec()
 	if now - _told_page_at < 500:
+		_page_behind = true
 		return
 	_told_page_at = now
+	_page_behind = false
 	var state: Dictionary = {"open": visible, "playing": playing, "recording": _recording,
 		"turns": snappedf(turns, 0.001), "driver": _driver.text, "readout": _readout.text,
 		"trouble": _trouble.text, "stops": _stops.text, "balance": _weighed.text,
