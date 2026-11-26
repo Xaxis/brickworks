@@ -209,6 +209,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and _row != null and is_inside_tree():
 		_share_top()
 		_share_row()
+		_show_name()
 
 
 ## Laid out again for a new size (a phone turned): the bin and the name
@@ -604,11 +605,9 @@ func _dress_name() -> void:
 		shown = Label.new()
 		shown.name = "shown_name"
 		shown.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		# Forced: Godot adds no "…" to fewer than six letters left, and
-		# "Wide probe" read "Wide", as if that were the whole name.
-		shown.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE
 		shown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_name.add_child(shown)
+		shown.resized.connect(_show_name)
 		_name.text_changed.connect(_show_name.unbind(1))
 		_name.focus_entered.connect(_show_name)
 		_name.focus_exited.connect(_show_name)
@@ -631,6 +630,16 @@ func _show_name() -> void:
 		return
 	var typing: bool = _name.has_focus()
 	shown.text = _name.text
+	# Cut at a word with "…" only where it is wider than its room. Godot
+	# adds no "…" where fewer than six letters are left ("Wide probe" read
+	# "Wide", as if that were all of it) unless forced, and forced it adds
+	# one to words that fit too.
+	var wide: float = shown.get_theme_font("font").get_string_size(shown.atr(shown.text),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, shown.get_theme_font_size("font_size")).x
+	var cut: int = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE if wide > shown.size.x \
+		else TextServer.OVERRUN_NO_TRIMMING
+	if shown.text_overrun_behavior != cut:
+		shown.text_overrun_behavior = cut as TextServer.OverrunBehavior
 	shown.visible = not typing
 	if typing:
 		_name.remove_theme_color_override("font_color")
