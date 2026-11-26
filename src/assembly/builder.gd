@@ -6565,14 +6565,17 @@ func _place_figure() -> int:
 		if steps.is_empty():
 			return 0
 		riding_later = later
-		# Each part put down where the timeline does not show it (its step
-		# after the one showing, the timeline stepped back while it was in
-		# hand): Main steps on to it and says so (figreview2 F6: it went
-		# into its own later step with no word).
+		# None of it put down where the timeline shows it (its steps after
+		# the one showing, the timeline stepped back while it was in hand):
+		# Main steps on to them and says so (figreview2 F6: it went into its
+		# own later steps with no word). Some of it in view, the parts of it
+		# still to come stay to come, as they were.
 		put_unseen = PackedInt64Array()
 		for step: Dictionary in steps:
 			if is_ahead(int(step["brick"])):
 				put_unseen.append(int(step["brick"]))
+		if put_unseen.size() < steps.size():
+			put_unseen = PackedInt64Array()
 		_history.append({"undo": "group", "steps": steps, "words": "moved %s" % _many(steps.size())})
 		_redo.clear()
 		placed.emit(first, held_figure_name)
