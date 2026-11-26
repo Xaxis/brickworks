@@ -883,6 +883,20 @@ func _put_hand_away() -> void:
 		builder.hide_preview()
 
 
+## The part a tap on the model puts down: the tray's choice, or a part in
+## hand to put down that Simple did not choose (kept through the switch from
+## Full, or picked by a key), so it has a ghost and goes down as the tray's
+## would. Empty when none.
+func _held() -> String:
+	if not _chosen.is_empty():
+		return _chosen
+	var builder: Builder = app.get("_builder")
+	var verbs: EditVerbs = app.get("_verbs")
+	if builder == null or verbs == null or builder.is_carrying() or verbs.mode != "place":
+		return ""
+	return builder.held_part
+
+
 ## The tray's choice let go of, and the tool Select's again.
 func _unchoose() -> void:
 	if _chosen.is_empty():
@@ -1009,7 +1023,7 @@ func hint() -> String:
 		return atr("Let go to put it down")
 	if builder != null and builder.is_carrying():
 		return atr("Tap where the copy goes")
-	if not _chosen.is_empty():
+	if not _held().is_empty():
 		return atr("Tap the model to put one there")
 	if builder != null and not builder.selection.is_empty():
 		return atr("Drag it to move it · tap a colour to paint it")
@@ -1126,7 +1140,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if motion != null:
 		if _mouse:
 			_drag(motion.position)
-		elif (app.get("_builder") as Builder).is_carrying() or not _chosen.is_empty():
+		elif (app.get("_builder") as Builder).is_carrying() or not _held().is_empty():
 			# A copy in hand, or a brick chosen: its ghost where the mouse is.
 			_aim(motion.position)
 
@@ -1267,9 +1281,11 @@ func _release(at: Vector2) -> void:
 		return
 	if not tap:
 		return
-	# A tap with a brick chosen on the tray: one put down where it landed.
-	if not _chosen.is_empty():
-		_take(_chosen)
+	# A tap with a brick chosen on the tray, or a part in hand: one put down
+	# where it landed.
+	if not _held().is_empty():
+		if not _chosen.is_empty():
+			_take(_chosen)
 		last_drop = {"aimed": at, "put": [], "from": "tap"}
 		_place_at(at)
 		builder.hide_preview()
@@ -1445,8 +1461,10 @@ func _process(_delta: float) -> void:
 	if _bin.visible != _moving:
 		_bin.visible = _moving
 	# Nothing is aimed while no finger is: the ghost a stale pointer left goes.
+	# A part in hand keeps its own (the switch check's 2 x 4 from the studio's
+	# pick had its ghost taken each frame, and nothing could go down).
 	if builder != null and not _tray_dragging and not _moving and builder.has_preview() \
-			and not builder.is_carrying() and _chosen.is_empty():
+			and not builder.is_carrying() and _held().is_empty():
 		builder.hide_preview()
 
 

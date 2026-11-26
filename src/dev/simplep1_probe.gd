@@ -1195,6 +1195,16 @@ func _place_one(walker: Dictionary, n: int, how: String, slip: bool, out: Dictio
 		out["wrong"] = int(out["wrong"]) + 1
 		_seconds += NOTICE
 		_note("brick %d (%s): landed wrong: %s" % [n + 1, part, _how_wrong(brick, ideal as Transform3D, int(plan[1]))])
+		if how == "tap":
+			# Where the tap was aimed and where the ghost stood, against
+			# the place meant: whether the finger missed, or the tap put
+			# it elsewhere than the same aim's ghost.
+			var ghost: Variant = drop.get("ghost")
+			_note("    the tap: meant at %s, aimed at %s; the ghost at %s, meant %s, turned %s" % [
+				str(aim.round()), str((drop.get("aimed", Vector2.ZERO) as Vector2).round()),
+				str((ghost as Transform3D).origin) if ghost is Transform3D else "none",
+				str((ideal as Transform3D).origin),
+				str(not brick.transform.basis.is_equal_approx((ideal as Transform3D).basis))])
 		_placed.erase(n)
 		return {"ok": false, "down": true, "id": id, "ideal": ideal, "colour": brick.color_code != int(plan[1])}
 	_note("brick %d (%s) down" % [n + 1, part])
