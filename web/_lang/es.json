@@ -4463,6 +4463,7 @@
   "GitHub is unlinked from your account. Link it again in Settings first.": "GitHub está desvinculado de tu cuenta. Vuelve a vincularlo primero en Ajustes.",
   "Brickworks could not keep GitHub for you just now. Sign in with GitHub again in a minute.": "Brickworks no pudo guardar GitHub para ti ahora mismo. Vuelve a iniciar sesión con GitHub en un minuto.",
   "This account signs in only with a code we email you.": "Esta cuenta solo inicia sesión con un código que te enviamos por correo.",
-  "Too many sign-ins with {way} just now. Try again in a few minutes, or sign in with a code we email you.": "Demasiados inicios de sesión con {way} ahora mismo. Vuelve a intentarlo en unos minutos o inicia sesión con un código que te enviamos por correo."
+  "Too many sign-ins with {way} just now. Try again in a few minutes, or sign in with a code we email you.": "Demasiados inicios de sesión con {way} ahora mismo. Vuelve a intentarlo en unos minutos o inicia sesión con un código que te enviamos por correo.",
+  "Sign in to open your own copy in the studio: it is saved in your models, to change as you like. We email you a code, no password.": "Inicia sesión para abrir tu propia copia en el estudio: se guarda en tus modelos, para cambiarla como quieras. Te enviamos un código por correo, sin contraseña."
  }
 }

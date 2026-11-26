@@ -9837,7 +9837,13 @@ and `ui:a copy's first acts` (`src/ui/first_acts.gd`; firstminute,
 2026-11-23). A model page's Open in Brickworks (`/app?copy=<id>`) opens that
 model at start in place of the example car or the model saved last, whoever
 is signed in; signed out, behind the sign-in screen titled "Sign in to make
-it yours" with "“<name>” opens as your own copy…". Once signed in it is
+it yours" with "“<name>” opens as your own copy…". From the site, a
+signed-out press on any `/app?copy=` link (the page's Open in the studio, a
+card's Remix) asks on the page first (`web/follow.js`, the header script:
+`askToSignIn` "Sign in to open your own copy in the studio…", `later`), and
+goes on to the studio only once signed in; closed, it stays on the page
+(sitewalk3, 2026-11-26: the studio took 23-31 s to load only to show that
+screen). Once signed in it is
 saved into their models under the name its page gives it, not the
 file's first line (`ModelStore.unused_name`), credited (`remixed_from`,
 `credit`), framed, and the address loses `copy=` once the sign-in screen
@@ -9869,7 +9875,10 @@ visit's Show the assistant waits for another visit while `_copying`.
   saved change, each way in (`code`, `returning`, `reload`, `profile`,
   `tab2`) with a throwaway address (codes minted with the admin API,
   `/api/otp` answered in the browser), timed against 180 s, the change
-  made on parts the app says are drawn (`brickworksLayout.targets`); the asked-for
+  made on parts the app says are drawn (`brickworksLayout.targets`); way
+  `site` (first) presses the page's Open in the studio signed out and wants
+  the site's own sign-in on the page within 2 s, then the studio with the
+  copy, no sign-in screen there; the asked-for
   model after sign-in, the example car counted at every look, copies
   counted by the files the studio writes (`brickworksWrote`, kept in
   localStorage `fm.writes`). `--before` on an older build records what it
