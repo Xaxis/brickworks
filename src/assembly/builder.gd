@@ -6554,9 +6554,13 @@ func _place_figure() -> int:
 	if holds_lifted_figure():
 		var moves: Dictionary = {}
 		var later: int = 0
+		# Put down where it was lifted from, each part goes back to the very
+		# place it had, not one worked out again from the figure's frame.
+		var home: bool = _ghost_at_home()
 		for brick_id: int in _figure_parts:
 			var brick: BrickWorld.Brick = world.get_brick(brick_id)
-			var to: Transform3D = _ghost_transform * (_figure_parts[brick_id] as Transform3D)
+			var to: Transform3D = (_hand[brick_id]["at"] as Transform3D) if home and _hand.has(brick_id) \
+				else _ghost_transform * (_figure_parts[brick_id] as Transform3D)
 			moves[brick_id] = {"at": to, "boxes": boxes_for(library.mesh_for(brick.part_id), to)}
 			if is_ahead(brick_id):
 				later += 1
@@ -6639,31 +6643,19 @@ func _lift_figure(brick_id: int) -> bool:
 	return true
 
 
-## Where the figure in hand ([param whole]), aimed at [param target], stands:
-## on the studs nearest the aim ([method settle_figure]), or, when it does not
-## fit there and the aim is as near the next row of studs over, on that row.
-## A driver sat off the studs, between two rows, as sets and other programs
-## seat them: aimed back at its seat, rounding took the row behind, its legs
-## went 1 LDU into the brick behind the seat, and it could not be put back
-## (handkeep, figreview2's car).
-func _figure_spot(target: Vector3, hit: BrickLattice.Hit, whole: Array) -> Transform3D:
-	var at: Transform3D = settle_figure(target, held_rotation, hit, whole)
-	if figure_fits(whole, at):
-		return at
-	var footprint := Vector2i(1, 2) if posmod(held_rotation, 2) == 1 else Vector2i(2, 1)
-	var snapped: Vector3 = BrickLattice.snap_to_studs(target, footprint)
-	var off: Vector3 = target - snapped
-	for axis: int in [0, 2]:
-		# Only within a cell of halfway to the next row: further, the aim is
-		# plainly at this one.
-		if absf(off[axis]) < BrickLattice.STUD * 0.5 - BrickLattice.CELL:
-			continue
-		var other: Vector3 = snapped
-		other[axis] += signf(off[axis]) * BrickLattice.STUD
-		var there: Transform3D = settle_figure(other, held_rotation, hit, whole)
-		if figure_fits(whole, there):
-			return there
-	return at
+## Where the figure lifted off the model stood (its frame, as [member
+## _figure_parts] holds its parts in it), or null with none in hand.
+func _figure_home() -> Variant:
+	for brick_id: int in _figure_parts:
+		if _hand.has(brick_id):
+			return (_hand[brick_id]["at"] as Transform3D) * (_figure_parts[brick_id] as Transform3D).affine_inverse()
+	return null
+
+
+## Whether the ghost stands where the figure in hand was lifted from.
+func _ghost_at_home() -> bool:
+	var home: Variant = _figure_home()
+	return home is Transform3D and _ghost_transform.is_equal_approx(home)
 
 
 func _preview_figure(origin: Vector3, direction: Vector3) -> void:
@@ -6684,8 +6676,21 @@ func _preview_figure(origin: Vector3, direction: Vector3) -> void:
 	# Seated and asked whole, its parts still to come where they go
 	# ([method _figure_whole]).
 	var whole: Array = _figure_whole()
-	_ghost_transform = _figure_spot(target, hit, whole)
+	_ghost_transform = settle_figure(target, held_rotation, hit, whole)
 	_ghost_valid = figure_fits(whole, _ghost_transform)
+	# Aimed back at where it was lifted from, within a stud of it and turned as
+	# it was, where the studs nearest do not take it: back exactly where it
+	# stood, on the studs or not, when it fits there. Sets and other programs
+	# seat a driver off the studs, between two rows: put back by the studs
+	# nearest, its legs went 1 LDU into the brick behind the seat and it could
+	# not go back (handkeep, figreview2's car). Where the studs take it, it is
+	# seated on them as anywhere (fastreview's home).
+	var home: Variant = _figure_home() if not _ghost_valid else null
+	if home is Transform3D and _ghost_transform.basis.is_equal_approx((home as Transform3D).basis) \
+			and _ghost_transform.origin.distance_to((home as Transform3D).origin) < BrickLattice.STUD \
+			and figure_fits(whole, home):
+		_ghost_transform = home
+		_ghost_valid = true
 	for n: int in held_figure.size():
 		if n >= _figure_ghosts.size():
 			var made := MeshInstance3D.new()
