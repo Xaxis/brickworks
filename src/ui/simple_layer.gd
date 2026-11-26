@@ -585,13 +585,15 @@ func _tell_left_alone() -> void:
 	var world: BrickWorld = app.get("_world")
 	if world == null or _told_left.has(world.generation()):
 		return
+	# Counted once a model, none or some: a switch back and forth on a set
+	# of thousands counts nothing again.
+	_told_left[world.generation()] = true
 	var alone: int = 0
 	for brick: BrickWorld.Brick in world.bricks():
 		if not left_alone(brick.id).is_empty():
 			alone += 1
 	if alone == 0:
 		return
-	_told_left[world.generation()] = true
 	_say(atr("Simple leaves %d parts as they are (in sub-assemblies, tilted or bendy): Full changes them")
 		% alone, 6000)
 
