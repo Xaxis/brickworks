@@ -109,7 +109,15 @@ studs, against a greedy stack of standard bricks and legolization:
    and are not in. Its sixth round found why: the core beside a shell, cut
    off before the stitch could join it. Joined, and turned from 65 degrees,
    46% and 7.2% nearer the model than studs up, every run 98% or more in a
-   part, in 8% more parts and m137's time.*
+   part, in 8% more parts and m137's time. 2026-11-23, its seventh round:
+   the named causes screened on every mesh, and none holds. A shell across
+   depths, the bands, a shallower core, from 63 degrees and a looser cover
+   turn up to 55% on the three but each breaks a joint, the mend, the probe
+   or the other eleven models; the 80% needs 3DBenchy's walls (47905) and
+   the 30% a side's lean laid nearer, not more cubes. 2026-11-26, its eighth
+   round: Balance weighs side studs as top studs (a headlight brick's was
+   misread, now right), and the core a stud deep still fails: the fox's
+   piece hangs from one stud and the figure's hands float, both real.*
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
 7. **Buy it, or build it from what you own**: booklet, wanted list, price,
@@ -3416,6 +3424,275 @@ side's cubes across cuts (its refusals fall from 4,934 to 851 on Spot at 48)
 is the outline that seam would need. The code is reverted on the branch;
 `46a630d8` keeps it, with its try flags (`Shapes.TRY`).
 
+### The seventh round: the named causes on every mesh, and no lever holds (2026-11-23)
+
+The owner asked on 22 October whether SNOT was done, and to make it better
+than any competitor's. The bar: at 48 studs, 80% of the steep faces turned
+and 30% nearer the model than the studs-up build, holding every guardrail
+above (one piece, the check, no joint past its load, time within 1.5 times,
+parts within 25% of studs up, the side views, 97% in a part on the probe).
+The named causes (the bands, a side stud lower down, corner and wedge slopes
+on their sides, shells across depths, 3DBenchy's walls, a check that sees
+side studs) in the order they would move the most faces, each measured by
+the arms' own `cubes_why`. Two were not laid: a side stud lower down answers
+`unanchored`, 0.1% or less of the steep faces of each of the six studied, and slopes on their
+sides lay a turned face nearer, not more of them (the third item at the end).
+Unit `snot5`, from `pre261` (`c5ac2a28`, the sixth
+round's code). Bob, the Stanford bunny and 3DBenchy at 24 and 48 studs, and
+the other eleven at 48, each lever laid from a locked snapshot with a
+screen flag (`SNOT_TRY`), `pre261` from its own; time only from runs laid
+at the same moment, on a box at a load of 50 to 175 on 24 cores. Scripts,
+runs and pictures in `bench/results/snot5-2026-11-23`.
+
+**In short. Not met: NO-GO.** `pre261` turns 45.9% of the three's steep
+faces at 48 studs (Bob 56%, the bunny 59%, 3DBenchy 23%), 7.1% nearer than
+studs up; over the fourteen, 39.6% and 5.6%. No lever here holds both the
+guardrails and the other models: the most turned with every guardrail held
+on the three was 47.7% (one shell across depths, with what its wedge
+refused tried at its own depth, 9.1% nearer), but over the fourteen it
+turns 39.4% and stands 5.6% nearer, as `pre261` does: what it gains on the
+three it loses on the fox, the armadillo and the milk truck. Nothing is
+landed; the code is `pre261`'s (B is `8aa3d6b2`, the screen flags
+`e316355a`).
+The 80% needs 3DBenchy's walls, which no cube rule reaches: 57% of its
+steep faces lie in a cube whose two faces cancel (40.3%) or that has no
+core behind it (16.7%). And 30% is past the study's ceiling, 23.1% with
+every steep face laid as well as a top of its lean.
+
+**Where the steep faces stand on `pre261`**, at 48 studs (`study.py` on
+each arm's `cubes_why`, every cut):
+
+| Of the steep faces | Bob | Stanford bunny | 3DBenchy |
+|---|---|---|---|
+| Turned | 55.9% | 59.1% | 22.7% |
+| In a turned cube, nearest an upright part | 10.6% | 6.7% | 3.5% |
+| A band between cuts (`shelled`) | 13.4% | 6.1% | 3.4% |
+| The model past it (`moved`, `beyond`) | 11.9% | 8.0% | 2.9% |
+| No core three studs behind (`backed`) | 0.7% | 5.9% | 16.7% |
+| In no cube facing out: its faces cancel | 0% | 3.9% | 40.3% |
+| Too few plates, too little model, a cap, its shell's cover (`uncovered`) | 4.9% | 6.3% | 5.5% |
+| Leaning too far for a cube (60 to 65 degrees) | 2.4% | 3.4% | 4.7% |
+
+**What was screened**, each against `pre261` at 48 studs (the three, then the
+other eleven where it was laid on them):
+
+| Lever | Turned | Nearer than studs up | Sides95 (studs) | Parts, times studs up | The other eleven | Fails |
+|---|---|---|---|---|---|---|
+| `pre261` | 45.9% | 7.1% | 0.565 | 1.205 | 37.9%, 5.2% | the bunny 1.27, the armadillo 1.26, the milk truck 1.25 times studs up already |
+| One shell across depths (snot88's `CUBE_ACROSS`, A) | 46.0% | 9.1% | 0.532 | 1.193 | 34.8%, 4.6% | turns less on 7 of the 11; the fox 14.3% nearer to 7.0% |
+| A and the bands (the fifth round's `_cube_free`) | 51.3% | 8.8% | 0.578 | 1.222 | 37.8%, 4.6% | `brickify_probe` 82 of 84; Bob seen from the sides 0.62 (0.57); the bunny 1.26 times |
+| A, the bands and a core a stud deep | 55.0% | 9.2% | 0.563 | 1.225 | | the bunny: a 1 x 4 plate on one stud, 11.9 times its load |
+| A and a core a stud deep (`CUBE_BACK` 1) | 49.3% | 9.3% | 0.526 | 1.196 | | 3DBenchy 9 parts mended out; the bunny at 24 two joints 1.6 times |
+| A and a core two studs deep | 46.9% | 9.0% | 0.536 | 1.198 | | the bunny 27 parts mended out |
+| A, from 63 degrees (`STEEP` sine 0.46) | 49.0% | 9.4% | 0.549 | 1.202 | | 3DBenchy 10 mended out |
+| A, a core a stud deep, from 63 degrees | 52.8% | 9.8% | 0.538 | 1.205 | | 3DBenchy 5 mended out |
+| A, a cube kept at 40% covered | 46.0% | 9.2% | 0.534 | 1.194 | | no gain |
+| A core a stud deep alone | 49.3% | 7.7% | 0.552 | 1.210 | 43.8%, 6.4% | the fox two joints (10.3 and 2.9 times), the figure 39 mended out, the Hayes bust 97.2% in a part (99.0%) |
+| A core two studs deep alone | 46.6% | 7.2% | 0.562 | 1.210 | | the bunny a joint 1.2 times |
+| A, what its wedge refused at its own depth (B) | 47.7% | 9.1% | 0.539 | 1.203 | 37.1%, 4.6% | the fourteen 39.4% (39.6%); the fox 14.3% nearer to 6.4%; the avocado 1.29 and the milk truck 1.30 times studs up (1.20, 1.25) |
+| B, bands two cubes deep | 47.6% | 8.8% | 0.549 | 1.193 | five of them: 47.8%, 6.3% (49.3%, 7.7%) | the fox 14.3% nearer to 6.4%, as three deep; the milk truck 23.5% to 21.3% |
+
+"The other eleven" is the mean of their turned share and nearness (the
+armadillo, the avocado, the figure, the fox, the milk truck, the Greek
+tholos, the Hayes bust, the Bell X-1, Spot, the toy car and the Utah
+teapot); the tholos comes out the same on every arm, 4% turned in as many
+parts as studs up, as on `pre261`. At 24 studs the three move less: `pre261` 34.4% and 5.2%,
+A 32.7% and 5.3%, A and the bands 36.3% and 5.5%, B 32.7% and 5.6%.
+
+- *Across depths* (A, snot88's code brought onto `pre261`; its branch,
+  `b41fd80e1`, is not merged): on the three it is what snot88 found, two points nearer and seen nearer from the
+  sides (0.532 against 0.565), in no more parts or time; the faces in a
+  turned cube left nearest an upright part fall from 10.6% to 7.0% of Bob's
+  and 6.7% to 3.6% of the bunny's. But it turns fewer cubes on every model:
+  each cube's checks reach into its wedge, the core between it and the
+  band's face, so a cube is refused where the wedge runs through another
+  shell's plates (`crossed`: 7.9% of the bunny's steep faces, 7.6% of the
+  armadillo's), where a cap stands over it, or where the core behind the
+  band's face is thin (`backed`: the armadillo 8.5% to 14.3%). The fox at 48
+  studs turned 51 of its cubes where `pre261` turns 86, the armadillo 204 of
+  279, the Utah teapot 91 of 135.
+- *Its refusals at their own depth* (B): each cube a band refused for its
+  wedge alone is tried again as every depth was before. The cubes come back
+  (Bob 255 of 258, the bunny 474 of 494), but not the error: where turned,
+  the fox's steep faces stand 25.6° from the model against `pre261`'s 21.5°,
+  the milk truck's 10.0° against 8.8°. A shell three cubes deep lays the
+  outer cubes' wedges as plates on their sides from the band's face out,
+  and on a thin or flat body those stand further off than the same side laid
+  a depth at a time. All 84 of `brickify_probe` pass on it (the blue bunny
+  at 20 studs 97.7% in a part), and so do `brickify_buy_probe`,
+  `snot_probe`, `shapes_probe`, `balance_probe`, `stability_probe`,
+  `brickify_worker_probe` and `techniques_probe`: it fails on likeness and
+  parts, not on holding.
+- *The bands*: five points more on the three, as the sixth round found, but
+  `brickify_probe`'s hollow sphere lost 8 parts to the mend and its ramp
+  came out in cheese slopes, and Bob stands further off from the sides. A
+  row on its side is two and a half plates; a band of three or four plates
+  is still a staircase of its own.
+- *A shallower core* is the only lever that reaches 3DBenchy (23% to 31% a
+  stud deep), and alone it is the only one that turns more on every model:
+  44.9% of the fourteen's steep faces and 6.7% nearer, against 39.6% and
+  5.6%. But the joints it leaves are what the second round found at two
+  studs: the weight of a shell on side studs in a core a stud thick, on stud
+  joints Balance weighs without the side studs (the fox at 48, a 1 x 2 brick
+  on one stud of a 1 x 3 plate, 110 g, 10.3 times its load), and the mend
+  takes the figure's loose parts out (39 against 6).
+- *From 63 degrees*: Bob 74% turned with the bands, but the mend takes parts
+  out of 3DBenchy every time.
+
+**Parts.** `pre261` itself is over the bar's 25% on three of the fourteen at
+48 studs (the bunny 1.27, the armadillo 1.26, the milk truck 1.25 times
+their studs-up builds): a turned side is plates on their sides where studs
+up lays bricks. The bar was first set against m137's turned build (1.15
+times it); against studs up it holds a model that is mostly side.
+
+![Bob, the Stanford bunny and 3DBenchy at 48 studs: studs up, pre261, then across depths with its refusals at their own depth](brickify/unit5-seventh-48.jpg)
+
+*Bob, the Stanford bunny and 3DBenchy at 48 studs, drawn by the app's camera
+on the GPU: studs up, `pre261`, then B. Turned, Bob's ring and the bunny's
+back lose the studs-up build's terraces; between `pre261` and B little
+changes to the eye. 3DBenchy's hull is the same stack of studs-up rows in all
+three: its walls, which no cube reaches. Front views with the runs.*
+
+**What is next, and why it is not this unit.** Each is a construct or a
+check of its own, not a rule inside the cubes.
+
+1. **3DBenchy's walls** (57% of its steep faces, 19 points of the three's
+   mean): a wall one or two studs thick has no core behind its cube and its
+   two faces cancel in it. Laid on its side it needs its own construct: a
+   column of bricks with studs on two opposite sides (47905) on the wall's
+   middle line, plates on their sides on both faces, held through the wall,
+   and the cubes cut again a stud across so a two-stud wall's faces fall in
+   two cubes. Without it, every cube facing out turned would give 3DBenchy
+   at most 53%, and the three 80% only with every one of Bob's and the
+   bunny's turned too (96% and 91%); a turned cube turns 88% of its faces,
+   so about 70%.
+2. **A Balance that sees side studs**: a core a stud deep already turns
+   more on all fourteen (above), and every lever that turned more of a thin
+   body left a stud joint past its load in the core behind a shell. With
+   side studs weighed, a shell could hang from what really holds it, and
+   3DBenchy's and the bunny's `backed` cubes (16.7%, 5.9%) could turn.
+3. **The seam where a shell ends** (snot100's finding, and A's): across
+   depths takes the faces left nearest an upright part down by a third, but
+   lays a thin body's turned faces worse. A shell across depths whose outer
+   cubes keep their own face, the wedge laid by the core as bricks, would
+   keep both.
+
+The 30% bar cannot be met by turning more: in the study of 2026-10-21 the
+turned faces stood 28.8° from the model at 48 studs and a top of the same
+lean 26.0° (the fourteen's mean), so even every steep face turned and laid
+as well as a top is 23.1% nearer. Beating it needs the lean itself laid
+nearer, a side's slopes along its rows and across its depths, not more
+cubes.
+
+### The eighth round: Balance sees side studs, and the core a stud deep still fails (2026-11-26)
+
+The seventh round's second cause, taken up: teach Balance the side studs,
+then lay the core a stud deep again (`SNOT_TRY=back1`, the seventh round's
+"alone" arm) and make it the default if every guardrail holds. Unit
+`snot6`, from `pre261` (`e9d97319`). Both arms laid from one locked snapshot
+(`f3adb076`, the Balance below) at the same moment, the fourteen at 48
+studs, measured by the arms' own `cubes_why`, `bar.py`, `hold.py` and
+`means.py`. Scripts, runs, diagnostics and pictures in
+`bench/results/snot6-2026-11-26`.
+
+**In short. NO-GO, and not for want of side studs.** Balance already
+weighed a part held by its side studs as it weighs one on top: the joint
+square to the studs, where they are, at 1 N a stud times its lever, and let
+go of where a stud of that part lets go. Brackets (99781), 87087, 11211 and
+30414 came out as worked by hand. One holder did not: a headlight brick
+(4070), now fixed. With it, the core a stud deep turns 44.9% of the
+fourteen's steep faces against `pre261`'s 39.6% and stands 6.7% nearer than
+studs up against 5.6%. But the fox still hangs a piece from one stud at 10.3
+times its load, and the figure still loses both hands to the mend. Balance
+reads both right. So the code stays `pre261`'s; the flags are at `f8d0d754`.
+
+**Balance's rule for a side stud** (`Stability.stud_joints`, then
+`Balance._bridge_of_studs`): where every stud joining two parts points
+sideways, the joint is a plane square to them, through their feet, its
+corners half a stud past the outer studs. The moment about each corner is
+weighed against the same working load as studs on top, 1 N a stud times its
+lever (0.4 N·cm for one stud). `side_studs_probe` builds each case from the
+parts' own connectors and checks it against the rule worked by hand:
+
+| Held by | Load | Balance | By hand |
+|---|---|---|---|
+| Two 99781 brackets' four side studs, a 1 x 4 plate, 24 plates out from it | 1.60 N·cm on four studs | 0.66 N·cm, holds | 0.66 |
+| One 4070 headlight's side stud, eight 1 x 2 bricks out | 0.40 N·cm on one stud | 0.72x, holds | |
+| The same, twenty bricks out | 0.40 N·cm | 1.71 N·cm, 4.3x, past where it lets go (1.23) | 1.706 |
+| One 87087's side stud, the same eight and twenty | 0.40 N·cm | 0.72x and 1.71 N·cm, as the headlight | |
+| A 30414's four side studs, two bricks out, then 32 | 1.60 N·cm | holds, then 8.27 N·cm | 8.27 |
+| A plate a stud off an 87087's stud, and against a plain brick's side | | held by nothing | |
+
+**The headlight.** A 4070's stud stands in a recess, and a plate on it
+reaches back into the brick's cover. The lift (the cells one part covers
+over another) counted that as one resting on the other, with as many studs
+as the side stud's tip found, and the tip's reading gave way to it: the
+joint was weighed flat, across the 2.5 LDU the covers overlap. Eight bricks
+out read 2.31 times the working load where on an 87087 they read 0.72, and
+twenty read 17.4 times against 4.3. Now, where every stud joining a pair
+points sideways and none up or down, the joint is weighed where those studs
+are (`f3adb076`).
+
+**The lever over the fourteen**, at 48 studs, `pre261` against the core a
+stud deep, laid at the same moment:
+
+| | `pre261` | A stud deep |
+|---|---|---|
+| The three's steep faces turned | 45.9% | 49.3% |
+| The three, nearer than studs up | 7.1% | 7.7% |
+| The fourteen's steep faces turned | 39.6% | 44.9% |
+| The fourteen, nearer than studs up (the study's ceiling 23.1%) | 5.6% | 6.7% |
+| More turned | | 12 of 14 (the tholos and the Bell X-1 the same) |
+| Nearer, by 0.05° or more | | 9 of 14 (the avocado and milk truck within it, the tholos and the Bell X-1 the same, Spot 0.06° further) |
+| The three seen from the sides (Hausdorff95, studs) | 0.565 | 0.552 |
+| Parts, times studs up (the fourteen) | 1.132 | 1.140 |
+
+**The guardrails.**
+
+- *A joint past its load*: the fox, two (a 1 x 2 brick on one stud of a 1 x 3
+  plate, 110 g, 10.3 times; a 1 x 4 brick on two studs of a 1 x 2, 109 g,
+  2.9 times), where `pre261` has one, 1.8 times. Everything else none.
+- *Time*: the fox 2.76 times `pre261`'s (19.4 s against 7.0): 11.2 s of it
+  laying the cubes about its joint upright again, which leaves it no lighter.
+  3DBenchy 1.46 times; the rest 0.69 to 1.24.
+- *The mend*: the figure 39 parts out against 6, the armadillo 4 against 0.
+- *In a part*: the Hayes bust 97.2% (99.0%), the toy car 97.6% (98.3%),
+  over the 97%.
+- *Parts*: the bunny 1.27 and the armadillo 1.27 times studs up, as on
+  `pre261` (1.27, 1.26).
+
+**Why each fails, read off the parts' own shapes** (`side_studs_diag.gd`,
+`side_studs_diag2.gd`: every stud of a part into a socket of another, from
+the connectors, not the lattice):
+
+- *The fox*: the 1 x 2 brick's joint holds a piece of 181 parts, the turned
+  side facing -x with its thirteen 87087 and six 11211 and the core a stud
+  thick behind it. That piece has one stud into the rest of the fox. Where
+  it meets the body, along a plane across z, 70 pairs of parts touch with no
+  stud between them. Balance weighs the one stud there is.
+- *The figure*: before the mend, both hands at the ends of the arms float,
+  59 parts. A stud deep, each hand's front (-z) turns, two 11211 with a
+  1 x 2 plate on their side studs; the plates that ran from the arm into
+  the hand are gone, and what is left of the hand meets the arm side by side
+  and under tiles and slopes, no stud of either into the other (0 of the 59).
+  On `pre261` the hand's cube is refused (`backed`) and the hands are held;
+  4 other parts float.
+
+So the seventh round's guess, that Balance left the side studs out, was
+wrong for these: both are a thinner core leaving too few studs across a
+cut, and the check is right that they would come apart. A shell turned on a
+core a stud deep needs a bond of its own: a brick or plate laid across the
+plane where the thinner core meets the body, or, where a joint is past its
+load beside a shell, a prop that takes side studs too (`Brickify._prop`
+reaches only studs that point up).
+
+![Bob, the Stanford bunny and 3DBenchy at 48 studs: studs up, pre261, then the core a stud deep](brickify/unit6-eighth-48.jpg)
+
+*Bob, the Stanford bunny and 3DBenchy at 48 studs, drawn by the app's camera
+on the GPU: studs up, `pre261`, then the core a stud deep. 3DBenchy's bow
+turns (23% to 31% of its steep faces); Bob and the bunny change little to
+the eye. Front views with the runs.*
+
 ### Proof
 
 The sixth round's runs (`snot85`, 2026-10-21, `f209a60a`, and again after the
@@ -3551,6 +3828,33 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the eighth round (2026-11-26): Balance weighs side studs by the rule
+for top studs (a headlight's was the one it misread), and the core a stud
+deep still fails the fox's joint and the figure's hands, both read right.
+What would let it hold, its own unit:
+
+- **A bond across the thinner core**: where a shell's core is a stud deep, a
+  brick or plate laid across the plane where it meets the body (the fox's
+  piece of 181 parts has one stud across it), and the hand's front not
+  turned where nothing would then run from the arm into it; or a prop for a
+  joint past its load that takes side studs as well as those pointing up.
+
+After the seventh round (2026-11-23), not met: 45.9% of the three's steep
+faces turned at 48 studs against 80%, 7.1% nearer than studs up against 30%,
+and no lever that turns more holds both its guardrails and the other eleven
+models. What would move it, each its own unit:
+
+- **3DBenchy's walls**: 57% of its steep faces, and the 80% needs them. A
+  column of 47905 on a wall's middle line with plates on their sides on both
+  faces, and the cubes cut again a stud across.
+- **A Balance that sees side studs**: a core a stud deep turns more on all
+  fourteen (44.9%) but leaves joints past their load as Balance weighs them
+  now, with the side studs left out. (The eighth round: it did see them;
+  the joints are real.)
+- **A side's lean laid nearer**: every steep face turned as well as a top is
+  23.1% nearer, short of 30%; slopes on their sides along a shell's rows and
+  across its depths would take the error itself down.
 
 After the sixth round:
 
