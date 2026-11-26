@@ -327,6 +327,52 @@ func setup() -> void:
 	_author.visible = false
 	form.add_child(_author)
 
+	# Off unless ticked: a link is for whoever it is sent to, and the
+	# gallery is for everybody. Under Show who made it, at the form's top:
+	# the two say where it shows and with whose name. Under the licence it
+	# lay below the scroll's foot on a phone, so a first build was published
+	# as a link only (sitewalk3, 2026-11-26, at 390 x 844).
+	_list = CheckBox.new()
+	_list.text = "List it in the gallery"
+	_list.tooltip_text = "Anyone can find it at brickworks.diy/gallery, not only people sent the link. " \
+		+ "Untick it and publish again to take it out and keep the link."
+	_list.focus_mode = Control.FOCUS_NONE
+	_list.add_theme_font_size_override("font_size", 12)
+	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
+	# Ticked by the person, it ticks Show who made it too, with the profile's
+	# name, as Enter and Share progress do: a model in the gallery with
+	# nobody's name on it is on nobody's profile and in no follower's feed.
+	# A new member's first build, listed from the studio, was on neither
+	# (sitewalk3, 2026-11-26: "Nothing in the gallery yet" on their profile
+	# minutes after). Only on a press (pressed, never toggled): a link's
+	# listing read back from the server leaves its credit as it was. Never
+	# over the person's own choice: unticked by them first, it stays so, and
+	# it can be unticked after.
+	_list.pressed.connect(func() -> void:
+		if _list.button_pressed and not _credit.disabled and not _credit.button_pressed and not _credit_chosen:
+			_credit.button_pressed = true)
+	form.add_child(_list)
+	# Under it: an entry is a gallery model, so it is ticked only with it.
+	_prompt_box = CheckBox.new()
+	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
+	_prompt_box.focus_mode = Control.FOCUS_NONE
+	_prompt_box.add_theme_font_size_override("font_size", 12)
+	_prompt_box.visible = false
+	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
+	form.add_child(_prompt_box)
+	# Off unless ticked: how it was made is the builder's to say. After the
+	# quick build's box, which belongs to List it in the gallery.
+	_say_made = CheckBox.new()
+	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
+	_say_made.focus_mode = Control.FOCUS_NONE
+	_say_made.add_theme_font_size_override("font_size", 12)
+	_say_made.visible = false
+	form.add_child(_say_made)
+	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
+		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
+	_young.visible = false
+	form.add_child(_young)
+
 	form.add_child(_line("About it (shown on its page)", 12, 0.85))
 	_about = TextEdit.new()
 	_about.placeholder_text = "What it is, how it goes together, what you would change."
@@ -381,49 +427,6 @@ func setup() -> void:
 	_licence_says = _line("", 11, 0.65)
 	form.add_child(_licence_says)
 	_say_licence()
-
-	# Off unless ticked: a link is for whoever it is sent to, and the
-	# gallery is for everybody.
-	_list = CheckBox.new()
-	_list.text = "List it in the gallery"
-	_list.tooltip_text = "Anyone can find it at brickworks.diy/gallery, not only people sent the link. " \
-		+ "Untick it and publish again to take it out and keep the link."
-	_list.focus_mode = Control.FOCUS_NONE
-	_list.add_theme_font_size_override("font_size", 12)
-	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
-	# Ticked by the person, it ticks Show who made it too, with the profile's
-	# name, as Enter and Share progress do: a model in the gallery with
-	# nobody's name on it is on nobody's profile and in no follower's feed.
-	# A new member's first build, listed from the studio, was on neither
-	# (sitewalk3, 2026-11-26: "Nothing in the gallery yet" on their profile
-	# minutes after). Only on a press (pressed, never toggled): a link's
-	# listing read back from the server leaves its credit as it was. Never
-	# over the person's own choice: unticked by them first, it stays so, and
-	# it can be unticked after.
-	_list.pressed.connect(func() -> void:
-		if _list.button_pressed and not _credit.disabled and not _credit.button_pressed and not _credit_chosen:
-			_credit.button_pressed = true)
-	form.add_child(_list)
-	# Under it: an entry is a gallery model, so it is ticked only with it.
-	_prompt_box = CheckBox.new()
-	_prompt_box.tooltip_text = "Shown in the gallery, it enters this week's quick build"
-	_prompt_box.focus_mode = Control.FOCUS_NONE
-	_prompt_box.add_theme_font_size_override("font_size", 12)
-	_prompt_box.visible = false
-	_prompt_box.toggled.connect(func(on: bool) -> void: _prompt_in = on)
-	form.add_child(_prompt_box)
-	# Off unless ticked: how it was made is the builder's to say. After the
-	# quick build's box, which belongs to List it in the gallery.
-	_say_made = CheckBox.new()
-	_say_made.tooltip_text = "Its page and the gallery say so. Unticked, nothing on the site says how it was made."
-	_say_made.focus_mode = Control.FOCUS_NONE
-	_say_made.add_theme_font_size_override("font_size", 12)
-	_say_made.visible = false
-	form.add_child(_say_made)
-	_young = _line("The gallery and a name shown on a link are for people 13 and over. "
-		+ "Anyone you send the link to can open it all the same.", 11, 0.7)
-	_young.visible = false
-	form.add_child(_young)
 
 	_note_label = _line("What changed? (shown with the new version)", 12, 0.85)
 	form.add_child(_note_label)

@@ -8348,7 +8348,10 @@ pressed by the person, List it in the gallery ticks Show who made it too and a
 Publish at once waits for the profile's name (a listed build with no name is
 on no profile and in no feed: sitewalk3), unticking it or the panel setting it
 ticks nothing, and a Show who made it the person unticked for this model stays
-unticked;
+unticked; List it in the gallery sits under Show who made it, at the form's
+top, so a phone shows it without scrolling the form (under the licence it lay
+below the form's foot at 390 x 844: `askhelp_probe` at PROBE_SIZE=390x844
+with --pictures shows the panel);
 a copy's `remixed_from` sent, kept in its saves on a line LDraw ignores beside
 the link's and read back when it opens; Unpublish; another account's link
 replaced; Clear and new work forget both. The viewer's about line ends
