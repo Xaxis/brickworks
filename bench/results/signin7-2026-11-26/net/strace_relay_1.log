@@ -1,0 +1,352 @@
+473335 connect(24, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+473335 connect(23, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+473335 connect(23, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(23, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473335 connect(23, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(23, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(23, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 connect(24, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(24, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(24, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(24, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(24, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473333 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473334 <... connect resumed>)           = 0
+473333 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473334 <... connect resumed>)           = 0
+473333 <... connect resumed>)           = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473333 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473334 <... connect resumed>)           = 0
+473333 <... connect resumed>)           = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473333 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 <... connect resumed>)           = 0
+473334 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473333 <... connect resumed>)           = 0
+473334 <... connect resumed>)           = 0
+473333 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473333 <... connect resumed>)           = 0
+473334 <... connect resumed>)           = 0
+473333 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473333 <... connect resumed>)           = 0
+473334 <... connect resumed>)           = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473334 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(28, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(29, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473101 connect(31, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(32, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(33, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(34, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473335 connect(30, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(30, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(35, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473333 connect(35, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473333 connect(35, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(35, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(35, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 connect(36, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(36, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(36, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473334 connect(37, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 <... connect resumed>)           = 0
+473332 connect(36, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473334 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473334 connect(37, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(37, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 <... connect resumed>)           = 0
+473101 connect(36, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473335 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473332 <... connect resumed>)           = 0
+473335 <... connect resumed>)           = 0
+473335 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473335 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473101 connect(29, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473101 connect(28, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(30, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(31, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(32, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 connect(33, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(33, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(33, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(33, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(33, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473335 connect(34, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(34, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473335 connect(34, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(34, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(34, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(35, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473333 connect(35, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 connect(35, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(35, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(35, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 connect(36, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 connect(36, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(36, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(36, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(36, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 connect(37, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(37, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(37, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473333 <... connect resumed>)           = 0
+473334 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 <... connect resumed>)           = 0
+473333 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473334 <... connect resumed>)           = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473101 connect(30, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(31, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473333 <... connect resumed>)           = 0
+473334 <... connect resumed>)           = 0
+473333 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473334 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473333 <... connect resumed>)           = 0
+473334 <... connect resumed>)           = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 <... connect resumed>)           = 0
+473101 connect(28, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473334 <... connect resumed>)           = 0
+473101 connect(32, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(29, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 connect(33, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(33, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(33, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(33, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(33, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473335 connect(34, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(35, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473333 connect(34, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473335 <... connect resumed>)           = 0
+473333 <... connect resumed>)           = 0
+473335 connect(35, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(35, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(35, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(34, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473333 connect(34, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(34, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(34, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 connect(36, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473332 connect(37, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 <... connect resumed>)           = 0
+473334 connect(36, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473332 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(37, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(37, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 <... connect resumed>)           = 0
+473334 connect(36, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(36, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(36, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 connect(38, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(39, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(39, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 connect(38, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(38, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(38, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473335 <... connect resumed>)           = 0
+473335 connect(39, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(39, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(38, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(39, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 connect(27, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(27, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(27, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(27, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(27, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 connect(28, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(28, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(28, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473333 connect(30, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473333 connect(30, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473334 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473332 connect(30, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473332 <... connect resumed>)           = 0
+473335 <... connect resumed>)           = 0
+473332 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473335 <... connect resumed>)           = 0
+473335 connect(30, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473332 <... connect resumed>)           = 0
+473335 <... connect resumed>)           = 0
+473332 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473332 <... connect resumed>)           = 0
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473335 <... connect resumed>)           = 0
+473332 <... connect resumed>)           = 0
+473101 connect(31, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(32, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(33, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(34, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(35, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473335 <... connect resumed>)           = 0
+473335 connect(30, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473332 <... connect resumed>)           = 0
+473335 <... connect resumed>)           = 0
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473332 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473335 <... connect resumed>)           = 0
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473332 <... connect resumed>)           = 0
+473101 connect(36, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473332 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473332 <... connect resumed>)           = 0
+473101 connect(29, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473335 <... connect resumed>)           = 0
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473335 connect(30, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(30, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(30, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473333 connect(37, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473333 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473333 connect(37, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(37, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(37, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473334 connect(38, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(39, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 connect(38, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473334 connect(38, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473334 connect(38, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473335 connect(38, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473332 connect(39, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(39, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(39, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473335 <... connect resumed>)           = 0
+473101 connect(39, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 connect(40, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473335 connect(38, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473335 connect(38, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473335 connect(38, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473101 connect(38, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473332 connect(25, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473332 connect(25, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(25, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(25, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 connect(25, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473335 connect(26, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(26, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473333 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473335 connect(26, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473333 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473335 connect(26, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473333 <... connect resumed>)           = 0
+473335 <... connect resumed>)           = 0
+473101 connect(26, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473333 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473333 <... connect resumed>)           = 0
+473333 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16 <unfinished ...>
+473101 connect(31, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 <... connect resumed>)           = 0
+473332 connect(32, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473332 connect(32, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473332 connect(32, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(32, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(32, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473101 connect(33, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473332 connect(32, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+473332 connect(32, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+473332 connect(32, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473334 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16 <unfinished ...>
+473101 connect(32, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16 <unfinished ...>
+473334 <... connect resumed>)           = 0
+473334 connect(29, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16 <unfinished ...>
+473101 <... connect resumed>)           = -1 EINPROGRESS (Operation now in progress)
+473334 <... connect resumed>)           = 0
+473101 connect(29, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+473101 --- SIGTERM {si_signo=SIGTERM, si_code=SI_USER, si_pid=4138100, si_uid=1000} ---
+473101 --- SIGTERM {si_signo=SIGTERM, si_code=SI_TKILL, si_pid=473101, si_uid=1000} ---
+473333 +++ killed by SIGTERM +++
+473112 +++ killed by SIGTERM +++
+473110 +++ killed by SIGTERM +++
+473335 +++ killed by SIGTERM +++
+473117 +++ killed by SIGTERM +++
+473109 +++ killed by SIGTERM +++
+473108 +++ killed by SIGTERM +++
+473111 +++ killed by SIGTERM +++
+473334 +++ killed by SIGTERM +++
+473332 +++ killed by SIGTERM +++
+473101 +++ killed by SIGTERM +++

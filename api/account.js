@@ -68,8 +68,9 @@
 //   cannot do it. An orangecheck account, whose address is made up
 //   (api/orangecheck.js), sends {orangecheck: <a token>} instead: a fresh
 //   sign-in with orangecheck, as the same person (2026-10-23); an account
-//   with its own email, signed in with orangecheck, a code emailed in the
-//   last five minutes first, as unlinking asks. The files of the build photos it posted, of those
+//   with its own email, a sign-in by a code emailed in the last five
+//   minutes, from whatever session asks (signin7, api/_oc.js stepUp: 403
+//   {fresh: false} otherwise, and the page asks for one). The files of the build photos it posted, of those
 //   posted of its models, and of its own picture as its avatar
 //   (supabase/avatars.sql), and of its feedback's pictures and models
 //   (supabase/feedback.sql), are deleted from storage first, by name, since
@@ -106,14 +107,14 @@
 import { noted } from "./_noted.js";
 import { afterAnswer } from "./_after.js";
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, reach } from "./_db.js";
 import { betaMode, memberOf } from "./_beta.js";
 import { earlyFor } from "./_early.js";
 import { linkFetch } from "./_link.js";
 import { orangecheckOffer } from "./_oc_config.js";
 import { waysOffered } from "./_ways.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver, TOO_YOUNG } from "./_trust.js";
-import { erase, NOT_DELETED } from "./_erase.js";
+import { erase } from "./_erase.js";
 
 async function handler(request, response) {
   if (request.method === "OPTIONS") {
@@ -312,6 +313,27 @@ async function takeAge(request, response) {
   // Under 13: nothing is kept. The site owner's account holds the admin
   // page and is never deleted from here; it is only told.
   if (isMaster(claims)) return response.status(403).json({ error: TOO_YOUNG, deleted: false });
+  // The answer ends the account, so it is the one rule's (api/_oc.js stepUp,
+  // signin7), but for an account made in the last half hour: a child's
+  // first sign-in, by Google or GitHub too, is deleted there and then, and
+  // holds only what that child made since. An older account never asked
+  // (one from before the question, which may hold models kept by link) is
+  // not deleted on the word of a session Google or GitHub started, or of one
+  // ended a moment ago: its code first, as Delete account asks.
+  const { stepUp } = await import("./_oc.js");
+  const may = await stepUp(claims);
+  if (may.status) {
+    let young = false;
+    if (may.status === 403) {
+      try {
+        young = await madeJustNow(claims.sub);
+      } catch (trouble) {
+        console.error(`account: when the account was made: ${String(trouble?.message || trouble).slice(0, 120)}`);
+        return response.status(502).json({ error: "Brickworks could not take that just now. Try again in a minute." });
+      }
+    }
+    if (!young) return response.status(may.status).json(may.body);
+  }
   const gone = await erase(claims.sub);
   if (gone.status !== 200) {
     return response.status(gone.status).json({ error: "Brickworks could not take that just now. Try again in a minute." });
@@ -324,6 +346,22 @@ async function takeAge(request, response) {
       console.error(`account: the codes' count was not cleared: ${String(trouble?.message || trouble).slice(0, 120)}`));
   }
   return response.status(403).json({ error: TOO_YOUNG, deleted: true });
+}
+
+// How new an account is when an answer under 13 deletes it at once
+// (takeAge): whoever holds a session of it made it.
+const NEW_ACCOUNT_MS = 30 * 60_000;
+
+/// Whether [account] was made in the last NEW_ACCOUNT_MS, as Supabase says.
+/// Throws when that cannot be read.
+async function madeJustNow(account) {
+  const key = process.env.SUPABASE_SECRET_KEY;
+  const reply = await reach("auth GET admin/users", 10, `${process.env.SUPABASE_URL.replace(/\/+$/, "")}/auth/v1/admin/users/${account}`,
+    { headers: { apikey: key, authorization: `Bearer ${key}` } });
+  const user = await reply.json().catch(() => ({}));
+  if (!reply.ok || user.id !== account) throw new Error(`auth: the account was not read: ${reply.status}`);
+  const made = Date.parse(String(user.created_at || ""));
+  return Number.isFinite(made) && Date.now() - made <= NEW_ACCOUNT_MS;
 }
 
 const THEMES = ["system", "light", "dark"];
@@ -505,59 +543,28 @@ async function deleteAccount(request, response) {
       body = {};
     }
   }
+  // An orangecheck account (api/orangecheck.js) has no address of its own
+  // to type: it signs in with orangecheck again, as itself, instead.
   const address = String(claims.email || "").trim().toLowerCase();
-  if (/@oc\.brickworks\.diy$/.test(address)) {
-    // An orangecheck account (api/orangecheck.js) has no address of its own
-    // to type: it signs in with orangecheck again, as itself, and that
-    // sign-in is spent here. Loaded only here, so the route every start of
-    // the app asks does not carry orangecheck's code.
-    const { checkToken, endToken, spendToken } = await import("./_oc.js");
-    const checked = await checkToken(body?.orangecheck);
-    if (!checked.session) return response.status(checked.status).json({ error: checked.error });
-    let whose = null;
-    try {
-      whose = await db("rpc/oc_account_of", { method: "POST", body: { did: checked.session.did_oc } });
-    } catch (trouble) {
-      console.error(`account: whose orangecheck id: ${String(trouble?.message || trouble).slice(0, 120)}`);
-      return response.status(502).json({ error: NOT_DELETED });
-    }
-    if (whose !== claims.sub) {
-      return response.status(403).json({ error: "That orangecheck sign-in is not this account's. Sign in with the one you use here." });
-    }
-    try {
-      if (!(await spendToken(checked.session.jti, checked.session.exp))) {
-        return response.status(409).json({ error: "That sign-in was used already. Sign in with orangecheck again." });
-      }
-    } catch {
-      return response.status(502).json({ error: NOT_DELETED });
-    }
-    await endToken(String(body.orangecheck).trim());
-  } else {
-    const typed = String(body?.confirm || "").trim().toLowerCase();
-    if (!address || typed !== address) {
-      return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
-    }
-    // Signed in with orangecheck to an account that has its own email: the
-    // same fresh emailed code as unlinking asks first (api/orangecheck.js),
-    // so an orangecheck sign-in alone cannot delete the account it was
-    // linked to (oc188's review, L4).
-    if (claims.app_metadata?.orangecheck === true) {
-      const { codeOf } = await import("./_oc.js");
-      let asked;
-      try {
-        asked = await codeOf(claims);
-      } catch (trouble) {
-        console.error(`account: whose sign-in: ${String(trouble?.message || trouble).slice(0, 120)}`);
-        return response.status(502).json({ error: NOT_DELETED });
-      }
-      if (asked.bound && !asked.fresh) {
-        return response.status(403).json({ error: "Confirm it is you first, with a code we email you.", fresh: false });
-      }
-    }
+  const orangecheckOnly = /@oc\.brickworks\.diy$/.test(address);
+  const typed = String(body?.confirm || "").trim().toLowerCase();
+  if (!orangecheckOnly && (!address || typed !== address)) {
+    return response.status(422).json({ error: "Type your email address exactly as you sign in with it to delete this account." });
   }
   if (isMaster(claims)) {
     return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });
   }
+  // Ending the account is the one rule's (api/_oc.js stepUp, signin7): the
+  // session as it is now, and a code emailed in the last five minutes, from
+  // any session, Google's, GitHub's and orangecheck's alike (signreview4
+  // R4-1: a provider session deleted the account with its address typed,
+  // even 45 ms after the person's Unlink had ended it); an orangecheck
+  // account's, a fresh sign-in with orangecheck as itself, spent here.
+  // Loaded only here, so the route every start of the app asks does not
+  // carry orangecheck's code.
+  const { stepUp } = await import("./_oc.js");
+  const may = await stepUp(claims, orangecheckOnly ? { orangecheck: body?.orangecheck ?? "" } : {});
+  if (may.status) return response.status(may.status).json(may.body);
   const gone = await erase(claims.sub);
   return response.status(gone.status).json(gone.body);
 }

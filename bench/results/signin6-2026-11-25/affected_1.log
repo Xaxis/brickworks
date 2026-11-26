@@ -1,0 +1,117 @@
+134 files reachable from the change
+  api:Claude's OAuth sign-in  (0 hops via api/oauth.js)
+  api:GET /api/account  (0 hops via api/account.js)
+  api:GET /api/admin  (0 hops via api/admin.js)
+  api:GET /api/otp?op=ways  (0 hops via api/_ways.js)
+  api:GET /auth/github  (0 hops via api/_ways.js)
+  api:GET /auth/google  (0 hops via api/_ways.js)
+  api:POST /api/account?op=age  (0 hops via api/account.js)
+  api:POST /api/orangecheck  (0 hops via api/orangecheck.js)
+  api:POST /api/otp?op=way_bind  (0 hops via api/_ways.js)
+  api:POST /api/otp?op=way_take  (0 hops via api/_ways.js)
+  api:a deleted account's plan ended at Admission  (0 hops via api/account.js)
+  cli:orangecheck check  (0 hops via tools/web/orangecheck_check.mjs)
+  cli:orangecheck counts check  (0 hops via tools/web/oc_often_check.mjs)
+  cli:ways check  (0 hops via tools/web/ways_check.mjs)
+  ui:sign in with github  (0 hops via api/_ways.js)
+  ui:sign in with google  (0 hops via api/_ways.js)
+  api:/api/collection  (1 hop via api/collection.js)
+  api:/api/models  (1 hop via api/models.js)
+  api:GET /api/otp/canary  (1 hop via api/_canary.js)
+  api:GET /api/plans  (1 hop via api/plans.js)
+  api:GET/POST /api/people  (1 hop via api/people.js)
+  api:GET/POST /api/share  (1 hop via api/share.js)
+  api:POST /api/account?op=fetch  (1 hop via api/_link.js)
+  api:POST /api/mcp  (1 hop via api/mcp.js)
+  api:POST /api/otp  (1 hop via api/otp.js)
+  api:POST /api/plans  (1 hop via api/plans.js)
+  api:POST /api/together  (1 hop via api/together.js)
+  api:a set's own picture  (1 hop via api/share.js)
+  api:applying to the beta  (1 hop via api/plans.js)
+  api:paying for Pro  (1 hop via api/plans.js)
+  api:sending feedback  (1 hop via api/plans.js)
+  lib:Claude in the console  (1 hop via api/_claude.js)
+  lib:Claude's read-only tools  (1 hop via api/_claude_social.js)
+  lib:an account's deletion  (1 hop via api/_erase.js)
+  lib:announcements  (1 hop via api/_announce.js)
+  lib:comments on a shared model  (1 hop via api/_comments.js)
+  lib:feedback kept and answered  (1 hop via api/_feedback.js)
+  lib:follows and the feed  (1 hop via api/_follows.js)
+  lib:latest on Brickworks and designers to follow  (1 hop via api/_follows.js)
+  lib:more by and similar models  (1 hop via api/share.js)
+  lib:notifications apart from the feed  (1 hop via api/_notifications.js)
+  lib:plans from Admission  (1 hop via api/_billing.js)
+  lib:push sent to devices  (1 hop via api/_push.js)
+  lib:the beta's spots and months  (1 hop via api/_beta.js)
+  lib:the console's reads and audit  (1 hop via api/_console.js)
+  lib:the counter's route and its reads  (1 hop via api/_analytics.js)
+  lib:the owner's notifications  (1 hop via api/_notify.js)
+  lib:the social desk  (1 hop via api/_social.js)
+  lib:what a model is based on  (1 hop via api/_bases.js)
+  lib:your sets and lists  (1 hop via api/_mylists.js)
+  ui:a designer's page  (1 hop via api/people.js)
+  ui:a thread in talk  (1 hop via api/_talk.js)
+  ui:achievements on a profile  (1 hop via api/people.js)
+  ui:profile and collection pages  (1 hop via api/people.js)
+  ui:the sets you own on a profile  (1 hop via api/people.js)
+  cli:a page's LCP in two checkouts  (2 hops via tools/web/page_lcp_pairs.mjs)
+  cli:accessibility browser flow  (2 hops via tools/web/a11y_flow.mjs)
+  cli:alternate builds backfill  (2 hops via tools/web/alt_backfill.mjs)
+  cli:avatar browser flow  (2 hops via tools/web/avatar_flow.mjs)
+  cli:based on browser flow  (2 hops via tools/web/based_on_flow.mjs)
+  cli:canary check  (2 hops via tools/web/canary_check.mjs)
+  cli:card check  (2 hops via tools/web/card_check.mjs)
+  cli:challenge rules check  (2 hops via tools/challenge_rules_check.mjs)
+  cli:design browser flow  (2 hops via tools/web/design_flow.mjs)
+  cli:embed browser flow  (2 hops via tools/web/embed_flow.mjs)
+  cli:first steps browser flow  (2 hops via tools/web/first_steps_flow.mjs)
+  cli:gallery browser flow  (2 hops via tools/web/gallery_flow.mjs)
+  cli:insights browser flow  (2 hops via tools/web/insights_flow.mjs)
+  cli:keptbuilt api test  (2 hops via tools/web/keptbuilt_api.mjs)
+  cli:keyboard browser flow  (2 hops via tools/web/keyboard_flow.mjs)
+  cli:mentions browser flow  (2 hops via tools/web/mentions_flow.mjs)
+  cli:minifig browser flow  (2 hops via tools/web/minifig_flow.mjs)
+  cli:model page browser flow  (2 hops via tools/web/model_page_flow.mjs)
+  cli:needs backfill  (2 hops via tools/web/needs_backfill.mjs)
+  cli:partplaces api test  (2 hops via tools/web/partplaces_api.mjs)
+  cli:parts count backfill  (2 hops via tools/web/parts_backfill.mjs)
+  cli:plans browser flow  (2 hops via tools/web/plans_flow.mjs)
+  cli:postkit browser flow  (2 hops via tools/web/postkit_flow.mjs)
+  cli:profile browser flow  (2 hops via tools/web/profile_flow.mjs)
+  cli:provider loop probe  (2 hops via src/dev/provider_loop_probe.gd)
+  cli:remix browser flow  (2 hops via tools/web/remix_flow.mjs)
+  cli:room browser flow  (2 hops via tools/web/arview_flow.mjs)
+  cli:share model browser flow  (2 hops via tools/web/share_model_flow.mjs)
+  cli:step count probe  (2 hops via src/dev/step_count_probe.gd)
+  cli:the beta's homepage and bar browser flow  (2 hops via tools/web/betahome_flow.mjs)
+  cli:the log's largest paint  (2 hops via tools/web/log_lcp.mjs)
+  cli:theme browser flow  (2 hops via tools/web/theme_flow.mjs)
+  lib:more like a designer  (2 hops via api/_alike.js)
+  lib:the loop's read  (2 hops via api/_loop.js)
+  ui:ask the builders from the studio  (2 hops via api/_asks.js)
+  ui:work in progress shared by version  (2 hops via api/_wip.js)
+tests that import the change:
+  src/dev/inventory_probe.gd
+  src/dev/provider_loop_probe.gd
+  src/dev/step_count_probe.gd
+  tests/fixtures/adminclaude/api_check.mjs
+  tests/fixtures/announce/api_check.mjs
+  tests/fixtures/billing/world.mjs
+  tests/fixtures/console/api2_check.mjs
+  tests/fixtures/console/api3_check.mjs
+  tests/fixtures/feedback/api_check.mjs
+  tests/fixtures/inbox_world.mjs
+  tests/fixtures/insights/api_check.mjs
+  tests/fixtures/insights/loop_check.mjs
+  tests/fixtures/link/world.mjs
+  tests/fixtures/menu/admin_check.mjs
+  tests/fixtures/named_calls/check.mjs
+  tests/fixtures/oauth/world.mjs
+  tests/fixtures/owner_notify/api_check.mjs
+  tests/fixtures/push_world.mjs
+  tests/fixtures/relay/world.mjs
+  tests/fixtures/remix_pairs/publish.mjs
+  tests/fixtures/rowcap/rowcap_check.mjs
+  tests/test_adminclaude.py
+  tests/test_oauth_clients.py
+static checks: python -m pytest -q && pyright && godot --headless --path . --import --quit

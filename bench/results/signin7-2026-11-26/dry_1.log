@@ -1,0 +1,47 @@
+dry run: supabase/way_try_back.sql ran
+try: create temporary table trial_keys (k text, one timestamptz) on commit drop
+try: insert into trial_keys select 'signin7 trial ' || md5(random()::text), null
+try: update trial_keys set one = public.way_try(k, 2, 15)
+try: select '1 first try' as step, coalesce(one::text, 'null') as said from trial_keys
+  {"step":"1 first try","said":"2026-11-26 02:55:18.042167+00"}
+try: select '2 second try' as step, coalesce(public.way_try(k, 2, 15)::text, 'null') as said from trial_k
+  {"step":"2 second try","said":"2026-11-26 02:55:18.23336+00"}
+try: select '3 third try, over 2' as step, coalesce(public.way_try(k, 2, 15)::text, 'null') as said from 
+  {"step":"3 third try, over 2","said":"null"}
+try: select '4 way_may_try now' as step, public.way_may_try(k, 2, 15)::text as said from trial_keys
+  {"step":"4 way_may_try now","said":"false"}
+try: select '5 first given back' as step, public.way_try_back(k, one)::text as said from trial_keys
+  {"step":"5 first given back","said":"true"}
+try: select '6 given back again' as step, public.way_try_back(k, one)::text as said from trial_keys
+  {"step":"6 given back again","said":"false"}
+try: select '7 rows of the key' as step, (select count(*) from public.way_attempts a where a.try_key = t.
+  {"step":"7 rows of the key","said":"1"}
+try: select '8 a try once one is given back' as step, coalesce(public.way_try(k, 2, 15)::text, 'null') as
+  {"step":"8 a try once one is given back","said":"2026-11-26 02:55:18.806837+00"}
+try: select '9 and over again' as step, coalesce(public.way_try(k, 2, 15)::text, 'null') as said from tri
+  {"step":"9 and over again","said":"null"}
+try: select p.proname, p.prosecdef as definer, has_function_privilege('anon', p.oid, 'execute') as anon_e
+  {"proname":"way_may_try","definer":true,"anon_exec":false,"authed_exec":false,"service_exec":true}
+  {"proname":"way_try","definer":true,"anon_exec":false,"authed_exec":false,"service_exec":true}
+  {"proname":"way_try_back","definer":true,"anon_exec":false,"authed_exec":false,"service_exec":true}
+public.collections:
+  owner uuid not null
+  sets jsonb not null default '[]'::jsonb
+  parts jsonb not null default '[]'::jsonb
+  updated_at timestamp with time zone not null default now()
+  rev bigint not null default 0
+  recent jsonb not null default '[]'::jsonb
+  places jsonb not null default '{}'::jsonb
+  constraint collections_owner_fkey: FOREIGN KEY (owner) REFERENCES auth.users(id) ON DELETE CASCADE
+  constraint collections_parts_list: CHECK ((jsonb_typeof(parts) = 'array'::text))
+  constraint collections_parts_size: CHECK ((jsonb_array_length(parts) <= 20000))
+  constraint collections_pkey: PRIMARY KEY (owner)
+  constraint collections_places_object: CHECK ((jsonb_typeof(places) = 'object'::text))
+  constraint collections_places_size: CHECK ((octet_length((places)::text) <= 4000000))
+  constraint collections_sets_list: CHECK ((jsonb_typeof(sets) = 'array'::text))
+  constraint collections_sets_size: CHECK ((jsonb_array_length(sets) <= 5000))
+  row level security: on
+  grant postgres: DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
+  grant service_role: DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
+  rows: 0
+dry run: rolled back, nothing kept

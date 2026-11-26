@@ -1,0 +1,206 @@
+910114 connect(35, {sa_family=AF_UNIX, sun_path="/run/dbus/system_bus_socket"}, 29) = 0
+910114 connect(37, {sa_family=AF_UNIX, sun_path="/run/user/1000/bus"}, 20) = 0
+910142 connect(13, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+910142 connect(13, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+910142 connect(14, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+910142 connect(14, {sa_family=AF_UNIX, sun_path="/run/user/1000/wayland-0"}, 27) = 0
+910254 connect(17, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(17, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(17, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(17, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909870 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=910299, si_uid=1000, si_status=0, si_utime=40 /* 0.40 s */, si_stime=21 /* 0.21 s */} ---
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909825 connect(24, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+909825 connect(22, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+909825 connect(22, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+909587 connect(22, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909870 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=939664, si_uid=1000, si_status=0, si_utime=41 /* 0.41 s */, si_stime=19 /* 0.19 s */} ---
+909821 connect(24, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+909821 connect(24, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+909821 connect(24, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+909821 connect(24, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+909587 connect(24, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909870 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=943150, si_uid=1000, si_status=0, si_utime=116 /* 1.16 s */, si_stime=43 /* 0.43 s */} ---
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909587 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909870 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=960711, si_uid=1000, si_status=0, si_utime=98 /* 0.98 s */, si_stime=44 /* 0.44 s */} ---
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909870 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=971856, si_uid=1000, si_status=0, si_utime=50 /* 0.50 s */, si_stime=23 /* 0.23 s */} ---
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+909825 connect(22, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+909587 connect(22, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909821 connect(24, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+909821 connect(24, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+909821 connect(24, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+909821 connect(24, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+909587 connect(24, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("104.18.38.10")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(19, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910113 connect(64, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+910113 connect(63, {sa_family=AF_UNIX, sun_path="/var/run/nscd/socket"}, 110) = -1 ENOENT (No such file or directory)
+910113 connect(63, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+910113 connect(63, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+910113 connect(63, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+910113 connect(63, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+910254 connect(19, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(25, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(25, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(18, {sa_family=AF_INET6, sin6_port=htons(443), sin6_flowinfo=htonl(0), inet_pton(AF_INET6, "2001:4860:4860::8888", &sin6_addr), sin6_scope_id=0}, 28) = -1 ENETUNREACH (Network is unreachable)
+910254 connect(18, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(20, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(21, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(22, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(23, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+910254 connect(24, {sa_family=AF_INET, sin_port=htons(12279), sin_addr=inet_addr("127.0.0.1")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909870 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=976150, si_uid=1000, si_status=0, si_utime=108 /* 1.08 s */, si_stime=41 /* 0.41 s */} ---
+910123 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=910234, si_uid=1000, si_status=0, si_utime=50 /* 0.50 s */, si_stime=35 /* 0.35 s */} ---
+910142 --- SIGTERM {si_signo=SIGTERM, si_code=SI_USER, si_pid=909832, si_uid=1000} ---
+911686 +++ killed by SIGTERM +++
+911683 +++ killed by SIGTERM +++
+911682 +++ killed by SIGTERM +++
+911552 +++ killed by SIGTERM +++
+911526 +++ killed by SIGTERM +++
+911525 +++ killed by SIGTERM +++
+911523 +++ killed by SIGTERM +++
+911521 +++ killed by SIGTERM +++
+911520 +++ killed by SIGTERM +++
+911519 +++ killed by SIGTERM +++
+911518 +++ killed by SIGTERM +++
+911516 +++ killed by SIGTERM +++
+911515 +++ killed by SIGTERM +++
+911514 +++ killed by SIGTERM +++
+911513 +++ killed by SIGTERM +++
+911512 +++ killed by SIGTERM +++
+911510 +++ killed by SIGTERM +++
+911755 +++ killed by SIGTERM +++
+911685 +++ killed by SIGTERM +++
+911511 +++ killed by SIGTERM +++
+917688 +++ killed by SIGTERM +++
+918662 +++ killed by SIGTERM +++
+911522 +++ killed by SIGTERM +++
+911524 +++ killed by SIGTERM +++
+911517 +++ killed by SIGTERM +++
+911684 +++ killed by SIGTERM +++
+910142 +++ killed by SIGTERM +++
+909864 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_KILLED, si_pid=910142, si_uid=1000, si_status=SIGTERM, si_utime=53646 /* 536.46 s */, si_stime=2512 /* 25.12 s */} ---
+909587 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=909832, si_uid=1000, si_status=0, si_utime=152 /* 1.52 s */, si_stime=173 /* 1.73 s */} ---
+909824 connect(21, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+909824 connect(21, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+909824 connect(21, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+909824 connect(21, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+909587 connect(21, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(53), sin_addr=inet_addr("127.0.0.53")}, 16) = 0
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("172.64.149.246")}, 16) = 0
+909825 connect(22, {sa_family=AF_UNSPEC, sa_data="\0\0\0\0\0\0\0\0\0\0\0\0\0\0"}, 16) = 0
+909825 connect(22, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("104.18.38.10")}, 16) = 0
+909587 connect(22, {sa_family=AF_INET, sin_port=htons(443), sin_addr=inet_addr("172.64.149.246")}, 16) = -1 EINPROGRESS (Operation now in progress)
+909586 --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=909587, si_uid=1000, si_status=1, si_utime=237 /* 2.37 s */, si_stime=39 /* 0.39 s */} ---

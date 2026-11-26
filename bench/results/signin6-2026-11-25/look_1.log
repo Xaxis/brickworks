@@ -1,0 +1,158 @@
+== functions
+  way_set(uuid,text,boolean): definer=true volatile=v anon=false authenticated=false service_role=true
+      | CREATE OR REPLACE FUNCTION public.way_set(account uuid, way text, turned_on boolean)
+      |  RETURNS integer
+      |  LANGUAGE plpgsql
+      |  SECURITY DEFINER
+      |  SET search_path TO 'public'
+      | AS $function$
+      | declare
+      |     ended integer := 0;
+      | begin
+      |     perform pg_advisory_xact_lock(hashtextextended('way_links ' || way_set.account::text || ' ' || way_set.way, 0));
+      |     if turned_on then
+      |         delete from public.way_links l where l.account = way_set.account and l.way = way_set.way;
+      |         return 0;
+      |     end if;
+      |     insert into public.way_links as l (account, way, state, provider_id)
+      |         values (way_set.account, way_set.way, 'off', null)
+      |         on conflict on constraint way_links_pkey do update set state = 'off', provider_id = null, changed_at = now();
+      |     with gone as (
+      |         delete from auth.sessions s
+      |          where s.id in (select w.session_id from public.way_sessions w
+      |                          where w.account = way_set.account and w.way = way_set.way)
+      |         returning 1)
+      |     select count(*)::integer into ended from gone;
+      |     delete from public.oauth_grants g where g.owner = way_set.account and g.way = way_set.way;
+      |     delete from public.oauth_codes c where c.owner = way_set.account and c.way = way_set.way;
+      |     return ended;
+      | end;
+      | $function$
+      | 
+  way_on(uuid,text): definer=true volatile=v anon=false authenticated=false service_role=true
+      | CREATE OR REPLACE FUNCTION public.way_on(account uuid, way text)
+      |  RETURNS boolean
+      |  LANGUAGE plpgsql
+      |  SECURITY DEFINER
+      |  SET search_path TO 'public'
+      | AS $function$
+      | begin
+      |     perform pg_advisory_xact_lock(hashtextextended('way_links ' || way_on.account::text || ' ' || way_on.way, 0));
+      |     return exists (select 1 from public.way_links l
+      |                     where l.account = way_on.account and l.way = way_on.way and l.state = 'on');
+      | end;
+      | $function$
+      | 
+  way_signed_in(uuid,uuid,text,text,boolean): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_bind(uuid,text,text): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_links_of(uuid): definer=true volatile=s anon=false authenticated=false service_role=true
+  way_may_try(text,integer,integer): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_session_of(uuid): definer=true volatile=s anon=false authenticated=false service_role=true
+  oc_session_of(uuid): definer=true volatile=s anon=false authenticated=false service_role=true
+      | CREATE OR REPLACE FUNCTION public.oc_session_of(session uuid)
+      |  RETURNS jsonb
+      |  LANGUAGE sql
+      |  STABLE SECURITY DEFINER
+      |  SET search_path TO 'public'
+      | AS $function$
+      |     select jsonb_build_object(
+      |         'exists', exists (select 1 from auth.sessions s where s.id = oc_session_of.session),
+      |         'bound', b.session_id is not null, 'did', b.did_oc, 'rh', b.rh, 'aud', b.aud, 'iat', b.iat,
+      |         'linked', b.session_id is not null and exists (select 1 from public.oc_identities i
+      |                                                         where i.did_oc = b.did_oc and i.account = b.account))
+      |       from (select 1) one
+      |       left join public.oc_sessions b on b.session_id = oc_session_of.session
+      | $function$
+      | 
+  oc_unlink(uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+      | CREATE OR REPLACE FUNCTION public.oc_unlink(account uuid)
+      |  RETURNS jsonb
+      |  LANGUAGE plpgsql
+      |  SECURITY DEFINER
+      |  SET search_path TO 'public'
+      | AS $function$
+      | declare
+      |     gone text;
+      |     ended integer;
+      |     connections integer;
+      |     codes integer;
+      | begin
+      |     delete from public.oc_identities i where i.account = oc_unlink.account returning i.did_oc into gone;
+      |     if gone is null then
+      |         return null;
+      |     end if;
+      |     delete from auth.sessions s
+      |      where s.id in (select b.session_id from public.oc_sessions b
+      |                      where b.account = oc_unlink.account and b.did_oc = gone);
+      |     get diagnostics ended = row_count;
+      |     delete from public.oauth_grants g where g.owner = oc_unlink.account and g.oc_did = gone;
+      |     get diagnostics connections = row_count;
+      |     delete from public.oauth_codes c where c.owner = oc_unlink.account and c.oc_did = gone;
+      |     get diagnostics codes = row_count;
+      |     return jsonb_build_object('did', gone, 'ended', ended, 'connections', connections, 'codes', codes);
+      | end;
+      | $function$
+      | 
+  oc_bind_session(uuid,uuid,text,text,text,bigint): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_link(text,uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_may_try(text,integer,integer): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_spend(text,timestamp with time zone): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_end_session(uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+  session_standing: NOT THERE
+  oauth_code_issue: NOT THERE
+  oauth_code_grant: NOT THERE
+  oauth_sweep(): definer=false volatile=v anon=false authenticated=false service_role=true
+  admin_sign_out(uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+      | CREATE OR REPLACE FUNCTION public.admin_sign_out(p_account uuid)
+      |  RETURNS jsonb
+      |  LANGUAGE plpgsql
+      |  SECURITY DEFINER
+      |  SET search_path TO ''
+      | AS $function$
+      | declare
+      |     sessions integer := 0;
+      |     claudes integer := 0;
+      | begin
+      |     begin
+      |         execute 'delete from auth.sessions where user_id = $1' using p_account;
+      |         get diagnostics sessions = row_count;
+      |     exception when undefined_table then
+      |         sessions := null;
+      |     end;
+      |     begin
+      |         execute 'delete from public.oauth_grants where owner = $1' using p_account;
+      |         get diagnostics claudes = row_count;
+      |     exception when undefined_table then
+      |         claudes := null;
+      |     end;
+      |     return jsonb_build_object('sessions', sessions, 'claudes', claudes);
+      | end;
+      | $function$
+      | 
+== columns
+  oauth_codes: hash text not null, client_id text not null, owner uuid not null, redirect_uri text not null, code_challenge text not null, resource text not null, scope text, expires_at timestamp with time zone not null, created_at timestamp with time zone not null, oc_did text, oc_rh text, oc_aud text, oc_iat bigint, way text
+  oauth_grants: id uuid not null, owner uuid not null, client_id text not null, client_name text, redirect_uri text, resource text not null, scope text, client_info jsonb, channel text, created_at timestamp with time zone not null, used_at timestamp with time zone, oc_did text, oc_rh text, oc_aud text, oc_iat bigint, way text
+  oauth_tokens: hash text not null, grant_id uuid not null, kind text not null, expires_at timestamp with time zone not null, replaced_at timestamp with time zone, created_at timestamp with time zone not null
+  way_sessions: session_id uuid not null, account uuid not null, way text not null, started_at timestamp with time zone not null
+  oc_sessions: session_id uuid not null, account uuid not null, did_oc text not null, rh text not null, aud text not null, iat bigint not null, started_at timestamp with time zone not null
+== constraints on oauth_tokens and oauth_grants
+  oauth_codes oauth_codes_client_id_fkey: FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE
+  oauth_codes oauth_codes_code_challenge_check: CHECK ((code_challenge ~ '^[A-Za-z0-9_-]{43}$'::text))
+  oauth_codes oauth_codes_hash_check: CHECK ((hash ~ '^[0-9a-f]{64}$'::text))
+  oauth_codes oauth_codes_owner_fkey: FOREIGN KEY (owner) REFERENCES auth.users(id) ON DELETE CASCADE
+  oauth_codes oauth_codes_pkey: PRIMARY KEY (hash)
+  oauth_codes oauth_codes_way: CHECK ((way = ANY (ARRAY['google'::text, 'github'::text])))
+  oauth_grants oauth_grants_channel_check: CHECK ((channel ~ '^[0-9a-f]{64}$'::text))
+  oauth_grants oauth_grants_client_id_fkey: FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE
+  oauth_grants oauth_grants_owner_fkey: FOREIGN KEY (owner) REFERENCES auth.users(id) ON DELETE CASCADE
+  oauth_grants oauth_grants_pkey: PRIMARY KEY (id)
+  oauth_grants oauth_grants_way: CHECK ((way = ANY (ARRAY['google'::text, 'github'::text])))
+  oauth_tokens oauth_tokens_grant_id_fkey: FOREIGN KEY (grant_id) REFERENCES oauth_grants(id) ON DELETE CASCADE
+  oauth_tokens oauth_tokens_hash_check: CHECK ((hash ~ '^[0-9a-f]{64}$'::text))
+  oauth_tokens oauth_tokens_kind_check: CHECK ((kind = ANY (ARRAY['access'::text, 'refresh'::text])))
+  oauth_tokens oauth_tokens_pkey: PRIMARY KEY (hash)
+== counts
+  oauth_codes: [{"n":0,"with_way":0,"with_oc":0}]
+  oauth_grants: [{"n":52,"with_way":0,"with_oc":0}]
+  way_sessions: []
+  way_attempts kinds: [{"kind":"back","n":661},{"kind":"in","n":245},{"kind":"oc","n":92},{"kind":"start","n":393}]

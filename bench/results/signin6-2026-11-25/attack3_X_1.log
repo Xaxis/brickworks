@@ -1,0 +1,6 @@
+X. SR1 again, the intruder's loop of approves across the Unlink
+  ok      X1. round 1: a loop of approves from Google's session across the Unlink: codes made after it carry no way, and one traded outlives it: Unlink 200 in 683 ms; 24 approves, 2 gave a code, 0 of them after the Unlink answered (the last -237 ms after); left in oauth_codes: 0, with no way: 0; traded undefined; 6 s on, tools/list refused, refresh refused
+  ok      X1. round 2: a loop of approves from Google's session across the Unlink: codes made after it carry no way, and one traded outlives it: Unlink 200 in 698 ms; 25 approves, 2 gave a code, 0 of them after the Unlink answered (the last -346 ms after); left in oauth_codes: 0, with no way: 0; traded undefined; 6 s on, tools/list refused, refresh refused
+  --      X: 0 of 2 rounds kept a connection past the Unlink
+  --      accounts named: 2, deleted (or never made): 2
+attack3: 0 finding line(s)

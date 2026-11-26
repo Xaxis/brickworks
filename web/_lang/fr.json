@@ -1440,6 +1440,7 @@
   "That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.": "Cette connexion a expiré, a déjà servi ou n’était pas pour Brickworks. Reconnectez-vous avec orangecheck.",
   "Brickworks could not start a sign-in just now. Try again in a minute.": "Brickworks n’a pas pu lancer la connexion pour le moment. Réessayez dans une minute.",
   "Too many sign-ins tried from here. Wait a few minutes and try again.": "Trop de connexions tentées depuis cet endroit. Attendez quelques minutes et réessayez.",
+  "Too many sign-ins with this orangecheck account just now. Wait a few minutes and try again.": "Trop de connexions avec ce compte orangecheck en ce moment. Attendez quelques minutes et réessayez.",
   "Signing in with orangecheck from the app is not offered here. Sign in with your email instead.": "La connexion avec orangecheck depuis l’app n’est pas proposée ici. Connectez-vous plutôt avec votre e-mail.",
   "That sign-in was used already. Sign in with orangecheck again.": "Cette connexion a déjà servi. Reconnectez-vous avec orangecheck.",
   "Brickworks could not finish the sign-in just now. Try again in a minute.": "Brickworks n’a pas pu terminer la connexion pour le moment. Réessayez dans une minute.",
@@ -2400,6 +2401,11 @@
   "Unlinked. The sign-ins orangecheck started here are ended, and your email is told.": "Délié. Les connexions ouvertes ici par orangecheck sont fermées, et un e-mail vous en informe.",
   "That did not confirm it just now. Try again.": "La confirmation n’a pas abouti. Réessayez.",
   "Thank you. Now press Unlink.": "Merci. Appuyez maintenant sur Délier.",
+  "Confirm it is you, then press Link again.": "Confirmez qu’il s’agit bien de vous, puis appuyez sur Lier à nouveau.",
+  "Thank you. Now press Link again.": "Merci. Appuyez maintenant sur Lier à nouveau.",
+  "Sign in with orangecheck again first, as this account.": "Connectez-vous d’abord à nouveau avec orangecheck, avec ce compte.",
+  "Too many app sign-ins that did not come through from this network just now. Sign in with orangecheck on brickworks.diy, or with a code we email you, or try again in a quarter of an hour.": "Trop de connexions depuis l’application n’ont pas abouti depuis ce réseau à l’instant. Connectez-vous avec orangecheck sur brickworks.diy, ou avec un code que nous vous envoyons par e-mail, ou réessayez dans un quart d’heure.",
+  "You were signed out. Sign in again.": "Vous avez été déconnecté. Reconnectez-vous.",
   "Thank you. Now press Link orangecheck.": "Merci. Appuyez maintenant sur Lier orangecheck.",
   "You told Brickworks you are 13 or over. Only that is kept, never your date of birth.": "Vous avez indiqué à Brickworks avoir 13 ans ou plus. Seule cette réponse est conservée, jamais votre date de naissance.",
   "Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.": "Brickworks demande une seule fois à chacun s’il a 13 ans ou plus, et ne conserve que cette réponse.",
@@ -4455,6 +4461,8 @@
   "That GitHub sign-in took too long, or was for another account. Sign in with GitHub again.": "Cette connexion avec GitHub a pris trop de temps, ou était pour un autre compte. Reconnectez-vous avec GitHub.",
   "Sign in with a code we email you first.": "Connectez-vous d'abord avec un code que nous vous envoyons par e-mail.",
   "GitHub is unlinked from your account. Link it again in Settings first.": "GitHub est dissocié de votre compte. Associez-le d'abord à nouveau dans les Paramètres.",
-  "Brickworks could not keep GitHub for you just now. Sign in with GitHub again in a minute.": "Brickworks n'a pas pu enregistrer GitHub pour vous pour l'instant. Reconnectez-vous avec GitHub dans une minute."
+  "Brickworks could not keep GitHub for you just now. Sign in with GitHub again in a minute.": "Brickworks n'a pas pu enregistrer GitHub pour vous pour l'instant. Reconnectez-vous avec GitHub dans une minute.",
+  "This account signs in only with a code we email you.": "Ce compte se connecte uniquement avec un code que nous vous envoyons par e-mail.",
+  "Too many sign-ins with {way} just now. Try again in a few minutes, or sign in with a code we email you.": "Trop de connexions avec {way} en ce moment. Réessayez dans quelques minutes, ou connectez-vous avec un code que nous vous envoyons par e-mail."
  }
 }

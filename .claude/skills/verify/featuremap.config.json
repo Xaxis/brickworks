@@ -7430,6 +7430,13 @@
       "entry": "src/dev/mirrorsave_probe.gd",
       "reach": "tools/probe.sh mirrorsave_probe   (headless, ~1 min; MIRRORSAVE_ONLY=words, MIRRORSAVE_DUMP=DIR keeps each file: a wing placed mirrored first, straight first, three copies two mirrored, a mirrored car of mirrored wings, a turned copy first, one mirrored copy, a handed wing; the app's own and someone else's; each copy read in the hand its lines place it in; unedited, a part put in Main, a part of the first copy nudged, the first copy mirrored in place; saved twice, opened and saved twice more: the wing's lines as the file had them, every part where it was, byte for byte)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "orangecheck counts check",
+      "entry": "tools/web/oc_often_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs",
+      "area": "account"
     }
   ]
 }

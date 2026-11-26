@@ -266,7 +266,9 @@
       "entry": "api/orangecheck.js",
       "reach": "curl -s -X POST https://brickworks.diy/api/orangecheck?op=signin -H 'content-type: application/json' -d '{\"token\":\"not.a.token\"}'",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_account_erase.py"
+      ]
     },
     {
       "id": "api:POST /api/otp",
@@ -2686,6 +2688,14 @@
       "kind": "cli",
       "entry": "tools/web/orangecheck_check.mjs",
       "reach": "set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:orangecheck counts check",
+      "kind": "cli",
+      "entry": "tools/web/oc_often_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs",
       "area": "account",
       "tests": []
     },
@@ -6641,6 +6651,7 @@
       "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)  /  tools/probe.sh a11y_tree_probe  (windowed, the same bus: browsing the window from its root reaches the menus, toolbar, parts bin, view, properties and status line in reading order; each panel put away gone from the tree the frame after, and Clear the baseplate's question found by pointing where it was; each dialog and menu said where it is drawn, within 2 px; src/ui/access_tree.gd)",
       "area": "building",
       "tests": [
+        "tests/fixtures/oauth/world.mjs",
         "tests/fixtures/relay/world.mjs"
       ]
     },
@@ -9516,6 +9527,7 @@
       "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each a post with its picture: the model's card or the photo; opening it clears its count; Notifications a tab beside it; signed out, following nobody or nothing new: Latest on Brickworks; designers to follow beside it)",
       "area": "web",
       "tests": [
+        "tests/test_account_erase.py",
         "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_site_lang.py"

@@ -513,6 +513,19 @@ def test_an_account_is_exported_signed_out_and_deleted_only_as_typed() -> None:
     assert got["delete_again"] == 404
 
 
+def test_a_console_delete_asks_a_code_of_the_last_five_minutes() -> None:
+    # The owner's own session, a code's, but its code six minutes old: the
+    # console opens (its gate takes any code's session), and its delete
+    # asks the owner to sign in again by code (api/_oc.js stepUp, signin7).
+    # Nobody deleted, nothing audited.
+    got = _run("api3_check.mjs")
+    if got is None:
+        return
+    assert got["delete_stale"]["status"] == 403, got["delete_stale"]
+    assert got["delete_stale"]["json"]["fresh"] is False
+    assert got["delete_stale_after"] == {"cleo": 1, "audited": 0, "deleted": False}
+
+
 def test_find_and_the_challenge_and_data_reads() -> None:
     got = _run("api3_check.mjs")
     if got is None:

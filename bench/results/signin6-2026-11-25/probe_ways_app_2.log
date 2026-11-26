@@ -1,0 +1,28 @@
+fresh_import: /mnt/Projects/brickworks/.claude/worktrees/signin6's import is behind its files, so importing first:
+  not in the class list: Access res://src/ui/access.gd
+  not in the class list: AccessTree res://src/ui/access_tree.gd
+  not in the class list: Account res://src/account/account.gd
+  not in the class list: AccountFullOffer res://src/ui/account_full_offer.gd
+  not in the class list: AccountPanel res://src/ui/account_panel.gd
+fresh_import: imported in 155 s
+probe.sh: ways_app_probe, data in /tmp/probe-data.ways_app_probe.kCxZQE
+probe.sh: headless, as its header says
+heavy: waiting: waits for the load: 39 threads want a CPU, gate 30
+heavy: brickworks in slot.0 at load 27, 77649 MB free
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+pass the deployment at http://127.0.0.1:12116 offers Google and GitHub: {"github":true,"google":true}
+pass signed out, the form offers Sign in with Google and with GitHub, each with its mark
+pass ...and one line that signing in without orangecheck also makes the orangecheck account, with what that is
+pass a press opens the deployment's /auth/google with a loopback, a state and a PKCE challenge: http://127.0.0.1:12116/auth/google?app=http%3A%2F%2F127.0.0.1%3A41083%2Foc%2Fcallback&stat
+pass the deployment sends the browser to Google, with its own sealed cookie (302)
+pass the callback sends the browser back to the app's own listener, with its state (302)
+pass the listener answers the browser with a page (200)
+pass signed in once the browser came back: delivered+bw-si6-app-1024011448@resend.dev
+pass ...and the listener is gone
+ACCOUNT f92b6d3c-4f1b-47a6-9e2a-47d34b3a2920 delivered+bw-si6-app-1024011448@resend.dev
+pass /api/account with its token: signed in as that account
+pass the refresh token is kept, with the address, and not the access token
+pass and it signs out
+
+all passed

@@ -30,13 +30,21 @@
 //      the dialog with words for why.
 //   6. The owner's console (the relay's --owner, a throwaway): Switches,
 //      Sign in with Google and GitHub, each on with its steps hidden.
+//   8. The owner's address with Google (signin4): back to the dialog, told
+//      the account signs in only with a code, not signed in.
+//   9. Refused for signing in too often: the dialog says so, and that a
+//      code still signs in.
+//  10. Nothing reached Google or GitHub (signin5, signreview2 SR4): no
+//      request of any sign-in went to either's host, every provider's page
+//      was the relay's stand-in (/__ways/authorize/<way>), and this
+//      Chromium cannot reach either at all (browser.mjs NO_PROVIDERS).
 // Pictures of each at 1280 and 390 in --out. Every account is deleted.
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintCode, mintSession, STORAGE_KEY } from "./session.mjs";
-import { codeFor } from "./ways_stand_in.mjs";
+import { WHO_HEADER, whoHeader } from "./ways_stand_in.mjs";
 
 const arg = (name, fallback = "") => (process.argv.find((a) => a.startsWith(`--${name}=`)) || "").slice(name.length + 3) || fallback;
 const site = arg("url", "http://127.0.0.1:11702").replace(/\/+$/, "");
@@ -54,24 +62,39 @@ const made = [];
 const errors = [];
 const browser = await launch({ signedOut: true });
 
-/// A context at [width] whose Google and GitHub are the stand-in's: their
-/// sign-in page answers at once as [who] says, straight back to the callback.
+// Every request any context made to Google's or GitHub's hosts, and every
+// provider page the stand-in answered (each case's hop to it), for 10.
+const PROVIDER = /^(?:[a-z0-9-]+\.)*(?:google\.com|googleapis\.com|github\.com)$/i;
+const toProviders = [];
+const pagesHere = [];
+
+/// A context at [width] whose Google and GitHub are the stand-in's: the
+/// relay sends its sign-ins to the stand-in's page (WHO_HEADER), which
+/// answers at once as [who] says, straight back to the callback. A route
+/// here could not: Playwright continues the provider's hop, a redirect's,
+/// without asking one, and runs reached the real Google (SR4).
 async function context(width, who = {}) {
-  const ctx = await browser.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, colorScheme: "light" });
-  for (const host of ["https://accounts.google.com/**", "https://github.com/login/oauth/authorize**"]) {
-    await ctx.route(host, (route) => {
-      const asked = new URL(route.request().url());
-      const name = asked.host === "github.com" ? "github" : "google";
-      const back = new URL(asked.searchParams.get("redirect_uri"));
-      back.searchParams.set("code", codeFor(asked.toString(), who[name] || { email: "nobody@example.com", verified: false }));
-      back.searchParams.set("state", asked.searchParams.get("state"));
-      return route.fulfill({ status: 302, headers: { location: back.toString() } });
-    });
-  }
+  // Each person a network of their own (198.18.0.0/15, set aside for tests),
+  // as Vercel says it: the sign-ins' limits count by network for 15
+  // minutes, across runs and relays (api/_ways.js LIMITS). No service worker:
+  // web/sw.js fetches a page's navigations itself once it controls the page,
+  // and Playwright's routes do not see what a service worker fetches.
+  const from = `198.18.${randomBytes(1)[0]}.${1 + (randomBytes(1)[0] % 254)}`;
+  const ctx = await browser.newContext({ viewport: { width, height: width < 600 ? 844 : 900 }, colorScheme: "light",
+    extraHTTPHeaders: { "x-forwarded-for": from, [WHO_HEADER]: whoHeader(who) }, serviceWorkers: "block" });
+  ctx.on("request", (request) => {
+    const url = new URL(request.url());
+    if (PROVIDER.test(url.hostname)) toProviders.push(`${url.host}${url.pathname}`);
+    if (/^\/__ways\/authorize\/(google|github)$/.test(url.pathname)) pagesHere.push(url.pathname);
+  });
   return ctx;
 }
 
+// The page a case last opened: pictured, with where it was, when the flow stops.
+let lastPage = null;
+
 function listen(page, name) {
+  lastPage = page;
   page.on("pageerror", (trouble) => errors.push(`${name}: ${trouble.message}`));
   page.on("console", (message) => {
     if (message.type() === "error" && /Content Security Policy|Refused/.test(message.text())) errors.push(`${name}: ${message.text()}`);
@@ -267,11 +290,13 @@ try {
     await page.fill("dialog.sign-in .code-boxes input:first-child", typed);
     await page.waitForURL((url) => url.pathname === "/gallery" && url.searchParams.get("sort") === "new", { timeout: 60000 });
     const kept = await keptOf(page);
-    const held = await (await fetch(`${String(process.env.SUPABASE_URL).replace(/\/+$/, "")}/auth/v1/admin/users/${before.kept.user_id}`, {
-      headers: { apikey: process.env.SUPABASE_SECRET_KEY, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` } })).json();
+    // GitHub's id is kept in way_links (signin4, supabase/way_links.sql).
+    const held = await (await fetch(`${String(process.env.SUPABASE_URL).replace(/\/+$/, "")}/rest/v1/rpc/way_links_of`, { method: "POST",
+      headers: { apikey: process.env.SUPABASE_SECRET_KEY, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ account: before.kept.user_id }) })).json().catch(() => null);
     check(`7. ${width}: the code typed: back on the very page, signed in to that account, GitHub's id kept for it`,
-      kept?.user_id === before.kept.user_id && /^\d+$/.test(String(held?.app_metadata?.way_github_id || "")),
-      `${page.url()} ${JSON.stringify({ ...kept, refresh_token: undefined })} ${held?.app_metadata?.way_github_id}`);
+      kept?.user_id === before.kept.user_id && held?.github?.state === "on" && /^\d+$/.test(String(held?.github?.id || "")),
+      `${page.url()} ${JSON.stringify({ ...kept, refresh_token: undefined })} ${JSON.stringify(held)}`);
     const again = await context(width, { github: { email: a, verified: true } });
     const next = await again.newPage();
     listen(next, "confirm again");
@@ -314,10 +339,68 @@ try {
       await shot(page, `console_ways_steps_${width}.png`);
       await ctx.close();
     }
+
+    // 8. The owner's address with Google: refused, in words, signed out.
+    for (const width of [1280, 390]) {
+      const ctx = await context(width, { google: { email: owner, verified: true, hd: "resend.dev" } });
+      const page = await ctx.newPage();
+      listen(page, `owner ${width}`);
+      await openDialog(page);
+      await page.locator("dialog.sign-in #way-google").click();
+      await page.waitForURL((url) => url.pathname === "/profile" && url.searchParams.get("failed") === "code_only", { timeout: 60000 });
+      await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
+      const said = await page.locator("dialog.sign-in").textContent();
+      check(`8. ${width}: the owner's address with Google: back to the sign-in, told it signs in only with a code, not signed in`,
+        /This account signs in only with a code we email you\./.test(said || "") && !(await keptOf(page)) && !(await sideways(page)),
+        (said || "").slice(0, 200));
+      await shot(page, `owner_code_only_${width}.png`);
+      await ctx.close();
+    }
+  }
+
+  // 9. Refused for signing in too often (ways_check 12 drives the limit):
+  // the words, as the way back gives them.
+  for (const width of [1280, 390]) {
+    const ctx = await context(width);
+    const page = await ctx.newPage();
+    listen(page, `often ${width}`);
+    await page.goto(`${site}/profile?${new URLSearchParams({ "sign-in": "", then: "/gallery", with: "github", failed: "often" })}`,
+      { waitUntil: "domcontentloaded", timeout: 120000 });
+    await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 30000 });
+    const said = await page.locator("dialog.sign-in").textContent();
+    check(`9. ${width}: refused for signing in too often: the dialog says so, and that a code still signs in`,
+      /Too many sign-ins with GitHub just now\. Try again in a few minutes, or sign in with a code we email you\./.test(said || "")
+      && !(await sideways(page)), (said || "").slice(0, 200));
+    await shot(page, `often_${width}.png`);
+    await ctx.close();
+  }
+
+  // 10. Nothing reached a provider. Seven sign-ins went to a provider's
+  // page above (2, 3, 5, 7 twice, 8 twice): each the stand-in's.
+  const asked = await (await fetch(`${site}/__ways/state`)).json().catch(() => ({}));
+  console.log(`  --    requests to Google's or GitHub's hosts: ${toProviders.length}; provider pages answered by the stand-in: `
+    + `${pagesHere.length} seen, ${asked.pages} answered`);
+  check("10. no request of any sign-in went to Google's or GitHub's hosts", toProviders.length === 0, toProviders.slice(0, 5).join(" "));
+  check("10. every provider's page was the relay's stand-in", pagesHere.length >= (owner ? 7 : 5) && asked.pages >= pagesHere.length,
+    `${pagesHere.length} ${asked.pages}`);
+  // And this Chromium cannot reach either: a hop that escaped would fail
+  // here. Asked from a context of its own, not counted above.
+  {
+    const bare = await browser.newContext();
+    const tab = await bare.newPage();
+    const tried = [];
+    for (const where of ["https://accounts.google.com/o/oauth2/v2/auth", "https://github.com/login/oauth/authorize"]) {
+      tried.push(await tab.goto(where, { timeout: 30000 }).then(() => "answered", (trouble) => String(trouble.message).split("\n")[0]));
+    }
+    check("10. this Chromium cannot reach Google's or GitHub's sign-in at all", tried.every((one) => /ERR_NAME_NOT_RESOLVED/.test(one)),
+      tried.join(" | "));
+    await bare.close();
   }
   check("no refusal from the page's security policy, and no error", errors.length === 0, errors.slice(0, 3).join(" | "));
 } catch (trouble) {
-  check("the flow finished", false, String(trouble?.stack || trouble).slice(0, 600));
+  const where = lastPage && !lastPage.isClosed() ? lastPage.url() : "";
+  if (where) await shot(lastPage, "stopped.png");
+  check("the flow finished", false, `${where ? `at ${where} (stopped.png): ` : ""}${String(trouble?.stack || trouble).slice(0, 600)}`);
 } finally {
   await browser.close();
   for (const email of made) await deleteAccount(email).catch(() => false);

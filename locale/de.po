@@ -18275,3 +18275,8 @@ msgstr "klicken, halten oder auf und ab ziehen"
 
 msgid "Fit the selection, or the whole model"
 msgstr "Auswahl einpassen, oder das ganze Modell"
+msgid "This account signs in only with a code we email you."
+msgstr "Bei diesem Konto meldest du dich nur mit einem Code an, den wir dir mailen."
+
+msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
+msgstr "Gerade gab es zu viele Anmeldungen mit %s. Versuch es in ein paar Minuten noch einmal oder melde dich mit einem Code an, den wir dir mailen."

@@ -84,8 +84,10 @@ try {
       return new Response(JSON.stringify({ outcome: "done", job: url.pathname }), { status: 200 });
     }
     const call = /^\/rest\/v1\/rpc\/([a-z_]+)$/.exec(url.pathname);
-    // The world answers the deletion's own stand-ins (oc_connect_leaving...).
-    if (url.origin === SUPABASE_URL && call && !["oc_connect_leaving", "admission_snapshot_get", "admission_snapshot_put"].includes(call[1])) {
+    // The world answers the deletion's own stand-ins (oc_connect_leaving...)
+    // and the session (there, a code's).
+    if (url.origin === SUPABASE_URL && call && !["oc_connect_leaving", "oc_session_of", "session_standing", "admission_snapshot_get",
+      "admission_snapshot_put"].includes(call[1])) {
       try {
         return new Response(JSON.stringify(await rpc(call[1], JSON.parse(String(init.body || "{}")))), { status: 200 });
       } catch (trouble) {
@@ -248,7 +250,7 @@ try {
   out.delete_mistyped = await act({ op: "delete_account", account: adaId }, { confirm: "ada@example.org" });
   out.ada_after_refusals = (await db.q("select count(*)::int as n from auth.users where id = $1", [adaId]))[0].n;
   const gone = await act({ op: "delete_account", account: adaId }, { confirm: "  ADA@Example.com ", reason: "Asked by email" });
-  out.delete = { status: gone.status, json: gone.json, deleted: w.deleted };
+  out.delete = { status: gone.status, json: gone.json, deleted: [...w.deleted] };
   out.ada_after = (await db.q("select count(*)::int as n from auth.users where id = $1", [adaId]))[0].n;
   out.ada_rows_after = (await db.q("select (select count(*)::int from public.people where account = $1) as people, "
     + "(select count(*)::int from public.model_collections where owner = $1) as lists", [adaId]))[0];
@@ -264,6 +266,17 @@ try {
   out.audit_exports = kept.filter((row) => row.op === "export").map((row) => row.detail?.said ?? null);
   out.audit_leaks = kept.some((row) => JSON.stringify(row.detail).includes("cron-key-for-this-test-only")
     || JSON.stringify(row.detail).includes("AdaList001"));
+
+  // The owner's own code session, its code over five minutes old, deleting
+  // cleo: refused before the act (api/_oc.js stepUp, signin7), so a console
+  // left open, or its refresh copied, deletes nobody. After the audit above
+  // is read, so console3's own list stands whatever this answers.
+  const stale = await w.signIn({ sub: ownerId, email: "owner@example.com" }, { ago: 301 });
+  const auditBeforeStale = await auditCount();
+  out.delete_stale = await askAdmin({ method: "POST", query: { op: "delete_account", account: cleoId },
+    headers: as(stale), body: { confirm: "cleo@resend.dev", reason: "Asked by email" } });
+  out.delete_stale_after = { cleo: (await db.q("select count(*)::int as n from auth.users where id = $1", [cleoId]))[0].n,
+    audited: (await auditCount()) - auditBeforeStale, deleted: w.deleted.includes(cleoId) };
 
   // The numbers a phone is warned by (phonetruth, api/_phone.js), after the
   // audit above is read so console3's own list stands: the measured defaults

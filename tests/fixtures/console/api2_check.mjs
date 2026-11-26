@@ -96,7 +96,8 @@ try {
         { status: health.status });
     }
     const call = /^\/rest\/v1\/rpc\/([a-z_]+)$/.exec(url.pathname);
-    if (url.origin === SUPABASE_URL && call && !["admission_snapshot_get", "admission_snapshot_put"].includes(call[1])) {
+    // The world answers the session's standing (a code's) and the snapshots.
+    if (url.origin === SUPABASE_URL && call && !["session_standing", "admission_snapshot_get", "admission_snapshot_put"].includes(call[1])) {
       w.calls.push(`POST ${url.pathname}`);
       try {
         return new Response(JSON.stringify(await rpc(call[1], JSON.parse(String(init.body || "{}")))), { status: 200 });

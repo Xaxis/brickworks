@@ -1,0 +1,48 @@
+== functions
+  way_set(uuid,text,boolean): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_on(uuid,text): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_signed_in(uuid,uuid,text,text,boolean): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_bind(uuid,text,text): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_links_of(uuid): definer=true volatile=s anon=false authenticated=false service_role=true
+  way_may_try(text,integer,integer): definer=true volatile=v anon=false authenticated=false service_role=true
+  way_session_of(uuid): definer=true volatile=s anon=false authenticated=false service_role=true
+  oc_session_of(uuid): definer=true volatile=s anon=false authenticated=false service_role=true
+  oc_unlink(uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_bind_session(uuid,uuid,text,text,text,bigint): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_link(text,uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_may_try(text,integer,integer): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_spend(text,timestamp with time zone): definer=true volatile=v anon=false authenticated=false service_role=true
+  oc_end_session(uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+  session_standing(uuid): definer=true volatile=s anon=false authenticated=false service_role=true
+  oauth_code_issue: NOT THERE
+  oauth_code_grant(uuid,uuid,text,text,text,text,text,text,timestamp with time zone,text,timestamp with time zone): definer=true volatile=v anon=false authenticated=false service_role=true
+  oauth_sweep(): definer=false volatile=v anon=false authenticated=false service_role=true
+  admin_sign_out(uuid): definer=true volatile=v anon=false authenticated=false service_role=true
+== columns
+  oauth_codes: hash text not null, client_id text not null, owner uuid not null, redirect_uri text not null, code_challenge text not null, resource text not null, scope text, expires_at timestamp with time zone not null, created_at timestamp with time zone not null, oc_did text, oc_rh text, oc_aud text, oc_iat bigint, way text, session_id uuid
+  oauth_grants: id uuid not null, owner uuid not null, client_id text not null, client_name text, redirect_uri text, resource text not null, scope text, client_info jsonb, channel text, created_at timestamp with time zone not null, used_at timestamp with time zone, oc_did text, oc_rh text, oc_aud text, oc_iat bigint, way text, session_id uuid
+  oauth_tokens: hash text not null, grant_id uuid not null, kind text not null, expires_at timestamp with time zone not null, replaced_at timestamp with time zone, created_at timestamp with time zone not null
+  way_sessions: session_id uuid not null, account uuid not null, way text not null, started_at timestamp with time zone not null
+  oc_sessions: session_id uuid not null, account uuid not null, did_oc text not null, rh text not null, aud text not null, iat bigint not null, started_at timestamp with time zone not null
+== constraints on oauth_tokens and oauth_grants
+  oauth_codes oauth_codes_client_id_fkey: FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE
+  oauth_codes oauth_codes_code_challenge_check: CHECK ((code_challenge ~ '^[A-Za-z0-9_-]{43}$'::text))
+  oauth_codes oauth_codes_hash_check: CHECK ((hash ~ '^[0-9a-f]{64}$'::text))
+  oauth_codes oauth_codes_owner_fkey: FOREIGN KEY (owner) REFERENCES auth.users(id) ON DELETE CASCADE
+  oauth_codes oauth_codes_pkey: PRIMARY KEY (hash)
+  oauth_codes oauth_codes_session: FOREIGN KEY (session_id) REFERENCES auth.sessions(id) ON DELETE CASCADE
+  oauth_codes oauth_codes_way: CHECK ((way = ANY (ARRAY['google'::text, 'github'::text])))
+  oauth_grants oauth_grants_channel_check: CHECK ((channel ~ '^[0-9a-f]{64}$'::text))
+  oauth_grants oauth_grants_client_id_fkey: FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE
+  oauth_grants oauth_grants_owner_fkey: FOREIGN KEY (owner) REFERENCES auth.users(id) ON DELETE CASCADE
+  oauth_grants oauth_grants_pkey: PRIMARY KEY (id)
+  oauth_grants oauth_grants_way: CHECK ((way = ANY (ARRAY['google'::text, 'github'::text])))
+  oauth_tokens oauth_tokens_grant_id_fkey: FOREIGN KEY (grant_id) REFERENCES oauth_grants(id) ON DELETE CASCADE
+  oauth_tokens oauth_tokens_hash_check: CHECK ((hash ~ '^[0-9a-f]{64}$'::text))
+  oauth_tokens oauth_tokens_kind_check: CHECK ((kind = ANY (ARRAY['access'::text, 'refresh'::text])))
+  oauth_tokens oauth_tokens_pkey: PRIMARY KEY (hash)
+== counts
+  oauth_codes: [{"n":0,"with_way":0,"with_oc":0}]
+  oauth_grants: [{"n":53,"with_way":0,"with_oc":0}]
+  way_sessions: []
+  way_attempts kinds: [{"kind":"back","n":661},{"kind":"in","n":245},{"kind":"oc","n":149},{"kind":"start","n":393}]

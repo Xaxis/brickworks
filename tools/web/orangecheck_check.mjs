@@ -210,9 +210,11 @@ async function route() {
   return signInRoute;
 }
 
-// Each call from an address of its own (2001:db8::/32 is for documentation),
-// unless it says which: the rate limit is checked on its own, below.
-const anywhere = () => `2001:db8::${randomBytes(4).toString("hex").replace(/(.{4})/, "$1:")}`;
+// Each call from a network of its own (2001:db8::/32 is for documentation),
+// unless it says which. Nothing counts by network since signin6 (each
+// orangecheck id is counted, tools/web/oc_often_check.mjs); below, tries
+// from one address are shown counted by nothing.
+const anywhere = () => `2001:db8:${randomBytes(4).toString("hex").replace(/(.{4})/, "$1:")}::1`;
 
 // Supabase redeems 30 sign-in links from one address at once, then one
 // every 10 s, and every agent on this machine shares the address (step 4
@@ -750,18 +752,29 @@ try {
     };
     const exchange = (code) => route2(oauth, { method: "POST", op: "token", body: { grant_type: "authorization_code", code,
       redirect_uri: CALLBACK, client_id: CLAUDE, code_verifier: verifier, resource } });
+    // Since signin6 a code carries no orangecheck id read at approve, which
+    // could go stale: it names the session that approved it (a key of
+    // auth.sessions, gone with it), and the exchange asks that session's
+    // binding as it is then, under oc_unlink's lock (supabase/
+    // approving_session.sql oauth_code_grant; a binding whose id is not the
+    // account's is refused there too, tools/approving_session_try.sql). So
+    // the race is an unlink between approve and exchange, driven here.
+    const rowsOf = async (code) => (await (await real(`${SB}/rest/v1/oauth_codes?select=hash&hash=eq.${createHash("sha256")
+      .update(String(code)).digest("hex")}`, { headers: ADMIN })).json()).length;
+    const connection = await exchange(await approvedCode(viaOc.body.access_token));
+    check("L2: a connection approved in an orangecheck sign-in is made while its id is the account's", connection.status === 200
+      && Boolean(connection.body.refresh_token), `${connection.status} ${JSON.stringify(connection.body).slice(0, 120)}`);
     const kept = await approvedCode(viaOc.body.access_token);
-    const stale = await approvedCode(viaOc.body.access_token);
-    // As one read just before an unlink: its id is no longer Eve's.
-    await real(`${SB}/rest/v1/oauth_codes?hash=eq.${createHash("sha256").update(String(stale)).digest("hex")}`, { method: "PATCH",
-      headers: { ...ADMIN, "content-type": "application/json" }, body: JSON.stringify({ oc_did: `did:oc:${randomBytes(16).toString("hex")}` }) });
-    const late = await exchange(stale);
-    check("L2: a code approved in an orangecheck sign-in whose id is no longer the account's is refused", Boolean(stale)
-      && late.status === 400 && /unlinked/.test(late.body.error_description || ""), `${late.status} ${JSON.stringify(late.body).slice(0, 120)}`);
+    const keptBefore = kept ? await rowsOf(kept) : 0;
     const unlinked = await rpc("oc_unlink", { account: eve });
+    const keptAfter = await rowsOf(kept);
     const exchangedAfter = await exchange(kept);
-    check("L2: unlinking deletes the codes that sign-in was given, so none is exchanged after", Boolean(kept) && unlinked?.codes >= 1
-      && exchangedAfter.status === 400, `${JSON.stringify(unlinked)} ${exchangedAfter.status}`);
+    const renewedAfter = await route2(oauth, { method: "POST", op: "token", body: { grant_type: "refresh_token",
+      refresh_token: connection.body.refresh_token, client_id: CLAUDE } });
+    check("L2: unlinking ends that sign-in, and its codes and connection go with it: none is exchanged or renewed after",
+      keptBefore === 1 && unlinked?.ended >= 1 && unlinked?.connections >= 1 && keptAfter === 0
+      && exchangedAfter.status === 400 && exchangedAfter.body.error === "invalid_grant" && renewedAfter.status === 400,
+      `${JSON.stringify(unlinked)} code rows ${keptBefore} then ${keptAfter}; ${exchangedAfter.status} ${renewedAfter.status}`);
 
     // M1: unlinked between the sign-in finding the account and binding the
     // session it minted.
@@ -1596,12 +1609,15 @@ try {
   check("without an audience, nobody signs in with orangecheck", noAudience.status === 503, `${noAudience.status}`);
   process.env.OC_AUDIENCE = AUD;
 
-  // Twenty tries from one address in a quarter of an hour, then no more.
+  // Tries that are not a token are refused by what they are, and counted
+  // by nothing (signin6, signreview3 R3): signin5 counted 20 a network
+  // before reading them, so junk from a school's address shut its people
+  // out. Only an orangecheck id whose token checks out is counted.
   const from = anywhere();
   const tries = [];
-  for (let n = 0; n < 21; n += 1) tries.push((await call(handler, { token: "not.a.token" }, { ip: from })).status);
-  check("twenty tries from one address, the next refused", tries.slice(0, 20).every((s) => s === 401) && tries[20] === 429,
-    tries.join(" "));
+  for (let n = 0; n < 25; n += 1) tries.push((await call(handler, { token: "not.a.token" }, { ip: from })).status);
+  check("25 tries that are not a token from one address: each refused, none counted (never 429)",
+    tries.every((s) => s === 401), tries.join(" "));
 
   // Only POST ?op=signin.
   const wrong = await call(handler, { token: token().jwt }, { method: "GET" });
