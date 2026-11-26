@@ -2029,7 +2029,25 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   to a part in hand by something else (a session's edit, an undo reaching
   it: `BrickWorld.hand_touched`, `Builder._hand_touched`, `_apply`). An edit
   between the lift and the put-down is its own step: two Undos, the file
-  byte for byte. Probes: `PROBE_SIZE=1280x720 tools/probe.sh handkeep_probe
+  byte for byte. Every path in or out of the hand goes through it
+  (handkeep2, 2026-11-26): X over one plain part lifts it into hand too
+  (`Builder.holds_lifted_part`, put down as a move by `_put_lifted_part`), never
+  off the model; what is in hand keeps its cells in the way of everything but
+  the hand's own ghost (`BrickLattice.take_in_hand`, `_hand_cells`,
+  `hand_free`), so no paste, add or nudge lands where it stood; every new hold
+  lets go first (`Carry.hold`'s `let_go`, the `held_part` setter, a bin part);
+  the model's turn lets go before it turns (`BrickWorld.rotate_model`); a part
+  put back ends the step reveal so the timeline draws it at its own step
+  (`put_from_hand`); a session's undo takes back its own step and leaves the
+  person's lift (`Builder.undo(false)`, `EditVerbs.press(name, false)`,
+  `history_words(n, false)`); Connect refuses a figure's part. A held part's
+  place or colour written round the hand counts in `BrickWorld.round_the_hand`
+  with an error; `tests/test_hand_paths.py` fails when new code writes a
+  part outside BrickWorld, a BrickWorld write skips `_hand_change`, the hand's
+  doors are opened elsewhere, a lift removes or records, or a session presses
+  the person's undo: its probes are `figreview3_probe` (every case) and
+  `handkeep2_probe` (X turned, let go by a bin part, Undo per actor, the held
+  cells, the guard). Probes: `PROBE_SIZE=1280x720 tools/probe.sh handkeep_probe
   --case=between` (a carried selection with a session's edit and a nudge
   between: Escape, put down, Undo), and `--case=kill --kind=carry|figure`
   then `--case=reopen` with one `PROBE_DATA` (the autosave in hand, the
