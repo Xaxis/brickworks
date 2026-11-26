@@ -452,10 +452,23 @@ func _case_drag() -> void:
 			at = next
 			await process_frame
 			if n == 9:
-				held_mid = bool(_main.get("_dragging_part")) or bool(_main.get("_grabbing"))
+				# Simple's mouse is a finger: its drag is its own (SimpleLayer).
+				var simple: Node = _main.get("_simple")
+				held_mid = bool(_main.get("_dragging_part")) or bool(_main.get("_grabbing")) \
+					or (simple != null and simple.is_visible_in_tree() and bool(simple.get("_moving")))
 				_main.call("use_controls", into)
 				await process_frame
 		_ok(held_mid, "taken hold of before the switch")
+		if into == &"full":
+			# Simple's own drag is put back as Simple goes, as a second
+			# finger puts it back: where it stood, nothing in hand, no step.
+			_ok(not bool(_main.get("_dragging_part")) and not _builder.is_carrying(),
+				"into full half way: Simple's drag put back, nothing in hand")
+			_down(to, false)
+			await _frames(8)
+			_ok(_builder.history_depth() == depth, "...no step (%d)" % (_builder.history_depth() - depth))
+			_exact("...every part where it was", fresh, _records_all())
+			continue
 		_ok(bool(_main.get("_dragging_part")) or bool(_main.get("_grabbing")),
 			"into %s half way: still held" % into)
 		_down(to, false)
