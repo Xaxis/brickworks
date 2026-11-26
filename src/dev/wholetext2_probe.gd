@@ -454,6 +454,8 @@ func _case_time() -> void:
 	var frames: Dictionary = {"kept": [], "plain": []}
 	var written: Dictionary = {"kept": [], "plain": []}
 	var texts: Dictionary = {}
+	var cpu_took: Dictionary = {"kept": [], "plain": []}
+	var cpu_written: Dictionary = {"kept": [], "plain": []}
 	for round: int in 5:
 		# Each round in the other order, so neither always goes first.
 		for kept: bool in ([true, false] if round % 2 == 0 else [false, true]):
@@ -461,13 +463,17 @@ func _case_time() -> void:
 			ModelStore.write_over_files = false
 			ModelStore.keep_file_lines = kept
 			# The text alone, with no file written.
+			var cpu: int = _cpu_ms()
 			var wrote: int = Time.get_ticks_usec()
 			_store.to_text(_store.title, true)
 			(written[how] as Array).append((Time.get_ticks_usec() - wrote) / 1000)
+			(cpu_written[how] as Array).append(_cpu_ms() - cpu)
 			await _frames(3)
+			cpu = _cpu_ms()
 			var began: int = Time.get_ticks_usec()
 			var saved: bool = bool(_main.call("save_model", at))
 			(took[how] as Array).append((Time.get_ticks_usec() - began) / 1000)
+			(cpu_took[how] as Array).append(_cpu_ms() - cpu)
 			texts[how] = _text_of(at)
 			_ok(saved, "time %s: saved" % how)
 			await _frames(5)
@@ -488,7 +494,8 @@ func _case_time() -> void:
 			await _frames(5)
 	var original: String = _text_of(SET)
 	for pair: Array in [["save_model in one frame", took], ["to_text alone", written],
-			["the autosave's longest frame", frames]]:
+			["the autosave's longest frame", frames], ["save_model, the main thread's CPU", cpu_took],
+			["to_text, the main thread's CPU", cpu_written]]:
 		var times: Dictionary = pair[1]
 		print("  time: %s, kept %s ms (least %d), plain %s ms (least %d)" % [pair[0], str(times["kept"]),
 			(times["kept"] as Array).min(), str(times["plain"]), (times["plain"] as Array).min()])
@@ -499,3 +506,55 @@ func _case_time() -> void:
 			original.count("\n"), (diff["new"] as Array).size()])
 	var source: SourceFile = _store.get("_source")
 	print("  time: kept_why \"%s\"" % (source.kept_why if source != null else "(no source)"))
+	if source != null:
+		print("  time: the last kept write's lines %s" % str(source.kept_counts))
+		_keep_cost(source)
+
+
+## The main thread's CPU time in ms (user and system; on Linux its task id is
+## the process's): what load on the box does not stretch as it does the clock.
+func _cpu_ms() -> int:
+	var out: Array = []
+	var pid: int = OS.get_process_id()
+	OS.execute("cat", ["/proc/%d/task/%d/stat" % [pid, pid]], out)
+	var stat: String = str(out[0]) if not out.is_empty() else ""
+	var fields: PackedStringArray = stat.substr(stat.rfind(")") + 2).split(" ", false)
+	if fields.size() < 13:
+		return 0
+	return (fields[11].to_int() + fields[12].to_int()) * 10
+
+
+## What the keep costs on its own: each placing line of the file given to
+## SourceFile.kept_said as a whole write spells it (its numbers as held, in
+## LdrModel.numbers_text), beside the same lines only split and read.
+func _keep_cost(source: SourceFile) -> void:
+	var pairs: Array = []
+	for n: int in source.lines.size():
+		var words: PackedStringArray = source.lines[n].strip_edges().split(" ", false)
+		if words.size() < 15 or words[0] != "1":
+			continue
+		# Off by a float's last place, as a part laid through its sub-model's
+		# frame comes out (-0.00000001, 0.99999994), so no line is the file's.
+		var numbers := PackedFloat64Array()
+		for k: int in range(2, 14):
+			numbers.append(PackedFloat32Array([words[k].to_float() + 0.00000003])[0])
+		var name: String = " ".join(words.slice(14))
+		var part: String = "" if name.to_lower().ends_with(".ldr") else name.get_basename().to_lower()
+		pairs.append([n, "1 %s %s %s" % [words[1], LdrModel.numbers_text(numbers),
+			name if part.is_empty() else part + ".dat"], part])
+	var tally: Dictionary = {}
+	var best: int = 1 << 40
+	var split_best: int = 1 << 40
+	for round: int in 5:
+		var began: int = Time.get_ticks_usec()
+		for pair: Array in pairs:
+			source.kept_said(int(pair[0]), str(pair[1]), str(pair[2]), _library, tally)
+		best = mini(best, Time.get_ticks_usec() - began)
+		began = Time.get_ticks_usec()
+		for pair: Array in pairs:
+			str(pair[1]).split(" ", false)
+			source.lines[int(pair[0])].split(" ", false)
+		split_best = mini(split_best, Time.get_ticks_usec() - began)
+	print("  time: the keep alone, %d placing lines in %d ms (least of 5; %d kept as the file's, %d in its words, %d anew), split only %d ms" % [
+		pairs.size(), best / 1000, int(tally.get("kept", 0)) / 5, int(tally.get("kept_words", 0)) / 5,
+		(tally.get("anew", []) as Array).size() / 5, split_best / 1000])

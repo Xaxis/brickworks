@@ -4459,6 +4459,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		if keep.is_valid():
 			var why: String = _kept_said(tally)
 			_live_source().kept_why = why
+			_live_source().kept_counts = {"kept": int(tally.get("kept", 0)),
+				"kept_words": int(tally.get("kept_words", 0)), "anew": (tally.get("anew", []) as Array).size()}
 			if not why.is_empty():
 				last_whole += ("; " if not last_whole.is_empty() else "") + why
 		# And each sub-model of the file nothing in the model is read
