@@ -215,6 +215,7 @@ func _process(_delta: float) -> void:
 	if WhatsThis.is_asking():
 		said = WhatsThis.ASKING
 	var line: String = said if not said.is_empty() else shell.verbs.hint()
+	_wants_room = not said.is_empty() or shell.verbs.hint_wants_room()
 	var showable: bool = not busy and SaveTo.names(said)
 	if show_folder.visible != showable:
 		show_folder.visible = showable
@@ -226,7 +227,9 @@ func _process(_delta: float) -> void:
 			_hint_asked_us = Time.get_ticks_usec()
 		if not said.is_empty() or PointerPace.now((Time.get_ticks_usec() - _hint_asked_us) / 1000.0):
 			_hint.text = line
-			_hint.tooltip_text = said
+			# The whole line under the pointer, the tool's hint too: cut at
+			# a word where the bar is narrow, the rest was nowhere (ux16).
+			_hint.tooltip_text = line
 			_hint.modulate.a = 1.0 if not said.is_empty() else 0.62
 			_hint_asked_us = -1
 	else:
@@ -257,6 +260,11 @@ func _process(_delta: float) -> void:
 ## Room the line on the left keeps, px, before a field on the right goes.
 const HINT_ROOM := 160.0
 
+## Whether the line on the left is something said (white, gone after a few
+## seconds), or the hint of a part in hand on a joint, which says what the
+## keys do there (EditVerbs.hint_wants_room): not the tool's standing hint.
+var _wants_room: bool = false
+
 
 ## The fields on the right fitted to the bar, every frame, as what they say
 ## changes: where they would not all fit beside the line on the left, the
@@ -285,6 +293,15 @@ func _fit() -> void:
 	var shown: Dictionary = {_place: _place_wanted, counts: true, _zoom: not narrow,
 		_settings: not narrow, _size: not _size.text.is_empty(), _selected: true}
 	var left: float = HINT_ROOM
+	# What the app says after an act keeps the room its words take, for the
+	# few seconds it stands: the fields give way and come back once it goes.
+	# Cut at HINT_ROOM's share, "no room to turn it there (what it would hit
+	# is lit up): it is in…" lost "Esc puts it back" at 1280, and Connect's
+	# "— 2 points, Esc stops" (ux16's walks). A part in hand on a joint's
+	# hint too, while it is there: what R, T and N do on the joint.
+	# A phone's bar, narrow, stays as it was.
+	if _wants_room and _hint.visible and not narrow:
+		left = maxf(left, _words_wide(_hint) + 8.0)
 	if working.visible:
 		# Its bar gives way first, inside the room the bar has (Working).
 		working.give_way(room - get_theme_stylebox("panel").get_minimum_size().x)
@@ -319,6 +336,14 @@ func _fit() -> void:
 	if _weight.visible != weighed:
 		_weight.visible = weighed
 		_weight_join.visible = weighed
+
+
+## How wide [param label]'s words are drawn on one line, uncut, in the
+## language they are drawn in.
+static func _words_wide(label: Label) -> float:
+	var font: Font = label.get_theme_font("font")
+	return font.get_string_size(label.atr(label.text), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		label.get_theme_font_size("font_size")).x
 
 
 ## A field's width and the line before it.

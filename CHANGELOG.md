@@ -344,6 +344,14 @@ whole cycle.
 
 ### Changed
 
+- **The studio's first hour on a desktop, smoother.** Ctrl+Y redoes, as in
+  Studio and Mecabricks. What the status bar says after an act is shown
+  whole, the fields beside it making room for those few seconds. A part in
+  hand on a pin or an axle says N picks which of its points goes on
+  (Connect), and its line is shown whole too, with what R and T do there.
+  A part swapped inside a sub-model used more than once says how many more copies
+  changed with it. A part whose joint lets it go nowhere says X takes it
+  into hand to put anywhere.
 - **Duplicate puts its copy down beside the original.** Edit › Duplicate
   (Ctrl+D) seats the copy next to what was selected, selected so a drag
   takes it where it goes, and one undo takes it back; type 5x straight after

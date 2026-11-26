@@ -8,6 +8,15 @@ cd "$1" || exit 1
 BASE=${2:-HEAD^1}
 FILES=$(git diff --name-only "$BASE" HEAD -- '*.gd' | while read -r f; do [ -f "$f" ] && echo "$f"; done)
 [ -z "$FILES" ] && { echo "parse gate: no GDScript changed"; exit 0; }
+# A call to a method that is not there parses: Godot's check passed
+# `builder._lift_on_top()` on a typed member and `_builder.call("_lift_on_top")`
+# after handkeep2 took the method out, and six probes went red on the train
+# (2026-11-26). Every script is read, not only the merge's: the callers of a
+# removed method are in scripts it never touched. The merged tree's own
+# checker, which a tree from before it lacks.
+if [ -f tools/callcheck.py ] && ! CALLS=$(python3 tools/callcheck.py --root "$PWD" 2>&1); then
+  echo "CALL ERRORS:"; echo "$CALLS" | tail -40; exit 3
+fi
 # Without an import Godot knows none of the project's class names, and every
 # script that uses one "fails" (a fresh worktree, 2026-10-14). A list kept
 # from before the merge lacks the classes it brought, which fails the same
@@ -18,4 +27,4 @@ OUT=$(XDG_DATA_HOME="$PWD/.scratch-data" ~/.claude/claude-core/bin/heavy bash -c
     timeout 120 godot --headless --path . --check-only --script "$f" 2>&1 | grep -E "Parse Error|Compile Error" | sed "s|^|$f: |"
   done')
 if [ -n "$OUT" ]; then echo "PARSE ERRORS:"; echo "$OUT"; exit 3; fi
-echo "parse gate: $(echo $FILES | wc -w) GDScript files parse"
+echo "parse gate: $(echo $FILES | wc -w) GDScript files parse, and every call names a method that is there"

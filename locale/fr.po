@@ -2515,6 +2515,12 @@ msgstr "%s la tourne autour de l'articulation"
 msgid "%s the other way on"
 msgstr "%s dans l'autre sens"
 
+msgid "%s picks which of its points goes on (Connect)"
+msgstr "%s choisit par lequel de ses points il se fixe (Connecter)"
+
+msgid "%s takes it into hand to put anywhere"
+msgstr "%s le prend en main pour le poser n'importe où"
+
 msgid "Orbit: drag turns the view"
 msgstr "Orbite : glisser tourne la vue"
 

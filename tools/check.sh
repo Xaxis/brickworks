@@ -3,8 +3,9 @@
 #
 #   tools/check.sh              the offline suite
 #   tools/check.sh --network    also the checks that need the internet
-#   tools/check.sh --lists      only whether every probe is in a list, and that the site asks
-#                               nothing in the browser's own dialogs, in a second
+#   tools/check.sh --lists      only whether every probe is in a list, that the site asks
+#                               nothing in the browser's own dialogs, and that no call
+#                               names a method that is not there (tools/callcheck.py), in seconds
 #   tools/check.sh --dry-run    each check's command in the order it runs, none run
 #
 # Three layers, because they fail in different ways.
@@ -91,8 +92,18 @@ if [ -n "$natives" ]; then
   echo "$natives" | cut -c1-200 | sed 's/^/  /'
   exit 1
 fi
-# --lists: only that, which a merge can ask in a second.
-case " $* " in *" --lists "*) echo "check: every probe in src/dev is in a list, and the site asks in its own dialog"; exit 0 ;; esac
+# No call names a method that is not there. handkeep2 took Builder._lift_on_top
+# out and left `builder._lift_on_top()` on a typed member and
+# `_builder.call("_lift_on_top")` in a probe: Godot's own check passed both,
+# and a release train went red on six probes (2026-11-26). Read over every
+# script, as a removed method's callers are in scripts nobody touched; a
+# deliberate one is marked `# callcheck: dynamic, why` (tools/callcheck.py).
+if ! called=$(python3 tools/callcheck.py 2>&1); then
+  echo "$called" | tail -40
+  exit 1
+fi
+# --lists: only these, which a merge can ask in seconds.
+case " $* " in *" --lists "*) echo "check: every probe in src/dev is in a list, the site asks in its own dialog, and every call names a method that is there"; exit 0 ;; esac
 network=0 dry=0
 for argument in "$@"; do
   case "$argument" in

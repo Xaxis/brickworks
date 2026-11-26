@@ -33,7 +33,7 @@ ui:meet on hinges
 
 ## Grab and move on a joint {#grab}
 
-With the **Select** tool, drag a part that hangs on a hinge, a clip, a turntable, a pin, an axle or a ball: it moves about its joint, and what is built on it comes too. [[Esc]] puts it back. To move a hand or a hook by its whole arm, hold the pointer still on it a moment, then drag.
+With the **Select** tool, drag a part that hangs on a hinge, a clip, a turntable, a pin, an axle or a ball: it moves about its joint, and what is built on it comes too. [[Esc]] puts it back. To move a hand or a hook by its whole arm, hold the pointer still on it a moment, then drag. A part whose joint lets it go nowhere (a wall pinned at both ends, say) stays put, and the status bar says why and that [[X]] takes it into hand, free of its joint, to put down anywhere.
 
 The rest of the model answers as the real one would. A steering arm drags its tie rod and the other wheel. Gears and racks turn at their real ratios, and a worm holds its gear. Actuators slide. A beam on a free pin swings and settles; a flung wheel coasts to a stop. A hose bends with what it is fitted to. With no floor, a model pushed past its edge tips over.
 

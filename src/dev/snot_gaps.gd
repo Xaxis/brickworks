@@ -5,7 +5,8 @@ extends SceneTree
 ## so what the lay leaves is told from what the mend takes out.
 ##
 ##   godot --headless --path . --script src/dev/snot_gaps.gd -- SPEC ...
-##   SPEC is bunny:STUDS[:one] (brickify_probe's bunny; one: blue, one colour) or FILE:STUDS:UP
+##   SPEC is bunny:STUDS[:one] (brickify_probe's bunny; one: blue, one colour), block:STUDS
+##   (brickify_probe's turned block) or FILE:STUDS:UP
 ##
 ## Each line: cells, share of the model, why. "Cut off" is a piece of the core
 ## beside a shell taken out before the check (Shapes.Plan.cut_off,
@@ -52,6 +53,8 @@ func _run() -> void:
 			if bits.size() > 2 and bits[2] == "one":
 				options.colours = "one"
 				options.colour = 1
+		elif bits[0] == "block":
+			mesh = _block()
 		else:
 			var read: Dictionary = MeshFilePicker.read_path(bits[0])
 			mesh = MeshFile.read(read["bytes"], bits[0].get_file(), read["extras"])
@@ -71,6 +74,37 @@ func _run() -> void:
 		_tell(spec, turned, upright)
 	print("snot_gaps: done")
 	quit(0)
+
+
+## brickify_probe's turned block: a slab twelve units by sixteen tall and four
+## thick, turned 30 degrees about its up, so no side is square to x or z.
+func _block() -> MeshFile:
+	var outline: Array[Vector2] = [Vector2(0, 0), Vector2(12, 0), Vector2(12, 16), Vector2(0, 16)]
+	var mesh := MeshFile.new()
+	mesh.name = "prism"
+	mesh.up = "+Y"
+	var triangles: Array = []
+	for n: int in range(1, outline.size() - 1):
+		triangles.append([Vector3(outline[0].x, outline[0].y, 4), Vector3(outline[n].x, outline[n].y, 4),
+			Vector3(outline[n + 1].x, outline[n + 1].y, 4)])
+		triangles.append([Vector3(outline[0].x, outline[0].y, 0), Vector3(outline[n + 1].x, outline[n + 1].y, 0),
+			Vector3(outline[n].x, outline[n].y, 0)])
+	for n: int in outline.size():
+		var a: Vector2 = outline[n]
+		var b: Vector2 = outline[(n + 1) % outline.size()]
+		triangles.append([Vector3(a.x, a.y, 0), Vector3(b.x, b.y, 0), Vector3(b.x, b.y, 4)])
+		triangles.append([Vector3(a.x, a.y, 0), Vector3(b.x, b.y, 4), Vector3(a.x, a.y, 4)])
+	var turn := Basis(Vector3.UP, deg_to_rad(30.0))
+	for corners: Array in triangles:
+		var normal: Vector3 = ((corners[1] as Vector3) - corners[0]).cross((corners[2] as Vector3)
+			- corners[0]).normalized()
+		for corner: Vector3 in corners:
+			mesh.positions.append(turn * corner)
+			mesh.normals.append(turn * normal)
+			mesh.colours.append(Color.WHITE)
+			mesh.uvs.append(Vector2.ZERO)
+		mesh.texture_of.append(-1)
+	return mesh
 
 
 ## Laid as Brickify.build lays it: what is covered before and after the mend.
