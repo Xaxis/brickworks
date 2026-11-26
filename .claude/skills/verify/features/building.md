@@ -1990,8 +1990,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the part that replaced it, a copy's own parts and those of a copy round it
   that lies on the one round the edited copy left out as `_own_copy` leaves
   them, newest copy first; each copy's fit read once per model and level,
-  and for parts lifted off the model as the copies stood before the lift, as
-  the lift-and-put step's follow reads them), and where one has no room the
+  the parts in hand where they stood, still the model's, listed last in the
+  hand's order as the put's follow reads them, `Assemblies._hand_then`, and
+  a copy whose every part is in hand counted as moved whole,
+  `Assemblies._keeps_one`; the hand's old cells free to the ask as at the
+  click, `BrickLattice.hand_free`; wingkeep: after handkeep2 a lift made no
+  step and the ask died on the gone `_lift_on_top`, green where the click
+  refused), and a part X took into hand is asked as the move it is, in its
+  own sub-model, at the model's level too (`Builder._going_down`), and where one has no room the
   ghost is red, `Builder.can_place` false (the pointer,
   `brickworksState.can_place` and a session's hand tool say so, the typed
   number's line names why) and the bar says why as it turns red, in the
@@ -2041,7 +2047,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   back where they stood, it goes through and an untouched third copy gets
   it once (wingfix2, wingreview3 F1: 7 parts became 9 and Save kept them;
   F2: a part lost or doubled). `wf2_probe` (headless) holds it, with
-  wingreview3's follow table. The pointer is steered by where
+  wingreview3's follow table, and X's part typed a stud along: the other copy
+  follows, and where its twin has no room the ghost says "No room in ..."
+  first; `wf2_shots_probe` pictures both at 1280 and 390. The pointer is steered by where
   the hand stands, and the check fails if the brick went down anywhere else;
   each drop is undone, redone and undone again, the model compared part by
   part. Make unique cuts a copy loose (a session's `make_unique`,

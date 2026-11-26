@@ -265,25 +265,46 @@ func _wf2_case(one: Array) -> void:
 ## ask answered as each aim makes it (Builder._ask_copies), and clicked. What
 ## happened, said.
 func _x_put(brick_id: int, by: Vector3) -> String:
-	_builder.clear_selection()
-	var stood: Vector3 = _world.get_brick(brick_id).transform.origin
-	if not _builder.lift_brick(brick_id) or not _builder.holds_lifted_part():
-		return "not taken into hand"
-	_builder.update_preview(stood + Vector3(0, 400, 0), Vector3.DOWN)
-	var aimed: Variant = _builder.ghost_place()
-	if aimed == null or not _builder.pin_hand():
-		_builder.put_hand_back()
-		return "no ghost where it stood"
-	var fits: bool = _builder.typed_hand(stood + by - (aimed as Vector3), 0.0, 0.0, Vector3.RIGHT)
-	for _n: int in 200:
-		_builder.call("_ask_copies")
-		if (_builder.get("_copies_ask") as Dictionary).is_empty():
-			break
+	var mode: String = _verbs.mode
+	var aimed: Variant = _x_aim(brick_id, by)
+	if aimed is String:
+		_x_done(mode)
+		return aimed
 	_asked_red = str(_builder.get("copies_refuse"))
 	var at: Variant = _builder.ghost_place()
 	var put: int = _builder.place()
 	await _edited()
 	await _frames(2)
+	_x_done(mode)
+	return "X: aimed at %s, typed to %s, put %d" % [str(aimed), str(at), put]
+
+
+## X over [param brick_id], as the key does (Builder.lift_brick, then the
+## Place tool), its ghost aimed from above where it stood and typed the rest
+## of the way to [param by] along, and the copies' ask answered: where it
+## was aimed, or what went wrong (a String).
+func _x_aim(brick_id: int, by: Vector3) -> Variant:
+	_builder.clear_selection()
+	var stood: Vector3 = _world.get_brick(brick_id).transform.origin
+	if not _builder.lift_brick(brick_id) or not _builder.holds_lifted_part():
+		return "not taken into hand"
+	_verbs.set_mode("place")
+	if not _builder.holds_lifted_part():
+		return "let go of by the Place tool"
+	_builder.update_preview(stood + Vector3(0, 400, 0), Vector3.DOWN)
+	var aimed: Variant = _builder.ghost_place()
+	if aimed == null or not _builder.pin_hand():
+		return "no ghost where it stood"
+	_builder.typed_hand(stood + by - (aimed as Vector3), 0.0, 0.0, Vector3.RIGHT)
+	for _n: int in 200:
+		_builder.call("_ask_copies")
+		if (_builder.get("_copies_ask") as Dictionary).is_empty():
+			break
+	return aimed
+
+
+## What X left in hand let go of, and the tool there was before it.
+func _x_done(mode: String) -> void:
 	_builder.unpin_hand()
 	_builder.put_hand_back()
-	return "X: aimed at %s, typed to %s (fits %s), put %d" % [str(aimed), str(at), fits, put]
+	_verbs.set_mode(mode)
