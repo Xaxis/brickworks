@@ -2557,6 +2557,159 @@ shots are the same pictures. So it is on: `PRODUCT_FLOOR` is 1. The sets
 are still far from the photographs (0.06 against 0.93): every set
 verdict still names flawless plastic and a seamless backdrop.
 
+## 5x. A photograph's focus on a whole model, fitted then judged (photoreal23)
+
+photoreal22 read every verdict since photoreal5 and found depth of field
+the set tell most tied to the judge's number (r +0.75): "everything in
+focus" on 0.58 of our set verdicts and none of the photographs'. Under
+photoreal20's and 21's lamps the focus words and the number moved
+together, and so did the colour, so those pools could not say which one
+the judge reads. This arm moves the focus alone.
+
+**Where a photograph focuses.** `tools/photoreal/dof_measure.py` measures
+an edge's width (px at 1024 wide) in boxes on the near, middle and far
+parts of each set. Each photograph is focused on its driver, in the middle
+of the model, not on its nearest feature: 6532's head 2.80 against 5.00
+near and 4.05 far, and 6660's cab 1.93 against 3.85 and 3.80. 6657's
+photograph is sharp nearly throughout (2.37 to 2.67).
+
+**The fit** (bench/results/photoreal23-2026-11-26/sweep, 112 variants of
+the product camera's softness, the f-number, the focus across the model's
+depth, and a sharpen; the miss is the RMS log ratio of the three widths):
+
+| set | photograph near / middle / far | src | fitted | miss src → fitted |
+|---|---|---|---|---|
+| 6532 | 5.00 / 2.80 / 4.05 | 5.16 / 3.07 / 3.92 | 4.91 / 2.92 / 4.20 | 0.060 → 0.033 |
+| 6660 | 3.85 / 1.93 / 3.80 | 4.26 / 2.46 / 3.95 | 4.27 / 2.26 / 3.67 | 0.151 → 0.109 |
+| 6657 | 2.67 / 2.37 / 2.65 | 3.02 / 2.62 / 2.42 | 2.65 / 2.48 / 2.74 | 0.106 → 0.032 |
+
+The fitted values are softness 0 and f/10 at 0.42 of the depth (6532), f/9.5
+at 0.5 (6660), and f/16 at 0.30 (6657). 6512's picture is itself a render
+with everything in focus, so it only lost the softness. Taking off
+`PRODUCT_SOFTNESS` sharpened 6532's driver only from 3.07 to 2.96. The
+rest of the soft middle was the focus plane sitting behind him. On 6660
+no lens gets the cab under 2.26: a sharpen of 0.3 reached 2.14, but it was
+left out, because that is the camera's processing, not its focus. The
+colour did not move (CIEDE2000 against the photographs 3.00, 5.36 and
+6.10, against src's 3.00, 5.35 and 6.06).
+
+**Judged** (photoreal16's solo judge, fresh names, the four sets at
+draws 11 to 22 from a locked snapshot of pre261 3aa31d158, 2 trials, 4
+rounds; the close-ups and the car are src's bytes):
+
+| arm | sets (95%) | against src, sets | all ten shots | set verdicts: depth of field a photo tell / "everything in focus" |
+|---|---|---|---|---|
+| src | 0.057 (0.040 to 0.074) | | | 0.40 / 0.34 |
+| src again (twin) | 0.057 | +0.000 | +0.000 | 0.37 / 0.33 |
+| focus fitted | 0.057 (0.038 to 0.076) | -0.000 (-0.003 to +0.003) | -0.000 (-0.001 to +0.001) | 0.56 / 0.20 |
+| twice the blur (another pool) | 0.065 (0.045 to 0.082) | +0.008 (+0.000 to +0.015) | +0.003 (-0.000 to +0.007) | 0.70 / 0.09 |
+
+The fitted focus changed what the judge said, and not its number. On 6532
+it named depth of field as a photo tell in 0.94 of its verdicts (src 0.70),
+"everything in focus" fell from 0.34 to 0.08, and the number stayed at 0.080.
+6660's photo tell rose from 0.14 to 0.36 and its number stayed at 0.044.
+So the r +0.75 was the lamps moving both at once. The focus words are read
+off the picture; they do not decide it.
+
+Twice the blur (half the fitted f-number, the focus kept) rose on
+every photographed set: 6660 +0.017 and 6657 +0.011 in 12 draws of 12, 6532
++0.006 in 8. Yet 0.90 of its verdicts called it "synthetic-looking
+depth-of-field blur", and 6532's far wheel goes past the photograph's
+(6.47 px against 4.05). Its all-shot interval does not clear 0. Focus is at
+most a lever of about 0.01 on sets that stand 0.87 below their
+photographs. Nothing changes: `PRODUCT_SOFTNESS` stays 0.6, the app's lens
+stays off, and tools/photoreal/shots.json keeps its lenses. Of
+photoreal22's two candidates, the plastic's colour as photographed is the
+one left to judge alone.
+
+## 5y. The sets' plastic as photographed (photoreal24)
+
+The lead's look at 6660 found four differences from its photograph:
+
+- the photograph's whites are warm cream, ours cool;
+- its windscreen is pale, ours saturated cyan;
+- its hook is a warm grey, ours bluish;
+- its hubs read white, ours grey.
+
+**The models are right.** The hubs are white 15 and read grey from the light: the photograph's whites sit at
+L92-98, as bright as its backdrop. The hook is old light grey 7. The app's 7 is LDConfig's #8A928D
+(L59.8). Rebrickable's #9BA19D is 6 L brighter. The photographed hook is L70.7 with b* +12: age. Old
+dark grey 8 is in none of the photographed sets.
+
+**Fitted.** The photo probe takes a shot's `"colours"` (LDraw code to hex) for that shot alone and puts
+them back after it. Each set's families were fitted by colourfit's pixel-weighted CIEDE2000. That brought
+the sets from 3.00 / 5.35 / 6.06 to 2.31 / 1.72 / 2.76 (6532, 6657, 6660). What is left is lightness: the
+photographs' exposure and floor shade, not plastic.
+
+**Judged** (photoreal16's solo judge, draws 11 to 22, 2 trials x 4 rounds; bench/results/photoreal24-2026-11-26):
+
+| arm | sets against src (95%) | 6532 | 6657 | 6660 | 6512 |
+|---|---|---|---|---|---|
+| each set's plastic fitted | +0.002 (-0.006 to +0.009) | -0.009 | +0.008 | +0.010 | same pictures |
+| paler clear tints only (43 #dafbff, 46 #ffe253) | -0.004 (-0.006 to -0.001) | same pictures | -0.006 | -0.004 | -0.006 |
+
+The fitted sets move about 0.01 each way and not at all together. The tints alone lose, and the judge
+names the pane's "glowing cyan edges": thick edges keep their colour, so a paler face sets them apart. So
+colour stays as it is: 43, 46, 7 and 15 keep LDConfig's values. The set renders still sit near 0.06
+against their photographs' 0.93. What the photographs earn is age and variation (named in 0.71 and 0.88 of
+their verdicts); no render earns either.
+
+## 5z. Every tell at once, then each taken out (photoreal25)
+
+Each lever alone had moved the judge by about zero, while it names five or six tells on every render.
+So this round put them all on at once, each at the strength its own round measured best:
+
+- **F**: the fitted focus (5x);
+- **C**: each set's own plastic (5y);
+- **W**: wear and age. On the sets that is shots.json's age, handling 1.0, dust 0.4 and seating 2.5. On the
+  close-ups it is rubbed 1.0 and their dust;
+- **K**: the camera: 1024 samples, shots.json's grain, vignette and aberration, and JPEG at the
+  photographs' own quality (75 on Rebrickable's set pictures, 90 on the close-ups) with sharpen 0.6 on
+  the close-ups;
+- **E**: photoreal18's rounded edges, on the sets only.
+
+Then it took each one out in turn. All pools used photoreal16's solo judge on ten shots, draws 11 to 16;
+the files are in bench/results/photoreal25-2026-11-26.
+
+| against src (95%) | photographed sets | close-ups | all ten shots |
+|---|---|---|---|
+| all five levers | +0.113 (+0.055 to +0.153) | -0.047 (-0.161 to +0.028) | +0.006 (-0.069 to +0.070) |
+| src again (twin) | +0.002 (-0.002 to +0.006) | -0.009 | +0.005 |
+
+The sets moved about ten times as far as any single lever had (the floor's +0.012 in 5u): 6532 0.08 to
+0.21, 6657 0.07 to 0.12, 6660 0.05 to 0.20, each in 6 of 6 draws, in two pools with two seeds. The ten-shot number did not move, because grey_1x3 (-0.27) and
+three_2x2_top (-0.10) fell as far.
+
+What each lever carries (all minus all-without-it, paired by draw, on the photographed sets):
+
+| lever | carries | read |
+|---|---|---|
+| W wear and age | +0.092 (+0.030 to +0.134) | carries it: 6532 +0.11, 6660 +0.13, 6657 +0.03, 6 of 6 each |
+| E rounded edges | +0.024 (+0.004 to +0.051) | 6532 only (+0.053), as in photoreal18 (+0.027) |
+| K camera | +0.015 (-0.017 to +0.040) | 6657 only (+0.037) |
+| F focus | -0.020 (-0.083 to +0.024) | nothing; 6532 is better without it |
+| C plastic | -0.026 (-0.046 to -0.006) | costs: the cream fit loses 6532 again |
+
+The words agree. With W out, wear stops being a photo tell (0.17 to 0.01) and so does "variation in the
+plastic" (0.12 to 0.00).
+
+**Nothing becomes a default.** W is the photographed sets' history (thirty-year-old, handled plastic):
+bench content. A user's new model is not dusty or yellowed. E helps one set, and photoreal18 measured
+three_2x2_top -0.106 with it on a close-up, so as a default a close-up would get worse. The port was taken
+back out (3e36ec52d), because even off it moves the default bytes by up to 6 levels on 0.23% of
+pixels. The close-ups' own wear and camera are bench content too: W costs three_2x2_top and black_2x4,
+and K costs grey_1x3. The car is in no arm, and its pictures are the same bytes in every arm.
+
+The sets still stand at 0.12 to 0.21 against their photographs' 0.93. The tells no lever touched are now
+the most named:
+
+- the stage: seamless pure white with an idealised soft shadow, named in 0.99 of the verdicts, while the
+  photographs' shadows are a photo tell in 0.83;
+- the edges ("crisp, uniform edge bevels", 0.90);
+- the wear itself, read as "procedural-looking micro-scratches".
+
+The judge now names a render tool more often (0.30 to 0.40).
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
