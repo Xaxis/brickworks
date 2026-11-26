@@ -483,6 +483,7 @@ func _case_time() -> void:
 	print("  time: the autosave's longest frame, kept %s ms, plain %s ms" % [str(frames["kept"]),
 		str(frames["plain"])])
 	for how: String in ["kept", "plain"]:
+		_kept("time-%s.mpd" % how, texts[how])
 		var diff: Dictionary = _line_diff(original, texts[how])
 		print("  time %s: %d of the file's %d lines gone, %d new" % [how, (diff["lost"] as Array).size(),
 			original.count("\n"), (diff["new"] as Array).size()])
