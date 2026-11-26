@@ -5395,8 +5395,15 @@ func to_text_paced(title: String, job: Working.Job, model: int = -1) -> String:
 		return ""
 	if not paces():
 		return to_text(title, true)
+	# Another model opened or begun while the order is worked out stops the
+	# work at its next slice: each slice after an await read bricks of the
+	# world as it is then, gone, and every one of them was a script error
+	# (wholetext2_probe paced_during open).
+	var stop: Callable = func() -> void: job.cancel()
+	world.cleared.connect(stop)
 	var steps: Array[Instructions.Step] = await Instructions.plan_paced(
 		world, world.library, scenery, {}, job)
+	world.cleared.disconnect(stop)
 	if job.cancelled or steps.is_empty() or _another_opened(mine):
 		return ""
 	job.say("Writing %s parts…" % Working.comma(world.brick_count() - scenery.size()))

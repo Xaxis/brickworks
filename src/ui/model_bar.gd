@@ -889,6 +889,10 @@ func _on_save(press: int = -1) -> bool:
 			var stopped: bool = _saving.cancelled
 			_saving.end()
 			_saving = null
+			# Stopped by another model put on the baseplate, not by Cancel.
+			if store.model_now() != model:
+				_say(ModelStore.ANOTHER_OPENED)
+				return false
 			if stopped:
 				_say("stopped saving “%s”; nothing was written" % name)
 				return false
