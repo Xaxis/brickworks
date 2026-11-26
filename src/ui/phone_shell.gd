@@ -369,6 +369,9 @@ func _build() -> void:
 	_pill_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_pill_words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_pill_words.max_lines_visible = 2
+	# Past two lines, cut at a word with "…": "Tap to put Moved to 3023b
+	# down · drag tu" lost its end mid-word at 150% (wide150b).
+	_pill_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_pill_words.add_theme_font_size_override("font_size", ceili(p(13)))
 	_pill_words.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
 	_pill_words.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -945,6 +948,13 @@ func _lay_pill() -> void:
 	var font: Font = _pill_words.get_theme_font("font")
 	var line: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
 	var inner: float = minf(line + p(2), widest - p(24))
+	# Not shown in a room narrower than its longest word: beside a tablet's
+	# open panel at 150% the line was a column a word wide, "rückgängig"
+	# cut inside (wide150b).
+	var longest: float = 0.0
+	for word: String in words.split(" ", false):
+		longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x)
+	var room_for_words: bool = inner >= ceilf(longest)
 	# Each set only when it is another: laid out every frame, a value set
 	# again, or set to nothing and back, is the whole window drawn again
 	# (IdleDraw), and a tablet drawing in software drew it every frame.
@@ -977,7 +987,7 @@ func _lay_pill() -> void:
 	# it. Fit steps aside for a drawer too: over the assistant's it sat on
 	# New chat. Over a sheet it stays, above or beside it.
 	var drawer: bool = not wide and _drawer_open()
-	var shown: bool = not words.is_empty() and not drawer and (wide or not _any_open())
+	var shown: bool = not words.is_empty() and not drawer and (wide or not _any_open()) and room_for_words
 	if _pill.visible != shown:
 		_pill.visible = shown
 	if _fit.visible == drawer:
@@ -1405,7 +1415,7 @@ class Sheet extends PanelContainer:
 		_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_title.clip_text = true
-		_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 		_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		head.add_child(_title)
 		done = Button.new()
@@ -1700,7 +1710,7 @@ class Sheet extends PanelContainer:
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.focus_mode = Control.FOCUS_NONE
 		row.clip_text = true
-		row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		row.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 		row.custom_minimum_size = Vector2(0, phone.p(Phone.TARGET + 4.0))
 		row.add_theme_font_size_override("font_size", ceili(phone.p(16)))
 		row.set_meta("command", command)

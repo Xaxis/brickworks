@@ -397,7 +397,7 @@ func _cut(c: Control, shown: Rect2) -> String:
 func _named(c: Control) -> String:
 	var out: String = str(c.name)
 	var up: Node = c.get_parent()
-	for _n: int in 3:
+	for _n: int in 6:
 		if up == null or up == _main:
 			break
 		var script: Script = up.get_script()

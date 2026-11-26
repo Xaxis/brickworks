@@ -266,6 +266,22 @@ func _notification(what: int) -> void:
 		_fit_compact.call_deferred()
 
 
+## The most of the window's height the desktop's bar takes (_cap_height).
+const MOST_OF_WINDOW := 0.55
+## The desktop's rows, scrolled inside the bar where they are taller than
+## MOST_OF_WINDOW of the window; null on a phone, whose bar is the five.
+var _held: ScrollContainer
+
+
+## The bar as tall as its rows, or MOST_OF_WINDOW of the window where they
+## are taller.
+func _cap_height() -> void:
+	if _held == null or not is_inside_tree():
+		return
+	var rows: float = (_held.get_child(0) as Control).get_combined_minimum_size().y
+	_held.custom_minimum_size.y = minf(rows, floorf(get_viewport().get_visible_rect().size.y * MOST_OF_WINDOW))
+
+
 func _build() -> void:
 	_compact = Phone.on() and not Phone.wide()
 	var backing := StyleBoxFlat.new()
@@ -280,7 +296,21 @@ func _build() -> void:
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
-	add_child(column)
+	if _compact:
+		add_child(column)
+	else:
+		# Never taller than MOST_OF_WINDOW of the window: past that its rows
+		# scroll inside it, the slider and the steps first. At 150% in
+		# French or Spanish a 390 window's bar was every unit of the
+		# model's room and more, the status bar pushed off the window's
+		# foot (wide150b).
+		_held = ScrollContainer.new()
+		_held.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_held.add_child(column)
+		add_child(_held)
+		column.minimum_size_changed.connect(_cap_height)
+		get_viewport().size_changed.connect(_cap_height)
 
 	# The timeline itself, the width of the window: what is being dragged
 	# is the whole build, and a short slider makes a brick a pixel.
@@ -667,6 +697,20 @@ func _fit_thumbs(pt: float) -> void:
 			font_size).x))
 	var words: bool = wanted <= across
 	var each: float = least if words else minf(least, floorf((across - gap * 4.0 - number) / 4.0))
+	if not words:
+		# A sign wider than its share ("…" at 150%) keeps its own width, and
+		# the rest share what it leaves: in equal shares the row was a unit
+		# wider than the window (wide150b).
+		var held: float = 0.0
+		var sharing: int = 4
+		for name: String in THUMB_SIGNS:
+			var sign: float = ceilf(margins + font.get_string_size(str(THUMB_SIGNS[name]),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+			if sign > each:
+				held += sign
+				sharing -= 1
+		if sharing < 4:
+			each = minf(least, floorf((across - gap * 4.0 - number - held) / sharing))
 	for name: String in THUMB_WORDS:
 		var button: Button = _named[name]
 		button.custom_minimum_size.x = each

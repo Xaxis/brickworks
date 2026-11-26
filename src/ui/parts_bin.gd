@@ -194,7 +194,10 @@ func choose_colour(code: int) -> void:
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(_z(336), 0)
+	# No least of its own: as wide as its column, drawer or sheet makes it,
+	# its rows wrapping and its tiles across what that holds. Held 336 units
+	# (403 on a phone at 150%), it was cut off down its right edge in a
+	# drawer of 232 and wider than a phone's sheet (wide150b).
 	if by_finger:
 		get_tree().node_added.connect(_hands_drags)
 	_build()
@@ -222,7 +225,11 @@ func _build() -> void:
 
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", int(_z(4 if by_finger else DESK_GAP)))
-	var head := HBoxContainer.new()
+	# Its title, then Make a part, Print and Stickers: those the column has
+	# no room for beside the title go under it, whole.
+	var head := HFlowContainer.new()
+	head.add_theme_constant_override("h_separation", 4)
+	head.add_theme_constant_override("v_separation", 4)
 	# On the desktop a section of its column (PanelStack): its header, the
 	# chevron and "Parts", folds the rest away, the colours under it taking
 	# the column. A phone's parts are a sheet of their own, which folds
@@ -530,6 +537,9 @@ func _build() -> void:
 	_only_made = CheckBox.new()
 	_only_made.text = "Only parts made in it"
 	_only_made.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Onto a second line at a word where the column is narrower than its
+	# words: whole, in French at 150% it held the bin 330 units wide.
+	_only_made.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_only_made.add_theme_font_size_override("font_size", 12)
 	FocusGuard.by_keyboard(_only_made)
 	_only_made.set_pressed_no_signal(bool(ShellPrefs.value("bin_only_made")))
@@ -3175,12 +3185,18 @@ const MORE_ROOM := 260.0
 ## share of the window leaves it (Main._fit_panels), and the parts go across
 ## it: four across, a laptop saw 12 of them. A phone's sheet keeps its four, for a finger.
 func _tiles_across() -> int:
-	if by_finger:
-		return COLUMNS
 	var gap: float = float(_grid.get_theme_constant("h_separation"))
 	var room: float = _scroll.size.x - _scroll.get_v_scroll_bar().get_combined_minimum_size().x
-	# A tile is _z(74) across (_make_cell).
-	return maxi(COLUMNS, floori((room + gap) / (_z(74) + gap)))
+	if by_finger:
+		# A phone's sheet: four across, or as many as its width holds. Its
+		# grid sets the scroller's least, so the width is the window's less
+		# the margins either side, which are the margins to its left.
+		room = get_viewport().get_visible_rect().size.x - 2.0 * _scroll.get_global_rect().position.x \
+			- _scroll.get_v_scroll_bar().get_combined_minimum_size().x
+		return clampi(floori((room + gap) / (_z(74) + gap)), 1, COLUMNS)
+	# A tile is _z(74) across (_make_cell): as many as the column holds, four
+	# where a column is given the bin, fewer in a narrow window's drawer.
+	return maxi(1, floori((room + gap) / (_z(74) + gap)))
 
 
 ## How many tiles a search shows at once, before the rest are added as the
