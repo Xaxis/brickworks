@@ -269,7 +269,9 @@ static func for_keyboard() -> Array[Binding]:
 		keyed(["swing", "swing_back"], "swing the selection on its hinge"),
 		keyed(["make_submodel", "leave_submodel"], "make a sub-model, or leave one"),
 		keyed(["undo"], "undo"),
-		keyed(["redo"], "redo"),
+		# Ctrl+Y as well, as Windows' programs, Studio and Mecabricks have
+		# it (Shell.handle_key).
+		keyed(["redo", "Ctrl-Y"], "redo"),
 	])
 	_section(everything, "Tools", [
 		keyed(["mode_select"], "the Select tool"),

@@ -2515,6 +2515,12 @@ msgstr "%s dreht es um das Gelenk"
 msgid "%s the other way on"
 msgstr "%s andersherum"
 
+msgid "%s picks which of its points goes on"
+msgstr "%s wählt, mit welchem seiner Punkte es ansetzt"
+
+msgid "%s takes it into hand to put anywhere"
+msgstr "%s nimmt es in die Hand, um es überall abzusetzen"
+
 msgid "Orbit: drag turns the view"
 msgstr "Ansicht drehen: Ziehen dreht die Ansicht"
 

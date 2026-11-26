@@ -564,7 +564,11 @@ func _keep(held: Grab, cells: Dictionary = {}) -> String:
 	builder.fold_since(depth)
 	var words: String
 	if moved == 0:
-		words = "%s: not moved" % _capital(held.said)
+		# And what moves it anywhere: a castle's wall on its hinge pin,
+		# dragged to move it along, stayed put with only the loop it is in
+		# named, and nothing said the way to move it (ux16's walk 2).
+		words = "%s: not moved" % _capital(held.said) \
+			+ Keymap.filled(" · {lift|takes it into hand to put anywhere}")
 		_clear_marks()
 	else:
 		words = "%s, %s" % [_capital(held.said), held.position_words()]
