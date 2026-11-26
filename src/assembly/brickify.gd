@@ -2174,25 +2174,36 @@ static func _upright_about(model: Assistant.Model, report: Dictionary, near: Arr
 ## is loose: the check with them in, its "propped" how many parts they took,
 ## or [param report] as it was. A figure's arm held out on one stud, a car's
 ## bumper hung under its body.
+##
+## Two rounds, each weighed: ties across a plane first, a pillar where none
+## ties ([method _prop]), then pillars alone for what is still past its load
+## once the ties are weighed, or for all of it where the first round was not
+## kept. A tie lays the parts beside its joint again, so the rest of the
+## joints of that piece wait for the next weighing: with one round only, a
+## toy car's fender column at 48 studs, tied once, kept all seven of its
+## joints past their load (34 times) where pillars alone had propped them.
 static func _propped(model: Assistant.Model, checker: Assistant, report: Dictionary) -> Dictionary:
 	report["propped"] = 0
 	report["bonded"] = 0
-	var balance: Balance.Report = report.get("balance")
-	if balance == null or balance.over == 0:
-		return report
-	var was: Array[Assistant.Placement] = model.placements.duplicate()
-	var props: Vector2i = _prop(model, checker, balance)
-	if props != Vector2i.ZERO:
+	for ties: bool in [true, false]:
+		var balance: Balance.Report = report.get("balance")
+		if balance == null or balance.over == 0:
+			return report
+		var was: Array[Assistant.Placement] = model.placements.duplicate()
+		var props: Vector2i = _prop(model, checker, balance, ties)
+		if props == Vector2i.ZERO:
+			continue
 		var after: Dictionary = checker._check(model, true, true, false, false)
 		var weighed: Balance.Report = after.get("balance")
 		if weighed != null and weighed.over < balance.over \
 				and _loose(after) <= _loose(report) and bool(after.get("ok", false)) \
 				== bool(report.get("ok", false)):
 			after = _again(after, report)
-			after["propped"] = props.x
-			after["bonded"] = props.y
-			return after
-		model.placements = was
+			after["propped"] = int(report.get("propped", 0)) + props.x
+			after["bonded"] = int(report.get("bonded", 0)) + props.y
+			report = after
+		else:
+			model.placements = was
 	return report
 
 
@@ -2227,8 +2238,10 @@ static func _again(later: Dictionary, earlier: Dictionary) -> Dictionary:
 ## under a toy car's 225 g fender had six joints past their load, each
 ## propped under the column itself. A joint whose piece a tie has laid again
 ## is left to the next weighing: the studs read here are not what is there.
-## How many parts the props put in (x) and ties (y).
-static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.Report) -> Vector2i:
+## No ties where [param ties_too] is false. How many parts the props put in (x)
+## and ties (y).
+static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.Report,
+		ties_too: bool = true) -> Vector2i:
 	var before: int = model.placements.size()
 	var ties: int = 0
 	var propped: int = 0
@@ -2265,7 +2278,7 @@ static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.R
 				rest[n] = true
 		var made: int = model.placements.size()
 		if piece.size() > 1:
-			var tied: int = room.bond(piece.keys(), rest, BOND_TIES)
+			var tied: int = room.bond(piece.keys(), rest, BOND_TIES) if ties_too else 0
 			if tied > 0 or _prop_under(room, piece, rest):
 				ties += tied
 				if tied == 0:
