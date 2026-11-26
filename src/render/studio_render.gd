@@ -144,9 +144,9 @@ const PRODUCT_SEATING := 1.0
 ## "played"): photoreal25's wear and age, as the photographed sets were drawn
 ## with it, in place of the new plastic's PRODUCT_AGE, PRODUCT_HANDLING,
 ## PRODUCT_DUST and PRODUCT_SEATING. On the photo bench it lifted the
-## photographed sets by +0.092 (95%: +0.030 to +0.134), their own thirty
-## years; a person's model is drawn new unless they pick it
-## (docs/RENDERING.md 5z, 5aa).
+## photographed sets, thirty years old, by +0.176 (95%: +0.058 to +0.287)
+## and cost new single parts up to -0.60, so a person's model is drawn new
+## unless they pick it (docs/RENDERING.md 5z, 5aa).
 const PLAYED_AGE := 1.0
 const PLAYED_HANDLING := 1.0
 const PLAYED_DUST := 0.4
@@ -252,17 +252,16 @@ const FLOOR_LAVENDER := Color(1.2, 0.92, 1.2)
 ## floor_bounce, floor_f0, floor_rough): how much of the tent's soft boxes'
 ## light and of its key's the floor shows, how far past white it is exposed,
 ## its shade's colour (0 the daylight fill's, 1 lavender), how much of the
-## parts' bounced light it shows, and its gloss. Fitted on the floor alone,
-## the model's own light kept: exposed further past white (2.4), more of the
-## key (1.5) and the shade most of the way to lavender (0.8) took the shade's
-## error from the photographs, pixel for pixel, from 2.30 to 1.79 L* on 6532
-## and 6660 and its tint's from 6.6 to 3.0, and the close-ups' too (docs/
-## RENDERING.md 5aa). Without the soft boxes the shade went the right way but
-## twice as dark under 6660; the bounce and a glossier floor moved nothing.
+## parts' bounced light it shows, and its gloss. Each photoreal19's unless
+## asked. Fitted on the floor alone (floor_over 2.4, floor_key 1.5,
+## floor_shade 0.8), the shade's error from the photographs fell from 2.30
+## to 1.79 L* on 6532 and 6660 and its tint's from 6.6 to 3.0, but the judge
+## did not move: the sets +0.005 (95%: -0.001 to +0.013), its "soft,
+## idealised shadow" named as often (docs/RENDERING.md 5aa). So not a default.
 const PRODUCT_FLOOR_BOXES := 1.0
-const PRODUCT_FLOOR_OVER := 2.4
-const PRODUCT_FLOOR_KEY := 1.5
-const PRODUCT_FLOOR_SHADE := 0.8
+const PRODUCT_FLOOR_OVER := FLOOR_OVER
+const PRODUCT_FLOOR_KEY := 1.0
+const PRODUCT_FLOOR_SHADE := 0.0
 const PRODUCT_FLOOR_BOUNCE := 1.0
 const PRODUCT_FLOOR_F0 := FLOOR_F0
 const PRODUCT_FLOOR_ROUGH := FLOOR_ROUGH

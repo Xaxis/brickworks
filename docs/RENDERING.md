@@ -2710,6 +2710,79 @@ the most named:
 
 The judge now names a render tool more often (0.30 to 0.40).
 
+## 5aa. The stage measured from the photographs, and played-with plastic as a choice (photoreal26)
+
+5z left the stage as the most named tell. So this round measured it from the photographs, not from
+the judge. On each photographed set, and the same way on our draws (bench/results/photoreal26-2026-11-26,
+scripts/stage26.py), it measured:
+
+- the open floor's brightness and how it falls off;
+- the shade's profile: how much darker the floor is at 0-1, 1-2, 2-4, 4-8, 8-16 and 16-32% of the
+  model's height from it, how wide it reaches, and its colour;
+- the parts' colour bounced onto the floor;
+- the shade pixel for pixel against the photograph, whose camera each shot is fitted to.
+
+What the photographs show, against src:
+
+- **The floor.** 6532's and 6660's is clipped white, as ours is. Neither falls off.
+- **The shade.** It is fainter and narrower than ours. On 6532 its rings are 1.6, 0.6 and then 0 L*;
+  ours were 6.3, 4.3, 2.6 and 1.4.
+- **Its colour.** It is lavender (a* +2 to +4, b* -2), where ours was a daylight fill's blue (a* 0,
+  b* -3).
+- **Bounce and gloss.** 6532 has a warm glow under its yellow front. No bounce or gloss lever reaches it.
+- **Where the shade falls.** It lies under the chassis, away from the camera. Ours falls toward the
+  camera, cast by the tent's low soft boxes behind the model.
+- **6657 and 6512.** 6657 is daylight on a beige board, with a hard cast shadow. 6512's "photograph" is
+  a render on a grey gradient. Neither is the tent's stage.
+
+**The fit.** The floor alone was fitted, through new bench levers (RenderSettings `floor_boxes`,
+`floor_over`, `floor_key`, `floor_shade`, `floor_bounce`, `floor_f0`, `floor_rough`), so the model's own
+light was kept. The best setting was:
+
+- the sweep exposed further past white (2.4 for 1.6);
+- more of the key on the floor (1.5);
+- the shade most of the way to lavender (0.8).
+
+| error from the photographs | 6532 | 6660 | red_slope | trans_round | three_2x2 |
+|---|---|---|---|---|---|
+| shade, pixel for pixel (L*), src | 1.29 | 1.01 | 0.38 | 0.26 | 1.64 |
+| shade, fitted | 0.88 | 0.90 | 0.30 | 0.20 | 0.98 |
+| shade's tint (a*b*), src | 2.4 | 4.3 | 2.0 | 8.3 | 2.5 |
+| shade's tint, fitted | 0.7 | 2.4 | 0.3 | 6.3 | 1.6 |
+
+What did not help:
+
+- Taking the soft boxes off the floor moved the shade the right way, but made it twice as dark
+  under 6660.
+- The bounce and a glossier floor moved nothing.
+- The tables, black_2x4, grey_1x3 and green_plate_macro, are untouched byte for byte.
+
+**The judge did not move.** One pool, photoreal16's solo judge, ten shots, draws 11 to 16, 2 trials by
+4 rounds, seed 261:
+
+| against src (95%) | photographed sets | close-ups |
+|---|---|---|
+| the fitted stage | +0.005 (-0.001 to +0.013) | +0.002 (-0.024 to +0.023) |
+| the fitted stage, Played with | +0.176 (+0.058 to +0.287) | -0.207 (-0.412 to -0.018) |
+
+The sets did not move beyond the interval, so **the stage is not a default.** The levers stay at
+photoreal19's values unless asked, and a picture without them is byte for byte src's.
+
+The words say why. "Soft, idealised shadow" is a render tell in 0.98 of the fitted stage's set
+verdicts, and the photographs' "soft, natural contact shadows" are a photo tell in 0.96. The same
+shade is named for whichever verdict the plastic has already decided. Played with takes it to 0.91.
+
+**Played with, as a choice.** photoreal25's wear and age are now Render's Plastic row (RenderSettings
+`plastic`, StudioRender `PLAYED_*`):
+
+- **New** is the default. A person's model is new, and the default bytes do not change.
+- **Played with** draws age 1.0, handling 1.0, dust 0.4 and seating 2.5, at Best in the Product look.
+  Any of the four asked for by number still wins.
+
+On the sets it is +0.18 (6532 +0.21, 6660 +0.26, 6657 +0.06, each in 6 of 6 draws), and "yellowed"
+becomes a photo tell. On new single parts it costs: grey_1x3 -0.60, black_2x4 -0.47, three_2x2_top
+-0.19. That is why it is a choice for a model that has been played with, and never the default.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
