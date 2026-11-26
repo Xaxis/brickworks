@@ -593,37 +593,20 @@ func _swap_paced(one: SurfacePass.Finding, pace: FramePace, going: Dictionary) -
 	var taken: Array = _builder.swap_bricks(PackedInt64Array(one.remove), [])
 	going["seen"] = _world.revision
 	var put: Array = []
-	# A slice's parts are drawn after it, in frames of the world's own,
-	# never in a frame with a slice of parts: the world draws a change in the
-	# frame it is made (a deferred rebuild), a slice at a time, and each
-	# slice, the Lay's and the drawing's, grows to half a slow frame
-	# (FramePace), so a frame that held both was 113-222 ms on Orthanc
-	# (fpfix) and still 101-132 ms with one frame left between (greenreds).
-	_world.hold_drawing()
 	for item: Dictionary in adds:
 		if pace.due():
+			# What the world works out after a change it does in the frame
+			# after: that frame is left to it, never shared with a slice of
+			# parts (each was both, 113-222 ms on Orthanc, fpfix).
 			phase = "lay: the world"
 			await get_tree().process_frame
-			_world.release_drawing()
-			await _drawn()
 			await pace.next()
-			_world.hold_drawing()
 			if _world.revision != int(going["seen"]):
 				going["changed"] = true
 		phase = "lay: put down"
 		put.append_array(_builder.swap_bricks(PackedInt64Array(), [item]))
 		going["seen"] = _world.revision
-	_world.release_drawing()
 	return put + taken
-
-
-## Frames until the world has drawn every change, at most a second's worth
-## of them: a drawing someone else holds meanwhile is not waited out.
-func _drawn() -> void:
-	for _n: int in 60:
-		if not _world.has_undrawn():
-			return
-		await get_tree().process_frame
 
 
 ## The finding's parts as Builder.swap_bricks puts them down: each where the
