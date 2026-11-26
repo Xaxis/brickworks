@@ -234,9 +234,18 @@ func _find_in_bin(words: String, shot: String) -> void:
 func _house() -> void:
 	print("\nUX16 p19: a first-time builder makes a small house from nothing")
 	await _frames(30)
-	await _step("p19_01_first_open", "the studio as a first visit opens it")
+	# The tour is offered once the account has been looked for, up to
+	# FirstBuild.LOOK_WAIT_MS after the studio is up: a person looking.
 	var tour: Variant = _shell.get("first_build")
-	var tour_named: Dictionary = (tour as Node).call("controls_by_name") if tour is Node else {}
+	var tour_named: Dictionary = {}
+	var looked_from: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - looked_from < 15000:
+		tour_named = (tour as Node).call("controls_by_name") if tour is Node else {}
+		if tour_named.has("first_build_go"):
+			break
+		await _frames(10)
+	await _frames(20)
+	await _step("p19_01_first_open", "the studio as a first visit opens it")
 	_check16("a first visit offers the tour (%s)" % ", ".join(tour_named.keys()),
 		tour_named.has("first_build_go"))
 	if tour_named.has("first_build_go"):
@@ -490,8 +499,14 @@ func _set_changed() -> void:
 		await _frames(30)
 	await _step("p20_09_replaced", "Edit › Replace with the part in hand")
 	var has: Array = [_count_of(SWAP_FROM), _count_of(SWAP_TO)]
+	var swapped: int = had[0] - has[0]
 	_check16("the helmet is swapped (%s: %d to %d, %s: %d to %d; %s)" % [SWAP_FROM, had[0], has[0],
-		SWAP_TO, had[1], has[1], _status()], has[0] == had[0] - 1 and has[1] == had[1] + 1)
+		SWAP_TO, had[1], has[1], _status()], swapped >= 1 and has[1] == had[1] + swapped)
+	# A sub-model's copies are one definition, as in Studio and LeoCAD: the
+	# line says how many more changed with it.
+	if swapped > 1:
+		_check16("the words say the other copies changed too (%s)" % _status(),
+			_status().contains("%d parts more in its other copies" % (swapped - 1)))
 	await _key(KEY_ESCAPE)
 	await _close_all()
 	# A sub-model moved: the drawbridge's rope or the flag, whole.
@@ -526,10 +541,31 @@ func _set_changed() -> void:
 		if brick != null and brick.transform.origin.distance_to(starts[id]) > 1.0:
 			moved += 1
 	await _step("p20_11_sub_moved", "dragged along the wall")
+	print("UX16 sub-model drag: %d of %d moved, \"%s\"" % [moved, starts.size(), _status()])
+	var history_was: int = _builder.history_depth()
+	if moved == 0 and flag != null:
+		# A wall on its hinge pin, in a loop with the rest: a drag moves it
+		# as the real one moves, which here is not at all. The line says
+		# the way to move it anywhere, and the person takes it.
+		_check16("a drag refused says how to move it anyway (%s)" % _status(),
+			_status().contains("X takes it into hand"))
+		await _key(KEY_X)
+		await _frames(15)
+		var to: Vector2 = _camera.unproject_position(flag.transform.origin) + Vector2(120, 40)
+		await _move(to)
+		await _frames(15)
+		await _click(to)
+		await _frames(30)
+		for id: int in starts:
+			var brick: BrickWorld.Brick = _world.get_brick(id)
+			if brick != null and brick.transform.origin.distance_to(starts[id]) > 1.0:
+				moved += 1
+		await _step("p20_11b_sub_lifted", "X, as the line says, and a click further along")
 	_check16("the sub-model moves whole (%d of %d moved, %s)" % [moved, starts.size(), _status()],
 		moved == starts.size() and moved > 1)
-	await _chord(KEY_Z, true)
-	await _frames(20)
+	if _builder.history_depth() > history_was or moved > 0:
+		await _chord(KEY_Z, true)
+		await _frames(20)
 	# The steps followed back.
 	await _key(KEY_B)
 	var steps: StepsBar = _bar_()
@@ -537,21 +573,22 @@ func _set_changed() -> void:
 	while (steps.is_starting() or not steps.is_playing_back()) and Time.get_ticks_msec() - since < 60000:
 		await process_frame
 	await _frames(30)
-	var at_open: int = _at()
-	var steps_count: int = steps.timeline_at().y
+	# Step 1 first, as a booklet opens: said, not checked (WALK.md).
+	var opened: Vector2i = steps.timeline_at()
 	await _step("p20_12_timeline", "B: the timeline")
-	print("UX16 the timeline opened at step %d of %d" % [at_open, steps_count])
-	_check16("the timeline opens on the model as it is, to go back from (step %d of %d)" % [at_open,
-		steps_count], steps_count > 0 and at_open >= steps_count)
-	# To the end, as the person goes to follow the steps back.
+	print("UX16 the timeline opened at step %d, %d of %d parts shown" % [_at(), opened.x, opened.y])
+	# To the end, as the person goes to follow the steps back. Left steps
+	# a sub-model's own steps inside the last step too: counted in parts.
 	await _key(KEY_END)
 	await _frames(20)
-	at_open = _at()
+	var at_end: int = steps.timeline_at().x
+	_check16("End shows the whole model (%d of %d)" % [at_end, opened.y], at_end == opened.y)
 	for _n: int in 3:
 		await _key(KEY_LEFT)
 		await _frames(15)
 	await _step("p20_13_back3", "Left three times")
-	_check16("Left steps back (%d to %d)" % [at_open, _at()], _at() < at_open)
+	_check16("Left steps back (%d to %d parts, step %d)" % [at_end, steps.timeline_at().x, _at()],
+		steps.timeline_at().x < at_end)
 	await _leave_steps()
 	await _close_all()
 
