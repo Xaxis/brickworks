@@ -291,7 +291,7 @@ func _build() -> void:
 	_set_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_set_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_set_words.clip_text = true
-	_set_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_set_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_set_words.mouse_filter = Control.MOUSE_FILTER_PASS
 	_set_words.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_set_line.add_child(_set_words)
@@ -335,7 +335,7 @@ func _build() -> void:
 	_step_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_step_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_step_words.clip_text = true
-	_step_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_step_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_step_words.mouse_filter = Control.MOUSE_FILTER_PASS
 	_step_words.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_step_on = Button.new()
@@ -587,7 +587,7 @@ func _build() -> void:
 	_colour_note.modulate = Color(1, 1, 1, 0.78)
 	_colour_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_colour_note.max_lines_visible = NOTE_LINES
-	_colour_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_colour_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_colour_note.mouse_filter = Control.MOUSE_FILTER_PASS
 	colour_box.add_child(_colour_note)
 	var font: Font = _colour_note.get_theme_font("font")
@@ -4703,7 +4703,7 @@ func _technique_cell(technique: Dictionary) -> Control:
 	row.add_child(words)
 	var title := Label.new()
 	title.text = techniques.title(name)
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	title.clip_text = true
 	title.add_theme_font_size_override("font_size", ceili(_z(12)))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4712,7 +4712,7 @@ func _technique_cell(technique: Dictionary) -> Control:
 	reason.text = techniques.reason(technique)
 	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reason.max_lines_visible = 2
-	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	reason.add_theme_font_size_override("font_size", ceili(_z(11)))
 	reason.modulate = Color(1, 1, 1, 0.75)
 	reason.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5770,7 +5770,7 @@ func _palette_row(one: Dictionary) -> Control:
 	var title := Label.new()
 	title.text = name
 	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	title.clip_text = true
 	title.add_theme_font_size_override("font_size", ceili(_z(12)))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5874,7 +5874,7 @@ func _assembly_cell(entry: Dictionary) -> Control:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.clip_text = true
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 		line.add_child(label)
 		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		line.add_child(mark)
@@ -5898,7 +5898,7 @@ func _assembly_cell(entry: Dictionary) -> Control:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.max_lines_visible = NAME_LINES
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	var font: Font = label.get_theme_font("font")
 	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
 		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))

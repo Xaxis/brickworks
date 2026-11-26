@@ -44,7 +44,9 @@ func _ready() -> void:
 	assemblies.entered_changed.connect(_show)
 	assemblies.changed.connect(func() -> void: _show(assemblies.entered))
 	_show(assemblies.entered)
+	# Fitted again as the window, the strip or a column beside it changes.
 	(get_parent() as Control).resized.connect(_fit, CONNECT_DEFERRED)
+	get_viewport().size_changed.connect(_fit, CONNECT_DEFERRED)
 
 
 func _notification(what: int) -> void:
@@ -57,12 +59,9 @@ func _notification(what: int) -> void:
 ## no word is cut: at 150% on a phone the banner was 264 units in a window
 ## of 232, and the window's column as wide (wingreview3 F5).
 func _fit() -> void:
-	var holder: Control = get_parent() as Control
-	if _words == null or holder == null or not visible:
+	if _words == null or not visible:
 		return
-	var across: float = minf(holder.size.x,
-		get_viewport().get_visible_rect().size.x - holder.get_global_rect().position.x)
-	var room: float = floorf(across - get_theme_stylebox("panel").get_minimum_size().x
+	var room: float = floorf(_offered() - get_theme_stylebox("panel").get_minimum_size().x
 		- float((_words.get_parent() as HBoxContainer).get_theme_constant("separation"))
 		- _done.get_combined_minimum_size().x)
 	var font: Font = _words.get_theme_font("font")
@@ -71,6 +70,35 @@ func _fit() -> void:
 	var wraps: bool = natural > room
 	_words.autowrap_mode = TextServer.AUTOWRAP_WORD if wraps else TextServer.AUTOWRAP_OFF
 	_words.custom_minimum_size.x = maxf(room, 0.0) if wraps else 0.0
+
+
+## The width the window leaves this banner: the window's, less what each row
+## it sits in gives the rest of that row (the columns either side of the
+## model) and each panel's margins. Never read off the strip's own width,
+## which is the banner's where the banner is the wider: measured so, at 150%
+## the words kept the room they had taken and the column stayed 316 units
+## in a window of 300 (wide150b).
+func _offered() -> float:
+	var chain: Array[Control] = [self]
+	while chain[-1].get_parent() is Container:
+		chain.append(chain[-1].get_parent() as Control)
+	var across: float = get_viewport().get_visible_rect().size.x
+	if chain[-1].get_parent() is Control:
+		across = minf(across, (chain[-1].get_parent() as Control).size.x)
+	for n: int in range(chain.size() - 1, 0, -1):
+		var holder: Control = chain[n]
+		var held: Control = chain[n - 1]
+		if holder is PanelContainer:
+			across -= holder.get_theme_stylebox("panel").get_minimum_size().x
+		elif holder is MarginContainer:
+			across -= float(holder.get_theme_constant("margin_left") + holder.get_theme_constant("margin_right"))
+		elif holder is HBoxContainer:
+			var gap: float = float(holder.get_theme_constant("separation"))
+			for other: Node in holder.get_children():
+				var beside: Control = other as Control
+				if beside != null and beside != held and beside.visible and not beside.top_level:
+					across -= beside.get_combined_minimum_size().x + gap
+	return across
 
 
 func _show(path: String) -> void:
@@ -84,7 +112,8 @@ func _show(path: String) -> void:
 	_words.tooltip_text = ("What you put down goes into it, and a click takes one part of it. "
 		+ "Every other copy is changed with it, mirrored where it is mirrored. "
 		+ "Esc or Done when finished.")
-	_fit.call_deferred()
+	# At once, before the row is laid out with the words on one line.
+	_fit()
 
 
 func controls_by_name() -> Dictionary:

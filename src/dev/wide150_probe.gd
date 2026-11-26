@@ -340,6 +340,12 @@ func _cut(c: Control, shown: Rect2) -> String:
 		text = label.atr(label.text)
 		overrun = label.text_overrun_behavior
 		wraps = label.autowrap_mode != TextServer.AUTOWRAP_OFF
+		# Wrapped onto more lines than it shows, its last line is cut short:
+		# by letters ("1×2 avec rai…") unless at a word.
+		if wraps and label.get_line_count() > label.get_visible_line_count() \
+				and overrun != TextServer.OVERRUN_TRIM_WORD and overrun != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS:
+			return "%s: \"%s\" wrapped onto %d lines, %d shown, cut by letters" % [_named(c),
+				text.replace("\n", " ").left(40), label.get_line_count(), label.get_visible_line_count()]
 		if label.uppercase:
 			text = text.to_upper()
 		room = label.size.x - label.get_theme_stylebox("normal").get_minimum_size().x
@@ -352,7 +358,11 @@ func _cut(c: Control, shown: Rect2) -> String:
 		text = button.atr(button.text)
 		overrun = button.text_overrun_behavior
 		wraps = button.autowrap_mode != TextServer.AUTOWRAP_OFF
-		room = button.size.x - button.get_theme_stylebox("normal").get_minimum_size().x
+		# Inside the face it is drawn with now: a disabled button's is the
+		# theme's, its margins narrower than the face it has when pressable.
+		var face: String = "disabled" if button.disabled else ("pressed" if button.button_pressed
+			else "normal")
+		room = button.size.x - button.get_theme_stylebox(face).get_minimum_size().x
 		if button.icon != null and not button.expand_icon:
 			room -= button.icon.get_width() + button.get_theme_constant("h_separation")
 		font = button.get_theme_font("font")
@@ -361,12 +371,15 @@ func _cut(c: Control, shown: Rect2) -> String:
 		return ""
 	# Past the window's edge or a scroller's, words are cut there too.
 	room = minf(room, room - (c.get_global_rect().size.x - shown.size.x))
-	var whole: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	# Each line its own: a name set on two lines is as wide as its wider.
+	var whole: float = 0.0
+	for line: String in text.split("\n"):
+		whole = maxf(whole, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
 	if whole <= room + 1.0:
 		return ""
 	var longest: float = 0.0
 	var long_word: String = ""
-	for word: String in text.split(" ", false):
+	for word: String in text.replace("\n", " ").split(" ", false):
 		var w: float = font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 		if w > longest:
 			longest = w

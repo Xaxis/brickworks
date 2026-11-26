@@ -516,6 +516,7 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	button.clip_text = true
 	_faces(button, p(10))
 	if not icon.is_empty():
+		button.set_meta("icon_path", Toolbar.TOOLS + icon + ".svg")
 		button.icon = Icons.icon_for(Toolbar.TOOLS + icon + ".svg", p(24), Icons.density(self))
 	else:
 		# Colour and More draw their own picture over the word.
@@ -603,6 +604,16 @@ func _share_row() -> void:
 		if button == null:
 			continue
 		button.custom_minimum_size.x = share
+		# Its picture inside its share, within its face's margins: at 150% on
+		# a 320 phone the pictures held the row past the window (wide150b).
+		var path: String = str(button.get_meta("icon_path", ""))
+		if not path.is_empty():
+			var inside_face: float = share - button.get_theme_stylebox("normal").get_minimum_size().x
+			var picture: Texture2D = Icons.icon_for(path, p(24), Icons.density(self))
+			if picture.get_width() > inside_face:
+				picture = Icons.icon_for(path, floorf(p(24) * inside_face / picture.get_width()),
+					Icons.density(self))
+			button.icon = picture
 		var font: Font = button.get_theme_font("font")
 		var needs: float = font.get_string_size(str(tool[1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
 			button.get_theme_font_size("font_size")).x + p(2) * 2.0

@@ -83,6 +83,12 @@ func _ready() -> void:
 	working = Working.new()
 	working.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(working)
+	# The fields give way the moment it shows, before the row is laid out:
+	# fitted only in this bar's next frame, the row was a frame wider than
+	# the window when work began after it (wide150b, "Opening the timeline").
+	working.visibility_changed.connect(func() -> void:
+		if shell != null and working.visible:
+			_fit())
 	_hint = _label(row, 1.0)
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.clip_text = true
