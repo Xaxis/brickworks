@@ -1663,6 +1663,17 @@ static func held_key() -> String:
 	return "Cmd" if on_mac() else "Ctrl"
 
 
+## Whether the hint says what the keys do differently where the part in hand
+## is, on a joint or a track's end: R turns it about the joint there, T puts
+## it on the other way and N picks its point. A line to read, not glance at,
+## so the status bar gives it its words' room as it does what is said: cut at
+## 1280 it showed only "Placing Technic Axle 4 on the pin hole of Technic
+## Beam 5: …", and none of the keys (ux16's walk 3).
+func hint_wants_room() -> bool:
+	return mode == "place" and builder != null \
+		and (builder.tracks.on_end or builder.is_on_joint())
+
+
 ## What the mouse will do now, in one line, for the status bar: the tool,
 ## the keys held, and what is under the pointer.
 func hint() -> String:

@@ -157,6 +157,21 @@ func _hint() -> String:
 	return verbs.hint().replace("\n", " ") if verbs != null else ""
 
 
+## The status bar's line on the left as drawn: "" when it is whole, else how
+## much of it the bar shows.
+func _line_cut() -> String:
+	var status: StatusBar = _shell.get("status")
+	var label: Label = status.get("_hint") as Label if status != null else null
+	if label == null or not label.is_visible_in_tree():
+		return "no line shown"
+	var font: Font = label.get_theme_font("font")
+	var wide: float = font.get_string_size(label.atr(label.text), HORIZONTAL_ALIGNMENT_LEFT,
+		-1, label.get_theme_font_size("font_size")).x
+	if wide <= label.size.x + 1.0:
+		return ""
+	return "%d of its %d px shown: \"%s\"" % [roundi(label.size.x), roundi(wide), label.text]
+
+
 ## The pointer over [param at] on the floor, then a click: what is in hand
 ## goes down there, and stays in hand.
 func _put_at(at: Vector3) -> void:
@@ -689,6 +704,10 @@ func _newer() -> void:
 	print("UX16 axle in hand: status \"%s\", hint \"%s\"" % [_status(), _hint()])
 	_check16("the words name Connect with an axle in hand (%s)" % _hint(),
 		_hint().contains("Connect") or _status().contains("Connect"))
+	# Said is not shown: at 1280 the line was cut after the part's names.
+	var cut: String = _line_cut()
+	_check16("the joint's line is drawn whole (%s)" % ("whole" if cut.is_empty() else cut),
+		cut.is_empty())
 	await _key(KEY_N)
 	await _frames(20)
 	await _step("p21_10_connect", "N: Connect")

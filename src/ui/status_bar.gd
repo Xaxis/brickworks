@@ -215,7 +215,7 @@ func _process(_delta: float) -> void:
 	if WhatsThis.is_asking():
 		said = WhatsThis.ASKING
 	var line: String = said if not said.is_empty() else shell.verbs.hint()
-	_saying = not said.is_empty()
+	_wants_room = not said.is_empty() or shell.verbs.hint_wants_room()
 	var showable: bool = not busy and SaveTo.names(said)
 	if show_folder.visible != showable:
 		show_folder.visible = showable
@@ -261,8 +261,9 @@ func _process(_delta: float) -> void:
 const HINT_ROOM := 160.0
 
 ## Whether the line on the left is something said (white, gone after a few
-## seconds), not the tool's standing hint.
-var _saying: bool = false
+## seconds), or the hint of a part in hand on a joint, which says what the
+## keys do there (EditVerbs.hint_wants_room): not the tool's standing hint.
+var _wants_room: bool = false
 
 
 ## The fields on the right fitted to the bar, every frame, as what they say
@@ -296,9 +297,10 @@ func _fit() -> void:
 	# few seconds it stands: the fields give way and come back once it goes.
 	# Cut at HINT_ROOM's share, "no room to turn it there (what it would hit
 	# is lit up): it is in…" lost "Esc puts it back" at 1280, and Connect's
-	# "— 2 points, Esc stops" (ux16's walks).
+	# "— 2 points, Esc stops" (ux16's walks). A part in hand on a joint's
+	# hint too, while it is there: what R, T and N do on the joint.
 	# A phone's bar, narrow, stays as it was.
-	if _saying and _hint.visible and not narrow:
+	if _wants_room and _hint.visible and not narrow:
 		left = maxf(left, _words_wide(_hint) + 8.0)
 	if working.visible:
 		# Its bar gives way first, inside the room the bar has (Working).

@@ -22,7 +22,7 @@ This page is a map of the window, what Properties holds, and every setting. Sett
 5. **View cube** ([The view](/docs/the-view#view-cube)).
 6. **Key strip**: the commonest keys and mouse moves, in one row along the model's foot. Each goes once you have used it three times, and the strip with the last; **View › Panels › Key strip** hides it, or brings them all back.
 7. **Properties** and the model tree, down the right. With the assistant on, it has a tab of its own on the same strip, and one shows at a time.
-8. **Status bar**: what just happened, what a click would do now, and the model's size. In a narrow window its fields on the right give way, the least wanted first, so it always fits the window and the model never moves for it. For the few seconds something is said, the fields make room for all of it, and come back after; point at the line for the whole of it.
+8. **Status bar**: what just happened, what a click would do now, and the model's size. In a narrow window its fields on the right give way, the least wanted first, so it always fits the window and the model never moves for it. For the few seconds something is said, the fields make room for all of it, and come back after; so they do while a part in hand is on a joint, for what the keys do there. Point at the line for the whole of it.
 
 Rest on a control for its tooltip; it never blocks a click. A long job shows a bar at the foot with **Cancel**. To ask what any control does, use [What's This?](/docs/accessibility#whats-this).
 

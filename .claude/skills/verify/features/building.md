@@ -1166,9 +1166,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   never wider than the window; its lines are cut at a word, never inside one.
   Something said (not the tool's standing hint) keeps the width its words take
   while it stands, the fields giving way in that order and coming back when it
-  goes; on a phone's bar (under 900) as before. The whole line is its tooltip.
-  At 1280 "no room to turn it there … Esc puts it back" and Connect's "— 2
-  points, Esc stops" were cut (ux16; `ux16_desktop_probe` p19/p21 pictures).
+  goes; on a phone's bar (under 900) as before. So does the hint of a part in
+  hand on a joint or a track's end, while it is there, as it says what R, T
+  and N do there (`EditVerbs.hint_wants_room`). The whole line is its tooltip.
+  At 1280 "no room to turn it there … Esc puts it back", Connect's "— 2
+  points, Esc stops" and an axle over a beam's "Placing Technic Axle 4 on the
+  pin hole of Technic Beam 5: …" were cut (ux16; `ux16_desktop_probe` p19/p21
+  pictures, and its p21 check "the joint's line is drawn whole").
   A bar wider than the window widened the window's whole column, the header
   with it: at 390 points the header's row came onto one line from two while
   the bar was 623 units or more, and the model's room jumped 22 units after
