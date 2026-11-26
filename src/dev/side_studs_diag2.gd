@@ -4,7 +4,7 @@ extends SceneTree
 ## between it and any other part by the parts' own shapes (socket at the stud's
 ## foot), so a part held by a side stud the check misses shows (snot6).
 ##
-##   SNOT_TRY=back1 godot --headless --path . --script src/dev/side_studs_diag2.gd -- --mesh=FILE --up=Y --studs=48
+##   godot --headless --path . --script src/dev/side_studs_diag2.gd -- --mesh=FILE --up=Y --studs=48
 
 var _library: PartLibrary
 var _checker: Assistant
