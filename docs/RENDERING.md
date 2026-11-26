@@ -2820,20 +2820,24 @@ frames resolve letters finer than a pixel, where Quick's and Good's single frame
 
 **What the judge said of the browser's Best.** photoreal16's solo judge, the ten shots, one draw (the
 raster draws the same picture at every draw: 11 and 12 match to 2 pixels in a million), 6 trials by 8
-rounds, 48 verdicts a picture, two pools (seeds 271 and 272). Every browser picture sits at the floor:
-0.03 to 0.17 called a photograph, against the photographs' 0.93.
+rounds, 48 verdicts a picture, three pools (seeds 271, 272 and 273). Every browser picture sits at the
+floor: 0.03 to 0.17 called a photograph, against the photographs' 0.93.
 
 | against New (95%) | all shots | close-ups | sets |
 |---|---|---|---|
 | Played with, pool 1 | +0.010 (+0.001 to +0.024) | +0.016 (+0.001 to +0.038) | +0.001 |
 | Played with, pool 2 | +0.009 (+0.001 to +0.023) | +0.016 (+0.003 to +0.036) | 0.000 |
-| New with the logo | +0.006 (-0.000 to +0.017) | +0.012 (+0.002 to +0.026) | -0.001 |
-| Played with and the logo | +0.019 (+0.003 to +0.040) | +0.031 (+0.006 to +0.061) | +0.002 |
+| New with the logo, pool 2 | +0.006 (-0.000 to +0.017) | +0.012 (+0.002 to +0.026) | -0.001 |
+| New with the logo, pool 3 | +0.007 (+0.000 to +0.019) | +0.013 (+0.002 to +0.030) | -0.001 |
+| Played with and the logo, pool 2 | +0.019 (+0.003 to +0.040) | +0.031 (+0.006 to +0.061) | +0.002 |
+| Played with and the logo, pool 3 | +0.019 (+0.003 to +0.041) | +0.032 (+0.007 to +0.063) | +0.001 |
 
-The logo takes "no logo" from 349 verdicts to 200 (New) and from 329 to 166 (Played with). The judge
-then reads it as "mirrored" or "garbled" in 25 and 50, as it read the tracer's. green_plate_macro gains
-the most (+0.045, +0.092 with Played with). No shot falls by more than the pools differ on an unchanged
-picture: set_6532's Played with is -0.001 in one pool and -0.004 in the other.
+The judge names the studs (no logo, plain) as a render's tell in 331 and 327 of New's 480 verdicts, and
+in 114 and 99 once the logo is drawn; Played with's 318 become 110 and 112. It reads the logo as
+"mirrored" in 71 of 960, all but 5 on black_2x4: from that camera the word is upside down, as it is in
+the photograph, and both read LEGO turned half round. green_plate_macro gains the most (+0.045 and
++0.055; +0.092 and +0.097 with Played with). No shot falls in both pools by more than the pools differ
+on an unchanged pair: set_6532's Played with is -0.001 in one pool and -0.004 in the other.
 
 ## 6. Web and desktop
 
