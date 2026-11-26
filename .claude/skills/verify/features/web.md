@@ -4435,7 +4435,11 @@ plan with Claude as the client.
   the words no other theme has, puts that theme's sets first when it holds
   most of what was found ("city", not "dinosaurs"); real sets before Gear,
   Books, Promotional and key chains unless asked; then own parts, the sets
-  packed in it not counted, and year, 25 years about twice the parts).
+  packed in it not counted, and year, 25 years about twice the parts). A
+  set named exactly what was typed (word for word first, then its big words
+  alone) goes first among its tier when it is at least a tenth the size of
+  the biggest set found ("house with car" is 346-2, "batmobile" still the
+  big ones: sitewalk3).
   `searchCatalog` uses it, `askSets` sorts `match` ("Best match") whenever
   `q` is typed and no order is asked, and answers `near` (no set has every
   word: those with the most) and `meant` ("milenium falcon" is millennium
