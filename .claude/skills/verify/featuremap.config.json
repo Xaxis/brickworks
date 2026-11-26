@@ -7353,6 +7353,13 @@
       "entry": "src/dev/exactsave_probe.gd",
       "reach": "tools/probe.sh exactsave_probe [--keep=DIR] [--cases=1,5]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; the paste with a part of the original moved, reopened exact; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place; a sub-model placed once moved and turned 30 degrees whole, the one line placing it changed)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "mirrorsave probe",
+      "entry": "src/dev/mirrorsave_probe.gd",
+      "reach": "tools/probe.sh mirrorsave_probe   (headless, ~1 min; MIRRORSAVE_ONLY=words, MIRRORSAVE_DUMP=DIR keeps each file: a wing placed mirrored first, straight first, three copies two mirrored, a mirrored car of mirrored wings, a turned copy first, one mirrored copy, a handed wing; the app's own and someone else's; each copy read in the hand its lines place it in; unedited, a part put in Main, a part of the first copy nudged, the first copy mirrored in place; saved twice, opened and saved twice more: the wing's lines as the file had them, every part where it was, byte for byte)",
+      "area": "model-io"
     }
   ]
 }
