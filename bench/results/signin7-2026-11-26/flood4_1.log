@@ -1,0 +1,4 @@
+  --      12 Google identities x 10 sign-ins, one network, in 157 s: {"busy":119,"failed":1}; reached Supabase's verify: 119 (production's server has 30 at once, then 1 each 10 s)
+  --      each identity's 11th: busy, busy, busy
+  ok      N1. one network, 12 free provider accounts: every sign-in reaches the shared verify; only each identity's own 10 bound it (9 identities hold the server's whole quarter-hour, 3 its burst)
+  --      accounts made 12, deleted 12

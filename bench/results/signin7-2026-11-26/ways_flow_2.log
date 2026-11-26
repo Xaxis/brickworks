@@ -1,0 +1,17 @@
+heavy: waiting: the free slots go to 10 earlier waiters
+heavy: waiting: waits for the load: 61 threads want a CPU, gate 30
+heavy: brickworks in slot.7 at load 117, 60140 MB free
+  ok    1. 1280: Sign in with Google and with GitHub, each with its mark, as tall and wide as Email me a code
+  ok    1. 1280: no box; one line that signing in makes the orangecheck account, with what that is
+  ok    1. 1280: nothing sideways
+  ok    1. 1280: the dialog still open at its picture
+  ok    1. 390: Sign in with Google and with GitHub, each with its mark, as tall and wide as Email me a code
+  ok    1. 390: no box; one line that signing in makes the orangecheck account, with what that is
+  ok    1. 390: nothing sideways
+  ok    1. 390: the dialog still open at its picture
+  FAIL  the flow finished: at http://127.0.0.1:12279/profile?then=%2Fgallery%3Fsort%3Dnew&with=google&take=eG8Kkb8sXZtglRMKit683lqK3zQnl1RCCpt-u_KDwxY (stopped.png): page.waitForURL: Timeout 60000ms exceeded.
+=========================== logs ===========================
+waiting for navigation until "load"
+============================================================
+    at /mnt/Projects/brickworks/.claude/worktrees/signin7/tools/web/ways_flow.mjs:188:16
+ways_flow: 1 failed (pictures in /tmp/claude-1000/-mnt-Projects-brickworks/e06e4b1a-8ee1-4555-9551-53502405c858/scratchpad/signin7/shots_2)

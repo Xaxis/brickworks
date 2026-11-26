@@ -1133,6 +1133,12 @@ func _parts_with_awaited() -> int:
 ## Whether starting a new model would lose anything: bricks that are not
 ## in a saved model under this name, exactly as they stand.
 func has_unsaved_work() -> bool:
+	# Parts lifted into hand and not put down are a move begun: the file has
+	# them where they stood, and closing would lose the move, so it asks.
+	# Up to handkeep, a figure in hand after Ctrl+S was nothing unsaved, and
+	# closing lost it (figreview2 F3).
+	if builder != null and builder.holds_lift():
+		return true
 	# A view saved, changed or taken out since the model was opened or saved
 	# (SavedViews) is the person's work, whatever else is as it was: the
 	# file is the only place it is kept.
@@ -1896,7 +1902,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Each part's number as the file has it, before it is made what is put
 	# down: what the list of moved and missing parts names ([member moved]).
 	var numbers_said: PackedStringArray = MovedParts.said_of(flattened)
-	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored)
+	var read_as: Dictionary = {}
+	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored, read_as)
+	model.kept_lines["read_as"] = read_as
 	# A model saved with no parts opens as that: an empty model under its
 	# name. It was refused as "no parts", and the model before it was left
 	# on the baseplate for a save to write under this one's name.
@@ -2321,13 +2329,25 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 ## file's author did not give are cleared ([param authored]). The mirrored
 ## placements' lines ("line|unit" -> true), for SourceFile. What an open and
 ## a model put into this one ([method held_from]) both read a file as.
-static func _as_placed(flattened: Array, library: PartLibrary, authored: bool) -> Dictionary:
+##
+## And into [param read_as], each part put down otherwise than its line
+## places it, by its origin (Placement.origin) -> [the part put down, the
+## turn and shift that take it to where its line puts it (in its own axes,
+## so it holds wherever the part is moved), the part its line names]: a
+## mirrored copy's part in its reflection, a retired number moved. A whole
+## write reads a copy's frame, and writes the lines of the copy a section is
+## written from, by those while each holds (Assemblies._read_vote,
+## Assemblies.as_lined, Assemblies.line_of).
+static func _as_placed(flattened: Array, library: PartLibrary, authored: bool,
+		read_as: Dictionary = {}) -> Dictionary:
 	var mirrored_lines: Dictionary = {}
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
 		if not authored:
 			placement.step = -1
 		placement.part_id = studio_part(placement.part_id, library)
+		var lined: Transform3D = placement.transform
+		var named: String = placement.part_id
 		if placement.mirrored:
 			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
 			Assemblies.unmirror(placement, library)
@@ -2341,6 +2361,12 @@ static func _as_placed(flattened: Array, library: PartLibrary, authored: bool) -
 		if colour >= 0:
 			placement.part_id = library.current(placement.part_id)
 			placement.color_code = colour
+		# By the part put down: recorded by the name before, a mirrored
+		# 303923's line was never its 3039's (Assemblies.line_of), and it
+		# voted from its reflection (mirrorreview N3).
+		if not placement.origin.is_empty() and placement.transform != lined:
+			read_as[placement.origin] = [placement.part_id,
+				placement.transform.affine_inverse() * lined, named]
 	return mirrored_lines
 
 
@@ -4365,6 +4391,15 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		var kept: Dictionary = _live_source().kept_keys(waiting, origins)
 		if not kept.is_empty():
 			known = known.merged(kept)
+	# A sub-model written in the frame the file gave its copy
+	# (Assemblies.file_frames): its parts as their lines have them, not their
+	# reflections, nor the Mirror tool's images of them (Assemblies.as_lined).
+	var named: PackedStringArray = Assemblies.as_lined(placements, instances, unit_steps,
+		world.kept_lines.get("read_as", {}), library)
+	if not named.is_empty():
+		embedded.merge(_part_files(Array(named)))
+	# And bottom to top as it stands in that frame (_in_own_heights).
+	placements = _in_own_heights(placements, instances, unit_steps)
 	# One list of each section's steps, from the parts as they are written,
 	# what has not arrived and what the catalogue has not got among them: the
 	# writer writes those, and the booklet's looks go on them
@@ -4491,15 +4526,15 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 ## so an undo brings them back. Called once each step of the history is made: by hand
 ## (Main._on_model_edited), by a session (CommandSocket), by the assistant's
 ## change to a selection. Not for an undo or a redo, whose step has it in
-## already (Builder.settled), nor while parts lifted off are held: put down,
-## they go back in the steps they came from (Builder.lift_selection), and the
-## step that keeps both is asked then.
+## already (Builder.settled). Parts lifted into hand are the model's where
+## they stood until put down, and make no step (Builder._take_into_hand): an
+## edit made while they are held follows as any other, and so does the move
+## that puts them down.
 func looks_follow_edit() -> void:
 	if builder == null or world == null:
 		return
 	var step: Dictionary = builder.last_step()
-	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
-			or builder.is_carrying():
+	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed):
 		return
 	var held: Array = _held_placements()
 	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
@@ -4904,7 +4939,8 @@ func _claim_held() -> void:
 ## "parts", "steps", "motions" (how many of its own model's motions its
 ## sub-model keeps), "missing" (part -> how many the library has not got),
 ## "unshown" (part -> how many it cannot show), "renamed" (each name given
-## another), "error"}.
+## another), "steps_saved" (its steps are the app's own saved ones, still no
+## one's: LdrModel.steps_are_saved), "error"}.
 func held_from(text: String, file_name: String, job: Working.Job = null,
 		called: String = "", credited: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"items": [], "name": "", "root": "", "units": {}, "held": [],
@@ -4948,7 +4984,12 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	else:
 		CustomParts.take_into(took, library, model, null, false)
 	var flattened: Array = model.flatten(library.parts)
-	var authored: bool = model.steps_are_authored()
+	# The steps it carries, as an open keeps them (LdrModel.steps_are_kept):
+	# an author's, and the app's own saved ones. Up to sk2fix2 only an
+	# author's were: the station, which opens in its saved steps, put into a
+	# model whole had all 535 of its parts planned afresh (sk2review NOTE 6,
+	# a sibling stepkeep2's switch to steps_are_kept missed).
+	var authored: bool = model.steps_are_kept()
 	_as_placed(flattened, library, authored)
 	var missing: Dictionary = {}
 	var waiting: Dictionary = {}
@@ -5096,7 +5137,8 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 		"files": files, "parts": placed.size() + held.size(), "steps": own_steps.size(),
 		"motions": motions, "bfc": head["bfc"], "rotsteps": head["rotsteps"],
 		"missing": missing, "unshown": unshown, "renamed": renamed,
-		"host_flat": source != null and not source.authored}, true)
+		"host_flat": source != null and not source.authored,
+		"steps_saved": model.steps_are_saved()}, true)
 	return out
 
 
@@ -5392,6 +5434,46 @@ func save_as_paced(name: String, job: Working.Job, over: bool = false) -> bool:
 		saved.emit(name)
 		return true
 	return false
+
+
+## [param placements] ([method _in_file_order]'s) with the parts of each
+## section written from a copy not standing upright ([param instances]'
+## "master"s, Assemblies.file_frames) bottom to top in that copy's frame, as
+## the section stands, each in a place one of them had: a sub-model is built
+## the same whichever of its copies it is written from. By the window's
+## heights, a wing whose first copy was placed upside down ("1 16 0 0 0 1 0
+## 0 0 -1 0 0 0 1") was listed top first, its plate after its bricks, and
+## the app's own file saved unedited was not the file (mirrorreview F4).
+## Upright, turned on the ground or mirrored, a section's heights are the
+## window's less one number, and nothing moves.
+static func _in_own_heights(placements: Array, instances: Dictionary,
+		unit_steps: Dictionary) -> Array:
+	var frames: Dictionary = {}
+	for path: String in instances:
+		var entry: Dictionary = instances[path]
+		var frame: Transform3D = entry["frame"]
+		if bool(entry.get("master", false)) \
+				and not (frame.basis.y.normalized()).is_equal_approx(Vector3.UP):
+			frames[path] = frame.affine_inverse()
+	if frames.is_empty():
+		return placements
+	var slots: Dictionary = {}
+	for n: int in placements.size():
+		var home: String = LdrModel._home_in((placements[n] as LdrModel.Placement).unit, unit_steps)
+		if frames.has(home):
+			(slots.get_or_add(home, []) as Array).append(n)
+	var ordered: Array = placements.duplicate()
+	for home: String in slots:
+		var at: Array = slots[home]
+		var keys: Array = []
+		for n: int in at:
+			var placement: LdrModel.Placement = placements[n]
+			var own: Transform3D = (frames[home] as Transform3D) * placement.transform
+			keys.append([placement.step, roundi(own.origin.y * 1000.0), n])
+		keys.sort()
+		for k: int in keys.size():
+			ordered[int(at[k])] = placements[int((keys[k] as Array)[2])]
+	return ordered
 
 
 ## [param placements] in the order a file lists them: by step, then height,

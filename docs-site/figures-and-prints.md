@@ -31,11 +31,36 @@ lib:add a minifig
 
 ### Make a mould {#mould}
 
-For headgear or something to hold that does not exist, choose its slot and **Make a mould…**. Drag on the part to sculpt it with the brushes down the left (pull, push, inflate, smooth, pinch, flatten, grab), with symmetry on both sides; what joins it to the figure is locked. **Save mould** makes the part and puts it on the figure.
+![Make a mould on a minifigure's hair: the brushes down the left (Pull, Push, Grow, Shrink, Smooth, Pinch, Flatten and Grab), Size and Strength, Symmetry on, and the hair on the figure's head in the middle, with Start from, Dome, Club, its name and Save mould along the top.](/docs/img/figures-mould.webp "Headgear › Make a mould…: the hair shaped on the figure's own head, every stroke one step of Undo.")
+
+For hair, a hat or a helmet that does not exist, or something to hold, choose its slot and **Make a mould…**. It starts from the real part in the slot, so it always fits: its socket is that part's, on the head's stud, and nothing can be pushed into the head.
+
+1. Drag on the part to shape it with the brushes: **Pull**, **Push**, **Grow** and **Shrink** a region, **Smooth**, **Pinch**, **Flatten** and **Grab**. **Symmetry** is on from the start, so a stroke on one side is made on the other too. Drag beside the part to turn it.
+2. On a phone or a tablet the part is above the brushes. One finger shapes it, and two fingers turn it and pinch to come closer. A second finger never dents it.
+3. Every stroke is one step of **Undo** ([[Ctrl+Z]]). So are **Finer**, a **Lattice** handle and starting again from another part. A **Lattice** handle bends the part as it is then, with every stroke and **Finer** made before it.
+4. Name it and **Save mould**. It goes on the figure and into the parts bin under **Custom**, under the name you gave it.
+
+Nothing you shape is lost. **Close**, a reload or a closed tab keeps the mould as it is, and **Make a mould…** in that slot opens it again until you save it. If the disk is full, the maker says so and keeps the mould as it was before.
+
+A mould starts from a part of up to 18,000 triangles. A bigger one, such as a string or a chain, is not opened, and the maker says how many triangles it has.
+
+On a figure wearing a mould, or hair brought in from a 3D file, **Make a mould…** shapes that hair further. Saving makes a new part, and the one before stays as it was.
+
+Signed in, a hair you save is also kept on your account, and the builder says so: "Kept on your account too". Wear it on your avatar in the site's minifig maker, under **Edit profile › Make a minifig › Hair and hats › Your own** ([your minifig](/docs/profiles#avatar)). Only what you made goes to your account:
+
+- A hair is sent to the account that was signed in when you pressed **Save mould**, and to no other. If Brickworks could not be reached, the builder says so and sends it the next time you open the builder signed in to that account.
+- Hair that came inside a model someone else made stays in the studio. It is never sent to your account.
+- Signed out, the builder says "Kept in the studio only: sign in to keep it on your account". When you next open the builder signed in, it asks whether the moulds made signed out on this computer are yours. **Put on my account** sends them; **Not mine** keeps them in the studio and stops the question. The studio cannot tell who was at the computer while nobody was signed in, so only you can say. On a shared computer, they may be someone else's.
+- A hair you shape further from one of your own takes the old one's place on your account, unless your avatar wears the old one. The studio keeps both.
+
+An account keeps up to 40 moulds, 24 MB in all. A full account says so in the builder, and the hair goes once you make room. To make room, open **Edit profile › Make a minifig › Hair and hats**, choose one of **Your own** and press **Remove**. The studio and every model that uses it keep their copy. If your avatar wears it, your minifig wears the hair it was shaped from instead, and **Save** draws its picture again.
+
+Hair you saved before Brickworks kept moulds on accounts is not sent by itself, as the studio cannot tell it from hair a model brought. To put one on your account, open it in **Make a mould…**, signed in, and save it.
 
 <!-- covers
 ui:mould maker
 lib:custom moulds
+lib:moulds sent to your account
 -->
 
 For hair you already have as a 3D file, choose **Headgear** and **Your own…**: see [A part from a 3D file](#own-part). It is seated on the head and worn like any hair.
@@ -103,7 +128,7 @@ lib:the assistant makes a part
 3. Choose a connector, then click on the part where it goes: **Stud**, **Anti-stud**, **Bar**, **Bar hole** or **Pin hole**. A bar on a thin stem runs along the stem. **Take off** removes one.
 4. Name it and press **Add to parts**. It goes in the bin under **Custom** and into your hand, and every model that uses it carries it, so the file opens on another computer and in LDCad.
 
-A file that is not a closed shape (it has holes in its surface) is refused, with how to close it in Blender, and so is one whose numbers are damaged. A file with more than 9,000 triangles is simplified if the shape stays within 1% of its size; past 120,000 it is refused, and so is a file over 32 MB, before it is read. A part may be at most 400 mm (50 studs) long, longer than any LEGO® element.
+A file that is not a closed shape (it has holes in its surface) is refused, with how to close it in Blender, and so is one whose numbers are damaged. A file with more than 9,000 triangles is simplified if the shape stays within 1% of its size; past 120,000 it is refused as soon as it is read that far, and a file over 32 MB before it is read. A part may be at most 400 mm (50 studs) long, longer than any LEGO® element.
 
 A model that uses a part you made carries it whatever it was opened from: your own model, a set, or someone else's file. Save, Export, a link, a kept sub-assembly and, on the desktop, a copy to the clipboard all take it with them.
 

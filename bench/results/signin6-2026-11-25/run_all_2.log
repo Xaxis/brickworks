@@ -1,0 +1,55 @@
+== signin6 bars at f1d68b1bf, 23:14:41Z
+== signreview2's attack 23:14:42Z, sha256 28e3864972ecbb15
+sr2 exit 0 23:17:52Z: attack: 0 finding line(s)
+deleted: false
+-- resting 240s for the verify bucket
+== attack3 V,S,N,W,T,O,K 23:21:54Z, sha256 fcbbe100ff29d065
+attack3 V,S,N,W,T,O,K exit 0 23:26:16Z: attack3: 0 finding line(s)
+-- resting 120s for the verify bucket
+== attack3 X 23:28:16Z, sha256 fcbbe100ff29d065
+attack3 X exit 0 23:29:09Z: attack3: 1 finding line(s)
+-- resting 120s for the verify bucket
+== attack3 W --rounds=3 23:31:09Z, sha256 fcbbe100ff29d065
+attack3 W --rounds=3 exit 0 23:32:19Z: attack3: 0 finding line(s)
+-- resting 120s for the verify bucket
+== r1loop 23:34:20Z
+r1loop exit 0 23:38:50Z: r1loop: 0 of 10 rounds kept a connection; 0 codes traded of 20 made (1 made after the Unlink answered)
+-- resting 240s for the verify bucket
+== ways_check 23:42:51Z
+ways_check exit 1 23:49:16Z: ways_check: 1 failed
+-- resting 240s for the verify bucket
+== orangecheck_check 23:53:16Z
+orangecheck_check exit 1 23:56:38Z: orangecheck_check: 126 passed, 4 failed
+-- resting 120s for the verify bucket
+== ways_app_probe 23:58:39Z
+ways_app_probe exit 0 00:01:51Z: all passed
+deleted: true
+-- resting 120s for the verify bucket
+== ways_flow 1 00:03:52Z
+ways_flow 1 exit 0 00:07:56Z:   --    requests to Google's or GitHub's hosts: 0; provider pages answered by the stand-in: 7 seen, 7 answered | ways_flow: all passed (pictures in /mnt/Projects/brickworks/.claude/worktrees/signin6/bench/results/signin6-2026-11-25/shots_1)
+-- resting 60s for the verify bucket
+== ways_flow 2 00:08:57Z
+ways_flow 2 exit 0 00:12:57Z:   --    requests to Google's or GitHub's hosts: 0; provider pages answered by the stand-in: 7 seen, 7 answered | ways_flow: all passed (pictures in /mnt/Projects/brickworks/.claude/worktrees/signin6/bench/results/signin6-2026-11-25/shots_2)
+-- resting 60s for the verify bucket
+== ways_flow 3 00:13:58Z
+ways_flow 3 exit 0 00:16:29Z:   --    requests to Google's or GitHub's hosts: 0; provider pages answered by the stand-in: 7 seen, 7 answered | ways_flow: all passed (pictures in /mnt/Projects/brickworks/.claude/worktrees/signin6/bench/results/signin6-2026-11-25/shots_3)
+-- resting 60s for the verify bucket
+== ways_flow 4 00:17:30Z
+ways_flow 4 exit 0 00:19:55Z:   --    requests to Google's or GitHub's hosts: 0; provider pages answered by the stand-in: 7 seen, 7 answered | ways_flow: all passed (pictures in /mnt/Projects/brickworks/.claude/worktrees/signin6/bench/results/signin6-2026-11-25/shots_4)
+-- resting 60s for the verify bucket
+== ways_flow 5 00:20:57Z
+ways_flow 5 exit 0 00:25:04Z:   --    requests to Google's or GitHub's hosts: 0; provider pages answered by the stand-in: 7 seen, 7 answered | ways_flow: all passed (pictures in /mnt/Projects/brickworks/.claude/worktrees/signin6/bench/results/signin6-2026-11-25/shots_5)
+-- resting 60s for the verify bucket
+deleted: false
+deleted: false
+deleted: false
+deleted: false
+deleted: false
+== control 00:26:07Z
+control exit 0 00:26:14Z
+count exit 0 00:26:14Z: count: 0 request(s) toward Google's or GitHub's hosts across 5 runs, beyond step 10's own bare probes (strace connects begun to their addresses, net log requests and redirects, netwatch lookups; the control apart)
+left (bw-sr2-): 0
+left (bw-sr3-): 0
+left (bw-si6-): 0
+left (bw-ways-): 0
+== done 00:26:16Z

@@ -204,6 +204,14 @@ func p(points: float) -> float:
 	return points * _k
 
 
+## Another language: the bars' words are as wide as it says them.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _row != null and is_inside_tree():
+		_share_top()
+		_share_row()
+		_show_name()
+
+
 ## Laid out again for a new size (a phone turned): the bin and the name
 ## field are Main's and the bar's, taken out first and put back.
 func _rebuild() -> void:
@@ -289,6 +297,7 @@ func _build() -> void:
 	_name.add_theme_constant_override("minimum_character_width", 0)
 	_name.tooltip_text = ""
 	top_row.add_child(_name)
+	_dress_name()
 	if wide:
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -369,6 +378,9 @@ func _build() -> void:
 	_pill_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_pill_words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_pill_words.max_lines_visible = 2
+	# Past two lines, cut at a word with "…": "Tap to put Moved to 3023b
+	# down · drag tu" lost its end mid-word at 150% (wide150b).
+	_pill_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_pill_words.add_theme_font_size_override("font_size", ceili(p(13)))
 	_pill_words.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
 	_pill_words.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -516,6 +528,7 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	button.clip_text = true
 	_faces(button, p(10))
 	if not icon.is_empty():
+		button.set_meta("icon_path", Toolbar.TOOLS + icon + ".svg")
 		button.icon = Icons.icon_for(Toolbar.TOOLS + icon + ".svg", p(24), Icons.density(self))
 	else:
 		# Colour and More draw their own picture over the word.
@@ -526,8 +539,7 @@ func _tool(what: String, word: String, icon: String) -> Button:
 		PhoneShell._pin(drawn, 0.0, 0.0, 1.0, 1.0, Rect2())
 		button.add_child(drawn)
 		# Room above the word for the picture, in the window's units.
-		var blank := Image.create(1, maxi(1, roundi(p(24))), false, Image.FORMAT_RGBA8)
-		button.icon = ImageTexture.create_from_image(blank)
+		button.icon = _row_picture(button, p(24))
 		if what == "colour":
 			_colour_button = button
 	button.pressed.connect(_chose.bind(what))
@@ -582,6 +594,64 @@ func _share_top() -> void:
 	_name.custom_minimum_size.x = minf(p(WIDE_NAME if wide else NAME), maxf(room, 0.0))
 
 
+## The model's name drawn over its field while nobody types in it: cut at a
+## word with "…" where the field is narrower than the name, as a label is,
+## and in the language ("Unbenannt"). A field draws its text as it is from
+## its start, cut wherever its edge falls: at 320 the bar read "Wide pr"
+## (wide150), and "Untitled" in every language. Typing shows the field's own.
+func _dress_name() -> void:
+	var shown: Label = _name.get_node_or_null(^"shown_name") as Label
+	if shown == null:
+		shown = Label.new()
+		shown.name = "shown_name"
+		shown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_name.add_child(shown)
+		shown.resized.connect(_show_name)
+		_name.text_changed.connect(_show_name.unbind(1))
+		_name.focus_entered.connect(_show_name)
+		_name.focus_exited.connect(_show_name)
+		(app.get("_bar") as ModelBar).model_named.connect(_show_name.unbind(1))
+	# The field's own colour, read with the field's words shown, and given
+	# the label before it is laid out: its resize clears the field's
+	# colour (_show_name), and read after it the title was drawn blank.
+	_name.remove_theme_color_override("font_color")
+	shown.add_theme_color_override("font_color", _name.get_theme_color("font_color"))
+	shown.add_theme_font_override("font", _name.get_theme_font("font"))
+	shown.add_theme_font_size_override("font_size", _name.get_theme_font_size("font_size"))
+	var face: StyleBox = _name.get_theme_stylebox("normal")
+	shown.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shown.offset_left = face.get_margin(SIDE_LEFT)
+	shown.offset_right = -face.get_margin(SIDE_RIGHT)
+	_show_name()
+
+
+func _show_name() -> void:
+	var shown: Label = _name.get_node_or_null(^"shown_name") as Label
+	if shown == null:
+		return
+	var typing: bool = _name.has_focus()
+	shown.text = _name.text
+	# Cut at a word with "…" only where it is wider than its room. Godot
+	# adds no "…" where fewer than six letters are left ("Wide probe" read
+	# "Wide", as if that were all of it) unless forced, and forced it adds
+	# one to words that fit too.
+	var wide: float = shown.get_theme_font("font").get_string_size(shown.atr(shown.text),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, shown.get_theme_font_size("font_size")).x
+	# Against the field's room, not the label's size, which grows to its
+	# words untrimmed.
+	var room: float = _name.size.x - shown.offset_left + shown.offset_right
+	var cut: int = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE if wide > room \
+		else TextServer.OVERRUN_NO_TRIMMING
+	if shown.text_overrun_behavior != cut:
+		shown.text_overrun_behavior = cut as TextServer.OverrunBehavior
+	shown.visible = not typing
+	if typing:
+		_name.remove_theme_color_override("font_color")
+	else:
+		_name.add_theme_color_override("font_color", Color(0, 0, 0, 0))
+
+
 ## Each its share, and its word under its picture where the word fits the
 ## share; where one does not, the row is pictures alone, each still said by
 ## its word (accessibility_name) and named in its tooltip. "Colo" and
@@ -598,20 +668,59 @@ func _share_row() -> void:
 	var inside: float = get_viewport().get_visible_rect().size.x - p(8) * 2.0
 	var each: float = share if wide else maxf(share, floorf(inside / TOOLS.size()))
 	var fits: bool = true
+	var wants: Dictionary = {}
+	var whole: float = 0.0
 	for tool: Array in TOOLS:
 		var button: Button = _tool_buttons.get(str(tool[0]))
 		if button == null:
 			continue
 		button.custom_minimum_size.x = share
+		# Measured as it is said: in German "Auswählen" is 75 where "Select"
+		# is 41, and it was cut in a 54 share (wide150b).
 		var font: Font = button.get_theme_font("font")
-		var needs: float = font.get_string_size(str(tool[1]), HORIZONTAL_ALIGNMENT_LEFT, -1,
-			button.get_theme_font_size("font_size")).x + p(2) * 2.0
+		var needs: float = ceilf(font.get_string_size(button.atr(str(tool[1])), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			button.get_theme_font_size("font_size")).x + p(2) * 2.0)
 		fits = fits and needs <= each
+		wants[button] = maxf(share, needs)
+		whole += maxf(share, needs)
+	# A tablet's row, centred with room either side, keeps its words: each
+	# button as wide as its word while the row fits the window. In German
+	# its 40-unit shares dropped them on a screen 1,152 wide.
+	if wide and not fits and whole <= inside:
+		fits = true
+		for button: Button in wants:
+			button.custom_minimum_size.x = float(wants[button])
+	# Each picture inside its share, within its face's margins, and with its
+	# word inside the bar's height (ROW): the row's words go first, then its
+	# pictures shrink, and the bar never grows. At 150% on a 320 phone the
+	# pictures held the row past the window; at 100% on a 390 phone a picture
+	# and its word asked 1.5 units more and the bar's foot was under the
+	# screen's (wide150b).
+	var tall: float = p(ROW) - _row.get_theme_stylebox("panel").get_minimum_size().y
 	for tool: Array in TOOLS:
 		var button: Button = _tool_buttons.get(str(tool[0]))
-		if button != null:
-			button.text = str(tool[1]) if fits else ""
-			button.tooltip_text = "" if fits else str(tool[1])
+		if button == null:
+			continue
+		button.text = str(tool[1]) if fits else ""
+		button.tooltip_text = "" if fits else str(tool[1])
+		var picture: Texture2D = _row_picture(button, p(24))
+		button.icon = picture
+		var high: float = floorf(p(24) - maxf(0.0, button.get_combined_minimum_size().y - tall))
+		var inside_face: float = button.custom_minimum_size.x - button.get_theme_stylebox("normal").get_minimum_size().x
+		if picture.get_width() > inside_face:
+			high = minf(high, floorf(p(24) * inside_face / picture.get_width()))
+		if high < p(24):
+			button.icon = _row_picture(button, high)
+
+
+## A row button's picture [param high] units tall: its own icon, or for
+## Colour and More, which draw their own over the word (RowPicture), a blank
+## that keeps the room for it.
+func _row_picture(button: Button, high: float) -> Texture2D:
+	var path: String = str(button.get_meta("icon_path", ""))
+	if not path.is_empty():
+		return Icons.icon_for(path, high, Icons.density(self))
+	return ImageTexture.create_from_image(Image.create(1, maxi(1, roundi(high)), false, Image.FORMAT_RGBA8))
 
 
 ## What a button of the row does: the desktop's own command or verb.
@@ -863,12 +972,24 @@ func hint() -> String:
 	if not builder.selection.is_empty():
 		var count: int = builder.selection.size()
 		var whole: String = _whole_assembly()
+		var of_all: int = _whole_of
+		if not whole.is_empty() and of_all > count:
+			return "%s selected, %d of its %d parts on at this step · hold, then Edit inside, to change one" \
+				% [Assemblies.label(whole), count, of_all]
 		if not whole.is_empty():
 			return "%s selected, %d parts · hold, then Edit inside, to change one" \
 				% [Assemblies.label(whole), count]
 		return "%d selected · drag to move · Select adds more · hold for actions" % count \
 			if count > 1 else "Selected · drag to move · Select adds more · hold for actions"
 	return "Parts to pick one · tap a part to select · drag turns the view · pinch zooms"
+
+
+## [method _whole_assembly]'s: how many parts the sub-assembly has in all
+## where the step showing has only some of them on (0 otherwise), and what
+## it asked and was told at a step.
+var _whole_of: int = 0
+var _whole_asked: Array = []
+var _whole_said: String = ""
 
 
 ## The sub-assembly the selection is all of, not yet gone into: "" for a
@@ -879,11 +1000,26 @@ func _whole_assembly() -> String:
 	if builder == null or verbs == null or verbs.assemblies == null or builder.selection.size() < 2:
 		return ""
 	var unit: Variant = verbs.assemblies.unit_path_of(int(builder.selection.keys()[0]))
+	_whole_of = 0
 	if unit == null or str(unit).is_empty():
 		return ""
 	# Its parts counted from the kept index, without a walk in script: the
 	# hint asks every frame, and Orthanc's sub-assemblies run to thousands.
-	return str(unit) if verbs.assemblies.bricks_under(str(unit)).size() == builder.selection.size() else ""
+	var all_of: int = verbs.assemblies.bricks_under(str(unit)).size()
+	if all_of == builder.selection.size():
+		return str(unit)
+	# At a step of the timeline a tap takes the parts of it on show
+	# (Builder.takes): asked once for each selection and step, not each frame.
+	if not builder.at_a_step():
+		return ""
+	var asked: Array = [unit, builder.selection.size(), builder.lattice.revision]
+	if asked != _whole_asked:
+		_whole_asked = asked
+		_whole_said = verbs.assemblies.selected_assembly()
+	if _whole_said.is_empty():
+		return ""
+	_whole_of = all_of
+	return _whole_said
 
 
 func _lay_pill() -> void:
@@ -905,8 +1041,18 @@ func _lay_pill() -> void:
 	# model is 210 points high, and the line's two took a quarter of it.
 	var widest: float = minf(free.size.x - p(24), p(380) if room.y >= room.x else p(640))
 	var font: Font = _pill_words.get_theme_font("font")
-	var line: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
+	# Measured as it is said: in English "undid" fitted where "rückgängig"
+	# did not (wide150b).
+	var said: String = _pill_words.atr(words)
+	var line: float = font.get_string_size(said, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
 	var inner: float = minf(line + p(2), widest - p(24))
+	# Not shown in a room narrower than its longest word: beside a tablet's
+	# open panel at 150% the line was a column a word wide, "rückgängig"
+	# cut inside (wide150b).
+	var longest: float = 0.0
+	for word: String in said.split(" ", false):
+		longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x)
+	var room_for_words: bool = inner >= ceilf(longest)
 	# Each set only when it is another: laid out every frame, a value set
 	# again, or set to nothing and back, is the whole window drawn again
 	# (IdleDraw), and a tablet drawing in software drew it every frame.
@@ -939,7 +1085,7 @@ func _lay_pill() -> void:
 	# it. Fit steps aside for a drawer too: over the assistant's it sat on
 	# New chat. Over a sheet it stays, above or beside it.
 	var drawer: bool = not wide and _drawer_open()
-	var shown: bool = not words.is_empty() and not drawer and (wide or not _any_open())
+	var shown: bool = not words.is_empty() and not drawer and (wide or not _any_open()) and room_for_words
 	if _pill.visible != shown:
 		_pill.visible = shown
 	if _fit.visible == drawer:
@@ -1367,7 +1513,7 @@ class Sheet extends PanelContainer:
 		_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		_title.clip_text = true
-		_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 		_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		head.add_child(_title)
 		done = Button.new()
@@ -1629,10 +1775,41 @@ class Sheet extends PanelContainer:
 				tile.text += "\n" + String(TranslationServer.translate(own))
 			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			tile.clip_text = false
-			tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			tile.autowrap_mode = TextServer.AUTOWRAP_WORD
 			tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 			grid.add_child(tile)
 		_list.add_child(grid)
+		grid.set_meta("most_columns", grid.columns)
+		_fewer_columns(grid)
+		# Fitted again to the width it is laid out at: the sheet's own, which
+		# on a tablet is narrower than the window's guess (wide150b).
+		grid.resized.connect(_fewer_columns.bind(grid))
+
+	## Fewer tiles to a line while a word of one is wider than a tile: its
+	## words wrap at a word and never inside one. At 150% in French two to
+	## a line was 68 units a tile, and "Enregistrer" (97) was cut in two.
+	func _fewer_columns(grid: GridContainer) -> void:
+		var tiles: Array[Node] = grid.get_children()
+		if tiles.is_empty():
+			return
+		var first: Button = tiles[0] as Button
+		var font: Font = first.get_theme_font("font")
+		var font_size: int = first.get_theme_font_size("font_size")
+		var longest: float = 0.0
+		for tile: Node in tiles:
+			for word: String in (tile as Button).text.replace("\n", " ").split(" ", false):
+				longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+		# The grid's own width once laid out (its wrapping tiles ask for
+		# little, so it is the sheet's); before, the sheet's inside its own
+		# margins and its scroller's.
+		var across: float = grid.size.x if grid.size.x > 0.0 else minf(_room().x, phone.p(560)) - phone.p(40)
+		var gap: float = float(grid.get_theme_constant("h_separation"))
+		var margins: float = first.get_theme_stylebox("normal").get_minimum_size().x
+		var columns: int = int(grid.get_meta("most_columns", grid.columns))
+		while columns > 1 and (across - gap * (columns - 1)) / columns - margins < longest:
+			columns -= 1
+		if grid.columns != columns:
+			grid.columns = columns
 
 	func _row(words: String, command: String) -> Button:
 		var row := Button.new()
@@ -1640,7 +1817,7 @@ class Sheet extends PanelContainer:
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		row.focus_mode = Control.FOCUS_NONE
 		row.clip_text = true
-		row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		row.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 		row.custom_minimum_size = Vector2(0, phone.p(Phone.TARGET + 4.0))
 		row.add_theme_font_size_override("font_size", ceili(phone.p(16)))
 		row.set_meta("command", command)

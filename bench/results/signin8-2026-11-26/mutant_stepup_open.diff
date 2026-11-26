@@ -1,0 +1,11 @@
+--- api/_oc.js	2026-11-25 17:47:35.708351915 -0900
++++ /tmp/claude-1000/-mnt-Projects-brickworks/1948b9a5-72ca-4d00-9696-158dbd545925/scratchpad/signin8/mutant/api/_oc.js	2026-11-25 22:00:12.141336312 -0900
+@@ -548,6 +548,8 @@
+ /// session as it is now alone (api/_ways.js waysRoute), so a way's own
+ /// session can still end itself.
+ export async function stepUp(claims, { orangecheck = undefined } = {}) {
++  // MUTANT (signin8's proof): every session let through.
++  if (claims) return { asked: { bound: false, way: null, fresh: true, emailed: null } };
+   let asked;
+   try {
+     asked = await codeOf(claims);

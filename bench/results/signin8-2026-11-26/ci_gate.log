@@ -1,0 +1,9 @@
+heavy: waiting: the free slots go to 20 earlier waiters
+heavy: waiting: the free slots go to 19 earlier waiters
+heavy: brickworks in slot.19 at load 61, 64794 MB free
+  ok    version 0.19.0 in VERSION, project.godot and CHANGELOG.md (2026-11-07)
+ci gate: python ok, 2346 passed, 75 skipped in 449.0s over 168 files
+ci gate: shellcheck ok, 46 scripts
+ci gate: viewer bundles ok
+ci gate: 460 s in its slot
+exit 0

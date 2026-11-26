@@ -248,8 +248,10 @@ class Yard:
                if not k.startswith(("GIT_", "TRAIN_", "STUB_", "SHIP_", "RELEASE_", "LIVE_WAIT", "LIVE_DB", "BOX_",
                                     "PC_", "BW_"))}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1",
-                   GIT_AUTHOR_NAME="Xaxis", GIT_AUTHOR_EMAIL="william.neeley@gmail.com",
-                   GIT_COMMITTER_NAME="Xaxis", GIT_COMMITTER_EMAIL="william.neeley@gmail.com",
+                   GIT_AUTHOR_NAME="Xaxis", GIT_AUTHOR_EMAIL="xaxis@example.invalid",
+                   GIT_COMMITTER_NAME="Xaxis", GIT_COMMITTER_EMAIL="xaxis@example.invalid",
+                   # The author the scripts commit as comes from the shell (never written in them).
+                   BW_COMMIT_EMAIL="xaxis@example.invalid",
                    HOME=str(where / "home"), PATH="%s:%s" % (where / "bin", os.environ["PATH"]),
                    TRAIN_LIVE="https://brickworks.diy/app", STUB_LIVE=str(self.live),
                    TRAIN_POLL="0.1", SHIP_POLL="0.1", SHIP_CDN_WAIT="0", LIVE_DB_POLL="0.1",
@@ -1563,7 +1565,7 @@ def test_it_ships_past_a_check_only_where_brickworks_diy_fails_it_too(tmp_path):
         assert y.git(y.r, "log", "-1", "--format=%B", "main^") == (
             "Merge: stage2\n\nShips past people where it fails on brickworks.diy too: " + reason)
         assert y.git(y.r, "rev-parse", "main^^{tree}") == y.git(y.r, "rev-parse", "%s^{tree}" % merge)
-        assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main^") == "Xaxis <william.neeley@gmail.com>"
+        assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main^") == "Xaxis <xaxis@example.invalid>"
         assert y.text("t-m2_preview.sha").strip() not in ("", made)
         assert "reusing preview" not in y.text("t-m2_lead.out")
         assert y.text("t-m2_pv_args").split()[2:] == ["keys", "site", "frames"]
@@ -1630,7 +1632,7 @@ def test_a_timing_check_failing_on_the_preview_runs_by_turns_with_brickworks_diy
         assert measure in y.git(y.r, "log", "-1", "--format=%b", "main")
         assert y.git(y.r, "log", "-1", "--format=%s", "main^").startswith("Merge: ")
         assert y.git(y.r, "rev-parse", "main^{tree}") == y.git(y.r, "rev-parse", "main^^{tree}")
-        assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main") == "Xaxis <william.neeley@gmail.com>"
+        assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main") == "Xaxis <xaxis@example.invalid>"
         assert "/b/%s/" % merge in y.live.read_text() and y.text("t-m2_preview.sha").strip() == merge
         assert "shipped past what fails on brickworks.diy too, or is no worse there by turns:\n  progress: by turns" in y.text("t-m2_train.out")
         status = y.train("status", "t-m2").stdout

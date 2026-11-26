@@ -56,6 +56,11 @@ var going: Callable = func() -> Vector3: return Vector3.ZERO
 ## Show what was typed in hand: given [method parse]'s answer, returns ""
 ## when it has room, or in words why not.
 var preview: Callable = func(_typed: Dictionary) -> String: return ""
+## Asked after a [member preview] with room: "" when Enter puts it down as it
+## says, or in words why it may not (another copy of the sub-assembly has
+## no room, wingplace), said in place of "Enter puts it down". Enter still
+## does it, and what it changes decides.
+var advice: Callable = func(_typed: Dictionary) -> String: return ""
 ## Do it, the field closing: true when it was done.
 var apply: Callable = func(_typed: Dictionary) -> bool: return false
 ## Leave it as it was before anything was typed.
@@ -231,6 +236,18 @@ func _submit() -> void:
 		cancel.call()
 
 
+## Say again what the number does, as what decides it changed after it was
+## read (an ask of the copies answered over frames, wingplace).
+func again() -> void:
+	if not is_open() or typed.is_empty() or not str(typed.get("error", "")).is_empty() \
+			or bool(typed.get("empty", false)):
+		return
+	# The words only: the hand is where the number put it already.
+	var why: String = str(advice.call(typed))
+	if not why.is_empty():
+		_say("%s — %s" % [typed["words"], why], true)
+
+
 ## Read the text again, show it in hand, and say what it does.
 func _read() -> void:
 	typed = reads.call(text)
@@ -244,8 +261,11 @@ func _read() -> void:
 		_say(str(typed.get("hint", _hint())), false)
 		return
 	var refused: String = preview.call(typed)
-	if refused.is_empty():
+	var why: String = str(advice.call(typed)) if refused.is_empty() else ""
+	if refused.is_empty() and why.is_empty():
 		_say("%s — Enter puts it down" % typed["words"], false)
+	elif refused.is_empty():
+		_say("%s — %s" % [typed["words"], why], true)
 	else:
 		_say("%s — %s" % [typed["words"], refused], true)
 

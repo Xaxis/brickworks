@@ -70,7 +70,8 @@ mkdir -p "$clone/.github/workflows"
 sed -e "s/@BRANCH@/$NAME/; s/@TAG@/v$VERSION/; s/@LAID@/$NAME/; s/@SOURCE@/$SOURCE/" \
   "$WORKFLOW" > "$clone/.github/workflows/runner_check.yml"
 git -C "$clone" add .github/workflows/runner_check.yml
-git -C "$clone" -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
+AUTHOR=$(bash "$HERE/tools/release/author.sh") || exit 1
+git -C "$clone" -c user.name=Xaxis -c "user.email=$AUTHOR" \
   commit -q -m "Temporary: $VERSION checked on macOS, Windows and Ubuntu runners."
 commit=$(git -C "$clone" rev-parse HEAD)
 git -C "$clone" push -q origin "HEAD:refs/heads/$NAME" || exit 1

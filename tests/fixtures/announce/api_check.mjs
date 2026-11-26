@@ -64,7 +64,9 @@ try {
         : new Response(JSON.stringify(typeof next === "object" ? next.body : { message: "stand-in refusal" }), { status });
     }
     const call = /^\/rest\/v1\/rpc\/([a-z_]+)$/.exec(url.pathname);
-    if (url.origin === SUPABASE_URL && call && !["oc_connect_leaving", "admission_snapshot_get", "admission_snapshot_put"].includes(call[1])) {
+    // The world answers the session (there, a code's) and its own.
+    if (url.origin === SUPABASE_URL && call && !["oc_connect_leaving", "oc_session_of", "session_standing", "admission_snapshot_get",
+      "admission_snapshot_put"].includes(call[1])) {
       try {
         return new Response(JSON.stringify(await db.call(call[1], JSON.parse(String(init.body || "{}")))), { status: 200 });
       } catch (trouble) {

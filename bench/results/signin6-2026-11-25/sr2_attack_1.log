@@ -1,0 +1,38 @@
+A. the owner's console (F8)
+  ok      A0. on R1, where X is nobody special, GitHub signs X in (a new account)
+  ok      A1. X's address made the owner's (R2): the GitHub session X had from before is refused by the console (403 code_only)
+  ok      A2. that session renewed (a new access token, the same session): refused too
+  ok      A3. on R2, GitHub, X: refused, nothing handed out
+  --      GitHub, X: /profile?sign-in=&then=%2Fgallery&with=github&failed=code_only
+  ok      A3. on R2, GitHub, X in capitals: refused, nothing handed out
+  --      GitHub, X in capitals: /profile?sign-in=&then=%2Fgallery&with=github&failed=code_only
+  ok      A3. on R2, GitHub, X with spaces: refused, nothing handed out
+  --      GitHub, X with spaces: /profile?sign-in=&then=%2Fgallery&with=github&failed=code_only
+  ok      A3. on R2, GitHub, X with U+212A for k: refused, nothing handed out
+  --      GitHub, X with U+212A for k: /profile?sign-in=&then=%2Fgallery&with=github&failed=unverified
+  ok      A3. on R2, Google (Workspace hd), X: refused, nothing handed out
+  --      Google (Workspace hd), X: /profile?sign-in=&then=%2Fgallery&with=google&failed=code_only
+  ok      A3. on R2, Google, X in capitals: refused, nothing handed out
+  --      Google, X in capitals: /profile?sign-in=&then=%2Fgallery&with=google&failed=code_only
+  ok      A4. X's code session opens R2's console; Settings offers X neither way
+  ok      A5. the owner presses Link again on GitHub: GitHub still refused for the owner
+B. a throttle turned on others (F9)
+  ok      B1. 30 bare starts from one network (no Google or GitHub account, no code: only GET /auth/github?take=<any 43 letters>) lock everyone else on it out of starting Google, GitHub and the app's GitHub for 15 minutes: victim's Google start: https://accounts.google.com/o/oauth2/v2/auth?client_id=stand-in.apps.googleusercontent.com; the app's: https://github.com/login/oauth/authorize?client_id=Iv1.standin0000000000&redirect_uri=http; another network: https://accounts.google.com/o/oauth2/v2/
+  ok      B2. one start cookie, replayed 10 times at the callback with made-up codes (the server never spends it), uses up that network's 10 ways back: the next person there with a real GitHub sign-in is refused before GitHub is asked: replays: failed,again; the person's: /profile?then=%2Fgallery&with=github&take=8VaoD43afVkolqGmHG7yzNIbAzE6U4oFzmF2bIE50k8; their account made: 1
+C. Unlink and Claude's connector
+  ok      C0. signed in with GitHub, a client of anyone's making (RFC 7591) is approved with no code asked, and its token works
+  ok      C1. Unlink GitHub: GitHub's session ended, its refresh refused
+  --      the call's answer reached the connector: false; Settings lists the connection: false (200)
+  ok      C2. after that Unlink, the connection approved from GitHub's session still works, renews, and reaches the person's own tab: tools/list 401; refresh 400 (none); the person's tab on (204) was handed the call: false
+D. the new functions and tables from the browser's keys
+  ok      D1. rpc/way_links_of: anon 401 42501, signed in 403 42501
+  ok      D1. rpc/way_set: anon 401 42501, signed in 403 42501
+  ok      D1. rpc/way_bind: anon 401 42501, signed in 403 42501
+  ok      D1. rpc/way_signed_in: anon 401 42501, signed in 403 42501
+  ok      D1. rpc/way_may_try: anon 401 42501, signed in 403 42501
+  ok      D2. way_links: anon 401, signed in 403, no rows
+  ok      D2. way_attempts: anon 401, signed in 403, no rows
+  ok      D2. way_sessions: anon 401, signed in 403, no rows
+  ok      D3. ?op=ways naming another account reads and changes only the caller's own
+  --      accounts made: 4, deleted (or never made): 4
+attack: 0 finding line(s)

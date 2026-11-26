@@ -766,6 +766,10 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			placed[brick.id] = brick
 	var askew: Dictionary = {}         ## pair -> Array of [Vector2i by, feet taken, way]
 	var by_tips: Dictionary = {}       ## pair -> true where a stud's tip was read
+	var upright: Dictionary = {}       ## pair -> true where a stud read by its tip points up or down
+	for by: Vector2i in tips:
+		if absf(((tips[by] as Array)[1] as Vector3).y) > 0.5:
+			upright[pair_of(by.x, by.y)] = true
 	for by: Vector2i in tips:
 		var feet: Array = (tips[by] as Array)[0]
 		var key: int = pair_of(by.x, by.y)
@@ -783,6 +787,17 @@ static func stud_joints(contacts: Dictionary, library: PartLibrary,
 			(askew[key] as Array).append([by, taken, way])
 			continue
 		if feet.size() <= int(studs.get(key, 0)):
+			# The lift's count stands, but where every stud joining the pair
+			# points sideways the joint is where they are, square to them: a
+			# stud pointing sideways never shows in a lift, and what it counted
+			# was the two covers meeting. A headlight brick's stud stands in a
+			# recess, and the plate on it reaches back into the brick's cover:
+			# weighed flat across the 2.5 LDU the lift saw, a 1 x 2 plate on a
+			# 4070's stud held a quarter of what it does on an 87087's (snot6).
+			var aside: Vector3 = (tips[by] as Array)[1]
+			if aside.y <= 0.5 and not upright.has(key) and not sideways.has(key):
+				under[key] = by.x
+				sideways[key] = [PackedVector3Array(feet), aside]
 			continue
 		studs[key] = feet.size()
 		under[key] = by.x

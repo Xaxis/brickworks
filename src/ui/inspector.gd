@@ -725,8 +725,13 @@ func _show_assembly(path: String, count: int) -> void:
 	for other: String in tree.paths():
 		if Assemblies.parent_of(other) == path:
 			inside += 1
-	var lines := PackedStringArray([("Sub-assembly of 1 part" if count == 1
-		else "Sub-assembly of %d parts" % count) + ("" if inside == 0 else ", %d inside it" % inside)])
+	# At a step of the timeline the selection is its parts on so far: the
+	# size is the whole of it, and how many are on said after. "Sub-assembly
+	# of 72 parts" was said of the house of 149 at step 5 (stepreview F7).
+	var all_of: int = tree.bricks_under(path).size() if shell.builder.at_a_step() else count
+	var lines := PackedStringArray([("Sub-assembly of 1 part" if all_of == 1
+		else "Sub-assembly of %d parts" % all_of) + ("" if all_of <= count
+		else ", %d on at this step" % count) + ("" if inside == 0 else ", %d inside it" % inside)])
 	if copies > 0:
 		lines.append("%d other cop%s of %s follow%s it" % [copies, "y" if copies == 1 else "ies",
 			Assemblies.definition(Assemblies.leaf(path)), "s" if copies == 1 else ""])

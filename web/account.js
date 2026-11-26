@@ -576,6 +576,8 @@ export function wayFailed(why, name) {
   }
   if (why === "off") return say("Signing in with {way} is not offered here just now. Sign in with a code we email you.", { way });
   if (why === "busy") return say("A lot of people are signing in just now. Try again in a minute.");
+  if (why === "code_only") return say("This account signs in only with a code we email you.");
+  if (why === "often") return say("Too many sign-ins with {way} just now. Try again in a few minutes, or sign in with a code we email you.", { way });
   return say("{way} did not sign you in just now. Try again in a minute, or sign in with a code we email you.", { way });
 }
 

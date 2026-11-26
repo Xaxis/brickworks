@@ -45,8 +45,12 @@
 //   POST ?op=ways {with, on}            Google or GitHub unlinked (on false:
 //                                       it no longer signs in to this
 //                                       account, and every session it
-//                                       started ends) or linked again. The
-//                                       code to the address always stays.
+//                                       started ends; the session read
+//                                       live) or linked again (a code of
+//                                       the last five minutes first,
+//                                       api/_oc.js stepUp). The address is
+//                                       told of either. The code to the
+//                                       address always stays.
 //
 // Each is offered where its keys are (GOOGLE_CLIENT_ID and
 // GOOGLE_CLIENT_SECRET, GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET, in
@@ -72,13 +76,41 @@
 // its authority, a Gmail address or a Workspace one whose hd is its
 // domain; GitHub's, for an account it has not signed in to before, only
 // after a code to that address (?op=way_bind), and its numeric id after
-// that. An address that is not plain ASCII is no one's here (F5).
+// that. An address that is not plain ASCII is no one's here (F5). Never
+// for the owner's (MASTER_EMAIL), whose account opens the console, which
+// moves money and data: it signs in by a code alone, and Google and GitHub
+// are refused for it before anything is made or minted (signin4, F8).
+//
+// Whether a way signs an account in, or was unlinked from it, and GitHub's
+// id, are rows of supabase/way_links.sql, changed only by its functions,
+// one at a time per account and way, so a sign-in and an Unlink at the same
+// moment never lose the Unlink: "off" always wins (F7). They were keys of
+// the account's app_metadata, which GoTrue writes whole.
+//
+// How often (F9): each sign-in spends one of Supabase's verifies from this
+// server's own address (api/_minted.js), shared by everyone's Google,
+// GitHub and orangecheck sign-ins, so each Google or GitHub account is
+// counted (LIMITS, below) right before it would spend one, once Google or
+// GitHub has said who it is and the way is vetted, and one in a loop is
+// refused before it spends any. Nothing is counted before that, and
+// nothing per network (signin6, signreview2 SR2, signreview3 R2): a count
+// anyone can fill from a school's or a carrier's address, with free
+// accounts or none, locks out everyone there, and a try it refused used up
+// the person's own count.
+//
+// A Claude connection approved from a Google or GitHub session is that
+// way's: the code names the session, and is traded only while the session
+// is there and its way still on, asked under the Unlink's lock, which then
+// ends the connection with the sessions (api/oauth.js; signin6, SR1, R1).
+// Whatever this file hands out on a session's say (a session taken, GitHub's
+// id kept, Unlink's "this was you") asks that session as it is, never a
+// held answer (api/_auth.js standingOf).
 
 import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from "node:crypto";
 import { afterAnswer } from "./_after.js";
-import { AuthError, bearer, sessionEnded, sessionWay, verify } from "./_auth.js";
+import { AuthError, bearer, isMaster, sessionEnded, standingOf, verify } from "./_auth.js";
 import { db, reach } from "./_db.js";
-import { mintedSession } from "./_minted.js";
+import { claimsOf as tokenClaims, clientAddress, mintedSession } from "./_minted.js";
 import { raiseSignup } from "./_notify.js";
 import { originOf } from "./_oauth.js";
 import { scopeOf, settingOf } from "./_settings.js";
@@ -216,12 +248,62 @@ export function safeThen(then) {
 const LOOPBACK = /^http:\/\/127\.0\.0\.1:\d{1,5}\/[A-Za-z0-9._~/-]*$/;
 const APP_STATE = /^[A-Za-z0-9_-]{8,128}$/;
 const CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
+// A start's id, 16 random bytes (wayStart): one sealed before it has none,
+// and is refused (all such would share one id).
+const START_ID = /^[A-Za-z0-9_-]{22}$/;
 const VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
 
 function appOf(query) {
   if (query?.app === undefined) return null;
   const app = { r: String(query.app || ""), s: String(query.state || ""), c: String(query.code_challenge || "") };
   return LOOPBACK.test(app.r) && APP_STATE.test(app.s) && CHALLENGE.test(app.c) ? app : false;
+}
+
+// ---------------------------------------------------------------------------
+// How often (F9).
+//
+// Supabase allows the server's address 30 verifies at once and then one
+// each 10 s: 90 in a quarter of an hour, for everyone's Google, GitHub and
+// orangecheck sign-ins together, and a sign-in that finds none left reads
+// "busy". So one Google or GitHub account, or one orangecheck id, comes
+// back signed in at most 10 times in any 15 minutes: a loop of it takes 10
+// of the 90, a third of the 30 at once, never all of either. Not 5
+// (signin5): with nothing counted per network any more, every try of a
+// person's is a real sign-in, and one who signs in at work on the site, the
+// app and a phone, then at home, was shut out by their own (signreview3
+// N2). Counted per identity its provider has verified, and only there
+// (api/_minted.js, right before the verify): never per network, nor before
+// anyone is known (signin6). A start costs nothing but the provider's page,
+// and a way back is the one its start was for, its start's id spent first
+// (wayBack), so a start cookie sent again is refused before Google or
+// GitHub is asked. Each made-up way back costs one start, and one call of
+// Google's or GitHub's token endpoint, which refuses it (signreview3 N1). A
+// code to the address is never limited by these, so the words point to it.
+export const LIMITS = { minutes: 15, account: 10 };
+
+/// What each count is kept under in way_attempts (way_may_try): a provider
+/// account's, by its id, and an orangecheck id's (api/orangecheck.js, as
+/// many as a provider account's).
+export const COUNTED = {
+  account: (name, id) => `back ${name} ${id}`,
+  orangecheck: (did) => `oc ${did}`,
+};
+
+/// The network [request] came from, as one key: an IPv4 address, or an
+/// IPv6 address's first 64 bits. Nothing counts by it since signin6; kept
+/// for the checks that prove so, which fill signin5's count of a network
+/// under this key and sign in from it all the same (tools/web/ways_check.mjs
+/// 12, signreview3's attack3.mjs).
+export function networkOf(request) {
+  const said = String(request?.headers?.["x-forwarded-for"] || "").split(",")[0].trim()
+    || String(request?.socket?.remoteAddress || "");
+  const address = said.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, "").toLowerCase();
+  if (!address.includes(":")) return address.slice(0, 64);
+  const [head, tail = null] = address.split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail === null ? [] : tail ? tail.split(":") : [];
+  const groups = tail === null ? left : [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right];
+  return `${groups.slice(0, 4).map((group) => group.replace(/^0+(?=.)/, "")).join(":")}::/64`;
 }
 
 /// Where a refused sign-in goes: back to the app with its error, or to the
@@ -257,8 +339,9 @@ export async function wayStart(request, response) {
   const take = app ? "" : String(request.query?.take || "");
   if (!app && !CHALLENGE.test(take)) return failed(response, name, "again", { t: then });
   const verifier = b64url(randomBytes(32));
+  // i: its id, spent at its way back, which it buys once (SR2).
   const start = { w: name, s: b64url(randomBytes(16)), v: verifier, n: b64url(randomBytes(16)), t: then, a: app, k: take,
-    x: Date.now() + 600_000 };
+    i: b64url(randomBytes(16)), x: Date.now() + 600_000 };
   const to = new URLSearchParams({
     client_id: keys.id,
     redirect_uri: callbackOf(request, name),
@@ -290,6 +373,16 @@ export async function wayBack(request, response) {
   const code = String(request.query?.code || "");
   const keys = way.keys();
   if (!code || code.length > 2048 || !keys) return failed(response, name, keys ? "failed" : "off", start);
+  // One start, one way back (SR2): its id spent before Google or GitHub is
+  // asked or anything counted, so its cookie sent again, by anyone, is
+  // refused here, at no cost to the start's network.
+  if (!START_ID.test(String(start.i || ""))) return failed(response, name, "again", start);
+  try {
+    if (!(await spend(start))) return failed(response, name, "again", start);
+  } catch (trouble) {
+    console.error(`ways: the start was not spent: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    return failed(response, name, "failed", start);
+  }
 
   let who;
   try {
@@ -298,25 +391,32 @@ export async function wayBack(request, response) {
     console.error(`ways: ${name} gave no address: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return failed(response, name, trouble?.unverified ? trouble.reason : "failed", start);
   }
+  // The owner's account: by a code alone (F8). Nothing is made or minted.
+  if (isMaster({ email: who.email })) return failed(response, name, "code_only", start);
 
   let minted;
   let made = false;
   try {
     made = await accountFor(who.email);
-    minted = await mintedSession(who.email, { vet: (user) => vetFor(name, who, user, made) });
+    // Counted by this Google or GitHub account alone, once the way is
+    // vetted, right before Supabase's verify is spent (signin6).
+    minted = await mintedSession(who.email, { vet: (user) => vetFor(name, who, user, made),
+      count: { key: COUNTED.account(name, who.id), per: LIMITS.account, minutes: LIMITS.minutes }, from: clientAddress(request) });
   } catch (trouble) {
     if (trouble?.unlinked) return failed(response, name, "unlinked", start);
     if (trouble?.confirm) return confirmFirst(request, response, name, who, trouble.account, start);
+    if (trouble?.often) return failed(response, name, "often", start);
     console.error(`ways: no session: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return failed(response, name, trouble?.busy ? "busy" : "failed", start);
   }
   const account = minted.account;
   try {
-    await keep(name, who, minted);
+    await keep(name, who, minted, made);
   } catch (trouble) {
     await db("rpc/oc_end_session", { method: "POST", body: { session: minted.sessionId } })
       .catch((again) => console.error(`ways: a session not handed out is left to run out: ${String(again?.message || again).slice(0, 120)}`));
     if (trouble?.unlinked) return failed(response, name, "unlinked", start);
+    if (trouble?.confirm) return confirmFirst(request, response, name, who, account, start);
     console.error(`ways: not handed out: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return failed(response, name, "failed", start);
   }
@@ -341,34 +441,34 @@ export async function wayBack(request, response) {
   return response.status(302).setHeader("Location", `/profile?${to}`).end();
 }
 
+const unlinked = () => Object.assign(new Error("unlinked"), { unlinked: true });
+const unconfirmed = (account) => Object.assign(new Error("confirm"), { confirm: true, account });
+
 /// Whether [name] may sign in to [user]'s account, asked before a session
-/// is minted: never once it is unlinked; GitHub, to an account it did not
-/// make just now and has not signed in to with this id, only after a code
-/// (confirm, F3: an address GitHub verified once may have changed hands).
-function vetFor(name, who, user, made) {
-  const record = user?.app_metadata || {};
-  if (record[`way_${name}`] === "off") throw Object.assign(new Error("unlinked"), { unlinked: true });
-  if (name === "github" && !made && String(record.way_github_id || "") !== who.id) {
-    throw Object.assign(new Error("confirm"), { confirm: true, account: String(user?.id || "") });
-  }
+/// is minted, so that one refused spends nothing: never once it is
+/// unlinked; GitHub, to an account it did not make just now and has not
+/// signed in to with this id, only after a code (confirm, F3: an address
+/// GitHub verified once may have changed hands). keep() asks again, and
+/// decides.
+async function vetFor(name, who, user, made) {
+  const link = (await linksOf(String(user?.id || "")))[name];
+  if (link?.state === "off") throw unlinked();
+  if (name === "github" && !made && String(link?.id || "") !== who.id) throw unconfirmed(String(user?.id || ""));
 }
 
-/// [minted]'s session written down as [name]'s before it is handed out, and
-/// the account's record that [name] signs it in. The record is read after
-/// the session is written down, so that an Unlink landing at any moment of
-/// a sign-in is either read here, and nothing is handed out (unlinked), or
-/// ends this session itself (way_end_sessions); and "off" is never written
-/// over (F7). Throws when any of it is not so.
-async function keep(name, who, minted) {
-  const written = await db("rpc/way_session_keep", { method: "POST",
-    body: { session: minted.sessionId, account: minted.account, way: name } });
-  if (written !== true) throw new Error("the session was not written down");
-  const record = await accountRecord(minted.account);
-  if (record[`way_${name}`] === "off") throw Object.assign(new Error("unlinked"), { unlinked: true });
-  const change = {};
-  if (!record[`way_${name}`]) change[`way_${name}`] = new Date().toISOString();
-  if (name === "github" && record.way_github_id !== who.id) change.way_github_id = who.id;
-  if (Object.keys(change).length) await accountRecord(minted.account, change);
+/// [minted]'s session kept as [name]'s, or ended, in one step
+/// (way_signed_in, supabase/way_links.sql): written down as the way's, and
+/// the way signing the account in, unless the way is unlinked or, for
+/// GitHub, this is not the id kept (nor one to keep: [made], a new
+/// account). It holds the account's way while it reads and writes, as an
+/// Unlink does, so the two never undo each other, and "off" always wins
+/// (F7). Throws when it is not kept.
+async function keep(name, who, minted, made) {
+  const kept = await db("rpc/way_signed_in", { method: "POST", body: { session: minted.sessionId,
+    account: minted.account, way: name, provider_id: name === "github" ? who.id : null, bind: made } });
+  if (kept === "off") throw unlinked();
+  if (kept === "confirm") throw unconfirmed(minted.account);
+  if (kept !== "on") throw new Error("the session was not written down");
 }
 
 /// GitHub's address is an account's here that GitHub has not signed in to
@@ -386,16 +486,20 @@ function confirmFirst(request, response, name, who, account, start) {
 
 const GONE = "That sign-in took too long or was finished already. Sign in again.";
 
-/// [held] handed over, the first time its id is redeemed.
+/// [held] handed over, the first time its id is redeemed, and only while
+/// its session is there, as its way's, read as it is now: an Unlink in the
+/// two minutes since the callback ended it (signin6).
 async function handOver(held, response) {
   let first;
+  let standing;
   try {
     first = await spend(held);
+    standing = first ? await standingOf(tokenClaims(held.s.access_token)) : null;
   } catch (trouble) {
     console.error(`ways: not handed over: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return response.status(503).json({ error: "Brickworks could not finish signing you in just now. Sign in again in a minute." });
   }
-  if (!first) return response.status(410).json({ error: GONE });
+  if (!first || !standing?.exists || standing.way !== held.s.with) return response.status(410).json({ error: GONE });
   return response.status(200).json(held.s);
 }
 
@@ -446,19 +550,24 @@ export async function wayBind(request, response) {
     return response.status(410).json({ error: "That GitHub sign-in took too long, or was for another account. Sign in with GitHub again." });
   }
   try {
-    const { codeOf } = await import("./_oc.js");
-    if (!(await codeOf(claims)).emailed) {
+    // The one rule (api/_oc.js stepUp): the session as it is now (gone,
+    // 401) and a code of the last five minutes; and that code an emailed
+    // one, never a test account's password.
+    const { stepUp } = await import("./_oc.js");
+    const may = await stepUp(claims);
+    if (may.status && may.status !== 403) return response.status(may.status).json(may.body);
+    if (may.status || !may.asked.emailed) {
       return response.status(403).json({ error: "Sign in with a code we email you first.", fresh: false });
     }
     done();
     if (!(await spend(held))) return response.status(410).json({ error: GONE });
-    const record = await accountRecord(claims.sub);
-    if (record[`way_${held.w}`] === "off") {
+    const bound = await db("rpc/way_bind", { method: "POST", body: { account: claims.sub, way: held.w, provider_id: held.n } });
+    if (bound === "off") {
       return response.status(409).json({ error: "GitHub is unlinked from your account. Link it again in Settings first." });
     }
-    await accountRecord(claims.sub, { [`way_${held.w}`]: record[`way_${held.w}`] || new Date().toISOString(),
-      [`way_${held.w}_id`]: held.n });
+    if (bound !== "on") throw new Error(`way_bind said ${JSON.stringify(bound)}`);
   } catch (trouble) {
+    if (trouble instanceof AuthError) return response.status(trouble.status).json({ error: trouble.message });
     console.error(`ways: GitHub not kept: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return response.status(502).json({ error: "Brickworks could not keep GitHub for you just now. Sign in with GitHub again in a minute." });
   }
@@ -480,35 +589,68 @@ export async function waysRoute(request, response) {
   }
   // An orangecheck account's made-up address has no code, nor any provider's.
   const code = !/@oc\.brickworks\.diy$/i.test(String(claims.email || ""));
-  let kept;
+  let links;
   let you = false;
+  let changed = null;
   try {
     if (request.method === "POST") {
       const body = bodyOf(request);
       const name = String(body?.with || "");
       if (!WAYS[name] || typeof body?.on !== "boolean") return response.status(422).json({ error: "Google or GitHub, on or off." });
       if (!code) return response.status(409).json({ error: "This account signs in only with orangecheck." });
-      // Each way its own key, merged alone, so two changes at once never
-      // undo each other (F7). GitHub's id goes either way: linked again, it
-      // asks a code once more before it signs in.
-      const change = { [`way_${name}`]: body.on ? null : "off", ...(name === "github" ? { way_github_id: null } : {}) };
-      kept = await accountRecord(claims.sub, change);
-      if (!body.on) {
-        // Then what it signed in ends, this session too if it is one (F2).
-        you = claims.session_id ? (await sessionWay(claims.session_id)) === name : false;
-        await db("rpc/way_end_sessions", { method: "POST", body: { account: claims.sub, way: name } });
+      if (body.on) {
+        // Linked again gives the account a way in: the one rule (api/_oc.js
+        // stepUp, signin7), the session as it is now and a code of the last
+        // five minutes, so neither the way's own session nor one an Unlink
+        // has just ended can undo the Unlink (signreview4 R4-1 L1).
+        const { stepUp } = await import("./_oc.js");
+        const may = await stepUp(claims);
+        if (may.status) return response.status(may.status).json(may.body);
+        // Only a way unlinked is linked again, as never used, so GitHub asks
+        // a code once more before it signs in. One signing in already (a
+        // stale tab that still shows Unlinked) is left as it is: way_set
+        // would have dropped its row, and GitHub's id with it (N3).
+        if ((await linksOf(claims.sub))[name]?.state === "off") {
+          await db("rpc/way_set", { method: "POST", body: { account: claims.sub, way: name, turned_on: true } });
+          changed = "on";
+        }
+      } else {
+        // Unlinked takes a way away and gives none, so it asks the session
+        // as it is now alone (standingOf, never verify()'s held read): one
+        // gone is 401 here too; and whether it is one the way started, before
+        // it ends. Off, GitHub's id let go, and every session the way started
+        // ended (F2), in one step that waits for a sign-in of the same way, or
+        // makes it wait (F7).
+        const standing = await standingOf(claims);
+        if (!standing.exists) return response.status(401).json({ error: "You were signed out. Sign in again." });
+        you = standing.way === name;
+        const was = (await linksOf(claims.sub))[name]?.state;
+        await db("rpc/way_set", { method: "POST", body: { account: claims.sub, way: name, turned_on: false } });
+        if (was === "on") changed = "off";
         if (you) sessionEnded(claims.session_id);
       }
-    } else {
-      kept = await accountRecord(claims.sub);
+      // The address told, as orangecheck's link and unlink tell it (N4).
+      if (changed) {
+        const told = String(claims.email || "");
+        afterAnswer(async () => {
+          const { AFTER, tell } = await import("./_oc.js");
+          await tell(told, changed === "on" ? `${SAID[name]} signs you in to Brickworks again`
+            : `${SAID[name]} no longer signs you in to Brickworks`, changed === "on"
+            ? `${SAID[name]} was linked to your Brickworks account again just now, so it can sign you in. ${AFTER}`
+            : `${SAID[name]} was unlinked from your Brickworks account just now, and the sign-ins it started were ended. ${AFTER}`);
+        }, "ways: notice");
+      }
     }
+    links = await linksOf(claims.sub);
   } catch (trouble) {
     console.error(`ways: ${String(trouble?.message || trouble).slice(0, 160)}`);
     return response.status(502).json({ error: "Brickworks could not read how you sign in just now. Try again in a minute." });
   }
-  const state = (name) => (kept[`way_${name}`] === "off" ? "off" : kept[`way_${name}`] ? "on" : "never");
+  const state = (name) => links[name]?.state === "off" ? "off" : links[name] ? "on" : "never";
+  // The owner's account signs in by a code alone (F8): neither is offered.
+  const offered = isMaster(claims) ? { google: false, github: false } : await waysOffered(request);
   return response.status(200).json({ code, google: state("google"), github: state("github"),
-    offered: await waysOffered(request), ...(you ? { signed_out: true } : {}) });
+    offered, ...(you ? { signed_out: true } : {}) });
 }
 
 // ---------------------------------------------------------------------------
@@ -532,13 +674,12 @@ async function accountFor(email) {
   return made.ok;
 }
 
-/// The account's server-only record (app_metadata): read, or [change]
-/// merged into it key by key.
-async function accountRecord(account, change = null) {
-  const reply = await reach(`auth ${change ? "PUT" : "GET"} admin/users`, 10, `${supabase()}/auth/v1/admin/users/${encodeURIComponent(account)}`, {
-    method: change ? "PUT" : "GET", headers: admin(), body: change ? JSON.stringify({ app_metadata: change }) : undefined });
-  if (!reply.ok) throw new Error(`auth: the account was not ${change ? "kept" : "read"}: ${reply.status}`);
-  return (await reply.json())?.app_metadata || {};
+/// How [account] signs in with Google and GitHub (way_links_of): {google:
+/// {state, id}, github: {...}}, each "on" or "off", a way never used left
+/// out. Throws when it cannot be read.
+async function linksOf(account) {
+  const links = await db("rpc/way_links_of", { method: "POST", body: { account } });
+  return links && typeof links === "object" ? links : {};
 }
 
 // ---------------------------------------------------------------------------

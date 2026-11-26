@@ -1,0 +1,7 @@
+heavy: waiting: the free slots go to 12 earlier waiters
+heavy: waiting: waits for the load: 65 threads want a CPU, gate 30
+heavy: brickworks in slot.11 at load 68, 69812 MB free
+  --      https://accounts.google.com/o/oauth2/v2/auth: refused: page.goto: net::ERR_NAME_NOT_RESOLVED at https://accounts.google.com/o/oauth2/v2/auth
+  --      https://github.com/login/oauth/authorize: refused: page.goto: net::ERR_NAME_NOT_RESOLVED at https://github.com/login/oauth/authorize
+  --      https://example.com/: refused: page.goto: Navigation to "https://example.com/" is interrupted by another navigation to "chrome-error://chromewebdata/"
+  --      Playwright saw 3 request(s): https://accounts.google.com/o/oauth2/v2/auth https://github.com/login/oauth/authorize https://example.com/

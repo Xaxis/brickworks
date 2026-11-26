@@ -105,7 +105,8 @@ def test_every_mail_says_its_kind() -> None:
     sends = {
         "api/otp.js": "sign_in_code", "api/_beta.js": "beta", "api/_feedback.js": "feedback_answer",
         "api/_comments.js": "digest", "api/_trust.js": "report_digest", "api/_canary.js": "canary_alarm",
-        "api/orangecheck.js": "sign_in_notice",
+        # tell(), every sign-in notice's one sender, lives beside stepUp (signin7).
+        "api/_oc.js": "sign_in_notice",
     }
     for path, kind in sends.items():
         text = (ROOT / path).read_text()

@@ -1,0 +1,28 @@
+dry run: supabase/way_try_back.sql ran
+try: select c.relname as on_table, t.tgname as trigger_name, t.tgenabled as enabled, p.proname as runs
+  {"on_table":"users","trigger_name":"no_new_ways_in","enabled":"O","runs":"auth_users_no_new_ways_in"}
+  {"on_table":"mfa_amr_claims","trigger_name":"no_password_sign_in","enabled":"O","runs":"auth_sessions_no_password"}
+  {"on_table":"mfa_factors","trigger_name":"no_second_factor","enabled":"O","runs":"auth_no_second_factor"}
+try: select provider, count(*) as identities from auth.identities group by provider order by 1
+  {"provider":"email","identities":"191"}
+public.collections:
+  owner uuid not null
+  sets jsonb not null default '[]'::jsonb
+  parts jsonb not null default '[]'::jsonb
+  updated_at timestamp with time zone not null default now()
+  rev bigint not null default 0
+  recent jsonb not null default '[]'::jsonb
+  places jsonb not null default '{}'::jsonb
+  constraint collections_owner_fkey: FOREIGN KEY (owner) REFERENCES auth.users(id) ON DELETE CASCADE
+  constraint collections_parts_list: CHECK ((jsonb_typeof(parts) = 'array'::text))
+  constraint collections_parts_size: CHECK ((jsonb_array_length(parts) <= 20000))
+  constraint collections_pkey: PRIMARY KEY (owner)
+  constraint collections_places_object: CHECK ((jsonb_typeof(places) = 'object'::text))
+  constraint collections_places_size: CHECK ((octet_length((places)::text) <= 4000000))
+  constraint collections_sets_list: CHECK ((jsonb_typeof(sets) = 'array'::text))
+  constraint collections_sets_size: CHECK ((jsonb_array_length(sets) <= 5000))
+  row level security: on
+  grant postgres: DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
+  grant service_role: DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE
+  rows: 0
+dry run: rolled back, nothing kept

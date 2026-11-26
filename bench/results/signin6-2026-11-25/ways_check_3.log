@@ -1,0 +1,68 @@
+  ok    1. a sign-in a minute ago is a sign-in; one 20 minutes ago, or none, is not
+  ok    1. Google vouches for Gmail, Googlemail and a Workspace address of its own hd; not Outlook, another hd, none, a subdomain
+  ok    the deployment offers Google and GitHub, and says signing in makes the orangecheck account
+  ok    2. signed in by a code: one ask of Connect, with the Brickworks id, consent and the address as verified, its id kept
+  ok    2. a code's session is fresh, as linking orangecheck asks
+  ok    2. the page read again, and a second sign-in: no second ask, the same orangecheck account, and status says it
+  ok    2. six first requests of a sign-in at once: Connect asked once (F6)
+  ok    3. an account from before with none (never read by the site) gets one at its next sign-in
+  ok    4. orangecheck down: signed in all the same, its one ask failed, no id kept
+  ok    4. and a sign-in with Google, orangecheck down, signs in too
+  --    a minute for the ask to be due again
+  ok    4. orangecheck back: a sign-in a minute later makes it
+  ok    5. Google: to its sign-in with this deployment's client, the callback here, openid email, a state, a nonce, S256 PKCE
+  ok    5. what it carries is sealed, HttpOnly, SameSite=Lax, for the callback alone, ten minutes
+  ok    5. the callback goes back to /profile with where they were and the page's challenge, the session in a cookie, the start's cleared
+  ok    5. the cookie alone, or with another verifier, opens nothing; with the page's own it does, once (F1, F4)
+  ok    5. the same address a code signs in: the same account, never a second
+  ok    5. a start with no page challenge goes nowhere near Google
+  ok    5. with nothing to take, way_take says so
+  ok    5. signed in with Google, its orangecheck account is the one it had: no second ask
+  ok    5. a Google session is not a code just emailed: not fresh, so linking orangecheck asks for a code (F2)
+  ok    5. Settings: a code, and Google, sign this account in; GitHub not yet
+  ok    5. a state not its own: refused, to sign in again
+  ok    5. a code for another PKCE challenge: Google refuses it, and so does the sign-in
+  ok    5. an address Google has not verified: refused in words, no account made
+  ok    5. an address Google is not the authority for (no hd, another hd): refused as unvouched, even the code's own (F3)
+  ok    5. another site's address to go back to: back to this site's home
+  ok    6. GitHub: to its sign-in with this client, the callback, user:email, a state, S256 PKCE
+  ok    6. a new address: a new account, signed in, GitHub's id kept with it
+  ok    6. GitHub's token handed back once the address was read
+  ok    6. its age not answered yet: no orangecheck account asked for
+  ok    6. answered over 13: its orangecheck account made, the GitHub address sent as one orangecheck has to check (F2)
+  ok    6. a GitHub session is not fresh either (F2)
+  ok    6. a GitHub noreply address: refused
+  ok    6. a primary address GitHub has not verified: refused, not another one taken
+  ok    6. an address with a letter that lowercases into ASCII (U+212A): refused, never the plain address's account (F5)
+  ok    6. GitHub to an account a code made: nothing handed out, a code asked first, GitHub's id waiting sealed (F3)
+  ok    6. kept only for that account, after a code just now: a password's session 403, another account's 410, the code's 200, once
+  ok    6. then GitHub signs it in; another GitHub account with the same address asks a code again
+  ok    7. the app: back to its loopback with its state and a sealed code; only its own verifier opens it, once (F4)
+  ok    7. the app's code sent as the page's cookie, even with its verifier: refused (F1)
+  ok    7. any app address but 127.0.0.1: refused
+  ok    8. Google unlinked: it no longer signs this account in, a code still does
+  ok    8. linked again: Google signs it in
+  ok    8. GitHub unlinked: every session it started ends, renewals too; the code's signs on (F2)
+  ok    8. and its id goes with it: linked again, GitHub asks a code first
+  ok    8. unlinked from a session GitHub started: that one ends at once, and the answer says so
+  ok    8. three GitHub sign-ins racing an Unlink: it stays unlinked, and none of their sessions works or renews (F7)
+  ok    8. each session GitHub started was written down as GitHub's, and is gone with the Unlink
+  ok    9. the console: Google and GitHub, keys here, on, each with the callback to register
+  ok    9. switched off: not offered, and /auth/google says so
+  ok    9. switched on again: offered
+  ok    9. anybody else: not found
+  ok    10. the owner's address by Google, by GitHub (in capitals too) and by the app's GitHub: refused as code only, nothing handed out
+  ok    10. and nothing minted: the owner's last sign-in is the code's, as it was
+  ok    10. a code's session opens the console; Settings offers the owner neither Google nor GitHub
+  ok    10. the console refuses the owner's session GitHub started, and one orangecheck started, in words (403); the code's still opens
+  --    a whole sign-in took 1423 ms; Unlinks sent 0 to 1893 ms in: {"refused":8,"handed":8,"busy":0,"other":4,"off":20,"alive":0}
+  ok    11. an Unlink racing a first Google sign-in: off in 20 of 20, 8 handed out before it and ended, 8 refused, 0 left alive (F7)
+  --    the loop: 10 signed in (1429 ms each), 3 refused (1005 ms each)
+  ok    12. one GitHub account in a loop of 13: 10 signed in, then 3 refused in words before anything was spent
+  ok    12. while it is refused, a second person elsewhere signs in
+  ok    12. the same GitHub account from another network: refused too
+  ok    12. that network's old count full (30 of 30): two other people's GitHub accounts there sign in all the same
+  ok    12. 40 starts from one network: every one to GitHub; then the app's start there, and a person's sign-in
+  ok    12. one start's cookie sent 11 times: GitHub asked once (refused it), the other 10 refused before, and a person there signs in
+  ok    13. Unlink GitHub: the connection its session approved lists no tools and renews no more; a code's connection keeps working
+ways_check: all passed

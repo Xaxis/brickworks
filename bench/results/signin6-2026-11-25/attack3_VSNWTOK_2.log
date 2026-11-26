@@ -1,0 +1,36 @@
+V. what networkOf counts as one network (api/_ways.js)
+  ok      V1. three devices on one campus /64: one network (2001:db8:aa:1::/64): 2001:db8:aa:1::/64 2001:db8:aa:1::/64 2001:db8:aa:1::/64
+  --      V2. one home's /56 (the usual delegation) counts as 256 networks; one /48 (a free tunnel's) as 65536
+  ok      V3. IPv4: the first of x-forwarded-for, mapped or not: 203.0.113.5: 203.0.113.5 203.0.113.5 203.0.113.5
+S. the start seal, spent at its callback (SR2)
+  ok      S1. six callbacks at once with one start's cookie: one signed in, five refused before Google was asked: handed 1, again 5, Google asked 1, taken true: /profile?then=%2Fgallery&with=google&take=14kBWSOt_5NcpVpjCc | /profile?sign-in=&then=%2Fgallery&with=google&failed=again | /profile?sign-in=&then=%2Fgallery&with=google&failed=again | /profile?sign-in=&then=%2Fgallery&with=google&failed=again | /profile?sign-in=&then=%2Fgallery&with=google&failed=again | /profile?sign-in=&then=%2Fgallery&with=google&failed=again
+  ok      S2. a callback that fails after its seal is spent: that seal is done (again), and the person's next press signs in at once: first /profile?sign-in=&then=%2Fgallery&with=google&failed=failed; the same seal /profile?sign-in=&then=%2Fgallery&with=google&failed=again; a new start signed-in in 1657 ms
+  ok      S3. the callback's URL without its cookie, or with someone else's start: refused and nothing spent; the person's own goes through: bare /profile?sign-in=&then=%2F&with=google&failed=again; crossed /profile?sign-in=&then=%2Fgallery&with=google&failed=again; own /profile?then=%2Fgallery&with=google&take=GGY3xYFupDDpf0VMx_en0JK5Fre5
+N. counting only vouched identities: 30 per network
+  ok      N1. six throwaway GitHub accounts, five sign-ins each from one network (each refused, nothing minted): the next person there, a new one, is shut out of Google and GitHub for 15 minutes; elsewhere is not: the 30: {"confirm":30}; the person: signed-in, account made 1; another network: confirm
+  ok      N2. that person's five refused tries on the shut network count against their own GitHub account (counted first, never taken back): at home, on a network nobody used, they are refused too: there: signed-in,signed-in,signed-in,signed-in; at home: signed-in
+W. SR1 again: an approve as the Unlink lands
+  --      round 1: the Unlink (from the person's own session): 200 {"code":true,"google":"off","github":"never","offered":{"google":true,"github":true}}; the approve after it, 5092 ms on: 401 {"error":"You were signed out. Sign in again."}; codes before/after: undefined / undefined
+  ok      W1. round 1: Google's session, still read as signed in for up to 5 s (SESSION_HELD_MS), approves a connection just after the Unlink: the code carries no way (way_sessions went with the session), so it is traded, works and renews after the Unlink: the code from before: 400 invalid_grant; after: undefined; Google's session now 401; 6 s on, tools/list refused, refresh refused; Settings lists 0 connection(s)
+  --      round 2: the Unlink (from the person's own session): 200 {"code":true,"google":"off","github":"never","offered":{"google":true,"github":true}}; the approve after it, 5084 ms on: 401 {"error":"You were signed out. Sign in again."}; codes before/after: undefined / undefined
+  ok      W1. round 2: Google's session, still read as signed in for up to 5 s (SESSION_HELD_MS), approves a connection just after the Unlink: the code carries no way (way_sessions went with the session), so it is traded, works and renews after the Unlink: the code from before: 400 invalid_grant; after: undefined; Google's session now 401; 6 s on, tools/list refused, refresh refused; Settings lists 0 connection(s)
+  --      round 3: the Unlink (from the person's own session): 200 {"code":true,"google":"off","github":"never","offered":{"google":true,"github":true}}; the approve after it, 5001 ms on: 401 {"error":"You were signed out. Sign in again."}; codes before/after: undefined / undefined
+  ok      W1. round 3: Google's session, still read as signed in for up to 5 s (SESSION_HELD_MS), approves a connection just after the Unlink: the code carries no way (way_sessions went with the session), so it is traded, works and renews after the Unlink: the code from before: 400 invalid_grant; after: undefined; Google's session now 401; 6 s on, tools/list refused, refresh refused; Settings lists 0 connection(s)
+  --      W: 0 of 3 rounds kept a connection past the Unlink
+T. way_on after a token write
+  ok      T1. a code traded twice at once: one connection; the third try refused: 200 , 400 invalid_grant; third 400
+  ok      T2. an Unlink between approve and token: the code refused; T1's connection lists no tools and renews no more: 400 invalid_grant; T1's: {"lists":0,"renews":0}
+  ok      T3. eight token exchanges racing an Unlink sent 0 ms in: none outlives it: 200,200,200,200,200,200,200,200; of the 8 issued, list 0, renew 0
+  --      T3 at 0 ms: 200, 200, 200, 200, 200, 200, 200, 200
+  ok      T3. eight token exchanges racing an Unlink sent 40 ms in: none outlives it: 200,200,200,200,200,200,200,200; of the 8 issued, list 0, renew 0
+  --      T3 at 40 ms: 200, 200, 200, 200, 200, 200, 200, 200
+  ok      T3. eight token exchanges racing an Unlink sent 150 ms in: none outlives it: 400,200,200,200,200,200,200,200; of the 7 issued, list 0, renew 0
+  --      T3 at 150 ms: 400 invalid_grant, 200, 200, 200, 200, 200, 200, 200
+  ok      T5. four refreshes racing an Unlink: no token of that connection works after: refreshes 400,400,400,400; of 1 pairs, list 0, renew 0
+O. orangecheck's network count, before its token is looked at
+  ok      O1. twenty POSTs of a token that is no one's, from one network with no orangecheck account: the next sign-in there, a real one included (it is counted before its token is read), is refused for 15 minutes: the 20: 401; the next: 401 That sign-in was not for Brickworks, or it has run out. Try again.; another network: 401
+  ok      O2. the same from twenty addresses of one /64 (a campus or an office Wi-Fi): every other device on it is refused: the 20: 401; another device of that /64: 401
+K. the owner's console and a Claude connection
+  ok      K1. a connection approved by the owner's own session: its token does not open the console: the owner's session 200; the connection's token 401 {"error":"that sign-in is not readable"}
+  --      accounts named: 11, deleted (or never made): 10
+attack3: 0 finding line(s)

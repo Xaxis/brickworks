@@ -254,10 +254,36 @@ static var _kept_at: Dictionary = {}
 func _ready() -> void:
 	visible = false
 	set_process(true)
+	# A shared model's lot pictures asked for once someone takes a step:
+	# a phone shows the bar, at the last step, to everyone who only looks at
+	# the model, and that look fetches nothing (LotPictures.want).
+	stepped.connect(func() -> void: LotPictures.want())
 	_build()
 	if _compact:
 		get_viewport().size_changed.connect(_fit_compact, CONNECT_DEFERRED)
 		_fit_compact.call_deferred()
+
+
+func _notification(what: int) -> void:
+	# Other words, other widths: the five fitted again to them.
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _compact and _at_button != null:
+		_fit_compact.call_deferred()
+
+
+## The most of the window's height the desktop's bar takes (_cap_height).
+const MOST_OF_WINDOW := 0.55
+## The desktop's rows, scrolled inside the bar where they are taller than
+## MOST_OF_WINDOW of the window; null on a phone, whose bar is the five.
+var _held: ScrollContainer
+
+
+## The bar as tall as its rows, or MOST_OF_WINDOW of the window where they
+## are taller.
+func _cap_height() -> void:
+	if _held == null or not is_inside_tree():
+		return
+	var rows: float = (_held.get_child(0) as Control).get_combined_minimum_size().y
+	_held.custom_minimum_size.y = minf(rows, floorf(get_viewport().get_visible_rect().size.y * MOST_OF_WINDOW))
 
 
 func _build() -> void:
@@ -274,7 +300,21 @@ func _build() -> void:
 
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
-	add_child(column)
+	if _compact:
+		add_child(column)
+	else:
+		# Never taller than MOST_OF_WINDOW of the window: past that its rows
+		# scroll inside it, the slider and the steps first. At 150% in
+		# French or Spanish a 390 window's bar was every unit of the
+		# model's room and more, the status bar pushed off the window's
+		# foot (wide150b).
+		_held = ScrollContainer.new()
+		_held.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_held.add_child(column)
+		add_child(_held)
+		column.minimum_size_changed.connect(_cap_height)
+		get_viewport().size_changed.connect(_cap_height)
 
 	# The timeline itself, the width of the window: what is being dragged
 	# is the whole build, and a short slider makes a brick a pixel.
@@ -619,8 +659,76 @@ func _fit_compact() -> void:
 	# The row of steps a selection is dropped on, where the studio shows it:
 	# a fingertip tall, to drop on and to scrub along.
 	_row.custom_minimum_size = Vector2(0, least)
+	_fit_thumbs(pt)
 	_lay_strip()
 	_fit_at_words.call_deferred()
+
+
+## What Back, Next and More say where their words do not fit: Parts shows
+## its picture then.
+const THUMB_SIGNS := {"steps_back": "‹", "steps_next": "›", "steps_more": "…"}
+const THUMB_WORDS := {"steps_back": "Back", "steps_next": "Next", "steps_parts": "Parts",
+	"steps_more": "More"}
+
+
+## The five in the window's width, never wider: each a fingertip, or wider
+## for its words, where all five fit so with the step's number at its
+## shortest; else Back, Next, Parts and More by their signs (‹ › … and the
+## parts' picture), each an equal share of what the number leaves at its
+## shortest, at most a fingertip, their words kept as each one's name and
+## tip. All four change together, so the row never reads half in words, and
+## the number is never cut. At 150% on a 320 phone, or in French on one, the
+## row was up to 353 units in a window of 232 to 348, and the window's
+## column as wide with it (wide150); in five equal shares "1/5" was cut to
+## "1/" (wide150b).
+func _fit_thumbs(pt: float) -> void:
+	var thumb: HBoxContainer = _named.get("steps_thumb_row")
+	if thumb == null:
+		return
+	var least: float = Phone.TARGET * pt
+	var gap: float = float(thumb.get_theme_constant("separation"))
+	var across: float = get_viewport().get_visible_rect().size.x \
+		- get_theme_stylebox("panel").get_minimum_size().x
+	var font: Font = _at_button.get_theme_font("font")
+	var font_size: int = _at_button.get_theme_font_size("font_size")
+	var margins: float = _at_button.get_theme_stylebox("normal").get_minimum_size().x
+	var number: float = ceilf(margins + font.get_string_size(_at_button.atr(_at_words[-1]),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	var wanted: float = gap * 4.0 + number
+	for name: String in THUMB_WORDS:
+		var said: String = _at_button.atr(str(THUMB_WORDS[name]))
+		wanted += maxf(least, ceilf(margins + font.get_string_size(said, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			font_size).x))
+	var words: bool = wanted <= across
+	var each: float = least if words else minf(least, floorf((across - gap * 4.0 - number) / 4.0))
+	if not words:
+		# A sign wider than its share ("…" at 150%) keeps its own width, and
+		# the rest share what it leaves: in equal shares the row was a unit
+		# wider than the window (wide150b).
+		var held: float = 0.0
+		var sharing: int = 4
+		for name: String in THUMB_SIGNS:
+			var sign: float = ceilf(margins + font.get_string_size(str(THUMB_SIGNS[name]),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+			if sign > each:
+				held += sign
+				sharing -= 1
+		if sharing < 4:
+			each = minf(least, floorf((across - gap * 4.0 - number - held) / sharing))
+	for name: String in THUMB_WORDS:
+		var button: Button = _named[name]
+		button.custom_minimum_size.x = each
+		button.accessibility_name = str(THUMB_WORDS[name])
+		if name == "steps_parts":
+			# The picture the phone's own Parts has, as tall as the share
+			# leaves inside the button's margins.
+			button.text = str(THUMB_WORDS[name]) if words else ""
+			button.icon = null if words else Icons.icon_for(Toolbar.TOOLS + "build.svg",
+				clampf(each - margins - 2.0, 8.0, 20.0 * pt), Icons.density(self))
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		else:
+			button.text = str(THUMB_WORDS[name]) if words else str(THUMB_SIGNS[name])
+	_at_button.custom_minimum_size.x = 0.0 if words else number
 
 
 ## What the step's number button says: the whole of it where it fits, else
@@ -657,6 +765,8 @@ func _show_compact() -> void:
 		_at_words = ["%d of %d" % [_shown, _length()], "%d of %d" % [_shown, _length()],
 			"%d/%d" % [_shown, _length()]]
 	_at_button.tooltip_text = _caption.text
+	# The number's shortest words are what the four signs leave room for.
+	_fit_thumbs(Phone.per_point(get_viewport()))
 	_fit_at_words()
 	_lay_strip()
 
@@ -699,6 +809,8 @@ func _lay_strip() -> void:
 		var ready: Texture2D = thumbnails.peek(tile.part_id, tile.color_code) if thumbnails != null else null
 		if ready != null:
 			tile.show_picture(ready, false)
+		else:
+			ThumbTile.sketch_for(tile, thumbnails)
 		cell.add_child(tile)
 		var count := Label.new()
 		count.text = "%dx" % int(lot["count"])

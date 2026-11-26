@@ -33,7 +33,7 @@ for (const level of ["log", "warn", "info"]) console[level] = () => {};
 const troubles = [];
 console.error = (...said) => troubles.push(said.join(" ").slice(0, 300));
 
-const { SUPABASE_URL, world } = await import(path.join(root, "tests/fixtures/billing/world.mjs"));
+const { SESSION_READS, SUPABASE_URL, world } = await import(path.join(root, "tests/fixtures/billing/world.mjs"));
 const w = await world({});
 const { useCurrent } = await import(path.join(root, "api/_parts.js"));
 useCurrent(JSON.parse(readFileSync(path.join(here, "part_current.json"), "utf8")).parts);
@@ -76,7 +76,7 @@ globalThis.fetch = async (input, init = {}) => {
   const p = url.pathname;
   const q = url.searchParams;
   await wait(LAT);
-  if (p === "/auth/v1/.well-known/jwks.json") return worldFetch(input, init);
+  if (p === "/auth/v1/.well-known/jwks.json" || SESSION_READS.has(p)) return worldFetch(input, init);
   // The original: published, CC BY, Robin's.
   // The count's own reads (api/_remix.js countRemix) are told by what they
   // select: the publish's own read of the original asks id,owner,licence.

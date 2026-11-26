@@ -46,6 +46,7 @@ var changed: PackedInt64Array = PackedInt64Array()
 static func definitions() -> Array:
 	var bricks: Dictionary = {"type": "array", "items": {"type": "integer"},
 		"description": "the parts, by their numbers in look_at_model"}
+	var all_steps: Dictionary = ALL_STEPS
 	# Answered with the change pictured, as edit_model is (SeeTools.pictured).
 	var pictured: Dictionary = {"type": "boolean", "description": ("unset: a close look at "
 		+ "what changed, its new parts edged in magenta; true: the whole model so; false: "
@@ -71,6 +72,7 @@ static func definitions() -> Array:
 					"copy": {"type": "boolean"},
 					"across": {"type": "number", "description": "the mirror's plane, x= (or z=) in studs"},
 					"picture": pictured,
+					"all_steps": all_steps,
 				}},
 		},
 		{
@@ -83,7 +85,8 @@ static func definitions() -> Array:
 				+ "the pieces. bricks= the parts. One undo step; a part that does not split, or "
 				+ "has no room for its pieces, is said and left as it was."),
 			"input_schema": {"type": "object", "additionalProperties": false,
-				"required": ["bricks"], "properties": {"bricks": bricks, "picture": pictured}},
+				"required": ["bricks"], "properties": {"bricks": bricks, "picture": pictured,
+					"all_steps": all_steps}},
 		},
 		{
 			"name": "merge_parts",
@@ -95,7 +98,8 @@ static func definitions() -> Array:
 				+ "bricks= the parts. One undo step; where no real part would be fewer, they "
 				+ "are left as they were."),
 			"input_schema": {"type": "object", "additionalProperties": false,
-				"required": ["bricks"], "properties": {"bricks": bricks, "picture": pictured}},
+				"required": ["bricks"], "properties": {"bricks": bricks, "picture": pictured,
+					"all_steps": all_steps}},
 		},
 		{
 			"name": "measure",
@@ -295,7 +299,20 @@ func _named(input: Dictionary) -> Variant:
 	if not unknown.is_empty():
 		return "No part numbered %s (look_at_model numbers them); nothing changed." \
 			% ", ".join(unknown)
+	# Parts of steps after the one the person's timeline shows, not on their
+	# screen yet: changed only when the call says so, as the window's own
+	# edits reach only what the step shows (Builder.shown_only).
+	var later: String = (app.get("_builder") as Builder).later_refusal(ids, input.get("all_steps"))
+	if not later.is_empty():
+		return later
 	return ids
+
+
+## A session's leave to change parts of steps the person has not reached
+## (Builder.later_refusal), for every tool that changes parts it names.
+const ALL_STEPS: Dictionary = {"type": "boolean", "description": ("while the person's "
+	+ "timeline shows a step, a change to parts of later steps, not on their screen yet, is "
+	+ "refused; true changes them too")}
 
 
 ## What the window does after its own edit (EditVerbs.edited): the model
@@ -554,7 +571,8 @@ static func _held_where(builder: Builder, library: PartLibrary) -> String:
 	return said + "; its ghost under the pointer takes x %s to %s, z %s to %s, y %s to %s plates, %s" % [
 		_n(low.x / STUD), _n(high.x / STUD), _n(low.z / STUD), _n(high.z / STUD),
 		_n(low.y / PLATE), _n(high.y / PLATE),
-		"where a click puts it down" if builder.can_place() else "where it cannot go down"]
+		"where a click puts it down" if builder.can_place() else "where it cannot go down" \
+			+ ("" if builder.copies_refuse.is_empty() else " (%s)" % builder.copies_refuse)]
 
 
 func _reference_words(reference: ReferenceImage) -> String:

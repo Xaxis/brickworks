@@ -57,6 +57,7 @@ static func definition() -> Dictionary:
 				"level_plates": {"type": "integer", "description": "plates between levels"},
 				"picture": {"type": "boolean", "description": ("unset: a close look at the "
 					+ "copies, edged in magenta; true: the whole model so; false: words alone")},
+				"all_steps": HandTools.ALL_STEPS,
 			}},
 	}
 
@@ -159,6 +160,10 @@ func _named(input: Dictionary) -> Variant:
 	if not unknown.is_empty():
 		return "No part numbered %s (look_at_model numbers them); nothing changed." \
 			% ", ".join(unknown)
+	# Copies of parts the person's step has not put on yet (HandTools._named).
+	var later: String = (app.get("_builder") as Builder).later_refusal(ids, input.get("all_steps"))
+	if not later.is_empty():
+		return later
 	return ids
 
 

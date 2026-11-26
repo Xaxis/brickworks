@@ -3504,6 +3504,9 @@ func _steps_revealed(ids: Dictionary) -> void:
 				ahead[brick.id] = true
 	_ahead_key = -1
 	_builder.lattice.ahead = ahead
+	# ...nor is it selected: a step back lets go of what it takes off.
+	if _builder.keep_shown() > 0:
+		_say_selected(_builder.selection.size(), _said_whole)
 	if ids.is_empty() and _verbs != null:
 		_verbs.apply_hidden()
 	else:
@@ -3523,19 +3526,31 @@ func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void
 			showing[order[n]] = true
 		_steps_revealed(showing)
 		return
+	# The parts this step put on or took off, when the order is the one the
+	# last step had: all keep_shown looks at (stepreview F3). Another order,
+	# the whole selection.
+	var changed: Variant = null
 	if key != _ahead_key:
 		_ahead_key = key
 		_ahead = {}
 		for n: int in range(count, order.size()):
 			_ahead[order[n]] = true
 	else:
+		var flipped := PackedInt64Array()
 		for n: int in range(mini(count, _ahead_count), maxi(count, _ahead_count)):
+			flipped.append(order[n])
 			if n >= count:
 				_ahead[order[n]] = true
 			else:
 				_ahead.erase(order[n])
+		changed = flipped
 	_ahead_count = count
 	_builder.lattice.ahead = _ahead
+	# A selection holds only what the step shows (Builder.shown_only): a step
+	# back lets go of the parts it takes off, and the line says what is
+	# selected now (stepreview F7).
+	if _builder.keep_shown(changed) > 0:
+		_say_selected(_builder.selection.size(), _said_whole)
 	# What the world's rebuild said before, when a step was a rebuild: a
 	# selection's outline round what is on show, and what is under a still
 	# pointer.
@@ -3549,6 +3564,39 @@ func _steps_revealed_upto(order: PackedInt64Array, count: int, key: int) -> void
 var _ahead: Dictionary = {}
 var _ahead_key: int = -1
 var _ahead_count: int = 0
+## The sub-assembly the selection was all of when it last changed (""
+## for none), which a step's line names again ([method _say_selected]).
+var _said_whole: String = ""
+
+
+## The line for [param count] selected, all of [param whole] at this level
+## ("" for no one sub-assembly): its name, and at a step of the timeline how
+## many of its parts are on. Said again at a step that changes the
+## selection, counted from the kept index, so a step never reads the whole
+## selection again: "72 of its 149 parts on" stayed after a step on put 86
+## on (stepreview F7).
+func _say_selected(count: int, whole: String) -> void:
+	var of_all: int = _verbs.assemblies.bricks_under(whole).size() \
+		if not whole.is_empty() and _builder.at_a_step() and _verbs != null \
+			and _verbs.assemblies != null else 0
+	if count == 0:
+		_bar.say("")
+	elif of_all > count:
+		_bar.say("%s selected, %d of its %d parts on at this step — double-click edits inside a sub-assembly"
+			% [Assemblies.label(whole), count, of_all])
+	elif not whole.is_empty():
+		# A click took a sub-assembly whole: which, and the way to one
+		# of its parts, as a phone's line says (PhoneShell.hint, in a
+		# finger's words: hold, then Edit inside; a phone's double tap
+		# turns, so it is left to say it, never "double-tap"). "149
+		# selected — … C paints" at a set's fifth step, its house taken
+		# whole, said neither, and a colour then painted 149 parts
+		# (appwalk).
+		_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
+			% [Assemblies.label(whole), count])
+	else:
+		_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
+			% count)
 
 
 ## The longest a frame took, ms (Performance.TIME_PROCESS, the most of the
@@ -3617,6 +3665,10 @@ func _view_shared() -> void:
 			"Brickworks did not answer as it should. Try again in a minute."), _view_shared)
 		return
 	var shared: Dictionary = answer["body"]
+	# Every lot's picture of it, drawn once by the server: asked for when
+	# Build it or the steps first lay its parts (LotPictures.want), at once
+	# where the page fetched it for a link that opens Build it.
+	LotPictures.offer(shared, _thumbnails)
 	var name: String = str(shared.get("name", "A shared model"))
 	var author: String = str(shared["author"]) if shared.get("author") is String else ""
 	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
@@ -4065,8 +4117,13 @@ func _ask_context() -> Dictionary:
 			var info: PartLibrary.PartInfo = _library.parts.get(str(one["part"]))
 			var colour: PartLibrary.BrickColor = _library.colors.get(int(one["colour"]))
 			var said: String = pins.part_said(info.name if info != null else "")
-			one["words"] = ("the %s" % said if not said.is_empty() else "a part") \
-				+ (", %s" % colour.name.replace("_", " ").to_lower() if colour != null else "")
+			# Each its own pattern of the locale's, "the %s in %s", its two
+			# places a part's name and a colour's, which PartWords says: with a
+			# comma for the colour ("the 2 × 4 brick, red"), a list of two
+			# parts could not be told from one, and stayed English (greenreds).
+			var hue: String = colour.name.replace("_", " ").to_lower() if colour != null else ""
+			one["words"] = ("the %s in %s" % [said, hue] if not hue.is_empty() else "the %s in its own colour" % said) \
+				if not said.is_empty() else ("a part in %s" % hue if not hue.is_empty() else "a part in its own colour")
 			parts.append(one)
 	return {"step": _timeline_page(), "parts": parts}
 
@@ -4921,6 +4978,9 @@ func _maybe_copy() -> void:
 			_bar.say("could not copy it: " + SharedModels.trouble(answer, "Brickworks did not answer"))
 			return
 		var shared: Dictionary = answer["body"]
+		# Its lots' pictures for the studio's step bar, as the viewer's
+		# (_view_shared).
+		LotPictures.offer(shared, _thumbnails)
 		name = str(shared.get("name", "Shared model"))
 		if not _sample_untouched and _store.has_unsaved_work():
 			_store.save_as(_store.unused_name(_store.title if _store.title != ModelStore.UNTITLED
@@ -5093,6 +5153,7 @@ func _open_asked(placed: int) -> int:
 	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
 		return 0
 	var shared: Dictionary = answer["body"]
+	LotPictures.offer(shared, _thumbnails)
 	var name: String = str(shared.get("name", "Shared model"))
 	var result: Dictionary = await _store.open_text_fetched(str(shared.get("model", "")), name)
 	if not str(result["error"]).is_empty():
@@ -7087,6 +7148,10 @@ func _build_ui() -> void:
 	# A part put down while the timeline shows the author's steps goes in
 	# the step it is on.
 	_builder.place_step = _steps.place_step
+	# The step an edit reaches no further than, for what an edit says.
+	_builder.step_showing = func() -> int:
+		var at: Instructions.Step = _steps.current_step()
+		return at.number if at != null else -1
 	middle.add_child(_steps)
 	# The line over a phone's model kept above the bar as it opens, grows
 	# with a step's parts and goes: it was placed once, over the bar's five
@@ -7348,6 +7413,12 @@ func _build_ui() -> void:
 	# Once a frame, not once a part (_edited_soon).
 	_builder.placed.connect(func(_id: int, _part: String) -> void: _edited_soon())
 	_builder.removed.connect(func(_id: int) -> void: _edited_soon())
+	# What was in hand back where it stood, let go of by something else (a
+	# session's edit to one of its parts, another lift, an Open): drawn again
+	# there, the ghost gone.
+	_builder.hand_put_back.connect(func(_count: int) -> void:
+		_edited_soon()
+		_refresh_preview.call_deferred())
 	# Watch it go up, in the order it would be built, rather than find
 	# it already there.
 	_playback = BuildPlayback.new()
@@ -7402,6 +7473,8 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
+	# Select all asked again at a step: the timeline to its end, every step.
+	_verbs.every_step = _steps.to_end
 	# A copy is the account's that made it (EditVerbs.account_changed).
 	_verbs.account = func() -> String: return _account.user_id if _account != null else ""
 	add_child(_verbs)
@@ -7682,21 +7755,10 @@ func _build_ui() -> void:
 		_look_under_again()
 		var whole: String = _verbs.assemblies.selected_assembly() \
 			if count > 1 and _phone == null and _verbs != null and _verbs.assemblies != null else ""
-		if count == 0:
-			_bar.say("")
-		elif not whole.is_empty():
-			# A click took a sub-assembly whole: which, and the way to one
-			# of its parts, as a phone's line says (PhoneShell.hint, in a
-			# finger's words: hold, then Edit inside; a phone's double tap
-			# turns, so it is left to say it, never "double-tap"). "149
-			# selected — … C paints" at a set's fifth step, its house taken
-			# whole, said neither, and a colour then painted 149 parts
-			# (appwalk).
-			_bar.say("%s selected, %d parts — double-click edits inside a sub-assembly"
-				% [Assemblies.label(whole), count])
-		else:
-			_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
-				% count))
+		# Kept for a step's saying it again (_steps_revealed_upto): a step
+		# changes a sub-assembly's parts on show, never which it is.
+		_said_whole = whole
+		_say_selected(count, whole))
 	# The world is redrawn whenever anything in it changes, which
 	# includes a selected brick being removed by undo or replaced by the
 	# assistant. Without redrawing the outline then, it is a box round
@@ -8123,6 +8185,8 @@ func _make_figures() -> void:
 	_figures_made = figures
 	figures.library = _library
 	figures.thumbnails = _thumbnails
+	# A mould saved signed in is kept on the account too (MouldsOnAccount).
+	figures.set("account", _account)
 	_add_to_hud(figures)
 	_inset(figures, 1040.0, 660.0)
 	get_viewport().size_changed.connect(func() -> void: _inset(figures, 1040.0, 660.0))
@@ -10128,9 +10192,37 @@ func _on_model_edited() -> void:
 	# The timeline in the author's steps shows the model as it now is: a
 	# part put down in the step showing, an undone step edit. (Worked out,
 	# it is the order it was when opened, as it always was: on Orthanc the
-	# working out takes five seconds.)
+	# working out takes five seconds.) Parts in hand are the model's, each in
+	# its own step where it stood, so it is never worked out without them
+	# (Builder._take_into_hand).
 	if _steps != null and _steps.is_playing_back() and _steps.mode() == StepsBar.AUTHORS:
 		_steps.refresh()
+	# A figure put down where the timeline does not show it (its step after
+	# the one showing): stepped on to it, and said (figreview2 F6).
+	if _steps != null and not _builder.put_unseen.is_empty():
+		_show_put_unseen()
+
+
+## A figure put down in its own step, after the one the timeline shows
+## (Builder.put_unseen): the timeline goes to that step, which shows it, and
+## the line says where it went. Put down after a step back, it was in no step
+## shown, and nothing said so (figreview2 F6).
+func _show_put_unseen() -> void:
+	var ids: PackedInt64Array = _builder.put_unseen
+	_builder.put_unseen = PackedInt64Array()
+	if not _steps.is_playing_back() or _builder.shown_only(ids).size() == ids.size():
+		return
+	var steps: Array[Instructions.Step] = _steps.steps()
+	var last: Instructions.Step = null
+	for step: Instructions.Step in steps:
+		for brick_id: int in ids:
+			if step.brick_ids.has(brick_id):
+				last = step
+				break
+	if last == null:
+		return
+	_steps.refresh(last.number, last.callout_step if last.callout > 0 else 0, steps)
+	_bar.say("moved %s to step %d" % [Builder._many(ids.size()), last.number])
 
 
 ## [method _on_model_edited] at the end of this frame, once however many
@@ -12609,9 +12701,10 @@ func _size_for_a_finger() -> void:
 			_fit_tool_panel(panel as Control))
 	# What the app is busy with is one line, its end cut short where the
 	# screen is: "Drawing the steps…" ran 500 points past a tablet's edge.
+	# At a word, never inside one.
 	for found: Node in _shell.status.find_children("*", "Label", true, false):
 		(found as Label).clip_text = true
-		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 
 
 ## The tools' column on a touch screen: beside the model where the screen
@@ -12963,8 +13056,12 @@ func _nudge(screen_way: Vector3) -> void:
 
 
 func _nudge_by(cells: Vector3i) -> void:
-	if _builder.move_selection(cells) > 0:
+	var moved: int = _builder.move_selection(cells)
+	if moved > 0:
 		_on_model_edited()
+		# At a step, the sub-assembly whole: said, its later parts too.
+		if _builder.riding_later > 0:
+			_bar.say("moved %s — %s" % [EditVerbs._parts(moved), _builder.riding_said()])
 	else:
 		_bar.say("no room that way")
 
@@ -13602,9 +13699,18 @@ func _key_pressed(key: InputEventKey) -> void:
 			if _figures_made != null and _figures_made.visible:
 				_figures.close()
 				return
+			# A figure lifted off the model goes back where it stood, as a
+			# carried selection does (figreview2 F2).
 			if _builder.is_holding_figure():
-				_builder.drop_figure()
-				_bar.say("")
+				_bar.say("put back where it was" if _builder.drop_figure() else "")
+				_refresh_preview()
+				return
+			# So does a part lifted by X, whatever tool is on.
+			if _builder.holds_lifted_part():
+				_builder.put_hand_back()
+				_bar.say("put back where it was")
+				if _verbs != null:
+					_verbs.set_mode("select")
 				_refresh_preview()
 				return
 			if _elements_made != null and _elements_made.visible:

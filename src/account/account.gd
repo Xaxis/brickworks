@@ -513,6 +513,11 @@ func sign_in_with_way(name: String) -> String:
 			return "Signing in with %s is not offered here just now. Sign in with a code we email you." % said
 		"busy":
 			return "A lot of people are signing in just now. Try again in a minute."
+		"code_only":
+			return "This account signs in only with a code we email you."
+		"often":
+			return ("Too many sign-ins with %s just now. Try again in a few minutes, "
+				+ "or sign in with a code we email you.") % said
 		_:
 			return "%s did not sign you in just now. Try again in a minute, or sign in with a code we email you." % said
 

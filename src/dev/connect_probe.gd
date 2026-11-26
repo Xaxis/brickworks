@@ -419,9 +419,11 @@ func _model() -> void:
 	var on_column: Vector2 = _screen((lying * _library.mesh_for("3703").bounds).get_center()
 		+ Vector3(0, 12, 0))
 	await _click(on_column)
+	# In hand, it is still the model's where it stood, drawn nowhere (handkeep2:
+	# up to then a lift took it off the model).
 	_check("a click on the column takes it into hand where it stands, its points offered (%s)"
 		% _verbs.connect_tool.stage, _verbs.connect_tool.stage == "point"
-		and _world.get_brick(column) == null
+		and _world.get_brick(column) != null and _world.in_hand(column)
 		and _near(_builder.ghost_transform(), lying))
 	await _shot("model_points")
 	await _key(KEY_ESCAPE)

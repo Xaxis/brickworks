@@ -117,7 +117,9 @@ func _run() -> void:
 		picture.save_png(_out.path_join("render_%s.png" % called))
 		var renderer: StudioRender = dialog.renderer
 		var tracer: Object = renderer.get("_tracer")
-		var version: String = ("marks" if bool(tracer.get("marked")) else "plain") if tracer != null else "none"
+		var version: String = "none"
+		if tracer != null:
+			version = "photo" if bool(tracer.get("photo")) else ("marks" if bool(tracer.get("marked")) else "plain")
 		_check("%s: %dx%d, the dialog's own size, %s" % [called, picture.get_width(),
 			picture.get_height(), ("path traced, the tracer's %s version" % version) if renderer.traced_last()
 			else "frames averaged (no path tracer here)"],

@@ -1,0 +1,8 @@
+== signin5 (cb7956146) round 1 01:00:47Z
+signin5 exit 1 01:05:57Z: orangecheck_check: 161 passed, 2 failed; stalls: 2
+== signin6 (d64396492) round 1 01:08:27Z
+signin6 exit 1 01:13:43Z: orangecheck_check: 162 passed, 1 failed; stalls: 0
+== signin5 (cb7956146) round 2 01:16:13Z
+signin5 exit 1 01:21:19Z: orangecheck_check: 160 passed, 3 failed; stalls: 2
+== signin6 (d64396492) round 2 01:23:49Z
+signin6 exit 1 01:29:25Z: orangecheck_check: 162 passed, 1 failed; stalls: 0

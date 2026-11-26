@@ -18,13 +18,13 @@ There is no password. The app asks the first time it opens; on the site, **Sign 
 1. Type your email address and press **Email me a code**. Signing in makes your account if you have none.
 2. Type the six-digit code from the email and press **Sign in**. It works once, for ten minutes; if it has not come, look in spam, or ask for a new one.
 
-Or press **Sign in with Google** or **Sign in with GitHub**: you sign in there and come back to the page you were on, signed in. Brickworks asks either only for your email address, and only one it has verified, so it is the same account a code to that address signs you in to; a new address makes a new account. Google signs you in with a Gmail address, or a Google Workspace address of your organisation; for any other address, sign in with a code. The first time GitHub signs in to an account you already have, it asks for a code to the address once, then GitHub signs you in from then on. In the desktop app it opens in your browser and comes back to the app.
+Or press **Sign in with Google** or **Sign in with GitHub**: you sign in there and come back to the page you were on, signed in. Brickworks asks either only for your email address, and only one it has verified, so it is the same account a code to that address signs you in to; a new address makes a new account. Google signs you in with a Gmail address, or a Google Workspace address of your organisation; for any other address, sign in with a code. The first time GitHub signs in to an account you already have, it asks for a code to the address once, then GitHub signs you in from then on. Signed in with Google or GitHub many times in a few minutes, from one account or one network, you are asked to wait a few minutes; a code still signs you in. In the desktop app it opens in your browser and comes back to the app.
 
 Or press **Sign in with orangecheck**: it opens its own window and takes a Bitcoin wallet, email, Google or GitHub, and Brickworks gets an id for you, not your address.
 
 ![The site's Sign in to Brickworks dialog: the Email box with Email me a code, then Sign in with Google, Sign in with GitHub and Sign in with orangecheck, and the line Signing in without orangecheck also makes your orangecheck account, with What is that?](/docs/img/account-sign-in.webp "Signing in on the site: a code by email, Google, GitHub or orangecheck.")
 
-You stay signed in on that device until you sign out. [Settings](/settings) › **How you sign in** lists each way that signs you in: a code to your address always does; **Unlink** takes Google or GitHub off, and signs out wherever it signed you in, and **Link again** puts it back. To sign in with orangecheck as well as your email, [Settings](/settings) › **orangecheck** › **Link orangecheck**; it first sends a code to your email, to be sure it is you ([Settings](/docs/profiles#settings)).
+You stay signed in on that device until you sign out. [Settings](/settings) › **How you sign in** lists each way that signs you in: a code to your address always does; **Unlink** takes Google or GitHub off, signs out wherever it signed you in, and disconnects any AI app you connected while signed in with it, and **Link again** puts it back (it emails you a code to type first, unless you signed in with one in the last five minutes). Either one emails your address to say so. To sign in with orangecheck as well as your email, [Settings](/settings) › **orangecheck** › **Link orangecheck**; it first sends a code to your email, to be sure it is you ([Settings](/docs/profiles#settings)).
 
 <!-- covers
 ui:sign in with google
@@ -93,7 +93,7 @@ ui:what is counted page
 2. [Settings](/settings), at the foot: **Delete this account…**.
 3. Type your email address, press **Delete my account**, and say yes.
 
-Signed in with orangecheck, it first emails a code to the account's address: type it and press **Delete my account** again. An account made with orangecheck alone has **Sign in with orangecheck to delete** instead.
+Unless you signed in with a code we emailed you in the last five minutes, it first emails a code to the account's address: type it and press **Delete my account** again. An account made with orangecheck alone has **Sign in with orangecheck to delete** instead.
 
 It cannot be undone. Your models come out of the gallery and their links stop working; your profile, saved models, lists (public, shared by a link or private), comments, follows, photos, the sets you own and every AI app's connection are deleted with the account.
 

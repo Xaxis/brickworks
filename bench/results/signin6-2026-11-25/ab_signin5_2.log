@@ -1,0 +1,198 @@
+pass a first sign-in is a new account: 200 
+pass its address is random at oc.brickworks.diy
+pass the answer is never cached
+pass the session it gives is a Brickworks sign-in: signed_in true
+pass the token is ended at orangecheck
+pass the token is not in the answer
+pass the same token is refused a second time: 409 That sign-in was used already. Sign in with orangecheck again.
+pass and on another instance: 409
+pass the same orangecheck id signs in to the same account: 200
+[@orangecheck/me-client] a sign-in token bound to "http://127.0.0.1:8841" carries no revocation handle (rh), so sign out everywhere could not end it, and it was refused (no_session_handle). Tokens from the ochk.app sign-in popup carry one. Pass requireHandle: false only to accept tokens minted some other way.
+pass a token with no rh is refused: 401 That sign-in could never be ended from orangecheck, so Brickworks does not take it. Try again.
+pass a token for another site is refused: 401 That sign-in was not for Brickworks, or it has run out. Try again.
+pass a token with no audience is refused: 401 That sign-in was not for Brickworks, or it has run out. Try again.
+pass a token signed by another key is refused: 401 That sign-in was not for Brickworks, or it has run out. Try again.
+pass a token from another issuer is refused: 401 That sign-in was not for Brickworks, or it has run out. Try again.
+pass an expired token is refused: 401 That sign-in was not for Brickworks, or it has run out. Try again.
+pass a token with no did is refused: 401 That sign-in was not for Brickworks, or it has run out. Try again.
+pass a malformed did is refused: 401 That sign-in was not one Brickworks can read. Try again.
+pass nothing at all is refused: 422 The sign-in did not come through from orangecheck. Try again.
+orangecheck: database POST rpc/oc_may_try: no answer in 15 s
+FAIL not a token is refused: 503 Brickworks could not start a sign-in just now. Try again in a minute.
+pass an unsigned token is refused: 401 That sign-in was not for Brickworks, or it has run out. Try again.
+pass a session ended everywhere is refused: 401 That orangecheck sign-in was ended. Sign in again.
+pass one started after the cutoff signs in: 200 
+[@orangecheck/auth-core] revocation feed answered 403; using the last copy
+pass while the list cannot be read, no orangecheck sign-in: 503 orangecheck could not confirm the sign-in just now. Try again in a minute, or sign in with your email.
+pass a rule asking for a backed account refuses one that is not: 403 Brickworks takes orangecheck accounts backed by bitcoin, and this one is not yet.
+pass a floor of {min_sats, min_days} alone, without max_age_secs, is read, and lets an account backed above it in: 200 
+orangecheck: who may sign in was not read: answered 503
+pass a rule that cannot be read lets nobody in: 503
+pass while orangecheck's keys cannot be read, a sign-in is answered 503 in words, not 401: 503 orangecheck could not be asked just now. Try again in a minute, or sign in with your email.
+pass production offers the app ochk.io and https://brickworks.diy, whatever a test stack is named there: {"project":"pk_test_orangecheck_check","auth":"https://ochk.io","audience":"https://brickworks.diy"}
+pass step 1's L1: production takes tokens for https://brickworks.diy alone, not its own *.vercel.app address: ["https://brickworks.diy"] 401
+pass and a Preview deployment, for its own address: ["https://brickworks-oc-check.vercel.app"]
+pass two first sign-ins at once make one account: 200 200
+pass and leave no account over: 2 made, 0 left
+pass three sign-ins of one account at once all get in: 200 200 200
+pass an orangecheck account to delete: 200 
+pass an orangecheck account is not deleted by its made-up address: 422 The sign-in did not come through from orangecheck. Try again.
+pass nor by somebody else's orangecheck sign-in: 403 That orangecheck sign-in is not this account's. Sign in with the one you use here.
+pass a fresh sign-in as itself deletes it: 200 
+pass and its orangecheck id with it: null
+pass the sign-in that deleted it is spent: 403
+pass signing in again afterwards is a new account: 200 {"did":"did:oc:429df8cea368fdca1b310d90f2825fc3","new_account":true,"merged":false} 0
+pass an email account: nothing linked, and a code just now counts as fresh: {"did":null,"only":false,"fresh":true,"ready":true,"made":false}
+pass it links orangecheck, and its address is told: 200 {"did":"did:oc:fbd23cc9099ec8d158cfb30632bd7597","told":"dry"}
+pass the account is marked as having orangecheck, and keeps what else it had: {"orangecheck":true,"provider":"email","providers":["email"]}
+pass a second orangecheck id for it is refused: 409 This account has orangecheck linked already. Unlink it first.
+pass an id another account has is refused: 409 That orangecheck account already signs in to another Brickworks account.
+pass linking without a sign-in is refused: 401
+pass the linked id signs in to that same account: 200 
+pass a session orangecheck started is never fresh enough to link or unlink: {"did":"did:oc:fbd23cc9099ec8d158cfb30632bd7597","only":false,"fresh":false,"ready":true,"made":false}
+pass so it cannot unlink: 403 Confirm it is you first, with a code we email you.
+pass the session orangecheck started works
+pass its rh, aud and iat were kept with it: {"rh":"PKUXTjTdolBLqqqsMn2wjQ","aud":"http://127.0.0.1:8841","did":"did:oc:fbd23cc9099ec8d158cfb30632bd7597","iat":1795655818,"bound":true,"exists":true,"linked":true}
+[@orangecheck/auth-core] revocation feed answered 503; using the last copy
+pass while orangecheck's list cannot be read, its session reads: {"enabled":true,"url":"https://uhyhrwhkaqjwifwyzuxl.supabase.co","key":"sb_publishable_18aU24sQo078xcwY13SHOA_V5jP9J_N",
+pass and does not write, in words: 503 Brickworks could not check your orangecheck sign-in just now. Try again in a minute.
+pass an emailed code's session of the same account writes all the same
+pass ended everywhere on orangecheck, its session is refused: {"enabled":true,"url":"https://uhyhrwhkaqjwifwyzuxl.supabase.co","key":"sb_publishable_18aU24sQo078xcwY13SHOA_V5jP9J_N","assistant":"own_key","parts_url":"https
+pass and cannot be renewed: 400
+pass while the emailed code's session goes on
+pass unlinked with a fresh code, its address told: 200 {"did":"did:oc:fbd23cc9099ec8d158cfb30632bd7597","ended":1,"told":"dry"}
+pass and the sign-in that id started there is ended
+pass the emailed code's sign-in is not
+pass the id then signs in to an account of its own, never Ada's: 200 {"did":"did:oc:fbd23cc9099ec8d158cfb30632bd7597","new_account":true,"merged":false} 0
+pass an orangecheck account says so, and cannot link or unlink: {"did":"did:oc:fbd23cc9099ec8d158cfb30632bd7597","only":true,"fresh":false,"ready":true,"made":false}
+pass an orangecheck sign-in connects Claude: 200 200
+[@orangecheck/auth-core] revocation feed answered 503; using the last copy
+pass while orangecheck's list cannot be read, the connection waits rather than ends
+pass ended everywhere on orangecheck, the connection it approved is ended too
+pass and its refresh token is no good: 400 {"error":"invalid_grant","error_description":"that refresh token is no longer good"}
+pass H1: a password set from an orangecheck sign-in is refused at Supabase, and none signs in: 200 500 
+pass H1: and trying signs out none of the account's other sessions
+pass H1: nor can the account's address be changed, from a session or at all: 429 500 cd63f809f640b0e67c83217465848a00@oc.brickworks.diy 
+pass H1: signed out everywhere on orangecheck, both its sessions get 401
+pass a new person signs in by an emailed code, asked for twice, as before
+pass and signs in by a code again
+pass a test account signs in by its password, as the tests do
+pass L1: the id of an account not marked as having orangecheck signs in, and the session's own token carries the mark: linked 200 
+pass H1, the unlink variant: a password set from an orangecheck sign-in of an account with its own email is refused: 500 
+pass her emailed code's session is still signed in, and counts as fresh: {"did":"did:oc:05a499360b083c88bc90fb280d3027e5","only":false,"fresh":true,"ready":true,"made":false}
+pass L4: deleting the account from its orangecheck sign-in asks for the same fresh emailed code as unlinking: 403 Confirm it is you first, with a code we email you.
+pass L2: a code approved in an orangecheck sign-in whose id is no longer the account's is refused: 400 {"error":"invalid_grant","error_description":"the orangecheck sign-in that approved this was unlinked"}
+pass L2: unlinking deletes the codes that sign-in was given, so none is exchanged after: {"did":"did:oc:05a499360b083c88bc90fb280d3027e5","codes":1,"ended":1,"connections":0} 400
+pass M1: unlinked between finding the account and binding the session, refused in words, and no session handed out: 409 orangecheck was unlinked from that Brickworks account just now. Sign in with orangecheck again.
+pass M1: and the session minted for it is ended
+pass M1: oc_bind_session binds nothing for an id that is not the account's
+pass M1: a session bound by an id that is no longer the account's is refused, in words, and ended: 200 401 orangecheck was unlinked from this account, so this sign-in has ended. Sign in again.
+pass an emailed code's session deletes the account with its address typed, as before: 200 
+FAIL N1: nothing in public for anon, authenticated or PUBLIC, and no default that would grant it: 1: policy blocks_own_only on blocks: authenticated
+pass N1: as an emailed code's session, every table and view in public, and each of its columns, is refused (155, 1258 asked): 0 answered: 
+pass N1: as an emailed code's session, every function in public is refused (432, triggers aside): 0 ran or were not refused: 
+pass N1: as anon, every table and view in public, and each of its columns, is refused (155, 1258 asked): 0 answered: 
+pass N1: as anon, every function in public is refused (432, triggers aside): 0 ran or were not refused: 
+pass enrolling a second factor (an authenticator app) from a session is refused at Supabase: 422
+pass N2: a public sign-up with a password gives /api no session: none handed out, or refused there (403) and ended: 422 no session
+pass a new person signs in by a code from api/otp.js, as Supabase is now: 200  redeemed 200 
+pass a new person signs in by a code from api/otp.js, once Supabase takes no sign-ups: 200  redeemed 200 
+pass step 4: a sign-in's handle (rh) is kept with the account it signed in to: 200 
+pass step 4: an id that has no account, merged from one that has, signs in to that same account: 200  true {"did":"did:oc:df63fd93ed7534512e4a56008b65a9b2","new_account":false,"merged":true} 0
+pass step 4: the account is now the kept id's, and the old id's no longer
+pass step 4: and the session the old id started there is ended
+pass step 4: the kept id signs in to it again, as itself: 200
+pass step 4: an id with an account signs in to its own, never to one its merged handles name: 200
+pass step 4: merged handles that name nobody here are a new account: 200
+orangecheck: no session: auth: verify answered 429
+orangecheck: merged handles name 2 accounts; signed in to none
+pass step 4: merged handles that name two accounts sign in to neither, make nothing, and say why: 409 This orangecheck account was merged from two that each have a Brickworks account, so Brickworks cannot tell which one is yours. If one has your email, sign in with it and link orangecheck in Settings.
+orangecheck: no session: auth GET admin/users: no answer in 10 s
+FAIL step 4: a merged_rh of more than 16 handles is read as none: a new account: 502
+pass step 4: an id merged from one linked to an email account signs in to that account: 200 200 
+pass step 4: once unlinked, its handles name nobody: a merge from it is a new account, never the one that unlinked it: {"did":"did:oc:181bfb29c00447b7218ea52106e6c26f","codes":0,"ended":1,"connections":0} 200 {"did":"did:oc:ed0426a3e1ee25787f3750edd042a989","new_account":true,"merged":false} 0
+pass step 4: oc_follow_merge gives nothing for handles that do not name the account
+pass Connect: without the Connect key, nothing is asked of orangecheck, and it says so: 200 {"made":false,"reason":"not_here"}
+pass Connect: without a sign-in, refused, and no call: 401
+pass Connect: a sign-in asks orangecheck once, with consent, the account's id and address, the Connect key, and nowhere else: 200 {"made":true,"did":"did:oc:7169b34db3c125a7a89e5a7432cda427"} 1
+pass Connect: the id orangecheck made is kept with the account: {"did":"did:oc:7169b34db3c125a7a89e5a7432cda427","made_at":"2026-11-26T01:19:39.925504+00:00","asked_at":"2026-11-26T01:19:39.773061+00:00"}
+pass Connect: asked again, the account it made is the one it has: no second call: {"made":false,"reason":"has_one","did":"did:oc:7169b34db3c125a7a89e5a7432cda427"}
+orangecheck: Connect made no account: unavailable 503
+pass Connect: orangecheck down, the answer says nothing was made, and the sign-in goes on: 200 {"made":false,"reason":"unavailable"}
+pass Connect: ...and not asked again within the minute: {"made":false,"reason":"asked_just_now"}
+orangecheck: Connect made no account: unavailable 0
+pass Connect: and a call that never answers too: 200 {"made":false,"reason":"unavailable"}
+pass Connect: an account that has orangecheck (its own, or linked) is never made a second one
+pass Connect: ...and no call is made for it: 200 200 {"made":false,"reason":"has_orangecheck"}
+orangecheck: a Connect account's deletion is held: unavailable 503
+pass Connect: while orangecheck cannot delete the account it made, the Brickworks account is not deleted either, and it says so: 503 orangecheck could not delete the orangecheck account made for you just now, so nothing is deleted yet. Try again in a minute.
+pass Connect: deleting the account calls connectDelete for it, with the key, then deletes it: 200  1
+orangecheck: Connect keeps an account (holds_earnings); ours is deleted all the same
+pass Connect, L1: orangecheck refusing for good (holds_earnings), the Brickworks account is deleted all the same, and says theirs stays at ochk.app: 200 {"deleted":true,"photos":0,"avatars":0,"feedback":0,"orangecheck":{"kept":true,"said":"orangecheck could not delete the orangecheck account made for you, so it stays yours at ochk.app, to claim or delete there."}} 1
+orangecheck: Connect keeps an account (not_deletable); ours is deleted all the same
+pass Connect, L1: orangecheck refusing for good (not_deletable), the Brickworks account is deleted all the same, and says theirs stays at ochk.app: 200 {"deleted":true,"photos":0,"avatars":0,"feedback":0,"orangecheck":{"kept":true,"said":"orangecheck could not delete the orangecheck account made for you, so it stays yours at ochk.app, to claim or delete there."}} 1
+orangecheck: a Connect account's deletion is held: no OC_CONNECT_KEY here
+pass Connect, L1: without the Connect key, a Connect account's deletion is paused: 503, in those words, nothing deleted, orangecheck asked nothing: 503 {"error":"Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted."} 0 calls
+orangecheck: a Connect account's deletion is held: invalid_api_key 401
+pass Connect, L1: with a key orangecheck does not know, a Connect account's deletion is paused: 503, in those words, nothing deleted: 503 {"error":"Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted."}
+orangecheck: a Connect account's deletion is held: bad_request 400
+pass Connect, allow-list: orangecheck answering bad_request, the deletion is held, 503, in those words, nothing deleted: 503 {"error":"Deleting is paused while Brickworks fixes a setup problem. Nothing has been deleted."}
+orangecheck: a Connect account's deletion is held: unavailable 409
+pass Connect, allow-list: orangecheck answering a reason nobody knows, the deletion is held, 503, nothing deleted: 503 {"error":"orangecheck could not delete the orangecheck account made for you just now, so nothing is deleted yet. Try again in a minute."}
+orangecheck: a Connect account's deletion is held: made_up_reason 409
+orangecheck: a Connect account's deletion is held: ok archived
+orangecheck: a Connect account's deletion is held: ok undefined
+orangecheck: a Connect account's deletion is held: invalid_api_key 401
+orangecheck: a Connect account's deletion is held: bad_request 400
+orangecheck: a Connect account's deletion is held: unavailable 0
+orangecheck: a Connect account's deletion is held: rate_limited 429
+orangecheck: a Connect account's deletion is held: Connect threw: orangecheck_check: thrown
+orangecheck: Connect keeps an account (holds_earnings); ours is deleted all the same
+orangecheck: Connect keeps an account (not_deletable); ours is deleted all the same
+pass Connect, allow-list in Brickworks' own unprovision: 14 answers fed straight in, only the six known ones delete, the rest 503
+pass Connect: an account Connect never made one for is deleted with orangecheck down, asking orangecheck nothing (0 calls), and told nothing of it: 200 {"deleted":true,"photos":0,"avatars":0,"feedback":0} 0 calls
+pass Connect: an account Connect never made one for is deleted with no Connect key, asking orangecheck nothing (0 calls), and told nothing of it: 200 {"deleted":true,"photos":0,"avatars":0,"feedback":0} 0 calls
+pass Connect: a fresh emailed code's session provisions with its own address, email_verified: 200 [{"user_id":"97ef52cb-eae6-41d9-b795-2c7d8ead1005","consent":true,"email":"bw-oc-verified-3879c3fd@example.invalid","email_verified":true}]
+pass Connect: a password session (a test account's) provisions with its address unchecked, where a fresh code's is verified: 200 [{"user_id":"8ac6d6a7-a360-41d9-a968-3080432591aa","consent":true,"email":"delivered+bw-oc-pw-3879c3fd@resend.dev","email_verified":false}]
+pass Connect: a code's session past five minutes provisions with its address unchecked, where a fresh one's is verified: 200 [{"user_id":"9be248fc-0246-43e2-929f-aa0cb0c2ac8e","consent":true,"email":"bw-oc-stale-3879c3fd@example.invalid","email_verified":false}]
+pass Connect: an orangecheck session never provisions with email_verified, where a fresh code does: 200 200 {"made":false,"reason":"has_orangecheck"} []
+pass Connect, L2: an account deleted whole while orangecheck was making it one leaves no orangecheck account behind: 200 {"made":false,"reason":"account_leaving"}, deleted 200
+pass Connect, L2: an account only marked as going while orangecheck was making it one leaves no orangecheck account behind: 200 {"made":false,"reason":"account_leaving"}, deleted 200
+pass Connect, L2 race: the deletion marks before any row, a first tick asks, orangecheck answers, the account goes: no orangecheck account left behind: 200 {"made":false,"reason":"account_leaving"}, deleted 200
+account: not deleted: auth DELETE: 500
+pass Connect, L2 R1: two deletions at once, one failing while the other goes on, and a tick between: no orangecheck account left behind: B 502, tick 200 {"made":false,"reason":"account_leaving"}, A 200
+account: not deleted: auth DELETE: 500
+pass Connect, L2 R1b: two deletions at once, one failing while the other goes on, and a tick between: no orangecheck account left behind: ticked before true, B 502, tick 200 {"made":false,"reason":"has_one","did":"did:oc:99e44e0ec33e00d8d6e4ea09e1731cb2"}, A 200
+account: not deleted: auth DELETE: 500
+pass Connect, L2: after a deletion that fails past its mark, an account that never ticked reads as never asked, and its next deletion asks orangecheck nothing: 502 null 200 0 calls
+orangecheck: a Connect account's deletion is held: unavailable 503
+pass Connect, L2: a tick within 15 minutes of a deletion that was held deletes what orangecheck made, and says so: 503 200 {"made":false,"reason":"account_leaving"}
+pass native: without the project's keys, not offered (native null), refused in words, and orangecheck asked nothing: {"ready":false,"everyone":true,"connect":true,"native":null} 503 Signing in with orangecheck from the app is not offered here. Sign in with your email instead. 0
+pass native: with them, offered to everybody: /api/account tells the app the project, orangecheck's host and this audience: {"ready":true,"everyone":true,"connect":true,"native":{"project":"pk_test_orangecheck_check","auth":"https://ochk.io","audience":"http://127.0.0.1:8841"}}
+pass native: a code signs in, a new account, with a session that is a Brickworks sign-in: 200 
+pass native: traded once, with this project's key from configuration (never the app's), the app's code, verifier and redirect, never redirected: {"grant_type":"authorization_code","code":"[token]","code_verifier":"[verifier]","redirect_uri":"http://127.0.0.1:53111/oc/callback","project":"pk_test_orangecheck_check","redirect":"error"}
+pass native: the token it was traded for is ended at orangecheck, and not in the answer
+pass native: and its token is spent, as the window's: sent to ?op=signin after, refused: 409
+pass native: a code used already is refused: 401 That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.
+pass native: the same orangecheck id signs in to the same account, from the app and from the window: 200 200
+pass native: a code with a verifier its challenge was not made from is refused: 401 That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.
+pass native: ...and is spent by trying: the right verifier after it is refused too: 401
+pass native: a code sent with a redirect_uri other than the one it was given for is refused: 401 That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.
+pass native: a code whose token is for another audience is refused, and no account is made: 401 That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.
+pass native: a code whose token has no rh is refused: 401 That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.
+pass native: 6 malformed asks refused 422 in words, orangecheck asked nothing:  0 asked
+orangecheck: a code was not traded: auth_host_unavailable
+pass native: orangecheck down, 503 in words, nobody signed in: 503 orangecheck could not be asked just now. Sign in with orangecheck again in a minute, or with your email.
+pass native: only POST: 405
+pass an orangecheck token whose id was ended before sign-in is refused at the exchange, 401 in words: 401 That orangecheck sign-in was ended. Sign in again.
+pass ...where a token of the same sign-in (rh) with an id not ended gets in: 200 
+pass ...and from the app (?op=native), a code whose token's id was ended is refused, 401: 401 That orangecheck sign-in was ended. Sign in again.
+pass our own revoke of the token right after the exchange puts its id on the list, and its session still reads and writes: 200 true 200
+pass /api/account says orangecheck takes a token here, offered to everybody, from the app too: {"ready":true,"everyone":true,"connect":true,"native":{"project":"pk_test_orangecheck_check","auth":"https://ochk.io","audience":"http://127.0.0.1:8841"}}
+pass without the project's secret, nobody signs in with orangecheck, and it says it is unavailable: 503 Signing in with orangecheck is unavailable here. Sign in with your email instead.
+pass and /api/account says so, for the button to say it, and offers the app nothing: {"ready":false,"everyone":true,"connect":true,"native":null}
+pass without an audience, nobody signs in with orangecheck: 503
+pass twenty tries from one address, the next refused: 401 401 401 401 401 401 401 401 401 401 401 401 401 401 401 401 401 401 401 401 429
+pass anything but POST ?op=signin is refused: 405
+orangecheck_check: 49 accounts made, 49 deleted
+orangecheck_check: 160 passed, 3 failed

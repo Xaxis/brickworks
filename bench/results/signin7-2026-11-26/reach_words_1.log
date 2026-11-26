@@ -1,0 +1,6 @@
+ok   refused 127.0.0.1 (a port nobody listens on): "auth POST verify: not reached (ECONNREFUSED)" -> never reached true
+ok   refused localhost (both families): "auth POST verify: not reached (ECONNREFUSED)" -> never reached true
+ok   no such host: "auth POST verify: not reached (ENOTFOUND)" -> never reached true
+ok   reply lost (socket closed after the request): "auth POST verify: not reached (UND_ERR_SOCKET)" -> never reached false
+ok   no answer within the deadline: "auth POST verify: no answer in 2 s" -> never reached false
+reach_words: 0 wrong

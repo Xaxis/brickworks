@@ -1,0 +1,51 @@
+signin8 (2026-11-26): signin7's Python tests follow its rule (a code emailed in the last five minutes before
+any delete). Branch signin7, commit f8689c994 on 50f5d6d5b. Tests only: no api/ file changed.
+
+WHY THE 13 FAILED
+  tests/fixtures/billing/world.mjs signIn signed amr [{method: "otp"}] with no timestamp. codeOf reads
+  Number(undefined) as NaN, so no session it signed was ever fresh, and stepUp refused every delete
+  403 "Confirm it is you first". That is the rule working; the helper did not sign what Supabase writes.
+  test_console2 looked for "sign_in_notice" in api/orangecheck.js; tell() moved it to api/_oc.js.
+
+WHAT CHANGED
+  world.mjs signIn(claims, {by, ago}): by default a code entered just now (amr otp with its time, as
+  Supabase writes it). by "google" | "github": written down as that way's session (session_standing way).
+  by "orangecheck": bound, linked, with a handle, and app_metadata.orangecheck, so verify() asks
+  orangecheck's ended-sessions list (the world answers it: none ended) and finds it live. ago: seconds
+  since the code. Nothing in api/ was touched; stepUp is as signin7 left it.
+  test_account_erase: test_only_a_code_of_the_last_five_minutes_deletes[google|github|orangecheck|code 301 s].
+    Each: 403 {error: CONFIRM_FIRST, fresh: false}; nothing but the sign-in's own reads asked (no
+    Admission call, no storage, no admin/users); no erasure; the Pro plan still active. Then the same
+    account deletes on a code 240 s old, so the refusal was the session's. The orangecheck case also
+    asserts the revocation list was read once (its refusal is stepUp's, not verify's 503).
+  test_console3: test_a_console_delete_asks_a_code_of_the_last_five_minutes. The owner's code session,
+    301 s old, deletes cleo: 403 fresh false, cleo still there, 0 audit rows, nothing deleted. Run after
+    console3's audit list is read, so the old tests' exact audit list holds on either stepUp.
+    api3_check.mjs's out.delete.deleted is now a copy taken at the delete (it was w.deleted by
+    reference, so a later deletion showed up in it).
+  test_console2: reads api/_oc.js for sign_in_notice.
+  .claude/skills/verify/features/account.md: the deletion recipe names the new tests and signIn's options.
+
+RUNS
+  real_tree.log            the 4 files: 68 passed, 0 failed
+  mutant_stepup_open.log   the same 4 files on a copy whose stepUp returns {asked: {fresh: true}} for
+                           every session (the only difference from the tree, diffed): 63 passed, 5 FAILED,
+                           the 5 being exactly the new refusals (google, github, orangecheck, code 301 s,
+                           console stale). The 13 that were failing pass on that copy too.
+  suite_full.log           whole suite, every tests/test_*.py by absolute path: 2346 passed, 75 skipped,
+                           0 FAIL, 168 files, 356 s
+  ci_gate.log              tools/release/ci_gate.sh on the tree, exit 0: python ok, 2346 passed, 75 skipped
+                           (168 files); shellcheck ok, 46 scripts; viewer bundles ok
+  mutant_stepup_open.diff  the copy's one change (diff -rq of api tests supabase tools web data locale:
+                           only api/_oc.js differs, besides .pyc caches)
+
+STATICS
+  node --check world.mjs, api3_check.mjs; py_compile of the 3 test files
+  tools/check.sh --lists: ok
+  featuremap check: current
+  site_lang --check: 84 pages, 3 languages
+  No godot check, no probes: no app code changed. No site or docs page: nothing a person meets changed.
+
+SELF-ATTACK (briefs/self_attack.md) that applies
+  Tests assert behaviour: every new refusal shown failing on an open stepUp; the control (code 240 s
+  deletes) shows each refusal is the session's. No test-only bypass in api/.

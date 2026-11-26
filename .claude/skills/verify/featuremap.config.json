@@ -1023,7 +1023,7 @@
       "kind": "ui",
       "label": "mould maker",
       "entry": "src/minifig/mould_editor.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd   (by hand: M, a Headgear or hand slot, Make a mould…)",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/mould_ui_probe.gd; tools/probe.sh figmould_probe -- --pictures=DIR, and with PROBE_SIZE=390x844 by touch   (by hand: M, a Headgear or hand slot, Make a mould…)",
       "area": "minifig"
     },
     {
@@ -7324,6 +7324,118 @@
       "label": "ways app probe",
       "entry": "src/dev/ways_app_probe.gd",
       "reach": "node tools/web/relay_server.mjs 11703 --ways-stand-in & BRICKWORKS_API=http://127.0.0.1:11703 WAYS_APP_EMAIL=delivered+x@resend.dev tools/probe.sh ways_app_probe   (headless; delete the account it prints; in tools/suite/out.txt)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "edit at a step",
+      "entry": "src/assembly/builder.gd",
+      "reach": "godot --path .  (B, Author's steps, Next to a step; a click on a sub-assembly takes its parts on so far, \"N of its M parts on at this step\"; C, Delete, a move reach those alone; Select all twice takes every step)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "stepedit probe",
+      "entry": "src/dev/stepedit_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepedit_probe   (346-2 at step 5: the house clicked and painted, Select all and Delete, a session's edit refused then all_steps, each undone, saved and opened again part by part; PROBE_SIZE=390x844 by a tap)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "stepreview probe",
+      "entry": "src/dev/stepreview_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh stepreview_probe   (346-2 at a step: the house nudged, turned and dragged whole, its later parts with it; line and properties counts; print_part, make_unique, move_part on a later part refused; a paint's copies said; a minifig lifted at a step; a step's time; PROBE_SIZE=390x844)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "exactsave probe",
+      "entry": "src/dev/exactsave_probe.gd",
+      "reach": "tools/probe.sh exactsave_probe [--keep=DIR] [--cases=1,5]   (headless, ~10 min: 10030-1 written whole, every part where it was, none mirrored; all of it copied and pasted at (1200,0,0) and saved, the file's lines byte for byte with one line for each copy put down, 6,074 parts where they were, and the paste written whole too; the paste with a part of the original moved, reopened exact; twelve real sets with rounded matrices written whole, and one part each moved and saved, its line alone changed and only in its place; a sub-model placed once moved and turned 30 degrees whole, the one line placing it changed)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "wingplace probe",
+      "entry": "src/dev/wingplace_probe.gd",
+      "reach": "tools/probe.sh wingplace_probe   (windowed, 1100x700: a plate put inside a wing fresh and after a save and an open; a plate from the bin and a pasted brick aimed all round a wing whose mirrored copy stands beside it, and the wing's brick dragged there, every green ghost put down or moved with its twin, every red one refused in the words it said, each drawn as it is; the wing's brick dropped a stud along and where it stood from outside the wing, its twin with it; an ask cut short answers as one in one go)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "room steady probe",
+      "entry": "src/dev/room_steady_probe.gd",
+      "reach": "tools/probe.sh room_steady_probe   (windowed, 390x844; --phone for the phone's layout: 20 puts and undos on the ground and inside a copied wing, the model's room one height in every frame, the window's column never wider than the window, the status bar inside it with no line cut mid-word; pictures before and after a put)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "wide150 probe",
+      "entry": "src/dev/wide150_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh wide150_probe [--phone] [--w150langs=en,de,fr,es] [--w150sizes=1.0,1.5] --pictures=DIR   (the studio's rows give way: nothing wider than its window and no word cut inside, in each language at 100% and 150%, at rest, puts and undos, the wing, the step bar, the side docks or a phone's sheets; a matrix of FAILs at the end; also 320x700, 768x1024, 1024x768, 1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "studio words probe",
+      "entry": "src/dev/studio_words_probe.gd",
+      "reach": "tools/probe.sh studio_words_probe [--phone] [--words-to=FILE]   (headless; the studio used in en, de, fr and es, the desktop's layout then a phone's: a put, a move, an undo, a redo, History's rows, the banner inside a copied sub-assembly, a put and undo there, a delete, a save, then Ask the builders' line with one to four parts picked and a pin's place on each part (greenreds); every line said or shown has its entry and keeps no words of the interface in English, names, keys and brands apart; FILE gets every line read, lang<TAB>English<TAB>drawn)",
+      "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "your own moulds on your account",
+      "entry": "api/_moulds.js",
+      "reach": "POST /api/people?op=mould {id, slot, text} signed in (the studio sends it; refused in words: over 2 MB 413, a line not 0/2/3, a number not finite or past 400 LDU, an id not its text's digest, past 40 moulds or 24 MB an account 409); GET ?op=moulds (your own, no text); GET ?op=mould&id=M (yours, or one a shown avatar wears; private, immutable; 404 else); supabase/own_moulds.sql (RLS, no grants to anon or authenticated)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "hair of your own in the site's minifig maker",
+      "entry": "web/minifig-maker.js",
+      "reach": "https://brickworks.diy/profile, Edit profile, Make a minifig, Hair and hats   (Your own first, with its filter, each drawn from its triangles in the colour chosen, tools/viewer/minifig.js mouldSurfaces; worn in its base hair's colour, seated as the base is; Save keeps the picture with recipe hd = the mould's id, refused 403 unless it is one of yours; none yet: a line to Make a mould… in the studio)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "moulds sent to your account",
+      "entry": "src/account/moulds_on_account.gd",
+      "reach": "godot --path .  (signed in, the figure builder, Headgear, Make a mould…, Save mould: the summary says \"Kept on your account too\"; one saved signed out is only asked about, \"Put on my account\" or \"Not mine\", the next time the builder opens signed in; a mould a model brought is never sent)",
+      "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "sitehair probe",
+      "entry": "src/dev/sitehair_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:PORT BW_PROBE_TOKEN=T BW_PROBE_USER=U godot --headless --path . --script src/dev/sitehair_probe.gd   (a relay of this checkout and a throwaway's token: saved signed in it is kept, signed out it is not and is asked about, a carried one never sent, a remake replaces, a refused one not sent again, the refusals' words in de/fr/es; without a token SKIPPED, BW_MOULD_OUT=FILE writes the mould's text)",
+      "area": "minifig"
+    },
+    {
+      "kind": "cli",
+      "label": "sitehair browser flow",
+      "entry": "tools/web/sitehair_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sitehair_flow.mjs --url=<preview> --out=DIR   (preview check sitehair; or on a relay with --mould=FILE: a mould made in the studio at /app, kept on the account, worn in the site's maker, on her profile, comment and page at 1280 and 390, another account refused, hostile moulds refused in words, bytes per avatar view)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "pasteexact probe",
+      "entry": "src/dev/pasteexact_probe.gd",
+      "reach": "tools/probe.sh pasteexact_probe [--keep=DIR] [--cases=1,3]   (headless, ~6 min: all of 10030-1 pasted in the same tab and from another tab, a mirrored copy, a copy turned off square holding a mirrored one, a part at 10,000 LDU and a copy turned 30 degrees, the fixture pasted turned a quarter, Ctrl+D, the fixture put whole into another file, two parts of a copy; each saved and reopened three times: every part where it was put down within 0.002 LDU, none mirrored, the file's placing lines byte for byte, each later save the first byte for byte)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "mirrorsave probe",
+      "entry": "src/dev/mirrorsave_probe.gd",
+      "reach": "tools/probe.sh mirrorsave_probe   (headless, ~1 min; MIRRORSAVE_ONLY=words, MIRRORSAVE_DUMP=DIR keeps each file: a wing placed mirrored first, straight first, three copies two mirrored, a mirrored car of mirrored wings, a turned copy first, one mirrored copy, a handed wing; the app's own and someone else's; each copy read in the hand its lines place it in; unedited, a part put in Main, a part of the first copy nudged, the first copy mirrored in place; saved twice, opened and saved twice more: the wing's lines as the file had them, every part where it was, byte for byte)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "orangecheck counts check",
+      "entry": "tools/web/oc_often_check.mjs",
+      "reach": "set -a; . ./.env; set +a; node --experimental-test-module-mocks tools/web/oc_often_check.mjs",
       "area": "account"
     }
   ]

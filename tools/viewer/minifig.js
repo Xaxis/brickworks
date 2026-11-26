@@ -29,8 +29,9 @@ import {
   Vector2, Vector3, WebGLRenderer,
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { toCreasedNormals } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { INHERIT, parseLbm } from "../../web/lbm.js";
-import { figureParts, GRIPS, NECK_LIFT, NECK_TURNED, NECKS, POSES } from "../../web/minifig-parts.js";
+import { figureParts, GRIPS, NECK_LIFT, NECK_TURNED, NECKS, ownMould, POSES } from "../../web/minifig-parts.js";
 import { webglWorks } from "./view.js";
 
 export { webglWorks };
@@ -75,6 +76,51 @@ function inHand(part) {
 }
 
 const CAPES = new Set(NECKS.filter(([, , kind]) => kind === "cape").map(([id]) => id));
+
+// A mould of the person's own (sitehair): at most this many triangles are
+// drawn (src/minifig/mould.gd MOST_OPENED; api/_moulds.js keeps no more).
+const MOST_TRIANGLES = 18000;
+// Where LDraw's creases stay sharp and the rest is shaded smooth: the
+// sculpted surface is many small faces, which flat shading shows as facets.
+const CREASE = 40 * D;
+
+/// A mould's part file (src/minifig/mould.gd Mould.text, held at the edge
+/// by api/_moulds.js) as the surfaces a part's .lbm gives: its triangles,
+/// in LDraw's axes, turned into the page's (+Y up: x, -y, -z, a half turn,
+/// so its winding stays LDraw's counter-clockwise), one surface a colour
+/// and a side (BFC NOCLIP is both sides), shaded smooth with its creases
+/// kept. 16 is the colour the figure wears it in. Only its triangles are
+/// read: comments, edges and anything else are passed over.
+export function mouldSurfaces(text) {
+  const groups = new Map();
+  let both = false;
+  let triangles = 0;
+  for (const raw of String(text || "").split("\n")) {
+    const words = raw.trim().split(/\s+/);
+    if (words[0] === "0") {
+      if (words[1] === "BFC" && words[2] === "NOCLIP") both = true;
+      else if (words[1] === "BFC" && words[2] === "CLIP") both = false;
+      continue;
+    }
+    if (words[0] !== "3" || words.length !== 11) continue;
+    const n = words.slice(2).map(Number);
+    if (!n.every(Number.isFinite)) continue;
+    if (++triangles > MOST_TRIANGLES) break;
+    const colour = Number(words[1]);
+    const key = `${colour}:${both}`;
+    if (!groups.has(key)) groups.set(key, { colour, twoSided: both, at: [] });
+    const at = groups.get(key).at;
+    for (let k = 0; k < 3; k++) at.push(n[k * 3], -n[k * 3 + 1], -n[k * 3 + 2]);
+  }
+  return [...groups.values()].map(({ colour, twoSided, at }) => {
+    const flat = new BufferGeometry();
+    flat.setAttribute("position", new BufferAttribute(new Float32Array(at), 3));
+    const g = toCreasedNormals(flat, CREASE);
+    flat.dispose();
+    g.computeBoundingSphere();
+    return { g, colour, twoSided };
+  });
+}
 
 /// Every part of [recipe], placed: [{slot, part, colour, skinFrom, at}]
 /// with [at] in the page's axes, the torso's top middle at the origin.
@@ -131,7 +177,8 @@ function studio(scene, renderer) {
 /// the maker drives it by. [given]: root (the part store, ending in "/"),
 /// meshes ({part: hash}) and colours ({code: "rrggbb" with "m" for metal,
 /// "t" for see-through}) from web/minifig/figure.json; recipe; pick(slot),
-/// a part pressed; turned(), the person turned it; errors, said in.
+/// a part pressed; turned(), the person turned it; errors, said in; own(id),
+/// a promise of the text of a mould of the person's own (OWN_MOULD).
 export async function minifig3d(stage, given) {
   const o = { pick: () => {}, turned: () => {}, errors: [], ...given };
   const canvas = document.createElement("canvas");
@@ -154,9 +201,20 @@ export async function minifig3d(stage, given) {
   const camera = new PerspectiveCamera(20, 1, 10, 4000);
   const view = { round: 0, up: 0 };
 
-  // Geometry by hash, once; materials by colour, once.
+  // Geometry by hash, once; materials by colour, once. A mould of the
+  // person's own by its id, its text asked of [own] (the maker's, which the
+  // browser keeps for good: an id is its text).
   const geometry = new Map();
   const shapeOf = (part) => {
+    if (ownMould(part)) {
+      if (!o.own) return Promise.resolve(null);
+      if (!geometry.has(part)) {
+        geometry.set(part, Promise.resolve().then(() => o.own(part)).then((text) => mouldSurfaces(text))
+          .then((surfaces) => { if (!surfaces.length) throw new Error("no triangles"); return surfaces; })
+          .catch((trouble) => { o.errors.push(`${part}: ${trouble.message}`); geometry.delete(part); return null; }));
+      }
+      return geometry.get(part);
+    }
     const hash = o.meshes[part];
     if (!hash) return Promise.resolve(null);
     if (!geometry.has(hash)) {
@@ -383,6 +441,24 @@ export async function minifig3d(stage, given) {
     async sketch(other, side) {
       const built = await make(other);
       const was = swap(built);
+      const drawn = shot(side, "whole");
+      swap(was);
+      draw();
+      return drawn;
+    },
+    /// [part] alone in [colour], [side] pixels square, from the figure's own
+    /// angle: a tile for a part no tile was drawn of (a mould of the
+    /// person's own). Null when it would not load.
+    async part(part, colour, side) {
+      const shapes = await shapeOf(part);
+      if (!shapes) return null;
+      const made = new Group();
+      for (const s of shapes) {
+        const mesh = new Mesh(s.g, material(s.colour === INHERIT ? colour : s.colour, s.twoSided ? DoubleSide : FrontSide));
+        mesh.castShadow = true;
+        made.add(mesh);
+      }
+      const was = swap({ made, box: new Box3().setFromObject(made) });
       const drawn = shot(side, "whole");
       swap(was);
       draw();

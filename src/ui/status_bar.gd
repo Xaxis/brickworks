@@ -35,6 +35,8 @@ var _weighed_in: int = -1
 var _hint: Label
 ## Where the part in hand goes, while one is (place_words).
 var _place: Label
+## Whether there is a place to say: shown where it fits (_fit).
+var _place_wanted: bool = false
 ## Beside a line naming a file just written for the person (SaveTo): the
 ## file manager open on it.
 var show_folder: Button
@@ -81,10 +83,26 @@ func _ready() -> void:
 	working = Working.new()
 	working.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(working)
+	# It takes the hint's place, and the fields give way, the moment it
+	# shows, before the row is laid out: done in this bar's next frame, the
+	# row held Working and the hint's 80 units together for a frame, 7 units
+	# wider than a 1280 window at 150% (wide150b, "Laying out 5 parts").
+	working.visibility_changed.connect(func() -> void:
+		if _hint == null or shell == null:
+			return
+		_hint.visible = not working.visible
+		if not work_only:
+			_fit()
+		elif working.visible:
+			# A phone's busy line has no fields to fit, and its bar kept its
+			# 150 beside Cancel: 248 units in a window of 232 at 150%.
+			working.give_way(LaidOut.offered(working)))
 	_hint = _label(row, 1.0)
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.clip_text = true
-	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Cut short at a word, never inside one: "Placing Moved to…" was the
+	# line at 390 points.
+	_hint.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_hint.custom_minimum_size = Vector2(80, 0)
 	# A live region: what the app says here is read out as it is said, by a
 	# screen reader that is running, without the keys leaving the model.
@@ -181,6 +199,8 @@ func _process(_delta: float) -> void:
 	if work_only:
 		if visible != busy:
 			visible = busy
+		if busy and working.visible:
+			working.give_way(LaidOut.offered(working))
 		Wake.rest(self)
 		return
 	# The line on the left at once, every frame: what was said, or the hint.
@@ -241,43 +261,57 @@ const HINT_ROOM := 160.0
 ## The fields on the right fitted to the bar, every frame, as what they say
 ## changes: where they would not all fit beside the line on the left, the
 ## least wanted goes first (how big a stud is on screen, then the snap and
-## turn, then the size, the weight and the selection), so none runs past the
-## window's edge. On a narrow screen the first two go whatever room is left,
-## as before. The left keeps the room of what stands there: Working's bar and
-## Cancel while the app works, wider than the hint's room, pushed a Studio
-## file's long stability line, and Account and the Properties tab with it,
-## past a 1280 window's right edge (ux13's walk, p6_05).
+## turn, then the size, the weight and the selection; then where the part in
+## hand goes, and last the counts), so none runs past the window's edge. On a
+## narrow screen the first two go whatever room is left, as before. The left
+## keeps the room of what stands there: Working's bar and Cancel while the
+## app works, wider than the hint's room, pushed a Studio file's long
+## stability line, and Account and the Properties tab with it, past a 1280
+## window's right edge (ux13's walk, p6_05).
+##
+## The place and the counts go too, last: kept whatever the room, in a window
+## 390 points across they made the bar up to 778 units wide in a window of
+## 424, and the window's whole column with it, the header included. Its row,
+## given 623 units or more, came onto one line from two, and the model's room
+## grew 22 units at its top; as what the bar said changed after a part was
+## put down or taken back, the room flipped between 748 and 770 units tall,
+## and the view glided 11 px after every brick (room390).
 func _fit() -> void:
 	var window: float = get_viewport().get_visible_rect().size.x
 	var narrow: bool = window < 900.0
 	# The bar's own width, or the window's past where it starts when the
 	# fields have already pushed the bar wider than that.
 	var room: float = minf(size.x, window - global_position.x)
-	var shown: Dictionary = {_zoom: not narrow, _settings: not narrow,
-		_size: not _size.text.is_empty(), _selected: true}
+	var shown: Dictionary = {_place: _place_wanted, counts: true, _zoom: not narrow,
+		_settings: not narrow, _size: not _size.text.is_empty(), _selected: true}
 	var left: float = HINT_ROOM
 	if working.visible:
+		# Its bar gives way first, inside the room the bar has (Working).
+		working.give_way(room - get_theme_stylebox("panel").get_minimum_size().x)
 		left = maxf(left, working.get_combined_minimum_size().x)
 	var needed: float = get_theme_stylebox("panel").get_minimum_size().x + left
-	for label: Label in [_place, counts, _size, _selected, _settings, _zoom]:
-		if bool(shown.get(label, label.visible)):
+	for label: Label in shown:
+		if bool(shown[label]):
 			needed += _width(label)
 	# The weight, said beside the counts whenever there is one (_show_weight).
-	var weighed: bool = not _weight.text.is_empty() and counts.visible
+	var weighed: bool = not _weight.text.is_empty()
+	var weight_wide: float = _weight_join.get_minimum_size().x + _weight.get_minimum_size().x
 	if weighed:
-		needed += _weight_join.get_minimum_size().x + _weight.get_minimum_size().x
+		needed += weight_wide
 	if show_folder.visible:
 		needed += show_folder.get_combined_minimum_size().x
-	for least: Label in [_zoom, _settings, _size]:
-		if needed > room and bool(shown[least]):
+	for least: Label in [_zoom, _settings, _size, _weight, _selected, _place, counts]:
+		if needed <= room:
+			break
+		if least == _weight:
+			if weighed:
+				weighed = false
+				needed -= weight_wide
+		elif bool(shown[least]):
 			shown[least] = false
 			needed -= _width(least)
-	if needed > room and weighed:
-		weighed = false
-		needed -= _weight_join.get_minimum_size().x + _weight.get_minimum_size().x
-	if needed > room and bool(shown[_selected]):
-		shown[_selected] = false
-		needed -= _width(_selected)
+	# The weight is one line with the counts: it goes with them.
+	weighed = weighed and bool(shown[counts])
 	for label: Label in shown:
 		if label.visible != bool(shown[label]):
 			label.visible = shown[label]
@@ -472,13 +506,15 @@ static func amounts(values: Array) -> PackedStringArray:
 	return out
 
 
+## Where the part in hand goes, said: shown while there is a place, where
+## _fit finds it room.
 func _show_place(words: String) -> void:
-	var shown: bool = not words.is_empty() and not work_only
+	_place_wanted = not words.is_empty() and not work_only
 	if _place.text != words:
 		_place.text = words
-	if _place.visible != shown:
-		_place.visible = shown
-		(_place.get_meta("line") as Control).visible = shown
+	if not _place_wanted and _place.visible:
+		_place.visible = false
+		(_place.get_meta("line") as Control).visible = false
 
 
 ## A stud's width in interface units, at the distance the view turns about.

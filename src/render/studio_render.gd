@@ -217,6 +217,13 @@ const PRODUCT_PEEL := 0.0
 const PRODUCT_SINK := 0.0
 const PRODUCT_POLISH := 0.0
 const PRODUCT_SCUFF := 0.0
+## A set photographed (photoreal19, RenderSettings.floor; path_tracer.glsl's
+## photo version): the floor a product photograph's set stands on, on the
+## bare seamless (glossy, exposed past white, its shade cool and coloured
+## by the model; [method _floor_of] says where). On: the solo judge called the sweep's shots photographs
+## more often with it in both classes, the sets +0.012 (95%: +0.003 to
+## +0.021) and the close-ups +0.025 (+0.001 to +0.059), docs/RENDERING.md 5u.
+const PRODUCT_FLOOR := 1.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2682,6 +2689,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.sink = float(breakup[3])
 	_tracer.marked = _tracer.product and (_own(settings.rubbed, PRODUCT_RUBBED) > 0.0
 		or not _matched(settings).is_empty())
+	_tracer.photo = _tracer.product and _floor_of(settings) > 0.0
 	# The product look's picture has the samples' grain taken out
 	# (path_tracer_resolve.glsl), as a photograph has none; the window look's
 	# Best is drawn as it was.
@@ -3101,7 +3109,22 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	# each part's record).
 	var breakup: Array = _breakup(settings) if worn else [0.0, 0.0, 0.0, 0.0]
 	data.append_array([float(breakup[0]), float(breakup[1]), float(breakup[2]), float(breakup[3])])
+	# A set photographed (photoreal19), read only by the photo version.
+	data.append_array([_floor_of(settings), 0.0, 0.0, 0.0])
 	return data
+
+
+## The floor a set photographed stands on (photoreal19) that [param
+## settings] ask for, 0 for none: only in the product look, on the bare
+## seamless paper the judge saw it on, where the sweep is the shadow
+## catcher with no table's relief and no surface of its own. A lit stage
+## is its own, and so is the gallery card's desk (CardPhoto.LOOK, a table
+## on the catcher), which was not judged with it.
+func _floor_of(settings: RenderSettings) -> float:
+	if settings.look != "product" or not _catches(settings) or settings.surface != 0 \
+			or _own(settings.table, PRODUCT_TABLE) > 0.0:
+		return 0.0
+	return maxf(_own(settings.floor, PRODUCT_FLOOR), 0.0)
 
 
 ## How bright the large source (photoreal14) that [param settings] ask for

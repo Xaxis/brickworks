@@ -25,7 +25,7 @@
 ##    then lands, to the stud and plate: a 2 x 4 brick aimed at four places
 ##    either side of the middle, on the ground or on what is in the way, and
 ##    at another brick's top, a 1 x 2 plate turned, aimed at the ground and
-##    at that top, and two parts carried as a copy (Ctrl+D), each read off
+##    at that top, and two parts carried as a copy (Ctrl+C, Ctrl+V), each read off
 ##    the bar, put down with a click and measured; nothing in hand, nothing
 ##    said.
 ## And: Help, What's This? is a row of the Help menu with Shift+F1, under
@@ -534,9 +534,15 @@ func _place() -> void:
 	for id: int in two:
 		_builder.select_brick(id, true)
 	await _frames(6)
-	await _key(KEY_D, true)
+	# Copied and pasted: a paste holds the copy in hand. Ctrl+D did until
+	# ux14, which made Duplicate put its copy down beside the selection at
+	# once (EditVerbs.duplicate_beside), with nothing in hand to read.
+	await _key(KEY_C, true)
+	await _key(KEY_V, true)
 	await _frames(10)
-	_check("3: two parts in hand, carried (Ctrl+D)", _builder.is_carrying())
+	_check("3: two parts in hand, carried as a copy (Ctrl+C, Ctrl+V: %d)" % [
+		_builder.carrying.items.size() if _builder.is_carrying() else 0],
+		_builder.is_carrying() and _builder.carrying.items.size() == 2)
 	if _builder.is_carrying():
 		await _put("two bricks carried, aimed at the ground in front and left", Vector3(-100, 0, 100), "place_carried", true)
 	await _key(KEY_ESCAPE)

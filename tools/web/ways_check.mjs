@@ -40,12 +40,32 @@
 //      too (F2); unlinking during sign-ins leaves none of theirs alive (F7).
 //   9. The owner's console: each one's keys and callback, its switch off and
 //      on again (off, the button goes and /auth/<name> says so).
-// Every account made is deleted at the end.
+//  10. The owner's address (signin4, F8): Google, GitHub and the app's
+//      GitHub refuse it in words, and nothing is minted (its last sign-in
+//      stays as it was); Settings offers neither; the console opens to a
+//      code's session, never to one GitHub or orangecheck started.
+//  11. An Unlink racing a first Google sign-in, 20 times, the Unlink sent
+//      at a different moment of the sign-in each time (F7): off every time,
+//      and no session of Google's left alive.
+//  12. One GitHub account in a loop (F9): refused at its limit before
+//      anything is spent, from any network, while another person's sign-in
+//      goes through. Nothing is counted by network (signin6, signreview3
+//      R3): a network whose old count is full still signs people in.
+//      Nothing a visitor can do without an account counts (signin5, SR2):
+//      40 starts from one network, or one start's cookie sent 11 times
+//      (GitHub asked once), and the next person there signs in.
+//  13. A Claude connection approved from a GitHub session ends with
+//      GitHub's Unlink (signin5, SR1): its tools and its refresh refused;
+//      one approved by a code's session stays.
+// Every sign-in comes from a network of its own (x-forwarded-for, as Vercel
+// sets it), but 12's, which share theirs on purpose. The limits count
+// across runs and relays for 15 minutes. Every account made is deleted at
+// the end.
 import { createHash, randomBytes } from "node:crypto";
 import { codeFor, githubId, KEYS } from "./ways_stand_in.mjs";
 import { deleteAccount, mintCode, mintSession } from "./session.mjs";
 import { signedInJustNow } from "../../api/_oc.js";
-import { googleVouches } from "../../api/_ways.js";
+import { googleVouches, LIMITS, networkOf } from "../../api/_ways.js";
 
 const arg = (name, fallback = "") => (process.argv.find((a) => a.startsWith(`--${name}=`)) || "").slice(name.length + 3) || fallback;
 const site = arg("url", "http://127.0.0.1:11701").replace(/\/+$/, "");
@@ -67,10 +87,13 @@ const challengeOf = (verifier) => createHash("sha256").update(verifier).digest("
 // account of that domain, the only way Google vouches for it.
 const workspace = (email) => ({ email, verified: true, hd: "resend.dev" });
 
-async function call(path, { method = "GET", token = "", body, cookie = "" } = {}) {
+// A network of its own, from 198.18.0.0/15 (set aside for tests).
+const network = () => `198.${18 + (randomBytes(1)[0] & 1)}.${randomBytes(1)[0]}.${1 + (randomBytes(1)[0] % 254)}`;
+
+async function call(path, { method = "GET", token = "", body, cookie = "", from = "" } = {}) {
   const reply = await fetch(`${site}${path}`, { method, redirect: "manual",
     headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...(body ? { "content-type": "application/json" } : {}),
-      ...(cookie ? { cookie } : {}) }, body: body ? JSON.stringify(body) : undefined });
+      ...(cookie ? { cookie } : {}), ...(from ? { "x-forwarded-for": from } : {}) }, body: body ? JSON.stringify(body) : undefined });
   const text = await reply.text();
   let json = null;
   try {
@@ -103,9 +126,22 @@ async function rpc(name, body) {
 
 const connectedOf = (account) => rpc("oc_connected_of", { account });
 
-async function record(account) {
+/// How [account] signs in with Google and GitHub (supabase/way_links.sql):
+/// {google: {state, id}, github: {...}}, a way never used left out.
+const links = async (account) => (await rpc("way_links_of", { account })) || {};
+
+/// The account's Supabase user, as the admin API has it, or null.
+async function userOf(account) {
   const reply = await fetch(`${SB}/auth/v1/admin/users/${account}`, { headers: { apikey: secret, authorization: `Bearer ${secret}` } });
-  return reply.ok ? (await reply.json()).app_metadata || {} : null;
+  return reply.ok ? reply.json() : null;
+}
+
+/// Whether an account at [email] exists (the admin list's filter).
+async function accountAt(email) {
+  const reply = await fetch(`${SB}/auth/v1/admin/users?${new URLSearchParams({ filter: email, per_page: "50" })}`,
+    { headers: { apikey: secret, authorization: `Bearer ${secret}` } });
+  if (!reply.ok) throw new Error(`the admin list answered ${reply.status}`);
+  return ((await reply.json()).users || []).some((one) => String(one.email || "").toLowerCase() === email.toLowerCase());
 }
 
 async function renews(refresh) {
@@ -145,10 +181,10 @@ async function provisionsOf(account, ms = 4000) {
 /// A whole sign-in with [name] as [who], from /auth/<name>, as the page
 /// makes it: its own verifier, whose challenge goes as take=, given back at
 /// way_take. {start, back, take, took, verifier}, each the server's answer.
-async function viaWay(name, who, { then = "/gallery?x=1", app = null, tamper = null, taking = true } = {}) {
+async function viaWay(name, who, { then = "/gallery?x=1", app = null, tamper = null, taking = true, from = network() } = {}) {
   const verifier = b64url(randomBytes(32));
   const query = new URLSearchParams({ then, ...(app || { take: challengeOf(verifier) }) });
-  const start = await call(`/auth/${name}?${query}`);
+  const start = await call(`/auth/${name}?${query}`, { from });
   const startCookie = cookieNamed(start.cookies, `bw_way_${name}`);
   for (const one of [who.email, ...((who.emails || []).map((e) => e.email))]) if (one && !made.includes(one.toLowerCase())) made.push(one.toLowerCase());
   if (start.status !== 302 || !/^https:\/\//.test(start.location)) return { start };
@@ -156,9 +192,9 @@ async function viaWay(name, who, { then = "/gallery?x=1", app = null, tamper = n
   let state = new URL(start.location).searchParams.get("state");
   if (tamper === "state") state = `${state}x`;
   if (tamper === "verifier") code = codeFor(start.location.replace(/code_challenge=[^&]+/, `code_challenge=${"A".repeat(43)}`), who);
-  const back = await call(`/auth/callback/${name}?${new URLSearchParams({ code, state })}`, { cookie: valueOf(startCookie) });
+  const back = await call(`/auth/callback/${name}?${new URLSearchParams({ code, state })}`, { cookie: valueOf(startCookie), from });
   const take = cookieNamed(back.cookies, "bw_way_take");
-  const took = take && taking ? await call("/api/otp?op=way_take", { method: "POST", cookie: valueOf(take), body: { code_verifier: verifier } }) : null;
+  const took = take && taking ? await call("/api/otp?op=way_take", { method: "POST", cookie: valueOf(take), body: { code_verifier: verifier }, from }) : null;
   return { start, startCookie, back, take, took, verifier, bind: cookieNamed(back.cookies, "bw_way_bind") };
 }
 
@@ -313,7 +349,7 @@ try {
     && hubTo.searchParams.get("code_challenge_method") === "S256", hub.start.location);
   const hubAccount = hub.took?.json?.user?.id;
   check("6. a new address: a new account, signed in, GitHub's id kept with it", hub.took?.status === 200 && hub.took.json?.new_account === true
-    && hub.took.json?.user?.email === d && (await record(hubAccount))?.way_github_id === String(githubId(d)),
+    && hub.took.json?.user?.email === d && (await links(hubAccount)).github?.id === String(githubId(d)),
     JSON.stringify({ ...hub.took?.json, access_token: undefined, refresh_token: undefined }));
   await wait(1500);
   check("6. GitHub's token handed back once the address was read", (await stand()).revoked.length >= 1);
@@ -343,7 +379,7 @@ try {
   check("6. GitHub to an account a code made: nothing handed out, a code asked first, GitHub's id waiting sealed (F3)",
     eHub.back.location === `/profile?${new URLSearchParams({ "sign-in": "", then: "/settings", with: "github", failed: "confirm" })}`
     && !eHub.take && /Path=\/api\/otp;/.test(eHub.bind) && /HttpOnly/.test(eHub.bind) && /Max-Age=900/.test(eHub.bind)
-    && !(await record(eCode.account))?.way_github, `${eHub.back.location} ${eHub.bind.slice(0, 40)}`);
+    && !(await links(eCode.account)).github, `${eHub.back.location} ${eHub.bind.slice(0, 40)}`);
   const stale = await call("/api/otp?op=way_bind", { method: "POST", token: eCode.token, cookie: valueOf(eHub.bind) });
   const stranger = await call("/api/otp?op=way_bind", { method: "POST", token: second.token, cookie: valueOf(eHub.bind) });
   const eFresh = await codeSignIn(e);
@@ -351,7 +387,7 @@ try {
   const boundAgain = await call("/api/otp?op=way_bind", { method: "POST", token: eFresh.token, cookie: valueOf(eHub.bind) });
   check("6. kept only for that account, after a code just now: a password's session 403, another account's 410, the code's 200, once",
     stale.status === 403 && stale.json?.fresh === false && stranger.status === 410 && bound.status === 200 && boundAgain.status === 410
-    && (await record(eCode.account))?.way_github_id === String(githubId(e)), `${stale.status} ${stranger.status} ${bound.status} ${boundAgain.status}`);
+    && (await links(eCode.account)).github?.id === String(githubId(e)), `${stale.status} ${stranger.status} ${bound.status} ${boundAgain.status}`);
   const eAgain = await viaWay("github", { email: e, verified: true });
   const eOther = await viaWay("github", { email: e, verified: true, id: githubId(e) + 1 });
   check("6. then GitHub signs it in; another GitHub account with the same address asks a code again",
@@ -398,7 +434,7 @@ try {
   check("8. GitHub unlinked: every session it started ends, renewals too; the code's signs on (F2)", dOff.json?.github === "off"
     && !dOff.json?.signed_out && hubMe.status === 401 && appMe.status === 401 && !hubRenews && !appRenews && codeMe.status === 200,
     `${JSON.stringify(dOff.json)} ${hubMe.status} ${appMe.status} ${hubRenews} ${appRenews} ${codeMe.status}`);
-  check("8. and its id goes with it: linked again, GitHub asks a code first", !(await record(dCode.account))?.way_github_id);
+  check("8. and its id goes with it: linked again, GitHub asks a code first", !(await links(dCode.account)).github?.id);
   // f: signed in with GitHub, and unlinking GitHub from that very session.
   const f = address("f");
   const fHub = await viaWay("github", { email: f, verified: true });
@@ -446,6 +482,223 @@ try {
     check("9. switched on again: offered", onNow.status === 200 && (await call("/api/account")).json?.ways?.google === true, String(onNow.status));
     const nobody = await call("/api/admin?op=sign_in_switch", { method: "POST", token: code.token, body: { with: "google", on: false } });
     check("9. anybody else: not found", nobody.status === 404, String(nobody.status));
+  }
+
+  // 10. The owner's address signs in by a code alone (F8).
+  if (owner) {
+    const boss = await signIn(owner);
+    const before = (await userOf(boss.account))?.last_sign_in_at;
+    const ownVerifier = b64url(randomBytes(32));
+    const byGoogle = await viaWay("google", workspace(owner));
+    const byHub = await viaWay("github", { email: owner, verified: true });
+    const byHubCaps = await viaWay("github", { email: owner.toUpperCase(), verified: true });
+    const byApp = await viaWay("github", { email: owner, verified: true },
+      { app: { app: loop, state: "ownerstate1234", code_challenge: challengeOf(ownVerifier) } });
+    const appBack = new URL(byApp.back?.location || "http://x/");
+    await wait(1500);
+    const after = (await userOf(boss.account))?.last_sign_in_at;
+    check("10. the owner's address by Google, by GitHub (in capitals too) and by the app's GitHub: refused as code only, nothing handed out",
+      [byGoogle, byHub, byHubCaps].every((one) => /failed=code_only/.test(one.back?.location || "") && !one.take && !one.bind)
+      && appBack.searchParams.get("error") === "code_only" && !appBack.searchParams.get("code"),
+      [byGoogle, byHub, byHubCaps, byApp].map((one) => one.back?.location).join(" "));
+    check("10. and nothing minted: the owner's last sign-in is the code's, as it was", Boolean(before) && after === before, `${before} ${after}`);
+    const asCode = await call("/api/admin?op=switches", { token: boss.token });
+    const ownWays = await call("/api/otp?op=ways", { token: boss.token });
+    check("10. a code's session opens the console; Settings offers the owner neither Google nor GitHub", asCode.status === 200
+      && ownWays.json?.code === true && ownWays.json?.offered?.google === false && ownWays.json?.offered?.github === false,
+      `${asCode.status} ${JSON.stringify(ownWays.json)}`);
+    // A session GitHub started for the address before it was the owner's,
+    // and one orangecheck started: written down as each is at its sign-in.
+    const hubHeld = await signIn(owner);
+    const wrote = await rpc("way_session_keep", { session: sessionIdOf(hubHeld.token), account: hubHeld.account, way: "github" });
+    const asHub = await call("/api/admin?op=switches", { token: hubHeld.token });
+    const ocHeld = await signIn(owner);
+    const did = `did:oc:${randomBytes(16).toString("hex")}`;
+    const claimed = await rpc("oc_claim", { did, account: ocHeld.account });
+    const bound = await rpc("oc_bind_session", { session: sessionIdOf(ocHeld.token), account: ocHeld.account, did,
+      rh: randomBytes(8).toString("hex"), aud: "brickworks.diy", iat: Math.floor(Date.now() / 1000) });
+    const asOc = await call("/api/admin?op=switches", { token: ocHeld.token });
+    const stillCode = await call("/api/admin?op=switches", { token: boss.token });
+    check("10. the console refuses the owner's session GitHub started, and one orangecheck started, in words (403); the code's still opens",
+      wrote === true && asHub.status === 403 && asHub.json?.code_only === true && claimed === ocHeld.account && bound === true
+      && asOc.status === 403 && asOc.json?.code_only === true && stillCode.status === 200,
+      `${wrote} ${asHub.status} ${JSON.stringify(asHub.json)} ${JSON.stringify(claimed)} ${bound} ${asOc.status} ${stillCode.status}`);
+  }
+
+  // 11. An Unlink racing a first sign-in, 20 times (F7). How long a whole
+  // Google sign-in takes here, then the Unlink sent from its start to a
+  // third past its end, so some land before it reads the way, some while
+  // it mints, some after it is handed out.
+  const warm = address("racewarm");
+  await signIn(warm);
+  const t0 = Date.now();
+  await viaWay("google", workspace(warm));
+  const span = Date.now() - t0;
+  const raced = [];
+  // An Unlink that itself failed (a 503: Supabase slow to read the session,
+  // said to the person, nothing done) is no race: that try is made again
+  // with a new account, at most 3 times, and counted.
+  const unlinkFailed = [];
+  for (let n = 0; n < 20;) {
+    const r = address(`race${n}${unlinkFailed.length ? `r${unlinkFailed.length}` : ""}`);
+    const rCode = await signIn(r);
+    const delay = Math.round((span * 1.33 * n) / 19);
+    const [way, off] = await Promise.all([viaWay("google", workspace(r)),
+      wait(delay).then(() => call("/api/otp?op=ways", { method: "POST", token: rCode.token, body: { with: "google", on: false } }))]);
+    // The verify bucket is everyone's on this box: a sign-in every few seconds.
+    await wait(2500);
+    if (off.status !== 200 && unlinkFailed.length < 3) {
+      unlinkFailed.push(`${delay}:${off.status}`);
+      continue;
+    }
+    raced.push({ rCode, way, off, delay });
+    n += 1;
+  }
+  await wait(5500);
+  // A sign-in Supabase did not answer in time (failed=failed, said in the
+  // relay's log) is neither: counted apart, and the Unlink must hold anyway.
+  const outcomes = { refused: 0, handed: 0, busy: 0, other: 0, off: 0, alive: 0 };
+  for (const one of raced) {
+    const read = await call("/api/otp?op=ways", { token: one.rCode.token });
+    if (one.off.status === 200 && read.json?.google === "off" && (await links(one.rCode.account)).google?.state === "off") outcomes.off += 1;
+    const session = one.way.took?.json;
+    if (session?.access_token) {
+      outcomes.handed += 1;
+      if ((await call("/api/people?op=me", { token: session.access_token })).status === 200 || await renews(session.refresh_token)) outcomes.alive += 1;
+    } else if (/failed=unlinked/.test(one.way.back?.location || "")) {
+      outcomes.refused += 1;
+    } else if (/failed=busy/.test(one.way.back?.location || "")) {
+      outcomes.busy += 1;
+    } else {
+      outcomes.other += 1;
+    }
+  }
+  console.log(`  --    a whole sign-in took ${span} ms; Unlinks sent 0 to ${raced.at(-1).delay} ms in: ${JSON.stringify(outcomes)}`
+    + `${unlinkFailed.length ? `; made again, the Unlink itself refused: ${unlinkFailed.join(" ")}` : ""}`);
+  check(`11. an Unlink racing a first Google sign-in: off in ${outcomes.off} of 20, ${outcomes.handed} handed out before it and ended, `
+    + `${outcomes.refused} refused, ${outcomes.alive} left alive (F7)`, outcomes.off === 20 && outcomes.alive === 0
+    && outcomes.handed >= 1 && outcomes.refused >= 1, raced.map((one) => `${one.delay}:${one.off.status}:${(one.way.back || one.way.start)?.location?.slice(0, 90)}`).join(" "));
+
+  // 12. How often (F9): by the GitHub account alone (signin6).
+  const r16 = () => randomBytes(2).toString("hex");
+  const netA = `2001:db8:${r16()}:${r16()}`;
+  const x = address("loop");
+  const looped = [];
+  for (let n = 0; n < LIMITS.account + 1; n += 1) {
+    const at = Date.now();
+    looped.push({ ...(await viaWay("github", { email: x, verified: true }, { from: `${netA}::${n + 1}` })), ms: Date.now() - at });
+  }
+  // The loop goes on, and a second person elsewhere signs in at the same moment.
+  const z = address("second");
+  const [more, secondIn] = await Promise.all([
+    Promise.all([1, 2].map(async (n) => {
+      const at = Date.now();
+      return { ...(await viaWay("github", { email: x, verified: true }, { from: `${netA}::${LIMITS.account + 1 + n}` })), ms: Date.now() - at };
+    })),
+    viaWay("github", { email: z, verified: true }),
+  ]);
+  looped.push(...more);
+  const passed = looped.filter((one) => one.took?.status === 200);
+  const often = looped.filter((one) => /failed=often/.test(one.back?.location || "") && !one.take);
+  // One Supabase did not answer in time (failed=failed) was counted all the same.
+  const slow = looped.slice(0, LIMITS.account).filter((one) => /failed=failed/.test(one.back?.location || ""));
+  const avg = (list) => Math.round(list.reduce((sum, one) => sum + one.ms, 0) / Math.max(1, list.length));
+  console.log(`  --    the loop: ${passed.length} signed in (${avg(passed)} ms each), ${often.length} refused (${avg(often)} ms each)`
+    + `${slow.length ? `, ${slow.length} not answered by Supabase in time (counted)` : ""}`);
+  check(`12. one GitHub account in a loop of ${looped.length}: ${passed.length} signed in, then ${often.length} refused in words before anything was spent`,
+    passed.length + slow.length === LIMITS.account && passed.length >= LIMITS.account - 1 && often.length === looped.length - LIMITS.account
+    && looped.slice(LIMITS.account).every((one) => often.includes(one)), looped.map((one) => one.back?.location?.slice(0, 90)).join(" "));
+  check("12. while it is refused, a second person elsewhere signs in", secondIn.took?.status === 200 && secondIn.took.json?.user?.email === z,
+    JSON.stringify(secondIn.back));
+  const moved = await viaWay("github", { email: x, verified: true }, { from: `2001:db8:${r16()}:${r16()}::1` });
+  check("12. the same GitHub account from another network: refused too", /failed=often/.test(moved.back?.location || "") && !moved.take,
+    moved.back?.location);
+  // Nothing is counted by network (signin6, signreview3 R3): signin5's
+  // count of netA, under its own key, filled past the 30 it allowed, as 30
+  // throwaway GitHub accounts there would have (a Supabase verify each:
+  // spared), and two other people's GitHub accounts there still sign in.
+  const crowded = `in ${networkOf({ headers: { "x-forwarded-for": `${netA}:ffff::1` } })}`;
+  let filled = 0;
+  while (filled < 40 && (await rpc("way_may_try", { try_key: crowded, per: 30, window_minutes: LIMITS.minutes })) === true) filled += 1;
+  const crowd = [];
+  for (let n = 0; n < 2; n += 1) {
+    crowd.push(await viaWay("github", { email: address(`crowd${n}`), verified: true }, { from: `${netA}:ffff::${n + 1}` }));
+  }
+  check(`12. that network's old count full (${filled} of 30): two other people's GitHub accounts there sign in all the same`,
+    filled === 30 && crowd.every((one, n) => one.took?.status === 200 && one.took.json?.user?.email === address(`crowd${n}`)),
+    crowd.map((one) => one.back?.location?.slice(0, 60)).join(" "));
+  // Starts are not counted: as many as anyone likes from one network, and
+  // the next person's there, the page's and the app's, go to GitHub.
+  const netS = `2001:db8:${r16()}:${r16()}`;
+  const fresh = () => new URLSearchParams({ then: "/", take: challengeOf(b64url(randomBytes(32))) });
+  const starts = [];
+  for (let n = 0; n < 40; n += 1) starts.push(await call(`/auth/github?${fresh()}`, { from: `${netS}::${n + 1}` }));
+  const toGitHub = starts.filter((one) => one.status === 302 && one.location.startsWith("https://github.com/")).length;
+  const appThere = await call(`/auth/github?${new URLSearchParams({ app: loop, state: "oftenstate123", code_challenge: challengeOf(b64url(randomBytes(32))) })}`,
+    { from: `${netS}::ffff` });
+  const person = address("afterstarts");
+  const personIn = await viaWay("github", { email: person, verified: true }, { from: `${netS}::fffe` });
+  check(`12. ${starts.length} starts from one network: every one to GitHub; then the app's start there, and a person's sign-in`,
+    toGitHub === starts.length && appThere.location.startsWith("https://github.com/") && personIn.took?.status === 200
+    && personIn.took.json?.user?.email === person, `${toGitHub} ${appThere.location.slice(0, 60)} ${JSON.stringify(personIn.back)}`);
+  // One start, one way back: its cookie sent again, with made-up codes, is
+  // refused before GitHub is asked, and counts nothing; a person on that
+  // network then signs in.
+  const netR = network();
+  const once = await call(`/auth/github?${fresh()}`, { from: netR });
+  const onceCookie = valueOf(cookieNamed(once.cookies, "bw_way_github"));
+  const onceState = new URL(once.location).searchParams.get("state");
+  const tokensBefore = (await stand()).tokens;
+  const replays = [];
+  for (let n = 0; n < 11; n += 1) {
+    replays.push((await call(`/auth/callback/github?${new URLSearchParams({ code: `junk${n}`, state: onceState })}`,
+      { cookie: onceCookie, from: netR })).location);
+  }
+  const githubAsked = (await stand()).tokens - tokensBefore;
+  const why = replays.map((one) => new URL(one, "http://x").searchParams.get("failed"));
+  const neighbour = address("afterreplay");
+  const neighbourIn = await viaWay("github", { email: neighbour, verified: true }, { from: netR });
+  check("12. one start's cookie sent 11 times: GitHub asked once (refused it), the other 10 refused before, and a person there signs in",
+    why[0] === "failed" && why.slice(1).every((one) => one === "again") && githubAsked === 1
+    && neighbourIn.took?.status === 200 && neighbourIn.took.json?.user?.email === neighbour,
+    `${why.join(",")} GitHub asked ${githubAsked}; ${JSON.stringify(neighbourIn.back)}`);
+
+  // 13. Unlink and Claude's connections (SR1).
+  {
+  const c = address("conn");
+  const cHub = await viaWay("github", { email: c, verified: true });
+  const cCode = await signIn(c);
+  const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
+  const reg = await call("/oauth/register", { method: "POST", body: { client_name: "ways_check's client", redirect_uris: [CALLBACK],
+    token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] } });
+  const client = reg.json?.client_id;
+  /// A connection approved as [token]'s session: {access, refresh}.
+  const connect = async (token) => {
+    const verifier = b64url(randomBytes(32));
+    const approved = await call("/api/oauth?op=approve", { method: "POST", token, body: { response_type: "code", client_id: client,
+      redirect_uri: CALLBACK, code_challenge: challengeOf(verifier), code_challenge_method: "S256", state: "s13",
+      resource: `${site}/api/mcp`, scope: "build" } });
+    const code = approved.json?.redirect ? new URL(approved.json.redirect).searchParams.get("code") : "";
+    const tokens = await call("/oauth/token", { method: "POST", body: { grant_type: "authorization_code", code, redirect_uri: CALLBACK,
+      client_id: client, code_verifier: verifier, resource: `${site}/api/mcp` } });
+    return { access: tokens.json?.access_token || "", refresh: tokens.json?.refresh_token || "" };
+  };
+  const tools = async (access) => (await fetch(`${site}/api/mcp`, { method: "POST", headers: { authorization: `Bearer ${access}`,
+    accept: "application/json, text/event-stream", "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) }).then((reply) => reply.text().then(() => reply.status)));
+  const renewal = (refresh) => call("/oauth/token", { method: "POST", body: { grant_type: "refresh_token", refresh_token: refresh,
+    client_id: client, resource: `${site}/api/mcp` } });
+  const viaHub = await connect(cHub.took?.json?.access_token || "");
+  const viaCode = await connect(cCode.token);
+  const before = [await tools(viaHub.access), await tools(viaCode.access)];
+  const unlinked = await call("/api/otp?op=ways", { method: "POST", token: cHub.took?.json?.access_token || "",
+    body: { with: "github", on: false } });
+  const after = [await tools(viaHub.access), await tools(viaCode.access)];
+  const renewed = [await renewal(viaHub.refresh), await renewal(viaCode.refresh)];
+  check("13. Unlink GitHub: the connection its session approved lists no tools and renews no more; a code's connection keeps working",
+    reg.status === 201 && before.every((one) => one === 200) && unlinked.status === 200 && after[0] === 401 && after[1] === 200
+    && renewed[0].status === 400 && renewed[0].json?.error === "invalid_grant" && renewed[1].status === 200,
+    `${reg.status} before ${before} unlink ${unlinked.status} after ${after} renewed ${renewed.map((one) => `${one.status} ${one.json?.error || ""}`)}`);
   }
 } catch (trouble) {
   check("the check finished", false, String(trouble?.stack || trouble).slice(0, 600));

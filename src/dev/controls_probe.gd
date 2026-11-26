@@ -303,8 +303,10 @@ func _run() -> void:
 		var before: int = world.brick_count()
 		_press(KEY_X)
 		await process_frame
-		_assert("X lifts the brick off, %d -> %d" % [before, world.brick_count()],
-			world.brick_count() == before - 1)
+		# Into hand: still the model's where it stood, drawn nowhere
+		# (handkeep2; it was taken off the model, and lost to a save).
+		_assert("X lifts the brick into hand, %d -> %d, in hand %s" % [before, world.brick_count(),
+			world.in_hand(lifted.id)], world.brick_count() == before and world.in_hand(lifted.id))
 		_assert("...and it is what you are now holding, got '%s'"
 			% builder.held_part, builder.held_part == lifted_part)
 

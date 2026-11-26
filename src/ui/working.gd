@@ -386,6 +386,26 @@ var _changed_frames: int = -1
 var _fence: int = 0
 
 
+## The least the bar gives way to where the status bar is short of room.
+const BAR_LEAST := 40.0
+
+
+## Inside [param room] units: the bar gives way first, down to BAR_LEAST,
+## then the words, cut at a word; Cancel never goes. At 150% on a phone the
+## bar's 150 and Cancel left the words nothing, and the status bar was 257
+## units in a window of 232 (wide150).
+func give_way(room: float) -> void:
+	if _bar == null:
+		return
+	var gap: float = float(get_theme_constant("separation"))
+	var words: float = _words.get_theme_font("font").get_string_size(_words.atr(_words.text),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, _words.get_theme_font_size("font_size")).x
+	var rest: float = 2.0 * gap + _cancel.get_combined_minimum_size().x + minf(words, 80.0)
+	var bar: float = clampf(floorf(room - rest), BAR_LEAST, BAR_WIDTH)
+	if not is_equal_approx(_bar.custom_minimum_size.x, bar):
+		_bar.custom_minimum_size.x = bar
+
+
 func _ready() -> void:
 	add_theme_constant_override("separation", 8)
 	visible = false
@@ -399,7 +419,8 @@ func _ready() -> void:
 	_words.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
 	_words.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_words.clip_text = true
-	_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# Cut short at a word, never inside one.
+	_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
 	_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_words)

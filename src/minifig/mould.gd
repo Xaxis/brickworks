@@ -36,16 +36,29 @@ const AUTHOR := "Brickworks mould maker"
 ## in a few seconds.
 const FINEST := 1.6
 const MOST_TRIANGLES := 9000
+## The most triangles a part may have to be shaped here, and a draft read
+## back. A part over it is refused in words before it is opened: 56823, a
+## string of 143,996, held the maker five seconds and its draft could never
+## be kept (figreview).
+const MOST_OPENED := MOST_TRIANGLES * 2
 ## How thin a wall can be before it is marked: LEGO's own walls are 1.6
 ## mm; under 1 mm a moulding is fragile and fills badly.
 const THIN := 2.5
 ## The lock fades to nothing over this many LDU beyond what it protects.
 const FADE := 2.0
 
-const TOOLS: Array[String] = ["pull", "push", "inflate", "smooth", "pinch", "flatten", "grab"]
+## Grow and Shrink are "inflate" and "shrink": each corner straight out of
+## the surface or straight into it, a region swollen or slimmed.
+const TOOLS: Array[String] = ["pull", "push", "inflate", "shrink", "smooth", "pinch", "flatten",
+	"grab"]
+## How many strokes Undo goes back.
+const UNDO_STEPS := 100
 
 ## The part it was made from: its placement on a figure is this part's.
 var base: String = ""
+## The mould of the person's own this one is shaped further from, or "":
+## saved, it takes that one's place on their account (MouldsOnAccount).
+var remakes: String = ""
 var name: String = ""
 var category: String = ""
 var positions := PackedVector3Array()
@@ -77,9 +90,12 @@ const HEAD_MARGIN := 1.0
 var _undo: Array = []
 var _redo: Array = []
 var _grab: Dictionary = {}
-var _lattice_rest := PackedVector3Array()
+## The lattice: its handles now, the box it was put round, and what a drag
+## bends from: the corners and the handles as they were when the step began.
 var _lattice_at := PackedVector3Array()
 var _lattice_box := AABB()
+var _lattice_rest := PackedVector3Array()
+var _lattice_from := PackedVector3Array()
 ## Its triangles as the engine winds them, for picking, and a grid of them
 ## for how thick it is; remade when it changes (see Rays: the engine's own
 ## TriangleMesh did not always give the nearest hit).
@@ -139,6 +155,58 @@ static func of_part(library: PartLibrary, part_id: String, slot: String = "") ->
 		mould.grip = [Vector3(held[0], -held[1], -held[2]),
 			Vector3(held[3], -held[4], -held[5]).normalized()]
 	mould._settle()
+	return mould
+
+
+## How many triangles [param part_id] is drawn with: the catalogue's count,
+## known before its geometry is fetched or welded, or its geometry's when the
+## catalogue has none. Over [constant MOST_OPENED], it is not opened.
+static func triangles_in(library: PartLibrary, part_id: String) -> int:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if info == null:
+		return 0
+	if info.triangles > 0:
+		return info.triangles
+	var count: int = 0
+	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+	if mesh != null:
+		for surface: ArrayMesh in mesh.surfaces:
+			count += surface.surface_get_array_index_len(0) / 3
+	return count
+
+
+## Whether [param part_id] is a shape made here that can be sculpted on: a
+## mould, or one's own part from a 3D file, worn or held as a real part is.
+## Not a print: sculpted, its picture would be lost.
+static func sculpts_on(library: PartLibrary, part_id: String) -> bool:
+	var text: String = str(library.custom.get(part_id, ""))
+	if text.is_empty() or text.contains("!TEXMAP"):
+		return false
+	var real: String = PartPrints.base_in(text)
+	return (text.contains(PartPrints.MOULDED_BY) or text.contains(PartPrints.IMPORTED_BY)) \
+		and not real.is_empty() and library.parts.has(real)
+
+
+## A mould of a mould or a 3D file's hair made before, to sculpt it further:
+## its own shape and connectors, standing for the real part it stands for
+## (the part a figure places it as), so what is made of it is made from that
+## part, never a chain of made ones. Null as [method of_part] is.
+static func of_made(library: PartLibrary, part_id: String, slot: String = "") -> Mould:
+	var real: String = PartPrints.base_in(str(library.custom.get(part_id, "")))
+	var mould: Mould = of_part(library, part_id, slot)
+	if mould == null or real.is_empty() or not library.parts.has(real):
+		return mould
+	mould.base = real
+	# A mould shaped further, not a 3D file's hair: saved, it is the newer
+	# of the same mould.
+	if part_id.begins_with("bw-") and part_id.contains("-m-"):
+		mould.remakes = part_id
+	mould.name = Minifig._plain(library.parts[real].name).trim_prefix("~").trim_prefix("=")
+	var held: Array = MinifigData.GRIPS.get(real, [])
+	if not held.is_empty():
+		mould.grip = [Vector3(held[0], -held[1], -held[2]),
+			Vector3(held[3], -held[4], -held[5]).normalized()]
+		mould._settle()
 	return mould
 
 
@@ -412,34 +480,99 @@ func _refresh_faces() -> void:
 	_picker_stale = false
 
 
-## Begin a stroke: one undo step from here to its end.
-func begin() -> void:
-	_undo.append(positions.duplicate())
-	if _undo.size() > 40:
+## Begin a stroke: one undo step from here to its end. [param whole] for a
+## change of the surface's corners and triangles themselves (Finer): its
+## step keeps all of them, as a stroke's keeps only where the corners are.
+## Up to figmould every step kept only the corners' places, and Undo after
+## Finer put back fewer corners than its triangles named.
+func begin(whole: bool = false) -> void:
+	_undo.append(_state(whole))
+	if _undo.size() > UNDO_STEPS:
 		_undo.pop_front()
 	_redo.clear()
+	_lattice_from_here()
 
 
 func can_undo() -> bool:
 	return not _undo.is_empty()
 
 
+func can_redo() -> bool:
+	return not _redo.is_empty()
+
+
 func undo() -> bool:
 	if _undo.is_empty():
 		return false
-	_redo.append(positions.duplicate())
-	positions = _undo.pop_back()
-	_changed()
+	var step: Dictionary = _undo.pop_back()
+	_redo.append(_state(step.has("triangles")))
+	_restore(step)
 	return true
 
 
 func redo() -> bool:
 	if _redo.is_empty():
 		return false
-	_undo.append(positions.duplicate())
-	positions = _redo.pop_back()
-	_changed()
+	var step: Dictionary = _redo.pop_back()
+	_undo.append(_state(step.has("triangles")))
+	_restore(step)
 	return true
+
+
+## The stroke begun last taken back as if it had never been, with no step to
+## redo: a second finger come down turns the view, and what the first had
+## begun to sculpt is not kept.
+func cancel_stroke() -> void:
+	if _undo.is_empty():
+		return
+	_grab = {}
+	_restore(_undo.pop_back())
+
+
+## What one undo step keeps. The triangles, their colours and creases are
+## made anew by Finer, never changed in place, so a step holds them as they
+## are; the corners' places and their rest are changed in place, so it holds
+## copies. While the lattice is on, its handles too: a handle's drag is one
+## step, and the part is bent from where they are.
+func _state(whole: bool) -> Dictionary:
+	var out: Dictionary = {"positions": positions.duplicate()}
+	if not _lattice_at.is_empty():
+		out["lattice_at"] = _lattice_at.duplicate()
+		out["lattice_box"] = _lattice_box
+	if whole:
+		out["triangles"] = triangles
+		out["colors"] = colors
+		out["two_sided"] = two_sided
+		out["creases"] = creases
+		out["locks"] = locks
+		out["mirrors"] = mirrors
+		out["rest"] = rest.duplicate()
+	return out
+
+
+func _restore(step: Dictionary) -> void:
+	var whole: bool = step.has("triangles")
+	if whole:
+		triangles = step["triangles"]
+		colors = step["colors"]
+		two_sided = step["two_sided"]
+		creases = step["creases"]
+		locks = step["locks"]
+		mirrors = step["mirrors"]
+		rest = step["rest"]
+	positions = step["positions"]
+	if whole:
+		_find_neighbours()
+	if not _lattice_at.is_empty():
+		if step.has("lattice_at"):
+			_lattice_at = step["lattice_at"]
+			_lattice_box = step["lattice_box"]
+			_lattice_from_here()
+		else:
+			# Back before the lattice was put round it: put round it again,
+			# as it is now, its handles at rest.
+			lattice_begin()
+	_changed()
 
 
 ## One dab of a brush at a point of the surface: [param radius] in LDU,
@@ -488,6 +621,8 @@ func _dab(tool: String, at: Vector3, normal: Vector3, radius: float, strength: f
 				p -= facing * step * free
 			"inflate":
 				p += normals[v] * step * free
+			"shrink":
+				p -= normals[v] * step * free
 			"smooth":
 				var mean := Vector3.ZERO
 				for other: int in neighbours[v]:
@@ -571,19 +706,20 @@ func _changed() -> void:
 
 
 ## Start bending the whole part with a lattice of 3 x 3 x 3 handles round
-## it. Returns the handles' places.
+## it. Returns the handles' places. Putting it round changes nothing, so it
+## is no step of its own: each handle's drag is ([method begin] as it is
+## taken hold of).
 func lattice_begin() -> PackedVector3Array:
-	begin()
 	var box := AABB(positions[0], Vector3.ZERO)
 	for p: Vector3 in positions:
 		box = box.expand(p)
 	_lattice_box = box.grow(2.0)
-	_lattice_rest = positions.duplicate()
 	_lattice_at = PackedVector3Array()
 	for i: int in 3:
 		for j: int in 3:
 			for k: int in 3:
 				_lattice_at.append(_lattice_box.position + _lattice_box.size * Vector3(i, j, k) * 0.5)
+	_lattice_from_here()
 	return _lattice_at.duplicate()
 
 
@@ -591,8 +727,25 @@ func lattice_handles() -> PackedVector3Array:
 	return _lattice_at.duplicate()
 
 
+## What the lattice bends from is the part as it is now, and its handles
+## where they are: every step begins here ([method begin]), so a handle
+## taken bends the corners Finer made and the strokes made since, as they
+## are. Up to figfix it bent the corners it saw when it was put on: after
+## Finer a drag stopped at the first new corner (an index past the old
+## count) and tore the surface, and a brush stroke was undone by the next
+## handle's drag (figreview).
+func _lattice_from_here() -> void:
+	if _lattice_at.is_empty():
+		return
+	_lattice_rest = positions.duplicate()
+	_lattice_from = _lattice_at.duplicate()
+
+
 ## Move handle [param index] to [param to]; with symmetry its mirror moves
-## the mirrored way. The part follows, as far as its locks let it.
+## the mirrored way. The part follows, as far as its locks let it: each
+## corner by the handles' moves since the step began, weighted by where in
+## the lattice's box it was then. A corner a stroke took past the box moves
+## as the box's side nearest it, never further than a handle does.
 func lattice_move(index: int, to: Vector3, symmetry: bool) -> void:
 	if _lattice_at.is_empty():
 		return
@@ -604,13 +757,13 @@ func lattice_move(index: int, to: Vector3, symmetry: bool) -> void:
 			_lattice_at[other] = Vector3(-to.x, to.y, to.z)
 		else:
 			_lattice_at[index].x = 0.0
-	var rest: PackedVector3Array = PackedVector3Array()
-	for i: int in 3:
-		for j: int in 3:
-			for k: int in 3:
-				rest.append(_lattice_box.position + _lattice_box.size * Vector3(i, j, k) * 0.5)
+	var moved := PackedVector3Array()
+	moved.resize(27)
+	for n: int in 27:
+		moved[n] = _lattice_at[n] - _lattice_from[n]
 	for v: int in positions.size():
-		var s: Vector3 = (_lattice_rest[v] - _lattice_box.position) / _lattice_box.size
+		var s: Vector3 = ((_lattice_rest[v] - _lattice_box.position) / _lattice_box.size) \
+			.clamp(Vector3.ZERO, Vector3.ONE)
 		var shift := Vector3.ZERO
 		var bs: Array[float] = _bernstein(s.x)
 		var bt: Array[float] = _bernstein(s.y)
@@ -618,8 +771,7 @@ func lattice_move(index: int, to: Vector3, symmetry: bool) -> void:
 		for i: int in 3:
 			for j: int in 3:
 				for k: int in 3:
-					var n: int = i * 9 + j * 3 + k
-					shift += (_lattice_at[n] - rest[n]) * (bs[i] * bt[j] * bu[k])
+					shift += moved[i * 9 + j * 3 + k] * (bs[i] * bt[j] * bu[k])
 		positions[v] = _lattice_rest[v] + shift * (1.0 - locks[v])
 	_keep_off_head()
 	_changed()
@@ -632,6 +784,7 @@ static func _bernstein(t: float) -> Array[float]:
 func lattice_end() -> void:
 	_lattice_at = PackedVector3Array()
 	_lattice_rest = PackedVector3Array()
+	_lattice_from = PackedVector3Array()
 
 
 # -- finer -------------------------------------------------------------------------
@@ -642,7 +795,7 @@ func lattice_end() -> void:
 ## corners a brush can move — until none is, or the mould has as many
 ## triangles as it may. Returns how many triangles it has.
 func refine(longest: float = FINEST * 2.0) -> int:
-	begin()
+	begin(true)
 	for _pass: int in 6:
 		if triangles.size() / 3 >= MOST_TRIANGLES:
 			break
@@ -693,6 +846,8 @@ func refine(longest: float = FINEST * 2.0) -> int:
 		# pass reads them.
 		_settle()
 	_settle()
+	# The lattice, if it is on, bends the new corners too.
+	_lattice_from_here()
 	return triangles.size() / 3
 
 
@@ -783,9 +938,16 @@ func named(title: String) -> Array:
 ## The part file: the sculpted triangles, the base part's connectors as
 ## they were, its creases.
 func text(id: String, title: String) -> String:
-	var words: String = title.strip_edges().replace("\n", " ")
+	# No control character of any word written reaches the part's lines: a
+	# carriage return would start a line of its own in a program that reads
+	# them ("\r0 FILE ..."), whatever brought it (a title, a draft read back,
+	# someone else's part's name or category).
+	var words: String = CustomParts.one_line(title)
+	var called: String = CustomParts.one_line(name)
+	var kind: String = CustomParts.one_line(category)
+	var from: String = CustomParts.one_line(base)
 	var out := PackedStringArray()
-	out.append("0 %s, Custom Mould %s" % [name, words if not words.is_empty() else id])
+	out.append("0 %s, Custom Mould %s" % [called, words if not words.is_empty() else id])
 	out.append("0 Name: %s.dat" % id)
 	out.append("0 Author: " + AUTHOR)
 	out.append("0 !LDRAW_ORG Unofficial_Part")
@@ -793,11 +955,11 @@ func text(id: String, title: String) -> String:
 	out.append("")
 	out.append("0 BFC CERTIFY CCW")
 	out.append("")
-	out.append("0 !CATEGORY " + (category if not category.is_empty() else "Minifig Accessory"))
+	out.append("0 !CATEGORY " + (kind if not kind.is_empty() else "Minifig Accessory"))
 	out.append("0 !KEYWORDS Brickworks, custom mould")
 	out.append("")
-	out.append("%s from=%s triangles=%d" % [PartPrints.MOULDED_BY, base, triangles.size() / 3])
-	out.append("0 // Sculpted in Brickworks from %s.dat of the LDraw Parts Library (CC BY 4.0)," % base)
+	out.append("%s from=%s triangles=%d" % [PartPrints.MOULDED_BY, from, triangles.size() / 3])
+	out.append("0 // Sculpted in Brickworks from %s.dat of the LDraw Parts Library (CC BY 4.0)," % from)
 	out.append("0 // its connectors kept exactly where the part has them.")
 	out.append("")
 	out.append("0 // Connectors, for programs that read them")
@@ -842,6 +1004,74 @@ func _ldraw(v: int) -> Vector3:
 	var p: Vector3 = positions[v]
 	return Vector3(snappedf(p.x, 1.0 / 64.0), snappedf(-p.y, 1.0 / 64.0),
 		snappedf(-p.z, 1.0 / 64.0))
+
+
+## The mould as it is now, to keep while it is being made (MouldEditor's
+## draft): every corner and triangle and what fixes them, exactly. Not its
+## undo steps: what comes back after a reload is the shape, not its history.
+func to_draft() -> Dictionary:
+	return {"version": 1, "base": base, "remakes": remakes, "name": name, "category": category,
+		"positions": positions, "triangles": triangles, "colors": colors, "two_sided": two_sided,
+		"locks": locks, "mirrors": mirrors, "creases": creases, "connectors": connectors,
+		"on_head": on_head, "grip": grip, "rest": rest}
+
+
+## A mould kept by [method to_draft], or null when [param kept] is not one
+## whole and in itself: a draft cut short or from another build is let go,
+## never opened half.
+static func from_draft(kept: Variant) -> Mould:
+	if not (kept is Dictionary) or int((kept as Dictionary).get("version", 0)) != 1:
+		return null
+	var d: Dictionary = kept
+	var wanted: Dictionary = {"positions": TYPE_PACKED_VECTOR3_ARRAY,
+		"triangles": TYPE_PACKED_INT32_ARRAY, "colors": TYPE_PACKED_INT32_ARRAY,
+		"two_sided": TYPE_PACKED_BYTE_ARRAY, "locks": TYPE_PACKED_FLOAT32_ARRAY,
+		"mirrors": TYPE_PACKED_INT32_ARRAY, "creases": TYPE_PACKED_INT32_ARRAY,
+		"rest": TYPE_PACKED_VECTOR3_ARRAY, "connectors": TYPE_ARRAY, "grip": TYPE_ARRAY,
+		"base": TYPE_STRING, "name": TYPE_STRING, "category": TYPE_STRING, "on_head": TYPE_BOOL}
+	for key: String in wanted:
+		if typeof(d.get(key)) != wanted[key]:
+			return null
+	var mould := Mould.new()
+	mould.positions = d["positions"]
+	mould.triangles = d["triangles"]
+	var corners: int = mould.positions.size()
+	var faces: int = mould.triangles.size() / 3
+	if corners == 0 or mould.triangles.size() % 3 != 0 or faces == 0 \
+			or faces > MOST_OPENED or (d["colors"] as PackedInt32Array).size() != faces \
+			or (d["two_sided"] as PackedByteArray).size() != faces \
+			or (d["locks"] as PackedFloat32Array).size() != corners \
+			or (d["mirrors"] as PackedInt32Array).size() != corners \
+			or (d["rest"] as PackedVector3Array).size() != corners \
+			or (d["creases"] as PackedInt32Array).size() % 2 != 0:
+		return null
+	for n: int in mould.triangles:
+		if n < 0 or n >= corners:
+			return null
+	for n: int in d["creases"] as PackedInt32Array:
+		if n < 0 or n >= corners:
+			return null
+	for p: Vector3 in mould.positions:
+		if not p.is_finite():
+			return null
+	mould.base = d["base"]
+	# A draft kept before hairfix has none: it remakes nothing.
+	mould.remakes = str(d.get("remakes", ""))
+	mould.name = d["name"]
+	mould.category = d["category"]
+	mould.colors = d["colors"]
+	mould.two_sided = d["two_sided"]
+	mould.locks = d["locks"]
+	mould.mirrors = d["mirrors"]
+	mould.creases = d["creases"]
+	mould.rest = d["rest"]
+	mould.connectors = d["connectors"]
+	mould.on_head = d["on_head"]
+	mould.grip = d["grip"]
+	mould._find_neighbours()
+	mould.recompute_normals()
+	mould._picker_stale = true
+	return mould
 
 
 ## Make the part, add it to the library and keep it: {"id", "problem"}.
