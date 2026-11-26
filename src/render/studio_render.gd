@@ -140,6 +140,17 @@ const PRODUCT_SOFTNESS := 0.6
 const PRODUCT_SEATING := 1.0
 ## The camera's processing (photoreal6, RenderSettings sharpen and jpeg):
 ## none of its own, so a render is the light as drawn unless asked for.
+## A set's plastic played with (photoreal26, RenderSettings.plastic
+## "played"): photoreal25's wear and age, as the photographed sets were drawn
+## with it, in place of the new plastic's PRODUCT_AGE, PRODUCT_HANDLING,
+## PRODUCT_DUST and PRODUCT_SEATING. On the photo bench it lifted the
+## photographed sets, thirty years old, by +0.176 (95%: +0.058 to +0.287)
+## and cost new single parts up to -0.60, so a person's model is drawn new
+## unless they pick it (docs/RENDERING.md 5z, 5aa).
+const PLAYED_AGE := 1.0
+const PLAYED_HANDLING := 1.0
+const PLAYED_DUST := 0.4
+const PLAYED_SEATING := 2.5
 const PRODUCT_SHARPEN := 0.0
 const PRODUCT_JPEG := 0.0
 ## The camera's tone and white balance (photoreal7, RenderSettings tone and
@@ -224,6 +235,36 @@ const PRODUCT_SCUFF := 0.0
 ## more often with it in both classes, the sets +0.012 (95%: +0.003 to
 ## +0.021) and the close-ups +0.025 (+0.001 to +0.059), docs/RENDERING.md 5u.
 const PRODUCT_FLOOR := 1.0
+## That floor as photoreal19 drew it (path_tracer.glsl's floor_kept and the
+## sweep's hit): how far past white a white sweep is exposed, the colour its
+## shade cools to (a daylight fill's), and its gloss, its reflectance head on
+## and its roughness.
+const FLOOR_OVER := 1.6
+const FLOOR_COOL := Color(0.86, 0.97, 1.22)
+const FLOOR_F0 := 0.04
+const FLOOR_ROUGH := 0.3
+## The colour the set photographs' shade has (photoreal26, RenderSettings
+## floor_shade 1): lavender, a* +2 to +4 and b* -2 to -2.5 against their
+## open white, where a daylight fill's is blue (a* 0, b* -3).
+const FLOOR_LAVENDER := Color(1.2, 0.92, 1.2)
+## The Product stage fitted to the set photographs' measures (photoreal26,
+## RenderSettings floor_boxes, floor_over, floor_key, floor_shade,
+## floor_bounce, floor_f0, floor_rough): how much of the tent's soft boxes'
+## light and of its key's the floor shows, how far past white it is exposed,
+## its shade's colour (0 the daylight fill's, 1 lavender), how much of the
+## parts' bounced light it shows, and its gloss. Each photoreal19's unless
+## asked. Fitted on the floor alone (floor_over 2.4, floor_key 1.5,
+## floor_shade 0.8), the shade's error from the photographs fell from 2.30
+## to 1.79 L* on 6532 and 6660 and its tint's from 6.6 to 3.0, but the judge
+## did not move: the sets +0.005 (95%: -0.001 to +0.013), its "soft,
+## idealised shadow" named as often (docs/RENDERING.md 5aa). So not a default.
+const PRODUCT_FLOOR_BOXES := 1.0
+const PRODUCT_FLOOR_OVER := FLOOR_OVER
+const PRODUCT_FLOOR_KEY := 1.0
+const PRODUCT_FLOOR_SHADE := 0.0
+const PRODUCT_FLOOR_BOUNCE := 1.0
+const PRODUCT_FLOOR_F0 := FLOOR_F0
+const PRODUCT_FLOOR_ROUGH := FLOOR_ROUGH
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2680,7 +2721,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 				if _cancelled:
 					return null
 	_tracer.product = settings.look == "product"
-	_tracer.seating = _own(settings.seating, PRODUCT_SEATING) if _tracer.product else 0.0
+	_tracer.seating = _own(settings.seating, _plastic(settings, PRODUCT_SEATING, PLAYED_SEATING)) \
+		if _tracer.product else 0.0
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
 	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
@@ -3067,8 +3109,8 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 		# A staged paper's fibres or desk's specks, always there.
 		grain = maxf(grain, 1.0)
 		grain_kind = float(stage[4])
-	data.append_array([_own(settings.age, PRODUCT_AGE) if worn else 0.0,
-		_own(settings.dust, PRODUCT_DUST) if worn else 0.0, grain, grain_kind])
+	data.append_array([_own(settings.age, _plastic(settings, PRODUCT_AGE, PLAYED_AGE)) if worn else 0.0,
+		_own(settings.dust, _plastic(settings, PRODUCT_DUST, PLAYED_DUST)) if worn else 0.0, grain, grain_kind])
 	# The staging (photoreal7): its near key, and what the model stands on.
 	if staged:
 		var key: Array = _stage_key(settings)
@@ -3091,7 +3133,7 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	# No two parts alike (photoreal8): each part's batch, its handling, each
 	# stud's logo (the closest hit reads that one from each part's record).
 	data.append_array([_own(settings.batch, PRODUCT_BATCH) if worn else 0.0,
-		_own(settings.handling, PRODUCT_HANDLING) if worn else 0.0,
+		_own(settings.handling, _plastic(settings, PRODUCT_HANDLING, PLAYED_HANDLING)) if worn else 0.0,
 		_own(settings.studs, PRODUCT_STUDS) if worn else 0.0, 0.0])
 	# The wear hands leave (photoreal9).
 	data.append_array([_own(settings.rubbed, PRODUCT_RUBBED) if worn else 0.0, 0.0, 0.0, 0.0])
@@ -3109,8 +3151,14 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	# each part's record).
 	var breakup: Array = _breakup(settings) if worn else [0.0, 0.0, 0.0, 0.0]
 	data.append_array([float(breakup[0]), float(breakup[1]), float(breakup[2]), float(breakup[3])])
-	# A set photographed (photoreal19), read only by the photo version.
-	data.append_array([_floor_of(settings), 0.0, 0.0, 0.0])
+	# A set photographed (photoreal19), read only by the photo version, with
+	# the stage fitted to the set photographs (photoreal26).
+	data.append_array([_floor_of(settings), _own(settings.floor_boxes, PRODUCT_FLOOR_BOXES),
+		_own(settings.floor_over, PRODUCT_FLOOR_OVER), _own(settings.floor_key, PRODUCT_FLOOR_KEY)])
+	var cool: Color = FLOOR_COOL.lerp(FLOOR_LAVENDER, _own(settings.floor_shade, PRODUCT_FLOOR_SHADE))
+	data.append_array([cool.r, cool.g, cool.b, _own(settings.floor_bounce, PRODUCT_FLOOR_BOUNCE)])
+	data.append_array([_own(settings.floor_f0, PRODUCT_FLOOR_F0), _own(settings.floor_rough, PRODUCT_FLOOR_ROUGH),
+		0.0, 0.0])
 	return data
 
 
@@ -3229,6 +3277,13 @@ func _stage_key_way(settings: RenderSettings) -> Vector3:
 ## A product look's setting, or the look's own where none is asked (below 0).
 static func _own(asked: float, fallback: float) -> float:
 	return asked if asked >= 0.0 else fallback
+
+
+## The product look's own wear for the plastic [param settings] picks
+## (photoreal26): [param new] straight from the box, [param played] a set
+## played with for years.
+static func _plastic(settings: RenderSettings, new: float, played: float) -> float:
+	return played if settings.plastic == "played" else new
 
 
 ## Whether the traced picture's sweep is a shadow catcher (photoreal2): the

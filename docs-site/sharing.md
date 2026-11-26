@@ -17,7 +17,7 @@ Sharing gives a model a link anyone can open with no account: the model in 3D, i
 2. **File › Share…**.
 3. Give it a **Name**: the model's own, or, for one never named that is a single minifigure or sub-assembly, that one's.
 4. Tick **Show who made it** to put a name on its page: **The name to credit** is your profile's name when you have one.
-5. Tick **List it in the gallery**, just under it, to put it in [the gallery](/docs/gallery) as well. Unticked, only people you send the link to find it. Ticking it ticks **Show who made it** too, so the build is on your profile and in your followers' feeds; untick that after if you want it in the gallery with no name.
+5. Tick **List it in the gallery**, just under it, to put it in [the gallery](/docs/gallery) as well. Unticked, only people you send the link to find it. Ticking it ticks **Show who made it** too, so the build is on your profile and in your followers' feeds; untick that after if you want it in the gallery with no name. Listed with no name, a line under the two says so: it will not be on your profile or in your followers' feeds (it is still in [your own feed](/docs/profiles#feed)).
    For a model made with [the assistant](/docs/ai) or [Brickify](/docs/art-and-brickify), **Say it was made with the assistant** (or **with Brickify**) is under it, unticked: how a model was made is yours to say, and nothing on the site says it until you tick it. Ticked, its page says **With the assistant** and the gallery's **Made** filter finds it. You can change it later under **More** on [its page](/docs/model-pages#actions).
 6. **About it (shown on its page)** says what it is, up to 1,000 characters; **Tags** help people find it; **Kind** is guessed from the name, the tags and About, and you can change it.
 7. Choose a **Licence**: **CC BY 4.0** (anyone may share and change it, crediting you), **CC BY-SA 4.0** (and what they make is shared the same way) or **All rights reserved** (people may build it for themselves and ask you before sharing it).
@@ -32,6 +32,8 @@ ui:share panel
 Its link is `brickworks.diy/m/<id>`. Once it is published the panel shows the link, with **Copy link**, **Copy embed code** (a frame to paste into a page of your own; see [the embed](/docs/model-pages#actions)) and **Open**, and the line under Publish says what was shared: *Shared at this link, 187 parts*, and whether it is listed in the gallery and marked Tested.
 
 ![The Share panel once published: Publish now reading Update the link beside Share progress, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.](/docs/img/sharing-published.webp "The panel once the model is published.")
+
+A big model's steps and tests take a while, and you can open another model meanwhile. What is published is always the model you pressed **Publish** on. Opened before it is sent, nothing is published: the line says *Not published: another model was opened.* Opened while Brickworks answers, the first model is published and its link is said in the line, and the model now open keeps its own link. The panel then shows the model now open, with none of the first one's words.
 
 Anyone with the link can download the model's file itself. An email address in its **Author** line, and the folders on your computer that a program wrote into it (a background picture's, a parts folder's), are left out of the shared copy, however it is shared.
 

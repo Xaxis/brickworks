@@ -8077,6 +8077,14 @@
       ]
     },
     {
+      "id": "ui:plastic new or played with",
+      "kind": "ui",
+      "entry": "src/ui/render_dialog.gd",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/render_probe.gd  (photoreal26, docs/RENDERING.md 5aa: Render's Plastic row, New unless picked, Played with drawing photoreal25's wear and age at Best in the Product look; RenderSettings.plastic, StudioRender.PLAYED_*)  /  tools/probe.sh photoreal_probe -- --shots=FILE with \"plastic\": \"played\" per shot",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:play in a shared model",
       "kind": "ui",
       "entry": "src/ui/share_view.gd",

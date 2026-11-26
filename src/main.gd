@@ -5169,10 +5169,18 @@ func _maybe_copy() -> void:
 	# This week's quick build, when the link is its template: asked once the
 	# copy is open and never waited on, so the copy opens as quickly as any.
 	_ask_prompt(_copying)
+	# The copy on the baseplate: another model opened while its parts arrive
+	# is never saved into their models under the link's name, nor marked as
+	# the link's copy (pubbind). The address is kept: a reload makes it.
+	var copy: int = _store.model_now()
 	var since: int = Time.get_ticks_msec()
-	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000 \
+			and _store.model_now() == copy:
 		_bar.say("copying “%s” — %d parts on their way…" % [name, _store.awaited.size()])
 		await get_tree().create_timer(0.3).timeout
+	if _store.model_now() != copy:
+		_bar.say("“%s” was not copied into your models: another model was opened" % name)
+		return
 	if not _store.awaited.is_empty():
 		# The address and this tab's mark are kept: a reload finishes it.
 		_bar.say("“%s” is open, but %d parts did not arrive: save it once they have" % [
@@ -5181,6 +5189,9 @@ func _maybe_copy() -> void:
 	# Made meanwhile in another tab on the same link (two tabs let in by one
 	# sign-in): that one, not a second.
 	if await _open_made(person):
+		return
+	if _store.model_now() != copy:
+		_bar.say("“%s” was not copied into your models: another model was opened" % name)
 		return
 	var kept: String = _store.unused_name(name)
 	if not _store.save_as(kept):

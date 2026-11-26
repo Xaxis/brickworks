@@ -4543,6 +4543,9 @@ msgstr "Otros pueden verlo y construirlo para sí mismos, y preguntarte antes de
 msgid "List it in the gallery"
 msgstr "Mostrarlo en la galería"
 
+msgid "Listed without your name, it will not be on your profile or in your followers' feeds."
+msgstr "Si aparece sin tu nombre, no estará en tu perfil ni en el feed de tus seguidores."
+
 msgid "Anyone can find it at brickworks.diy/gallery, not only people sent the link. Untick it and publish again to take it out and keep the link."
 msgstr "Cualquiera puede encontrarlo en brickworks.diy/gallery, no solo quien recibe el enlace. Desmárcalo y publica de nuevo para quitarlo y conservar el enlace."
 
@@ -5856,6 +5859,31 @@ msgstr "Plástico brillante con bordes redondeados, piezas transparentes que des
 
 msgid "The plastic and the light as the window draws them."
 msgstr "El plástico y la luz tal como los dibuja la ventana."
+
+# The plastic new or played with (photoreal26), Render's Plastic row: New as
+# plastic is, not as a file is (msgctxt "plastic").
+msgid "Plastic"
+msgstr "Plástico"
+
+msgctxt "plastic"
+msgid "New"
+msgstr "Nuevo"
+
+msgctxt "plastic"
+msgid "Played with"
+msgstr "Usado"
+
+msgid "Straight from the box."
+msgstr "Recién sacado de la caja."
+
+msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way. Drawn so at Best, in the Product look."
+msgstr "Un set con el que se ha jugado durante años: blancos algo amarillentos, polvo en las partes de arriba, cada pieza asentada a su manera. Dibujado así en Máxima, aspecto Foto de producto."
+
+msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way"
+msgstr "Un set con el que se ha jugado durante años: blancos algo amarillentos, polvo en las partes de arriba, cada pieza asentada a su manera"
+
+msgid "Drawn so at Best, in the Product look"
+msgstr "Dibujado así en Máxima, aspecto Foto de producto"
 
 msgid "%d frames, %s s at %d a second, as an animated WebP."
 msgstr "%d fotogramas, %s s a %d por segundo, como WebP animado."
@@ -18389,3 +18417,30 @@ msgstr "Modo Sencillo"
 
 msgid "Put it on the plate or on a brick"
 msgstr "Ponlo sobre la placa o sobre un ladrillo"
+# pubbind: an act begun on one model, another opened before it ended
+msgid "Not entered: another model was opened."
+msgstr "No se ha inscrito: se abrió otro modelo."
+
+msgid "Another model was opened meanwhile."
+msgstr "Mientras tanto se abrió otro modelo."
+
+msgid "Published “%s” at %s, but another model was opened meanwhile: the link was not given to it."
+msgstr "«%s» publicado en %s, pero mientras tanto se abrió otro modelo: no se le dio el enlace."
+
+msgid "Not asked: another model was opened."
+msgstr "No preguntado: se abrió otro modelo."
+
+msgid "Not taken down: another model was opened."
+msgstr "No se ha retirado: se abrió otro modelo."
+
+msgid "Taken down: the link now says the model is no longer shared."
+msgstr "Retirado: el enlace dice ahora que el modelo ya no se comparte."
+
+msgid "“%s” was not copied into your models: another model was opened"
+msgstr "«%s» no se copió en tus modelos: se abrió otro modelo"
+
+msgid "not cleared: another model was opened"
+msgstr "no se ha vaciado: se abrió otro modelo"
+
+msgid "Stopped: another model was opened, and nothing more was built"
+msgstr "Detenido: se abrió otro modelo, y no se construyó nada más"

@@ -1474,6 +1474,25 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   one's name (wholereview2 F1). `wholetext2_probe` cases `save_during`,
   `export_during`, `text_during`, `paced_during` open another model or begin
   New a frame into each.
+  Publish is the model's from the press to the server's answer (pubbind):
+  its link, remix and moves are taken with its text, and the model is
+  checked again after the steps and tests and after the answer. Opened
+  before the send, nothing is sent ("Not published: another model was
+  opened."); after, the model open now is given nothing and the status
+  names where the first went ("Published “A” at …, but another model was
+  opened meanwhile"). wholereview3 F1 had 10030-1 sent as the other's next
+  version and the other given its link. The same binding: Ask in Talk,
+  Enter (the entry goes to the link published), Take down (the link pressed
+  on), Clear (asked about one model, never empties another), Save's
+  name-taken question (the name never lands on another), a link's copy and
+  MCP open_model link= (never saved into the person's models as the copy),
+  and a design run of the assistant (`Assistant._model_gone`: its reply,
+  stream and next tool never build on a model opened meanwhile). The share
+  panel shows the model on the baseplate while it is open
+  (`SharePanel._show_model`, `_follow_model`): nothing typed for one model
+  is published with another. `pubbind_probe` (headless) drives each with
+  the server stubbed; wholereview3's p3 (`wholereview3_probe
+  --cases=publish_during,publish_small`, branch wholereview3) both ways.
   The audit is `src/dev/command_probe.gd` (windowed or headless; `--judge`
   fails a command over 250 ms of its own work in one frame that was not
   said first): every command in the shell's table on Orthanc and the car,

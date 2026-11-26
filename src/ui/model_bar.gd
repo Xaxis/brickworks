@@ -971,6 +971,11 @@ func _on_save(press: int = -1) -> bool:
 		if str(answer[0]).is_empty():
 			_say("not saved: “%s” is a saved model already" % store.taken)
 			return false
+		# The name chosen is this model's: never given to one opened while
+		# the dialog was up (pubbind), whose title and changed mark it set.
+		if store.model_now() != model:
+			_say(ModelStore.ANOTHER_OPENED)
+			return false
 		over = bool(answer[1])
 		name = str(answer[0])
 		_name.text = name
@@ -1751,11 +1756,25 @@ const ESCAPE_AFTER_FRAMES := 2
 
 
 func _ask_to_clear() -> void:
+	_clear_asked_for = store.model_now() if store != null else -1
 	_ask(_confirm)
 
 
+## The model Clear was asked about (_ask_to_clear): one opened while the
+## question is up, or in the frame before it clears, is never emptied in
+## its place (pubbind).
+var _clear_asked_for: int = -1
+
+
 func _on_clear() -> void:
+	var model: int = _clear_asked_for if _clear_asked_for >= 0 or store == null else store.model_now()
+	_clear_asked_for = -1
 	var job: Working.Job = await _say_first("Clearing %s parts…")
+	if store != null and store.model_now() != model:
+		if job != null:
+			job.end()
+		_say("not cleared: another model was opened")
+		return
 	world.clear()
 	builder.lattice.clear()
 	builder.forget_history()

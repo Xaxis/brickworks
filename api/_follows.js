@@ -25,7 +25,9 @@
 // Since supabase/notifications.sql the feed is what the people you follow
 // made; what happened to your own models is Notifications, and the count
 // is api/_notifications.js's. Since supabase/collection_follows.sql, also
-// what was put in the collections you follow (api/_lists.js).
+// what was put in the collections you follow (api/_lists.js). Since
+// supabase/feed_self.sql, also your own work in the gallery, said "You
+// ...", marked mine, never New and never counted.
 //
 // Who may follow and who may be followed is the database's to say
 // (follow_trouble), and its trigger says it again whatever writes: an
@@ -61,6 +63,8 @@ const NOT_THERE = /: 404$/;
 // Kept briefly by the CDN, as the gallery's list is.
 const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 export const NOT_YET = "Following and the feed are not open on Brickworks yet.";
+// The rows of a page of the feed.
+const FEED_PAGE = 30;
 
 // What a refusal from follows.sql says, and its status.
 export const WORDS = {
@@ -116,6 +120,35 @@ const quoted = (text, most) => {
 /// links go, {of} and {title} where the model remixed and the challenge
 /// are named, each in quotes (web/feed.js), the rest said here.
 export function feedSaid(row, origin = "") {
+  const said = othersSaid(row, origin);
+  return row.mine === true ? { ...said, mine: true, line: ownLine(row) || said.line } : said;
+}
+
+/// A row of the reader's own work (supabase/feed_self.sql own_rows, marked
+/// mine) as the page says it: "You ...", with {name}, {title} and {n} as
+/// the others' lines have them. A model listed without their name says
+/// where it is not, as the studio's Share says before it is listed.
+function ownLine(row) {
+  const n = (said, values) => said.replace(/\{n\}/g, String(values.n));
+  if (row.kind === "model" && row.wip === true) return say("You shared work in progress: {name}");
+  if (row.kind === "model") {
+    return row.credited === false ? say("You listed {name} without your name: it is not on your profile or in your followers’ feeds")
+      : say("You shared a new model {name}");
+  }
+  if (row.kind === "version" && row.finished === true) {
+    return n(say("You finished {name}: version {n} is the finished one"), { n: Number(row.version) });
+  }
+  if (row.kind === "version" && row.wip === true) return n(say("You shared progress on {name}: version {n}"), { n: Number(row.version) });
+  if (row.kind === "version") return n(say("You shared version {n} of {name}"), { n: Number(row.version) });
+  if (row.kind === "photo") return say("You posted a photo of your build of {name}");
+  if (row.kind === "challenge") {
+    return row.way === "assistant" ? say("You entered {name} in the challenge {title}, built with the assistant")
+      : say("You entered {name} in the challenge {title}, built by hand");
+  }
+  return null;
+}
+
+function othersSaid(row, origin) {
   const name = quoted(row.name || say("a model"), 80);
   const by = row.by && row.by.handle ? { handle: row.by.handle, name: quoted(row.by.name, 40),
     url: `${origin}/u/${row.by.handle}` } : null;
@@ -312,13 +345,21 @@ export async function feed(request, response, { origin }) {
   // The first page is the feed opened: the count clears. What the people
   // you follow made (supabase/notifications.sql follow_page); before that
   // file, the feed of before, with your models' news in it too.
-  const asked = { viewer: asker, before, size: 30, mark: before === null };
-  const page = await call("follow_page", asked, () => call("feed_of", asked, () => ({ missing: true })));
+  const asked = { viewer: asker, before, size: FEED_PAGE, mark: before === null };
+  // And the caller's own work beside it (supabase/feed_self.sql own_page):
+  // a build they listed is in their feed at once, as on any social site,
+  // where its absence read as "it didn't work" (sitewalk3). Nothing before
+  // the file is applied.
+  const [page, own] = await Promise.all([
+    call("follow_page", asked, () => call("feed_of", asked, () => ({ missing: true }))),
+    call("own_page", { viewer: asker, before, size: FEED_PAGE }, () => null).catch(() => null),
+  ]);
   if (page && page.missing) return response.status(200).json({ ready: false, rows: [], more: false, seen_at: null });
   const seen = page?.seen_at ? Date.parse(page.seen_at) : null;
+  const together = withOwn(page, own, FEED_PAGE);
   // Nothing by somebody they blocked, nor a model of theirs put in a
   // collection the caller follows (api/_blocks.js).
-  const rowsRead = page?.rows || [];
+  const rowsRead = together.rows;
   const handles = await blockedHandles(asker);
   const gone = handles.size ? await blockedModels(asker, rowsRead.map((row) => row.model)) : new Set();
   const found = rowsWithout(rowsRead, handles, gone);
@@ -336,7 +377,7 @@ export async function feed(request, response, { origin }) {
   const rows = inLanguage(lang, siteWords(lang), () => found.map((row) => ({ ...feedSaid(row, origin), model: row.model,
     new: isNew(row, seen, followed), card: cards.get(row.model) || null,
     ...(row.kind === "photo" ? { photo: photos.get(row.photo) || null } : {}) })));
-  return response.status(200).json({ ready: true, rows: await withFaces(rows), more: page?.more === true, seen_at: page?.seen_at ?? null,
+  return response.status(200).json({ ready: true, rows: await withFaces(rows), more: together.more, seen_at: page?.seen_at ?? null,
     // Whether New is reckoned from each follow too, or (before the file)
     // from the last look alone.
     since_follows: Boolean(followed),
@@ -353,12 +394,34 @@ export async function feed(request, response, { origin }) {
 /// marked New (walk256, W7). A row no follow brought is new by the look
 /// alone. Pure.
 export function isNew(row, seen, followed) {
+  // Your own work is never New to you, nor counted (feed_new_count).
+  if (row?.mine === true) return false;
   const at = Date.parse(row?.at);
   if (seen !== null && !(at > seen)) return false;
   const began = row?.kind === "collection" ? followed?.collections?.[String(row.collection || "")]
     : followed?.people?.[String(row?.by?.handle || "")];
   const since = began ? Date.parse(began) : NaN;
   return !Number.isFinite(since) || at > since;
+}
+
+/// A row's time to the microsecond, as Postgres gives it ("...:22.646853+00:00"):
+/// Date.parse keeps only the milliseconds, and two rows a microsecond
+/// apart would sort as one.
+function microsOf(at) {
+  const ms = Date.parse(String(at || ""));
+  if (!Number.isFinite(ms)) return -Infinity;
+  const finer = /\.\d{3}(\d{1,3})/.exec(String(at))?.[1] || "";
+  return ms * 1000 + Number(finer.padEnd(3, "0"));
+}
+
+/// A page of the feed from follow_page's [theirs] and own_page's [own]
+/// (either {rows, more}, own null before supabase/feed_self.sql): the
+/// newest [size] of the two together, newest first, and whether there is
+/// more. What one page leaves out is older than all it shows, so the next
+/// page, asked before its last row, has it. Pure.
+export function withOwn(theirs, own, size = FEED_PAGE) {
+  const all = [...(theirs?.rows || []), ...(own?.rows || [])].sort((a, b) => microsOf(b.at) - microsOf(a.at));
+  return { rows: all.slice(0, size), more: all.length > size || theirs?.more === true || own?.more === true };
 }
 
 /// The cards of the models [ids], as the gallery gives them: id -> card.

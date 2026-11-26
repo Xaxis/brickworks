@@ -207,8 +207,14 @@ func _make_art(args: Dictionary) -> Variant:
 		return "Nothing was laid: the picture came to no studs."
 	if world == null or builder == null:
 		return "There is no baseplate here to lay it on."
+	var model_was: int = world.generation()
 	await _ensure_parts(art.model())
+	if world.generation() != model_was:
+		return "Nothing was laid: another model was opened while its parts arrived."
 	world.clear()
+	# Its own clear: the run goes on in the world it cleared.
+	if _busy:
+		_run_generation = world.generation()
 	builder.lattice.clear()
 	builder.forget_history()
 	scenery.clear()
@@ -1518,10 +1524,49 @@ func _record_run() -> void:
 		laid_parts.emit()
 
 
+## The model this run designs for (BrickWorld.generation): another opened,
+## a new one begun or the baseplate cleared while a turn is in the air, and
+## the run ends without putting anything on the one there now.
+var _run_generation: int = -1
+
+
+## Whether the model this run was designing for is gone (_run_generation).
+func _model_moved() -> bool:
+	return _busy and world != null and world.generation() != _run_generation
+
+
+## The same, the run ended if so: nothing more is put down, nothing put
+## back and no step recorded, for the bricks it laid and the snapshot it
+## took went with that model, and the one there now numbers its own bricks
+## from one again (forget_built). Before, the reply's design landed in the
+## model opened meanwhile, marked as Claude's (pubbind).
+func _model_gone() -> bool:
+	if not _model_moved():
+		return false
+	_busy = false
+	_scoped = false
+	_drop_sketches()
+	_http.cancel_request()
+	if _streaming != null:
+		_streaming.stop()
+		_streaming = null
+	forget_built()
+	_run_mark = {}
+	if not _spend.is_empty():
+		spent.emit(_spent_on, _spend)
+	finished.emit(false, MODEL_GONE)
+	return true
+
+
+## What a run ended by another model says (_model_gone).
+const MODEL_GONE := "stopped: another model was opened, and nothing more was built"
+
+
 func _start(text: String) -> void:
 	if _busy:
 		return
 	_busy = true
+	_run_generation = world.generation() if world != null else -1
 	_repairs = 0
 	_turns = 0
 	_nudges = 0
@@ -1765,6 +1810,9 @@ func _send() -> void:
 			# Sketches are held off the baseplate, not drawn on it.
 			if _sketch_round or (tool != "submit_design" and tool != "check_design"):
 				return
+			# Nor drawn on another model opened while it is written.
+			if _model_moved():
+				return
 			for raw: Dictionary in scanner.feed(piece):
 				if not raw.has("part") or _edited:
 					# Same reason a draft does not land after an edit:
@@ -1784,6 +1832,8 @@ func _send() -> void:
 		# Cancelled while it was reading. Everything below would undo
 		# what cancel() has already put back.
 		if not _busy:
+			return
+		if _model_gone():
 			return
 
 		# A connection held open for three minutes gets dropped
@@ -1963,7 +2013,7 @@ static var ANTHROPIC_FIELDS := PackedStringArray([
 
 
 func _on_response(result: Array) -> void:
-	if not _busy:
+	if not _busy or _model_gone():
 		return
 	var code: int = result[1]
 	var payload: PackedByteArray = result[3]
@@ -2020,6 +2070,10 @@ func _on_response(result: Array) -> void:
 				"tool_use_id": block.get("id", ""),
 				"content": await _run_tool(block),
 			})
+			# A tool that waited on parts: the next is never run on another
+			# model opened meanwhile.
+			if _model_gone():
+				return
 
 	# Sketching first: shown once there are three, asked for the rest until.
 	if _sketch_round and _busy and _sketch_turn_over(tool_results):

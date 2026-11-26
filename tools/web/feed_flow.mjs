@@ -25,7 +25,12 @@
 //   4. The next load: her version, her photo and her model as posts, newest
 //      first, each with its picture drawn (at 390 too), its words and its
 //      links, none New (made before he last opened it); no Latest, and Ada
-//      no longer suggested.
+//      no longer suggested. Not her sketch, listed without her name.
+//   4b. Ada's own feed, following nobody (feedself, supabase/feed_self.sql):
+//      her sketch ("You listed ... without your name"), her version, her
+//      photo and her tower, each said "You ...", none New, then "You follow
+//      nobody yet", Latest and designers to follow without her; the home's
+//      Following tab, her posts with no Follow and how to fill it.
 //   5. The API: latest kept by the CDN for everybody, never with tests=1.
 //
 // Pictures in --out.
@@ -54,6 +59,7 @@ const bobEmail = `delivered+bw-feed-bob-${rand}@resend.dev`;
 const ADA = `bwf-ada-${rand}`;
 const BOB = `bwf-bob-${rand}`;
 const TOWER = `Feed Flow Tower ${rand}`;
+const SKETCH = `Feed Flow Sketch ${rand}`;
 // A browser on this site, as the build counter asks (api/share.js built).
 const PERSON = `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 flow/${rand}`;
 
@@ -152,6 +158,7 @@ const BUILDS = 4;
 const feedDrawn = (page) => page.evaluate(() => ({
   state: document.documentElement.dataset.feed || "",
   rows: [...document.querySelectorAll("#rows .feed-row")].map((li) => ({ kind: li.dataset.kind, isNew: li.classList.contains("new"),
+    mine: li.dataset.mine === "yes",
     what: (li.querySelector(".what")?.textContent || "").replace(/\s+/g, " ").trim(),
     go: li.querySelector("a.go")?.getAttribute("href") || "", who: li.querySelector("a.who")?.getAttribute("href") || "",
     avatar: Boolean(li.querySelector(".row-face .avatar")), said: li.querySelector(".row-said")?.textContent || "",
@@ -163,6 +170,9 @@ const feedDrawn = (page) => page.evaluate(() => ({
   latestShown: !document.getElementById("latest").hidden,
   ask: !document.getElementById("signed-out").hidden, nobody: !document.getElementById("nobody").hidden,
   quiet: !document.getElementById("quiet").hidden,
+  // "You follow nobody yet" under the posts, not over them (feedself).
+  nobodyUnder: Boolean(document.getElementById("rows").compareDocumentPosition(document.getElementById("nobody"))
+    & Node.DOCUMENT_POSITION_FOLLOWING),
 }));
 
 let ada = null;
@@ -204,6 +214,13 @@ try {
     body: { id, name: TOWER, author: "Ada Feed", note: "A taller roof", model: model(TOWER, "1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n"),
       image: picture, listed: true } });
   check(`its version ${two.body.version}: ${two.status}`, two.body.version === 2);
+  // A sketch she lists with Show who made it unticked: in the gallery with
+  // no name, so in her own feed (feedself) and in no follower's.
+  await new Promise((done) => setTimeout(done, 1200));
+  const sketch = await api("/api/share", { method: "POST", token: ada.access_token,
+    body: { name: SKETCH, model: model(SKETCH), image: picture, listed: true } });
+  made.push([sketch.body.id, ada]);
+  check(`a sketch listed without her name: ${sketch.status} /m/${sketch.body.id}`, sketch.status === 201 && Boolean(sketch.body.id));
   const found = await api(`/api/share?op=list&page=1&tests=1&q=${encodeURIComponent(rand)}`);
   const listedAt = Date.parse((found.body.models || []).find((one) => one.id === id)?.listed_at || "");
   check(`listed at ${new Date(listedAt).toISOString?.() || listedAt}`, Number.isFinite(listedAt));
@@ -296,6 +313,9 @@ try {
     drawn = await feedDrawn(page);
     const kinds = drawn.rows.map((one) => one.kind).join(", ");
     check(`at ${width}: posts newest first: ${kinds}`, kinds === "version, photo, model");
+    // Her sketch, listed without her name, is in no follower's feed; none of his own.
+    check(`...not her nameless sketch, and none his own (${drawn.rows.filter((one) => one.mine).length})`,
+      !drawn.rows.some((one) => one.what.includes(SKETCH) || one.card === sketch.body.id) && drawn.rows.every((one) => !one.mine));
     const [version, snap, listedRow] = drawn.rows;
     check(`"${version?.what}" → ${version?.go}, "${version?.said}", her card ${version?.card === id}`,
       /^Ada Feed shared version 2 of “Feed Flow Tower/.test(version?.what || "") && version?.go === `/m/${id}/v/2`
@@ -329,6 +349,51 @@ try {
   check(`the version's name opens ${new URL(widePage.url()).pathname}`, new URL(widePage.url()).pathname === `/m/${id}/v/2`);
   await bobSite.close();
   await wide.close();
+
+  // --- 4b. Ada's own feed: her work in it, following nobody (feedself) ----
+  // A newcomer posted and opened their feed and found nothing (sitewalk3).
+  console.log("Ada's own feed");
+  for (const [width, height, theme] of [[390, 844, "dark"], [1280, 900, "light"]]) {
+    const own = await context({ as: ada, width, height, theme });
+    const page = await own.newPage();
+    listen(page, `Ada ${width}`);
+    await page.goto(`${site}/feed?tests=1`, { waitUntil: "load" });
+    await until(page, () => document.documentElement.dataset.feed === "ready" && document.querySelectorAll("#rows .feed-row").length > 0
+      && !document.getElementById("designers").hidden, `her feed at ${width}`, 60);
+    const mineDrawn = await feedDrawn(page);
+    const kinds = mineDrawn.rows.map((one) => one.kind).join(", ");
+    check(`at ${width}: her own work, newest first: ${kinds}; every one hers (${mineDrawn.rows.filter((one) => one.mine).length}), none New`,
+      kinds === "model, version, photo, model" && mineDrawn.rows.every((one) => one.mine && !one.isNew));
+    const [nameless, version, snap, tower] = mineDrawn.rows;
+    check(`"${nameless?.what}"`, nameless?.what === `You listed “${SKETCH}” without your name: it is not on your profile or in your followers’ feeds`
+      && nameless?.card === sketch.body.id);
+    check(`"${version?.what}" → ${version?.go}`, version?.what === `You shared version 2 of “${TOWER}”` && version?.go === `/m/${id}/v/2`
+      && version?.said === "A taller roof" && version?.who === `/u/${ADA}` && version?.avatar);
+    check(`"${snap?.what}"`, snap?.what === `You posted a photo of your build of “${TOWER}”` && Boolean(snap?.photo));
+    check(`"${tower?.what}"`, tower?.what === `You shared a new model “${TOWER}”` && tower?.card === id);
+    const pictures = await picturesDrawn(page, "#rows");
+    check(`...each with its picture (${pictures.count}, not drawn ${pictures.missing.length}); then "You follow nobody yet" under them `
+      + `(${mineDrawn.nobody}, under ${mineDrawn.nobodyUnder}), Latest (${mineDrawn.latestShown}), designers to follow without her `
+      + `(${mineDrawn.designers.slice(0, 5).join(", ")}), nothing sideways`,
+    pictures.count >= 4 && pictures.missing.length === 0 && mineDrawn.nobody && mineDrawn.nobodyUnder && !mineDrawn.quiet
+      && mineDrawn.latestShown && mineDrawn.designersShown && !mineDrawn.designers.includes(ADA) && !(await sideways(page)));
+    await shot(page, `4b_own-${width}-${theme}.png`);
+    // The home's Following tab: her posts, no Follow beside them, and how to fill it.
+    await page.goto(`${site}/?tests=1`, { waitUntil: "load" });
+    await page.click("#tab-following");
+    const home = await until(page, (tower) => (document.documentElement.dataset.feedTab === "following"
+      && document.querySelector(`#stream > .post.build[data-id="${tower}"]`) ? {
+        posts: [...document.querySelectorAll("#stream > .post:not(.skeleton)")].map((post) => ({ id: post.dataset.id || post.dataset.photo,
+          mine: post.dataset.mine === "yes", follow: Boolean(post.querySelector("button[data-follow]")) })),
+        said: document.getElementById("stream-said")?.textContent || "" } : null), "her posts in Following", 60, id);
+    check(`home Following at ${width}: ${home.posts.length} posts, hers ${home.posts.filter((one) => one.mine).length}, `
+      + `a Follow on ${home.posts.filter((one) => one.follow).length}; "${home.said}"`,
+    home.posts.some((one) => one.id === sketch.body.id) && home.posts.every((one) => one.mine && !one.follow)
+      && /^Nothing from the people you follow yet/.test(home.said));
+    await page.locator(`#stream > .post.build[data-id="${sketch.body.id}"]`).scrollIntoViewIfNeeded().catch(() => null);
+    await shot(page, `4b_home_following-${width}-${theme}.png`);
+    await own.close();
+  }
 
   // --- 5. the API -------------------------------------------------------------
   // Vercel's CDN keeps s-maxage for itself and hands a browser what is left
