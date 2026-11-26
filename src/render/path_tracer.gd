@@ -182,6 +182,18 @@ var photo: bool = false
 ## PRODUCT_ALBEDO by the colour a brick is drawn in (PartLibrary.shown_for
 ## of the table's): "r,g,b" (0-255) -> linear albedo. Made on first use.
 var _fitted: Dictionary = {}
+## Where a bench run keeps what each picture was traced from (photoreal28):
+## the buffers the card is given, as files in this folder, so the page's
+## tracer (page_tracer.js) can trace the very set the desktop traced, and
+## what the picture asked of the resolve. "" for none.
+static var capture_to: String = ""
+## What else a captured picture was finished with (StudioRender: its JPEG).
+static var capture_notes: Dictionary = {}
+var _last_seed: int = 0
+var _place_name: String = ""
+var _place_size := Vector2i.ZERO
+var _surface_bytes := PackedByteArray()
+var _surface_size := Vector2i.ZERO
 ## Samples in the running sum so far.
 var samples: int = 0
 ## Instances in the last picture staged, and distinct shapes.
@@ -577,6 +589,8 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 		normals.append_array(shape[3])
 		corners.append_array(shape[4])
 		vertex_base += int(shape[5])
+	if not capture_to.is_empty():
+		_capture_set(bytes, meshes, points, normals, corners, placed)
 	_meshes = _storage(meshes)
 	_positions = _storage(points)
 	_normals = _storage(normals)
@@ -651,6 +665,8 @@ func light_with(place: StudioPanorama) -> void:
 	for y: int in tall:
 		table[y] /= all
 	_place_table = _storage(table.to_byte_array())
+	if not capture_to.is_empty():
+		_capture_place(image, table)
 
 
 ## What a staged model stands on (photoreal7): [param image], a tile of a
@@ -679,6 +695,9 @@ func surface_with(image: Image) -> void:
 	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
 		| RenderingDevice.TEXTURE_USAGE_CAN_UPDATE_BIT
 	_surface_texture = _rd.texture_create(format, RDTextureView.new(), [tile.get_data()])
+	if not capture_to.is_empty():
+		_surface_bytes = tile.get_data()
+		_surface_size = tile.get_size()
 
 
 ## The running sum and the picture, at [param size]: started again.
@@ -776,6 +795,7 @@ func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
 	if not _trace_set.is_valid() or count <= 0 or row >= _size.y:
 		return
 	var band: int = _size.y - row if rows <= 0 else mini(rows, _size.y - row)
+	_last_seed = seed
 	_rd.capture_timestamp("PathTracer %d %d" % [get_instance_id(), _size.x * band * count])
 	var push := PackedByteArray()
 	push.resize(32)
@@ -835,6 +855,8 @@ func picture(exposure: float, tonemapper: int, white: float, contrast: float = 1
 	var push := PackedFloat32Array([float(samples), exposure, white, float(tonemapper),
 		contrast, saturation, 1.0 if transparent else 0.0, 1.0 if dither else 0.0,
 		denoise, linear_saturation, camera.x, camera.y, camera.z, camera.w, sharpen, tone])
+	if not capture_to.is_empty() and dither:
+		_capture_picture(push)
 	var bytes: PackedByteArray = push.to_byte_array()
 	var list: int = _rd.compute_list_begin()
 	_rd.compute_list_bind_compute_pipeline(list, _resolve_pipeline)
@@ -879,6 +901,68 @@ func _fitted_albedo(colour: Color, own: Color) -> Color:
 static func _byte_key(colour: Color) -> String:
 	return "%d,%d,%d" % [roundi(colour.r * 255.0), roundi(colour.g * 255.0), roundi(colour.b * 255.0)]
 
+
+# -- the bench's capture (photoreal28) -------------------------------------------
+
+
+static func _capture_file(name: String, bytes: PackedByteArray) -> void:
+	DirAccess.make_dir_recursive_absolute(capture_to)
+	var file := FileAccess.open(capture_to.path_join(name), FileAccess.WRITE)
+	if file != null:
+		file.store_buffer(bytes)
+		file.close()
+
+
+## The set as staged: each instance's record, its seated transform (the basis's
+## columns, the origin, then its mask), and every shape's points, normals and
+## corners, as the card is given them.
+func _capture_set(records: PackedByteArray, meshes: PackedByteArray, points: PackedByteArray,
+		normals: PackedByteArray, corners: PackedByteArray,
+		placed: Array[RDAccelerationStructureInstance]) -> void:
+	var places := PackedFloat32Array()
+	for instance: RDAccelerationStructureInstance in placed:
+		var at: Transform3D = instance.transform
+		places.append_array([at.basis.x.x, at.basis.x.y, at.basis.x.z, at.basis.y.x, at.basis.y.y,
+			at.basis.y.z, at.basis.z.x, at.basis.z.y, at.basis.z.z, at.origin.x, at.origin.y, at.origin.z,
+			float(instance.mask), 0.0, 0.0, 0.0])
+	_capture_file("instances.bin", records)
+	_capture_file("transforms.bin", places.to_byte_array())
+	_capture_file("meshes.bin", meshes)
+	_capture_file("positions.bin", points)
+	_capture_file("normals.bin", normals)
+	_capture_file("indices.bin", corners)
+
+
+## A photographed place's picture and table, kept once by their bytes beside the
+## pictures' folders (places/<md5>.bin and .table.bin), as every shot is lit by
+## one of a few.
+func _capture_place(image: Image, table: PackedFloat32Array) -> void:
+	var data: PackedByteArray = image.get_data()
+	var hashing := HashingContext.new()
+	hashing.start(HashingContext.HASH_MD5)
+	hashing.update(data)
+	_place_name = hashing.finish().hex_encode()
+	_place_size = image.get_size()
+	var places: String = capture_to.get_base_dir().path_join("places")
+	DirAccess.make_dir_recursive_absolute(places)
+	if not FileAccess.file_exists(places.path_join(_place_name + ".bin")):
+		for pair: Array in [[_place_name + ".bin", data], [_place_name + ".table.bin", table.to_byte_array()]]:
+			var file := FileAccess.open(places.path_join(pair[0]), FileAccess.WRITE)
+			file.store_buffer(pair[1])
+			file.close()
+
+
+## The picture as it was asked for: the scene, the samples so far, the seed,
+## the resolve's numbers, and which version of the shader traced it.
+func _capture_picture(push: PackedFloat32Array) -> void:
+	_capture_file("scene.bin", scene.to_byte_array())
+	_capture_file("surface.bin", _surface_bytes)
+	var said := {"size": [_size.x, _size.y], "samples": samples, "seed": _last_seed,
+		"version": "photo" if photo else ("marks" if marked else "plain"), "has_glass": _has_glass,
+		"resolve": Array(push), "place": _place_name, "place_size": [_place_size.x, _place_size.y],
+		"surface_size": [_surface_size.x, _surface_size.y], "bounces": BOUNCES,
+		"place_cells": [PLACE_CELLS.x, PLACE_CELLS.y], "notes": capture_notes}
+	_capture_file("picture.json", JSON.stringify(said, "\t").to_utf8_buffer())
 
 # -- freeing -------------------------------------------------------------------
 

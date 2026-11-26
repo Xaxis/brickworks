@@ -2873,6 +2873,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	# the finished picture.
 	var sharpen: float = _own(settings.sharpen, PRODUCT_SHARPEN) if photo else 0.0
 	var jpeg: float = _own(settings.jpeg, PRODUCT_JPEG) if photo else 0.0
+	if not PathTracer.capture_to.is_empty():
+		PathTracer.capture_notes["jpeg"] = jpeg
 	# A photograph's camera draws its own tone curve (photoreal7).
 	var tone: float = _own(settings.tone, PRODUCT_TONE) if photo else 0.0
 	if not _tracer.begin(picture):
