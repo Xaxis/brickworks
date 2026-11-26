@@ -57,7 +57,7 @@ lib:path tracer
 ![The car rendered at Best in the Product look on white, path traced: glossy red and black plastic, clear windows, a soft shadow under it.](/docs/img/render-product.webp "Quality › Best, Look › Product: the car as a set's box shows it.")
 
 > [!NOTE]
-> Where Best is path traced (the desktop app, coming soon), no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits with the little play a real brick has. Each edge is rounded as a moulded part's is: never quite evenly along it, with a small nick here and there, so the thin line of light along it breaks as it does on a real brick. Only the picture changes, never the model, and the same model renders the same every time.
+> Where Best is path traced (the desktop app, coming soon), no two parts are drawn quite alike, as in a real model: each part's colour is a hair off the next of its colour, each stud's logo is its own, and each part sits with the little play a real brick has. Each edge is rounded as a moulded part's is: never quite evenly along it, with a small nick here and there, so the thin line of light along it breaks as it does on a real brick. Only the picture changes, never the model, and the same model renders the same every time. In a browser, Best raises the LEGO logo on every stud too, as the desktop's path tracer does.
 
 <!-- covers
 lib:product look
@@ -67,7 +67,7 @@ lib:moulded edges
 
 ### New or played with {#plastic}
 
-Under **Plastic**, **New** draws the parts straight from the box, and is what Render starts with. **Played with** draws a set that has been played with for years: whites and greys a little yellowed, each part its own amount, a little dust on the tops, finger marks where hands hold it, and each part seated its own way. It changes only the picture, at Best in the Product look where Best is path traced (the desktop app, coming soon), never the model.
+Under **Plastic**, **New** draws the parts straight from the box, and is what Render starts with. **Played with** draws a set that has been played with for years: whites and greys a little yellowed, each part its own amount, a little dust on the tops, finger marks where hands hold it, and each part seated its own way. It changes only the picture, at Best in the Product look, never the model. In a browser, where Best is not path traced, Best's own frames draw it too: the same yellowing, dust, finger marks, scuffs and seating, without the traced picture's reflections.
 
 ![The boat rendered at Best in the Product look with Plastic › Played with: its white hull a little yellowed, each part its own amount, dust on its tops, each part seated its own way.](/docs/img/render-played.webp "Plastic › Played with: the boat as a set played with for years.")
 
