@@ -242,6 +242,11 @@ func _full_pictures() -> void:
 	_camera.set_view("default")
 	await _settle()
 	await _frames(60)
+	# "opened Car" stays on the status line 4 s by the clock (ModelBar._say):
+	# waited out, so how fast the box drew does not decide which words the
+	# picture shows.
+	await create_timer(4.5).timeout
+	await _frames(4)
 	await _shot("full_new")
 
 
