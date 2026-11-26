@@ -348,8 +348,9 @@ func _case_assistant() -> void:
 		"bricks": _wall_bricks(), "features": []})])
 	_ok(world.brick_count() == 0, "nothing was built on what is there now (%d parts)" % world.brick_count())
 	_ok(not assistant.is_busy(), "the run ended")
-	_ok(not ended.is_empty() and not bool(ended[0][0]) and str(ended[0][1]) == Assistant.MODEL_GONE,
-		"saying why: %s" % str(ended))
+	# Its words as written, so this runs on a tree before them too.
+	_ok(not ended.is_empty() and not bool(ended[0][0])
+		and str(ended[0][1]).begins_with("stopped: another model was opened"), "saying why: %s" % str(ended))
 	ended.clear()
 	assistant.forget_built()
 	assistant.forget_conversation()
