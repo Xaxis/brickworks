@@ -478,6 +478,15 @@ func entered() -> void:
 	camera.finger_taken = finger_taken
 	_lay_out()
 	_sketch()
+	# The model framed and its left-alone parts counted a frame later: each
+	# reads every part, and the switch is the controls' work alone, whatever
+	# the model's size (10030 took it to 18.8 ms at 390 under load).
+	_settle_in.call_deferred()
+
+
+func _settle_in() -> void:
+	if not is_visible_in_tree():
+		return
 	_frame()
 	_tell_left_alone()
 
