@@ -1352,11 +1352,16 @@ static func _new_root_of(roots: Dictionary, unit: String) -> String:
 ## in within it, in its colour and turned as it is (each a hundredth of an
 ## LDU and a ten-thousandth of a turn, [method _same]), so its frame is that
 ## copy's frame as read moved, never fitted, and the line says the file's own
-## turn where the move did not turn it. Not where the file's copy holds a
-## part the app cannot show or one on its way ([param unseen]), is
-## mirrored or taken off ([param dead]); nor in a sub-model placed more than
-## once, where a line would put it in each. Read back by [method gate], each
-## part where it is.
+## turn where the move did not turn it. A mirrored copy, or one holding a
+## mirrored copy, is laid so too: its parts are read in their other hand
+## (Assemblies.unmirror), as the paste holds them, so the move that lays them
+## is a turn and a shift, and the line keeps the file's mirroring matrix,
+## moved. Up to pasteexact either was written whole, and every line of the
+## sections round them written again (0.951 as 0.9510001, 3023 as 3023b).
+## Not where the file's copy holds a part the app cannot show or one on its
+## way ([param unseen]), or is taken off ([param dead]); nor in a sub-model
+## placed more than once, where a line would put it in each. Read back by
+## [method gate], each part where it is.
 func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary,
 		unseen: Dictionary, steps_now: Dictionary) -> Variant:
 	var parent: String = Assemblies.parent_of(root)
@@ -1387,25 +1392,20 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 	for copy: String in theirs:
 		var reads: Dictionary = {}
 		var count: int = 0
-		var plain: bool = true
 		for origin: String in by_origin:
 			var read: Read = by_origin[origin]
 			if read.unit != copy and not read.unit.begins_with(copy + "/"):
 				continue
-			if read.mirrored:
-				plain = false
-				break
 			_add_to(reads, "%s|%s|%d" % [_kinds_in(read.unit.substr(copy.length())), read.part_id,
 				read.colour], read)
 			count += 1
-		if not plain:
-			why = "the file's %s is mirrored" % copy
-			continue
 		if count != parts.size() or reads.size() != mine.size():
 			why = "%d parts against the %d of the file's %s" % [parts.size(), count, copy]
 			continue
 		var laid: Variant = _moved_onto(mine, reads)
-		if laid == null:
+		# A paste moves and turns what it copied, never mirrors it: a move
+		# that mirrors is two copies alike by chance of their parts' shapes.
+		if laid == null or ((laid as Array)[0] as Transform3D).basis.determinant() < 0.0:
 			why = "it does not lie as the file's %s does" % copy
 			continue
 		# Each copy inside it on one of the file's copy, and each part of one
@@ -1429,8 +1429,8 @@ func _copy_line(root: String, parts: Array, frames: Dictionary, dead: Dictionary
 		var at: Transform3D = ((laid as Array)[0] as Transform3D) * (unit_frames[copy] as Transform3D)
 		var line: String = lines[int(unit_lines[copy])].strip_edges()
 		var words: PackedStringArray = _words(line)
-		if at.basis.determinant() < 0.0 or words.size() < 15:
-			why = "the file's %s is mirrored" % copy
+		if words.size() < 15:
+			why = "the file's line placing %s could not be read" % copy
 			continue
 		var local: Transform3D = (frames.get(parent, Transform3D.IDENTITY) as Transform3D).affine_inverse() * at
 		# Its colour as its parts are: the file's copy's own, or the colour
@@ -3950,20 +3950,17 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 	return ""
 
 
-## [param placement] as ModelStore's open makes it the part it puts down: a
-## Studio number as LDraw's, a retired number the part it became, a part
-## of one colour as it is now, a stub's part in the stub's colour. A
-## mirrored copy's part is read as the open
-## read it ([method _read_back_kept]).
+## [param placement] as ModelStore's open makes it the part it puts down, by
+## the open's own code (ModelStore._as_placed): a Studio number as LDraw's, a
+## retired number the part it became, a part of one colour as it is now, a
+## stub's part in the stub's colour, and a mirrored copy's part in its other
+## hand where its reflection is. A mirrored part of the file's own lines is
+## read back as the open read it before this ([method _read_back_kept]); one
+## here is in a copy put down, on its new line ([method _copy_line]).
 static func _as_opened(placement: LdrModel.Placement, library: PartLibrary) -> void:
 	if library == null:
 		return
-	placement.part_id = ModelStore.studio_part(placement.part_id, library)
-	ModelStore.as_moved(placement, library)
-	var colour: int = library.current_colour(placement.part_id)
-	if colour >= 0:
-		placement.part_id = library.current(placement.part_id)
-		placement.color_code = colour
+	ModelStore._as_placed([placement], library, true)
 
 
 ## Why [param text] may not go over the file for the model [param bricks]
