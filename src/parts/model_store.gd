@@ -4904,7 +4904,8 @@ func _claim_held() -> void:
 ## "parts", "steps", "motions" (how many of its own model's motions its
 ## sub-model keeps), "missing" (part -> how many the library has not got),
 ## "unshown" (part -> how many it cannot show), "renamed" (each name given
-## another), "error"}.
+## another), "steps_saved" (its steps are the app's own saved ones, still no
+## one's: LdrModel.steps_are_saved), "error"}.
 func held_from(text: String, file_name: String, job: Working.Job = null,
 		called: String = "", credited: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {"items": [], "name": "", "root": "", "units": {}, "held": [],
@@ -4948,7 +4949,12 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	else:
 		CustomParts.take_into(took, library, model, null, false)
 	var flattened: Array = model.flatten(library.parts)
-	var authored: bool = model.steps_are_authored()
+	# The steps it carries, as an open keeps them (LdrModel.steps_are_kept):
+	# an author's, and the app's own saved ones. Up to sk2fix2 only an
+	# author's were: the station, which opens in its saved steps, put into a
+	# model whole had all 535 of its parts planned afresh (sk2review NOTE 6,
+	# a sibling stepkeep2's switch to steps_are_kept missed).
+	var authored: bool = model.steps_are_kept()
 	_as_placed(flattened, library, authored)
 	var missing: Dictionary = {}
 	var waiting: Dictionary = {}
@@ -5096,7 +5102,8 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 		"files": files, "parts": placed.size() + held.size(), "steps": own_steps.size(),
 		"motions": motions, "bfc": head["bfc"], "rotsteps": head["rotsteps"],
 		"missing": missing, "unshown": unshown, "renamed": renamed,
-		"host_flat": source != null and not source.authored}, true)
+		"host_flat": source != null and not source.authored,
+		"steps_saved": model.steps_are_saved()}, true)
 	return out
 
 

@@ -3424,7 +3424,7 @@ func _put_carried() -> int:
 ## sub-assembly being edited ([member place_group]): the step showing, as a
 ## part put down by hand goes in, else after that one's last step, built
 ## last and put on last; -1, none, in a model nobody gave steps. Its own
-## parts, [param skip], are not counted.
+## parts and the scenery, [param skip], are not counted.
 func _brought_step(skip: Dictionary) -> int:
 	var shown: int = int(place_step.call(place_group)) if place_step.is_valid() else -1
 	if shown >= 0:
@@ -3434,15 +3434,14 @@ func _brought_step(skip: Dictionary) -> int:
 
 
 ## Whether a model brought in whole goes in with steps: it has its
-## author's, or the model it goes into has steps.
+## author's, or the model it goes into has steps. The scenery's are none of
+## them: a baseplate of the model's made the floor again keeps the step it
+## had (FloorLayer.release), and read as the model's, a model with no steps
+## went in with steps into one nobody gave any (sk2fix3).
 func _brought_stepped() -> bool:
-	if carrying.brought_units.values().any(func(step: Variant) -> bool: return int(step) >= 0) \
-			or carrying.items.any(func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0):
-		return true
-	for brick: BrickWorld.Brick in world.bricks():
-		if brick.step >= 0:
-			return true
-	return false
+	return carrying.brought_units.values().any(func(step: Variant) -> bool: return int(step) >= 0) \
+		or carrying.items.any(func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0) \
+		or AuthorSteps.any(world, scenery)
 
 
 ## A model brought in whole, its parts [param ids] down: each copy of a
@@ -3460,7 +3459,11 @@ func _brought_stepped() -> bool:
 ## imreview deep). Each a step of [param steps], so the one undo that takes
 ## its parts off takes these too. What the history calls it.
 func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> String:
-	var skip: Dictionary = {}
+	# Not the model's to step: the parts put in, and the scenery, as every
+	# other reading of the steps leaves it out. Planned with the house, the
+	# baseplate took a place in its first step, and every step after moved
+	# by a part from where the person had read it (sk2review2 F1).
+	var skip: Dictionary = scenery.duplicate()
 	for brick_id: int in ids:
 		skip[brick_id] = true
 	var stepped: bool = carrying.brought_units.values().any(
@@ -3468,16 +3471,24 @@ func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> S
 		func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0)
 	var flat: bool = stepped and bool(carrying.brought_data.get("host_flat", false))
 	if flat:
-		var besides: Dictionary = skip.merged(scenery)
-		steps.append_array(AuthorSteps.one_step(world, besides))
+		steps.append_array(AuthorSteps.one_step(world, skip))
 	elif stepped:
+		var planned: bool = not AuthorSteps.any(world, skip)
 		steps.append_array(AuthorSteps.adopt_plan(world, library, skip))
-		# Into the app's own saved steps (BrickWorld.steps_own), a model with
-		# its author's makes them the person's, as a step edit does
-		# (AuthorSteps.ensure). Left the app's own, the save wrote no
-		# AUTHORED_STEPS, and the author's steps it brought were read again
-		# as no one's (ic3 clash and menu).
-		if world.steps_own:
+		if bool(carrying.brought_data.get("steps_saved", false)):
+			# A model with the app's own saved steps (ModelStore.held_from's
+			# "steps_saved") leaves them no one's: into the app's own, they
+			# stay so; into a model nobody gave steps, the steps it was shown
+			# are kept as the app's own with them (BrickWorld.steps_own), as a
+			# save and an open would keep them. Made the person's, the save
+			# wrote AUTHORED_STEPS though no one gave a step (sk2fix2).
+			if planned and not world.steps_own:
+				steps.append(_apply({"undo": "stepsown", "own": true}))
+		elif world.steps_own:
+			# Into the app's own saved steps, a model with its author's makes
+			# them the person's, as a step edit does (AuthorSteps.ensure). Left
+			# the app's own, the save wrote no AUTHORED_STEPS, and the author's
+			# steps it brought were read again as no one's (ic3 clash and menu).
 			steps.append(_apply({"undo": "stepsown", "own": false}))
 	var at: int = 0 if flat else _brought_step(skip)
 	var stepped_in: bool = at >= 0 or stepped

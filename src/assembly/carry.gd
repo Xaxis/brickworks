@@ -310,7 +310,8 @@ func bring(held: Dictionary) -> void:
 	brought = true
 	brought_units = held["units"]
 	brought_data = {"root": held["root"], "looks": held["looks"], "files": held["files"],
-		"host_flat": bool(held.get("host_flat", false))}
+		"host_flat": bool(held.get("host_flat", false)),
+		"steps_saved": bool(held.get("steps_saved", false))}
 	lines = held["lines"]
 	frames = held["frames"]
 	self.held = held["held"]
