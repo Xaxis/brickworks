@@ -717,6 +717,7 @@ godot --headless --path . --script src/dev/section_probe.gd      # built square,
 godot --headless --path . --script src/dev/world_view_probe.gd   # parts drawn inside their footprint sit on studs
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
 godot --headless --path . --script src/dev/balance_probe.gd      # margins, joints, counterweight, poses by hand
+godot --headless --path . --script src/dev/side_studs_probe.gd   # held by side studs: brackets, headlights, a sideways arm, by hand
 godot --headless --path . --script src/dev/stabletruth_probe.gd  # how often the check is right: StableLego's builds, StableText2Brick's scores
 python3 tools/stablelego_ldr.py stablelego                        # the builds again from StableLego's pinned files (MIT)
 uv run --no-project --with pyarrow python3 -I tools/stablelego_ldr.py s2b --parquet FILE   # the sample again
@@ -1230,6 +1231,18 @@ Stability's tipping, the sweep's two ways, the floor, the ground edges, the
 links, the hull's sign, the worst-pose pick, the advice's spare, the widen,
 the animation frames, a sweep that moved the model, check_design's weigh
 flag), each a one-line change, and passed again once put back.
+
+Side studs: `side_studs_probe` ends on "side studs carry load as top studs do,
+by the same rule" (25 checks, every part seated on the studs it goes on, read
+off its own connectors). A 1 x 4 plate on two 99781 brackets' four side studs
+held, and a beam of 24 plates out from it on four studs, 0.66 of 1.60 N·cm as
+worked by hand; four 4070 headlights holding a plate; one headlight holding
+eight 1 x 2 bricks out (0.72x, as an 87087 does) and twenty (4.3x, past where a
+stud lets go, 1.71 N·cm by hand); a 30414's four side studs holding two bricks
+out and letting go of 32 (8.27 of 1.60 N·cm, by hand); a plate a stud off an
+87087's stud, and against a plain brick's side, held by nothing. On pre261
+before snot6 the headlight read 2.31x with eight bricks and 17.4x with twenty:
+its recessed stud was weighed flat across the 2.5 LDU of covers the lift saw.
 
 `balance_view_probe` ends on "balance view: the readout, the polygon and the
 centre of mass on the floor, the overloaded joint in red, the counterweight it
