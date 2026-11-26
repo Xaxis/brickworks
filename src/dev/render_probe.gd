@@ -439,6 +439,23 @@ func _dialog(method: String) -> void:
 		_say("dialog: Played with draws the plastic played with, and says so (%s)" % note,
 			dialog.settings.plastic == "played" and dialog.settings.preset().get("plastic") == "played"
 			and note.contains("played with"))
+		# Where nothing path traces, the note says why after it: each way it
+		# can read is said wholly in every language, the joined ones too.
+		var played_words: String = note.split(" Path tracing needs")[0]
+		var ways: Array[String] = [played_words,
+			played_words + " Path tracing needs the desktop app, coming soon: a browser cannot trace rays.",
+			played_words + " Path tracing needs the full graphics mode, and this window draws in the simpler one.",
+			played_words + " Path tracing needs a graphics card that traces rays, and this one does not."]
+		for code: String in ["de", "fr", "es"]:
+			Language.apply(code)
+			var left: Array = []
+			for text: String in ways:
+				if Language.says(text).is_empty():
+					left.append(text)
+				left.append_array(Language.left_in_english(text))
+			_say("dialog: %s: the Played with note, and with why not, in its words%s" % [code,
+				"" if left.is_empty() else " (in English: %s)" % [left]], left.is_empty())
+		Language.apply("en")
 		plastic_new.pressed.emit()
 		_say("dialog: New again", dialog.settings.plastic == "new")
 	(controls["render_quick"] as Button).pressed.emit()

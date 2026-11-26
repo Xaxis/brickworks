@@ -5876,6 +5876,12 @@ msgstr "Frisch aus der Schachtel."
 msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way. Drawn so at Best, in the Product look."
 msgstr "Ein Set, mit dem jahrelang gespielt wurde: Weiß leicht vergilbt, Staub auf den Oberseiten, jedes Teil sitzt auf seine eigene Weise. So gezeichnet bei Beste, im Produktfoto-Aussehen."
 
+msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way"
+msgstr "Ein Set, mit dem jahrelang gespielt wurde: Weiß leicht vergilbt, Staub auf den Oberseiten, jedes Teil sitzt auf seine eigene Weise"
+
+msgid "Drawn so at Best, in the Product look"
+msgstr "So gezeichnet bei Beste, im Produktfoto-Aussehen"
+
 msgid "%d frames, %s s at %d a second, as an animated WebP."
 msgstr "%d Bilder, %s s bei %d pro Sekunde, als animiertes WebP."
 

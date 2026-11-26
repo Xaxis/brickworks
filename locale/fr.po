@@ -5876,6 +5876,12 @@ msgstr "Tout juste sorti de la boîte."
 msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way. Drawn so at Best, in the Product look."
 msgstr "Un set avec lequel on a joué des années : blancs un peu jaunis, poussière sur le dessus, chaque pièce posée à sa façon. Dessiné ainsi en Meilleure, rendu Photo produit."
 
+msgid "A set played with for years: whites a little yellowed, dust on the tops, each part seated its own way"
+msgstr "Un set avec lequel on a joué des années : blancs un peu jaunis, poussière sur le dessus, chaque pièce posée à sa façon"
+
+msgid "Drawn so at Best, in the Product look"
+msgstr "Dessiné ainsi en Meilleure, rendu Photo produit"
+
 msgid "%d frames, %s s at %d a second, as an animated WebP."
 msgstr "%d images, %s s à %d par seconde, en WebP animé."
 

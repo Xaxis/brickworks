@@ -1012,6 +1012,10 @@ func _describe() -> void:
 	if settings.plastic == "played":
 		_plastic_note.text = ("A set played with for years: whites a little yellowed, dust on the tops, "
 			+ "each part seated its own way. Drawn so at Best, in the Product look.")
+		# It is drawn by the path tracer alone: where there is none, say so
+		# rather than offer a change that never shows.
+		if not PathTracer.available():
+			_plastic_note.text += " " + PathTracer.why_not()
 	else:
 		_plastic_note.text = "Straight from the box."
 	var fov: float = settings.fov_degrees()
