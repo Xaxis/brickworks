@@ -260,6 +260,12 @@ func _ready() -> void:
 		_fit_compact.call_deferred()
 
 
+func _notification(what: int) -> void:
+	# Other words, other widths: the five fitted again to them.
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _compact and _at_button != null:
+		_fit_compact.call_deferred()
+
+
 func _build() -> void:
 	_compact = Phone.on() and not Phone.wide()
 	var backing := StyleBoxFlat.new()
@@ -619,8 +625,59 @@ func _fit_compact() -> void:
 	# The row of steps a selection is dropped on, where the studio shows it:
 	# a fingertip tall, to drop on and to scrub along.
 	_row.custom_minimum_size = Vector2(0, least)
+	_fit_thumbs(pt)
 	_lay_strip()
 	_fit_at_words.call_deferred()
+
+
+## What Back, Next and More say where their words do not fit: Parts shows
+## its picture then.
+const THUMB_SIGNS := {"steps_back": "‹", "steps_next": "›", "steps_more": "…"}
+const THUMB_WORDS := {"steps_back": "Back", "steps_next": "Next", "steps_parts": "Parts",
+	"steps_more": "More"}
+
+
+## The five in the window's width, never wider: each a fingertip, or wider
+## for its words, where all five fit so with the step's number at its
+## shortest; else each an equal share of the row, at most a fingertip, and
+## Back, Next, Parts and More by their signs (‹ › … and the parts' picture),
+## their words kept as each one's name and tip. All four change together, so
+## the row never reads half in words. At 150% on a 320 phone, or in French
+## on one, the row was up to 353 units in a window of 232 to 348, and the
+## window's column as wide with it (wide150).
+func _fit_thumbs(pt: float) -> void:
+	var thumb: HBoxContainer = _named.get("steps_thumb_row")
+	if thumb == null:
+		return
+	var least: float = Phone.TARGET * pt
+	var gap: float = float(thumb.get_theme_constant("separation"))
+	var across: float = get_viewport().get_visible_rect().size.x \
+		- get_theme_stylebox("panel").get_minimum_size().x
+	var font: Font = _at_button.get_theme_font("font")
+	var font_size: int = _at_button.get_theme_font_size("font_size")
+	var margins: float = _at_button.get_theme_stylebox("normal").get_minimum_size().x
+	var wanted: float = gap * 4.0 + margins + font.get_string_size(_at_button.atr(_at_words[-1]),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	for name: String in THUMB_WORDS:
+		var said: String = _at_button.atr(str(THUMB_WORDS[name]))
+		wanted += maxf(least, ceilf(margins + font.get_string_size(said, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			font_size).x))
+	var words: bool = wanted <= across
+	var each: float = least if words else minf(least, floorf((across - gap * 4.0) / 5.0))
+	for name: String in THUMB_WORDS:
+		var button: Button = _named[name]
+		button.custom_minimum_size.x = each
+		button.accessibility_name = str(THUMB_WORDS[name])
+		if name == "steps_parts":
+			# The picture the phone's own Parts has, as tall as the share
+			# leaves inside the button's margins.
+			button.text = str(THUMB_WORDS[name]) if words else ""
+			button.icon = null if words else Icons.icon_for(Toolbar.TOOLS + "build.svg",
+				clampf(each - margins - 2.0, 8.0, 20.0 * pt), Icons.density(self))
+			button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		else:
+			button.text = str(THUMB_WORDS[name]) if words else str(THUMB_SIGNS[name])
+	_at_button.custom_minimum_size.x = 0.0 if words else each
 
 
 ## What the step's number button says: the whole of it where it fits, else

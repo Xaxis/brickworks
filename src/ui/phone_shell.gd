@@ -1656,10 +1656,32 @@ class Sheet extends PanelContainer:
 				tile.text += "\n" + String(TranslationServer.translate(own))
 			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			tile.clip_text = false
-			tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			tile.autowrap_mode = TextServer.AUTOWRAP_WORD
 			tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
 			grid.add_child(tile)
 		_list.add_child(grid)
+		_fewer_columns(grid)
+
+	## Fewer tiles to a line while a word of one is wider than a tile: its
+	## words wrap at a word and never inside one. At 150% in French two to
+	## a line was 68 units a tile, and "Enregistrer" (97) was cut in two.
+	func _fewer_columns(grid: GridContainer) -> void:
+		var tiles: Array[Node] = grid.get_children()
+		if tiles.is_empty():
+			return
+		var first: Button = tiles[0] as Button
+		var font: Font = first.get_theme_font("font")
+		var font_size: int = first.get_theme_font_size("font_size")
+		var longest: float = 0.0
+		for tile: Node in tiles:
+			for word: String in (tile as Button).text.replace("\n", " ").split(" ", false):
+				longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+		# Inside the sheet's own margins and its scroller's.
+		var across: float = minf(_room().x, phone.p(560)) - phone.p(40)
+		var gap: float = float(grid.get_theme_constant("h_separation"))
+		var margins: float = first.get_theme_stylebox("normal").get_minimum_size().x
+		while grid.columns > 1 and (across - gap * (grid.columns - 1)) / grid.columns - margins < longest:
+			grid.columns -= 1
 
 	func _row(words: String, command: String) -> Button:
 		var row := Button.new()

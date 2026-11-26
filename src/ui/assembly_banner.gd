@@ -44,6 +44,33 @@ func _ready() -> void:
 	assemblies.entered_changed.connect(_show)
 	assemblies.changed.connect(func() -> void: _show(assemblies.entered))
 	_show(assemblies.entered)
+	(get_parent() as Control).resized.connect(_fit, CONNECT_DEFERRED)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _words != null:
+		_fit.call_deferred()
+
+
+## The words on one line where the strip has room for them and Done; where
+## it has not, wrapped at a word onto the next. Done is never pushed off and
+## no word is cut: at 150% on a phone the banner was 264 units in a window
+## of 232, and the window's column as wide (wingreview3 F5).
+func _fit() -> void:
+	var holder: Control = get_parent() as Control
+	if _words == null or holder == null or not visible:
+		return
+	var across: float = minf(holder.size.x,
+		get_viewport().get_visible_rect().size.x - holder.get_global_rect().position.x)
+	var room: float = floorf(across - get_theme_stylebox("panel").get_minimum_size().x
+		- float((_words.get_parent() as HBoxContainer).get_theme_constant("separation"))
+		- _done.get_combined_minimum_size().x)
+	var font: Font = _words.get_theme_font("font")
+	var natural: float = ceilf(font.get_string_size(_words.atr(_words.text), HORIZONTAL_ALIGNMENT_LEFT,
+		-1, _words.get_theme_font_size("font_size")).x)
+	var wraps: bool = natural > room
+	_words.autowrap_mode = TextServer.AUTOWRAP_WORD if wraps else TextServer.AUTOWRAP_OFF
+	_words.custom_minimum_size.x = maxf(room, 0.0) if wraps else 0.0
 
 
 func _show(path: String) -> void:
@@ -57,6 +84,7 @@ func _show(path: String) -> void:
 	_words.tooltip_text = ("What you put down goes into it, and a click takes one part of it. "
 		+ "Every other copy is changed with it, mirrored where it is mirrored. "
 		+ "Esc or Done when finished.")
+	_fit.call_deferred()
 
 
 func controls_by_name() -> Dictionary:

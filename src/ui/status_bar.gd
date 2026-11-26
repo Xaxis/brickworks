@@ -270,6 +270,8 @@ func _fit() -> void:
 		_settings: not narrow, _size: not _size.text.is_empty(), _selected: true}
 	var left: float = HINT_ROOM
 	if working.visible:
+		# Its bar gives way first, inside the room the bar has (Working).
+		working.give_way(room - get_theme_stylebox("panel").get_minimum_size().x)
 		left = maxf(left, working.get_combined_minimum_size().x)
 	var needed: float = get_theme_stylebox("panel").get_minimum_size().x + left
 	for label: Label in shown:
