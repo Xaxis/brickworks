@@ -17426,31 +17426,6 @@ msgstr "ein Teil (%s)"
 msgid "a part in its own colour"
 msgstr "ein Teil (eigene Farbe)"
 
-# Where a pinned comment is (PinPlace.where), the part as Ask names it.
-msgid "On the %s, step %d"
-msgstr "Am Teil %s, Bauschritt %d"
-
-msgid "On the %s"
-msgstr "Am Teil %s"
-
-msgid "On a part, step %d"
-msgstr "An einem Teil, Bauschritt %d"
-
-msgid "On a part"
-msgstr "An einem Teil"
-
-msgid "On the %s, step %d, moved since"
-msgstr "Am Teil %s, Bauschritt %d, seitdem verschoben"
-
-msgid "On the %s, moved since"
-msgstr "Am Teil %s, seitdem verschoben"
-
-msgid "On a part, step %d, moved since"
-msgstr "An einem Teil, Bauschritt %d, seitdem verschoben"
-
-msgid "On a part, moved since"
-msgstr "An einem Teil, seitdem verschoben"
-
 msgid "Asking in Talk"
 msgstr "Wird in Talk gefragt"
 

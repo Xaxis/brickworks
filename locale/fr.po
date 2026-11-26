@@ -17426,31 +17426,6 @@ msgstr "une pièce (%s)"
 msgid "a part in its own colour"
 msgstr "une pièce (couleur personnalisée)"
 
-# Where a pinned comment is (PinPlace.where), the part as Ask names it.
-msgid "On the %s, step %d"
-msgstr "Sur la pièce %s, étape %d"
-
-msgid "On the %s"
-msgstr "Sur la pièce %s"
-
-msgid "On a part, step %d"
-msgstr "Sur une pièce, étape %d"
-
-msgid "On a part"
-msgstr "Sur une pièce"
-
-msgid "On the %s, step %d, moved since"
-msgstr "Sur la pièce %s, étape %d, déplacée depuis"
-
-msgid "On the %s, moved since"
-msgstr "Sur la pièce %s, déplacée depuis"
-
-msgid "On a part, step %d, moved since"
-msgstr "Sur une pièce, étape %d, déplacée depuis"
-
-msgid "On a part, moved since"
-msgstr "Sur une pièce, déplacée depuis"
-
 msgid "Asking in Talk"
 msgstr "Question en cours d’envoi dans Talk"
 
