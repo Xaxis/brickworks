@@ -235,6 +235,16 @@ var scuff: float = -1.0
 ## model faintly mirrored in it). 0 the catcher as before, 1 as the set
 ## photographs show it; below 0, StudioRender's PRODUCT_FLOOR.
 var floor: float = -1.0
+## Plastic that carries light (photoreal18), path traced in the product look:
+## [member rims] above 0, each moulded edge's and stud rim's rounding is lit
+## from its own round surface and is satin, so it shows the lights round it
+## as a soft line, where the flat face drawn over it found the part's own
+## inside and drew a dark outline; [member letters] how far each stud's logo
+## is moulded as thin rounded strokes, one line each, where its flat-topped
+## letters with steep sides read as outlined text. Each 0 as before. Below 0,
+## StudioRender's PRODUCT_RIMS and PRODUCT_LETTERS.
+var rims: float = -1.0
+var letters: float = -1.0
 ## Where the window looked from when the render was asked for, kept for
 ## a render drawn later (RenderQueue): the "current" view is then that
 ## one, not wherever the window has turned since. Unset while eye_fov is 0.

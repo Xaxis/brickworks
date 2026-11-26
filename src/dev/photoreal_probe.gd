@@ -39,7 +39,8 @@
 ##                      aberration, softness, sharpen, jpeg, age, dust, paper, seating, the parts'
 ##                      batch, handling, studs and play (photoreal8), its edges'
 ##                      rounding (edge, photoreal13), moulded ABS's own
-##                      unevenness (peel, sink, polish, scuff: photoreal15), a set
+##                      unevenness (peel, sink, polish, scuff: photoreal15), plastic
+##                      that carries light (rims, letters: photoreal18), a set
 ##                      photographed (floor: photoreal19), and the
 ##                      camera's tone and balance) at 0, and its
 ##                      surface (photoreal5) paper, to measure what each brings (photoreal4)
@@ -512,7 +513,7 @@ func _settings(shot: Dictionary, samples: int) -> RenderSettings:
 			"dust", "paper", "seating", "tone", "balance", "batch", "handling", "studs", "play",
 			"rubbed", "table", "table_light", "fill", "edge", "source", "source_rise", "source_turn",
 			"source_wide", "source_tall", "source_fall", "source_key", "source_spill",
-			"peel", "sink", "polish", "scuff", "floor"]:
+			"peel", "sink", "polish", "scuff", "floor", "rims", "letters"]:
 		if key in without:
 			settings.set(key, 0.0)
 		elif shot.has(key):

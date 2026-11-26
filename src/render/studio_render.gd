@@ -224,6 +224,11 @@ const PRODUCT_SCUFF := 0.0
 ## more often with it in both classes, the sets +0.012 (95%: +0.003 to
 ## +0.021) and the close-ups +0.025 (+0.001 to +0.059), docs/RENDERING.md 5u.
 const PRODUCT_FLOOR := 1.0
+## Plastic that carries light (photoreal18, RenderSettings rims and letters;
+## path_tracer.glsl's moulded and stud_logo): each 0 unless asked until the
+## photo bench's judge keeps it.
+const PRODUCT_RIMS := 0.0
+const PRODUCT_LETTERS := 0.0
 
 ## The most one traced sample of the product look may give, in what its
 ## exposure draws as white (path_tracer.glsl): brighter is white whatever,
@@ -2684,6 +2689,8 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_tracer.studs = _own(settings.studs, PRODUCT_STUDS) if _tracer.product else 0.0
 	_tracer.play = _own(settings.play, PRODUCT_PLAY) if _tracer.product else 0.0
 	_tracer.edge = _own(settings.edge, PRODUCT_EDGE) if _tracer.product else 0.0
+	_tracer.rims = maxf(_own(settings.rims, PRODUCT_RIMS), 0.0) if _tracer.product else 0.0
+	_tracer.letters = maxf(_own(settings.letters, PRODUCT_LETTERS), 0.0) if _tracer.product else 0.0
 	var breakup: Array = _breakup(settings)
 	_tracer.peel = float(breakup[2])
 	_tracer.sink = float(breakup[3])

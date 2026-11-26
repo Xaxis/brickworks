@@ -171,6 +171,13 @@ var edge: float = 0.0
 ## lower seven, in hundredths), read only by the shader's marks version.
 var peel: float = 0.0
 var sink: float = 0.0
+## Plastic that carries light (photoreal18, RenderSettings.rims and letters),
+## set before [method stage]: 0 for none, 1 as the photographs show it. They
+## go with each part's record in the w of its box's top corner, which says
+## the part is moulded: 1 + 2 rims + 512 letters, each in hundredths, a
+## whole number a float holds exactly, so "moulded" stays w > 0.5.
+var rims: float = 0.0
+var letters: float = 0.0
 ## Whether the picture asks for the wear hands leave (photoreal9,
 ## RenderSettings.rubbed), set before [method stage]: it is then traced by
 ## the shader's "marks" version.
@@ -482,7 +489,10 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 		var body_top: float = box_max.y
 		if material != null and material.get_shader_parameter("part_body_top") != null:
 			body_top = minf(float(material.get_shader_parameter("part_body_top")), box_max.y)
-		var moulded: float = 1.0 if product else 0.0
+		var moulded: float = 0.0
+		if product:
+			moulded = float(1 + 2 * clampi(roundi(rims * 100.0), 0, 255)
+				+ 512 * clampi(roundi(letters * 100.0), 0, 255))
 		var whole: Transform3D = batch.global_transform
 		var buffer: PackedFloat32Array = multimesh.buffer
 		var stride: int = 12 + (4 if multimesh.use_colors else 0) \
