@@ -349,6 +349,8 @@ func _build() -> void:
 	# Along the foot: one row.
 	_row = _bar_panel()
 	_pin(_row, 0.0, 1.0, 1.0, 1.0, Rect2(0, -p(ROW), 0, 0))
+	# Away while Simple mode's tray has the foot (take_foot).
+	_row.visible = foot_taken <= 0.0
 	add_child(_row)
 	var tools := HBoxContainer.new()
 	tools.add_theme_constant_override("separation", 0)
@@ -1062,7 +1064,7 @@ func _lay_pill() -> void:
 	if _pill.size != size_now:
 		_pill.size = size_now
 	var at := Vector2(free.position.x + (free.size.x - size_now.x) * 0.5,
-		room.y - p(ROW) - p(10) - size_now.y)
+		room.y - foot_height() - foot_over - p(10) - size_now.y)
 	var steps: Control = app.get("_steps")
 	if steps != null and steps.is_visible_in_tree():
 		at.y = minf(at.y, steps.get_global_rect().position.y - size_now.y - p(6))
@@ -1188,7 +1190,23 @@ func top_height() -> float:
 
 
 func foot_height() -> float:
-	return p(ROW)
+	return foot_taken if foot_taken > 0.0 else p(ROW)
+
+
+## Simple mode's foot (SimpleLayer): the room its tray takes along the
+## foot, in units, in place of the row; 0 gives the row back. And how much
+## more over it its own buttons stand, which the line over the model keeps
+## above.
+var foot_taken: float = 0.0
+var foot_over: float = 0.0
+
+
+func take_foot(units: float, over: float = 0.0) -> void:
+	foot_taken = units
+	foot_over = over
+	if _row != null:
+		_row.visible = units <= 0.0
+	laid_out.emit()
 
 
 ## A finger held on the model: the desktop's menu on a part, as a sheet.

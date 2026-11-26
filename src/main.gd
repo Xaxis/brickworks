@@ -557,6 +557,9 @@ var _turning: PivotMark
 var _tools: TouchTools
 ## The phone's own bars and sheets, on a phone only (Phone.on).
 var _phone: Control
+## Simple mode's layer over them (SimpleLayer), behind its hidden switch
+## (ShellPrefs.simple_map); null for the full studio.
+var _simple: Control
 ## Every dialog and panel over the model sized and placed for a finger,
 ## where the phone's layout is (TouchSizing).
 var _touch: TouchSizing
@@ -7532,6 +7535,7 @@ func _build_ui() -> void:
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
+		_start_simple()
 	# The keys sheet lists the keys the menus show, and the strip reads the
 	# keymap, which knows the menus' keys now.
 	if _hint != null:
@@ -12108,6 +12112,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _viewing.is_empty():
 		_view_input(event)
 		return
+	# Simple mode's fingers are its layer's and the camera's (SimpleLayer):
+	# nothing here places, picks or holds by them.
+	if _simple != null and bool(_simple.call("takes", event)):
+		return
 	# A model being laid is not edited until it is all down: the camera
 	# turns it meanwhile, by its own input (CadCamera).
 	if _store.laying:
@@ -12584,6 +12592,22 @@ func _phone_bars_room() -> void:
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
 	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
 	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
+
+
+## Simple mode's layer (SimpleLayer) over the phone's controls, where its
+## hidden switch is on: a tray of bricks and colours along the foot in the
+## row's place, the fingers on the model its own and the camera's, and
+## everything they do the studio's own acts. Loaded only then (Later).
+func _start_simple() -> void:
+	var map: String = ShellPrefs.simple_map()
+	if map.is_empty() or _phone == null or not _viewing.is_empty():
+		return
+	_simple = Later.make(&"SimpleLayer")
+	_simple.set("app", self)
+	_simple.set("map", map)
+	_simple.name = "SimpleLayer"
+	_phone.add_sibling(_simple)
+	_camera.finger_taken = Callable(_simple, &"finger_taken")
 
 
 ## The desktop's bars put away for the phone's own (PhoneShell): the menus,
@@ -13122,6 +13146,8 @@ func _over_panel_at(point: Vector2) -> bool:
 	if _shell != null and _shell.covers(point):
 		return true
 	if _phone != null and _phone.covers(point):
+		return true
+	if _simple != null and bool(_simple.call("covers", point)):
 		return true
 	if _build_mode != null and _build_mode.covers(point):
 		return true

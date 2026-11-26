@@ -154,6 +154,9 @@ const DEFAULTS: Dictionary = {
 	# Whether this computer was told it runs the simpler graphics mode
 	# (GraphicsMode.to_say): once, not at every start.
 	"said_simpler_graphics": false,
+	# Simple mode's prototype (SimpleLayer, [method simple_map]): its finger
+	# map, "a" or "b", or "" for the full studio. Hidden: nothing sets it yet.
+	"simple": "",
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window
@@ -198,6 +201,22 @@ static func assistant_shown() -> bool:
 ## Settings, Interface size, as a factor: one of [constant INTERFACE_SIZES].
 static func interface_size() -> float:
 	return clampf(float(value("interface_size")), INTERFACE_SIZES[0], INTERFACE_SIZES[-1])
+
+
+## Simple mode's prototype on a touch screen (SimpleLayer): its finger map,
+## "a" or "b", or "" for the full studio. A hidden switch: no control sets
+## it yet. In a browser the address does, and it is kept on the device:
+## ?simple=a or ?simple=b turns it on, ?simple=off off.
+static func simple_map() -> String:
+	if OS.has_feature("web"):
+		var asked: String = str(JavaScriptBridge.eval(
+			"new URLSearchParams(location.search).get('simple') || ''", true))
+		if asked in ["a", "b"]:
+			put("simple", asked)
+		elif asked == "off":
+			put("simple", "")
+	var map: String = str(value("simple"))
+	return map if map in ["a", "b"] else ""
 
 
 ## Settings, Reduce motion: whatever moves by itself keeps still.

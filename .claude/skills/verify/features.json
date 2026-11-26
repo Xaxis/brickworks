@@ -3735,6 +3735,14 @@
       "tests": []
     },
     {
+      "id": "cli:simplep1 probe",
+      "kind": "cli",
+      "entry": "src/dev/simplep1_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplep1_probe -- --map=a|b [--tablet] [--checks=0] [--walks=0] [--lifts=0,32,56,80] [--full [--desktop]] --pictures=DIR   (windowed; the layer's checks, three newcomer walks per map, the switch off; numbers in DIR/*.json)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:site check",
       "kind": "cli",
       "entry": "tools/web/site_check.mjs",
@@ -8475,6 +8483,14 @@
       "entry": "src/ui/sign_in_gate.gd",
       "reach": "godot --path .  (first open, signed out)  /  godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:simple mode prototype",
+      "kind": "ui",
+      "entry": "src/ui/simple_layer.gd",
+      "reach": "hidden: ShellPrefs \"simple\" set to \"a\" or \"b\" on a phone or tablet laid out for a finger, or ?simple=a / ?simple=b in a browser (?simple=off undoes it): a tray of 8 bricks with pictures and 8 colours along the foot, dragged onto the model's studs with a ghost over the finger, Undo and Redo as big buttons; map A turns the view with one finger off a part, map B builds with one finger and turns with two  (SimpleLayer, Main._start_simple; tools/probe.sh simplep1_probe --map=a|b)",
+      "area": "building",
       "tests": []
     },
     {

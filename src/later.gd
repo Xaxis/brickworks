@@ -52,6 +52,7 @@ const PATHS: Dictionary[StringName, String] = {
 	&"PageSetupDialog": "res://src/ui/page_setup_dialog.gd",
 	&"PhoneShell": "res://src/ui/phone_shell.gd",
 	&"PinsDialog": "res://src/ui/pins_dialog.gd",
+	&"SimpleLayer": "res://src/ui/simple_layer.gd",
 	&"PosePanel": "res://src/ui/pose_panel.gd",
 	&"PrintStudio": "res://src/prints/print_studio.gd",
 	&"RenderDialog": "res://src/ui/render_dialog.gd",

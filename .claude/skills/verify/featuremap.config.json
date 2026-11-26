@@ -4976,6 +4976,20 @@
     },
     {
       "kind": "ui",
+      "label": "simple mode prototype",
+      "entry": "src/ui/simple_layer.gd",
+      "reach": "hidden: ShellPrefs \"simple\" set to \"a\" or \"b\" on a phone or tablet laid out for a finger, or ?simple=a / ?simple=b in a browser (?simple=off undoes it): a tray of 8 bricks with pictures and 8 colours along the foot, dragged onto the model's studs with a ghost over the finger, Undo and Redo as big buttons; map A turns the view with one finger off a part, map B builds with one finger and turns with two  (SimpleLayer, Main._start_simple; tools/probe.sh simplep1_probe --map=a|b)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "simplep1 probe",
+      "entry": "src/dev/simplep1_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplep1_probe -- --map=a|b [--tablet] [--checks=0] [--walks=0] [--lifts=0,32,56,80] [--full [--desktop]] --pictures=DIR   (windowed; the layer's checks, three newcomer walks per map, the switch off; numbers in DIR/*.json)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "a set from a photo",
       "entry": "src/ui/collection_dialog.gd",
       "reach": "godot --path .  (Build, My collection…, What I own: Photo… beside Add sets, a photo of a box, a booklet's cover or a minifigure; asked of Brickognize's /predict/sets/ and /predict/figs/ at once, the top three offered, one pressed adds it; a minifigure kept among the sets by BrickLink's number and name, its parts not counted)",
