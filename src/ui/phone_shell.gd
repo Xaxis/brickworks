@@ -612,15 +612,17 @@ func _dress_name() -> void:
 		_name.focus_entered.connect(_show_name)
 		_name.focus_exited.connect(_show_name)
 		(app.get("_bar") as ModelBar).model_named.connect(_show_name.unbind(1))
-	# The field's own colour, read with the field's words shown.
+	# The field's own colour, read with the field's words shown, and given
+	# the label before it is laid out: its resize clears the field's
+	# colour (_show_name), and read after it the title was drawn blank.
 	_name.remove_theme_color_override("font_color")
+	shown.add_theme_color_override("font_color", _name.get_theme_color("font_color"))
+	shown.add_theme_font_override("font", _name.get_theme_font("font"))
+	shown.add_theme_font_size_override("font_size", _name.get_theme_font_size("font_size"))
 	var face: StyleBox = _name.get_theme_stylebox("normal")
 	shown.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	shown.offset_left = face.get_margin(SIDE_LEFT)
 	shown.offset_right = -face.get_margin(SIDE_RIGHT)
-	shown.add_theme_font_override("font", _name.get_theme_font("font"))
-	shown.add_theme_font_size_override("font_size", _name.get_theme_font_size("font_size"))
-	shown.add_theme_color_override("font_color", _name.get_theme_color("font_color"))
 	_show_name()
 
 
@@ -636,7 +638,10 @@ func _show_name() -> void:
 	# one to words that fit too.
 	var wide: float = shown.get_theme_font("font").get_string_size(shown.atr(shown.text),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, shown.get_theme_font_size("font_size")).x
-	var cut: int = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE if wide > shown.size.x \
+	# Against the field's room, not the label's size, which grows to its
+	# words untrimmed.
+	var room: float = _name.size.x - shown.offset_left + shown.offset_right
+	var cut: int = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE if wide > room \
 		else TextServer.OVERRUN_NO_TRIMMING
 	if shown.text_overrun_behavior != cut:
 		shown.text_overrun_behavior = cut as TextServer.OverrunBehavior

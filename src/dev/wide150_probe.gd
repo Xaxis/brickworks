@@ -394,7 +394,16 @@ func _cut(c: Control, shown: Rect2) -> String:
 		# its edge falls, while they are drawn (not typed in, when a label
 		# over it may draw them instead): "Wide pr" at 320 (langsweep).
 		var field: LineEdit = c as LineEdit
-		if field.text.is_empty() or field.has_focus() or field.get_theme_color("font_color").a <= 0.0:
+		if field.text.is_empty() or field.has_focus():
+			return ""
+		if field.get_theme_color("font_color").a <= 0.0:
+			# Drawn by the label over it, in a colour that shows: one given
+			# the field's clear colour left the title blank (langsweep).
+			var over: Label = field.get_node_or_null(^"shown_name") as Label
+			if over == null or not over.is_visible_in_tree() or over.text != field.text \
+					or over.get_theme_color("font_color").a <= 0.0:
+				return "%s: \"%s\" drawn by nothing (the field clear, and no label over it that shows)" % [
+					_named(c), field.text.left(40)]
 			return ""
 		text = field.text
 		room = field.size.x - field.get_theme_stylebox("normal").get_minimum_size().x
