@@ -124,9 +124,18 @@ if [ -n "$uids" ]; then
     && echo "with the .uid of $(echo "$uids" | wc -l) new scripts: $(git log --oneline -1)"
 fi
 # A probe the merge brings in that no suite list names fails the merge here,
-# not hours later in a full suite (drag_cost and seated, then step_link).
-if grep -q -- '--lists' tools/check.sh 2>/dev/null && ! tools/check.sh --lists >/dev/null 2>&1; then
-  tools/check.sh --lists 2>&1 | tail -2; echo "merge_unit: name it once in tools/suite (headless.txt, windowed.txt or out.txt)"; exit 4
+# not hours later in a full suite (drag_cost and seated, then step_link). So
+# does a call to a method the merge left nowhere (tools/callcheck.py): one
+# unit took Builder._lift_on_top out while another's code still called it,
+# and six probes went red on the train (2026-11-26).
+if grep -q -- '--lists' tools/check.sh 2>/dev/null && ! lists=$(tools/check.sh --lists 2>&1); then
+  if grep -q '^callcheck:' <<< "$lists"; then
+    echo "$lists" | tail -40
+    echo "merge_unit: each call above names a method that is not there; put it back or change the caller, or mark a deliberate one '# callcheck: dynamic, why'"
+  else
+    echo "$lists" | tail -2; echo "merge_unit: name it once in tools/suite (headless.txt, windowed.txt or out.txt)"
+  fi
+  exit 4
 fi
 # The release gate's shellcheck, here, where a unit's script is merged:
 # ENGINE_CHECKS (webflows) passed every merge gate and held rel-m334 at

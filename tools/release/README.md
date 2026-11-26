@@ -332,12 +332,17 @@ What each one guards against, all learned the hard way on 2026-10-13:
   main checkout's `.git/config`, and `merge_unit.sh` passes it on its merge;
   a merge with neither stops on a conflict. `merge_unit.sh` then runs
   `tools/check.sh --lists`, which fails a merge that leaves a probe in no
-  list, or one listed twice, or out and run both.
+  list, or one listed twice, or out and run both, or that leaves a call to
+  a method that is not there (`tools/callcheck.py`, about 2 s). handkeep2
+  took `Builder._lift_on_top` out with two callers left, Godot's check
+  passed both, and six probes went red on the train (2026-11-26).
   `tools/check.sh --dry-run` prints every command the suite would run.
 - `parse_gate.sh` parses every GDScript file the merge changed. Two units
   each added a `"dome"` key to one dictionary, git merged both without a
   conflict, and Godot could not parse `assistant.gd`. The tool-list probe
-  hung on it rather than failing.
+  hung on it rather than failing. It runs `tools/callcheck.py` over every
+  script first (exit 3, `CALL ERRORS:`), as `MERGE_GATES=ship` merges reach
+  it only at ship.
 - Probes may run at once in one checkout (`tools/probe.sh`, so
   `run_probes.sh` too): none writes `.godot`. A class list older than the
   scripts is what fails them, every script naming a class it lacks: a
