@@ -948,6 +948,10 @@ func say(words: String) -> void:
 func hint() -> String:
 	if Time.get_ticks_msec() < _said_until:
 		return _said
+	# A layer over the studio with fingers of its own says what they do
+	# (SimpleLayer: in map B a drag does not turn the view).
+	if hint_from.is_valid():
+		return str(hint_from.call())
 	var builder: Builder = app.get("_builder")
 	var verbs: EditVerbs = app.get("_verbs")
 	if builder == null or verbs == null:
@@ -1198,6 +1202,9 @@ func foot_height() -> float:
 ## more over it its own buttons stand, which the line over the model keeps
 ## above.
 var foot_taken: float = 0.0
+## Where the line over the model's foot gets its words, when a layer over the
+## studio has fingers of its own ([method hint]); unset, the studio's.
+var hint_from: Callable = Callable()
 var foot_over: float = 0.0
 
 

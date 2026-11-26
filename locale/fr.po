@@ -18289,3 +18289,15 @@ msgstr "Trop de connexions avec %s en ce moment. Réessayez dans quelques minute
 
 msgid "Two fingers turn the view"
 msgstr "Deux doigts font tourner la vue"
+
+msgid "Let go to put it down"
+msgstr "Lâche pour la poser"
+
+msgid "Tap the model to put one there"
+msgstr "Touche le modèle pour en poser une là"
+
+msgid "Drag a brick onto the model · two fingers turn the view"
+msgstr "Fais glisser une brique sur le modèle · deux doigts font tourner la vue"
+
+msgid "Drag a brick onto the model · one finger turns the view"
+msgstr "Fais glisser une brique sur le modèle · un doigt fait tourner la vue"

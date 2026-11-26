@@ -32,7 +32,7 @@ const BRICKS: Array[String] = ["3001", "3003", "3004", "3010", "3020", "3022", "
 ## Red, yellow, blue, green, orange, white, light bluish grey, black.
 const COLOURS: Array[int] = [4, 14, 1, 2, 25, 15, 71, 0]
 const STRIP := 52.0
-const SWATCH := 36.0
+const SWATCH := 44.0
 const TILE := 68.0
 const MARGIN := 8.0
 const BIG := 60.0
@@ -71,6 +71,8 @@ var _redo: Button
 var _colour: int = 4
 ## The brick a tap on the tray chose: a tap on the model puts one there.
 var _chosen: String = ""
+## The tile a press in the tray's gaps went to (_foot_input).
+var _foot_tile: Control = null
 ## Each tile's picture: the colour it was drawn in.
 var _drawn_in: Dictionary = {}
 
@@ -157,6 +159,7 @@ func _build() -> void:
 	_foot.anchor_bottom = 1.0
 	_foot.offset_top = -p(tall)
 	_foot.offset_bottom = 0.0
+	_foot.gui_input.connect(_foot_input)
 	add_child(_foot)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", ceili(p(4)))
@@ -218,6 +221,7 @@ func _build() -> void:
 	var phone: Control = app.get("_phone")
 	if phone != null:
 		phone.call("take_foot", p(tall), p(BIG + MARGIN + 4.0))
+		phone.set("hint_from", Callable(self, &"hint"))
 
 
 func _big_button(what: String) -> Button:
@@ -261,6 +265,19 @@ func covers(point: Vector2) -> bool:
 		if control != null and control.is_visible_in_tree() and control.get_global_rect().has_point(point):
 			return true
 	return false
+
+
+## Whether a brick aimed at [param point] is over the interface, not the
+## model: the tray, or the studio's own panels. Not the big Undo and Redo:
+## they float over the model's foot, and a ghost aimed there goes down
+## there (walk 1: a house's corner behind Undo was refused four times).
+func _over_ui(point: Vector2) -> bool:
+	if _foot != null and _foot.get_global_rect().has_point(point):
+		return true
+	for control: Control in [_undo, _redo]:
+		if control != null and control.get_global_rect().has_point(point):
+			return false
+	return bool(app.call("_over_panel_at", point))
 
 
 ## The foot's height, in the window's units.
@@ -364,6 +381,43 @@ func _tile_input(event: InputEvent, tile: Control, part: String) -> void:
 			_aim(_aimed(motion.global_position, _tray_travel))
 
 
+## A press in the tray beside every tile, in a gap or its edge: the
+## nearest tile's, as a fingertip is wider than the gap (walk 1: the
+## hurried newcomer's drags began on the tray's edge 5 times in 10).
+func _foot_input(event: InputEvent) -> void:
+	var button := event as InputEventMouseButton
+	var touch := event as InputEventScreenTouch
+	var pressed_at: Vector2 = Vector2.INF
+	if button != null and button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+		pressed_at = button.global_position
+	elif touch != null and touch.pressed:
+		pressed_at = _foot.get_global_transform() * touch.position
+	if pressed_at.x < INF:
+		_foot_tile = tile_at(pressed_at)
+	if _foot_tile != null and (event is InputEventScreenTouch or event is InputEventScreenDrag):
+		_foot.accept_event()
+		return
+	if _foot_tile != null and event is InputEventMouse:
+		_tile_input(event, _foot_tile, str(_foot_tile.get_meta("part")))
+		if button != null and button.button_index == MOUSE_BUTTON_LEFT and not button.pressed:
+			_foot_tile = null
+
+
+## The tile a press at [param point] is on, or the nearest within the gaps
+## and the tray's edge: null for none.
+func tile_at(point: Vector2) -> Control:
+	var found: Control = null
+	var best: float = p(MARGIN + 2.0)
+	for tile: Control in _tiles:
+		var rect: Rect2 = tile.get_global_rect()
+		var off: Vector2 = (rect.get_center() - point).abs() - rect.size * 0.5
+		var away: float = maxf(off.x, off.y)
+		if away <= best:
+			best = away
+			found = tile
+	return found
+
+
 func _tap_tile(part: String) -> void:
 	counts["tapped"] += 1
 	_chosen = "" if _chosen == part else part
@@ -401,7 +455,7 @@ func _aim(at: Vector2) -> void:
 	var builder: Builder = app.get("_builder")
 	if builder == null:
 		return
-	if bool(app.call("_over_panel_at", at)):
+	if _over_ui(at):
 		builder.hide_preview()
 		return
 	app.call("_refresh_preview", at)
@@ -412,7 +466,7 @@ func _drop_from_tray(at: Vector2) -> void:
 	last_drop = {"aimed": at, "put": [], "from": "tray"}
 	if builder == null:
 		return
-	if bool(app.call("_over_panel_at", at)) or (app.get("_store") as ModelStore).laying:
+	if _over_ui(at) or (app.get("_store") as ModelStore).laying:
 		# Let go over the tray: put back, nothing down.
 		counts["cancelled"] += 1
 		last_drop["why"] = "over the tray"
@@ -447,6 +501,18 @@ func _put_hand_away() -> void:
 	elif not _chosen.is_empty():
 		_take(_chosen)
 		builder.hide_preview()
+
+
+## The line over the model's foot (PhoneShell.hint_from): what a finger does
+## here, not what it does in the full studio ("drag turns the view" was
+## wrong in B, walk 1).
+func hint() -> String:
+	if _tray_dragging or _moving:
+		return "Let go to put it down"
+	if not _chosen.is_empty():
+		return "Tap the model to put one there"
+	return "Drag a brick onto the model · two fingers turn the view" if map == "b" \
+		else "Drag a brick onto the model · one finger turns the view"
 
 
 # -- a finger on the model ----------------------------------------------------------

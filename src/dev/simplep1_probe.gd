@@ -404,7 +404,10 @@ func _finger_map() -> void:
 	await _frames(4)
 	var moved: bool = not _world.get_brick(id).transform.is_equal_approx(at_before) if _world.get_brick(id) else false
 	_check("a finger on the part moves it (counts %s)" % str(_simple.get("counts")), moved)
-	_check("...and the view stays", _camera.global_transform.is_equal_approx(view))
+	_check("...and the view stays (%.2f LDU, %.4f of a turn)" % [
+		_camera.global_position.distance_to(view.origin),
+		_camera.global_transform.basis.get_rotation_quaternion().angle_to(view.basis.get_rotation_quaternion()) / TAU],
+		_camera.global_transform.is_equal_approx(view))
 	await _frames(SEAT_WAIT)
 	if _map == "b":
 		# A finger beside a part, within a fingertip: the part's.
@@ -527,7 +530,7 @@ func _walk(walker: Dictionary, tag: String = "") -> Dictionary:
 			var how: String = "tap" if n < int(walker["taps"]) else "drag"
 			var slip: bool = n == int(walker["slip"]) and attempt == 0
 			var result: Dictionary = await _place_one(walker, n, how, slip, out)
-			if result["ok"]:
+			if bool(result.get("ok", false)):
 				done = true
 				break
 			if result.get("down", false):
@@ -547,11 +550,14 @@ func _walk(walker: Dictionary, tag: String = "") -> Dictionary:
 			await _wanted_turn(walker, out)
 	await _frames(SEAT_WAIT)
 	await _shot_walk("ten")
+	# The house framed whole for the picture, after the clock stops.
+	await _press_fit()
+	await _shot_walk("house")
 	out["seconds"] = snappedf(_seconds, 0.1)
 	out["log"] = _walk_log
 	print("  measure walk %s map %s: %.1f s to %d bricks, %d wrong, %d refused, %d unwanted camera moves, wanted camera tries %d, undo found %s (looked at %d), gave up %d"
 		% [_tag, _map, _seconds, out["bricks"], out["wrong"], out["refused"], out["unwanted_camera"],
-			out["wanted_camera_tries"], str(out["undo_found"]), out["undo_looked"], out["gave_up"]])
+			out["wanted_camera_tries"], ("not needed" if out["undo_found"] == null else str(out["undo_found"])), out["undo_looked"], out["gave_up"]])
 	return out
 
 
@@ -568,10 +574,14 @@ func _place_one(walker: Dictionary, n: int, how: String, slip: bool, out: Dictio
 	if slip:
 		colour = 1 if colour != 1 else 4
 	_seconds += MENTAL
+	_simple.set("last_drop", {})
 	var aim: Vector2 = _intent_point(plan)
 	var ideal: Variant = _ideal(part, colour, aim)
 	if ideal == null:
-		_note("brick %d: its place is out of sight" % (n + 1))
+		# Where it goes is off the screen or behind the tray: the model
+		# framed again by Fit, the one control that says it does that.
+		_note("brick %d: its place is out of sight, Fit pressed" % (n + 1))
+		await _recover(out)
 		return {"ok": false}
 	if int(_simple.call("chosen_colour")) != colour:
 		var swatch: Control = (_simple.call("controls_by_name") as Dictionary)["simple_colour_%d" % colour]
@@ -659,8 +669,13 @@ func _place_one(walker: Dictionary, n: int, how: String, slip: bool, out: Dictio
 		_note("brick %d: nothing went down (%s)" % [n + 1, drop.get("why", "?")])
 		return {"ok": false}
 	var id: int = int(put[0])
-	_placed[n] = id
 	var brick: BrickWorld.Brick = _world.get_brick(id)
+	if brick == null:
+		out["refused"] = int(out["refused"]) + 1
+		_seconds += NOTICE
+		_note("brick %d: nothing stayed down" % (n + 1))
+		return {"ok": false}
+	_placed[n] = id
 	var right: bool = brick != null and brick.part_id == part and brick.color_code == int(plan[1]) \
 		and brick.transform.origin.distance_to((ideal as Transform3D).origin) < 1.0
 	if not right:
@@ -929,10 +944,10 @@ func _how_wrong(brick: BrickWorld.Brick, ideal: Transform3D, colour: int) -> Str
 
 
 func _what_is_at(at: Vector2) -> String:
-	for part: String in _simple.get_script().get(&"BRICKS"):
-		var tile: Control = _simple.call("tile_of", part)
-		if tile.get_global_rect().has_point(at):
-			return "tile " + part
+	# A press in a gap or at the tray's edge is the nearest tile's.
+	var tile: Control = _simple.call("tile_at", at)
+	if tile != null:
+		return "tile " + str(tile.get_meta("part"))
 	if bool(_main.call("_over_panel_at", at)):
 		return "the tray's edge"
 	return "the model's room above the tray"
@@ -1063,12 +1078,20 @@ func _top_point(id: int) -> Vector2:
 ## A point [param points] beside a brick's picture, off it.
 func _beside(id: int, points: float) -> Vector2:
 	var rect: Rect2 = _screen_box(_box_of(id))
-	for _n: int in 40:
-		var at := Vector2(rect.end.x + Phone.px(root, points), rect.get_center().y)
-		if _verbs.brick_at(at) == 0:
+	var room: Rect2 = _camera.seen_rect()
+	var middle: Vector2 = _top_point(id) if _verbs.brick_at(_top_point(id)) == id else rect.get_center()
+	# Out from the brick's middle each way to its picture's edge, then the
+	# points beyond it: the first side in the model's room.
+	for way: Vector2 in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		var at: Vector2 = middle
+		for _n: int in 400:
+			if _verbs.brick_at(at) != id:
+				break
+			at += way * 2.0
+		at += way * Phone.px(root, points)
+		if room.grow(-Phone.px(root, 8.0)).has_point(at) and _verbs.brick_at(at) == 0:
 			return at
-		points += 2.0
-	return rect.end + Vector2.ONE * Phone.px(root, points)
+	return middle + Vector2.RIGHT * Phone.px(root, points)
 
 
 ## Empty space in the model's room: away from every part, over the

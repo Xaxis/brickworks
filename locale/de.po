@@ -18289,3 +18289,15 @@ msgstr "Gerade gab es zu viele Anmeldungen mit %s. Versuch es in ein paar Minute
 
 msgid "Two fingers turn the view"
 msgstr "Zwei Finger drehen die Ansicht"
+
+msgid "Let go to put it down"
+msgstr "Loslassen, um ihn abzusetzen"
+
+msgid "Tap the model to put one there"
+msgstr "Tippe aufs Modell, um einen dort abzusetzen"
+
+msgid "Drag a brick onto the model · two fingers turn the view"
+msgstr "Zieh einen Stein aufs Modell · zwei Finger drehen die Ansicht"
+
+msgid "Drag a brick onto the model · one finger turns the view"
+msgstr "Zieh einen Stein aufs Modell · ein Finger dreht die Ansicht"

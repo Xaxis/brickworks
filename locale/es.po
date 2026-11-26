@@ -18289,3 +18289,15 @@ msgstr "Demasiados inicios de sesión con %s ahora mismo. Vuelve a intentarlo en
 
 msgid "Two fingers turn the view"
 msgstr "Dos dedos giran la vista"
+
+msgid "Let go to put it down"
+msgstr "Suelta para colocarla"
+
+msgid "Tap the model to put one there"
+msgstr "Toca el modelo para poner una ahí"
+
+msgid "Drag a brick onto the model · two fingers turn the view"
+msgstr "Arrastra una pieza al modelo · dos dedos giran la vista"
+
+msgid "Drag a brick onto the model · one finger turns the view"
+msgstr "Arrastra una pieza al modelo · un dedo gira la vista"
