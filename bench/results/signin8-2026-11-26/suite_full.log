@@ -1,0 +1,798 @@
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_account_erase.py .............
+
+13 passed in 3.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_account_keys.py ...............
+
+15 passed in 3.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_achievements.py .......
+
+7 passed in 0.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_adminclaude.py .................................
+
+33 passed in 4.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_alike.py ................
+
+16 passed in 1.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_alts.py ............
+
+12 passed in 1.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_announce.py .............................
+
+29 passed in 15.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_api_imports.py ..
+
+2 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_app_header.py ....
+
+4 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_assistant_pages.py ..........................
+
+26 passed in 11.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_bench.py ..................[22:10:53] design owl: port 49261, up to 1 min
+[22:10:53] design owl: status 0 in 0.0 min, NO MODEL
+.[22:10:53] design owl: port 45687, up to 1 min
+[22:10:53] design owl: status 0 in 0.0 min, NO MODEL
+...[22:10:53] design owl: port 36059, up to 1 min
+[22:10:53] design owl: status 0 in 0.0 min, NO MODEL
+..........
+
+32 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_beta_join.py ...........
+
+11 passed in 1.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_beta.py .........................
+
+25 passed in 5.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_beta_strip_room.py ...
+
+3 passed in 5.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_billing_pay.py ...........
+
+11 passed in 2.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_billing.py ...........
+
+11 passed in 1.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_blocks.py .........
+
+9 passed in 0.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_bom_literal.py .
+
+1 passed in 0.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_booklet_follow.py .................
+
+17 passed in 1.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_boot_splash.py ....
+
+4 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_brickbench.py .......[22:10:47] model-001: a model, 1 s, list NOT TAKEN
+........
+
+15 passed in 0.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_brotli_cache.py .......
+
+7 passed in 6.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_browse_pages.py ..
+
+2 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_build_exact.py ..ssss..
+SKIP  test_a_box_has_its_three_axes_and_no_diagonal — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_flat_piece_keeps_a_polygons_axes — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_shape_reads_back_in_the_apps_frame — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_an_alias_takes_its_parts_shape_moved_by_its_matrix — numpy/scipy not installed; apt install python3-numpy python3-scipy
+
+4 passed, 4 skipped in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_cadtask_klm.py ..........
+
+10 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_cadtask.py .......................
+
+23 passed in 1.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_challenge_list_order.py ....
+
+4 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_challenge_notices.py ........
+
+8 passed in 0.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_challenge_rounds.py ........
+
+8 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_challenge_rules_tests.py .
+
+1 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_challenges.py ..........
+
+10 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_challenge_year.py ......
+
+6 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_collection.py ..........3001 in 4: 1011 sets written, 1011 in Rebrickable's inventories
+3001 in 13: 1 sets written, 1 in Rebrickable's inventories: 4518-1
+3023b in 0: 2924 sets written, 2924 in Rebrickable's inventories
+4740 in 5: 1 sets written, 1 in Rebrickable's inventories: 77006-1
+4740 in 6: 2 sets written, 2 in Rebrickable's inventories: 7126-1, 7171-1
+7049b in 0: 108 sets written, 108 in Rebrickable's inventories
+3069b in 367: 1 sets written, 1 in Rebrickable's inventories: 40785-1
+3062b in 89: 2 sets written, 2 in Rebrickable's inventories: 8780-1, 8781-1
+87087 in 431: 2 sets written, 2 in Rebrickable's inventories: 43029-1, 43031-1
+3005 in 41: 1 sets written, 1 in Rebrickable's inventories: 5834-1
+.....
+
+15 passed in 39.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_collections_tab.py ........
+
+8 passed in 4.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_collection_words.py .....
+
+5 passed in 0.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_coming_soon.py ...
+
+3 passed in 5.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_comment_mentions.py ...........
+
+11 passed in 1.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_console2.py ..............
+
+14 passed in 3.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_console3.py ........................
+
+24 passed in 5.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_console.py ............
+
+12 passed in 3.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_deploy_checks.py .........
+
+9 passed in 12.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_deploy_guard.py ...
+
+3 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_deploy_reads.py ....
+
+4 passed in 0.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_descriptions.py ....
+
+4 passed in 0.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_designer_period.py ...........
+
+11 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_designers.py ..........
+
+10 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_design_ladder.py ................
+
+16 passed in 14.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_discovery.py .........
+
+9 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_docs_shots.py ..........
+
+10 passed in 12.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_docs_site.py .........
+
+9 passed in 26.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_download_names.py ...
+
+3 passed in 0.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_elements.py ........................................................................................................................................................................................................................................................................................................................................................................................................................................................ssss................................................  bw-b1x5x1.dat           460 triangles  complete
+good.mpd: 36 lines, 1 parts, all complete
+  bw-b1x5x1.dat           268 triangles  MISSING no-such-primitive.dat
+bad.mpd: 36 lines, 1 parts, 1 incomplete
+.  bw-3068b-pabc123.dat      2 triangles  complete, 1 picture carried
+good.mpd: 15 lines, 1 parts, all complete
+  bw-3068b-pabc123.dat      2 triangles  MISSING bw-3068b-pabc123-top.png
+bad.mpd: 13 lines, 1 parts, 1 incomplete
+.sss
+SKIP  test_a_technic_brick_cover_leaves_its_holes_open[bw-h1x1.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_technic_brick_cover_leaves_its_holes_open[bw-h1x2.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_technic_brick_cover_leaves_its_holes_open[bw-h1x4.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_technic_brick_cover_leaves_its_holes_open[bw-h1x7.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_pipeline_json_is_what_the_pipeline_makes_now — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_the_made_brick_occupies_its_size_and_takes_studs_where_it_has_them — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_into_adds_made_parts_to_a_catalogue_and_leaves_the_rest — numpy/scipy not installed; apt install python3-numpy python3-scipy
+
+490 passed, 7 skipped in 10.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_embed_script_budget.py ..
+
+2 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_feedback.py .................
+
+17 passed in 3.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_flow_accounts.py ...
+
+3 passed in 0.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_flow_models.py .....
+
+5 passed in 1.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_flow_scroll.py ...
+
+3 passed in 3.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_flows_for.py ..................
+
+18 passed in 85.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_gallery_builds.py .....................
+
+21 passed in 9.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_gallery_crons.py .................
+
+17 passed in 1.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_gallery_tabs.py .........
+
+9 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_gears.py ......
+
+6 passed in 4.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_home_shelf.py ........
+
+8 passed in 1.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_ideas.py ....# Ideas head to head: x (D) against y (D)
+
+2 briefs judged, 1 of them made by one arm only and lost by the other on every dimension.
+Left out: taco_truck (its brief changed since a design).
+
+**Each share is the share of verdicts that preferred x's design to y's**, both orders, a brief counting the share of its verdicts x won; y's share is the rest. 50% is a draw.
+
+| dimension | x preferred | 95% interval of x's share | y preferred |
+|---|---|---|---|
+| likeness | 75% | 20-97% | 25% |
+| realism | 75% | 20-97% | 25% |
+| creativity | 75% | 20-97% | 25% |
+| technique | 75% | 20-97% | 25% |
+| overall | 75% | 20-97% | 25% |
+
+The two orders named the same design on 0 of 5 (0%) of dimensions; the design shown first won 6 of 10 (60%).
+
+Sessions: x's median 10 min, 10-10, 0.3 h in all; 0 timed out; y's median 10 min, 10-10, 0.3 h in all; 0 timed out.
+
+Each brief: the parts and minutes of each arm's design, and the verdicts x's won of those asked (all or none when one arm made no model).
+
+| idea | kind | x parts | y parts | x min | y min | likeness to x | realism to x | creativity to x | technique to x | overall to x |
+|---|---|---|---|---|---|---|---|---|---|---|
+| dragon_bridge | fantasy scene | 300 | 300 | 10 | 10 | 1/2 | 1/2 | 1/2 | 1/2 | 1/2 |
+| salvage_mech | creature or mech | 300 | - | 10 | 10 | all | all | all | all | all |
+
+.
+
+5 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_inbox.py ........................
+
+24 passed in 5.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_insights_page.py .........
+
+9 passed in 0.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_insights.py ........................................
+
+40 passed in 9.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_keys_named.py ...
+
+3 passed in 5.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_later.py .......
+
+7 passed in 3.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_ldraw.py ....................................................................sssssssssssssssssssssssssssssssssssssssssssss.......ssssssssssssssssss
+SKIP  test_occupancy_matches_the_named_size[3005.dat,1,3,1] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3004.dat,2,3,1] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3622.dat,3,3,1] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3009.dat,6,3,1] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3003.dat,2,3,2] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3001.dat,4,3,2] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3024.dat,1,1,1] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3020.dat,4,1,2] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3031.dat,4,1,4] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3832.dat,10,1,2] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_occupancy_matches_the_named_size[3068b.dat,2,1,2] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_lattice_divides_every_lego_dimension — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3005.dat,1] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3004.dat,2] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3009.dat,6] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3003.dat,4] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3001.dat,8] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3020.dat,8] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3031.dat,16] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3832.dat,20] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3068b.dat,4] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_socket_counts[3070b.dat,1] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_sockets_agree_with_studs — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_an_arch_has_no_socket_under_its_span — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_collision_is_exact_on_the_lattice — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_round_brick_cover_leaves_its_side_holes_open[18897.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_round_brick_cover_leaves_its_side_holes_open[6222.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[6222.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[18897.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[30361a.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[7246.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[2791a.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[32524.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[32278.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[3702.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[39369.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[10288.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pin_in_any_hole_misses_the_cover[100942.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_clip_on_a_handle_misses_the_cover[2540.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_clip_on_a_handle_misses_the_cover[60478.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_clip_on_a_handle_misses_the_cover[48336.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_clip_on_a_handle_misses_the_cover[30236.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_clip_on_a_handle_misses_the_cover[78257.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_clip_on_a_handle_misses_the_cover[69934.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_quarter_ring_keeps_its_inside_open — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_quarter_dome_is_covered_as_a_shell_not_its_box — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_four_quarter_domes_meet_at_their_seams_without_sharing_a_cell — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_pane_keeps_the_cells_its_faces_run_through — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tapered_quarter_ring_is_covered_as_its_shape[58846.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tapered_quarter_ring_is_covered_as_its_shape[95188.dat] — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_round_plate_with_an_opening_is_open_through_it — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tyre_is_open_through_its_hole — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tyre_past_the_box_limit_keeps_its_hole — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_seam_over_a_hollow_is_counted_once — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tyre_drawn_with_no_primitive_has_its_hole_as_a_bore — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_an_arch_with_a_free_line_through_it_is_no_ring — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tyre_of_shells_that_overlap_is_open_through_its_bore — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tyre_with_no_bore_closed_by_its_own_shells_is_a_ring — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_part_not_whole_studs_across_has_its_sockets_on_its_studs — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_flared_part_has_its_sockets_where_the_bricks_under_it_stand — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_top_stud_not_over_the_studs_under_it_leaves_them_where_they_fit — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_creature_stands_on_the_open_tube_it_draws — numpy/scipy not installed; apt install python3-numpy python3-scipy
+SKIP  test_a_tube_between_studs_or_up_inside_is_not_where_a_stud_goes — numpy/scipy not installed; apt install python3-numpy python3-scipy
+
+75 passed, 63 skipped in 2.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_lean.py ................
+
+16 passed in 0.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_lens.py .
+
+1 passed in 0.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_library.py .................s
+SKIP  test_the_staged_index_and_its_files — nothing staged (tools/library_build.py stage)
+
+17 passed, 1 skipped in 2.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_library_site.py .........
+
+9 passed in 2.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_link_fetch.py ..............................................
+
+46 passed in 8.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_lists_import.py ..
+
+2 passed in 0.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_live_ab.py ..
+
+2 passed in 2.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_live_smoke.py .................
+
+17 passed in 9.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_loadbound.py .....
+
+5 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_locale.py ..........
+
+10 passed in 2.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_loop.py ...........
+
+11 passed in 26.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_made_with.py ......
+
+6 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_mark.py ...
+
+3 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_mcp_list_changed.py ..
+
+2 passed in 5.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_menu_admin.py ..
+
+2 passed in 0.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_merge_featuremap.py ...featuremap config: both sides changed ('ui', 'a')
+.
+
+4 passed in 0.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_merge_lists.py .........
+
+9 passed in 3.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_merge_subbuild.py sub-build: 51 parts (1 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+merge_subbuild: the catalogue in /tmp/tmptntrsgey/stage/assets/generated
+merged 1 entries and 1 mesh files
+carried 1 exact shapes to their parts' new meshes
+every part in the catalogue still has its geometry
+.sub-build: 52 parts (2 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+merge_subbuild: the catalogue in /tmp/tmprvicbivs/stage/assets/generated
+merged 2 entries and 2 mesh files
+carried 1 exact shapes to their parts' new meshes
+every part in the catalogue still has its geometry
+.sub-build: 51 parts (1 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+merge_subbuild: the catalogue in /tmp/tmpxl696884/stage/assets/generated
+merged 1 entries and 1 mesh files
+carried 0 exact shapes to their parts' new meshes
+every part in the catalogue still has its geometry
+.sub-build: 51 parts (1 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+merge_subbuild: the catalogue in /tmp/tmp3b9ygzkv/stage/assets/generated
+merged 1 entries and 1 mesh files
+carried 1 exact shapes to their parts' new meshes
+every part in the catalogue still has its geometry
+.merge_subbuild FAILED, nothing written: /tmp/tmp4ycw2aqm/stage/assets/generated/catalogue.json is a link to /tmp/tmp4ycw2aqm/shared/catalogue.json, out of /tmp/tmp4ycw2aqm/generated: not written through
+sub-build: 50 parts (0 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+merge_subbuild: the catalogue in /tmp/tmp4ycw2aqm/stage/assets/generated
+merged 0 entries and 0 mesh files
+carried 0 exact shapes to their parts' new meshes
+every part in the catalogue still has its geometry
+sub-build: 51 parts (1 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+.merge_subbuild FAILED, nothing written: /tmp/tmp2dyd6hhe/stage/assets/generated/parts is a link to /tmp/tmp2dyd6hhe/shared/parts, out of /tmp/tmp2dyd6hhe/generated: not written through
+sub-build: 50 parts (0 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+merge_subbuild: the catalogue in /tmp/tmp2dyd6hhe/stage/assets/generated
+merged 0 entries and 0 mesh files
+carried 0 exact shapes to their parts' new meshes
+every part in the catalogue still has its geometry
+sub-build: 51 parts (1 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+.merge_subbuild FAILED, nothing written: /tmp/tmp_qs4cyw9/stage/assets/generated/exact/new1.bwx is a link to /tmp/tmp_qs4cyw9/shared/exact/new1.bwx, out of /tmp/tmp_qs4cyw9/generated/exact: not written through
+sub-build: 50 parts (0 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+merge_subbuild: the catalogue in /tmp/tmp_qs4cyw9/stage/assets/generated
+merged 0 entries and 0 mesh files
+carried 0 exact shapes to their parts' new meshes
+every part in the catalogue still has its geometry
+sub-build: 51 parts (1 affected, 50 controls, 0 new)
+all 50 control parts agree about their connectors
+.
+
+7 passed in 0.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_minifig.py .......................................
+
+39 passed in 1.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_model_bases.py .......
+
+7 passed in 1.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_modelled_by.py .........
+
+9 passed in 5.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_model_page_fresh.py .
+
+1 passed in 2.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_model_page.py ..............
+
+14 passed in 28.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_motions.py .....
+
+5 passed in 0.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_named_calls.py ....
+
+4 passed in 2.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_oauth_clients.py ......................
+
+22 passed in 4.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_otp_retry.py ....
+
+4 passed in 0.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_outside.py ....
+
+4 passed in 3.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_owner_notify.py ...................................
+
+35 passed in 9.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_packaged_facts.py ....
+
+4 passed in 27.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_packed_casts.py .....
+
+5 passed in 5.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_page_fetch.py .....
+
+5 passed in 4.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_page_width.py ...
+
+3 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_pairwise.py .......................
+
+23 passed in 9.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_partpins.py .........
+
+9 passed in 10.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_pck_split.py ..........
+
+10 passed in 15.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_photoreal_bench.py ....round 1: photo 0.0 called a photograph, p 0.25; one 0.0 called a photograph, p 0.25; two 0.0 called a photograph, p 0.25
+round 2: photo 0.0 called a photograph, p 0.25; one 0.0 called a photograph, p 0.25; two 0.0 called a photograph, p 0.25
+label              verdicts  all shots, 95%               close-ups                    sets
+photo                     4  +0.250 (+0.250 .. +0.250)    +0.250 (+0.250 .. +0.250)    -
+one                       4  +0.250 (+0.250 .. +0.250)    +0.250 (+0.250 .. +0.250)    -
+two                       4  +0.250 (+0.250 .. +0.250)    +0.250 (+0.250 .. +0.250)    -
+
+against one, shot by shot (kept only if the interval is above 0):
+  two                all +0.000 (+0.000 .. +0.000)   close-ups +0.000 (+0.000 .. +0.000)
+
+twins one and two, 1 byte-identical pictures on 1 shots: +0.000 (+0.000 .. +0.000); the pool tells apart a difference of 0.000 at 95%
+...
+
+7 passed in 2.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_photostep.py .....
+
+5 passed in 0.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_pick_a_brick_page.py .....
+
+5 passed in 7.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_place_build.py .......
+
+7 passed in 0.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_plan_comps.py .
+
+1 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_plans.py .......
+
+7 passed in 1.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_play.py ......
+
+6 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_post_kit.py ...............
+
+15 passed in 8.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_profile.py .....
+
+5 passed in 0.4s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_prompts.py ........
+
+8 passed in 1.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_push.py ...............................
+
+31 passed in 7.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_realset.py .......................[22:08:21] judge 1-1: ae0bec v a8797d under fresh names (attempt 1)
+[22:08:21] judge 1-1: ae0bec v a8797d under fresh names (attempt 1)
+[22:08:21] judge 1-1: ae0bec v a8797d under fresh names (attempt 1)
+[22:08:21] judge 1-1: a8797d v ae0bec under fresh names (attempt 1)
+[22:08:21] judge 1-1: a8797d v ae0bec under fresh names (attempt 1)
+[22:08:21] judge 1-1: a8797d v ae0bec under fresh names (attempt 1)
+[22:08:21] judge 1-1: ae0bec v a8797d under fresh names (attempt 1)
+[22:08:21] judge 1-1: a8797d v ae0bec under fresh names (attempt 1)
+........[22:08:22] 21023-1: design 21023-1: no tools; designing again
+[22:08:22] 21023-1: design 21023-1: no tools; designing again
+[22:08:22] 21023-1: design 21023-1: no tools
+....
+
+35 passed in 14.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_refresh_catalogue.py .....refresh_catalogue FAILED, nothing written: /tmp/minitest-avhwa6yk/tmpn8gaifkr/stage/assets/generated/elements.json is a link to /tmp/minitest-avhwa6yk/tmpn8gaifkr/shared/elements.json, out of /tmp/minitest-avhwa6yk/tmpn8gaifkr/private: not written through
+..
+
+7 passed in 7.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_relay_busy.py ....
+
+4 passed in 32.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_relay_chats.py ........
+
+8 passed in 1.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_relay_hello.py ........
+
+8 passed in 7.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_relay_signed_out.py .............
+
+13 passed in 3.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_release_links.py ...
+
+3 passed in 2.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_release.py ....version 0.2.0, dated 2026-10-17, in VERSION, project.godot and CHANGELOG.md
+....Cut, build, check and publish a desktop release of Brickworks.
+
+    tools/release.py version                 do VERSION, project.godot and CHANGELOG.md agree?
+    tools/release.py version --set 0.2.0     bump all three; [Unreleased] becomes 0.2.0's section
+    tools/release.py notes [0.1.0]           that version's changelog section
+    tools/release.py build [linux mac windows]   export and package into dist/<version>/
+          --assets=DIR                       the mesh cache to ship (default assets/generated)
+    tools/release.py inspect [DIR]           what is in each package: versions, architectures,
+                                             signatures, contents. Reads the packages, not notes
+    tools/release.py smoke FILE [--window]   unpack it as a person would and run it in a clean home;
+                                             --window draws the car and traces it at Best
+    tools/release.py best-reference          the editor's Best of the car, which smoke holds a
+                                             package's to (tools/release/best_car.png)
+    tools/release.py publish --draft         upload the packages to a draft release on
+                                             Xaxis/brickworks-releases and check GitHub's
+                                             SHA-256 of each against dist/
+    tools/release.py publish                 publish that draft, check it again, tag the
+                                             commit on origin, and write web/releases.json
+          [--tag=TAG] [--target=REF] [--no-manifest]
+    tools/release.py manifest --local [--out=FILE]   the page's manifest from dist/, to preview it
+    tools/release.py latest --check FILE      is FILE a latest.json the app would believe?
+
+docs/RELEASING.md is the cycle this is part of, and says when to run each.
+
+The packages carry the whole part library (about a gigabyte of geometry),
+because the desktop app works with no network and the web build cannot.
+That library is not in git, so a release is built on a machine that has
+it, and CI only proves what was built (tools/release/releases_repo/release.yml,
+run in the releases repository).
+
+Signing plugs in by environment, from .env or the shell; values are never
+printed. Without them the macOS app is ad-hoc signed and Windows unsigned,
+and the download page says what that means for the first launch:
+
+    APPLE_SIGN_P12, APPLE_SIGN_P12_PASSWORD       Developer ID Application certificate
+    APPLE_NOTARY_KEY, APPLE_NOTARY_KEY_ID, APPLE_NOTARY_ISSUER
+                                                  App Store Connect API key, to notarise
+    WINDOWS_SIGN_COMMAND                          signs one file in place; {file} is its path
+
+The desktop app's updater believes latest.json only under a signature by a
+key it knows (docs/UPDATES.md). Publishing signs it with both of these,
+from .env, and refuses a key whose public half src/net/updates.gd lacks:
+
+    UPDATE_SIGN_KEY, UPDATE_SIGN_KEY_BACKUP       RSA private keys, PEM, base64 on one line
+
+...  latest.json signed by 0 keys the app carries
+── drafting v9.9.9, 3 files, 2 KB ──
+  uploaded in 0 s
+  ok    Brickworks-9.9.9-linux-x86_64.tar.xz  GitHub's SHA-256 matches
+  ok    SHA256SUMS  GitHub's SHA-256 matches
+  ok    latest.json  GitHub's SHA-256 matches
+  https://github.com/Xaxis/brickworks-releases/releases/tag/v9.9.9 (a draft: nobody else can see it)
+..── publishing the draft v9.9.9 ──
+  ok    Brickworks-9.9.9-linux-x86_64.tar.xz  GitHub's SHA-256 matches
+  ok    SHA256SUMS  GitHub's SHA-256 matches
+  ok    latest.json  GitHub's SHA-256 matches
+  https://github.com/Xaxis/brickworks-releases/releases/tag/v9.9.9
+  tagged v9.9.9 on origin: ffffffffffff
+..      licences: ATTRIBUTION.md, THIRD-PARTY-NOTICES.txt; the notices (18 KB) say Godot's licence, its components' notices, BrickNet's MIT text, LDraw's notice, Rebrickable's credit
+.      licences: ATTRIBUTION.md, THIRD-PARTY-NOTICES.txt; the notices (18 KB) say Godot's licence, its components' notices, LDraw's notice, Rebrickable's credit
+......................
+
+38 passed in 11.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_release_train.py ............................................
+
+44 passed in 173.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_remix_changes.py .........
+
+9 passed in 11.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_row_cap.py ....
+
+4 passed in 0.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_running.py ...
+
+3 passed in 3.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_run_probes.py ...
+
+3 passed in 0.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_saved_models_plan.py ................
+
+16 passed in 3.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_script_uids.py ..
+
+2 passed in 0.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_search.py ...........
+
+11 passed in 47.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_set_colours.py ...
+
+3 passed in 0.2s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_sets.py /mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_sets.py:345: SyntaxWarning: invalid escape sequence '\/'
+  said = node(SITE + """
+................
+
+16 passed in 11.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_share_model_files.py ...
+
+3 passed in 1.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_share_unknowns.py .........
+
+9 passed in 15.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_showcase.py ....
+
+4 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_signed_out.py .......
+
+7 passed in 6.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_site_contrast.py ....
+
+4 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_site_lang.py ............................
+
+28 passed in 17.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_site_shell.py ....
+
+4 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_snippets.py ...........2 pieces; 0 lay as they stand; 1 described; /tmp/tmpfece7xg_/index.json 5 KB
+..
+
+13 passed in 1.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_social.py ........................
+
+24 passed in 5.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_start_abba.py .......
+
+7 passed in 1.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_start_closure.py ......
+
+6 passed in 5.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_steady_shots.py .....
+
+5 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_steps_score.py .............
+
+13 passed in 0.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_storage_mirror.py ....
+
+4 passed in 6.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_storage_stamp.py ....storage: 3 meshes, 0 MB on disk
+  already up: 3
+  to upload : 0  (0 MB)
+storage: 3 meshes, 0 MB on disk
+  already up: 3
+  to upload : 0  (0 MB)
+..storage: 3 meshes, 0 MB on disk
+  already up: 3
+  to upload : 0  (0 MB)
+storage: 3 meshes, 0 MB on disk
+  already up: 3
+  to upload : 0  (0 MB)
+storage: 3 meshes, 0 MB on disk
+  to upload : 3  (0 MB)
+    aa.lbm  0.0 MB
+    bb.lbm  0.0 MB
+    cc.lbm  0.0 MB
+       3/3    724/s   0.0 min left
+
+  uploaded 3 in 0.0 min
+  public at https://x.supabase.co/storage/v1/object/public/parts/<hash>.lbm
+.storage: 3 meshes, 0 MB on disk
+  already up: 3
+  to upload : 0  (0 MB)
+storage: 3 meshes, 0 MB on disk
+  already up: 3
+  to upload : 0  (0 MB)
+.
+
+8 passed in 0.1s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_style.py .............................................
+
+45 passed in 3.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_subfile_readers.py .....
+
+5 passed in 4.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_talk.py ..........
+
+10 passed in 0.9s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_thumbnail_check.py .....
+
+5 passed in 1.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_timing_judge.py ......
+
+6 passed in 0.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_together_party.py .........
+
+9 passed in 0.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_together_poll.py ................
+
+16 passed in 20.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_track_ends.py .......
+
+7 passed in 6.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_trademarks.py ................................
+
+32 passed in 14.7s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_turntable_clip.py .......
+
+7 passed in 5.6s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_turntable_page.py ....
+
+4 passed in 10.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_update_parts.py ..........
+
+10 passed in 0.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_updates.py ..............
+
+14 passed in 5.3s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_wasm_proxy_fix.py .....
+
+5 passed in 3.5s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_web_pack_exact.py ..
+
+2 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_window_commands.py ..
+
+2 passed in 0.0s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_wip.py ........
+
+8 passed in 0.8s  (tools/minitest.py, not pytest)
+/mnt/Projects/brickworks/.claude/worktrees/signin7/tests/test_worktree_links_ignored.py ...
+
+3 passed in 0.1s  (tools/minitest.py, not pytest)
+2346 passed, 75 skipped in 356.4s over 168 files  (tools/minitest.py, not pytest)
+exit 0
