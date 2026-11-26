@@ -221,12 +221,16 @@ func _case_model(tag: String, path: String) -> void:
 	_ok(again.get("said", "") == plan["said"], "%s: the same parts chosen" % tag)
 	_select([plan["p1"]])
 	var before: Dictionary = _state()
-	_main.call("use_controls", &"simple")
-	await _frames(3)
+	var into: Array = await _timed(&"simple")
 	_same("%s: into Simple" % tag, before, _state())
-	_main.call("use_controls", &"full")
-	await _frames(3)
+	var back: Array = await _timed(&"full")
 	_same("%s: and back to Full" % tag, before, _state())
+	# The switch is the controls' work alone, whatever the model's size.
+	_ok(float(into[0]) < 16.0 and float(back[0]) < 16.0,
+		"%s: the switch in %.1f ms and back in %.1f ms" % [tag, into[0], back[0]])
+	if float(into[1]) > 16.0 or float(back[1]) > 16.0:
+		_note("%s: the frame after the switch took %.1f ms in, %.1f ms back (the box's load counts)"
+			% [tag, into[1], back[1]])
 	# Saved with no edit after the switch: the file as it came, byte for byte.
 	var plain_at: String = ProjectSettings.globalize_path(PROBE_DIR + tag + "-unedited.mpd")
 	_ok(bool(_main.call("save_model", plain_at)), "%s: saved unedited after a switch" % tag)
@@ -570,6 +574,19 @@ func _add_part(spot: Vector3) -> int:
 	_verbs.set_mode("select")
 	_builder.held_part = ""
 	return put
+
+
+## use_controls([param layer]) timed: [the call's ms, the next frame's
+## process ms, which lays the controls out], then two frames more.
+func _timed(layer: StringName) -> Array:
+	var began: int = Time.get_ticks_usec()
+	_main.call("use_controls", layer)
+	var call_ms: float = (Time.get_ticks_usec() - began) / 1000.0
+	await process_frame
+	await process_frame
+	var frame_ms: float = Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	await _frames(1)
+	return [call_ms, frame_ms]
 
 
 ## [param count] undone (or redone) as the person's Undo and Redo do.
