@@ -55,18 +55,12 @@ create table if not exists public.blocks (
 );
 create index if not exists blocks_blocked on public.blocks (blocked, blocker);
 
+-- Row security on and no policy: only the functions below read it, as the
+-- server (no_client_access.sql's rule). A select policy for authenticated
+-- made here until 2026-11-26 granted nothing, with no privilege under it,
+-- and blocks_no_policy.sql took it away.
 alter table public.blocks enable row level security;
 revoke all on public.blocks from public, anon, authenticated, service_role;
-
-do $$
-begin
-    if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'blocks'
-                    and policyname = 'blocks_own_only') then
-        create policy blocks_own_only on public.blocks for select to authenticated
-            using (blocker = (select auth.uid()));
-    end if;
-end;
-$$;
 
 -- How many people one account may block: a list past this is not one a
 -- person keeps by hand.
