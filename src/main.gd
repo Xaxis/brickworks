@@ -1362,22 +1362,37 @@ func use_controls(layer: StringName) -> bool:
 		if _phone != null:
 			under = maxi(under, _phone.get_index())
 		$HUD.move_child(_simple, under + 1 if _simple.get_index() > under else under)
-		_simple_left = {"steps": _timeline_left(), "notices_at": _notices.get_index()}
+		# The header stays, as it is in every mode (AppHeader): everything
+		# else in the studio's column is put away, each as it was.
+		var put_away: Dictionary = {}
+		for child: Node in column.get_children():
+			if child != _bar and child is Control:
+				put_away[child] = (child as Control).visible
+				(child as Control).visible = false
+		_simple_left = {"steps": _timeline_left(), "notices_at": _notices.get_index(), "put_away": put_away}
 		_notices.reparent(_simple.get("notices_slot"), false)
-		column.visible = false
 		if _phone != null:
-			_phone.visible = false
+			_phone.call("set_simple", true)
+		else:
+			_bar.set_simple(true)
 		_simple.visible = true
 		_layer = layer
+		_simple.call("entered")
 	else:
 		_layer = layer
+		_simple.call("left")
 		_simple.visible = false
 		var middle: Control = _over_model.get_parent()
 		_notices.reparent(middle, false)
 		middle.move_child(_notices, int(_simple_left.get("notices_at", 0)))
-		column.visible = true
+		var put_away: Dictionary = _simple_left.get("put_away", {})
+		for child: Control in put_away:
+			if is_instance_valid(child):
+				child.visible = bool(put_away[child])
 		if _phone != null:
-			_phone.visible = true
+			_phone.call("set_simple", false)
+		else:
+			_bar.set_simple(false)
 		var steps: Dictionary = _simple_left.get("steps", {})
 		_simple_left = {}
 		if not steps.is_empty():
@@ -1387,10 +1402,10 @@ func use_controls(layer: StringName) -> bool:
 	return true
 
 
-## Simple wanted from the start: this device was left in it, or the address
-## (?controls=simple in a browser) or the command line (--controls=simple)
-## asks for it, which is remembered. Hidden: nothing in the window offers
-## it yet.
+## Simple wanted from the start: this device was left in it (the header's
+## Simple | Full), or the address (?controls=simple in a browser) or the
+## command line (--controls=simple) asks for it, which is remembered.
+## Nobody lands in Simple unasked: Full until somebody picks it.
 func _controls_wanted() -> StringName:
 	var asked: String = _argument("--controls")
 	if OS.has_feature("web"):
@@ -2822,8 +2837,8 @@ func _hear_look_ask() -> void:
 		_budget.look(clampi(int(asked["look"]), 1, 60))
 
 
-## The page's word to swap the controls while Simple is hidden (a check's,
-## or somebody trying it from the browser's console):
+## The page's word to swap the controls (a check's, or somebody trying it
+## from the browser's console), as the header's Simple | Full does:
 ## window.brickworksUseControls = "simple" or "full", heard as the page is
 ## told and cleared (use_controls).
 func _hear_controls_ask() -> void:
@@ -7032,6 +7047,8 @@ func _build_ui() -> void:
 	_bar.builder = _builder
 	column.add_child(_bar)
 	_bar.bind(_store)
+	# The header's Simple | Full (AppHeader.controls_switch).
+	_bar.controls_picked.connect(func(layer: StringName) -> void: use_controls(layer))
 	# The assistant remembers which bricks were its own by id, and
 	# BrickWorld numbers from one again after a clear — so without this
 	# those ids name the new model's bricks and the next design deletes
@@ -12267,6 +12284,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# picking up, a finger held down to take a part off — is reachable.
 	if not _viewing.is_empty():
 		_view_input(event)
+		return
+	# Simple's fingers and pointer are its layer's and the camera's
+	# (SimpleLayer): nothing here places, picks or holds by them.
+	if _layer == &"simple" and bool(_simple.call("takes", event)):
 		return
 	# A model being laid is not edited until it is all down: the camera
 	# turns it meanwhile, by its own input (CadCamera).

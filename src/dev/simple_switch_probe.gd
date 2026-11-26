@@ -11,11 +11,13 @@
 ##
 ## --case= layer, models, steps, hand, drag, typing, start (all when not said);
 ## --pictures=DIR keeps a picture of each layer there.
-##   layer   Simple in and out: the studio's own controls put away (the
-##           desktop's column, the phone's bars) and back, Simple's layer and
-##           its Full studio in their place, the model given the window, a
-##           point where the parts bin was the model's, and Full studio
-##           pressed brings the studio back. Nothing of the model changes.
+##   layer   Simple in and out: the studio's own controls put away but its
+##           header (the desktop's column, the phone's bars) and back,
+##           Simple's layer in their place, the model seen under the header
+##           and over Simple's tray, a point where the parts bin was the
+##           model's or Simple's, and the header's Full pressed brings the
+##           studio back. Nothing of the model changes; the view is Simple's
+##           framing in Simple and Full's again back in Full.
 ##   models  Simple's plan's P2 on four real models: 10030-1 (136 sub-model
 ##           sections), 6685-1 (the author's steps), 5972-1 (LSynth hoses, its
 ##           flexible parts) and 4005-1 with two parts the library lacks, one
@@ -156,34 +158,49 @@ func _case_layer() -> void:
 	_ok(bool(_main.call("use_controls", &"simple")), "use_controls(simple)")
 	await _frames(6)
 	var simple: Control = _main.get("_simple")
+	var bar: Control = _main.get("_bar")
 	_ok(_main.call("controls_layer") == &"simple", "the layer says simple")
-	_ok(not column.visible and (phone == null or not phone.visible),
-		"the studio's own controls put away (its column%s)" % ("" if phone == null else " and the phone's bars"))
+	# The header stays, as in every mode: everything else of the column goes,
+	# and on a phone its bars but the header's row.
+	var shown: Array = []
+	for child: Node in column.get_children():
+		if child != bar and child is Control and (child as Control).visible:
+			shown.append(str(child.name))
+	if phone != null:
+		for what: String in ["_row", "_pill", "_fit", "_name"]:
+			var part: Control = phone.get(what)
+			if part != null and part.is_visible_in_tree():
+				shown.append("phone " + what)
+	_ok(shown.is_empty(), "the studio's own controls put away but its header (still shown: %s)" % ", ".join(shown))
+	var header: Control = bar if phone == null else phone.get("_top")
+	_ok(header != null and header.is_visible_in_tree(), "the studio's header kept")
 	_ok(simple != null and simple.is_visible_in_tree(), "Simple's layer up")
 	var room: Rect2 = _camera.seen_rect()
-	_ok(room.size.is_equal_approx(root.get_visible_rect().size),
-		"the model is seen in the whole window: %s of %s" % [room.size, root.get_visible_rect().size])
-	_ok(not bool(_main.call("_over_panel_at", studio_point)), "%s is the model's in Simple" % studio_point)
+	var simple_room: Rect2 = simple.call("model_room", root.get_visible_rect())
+	_ok(room.position.distance_to(simple_room.position) < 1.0 and room.size.distance_to(simple_room.size) < 1.0,
+		"the model is seen under the header and over the tray: %s, Simple's room %s" % [room, simple_room])
+	_ok(not bool(_main.call("_over_panel_at", studio_point)) or bool(simple.call("covers", studio_point)),
+		"%s is the model's or Simple's own in Simple" % studio_point)
 	var named: Dictionary = _main.call("_page_controls")
-	var full: Button = named.get("simple_full")
-	_ok(full != null and full.is_visible_in_tree(), "Full studio is on the page's list")
+	var full: Button = named.get("controls_full")
+	_ok(full != null and full.is_visible_in_tree(), "Full is on the page's list, in the header")
 	if full != null:
 		_ok(root.get_visible_rect().encloses(full.get_global_rect()) and full.size.x > 20.0,
-			"Full studio on the screen: %s in %s" % [full.get_global_rect(), root.get_visible_rect()])
-		_ok(_drawn_over(full).is_empty(), "nothing drawn over Full studio%s" % _drawn_over(full))
+			"Full on the screen: %s in %s" % [full.get_global_rect(), root.get_visible_rect()])
+		_ok(_drawn_over(full).is_empty(), "nothing drawn over Full%s" % _drawn_over(full))
 		_ok(bool(_main.call("_over_panel_at", full.get_global_rect().get_center())),
-			"a press on Full studio is not the model's")
+			"a press on Full is not the model's")
 		if _layout == "phone":
 			var least: float = Phone.px(root, Phone.TARGET) - 0.5
-			_ok(full.size.y >= least and full.size.x >= least, "Full studio is a fingertip each way: %s" % full.size)
+			_ok(full.size.y >= least and full.size.x >= least, "Full is a fingertip each way: %s" % full.size)
 	_ok(str(ShellPrefs.value("controls")) == "simple", "remembered: simple")
-	_same("into Simple", before, _state())
+	_same("into Simple", before, _state(), false)
 	await _picture("simple")
 	if full != null:
 		full.pressed.emit()
 	await _frames(6)
 	_ok(_main.call("controls_layer") == &"full" and column.visible and (phone == null or phone.visible)
-		and not simple.visible, "Full studio pressed: the studio's controls back, Simple's gone")
+		and not simple.visible, "Full pressed: the studio's controls back, Simple's gone")
 	_ok(bool(_main.call("_over_panel_at", studio_point)), "%s is the studio's again" % studio_point)
 	_ok(str(ShellPrefs.value("controls")) == "full", "remembered: full")
 	_same("back to Full", before, _state())
@@ -230,7 +247,7 @@ func _case_model(tag: String, path: String) -> void:
 		into.append(_timed(&"simple"))
 		await _frames(3)
 		if n == 0:
-			_same("%s: into Simple" % tag, before, _state())
+			_same("%s: into Simple" % tag, before, _state(), false)
 		back.append(_timed(&"full"))
 		await _frames(3)
 	_same("%s: and back to Full, three times over" % tag, before, _state())
@@ -543,7 +560,7 @@ func _edits(plan: Dictionary, switch: bool) -> Dictionary:
 		var before: Dictionary = _state()
 		_main.call("use_controls", &"simple")
 		await _frames(3)
-		_same("into Simple after an edit in Full", before, _state())
+		_same("into Simple after an edit in Full", before, _state(), false)
 		_builder.clear_selection()
 	var put: int = await _add_part(plan["spot"])
 	if put == 0:
@@ -572,7 +589,7 @@ func _edits(plan: Dictionary, switch: bool) -> Dictionary:
 		var before: Dictionary = _state()
 		_main.call("use_controls", &"full")
 		await _frames(3)
-		_same("back to Full", before, _state())
+		_same("back to Full", before, _state(), false)
 	return marks
 
 
@@ -623,13 +640,18 @@ func _state() -> Dictionary:
 			_camera.get("_target_focus"), _camera.global_transform]}
 
 
-func _same(said: String, was: Dictionary, now: Dictionary) -> void:
+## Into Simple the view is framed on the model whole in Simple's room
+## (SimpleLayer.entered), so [param camera] false leaves it out; back in
+## Full it is Full's again.
+func _same(said: String, was: Dictionary, now: Dictionary, camera: bool = true) -> void:
 	var differ := PackedStringArray()
 	for key: String in was:
+		if key == "camera" and not camera:
+			continue
 		if str(was[key]) != str(now[key]):
 			differ.append(key)
-	_ok(differ.is_empty(), "%s: the model, selection, undo, hand, tool, save and camera as they were%s"
-		% [said, "" if differ.is_empty() else " (differ: %s)" % ", ".join(differ)])
+	_ok(differ.is_empty(), "%s: the model, selection, undo, hand, tool, save%s as they were%s"
+		% [said, " and camera" if camera else "", "" if differ.is_empty() else " (differ: %s)" % ", ".join(differ)])
 
 
 ## Every line of [param original] nobody touched is in [param saved], byte for

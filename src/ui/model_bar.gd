@@ -38,6 +38,14 @@ var brand: Button
 ## the booklet's page laid out by hand (looking): the menus, the model's name
 ## and the Claude tab out of sight, the mark, Menu and Account kept.
 var plain: bool = false
+## Simple | Full (AppHeader.controls_switch): on the studio's header, and
+## on the plain one Simple keeps (set_simple); not on the viewer's, Build
+## it's or the page laid out by hand.
+var controls: PanelContainer
+## Simple's header: plain, the switch kept (Main.use_controls).
+var simple: bool = false
+## Simple or Full picked on the switch.
+signal controls_picked(layer: StringName)
 ## Looking at somebody else's model: Account is the site's settings page,
 ## since the viewer reads nobody's account (Main._enter_view).
 var visiting: bool = false
@@ -257,6 +265,11 @@ func _build() -> void:
 	_claude_words.pressed.connect(func() -> void: account_wanted.emit())
 	_claude_tab.add_child(_claude_words)
 
+	# Simple | Full, the controls over the model (Main.use_controls), before
+	# Menu and Account as a site's mode switch sits before its account.
+	controls = AppHeader.controls_switch(1.0, false, func(layer: StringName) -> void:
+		controls_picked.emit(layer))
+	row.add_child(controls)
 	# In a browser the app's menu, Menu, before Account: the site's phone
 	# header has its Menu there, and your account last at the far right.
 	if home != null:
@@ -487,6 +500,7 @@ func _fit_header() -> void:
 	if home != null:
 		AppHeader.dress_button(mark, pt)
 	AppHeader.dress_button(_account, pt)
+	AppHeader.dress_switch(controls, pt, false)
 	_dress_count(pt)
 	if is_equal_approx(density, _mark_drawn_at) and is_equal_approx(pt, _mark_drawn_pt):
 		return
@@ -545,6 +559,8 @@ func _fitting_pt(gutter: float, shown: int) -> float:
 		if control == _account or (home != null and control == mark):
 			var button: Button = control as Button
 			per_pt += 28.0 + font.get_string_size(button.atr(button.text), HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		elif control == controls:
+			per_pt += AppHeader.switch_points(controls, false)
 		elif control == _name:
 			units += NAME_NARROW
 		elif control == menus:
@@ -611,10 +627,24 @@ func set_plain(yes: bool) -> void:
 	plain = yes
 	for part: Control in [menus, _name]:
 		part.visible = not yes
+	controls.visible = not yes or simple
 	more.visible = not yes and menus_shown < _menu_buttons().size()
 	if _claude_tab != null:
 		_claude_tab.visible = not yes and not _claude_words.text.is_empty()
 	_fit_mark.call_deferred()
+
+
+## Simple's header (Main.use_controls): plain, as Build it's is, the switch
+## kept and Simple chosen on it; back in Full, the studio's whole.
+func set_simple(yes: bool) -> void:
+	simple = yes
+	set_plain(yes)
+	show_controls(&"simple" if yes else &"full")
+
+
+## Which of Simple | Full the switch shows chosen.
+func show_controls(layer: StringName) -> void:
+	AppHeader.show_controls(controls, layer)
 
 
 ## Account pressed: who is signed in, in the app; on somebody else's model,
@@ -669,6 +699,9 @@ func controls_by_name() -> Dictionary:
 	var out: Dictionary = {"model_name": _name, "account": _account, "app_menu": mark, "app_header": self}
 	if home != null:
 		out["app_home"] = home
+	if controls.is_visible_in_tree():
+		for button: Node in controls.get_child(0).get_children():
+			out[button.name] = button
 	if _claude_tab != null and _claude_tab.is_visible_in_tree():
 		out["claude_tab"] = _claude_words
 	# New's question, for tools/web/progress_check.mjs.

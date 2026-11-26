@@ -3743,6 +3743,14 @@
       "tests": []
     },
     {
+      "id": "cli:simplep1 probe",
+      "kind": "cli",
+      "entry": "src/dev/simplep1_probe.gd",
+      "reach": "PROBE_SIZE=390x844 tools/probe.sh simplep1_probe -- [--tablet] [--desktop] [--checks=0] [--walks=0] [--lifts=0,32,56,80] [--full [--desktop]] --pictures=DIR   (windowed; Simple's checks, three newcomer walks, Full's pictures; numbers in DIR/*.json)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:site check",
       "kind": "cli",
       "entry": "tools/web/site_check.mjs",
@@ -8486,10 +8494,18 @@
       "tests": []
     },
     {
+      "id": "ui:simple mode",
+      "kind": "ui",
+      "entry": "src/ui/simple_layer.gd",
+      "reach": "the header's Simple, on any device: a tray of 30 parts in five groups with pictures and 12 colours along the foot, dragged onto the model's studs with a ghost over the finger; a new model on a 16 x 16 plate framed to fill the view, a stud never under 12 points; one finger builds (a tap selects, a drag moves, Turn, Copy, Delete, the bin), two move the view, two and three tapped undo and redo, Undo and Redo as big buttons, Fit; a model from Full shown whole, sub-assemblies, tilted and bendy parts left alone and said so  (SimpleLayer; tools/probe.sh simplep1_probe; docs/simple)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:simple's controls swapped in live",
       "kind": "ui",
       "entry": "src/ui/simple_layer.gd",
-      "reach": "hidden for now (Simple's phase 0): ?controls=simple in a browser's address or --controls=simple on the command line, remembered on the device (ShellPrefs controls); live from the page with window.brickworksUseControls = \"simple\" or \"full\" (brickworksState.controls says which); Main.use_controls(&\"simple\" | &\"full\") puts Simple's layer (SimpleLayer: the notices and Full studio, so far) in place of the studio's own, the phone's or the desktop's, and back, the model, undo, selection, hand, a drag, the camera and the save untouched; the timeline put away going in and back on its step (StepsBar.show_step)  (tools/probe.sh simple_switch_probe)",
+      "reach": "Simple | Full in the studio's header on every device (AppHeader.controls_switch: ModelBar.controls, PhoneShell._switch), one tap, remembered on the device (ShellPrefs controls), Full until somebody picks Simple; also ?controls=simple in a browser's address or --controls=simple on the command line; live from the page with window.brickworksUseControls = \"simple\" or \"full\" (brickworksState.controls says which); Main.use_controls(&\"simple\" | &\"full\") keeps the header and puts Simple's layer in place of the rest of the studio's own controls, the phone's or the desktop's, and back, the model, undo, selection, hand, a drag and the save untouched, the view framed in Simple and Full's again back in Full; the timeline put away going in and back on its step (StepsBar.show_step)  (tools/probe.sh simple_switch_probe; docs/simple)",
       "area": "building",
       "tests": []
     },

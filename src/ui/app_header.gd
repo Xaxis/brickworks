@@ -135,6 +135,101 @@ static func dress_button(button: Button, pt: float) -> void:
 		button.add_theme_stylebox_override(state, face)
 
 
+## Simple | Full, the controls over the model (Main.use_controls), as the
+## site's .segmented is drawn (web/site.css): a frame of --line on --bg-soft,
+## its two buttons inside it, the one chosen on --panel with the accent's
+## edge. One tap on the other changes the controls; [param pick] is called
+## with &"simple" or &"full". Its buttons are named controls_simple and
+## controls_full, for the page and the checks; Main says which is chosen
+## (show_controls). In points, [param pt], at a finger's height on a phone's
+## width ([param finger]) and the site's 36 elsewhere.
+static func controls_switch(pt: float, finger: bool, pick: Callable) -> PanelContainer:
+	var frame := PanelContainer.new()
+	frame.name = "controls_switch"
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.mouse_filter = Control.MOUSE_FILTER_PASS
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", maxi(1, roundi(2.0 * pt)))
+	frame.add_child(row)
+	var group := ButtonGroup.new()
+	for one: Array in [[&"simple", "Simple", "Big bricks and fingers: tray, colours, drag to build"],
+			[&"full", "Full", "Every tool of the studio, the same model"]]:
+		var button := Button.new()
+		button.name = "controls_" + String(one[0])
+		button.text = str(one[1])
+		button.tooltip_text = str(one[2])
+		button.toggle_mode = true
+		button.button_group = group
+		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		button.set_meta("controls", one[0])
+		var layer: StringName = one[0]
+		button.pressed.connect(func() -> void: pick.call(layer))
+		row.add_child(button)
+	dress_switch(frame, pt, finger)
+	return frame
+
+
+## The switch at [param pt] points to the unit (a phone turned, Settings,
+## Interface size).
+static func dress_switch(frame: PanelContainer, pt: float, finger: bool) -> void:
+	var face := StyleBoxFlat.new()
+	# --bg-soft and --line, --r-2.
+	face.bg_color = Color(0.0627, 0.0706, 0.0824)
+	face.border_color = EDGE
+	face.set_border_width_all(maxi(1, roundi(pt)))
+	face.set_corner_radius_all(roundi(10.0 * pt))
+	face.set_content_margin_all(3.0 * pt)
+	frame.add_theme_stylebox_override("panel", face)
+	var row: HBoxContainer = frame.get_child(0) as HBoxContainer
+	row.add_theme_constant_override("separation", maxi(1, roundi(2.0 * pt)))
+	for child: Node in row.get_children():
+		var button: Button = child as Button
+		# The site's 36 px, a finger's 44 under 600 px; less the frame's
+		# padding and line, so the whole is the header's other controls'.
+		button.custom_minimum_size = Vector2(0.0, ((TARGET if finger else 36.0) - 8.0) * pt)
+		button.add_theme_font_override("font", word_font(button))
+		button.add_theme_font_size_override("font_size", roundi((15.0 if finger else 14.5) * pt))
+		for colour: String in ["font_color", "font_focus_color", "font_hover_color"]:
+			button.add_theme_color_override(colour, INK_SOFT if colour != "font_hover_color" else INK)
+		for colour: String in ["font_pressed_color", "font_hover_pressed_color"]:
+			button.add_theme_color_override(colour, INK)
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+			var own := StyleBoxFlat.new()
+			own.set_corner_radius_all(roundi(6.0 * pt))
+			own.content_margin_left = 12.0 * pt
+			own.content_margin_right = 12.0 * pt
+			own.set_border_width_all(maxi(1, roundi(pt)))
+			# --panel under the chosen one and under the pointer, the accent's
+			# edge on the chosen one only.
+			own.bg_color = Color(0.0824, 0.0902, 0.106) if state != "normal" and state != "focus" \
+				else Color(0, 0, 0, 0)
+			own.border_color = Color(0.949, 0.804, 0.216) if state.contains("pressed") else Color(0, 0, 0, 0)
+			button.add_theme_stylebox_override(state, own)
+
+
+## The switch's width in points, as dress_switch draws it, in the words it
+## is drawn in: for a row fitted in points (ModelBar._fitting_pt).
+static func switch_points(frame: PanelContainer, finger: bool) -> float:
+	var wide: float = 2.0 * 3.0 + 2.0
+	var buttons: Array[Node] = frame.get_child(0).get_children()
+	for child: Node in buttons:
+		var button: Button = child as Button
+		var font: Font = button.get_theme_font("font")
+		wide += 24.0 + 2.0 + font.get_string_size(button.atr(button.text), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			roundi(15.0 if finger else 14.5)).x
+	return wide + 2.0 * (buttons.size() - 1)
+
+
+## Which of the switch's two is chosen: [param layer], &"simple" or &"full".
+static func show_controls(frame: PanelContainer, layer: StringName) -> void:
+	if frame == null or frame.get_child_count() == 0:
+		return
+	for child: Node in frame.get_child(0).get_children():
+		var button: Button = child as Button
+		button.set_pressed_no_signal(button.get_meta("controls") == layer)
+
+
 ## The site's home page, in this tab, as the site's own mark goes there.
 static func go_home() -> void:
 	if Outside.held():

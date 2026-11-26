@@ -18288,8 +18288,71 @@ msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign i
 msgstr "Trop de connexions avec %s en ce moment. Réessayez dans quelques minutes, ou connectez-vous avec un code que nous vous envoyons par e-mail."
 
 # Simple
-msgid "Full studio"
-msgstr "Studio complet"
+msgid "Simple"
+msgstr "Simple"
+
+msgid "Big bricks and fingers: tray, colours, drag to build"
+msgstr "Grandes briques et doigts : bac, couleurs, glisser pour construire"
 
 msgid "Every tool of the studio, the same model"
 msgstr "Tous les outils du studio, le même modèle"
+
+msgid "Bricks"
+msgstr "Briques"
+
+msgid "Plates"
+msgstr "Plaques"
+
+msgid "Specials"
+msgstr "Spéciales"
+
+msgid "Drop here to delete"
+msgstr "Dépose ici pour supprimer"
+
+msgid "Two fingers turn the view"
+msgstr "Deux doigts font tourner la vue"
+
+msgid "Let go to put it down"
+msgstr "Lâche pour la poser"
+
+msgid "Let go to put it down · over the bin to delete it"
+msgstr "Lâche pour la poser · sur la corbeille pour la supprimer"
+
+msgid "Tap the model to put one there"
+msgstr "Touche le modèle pour en poser une là"
+
+msgid "Drag a brick onto the model · two fingers turn the view"
+msgstr "Fais glisser une brique sur le modèle · deux doigts font tourner la vue"
+
+msgid "Drag a brick onto the model · drag the view to turn it"
+msgstr "Fais glisser une brique sur le modèle · fais glisser la vue pour la tourner"
+
+msgid "Drag it to move it · tap a colour to paint it"
+msgstr "Fais-la glisser pour la déplacer · touche une couleur pour la peindre"
+
+msgid "A copy beside it: drag it where it goes"
+msgstr "Une copie à côté : fais-la glisser là où elle va"
+
+msgid "Tap where the copy goes"
+msgstr "Touche là où va la copie"
+
+msgid "Deleted"
+msgstr "Supprimée"
+
+msgid "Turned"
+msgstr "Tournée"
+
+msgid "Painted %s"
+msgstr "Peinte en %s"
+
+msgid "No room there"
+msgstr "Pas de place ici"
+
+msgid "No room to turn it there"
+msgstr "Pas de place pour la tourner ici"
+
+msgid "Simple leaves %d parts as they are (in sub-assemblies, tilted or bendy): Full changes them"
+msgstr "Simple laisse %d pièces telles quelles (dans des sous-ensembles, inclinées ou souples) : Complet les modifie"
+
+msgid "Simple leaves that part as it is: Full changes it"
+msgstr "Simple laisse cette pièce telle quelle : Complet la modifie"
