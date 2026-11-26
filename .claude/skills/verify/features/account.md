@@ -264,7 +264,13 @@ they have. A Claude connector belongs to the account that switched it on.
   itself instead. So does an age answer under 13 for an account older
   than half an hour (a newer one is deleted at once). Proof:
   bench/results/signin7-2026-11-26 `run_4b.sh` (signreview4's attack4b Y,
-  Z). For the console's delete: `confirm` must be its address
+  Z), and with no network `python3 tools/minitest.py tests/test_account_erase.py
+  tests/test_console3.py`: `test_only_a_code_of_the_last_five_minutes_deletes`
+  (a Google, GitHub and orangecheck session and a code 301 s old, each 403
+  with nothing asked; a code 240 s old deletes) and
+  `test_a_console_delete_asks_a_code_of_the_last_five_minutes`. The tests'
+  people sign in by a code just entered (`tests/fixtures/billing/world.mjs`
+  `signIn`, `{by, ago}` for any other). For the console's delete: `confirm` must be its address
   (case and spaces aside, else 422), never the owner's own (403), 404 when
   it is gone; the audit keeps its address. `POST ?op=export&account=U`
   (`admin_export`: at most 1000 rows a table and `more` for the rest, values
