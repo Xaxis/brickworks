@@ -360,7 +360,8 @@ func _cut(c: Control, shown: Rect2) -> String:
 		# Wrapped onto more lines than it shows, its last line is cut short:
 		# by letters ("1×2 avec rai…") unless at a word.
 		if wraps and label.get_line_count() > label.get_visible_line_count() \
-				and overrun != TextServer.OVERRUN_TRIM_WORD and overrun != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS:
+				and overrun != TextServer.OVERRUN_TRIM_WORD and overrun != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS \
+				and overrun != TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE:
 			return "%s: \"%s\" wrapped onto %d lines, %d shown, cut by letters" % [_named(c),
 				text.replace("\n", " ").left(40), label.get_line_count(), label.get_visible_line_count()]
 		if label.uppercase:
@@ -388,6 +389,26 @@ func _cut(c: Control, shown: Rect2) -> String:
 			room -= button.icon.get_width() + button.get_theme_constant("h_separation")
 		font = button.get_theme_font("font")
 		font_size = button.get_theme_font_size("font_size")
+	elif c == (_main.get("_bar") as ModelBar).get("_name"):
+		# The model's name field draws its words from its start, cut wherever
+		# its edge falls, while they are drawn (not typed in, when a label
+		# over it may draw them instead): "Wide pr" at 320 (langsweep).
+		var field: LineEdit = c as LineEdit
+		if field.text.is_empty() or field.has_focus():
+			return ""
+		if field.get_theme_color("font_color").a <= 0.0:
+			# Drawn by the label over it, in a colour that shows: one given
+			# the field's clear colour left the title blank (langsweep).
+			var over: Label = field.get_node_or_null(^"shown_name") as Label
+			if over == null or not over.is_visible_in_tree() or over.text != field.text \
+					or over.get_theme_color("font_color").a <= 0.0:
+				return "%s: \"%s\" drawn by nothing (the field clear, and no label over it that shows)" % [
+					_named(c), field.text.left(40)]
+			return ""
+		text = field.text
+		room = field.size.x - field.get_theme_stylebox("normal").get_minimum_size().x
+		font = field.get_theme_font("font")
+		font_size = field.get_theme_font_size("font_size")
 	else:
 		return ""
 	# Past the window's edge or a scroller's, words are cut there too.
@@ -406,7 +427,7 @@ func _cut(c: Control, shown: Rect2) -> String:
 			longest = w
 			long_word = word
 	var at_words: bool = wraps or overrun == TextServer.OVERRUN_TRIM_WORD \
-		or overrun == TextServer.OVERRUN_TRIM_WORD_ELLIPSIS
+		or overrun == TextServer.OVERRUN_TRIM_WORD_ELLIPSIS or overrun == TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE
 	if at_words and longest <= room + 1.0:
 		return ""
 	if at_words:

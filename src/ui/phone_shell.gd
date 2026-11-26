@@ -209,6 +209,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and _row != null and is_inside_tree():
 		_share_top()
 		_share_row()
+		_show_name()
 
 
 ## Laid out again for a new size (a phone turned): the bin and the name
@@ -296,6 +297,7 @@ func _build() -> void:
 	_name.add_theme_constant_override("minimum_character_width", 0)
 	_name.tooltip_text = ""
 	top_row.add_child(_name)
+	_dress_name()
 	if wide:
 		var gap := Control.new()
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -590,6 +592,64 @@ func _share_top() -> void:
 		if _assistant_wanted and not _assistant.visible:
 			room += _assistant.get_combined_minimum_size().x + gap
 	_name.custom_minimum_size.x = minf(p(WIDE_NAME if wide else NAME), maxf(room, 0.0))
+
+
+## The model's name drawn over its field while nobody types in it: cut at a
+## word with "…" where the field is narrower than the name, as a label is,
+## and in the language ("Unbenannt"). A field draws its text as it is from
+## its start, cut wherever its edge falls: at 320 the bar read "Wide pr"
+## (wide150), and "Untitled" in every language. Typing shows the field's own.
+func _dress_name() -> void:
+	var shown: Label = _name.get_node_or_null(^"shown_name") as Label
+	if shown == null:
+		shown = Label.new()
+		shown.name = "shown_name"
+		shown.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shown.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_name.add_child(shown)
+		shown.resized.connect(_show_name)
+		_name.text_changed.connect(_show_name.unbind(1))
+		_name.focus_entered.connect(_show_name)
+		_name.focus_exited.connect(_show_name)
+		(app.get("_bar") as ModelBar).model_named.connect(_show_name.unbind(1))
+	# The field's own colour, read with the field's words shown, and given
+	# the label before it is laid out: its resize clears the field's
+	# colour (_show_name), and read after it the title was drawn blank.
+	_name.remove_theme_color_override("font_color")
+	shown.add_theme_color_override("font_color", _name.get_theme_color("font_color"))
+	shown.add_theme_font_override("font", _name.get_theme_font("font"))
+	shown.add_theme_font_size_override("font_size", _name.get_theme_font_size("font_size"))
+	var face: StyleBox = _name.get_theme_stylebox("normal")
+	shown.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shown.offset_left = face.get_margin(SIDE_LEFT)
+	shown.offset_right = -face.get_margin(SIDE_RIGHT)
+	_show_name()
+
+
+func _show_name() -> void:
+	var shown: Label = _name.get_node_or_null(^"shown_name") as Label
+	if shown == null:
+		return
+	var typing: bool = _name.has_focus()
+	shown.text = _name.text
+	# Cut at a word with "…" only where it is wider than its room. Godot
+	# adds no "…" where fewer than six letters are left ("Wide probe" read
+	# "Wide", as if that were all of it) unless forced, and forced it adds
+	# one to words that fit too.
+	var wide: float = shown.get_theme_font("font").get_string_size(shown.atr(shown.text),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, shown.get_theme_font_size("font_size")).x
+	# Against the field's room, not the label's size, which grows to its
+	# words untrimmed.
+	var room: float = _name.size.x - shown.offset_left + shown.offset_right
+	var cut: int = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS_FORCE if wide > room \
+		else TextServer.OVERRUN_NO_TRIMMING
+	if shown.text_overrun_behavior != cut:
+		shown.text_overrun_behavior = cut as TextServer.OverrunBehavior
+	shown.visible = not typing
+	if typing:
+		_name.remove_theme_color_override("font_color")
+	else:
+		_name.add_theme_color_override("font_color", Color(0, 0, 0, 0))
 
 
 ## Each its share, and its word under its picture where the word fits the
