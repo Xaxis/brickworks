@@ -43,6 +43,8 @@
 ## Spanish too, with nothing left in English but names and links.
 ##
 ##   godot --headless --path . --script src/dev/pubbind_probe.gd -- [--cases=a,b]
+## In a window (godot --path . --resolution 1280x800 ...), --pictures=DIR
+## keeps the window as each line said of A shows, as DIR/<case>.png.
 extends SceneTree
 
 const PROBE_DIR := "user://pubbind_probe/"
@@ -133,6 +135,8 @@ var _builder: Builder
 var _panel: Node
 var _fake: FakeShared
 var _paths: Dictionary = {}
+## Where the window is kept as each line said of A shows (--pictures=DIR).
+var _pictures: String = ""
 
 
 func _initialize() -> void:
@@ -157,6 +161,8 @@ func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--cases="):
 			cases = arg.trim_prefix("--cases=").split(",", false)
+		elif arg.begins_with("--pictures="):
+			_pictures = arg.trim_prefix("--pictures=")
 	DirAccess.make_dir_recursive_absolute(PROBE_DIR)
 	_paths["a"] = _write("pb_a.ldr", _wall_text())
 	_paths["b"] = _write("pb_other.ldr", B_TEXT)
@@ -243,6 +249,7 @@ func _case_steps() -> void:
 	_ok(status.text == "“pb wall” was not published: another model was opened.",
 		"the status says so of A by name: \"%s\"" % status.text.left(120))
 	_in_languages(status.text, ["pb wall"])
+	await _picture("steps")
 	_ok((_panel.get("_name") as LineEdit).text == _store.title,
 		"the panel shows B's name (\"%s\")" % (_panel.get("_name") as LineEdit).text)
 	_ok(str(_panel.get("state")) != "publishing" and not (_panel.get("_publish") as Button).disabled,
@@ -374,10 +381,12 @@ func _case_ask_talk(taken: bool) -> void:
 			and status.text.ends_with("/talk/t/1. Another model was opened meanwhile."),
 			"the status says where A's question is: \"%s\"" % status.text.left(160))
 		_in_languages(status.text, ["pb wall", status.text.get_slice(" at ", 1).get_slice(". ", 0)])
+		await _picture("ask_moved")
 	else:
 		_ok(status.text == "The question about “pb wall” was not asked: Talk is down",
 			"the status says so of A by name, with Talk's words: \"%s\"" % status.text.left(160))
 		_in_languages(status.text, ["pb wall", "Talk is down"])
+		await _picture("ask_fail")
 		# Publish pressed next, on B: B as B, never under A's name or words.
 		_fake.bodies.clear()
 		await _panel.call("publish")
@@ -446,6 +455,7 @@ func _case_enter(during: String) -> void:
 			+ "example.invalid/c/probe. Another model was opened meanwhile.",
 			"the status says A was entered, by name, with none of B's words: \"%s\"" % status.text.left(220))
 		_in_languages(status.text, ["pb wall", "Probe Challenge", "example.invalid/c/probe"])
+	await _picture("enter_" + during)
 	line.set("challenge", {})
 	_panel.set("entry", {})
 	(_panel.get("_author") as LineEdit).text = ""
@@ -465,6 +475,7 @@ func _case_unpublish() -> void:
 	_ok(status.text == "“pb wall” was taken down: its link now says it is no longer shared. Another model was opened meanwhile.",
 		"the status says so of A by name: \"%s\"" % status.text.left(140))
 	_in_languages(status.text, ["pb wall"])
+	await _picture("unpublish")
 
 
 func _case_clear() -> void:
@@ -527,6 +538,22 @@ func _case_assistant() -> void:
 
 
 # -- helpers ----------------------------------------------------------------
+
+
+## The window as it is now, as [param name].png in --pictures=DIR, in a run
+## with a window; and the status line's words in German drawn the same.
+func _picture(name: String) -> void:
+	if _pictures.is_empty() or DisplayServer.get_name() == "headless":
+		return
+	DirAccess.make_dir_recursive_absolute(_pictures)
+	for code: String in ["en", "de"]:
+		Language.apply(code)
+		await _frames(4)
+		await RenderingServer.frame_post_draw
+		var path: String = _pictures.path_join("%s_%s.png" % [name, code])
+		root.get_texture().get_image().save_png(path)
+		print("  picture: %s" % path)
+	Language.apply("en")
 
 
 ## [param text] drawn in German, French and Spanish, with nothing left in
