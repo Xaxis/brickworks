@@ -174,9 +174,12 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   checked a third time),
   and mended (`Brickify.mend`, in few checks): what
   collides (the lattice, or the exact check's `colliding`) out in one round;
-  then join (`_tie`, a 1 x 2 plate under or over a joint, or the shortest
-  pillar of 1 x 1s onto anything held, each stud checked against the part's
-  real cover; a round that joins nothing taken back), at most two rounds;
+  then join (`_tie`: first across the plane where a piece meets the rest side
+  by side, `Laid.bond`, two plain parts of one colour there laid again as
+  that level with a part across; else a 1 x 2 plate under or over a joint, or
+  the shortest pillar of 1 x 1s onto anything held, each stud checked against
+  the part's real cover; a round that joins nothing taken back), at most two
+  rounds;
   then what is still apart, floating or unheld (the exact check's `unheld`,
   and its `come_away`: a part resting where nothing joins it, which this
   lattice joins to what it rests on; the forty-stud bunny upright had a 1 x 1
@@ -468,6 +471,18 @@ tools/probe.sh mesh_formats_probe
 #   read in 2.9 s; Spot 4,829 and 39,166, 998 in 7 colours). About 3 more
 #   minutes. --real=DIR reads and lays every .3mf/.vox/.ply/.fbx in DIR:
 #   docs/BRICKIFY.md section 12 has the ten measured and where they are from.
+godot --headless --path . --script src/dev/bond_probe.gd
+#   ends on "a piece side by side with the rest is tied back across the plane,
+#   and only there" (16 checks, each tie read off the parts' own connectors: the
+#   part across has studs in a part wholly on each side). A 4 x 4 block hung by
+#   one stud of a plate beside a column, 2 joints past their load, tied at 3
+#   levels by bricks across, 0 past, no props; the same block held by nothing
+#   tied by the mend, not taken out; bricks beside plates tied by 4 x 4 plates,
+#   a brick laid as its three; two 1 x 2 stacks end to end joined by 1 x 4s, a
+#   part fewer each; and none where nothing stands beside, in two colours, or
+#   nothing is past its load. 2026-11-26 (snot7): 16/16 in about 20 s.
+#   src/dev/side_studs_diag.gd -- --ldr=FILE --plane=z:280 counts the parts
+#   across a plane of a laid model and which have studs into both sides.
 ```
 
 In a browser, every kind of file: `tools/web/mesh_formats_flow.mjs` presses

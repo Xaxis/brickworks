@@ -125,6 +125,7 @@ art_plan
 autosave_paths
 balance
 side_studs
+bond
 brickify_buy
 build_steps
 cabin_glass

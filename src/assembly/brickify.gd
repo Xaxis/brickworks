@@ -65,6 +65,11 @@ const THIN_FOOT := 3
 const JOIN_PLATE_PART := "3023b"
 const ONE_PLATE := "3024"
 const ONE_BRICK := "3005"
+## How many plate levels a piece is tied back to the rest at across the
+## plane it meets it on side by side (Laid.bond): a piece held past its
+## load, and one nothing holds, which needs only to be held.
+const BOND_TIES := 3
+const BOND_TIES_LOOSE := 2
 ## The plates and tiles a stand is laid in: [studs along, part, rot] for a
 ## strip two studs wide running along x (rot as Shapes.CORE_PLATES has it),
 ## and along z; one stud wide; tiles on top.
@@ -2171,21 +2176,23 @@ static func _upright_about(model: Assistant.Model, report: Dictionary, near: Arr
 ## bumper hung under its body.
 static func _propped(model: Assistant.Model, checker: Assistant, report: Dictionary) -> Dictionary:
 	report["propped"] = 0
+	report["bonded"] = 0
 	var balance: Balance.Report = report.get("balance")
 	if balance == null or balance.over == 0:
 		return report
-	var was: int = model.placements.size()
-	var props: int = _prop(model, checker, balance)
-	if props > 0:
+	var was: Array[Assistant.Placement] = model.placements.duplicate()
+	var props: Vector2i = _prop(model, checker, balance)
+	if props != Vector2i.ZERO:
 		var after: Dictionary = checker._check(model, true, true, false, false)
 		var weighed: Balance.Report = after.get("balance")
 		if weighed != null and weighed.over < balance.over \
 				and _loose(after) <= _loose(report) and bool(after.get("ok", false)) \
 				== bool(report.get("ok", false)):
 			after = _again(after, report)
-			after["propped"] = props
+			after["propped"] = props.x
+			after["bonded"] = props.y
 			return after
-		model.placements.resize(was)
+		model.placements = was
 	return report
 
 
@@ -2212,13 +2219,19 @@ static func _again(later: Dictionary, earlier: Dictionary) -> Dictionary:
 
 ## Props under each stud joint past its working load, worst first, where the
 ## weight it carries is: the piece beyond the joint (what its studs alone
-## hold up) found, and the shortest pillar of 1 x 1s from under the parts of
-## it nearest its centre of mass down onto a stud of anything else, or the
-## ground; failing those, under the part beyond the joint itself. A column a
-## stud across under a toy car's 225 g fender had six joints past their load,
-## each propped under the column itself. How many parts went in.
-static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.Report) -> int:
+## hold up) found, and tied back across the plane it meets the rest on side
+## by side where it does ([method Laid.bond], [constant BOND_TIES] levels);
+## else the shortest pillar of 1 x 1s from under the parts of it nearest its
+## centre of mass down onto a stud of anything else, or the ground; failing
+## those, under the part beyond the joint itself. A column a stud across
+## under a toy car's 225 g fender had six joints past their load, each
+## propped under the column itself. A joint whose piece a tie has laid again
+## is left to the next weighing: the studs read here are not what is there.
+## How many parts the props put in (x) and ties (y).
+static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.Report) -> Vector2i:
 	var before: int = model.placements.size()
+	var ties: int = 0
+	var propped: int = 0
 	var room := Laid.new(model, checker)
 	# Parts on parts by their studs, as Balance reads them.
 	var joined: Dictionary = {}    ## index -> {index: true}
@@ -2243,20 +2256,31 @@ static func _prop(model: Assistant.Model, checker: Assistant, balance: Balance.R
 			continue
 		done[index] = true
 		var piece: Dictionary = _beyond(joined, index, held, before / 2)
+		if room.relaid.has(index) or room.relaid.has(held) \
+				or piece.keys().any(func(n: Variant) -> bool: return room.relaid.has(n)):
+			continue
 		var rest: Dictionary = {}
 		for n: int in model.placements.size():
 			if not piece.has(n):
 				rest[n] = true
-		if piece.size() > 1 and _prop_under(room, piece, rest):
-			for n: Variant in piece:
-				done[n] = true
-			continue
+		var made: int = model.placements.size()
+		if piece.size() > 1:
+			var tied: int = room.bond(piece.keys(), rest, BOND_TIES)
+			if tied > 0 or _prop_under(room, piece, rest):
+				ties += tied
+				if tied == 0:
+					propped += model.placements.size() - made
+				for n: Variant in piece:
+					done[n] = true
+				continue
 		rest = {}
 		for n: int in model.placements.size():
 			if n != index:
 				rest[n] = true
 		room.pillar([index], rest, true, 24)
-	return model.placements.size() - before
+		propped += model.placements.size() - made
+	_take_out(model, room.dropped)
+	return Vector2i(propped, ties)
 
 
 ## The parts reached from [param from] by studs without crossing to
@@ -2676,6 +2700,10 @@ static func said(result: Dictionary) -> String:
 	if propped > 0:
 		out.append("%d part%s propping what was held out on too few studs" % [propped,
 			"" if propped == 1 else "s"])
+	var bonded: int = int(report.get("bonded", 0))
+	if bonded > 0:
+		out.append("%d part%s laid across where what was held out on too few studs met the rest side by side"
+			% [bonded, "" if bonded == 1 else "s"])
 	if grid.thin > 0:
 		out.append("its parts thinner than a stud kept a stud thick")
 	var gone := PackedStringArray()
@@ -2746,7 +2774,8 @@ static func mend(model: Assistant.Model, checker: Assistant,
 		var loose: int = _loose(report)
 		if loose > 1 and tying < 2:
 			tying += 1
-			var was: int = model.placements.size()
+			# A copy, not a count: a tie lays parts again in their own slots.
+			var was: Array[Assistant.Placement] = model.placements.duplicate()
 			var added: int = _tie(model, checker, report)
 			if added > 0:
 				var after: Dictionary = _timed(model, checker, clock)
@@ -2756,7 +2785,7 @@ static func mend(model: Assistant.Model, checker: Assistant,
 					tied += added
 					report = after
 					continue
-				model.placements.resize(was)
+				model.placements = was
 			tying = 2
 		# What nothing could join or hold, taken out together, and said.
 		var floating: Dictionary = {}
@@ -2858,11 +2887,37 @@ class Laid extends RefCounted:
 	var studs: Dictionary = {}       ## Vector3i -> index whose stud reaches up into it
 	var low_of: Dictionary = {}      ## index -> its lowest plate
 	var cells_of: Dictionary = {}    ## index -> Array[Vector3i]
+	var studs_of: Dictionary = {}    ## index -> the cells its studs reach up into
+	## The core's plain plates and bricks by the id they are laid as, each
+	## Vector3i(studs along x at rot 0, along z, plates tall); and each size's
+	## [id, rot], for laying a course of them again ([method bond]).
+	var plain: Dictionary = {}
+	var sizes: Dictionary = {}
+	var by_tall: Dictionary = {1: [], 3: []}    ## plates tall -> its sizes, largest first
+	## The slots of placements a tie laid again as one part fewer: taken out
+	## by the caller once it reads no more indices ([method Brickify._take_out]).
+	var dropped: Dictionary = {}
+	## The slots a tie laid again: what a caller read of them before (who is
+	## on whose studs) is no longer so.
+	var relaid: Dictionary = {}
 
 	func _init(laid: Assistant.Model, check: Assistant) -> void:
 		model = laid
 		checker = check
 		lattice.keeps_columns = false
+		for kind: Array in [[Shapes.CORE_PLATES, 1], [Shapes.CORE_BRICKS, 3]]:
+			for entry: Array in kind[0]:
+				var size := Vector3i(int(entry[0]), int(entry[1]), int(kind[1]))
+				var id: String = Shapes.current(checker.library, str(entry[2]))
+				if not sizes.has(size):
+					sizes[size] = [id, int(entry[3])]
+					(by_tall[size.z] as Array).append(size)
+				if int(entry[3]) == 0:
+					plain[id] = size
+					plain[str(entry[2])] = size
+		for tall: int in by_tall:
+			(by_tall[tall] as Array).sort_custom(func(p: Vector3i, q: Vector3i) -> bool:
+				return p.x * p.y > q.x * q.y)
 		for index: int in model.placements.size():
 			take(index)
 
@@ -2887,12 +2942,44 @@ class Laid extends RefCounted:
 					cells.append(cell)
 		cells_of[index] = cells
 		low_of[index] = j0
+		var up: Array[Vector3i] = []
 		for connector: Lbm.Connector in part.connectors:
 			if connector.kind != "stud" or connector.gender != "male" \
 					or (at.basis * connector.axis).normalized().dot(Vector3.UP) < 0.9:
 				continue
 			var tip: Vector3 = at * (connector.position + connector.axis.normalized() * 5.0)
-			studs[Vector3i(floori(tip.x / 20.0), floori(tip.y / 8.0), floori(tip.z / 20.0))] = index
+			var cell := Vector3i(floori(tip.x / 20.0), floori(tip.y / 8.0), floori(tip.z / 20.0))
+			studs[cell] = index
+			up.append(cell)
+		studs_of[index] = up
+
+	## [param index] taken out of the room, its slot in the model left as it
+	## is.
+	func release(index: int) -> void:
+		lattice.release(index + 1)
+		for cell: Vector3i in cells_of.get(index, []):
+			if int(owner.get(cell, -1)) == index:
+				owner.erase(cell)
+		for cell: Vector3i in studs_of.get(index, []):
+			if int(studs.get(cell, -1)) == index:
+				studs.erase(cell)
+		cells_of.erase(index)
+		low_of.erase(index)
+		studs_of.erase(index)
+
+	## [param placement] into slot [param index] (the end, one past the last),
+	## where it fits: whether it went in.
+	func set_at(index: int, placement: Assistant.Placement) -> bool:
+		var part: Lbm.PartMesh = checker.library.mesh_for(placement.part)
+		if part == null or lattice.collides_boxes(checker.builder.boxes_for(part,
+				checker._transform(placement, part))):
+			return false
+		if index < model.placements.size():
+			model.placements[index] = placement
+		else:
+			model.placements.append(placement)
+		take(index)
+		return true
 
 	## Whether a part fits there, and if it does, in: the index it went in at,
 	## or -1.
@@ -2997,8 +3084,10 @@ class Laid extends RefCounted:
 			var at: int = put(ONE_BRICK if tall == 3 else ONE_PLATE, int(best[3]), int(best[0]), y,
 				int(best[4]), 0)
 			if at < 0:
-				# Taken back: a pillar part way is a part held by nothing.
+				# Taken back: a pillar part way is a part held by nothing. Out
+				# of the room too, or a tie after it reads a slot that is gone.
 				for n: int in made:
+					release(n)
 					model.placements.remove_at(n)
 				return false
 			made.push_front(at)
@@ -3006,12 +3095,264 @@ class Laid extends RefCounted:
 			left -= tall
 		return true
 
+	## Ties across the plane where [param piece] meets [param rest] side by
+	## side with no stud across it, as a builder ties a section back to the
+	## core: at up to [param most] plate levels, a plain plate or brick of the
+	## piece and one of the rest beside it there, of one colour, laid again as
+	## that level of the two with a part of the core's that crosses the plane,
+	## a stud or more on each side and its studs in both. A brick whose course
+	## is not the other's is laid as the three plates it is. The strongest tie
+	## first (most studs on its weaker side, then the fewest parts more), then
+	## each as far up or down the plane from those laid as there is, two
+	## plates or more. The fox at 48 studs, its core a stud deep behind a
+	## turned flank, hung its head from one stud of a 1 x 3 plate at 10.3
+	## times its load, the head's bricks and the body's plates side by side
+	## across the plane under it. How many ties went in.
+	func bond(piece: Array, rest: Dictionary, most: int) -> int:
+		var inside: Dictionary = {}
+		for index: Variant in piece:
+			inside[int(index)] = true
+		var plans: Array = []
+		var seen: Dictionary = {}
+		for index: Variant in piece:
+			var a: int = int(index)
+			if not _plain_at(a):
+				continue
+			for cell: Vector3i in cells_of[a]:
+				for step: Vector2i in Shapes.OUT:
+					var b: int = int(owner.get(Vector3i(cell.x + step.x, cell.y, cell.z + step.y), -1))
+					if b < 0 or inside.has(b) or not rest.has(b) or not _plain_at(b) \
+							or model.placements[b].color != model.placements[a].color \
+							or seen.has(Vector3i(a, b, cell.y)):
+						continue
+					seen[Vector3i(a, b, cell.y)] = true
+					var plan: Dictionary = _course_across(a, b, cell.y)
+					if not plan.is_empty():
+						plans.append(plan)
+		plans.sort_custom(func(p: Dictionary, q: Dictionary) -> bool:
+			return int(p["score"]) > int(q["score"]))
+		var levels: Array[int] = []
+		var used: Dictionary = {}
+		while levels.size() < most:
+			var pick: int = -1
+			var far: int = -1
+			for n: int in plans.size():
+				var plan: Dictionary = plans[n]
+				if used.has(int(plan["a"])) or used.has(int(plan["b"])):
+					continue
+				var gap: int = 1 << 20
+				for level: int in levels:
+					gap = mini(gap, absi(level - int(plan["level"])))
+				if gap >= 2 and gap > far:
+					far = gap
+					pick = n
+			if pick < 0:
+				break
+			var chosen: Dictionary = plans[pick]
+			plans.remove_at(pick)
+			if _lay_across(chosen, inside, rest):
+				levels.append(int(chosen["level"]))
+				used[int(chosen["a"])] = true
+				used[int(chosen["b"])] = true
+		return levels.size()
+
+	## Whether [param index] is a plain plate or brick of the core's, studs
+	## up, here.
+	func _plain_at(index: int) -> bool:
+		if index < 0 or index >= model.placements.size() or dropped.has(index) \
+				or not cells_of.has(index):
+			return false
+		var placement: Assistant.Placement = model.placements[index]
+		return placement.face == "up" and plain.has(placement.part) \
+			and (plain[placement.part] as Vector3i).z == (cells_of[index] as Array).size() \
+				/ maxi(1, (plain[placement.part] as Vector3i).x * (plain[placement.part] as Vector3i).y)
+
+	## How plain parts [param a] and [param b], side by side on plate
+	## [param j], are laid again so that a part crosses from one to the other
+	## there: {"a", "b", "level", "score", "parts": the placements, the one
+	## across first, "mine" and "theirs": the cells of the level that were
+	## a's and b's}; {} where none fits across. One course of bricks where both
+	## are bricks of one course, else plates, a brick laid as its three.
+	func _course_across(a: int, b: int, j: int) -> Dictionary:
+		var colour: int = model.placements[a].color
+		var tall_a: int = (plain[model.placements[a].part] as Vector3i).z
+		var tall_b: int = (plain[model.placements[b].part] as Vector3i).z
+		var low_a: int = low_of[a]
+		var low_b: int = low_of[b]
+		var tall: int = tall_a if tall_a == tall_b and low_a == low_b else 1
+		var y: int = low_a if tall > 1 else j
+		var mine: Dictionary = {}
+		var theirs: Dictionary = {}
+		var low := Vector2i(1 << 20, 1 << 20)
+		var high := -low
+		for pair: Array in [[a, mine], [b, theirs]]:
+			for cell: Vector3i in cells_of[int(pair[0])]:
+				if cell.y == y:
+					var at := Vector2i(cell.x, cell.z)
+					(pair[1] as Dictionary)[at] = true
+					low = low.min(at)
+					high = high.max(at)
+		# The plates of a brick off this level, as the brick's foot.
+		var others: Array = []
+		if tall == 1:
+			for pair: Array in [[low_a, tall_a, mine], [low_b, tall_b, theirs]]:
+				if int(pair[1]) == 1:
+					continue
+				var foot: Dictionary = pair[2]
+				var corner := Vector2i(1 << 20, 1 << 20)
+				var far := -corner
+				for at: Vector2i in foot:
+					corner = corner.min(at)
+					far = far.max(at)
+				var plate: Array = sizes.get(Vector3i(far.x - corner.x + 1, far.y - corner.y + 1, 1), [])
+				if plate.is_empty():
+					return {}
+				for k: int in range(int(pair[0]), int(pair[0]) + 3):
+					if k != y:
+						others.append(_placement(plate, colour, corner.x, k, corner.y))
+		var union: Dictionary = mine.merged(theirs)
+		var best: Dictionary = {}
+		for size: Vector3i in by_tall[tall]:
+			if size.x > high.x - low.x + 1 or size.y > high.y - low.y + 1:
+				continue
+			for x0: int in range(low.x, high.x - size.x + 2):
+				for z0: int in range(low.y, high.y - size.y + 2):
+					var ours: int = 0
+					var yours: int = 0
+					var fits: bool = true
+					for dx: int in size.x:
+						for dz: int in size.y:
+							var at := Vector2i(x0 + dx, z0 + dz)
+							fits = fits and union.has(at)
+							ours += 1 if mine.has(at) else 0
+							yours += 1 if theirs.has(at) else 0
+					if not fits or ours == 0 or yours == 0:
+						continue
+					var left: Dictionary = union.duplicate()
+					for dx: int in size.x:
+						for dz: int in size.y:
+							left.erase(Vector2i(x0 + dx, z0 + dz))
+					var rest: Array = _tiled(left, tall, colour, y)
+					var count: int = 1 + rest.size() + others.size()
+					var score: int = mini(ours, yours) * 1000 - count * 10 + ours + yours
+					if best.is_empty() or score > int(best["score"]):
+						best = {"a": a, "b": b, "level": y, "score": score, "mine": mine,
+							"theirs": theirs, "parts": [_placement(sizes[size], colour, x0, y, z0)]
+								+ rest + others}
+		return best
+
+	## [param left] (Vector2i -> true) laid in the core's parts [param tall]
+	## plates tall at plate [param y], largest first from each corner, as
+	## [method Brickify._upright_about] lays a course.
+	func _tiled(left: Dictionary, tall: int, colour: int, y: int) -> Array:
+		var out: Array = []
+		var cells: Array = left.keys()
+		cells.sort()
+		var open: Dictionary = left.duplicate()
+		for key: Variant in cells:
+			var corner: Vector2i = key
+			if not open.has(corner):
+				continue
+			for size: Vector3i in by_tall[tall]:
+				var fits: bool = true
+				for dx: int in size.x:
+					for dz: int in size.y:
+						fits = fits and open.has(corner + Vector2i(dx, dz))
+				if not fits:
+					continue
+				for dx: int in size.x:
+					for dz: int in size.y:
+						open.erase(corner + Vector2i(dx, dz))
+				out.append(_placement(sizes[size], colour, corner.x, y, corner.y))
+				break
+		return out
+
+	func _placement(kind: Array, colour: int, x: int, y: int, z: int) -> Assistant.Placement:
+		return Assistant.Placement.from_dict({"part": str(kind[0]), "color": colour, "x": x, "y": y,
+			"z": z, "rot": int(kind[1])})
+
+	## [param plan] ([method _course_across]) laid in place of its two parts,
+	## the part across into a's slot, the next into b's, the rest after the
+	## last; kept only where the part across has its studs in a part of
+	## [param inside] (the piece) and in one of [param rest], over or under
+	## it. Each new part after it joins the side whose cells it took. Whether
+	## it went in.
+	func _lay_across(plan: Dictionary, inside: Dictionary, rest: Dictionary) -> bool:
+		var a: int = plan["a"]
+		var b: int = plan["b"]
+		var was_a: Assistant.Placement = model.placements[a]
+		var was_b: Assistant.Placement = model.placements[b]
+		var parts: Array = plan["parts"]
+		var count: int = model.placements.size()
+		release(a)
+		release(b)
+		var slots: Array[int] = []
+		var side_of: Dictionary = {a: -1}    ## a new part's slot -> 0 the piece's, 1 the rest's
+		var ok: bool = true
+		for n: int in parts.size():
+			var slot: int = a if n == 0 else (b if n == 1 else model.placements.size())
+			if not set_at(slot, parts[n]):
+				ok = false
+				break
+			slots.append(slot)
+			if n > 0:
+				var at := Vector2i(roundi((parts[n] as Assistant.Placement).x),
+					roundi((parts[n] as Assistant.Placement).z))
+				side_of[slot] = 0 if (plan["mine"] as Dictionary).has(at) \
+					else (1 if (plan["theirs"] as Dictionary).has(at) else -1)
+		if parts.size() == 1:
+			side_of[b] = -1
+		var joins: Array[bool] = [false, false]
+		if ok:
+			var tall: int = (plain[(parts[0] as Assistant.Placement).part] as Vector3i).z
+			for cell: Vector3i in cells_of[a]:
+				var near: Array[int] = []
+				if cell.y == int(low_of[a]):
+					near.append(int(studs.get(cell, -1)))
+				var over := cell + Vector3i(0, 1, 0)
+				if cell.y == int(low_of[a]) + tall - 1 and owner.has(over) and takes(over, int(owner[over])):
+					near.append(int(owner[over]))
+				for other: int in near:
+					var side: int = int(side_of[other]) if side_of.has(other) \
+						else (0 if inside.has(other) else (1 if rest.has(other) else -1))
+					if side >= 0:
+						joins[side] = true
+			ok = joins[0] and joins[1]
+		if not ok:
+			for slot: int in slots:
+				release(slot)
+			model.placements.resize(count)
+			model.placements[a] = was_a
+			model.placements[b] = was_b
+			take(a)
+			take(b)
+			return false
+		if parts.size() == 1:
+			dropped[b] = true
+		for slot: int in slots:
+			relaid[slot] = true
+		relaid[b] = true
+		for slot: Variant in side_of:
+			if int(slot) == a:
+				continue
+			inside.erase(slot)
+			rest.erase(slot)
+			if int(side_of[slot]) == 0:
+				inside[slot] = true
+			elif int(side_of[slot]) == 1:
+				rest[slot] = true
+		return true
+
 
 ## Pieces apart joined to the largest, and parts nothing holds up joined to
-## what is held: each by the least that reaches, a 1 x 2 plate across a
-## joint where the two stand side by side, else the shortest pillar of 1 x 1s
-## from one onto the other's studs. A largest piece none of which is held is
-## stood on the ground. One join a piece a round. How many parts went in.
+## what is held: each by the least that reaches, its own course laid again
+## across the plane where it stands beside the rest ([method Laid.bond],
+## nothing added outside the model), a 1 x 2 plate across a joint where the
+## two stand side by side, else the shortest pillar of 1 x 1s from one onto
+## the other's studs. A figure at 48 studs, its hands' fronts turned on a
+## core a stud deep, met its arms side by side and lost both hands to the
+## mend. A largest piece none of which is held is stood on the ground. One
+## join a piece a round. How many parts went in and ties laid.
 static func _tie(model: Assistant.Model, checker: Assistant, report: Dictionary) -> int:
 	var pieces: Array = (report.get("each_piece", []) as Array).duplicate()
 	if pieces.is_empty():
@@ -3045,14 +3386,22 @@ static func _tie(model: Assistant.Model, checker: Assistant, report: Dictionary)
 			for index: Variant in pieces[0]:
 				rest[int(index)] = true
 	groups.append_array(pieces.slice(1))
+	# Ties and the parts the rest put in, counted apart: a tie can lay one part
+	# where two were, and a count of what came and went said it did nothing.
+	var joins: int = model.placements.size() - before
 	for piece: Array in groups:
 		var made: int = model.placements.size()
-		if room.across(piece, rest) or room.pillar(piece, rest, false, 12):
+		var tied: int = room.bond(piece, rest, BOND_TIES_LOOSE)
+		joins += tied
+		if tied > 0 or room.across(piece, rest) or room.pillar(piece, rest, false, 12):
 			for index: Variant in piece:
 				rest[int(index)] = true
 			for index: int in range(made, model.placements.size()):
 				rest[index] = true
-	return model.placements.size() - before
+			if tied == 0:
+				joins += model.placements.size() - made
+	_take_out(model, room.dropped)
+	return joins
 
 
 ## The placements that run into one before them, or whose part is not here.
