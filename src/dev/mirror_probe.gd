@@ -87,7 +87,11 @@ func _run() -> void:
 	print("Orthanc on the timeline, at its first step: Ctrl-A takes what it shows")
 	await _main.call("_toggle_steps")
 	await _quiet()
+	# Each from nothing selected, as Escape leaves it: since stepfix
+	# (a4b8f7567) Select all pressed again at a step, the selection as it
+	# left it, takes every step, and the second axis took 10101 parts.
 	for axis: int in [0, 2]:
+		_verbs.select_by("none")
 		_verbs.select_by("all")
 		await _onto_hidden(axis, "its first step")
 	await _main.call("_toggle_steps")
