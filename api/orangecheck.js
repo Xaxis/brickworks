@@ -162,10 +162,12 @@ async function native(request, response) {
   // A code can be told from a made-up one only by asking orangecheck, one
   // call each with Brickworks' project key (signreview4 R4-3: forty made-up
   // codes, forty calls). So each network's trades are counted before one is
-  // made, and each given back once orangecheck takes its code (or cannot be
-  // asked): what stays counted are the codes it refused, ten a quarter-hour
-  // a network. A real sign-in is refused only on a network someone fills
-  // with made-up codes, and the window, the site and a code still work there.
+  // made, and each given back once orangecheck takes its code: what stays
+  // counted is every call that did not sign anyone in (a code refused, or
+  // orangecheck not answering, which a loop would ask again and again), ten
+  // a quarter-hour a network. A real sign-in is refused only on a network
+  // someone fills with made-up codes, and the window, the site and a code
+  // still work there.
   const key = NATIVE_REFUSED.key(networkOf(request));
   let one;
   try {
@@ -179,7 +181,7 @@ async function native(request, response) {
       + "Sign in with orangecheck on brickworks.diy, or with a code we email you, or try again in a quarter of an hour.");
   }
   const traded = await tradeCode({ code, verifier, redirect });
-  if (traded.token || traded.status === 503) await givenBack(key, one);
+  if (traded.token) await givenBack(key, one);
   if (!traded.token) return say(response, traded.status, traded.error, traded.more);
   return signInWith(traded.token, response, request);
 }
