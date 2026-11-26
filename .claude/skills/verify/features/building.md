@@ -3371,7 +3371,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`ConnectTool._unhandled_input`), and `place()` refuses while points are
   offered. `R` turns about the joint, `T` the other way on, `N` again picks
   another point, `Esc` back to placing. A part in hand on a joint says N on
-  the status line ("N picks which of its points goes on", `EditVerbs.hint`
+  the status line ("N picks which of its points goes on (Connect)", `EditVerbs.hint`
   "place"): nothing named Connect where it is needed (ux16's walk 3, an axle
   over a beam, `ux16_desktop_probe --only=p21`). With nothing in hand the tool waits for
   a part: a click takes it off the model into hand where it stands

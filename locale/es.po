@@ -2515,8 +2515,8 @@ msgstr "%s la gira sobre la articulación"
 msgid "%s the other way on"
 msgstr "%s al revés"
 
-msgid "%s picks which of its points goes on"
-msgstr "%s elige por cuál de sus puntos se une"
+msgid "%s picks which of its points goes on (Connect)"
+msgstr "%s elige por cuál de sus puntos se une (Conectar)"
 
 msgid "%s takes it into hand to put anywhere"
 msgstr "%s lo toma en la mano para ponerlo en cualquier sitio"

@@ -110,7 +110,7 @@ A long beam has many holes, and the pointer rarely finds the one you want first.
 2. Click the point it goes on by.
 3. Click the pin, hole or bar it goes on. Only that point snaps, so a 1 × 16 beam goes on by its end hole at once.
 
-You need not remember it: while a part in hand sits on a joint, the status bar says "N picks which of its points goes on". A pin or an axle goes in from the side you point from. [[T]] turns it the other way round, [[R]] about the joint, [[N]] picks another point, and [[Esc]] goes back to placing as usual. With nothing in hand, Connect moves a part already down: click the part, its point, then where it goes.
+You need not remember it: while a part in hand sits on a joint, the status bar says "N picks which of its points goes on (Connect)". A pin or an axle goes in from the side you point from. [[T]] turns it the other way round, [[R]] about the joint, [[N]] picks another point, and [[Esc]] goes back to placing as usual. With nothing in hand, Connect moves a part already down: click the part, its point, then where it goes.
 
 <!-- covers
 ui:connect by a point

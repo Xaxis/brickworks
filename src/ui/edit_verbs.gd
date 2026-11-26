@@ -1701,7 +1701,7 @@ func hint() -> String:
 			# end or a pin's far half. Nothing said it: a builder with an
 			# axle over a beam never met Connect (ux16).
 			if builder.is_on_joint():
-				return Keymap.filled("Placing %s on %s: click puts it there · {rotate_held|turns it about the joint} · {tip_held|the other way on} · {mode_connect|picks which of its points goes on} · Esc lets go") % [
+				return Keymap.filled("Placing %s on %s: click puts it there · {rotate_held|turns it about the joint} · {tip_held|the other way on} · {mode_connect|picks which of its points goes on (Connect)} · Esc lets go") % [
 					named, builder.joint_words()]
 			return "Placing %s: click puts one down · type a number to move it exactly · %s, the part stays in hand · Esc lets go" % [
 				named, look]

@@ -347,7 +347,8 @@ whole cycle.
 - **The studio's first hour on a desktop, smoother.** Ctrl+Y redoes, as in
   Studio and Mecabricks. What the status bar says after an act is shown
   whole, the fields beside it making room for those few seconds. A part in
-  hand on a pin or an axle says N picks which of its points goes on. A part
+  hand on a pin or an axle says N picks which of its points goes on
+  (Connect). A part
   swapped inside a sub-model used more than once says how many more copies
   changed with it. A part whose joint lets it go nowhere says X takes it
   into hand to put anywhere.
