@@ -624,8 +624,9 @@ export async function waysRoute(request, response) {
         const standing = await standingOf(claims);
         if (!standing.exists) return response.status(401).json({ error: "You were signed out. Sign in again." });
         you = standing.way === name;
+        const was = (await linksOf(claims.sub))[name]?.state;
         await db("rpc/way_set", { method: "POST", body: { account: claims.sub, way: name, turned_on: false } });
-        changed = "off";
+        if (was === "on") changed = "off";
         if (you) sessionEnded(claims.session_id);
       }
       // The address told, as orangecheck's link and unlink tell it (N4).
