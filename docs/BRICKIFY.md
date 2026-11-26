@@ -122,7 +122,12 @@ studs, against a greedy stack of standard bricks and legolization:
    cube on a stud of core turned only where that core runs on, and the core
    a stud deep holds as the default: 44.8% of the fourteen's steep faces
    turned at 48 studs from 39.6%, 6.7% nearer than studs up from 5.6%, every
-   one whole, none past its load, in at most 1.06 times the parts.*
+   one whole, none past its load, in at most 1.06 times the parts. Its tenth
+   round counted why the rest stay stacked. The largest single cause is the
+   whole model laid again studs up when the turned build leaves a region out
+   (13.0%, on the Bell X-1 and the temple). Laying only that region again
+   keeps the Bell X-1 at 95.8% in a part, under 97%, so it was not shipped.
+   The cube rule's five tests leave 23.4% together.*
 6. **Show it**: the homepage, /compare with the bench, and a first run with
    CC0 samples and a staged panel.
 7. **Buy it, or build it from what you own**: booklet, wanted list, price,
@@ -3824,7 +3829,172 @@ of the longer's span), three each, at loads of 37 to 107:
 Each is within 1.5 times. The armadillo is the slowest, its third pair the
 widest (1.41) at the lightest load; where its time goes was not traced.
 
+### The tenth round: what leaves steep faces stacked, and a lost region laid again in place (2026-11-26)
+
+This round counts every steep face the ninth round leaves stacked, sorted by
+why, and tries one lever on the largest single cause. Unit `snot9`, from
+`pre261` at `29c04776`. The count reads `pre261`'s own turned builds of the
+fourteen at 48 studs. These are the ninth round's runs from `snot8final`;
+Brickify lays a model the same way each time. Each steep face the bench sees
+from its 14 views (`brickify_bench.py faces`) gets one cause:
+
+- If the face lies in a cube that was asked for, the cause is whatever that
+  build's own `cubes_why` records for the cube.
+- Where no cube was asked, the cube rule is worked again from the mesh.
+
+Scripts, logs and pictures are in `bench/results/snot9-2026-11-26`.
+
+**In short: NO-GO.** The largest single cause is not one of the cube rule's
+refusals. It is the fallback that lays the whole model again:
+
+- Two of the fourteen, the Bell X-1 and the temple, are laid again whole with
+  every side studs up, because their turned build leaves a region of the
+  model out.
+- That leaves 13.0% of the fourteen's steep faces stacked (the mean of the
+  models, as the bar takes it; 8.1% of all their faces).
+
+The lever lays only that region again upright, as a joint past its load is.
+It did not hold:
+
+- On the Bell X-1 it keeps 35 of the 40 turned cubes, but only 95.8% of the
+  model is in a part, under the 97% guardrail.
+- On the temple the lost region is its moon on its stick. Every build loses
+  it, turned or not, so the patch has nothing to undo there.
+
+Nothing shipped. The patch is kept on the branch `snot9-patch` (`3c84b38e`).
+
+#### The count
+
+| Model | Steep faces | Turned | In a turned cube, nearest part upright | In a part (laid again whole) | Joint load | Too thin | Too small | Past the model | Band between phases | Cap or cover | Core behind | Leans too far | No anchor | Unsure |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Armadillo | 41,634 | 51.2% | 7.2% | 0.0% | 0.0% | 7.0% | 2.6% | 8.3% | 7.8% | 3.1% | 4.1% | 7.6% | 0.8% | 0.3% |
+| Avocado | 76,696 | 59.2% | 8.6% | 0.0% | 0.0% | 0.0% | 2.9% | 5.6% | 4.3% | 4.9% | 2.2% | 11.3% | 0.0% | 1.0% |
+| 3DBenchy | 53,016 | 31.0% | 5.4% | 0.0% | 0.0% | 40.4% | 2.4% | 3.0% | 6.9% | 3.3% | 2.6% | 4.7% | 0.1% | 0.2% |
+| Bob | 36,234 | 56.3% | 10.8% | 0.0% | 0.0% | 0.0% | 2.4% | 11.9% | 13.5% | 2.5% | 0.0% | 2.4% | 0.0% | 0.3% |
+| Character | 41,156 | 31.2% | 4.9% | 0.0% | 0.0% | 20.0% | 3.2% | 9.2% | 4.6% | 9.6% | 12.5% | 3.1% | 0.9% | 0.7% |
+| Fox | 32,362 | 52.9% | 6.5% | 0.0% | 0.0% | 13.4% | 2.6% | 4.9% | 8.4% | 3.9% | 2.6% | 4.5% | 0.0% | 0.2% |
+| Milk truck | 86,355 | 68.9% | 3.2% | 0.0% | 0.0% | 14.1% | 0.6% | 2.7% | 4.1% | 2.5% | 2.9% | 0.7% | 0.1% | 0.2% |
+| Temple (Objaverse) | 48,348 | 4.0% | 0.0% | 96.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% |
+| Smithsonian-1 | 49,824 | 40.3% | 10.5% | 0.0% | 0.0% | 8.2% | 3.5% | 7.6% | 9.1% | 8.6% | 2.0% | 9.2% | 0.5% | 0.4% |
+| Bell X-1 (Smithsonian-2) | 9,924 | 13.6% | 0.0% | 86.4% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% |
+| Spot | 57,073 | 64.4% | 7.8% | 0.0% | 0.0% | 0.6% | 2.4% | 7.2% | 6.1% | 3.5% | 2.1% | 5.7% | 0.1% | 0.1% |
+| Stanford bunny | 56,078 | 60.4% | 7.3% | 0.0% | 0.0% | 3.8% | 2.5% | 7.7% | 6.7% | 4.4% | 3.0% | 3.4% | 0.2% | 0.6% |
+| Toy car | 43,767 | 46.9% | 16.4% | 0.0% | 0.0% | 14.2% | 1.1% | 7.5% | 4.0% | 8.1% | 0.1% | 1.3% | 0.0% | 0.5% |
+| Utah teapot | 45,237 | 47.0% | 6.6% | 0.0% | 0.0% | 8.0% | 3.7% | 11.4% | 5.0% | 9.6% | 3.5% | 4.6% | 0.2% | 0.3% |
+| **Mean of the models** | | **44.8%** | **6.8%** | **13.0%** | **0.0%** | **9.3%** | **2.1%** | **6.2%** | **5.8%** | **4.6%** | **2.7%** | **4.2%** | **0.2%** | **0.3%** |
+| **All, faces** | 677,704 | 328,794 | 47,163 | 54,988 | 0 | 65,463 | 14,830 | 42,024 | 39,055 | 31,795 | 18,809 | 30,920 | 1,396 | 2,467 |
+| **All, share** | | 48.5% | 7.0% | 8.1% | 0.0% | 9.7% | 2.2% | 6.2% | 5.8% | 4.7% | 2.8% | 4.6% | 0.2% | 0.4% |
+
+What each cause is, as the code has it:
+
+- **Turned**: the nearest part faces out the way the face does.
+- **In a turned cube, nearest part upright**: the face lies in a cube laid on
+  its side, but the part nearest the face is an upright one, such as a
+  shell's end or the seam between two shells.
+- **In a part (laid again whole)**: a guardrail. The turned build left a
+  region of the model out (`_lost`), so the whole model was laid again with
+  the bond, near and turning all off, and the build that filled more was
+  kept.
+- **Joint load**: a guardrail. The face was laid again upright about a joint
+  past its load. There is none at 48 studs.
+- **Too thin**: in every cube phase, the face's sides cancel; the wall is
+  thinner than a cube.
+- **Too small**: there is too little surface in a cube, or too few plates
+  (`few`).
+- **The cube rule**, its five tests:
+  - past the model (`beyond`, `moved`);
+  - a band between two phases (`shelled`, `crossed`);
+  - a cap, or its shell's cover (`capped`, `uncovered`, `lost`);
+  - too little core behind (`backed`, `cut`);
+  - leaning too far for any cube to face out (60 to 65 degrees, rims).
+- **No anchor**: no side studs to hang the cube from (`unanchored`).
+- **Part count and time**: no faces. Nothing in the plan refuses a cube for
+  either; both are judged afterwards, on the whole build.
+
+Grouped by the brief's reasons:
+
+| Reason | Mean of the models |
+|---|---:|
+| The cube rule's five tests | 23.4% |
+| The guardrails | 13.0% |
+| Too thin or too small | 11.4% |
+| No anchor | 0.2% |
+
+The cube rule is five tests, each with its own root. The largest single cause
+is the whole model laid again, and it is the one lever this round takes. Both
+models it falls on are shown below:
+
+- green: steep faces turned;
+- red: faces stacked because the whole model was laid again;
+- amber: faces stacked for any other reason;
+- grey: faces not steep.
+
+![The Bell X-1 at 48 studs on pre261, its steep faces by cause: 14% turned (green), 86% stacked because the whole was laid again (red)](brickify/unit6-tenth-bell-x1-48.jpg)
+
+![The temple at 48 studs on pre261: 4% turned, 96% stacked because the whole was laid again](brickify/unit6-tenth-temple-48.jpg)
+
+#### Why the whole is laid again
+
+Both turned builds leave cells unfilled beside their cubes.
+
+The Bell X-1:
+
+- Its turned build has 92.75% of its cells in a part.
+- It leaves three regions out (67, 47 and 38 cells): its two wings, beside
+  its turned flanks, and a third thin region.
+- Laid again whole and upright, it has 98.37% in a part, with 52 cells still
+  left out.
+
+The temple:
+
+- Its turned build has 94.63% in a part (96.49% before the mend). It loses
+  the moon on its stick, 475 cells.
+- Laid upright with nothing turned, it has 97.47% (99.99% before the mend),
+  and the moon is still lost (456 cells).
+- So the moon is not the turned build's loss. The 2.8 points between the two
+  builds lie elsewhere, among the cubes.
+
+#### The lever, and why it fails
+
+The change is in `Brickify.build`. Where the turned build leaves a region
+out, that region alone is laid again with its sides upright about it, by the
+joint relay's own `_upright_about`. The turned build is kept everywhere else.
+The patched build is kept only if all three hold:
+
+- it leaves no region out;
+- it puts no joint further past its load;
+- it fills at least as much as before.
+
+The patch never runs on the twelve models that leave no region out, so their
+builds are unchanged. On the Bell X-1:
+
+| Variant (Bell X-1, 48 studs) | Turned cubes | In a part | Left out | Kept |
+|---|---:|---:|---|---|
+| `pre261`: the whole laid again | 0 | 98.37% | 52 cells | as now |
+| The lost regions laid again upright | 35 of 40 | 95.80% | no region | yes: under 97% |
+| The same, small capped pieces dropped only beside a shell | 35 of 40 | 95.54% | no region | yes: under 97% |
+| The same, plus every cell left within a stud of a turned cube | 8 of 40 | 97.43% | a 59-cell region in a wing | no: the whole laid again |
+
+On the temple, no turned cube lies near the moon. `_upright_about` has
+nothing to undo, so the whole model is laid again as before.
+
+The one model the lever changes fails the in-a-part guardrail, so the
+fourteen were not laid again: twelve are unchanged by construction, and the
+temple is unchanged. No time pairs or probes were run, since nothing ships.
+The patch costs 5.4 to 9.1 s on the Bell X-1.
+
 ### Proof
+
+The tenth round's runs (`snot9`, 2026-11-26), all in
+`bench/results/snot9-2026-11-26`:
+
+- **The count:** `study9.py` read the ninth round's runs from `snot8final`
+  (`study/pre261`, one file per model). `refusals.py` and `coarse.py` made
+  the tables, and `causemap.py` made the pictures.
+- **The cause:** `relay.gd` built the temple and the Bell X-1 with the bond,
+  near and turning each switched off in turn, and `build.gd` built them with
+  and without each variant of the patch (`diag/`).
+- **No probe was run.** Nothing in the app changed.
 
 The ninth round's runs (`snot8`, 2026-11-26), every one from the locked
 snapshot `snot8final` at `9d5fa9b4`:
@@ -3976,6 +4146,27 @@ forty-stud bunny 2,143 parts and 286 on their sides; `shapes_probe` 78;
   checks) needs a preview, and was not run.
 
 ### What is left
+
+After the tenth round (2026-11-26), nothing changed. These are the steep
+faces still stacked, by cause (mean of the fourteen at 48 studs), with what
+would move each:
+
+- **The whole laid again, 13.0%.** The cells a turned build leaves unfilled
+  beside its cubes. On the Bell X-1 that is 83 cells (2.6%) within a stud and
+  two plates of a turned cube, after its regions were patched. They would be
+  filled in the cubes' own lay, the shells' trial lay, rather than by laying
+  anything again. This is the same root as the turned block's last 27
+  plates.
+- **The cube rule's five tests, 23.4% together:**
+  - past the model, 6.2%;
+  - a band between phases, 5.8%;
+  - a cap or cover, 4.6%;
+  - leaning too far, 4.2%;
+  - too little core behind, 2.7%.
+- **Too thin, 9.3%.** 3DBenchy is 40% and the character 20%. The seventh
+  round's lever for walls stands.
+- **In a turned cube, nearest part upright, 6.8%.** These are shells' ends
+  and seams.
 
 After the ninth round (2026-11-26): the core a stud deep is the default,
 44.8% of the fourteen's steep faces turned at 48 studs (39.6% on `pre261`)
