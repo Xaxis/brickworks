@@ -55,8 +55,22 @@ enum MaterialClass { OPAQUE, TRANSPARENT }
 class Brick extends RefCounted:
 	var id: int                       ## stable handle, unique within the world
 	var part_id: String
-	var color_code: int
-	var transform: Transform3D
+	## In hand (Builder's: lifted by X, a figure, a selection carried), set by
+	## BrickWorld alone: its place and colour change only through the hand,
+	## which puts it down or back ([method BrickWorld.put_from_hand]), or after
+	## the hand has let go of it ([method BrickWorld._hand_change]). A write
+	## that goes round the hand is counted ([member BrickWorld.round_the_hand]).
+	var in_hand: bool = false
+	var color_code: int:
+		set(value):
+			if in_hand and value != color_code:
+				BrickWorld._went_round_the_hand(id, "paint")
+			color_code = value
+	var transform: Transform3D:
+		set(value):
+			if in_hand and value != transform:
+				BrickWorld._went_round_the_hand(id, "move")
+			transform = value
 	## Kept out of the picture without being removed, so step playback
 	## can walk a finished model forwards and back without rebuilding it.
 	var hidden: bool = false
@@ -434,12 +448,24 @@ var _in_hand: Dictionary = {}
 ## first (Builder._hand_touched), so the change is made to the part where it
 ## stands. Unset, the part alone is drawn again where it stands.
 var hand_touched: Callable = Callable()
+## How many writes moved or painted a part in hand without the hand letting go
+## of it first (Brick's setters): none, or what Escape or Undo puts back is not
+## what the model holds. The Shift+E turn did, and the figure in hand was put
+## back where it stood before the turn (figreview3 F2). Read by the probes;
+## each one is said as an error, with the part.
+static var round_the_hand: int = 0
+
+
+static func _went_round_the_hand(brick_id: int, kind: String) -> void:
+	round_the_hand += 1
+	push_error("brick %d in hand: a %s went round the hand (BrickWorld._hand_change)" % [brick_id, kind])
 
 
 ## Take [param brick_id] into hand: drawn nowhere, and still the model's.
 func take_in_hand(brick_id: int) -> bool:
 	if not _bricks.has(brick_id) or _ghosts.has(brick_id) or _in_hand.has(brick_id):
 		return false
+	_bricks[brick_id].in_hand = true
 	_touching_brick(brick_id)
 	for key: String in _brick_batches.get(brick_id, NO_KEYS):
 		var batch: Batch = _batches.get(key)
@@ -463,8 +489,15 @@ func take_in_hand(brick_id: int) -> bool:
 func put_from_hand(brick_id: int, to: Transform3D) -> bool:
 	if not _in_hand.has(brick_id):
 		return false
+	# Shown a step at a time, the order was ranked with it in no batch, and it
+	# came back hidden at every step until the timeline was put away
+	# (figreview3 F4): the reveal ends, and the timeline shows its step again
+	# with the part in its batch (StepsBar._on_reveal_ended).
+	if not _reveal_order.is_empty():
+		_stop_reveal()
 	_in_hand.erase(brick_id)
 	var brick: Brick = _bricks[brick_id]
+	brick.in_hand = false
 	var moved: bool = brick.transform != to
 	brick.transform = to
 	_draw_again(brick)
@@ -492,6 +525,7 @@ func _hand_change(brick_id: int, kind: String) -> void:
 	if hand_touched.is_valid():
 		hand_touched.call(brick_id, kind)
 	if _in_hand.erase(brick_id):
+		_bricks[brick_id].in_hand = false
 		_draw_again(_bricks[brick_id])
 
 
@@ -928,6 +962,9 @@ func repaint_in_place(changes: Dictionary) -> void:
 				same_class = false
 		if not same_class:
 			continue
+		# A picture's own world as a rule, with nothing in hand; one in hand
+		# is let go of first, as recolor_brick lets go.
+		_hand_change(brick_id, "paint")
 		brick.color_code = code
 		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 			_mark_dirty(key)
@@ -1886,6 +1923,12 @@ func rotate_model(quarter_turns: int, keep: Dictionary = {}) -> Array:
 	var turns: int = posmod(quarter_turns, 4)
 	if turns == 0 or brick_count() == 0:
 		return []
+	# What is in hand goes back where it stood first, and turns with the rest.
+	# Turned in hand, it went into the lattice still held, and Escape or an
+	# Undo of its put-down put it back where it stood before the turn, against
+	# a model that had turned (figreview3 F2).
+	for held: int in _in_hand.keys():
+		_hand_change(held, "move")
 	_stop_reveal()
 	revision += 1
 	if is_inside_tree():

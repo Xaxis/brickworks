@@ -13689,6 +13689,14 @@ func _key_pressed(key: InputEventKey) -> void:
 				_bar.say("put back where it was" if _builder.drop_figure() else "")
 				_refresh_preview()
 				return
+			# So does a part lifted by X, whatever tool is on.
+			if _builder.holds_lifted_part():
+				_builder.put_hand_back()
+				_bar.say("put back where it was")
+				if _verbs != null:
+					_verbs.set_mode("select")
+				_refresh_preview()
+				return
 			if _elements_made != null and _elements_made.visible:
 				_elements.visible = false
 				return

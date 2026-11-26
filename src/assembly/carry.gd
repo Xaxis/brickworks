@@ -202,9 +202,10 @@ static func phase_of(pivot: Vector3) -> float:
 
 ## Take these parts in hand.
 func hold(parts: Array, came_off_the_model: bool) -> void:
-	# Parts lifted off the model, let go of for a copy or a part to put down:
-	# the model has them back where they stood (Builder._take_into_hand).
-	if lifted and not came_off_the_model and let_go.is_valid():
+	# A copy (a paste, a duplicate, a model put in whole) taken in hand: what
+	# is lifted off the model goes back where it stood first, a figure or a
+	# part lifted by X as a selection carried (Builder's let_go).
+	if not came_off_the_model and let_go.is_valid():
 		let_go.call()
 	items = parts.duplicate(true)
 	turns = 0
@@ -395,7 +396,7 @@ func fits_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> bool:
 		roundi(origin.y / BrickLattice.CELL),
 		roundi((origin.z - _reference.z) / BrickLattice.CELL))
 	return not whole.is_empty() and _lowest(whole) + shift.y >= Builder.GROUND_CELL \
-		and not lattice.collides_moved(whole, covers[3], covers[4], shift)
+		and not _meets_model(lattice, whole, covers, shift)
 
 
 ## The frame moved by [param by] and the ghost shown there: where
@@ -403,6 +404,19 @@ func fits_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> bool:
 func stand_moved(by: Vector3, lattice: BrickLattice, builder: Builder) -> void:
 	_frame.origin += by
 	_stand(lattice, builder)
+
+
+## Whether the group's cover [param whole] moved [param shift] cells meets
+## anything on the model. Parts lifted off it are the hand's, and the cells
+## they stood in are theirs to go back into; a copy's are not, and the cells
+## of whatever is in hand stay in its way (BrickLattice.hand_free).
+func _meets_model(lattice: BrickLattice, whole: PackedInt32Array, covers: Array,
+		shift: Vector3i) -> bool:
+	var was_free: bool = lattice.hand_free
+	lattice.hand_free = lifted
+	var meets: bool = lattice.collides_moved(whole, covers[3], covers[4], shift)
+	lattice.hand_free = was_free
+	return meets
 
 
 ## Whether the group fits where its frame is now, and its ghost shown there.
@@ -414,7 +428,7 @@ func _stand(lattice: BrickLattice, builder: Builder) -> void:
 		roundi(_frame.origin.y / BrickLattice.CELL),
 		roundi((_frame.origin.z - _reference.z) / BrickLattice.CELL))
 	_valid = not whole.is_empty() and _lowest(whole) + shift.y >= Builder.GROUND_CELL \
-		and not lattice.collides_moved(whole, covers[3], covers[4], shift)
+		and not _meets_model(lattice, whole, covers, shift)
 	_aimed = true
 	_ghost.transform = _frame
 	_ghost.visible = true
@@ -549,7 +563,7 @@ func _aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	shift.y = rise
 
 	_frame = _frame_at(Vector3(at.x, rise * BrickLattice.CELL, at.z))
-	_valid = not lattice.collides_moved(whole, covers[3], covers[4], shift)
+	_valid = not _meets_model(lattice, whole, covers, shift)
 	_aimed = true
 	_ghost.transform = _frame
 	_ghost.visible = true

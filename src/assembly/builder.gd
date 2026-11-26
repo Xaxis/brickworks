@@ -26,6 +26,10 @@ var library: PartLibrary
 ## lift_brick]) is held by none ([member grip]).
 var held_part: String = "3001":
 	set(value):
+		# Another part taken in hand (the bin, the eyedropper, a session's)
+		# lets go of the one lifted by X: back where it stood.
+		if value != held_part and holds_lifted_part():
+			put_hand_back()
 		held_part = value
 		grip = null
 var held_color: int = 4
@@ -148,10 +152,13 @@ func _ready() -> void:
 	_ghost.visible = false
 	add_child(_ghost)
 	carrying = Carry.new()
-	# A selection lifted off the model and let go of by whatever lets go of
-	# the carry (a paste taken up over it, a tool chosen): back where it stood.
+	# Whatever is lifted, let go of by a new hold (a paste, a duplicate, a
+	# model put in whole) or by the carry put away: back where it stood. A
+	# figure lifted stayed lifted under a paste, which went down inside the
+	# place it stands in the file, and Escape put it back into the paste
+	# (figreview3 F3).
 	carrying.let_go = func() -> void:
-		if not _hand.is_empty() and _figure_parts.is_empty():
+		if holds_lift():
 			_let_go_of_hand()
 	add_child(carrying)
 
@@ -235,6 +242,8 @@ func place() -> int:
 		return 0
 	if not held_figure.is_empty():
 		return _place_figure()
+	if holds_lifted_part():
+		return _put_lifted_part()
 	var brick_id: int = world.add_brick(held_part, held_color, _ghost_transform)
 	if brick_id == 0:
 		return 0
@@ -338,7 +347,7 @@ func paint_hovered(color_code: int) -> bool:
 	return world.recolor_brick(_hovered, color_code)
 
 
-## Take the brick under the cursor off the model and hold it.
+## Lift the brick under the cursor into hand, to put down somewhere else.
 ##
 ## This is how a brick moves. There was no way to move one at all: the
 ## only edit was remove-and-rebuild, and a brick in the middle of
@@ -347,10 +356,13 @@ func paint_hovered(color_code: int) -> bool:
 ## Lifting rather than dragging, because dragging needs a grab, a live
 ## re-solve of where it would land, and a drop — three things to get
 ## right — and lifting reuses the placement machinery already there. The
-## brick comes off, becomes what you are holding, at its own colour and
-## rotation, and the next click puts it down. Undo puts it back where it
-## was, because the removal is an ordinary history step.
-## lift_hovered for a brick named rather than aimed at: X over a part with
+## brick becomes what you are holding, at its own colour and rotation, and
+## the next click puts it down: the same part, moved ([method
+## _put_lifted_part]). Until then it is in hand and still the model's, where
+## it stood ([method _take_into_hand]), as a figure or a selection lifted is;
+## Escape, Undo or another part taken in hand puts it back.
+##
+## lift_brick: lift_hovered for a brick named rather than aimed at: X over a part with
 ## nothing in hand, where no ghost has aimed at anything.
 ## [param from] and [param way]: the pointer's line, for the joint it was
 ## picked up by (Grip.picked), which it then goes on by; none without one,
@@ -386,24 +398,17 @@ func lift_hovered() -> bool:
 		return false
 	if _lift_figure(_hovered):
 		return true
-
+	# Into hand, as a one-part selection lifted is: up to handkeep2 X took it
+	# off the model and held a part like it from the bin, so the autosave and
+	# Ctrl+S had it nowhere while it was in hand, and put back where it stood
+	# it was a new part, in the step showing (figreview3 F1).
+	var lifting: int = _hovered
+	put_hand_back()
 	held_part = brick.part_id
 	held_color = brick.color_code
 	held_face = BrickLattice.face_of(brick.transform.basis)
 	held_rotation = BrickLattice.turns_about(brick.transform.basis, held_face)
-
-	_history.append({
-		"undo": "add",
-		"part": brick.part_id,
-		"color": brick.color_code,
-		"transform": brick.transform,
-		"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
-	})
-	_redo.clear()
-
-	lattice.release(_hovered)
-	world.remove_brick(_hovered)
-	removed.emit(_hovered)
+	_take_into_hand([lifting])
 	_hovered = 0
 	picked.emit(held_part, held_color)
 	return true
@@ -468,10 +473,15 @@ func forget_history() -> void:
 	carry_grip = null
 
 
-func undo() -> bool:
-	# The lift the newest thing done: undone, what is in hand goes back where
-	# it stood, nothing else (EditVerbs says so).
-	if lift_newest():
+## Take back the newest thing done. [param person]: the person's own undo,
+## for whom a lift is the newest thing done while nothing is recorded since
+## (put back where it stood, nothing else: EditVerbs says so). A session's
+## undo takes back the newest step recorded and leaves what the person holds
+## in hand: it said "Undid lifted 8 parts" and put their figure back, its own
+## paint left on the model (figreview3 F5). A step that names a part in hand
+## lets go of it first (_apply), whoever undoes it.
+func undo(person: bool = true) -> bool:
+	if person and lift_newest():
 		put_hand_back()
 		return true
 	if _history.is_empty():
@@ -3585,6 +3595,16 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 	# Kept where it is while a number is typed (TypedEntry).
 	if is_pinned():
 		return
+	# What is aimed is the hand's (a part, figure or selection lifted, or
+	# else nothing lifted at all): the cells its parts stood in are free to
+	# it, and to nothing else (BrickLattice.hand_free).
+	var was_free: bool = lattice.hand_free
+	lattice.hand_free = true
+	_aim_hand(origin, direction)
+	lattice.hand_free = was_free
+
+
+func _aim_hand(origin: Vector3, direction: Vector3) -> void:
 	var was: Vector3 = carrying.pivot() if is_carrying() else _ghost_transform.origin
 	_joint_site = null
 	_grip_on = false
@@ -6112,6 +6132,14 @@ func unpin_hand() -> void:
 func typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> bool:
 	if not is_pinned():
 		return false
+	var was_free: bool = lattice.hand_free
+	lattice.hand_free = true
+	var fits: bool = _typed_hand(move, turn, tilt, tilt_axis)
+	lattice.hand_free = was_free
+	return fits
+
+
+func _typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> bool:
 	# A group turns about where R turns it, the upright through its pivot.
 	var point: Vector3 = _typed_point if _typed_from != null else carrying.pivot()
 	var axis: Vector3 = _typed_axis if _typed_from != null else Vector3.UP
@@ -6268,8 +6296,9 @@ func _take_into_hand(ids: Array) -> void:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick == null or world.in_hand(brick_id):
 			continue
-		_hand[brick_id] = {"at": brick.transform, "cover": lattice.cover_of(brick_id)}
-		lattice.release(brick_id)
+		# Out of the lattice, its cells still in the way of anything but the
+		# hand (BrickLattice.take_in_hand), as it is still there in the file.
+		_hand[brick_id] = {"at": brick.transform, "cover": lattice.take_in_hand(brick_id)}
 		world.take_in_hand(brick_id)
 		unpicked = selection.erase(brick_id) or unpicked
 	_hand_depth = _history.size()
@@ -6293,6 +6322,9 @@ func _put_hand_back(leave: int = 0) -> Array:
 		world.put_from_hand(brick_id, at)
 		back.append(brick_id)
 		if brick_id == leave:
+			# Its cover is whoever moves or takes it off's to set: none kept
+			# in the way where it stood.
+			lattice.release(brick_id)
 			continue
 		var cover: Array = held[brick_id]["cover"]
 		if not (cover[0] as PackedInt32Array).is_empty():
@@ -6324,6 +6356,45 @@ func _put_hand_down(moves: Dictionary) -> Array:
 			_hand[brick_id] = held[brick_id]
 	_put_hand_back()
 	return steps
+
+
+## Whether the part in hand is one lifted by X (not a figure, nor a selection
+## carried): still the model's where it stood, the ghost the part's own
+## ([member held_part]), put down by a move ([method _put_lifted_part]).
+func holds_lifted_part() -> bool:
+	return holds_lift() and _figure_parts.is_empty() and not (carrying != null and carrying.lifted)
+
+
+## Put the part lifted by X down where its ghost is: the same part, moved, in
+## its own step, sub-model and line of the file; painted the colour in hand if
+## another was chosen while it was held; with the sleepers a track's joint
+## takes. One step to undo. Its kind stays in hand after, as a part from the
+## bin does, to put down more of.
+func _put_lifted_part() -> int:
+	var brick_id: int = int(_hand.keys()[0])
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if part == null:
+		return 0
+	var steps: Array = _put_hand_down({brick_id: {"at": _ghost_transform,
+		"boxes": boxes_for(part, _ghost_transform)}})
+	if steps.is_empty():
+		return 0
+	if held_color != brick.color_code:
+		steps.append({"undo": "recolor", "brick": brick_id, "color": brick.color_code})
+		world.recolor_brick(brick_id, held_color)
+	if tracks.on_end and not tracks.sleepers.is_empty():
+		steps.append_array(_put_sleepers(tracks.sleepers))
+	# Put down past the step the timeline shows (stepped back while it was in
+	# hand): Main steps on to it and says so, as for a figure.
+	put_unseen = PackedInt64Array([brick_id]) if is_ahead(brick_id) else PackedInt64Array()
+	_history.append({"undo": "group", "steps": steps, "words": "moved %s" % _many(1)})
+	_redo.clear()
+	below = maxf(0.0, -part.lowest_at(_ghost_transform))
+	_typed_from = null
+	grip = null
+	placed.emit(brick_id, brick.part_id)
+	return brick_id
 
 
 ## Let go of whatever lifted off the model is in hand, each part back where it
@@ -6736,10 +6807,11 @@ func steps_now() -> Array:
 ## What each step undo would take back said in words, the most recent
 ## first, at most ``most`` of them: "placed Brick 2 x 4", "moved 12 parts".
 ## What is in hand lifted off the model is among them, where it was lifted:
-## Undo puts it back when it is the newest ([method lift_newest]).
-func history_words(most: int = 25) -> PackedStringArray:
+## the person's Undo puts it back when it is the newest ([method lift_newest]).
+## Not with [param hand] false: what a session's undo takes back ([method undo]).
+func history_words(most: int = 25, hand: bool = true) -> PackedStringArray:
 	var out := PackedStringArray()
-	var lift_at: int = mini(_hand_depth, _history.size()) if holds_lift() else -1
+	var lift_at: int = mini(_hand_depth, _history.size()) if hand and holds_lift() else -1
 	var n: int = _history.size() - 1
 	while out.size() < most and (n >= 0 or lift_at >= 0):
 		if lift_at >= 0 and n < lift_at:

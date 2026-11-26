@@ -4323,7 +4323,7 @@ func _define_motion(input: Dictionary) -> String:
 		first.append(Motions.quoted(one.name))
 	var played: MotionPlayer.Played = player.play(motion)
 	while builder.history_depth() > depth:
-		await verbs.press("undo")
+		await verbs.press("undo", false)
 	var joints: int = motion.joints().size()
 	if joints == 0 and motion.camera != null:
 		return ("%s %s in the model (%s s): %s. It is saved with it; play_motion plays it in the window, "
@@ -4992,8 +4992,10 @@ func _undo(input: Dictionary) -> String:
 	var others: String = ""
 	var store: ModelStore = app.get("_store")
 	for _n: int in count:
+		# The newest step recorded: what the person holds in hand is theirs,
+		# and stays there (Builder.undo; figreview3 F5).
 		var words: String = builder.redo_words() if again else (
-			builder.history_words(1)[0] if builder.history_depth() > 0 else "")
+			builder.history_words(1, false)[0] if builder.history_depth() > 0 else "")
 		# Past every change, the open they followed (ModelStore.reopen).
 		if words.is_empty() and (not again or builder._redo.is_empty()):
 			words = store.reopen_words(again)
@@ -5005,7 +5007,7 @@ func _undo(input: Dictionary) -> String:
 		if not chat.is_empty() and not by.is_empty() and by != chat:
 			others = words
 			break
-		await verbs.press("redo" if again else "undo")
+		await verbs.press("redo" if again else "undo", false)
 		done.append(words)
 	if not others.is_empty():
 		# A resumed chat is a new one to the relay (api/mcp.js, "Two chats, two
@@ -5017,7 +5019,7 @@ func _undo(input: Dictionary) -> String:
 				"Undid %s. " % "; ".join(done) if not done.is_empty() else "Nothing was undone. ", others]
 	if done.is_empty():
 		return "Nothing to %s." % ("redo" if again else "undo")
-	var next: String = builder.history_words(1)[0] if builder.history_depth() > 0 \
+	var next: String = builder.history_words(1, false)[0] if builder.history_depth() > 0 \
 		else store.reopen_words()
 	var left: String = ("Next to undo: %s." % next) if not next.is_empty() else "Nothing more to undo."
 	var back: String = builder.redo_words() if builder._redo.size() > 0 else store.reopen_words(true)

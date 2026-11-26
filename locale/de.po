@@ -3559,6 +3559,9 @@ msgstr "%d Teile zu %d zusammengefügt"
 msgid "Connect moves one part: put down what is in hand first"
 msgstr "Verbinden bewegt ein Teil: lege zuerst ab, was du in der Hand hast"
 
+msgid "Connect moves one part, not a minifigure: lift the figure to move it whole"
+msgstr "Verbinden bewegt ein Teil, keine Minifigur: heb die Figur an, um sie ganz zu bewegen"
+
 msgid "Connect: aim the part at the model first, then %s"
 msgstr "Verbinden: richte das Teil zuerst auf das Modell, dann %s"
 

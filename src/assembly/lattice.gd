@@ -93,6 +93,19 @@ var cut_shape: CutShape = null:
 	set(value):
 		cut_shape = value
 		revision += 1
+## The covers of parts in hand (Builder's hand: a part lifted by X, a figure,
+## a selection carried), id -> [boxes, bound, rows], as [method cover_of]
+## gives them: out of the lattice, so a ray passes through where they stood
+## and the hand fits its own parts there ([member hand_free]), and still in
+## the way of anything else put there ([method collides_boxes], [method
+## collides_moved], [method blockers_boxes]). The parts stand there in the
+## model's file until they are put down, and go back there on Escape: up to
+## handkeep2 a paste put down where a lifted figure stood went inside it
+## once the figure was put back, and both were saved (figreview3 F3).
+var _hand_cells: Dictionary = {}
+## While the hand fits its own parts (Builder.update_preview, typed_hand):
+## the cells they stood in are free to them, and to nothing else.
+var hand_free: bool = false
 ## Goes up with every brick put in or taken out, and when x-ray or the cut
 ## changes what a ray passes through, so an answer kept from before can
 ## tell it still holds (EditVerbs.brick_at). Hiding by hand clears that
@@ -1382,6 +1395,7 @@ var keeps_columns: bool = true
 ## Put a brick in, as boxes.
 func occupy_boxes(brick_id: int, packed: PackedInt32Array) -> void:
 	revision += 1
+	_hand_cells.erase(brick_id)
 	_boxes[brick_id] = packed
 	_bounds[brick_id] = _bound_of(packed)
 	_reach_round(_bounds[brick_id])
@@ -1425,6 +1439,7 @@ func occupy_moved(brick_id: int, cover: Array, by: Vector3i) -> void:
 	if by != Vector3i.ZERO:
 		packed = moved_by(packed, by)
 	revision += 1
+	_hand_cells.erase(brick_id)
 	_boxes[brick_id] = packed
 	var bound: PackedInt32Array = cover[1]
 	if bound.size() < 6:
@@ -1582,6 +1597,7 @@ func blockers_boxes(packed: PackedInt32Array, ignore: int = 0,
 					if _overlaps_pairwise(mine, bound) \
 							and _meets(packed, mine, plain, other, bound):
 						found.append(other)
+	found.append_array(_hand_met(packed, mine, plain, ignore, skip, false))
 	return found
 
 
@@ -1625,6 +1641,8 @@ func collides_boxes(packed: PackedInt32Array, ignore: int = 0) -> bool:
 		return false
 	var mine: PackedInt32Array = _bound_of(packed)
 	var plain: bool = _plain(packed)
+	if not _hand_met(packed, mine, plain, ignore, {}, true).is_empty():
+		return true
 	# The buckets of the bound: a bucket holds whatever might reach into it
 	# (_into_buckets), and the boxes are what is tested. Each part asked as
 	# its bucket is reached, in the order _near lists them, and the first
@@ -1660,9 +1678,11 @@ func collides_moved(packed: PackedInt32Array, bound: PackedInt32Array, plain: bo
 		return false
 	var mine: PackedInt32Array = moved_by(bound, by)
 	var near: PackedInt64Array = _near(mine)
-	if near.is_empty():
+	if near.is_empty() and (hand_free or _hand_cells.is_empty()):
 		return false
 	var moved: PackedInt32Array = moved_by(packed, by)
+	if not _hand_met(moved, mine, plain, 0, {}, true).is_empty():
+		return true
 	for other: int in near:
 		var theirs: PackedInt32Array = _bounds.get(other, PackedInt32Array())
 		if not _overlaps_pairwise(mine, theirs):
@@ -1996,8 +2016,45 @@ func occupy(brick_id: int, cells: Array[Vector3i]) -> void:
 	occupy_boxes(brick_id, compress(cells))
 
 
+## [param brick_id] taken into hand: out of the lattice, its cover kept in the
+## way of anything but the hand until it is put down or back, which puts it in
+## again ([member _hand_cells]). Its cover as it stood, for that.
+func take_in_hand(brick_id: int) -> Array:
+	var cover: Array = cover_of(brick_id)
+	release(brick_id)
+	if (cover[1] as PackedInt32Array).size() >= 6:
+		_hand_cells[brick_id] = cover
+	return cover
+
+
+## The parts in hand [param packed] (its bound [param mine]) meets, but
+## [param ignore] and those in [param skip]; only the first with [param
+## first]. None while the hand fits its own ([member hand_free]).
+func _hand_met(packed: PackedInt32Array, mine: PackedInt32Array, plain: bool, ignore: int,
+		skip: Dictionary, first: bool) -> PackedInt64Array:
+	var found := PackedInt64Array()
+	if hand_free or _hand_cells.is_empty():
+		return found
+	for other: int in _hand_cells:
+		if other == ignore or skip.has(other):
+			continue
+		var cover: Array = _hand_cells[other]
+		var bound: PackedInt32Array = cover[1]
+		if not _overlaps_pairwise(mine, bound):
+			continue
+		var rows: Array = cover[2]
+		var met: bool = _meets_rows(packed, cover[0], bound, rows) if plain and not rows.is_empty() \
+			else _overlaps_within(packed, mine, cover[0], bound)
+		if met:
+			found.append(other)
+			if first:
+				break
+	return found
+
+
 func release(brick_id: int) -> void:
 	revision += 1
+	_hand_cells.erase(brick_id)
 	_rows.erase(brick_id)
 	var packed: PackedInt32Array = _boxes.get(brick_id, PackedInt32Array())
 	if packed.is_empty():
@@ -2168,6 +2225,7 @@ func clear() -> void:
 	_bounds.clear()
 	_rows.clear()
 	_extent = PackedInt32Array()
+	_hand_cells.clear()
 	unseen.clear()
 	see_through.clear()
 	ahead = {}

@@ -3556,6 +3556,9 @@ msgstr "%d pièces fusionnées en %s"
 msgid "merged %d parts into %d"
 msgstr "%d pièces fusionnées en %d"
 
+msgid "Connect moves one part, not a minifigure: lift the figure to move it whole"
+msgstr "Connecter déplace une pièce, pas une minifigurine : soulevez la figurine pour la déplacer entière"
+
 msgid "Connect moves one part: put down what is in hand first"
 msgstr "Connecter déplace une pièce : posez d'abord ce que vous avez en main"
 
