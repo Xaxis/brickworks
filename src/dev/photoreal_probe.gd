@@ -168,14 +168,17 @@ func _run() -> void:
 			continue
 		_world.clear()
 		await _frames(2)
+		var kept: Dictionary = _colours_as_photographed(library, shot)
 		var placed: int = await bar.open_with_progress(str(shot["model"]))
 		await _frames(10)
 		if placed <= 0 or _world.brick_count() == 0:
 			_check("%s: %s opened" % [name, shot["model"]], false)
+			_colours_back(library, kept)
 			continue
 		if OS.get_cmdline_user_args().has("--fit"):
 			if str(shot.get("kind", "")) == "set":
 				await _fit(shot, name, out)
+			_colours_back(library, kept)
 			continue
 		var yaws: PackedStringArray = _arg("yaws", "").split(",", false)
 		var lit: PackedStringArray = _arg("turns", "").split(",", false)
@@ -208,11 +211,44 @@ func _run() -> void:
 							asked["key_share"] = float(parts[2]) if parts.size() > 2 else -1.0
 							called = "%s_k%s" % [called, key.replace(":", "x")]
 						await _draw(asked, called, samples, out)
+		_colours_back(library, kept)
 	if (car_only or only.is_empty()) and not OS.get_cmdline_user_args().has("--fit"):
 		await _car(bar, out)
 	print("")
 	print("%d failed" % _failures if _failures else "every shot drawn, in %s" % out)
 	quit(1 if _failures else 0)
+
+
+## The photographed set's plastic (photoreal24): a shot's "colours", LDraw
+## code -> "#rrggbb" as the photograph shows that set's parts (its whites
+## aged, its clear parts' tints, its old grey), set on the library for this
+## shot alone, each code's own alpha kept. Read when the model is opened, so
+## they are set before it and put back after its last picture. Returns what
+## was there before, for [method _colours_back].
+func _colours_as_photographed(library: PartLibrary, shot: Dictionary) -> Dictionary:
+	var kept: Dictionary = {}
+	var asked: Variant = shot.get("colours", {})
+	if not asked is Dictionary:
+		return kept
+	for code_text: Variant in asked:
+		var code: int = int(str(code_text))
+		var colour: PartLibrary.BrickColor = library.colors.get(code)
+		if colour == null:
+			_check("%s: colour %d is in the library" % [shot["name"], code], false)
+			continue
+		kept[code] = [colour.rgb, colour.shown]
+		var rgb := Color.html(str(asked[code_text]))
+		rgb.a = colour.rgb.a
+		colour.rgb = rgb
+		colour.shown = PartLibrary.shown_for(rgb)
+	return kept
+
+
+func _colours_back(library: PartLibrary, kept: Dictionary) -> void:
+	for code: int in kept:
+		var colour: PartLibrary.BrickColor = library.colors[code]
+		colour.rgb = kept[code][0]
+		colour.shown = kept[code][1]
 
 
 ## Best on the car, Product look, three times: its own time (less the main
