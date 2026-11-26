@@ -436,8 +436,11 @@ func _build() -> void:
 	_scroll.add_child(_grid)
 	_sight = ThumbTile.Sight.new(_scroll, _grid)
 	_scroll.resized.connect(func() -> void:
-		# Not the techniques, a list of one across (_fill_techniques).
-		if _grid.columns > 1:
+		# Not the techniques or a list, one across (_set_columns). Tiles one
+		# across too, in a drawer narrower than two: the bin has no least of
+		# its own, and a grid laid out before the column had its width stayed
+		# one across in a whole column (roomfit, wide150b).
+		if _as_tiles:
 			_grid.columns = _tiles_across())
 	# On a phone the rows above the parts scroll away with them, as a
 	# phone's lists do, and the foot stays. Stacked, they asked more than a
@@ -486,7 +489,10 @@ func _build() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(_status)
-	LaidOut.hold_a_word(_status)
+	# Never narrower than its longest word, nor than half a phone's sheet:
+	# beside Prints and List on a 320 phone at 150% it was a column of one
+	# word to a line, eleven lines tall.
+	LaidOut.hold_a_word(_status, _z(120))
 	# Studio's button that shows or hides printed and stickered parts: one
 	# click and the bin is plain parts, a minifigure's thousands of printed
 	# torsos and heads with it.
@@ -821,6 +827,40 @@ func _fit_shelves() -> int:
 	return _shelf_rows
 
 
+## Each chip whole, or where its words are wider than the chips' row, as
+## wide as the row and cut at a word with "…", its whole name its tooltip:
+## in French at 150% "Minifig Headwear 826" was 240 units, and held a 282
+## phone's parts sheet past the screen's edge (wide150b). A finger's sheet
+## sets its least by its rows, so its room is the window's less the
+## margins either side, as its tiles' (_tiles_across).
+func _fit_chips() -> void:
+	if _category_row == null or _category_scroll == null or not _category_scroll.is_inside_tree():
+		return
+	var bar: float = _category_scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	var room: float = _category_scroll.size.x - bar
+	if by_finger:
+		var across: float = get_viewport().get_visible_rect().size.x \
+			- 2.0 * _category_scroll.get_global_rect().position.x - bar
+		room = across if room <= 0.0 else minf(room, across)
+	if room <= 0.0:
+		return
+	for child: Node in _category_row.get_children():
+		var chip := child as Button
+		if chip == null:
+			continue
+		var font: Font = chip.get_theme_font("font")
+		var whole: float = ceilf(font.get_string_size(chip.atr(chip.text), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			chip.get_theme_font_size("font_size")).x + chip.get_theme_stylebox("normal").get_minimum_size().x)
+		var cut: bool = whole > room
+		var overrun: TextServer.OverrunBehavior = TextServer.OVERRUN_TRIM_WORD_ELLIPSIS if cut \
+			else TextServer.OVERRUN_NO_TRIMMING
+		if chip.text_overrun_behavior != overrun:
+			chip.text_overrun_behavior = overrun
+		var wide: float = floorf(room) if cut else least
+		if chip.custom_minimum_size.x != wide:
+			chip.custom_minimum_size.x = wide
+
+
 ## The least width of [param chip] saying [param words], as its row lays it
 ## out: said, read and put back.
 func _chip_width(chip: Button, words: String) -> float:
@@ -1071,6 +1111,7 @@ func _fit_palette() -> void:
 	if _palette == null or _palette_scroll == null:
 		return
 	var tall_column: float = column.size.y if column != null else size.y
+	_fit_chips()
 	# Two rows of chips, or one in a column too short to spare them, and
 	# always as many as every shelf takes (_fit_shelves).
 	if _chip_tall > 0.0:
@@ -2998,7 +3039,7 @@ func _fill_grid(folded: Array = []) -> void:
 	_hold_page(0)
 	_just_filled = true
 	_to_list_top()
-	_grid.columns = 1 if _list.button_pressed else _tiles_across()
+	_set_columns(not _list.button_pressed)
 	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
 	if folded.is_empty():
 		_fold()
@@ -3189,6 +3230,17 @@ func _first_page(listed: int = -1) -> int:
 ## How far under the view a list is made: the grid grows (_process) while less
 ## of it than this is under it.
 const MORE_ROOM := 260.0
+
+
+## Whether the grid shows tiles, fitted across as the bin's width changes,
+## rather than one across: a list, the techniques (_set_columns).
+var _as_tiles: bool = true
+
+
+## The grid as tiles, as many across as the bin holds, or one across.
+func _set_columns(tiles: bool) -> void:
+	_as_tiles = tiles
+	_grid.columns = _tiles_across() if tiles else 1
 
 
 ## How many tiles a row holds: as many as the bin's width has room for, and
@@ -4649,7 +4701,7 @@ func _empty_for_rows() -> void:
 ## of it is in first, and in each the best first.
 func _fill_techniques(query: String) -> void:
 	_empty_for_rows()
-	_grid.columns = 1
+	_set_columns(false)
 	_grid.add_theme_constant_override("v_separation", int(_z(4)))
 	_techniques_shown = 0
 	var techniques: GDScript = Later.script(&"Techniques")
@@ -5682,14 +5734,14 @@ func _fill_palettes(query: String) -> void:
 	_show_shelf_line()
 	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
 	if open.is_empty():
-		_grid.columns = 1
+		_set_columns(false)
 		_grid.add_theme_constant_override("v_separation", int(_z(4)))
 		for one: Dictionary in PartShelf.palettes():
 			if needles.is_empty() or _palette_answers(one, query, needles):
 				_grid.add_child(_palette_row(one))
 		_update_status()
 		return
-	_grid.columns = 1 if _list.button_pressed else _tiles_across()
+	_set_columns(not _list.button_pressed)
 	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
 	for entry: Dictionary in open["entries"]:
 		if entry.has("ldraw"):

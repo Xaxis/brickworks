@@ -49,7 +49,9 @@ static func into_view(scroll: ScrollContainer, control: Control) -> void:
 ## own, and in a narrow column its row gave it less than a word: "fabricadas"
 ## in 45 of 61, "hergestellte" in 72 of 87 (wide150b). Measured again when its
 ## words change, in another language too (minimum_size_changed).
-static func hold_a_word(c: Control) -> void:
+## [param at_least] where it wants more than a word: a status line read as
+## a column a word wide beside two buttons.
+static func hold_a_word(c: Control, at_least: float = 0.0) -> void:
 	var fit := func() -> void:
 		if not is_instance_valid(c) or not c.is_inside_tree():
 			return
@@ -68,7 +70,7 @@ static func hold_a_word(c: Control) -> void:
 		var longest: float = 0.0
 		for word: String in text.replace("\n", " ").split(" ", false):
 			longest = maxf(longest, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
-		var least: float = ceilf(longest + beside + c.get_theme_stylebox("normal").get_minimum_size().x)
+		var least: float = maxf(at_least, ceilf(longest + beside + c.get_theme_stylebox("normal").get_minimum_size().x))
 		if absf(c.custom_minimum_size.x - least) > 0.5:
 			c.custom_minimum_size.x = least
 	c.minimum_size_changed.connect(fit)
