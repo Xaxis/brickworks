@@ -387,6 +387,17 @@ func setup() -> void:
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.add_theme_font_size_override("font_size", 12)
 	_list.toggled.connect(func(_on: bool) -> void: _follow_prompt())
+	# Ticked by the person, it ticks Show who made it too, with the profile's
+	# name, as Enter and Share progress do: a model in the gallery with
+	# nobody's name on it is on nobody's profile and in no follower's feed.
+	# A new member's first build, listed from the studio, was on neither
+	# (sitewalk3, 2026-11-26: "Nothing in the gallery yet" on their profile
+	# minutes after). Only on a press (pressed, never toggled): a link's
+	# listing read back from the server leaves its credit as it was, and the
+	# box can still be unticked after.
+	_list.pressed.connect(func() -> void:
+		if _list.button_pressed and not _credit.disabled and not _credit.button_pressed:
+			_credit.button_pressed = true)
 	form.add_child(_list)
 	# Under it: an entry is a gallery model, so it is ticked only with it.
 	_prompt_box = CheckBox.new()
@@ -1165,6 +1176,11 @@ func publish(as_wip: bool = false) -> void:
 	if moves_of.is_valid():
 		moves = moves_of.call()
 		body["moves"] = Array(moves)
+	# Ticked a moment ago, the profile's name may still be on its way
+	# (_suggest_author asks the server): waited for, so a quick Publish
+	# is credited too.
+	if _credit.button_pressed and _author.text.strip_edges().is_empty():
+		await _suggest_author()
 	var author: String = _author.text.strip_edges()
 	if _credit.button_pressed and not author.is_empty():
 		body["author"] = author

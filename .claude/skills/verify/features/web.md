@@ -8344,6 +8344,10 @@ sends the LDraw with the made part and print and no link line, the author, and
 a 1200 x 630 PNG; the link kept with the model and sent back on the next
 publish (no author once unticked); not listed unless List it in the gallery is
 ticked, then sent `listed: true` with the panel saying so, unticked sent false;
+pressed by the person, List it in the gallery ticks Show who made it too and a
+Publish at once waits for the profile's name (a listed build with no name is
+on no profile and in no feed: sitewalk3), unticking it or the panel setting it
+ticks nothing;
 a copy's `remixed_from` sent, kept in its saves on a line LDraw ignores beside
 the link's and read back when it opens; Unpublish; another account's link
 replaced; Clear and new work forget both. The viewer's about line ends
