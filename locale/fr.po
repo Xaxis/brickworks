@@ -18011,6 +18011,21 @@ msgstr "« %s » est déjà un modèle enregistré, et ce n'est pas celui-ci : n
 msgid "not saved: “%s” is a saved model already"
 msgstr "non enregistré : « %s » est déjà un modèle enregistré"
 
+msgid "not saved: another model was opened"
+msgstr "non enregistré : un autre modèle a été ouvert"
+
+msgid "saved “%s” here, but did not write %s: another model was opened"
+msgstr "« %s » enregistré ici, mais %s n'a pas été écrit : un autre modèle a été ouvert"
+
+msgid "did not write %s: another model was opened"
+msgstr "%s n'a pas été écrit : un autre modèle a été ouvert"
+
+msgid "not exported: another model was opened"
+msgstr "non exporté : un autre modèle a été ouvert"
+
+msgid "Not published: another model was opened."
+msgstr "Non publié : un autre modèle a été ouvert."
+
 msgid "could not copy “%s”"
 msgstr "« %s » n'a pas pu être copié"
 

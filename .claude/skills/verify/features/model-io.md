@@ -307,7 +307,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   autosave's worker and a save on the main thread never fill them at once
   (read on first use, that corrupted the heap). Any
   failure writes (B), says why once on the console ("written as live writes
-  it, not a patch: ..."; `ModelStore.last_whole`), and where (B) leaves out
+  it, not a patch: ..."; `ModelStore.last_whole`). (B) keeps each line it
+  writes from a line of the file (a part's origin, a copy's placing line,
+  an unshown part carried) as the file spells it, where that line read back
+  as the open reads it is the part or copy as now: tabs, `1.00000`, `1e-3`,
+  a retired number, a direct colour, a name's capitals (`SourceFile.kept_said`,
+  passed to `LdrModel.write_tree`/`write_ldr` as `keep`). It is asked as
+  each line is written, so nothing is paired by place or step afterwards;
+  a line that reads back otherwise is written as before and said in
+  `last_whole` and `SourceFile.kept_why` (wholetext2; wholetext's pairing
+  failed two reviews). `ModelStore.keep_file_lines` off writes (B) as
+  pre261 did, for a probe to hold the two side by side
+  (`wholetext2_probe`). Where (B) leaves out
   lines of the file the bar says so once, as the edit is made
   (`ModelStore.lines_left_out`, `left_out_words`: how many of which kind).
   In a patch the app's own lines end as the file's lines do and go above a
@@ -1963,6 +1974,7 @@ godot --headless --path . --script src/dev/import_probe.gd   # reads the format 
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
 godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, parts only the file has, write, round trip, refusals
 godot --headless --path . --script src/dev/wholekeep_probe.gd   # a save written whole keeps the file's sub-models, comments, other programs' lines, TEXMAPs and pictures (WK_CASES=ldcad,own,built,castle; ~5 min)
+tools/probe.sh wholetext2_probe   # a save written whole keeps each untouched line as the file spells it, against pre261's whole write; a Save, Export, share or paced save with another model opened meanwhile writes nothing; one-frame save and autosave times kept vs plain (-- --cases=keep_move,save_during,time)
 godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   # someone else's file comes back as it went in, edits as such
 godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd vendor/omr/files/42058-1.mpd vendor/omr/files/42053-1.mpd   # LDCad's flexible parts drawn, one piece each, the file still itself
 # ...and in a browser, on a local export (tools/export.sh web), served with tools/web/serve.py
