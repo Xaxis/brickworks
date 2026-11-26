@@ -762,7 +762,13 @@ they have. A Claude connector belongs to the account that switched it on.
   `LIMITS`, `COUNTED`, `way_may_try` in `api/_minted.js` `mintedSession`
   `count`): only sign-ins Google or GitHub vouched for, once the way is
   vetted and right before Supabase's verify, 10 per Google or GitHub
-  account in 15 minutes, else `failed=often`; nothing per network
+  account in 15 minutes, else `failed=often`; a try given back when the
+  verify answers 429 or is never reached (no connection), kept when its
+  reply is lost (signin7, signreview4 R4-4; `way_try_back`, and
+  `reach_words.mjs` in bench/results/signin7-2026-11-26 for which failures
+  are which); the verify sent with the person's address
+  (`sb-forwarded-for`, `clientAddress`) for Supabase to count by, once the
+  project honours it; nothing per network
   (signreview3 R3), and starts and made-up ways back count nothing, so no
   visitor can lock a shared network out. Handed over (`?op=way_take`) only
   while its session is there as the way's (`standingOf`), else 410. Refused
@@ -846,7 +852,11 @@ they have. A Claude connector belongs to the account that switched it on.
   app posts `{code, code_verifier, redirect_uri}`, and keeps the session as
   an emailed code's. A second press starts again; an email sign-in stops
   the listener. The server refuses a malformed ask 422 before counting or
-  asking anything, counts the address, trades with me-client 0.50.0's
+  asking anything, counts the network (signin7, signreview4 R4-3:
+  `NATIVE_REFUSED`, 10 a quarter hour, `counted` and `givenBack` in
+  `api/_minted.js`, `way_try`/`way_try_back` in supabase/way_try_back.sql;
+  only a trade that brings a token back is given back, so the eleventh
+  call for nothing is 429 in words and orangecheck is not asked), trades with me-client 0.50.0's
   `exchangeNativeCode` (key from configuration, our audience, our list of
   ended sessions), then takes the token as `?op=signin` does
   (`signInWith`): 401 for a spent, expired or mismatched code, another
