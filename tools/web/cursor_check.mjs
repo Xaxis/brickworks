@@ -27,7 +27,12 @@
 // cursors_<n>x.json.
 //
 // Then, unless --no-wheel: the wheel over the interface is the interface's,
-// measured in the view's pixels (see `camera controls`).
+// measured in the view's pixels (see `camera controls`). A step it fails,
+// or every step with --wheel-trace, says what the app said of its view
+// before and after the wheels, how many reached the canvas, what the page
+// and the app had under the pointer, and keeps a picture of the window. A
+// canvas whose WebGL context was lost (the browser's GPU process ended) is
+// said to be so, not judged.
 //
 // Needs .env sourced (browser.mjs signs the test account in). On a preview,
 // --bypass or VERCEL_BYPASS for its protection.
@@ -77,6 +82,25 @@ async function run(scale) {
   const slow = Math.max(1, scale * scale);
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: scale });
   page.on("pageerror", (e) => console.log(`  page error: ${String(e).slice(0, 160)}`));
+  // The canvas's WebGL context, lost when the browser's GPU process ends:
+  // the engine then says "WebGL context lost, please reload the page" in an
+  // alert (Playwright dismisses it unheard without a listener) and draws no
+  // more, while the app runs on and its cursors still change. rel-m340's
+  // run and nightreds' preview each had the GPU process of the check's own
+  // browser crash in SwiftShader (SIGSEGV in libvk_swiftshader.so, 14:36 and
+  // 12:54 on 11-24, coredumpctl), and the wheel over the model read a dead
+  // canvas: "the view stayed (0.00)". Heard from the start, so a step
+  // judged by pixels after it says so instead of judging the app.
+  await page.addInitScript(() => {
+    window.__glLost = 0;
+    window.addEventListener("webglcontextlost", () => { window.__glLost += 1; }, true);
+  });
+  const dialogs = [];
+  page.on("dialog", (d) => {
+    dialogs.push(d.message());
+    console.log(`  (the page said: "${d.message().slice(0, 120)}")`);
+    d.dismiss().catch(() => {});
+  });
   const seen = [];
   const pictures = {};
   const shotOnce = new Set();
@@ -485,7 +509,7 @@ async function run(scale) {
     failures.push(`${scale}x no view cube`);
   }
 
-  if (wheelToo) await wheelOverTheInterface(page, view, slow, where, overPart, scale);
+  if (wheelToo) await wheelOverTheInterface(page, view, slow, where, overPart, scale, dialogs);
 
   writeFileSync(`${out}/cursors_${scale}x.json`, JSON.stringify({ url, scale, seen }, null, 2));
   // Closed first: at 2x the app's page, drawn in software, kept the
@@ -513,7 +537,7 @@ async function run(scale) {
 // model behind it. Measured in the pixels of the view, around whatever is
 // open, against the same wheel over the model moving them — so a view that
 // ignored every wheel would fail here too.
-async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
+async function wheelOverTheInterface(page, at, slow, where, overPart, scale, dialogs) {
   console.log("  the wheel over the interface");
   async function viewPrint(x, y, w, h) {
     return page.evaluate(({ x, y, w, h }) => {
@@ -551,7 +575,36 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     }
     return out;
   }
+  // What the app says of the view and the pointer, and what the page has
+  // under it: when a wheel moved nothing it was not the view's, these say
+  // whether the wheel reached the canvas, whether the camera took it and
+  // what the app had under the pointer.
+  async function said(point) {
+    return page.evaluate(({ x, y }) => {
+      if (!window.__wheels) {
+        window.__wheels = [];
+        window.addEventListener("wheel", (e) => window.__wheels.push(
+          (e.target && e.target.id) || (e.target && e.target.tagName) || "?"), { capture: true, passive: true });
+      }
+      const s = window.brickworksState || {};
+      const el = document.elementFromPoint(x, y);
+      const over = Object.entries(window.brickworksControls || {}).filter(([, c]) => c && c.w && c.h
+        && Math.abs(x - c.x) <= c.w / 2 && Math.abs(y - c.y) <= c.h / 2).map(([k]) => k);
+      const v = s.view || {};
+      return { distance: v.distance, yaw: v.yaw, pitch: v.pitch, focus: v.focus, hint: s.hint || "",
+        cursor: window.brickworksCursor || "", element: el ? (el.id ? `#${el.id}` : el.tagName.toLowerCase()) : "-",
+        over, wheels: window.__wheels.length, onCanvas: window.__wheels.filter((t) => t === "canvas").length,
+        said: s.now || 0, lost: window.__glLost || 0 };
+    }, point);
+  }
+  let lostSaid = false;
+  const told = (s) => `distance ${Number(s.distance).toFixed(1)}, yaw ${Number(s.yaw).toFixed(3)}, `
+    + `focus ${(s.focus || []).map((f) => Number(f).toFixed(1)).join(" ")}, at app ms ${s.said}`;
   async function scrolled(what, point, regions, shouldMove, around = null) {
+    if (lostSaid) {
+      console.log(`  FAIL  ${what}: not measured (the canvas's WebGL context is lost)`);
+      return;
+    }
     await page.mouse.move(point.x, point.y);
     // As long before as after: the ghost goes when the pointer leaves the
     // model, and at a device ratio of two in software that is a frame or
@@ -561,14 +614,23 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     const before = [];
     for (const r of regions) before.push(await viewPrint(...r));
     const tips = [await tooltip()];
+    const first = await said(point);
     if (around) await around.open();
     for (let n = 0; n < 4; n += 1) { await page.mouse.wheel(0, 240); await page.waitForTimeout(400); }
     for (let n = 0; n < 8; n += 1) { await page.mouse.wheel(0, -240); await page.waitForTimeout(400); }
     await page.keyboard.down("Shift");
     for (let n = 0; n < 3; n += 1) { await page.mouse.wheel(0, 240); await page.waitForTimeout(400); }
     await page.keyboard.up("Shift");
+    const wheeled = await said(point);
     if (around) await around.close();
-    await page.waitForTimeout(8000 * slow);
+    // The app's word for the view through the wait, a second apart: a view
+    // that moved and was put back reads apart from one that never moved.
+    const trace = [];
+    for (const end = Date.now() + 8000 * slow; Date.now() < end;) {
+      const now = await said(point);
+      if (!trace.length || trace[trace.length - 1].said !== now.said) trace.push(now);
+      await page.waitForTimeout(1000);
+    }
     let moved = 0;
     let cells = 0;
     let total = 0;
@@ -589,8 +651,47 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     const share = `${Math.round((100 * cells) / Math.max(total, 1))}% of it`;
     const ok = shouldMove ? moved > 2.0 : moved < 1.0;
     const tipped = hidden ? `; ${hidden} cells under a tooltip left out` : "";
+    // A canvas that lost its context shows its last frame for good: every
+    // print of it is the same, so "stayed" would pass and "moved" fail
+    // whatever the wheel did. Not judged, and said once.
+    const ended = await said(point);
+    if (ended.lost) {
+      console.log(`  FAIL  ${what}: not measured: the canvas lost its WebGL context (the browser's GPU process `
+        + `ended${dialogs.length ? `; the page said "${dialogs[dialogs.length - 1]}"` : ""}), so it draws nothing `
+        + "more and its pixels cannot say whether the view moved: the browser's, not the app's; run it again");
+      if (!lostSaid) failures.push(`${scale}x the browser lost the canvas's WebGL context (its GPU process ended)`);
+      lostSaid = true;
+      return;
+    }
     console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}: the view ${moved > 1.0 ? "moved" : "stayed"} (${moved.toFixed(2)}, ${share}${tipped})`);
     if (!ok) failures.push(`${scale}x wheel ${what}`);
+    if (!ok || args["wheel-trace"]) {
+      console.log(`        at (${point.x}, ${point.y}): the page has ${first.element} there; the app's controls there: `
+        + `${first.over.join(", ") || "none"}; it says "${first.hint}", cursor ${first.cursor || "-"}`);
+      console.log(`        before: ${told(first)}`);
+      console.log(`        the wheels: ${wheeled.wheels - first.wheels} sent, ${wheeled.onCanvas - first.onCanvas} on the canvas`);
+      // Each change of the app's view, then how long it held.
+      const pose = (s) => told(s).replace(/, at app ms.*/, "");
+      let last = first;
+      for (const s of [wheeled, ...trace]) {
+        if (pose(s) === pose(last)) continue;
+        console.log(`        then: ${told(s)}; "${s.hint.slice(0, 60)}", cursor ${s.cursor || "-"}`);
+        last = s;
+      }
+      console.log(`        and so to app ms ${ended.said} (${trace.length} tellings after the wheels)`);
+      const name = what.replace(/\W+/g, "_").replace(/^_|_$/g, "");
+      await page.evaluate(({ x, y }) => {
+        const dot = document.createElement("div");
+        dot.id = "wheel-shown";
+        Object.assign(dot.style, { position: "fixed", left: `${x - 6}px`, top: `${y - 6}px`, width: "12px",
+          height: "12px", borderRadius: "6px", border: "2px solid #ff3b3b", zIndex: 99999, pointerEvents: "none" });
+        document.body.appendChild(dot);
+      }, point);
+      await page.screenshot({ path: `${out}/web_wheel_${name}_${scale}x.png`, timeout: 120000 })
+        .then(() => console.log(`        the window at the wheel: ${out}/web_wheel_${name}_${scale}x.png`))
+        .catch(() => console.log("        (no picture of the window: the page would not hold still)"));
+      await page.evaluate(() => document.getElementById("wheel-shown")?.remove());
+    }
   }
   await page.keyboard.press("Escape");
   await page.keyboard.press("Digit0");
