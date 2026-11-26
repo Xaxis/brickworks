@@ -402,13 +402,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   inside (a cut is at a word, with "…"). The header's menus fold into "…"
   (`more_menus`), the last first, before the row's points drop below a
   fingertip (`ModelBar._fold_menus`); the editing banner's words wrap beside
-  Done (`AssemblyBanner._offered`); the status bar's hint gives Working its
+  Done, measured by what the window leaves it (`LaidOut.offered`); a
+  category chip wider than its row is cut at a word with its whole name in
+  its tooltip (`PartsBin._fit_chips`); a finger's tile's name whose longest
+  word is wider than the room beside its "+N" is a size smaller
+  (`PartsBin._size_to_words`), the "+N" kept at the foot, off the picture
+  a finger taps (`ux15_phone_probe --phone` p16); the status bar's hint gives Working its
   place (`StatusBar`, `Working.give_way`); the desktop's step bar stops at
   55% of the window and scrolls (`StepsBar._cap_height`); a phone's step bar
   keeps its widest sign whole (`StepsBar._fit_thumbs`); the bin and colours
   have no least of their own, their buttons and toggles go onto a line under
   in flows, and a wrapping box or label is never narrower than its longest
-  word (`LaidOut.hold_a_word`); a phone's row drops its words, then shrinks
+  word (`LaidOut.hold_a_word`), the colours' "Only parts made in it" one line
+  where the window leaves it room (its `whole`); a phone's row drops its words, then shrinks
   its pictures (`PhoneShell._share_row`); a sheet's tiles go fewer to a line
   (`Sheet._fewer_columns`). `wide150 probe` (windowed) walks en/de/fr/es at
   both sizes at 320, 390, 768, 1024 and 1280 wide, desktop and `--phone`.

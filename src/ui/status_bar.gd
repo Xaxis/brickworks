@@ -92,7 +92,11 @@ func _ready() -> void:
 			return
 		_hint.visible = not working.visible
 		if not work_only:
-			_fit())
+			_fit()
+		elif working.visible:
+			# A phone's busy line has no fields to fit, and its bar kept its
+			# 150 beside Cancel: 248 units in a window of 232 at 150%.
+			working.give_way(LaidOut.offered(working)))
 	_hint = _label(row, 1.0)
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.clip_text = true
@@ -195,6 +199,8 @@ func _process(_delta: float) -> void:
 	if work_only:
 		if visible != busy:
 			visible = busy
+		if busy and working.visible:
+			working.give_way(LaidOut.offered(working))
 		Wake.rest(self)
 		return
 	# The line on the left at once, every frame: what was said, or the hint.
