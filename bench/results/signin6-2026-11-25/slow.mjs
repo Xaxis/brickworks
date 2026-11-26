@@ -14,9 +14,9 @@ await client.query("begin transaction read only");
 try {
   const { rows } = await client.query(`select calls, round(mean_exec_time::numeric, 1) as mean_ms,
       round(max_exec_time::numeric, 1) as max_ms, stats_since,
-      regexp_replace(left(query, 400), '.*(oc_session_of|session_standing|oauth_code_grant|way_set|oc_unlink).*', '\\1') as fn
+      regexp_replace(left(query, 400), '.*(oc_session_of|session_standing|oauth_code_grant|way_set|oc_unlink|oc_claim|oc_bind_session|oc_keep_handle|way_may_try).*', '\\1') as fn
     from extensions.pg_stat_statements
-    where query ~ '(oc_session_of|session_standing|oauth_code_grant|way_set|oc_unlink)"?\\('
+    where query ~ '(oc_session_of|session_standing|oauth_code_grant|way_set|oc_unlink|oc_claim|oc_bind_session|oc_keep_handle|way_may_try)"?\\('
     order by max_exec_time desc limit 12`);
   for (const r of rows) console.log(`${r.fn}: ${r.calls} calls, mean ${r.mean_ms} ms, max ${r.max_ms} ms (since ${r.stats_since?.toISOString?.() || r.stats_since})`);
   const waits = await client.query(`select count(*)::int as n, wait_event_type, wait_event from pg_stat_activity

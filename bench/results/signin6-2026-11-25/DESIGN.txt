@@ -32,7 +32,11 @@ INVARIANTS, each in one sentence, and where each is enforced.
    ordinary 15 s, not verify()'s 3 s: run 2 met box stalls past 3 s (load 52 on 24 cores) while the database
    ran these reads in at most 71 ms over 170,000 calls (slow.mjs). Unchanged (s5review, not authority): when
    verify()'s own read stalls, a GET goes on and a write is refused 503 (ways_check 8 and attack3 X round 1
-   of run 2: the Unlink itself answered 503, nothing was unlinked).
+   of run 2: the Unlink itself answered 503, nothing was unlinked). The stalls are this hour's, not this tree's:
+   orangecheck_check run in turn on signin5 (cb7956146) and here, twice (ab_oc.log, 01:00-01:29Z), met 2
+   stalls a round on signin5 (PostgREST and GoTrue alike, 3 s to 15 s, failing 1 and 2 of its checks) and
+   none here; each of this tree's rounds fails only N1, as signin5's did at 12:15: production's
+   blocks_own_only policy for authenticated (supabase/block.sql, on main), not a sign-in's.
 
 4. Nothing is counted before a claim is verified, and nothing is counted per network; the limits are per
    verified identity, which is what bounds a loop.
