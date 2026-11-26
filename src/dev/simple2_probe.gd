@@ -69,10 +69,32 @@ func _off_points() -> Array:
 	var room: Rect2 = _simple.call("model_room", root.get_visible_rect())
 	var plate: Rect2 = _screen_box(_floor_box())
 	var out: Array = [["over the room's top", room.position + room.size * Vector2(0.5, 0.04)]]
-	if plate.end.x + Phone.px(root, 24.0) < room.end.x - Phone.px(root, 6.0):
-		out.append(["beside the plate, right", Vector2(plate.end.x + Phone.px(root, 24.0), plate.get_center().y)])
-	if plate.position.x - Phone.px(root, 24.0) > room.position.x + Phone.px(root, 6.0):
-		out.append(["beside the plate, left", Vector2(plate.position.x - Phone.px(root, 24.0), plate.get_center().y)])
+	# Beside the plate on each side: where a finger's ray meets the ground
+	# three studs or more off the plate, the nearest such point on each half
+	# of the room. Not beside the plate's box on the screen: at 390 across it
+	# spans the room, and the ground off its edges is above and below it.
+	var floor: AABB = _floor_box()
+	var ground := Plane(Vector3.UP, floor.end.y)
+	var least: float = BrickLattice.STUD * 3.0
+	var best: Array = [[], []]
+	for row: int in 13:
+		for column: int in 25:
+			var at: Vector2 = room.position + room.size * Vector2(0.04 + 0.92 * column / 24.0, 0.12 + 0.6 * row / 12.0)
+			var hit: Variant = ground.intersects_ray(_camera.ray_origin(at), _camera.ray_normal(at))
+			if hit == null:
+				continue
+			var on: Vector3 = hit
+			var off: float = maxf(maxf(floor.position.x - on.x, on.x - floor.end.x),
+				maxf(floor.position.z - on.z, on.z - floor.end.z))
+			if off < least:
+				continue
+			var half: int = 0 if at.x < plate.get_center().x else 1
+			if (best[half] as Array).is_empty() or off < float(best[half][1]):
+				best[half] = [at, off]
+	if not (best[0] as Array).is_empty():
+		out.append(["beside the plate, left", best[0][0]])
+	if not (best[1] as Array).is_empty():
+		out.append(["beside the plate, right", best[1][0]])
 	return out
 
 
