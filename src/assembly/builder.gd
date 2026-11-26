@@ -4173,6 +4173,10 @@ var _joint_basis: Basis = Basis.IDENTITY
 ## they chose is shown, red where it does not fit.
 var _joint_chosen: bool = false
 var _joint_key: String = ""
+## The end of a part down the ghost was last on, kept as [member _joint_key]
+## is: an axle's other end, aimed at as near, does not take over from it
+## (JointSnap.aimed_at), so R and T stay as they were chosen.
+var _joint_was: JointSnap.End = null
 var _joint_part: String = ""
 ## The last pose worked out, by what it was worked out from, so a pointer
 ## moving over one joint does not search again at every motion.
@@ -4273,7 +4277,7 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
 	var near: Array = JointSnap.near(_joint_grid(), origin, direction, before)
 	var site: JointSnap.End = JointSnap.aimed_at(near, held, origin, direction, before,
-		lattice.unseen)
+		lattice.unseen, _joint_was)
 	if site != null and site.is_hinge() and not JointSnap.within_reach(site, origin, direction):
 		var framed: Array = JointSnap.framed(near, held, origin, direction, before, lattice.unseen)
 		site = null
@@ -4313,6 +4317,7 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 			_best_on_joint(options, site, basis)
 		_joint_last = _joint_asked(key, basis, options)
 	_joint_site = site
+	_joint_was = site
 	var struck: BrickWorld.Brick = world.get_brick(site.brick)
 	var info: PartLibrary.PartInfo = library.parts.get(struck.part_id) \
 		if struck != null else null
