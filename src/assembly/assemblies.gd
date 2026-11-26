@@ -2298,19 +2298,17 @@ func _room_words_part(path: String, part_id: String) -> String:
 ## fit (best_match), the
 ## parts not in its way (brick -> true), the copy round it they are under,
 ## whether that round was looked for ([method _round_out])]. Read as the
-## follow reads them: the copies as they stand, or, with parts lifted off the
-## model in hand, as they stood before the lift (the lift and the put are one
-## step, and its follow pairs the copies by what they were). Read once while
-## the model, its tree and the level being edited stay as they are: the ghost
-## asks at every move.
+## follow reads them: the copies as they stand, parts in hand among them where
+## they stood, in the order the click's follow reads them ([method
+## _hand_then]). Read once while the model, its tree and the level being
+## edited stay as they are: the ghost asks at every move.
 func _copies_laid(level: String) -> Array:
 	var key: Array = _copies_state()
-	var lifted: bool = bool(key[3])
 	if key != _copies_key:
 		_copies_key = key
 		_copies_kept = {}
 		_rounds_fit.clear()
-		_copies_then = _before(builder.last_step()) if lifted else {}
+		_copies_then = _hand_then()
 	if _copies_kept.has(level):
 		return _copies_kept[level]
 	var kept: Array = []
@@ -2337,9 +2335,9 @@ func _copies_laid(level: String) -> Array:
 
 
 ## The innermost sub-assembly at or round [param path] that keeps a part
-## where it stood: one lifted off whole is moved whole, and the follow lays
-## nothing in its copies (_made_in: changed whole) but in those of the one
-## round it. "" at the model.
+## where it stood, one not in hand: one lifted whole is moved whole, and the
+## follow lays nothing in its copies (_made_in: changed whole) but in those of
+## the one round it. "" at the model.
 func _changed_level(path: String) -> String:
 	var level: String = path
 	if level.is_empty():
@@ -2347,9 +2345,35 @@ func _changed_level(path: String) -> String:
 	# Asked of the index, its lists not copied (bricks_under copies them):
 	# 200 parts dragged out of a 2,000-part sub-model asked it 200 times.
 	_index()
-	while not level.is_empty() and (_under.get(level, []) as Array).is_empty():
+	while not level.is_empty() and not _keeps_one(level):
 		level = parent_of(level)
 	return level
+
+
+## Whether a part of [param level] stands where it stood, out of hand. Parts
+## in hand stay the model's (BrickWorld.take_in_hand): up to wingkeep a copy
+## lifted whole still counted as kept, and its twins were asked of it.
+func _keeps_one(level: String) -> bool:
+	var hand: Dictionary = world.hand()
+	for brick: BrickWorld.Brick in _under.get(level, []):
+		if not hand.has(brick.id):
+			return true
+	return false
+
+
+## The parts in hand as they stood, as [method _before] reads the step that
+## puts them down (Builder._put_hand_down: a move of each, in the hand's
+## order): [method _content_then] lists the copies with them last, in that
+## order, as the click's follow does, and best_match takes the first of fits
+## that score alike. {} with nothing in hand.
+func _hand_then() -> Dictionary:
+	var out: Dictionary = {}
+	for brick_id: int in world.hand():
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			out[brick_id] = {"part": brick.part_id, "color": brick.color_code, "at": brick.transform,
+				"group": brick.group, "unit": brick.unit, "step": brick.step, "origin": brick.origin}
+	return out
 
 
 ## A copy's parts as [method _copies_laid] reads them: as the follow reads
@@ -2411,11 +2435,10 @@ func _fits_round(level: String, outer: String) -> bool:
 
 
 ## What [method _copies_laid] and [method _hand_plan] are kept for: the model,
-## its tree, and whether parts lifted off it are in hand (they are read as
-## they stood before the lift).
+## its tree, and what is in hand (a part taken into hand or put down moves
+## world.revision).
 func _copies_state() -> Array:
-	var lifted: bool = builder.is_carrying() and builder.carrying.lifted and builder._lift_on_top()
-	return [world.revision, BrickWorld.paths_written, world.brick_count(), lifted]
+	return [world.revision, BrickWorld.paths_written, world.brick_count()]
 
 
 var _copies_key: Array = []
