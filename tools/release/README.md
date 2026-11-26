@@ -187,7 +187,11 @@ preview failed, in its battery or by turns, is judged: it holds the release
 only where the preview's mean is past live's by more than the noise, the
 wider of the two sides' spreads (max - min of their runs) and at least 2% of
 the bar; a FAIL line with no figure, only where the preview failed it in
-more runs than live; a measure live never printed, always; and the whole
+more runs than live, a line a failed run never got to (it stopped early:
+an exception, a run cut off) counted failed on its side and named in the
+verdict ("L2 never got to it": rel-m343's A/B called live's stopped run a
+pass of the three grab steps it never ran, and held a day on what live
+failed too); a measure live never printed, always; and the whole
 check, when no measure was timed on both sides (runs that could not start
 fail alike, and are no load: a worktree with no `node_modules`), unless the
 preview passed every run, said "passed N of N by turns" (rel-m301's placing
