@@ -304,6 +304,26 @@ func _ask_and_pin_words() -> Array:
 			out.append(SharePanel.about_words(step, asked["parts"]))
 	_builder.clear_selection()
 	var library: PartLibrary = _main.get("_library")
+	# Parts named with the line's own words in them, " and " and " in ", in
+	# the middle of three: the line's places split where the names allow
+	# ("the %s, %s and %s" took "the Torso with Suit" as a part, greenreds).
+	var named: Array = _parts_named_with(library, [" and ", " in "])
+	_check("%s: parts named with \" and \" and with \" in \", each said in the language (%s)" % [
+		_lang, ", ".join(named)], named.size() == 2)
+	var put: Array = []
+	for part: String in named:
+		for step: Dictionary in _builder.swap_bricks(PackedInt64Array(), [{"part": part, "color": 4,
+				"at": Transform3D(Basis(), Vector3(40.0 * (put.size() + 1), 0.0, 400.0))}]):
+			put.append(int(step["brick"]))
+	if not ids.is_empty():
+		for picked: Array in [[ids[0]] + put, put, [put[0]] if not put.is_empty() else []]:
+			if picked.is_empty():
+				continue
+			_select_only(picked)
+			var asked: Dictionary = _main.call("_ask_context")
+			out.append(SharePanel.about_words(3, asked["parts"]))
+	_builder.clear_selection()
+	_builder.swap_bricks(PackedInt64Array(put), [])
 	# The model's, one PartPins says whole ("on the Plate 1 x 2 with Door
 	# Rail"), and none known.
 	var names: Array = ["Plate 1 x 2 with Door Rail", ""]
@@ -316,6 +336,26 @@ func _ask_and_pin_words() -> Array:
 			for moved: bool in [false, true]:
 				var words: String = PinPlace.where(name, step, {"moved": moved}, 1)
 				out.append(words.substr(0, 1).to_upper() + words.substr(1))
+	return out
+
+
+## The first part, by number, named with each of [param words] in it
+## (lowered), that de, fr and es each say whole as Ask's line names it
+## (PinPlace.part_said), and that has a shape here.
+func _parts_named_with(library: PartLibrary, words: Array) -> Array:
+	var out: Array = []
+	var ids: Array = library.parts.keys()
+	ids.sort()
+	for these: String in words:
+		for id: Variant in ids:
+			var said: String = PinPlace.part_said((library.parts[id] as PartLibrary.PartInfo).name)
+			if not these in said.to_lower():
+				continue
+			if ["de", "fr", "es"].all(func(code: String) -> bool:
+					return not PartWords.said(said, code).is_empty()) \
+					and library.mesh_for(str(id)) != null:
+				out.append(str(id))
+				break
 	return out
 
 
