@@ -681,7 +681,7 @@ static func _cubes(grid: Grid, points: PackedVector3Array, count: int, outward: 
 			if area < CUBE_AREA or sum.length() < CUBE_AGREES * area:
 				continue
 			var way: Vector3 = sum.normalized()
-			if absf(way.y) >= (0.5 if Shapes.TRY.contains("from60") else (0.46 if Shapes.TRY.contains("from63") else STEEP)):
+			if absf(way.y) >= STEEP:
 				continue
 			cubes[key] = Vector2i(1 if way.x > 0.0 else -1, 0) if absf(way.x) >= absf(way.z) \
 				else Vector2i(0, 1 if way.z > 0.0 else -1)

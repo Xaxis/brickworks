@@ -138,8 +138,6 @@ static var said: Array = []
 ## shells): a body whose curved flanks are already skinned is not told to
 ## skin them.
 static var turned: int = 0
-## TRY: screen flags (SNOT_TRY), taken out before landing.
-static var TRY: String = OS.get_environment("SNOT_TRY")
 
 
 ## The number LDraw gives [param id] today: 3023 says "~Moved to 3023b", and
@@ -3035,7 +3033,6 @@ class Plan extends RefCounted:
 	## A fox at 48 studs, two studs deep, hung its head on two joints past
 	## their load more than upright; three, as many as upright.
 	const CUBE_BACK := 3
-	var _cube_back: int = 1 if Shapes.TRY.contains("back1") else (2 if Shapes.TRY.contains("back2") else CUBE_BACK)
 	## How many cubes deep one shell runs, out from the innermost, where a
 	## cube and the one past it at the same height both face out. One deep, a
 	## side leaning out down a cube's height left the inner cube upright, the
@@ -3158,7 +3155,7 @@ class Plan extends RefCounted:
 				var kept: Array = []
 				for c: Vector3i in shell["cubes"]:
 					var n: Vector2i = count.get(c, Vector2i.ZERO)
-					if n.x > 0 and float(n.y) >= (0.4 if Shapes.TRY.contains("keeps4") else CUBE_KEEPS) * n.x:
+					if n.x > 0 and float(n.y) >= CUBE_KEEPS * n.x:
 						kept.append(c)
 				if kept.size() == (shell["cubes"] as Array).size():
 					break
@@ -3316,7 +3313,7 @@ class Plan extends RefCounted:
 						beyond += 1
 					if inner:
 						var deep_enough: bool = true
-						for k: int in range(1, _cube_back + 1):
+						for k: int in range(1, CUBE_BACK + 1):
 							var back: Vector2i = cell - facing * k
 							deep_enough = deep_enough and at(back, j) >= 0 \
 								and not shelled.has(Vector3i(back.x, j, back.y))
