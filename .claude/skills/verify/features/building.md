@@ -2017,7 +2017,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   lift is no step in the history. Put down, each part is the same part
   moved, one "move" step each in one Undo ("moved N parts"), a figure's
   later parts with it (`_figure_parts`), seated and judged whole
-  (`_figure_whole`); put down past the step showing, the timeline goes to
+  (`_figure_whole`), and aimed about halfway between two rows of studs, on
+  the one it fits (`_figure_spot`: a driver sat off the studs goes back in
+  its seat). A step edit waits while anything is in hand, as for a copy
+  (`Shell._steps_wait`); put down past the step showing, the timeline goes to
   that step and says so ("moved N parts to step 4", `Main._show_put_unseen`).
   Every let-go puts back first and changes nothing: Escape, Undo while the
   lift is the newest thing done (`Builder.lift_newest`), lifting another

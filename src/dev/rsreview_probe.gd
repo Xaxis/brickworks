@@ -475,10 +475,15 @@ func _case_held() -> void:
 			# F5: the lifted part went back where it was before the swap, as
 			# Escape puts it (its lift step with it), and the swap is one step.
 			# Lifted, it was off the parts list, so its lot was not offered.
+			# From handkeep a part in hand is still the model's, on the parts
+			# list where it stood: put back first, it is swapped with the rest,
+			# as selected.
+			var one_lot: bool = _count("3622", 71) == 1 if _builder.has_method("holds_lift") \
+				else _count("3622", 379) == 1
 			_check("in hand: put back first, nothing left in hand, none lost, one step over the start (parts %d, were %d; %d steps)"
 				% [_world.bricks().size(), parts, _builder.history_depth() - depth0],
 				not _builder.is_carrying() and _world.bricks().size() == parts
-				and _count("3622", 379) == 1 and _builder.history_depth() == depth0 + 1)
+				and one_lot and _builder.history_depth() == depth0 + 1)
 			steps = _builder.history_depth() - depth0
 		if _builder.is_carrying():
 			_builder.cancel_carry()

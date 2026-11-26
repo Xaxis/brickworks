@@ -6639,6 +6639,33 @@ func _lift_figure(brick_id: int) -> bool:
 	return true
 
 
+## Where the figure in hand ([param whole]), aimed at [param target], stands:
+## on the studs nearest the aim ([method settle_figure]), or, when it does not
+## fit there and the aim is as near the next row of studs over, on that row.
+## A driver sat off the studs, between two rows, as sets and other programs
+## seat them: aimed back at its seat, rounding took the row behind, its legs
+## went 1 LDU into the brick behind the seat, and it could not be put back
+## (handkeep, figreview2's car).
+func _figure_spot(target: Vector3, hit: BrickLattice.Hit, whole: Array) -> Transform3D:
+	var at: Transform3D = settle_figure(target, held_rotation, hit, whole)
+	if figure_fits(whole, at):
+		return at
+	var footprint := Vector2i(1, 2) if posmod(held_rotation, 2) == 1 else Vector2i(2, 1)
+	var snapped: Vector3 = BrickLattice.snap_to_studs(target, footprint)
+	var off: Vector3 = target - snapped
+	for axis: int in [0, 2]:
+		# Only within a cell of halfway to the next row: further, the aim is
+		# plainly at this one.
+		if absf(off[axis]) < BrickLattice.STUD * 0.5 - BrickLattice.CELL:
+			continue
+		var other: Vector3 = snapped
+		other[axis] += signf(off[axis]) * BrickLattice.STUD
+		var there: Transform3D = settle_figure(other, held_rotation, hit, whole)
+		if figure_fits(whole, there):
+			return there
+	return at
+
+
 func _preview_figure(origin: Vector3, direction: Vector3) -> void:
 	_ghost.visible = false
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
@@ -6657,7 +6684,7 @@ func _preview_figure(origin: Vector3, direction: Vector3) -> void:
 	# Seated and asked whole, its parts still to come where they go
 	# ([method _figure_whole]).
 	var whole: Array = _figure_whole()
-	_ghost_transform = settle_figure(target, held_rotation, hit, whole)
+	_ghost_transform = _figure_spot(target, hit, whole)
 	_ghost_valid = figure_fits(whole, _ghost_transform)
 	for n: int in held_figure.size():
 		if n >= _figure_ghosts.size():
