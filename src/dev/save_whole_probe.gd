@@ -10,9 +10,11 @@
 ## written, and the answer names each part.
 ##
 ## Driven through the app's own command socket, the way the bench's save and
-## a session's are: a beam frame on wheels is built, then a gear is put in the
-## air beside it with nothing holding it (straight into the world, as a part
-## left behind when what held it was taken away is), and save_model is asked.
+## a session's are: a beam frame on wheels is built, then a gear is put on it
+## where the exact check finds it at fault, nothing holding it (straight into
+## the world, as a part left behind when what held it was taken away is), and
+## save_model is asked. A gear alone in the air is not this: it is a piece of
+## its own, which the BrickBench pieces gate refuses twice and then saves.
 extends SceneTree
 
 const CHAT := "probe-save-whole-chat"
@@ -87,10 +89,27 @@ func _run() -> void:
 	_check("...with nothing left out", not said.contains("Saved without") and world.brick_count() == parts)
 
 	print("\none gear not held: everything else is saved, and the gear is named")
-	var gear_at := Transform3D(Basis(), Vector3(40.0, 300.0, 200.0))
-	var gear: int = world.add_brick("3648b", 71, gear_at)
-	_check("a 24-tooth gear stands in the air beside the frame, #%d" % gear, gear > 0
-		and world.brick_count() == parts + 1)
+	# Where the exact check finds the gear at fault (not held, or colliding),
+	# as 42061's was. A gear in the air alone is a piece of its own, which the
+	# BrickBench pieces gate refuses twice and then saves (a first run of this
+	# probe): not this. World units are LDU, y up; the left rail's top is at
+	# y 40, its holes along z 8 to 208.
+	var gear: int = 0
+	var where: String = ""
+	for spot: Array in [["lying on the left rail", Basis(Vector3.RIGHT, PI / 2.0), Vector3(10, 44, 100)],
+			["on its edge on the left rail", Basis(), Vector3(10, 71, 100)],
+			["half in the left rail", Basis(), Vector3(10, 40, 100)]]:
+		var tried: int = world.add_brick("3648b", 71, Transform3D(spot[1], spot[2]))
+		if tried <= 0:
+			continue
+		var fault: String = await _fault_of(assistant, tried)
+		print("    a gear %s: %s" % [spot[0], fault if not fault.is_empty() else "no fault"])
+		if not fault.is_empty():
+			gear = tried
+			where = "%s (%s)" % [spot[0], fault]
+			break
+		world.remove_brick(tried)
+	_check("a 24-tooth gear %s, #%d" % [where, gear], gear > 0 and world.brick_count() == parts + 1)
 	var file: String = "probe-save-whole-%d.ldr" % OS.get_process_id()
 	var path: String = ModelStore.SAVE_DIR + file
 	_written.append(path)
@@ -106,7 +125,8 @@ func _run() -> void:
 	_check("...holding the whole frame, %d of its %d parts" % [lines, parts], lines == parts)
 	_check("...and not the gear", not text.to_lower().contains("3648b.dat"))
 	_check("...which the answer names, by its number and why", saved.contains("Saved without number %d"
-		% gear) and saved.contains("not held") and saved.contains("3648b"))
+		% gear) and (saved.contains("not held") or saved.contains("collision"))
+		and saved.contains("3648b"))
 	_check("...taken off the model as one edit, the rest standing", world.get_brick(gear) == null
 		and world.brick_count() == parts)
 	var undone: String = await _say("undo", {})
@@ -148,6 +168,23 @@ func _one(tool: String, arguments: Dictionary) -> String:
 		if str((block as Dictionary).get("type", "")) == "text":
 			text.append(str((block as Dictionary).get("text", "")))
 	return "\n".join(text)
+
+
+## What the save gate's own exact check finds of brick [param id]: "not held",
+## "colliding" or "" (Assistant._exact_save_gate reads the same report).
+func _fault_of(assistant: Assistant, id: int) -> String:
+	assistant._strict_mine = true
+	var model: Assistant.Model = assistant._model_from_world()
+	var report: Dictionary = await assistant._checked(model, true)
+	assistant._strict_mine = false
+	for index: int in model.placements.size():
+		if (model.placements[index] as Assistant.Placement).id != id:
+			continue
+		if (report.get("unheld", []) as Array).has(index):
+			return "not held"
+		if (report.get("colliding", []) as Array).has(index):
+			return "colliding"
+	return ""
 
 
 func _frames(count: int) -> void:
