@@ -3354,12 +3354,18 @@ picture the assistant is shown.
   Product look, path traced): whites and greys yellowed, each part its own
   amount, dust on the tops, handling and seating. An age, dust, handling or
   seating asked for by number still wins. Its words are de/fr/es with
-  msgctxt "plastic" (New is "Neuf" as plastic, "Nouveau" as a file). Check:
-  `render_probe` (dialog: Plastic is New unless picked; Played with draws
-  the plastic played with, and says so; New again); `tools/probe.sh
-  photoreal_probe -- --shots=FILE` with `"plastic": "played"` on a shot
-  draws it the same as photoreal25's `age` 1, `handling` 1, `dust` 0.4,
-  `seating` 2.5; with none, byte for byte as before.
+  msgctxt "plastic" (New is "Neuf" as plastic, "Nouveau" as a file). Only
+  the path tracer draws it: where there is none (a browser, the simpler
+  graphics mode, a card that traces no rays) its note adds
+  `PathTracer.why_not()`, and the note's two halves have entries of their
+  own so the joined words are said whole. Check: `render_probe` (dialog:
+  Plastic is New unless picked; Played with draws the plastic played with,
+  and says so; de/fr/es: the Played with note, and with why not, in its
+  words; New again); `tools/probe.sh photoreal_probe -- --shots=FILE` with
+  `"plastic": "played"` on every shot draws photoreal25's wear (age 1,
+  handling 1, dust 0.4, seating 2.5: cream whites, see bench/results/
+  photoreal26-2026-11-26/sheets/worn_new_vs_played.jpg); with none, the ten
+  shots and the car byte for byte as photoreal25's src0.
 - `a large source on a table` (`RenderSettings.source` and `source_*`,
   `StudioRender.PRODUCT_SOURCE` at `SOURCE_LEVEL` 128 and `SOURCE_KEY` 0.05,
   `_source_rows`; photoreal14, on by default since photoreal16, docs/RENDERING.md
