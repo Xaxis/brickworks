@@ -67,7 +67,7 @@ lib:moulded edges
 
 ### New or played with {#plastic}
 
-Under **Plastic**, **New** draws the parts straight from the box, and is what Render starts with. **Played with** draws a set that has been played with for years: whites and greys a little yellowed, each part its own amount, a little dust on the tops, finger marks where hands hold it, and each part seated its own way. It changes only the picture, at Best in the Product look where Best is path traced (the desktop app, coming soon), never the model.
+Under **Plastic**, **New** draws the parts straight from the box, and is what Render starts with. **Played with** draws a set that has been played with for years: whites and greys a little yellowed, each part its own amount, a little dust on the tops, finger marks where hands hold it, and each part seated its own way. It changes only the picture, at Best in the Product look, never the model. In a browser, where Best is not path traced, Best's own frames draw it too: the same yellowing, dust, finger marks, scuffs and seating, without the traced picture's reflections.
 
 ![The boat rendered at Best in the Product look with Plastic › Played with: its white hull a little yellowed, each part its own amount, dust on its tops, each part seated its own way.](/docs/img/render-played.webp "Plastic › Played with: the boat as a set played with for years.")
 

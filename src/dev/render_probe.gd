@@ -140,6 +140,7 @@ func _run() -> void:
 		quit(1 if _failures else 0)
 		return
 	await _transparent(method)
+	await _played(method)
 	await _turntable(method)
 	await _cancel()
 	await _dialog(method)
@@ -338,6 +339,61 @@ func _transparent(method: String) -> void:
 		bare_partly < partly * 0.5)
 
 
+## photoreal27: Played with where Best is not path traced (a browser, the
+## simpler graphics mode, a picture with nothing behind it): New's raster Best
+## draws none of the wear, Played with's the tracer's own numbers, its pale
+## grey plate yellowed and each part seated its own way; a traced Best leaves
+## the wear to the tracer.
+func _played(method: String) -> void:
+	var settings: RenderSettings = _settings(RenderSettings.Quality.BEST)
+	settings.look = "product"
+	settings.transparent = true
+	settings.samples = 8
+	var played: RenderSettings = settings.copy()
+	played.plastic = "played"
+	var none: Array = [0.0, 0.0, 0.0, 0.0, 0.0]
+	_say("played: New's raster draws none of the wear", StudioRender._raster_wear(settings) == none)
+	_say("played: Played with's raster draws the tracer's numbers, its dust beyond New's (%s)"
+		% [StudioRender._raster_wear(played)],
+		StudioRender._raster_wear(played) == [StudioRender.PLAYED_AGE,
+			StudioRender.PLAYED_DUST - StudioRender.PRODUCT_DUST, StudioRender.PLAYED_HANDLING,
+			StudioRender.PLAYED_SEATING, StudioRender.PRODUCT_PLAY])
+	var traced: RenderSettings = played.copy()
+	traced.transparent = false
+	_say("played: a traced Best leaves the wear to the tracer",
+		not traced.traced_here() or StudioRender._raster_wear(traced) == none)
+	var plate: int = _world.bricks()[0].id
+	var new_image: Image = await _render.render(_world, settings)
+	var new_at: Transform3D = _render.staged_transform(plate)
+	var played_image: Image = await _render.render(_world, played)
+	var played_at: Transform3D = _render.staged_transform(plate)
+	if new_image == null or played_image == null:
+		_say("played: drew both pictures", false)
+		return
+	new_image.save_png(OUT + "%s_new.png" % method)
+	played_image.save_png(OUT + "%s_played.png" % method)
+	# The plate's pale grey, where New draws it: yellower played with (less
+	# blue than red and green), and the part seated off exact.
+	var warm := Vector2.ZERO
+	var seen: int = 0
+	for y: int in range(0, new_image.get_height(), 2):
+		for x: int in range(0, new_image.get_width(), 2):
+			var was: Color = new_image.get_pixel(x, y)
+			var now: Color = played_image.get_pixel(x, y)
+			if was.a > 0.95 and now.a > 0.95 and absf(was.r - was.b) < 0.06 and was.get_luminance() > 0.45:
+				warm += Vector2((was.r + was.g) * 0.5 - was.b, (now.r + now.g) * 0.5 - now.b)
+				seen += 1
+	warm /= maxf(float(seen), 1.0)
+	_say("played: the pale grey yellows (%d pixels, warmth %.3f -> %.3f)" % [seen, warm.x, warm.y],
+		seen > 200 and warm.y > warm.x + 0.02)
+	_say("played: each part seated its own way (%.2f LDU, %.2f degrees off)" % [
+		new_at.origin.distance_to(played_at.origin),
+		rad_to_deg(new_at.basis.get_rotation_quaternion().angle_to(played_at.basis.get_rotation_quaternion()))],
+		not new_at.is_equal_approx(played_at) and new_at.origin.distance_to(played_at.origin) < 1.5)
+	var again: Image = await _render.render(_world, settings)
+	_say("played: New again draws as it did", again != null and again.get_data() == new_image.get_data())
+
+
 func _turntable(method: String) -> void:
 	var settings: RenderSettings = _settings(RenderSettings.Quality.QUICK)
 	settings.size = Vector2i(240, 240)
@@ -439,21 +495,18 @@ func _dialog(method: String) -> void:
 		_say("dialog: Played with draws the plastic played with, and says so (%s)" % note,
 			dialog.settings.plastic == "played" and dialog.settings.preset().get("plastic") == "played"
 			and note.contains("played with"))
-		# Where nothing path traces, the note says why after it: each way it
-		# can read is said wholly in every language, the joined ones too.
-		var played_words: String = note.split(" Path tracing needs")[0]
-		var ways: Array[String] = [played_words,
-			played_words + " Path tracing needs the desktop app, coming soon: a browser cannot trace rays.",
-			played_words + " Path tracing needs the full graphics mode, and this window draws in the simpler one.",
-			played_words + " Path tracing needs a graphics card that traces rays, and this one does not."]
+		# photoreal27: Best draws it path traced or not (the raster's own wear
+		# where nothing traces rays), so the note never says it cannot, here or
+		# in a browser, and it is said wholly in every language.
+		_say("dialog: the Played with note says nothing of path tracing (%s)" % note,
+			not note.contains("Path tracing") and note.ends_with("in the Product look."))
 		for code: String in ["de", "fr", "es"]:
 			Language.apply(code)
 			var left: Array = []
-			for text: String in ways:
-				if Language.says(text).is_empty():
-					left.append(text)
-				left.append_array(Language.left_in_english(text))
-			_say("dialog: %s: the Played with note, and with why not, in its words%s" % [code,
+			if Language.says(note).is_empty():
+				left.append(note)
+			left.append_array(Language.left_in_english(note))
+			_say("dialog: %s: the Played with note in its words%s" % [code,
 				"" if left.is_empty() else " (in English: %s)" % [left]], left.is_empty())
 		Language.apply("en")
 		plastic_new.pressed.emit()

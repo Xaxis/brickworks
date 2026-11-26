@@ -3351,17 +3351,23 @@ picture the assistant is shown.
   photoreal26, docs/RENDERING.md 5aa): Render's Plastic row under Look, New
   unless a person picks Played with, kept in a preset. Played with draws
   photoreal25's wear and age in place of the new plastic's (at Best in the
-  Product look, path traced): whites and greys yellowed, each part its own
-  amount, dust on the tops, handling and seating. An age, dust, handling or
-  seating asked for by number still wins. Its words are de/fr/es with
-  msgctxt "plastic" (New is "Neuf" as plastic, "Nouveau" as a file). Only
-  the path tracer draws it: where there is none (a browser, the simpler
-  graphics mode, a card that traces no rays) its note adds
-  `PathTracer.why_not()`, and the note's two halves have entries of their
-  own so the joined words are said whole. Check: `render_probe` (dialog:
-  Plastic is New unless picked; Played with draws the plastic played with,
-  and says so; de/fr/es: the Played with note, and with why not, in its
-  words; New again); `tools/probe.sh photoreal_probe -- --shots=FILE` with
+  Product look): whites and greys yellowed, each part its own amount, dust
+  on the tops, handling and seating. An age, dust, handling or seating asked
+  for by number still wins. Its words are de/fr/es with msgctxt "plastic"
+  (New is "Neuf" as plastic, "Nouveau" as a file). Where Best is not path
+  traced (a browser, the simpler graphics mode, a card that traces no rays,
+  a picture on nothing) Best's raster frames draw it (photoreal27,
+  docs/RENDERING.md 5ab): `StudioRender._raster_wear` gives the same
+  numbers to `plastic_body.gdshaderinc`'s `wear_age`, `wear_dust`,
+  `wear_handling` (yellowing, a dust film, handled gloss, finger marks,
+  scratches, scuffed edges) and seats each part by `PathTracer.seat`; New's
+  bytes are as before. The note says nothing of path tracing. Check:
+  `render_probe` (dialog: Plastic is New unless picked; Played with draws
+  the plastic played with, and says so; the note says nothing of path
+  tracing; de/fr/es: the Played with note in its words; New again; played:
+  New's raster draws none of the wear, Played with's the tracer's numbers,
+  the pale grey yellows, each part seated its own way, New again draws as
+  it did); `tools/probe.sh photoreal_probe -- --shots=FILE` with
   `"plastic": "played"` on every shot draws photoreal25's wear (age 1,
   handling 1, dust 0.4, seating 2.5: cream whites, see bench/results/
   photoreal26-2026-11-26/sheets/worn_new_vs_played.jpg); with none, the ten
