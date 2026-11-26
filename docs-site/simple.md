@@ -56,6 +56,7 @@ Holding a finger still on a part does nothing, so a resting thumb never deletes 
 - Drag with **two fingers** to turn the view, and pinch to zoom. One finger never moves the view, so building never turns it by mistake.
 - **Fit**, under the header, frames the whole model again. The view never zooms out so far that the studs get too small to aim at.
 - With a mouse, the left button is your finger; drag on empty space to turn the view, and use the wheel to zoom.
+- With a keyboard, [[Delete]] deletes the selected part, [[Ctrl+Z]] and [[Ctrl+Shift+Z]] undo and redo, and [[Ctrl+C]], [[Ctrl+V]] and [[Ctrl+D]] copy, paste and duplicate. Full's other keys wait for Full, so none of them opens anything you cannot see.
 
 ## Models from Full {#from-full}
 

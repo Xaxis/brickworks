@@ -1777,7 +1777,10 @@ func _process(_delta: float) -> void:
 	# Grow the grid as it is scrolled. Checking here rather than on a
 	# scroll signal covers the case where the window is resized and the
 	# existing page no longer fills it.
-	if _shown < _display.size() and _scroll != null:
+	# Only while the grid is seen: laid out hidden (a desktop started in
+	# Simple, its column put away) the bar kept saying "near the end", and a
+	# page a frame made a tile for every one of 10,240 parts (simplereview F3).
+	if _shown < _display.size() and _scroll != null and _scroll.is_visible_in_tree():
 		var bar: VScrollBar = _scroll.get_v_scroll_bar()
 		if bar.max_value > 0.0 and bar.max_value - bar.value - bar.page < MORE_ROOM:
 			# A page a frame at most, so no one frame makes them all.

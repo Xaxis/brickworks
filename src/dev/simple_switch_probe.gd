@@ -146,6 +146,9 @@ func _run() -> void:
 func _case_layer() -> void:
 	print("\nlayer: Simple in and out, %s" % _layout)
 	await _open(STEPPED)
+	# The open's framing eased out before the camera is read (simplereview
+	# F4: read at once it differed with the switch and without it).
+	await _settle()
 	var column: Control = (_main.get("_bar") as Control).get_parent()
 	var phone: Control = _main.get("_phone")
 	var bin_dock: Control = _main.get("_bin_dock")

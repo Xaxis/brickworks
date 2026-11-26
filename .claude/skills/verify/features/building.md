@@ -4010,7 +4010,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   hand, a drag under way and the save are the same objects either side. The
   timeline is put away going in (the whole model shown; its key opens
   nothing in Simple) and opens again on the same step coming back
-  (`StepsBar.show_step`). A finger's hold opens nothing in Simple.
+  (`StepsBar.show_step`). A finger's hold opens nothing in Simple, nor a
+  right click (Full's part menu), nor First acts' Add parts, and of the
+  studio's keys Simple keeps only `Main.SIMPLE_KEEPS` (file, undo, redo,
+  copy, paste, Duplicate, Delete, turn the part in hand, Fit, the app's) and
+  the view's: the rest opened Full's panels hidden behind it. A field still
+  on screen keeps the keyboard across the switch (one put away lets go as it
+  hides), so the next keys are its, not the studio's. A desktop started in
+  Simple makes no tiles in the hidden parts bin (`PartsBin` grows its grid
+  only while seen).
   `simple_switch_probe` at 1280 x 720 and 390 x 844: P2's four real models
   (10030-1, 6685-1's steps, 5972-1's LSynth hoses, 4005-1 with two parts the
   library lacks), each edited in Simple and undone across the switch, saved

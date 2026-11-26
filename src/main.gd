@@ -1329,6 +1329,26 @@ func controls_layer() -> StringName:
 	return _layer
 
 
+## The commands whose keys Simple keeps: the file's, undo and redo, the
+## selected part's own (Delete, copy, paste, Duplicate), the part in hand's
+## turn, Fit, and the app's. The rest open or change Full's panels hidden
+## behind Simple, or act where nobody can see: Shift+C opened the parts
+## column, "/" put the keys in its hidden search (simplereview F2).
+const SIMPLE_KEEPS: Array[String] = ["new", "open", "save", "save_as", "quit", "undo", "redo",
+	"copy", "paste", "duplicate", "delete", "rotate_held", "fit_model", "fit", "full_screen",
+	"settings", "keys"]
+
+
+## Whether Simple keeps [param key] ([param command] its command, or none):
+## a command it keeps, or the view's keys and Escape, and undo by Ctrl+Z.
+func _simple_keeps(key: InputEventKey, command: String) -> bool:
+	if not command.is_empty():
+		return command in SIMPLE_KEEPS
+	if key.keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ESCAPE] or _zoom_key(key) != 0:
+		return true
+	return key.keycode in [KEY_Z, KEY_Y] and (key.ctrl_pressed or key.meta_pressed)
+
+
 ## The controls over the model swapped while the model is open (Simple's
 ## plan, bench/results/simplemode-2026-11-24/PLAN.md): &"simple" puts
 ## Simple's layer (SimpleLayer) in place of the studio's own, the phone's
@@ -1349,7 +1369,10 @@ func use_controls(layer: StringName) -> bool:
 	ShellPrefs.put("controls", String(layer))
 	if layer == _layer:
 		return true
-	get_viewport().gui_release_focus()
+	# A field put away lets go of the keyboard by itself as it is hidden
+	# (Viewport._gui_hide_control), its words its own first. One still on
+	# screen keeps it: let go of here, the next keys went to the studio and
+	# Delete deleted the selected part (simplereview F1).
 	var column: Control = _bar.get_parent()
 	if layer == &"simple":
 		if _simple == null:
@@ -5335,6 +5358,10 @@ func _first_recolour() -> void:
 
 
 func _first_add() -> void:
+	# Simple's tray is its parts, on screen already: Full's hidden bin is
+	# not opened nor its search given the keys (simplereview F2).
+	if _layer == &"simple":
+		return
 	if _phone != null:
 		_phone.call("_chose", "parts")
 	else:
@@ -11832,6 +11859,10 @@ func _start_left_nav(verb: String, at: Vector2) -> void:
 ## Studio's does. It takes nothing off the model (Delete does, or the Delete
 ## tool) — the right button is for looking.
 func _right_click(at: Vector2 = Vector2(-1, -1)) -> void:
+	# Simple has no part menu: a selected part's own buttons are on screen,
+	# and the menu here is Full's, hidden (simplereview F2).
+	if _layer == &"simple":
+		return
 	# At rest, on a part: its menu, as Studio and Mecabricks have one. The
 	# part is selected first unless it is already in the selection, which
 	# the menu then acts on whole.
@@ -13580,7 +13611,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		if meant == null:
 			return
 		if meant is String:
-			if not key.echo and not _store.laying:
+			if not key.echo and not _store.laying and (_layer != &"simple" or meant in SIMPLE_KEEPS):
 				_key_action(meant)
 			return
 		key = meant
@@ -13589,6 +13620,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# held down, never put off.
 	var command: String = _shell.command_for_key(key) \
 		if _shell != null and _viewing.is_empty() and not key.echo else ""
+	if _layer == &"simple" and not _simple_keeps(key, command):
+		return
 	# While a model is being laid, only the keys that turn or zoom the view
 	# (Shell.WHILE_LAYING): nothing reads it or changes it until it is down.
 	if _store.laying and (_shell == null or not _shell.can(command)) and _zoom_key(key) == 0:
