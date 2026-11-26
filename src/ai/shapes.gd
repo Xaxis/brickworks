@@ -2900,14 +2900,16 @@ class Plan extends RefCounted:
 		# side flanks' 1 x 4s by the parts' real shapes, which the lattice,
 		# taking every stud for one into a socket, could not see. That column
 		# is the core's, laid upright on the studs.
-		var studs_up: Dictionary = {}    ## Vector2i column -> the plate they stand into
+		# Every side-stud brick in the column, not the last one read: a shell
+		# has one every second row.
+		var studs_up: Dictionary = {}    ## Vector2i column -> true: studs stand into this shell's rows
 		for one: Dictionary in anchors:
-			for cell: Vector2i in one["_cells"]:
-				studs_up[cell] = int(one["y"]) + int(one["_h"])
+			var into: int = int(one["y"]) + int(one["_h"])
+			if into >= bottom and into < top:
+				for cell: Vector2i in one["_cells"]:
+					studs_up[cell] = true
 		for key: Variant in mine.keys():
-			var column := Vector2i((key as Vector3i).x, (key as Vector3i).z)
-			if studs_up.has(column) and int(studs_up[column]) >= bottom \
-					and int(studs_up[column]) < top:
+			if studs_up.has(Vector2i((key as Vector3i).x, (key as Vector3i).z)):
 				mine.erase(key)
 		for key: Variant in mine:
 			taken[key] = true
@@ -3402,21 +3404,24 @@ class Plan extends RefCounted:
 		if kept.is_empty():
 			return {}
 		# Not over a side-stud brick another shell laid, its studs up into
-		# this one's plates (as _shell keeps clear).
-		var studs_up: Dictionary = {}
+		# this one's plates (as _shell keeps clear). Every one in a column: a
+		# shell's side studs are a brick every second row, and kept by column
+		# only the last one laid was seen. The core a stud deep, a turned block's
+		# shells facing +z took 15 plates over the studs of the side-stud
+		# bricks of the shells a step behind them; their parts there were let
+		# go once the core was laid, and 3.1% of the block was in no part
+		# (96.5%, then 99.2%).
+		var stud_tops: Dictionary = {}    ## Vector3i: the plate a side-stud brick's studs stand into
 		for one: Dictionary in anchors:
 			for cell: Vector2i in one["_cells"]:
-				studs_up[cell] = int(one["y"]) + int(one["_h"])
+				stud_tops[Vector3i(cell.x, int(one["y"]) + int(one["_h"]), cell.y)] = true
 		for key: Variant in mine.keys():
-			var p: Vector3i = key
-			var column := Vector2i(p.x, p.z)
-			if studs_up.has(column) and int(studs_up[column]) == p.y:
+			if stud_tops.has(key):
 				mine.erase(key)
 		# Nor the air over one, which the shell may otherwise reach into.
 		var clear: Array[Vector3i] = []
 		for key: Vector3i in outside:
-			var column := Vector2i(key.x, key.z)
-			if studs_up.has(column) and int(studs_up[column]) == key.y:
+			if stud_tops.has(key):
 				taken[key] = true
 			else:
 				clear.append(key)
