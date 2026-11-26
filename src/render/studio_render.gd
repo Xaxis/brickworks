@@ -464,6 +464,9 @@ var _glow: float = 0.0
 ## Played with as the raster draws it in the picture being drawn
 ## (photoreal27, _raster_wear): age, dust, handling, seating and play.
 var _wear: Array = [0.0, 0.0, 0.0, 0.0, 0.0]
+## Whether this picture's raster frames raise the logo on every stud
+## (_raster_logos, plastic_body's stud_logos).
+var _logos: bool = false
 var _floor_view: SubViewport
 var _fence: SubViewport
 var _floor_camera: Camera3D
@@ -1424,6 +1427,7 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		await WebPacks.need(WebPacks.HDRI)
 	progress.emit(0.0, "setting up the model")
 	_wear = _raster_wear(settings)
+	_logos = _raster_logos(settings)
 	if not await _stage_model(world, _wear[3], _wear[4]):
 		return false
 	if _line_asked != null and not await _line_staged():
@@ -1471,6 +1475,7 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 				plastic.set_shader_parameter("wear_age", _wear[0])
 				plastic.set_shader_parameter("wear_dust", _wear[1])
 				plastic.set_shader_parameter("wear_handling", _wear[2])
+				plastic.set_shader_parameter("stud_logos", 1.0 if _logos else 0.0)
 			plastic = plastic.next_pass as ShaderMaterial
 	_wear_frame()
 	# What the window's own light makes of this model from here: the
@@ -3326,11 +3331,20 @@ static func _raster_wear(settings: RenderSettings) -> Array:
 		seating, _own(settings.play, PRODUCT_PLAY) if seating > 0.0 else 0.0]
 
 
-## Where the stage stands in the window this frame, for the raster's wear: each
-## part's own numbers are keyed to its place on the stage, so a turntable's
-## frames wear each part alike (plastic_body's wear_stage).
+## Whether the raster's Best raises the logo on every stud, as the tracer
+## does (photoreal27): the Product look at Best, where nothing traces rays.
+## Quick and Good draw one frame, finer than which the letters alias.
+static func _raster_logos(settings: RenderSettings) -> bool:
+	return settings.look == "product" and settings.quality == RenderSettings.Quality.BEST \
+		and not settings.traced_here()
+
+
+## Where the stage stands in the window this frame, for the raster's wear and
+## logos: each part's own numbers are keyed to its place on the stage, so a
+## turntable's frames wear each part alike (plastic_body's wear_stage).
 func _wear_frame() -> void:
-	if not _stage.product or float(_wear[0]) + float(_wear[1]) + float(_wear[2]) <= 0.0:
+	if not _stage.product or (float(_wear[0]) + float(_wear[1]) + float(_wear[2]) <= 0.0
+			and not _logos):
 		return
 	var into_stage := Projection(_stage.global_transform.affine_inverse())
 	for batch: Node in _stage.get_children():

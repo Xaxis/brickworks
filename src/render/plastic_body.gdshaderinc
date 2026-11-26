@@ -449,6 +449,90 @@ vec3 stud_rim(vec3 at, vec3 n, float width, float small) {
 	}
 	return normalize(vec3(out_from.x * q.x, q.y, out_from.y * q.x));
 }
+
+// The logo raised on every stud's top, as the path tracer draws it
+// (path_tracer.glsl's stud_logo, photoreal5 and photoreal8), at Best where
+// nothing traces rays (photoreal27: the solo judge named "studs with no LEGO
+// logo" in 332 of 480 verdicts on the browser's Best). Its letters are a
+// fifth of an LDU high and half an LDU wide, finer than a pixel on a set,
+// which Best's averaged frames resolve as the tracer's samples do.
+uniform float stud_logos : hint_range(0.0, 1.0) = 0.0;
+
+float logo_segment(vec2 p, vec2 a, vec2 b) {
+	vec2 pa = p - a;
+	vec2 ba = b - a;
+	return length(pa - ba * clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0));
+}
+
+// The stroke of a tall round letter (the O, and the G) whose middle is at x.
+float logo_o(vec2 p, float x) {
+	return abs(logo_segment(p, vec2(x, 0.8 - 2.2), vec2(x, 2.2 - 0.8)) - 0.8);
+}
+
+// How far a point of a stud's top (LDU from its middle) is from the strokes
+// of the logo's four letters: the tracer's logo_distance, stroke for stroke.
+float logo_distance(vec2 p) {
+	p.x -= p.y * 0.2 + 0.35;
+	float d = logo_segment(p, vec2(-4.3, 2.2), vec2(-4.3, -2.2));
+	d = min(d, logo_segment(p, vec2(-4.3, -2.2), vec2(-3.0, -2.2)));
+	d = min(d, logo_segment(p, vec2(-2.35, 2.2), vec2(-2.35, -2.2)));
+	d = min(d, logo_segment(p, vec2(-2.35, 2.2), vec2(-1.1, 2.2)));
+	d = min(d, logo_segment(p, vec2(-2.35, 0.0), vec2(-1.3, 0.0)));
+	d = min(d, logo_segment(p, vec2(-2.35, -2.2), vec2(-1.1, -2.2)));
+	float g = logo_o(p, 0.55);
+	if (p.x > 0.55 && p.y > 0.05 && p.y < 2.2 - 0.8) {
+		g = min(length(p - vec2(0.55 + 0.8, 2.2 - 0.8)), length(p - vec2(0.55 + 0.8, 0.05)));
+	}
+	d = min(d, g);
+	d = min(d, logo_segment(p, vec2(0.6, 0.05), vec2(0.55 + 0.8, 0.05)));
+	return min(d, logo_o(p, 3.0));
+}
+
+float logo_height(vec2 p, float soft) {
+	return 0.2 * smoothstep(0.36 + soft, 0.18, logo_distance(p));
+}
+
+// The normal on a stud's top with its logo raised, in the part's own space;
+// [param n] itself off the logo. It reads across the part, along z with its
+// letters' tops towards +x, as the tracer's does (right-handed: photoreal27
+// turned the photograph's stud and the tracer's alike and both read LEGO).
+// Each stud its own a hair off the middle and off square, deeper or softer,
+// and on a quarter of them the injection gate's nub.
+vec3 stud_logo(vec3 at, vec3 n) {
+	if (n.y < 0.97 || part_box_max.x <= part_box_min.x || at.y < part_body_top + 0.5
+			|| abs(at.y - part_box_max.y) > 0.3) {
+		return n;
+	}
+	vec2 centre = part_box_min.xz + 10.0 + 20.0 * floor((at.xz - part_box_min.xz) / 20.0);
+	vec2 p = vec2(at.z - centre.y, at.x - centre.x);
+	if (length(p) > 5.4) {
+		return n;
+	}
+	vec3 own = wear_hash3(vec3(centre, part_own.w * 251.0));
+	vec3 more = wear_hash3(vec3(centre.yx, part_own.z * 173.0) + 7.7);
+	float turn = (own.x - 0.5) * 0.06;
+	p = mat2(vec2(cos(turn), sin(turn)), vec2(-sin(turn), cos(turn))) * p + (own.yz - 0.5) * 0.3;
+	float depth = 0.75 + 0.5 * more.x;
+	float soft = 0.12 * more.y;
+	const float e = 0.05;
+	float dx = (logo_height(p + vec2(e, 0.0), soft) - logo_height(p - vec2(e, 0.0), soft)) / (2.0 * e);
+	float dy = (logo_height(p + vec2(0.0, e), soft) - logo_height(p - vec2(0.0, e), soft)) / (2.0 * e);
+	dx *= depth;
+	dy *= depth;
+	if (more.z < 0.25) {
+		vec2 g = p - (wear_hash3(vec3(centre, 3.1)).xy - 0.5) * 0.6;
+		float r = length(g);
+		if (r > 0.001 && r < 1.2) {
+			float nub = -0.15 * 2.0 * r / (0.25 * 0.25) * exp(-(r * r) / (0.25 * 0.25));
+			float ring = 0.08 * 2.0 * (r - 0.6) / (0.18 * 0.18)
+				* exp(-((r - 0.6) * (r - 0.6)) / (0.18 * 0.18));
+			dx += (nub + ring) * g.x / r;
+			dy += (nub + ring) * g.y / r;
+		}
+	}
+	// p.x runs along z, p.y along x.
+	return normalize(vec3(-dy, 1.0, -dx));
+}
 #endif
 
 void fragment() {
@@ -637,6 +721,13 @@ void fragment() {
 			NORMAL = normal;
 			on_round = small;
 			rounded = smoothstep(0.02, 0.3, length(bent - n_local));
+		} else if (stud_logos > 0.0) {
+			// The logo's flanks bend the light, the face stays as glossy.
+			vec3 lettered = stud_logo(local_position, n_local);
+			if (lettered != n_local) {
+				normal = normalize(axis_x * lettered.x + axis_y * lettered.y + axis_z * lettered.z);
+				NORMAL = normal;
+			}
 		}
 	}
 #endif
