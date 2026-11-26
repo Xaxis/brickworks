@@ -10,7 +10,7 @@
 ##   PROBE_SIZE=1280x720 tools/probe.sh handkeep2_probe                every case
 ##   PROBE_SIZE=1280x720 tools/probe.sh handkeep2_probe --case=xturn   one case
 ##
-## --case= xturn, xbin, xundo, cells, guard (all when not said).
+## --case= xturn, xbin, xundo, xaway, cells, guard (all when not said).
 ##   xturn  X over one plain part, the model turned (Shift+E), Escape pressed:
 ##          where it stands against the rest, and what the lattice holds there.
 ##   xbin   X over one plain part, then a figure lifted, each let go of by a
@@ -18,6 +18,8 @@
 ##   xundo  X over one plain part: the person's Undo puts it back, recording
 ##          nothing; after a session's paint, the session's undo takes the
 ##          paint back and leaves the part in hand.
+##   xaway  X over one plain part put down elsewhere: the same part moved, one
+##          step, its line the only one changed; Undo and Redo byte for byte.
 ##   cells  a figure in hand: where it stood is in the way of a part, not of
 ##          the figure's own ghost.
 ##   guard  BrickWorld.round_the_hand is nought after every case, and a write
@@ -74,6 +76,8 @@ func _run() -> void:
 		await _case_xbin()
 	if every or wants.has("xundo"):
 		await _case_xundo()
+	if every or wants.has("xaway"):
+		await _case_xaway()
 	if every or wants.has("cells"):
 		await _case_cells()
 	if every or wants.has("guard"):
@@ -235,6 +239,47 @@ func _case_xundo() -> void:
 	_check("xundo: Escape then puts it back, nothing in hand, every part kept (%d)" % _held_count(),
 		_held_count() == 0 and _full() == full0)
 	_check("xundo: no write went round the hand (%d)" % (_round() - round0), _round() == round0)
+	await _drop_all()
+	_verbs.set_mode("select")
+	await _back_to(depth)
+
+
+# -- xaway: a part lifted by X put down elsewhere, undone and redone -----------------
+
+
+func _case_xaway() -> void:
+	print("\nXA. X over one plain part, put down elsewhere, Undo, Redo")
+	var path: String = _fixture2("hk2_xaway", REPLAN)
+	if not await _to_step(path, "last"):
+		_check("xaway: opens", false)
+		return
+	var name: String = "handkeep2 xaway"
+	var t0: String = _text(name)
+	var kept0: Array = _kept()
+	var depth: int = _builder.history_depth()
+	var round0: int = _round()
+	var ref: int = _ref_brick()
+	var lifted: bool = await _x(ref)
+	await _aim(Vector3(-300, 0, -300))
+	var put: int = _builder.place()
+	await _frames(6)
+	var t1: String = _text(name)
+	var diff: Array = _line_diff(t0, t1)
+	var lost: Array = _arr_diff(kept0, _kept())
+	var words: String = _builder.history_words(1)[0] if _builder.history_depth() > 0 else ""
+	await _undo()
+	var t2: String = _text(name)
+	await _redo()
+	var t3: String = _text(name)
+	_result("xaway", "lifted %s; put #%d (was #%d); depth %d (was %d), says '%s'; %d lines changed %s; kept differ %s; undone as opened %s; redone as put %s; in hand %d"
+		% [lifted, put, ref, _builder.history_depth(), depth, words, diff.size(), diff.slice(0, 4), lost, t2 == t0,
+			t3 == t1, _held_count()])
+	_check("xaway: put down elsewhere, the same part moved: one step, its own line the only one changed (%d), its step and line kept (%s)"
+		% [diff.size(), lost], lifted and put == ref and diff.size() == 2 and lost.is_empty()
+			and _builder.history_depth() == depth + 1 and words == "moved 1 part")
+	_check("xaway: one Undo, the file as opened byte for byte", t2 == t0)
+	_check("xaway: Redo, the file as put down byte for byte", t3 == t1)
+	_check("xaway: no write went round the hand (%d)" % (_round() - round0), _round() == round0)
 	await _drop_all()
 	_verbs.set_mode("select")
 	await _back_to(depth)
