@@ -3714,8 +3714,10 @@ func _aim_hand(origin: Vector3, direction: Vector3) -> void:
 ## [constant COPIES_ASK_US] goes on next frame, the ghost as it was till then.
 func _ask_copies() -> void:
 	var asked: Array = []
-	# Into the sub-assembly being edited, or parts lifted back into their own.
-	if copies_room.is_valid() and (not place_group.is_empty() or is_carrying() and carrying.lifted):
+	# Into the sub-assembly being edited, or parts lifted back into their own:
+	# a selection carried, or one part X took into hand (moved, as a drag's).
+	if copies_room.is_valid() and (not place_group.is_empty() or is_carrying() and carrying.lifted
+			or not is_carrying() and holds_lifted_part()):
 		if is_carrying():
 			if carrying.is_aimed() and carrying._valid:
 				asked = ["carried", carrying._frame, carrying.turns]
@@ -3734,7 +3736,13 @@ func _ask_copies() -> void:
 		_copies_ask = {} if asked.is_empty() else {"items": _going_down(),
 			"frame": carrying._frame if is_carrying() else _ghost_transform}
 	if not _copies_ask.is_empty():
+		# What is in hand is asked as the click finds it, put down: the cells
+		# it stood in free (BrickLattice.hand_free), on the frames an ask goes
+		# on into too, as on the aim's.
+		var was_free: bool = lattice.hand_free
+		lattice.hand_free = true
 		var answer: Variant = copies_room.call(_copies_ask, COPIES_ASK_US)
+		lattice.hand_free = was_free
 		if answer == null:
 			if is_inside_tree() and not get_tree().process_frame.is_connected(_ask_copies):
 				get_tree().process_frame.connect(_ask_copies, CONNECT_ONE_SHOT)
@@ -3763,19 +3771,26 @@ func _ask_copies() -> void:
 ## part in hand where its ghost is, or each part carried where the carry puts
 ## it (the frame: the ghost's, the carry's). A part lifted off the model goes
 ## back into its own (one picked in the tree and dragged, the sub-assembly
-## round it not entered); anything else into [member place_group], the one
-## being edited. "" for the model itself. Made once a hand, the same array
-## each aim (Assemblies._hand_plan keeps what it read of it): every aim of a
-## drag made the hand's placements afresh, 200 of them with their cells.
+## round it not entered, or taken into hand by X); anything else into [member
+## place_group], the one being edited. "" for the model itself. Made once a
+## hand, the same array each aim (Assemblies._hand_plan keeps what it read of
+## it): every aim of a drag made the hand's placements afresh, 200 of them
+## with their cells.
 func _going_down() -> Array:
 	var hand: Variant = carrying.items if is_carrying() else null
-	var key: Array = [place_group, carrying.lifted] if is_carrying() else [place_group, held_part]
+	var lifted: int = int(_hand.keys()[0]) if not is_carrying() and holds_lifted_part() else 0
+	var key: Array = [place_group, carrying.lifted] if is_carrying() else [place_group, held_part, lifted]
 	if is_same(hand, _going_hand) and key == _going_key:
 		return _going
 	_going_hand = hand
 	_going_key = key
 	if not is_carrying():
-		_going = [[held_part, Transform3D.IDENTITY, place_group]]
+		var brick: BrickWorld.Brick = world.get_brick(lifted) if lifted != 0 else null
+		# X's part is put down moved (_put_lifted_part), in its own sub-model:
+		# up to wingkeep it was asked into the one being edited, or not at all.
+		_going = [[held_part, Transform3D.IDENTITY, place_group]] if brick == null \
+			else [[held_part, Transform3D.IDENTITY, Assemblies.path_from(brick.group, brick.unit),
+				brick.transform]]
 		return _going
 	_going = []
 	for item: Dictionary in carrying.items:

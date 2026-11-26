@@ -507,8 +507,8 @@ func _told(carried: bool) -> String:
 	var frame: Transform3D = _hand_frame()
 	var going: Array = (_builder.call("_going_down") as Array).map(func(i: Array) -> Array:
 		return [i[0], frame * (i[1] as Transform3D)] + i.slice(2))
-	var words: String = "lifted %s on top %s aimed %s valid %s ask pending %s; hand %s; " % [
-		_builder.carrying.lifted if carried else false, _builder.call("_lift_on_top"),
+	var words: String = "lifted %s in hand %s aimed %s valid %s ask pending %s; hand %s; " % [
+		_builder.carrying.lifted if carried else false, _builder.holds_lift(),
 		_builder.carrying.is_aimed() if carried else _builder.has_preview(),
 		_builder.carrying.get("_valid") if carried else _builder.get("_ghost_valid"),
 		not (_builder.get("_copies_ask") as Dictionary).is_empty(),
@@ -753,9 +753,9 @@ func _drawn_fits() -> bool:
 
 
 ## The wing's brick dragged inside it, by the Select tool, to the ground all
-## round it two studs apart, and let go of there: its lift is one step with
-## its put, and the follow pairs the copies by what they were before the lift
-## (the twin taken off as it was picked up). Where the ghost is green the
+## round it two studs apart, and let go of there: lifted, it stays the model's
+## where it stood, in hand (Builder._take_into_hand), and its put is one move
+## whose follow moves the twin. Where the ghost is green the
 ## brick and its twin move; where red for the copy, nothing does. [param what]
 ## names the sweep; [param editing], the sub-assembly entered for it.
 func _drag_sweep(what: String, editing: String) -> void:
