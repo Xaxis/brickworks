@@ -228,7 +228,7 @@ var talk: Dictionary = {}
 ## What a question is about, from the studio (main.gd): {step, parts}, the
 ## step its timeline is on (0: the whole model) and the parts picked, each
 ## as a pin sends one ({part, colour, at, turn}) with its words ("the 2 × 4
-## brick, red").
+## brick in red").
 var ask_context: Callable = Callable()
 ## idle, asking, asked, failed.
 var ask_state: String = "idle"
@@ -1298,21 +1298,32 @@ static func question_for(step: int) -> String:
 
 
 ## What a question is about, in words: "Asks in Talk's Help about step 12,
-## with the 2 × 4 brick, red, lit in 3D."
+## with the 2 × 4 brick in red lit in 3D." One line for each count of parts
+## named, each part in a place of its own: the locale's pattern then takes
+## each part whole ("the %s in %s"), where one place holding the list ("the
+## 2 × 4 brick in red and the 1 × 2 plate in blue") was read as one part
+## (greenreds).
 static func about_words(step: int, parts: Array) -> String:
-	var named := PackedStringArray()
+	var named: Array = []
 	for part: Variant in parts.slice(0, 3):
 		var words: String = str((part as Dictionary).get("words", "")) if part is Dictionary else ""
 		named.append(words if not words.is_empty() else "a part")
-	if parts.size() > 3:
-		named.append("%d more" % (parts.size() - 3))
 	if named.is_empty():
 		return ("Asks in Talk's Help about step %d, shown in 3D. " % step if step > 0
 			else "Asks in Talk's Help about the whole model, shown in 3D. ") + "Pick parts first to have them lit."
-	var listed: String = named[0] if named.size() == 1 \
-		else ", ".join(named.slice(0, named.size() - 1)) + " and " + named[named.size() - 1]
-	return "Asks in Talk's Help about step %d, with %s lit in 3D." % [step, listed] if step > 0 \
-		else "Asks in Talk's Help about the whole model, with %s lit in 3D." % listed
+	var lines: Array = [
+		["Asks in Talk's Help about the whole model, with %s lit in 3D.",
+			"Asks in Talk's Help about step %d, with %s lit in 3D."],
+		["Asks in Talk's Help about the whole model, with %s and %s lit in 3D.",
+			"Asks in Talk's Help about step %d, with %s and %s lit in 3D."],
+		["Asks in Talk's Help about the whole model, with %s, %s and %s lit in 3D.",
+			"Asks in Talk's Help about step %d, with %s, %s and %s lit in 3D."],
+		["Asks in Talk's Help about the whole model, with %s, %s, %s and %d more lit in 3D.",
+			"Asks in Talk's Help about step %d, with %s, %s, %s and %d more lit in 3D."]]
+	var taken: Array = ([step] if step > 0 else []) + named
+	if parts.size() > 3:
+		taken.append(parts.size() - 3)
+	return str(lines[named.size() - 1 + (1 if parts.size() > 3 else 0)][1 if step > 0 else 0]) % taken
 
 
 ## What the status line says once it is asked.

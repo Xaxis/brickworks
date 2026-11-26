@@ -17393,6 +17393,64 @@ msgstr "%d de plus"
 msgid "a part"
 msgstr "une pièce"
 
+# Ask's line with two, three, or three and more parts picked, each in a place
+# of its own, and each part as main.gd's _ask_context names it: the part's name
+# (PartWords) and its colour's.
+msgid "Asks in Talk's Help about step %d, with %s and %s lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos de l’étape %d, avec %s et %s en surbrillance en 3D."
+
+msgid "Asks in Talk's Help about the whole model, with %s and %s lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos du modèle entier, avec %s et %s en surbrillance en 3D."
+
+msgid "Asks in Talk's Help about step %d, with %s, %s and %s lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos de l’étape %d, avec %s, %s et %s en surbrillance en 3D."
+
+msgid "Asks in Talk's Help about the whole model, with %s, %s and %s lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos du modèle entier, avec %s, %s et %s en surbrillance en 3D."
+
+msgid "Asks in Talk's Help about step %d, with %s, %s, %s and %d more lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos de l’étape %d, avec %s, %s, %s et %d de plus en surbrillance en 3D."
+
+msgid "Asks in Talk's Help about the whole model, with %s, %s, %s and %d more lit in 3D."
+msgstr "Demande dans l’Aide de Talk à propos du modèle entier, avec %s, %s, %s et %d de plus en surbrillance en 3D."
+
+msgid "the %s in %s"
+msgstr "%s (%s)"
+
+msgid "the %s in its own colour"
+msgstr "%s (couleur personnalisée)"
+
+msgid "a part in %s"
+msgstr "une pièce (%s)"
+
+msgid "a part in its own colour"
+msgstr "une pièce (couleur personnalisée)"
+
+# Where a pinned comment is (PinPlace.where), the part as Ask names it.
+msgid "On the %s, step %d"
+msgstr "Sur la pièce %s, étape %d"
+
+msgid "On the %s"
+msgstr "Sur la pièce %s"
+
+msgid "On a part, step %d"
+msgstr "Sur une pièce, étape %d"
+
+msgid "On a part"
+msgstr "Sur une pièce"
+
+msgid "On the %s, step %d, moved since"
+msgstr "Sur la pièce %s, étape %d, déplacée depuis"
+
+msgid "On the %s, moved since"
+msgstr "Sur la pièce %s, déplacée depuis"
+
+msgid "On a part, step %d, moved since"
+msgstr "Sur une pièce, étape %d, déplacée depuis"
+
+msgid "On a part, moved since"
+msgstr "Sur une pièce, déplacée depuis"
+
 msgid "Asking in Talk"
 msgstr "Question en cours d’envoi dans Talk"
 

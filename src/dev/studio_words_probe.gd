@@ -238,6 +238,10 @@ func _walk(lang: String) -> void:
 	await _step("a save", func() -> void:
 		_shell.run("save")
 		await _frames(30))
+	# Ask the builders' line with one to four parts picked, at a step and of
+	# the whole model, and where a pin on each is: words made from a part's
+	# name and its colour's (greenreds; "the 2 × 4 brick" was English).
+	await _step("Ask's line and a pin's place", func() -> void: pass, _ask_and_pin_words())
 	if lang == "en":
 		return
 	var lines: PackedStringArray = []
@@ -280,6 +284,39 @@ func _step(name: String, act: Callable, more: Array = []) -> void:
 		if not left.is_empty() and not _english.has(english):
 			_english[english] = "%s: \"%s\" (%s)" % [name, english.replace("\n", " / ").left(90),
 				", ".join(left)]
+
+
+## The model's parts picked one, two, three and four at a time, as Ask the
+## builders reads them (main.gd's _ask_context), its line at step 3 and of
+## the whole model; and a pin's place on each part, at a step and not,
+## moved since or not, as the pins panel words it (PartPins).
+func _ask_and_pin_words() -> Array:
+	var out: Array = []
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		ids.append(brick.id)
+	for count: int in [1, 2, 3, 4]:
+		if count > ids.size():
+			break
+		_select_only(ids.slice(0, count))
+		var asked: Dictionary = _main.call("_ask_context")
+		for step: int in [0, 3]:
+			out.append(SharePanel.about_words(step, asked["parts"]))
+	_builder.clear_selection()
+	var library: PartLibrary = _main.get("_library")
+	# The model's, one PartPins says whole ("on the Plate 1 x 2 with Door
+	# Rail"), and none known.
+	var names: Array = ["Plate 1 x 2 with Door Rail", ""]
+	for id: int in ids:
+		var info: PartLibrary.PartInfo = library.parts.get(_world.get_brick(id).part_id)
+		if info != null and not names.has(info.name):
+			names.push_front(info.name)
+	for name: String in names:
+		for step: int in [0, 12]:
+			for moved: bool in [false, true]:
+				var words: String = PinPlace.where(name, step, {"moved": moved}, 1)
+				out.append(words.substr(0, 1).to_upper() + words.substr(1))
+	return out
 
 
 ## What of [param english] is drawn in English, but for names, keys and

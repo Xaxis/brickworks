@@ -3882,7 +3882,7 @@
       "id": "cli:studio words probe",
       "kind": "cli",
       "entry": "src/dev/studio_words_probe.gd",
-      "reach": "tools/probe.sh studio_words_probe [--phone] [--words-to=FILE]   (headless; the studio used in en, de, fr and es, the desktop's layout then a phone's: a put, a move, an undo, a redo, History's rows, the banner inside a copied sub-assembly, a put and undo there, a delete, a save; every line said or shown has its entry and keeps no words of the interface in English, names, keys and brands apart; FILE gets every line read, lang<TAB>English<TAB>drawn)",
+      "reach": "tools/probe.sh studio_words_probe [--phone] [--words-to=FILE]   (headless; the studio used in en, de, fr and es, the desktop's layout then a phone's: a put, a move, an undo, a redo, History's rows, the banner inside a copied sub-assembly, a put and undo there, a delete, a save, then Ask the builders' line with one to four parts picked and a pin's place on each part (greenreds); every line said or shown has its entry and keeps no words of the interface in English, names, keys and brands apart; FILE gets every line read, lang<TAB>English<TAB>drawn)",
       "area": "building",
       "tests": []
     },

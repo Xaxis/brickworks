@@ -4113,8 +4113,13 @@ func _ask_context() -> Dictionary:
 			var info: PartLibrary.PartInfo = _library.parts.get(str(one["part"]))
 			var colour: PartLibrary.BrickColor = _library.colors.get(int(one["colour"]))
 			var said: String = pins.part_said(info.name if info != null else "")
-			one["words"] = ("the %s" % said if not said.is_empty() else "a part") \
-				+ (", %s" % colour.name.replace("_", " ").to_lower() if colour != null else "")
+			# Each its own pattern of the locale's, "the %s in %s", its two
+			# places a part's name and a colour's, which PartWords says: with a
+			# comma for the colour ("the 2 × 4 brick, red"), a list of two
+			# parts could not be told from one, and stayed English (greenreds).
+			var hue: String = colour.name.replace("_", " ").to_lower() if colour != null else ""
+			one["words"] = ("the %s in %s" % [said, hue] if not hue.is_empty() else "the %s in its own colour" % said) \
+				if not said.is_empty() else ("a part in %s" % hue if not hue.is_empty() else "a part in its own colour")
 			parts.append(one)
 	return {"step": _timeline_page(), "parts": parts}
 
