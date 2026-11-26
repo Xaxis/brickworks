@@ -3723,6 +3723,17 @@ func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) 
 	var at: String = path_of(brick)
 	if at.is_empty():
 		return
+	# Where its line puts it, which is not where it stands where the open put
+	# it down otherwise (ModelStore._as_placed's read_as): a mirrored copy's
+	# part in its reflection, often one turned to fill the same cells. Voted
+	# where it stands, a wing placed by a mirror whose plate and brick stand
+	# at its middle said a frame that does not mirror, beside its other copy:
+	# the wing was written again from the other hand, every reference and
+	# the 3003 off its middle with it (mirrorsave, wingfix2 N1).
+	var placed_at: Transform3D = brick.transform
+	var as_read: Array = (votes["read_as"] as Dictionary).get(origin, [])
+	if not as_read.is_empty() and str(as_read[0]) == brick.part_id:
+		placed_at = brick.transform * (as_read[1] as Transform3D)
 	var local := Transform3D.IDENTITY
 	var boxes: Dictionary = votes["box"]
 	var said: Dictionary = votes["said"]
@@ -3734,7 +3745,7 @@ func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) 
 		if not locals.has(inner):
 			return
 		local = (locals[inner] as Transform3D) * local
-		var frame: Transform3D = brick.transform * local.affine_inverse()
+		var frame: Transform3D = placed_at * local.affine_inverse()
 		var copy: String = str(level[0])
 		var box: Dictionary = boxes.get_or_add(copy, {})
 		var entry: Array = box.get_or_add(_frame_key(frame), [0, frame])
@@ -3758,7 +3769,8 @@ func _read_vote(votes: Dictionary, brick: BrickWorld.Brick, locals: Dictionary) 
 ## BrickWorld.kept_lines]' "locals").
 func _votes(locals: Dictionary) -> Dictionary:
 	return {"box": {}, "said": {}, "placed": {}, "locals": locals,
-		"origin": Transform3D(Basis.IDENTITY, lift.call())}
+		"origin": Transform3D(Basis.IDENTITY, lift.call()),
+		"read_as": world.kept_lines.get("read_as", {})}
 
 
 ## What [param votes] ([method _read_vote]) say: path -> the frame more than
@@ -3840,6 +3852,50 @@ static func _figure_frame(figures: Dictionary, path: String) -> Transform3D:
 ## not the right one (copyfaults3). And in the colour its stub draws it in,
 ## where it gives one (ModelStore.as_moved): 86037a's 4548064b white in a
 ## mirrored copy as its 4548064a is in a plain one (mvfix).
+## Each part written in the section of a copy written as a definition in a
+## frame that reflects ([method file_frames]: the frame the file placed it
+## in, by a mirror, where it is its definition's first copy the file framed
+## or one that went its own way) made the line that frame places where it
+## stands: the part its line named, as the line had it ([param read_as],
+## ModelStore._as_placed's), or for one put down since, its reflection's
+## reflection (Mirror.image, which gives a part mirrored back as it was).
+## Written as they stand, in their reflection (unmirror), each part's line in
+## the section would reflect. [param placements] are changed in place, in the
+## file's coordinates, as [param instances]' frames are; the part names
+## written that were not the parts', returned.
+static func mirrored_back(placements: Array, instances: Dictionary, unit_steps: Dictionary,
+		read_as: Dictionary, library: PartLibrary) -> PackedStringArray:
+	var frames: Dictionary = {}
+	for path: String in instances:
+		var entry: Dictionary = instances[path]
+		if bool(entry.get("master", false)) \
+				and (entry["frame"] as Transform3D).basis.determinant() < 0.0:
+			frames[path] = entry["frame"]
+	var named := PackedStringArray()
+	if frames.is_empty():
+		return named
+	for item: Variant in placements:
+		var placement: LdrModel.Placement = item
+		var home: String = LdrModel._home_in(placement.unit, unit_steps)
+		if not frames.has(home):
+			continue
+		var was: String = placement.part_id
+		var as_read: Array = read_as.get(placement.origin, [])
+		if not as_read.is_empty() and str(as_read[0]) == placement.part_id \
+				and (as_read[1] as Transform3D).basis.determinant() < 0.0:
+			placement.transform = placement.transform * (as_read[1] as Transform3D)
+			placement.part_id = str(as_read[2])
+		else:
+			var frame: Transform3D = frames[home]
+			var image: Dictionary = Later.script(&"Mirror").image(library, placement.part_id,
+				(frame * LdrModel.REFLECT_X).affine_inverse() * placement.transform, 0, 0.0)
+			placement.part_id = image["part"]
+			placement.transform = frame * (image["at"] as Transform3D)
+		if placement.part_id != was:
+			named.append(placement.part_id)
+	return named
+
+
 static func unmirror(placement: LdrModel.Placement, library: PartLibrary) -> void:
 	var real: String = library.resolve(placement.part_id)
 	var local: Transform3D = placement.local

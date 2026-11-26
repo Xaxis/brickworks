@@ -1896,7 +1896,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Each part's number as the file has it, before it is made what is put
 	# down: what the list of moved and missing parts names ([member moved]).
 	var numbers_said: PackedStringArray = MovedParts.said_of(flattened)
-	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored)
+	var read_as: Dictionary = {}
+	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored, read_as)
+	model.kept_lines["read_as"] = read_as
 	# A model saved with no parts opens as that: an empty model under its
 	# name. It was refused as "no parts", and the model before it was left
 	# on the baseplate for a save to write under this one's name.
@@ -2321,19 +2323,33 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 ## file's author did not give are cleared ([param authored]). The mirrored
 ## placements' lines ("line|unit" -> true), for SourceFile. What an open and
 ## a model put into this one ([method held_from]) both read a file as.
-static func _as_placed(flattened: Array, library: PartLibrary, authored: bool) -> Dictionary:
+##
+## And into [param read_as], each part put down otherwise than its line
+## places it, by its origin (Placement.origin) -> [the part put down, the
+## turn and shift that take it to where its line puts it (in its own axes,
+## so it holds wherever the part is moved), the part its line names]: a
+## mirrored copy's part in its reflection, a retired number moved. A whole
+## write reads a copy's frame, and writes the lines of a copy placed by a
+## mirror, by those (Assemblies._read_vote, Assemblies.mirrored_back).
+static func _as_placed(flattened: Array, library: PartLibrary, authored: bool,
+		read_as: Dictionary = {}) -> Dictionary:
 	var mirrored_lines: Dictionary = {}
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
 		if not authored:
 			placement.step = -1
 		placement.part_id = studio_part(placement.part_id, library)
+		var lined: Transform3D = placement.transform
+		var named: String = placement.part_id
 		if placement.mirrored:
 			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
 			Assemblies.unmirror(placement, library)
 		# Before the lift is worked out from it and before it waits for
 		# geometry by the right name.
 		as_moved(placement, library)
+		if not placement.origin.is_empty() and placement.transform != lined:
+			read_as[placement.origin] = [placement.part_id,
+				placement.transform.affine_inverse() * lined, named]
 		# A part LDraw draws in one colour only, kept for old files, as the
 		# part it draws in that colour (303923, 3039 in blue): drawn the same,
 		# and the parts list and a BrickLink order name a part made now.
@@ -4365,6 +4381,13 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		var kept: Dictionary = _live_source().kept_keys(waiting, origins)
 		if not kept.is_empty():
 			known = known.merged(kept)
+	# A sub-model written from a copy the file placed by a mirror, in the
+	# frame the file gave it (Assemblies.file_frames): its parts as their
+	# lines have them, not their reflections (Assemblies.mirrored_back).
+	var named: PackedStringArray = Assemblies.mirrored_back(placements, instances, unit_steps,
+		world.kept_lines.get("read_as", {}), library)
+	if not named.is_empty():
+		embedded.merge(_part_files(Array(named)))
 	# One list of each section's steps, from the parts as they are written,
 	# what has not arrived and what the catalogue has not got among them: the
 	# writer writes those, and the booklet's looks go on them
