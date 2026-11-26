@@ -8,11 +8,9 @@ extends SceneTree
 ##   SPEC is bunny:STUDS[:one] (brickify_probe's bunny; one: blue, one colour), block:STUDS
 ##   (brickify_probe's turned block) or FILE:STUDS:UP
 ##
-## Each line: cells, share of the model, why. "Cut off" is a piece of the core
-## beside a shell taken out before the check (Shapes.Plan.cut_off,
-## caps_apart), said by where it is against the nearest shell and whether
-## the shell gave it back; "a shell's plate" is the shell's and no part of
-## it is there.
+## Each line: cells, share of the model, why. "Beside a shell" is said by
+## where it is against the nearest shell and whether the shell gave it back;
+## "a shell's plate" is the shell's and no part of it is there.
 
 var _library: PartLibrary
 var _checker: Assistant
@@ -159,7 +157,6 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 		upright["mended"], upright["parts"]])
 	var last: Dictionary = turned["last"]
 	var shelled: Dictionary = last.get("shelled", {})
-	var cut: Dictionary = last.get("cut_cells", {})
 	var given: Dictionary = last.get("given_back", {})
 	var frames: Array = last.get("shell_frames", [])
 	var why: Dictionary = {}
@@ -179,11 +176,6 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 					w = "upright misses it too"
 				elif tb[i] == 1:
 					w = "taken out by the mend"
-				elif cut.has(key):
-					w = "cut off (%s), %s, %s" % [cut[key], _where(key, frames),
-						"given back" if given.has(key) else "the core's"]
-					if OS.get_environment("GAPS_WHY") != "" and not given.has(key):
-						w += ": " + _cube_why(key, last)
 				elif shelled.has(key):
 					var centre := Vector3((x + 0.5) * 20.0, (j + 0.5) * 8.0, (z + 0.5) * 20.0)
 					var near: float = INF
@@ -196,7 +188,12 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 					for step: Vector3i in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1),
 							Vector3i(0, 0, -1), Vector3i(0, 1, 0), Vector3i(0, -1, 0)]:
 						beside = beside or shelled.has(key + step)
-					w = "beside a shell, no part" if beside else "elsewhere, no part"
+					w = "elsewhere, no part"
+					if beside:
+						w = "beside a shell, no part, %s, %s" % [_where(key, frames),
+							"given back" if given.has(key) else "the core's"]
+						if OS.get_environment("GAPS_WHY") != "" and not given.has(key):
+							w += ": " + _cube_why(key, last)
 				why[w] = int(why.get(w, 0)) + 1
 				if not examples.has(w):
 					examples[w] = []
@@ -206,7 +203,7 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 	if not pick.is_empty():
 		var b: PackedStringArray = pick.split(",")
 		var at := Vector3i(int(b[0]), int(b[1]), int(b[2]))
-		print("  around %s, plates %d up, x across, z down: . air, # filled, c cut, g given back and cut, S shell's, u shell's and empty, o empty" % [str(at), at.y - 3])
+		print("  around %s, plates %d up, x across, z down: . air, # filled, S shell's, u shell's and empty, o empty" % [str(at), at.y - 3])
 		for dz: int in range(-3, 4):
 			var row: String = "   "
 			for j: int in range(at.y - 3, at.y + 4):
@@ -217,8 +214,6 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 						var i: int = grid.index(k.x, k.y, k.z)
 						if shelled.has(k):
 							ch = "S" if ta[i] == 1 else "u"
-						elif cut.has(k):
-							ch = "g" if given.has(k) else "c"
 						elif grid.state[i] == 1:
 							ch = "#" if ta[i] == 1 else "o"
 						else:
@@ -233,9 +228,9 @@ func _tell(spec: String, turned: Dictionary, upright: Dictionary) -> void:
 	lines.reverse()
 	for line: String in lines:
 		print(line)
-	print("  %d shells, %d plates theirs, %d given back, %d cut off; cubes %s; joined %d, cut %d" % [
-		frames.size(), shelled.size(), given.size(), cut.size(), str(last.get("cubes", {})),
-		int(last.get("joined_cut_off", 0)), int(last.get("cut_off", 0))])
+	print("  %d shells, %d plates theirs, %d given back; cubes %s; joined %d" % [
+		frames.size(), shelled.size(), given.size(), str(last.get("cubes", {})),
+		int(last.get("joined_cut_off", 0))])
 
 
 ## Where cell [param key] is against the nearest shell, in its frame: in its

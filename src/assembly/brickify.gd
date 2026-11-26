@@ -471,6 +471,7 @@ static func voxelise(mesh: MeshFile, options: Options, library: PartLibrary,
 	grid.ms["touched"] = Time.get_ticks_msec() - clock
 	clock = Time.get_ticks_msec()
 	_thin(grid, touched)
+	_two_plates(grid)
 	grid.ms["thin"] = Time.get_ticks_msec() - clock
 	clock = Time.get_ticks_msec()
 	_join(grid, touched, studs)
@@ -786,8 +787,8 @@ static func _parted(axis: Vector3, v0: Vector3, v1: Vector3, v2: Vector3) -> boo
 ## every part out. A cell the surface passes through counts where nothing
 ## measured is beside it, above it, below it or on a diagonal, so a thick
 ## body comes out no fatter; then the cells it passes through between such
-## a part and the body, so the two meet; and a part one plate thick is made
-## two, so its plates can cross each other's joints.
+## a part and the body, so the two meet. One plate thick, it is made two
+## after ([method _two_plates]).
 static func _thin(grid: Grid, touched: PackedByteArray) -> void:
 	var total: int = grid.state.size()
 	grid.added.resize(total)
@@ -835,22 +836,37 @@ static func _thin(grid: Grid, touched: PackedByteArray) -> void:
 		grid.added[i] = 1
 	for i: int in thin + seams:
 		grid.state[i] = 1
-	# One plate thick, two: plates side by side in one layer hold nothing.
+	grid.thin = thin.size() + seams.size()
+
+
+## A part one plate thick made two, so its plates can cross each other's
+## joints: plates side by side in one layer hold nothing. Each such cell,
+## measured or passed through (_thin), is given the one under it (over it
+## on the ground), added, so it is laid plain. Only the thin parts' were
+## once, and a wing measured a plate thick, the Bell X-1's at 48 studs, came
+## apart at its tip in plates the check took out (42 of its studs and
+## plates, with its sides turned or upright), so its turned build was laid
+## again whole.
+static func _two_plates(grid: Grid) -> void:
+	var total: int = grid.state.size()
+	if grid.added.size() != total:
+		grid.added.resize(total)
+	var tall: int = grid.tall
 	var thicker := PackedInt32Array()
-	for i: int in thin:
-		var j: int = i % tall
-		var above: bool = j + 1 < tall and grid.state[i + 1] == 1
-		var below: bool = j > 0 and grid.state[i - 1] == 1
-		if above or below:
+	for i: int in total:
+		if grid.state[i] != 1:
 			continue
-		if j > 0 and grid.state[i - 1] == 0:
+		var j: int = i % tall
+		if j + 1 < tall and grid.state[i + 1] == 1 or j > 0 and grid.state[i - 1] == 1:
+			continue
+		if j > 0:
 			thicker.append(i - 1)
-		elif j + 1 < tall and grid.state[i + 1] == 0:
+		elif j + 1 < tall:
 			thicker.append(i + 1)
 	for i: int in thicker:
 		grid.state[i] = 1
 		grid.added[i] = 1
-	grid.thin = thin.size() + seams.size() + thicker.size()
+	grid.thin += thicker.size()
 
 
 ## The cells beside [param i], above and below it, inside the grid.
