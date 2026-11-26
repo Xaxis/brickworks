@@ -1544,13 +1544,11 @@ func after_edit() -> int:
 	if not refused.is_empty():
 		# Some copy could not take it: the edit is not made in any, and
 		# leaves no step. The redo it cleared comes back, where it is the
-		# one the history had when the app last looked. A selection picked
-		# up to move (Builder.lift_selection) is put back, out of the hand.
+		# one the history had when the app last looked. Parts lifted into hand
+		# make no step (Builder._take_into_hand); their put-down is a move,
+		# taken back as any other, each part where it stood.
 		var why: String = refused
-		if bool(step.get("lift", false)) and builder.is_carrying():
-			builder.cancel_carry()
-		else:
-			builder.take_back(_redo_cleared())
+		builder.take_back(_redo_cleared())
 		_seen = builder.last_step()
 		_keep_redo()
 		# Kept through whatever the taking back set off.

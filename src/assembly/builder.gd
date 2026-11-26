@@ -148,6 +148,11 @@ func _ready() -> void:
 	_ghost.visible = false
 	add_child(_ghost)
 	carrying = Carry.new()
+	# A selection lifted off the model and let go of by whatever lets go of
+	# the carry (a paste taken up over it, a tool chosen): back where it stood.
+	carrying.let_go = func() -> void:
+		if not _hand.is_empty() and _figure_parts.is_empty():
+			_let_go_of_hand()
 	add_child(carrying)
 
 
@@ -454,27 +459,26 @@ func forget_history() -> void:
 		selection.clear()
 		selection_changed.emit(0)
 	_let_go.clear()
-	_figure_followers = []
-	_figure_lift = {}
-	# A selection picked up to move has no way back once the model it
-	# came off is gone.
-	if carrying != null and carrying.lifted:
-		carrying.drop()
+	# What was lifted into hand is let go of, back where it stood: a world
+	# about to be replaced takes it with the rest, and one opened again has it
+	# where its file does (figreview2 F5: a reload with a figure in hand, put
+	# down, made a second figure). A figure from the maker stays in hand.
+	put_hand_back()
 	grip = null
 	carry_grip = null
 
 
 func undo() -> bool:
+	# The lift the newest thing done: undone, what is in hand goes back where
+	# it stood, nothing else (EditVerbs says so).
+	if lift_newest():
+		put_hand_back()
+		return true
 	if _history.is_empty():
 		return false
 	# A part lifted off and put back by the undo is no longer held by it.
 	grip = null
 	var step: Dictionary = _history.pop_back()
-	# The lift of a figure still in hand, undone: its parts go back on the
-	# model, so the hand lets go of it. It held a second figure that a click
-	# put down, the later parts it left (_figure_followers) moved again.
-	if is_same(step, _figure_lift) and is_holding_figure():
-		drop_figure()
 	# Said before it is undone, while the brick a step names is still
 	# there to name, and kept with the step that redoes it: the step
 	# reversed would read backwards ("removed" for a placing redone).
@@ -589,6 +593,12 @@ func _apply(step: Dictionary) -> Dictionary:
 		if step.has("words"):
 			reverse["words"] = step["words"]
 		return reverse
+
+	# A step that names a part in hand (an undo or a redo reaching it): the
+	# hand lets go first, every part back where it stood, its cover read
+	# there ([method _hand_touched]).
+	if not _hand.is_empty() and step.has("brick") and _hand.has(_live(int(step["brick"]))):
+		_let_go_of_hand()
 
 	if step.get("undo", "") == "move":
 		var moving: int = _live(int(step["brick"]))
@@ -1182,9 +1192,10 @@ func _moving_of(alive: PackedInt64Array) -> PackedInt64Array:
 	var moving: Dictionary = {}
 	for brick_id: int in alive:
 		moving[brick_id] = true
+	# Nor any in hand: the hand puts them down, or back.
 	for brick_id: int in _let_go:
 		if lattice.ahead.has(brick_id) and world.get_brick(brick_id) != null \
-				and not locked.has(brick_id):
+				and not locked.has(brick_id) and not world.in_hand(brick_id):
 			moving[brick_id] = true
 	if unit_of.is_valid():
 		var asked: Dictionary = {}
@@ -1206,7 +1217,8 @@ func _moving_of(alive: PackedInt64Array) -> PackedInt64Array:
 					break
 			if whole:
 				for member: int in later:
-					if not locked.has(member) and world.get_brick(member) != null:
+					if not locked.has(member) and world.get_brick(member) != null \
+							and not world.in_hand(member):
 						moving[member] = true
 	if moving.size() == alive.size():
 		return alive
@@ -1350,6 +1362,14 @@ func select_alike() -> int:
 ## the step showing has not put on: whatever put it in the selection, an
 ## edit reaches only what is on show ([method shown_only]).
 func _living_selection() -> PackedInt64Array:
+	# A part in hand picked again (a session's selection by number): the
+	# hand lets go first, each part back where it stood, so what is done to
+	# the selection is done to the model's own parts there.
+	if not _hand.is_empty():
+		for brick_id: int in selection:
+			if _hand.has(brick_id):
+				_let_go_of_hand()
+				break
 	var alive := PackedInt64Array()
 	var gone: Array = []
 	var unseen: Array = []
@@ -3258,24 +3278,19 @@ func lift_selection(grab: Array = []) -> int:
 		if lock != null:
 			refused_lock = Motions.lock_words(lock, world, library, self)
 			return 0
-	var parts: Array = Carry.gather(world, library, Array(alive))
+	# Into hand, each part still the model's where it stood until it is put
+	# down ([method _take_into_hand]); one lifted before goes back first.
+	put_hand_back()
+	var parts: Array = Carry.gather(world, library, Array(alive), true)
 	if parts.is_empty():
 		return 0
 	carry_grip = _grip_at(alive[0], grab[0], grab[1]) \
 		if alive.size() == 1 and grab.size() == 2 else null
 	_grip_chosen = false
-	var steps: Array = []
-	for brick_id: int in alive:
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		steps.append({"undo": "add", "part": brick.part_id,
-			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id,
-			"cover": lattice.cover_of(brick_id)})
-		lattice.release(brick_id)
-		world.remove_brick(brick_id)
-		removed.emit(brick_id)
-	_history.append({"undo": "group", "steps": steps, "lift": true})
-	_redo.clear()
+	var held: Array = []
+	for item: Dictionary in parts:
+		held.append(int(item["brick"]))
+	_take_into_hand(held)
 	clear_selection()
 	carrying.library = library
 	carrying.hold(parts, true)
@@ -3283,25 +3298,50 @@ func lift_selection(grab: Array = []) -> int:
 
 
 ## Put away what is held without putting it down. What was lifted off
-## the model goes back where it was, and is selected again.
+## the model goes back where it was, and is selected again: whatever was
+## done while it was in hand, as nothing of it ever left the model. Up to
+## handkeep a lift with a step laid over it (a session's edit) was let go of
+## off the model, and lost.
 func cancel_carry() -> bool:
 	if not is_carrying():
 		return false
-	var lifted: bool = carrying.lifted
+	var back: Array = _put_hand_back() if carrying.lifted and holds_lift() else []
 	carrying.drop()
 	carry_grip = null
-	if lifted and _lift_on_top():
-		var back: Dictionary = _apply(_history.pop_back())
+	if not back.is_empty():
 		selection.clear()
-		for step: Dictionary in back.get("steps", []):
-			if step.get("undo", "") == "remove":
-				selection[int(step["brick"])] = true
+		for brick_id: int in back:
+			selection[brick_id] = true
 		selection_changed.emit(selection.size())
 	return true
 
 
-func _lift_on_top() -> bool:
-	return not _history.is_empty() and bool(_history.back().get("lift", false))
+## Put down a selection lifted off the model where the carry's ghost is: each
+## part the same part, moved, in its own step, sub-model and line of the file,
+## one move to undo however much was done while it was in hand. A copy moved
+## whole takes its sub-model's lines and what it holds with it as a drag's
+## move does (ModelStore.looks_follow_edit). Up to handkeep its parts were
+## put down anew, from what the carry remembered of them.
+func _put_lifted() -> int:
+	var moves: Dictionary = {}
+	for item: Dictionary in carrying.placements(self):
+		var brick_id: int = int(item.get("brick", 0))
+		if _hand.has(brick_id):
+			moves[brick_id] = {"at": item["at"], "boxes": item["boxes"]}
+	var steps: Array = _put_hand_down(moves) if holds_lift() else []
+	carrying.drop()
+	carry_grip = null
+	if steps.is_empty():
+		return 0
+	_history.append({"undo": "group", "steps": steps, "words": "moved %s" % _many(steps.size())})
+	_redo.clear()
+	selection.clear()
+	for step: Dictionary in steps:
+		selection[int(step["brick"])] = true
+	selection_changed.emit(selection.size())
+	var first: int = int(steps[0]["brick"])
+	placed.emit(first, world.get_brick(first).part_id)
+	return first
 
 
 ## Put what is held down where its ghost is, as one step, and select it so
@@ -3309,6 +3349,8 @@ func _lift_on_top() -> bool:
 func _put_carried() -> int:
 	if not carrying.can_place():
 		return 0
+	if carrying.lifted:
+		return _put_lifted()
 	var steps: Array = []
 	var ids := PackedInt64Array()
 	# A copy of a minifigure or a named assembly is another one, not more
@@ -3316,13 +3358,13 @@ func _put_carried() -> int:
 	var renamed: Dictionary = {}
 	# Its sub-models' lights and views, where this model has none of its
 	# own: what it had before is kept (Assemblies.lines_pasted).
-	var lines_in: bool = not carrying.lifted and not carrying.lines.is_empty()
+	var lines_in: bool = not carrying.lines.is_empty()
 	var had: Dictionary = Assemblies.definitions_had(world) if lines_in else {}
 	var pasted: Array = []
 	# A model put into this one whole (ModelStore.held_from) goes in as it
 	# was read, every name free already: each copy's path in hand under the
 	# one being edited, each part in its own step.
-	var bringing: bool = carrying.brought and not carrying.lifted
+	var bringing: bool = carrying.brought
 	# Into a model with steps, or one of its own: each part of it in a step,
 	# one its author gave none to in its sub-model's first, as a file read
 	# again has it.
@@ -3334,9 +3376,9 @@ func _put_carried() -> int:
 		if bringing:
 			path = Assemblies.join(place_group, Assemblies.path_from(group, unit))
 			renamed[Assemblies.path_from(group, unit)] = path
-		elif not carrying.lifted and copy_group.is_valid():
+		elif copy_group.is_valid():
 			path = copy_group.call(Assemblies.path_from(group, unit), renamed)
-		elif not carrying.lifted and not group.is_empty():
+		elif not group.is_empty():
 			if not renamed.has(group):
 				renamed[group] = unused_group(group)
 			group = renamed[group]
@@ -3349,62 +3391,31 @@ func _put_carried() -> int:
 				path if copy_group.is_valid() or bringing else Assemblies.path_from(group, unit)])
 		world.get_brick(brick_id).group = group
 		world.get_brick(brick_id).unit = unit
-		if bringing or not carrying.lifted and copy_group.is_valid():
+		if bringing or copy_group.is_valid():
 			set_path(world.get_brick(brick_id), path)
-		# Moved, a part keeps its build step, and the line of the file it
-		# was read from (BrickWorld.Brick.origin): picked up and put down,
-		# it was written as a part gone and a part new (keeptext4). A copy
-		# goes in the step a placed part would, and was read from no line; a
-		# model put in whole, in the step its author gave it.
-		world.get_brick(brick_id).step = int(item.get("step", -1)) if carrying.lifted \
-			else maxi(int(item.get("step", -1)), 0 if stepped_in else -1) if bringing \
-			else _new_step(world.get_brick(brick_id))
-		if carrying.lifted:
-			world.get_brick(brick_id).origin = str(item.get("origin", ""))
+		# A copy goes in the step a placed part would, and was read from no
+		# line; a model put in whole, in the step its author gave it.
+		world.get_brick(brick_id).step = maxi(int(item.get("step", -1)), 0 if stepped_in else -1) \
+			if bringing else _new_step(world.get_brick(brick_id))
 		lattice.occupy_boxes(brick_id, item["boxes"])
-		# Picked up and put down, a part is moved, and a model whose steps
-		# are the app's own follows it as a typed move (ModelStore
-		# ._bricks_edited, AuthorSteps.follow_saved): read as a part put
-		# down with a step, the station's step-2 brick dragged onto a
-		# step-40 top kept step 2 and was shown in the air (sk2review F1).
-		if carrying.lifted:
-			steps.append({"undo": "remove", "brick": brick_id, "moved": true})
-		else:
-			steps.append({"undo": "remove", "brick": brick_id})
+		steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)
 	if ids.is_empty():
 		return 0
 	var words: String = "pasted %s" % _many(ids.size())
 	if bringing:
 		words = _bring_steps(steps, renamed, ids)
-	var lifted: bool = carrying.lifted and _lift_on_top()
-	if lifted:
-		# One move: what picked it up and what put it down undo together.
-		steps.append_array(_history.pop_back()["steps"])
-		words = "moved %s" % _many(ids.size())
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
 	if lines_in:
 		pasted_said = Assemblies.lines_pasted(self, carrying.lines, pasted, had, carrying.frames,
 			carrying.moved())
-	elif lifted:
-		# Each copy lifted whole goes where its parts went, the frame its
-		# sub-model's lines are in with it (Assemblies.frames_carried): its
-		# parts are put down anew, not moved, so no "move" says so.
-		var moved: Dictionary = {}
-		for brick_id: int in ids:
-			moved[brick_id] = carrying.moved()
-		Assemblies.frames_carried(self, moved)
-		# And what the copies moved whole hold that is not on the baseplate,
-		# with them (ModelStore._held_follow).
-		if held_follow.is_valid():
-			held_follow.call(moved)
 	# And what its copies hold that is not on the baseplate, in the copies it
 	# put down, moved as it moved them, in the same step (ModelStore
 	# ._held_put). Up to 2026-11-12 none came, and a save wrote the pasted
 	# copy as the sub-model: the part the catalogue lacks in the first was in
 	# no file (pc2check A2, H).
-	if not carrying.lifted and not carrying.held.is_empty() and (copy_group.is_valid() or bringing) \
+	if not carrying.held.is_empty() and (copy_group.is_valid() or bringing) \
 			and held_put.is_valid():
 		var into: Array = []
 		for one: Dictionary in carrying.held:
@@ -6191,56 +6202,204 @@ func set_hand_state(state: Dictionary) -> void:
 		carrying.turns = int(state.get("turns", 0))
 
 
+# -- what is in hand, still in the model ---------------------------------
+#
+# A figure lifted by X and a selection picked up to move go into hand, not
+# off the model: each part stays the model's, where it stood, in its step,
+# sub-model and line of the file (BrickWorld.take_in_hand), drawn nowhere and
+# out of the lattice, until it is put down (one move, [method _put_hand_down])
+# or put back where it stood ([method _put_hand_back]), which changes nothing.
+# So every writer (the autosave, Ctrl+S, the window's close, an export, a
+# share, a session's read and save) writes it where it stood, and a crash or a
+# reload finds it there; the timeline is never worked out without it; an edit
+# made while it is held is made beside it; and put down, each part is the same
+# part, moved. Lifted off the model, the parts in hand were in no file
+# (figreview2 F3), and what was put down was made again from what the hand
+# remembered of them, which an edit in between made it forget (F1: a figure's
+# parts out of their steps and sub-model, in a new fig_2).
+
+## The parts in hand, id -> {"at": where it stood, "cover": its cover there}.
+var _hand: Dictionary = {}
+## The history's depth when they were lifted: while nothing since is in it,
+## the lift is the newest thing done, and Undo puts them back.
+var _hand_depth: int = 0
+
+
+## Whether parts lifted off the model are in hand, put down nowhere yet.
+## A world cleared or opened again let go of them (BrickWorld.clear), with
+## the figure or the selection they were: what was opened has them where its
+## file does, and nothing in hand to put down a second time (figreview2 F5).
+func holds_lift() -> bool:
+	if _hand.is_empty():
+		return false
+	if world != null and world.in_hand(int(_hand.keys()[0])):
+		return true
+	var figure: bool = not _figure_parts.is_empty()
+	_hand = {}
+	_figure_parts = {}
+	if figure:
+		held_figure = []
+		held_figure_name = ""
+		_hide_figure_ghosts()
+	if carrying != null and carrying.lifted:
+		carrying.drop()
+		carry_grip = null
+	return false
+
+
+## Whether the lift is the newest thing done, nothing recorded since: Undo
+## puts what is in hand back. With a change made since (a nudge, a session's
+## edit), Undo takes that back first, the parts still in hand.
+func lift_newest() -> bool:
+	return holds_lift() and _history.size() <= _hand_depth
+
+
+## What the lift is called in the history's words.
+func _hand_words() -> String:
+	return "lifted %s" % _many(_hand.size())
+
+
+## Take [param ids] into hand, out of the lattice and the selection.
+func _take_into_hand(ids: Array) -> void:
+	_hand = {}
+	world.hand_touched = _hand_touched
+	var unpicked: bool = false
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null or world.in_hand(brick_id):
+			continue
+		_hand[brick_id] = {"at": brick.transform, "cover": lattice.cover_of(brick_id)}
+		lattice.release(brick_id)
+		world.take_in_hand(brick_id)
+		unpicked = selection.erase(brick_id) or unpicked
+	_hand_depth = _history.size()
+	if unpicked:
+		selection_changed.emit(selection.size())
+
+
+## Every part in hand back where it stood, as it was: nothing in the model
+## changes, and nothing is recorded. [param leave]: the one part whose cover
+## whoever moves or takes it off next looks after (BrickWorld.hand_touched).
+## The parts put back.
+func _put_hand_back(leave: int = 0) -> Array:
+	var held: Dictionary = _hand
+	_hand = {}
+	_figure_parts = {}
+	var back: Array = []
+	for brick_id: int in held:
+		if not world.in_hand(brick_id):
+			continue
+		var at: Transform3D = held[brick_id]["at"]
+		world.put_from_hand(brick_id, at)
+		back.append(brick_id)
+		if brick_id == leave:
+			continue
+		var cover: Array = held[brick_id]["cover"]
+		if not (cover[0] as PackedInt32Array).is_empty():
+			lattice.occupy_moved(brick_id, cover, Vector3i.ZERO)
+		else:
+			lattice.occupy_boxes(brick_id, boxes_for(
+				library.mesh_for(world.get_brick(brick_id).part_id), at))
+	return back
+
+
+## Every part in hand put down where [param moves] says (id -> {"at",
+## "boxes"}), as one move: the steps that undo it, each part back where it
+## stood.
+func _put_hand_down(moves: Dictionary) -> Array:
+	var held: Dictionary = _hand
+	_hand = {}
+	_figure_parts = {}
+	var steps: Array = []
+	for brick_id: int in held:
+		if not world.in_hand(brick_id) or not moves.has(brick_id):
+			continue
+		var to: Transform3D = moves[brick_id]["at"]
+		world.put_from_hand(brick_id, to)
+		lattice.occupy_boxes(brick_id, moves[brick_id]["boxes"])
+		steps.append({"undo": "move", "brick": brick_id, "transform": held[brick_id]["at"]})
+	# One the move did not say where to put (none should be) goes back.
+	for brick_id: int in held:
+		if world.in_hand(brick_id):
+			_hand[brick_id] = held[brick_id]
+	_put_hand_back()
+	return steps
+
+
+## Let go of whatever lifted off the model is in hand, each part back where it
+## stood, the figure or the selection in hand with it. How many went back.
+func put_hand_back() -> int:
+	return _let_go_of_hand() if holds_lift() else 0
+
+
+func _let_go_of_hand(leave: int = 0) -> int:
+	var figure: bool = not _figure_parts.is_empty()
+	var back: Array = _put_hand_back(leave)
+	if figure:
+		held_figure = []
+		held_figure_name = ""
+		_hide_figure_ghosts()
+	if carrying != null and carrying.lifted:
+		carrying.drop()
+		carry_grip = null
+	hand_put_back.emit(back.size())
+	return back.size()
+
+
+## What was in hand went back where it stood without being put down: let go
+## of ([method put_hand_back]), or a change to one of its parts made by
+## something else ([method _hand_touched]: a session's edit, an undo or redo of
+## a step that names it).
+signal hand_put_back(count: int)
+
+
+## A part in hand about to be changed by something other than the hand
+## (BrickWorld.hand_touched): the hand let go of first, every part back where
+## it stood, so the change is made to it there, and nothing it held is lost.
+## Moved or taken off, the one part's cover is the changer's.
+func _hand_touched(brick_id: int, kind: String) -> void:
+	if _hand.has(brick_id):
+		_let_go_of_hand(brick_id if kind != "paint" else 0)
+
+
 # -- a minifigure, as one thing ------------------------------------------
 
 
 ## Hold a figure to put down: its parts in its own frame, as
-## Minifig.assemble gives them, and the name its parts will carry.
+## Minifig.assemble gives them, and the name its parts will carry. A figure
+## lifted off the model and still in hand goes back where it stood first
+## (figreview2 F4: X over a second figure left the first off the model).
 func hold_figure(parts: Array, called: String) -> void:
-	var let_go: bool = holds_lifted_figure()
+	put_hand_back()
 	held_figure = parts.duplicate()
 	held_figure_name = called if not called.strip_edges().is_empty() else "Minifig"
 	held_face = "up"
-	_figure_followers = []
-	_figure_lift = {}
-	if let_go:
-		figure_let_go.emit()
+	_figure_parts = {}
 
 
-## Go back to holding the part that was held before.
-func drop_figure() -> void:
-	var let_go: bool = holds_lifted_figure()
+## Go back to holding the part that was held before. A figure lifted off
+## the model goes back where it stood, as Escape puts a carried selection
+## back (figreview2 F2: it stayed off the model). Whether one went back.
+func drop_figure() -> bool:
+	var back: bool = is_holding_figure() and holds_lift() and not _figure_parts.is_empty()
+	if back:
+		_put_hand_back()
 	held_figure = []
 	held_figure_name = ""
-	# What of it stayed on the model stays where it stands.
-	_figure_followers = []
-	_figure_lift = {}
+	_figure_parts = {}
 	_hide_figure_ghosts()
-	if let_go:
-		figure_let_go.emit()
+	return back
 
 
 func is_holding_figure() -> bool:
 	return not held_figure.is_empty()
 
 
-## Whether the figure in hand was lifted off the model by the newest step, so
-## it is in no step until it is put down, where each of its parts goes back in
-## its own step and sub-model ([method _place_figure]). Meanwhile the person's
-## steps stand as they were: the timeline is not worked out again without it
-## (Main._on_model_edited), no step edit is made (Shell._steps_wait), and the
-## steps it emptied keep their looks (ModelStore.looks_follow_edit). Worked
-## out again, the timeline lost the figure's steps while it was in hand and
-## drew its parts still to come, which then held its feet up (stepfast2).
+## Whether the figure in hand is one lifted off the model (X over it), whose
+## parts are still the model's where they stood (the hand): put down, it is
+## moved.
 func holds_lifted_figure() -> bool:
-	return is_holding_figure() and not _figure_lift.is_empty() and not _history.is_empty() \
-		and is_same(_history.back(), _figure_lift)
-
-
-## A figure lifted off the model was let go of without being put down: its
-## parts stay off the model, and the lift is an edit like any other now
-## (Main._edited_soon).
-signal figure_let_go
+	return is_holding_figure() and not _figure_parts.is_empty() and holds_lift()
 
 
 ## Where a figure facing a quarter turn would stand, aimed at a point:
@@ -6251,106 +6410,68 @@ signal figure_let_go
 ## row of them — and rests on the highest surface under either foot.
 ## Given its [param parts] (a figure's, "part" and "at" each), never down
 ## a stud past its foot ([method stud_feet_lift]): legs on two cones.
-## [param going]: bricks on the model that go with it ([method _going_now]),
-## which hold nothing up where they stand now.
 func settle_figure(target: Vector3, rotation: int,
-		hit: BrickLattice.Hit = null, parts: Array = [], going: Dictionary = {}) -> Transform3D:
+		hit: BrickLattice.Hit = null, parts: Array = []) -> Transform3D:
 	var basis: Basis = BrickLattice.basis_for("up", rotation)
 	var footprint := Vector2i(1, 2) if posmod(rotation, 2) == 1 else Vector2i(2, 1)
 	var snapped: Vector3 = BrickLattice.snap_to_studs(target, footprint)
 	var half := Vector3(footprint.x, 0.0, footprint.y) * (BrickLattice.STUD * 0.5)
 	var from: Vector3i = BrickLattice.to_cell(snapped - half)
 	var to: Vector3i = BrickLattice.to_cell(snapped + half)
-	var rest_cell: int = GROUND_CELL + lattice.rise_onto(PackedInt32Array([from.x, GROUND_CELL, from.z,
-		to.x, GROUND_CELL + 1, to.z]), GROUND_CELL, 0, 0, going)
+	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
 	if hit != null and hit.is_valid() and hit.normal.y == 0:
 		rest_cell = maxi(rest_cell, hit.adjacent().y)
 	var at := Transform3D(basis, Vector3(snapped.x, rest_cell * BrickLattice.CELL, snapped.z))
-	at.origin.y += figure_lift(parts, at, going)
+	at.origin.y += figure_lift(parts, at)
 	return at
 
 
 ## How far a figure's [param parts] standing at [param at] are down studs
 ## past their feet ([method stud_feet_lift]).
-func figure_lift(parts: Array, at: Transform3D, going: Dictionary = {}) -> float:
+func figure_lift(parts: Array, at: Transform3D) -> float:
 	var placed: Array = []
 	for item: Dictionary in parts:
 		placed.append([str(item["part"]), at * (item["at"] as Transform3D)])
-	return stud_feet_lift(placed, going) if not placed.is_empty() else 0.0
+	return stud_feet_lift(placed) if not placed.is_empty() else 0.0
 
 
 ## Whether a figure fits where it would stand: every part's geometry to
 ## hand and none of them in anything already there. Its own parts are
 ## not tested against each other — a head is meant to sit on its neck.
-## [param going] are parts on the model that go with it ([method
-## _followers_now]): where they stand now is in nobody's way.
-func figure_fits(parts: Array, at: Transform3D, going: Dictionary = {}) -> bool:
+func figure_fits(parts: Array, at: Transform3D) -> bool:
 	for item: Dictionary in parts:
 		var part: Lbm.PartMesh = library.mesh_for(str(item["part"]))
 		if part == null:
 			return false
-		var boxes: PackedInt32Array = boxes_for(part, at * (item["at"] as Transform3D))
-		var blocked: bool = lattice.collides_boxes(boxes) if going.is_empty() \
-			else not lattice.blockers_boxes(boxes, 0, going).is_empty()
-		if blocked:
+		if lattice.collides_boxes(boxes_for(part, at * (item["at"] as Transform3D))):
 			return false
 	return true
 
 
-## Whether the figure in hand, put down at [param at], fits: the parts of it
-## on show ([member held_figure]) and the parts of it a step has not put on
-## yet, which go with it ([method _followers_now]), each where it would land
-## and none in anything there but the figure itself. Up to stepfast a later
-## head was put down inside a plate over the figure's shoulders, unasked.
-func _figure_fits_with_followers(at: Transform3D) -> bool:
-	var followers: Array = _followers_now()
-	if followers.is_empty():
-		return figure_fits(held_figure, at)
-	var going: Dictionary = _going_now()
-	if not figure_fits(held_figure, at, going):
-		return false
-	for follower: Dictionary in followers:
-		var brick: BrickWorld.Brick = world.get_brick(int(follower["brick"]))
-		if brick == null:
-			continue
-		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if part == null:
-			return false
-		var boxes: PackedInt32Array = boxes_for(part, at * (follower["at"] as Transform3D))
-		if not lattice.blockers_boxes(boxes, 0, going).is_empty():
-			return false
-	return true
-
-
-## The parts of the figure in hand a step has not put on, that go where it
-## is put down ([member _figure_followers]): only straight after the lift
-## that left them; an edit or another model since, and they stay where they
-## stand.
-func _followers_now() -> Array:
-	if _figure_followers.is_empty() or _history.is_empty() or not is_same(_history.back(), _figure_lift):
-		return []
-	return _figure_followers
-
-
-## [method _followers_now] by brick: where they stand now is in nobody's way,
-## and holds nothing up.
-func _going_now() -> Dictionary:
-	var going: Dictionary = {}
-	for follower: Dictionary in _followers_now():
-		going[int(follower["brick"])] = true
-	return going
+## The whole of the figure in hand, "part" and "at" each: lifted off the model
+## at a step, the parts of it on show ([member held_figure]) and those a step
+## has not put on yet, which go with it. All are in hand and out of the
+## lattice, so none holds its own feet up where it stood, nor is in its own
+## way: aimed back where it stood, a figure with its head still to come stood
+## on that head, 104 LDU up, and its plate to come was refused over studs the
+## plate on show seats on (fastreview F1, F2). Up to stepfast a later head was
+## put down inside a plate over the figure's shoulders, unasked.
+func _figure_whole() -> Array:
+	if _figure_parts.is_empty() or not holds_lift():
+		return held_figure
+	var whole: Array = []
+	for brick_id: int in _figure_parts:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			whole.append({"part": brick.part_id, "at": _figure_parts[brick_id]})
+	return whole
 
 
 ## Put a figure's parts in the world and the lattice, as one group, and
 ## return their numbers. No history: whoever calls it decides what an
 ## undo takes back.
-func put_figure(parts: Array, called: String, at: Transform3D,
-		as_lifted: bool = false) -> PackedInt64Array:
-	# [param as_lifted]: the figure lifted off the model by the step before,
-	# moved: its own name (the rest of it may still be on the model under it,
-	# Builder._figure_followers), and each part the step, sub-model and file
-	# line it was lifted from, as parts carried keep theirs (_put_carried).
-	var group: String = called if as_lifted else unused_group(called)
+func put_figure(parts: Array, called: String, at: Transform3D) -> PackedInt64Array:
+	var group: String = unused_group(called)
 	var ids := PackedInt64Array()
 	for item: Dictionary in parts:
 		var where: Transform3D = at * (item["at"] as Transform3D)
@@ -6358,10 +6479,6 @@ func put_figure(parts: Array, called: String, at: Transform3D,
 		if brick_id == 0:
 			continue
 		world.get_brick(brick_id).group = group
-		if as_lifted:
-			world.get_brick(brick_id).unit = str(item.get("unit", ""))
-			world.get_brick(brick_id).step = int(item.get("step", -1))
-			world.get_brick(brick_id).origin = str(item.get("origin", ""))
 		lattice.occupy_boxes(brick_id,
 			boxes_for(library.mesh_for(str(item["part"])), where))
 		ids.append(brick_id)
@@ -6404,88 +6521,93 @@ func unused_group(wanted: String) -> String:
 
 
 ## The bricks of the figure a brick belongs to, or nothing when it is not
-## part of one: the bricks sharing its group, when they are a figure.
+## part of one: the bricks of the innermost copy round it that is a figure
+## (Assemblies.path_of). By its group, the outermost copy's name, X over a
+## driver lifted the whole car, and every copy of the car placed twice, and
+## put it down seated by the driver's feet (figreview2 N1).
 func figure_of(brick_id: int) -> PackedInt64Array:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	if brick == null or brick.group.is_empty():
 		return PackedInt64Array()
-	var members: Array = []
+	var path: String = Assemblies.path_of(brick)
+	var within: Array = []
 	for other: BrickWorld.Brick in world.bricks():
 		if other.group == brick.group:
-			members.append(other)
-	if not Minifig.is_figure(members, library):
-		return PackedInt64Array()
-	var ids := PackedInt64Array()
-	for other: BrickWorld.Brick in members:
-		ids.append(other.id)
-	return ids
+			within.append(other)
+	while not path.is_empty():
+		var members: Array = within.filter(func(other: BrickWorld.Brick) -> bool:
+			return Assemblies.within(Assemblies.path_of(other), path))
+		if Minifig.is_figure(members, library):
+			var ids := PackedInt64Array()
+			for other: BrickWorld.Brick in members:
+				ids.append(other.id)
+			return ids
+		path = Assemblies.parent_of(path)
+	return PackedInt64Array()
 
 
 func _place_figure() -> int:
-	# A figure lifted at a step with parts still to come: one figure still,
-	# under its own name and each part in its own step, and those parts
-	# brought where it went (_lift_figure).
-	# Only straight after the lift that left them: an edit or another model
-	# since, and they stay where they stand. Where they land was asked with
-	# the rest of it (_figure_fits_with_followers).
-	if _followers_now().is_empty():
-		_figure_followers = []
-	# Any figure lifted off the model, put down by the next click, is moved:
-	# each part in the step and sub-model it came from, as a part carried is.
-	# Put down anew, a figure lifted out of its own sub-model with its steps
-	# went into the main model, every part of it in the step showing
-	# (stepfast2: live does so on any move of a figure).
-	var lifted: bool = holds_lifted_figure()
-	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform,
-		lifted)
+	# A figure lifted off the model is moved: its parts in hand, each still
+	# in its own step, sub-model and line of the file, put down where the
+	# ghost is (_put_hand_down), the parts of it a step has not put on with
+	# it. One move to undo, whatever was done while it was in hand.
+	if holds_lifted_figure():
+		var moves: Dictionary = {}
+		var later: int = 0
+		for brick_id: int in _figure_parts:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var to: Transform3D = _ghost_transform * (_figure_parts[brick_id] as Transform3D)
+			moves[brick_id] = {"at": to, "boxes": boxes_for(library.mesh_for(brick.part_id), to)}
+			if is_ahead(brick_id):
+				later += 1
+		var first: int = int(_figure_parts.keys()[0])
+		var steps: Array = _put_hand_down(moves)
+		if steps.is_empty():
+			return 0
+		riding_later = later
+		# Each part put down where the timeline does not show it (its step
+		# after the one showing, the timeline stepped back while it was in
+		# hand): Main steps on to it and says so (figreview2 F6: it went
+		# into its own later step with no word).
+		put_unseen = PackedInt64Array()
+		for step: Dictionary in steps:
+			if is_ahead(int(step["brick"])):
+				put_unseen.append(int(step["brick"]))
+		_history.append({"undo": "group", "steps": steps, "words": "moved %s" % _many(steps.size())})
+		_redo.clear()
+		placed.emit(first, held_figure_name)
+		return first
+	var ids: PackedInt64Array = put_figure(held_figure, held_figure_name, _ghost_transform)
 	if ids.is_empty():
 		return 0
 	var steps: Array = []
 	for brick_id: int in ids:
-		if not lifted:
-			world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
-		# Moved, a model whose steps are the app's own follows it as a part
-		# carried and put down (ModelStore._bricks_edited).
-		steps.append({"undo": "remove", "brick": brick_id, "moved": true} if lifted
-			else {"undo": "remove", "brick": brick_id})
+		world.get_brick(brick_id).step = _new_step(world.get_brick(brick_id))
+		steps.append({"undo": "remove", "brick": brick_id})
 	riding_later = 0
-	for follower: Dictionary in _figure_followers:
-		var brick: BrickWorld.Brick = world.get_brick(int(follower["brick"]))
-		if brick == null:
-			continue
-		var to: Transform3D = _ghost_transform * (follower["at"] as Transform3D)
-		steps.append({"undo": "move", "brick": brick.id, "transform": brick.transform})
-		lattice.release(brick.id)
-		world.move_brick(brick.id, to)
-		lattice.occupy_boxes(brick.id, boxes_for(library.mesh_for(brick.part_id), to))
-		riding_later += 1
-	_figure_followers = []
-	var step: Dictionary = {"undo": "group", "steps": steps}
-	if lifted:
-		# One move: what lifted it and what put it down undo together, as a
-		# carried move's do (_put_carried). Undone in two, the first took the
-		# figure off the model, and the timeline was worked out without it.
-		steps.append_array(_history.pop_back()["steps"])
-		_figure_lift = {}
-		step["words"] = "moved %s" % _many(ids.size() + riding_later)
-	_history.append(step)
+	_history.append({"undo": "group", "steps": steps})
 	_redo.clear()
 	placed.emit(ids[0], held_figure_name)
 	return ids[0]
 
 
-## The parts of a figure lifted at a step that the step has not put on:
-## left on the model, each {brick, at} where it stands in the figure's
-## frame, to go where the figure is put down. Empty for any other.
-var _figure_followers: Array = []
-## The history step of the last figure lifted off the model, while it is
-## held: its undo lets go of it, and its followers go only with it.
-var _figure_lift: Dictionary = {}
+## The parts of the figure in hand lifted off the model (the hand's, each
+## where it stands in the figure's frame), id -> Transform3D: those on show
+## and those a step has not put on yet, which go where the figure is put
+## down. Empty for a figure from the maker or a copy.
+var _figure_parts: Dictionary = {}
+## The parts the last figure put down went to where the timeline does not
+## show them ([method _place_figure]), for Main to step on to; empty when
+## all of it is in view.
+var put_unseen := PackedInt64Array()
 
 
-## Take a whole figure off the model and hold it, facing the way it
-## faced, so the next click puts it down somewhere else.
+## Take a whole figure into hand to move it, facing the way it faced, so the
+## next click puts it down somewhere else. Its parts stay the model's where
+## they stood until then ([method _take_into_hand]).
 func _lift_figure(brick_id: int) -> bool:
+	# One lifted before goes back where it stood first (F4).
+	put_hand_back()
 	var members: PackedInt64Array = figure_of(brick_id)
 	if members.size() < 2:
 		return false
@@ -6496,38 +6618,19 @@ func _lift_figure(brick_id: int) -> bool:
 	if frame == null:
 		return false
 	var home: Transform3D = frame
-	var parts: Array = []
-	var steps: Array = []
-	var unpicked: bool = false
-	_figure_followers = []
+	var shown: Array = []
+	var held: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks:
-		# At a step, a part of it the timeline has not put on stays on the
-		# model in its own step, and goes where the figure is put down
-		# ([method _place_figure]): X over the torso at step 3 lifted the
+		var at: Transform3D = home.affine_inverse() * brick.transform
+		held[brick.id] = at
+		# At a step, a part of it the timeline has not put on goes with it,
+		# not drawn, in its own step: X over the torso at step 3 lifted the
 		# head of step 4 too, put down in step 3 (stepreview F5).
-		if is_ahead(brick.id):
-			_figure_followers.append({"brick": brick.id,
-				"at": home.affine_inverse() * brick.transform})
-			continue
-		parts.append({"part": brick.part_id, "color": brick.color_code,
-			"at": home.affine_inverse() * brick.transform, "step": brick.step,
-			"unit": brick.unit, "origin": brick.origin})
-		steps.append({"undo": "add", "part": brick.part_id,
-			"color": brick.color_code, "transform": brick.transform,
-			"group": brick.group, "unit": brick.unit, "step": brick.step, "was": brick.id})
-		lattice.release(brick.id)
-		world.remove_brick(brick.id)
-		unpicked = selection.erase(brick.id) or unpicked
-		removed.emit(brick.id)
-	if unpicked:
-		selection_changed.emit(selection.size())
-	var lift: Dictionary = {"undo": "group", "steps": steps}
-	_history.append(lift)
-	_redo.clear()
-	var following: Array = _figure_followers
-	hold_figure(parts, (bricks[0] as BrickWorld.Brick).group)
-	_figure_followers = following
-	_figure_lift = lift
+		if not is_ahead(brick.id):
+			shown.append({"part": brick.part_id, "color": brick.color_code, "at": at})
+	hold_figure(shown, (bricks[0] as BrickWorld.Brick).group)
+	_take_into_hand(Array(members))
+	_figure_parts = held
 	held_rotation = BrickLattice.turns_about(BrickLattice.snap_basis(home.basis), "up")
 	_hovered = 0
 	return true
@@ -6548,18 +6651,11 @@ func _preview_figure(origin: Vector3, direction: Vector3) -> void:
 			_ghost_valid = false
 			return
 		target = landing
-	# Its parts still to come stand where they go, not where they stood: no
-	# floor under its feet, and down a stud as the parts in hand are. Left
-	# where they stood, a figure aimed back there stood on its own head to
-	# come, 104 LDU up, and its plate to come was refused over studs the
-	# plate on show seats on (fastreview F1, F2).
-	var whole: Array = held_figure.duplicate()
-	for follower: Dictionary in _followers_now():
-		var brick: BrickWorld.Brick = world.get_brick(int(follower["brick"]))
-		if brick != null:
-			whole.append({"part": brick.part_id, "at": follower["at"]})
-	_ghost_transform = settle_figure(target, held_rotation, hit, whole, _going_now())
-	_ghost_valid = _figure_fits_with_followers(_ghost_transform)
+	# Seated and asked whole, its parts still to come where they go
+	# ([method _figure_whole]).
+	var whole: Array = _figure_whole()
+	_ghost_transform = settle_figure(target, held_rotation, hit, whole)
+	_ghost_valid = figure_fits(whole, _ghost_transform)
 	for n: int in held_figure.size():
 		if n >= _figure_ghosts.size():
 			var made := MeshInstance3D.new()
@@ -6604,10 +6700,19 @@ func steps_now() -> Array:
 
 ## What each step undo would take back said in words, the most recent
 ## first, at most ``most`` of them: "placed Brick 2 x 4", "moved 12 parts".
+## What is in hand lifted off the model is among them, where it was lifted:
+## Undo puts it back when it is the newest ([method lift_newest]).
 func history_words(most: int = 25) -> PackedStringArray:
 	var out := PackedStringArray()
-	for n: int in range(_history.size() - 1, maxi(_history.size() - 1 - most, -1), -1):
+	var lift_at: int = mini(_hand_depth, _history.size()) if holds_lift() else -1
+	var n: int = _history.size() - 1
+	while out.size() < most and (n >= 0 or lift_at >= 0):
+		if lift_at >= 0 and n < lift_at:
+			out.append(_hand_words())
+			lift_at = -1
+			continue
 		out.append(_words_for(_history[n]))
+		n -= 1
 	return out
 
 

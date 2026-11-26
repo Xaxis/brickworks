@@ -271,7 +271,11 @@ func _figland() -> void:
 		0, going)).filter(func(id: int) -> bool: return wall.has(id))
 	# Asked by name: a tree from before stepfast has no third argument, and
 	# runs only the pick.
-	var shown_clear: bool = bool(_builder.call("figure_fits", _builder.held_figure, ghost, going))
+	# From handkeep the parts in hand are out of the lattice, so none is in
+	# the way of the rest: two arguments.
+	var shown_clear: bool = bool(_builder.call("figure_fits", _builder.held_figure, ghost)) \
+		if _builder.has_method("_figure_whole") \
+		else bool(_builder.call("figure_fits", _builder.held_figure, ghost, going))
 	_result("figland.aim", "aimed at %s: stands at %s; the plate would land at %s, in %d of the wall's bricks; its parts on show clear %s"
 		% [str(spot.snapped(Vector3.ONE)), str(ghost.origin.snapped(Vector3.ONE)),
 			str((ghost * plate_at).origin.snapped(Vector3.ONE)), in_wall.size(), shown_clear])
@@ -397,8 +401,17 @@ func _lift(torso: int) -> Dictionary:
 	_builder.lift_brick(torso)
 	await _frames(4)
 	var going: Dictionary = {}
-	for follower: Dictionary in _builder.get("_figure_followers"):
-		going[int(follower["brick"])] = follower["at"]
+	var followers: Variant = _builder.get("_figure_followers")
+	if followers is Array:
+		for follower: Dictionary in followers:
+			going[int(follower["brick"])] = follower["at"]
+	# From handkeep the whole figure is in hand, each part where it stands in
+	# its frame (Builder._figure_parts): those to come are the ones that go.
+	var in_hand: Variant = _builder.get("_figure_parts")
+	if in_hand is Dictionary:
+		for brick_id: int in in_hand:
+			if _builder.is_ahead(brick_id):
+				going[brick_id] = in_hand[brick_id]
 	return going
 
 

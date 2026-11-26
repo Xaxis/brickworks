@@ -244,15 +244,16 @@ func press(name: String) -> void:
 		set_mode("select")
 		say.call("put back where it was")
 		return
-	# So is Undo with parts lifted off the model in hand, the lift the last
-	# step: they go back where they were and are let go, as Esc does.
-	# Undoing the lift's step under the hand put them back and left them
-	# held, and the next tap put a second of each down (phonefingers: a
-	# two-finger tap while carrying). A step recorded since (the person's
-	# Claude) is undone as ever, the parts still in hand.
-	if name == "undo" and builder.is_carrying() and builder.carrying.lifted \
-			and builder._lift_on_top():
-		put_away()
+	# So is Undo with parts lifted off the model in hand, the lift the newest
+	# thing done (Builder.lift_newest): they go back where they were and are
+	# let go, as Esc does, a figure as a selection. A step recorded since
+	# (the person's Claude) is undone as ever, the parts still in hand.
+	if name == "undo" and builder.lift_newest():
+		if builder.is_carrying():
+			put_away()
+		elif builder.drop_figure():
+			aim_again.call()
+			say.call("put back where it was")
 		return
 	match name:
 		"undo":

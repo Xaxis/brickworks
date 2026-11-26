@@ -413,6 +413,13 @@ func _try(spot: Vector3) -> Dictionary:
 	if followers is Array:
 		for follower: Dictionary in followers:
 			going[int(follower["brick"])] = follower["at"]
+	# From handkeep the whole figure is in hand, each part where it stands in
+	# its frame (Builder._figure_parts): those to come are the ones that go.
+	var in_hand: Variant = _builder.get("_figure_parts")
+	if in_hand is Dictionary:
+		for brick_id: int in in_hand:
+			if _builder.is_ahead(brick_id):
+				going[brick_id] = in_hand[brick_id]
 	var held_parts: Array = _builder.held_figure.duplicate()
 	var ghost: Transform3D = await _aim(spot)
 	var valid: bool = bool(_builder.get("_ghost_valid"))

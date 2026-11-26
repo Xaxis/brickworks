@@ -420,6 +420,109 @@ const HISTORY_MOST := 60000
 ## history was open would have written every one of them into the file.
 var _ghosts: Dictionary = {}  ## int id -> true
 
+## Parts in hand to be moved (Builder's hand: a figure lifted by X, a
+## selection carried), id -> true: still the model's, where they stood, in
+## their steps, sub-models and file lines, so every writer, read tool and the
+## timeline has them there; drawn nowhere until put down or put back
+## (handkeep). Taken off the model instead, a figure or a selection in hand
+## was in no file: the autosave, Ctrl+S and closing the window wrote the
+## model without it, and a crash or a discarded tab lost it for good
+## (figreview2 F3).
+var _in_hand: Dictionary = {}
+## Told before anything but the hand moves, recolours or takes off a part in
+## hand, (id, "move" | "paint" | "remove"): the hand puts what it holds back
+## first (Builder._hand_touched), so the change is made to the part where it
+## stands. Unset, the part alone is drawn again where it stands.
+var hand_touched: Callable = Callable()
+
+
+## Take [param brick_id] into hand: drawn nowhere, and still the model's.
+func take_in_hand(brick_id: int) -> bool:
+	if not _bricks.has(brick_id) or _ghosts.has(brick_id) or _in_hand.has(brick_id):
+		return false
+	_touching_brick(brick_id)
+	for key: String in _brick_batches.get(brick_id, NO_KEYS):
+		var batch: Batch = _batches.get(key)
+		if batch == null:
+			continue
+		var at: int = batch.brick_ids.find(brick_id)
+		if at >= 0:
+			batch.brick_ids.remove_at(at)
+		_mark_dirty(key)
+	_brick_batches.erase(brick_id)
+	_spans.erase(brick_id)
+	_drawn.erase(brick_id)
+	_in_hand[brick_id] = true
+	_looked_changed()
+	return true
+
+
+## Put [param brick_id] down out of hand at [param to] (where it stood, for
+## one put back), drawn again: a move of the model's part, noted as one when
+## it went somewhere else.
+func put_from_hand(brick_id: int, to: Transform3D) -> bool:
+	if not _in_hand.has(brick_id):
+		return false
+	_in_hand.erase(brick_id)
+	var brick: Brick = _bricks[brick_id]
+	var moved: bool = brick.transform != to
+	brick.transform = to
+	_draw_again(brick)
+	if moved:
+		_note({"op": "move", "id": brick_id, "at": to})
+	else:
+		_looked_changed()
+	return true
+
+
+func in_hand(brick_id: int) -> bool:
+	return _in_hand.has(brick_id)
+
+
+## The parts in hand, id -> true.
+func hand() -> Dictionary:
+	return _in_hand
+
+
+## A part in hand about to be changed by something other than the hand:
+## [member hand_touched] puts it back first.
+func _hand_change(brick_id: int, kind: String) -> void:
+	if not _in_hand.has(brick_id):
+		return
+	if hand_touched.is_valid():
+		hand_touched.call(brick_id, kind)
+	if _in_hand.erase(brick_id):
+		_draw_again(_bricks[brick_id])
+
+
+## [param brick] into the batches for its part and colour, as a recolour puts
+## it (its slot written at the frame's end).
+func _draw_again(brick: Brick) -> void:
+	var part: Lbm.PartMesh = library.mesh_for(brick.part_id) if library != null else null
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
+	if part == null or info == null:
+		return
+	var keys := PackedStringArray()
+	for surface_index: int in part.surface_count():
+		var key: String = _batch_key(info.mesh_hash, surface_index, part, brick.color_code)
+		var batch: Batch = _batches.get(key)
+		if batch == null:
+			batch = _create_batch(key, part, surface_index, brick.color_code)
+			_batches[key] = batch
+		_touching(batch)
+		batch.brick_ids.append(brick.id)
+		keys.append(key)
+		_mark_dirty(key)
+	_brick_batches[brick.id] = keys
+
+
+## What is drawn changed, and nothing in the model: looked at again, as an
+## edit is ([method _note]), and kept out of the history watchers read.
+func _looked_changed() -> void:
+	revision += 1
+	if is_inside_tree():
+		Wake.all("world")
+
 
 func _note(event: Dictionary) -> void:
 	revision += 1
@@ -567,6 +670,7 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 func remove_brick(brick_id: int) -> bool:
 	if not _bricks.has(brick_id) or _ghosts.has(brick_id):
 		return false
+	_hand_change(brick_id, "remove")
 	_unplace(brick_id)
 	_note({"op": "remove", "id": brick_id})
 	return true
@@ -600,6 +704,7 @@ func move_brick(brick_id: int, to: Transform3D) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null:
 		return false
+	_hand_change(brick_id, "move")
 	_touching_brick(brick_id)
 	brick.transform = to
 	_spans.erase(brick_id)
@@ -625,6 +730,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var brick: Brick = get_brick(brick_id)
 	if brick == null or brick.color_code == color_code:
 		return false
+	_hand_change(brick_id, "paint")
 	_touching_brick(brick_id)
 
 	# Out of its old batches, into the ones for the new colour, under the
@@ -686,6 +792,7 @@ func clear(keep_numbers: bool = false) -> void:
 	_brick_batches.clear()
 	_dirty.clear()
 	_ghosts.clear()
+	_in_hand.clear()
 	# Numbers start again, so x-ray's would name the next model's bricks.
 	_xray.clear()
 	_faded.clear()
@@ -1004,7 +1111,7 @@ func drawn_as(bricks: Dictionary) -> Array:
 	var any: bool = false
 	for brick_id: int in bricks:
 		var brick: Brick = _bricks.get(brick_id)
-		if brick == null or brick.hidden or _ghosts.has(brick_id):
+		if brick == null or brick.hidden or _ghosts.has(brick_id) or _in_hand.has(brick_id):
 			continue
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 		if info != null:

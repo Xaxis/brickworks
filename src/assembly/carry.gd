@@ -52,6 +52,10 @@ var turns: int = 0
 ## Whether the parts came off the model (a move, which Escape undoes) or
 ## are a copy (which Escape simply puts away).
 var lifted: bool = false
+## Called when parts that came off the model are let go of without being put
+## down ([method drop], or a copy taken up over them): Builder puts them back
+## where they stood, still the model's (Builder._take_into_hand).
+var let_go: Callable = Callable()
 ## Whether another copy stays in hand after one is put down: a clone and a
 ## duplicate (Ctrl-D) go on being put, as Studio's Clone does, until Esc or
 ## a right click, as a part from the bin always has; a paste and a move go
@@ -107,17 +111,21 @@ func _ready() -> void:
 
 
 ## The parts of these bricks, in a frame of their own, ready to hold, and
-## the line each was read from, which a lift puts back down with it
+## the line each was read from. [param lifting]: each with its id, as
+## "brick", for a lift, which puts down the parts themselves, moved
 ## (Builder._put_carried).
 static func gather(world: BrickWorld, from: PartLibrary,
-		ids: Array) -> Array:
+		ids: Array, lifting: bool = false) -> Array:
 	var placed: Array = []
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick != null and from.mesh_for(brick.part_id) != null:
-			placed.append({"part": brick.part_id, "color": brick.color_code,
+			var item: Dictionary = {"part": brick.part_id, "color": brick.color_code,
 				"at": brick.transform, "group": brick.group, "unit": brick.unit,
-				"step": brick.step, "origin": brick.origin})
+				"step": brick.step, "origin": brick.origin}
+			if lifting:
+				item["brick"] = brick_id
+			placed.append(item)
 	return framed(placed, from)
 
 
@@ -194,6 +202,10 @@ static func phase_of(pivot: Vector3) -> float:
 
 ## Take these parts in hand.
 func hold(parts: Array, came_off_the_model: bool) -> void:
+	# Parts lifted off the model, let go of for a copy or a part to put down:
+	# the model has them back where they stood (Builder._take_into_hand).
+	if lifted and not came_off_the_model and let_go.is_valid():
+		let_go.call()
 	items = parts.duplicate(true)
 	turns = 0
 	lifted = came_off_the_model
@@ -215,8 +227,11 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	_build_ghost()
 
 
-## Let go of whatever is held, without putting it anywhere.
+## Let go of whatever is held, without putting it anywhere: parts lifted off
+## the model go back where they stood ([member let_go]).
 func drop() -> void:
+	if lifted and let_go.is_valid():
+		let_go.call()
 	items = []
 	lifted = false
 	repeats = false
@@ -703,6 +718,7 @@ func placements(builder: Builder) -> Array:
 			"unit": item.get("unit", ""),
 			"step": item.get("step", -1),
 			"origin": item.get("origin", ""),
+			"brick": int(item.get("brick", 0)),
 			"at": _frame * (item["at"] as Transform3D),
 			"boxes": builder.boxes_for(library.mesh_for(str(item["part"])),
 				_frame * (item["at"] as Transform3D)) if _posed

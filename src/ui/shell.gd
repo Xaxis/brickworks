@@ -4105,9 +4105,12 @@ func _close_step(level: String, skip: Dictionary) -> String:
 ## as the person's (sk2review F2). The same for the timeline, the keys and
 ## every session's tool, as all come here. "" when nothing is held.
 func _steps_wait() -> String:
-	# A figure lifted off (X over it) is in no step too, the timeline's steps
-	# kept as they were for it (Builder.holds_lifted_figure).
-	if builder != null and (builder.is_carrying() or builder.holds_lifted_figure()):
+	# Parts lifted off the model into hand (X over a figure, a selection
+	# picked up) are the model's, each in its own step where it stood
+	# (Builder._take_into_hand): a step edit numbers them with the rest, and
+	# put down each keeps the step it then has. Only a copy or a part from the
+	# bin in hand is in no step.
+	if builder != null and builder.is_carrying() and not builder.carrying.lifted:
 		return "the parts in hand are in no step: put them down, or press Escape, first"
 	return ""
 

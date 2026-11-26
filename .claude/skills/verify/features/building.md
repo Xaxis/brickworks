@@ -144,10 +144,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   said nothing, and undoing a sub-assembly made changes nothing on screen. Undo belongs to the model it was
   recorded against: open a different model and the stack goes with the old one,
   and so does the selection (its ids would name the new model's bricks).
-  Undo with parts lifted off the model in hand (Move, a drag) is that lift:
-  they go back where they were and are let go, as Esc does ("put back where it
-  was"). Undoing the lift's step under the hand left them held, and the next
-  click put a second of each down (phonefingers_probe, section 3). On a phone
+  Undo with parts lifted off the model in hand (Move, a drag, a minifig by X)
+  while the lift is the newest thing done is that lift: they go back where
+  they were and are let go, as Esc does ("put back where it was";
+  `Builder.lift_newest`). Undoing the lift's step under the hand left them
+  held, and the next click put a second of each down (phonefingers_probe,
+  section 3). On a phone
   a two-finger tap undoes and three redo, the same verbs (`finger taps to
   undo and redo and turn`, view.md).
   A part an undo or redo puts back keeps its number (`BrickWorld.add_brick`
@@ -2001,23 +2003,38 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   show; a rigid move of a sub-assembly taken whole (an arrow, a turn, a
   drag, a lift and put-down, Mirror) moves all of it, its later parts too,
   so it never tears, and says how many went with it (`Builder.
-  _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). A minifig
-  lifted at a step leaves its later parts on the model and moves them with
-  it on put-down (`_figure_followers`); aimed, it is seated with them, and
-  they hold nothing up where they stand (`Builder._going_now`, `settle_figure`'s
-  `going`). A minifig lifted off the model keeps the person's steps
-  (stepfast2, 2026-11-25): while it is in hand the timeline is not worked out
-  again (`Builder.holds_lifted_figure`, `Main._on_model_edited`,
-  `ModelStore.looks_follow_edit`) and step edits wait (`Shell._steps_wait`);
-  put down anywhere, each part goes back into its own step, sub-model and
-  file line (`put_figure`'s `as_lifted`), and lift and put-down are one Undo
-  ("moved N parts"); let go of, the edit is heard then (`figure_let_go`). A
-  save made in hand writes the model without it, each file's steps as they
-  were. Probe: `PROBE_SIZE=1280x720 tools/probe.sh stepfast2_probe` (a figure
-  in its own sub-model lifted at its step and at the last: in hand, put back,
-  put elsewhere, saved, undone once; aimed back where it stood on a brick;
-  its later plate over a cone or round brick judged as the plate on show),
-  and at `390x844`. `keep_shown` looks only at the parts
+  _moving_selection`, `_let_go`, `hold_unseen`, `riding_said`). What is
+  in hand never leaves the model's file until it is put down (handkeep,
+  2026-11-25): a minifig lifted by X (the innermost copy round the part that
+  is a figure, `Builder.figure_of`: X over a car's driver lifts the driver)
+  and a selection picked up (`lift_selection`) go into the hand, each part
+  still the model's where it stood, in its step, sub-model and file line,
+  drawn nowhere and out of the lattice (`Builder._take_into_hand`,
+  `BrickWorld.take_in_hand`). So the autosave, Ctrl+S, close, export, share
+  and a session's read and save tools write it where it stood, a crash or a
+  reload finds it there, it counts as unsaved work (`ModelStore.
+  has_unsaved_work`), the timeline is never worked out without it, and the
+  lift is no step in the history. Put down, each part is the same part
+  moved, one "move" step each in one Undo ("moved N parts"), a figure's
+  later parts with it (`_figure_parts`), seated and judged whole
+  (`_figure_whole`); put down past the step showing, the timeline goes to
+  that step and says so ("moved N parts to step 4", `Main._show_put_unseen`).
+  Every let-go puts back first and changes nothing: Escape, Undo while the
+  lift is the newest thing done (`Builder.lift_newest`), lifting another
+  figure, a tool chosen, Open/New/reload (`forget_history`), and any change
+  to a part in hand by something else (a session's edit, an undo reaching
+  it: `BrickWorld.hand_touched`, `Builder._hand_touched`, `_apply`). An edit
+  between the lift and the put-down is its own step: two Undos, the file
+  byte for byte. Probes: `PROBE_SIZE=1280x720 tools/probe.sh handkeep_probe
+  --case=between` (a carried selection with a session's edit and a nudge
+  between: Escape, put down, Undo), and `--case=kill --kind=carry|figure`
+  then `--case=reopen` with one `PROBE_DATA` (the autosave in hand, the
+  process killed, the model opened again: nothing lost); `figreview2_probe`
+  (every case); `PROBE_SIZE=1280x720 tools/probe.sh stepfast2_probe` (a
+  figure in its own sub-model lifted at its step and at the last: in hand,
+  put back, put elsewhere, saved, undone once; aimed back where it stood on a
+  brick; its later plate over a cone or round brick judged as the plate on
+  show), and at `390x844`. `keep_shown` looks only at the parts
   a step flipped and tells the selection's listeners once, 0.3 s after the
   stepping stops (`SETTLE_SECONDS`); the line is said at once. A sub-assembly taken whole is its parts
   on so far and says so ("House selected, 56 of its 149 parts on at this step
