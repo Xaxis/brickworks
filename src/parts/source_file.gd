@@ -3081,6 +3081,12 @@ func kept_said(line: int, written: String, part: String, library: PartLibrary,
 	if _says_alike(said, written, theirs, mine):
 		tally["kept"] = int(tally.get("kept", 0)) + 1
 		return said
+	# Alike but for its colour (a part painted, a copy the write hands its
+	# section's colour by 16): the file's line in the write's colour, as a
+	# patch writes a part only painted. 264 of 10030-1's lines, read back.
+	if _says_alike(said, written, theirs, mine, false):
+		tally["kept_words"] = int(tally.get("kept_words", 0)) + 1
+		return _recoloured(said, theirs[1], mine[1])
 	var numbers: Variant = _numbers_of(mine)
 	if numbers == null or _numbers_of(theirs) == null:
 		return written
@@ -3101,10 +3107,8 @@ func kept_said(line: int, written: String, part: String, library: PartLibrary,
 	if given == null:
 		return written
 	var out: String = said if _words(str(given)) == theirs else str(given)
-	# Its words now saying what the whole write's do (the file's numbers and
-	# name in the write's colour, a copy's 16 where the file said its
-	# section's): read alike, it opens alike, with no reading back either.
-	# Read back, 264 of 10030-1's lines took a tenth of its whole write.
+	# Its words now saying what the whole write's do: read alike, it opens
+	# alike, with no reading back either.
 	var why: String = "" if _says_alike(out, written, _words(out), mine) \
 		else _reads_otherwise(out, written, part.is_empty(), library)
 	if not why.is_empty():
@@ -3122,19 +3126,28 @@ func kept_said(line: int, written: String, part: String, library: PartLibrary,
 ## (ModelStore._as_placed). A word spelled alike is not read again: on every
 ## line of a big file the same 0s and 1s and names, and reading each line's
 ## name a character at a time was most of what a whole write's keeping cost.
+## Not [param colour]: alike in all but the colour. Each a line the open
+## read as placing something, or the whole write wrote: its twelve numbers
+## are numbers (LdrModel.parse carries a line with one that is not).
 static func _says_alike(a: String, b: String, a_words: PackedStringArray,
-		b_words: PackedStringArray) -> bool:
+		b_words: PackedStringArray, colour: bool = true) -> bool:
 	if a_words.size() < 15 or b_words.size() < 15 or a_words[0] != "1" or b_words[0] != "1":
 		return false
-	if a_words[1] != b_words[1] and LdrModel._colour(a_words[1]) != LdrModel._colour(b_words[1]):
+	if colour and a_words[1] != b_words[1] \
+			and LdrModel._colour(a_words[1]) != LdrModel._colour(b_words[1]):
 		return false
 	for k: int in range(2, 14):
-		var x: String = a_words[k]
-		var y: String = b_words[k]
-		if x != y and (not x.is_valid_float() or not y.is_valid_float()
-				or absf(x.to_float() - y.to_float()) > ALIKE):
+		if a_words[k] != b_words[k] and absf(a_words[k].to_float() - b_words[k].to_float()) > ALIKE:
 			return false
 	return LdrModel._key(_name_in(a, a_words)) == LdrModel._key(_name_in(b, b_words))
+
+
+## Placing line [param line] with its colour word [param was] said as [param
+## now], every other byte as it was: the word after the line's first, "1",
+## with only spaces between them.
+static func _recoloured(line: String, was: String, now: String) -> String:
+	var at: int = line.find(was, line.find("1") + 1)
+	return line.substr(0, at) + now + line.substr(at + was.length())
 
 
 ## The name placing line [param line] gives (LdrModel.reference_of), from its
