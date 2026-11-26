@@ -374,7 +374,7 @@ if [ -n "$still" ] && [ -n "${SHIP_STALE:-}" ]; then
     } > $S/${TAG}_ab.msg
     made=${PREVIEW_MADE:-$SHA}
     # HEAD's own tree, whatever the index holds.
-    words=$(git -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit-tree "HEAD^{tree}" -p HEAD \
+    words=$(git -c user.name=Xaxis -c "user.email=$(bash "$HERE/author.sh")" commit-tree "HEAD^{tree}" -p HEAD \
       -F $S/${TAG}_ab.msg) && git reset -q --soft "$words" \
       || { echo "SHIP: could not commit what it ships past in $W"; exit 1; }
     SHA=$(git rev-parse --short HEAD); PREVIEW_MADE=$made
