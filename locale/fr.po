@@ -17858,6 +17858,9 @@ msgstr "%d des étapes suivantes laissées de côté."
 msgid "moved %s"
 msgstr "%s déplacé"
 
+msgid "lifted %s"
+msgstr "%s soulevé"
+
 msgid "moving %s"
 msgstr "déplacement de %s"
 

@@ -17858,6 +17858,9 @@ msgstr "%d aus späteren Schritten ausgelassen."
 msgid "moved %s"
 msgstr "%s verschoben"
 
+msgid "lifted %s"
+msgstr "%s angehoben"
+
 msgid "moving %s"
 msgstr "%s wird verschoben"
 

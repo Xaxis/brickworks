@@ -17858,6 +17858,9 @@ msgstr "%d de pasos posteriores omitidos."
 msgid "moved %s"
 msgstr "%s movido"
 
+msgid "lifted %s"
+msgstr "%s levantado"
+
 msgid "moving %s"
 msgstr "moviendo %s"
 
