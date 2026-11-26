@@ -1,0 +1,20 @@
+ways stand-in: Google, GitHub and orangecheck Connect answered here
+the deployment's functions on http://127.0.0.1:12273/api/
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth: verify answered 429
+ways: no session: auth POST verify: no answer in 10 s
+ways: not handed over: database POST rpc/session_standing: no answer in 15 s
+ways: not handed over: database POST rpc/session_standing: 503
+admin: the sign-in was not read: database POST rpc/session_standing: 503
+admin: the sign-in was not read: database POST rpc/session_standing: no answer in 15 s
+ways: database POST rpc/session_standing: 503
+oauth token: database POST rpc/oauth_code_grant: not reached (UND_ERR_SOCKET)
+oauth token: database POST rpc/oauth_code_grant: 503

@@ -1,0 +1,122 @@
+signin7 (2026-11-26): one rule for every change to how an account signs in, or to end it
+
+THE RULE (api/_oc.js stepUp, 550)
+  A route that gives an account a way in, or ends the account, passes stepUp(claims) before it does
+  anything. stepUp asks two things, of every kind of session alike:
+    1. The session as it is now: codeOf -> standingOf (api/_auth.js 240), one read of
+       rpc/session_standing, never verify()'s held answer (SESSION_HELD_MS, 5 s). Gone: 401 "You were
+       signed out. Sign in again." Not readable: 503, nothing changed.
+    2. A sign-in by a code emailed in the last five minutes (codeOf's fresh: amr otp within
+       FRESH_SECONDS 300, and the session written down as a code's, standing.by === "code"). No
+       session Google, GitHub or orangecheck started is ever fresh, however new: each is minted from a
+       one-time link and written down as its way's (way_sessions, oc_sessions). A test account's
+       password counts as its code (tools/web/session.mjs), as it did before.
+    Else 403 {fresh: false} "Confirm it is you first, with a code we email you.", and the page sends a
+    code and asks for it in place (Settings' delete form, and #ways-code for Link again).
+  An orangecheck-only account (its address made up, @oc.brickworks.diy) takes no code, as it has no
+  mailbox: it proves itself with a fresh sign-in with orangecheck as the id it has (sameOrangecheck:
+  checked, oc_account_of === sub, spent, ended at orangecheck), as Delete account asked before.
+
+  Why one helper: signreview4 R4-1 found two routes the earlier fixes had not reached (Delete account
+  and Link again), each still on verify()'s held read and taking any session. Every earlier review found
+  the same class on another route (signreview3 R1, signin6). A rule each route must remember is the bug;
+  a helper each route calls, named after what it guards, is the fix.
+
+  Unlink takes a way away and gives none, so it asks the session as it is now alone (standingOf: a
+  session gone is 401 there too), not a code: a GitHub session must still be able to unlink GitHub and
+  sign itself out (signreview2 C1), and signreview4's own fix says "the live read" for Unlink. Ending
+  sessions (the console's sign_out) is the same kind: it takes access away, and the console's gate
+  already reads the session live and requires a code's (api/admin.js 343-349).
+
+ROUTES (every one that changes how an account signs in, or ends it)
+  Pass stepUp (live session + a code of the last five minutes):
+    api/account.js 526 deleteAccount, stepUp at 566 (an orangecheck-only account: its fresh orangecheck
+      sign-in instead). The typed address is still asked first (422), the owner still refused (403).
+    api/account.js 276 takeAge, under 13, stepUp at 324: an account made in the last half hour
+      (madeJustNow, 357, Supabase's created_at) is deleted at once whatever session answers, since a
+      child's first sign-in may be Google's; an older one needs the code (or, when the session is gone,
+      401, nothing deleted).
+    api/_ways.js 582 waysRoute POST on:true (Link again), stepUp at 607; only a way that is "off" is
+      changed (a stale tab's Link again of a way signing in leaves it, GitHub's id kept).
+    api/_ways.js 538 wayBind (GitHub's id kept for an account), stepUp at 557, and the code must be an
+      emailed one (asked.emailed), never a test account's password.
+    api/orangecheck.js 354 link and 384 unlink, through changing (310, stepUp at 321) for an account
+      with its own email; an orangecheck-only account is refused unlinking further on as before.
+    api/admin.js 402 the console's delete_account and sign_in_switch (STEP_UP, 279), besides the
+      console's own gate.
+  Live read alone (takes access away, gives none):
+    api/_ways.js 624 waysRoute POST on:false (Unlink): standingOf, 401 when gone, "you" read before it
+      ends.
+    api/admin.js 343-349 the console's gate (every op, sign_out included): standingOf, by === "code".
+    api/_ways.js 492 handOver (way_take): standingOf, 410 when the way's session is not there.
+  Not routes of ours, and closed below us (read in production, dry_ways_in.log):
+    Supabase's own PUT /auth/v1/user (a new address, a password) and MFA enrolment: refused for every
+    session by the triggers no_new_ways_in (auth.users), no_password_sign_in (auth.mfa_amr_claims),
+    no_second_factor (auth.mfa_factors), all three enabled in production. auth.identities holds only
+    "email" (191): Supabase's own provider linking is not used.
+  Not changed, and why:
+    The sign-in routes themselves (codes, wayBack, way_take, way_app, ?op=signin, ?op=native): they
+      start a session, they do not change an account's ways.
+    orangecheck's merge (oc_follow_merge): orangecheck's own signed word, and the address is told.
+    An AI app's approval (api/oauth.js approve): it grants an app access to models, not a sign-in;
+      signin6 made each connection end with the way that approved it.
+
+R4-2: can sessions be minted without spending the shared verify?
+  No. GoTrue hands out a session only from /verify (a link or code) or /token (a password, a refresh,
+  a PKCE code), each limited per calling address. The password grant is shut for people
+  (no_new_ways_in.sql, and verify() refuses a password session but a test account's). A PKCE /token
+  needs Supabase's own OAuth flow, which Brickworks does not use. The id_token grant would take
+  Google's token alone (GitHub has none), needs Supabase's Google provider turned on, and spends the
+  /token bucket per address instead: the same problem one bucket over. So every minted Google, GitHub and
+  orangecheck sign-in spends one of the box's verify bucket: 30 per 5 minutes from one Vercel address,
+  rate_limit_verify.
+  What to set instead (the lead's call, on the project's auth config):
+    PATCH https://api.supabase.com/v1/projects/uhyhrwhkaqjwifwyzuxl/config/auth
+    {"security_sb_forwarded_for_enabled": true}
+    (or the dashboard: Authentication > Rate Limits > IP Address Forwarding)
+  The code already sends it: api/_minted.js redeemed sends Sb-Forwarded-For: <the person's address>
+  (clientAddress: x-forwarded-for's first, which Vercel writes and never takes from the caller) with the
+  secret key, which is the only key Supabase honours the header from. Once enabled, each minted
+  sign-in's verify is counted in the person's own address's bucket, not the box's.
+  Which callers are trusted: the first comma-separated value of Sb-Forwarded-For, parsed as an IP (else
+  ignored, never refused). Supabase's docs (https://supabase.com/docs/guides/auth/rate-limits): "make a
+  request with a secret API key"; "Publishable API keys and legacy anon/service_role API keys are not
+  supported." GoTrue's own code (https://github.com/supabase/auth/pull/2295/files) checks no key: once
+  the setting is on it rate-limits by the header on any request that reaches it. So that a browser's key
+  cannot use it rests on Supabase's gateway, which cannot be read from here: sbff_probe.mjs asks the
+  project itself, right after the setting is turned on (34 verifies with the publishable key, each a new
+  address: 429 after this box's 30 means ignored from browsers; never 429 means UNSAFE, turn it off).
+  Why it is safe, if the probe says so: no limit is raised, so the guess rate against codes per address
+  is what it is now. Only a holder of the secret key can name an address, and that is this server alone. A flood of free
+  provider accounts empties only its own address's bucket, which that address's own code sign-ins
+  already share. Until it is set, nothing changes (the header is ignored).
+  The alternative, raising rate_limit_verify, widens every address's guessing window and still lets
+  one address empty the box's bucket for everyone: not recommended.
+
+R4-3: ?op=native forwarded every made-up code to orangecheck
+  The app's code is still traded here (letting the app trade its own and send the token to ?op=signin
+  needs orangecheck's yes: a question for them, below). Until then, the reviewer's fallback: before a
+  code is traded, a well-formed ask is counted per network (NATIVE_REFUSED, 10 per 15 minutes,
+  api/orangecheck.js 169-188), and the count is given back only when the trade brings back a token. So
+  made-up codes, refused ones and calls while orangecheck is not answering stay counted, and the
+  eleventh is refused 429 in words without asking orangecheck. A malformed ask is refused 422 before
+  anything (CODE, VERIFIER, LOOPBACK). A real sign-in is refused only on a network someone is filling
+  with made-up codes, and the window, the site and a code still work there.
+  For orangecheck (the lead to ask): may an app trade its own native code at
+  {issuer}/api/auth/native/token with the public project key, so Brickworks' server never forwards a
+  stranger's code? And what limits does that endpoint keep, per calling address or per project?
+
+R4-4: a verify refused for being out spent the person's own count
+  The count is now a try with its own time (supabase/way_try_back.sql: way_try answers the row's
+  clock_timestamp, way_try_back deletes that one row under the same advisory lock). mintedSession
+  holds the try and gives it back when the verify answers 429 ({busy, unspent}) or is never reached:
+  no connection made (ECONNREFUSED, ENOTFOUND, EAI_AGAIN, EHOSTUNREACH, ENETUNREACH,
+  UND_ERR_CONNECT_TIMEOUT; reach_words.mjs proves each failure's words). A reply lost or none within
+  10 s keeps it counted: the verify may have been spent at Supabase. A spoiled link (401/403) stays
+  counted. Until way_try_back.sql is applied, counted() falls back to way_may_try (no give-back), so the
+  code runs either way; attack4 B1 closes once the lead applies it.
+
+ALSO
+  Unlink and Link again email the address (tell, as orangecheck's link and unlink do; signreview4 N4),
+  only when the way's state changed. The console's delete asks the owner to sign in again by code if
+  the session is over five minutes old (console3_flow mints a fresh owner session before it).

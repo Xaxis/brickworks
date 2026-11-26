@@ -1,0 +1,118 @@
+signin7 (2026-11-26): signreview4's R4-1..R4-4, against its own scripts. Branch signin7 from signin6
+(689c8e54d). How it works and why: DESIGN.txt beside this file.
+
+THE RULE: api/_oc.js stepUp (550). Before any route gives an account a way in, or ends it, it asks
+  (1) the session as it is now: one live read (standingOf, rpc/session_standing), never verify()'s held
+      answer; gone 401, unreadable 503; and
+  (2) a sign-in by a code emailed in the last five minutes, the same for every kind of session; no
+      session Google, GitHub or orangecheck started ever counts.
+  Else 403 {fresh: false}, and the page sends a code and asks for it in place. An orangecheck-only
+  account proves itself with a fresh orangecheck sign-in as itself instead (sameOrangecheck).
+
+ROUTES (file:line of the route, then of its check)
+  stepUp:
+    Delete account          api/account.js 526, stepUp 566
+    Age answer under 13     api/account.js 276, stepUp 324 (an account made in the last 30 min is
+                            deleted at once, madeJustNow 357; older ones need the code)
+    Link again              api/_ways.js 582 (POST on:true), stepUp 607; only an "off" way changes
+    GitHub id kept          api/_ways.js 538 wayBind, stepUp 557 (and the code an emailed one)
+    orangecheck link        api/orangecheck.js 354, through changing 310, stepUp 321
+    orangecheck unlink      api/orangecheck.js 384, through changing 310, stepUp 321
+    Console delete_account  api/admin.js 402-409 (STEP_UP 279)
+    Console sign_in_switch  api/admin.js 402-409 (STEP_UP 279)
+  Live read alone (each takes access away and gives none):
+    Unlink                  api/_ways.js 624 standingOf (401 when gone)
+    The console's gate      api/admin.js 343-349 standingOf, by === "code" (sign_out included)
+    way_take (hand-over)    api/_ways.js 492-497 standingOf
+  No route of ours left on a held read: every one above reads the session live before it decides.
+  Supabase's own PUT /auth/v1/user (address, password) and MFA enrolment are refused for every session
+  by the triggers no_new_ways_in, no_password_sign_in and no_second_factor. All three are enabled in
+  production (dry_ways_in.log). auth.identities holds only "email" (191 rows).
+
+R4-1 (Y1, Y2, Z1, L1): CLOSED.
+  attack4b_1.log:
+    Y1 GitHub's session deletes: 403 fresh:false, the account still there.
+    Y2 Google's session deletes: 403 fresh:false.
+    Z1 an ended session deletes 71 ms after the Unlink: 401, the account still there. 0 findings.
+  attack4_1.log: L1, 3 rounds, Link again from an Unlink-ended session: refused, ok.
+  rule7_1 (rule7.mjs, the routes signreview4's scripts do not drive):
+    A orangecheck link and unlink from a Google session.
+    B a new GitHub account's under-13 answer.
+    C the console from an owner's session over 5 min old.
+    D Settings' Link again code form in a browser.
+    Result: see RUNS.
+
+R4-2: PARKED as config pending (the lead's call, 05:1xZ).
+  Sessions cannot be minted without spending a verify (DESIGN.txt). The fix is the project setting
+  security_sb_forwarded_for_enabled (dashboard: Authentication > Rate Limits > IP Address Forwarding).
+  The server already sends Sb-Forwarded-For with the person's address, only with the secret key
+  (api/_minted.js redeemed).
+  - Supabase's docs say only secret keys are supported.
+  - GoTrue's code (supabase/auth PR 2295) checks no key.
+  - So the day Google and GitHub go on, turn the setting on and run sbff_probe.mjs at once. If the
+    publishable-key verifies are never refused, it prints UNSAFE: turn the setting off again.
+
+R4-3: CLOSED.
+  ?op=native counts a well-formed ask per network before trading it (NATIVE_REFUSED, 10 per 15 min,
+  api/orangecheck.js 169-188). It gives the count back only when a token comes back.
+  attack4_1.log F1: 40 made-up codes, "answers 401 x10, 429 x30", orangecheck asked 10 times. ok.
+  Question for orangecheck, for the lead to ask: may an app trade its own native code with the public
+  project key, so Brickworks never forwards a stranger's code? And what limits does its token endpoint
+  keep?
+
+R4-4: CLOSED.
+  supabase/way_try_back.sql (way_try, way_try_back) is APPLIED by the lead. A try is given back on a
+  verify 429, or when there was no connection. A lost reply, or no answer in 10 s, stays counted.
+  - attack4_1.log B1 ok ("way_try applied: yes").
+  - reach_words_1.log: each failure kind read as reached or not reached, 0 wrong.
+
+ALSO
+  Unlink and Link again email the address when the state changed. The console's delete asks the owner
+  to sign in again by code if the session is over 5 min old; console3_flow mints a fresh owner session
+  before its delete. It was not run here: it mints the real owner's session.
+
+RUNS (relays of this tree on 12270-12279; the reviewers' scripts byte for byte, sha256 in run_all_1.log)
+  run_all_1.log: step 1 at c2390ec50's code; step 2 between it and 2f258852f (modules load on first
+  use; none of its checks reach what changed); steps 3-8 at 2f258852f's code (e33305b73 adds docs only):
+    signreview2 attack_sr2 A,B (C,D always)    0 findings
+    attack3 V,S,N,W,T,O,K / X / W x3           0 / 0 / 0 findings
+    flood4                                     12 accounts made, 12 deleted
+    ways_check                                 all passed
+    orangecheck_check                          162 passed, 1 failed: N1 (the known leftover,
+                                               policy blocks_own_only)
+    ways_app_probe                             all passed
+    attack4 L,B,C,D,F                          0 findings
+    ways_flow x5, 0 provider requests          each run failed 1 check, "the flow finished",
+                                               on its own 60 s waits; load 59-63 on 24 cores
+    control + count.mjs                        count: 0 requests toward Google's or GitHub's
+                                               hosts across 5 runs; orangecheck's hosts 0
+  attack4b_1.log (run_4b.sh)                   0 findings
+  QUEUED at 05:20Z behind brickworks' solo timing job and the load gate (heavy):
+    ways_flow 6 (run_flow_again.sh, pid 2218001) -> run_flow_6.log, ways_flow_6.log
+    rule7      (run_rule7.sh,      pid 2218000) -> run_rule7_1.log, shots_rule7_1/
+    The ways_flow failures above are each one 60 s wait at load ~60; ways_check, which drives the same
+    sign-ins and hand-overs through the API, passed whole. A whole ways_flow is not yet shown.
+  Left after the clean-up: 0 for bw-sr2-, bw-sr3-, bw-sr4-, bw-si7- and bw-ways-.
+  Statics:
+    node --check, every changed file
+    tools/check.sh --lists 0
+    featuremap check: current
+    site_lang --check 0 (84 pages, 3 languages)
+    docs_site.py --check 0
+    No godot check: no app code changed.
+
+SELF-ATTACK (briefs/self_attack.md) items that apply, all run:
+  - A reply lost after a write: lost verify replies keep the try counted; stepUp refuses before any
+    write ("nothing was changed" holds).
+  - Check every argument first: the typed address and the owner are refused before stepUp, and stepUp
+    runs before any change.
+  - The web form sends once: the go button is disabled and the boxes read-only while checking, so
+    Enter cannot submit twice.
+  - The phone (430x932): not run for #ways-code. It is the same code-form as the delete form.
+
+SITE AND DOCS
+  docs-site/account.md: "How you sign in" (Link again asks a code; both email you) and "Delete your
+  account" (any session not signed in by a code within 5 minutes).
+  New words for #ways-code and the native 429 are in de, fr and es (site_lang --write: 87 pages).
+  .claude/skills/verify/features/account.md: deletion, how you sign in, the console's switches, counts
+  and the native trade.

@@ -1,0 +1,63 @@
+== signin7 bars at c2390ec50, 02:58:33Z
+== signreview2's attack 02:58:35Z, sha256 28e3864972ecbb15
+sr2 exit 0 03:01:40Z: attack: 0 finding line(s)
+deleted: false
+deleted: false
+-- resting 180s for the verify bucket
+== attack3 V,S,N,W,T,O,K 03:04:43Z, sha256 fcbbe100ff29d065
+attack3 V,S,N,W,T,O,K exit 0 03:08:55Z: attack3: 0 finding line(s)
+-- resting 120s for the verify bucket
+== attack3 X 03:10:55Z, sha256 fcbbe100ff29d065
+attack3 X exit 0 03:11:46Z: attack3: 0 finding line(s)
+-- resting 120s for the verify bucket
+== attack3 W --rounds=3 03:13:46Z, sha256 fcbbe100ff29d065
+attack3 W --rounds=3 exit 0 03:14:57Z: attack3: 0 finding line(s)
+-- resting 120s for the verify bucket
+== flood4 03:16:58Z, sha256 f472ccc637b3bd57
+flood4 exit 0 03:19:41Z:   --      accounts made 12, deleted 12
+-- resting 30s for the verify bucket
+== ways_check 03:20:12Z
+ways_check exit 0 03:26:34Z: ways_check: all passed
+deleted: false
+-- resting 240s for the verify bucket
+== orangecheck_check 03:30:34Z
+orangecheck_check exit 1 03:34:45Z: orangecheck_check: 162 passed, 1 failed
+-- resting 120s for the verify bucket
+== ways_app_probe 03:36:46Z
+ways_app_probe exit 0 03:39:02Z: all passed
+deleted: true
+-- resting 120s for the verify bucket
+== attack4 03:41:06Z, sha256 1f801e10fa6014f5; way_try applied: yes
+attack4 exit 0 03:44:51Z: attack4: 0 finding line(s)
+deleted: false
+-- resting 120s for the verify bucket
+== ways_flow 1 03:46:53Z
+ways_flow 1 exit 1 03:53:03Z:  | ways_flow: 1 failed (pictures in /tmp/claude-1000/-mnt-Projects-brickworks/e06e4b1a-8ee1-4555-9551-53502405c858/scratchpad/signin7/shots_1)
+-- resting 60s for the verify bucket
+== ways_flow 2 03:54:04Z
+ways_flow 2 exit 1 04:00:44Z:  | ways_flow: 1 failed (pictures in /tmp/claude-1000/-mnt-Projects-brickworks/e06e4b1a-8ee1-4555-9551-53502405c858/scratchpad/signin7/shots_2)
+-- resting 60s for the verify bucket
+== ways_flow 3 04:01:45Z
+ways_flow 3 exit 1 04:10:47Z:  | ways_flow: 1 failed (pictures in /tmp/claude-1000/-mnt-Projects-brickworks/e06e4b1a-8ee1-4555-9551-53502405c858/scratchpad/signin7/shots_3)
+-- resting 60s for the verify bucket
+== ways_flow 4 04:11:48Z
+ways_flow 4 exit 1 04:20:27Z:  | ways_flow: 1 failed (pictures in /tmp/claude-1000/-mnt-Projects-brickworks/e06e4b1a-8ee1-4555-9551-53502405c858/scratchpad/signin7/shots_4)
+-- resting 60s for the verify bucket
+== ways_flow 5 04:21:29Z
+ways_flow 5 exit 1 04:29:38Z:  | ways_flow: 1 failed (pictures in /tmp/claude-1000/-mnt-Projects-brickworks/e06e4b1a-8ee1-4555-9551-53502405c858/scratchpad/signin7/shots_5)
+-- resting 60s for the verify bucket
+deleted: false
+deleted: false
+deleted: false
+deleted: false
+deleted: false
+== control 04:30:41Z
+control exit 0 04:32:45Z
+count exit 0 04:32:46Z: count: 0 request(s) toward Google's or GitHub's hosts across 5 runs, beyond step 10's own bare probes (strace connects begun to their addresses, net log requests and redirects, netwatch lookups; the control apart)
+== orangecheck's hosts in the flows' lookups and connects (netwatch): 0
+left (bw-sr2-): 0
+left (bw-sr3-): 0
+left (bw-sr4-): 0
+left (bw-si7-): 0
+left (bw-ways-): 0
+== done 04:32:48Z

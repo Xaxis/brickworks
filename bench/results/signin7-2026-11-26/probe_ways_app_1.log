@@ -1,0 +1,22 @@
+probe.sh: ways_app_probe, data in /tmp/probe-data.ways_app_probe.tQyWlt
+probe.sh: headless, as its header says
+heavy: waiting: waits for the load: 78 threads want a CPU, gate 30
+heavy: waiting: waits for the load: 49 threads want a CPU, gate 30
+heavy: brickworks in slot.5 at load 80, 64580 MB free
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+
+pass the deployment at http://127.0.0.1:12278 offers Google and GitHub: {"github":true,"google":true}
+pass signed out, the form offers Sign in with Google and with GitHub, each with its mark
+pass ...and one line that signing in without orangecheck also makes the orangecheck account, with what that is
+pass a press opens the deployment's /auth/google with a loopback, a state and a PKCE challenge: http://127.0.0.1:12278/auth/google?app=http%3A%2F%2F127.0.0.1%3A37079%2Foc%2Fcallback&stat
+pass the deployment sends the browser to Google, with its own sealed cookie (302)
+pass the callback sends the browser back to the app's own listener, with its state (302)
+pass the listener answers the browser with a page (200)
+pass signed in once the browser came back: delivered+bw-si7-app-1680921761@resend.dev
+pass ...and the listener is gone
+ACCOUNT 8e888251-91f8-44ca-aebe-6e5de512a6f8 delivered+bw-si7-app-1680921761@resend.dev
+pass /api/account with its token: signed in as that account
+pass the refresh token is kept, with the address, and not the access token
+pass and it signs out
+
+all passed

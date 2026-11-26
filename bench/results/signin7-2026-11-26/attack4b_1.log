@@ -1,0 +1,9 @@
+== attack4b at 689c8e54d 02:55:47Z, sha256 db9b0c03d2dbf382
+Y. Delete account from a session Google or GitHub started
+  ok      Y1. GitHub's session (an account GitHub made) deletes the account: its address typed, no emailed code asked: new account true; delete 403 {"error":"Confirm it is you first, with a code we email you.","fresh":false}; the account there now: true
+  ok      Y2. Google's session deletes an account a code made: its address typed, no emailed code asked: delete 403 {"error":"Confirm it is you first, with a code we email you.","fresh":false}; the account there now: true
+Z. Delete account from Google's session the moment its Unlink ended it
+  ok      Z1. the intruder's Google session, ended by the person's Unlink but still read as signed in, deletes the account: Unlink 200; delete 401 71 ms after the Unlink answered {"error":"You were signed out. Sign in again."}; the account there now: true
+  --      accounts named: 3, left after the clean-up: 0
+attack4b: 0 finding line(s)
+attack4b exit 0 02:56:16Z

@@ -1,0 +1,33 @@
+heavy: waiting: the free slots go to 11 earlier waiters
+heavy: waiting: waits for the load: 38 threads want a CPU, gate 30
+heavy: brickworks in slot.0 at load 78, 69488 MB free
+  ok    1. 1280: Sign in with Google and with GitHub, each with its mark, as tall and wide as Email me a code
+  ok    1. 1280: no box; one line that signing in makes the orangecheck account, with what that is
+  ok    1. 1280: nothing sideways
+  ok    1. 1280: the dialog still open at its picture
+  ok    1. 390: Sign in with Google and with GitHub, each with its mark, as tall and wide as Email me a code
+  ok    1. 390: no box; one line that signing in makes the orangecheck account, with what that is
+  ok    1. 390: nothing sideways
+  ok    1. 390: the dialog still open at its picture
+  ok    2. Sign in with Google: back on the very page, signed in, as the account a code signs in to
+  ok    3. Sign in with GitHub, a new address: signed in on /profile, asked its age first
+  ok    3. its age answered over 13: its orangecheck account made, with the address, for orangecheck to check
+  ok    4. 1280: How you sign in: the code to the address, GitHub signing in, Google not used yet
+  ok    4. 1280: the orangecheck part says the account signing in made
+  ok    4. 1280: nothing sideways
+  ok    4. 390: How you sign in: the code to the address, GitHub signing in, Google not used yet
+  ok    4. 390: the orangecheck part says the account signing in made
+  ok    4. 390: nothing sideways
+  ok    4. Unlink GitHub, signed in with it: signed out, asked for a code in words
+  ok    5. an address Google has not verified: back to the sign-in, with why
+  ok    7. 1280: GitHub to the account a code made: no session, the dialog asks a code this once
+  ok    7. 1280: the code typed: back on the very page, signed in to that account, GitHub's id kept for it
+  FAIL  the flow finished: at http://127.0.0.1:12279/gallery (stopped.png): locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('dialog.sign-in #way-github')[22m
+[2m    - locator resolved to <a id="way-github" class="cta ghost wide way" href="/auth/github?then=%2Fgallery%3Fsort%3Dnew&take=GjUKRC5wzZUFU7BsmsstsZnXanJE0TNlRZQqQVl7Uws">…</a>[22m
+[2m  - attempting click action[22m
+[2m    - waiting for element to be visible, enabled and stable[22m
+
+    at /mnt/Projects/brickworks/.claude/worktrees/signin7/tools/web/ways_flow.mjs:304:54
+ways_flow: 1 failed (pictures in /tmp/claude-1000/-mnt-Projects-brickworks/e06e4b1a-8ee1-4555-9551-53502405c858/scratchpad/signin7/shots_3)
