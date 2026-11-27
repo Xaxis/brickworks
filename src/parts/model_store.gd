@@ -1303,6 +1303,16 @@ func recent_saved(count: int) -> Array[Entry]:
 	return found
 
 
+## The [param count] models saved last counted ahead of File › Open recent,
+## one a frame: eight counted at once held one frame for 150 ms (menufix).
+func warm_recent(count: int) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	for entry: Entry in _saved_unread().slice(0, count):
+		_counted_bricks(entry)
+		if tree != null:
+			await tree.process_frame
+
+
 ## The saved models' names and times, newest first, without reading any.
 func _saved_unread() -> Array[Entry]:
 	var found: Array[Entry] = []

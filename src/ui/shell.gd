@@ -2326,7 +2326,7 @@ func _warm_recent(seconds: float) -> void:
 		return
 	tree.create_timer(seconds).timeout.connect(func() -> void:
 		if store != null:
-			store.recent_saved(RECENT_ROWS))
+			store.warm_recent(RECENT_ROWS))
 
 
 func _open_recent(_menu_of: PopupMenu, id: int) -> void:
