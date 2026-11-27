@@ -27,7 +27,10 @@
 ##            fewer, its step in the instructions, worked out in light slices
 ##            too from once the first click's frame is drawn (no frame of
 ##            them over a frame), as the steps worked out on the spot after
-##            the clicks.
+##            the clicks. Frames are held to the main thread's time on a CPU
+##            (/proc/thread-self/schedstat), each said beside its time in all
+##            and the box's load, which on a shared box is mostly the wait for
+##            a CPU.
 ##   switch   a part clicked, a second one clicked two frames later while the
 ##            first's count is under way: every frame after, Properties name
 ##            the second and never say the first's count, and once the first's
@@ -147,10 +150,11 @@ func _case_model(tag: String, path: String) -> void:
 		var got: Dictionary = await _click(part)
 		took.append(got)
 		if n > 0:
-			warm.append(float(got["answer"]))
-		print("    %s #%d (%s, %s): click %.1f ms, to the next frame %.1f ms, its frame %.1f ms; \"%s\" after %d frames, %.0f ms, the longest %.1f ms"
-			% [tag, n + 1, part["id"], part["name"], got["click"], got["next"], got["answer"], got["line"],
-				got["frames"], got["counted"], got["longest"]])
+			warm.append(float(got["answer_cpu"]))
+		print("    %s #%d (%s, %s): click %.1f ms, to the next frame %.1f ms, its frame %.1f ms (%.1f on a CPU); \"%s\" after %d frames, %.0f ms, the longest %.1f ms (%.1f on a CPU), the most on a CPU %.1f ms"
+			% [tag, n + 1, part["id"], part["name"], got["click"], got["next"], got["answer"],
+				got["answer_cpu"], got["line"], got["frames"], got["counted"], got["longest"],
+				got["longest_cpu"], got["most_cpu"]])
 		_check("%s #%d: Properties name the part at once (\"%s\")" % [tag, n + 1, got["title"]],
 			got["title"] == part["name"] and got["selected"] == [part["id"]])
 		_check("%s #%d: \"%s\", what a whole look on the spot finds (\"%s\")" % [tag, n + 1,
@@ -178,22 +182,30 @@ func _case_model(tag: String, path: String) -> void:
 			_check("%s #%d: \"%s\" %d frames after the count, as the steps worked out on the spot (\"%s\")"
 				% [tag, n + 1, took[n]["step"], took[n]["step_frames"], want], took[n]["step"] == want)
 		var planned: Array = []
+		var planned_wall: Array = []
 		for got: Dictionary in took:
-			planned.append(snappedf(float(got["step_longest"]), 0.1))
+			planned.append(snappedf(float(got["step_most_cpu"]), 0.1))
+			planned_wall.append(snappedf(float(got["step_longest"]), 0.1))
 		planned.sort()
-		_check("%s: no frame while the steps were worked out over a frame (the longest %.1f of %s)"
-			% [tag, planned.back(), planned], float(planned.back()) < FRAME_MS)
+		planned_wall.sort()
+		_check("%s: no frame while the steps were worked out over a frame on a CPU (the most %.1f of %s; the longest in all %.1f ms)"
+			% [tag, planned.back(), planned, planned_wall.back()], float(planned.back()) < FRAME_MS)
+	# Held to the main thread's time on a CPU, the frame's own work: on a
+	# shared box the rest of a frame's time is waiting for one.
 	warm.sort()
-	_check("%s: the first click's frame %.1f ms, under a frame" % [tag,
-		took[0]["answer"]], float(took[0]["answer"]) < FRAME_MS)
-	_check("%s: a click's frame %.1f ms, under a frame (the least of %s)" % [tag,
+	_check("%s: the first click's frame %.1f ms on a CPU (%.1f in all), under a frame" % [tag,
+		took[0]["answer_cpu"], took[0]["answer"]], float(took[0]["answer_cpu"]) < FRAME_MS)
+	_check("%s: a click's frame %.1f ms on a CPU, under a frame (the least of %s)" % [tag,
 		warm[0], warm], warm[0] < FRAME_MS)
+	var most: Array = []
 	var longest: Array = []
 	for got: Dictionary in took:
+		most.append(snappedf(float(got["most_cpu"]), 0.1))
 		longest.append(snappedf(float(got["longest"]), 0.1))
+	most.sort()
 	longest.sort()
-	_check("%s: no frame after the click's while it counted over a frame (the longest %.1f of %s)"
-		% [tag, longest.back(), longest], float(longest.back()) < FRAME_MS)
+	_check("%s: no frame after the click's while it counted over a frame on a CPU (the most %.1f of %s; the longest in all %.1f of %s, at a load of %s)"
+		% [tag, most.back(), most, longest.back(), longest, _load()], float(most.back()) < FRAME_MS)
 	await _switch(tag, parts, took)
 	await _pieces(tag, parts[1])
 	_builder.clear_selection()
@@ -334,6 +346,7 @@ func _click(part: Dictionary) -> Dictionary:
 	# in it: told in the order they were connected, so this comes before the
 	# count's next slice.
 	process_frame.connect(_mark_frame, CONNECT_ONE_SHOT)
+	var c0: int = _cpu_us()
 	var t0: int = Time.get_ticks_usec()
 	_verbs.click(part["at"], false)
 	var t1: int = Time.get_ticks_usec()
@@ -346,42 +359,76 @@ func _click(part: Dictionary) -> Dictionary:
 	# click's too. Here the click ran inside a process_frame, and that work
 	# is in the frame after: counted with the click.
 	var t3: int = Time.get_ticks_usec()
+	var c3: int = _cpu_us()
 	var t2: int = _frame_began
 	var out: Dictionary = {"click": (t1 - t0) / 1000.0, "answer": (t3 - t0) / 1000.0,
+		"answer_cpu": (c3 - c0) / 1000.0 if c0 >= 0 else (t3 - t0) / 1000.0,
 		"next": (t2 - t0) / 1000.0, "selected": _builder.selection.keys(), "title": title}
 	# Where the buttons under the facts are, laid out by the frame after.
 	out["buttons_at"] = _inspector._actions.global_position.y
-	var frames: int = 0
-	var longest: float = 0.0
 	# From the end of the click's own frame ("answer"): each frame after.
-	var last: int = t3
-	while not _counted() and frames < 3000:
-		await process_frame
-		var now: int = Time.get_ticks_usec()
-		longest = maxf(longest, (now - last) / 1000.0)
-		last = now
-		frames += 1
-	out["frames"] = frames
-	out["longest"] = longest
-	out["counted"] = (last - t0) / 1000.0
+	var frames: Array = await _frames_until(_counted, 3000)
+	out["frames"] = frames[0]
+	out["longest"] = frames[1]
+	out["longest_cpu"] = frames[2]
+	out["most_cpu"] = frames[3]
+	out["counted"] = (Time.get_ticks_usec() - t0) / 1000.0
 	out["line"] = _first_line()
 	await _frames(2)
 	out["buttons_after"] = _inspector._actions.global_position.y
 	# Its step in the instructions, on a model of 600 parts or fewer, and the
 	# longest frame while the steps were worked out.
-	var waited: int = 0
-	var planned: float = 0.0
-	last = Time.get_ticks_usec()
-	while _world.brick_count() <= 600 and _step_line().is_empty() and waited < 900:
+	var planned: Array = [0, 0.0, 0.0, 0.0]
+	if _world.brick_count() <= 600:
+		planned = await _frames_until(func() -> bool: return not _step_line().is_empty(), 900)
+	out["step"] = _step_line()
+	out["step_frames"] = planned[0]
+	out["step_longest"] = planned[1]
+	out["step_most_cpu"] = planned[3]
+	return out
+
+
+## Frames until [param done] says so, at most [param most]: [how many, the
+## longest in all, ms, the main thread's time on a CPU in that one, the most
+## on a CPU in any].
+func _frames_until(done: Callable, most: int) -> Array:
+	var count: int = 0
+	var longest: float = 0.0
+	var its_cpu: float = 0.0
+	var most_cpu: float = 0.0
+	var last: int = Time.get_ticks_usec()
+	var last_cpu: int = _cpu_us()
+	while not bool(done.call()) and count < most:
 		await process_frame
 		var now: int = Time.get_ticks_usec()
-		planned = maxf(planned, (now - last) / 1000.0)
+		var now_cpu: int = _cpu_us()
+		var wall: float = (now - last) / 1000.0
+		var cpu: float = (now_cpu - last_cpu) / 1000.0 if last_cpu >= 0 else wall
+		if wall > longest:
+			longest = wall
+			its_cpu = cpu
+		most_cpu = maxf(most_cpu, cpu)
 		last = now
-		waited += 1
-	out["step"] = _step_line()
-	out["step_frames"] = waited
-	out["step_longest"] = planned
-	return out
+		last_cpu = now_cpu
+		count += 1
+	return [count, longest, its_cpu, most_cpu]
+
+
+## The main thread's time on a CPU so far, in microseconds, or -1 where the
+## system does not say (/proc/thread-self/schedstat: nanoseconds on a CPU,
+## then waiting for one). A frame's own work, apart from the box's load.
+func _cpu_us() -> int:
+	var file := FileAccess.open("/proc/thread-self/schedstat", FileAccess.READ)
+	if file == null:
+		return -1
+	var fields: PackedStringArray = file.get_line().split(" ", false)
+	return fields[0].to_int() / 1000 if fields.size() >= 2 else -1
+
+
+## The box's load over the last minute (/proc/loadavg).
+func _load() -> String:
+	var file := FileAccess.open("/proc/loadavg", FileAccess.READ)
+	return file.get_line().get_slice(" ", 0) if file != null else "?"
 
 
 func _step_line() -> String:
