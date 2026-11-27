@@ -8,7 +8,9 @@
 ## The person's act is a real key (C paints the selection), through Input,
 ## heard by the app's own handlers, pressed while the chat's call waits. The
 ## chat's calls go through the app's own command socket, as the connector's
-## do. Run the same on pre261 to compare.
+## do. On pre261 (a2a22a188, 11-27) the paint was folded into the chat's
+## step, its undo took the paint and its next undo the person's 676 bricks:
+## 8 fail of 14.
 ##   S1 edit_steps names a step of 676 parts: its plan is worked out a slice
 ##      a frame first (AppTools._edit_steps, STEPS_PACED_FROM)
 ##   S2 edit_booklet puts words on step 1's page: the page is laid out first,
@@ -102,12 +104,30 @@ func _paint_during(tag: String, what: String, tool: String, input: Dictionary) -
 	print("    SAID: " + _bg_said.left(240).replace("\n", " "))
 	var history: Array = _builder.steps_now()[0]
 	var kept: Array = history.slice(depth)
-	var chats: int = kept.filter(func(step: Dictionary) -> bool: return str(step.get("by", "")) == CHAT).size()
-	var persons: int = kept.filter(func(step: Dictionary) -> bool: return not step.has("by")).size()
-	print("    MEASURE %s: painted mid-call %s; %d steps kept since: %s" % [tag, mid, kept.size(),
-		", ".join(kept.map(func(step: Dictionary) -> String: return "\"%s\" by %s" % [
-			str(step.get("words", step.get("undo", ""))).left(60), str(step.get("by", "the person"))]))])
-	_check("%s the person's paint landed while the chat's call worked" % tag, mid)
+	var newest_first: PackedStringArray = _builder.history_words(kept.size(), false)
+	var told := PackedStringArray()
+	var paint_at: int = -1
+	var chat_at: int = -1
+	var chats: int = 0
+	var persons: int = 0
+	for n: int in kept.size():
+		var step: Dictionary = kept[n]
+		var words: String = newest_first[kept.size() - 1 - n] if kept.size() - 1 - n < newest_first.size() else "?"
+		told.append("\"%s\" by %s" % [words.left(60), str(step.get("by", "the person"))])
+		if paint_at < 0 and words.contains("painted %d parts" % PAINTED):
+			paint_at = n
+		if str(step.get("by", "")) == CHAT:
+			chats += 1
+			chat_at = n if chat_at < 0 else chat_at
+		elif not step.has("by"):
+			persons += 1
+	# The call keeps its own step before it ends: the paint kept before it
+	# (or folded into it) landed while the call worked, even when the call
+	# ends in the frame the paint lands, as a one-frame layout does.
+	var before_the_call: bool = paint_at >= 0 and chat_at >= 0 and paint_at <= chat_at
+	print("    MEASURE %s: painted while at work %s, kept before the call's own step %s; %d steps kept since: %s" % [
+		tag, mid, before_the_call, kept.size(), ", ".join(told)])
+	_check("%s the person's paint landed while the chat's call worked" % tag, mid or before_the_call)
 	_check("%s the chat's change is one step, the chat's" % tag, chats == 1)
 	_check("%s the person's paint is a step of their own" % tag, persons == 1)
 	var said: String = await _say("undo", {}, CHAT)
