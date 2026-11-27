@@ -15,6 +15,9 @@
 ## the world, as a part left behind when what held it was taken away is), and
 ## save_model is asked. A gear alone in the air is not this: it is a piece of
 ## its own, which the BrickBench pieces gate refuses twice and then saves.
+## Then the same gear locked, which a bench's save leaves; and a person's own
+## Claude's save, which writes the file whole and never changes the model
+## (savereview F1: it took the gear off the baseplate after the file held it).
 extends SceneTree
 
 const CHAT := "probe-save-whole-chat"
@@ -143,18 +146,54 @@ func _run() -> void:
 		and world.brick_count() == parts)
 	var undone: String = await _say("undo", {})
 	_check("...and undo puts it back: %s" % undone.left(80), world.brick_count() == parts + 1)
+	# Put back as the design's own part, whatever number it has now.
+	gear = _gear_standing(world)
+	if gear > 0 and not assistant._placed_ids.has(gear):
+		assistant._placed_ids.append(gear)
 
-	print("\na person's save is as it was: written whole, never refused")
+	print("\nthe gear locked by the person: a bench's save leaves it, written as it stands, and says so")
+	var builder: Builder = _main.get("_builder")
+	builder.locked[gear] = true
+	var held: String = "probe-save-whole-locked-%d.ldr" % OS.get_process_id()
+	_written.append(ModelStore.SAVE_DIR + held)
+	var kept: String = await _say("save_model", {"name": held})
+	print("    " + kept.left(300).replace("\n", "\n    "))
+	_check("written with the gear in it, the model untouched: %s" % kept.left(80).replace("\n", " "),
+		kept.contains("Written to %s" % held) and FileAccess.get_file_as_string(ModelStore.SAVE_DIR
+			+ held).to_lower().contains("3648b.dat") and world.get_brick(gear) != null
+		and world.brick_count() == parts + 1)
+	_check("...and said as it stands, the gear named", kept.contains("Saved as it stands")
+		and kept.contains("#%d" % gear) and not kept.contains("Saved without"))
+	builder.locked.erase(gear)
+
+	print("\na person's save is as it was: written whole, the model untouched, the gear named")
 	Assistant.brickbench = false
+	var store: ModelStore = _main.get("_store")
+	var depth: int = builder.history_depth()
 	var mine: String = "probe-save-whole-person-%d.ldr" % OS.get_process_id()
 	_written.append(ModelStore.SAVE_DIR + mine)
 	var person: String = await _say("save_model", {"name": mine})
+	print("    " + person.left(400).replace("\n", "\n    "))
 	_check("written, the gear in it: %s" % person.left(80).replace("\n", " "),
 		person.contains("Written to %s" % mine) and FileAccess.get_file_as_string(
 			ModelStore.SAVE_DIR + mine).to_lower().contains("3648b.dat"))
+	_check("...and on the baseplate still, no step taken, nothing left unsaved",
+		world.get_brick(gear) != null and world.brick_count() == parts + 1
+		and builder.history_depth() == depth and not store.has_unsaved_work())
+	_check("...which the answer names as not finished, never \"Saved without\"",
+		person.contains("Not finished yet") and person.contains("#%d" % gear)
+		and person.contains("not held") and not person.contains("Saved without"))
 	if library == null or assistant == null:
 		_check("the app's library and assistant", false)
 	_quit()
+
+
+## The 24-tooth gear on the baseplate, by its part: 0 if none.
+func _gear_standing(world: BrickWorld) -> int:
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id == "3648b":
+			return brick.id
+	return 0
 
 
 func _say(tool: String, arguments: Dictionary) -> String:

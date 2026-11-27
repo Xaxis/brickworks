@@ -1353,9 +1353,11 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 	# A bench's save waits on what its judge is told, as it did: BrickBench
 	# reads the file at once and scores it (Assistant.BRICKBENCH_FLAG), and
 	# realset saves each held-out session's model at its end and scores that
-	# ([method bench_run]). A person's save is never refused (below).
+	# ([method bench_run]). A person's save is never refused, and the gate
+	# asked after its file is written only speaks (below): parts come off
+	# only here, before a bench's file is written.
 	if tool == "save_model" and assistant != null and bench_run():
-		var held: Variant = await assistant.save_gate()
+		var held: Variant = await assistant.save_gate(true)
 		if not (held is String and (held as String).is_empty()):
 			return held
 	if app == null:

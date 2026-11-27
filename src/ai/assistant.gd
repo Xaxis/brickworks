@@ -14497,6 +14497,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		"resting": resting,
 		## The later part of each pair whose real shapes collide.
 		"colliding": colliding.keys(),
+		## And the earlier it collides with, later -> earlier.
+		"colliding_with": colliding,
 		## And what asking the exact shapes cost this check, ms.
 		"exact_ms": exact.spent_usec / 1000.0,
 		"exact_on": exact.spent_on,
@@ -22469,12 +22471,15 @@ func next_review() -> Variant:
 ## Every bench session saved with features never worked, and saving handed
 ## the next one back only after the file was written: the session read
 ## "Written" and ended. A save that waits is a turn the design cannot skip.
-func save_gate() -> Variant:
+## [param before_write]: asked before a bench's file is written, where the
+## parts the exact check refuses are taken off first ([method _exact_save_gate]);
+## asked after a person's file is written, it only speaks.
+func save_gate(before_write: bool = false) -> Variant:
 	if _busy or not _outside_standing:
 		return ""
 	var left: Array[String] = _features_left()
 	if left.is_empty():
-		return await _exact_save_gate()
+		return await _exact_save_gate(before_write)
 	progress.emit("not saved: %d features not settled" % left.size())
 	return _joined(("Not saved yet: %d of its %d features %s not settled (%s). For each, "
 		% [left.size(), _outside_features.size(), "is" if left.size() == 1 else "are",
@@ -22506,15 +22511,22 @@ var _save_advice: String = ""
 var _pieces_advised: bool = false
 
 
-## Saving a design built from outside never waits on a part that collides by
-## its real shape or rests with nothing holding it (ExactCheck): those parts
-## are taken off as one edit (undo puts them back), everything else is saved,
-## and the answer names each one (_save_advice). It waited, twice at most,
-## until none was left, and the bench's own save at a session's end is one
-## call: design42's 42061 telehandler, 45 minutes and 138 parts, was refused
-## over one Technic gear not held and left no model at all. "" lets it save.
-func _exact_save_gate() -> String:
+## Saving a design built from outside, and a part that collides by its real
+## shape or rests with nothing holding it (ExactCheck). Before a bench's file
+## is written ([param before_write]: CommandSocket.bench_run()), the design's
+## own parts at fault are taken off as one edit (undo puts them back),
+## everything else is saved, and the answer names each one (_save_advice): it
+## waited, twice at most, until none was left, and the bench's own save at a
+## session's end is one call, so design42's 42061 telehandler, 45 minutes and
+## 138 parts, was refused over one Technic gear not held and left no model at
+## all. After a person's file is written whole, it only says what to fix,
+## twice at most, and never changes the model: taking the gear off there left
+## the person's baseplate without the part their file held, and their next
+## Save wrote it without (savereview F1). "" lets it save.
+func _exact_save_gate(before_write: bool) -> String:
 	if world == null or world.brick_count() == 0:
+		return ""
+	if not before_write and _exact_save_refusals >= MOST_EXACT_REFUSALS:
 		return ""
 	_strict_mine = true
 	var model: Model = _model_from_world()
@@ -22524,9 +22536,13 @@ func _exact_save_gate() -> String:
 	if faults.is_empty() and not brickbench:
 		_save_advice = _pieces_advice(report)
 		return ""
-	if not faults.is_empty():
+	if not faults.is_empty() and before_write:
 		_save_advice = await _saved_without(model, report, faults)
 		return ""
+	if not faults.is_empty():
+		_exact_save_refusals += 1
+		progress.emit("not saved: parts collide or hang loose")
+		return "Not saved yet. %s\nThen save again." % faults
 	if _exact_save_refusals < MOST_EXACT_REFUSALS:
 		var apart: PackedStringArray = _held_in_the_hand(model)
 		if apart.is_empty():
@@ -22542,42 +22558,85 @@ func _exact_save_gate() -> String:
 	return ""
 
 
-## The parts [param report] finds not held, and the later of each pair that
-## collides, taken off [param model]'s world as one edit (undo puts them back),
-## so the save that follows writes everything else: the words that say which
-## and why, for the save's answer. Where taking them off would itself be
-## refused, the model is saved as it stands, and the words say what to fix.
+## Checks a bench's save asks before its write: the first, and again after
+## parts come off, since a part held only by one taken off hangs loose then.
+const SAVE_CHECKS := 3
+
+
+## Before a bench's write: the design's own parts [param report] finds not
+## held, and of each pair whose real shapes collide the design's own (the
+## later, where both are), none of them locked, taken off [param model]'s
+## world, and the check asked again on what is left, up to SAVE_CHECKS, so
+## the save that follows writes everything else. One step: the socket folds a
+## call's edits (CommandSocket._one_step), and undo puts them all back. The
+## words say which and why, for the save's answer; what could not come off is
+## saved as it stands, and said with what to fix.
 func _saved_without(model: Model, report: Dictionary, faults: String) -> String:
-	var unheld: Array = []
-	var colliding: Array = []
-	for pair: Array in [[report.get("unheld", []), unheld], [report.get("colliding", []), colliding]]:
-		for item: Variant in pair[0]:
-			var index: int = int(item)
+	var fix: String = _fix_said(faults)
+	var taken: Array = []
+	for _check: int in SAVE_CHECKS:
+		var off: Array = _own_at_fault(model, report)
+		var before: int = world.brick_count()
+		if off.is_empty() or off.size() >= before:
+			break
+		await _run_tool({"name": "edit_model", "input": {"remove": off, "picture": false}})
+		if world.brick_count() != before - off.size():
+			break
+		taken.append_array(off)
+		_strict_mine = true
+		model = _model_from_world()
+		report = await _checked(model, true)
+		_strict_mine = false
+		faults = _exact_faults_said(report)
+		if faults.is_empty():
+			break
+	if taken.is_empty():
+		progress.emit("saved; parts collide or hang loose")
+		return ("Saved as it stands, with parts that would jam or fall away in the hand: fix these "
+			+ "with edit_model, then save again.\n%s" % fix)
+	progress.emit("saved without %d parts that collide or hang loose" % taken.size())
+	var one: bool = taken.size() == 1
+	var said: String = ("Saved without %s, taken off the model as one edit (undo puts %s back): "
+		% [_numbers(PackedInt64Array(taken)), "it" if one else "them"]
+		+ "in the hand %s. Everything else is in the file. What the check found:\n%s\n"
+		% ["it jams or falls away" if one else "they jam or fall away", fix])
+	if not faults.is_empty():
+		said += "Still in the file, as it stands:\n%s\n" % _fix_said(faults)
+	return said + ("Put %s back where %s held (attachment_points lists a part's holes and studs), "
+		% ["it" if one else "them", "it is" if one else "they are"] + "then save again.")
+
+
+## What the exact check found, without the gate's own opening.
+static func _fix_said(faults: String) -> String:
+	return faults.trim_prefix("Fix these first, with edit_model: a build with one of them "
+		+ "is refused by BrickBench's check, and in the hand it jams or falls apart.\n")
+
+
+## The ids a bench's save takes off for what [param report] finds: each part
+## not held, and of each colliding pair the later if it is the design's own,
+## else the earlier if that is. Only the design's own (as the check judges
+## them, [method _exact_subject]) and never a locked part: a part of the
+## person's that one of the design's collides with stays (savereview F3).
+func _own_at_fault(model: Model, report: Dictionary) -> Array:
+	var off: Array = []
+	var pairs: Dictionary = report.get("colliding_with", {})
+	var wanted: Array = []
+	for index: Variant in report.get("unheld", []):
+		wanted.append([int(index)])
+	for later: Variant in report.get("colliding", []):
+		wanted.append([int(later), int(pairs.get(later, -1))])
+	for choices: Array in wanted:
+		for index: int in choices:
 			if index < 0 or index >= model.placements.size():
 				continue
 			var placement: Placement = model.placements[index]
-			if placement.id != 0 and not (pair[1] as Array).has(placement.id):
-				(pair[1] as Array).append(placement.id)
-	var fix: String = faults.trim_prefix("Fix these first, with edit_model: a build with one of them "
-		+ "is refused by BrickBench's check, and in the hand it jams or falls apart.\n")
-	for off: Array in [unheld + colliding.filter(func(id: int) -> bool: return not unheld.has(id)),
-			unheld]:
-		if off.is_empty() or off.size() >= world.brick_count():
-			continue
-		var before: int = world.brick_count()
-		await _run_tool({"name": "edit_model", "input": {"remove": off, "picture": false}})
-		if world.brick_count() == before - off.size():
-			progress.emit("saved without %d parts that collide or hang loose" % off.size())
-			return ("Saved without %s, taken off the model as one edit (undo puts %s back): "
-				% [_numbers(PackedInt64Array(off)), "it" if off.size() == 1 else "them"]
-				+ "in the hand %s. Everything else is in the file. What the check found:\n%s\n"
-				% ["it jams or falls away" if off.size() == 1 else "they jam or fall away", fix]
-				+ "Put %s back where %s held (attachment_points lists a part's holes and studs), "
-				% ["it" if off.size() == 1 else "them", "it is" if off.size() == 1 else "they are"]
-				+ "then save again.")
-	progress.emit("saved; parts collide or hang loose")
-	return ("Saved as it stands, with parts that would jam or fall away in the hand: fix these "
-		+ "with edit_model, then save again.\n%s" % fix)
+			var own: bool = placement.moved or placement.mine
+			if placement.id == 0 or not own or (builder != null and builder.locked.has(placement.id)):
+				continue
+			if not off.has(placement.id):
+				off.append(placement.id)
+			break
+	return off
 
 
 ## A person's save, of a model our own joints find in pieces that nothing
