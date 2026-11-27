@@ -507,13 +507,19 @@ func _beside_size() -> int:
 ## one the rest, up to its widest words. Names were cut at half the row
 ## while "Part 96488" beside them had a third to itself, and then while a
 ## greyed row's reason far down the list kept the middle column wide.
+## Measured on the rows in sight as it opens, and the parts (their names
+## are the long ones): measuring every command's three words at each key
+## took about 10 ms a key on the desktop, more in a browser.
 func _fit_columns(beside: int) -> void:
 	var font: Font = _list.get_theme_font("font")
 	var name_size: int = _list.get_theme_font_size("font_size")
 	var pad: float = _list.get_theme_constant("inner_item_margin_left") \
 		+ _list.get_theme_constant("inner_item_margin_right") + _list.get_theme_constant("h_separation")
 	var widest: Array[float] = [0.0, 0.0, 0.0]
+	var in_sight: int = _rows_room()
 	for item: TreeItem in _list.get_root().get_children():
+		if item.get_index() >= in_sight and not _names[item.get_index()].begins_with(PART):
+			continue
 		for column: int in 3:
 			var words: String = item.get_text(column)
 			if not words.is_empty():
@@ -522,7 +528,7 @@ func _fit_columns(beside: int) -> void:
 	# The rows' width: the box's, less its edges, the list's own, and a
 	# scroll bar's when the rows are more than the room shows.
 	var across: float = _wide - _chrome().x - _list.get_theme_stylebox("panel").get_minimum_size().x
-	if _names.size() > _rows_room():
+	if _names.size() > in_sight:
 		for bar: Node in _list.get_children(true):
 			if bar is VScrollBar:
 				across -= (bar as VScrollBar).get_combined_minimum_size().x
