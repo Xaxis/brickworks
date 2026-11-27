@@ -1927,6 +1927,7 @@ func _fold_into(more: MenuButton) -> void:
 		_fill(sub, menu[1])
 		sub.id_pressed.connect(_on_id)
 		sub.about_to_popup.connect(func() -> void: _refresh(sub))
+		sub.visibility_changed.connect(_show_row_point.bind(popup, sub))
 		popup.add_child(sub)
 		_folded.append(sub)
 	popup.id_pressed.connect(_on_id)
@@ -2021,6 +2022,7 @@ func _pointer_moved(event: InputEvent) -> void:
 	var now: int = Time.get_ticks_usec()
 	var seconds: float = clampf(float(now - _moved_at_usec) / 1000000.0, 1.0 / 240.0, 0.1)
 	_moved_at_usec = now
+	_pointer_at = motion.position
 	if motion.velocity.is_zero_approx() and motion.relative != Vector2.ZERO:
 		motion.velocity = motion.relative / seconds
 		motion.screen_velocity = motion.velocity
@@ -2030,6 +2032,9 @@ func _pointer_moved(event: InputEvent) -> void:
 
 
 var _moved_at_usec: int = 0
+## Where the root window last heard the pointer, in its own coordinates (as
+## [method Viewport.push_input] takes a move): [method _show_row_point].
+var _pointer_at := Vector2(-1.0, -1.0)
 ## The menus with rows that open submenus (_fill, _fold_into), each looked at
 ## after a move by [method _wake_submenus], once a frame.
 var _with_submenus: Array[PopupMenu] = []
@@ -2067,6 +2072,47 @@ func _wake_submenus() -> void:
 			timer.start(popup.submenu_popup_delay)
 
 
+## [param sub], a submenu of [param popup], is told where the pointer is on
+## its row as it opens. The engine keeps a submenu open while the pointer
+## crosses the rows below its row on the way into it only when the pointer
+## heads for it from the place it left the row (PopupMenu._close_or_suspend
+## measures the way from last_submenu_mouse_position). That place is written
+## only by a move on the row with the submenu already open. A hand rests on
+## Open recent, the submenu opens, and the hand's first move (a frame's
+## worth of moves, gathered into one) is already on Import or below: the
+## place is then the one left on the row of some submenu opened before, and
+## a pointer going on a slant straight into the submenu was read as going
+## away from it, and the submenu shut (the owner: it flashes away; menufix2, 2026-11-27:
+## File › Open recent on a slant to its third row shut on live and menufix
+## alike). The submenu, open and holding the pointer's moves, hears one now,
+## where the pointer is, and keeps that place.
+func _show_row_point(popup: PopupMenu, sub: PopupMenu) -> void:
+	if not sub.visible:
+		return
+	_tell_row_point.call_deferred(popup, sub)
+
+
+func _tell_row_point(popup: PopupMenu, sub: PopupMenu) -> void:
+	# Opened by keys (its first row lit), or not from its row: nothing to keep.
+	if not is_instance_valid(sub) or not sub.visible or sub.get_focused_item() >= 0 or _pointer_at.x < 0.0:
+		return
+	var row: int = popup.get_focused_item()
+	if row < 0 or row >= popup.item_count or popup.get_item_submenu_node(row) != sub:
+		return
+	var tree := sub.get_tree()
+	if tree == null:
+		return
+	var here := InputEventMouseMotion.new()
+	here.position = _pointer_at
+	here.global_position = _pointer_at
+	# The engine reads only a move that went somewhere, with a speed.
+	here.relative = Vector2(0.0, 0.001)
+	here.screen_relative = here.relative
+	here.velocity = Vector2(0.0, 0.01)
+	here.screen_velocity = here.velocity
+	tree.root.push_input(here)
+
+
 static func _a_submenu_open(popup: PopupMenu) -> bool:
 	for row: int in popup.item_count:
 		var sub: PopupMenu = popup.get_item_submenu_node(row)
@@ -2100,6 +2146,7 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			sub.submenu_popup_delay = SUBMENU_DELAY
 			# An id no command has, so the row is never taken for one.
 			popup.add_submenu_node_item(SUBMENU_WORDS[kind], sub, SUBMENU_ID + popup.item_count)
+			sub.visibility_changed.connect(_show_row_point.bind(popup, sub))
 			if not _with_submenus.has(popup):
 				_with_submenus.append(popup)
 			if SUBMENUS.has(kind):

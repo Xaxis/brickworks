@@ -4,23 +4,35 @@
 ## and then flash away").
 ##
 ##   godot --path . --resolution 1280x800 --script src/dev/submenu_probe.gd -- [--saves=50]
+##   godot --headless --path . --script src/dev/submenu_probe.gd -- --paths
 ##
-## In a window: headless, the menus are never shown as a hand would see them.
+## In a window the times are judged; headless (--paths, which the release
+## train runs: tools/suite/headless.txt) only where the pointer goes, what
+## opens and what stays: a headless frame says nothing of a hand's wait.
 ##
-## The pointer is moved as a mouse moves it: each move's speed is the one the
-## platform gives it (Input.get_last_mouse_velocity, as DisplayServerX11 and
-## DisplayServerWeb set it), so a move made just after the pointer stood
-## still has none, as a person's has. For each submenu of File, Edit and
-## View: the pointer comes down the menu from its title and rests on the
-## row, and the submenu must be open and drawn within DRAWN_MS, with no frame
-## over FRAME_MS from the first move until then; it must stay open while the
+## The pointer is the one the menus read. A menu reads where the pointer is
+## from the platform as well as from each move (Viewport.get_mouse_position,
+## DisplayServer.mouse_get_position: the engine's way into a submenu and its
+## safe rectangle). In a window a move parsed into Input never moved the X
+## server's pointer, so the menus read a pointer left where it was, and shut
+## (menufix's window run: File hidden, "pointer y -1"; menufix2). So in a
+## window the pointer is moved on the X server (Input.warp_mouse), and the
+## platform makes each move and its speed as it does a mouse's; headless,
+## where the engine's pointer is Input's own, each move is parsed with the
+## speed the platform would give it (Input.get_last_mouse_velocity), and
+## events are given in the root's own units (a headless window is 0 x 0).
+## Either way a move made just after the pointer stood still has no speed,
+## as a person's has. For each submenu of File, Edit and View: the pointer
+## comes down the menu from its title and rests on the row, and the submenu
+## must open (in a window, be drawn within DRAWN_MS, with no frame over
+## FRAME_MS from the first move until then); it must stay open while the
 ## pointer goes straight across and down to its third row that may be
-## pressed, which must be lit, and again on a slant over the rows below. And
-## a hand that rested on one submenu's row and then went down to the next
-## within a tenth of a second opens the next (Open recent, then Import).
-## With --saves=N, N saved models are on the shelf, and Open recent's first
-## row, clicked, opens its model. "SUBMENU row" lines are the table; exits 1
-## on any failure.
+## pressed, which must be lit, and again on a slant to that row over the rows
+## below its own. And a hand that rested on one submenu's row and then went
+## down to the next within a tenth of a second opens the next (Open recent,
+## then Import). --saves=N (50 unless given) saved models are on the shelf,
+## and Open recent's second row, clicked, opens its model. "SUBMENU row"
+## lines are the table; exits 1 on any failure.
 extends SceneTree
 
 const DRAWN_MS := 150
@@ -34,7 +46,8 @@ const SHELF := ["sports_car", "three_core_rocket", "station", "orrery", "corner_
 var _main: Node
 var _shell: Shell
 var _failures: int = 0
-var _saves: int = 0
+var _saves: int = 50
+var _headless: bool = false
 var _pointer := Vector2(640, 400)
 var _frame_at: int = 0
 var _frames: PackedInt64Array = []
@@ -61,6 +74,11 @@ func _run() -> void:
 			_saves = int(arg.get_slice("=", 1))
 		if arg.begins_with("--only="):
 			only = arg.get_slice("=", 1).split(",")
+	_headless = DisplayServer.get_name() == "headless"
+	print("SUBMENU %s: the platform's pointer %s, the window %s, the root %s" % [
+		"headless" if _headless else "in a window",
+		"read" if DisplayServer.has_feature(DisplayServer.FEATURE_MOUSE) else "Input's own",
+		str(root.size), str(root.get_visible_rect().size)])
 	_shelve(_saves)
 	await process_frame
 	_main = load("res://src/main.tscn").instantiate()
@@ -73,6 +91,7 @@ func _run() -> void:
 			break
 		await process_frame
 	_shell = _main.get("_shell")
+	_watch_menus()
 	process_frame.connect(func() -> void:
 		var now: int = Time.get_ticks_usec()
 		if _frame_at > 0:
@@ -141,12 +160,21 @@ func _row_of(popup: PopupMenu, words: String) -> int:
 
 
 ## A point of the root's canvas as the window's pixels, where a platform puts
-## its events.
+## its events. A headless window is 0 x 0 and its events are the root's own.
 func _as_event(at: Vector2) -> Vector2:
-	return at * (Vector2(root.size) / root.get_visible_rect().size)
+	var scale := Vector2(root.size) / root.get_visible_rect().size
+	if not (scale.x > 0.0 and scale.y > 0.0):
+		return at
+	return at * scale
 
 
 func _move(to: Vector2) -> void:
+	if not _headless:
+		# On the X server: the platform makes the move, its speed, and the
+		# pointer the menus read, as it does for a mouse.
+		_pointer = to
+		Input.warp_mouse(_as_event(to))
+		return
 	var event := InputEventMouseMotion.new()
 	event.position = _as_event(to)
 	event.global_position = event.position
@@ -157,6 +185,7 @@ func _move(to: Vector2) -> void:
 	event.screen_velocity = event.velocity
 	_pointer = to
 	Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
 
 ## The pointer from where it is to [param to] in [param steps] moves,
@@ -176,15 +205,51 @@ func _click(at: Vector2) -> void:
 		event.position = _as_event(at)
 		event.global_position = event.position
 		Input.parse_input_event(event)
+		Input.flush_buffered_events()
 		await process_frame
 		await process_frame
 
 
 func _shut() -> void:
+	_shutting = true
 	for button: MenuButton in _shell.get("_menus"):
 		button.get_popup().hide()
+	_shutting = false
 	for _n: int in 4:
 		await process_frame
+
+
+var _shutting: bool = false
+var _opened_at: int = 0
+
+
+## A menu the probe opened, shut by anything but the probe: when, and what
+## else was on screen and had just taken the window's focus.
+func _watch_menus() -> void:
+	for button: MenuButton in _shell.get("_menus"):
+		var popup: PopupMenu = button.get_popup()
+		popup.popup_hide.connect(func() -> void:
+			if _shutting:
+				return
+			var shown: PackedStringArray = []
+			for node: Node in root.find_children("*", "Window", true, false):
+				var window := node as Window
+				if window != null and window.visible and window != popup:
+					shown.append("%s(%s)" % [window.name, window.get_class()])
+			print("SUBMENU (%s shut by itself %.2f s after it opened; windows shown: %s; focused control: %s)"
+				% [button.text, (Time.get_ticks_usec() - _opened_at) / 1000000.0, ", ".join(shown),
+				str(root.gui_get_focus_owner())]))
+	for node: Node in root.find_children("*", "MenuButton", true, false):
+		var other := node as MenuButton
+		other.get_popup().about_to_popup.connect(func() -> void:
+			if Time.get_ticks_usec() - _opened_at < 1000000:
+				var on_bar: PackedStringArray = []
+				for button: MenuButton in _shell.get("_menus"):
+					on_bar.append("%s %s%s" % [button.text, "shown" if button.is_visible_in_tree() else "FOLDED",
+						" (its menu up)" if button.get_popup().visible else ""])
+				print("SUBMENU (%s %s opens; hovered %s; frame %d; bar: %s; mouse buttons %d; from %s)" % [other.name,
+					other.text, str(root.gui_get_hovered_control()), Engine.get_process_frames(),
+					", ".join(on_bar), Input.get_mouse_button_mask(), str(get_stack())]))
 
 
 ## A row's band in its menu, top and bottom, found as the pointer finds it:
@@ -231,10 +296,13 @@ func _open(title: String) -> PopupMenu:
 	var at: Vector2 = button.get_global_rect().get_center()
 	_move(at)
 	await process_frame
+	_opened_at = Time.get_ticks_usec()
 	await _click(at)
 	for _n: int in 6:
 		await process_frame
 	await create_timer(0.4).timeout
+	if not button.get_popup().visible:
+		print("SUBMENU (%s not open after its click)" % title)
 	return button.get_popup()
 
 
@@ -250,7 +318,11 @@ func _rest_on(popup: PopupMenu, index: int, band: Vector2) -> Dictionary:
 	for _n: int in 400:
 		await process_frame
 		if sub.visible:
-			await process_frame
+			# Drawn: the frame it is in handed to the screen (headless, none is).
+			if _headless:
+				await process_frame
+			else:
+				await RenderingServer.frame_post_draw
 			opened = Time.get_ticks_usec()
 			break
 		if Time.get_ticks_usec() - rested > 3000000:
@@ -291,9 +363,12 @@ func _try(title: String, words: String) -> void:
 	popup = await _open(title)
 	var rest: Dictionary = await _rest_on(popup, index, band)
 	var sub: PopupMenu = rest.sub
-	if not _check("%s › %s opens with the pointer rested on it: %.0f ms to drawn (bar %d), longest frame %.1f ms (bar %d)"
-			% [title, words, rest.ms, DRAWN_MS, rest.longest, FRAME_MS],
-			sub.visible and rest.ms >= 0.0 and rest.ms <= DRAWN_MS and rest.longest <= FRAME_MS):
+	# Headless, a frame's time is no hand's: the submenu has only to open.
+	var timed: String = ("%.0f ms to drawn (bar %d), longest frame %.1f ms (bar %d)"
+		% [rest.ms, DRAWN_MS, rest.longest, FRAME_MS]) if not _headless else (
+		"%.0f ms to open, headless (not timed)" % rest.ms)
+	if not _check("%s › %s opens with the pointer rested on it: %s" % [title, words, timed],
+			sub.visible and rest.ms >= 0.0 and (_headless or (rest.ms <= DRAWN_MS and rest.longest <= FRAME_MS))):
 		if not sub.visible:
 			return
 	var third: Array = await _third(sub)
@@ -310,13 +385,23 @@ func _try(title: String, words: String) -> void:
 		straight = sub.visible and (int(third[0]) < 0 or sub.get_focused_item() == int(third[0]))
 	_check("%s › %s stays open as the pointer goes straight across and down to its third row, lit"
 		% [title, words], straight)
-	# Slanted: from the row to the third row in one line, over the rows below.
+	# Slanted: from the row to the third row in one line, over the rows below,
+	# its first move already past the row's edge, as the moves of a quick hand
+	# or a slow frame reach the menus gathered into one (Input's accumulated
+	# moves): the move a submenu opened under a resting pointer hears first is
+	# then off its row (Shell._show_row_point).
 	await _shut()
 	popup = await _open(title)
 	var again: Dictionary = await _rest_on(popup, index, band)
 	var slant: bool = false
 	if sub.visible:
-		await _glide(third[1], 8)
+		var target: Vector2 = third[1]
+		var rise: float = target.y - again.at.y
+		if absf(rise) > 0.5:
+			var edge: float = band.y + 3.0 if rise > 0.0 else band.x - 3.0
+			_move(again.at.lerp(target, clampf((edge - again.at.y) / rise, 0.0, 1.0)))
+			await create_timer(0.03).timeout
+		await _glide(target, 6)
 		await create_timer(0.6).timeout
 		slant = sub.visible and (int(third[0]) < 0 or sub.get_focused_item() == int(third[0]))
 	_check("%s › %s stays open as the pointer goes on a slant to its third row, lit" % [title, words],
