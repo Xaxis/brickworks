@@ -322,13 +322,15 @@ const PAPER_WHITE := 0.8
 ## the tent close-ups' photographs from the tracer's raw light
 ## (tools/bench/photoreal.py colour, docs/RENDERING.md 5f).
 const PHOTO_EV := 0.33
-## How many stops more than PHOTO_EV the product look on a backdrop is
-## exposed (photoreal30, RenderSettings.high_key; docs/RENDERING.md 5ae):
-## a product photograph is exposed high-key, a white part's lit side nearly
-## as bright as the paper (254 of 255 on 6660's door, where the card metered
-## at PHOTO_EV alone drew 215). Half a stop lifted the sets beside their
-## photographs by +0.089 (95%: +0.015 to +0.177); a whole stop washed them
-## out and gained nothing.
+## How many stops more than PHOTO_EV the product look on a paper backdrop
+## (PAPER_WHITE or lighter) is exposed (photoreal30, RenderSettings.high_key;
+## docs/RENDERING.md 5ae): a product photograph on white is exposed
+## high-key, a white part's lit side nearly as bright as the paper (254 of
+## 255 on 6660's door, where the card metered at PHOTO_EV alone drew 215).
+## Half a stop lifted the sets beside their photographs by +0.089 (95%:
+## +0.015 to +0.177); a whole stop washed them out and gained nothing. On a
+## coloured surface none: there it greyed the black brick on leather (0.64
+## to 0.13 over three draws).
 const PRODUCT_HIGH_KEY := 0.5
 const PHOTO_LINEAR_SATURATION := 1.3
 const CAMERA_KNEE := 0.6
@@ -3622,14 +3624,18 @@ func _meter_card(settings: RenderSettings, plan: Plan, shot: Shot, small: Vector
 		exposure: float, tonemapper: int, white: float, contrast: float,
 		saturation: float) -> float:
 	var goal: float = settings.backdrop.get_luminance()
-	if goal < PAPER_WHITE:
+	var paper: bool = goal >= PAPER_WHITE
+	if not paper:
 		goal = 1.0
 	# The card's light is the paper's own lightness in linear light, before
 	# the curve: a white paper's card is 1, PHOTO_EV over, and the camera's
 	# shoulder draws it a little short of white (the backdrop round the model
-	# is drawn at its own colour whatever, the shadow catcher).
+	# is drawn at its own colour whatever, the shadow catcher). On paper,
+	# PRODUCT_HIGH_KEY over that unless asked otherwise: a high-key
+	# photograph is a white paper's; on a coloured surface the card is kept.
+	var high: float = _own(settings.high_key, PRODUCT_HIGH_KEY if paper else 0.0)
 	var want: float = Color(goal, goal, goal).srgb_to_linear().r * white \
-		* pow(2.0, PHOTO_EV + _own(settings.high_key, PRODUCT_HIGH_KEY))
+		* pow(2.0, PHOTO_EV + high)
 	var scale: float = 1.0
 	const DIM := 0.2
 	for round: int in 2:

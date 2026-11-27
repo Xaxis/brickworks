@@ -205,7 +205,7 @@ var clearance: float = -1.0
 ## How many stops brighter than the metered white card the product look on
 ## a backdrop is exposed (photoreal30): a high-key product photograph's
 ## white parts are as bright as its paper. Below 0, StudioRender's
-## PRODUCT_HIGH_KEY.
+## PRODUCT_HIGH_KEY on a paper backdrop and none on a coloured one.
 var high_key: float = -1.0
 ## A large bright source the glossy tops mirror (photoreal14), path traced in
 ## the product look on a backdrop: a softbox or a window card standing above
