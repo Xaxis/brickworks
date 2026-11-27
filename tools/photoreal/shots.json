@@ -1015,7 +1015,6 @@
    "backdrop": "#d4cdc0",
    "gradient": false,
    "lighting": "daylight",
-   "light_turn": 230,
    "f_stop": 22,
    "focus": 0.45,
    "roll": 0.2,
