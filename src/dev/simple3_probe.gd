@@ -170,7 +170,7 @@ func _case_hover() -> void:
 	_verbs.set_mode("select")
 	_builder.clear_selection()
 	await _frames(3)
-	var outline: Node3D = _main.get("_hover_outline")
+	var outline: SelectionOutline = _main.get("_hover_outline")
 	var at := Vector2.INF
 	var part: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
@@ -188,15 +188,21 @@ func _case_hover() -> void:
 	_check("in Full the pointer on it outlines what a click takes: hovered %d, %d parts, outline shown %s"
 		% [int(_main.get("_hovered")), takes, outline.visible],
 		int(_main.get("_hovered")) != 0 and outline.visible and takes > 1)
+	# Main asks in its own frame, so from the next frame on none is hovered;
+	# the outline is paced (PointerPace), so it may take a frame to clear, and
+	# clearing is its one drawing.
 	_main.call("use_controls", &"simple")
-	var shown_in_simple: int = 0
+	var drawn_before: int = int(outline.get("_shown_count"))
+	var hovered_in_simple: int = 0
 	for _n: int in 40:
 		await process_frame
-		if outline.visible or int(_main.get("_hovered")) != 0:
-			shown_in_simple += 1
+		if int(_main.get("_hovered")) != 0:
+			hovered_in_simple += 1
 	await _settle()
-	_check("in Simple nothing outlined in any of 40 frames from the press, the lens easing in (%d with one)"
-		% shown_in_simple, shown_in_simple == 0 and not outline.visible)
+	var drawn: int = int(outline.get("_shown_count")) - drawn_before
+	_check("in Simple none hovered in any of 40 frames from the press, the lens easing in (%d with one), "
+		% hovered_in_simple + "the outline drawn only to clear it (%d times), not shown (%s)" % [drawn, outline.visible],
+		hovered_in_simple == 0 and drawn <= 1 and not outline.visible)
 	_main.call("use_controls", &"full")
 	await _frames(6)
 	_check("back in Full, the pointer not moved: outlined again (hovered %d, outline shown %s)"
