@@ -11,6 +11,20 @@
 ## Figma's Actions, Blender's F3 and Onshape's tool search do this. Here 71
 ## of the shell's 122 commands had no key, spread over six menus of up to
 ## 39 rows (appux371 A9).
+##
+## It opens where it is meant every time, wholly in the window under the
+## menu bar, the toolbar and the model's banners, and stays there as rows
+## come and go. Its first open in a browser stood at the window's top over
+## the menu bar, as tall as the window (palfix, 2026-11-27): the foot's
+## words wrapped at the width of a label never laid out, a letter to a
+## line, and the engine moves a popup taller than the room under it up to
+## the window's edge. Nothing in it now is taller for being narrow: the
+## foot is two lines whatever it says, and the list as tall as the rows the
+## room under the box holds. One row is lit, the one the keys or the
+## pointer are on (VS Code's, Raycast's); a part is listed only where its
+## name or number has the words typed, never a keyword alone ("mirror"
+## listed a spoon); a name is cut only when the columns beside it have no
+## room left to give.
 class_name CommandPalette
 extends PopupPanel
 
@@ -18,17 +32,34 @@ var shell: Shell
 ## How a chosen command is run: Shell.run, unless a probe stands in.
 var run_command: Callable
 
-## The box's width, and how many rows show before the list scrolls.
+## The box's width, and how many rows show at most before the list scrolls.
 const WIDE := 600.0
 const ROWS_SHOWN := 10
+## Between the box and the window's edges, and under the top of the model's
+## part of the window.
+const MARGIN := 12.0
+const UNDER := 24.0
+## The words' sizes: a row's name, and what is beside it (its menu, why it
+## is greyed, its key), at the desktop's size; a phone's sizing grows both.
+const NAME_SIZE := 14
+const BESIDE_SIZE := 12
+## The foot says the lit row's tip in at most this many lines, always as
+## tall as that: a foot one line for one row and two for the next moved
+## the box's edge as the keys went down the rows.
+const FOOT_LINES := 2
+## The middle column (a row's menu, or why it is greyed) at most this share
+## of a row: the name has the rest of what the key leaves.
+const BESIDE_SHARE := 0.42
 ## The commands run from here that are kept, the latest first.
 const RECENT_KEPT := 8
 ## Between a menu and its submenu, as the docs write it (Keymap's).
 const INTO := Keymap.INTO
 ## A row that is a part, not a command: "part:3001". At most this many,
-## once three letters are typed.
+## once three letters are typed, of the best this many the part search
+## ranks.
 const PART := "part:"
 const PARTS_SHOWN := 3
+const PARTS_LOOKED_AT := 60
 
 var _field: LineEdit
 var _list: Tree
@@ -36,6 +67,10 @@ var _foot: Label
 ## The commands in the rows, top to bottom, and which row is lit.
 var _names: Array[String] = []
 var _lit: int = -1
+## Where the box opens, its top left in the window, and how wide: kept
+## while it is open, so rows coming and going never move it.
+var _at := Vector2i.ZERO
+var _wide: float = WIDE
 ## Where each command lives in the menus ("Edit › Select by"), and every
 ## command in the order the menus have them: made once, the menus being
 ## fixed.
@@ -83,36 +118,57 @@ func _ready() -> void:
 	# The keys stay in the field; a click on a row runs it.
 	_list.focus_mode = Control.FOCUS_NONE
 	_list.scroll_horizontal_enabled = false
-	_list.set_column_expand_ratio(0, 5)
-	_list.set_column_expand_ratio(1, 3)
-	_list.set_column_expand(2, false)
-	_list.set_column_custom_minimum_width(2, 96)
+	# The name takes what the menu and the key leave, and those are as wide
+	# as their words (_fit_columns).
+	for beside: int in [1, 2]:
+		_list.set_column_expand(beside, false)
+		_list.set_column_clip_content(beside, true)
 	_list.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_list.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	for state: String in ["selected", "selected_focus"]:
+	for state: String in ["selected", "selected_focus", "hovered_selected", "hovered_selected_focus"]:
 		var lit := StyleBoxFlat.new()
 		lit.bg_color = Look.CHOSEN
 		lit.set_corner_radius_all(4)
 		_list.add_theme_stylebox_override(state, lit)
-	_list.add_theme_constant_override("v_separation", 8)
+	# One lit row: the pointer lights the row it is on (_on_list_input)
+	# rather than a grey one of its own beside the blue (the web's first
+	# picture, 11-27), and no box round the row the keys are on.
+	for state: String in ["hovered", "hovered_dimmed", "cursor", "cursor_unfocused"]:
+		_list.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	# Every row as tall as the next: what is beside a name is smaller than
+	# it, and the spacing is the row's.
+	_list.add_theme_constant_override("v_separation", 12)
 	_list.add_theme_constant_override("inner_item_margin_left", 8)
 	_list.add_theme_constant_override("inner_item_margin_right", 8)
 	_list.add_theme_constant_override("draw_guides", 0)
 	_list.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
 	_list.add_theme_color_override("font_selected_color", Color.WHITE)
-	_list.add_theme_font_size_override("font_size", 14)
-	_list.item_mouse_selected.connect(func(_at: Vector2, button: int) -> void:
+	_list.add_theme_color_override("font_hovered_color", Color(1, 1, 1, 0.92))
+	_list.add_theme_color_override("font_hovered_selected_color", Color.WHITE)
+	_list.add_theme_font_size_override("font_size", NAME_SIZE)
+	_list.item_mouse_selected.connect(func(_point: Vector2, button: int) -> void:
 		if button == MOUSE_BUTTON_LEFT:
 			var item: TreeItem = _list.get_selected()
 			if item != null:
 				choose(item.get_index()))
+	_list.gui_input.connect(_on_list_input)
 	column.add_child(_list)
 	_foot = Label.new()
 	_foot.name = "palette_foot"
 	_foot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# Never taller for being narrow: the box's height was measured with the
+	# foot not yet laid out, and wrapped at no width its words were a
+	# letter to a line (the header's first open).
+	_foot.max_lines_visible = FOOT_LINES
+	_foot.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_foot.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_foot.add_theme_font_size_override("font_size", 13)
 	_foot.add_theme_color_override("font_color", Color(1, 1, 1, 0.72))
 	column.add_child(_foot)
+	# A phone's sizing (TouchSizing) grows the words, the field and the rows
+	# once the box shows: laid out again for them, once it is done.
+	for sized: Control in [_field, _list, _foot]:
+		sized.theme_changed.connect(_lay_out_soon)
 	if not run_command.is_valid():
 		run_command = shell.run
 	for named: Variant in ShellPrefs.value("palette_recent"):
@@ -121,16 +177,26 @@ func _ready() -> void:
 	_index()
 
 
-## Open over the model, empty, the keys in the box.
+## Open over the model, empty, the keys in the box: under the top of the
+## model's part of the window (the menu bar, the toolbar and the banners
+## over it are left in sight), in the middle of it across, and wholly in the
+## window.
 func open() -> void:
-	var room: Rect2 = get_parent().get_viewport().get_visible_rect()
+	var room: Rect2 = _room()
 	var over: Rect2 = shell.model_area.get_global_rect() if shell.model_area != null else room
-	var wide: float = minf(WIDE, room.size.x - 24.0)
-	(_field.get_parent() as Control).custom_minimum_size.x = wide - 20.0
-	var left: float = clampf(over.get_center().x - wide / 2.0, 12.0, room.size.x - wide - 12.0)
+	_wide = minf(WIDE, room.size.x - 2.0 * MARGIN)
+	(_field.get_parent() as Control).custom_minimum_size.x = _wide - _chrome().x
+	var left: float = clampf(over.get_center().x - _wide / 2.0, room.position.x + MARGIN,
+		room.end.x - _wide - MARGIN)
+	_at = Vector2i(roundi(left), roundi(maxf(over.position.y + UNDER, room.position.y + MARGIN)))
 	_field.text = ""
 	_fill()
-	popup(Rect2i(Vector2i(roundi(left), roundi(over.position.y + 24.0)), Vector2i(roundi(wide), 0)))
+	# A window too short for even a row under the model's top: as low as
+	# leaves the box whole.
+	var bottom: float = room.end.y - MARGIN
+	if _at.y + size.y > bottom:
+		_at.y = roundi(maxf(room.position.y + MARGIN, bottom - size.y))
+	popup(Rect2i(_at, Vector2i(roundi(_wide), size.y)))
 	_field.grab_focus()
 
 
@@ -201,29 +267,100 @@ func row_words(named: String) -> String:
 
 ## The parts [param asked] names, by number or name, best first: none
 ## until three letters are typed, or while the model is not to be changed.
+## Only a part whose name or number has every word typed: the part search
+## also finds parts by their keywords and builders' names for them, and
+## "mirror" listed Minifig Cutlery Spoon, a keyword's alone. Of those, the
+## ones with the most words whole: "mirror" lists Hand Mirror, not Thorn
+## Mirrored, while "mirr" lists both.
 func parts_for(asked: String) -> Array[String]:
 	var out: Array[String] = []
 	if asked.strip_edges().length() < 3 or shell.read_only or shell.store.laying \
 			or not shell.library.search_ready():
 		return out
-	for info: PartLibrary.PartInfo in shell.library.search(asked, PARTS_SHOWN * 4, true):
-		if info.reachable and out.size() < PARTS_SHOWN:
-			out.append(PART + info.id)
+	var typed: PackedStringArray = words_of(asked)
+	var said: String = asked.strip_edges().to_lower()
+	# A number LDraw keeps for an old part, or an element number as a
+	# booklet prints it, names its part (PartLibrary.search).
+	var numbered: String = ""
+	if shell.library.superseded(said):
+		numbered = shell.library.current(said)
+	var element: Array = shell.library.part_of_element(said)
+	if not element.is_empty():
+		numbered = str(element[0])
+	var kept: Array = []
+	var best: int = -1
+	for info: PartLibrary.PartInfo in shell.library.search(asked, PARTS_LOOKED_AT, true):
+		if not info.reachable:
+			continue
+		var whole: int = typed.size() if info.id == numbered else named_by(typed, info.id, info.name)
+		if whole < 0:
+			continue
+		kept.append([whole, info.id])
+		best = maxi(best, whole)
+	for row: Array in kept:
+		if int(row[0]) == best and out.size() < PARTS_SHOWN:
+			out.append(PART + str(row[1]))
 	return out
 
 
+## How many of [param typed] are whole words of a part's name or its number,
+## each of the others beginning one; -1 when a word is in neither. A size
+## typed as one ("2x4") is the name's "2 x 4", and two words a name runs
+## together ("air tank") are LDraw's one ("Airtank").
+static func named_by(typed: PackedStringArray, part_id: String, part_name: String) -> int:
+	var own: PackedStringArray = words_of(part_name)
+	var number: String = part_id.to_lower()
+	var whole: int = 0
+	for n: int in typed.size():
+		var how: int = _word_in(typed[n], own, number)
+		if how == 0 and n > 0:
+			how = mini(_word_in(typed[n - 1] + typed[n], own, number), 1)
+		if how == 0:
+			return -1
+		if how == 2:
+			whole += 1
+	return whole
+
+
+## 2 when [param word] is a word of [param own] or the number whole, 1 when
+## it begins one (or begins words of it run together), else 0.
+static func _word_in(word: String, own: PackedStringArray, number: String) -> int:
+	if word == number:
+		return 2
+	var how: int = 1 if number.begins_with(word) else 0
+	for at: int in own.size():
+		var run: String = ""
+		for next: int in range(at, own.size()):
+			run += own[next]
+			if run == word:
+				return 2
+			if run.length() >= word.length():
+				if run.begins_with(word):
+					how = 1
+				break
+	return how
+
+
 ## What a browser check reads (Main's page state): whether it is open, what
-## is typed, the first rows, and the lit one and why it is greyed, if it is.
+## is typed, the first rows, and the lit one and why it is greyed, if it is;
+## and where the box is (x, y, width, height), the window's size and the
+## top of the model's part of it, all in the window's units: wholly in the
+## window and under that top is where it is meant (palette_flow).
 func page_state() -> Dictionary:
 	var lit: String = _names[_lit] if _lit >= 0 and _lit < _names.size() else ""
+	var room: Rect2 = _room() if is_inside_tree() else Rect2()
+	var over: Rect2 = shell.model_area.get_global_rect() if shell.model_area != null else room
 	return {"open": visible, "typed": _field.text if _field != null else "",
 		"rows": _names.slice(0, 12), "lit": lit,
-		"why": shell.why_not(lit) if not lit.is_empty() and not lit.begins_with(PART) else ""}
+		"why": shell.why_not(lit) if not lit.is_empty() and not lit.begins_with(PART) else "",
+		"rect": [position.x, position.y, size.x, size.y], "room": [room.size.x, room.size.y],
+		"floor": roundi(over.position.y)}
 
 
-## Its controls by name, for a browser check to press them as a person does.
+## Its controls by name, for a browser check to press them as a person does:
+## the field, and the rows (a check moves the pointer over them).
 func controls_by_name() -> Dictionary:
-	return {"palette_field": _field} if visible else {}
+	return {"palette_field": _field, "palette_rows": _list} if visible else {}
 
 
 static func words_of(text: String) -> PackedStringArray:
@@ -283,6 +420,8 @@ func _fill() -> void:
 	var top: TreeItem = _list.create_item()
 	for named: String in _names:
 		var item: TreeItem = _list.create_item(top)
+		for column: int in 3:
+			item.set_text_overrun_behavior(column, TextServer.OVERRUN_TRIM_ELLIPSIS)
 		if named.begins_with(PART):
 			_part_row(item, named.trim_prefix(PART))
 			continue
@@ -291,11 +430,8 @@ func _fill() -> void:
 		item.set_text(1, why if not why.is_empty() else where(named))
 		item.set_text(2, shell.key_words(named))
 		item.set_text_alignment(2, HORIZONTAL_ALIGNMENT_RIGHT)
-		for column: int in 3:
-			item.set_text_overrun_behavior(column, TextServer.OVERRUN_TRIM_ELLIPSIS)
-		item.set_custom_font_size(1, 12)
-		item.set_custom_font_size(2, 12)
-		item.set_tooltip_text(0, shell.command(named).tip)
+		# Its tip is the foot's when it is lit, as the pointer lights it: a
+		# tooltip too sat over the rows under it.
 		if why.is_empty():
 			item.set_custom_color(1, Color(1, 1, 1, 0.62))
 			item.set_custom_color(2, Color(1, 1, 1, 0.72))
@@ -304,10 +440,7 @@ func _fill() -> void:
 			item.set_custom_color(0, Color(1, 1, 1, 0.48))
 			item.set_custom_color(1, Color(1.0, 0.84, 0.55, 0.9))
 			item.set_custom_color(2, Color(1, 1, 1, 0.42))
-	# As tall as its rows, up to ROWS_SHOWN; the list scrolls past those.
-	var rows: int = clampi(_names.size(), 1, ROWS_SHOWN)
-	_list.custom_minimum_size.y = _row_height(top) * rows + _list.get_theme_constant("v_separation") + 2.0
-	reset_size()
+	_lay_out()
 	_lit = -1
 	_light(0)
 	if _names.is_empty():
@@ -318,29 +451,123 @@ func _part_row(item: TreeItem, part_id: String) -> void:
 	var info: PartLibrary.PartInfo = shell.library.parts.get(part_id)
 	item.set_text(0, Inventory._tidy(info.name) if info != null else part_id)
 	item.set_text(1, "Part %s" % part_id)
-	item.set_custom_font_size(1, 12)
 	item.set_custom_color(1, Color(1, 1, 1, 0.62))
-	for column: int in 2:
-		item.set_text_overrun_behavior(column, TextServer.OVERRUN_TRIM_ELLIPSIS)
 
 
-func _light(row: int) -> void:
+## The rows' words at their sizes, the columns fitted to them, and the list
+## as tall as its rows, up to ROWS_SHOWN and what the room under the box
+## holds; then the box as tall as that, where it is. Again when a phone's
+## sizing grows the words (theme_changed).
+func _lay_out() -> void:
+	if _list == null or _list.get_root() == null or _foot == null:
+		return
+	var beside: int = _beside_size()
+	for item: TreeItem in _list.get_root().get_children():
+		item.set_custom_font_size(1, beside)
+		item.set_custom_font_size(2, beside)
+	_fit_columns(beside)
+	var line: float = _foot.get_theme_font("font").get_height(_foot.get_theme_font_size("font_size"))
+	_foot.custom_minimum_size.y = ceilf(line * FOOT_LINES
+		+ _foot.get_theme_constant("line_spacing") * (FOOT_LINES - 1))
+	var top: TreeItem = _list.get_root()
+	var rows: int = clampi(_names.size(), 1, _rows_room())
+	_list.custom_minimum_size.y = ceilf(_list_top(top) * 2.0 + _row_height(top) * rows)
+	reset_size()
+
+
+var _laying: bool = false
+
+
+func _lay_out_soon() -> void:
+	if not _laying:
+		_laying = true
+		(func() -> void:
+			_laying = false
+			_lay_out()).call_deferred()
+
+
+## What is beside a row's name, as much smaller than it as on the desktop.
+func _beside_size() -> int:
+	return maxi(1, roundi(_list.get_theme_font_size("font_size") * float(BESIDE_SIZE) / NAME_SIZE))
+
+
+## The key column as wide as the widest key, the middle one as its widest
+## words up to its share; the name has the rest. Names were cut at half
+## the row while "Part 96488" beside them had a third to itself.
+func _fit_columns(beside: int) -> void:
+	var font: Font = _list.get_theme_font("font")
+	var pad: float = _list.get_theme_constant("inner_item_margin_left") \
+		+ _list.get_theme_constant("inner_item_margin_right") + _list.get_theme_constant("h_separation")
+	var widest: Array[float] = [0.0, 0.0, 0.0]
+	for item: TreeItem in _list.get_root().get_children():
+		for column: int in [1, 2]:
+			var words: String = item.get_text(column)
+			if not words.is_empty():
+				widest[column] = maxf(widest[column], font.get_string_size(_list.atr(words),
+					HORIZONTAL_ALIGNMENT_LEFT, -1, beside).x + pad)
+	var across: float = _wide - _chrome().x
+	_list.set_column_custom_minimum_width(2, ceili(widest[2]))
+	_list.set_column_custom_minimum_width(1, ceili(minf(widest[1], across * BESIDE_SHARE)))
+
+
+## How many rows the room under the box's top holds, up to ROWS_SHOWN.
+func _rows_room() -> int:
+	if not is_inside_tree() or _list.get_root() == null:
+		return ROWS_SHOWN
+	var top: TreeItem = _list.get_root()
+	var room: float = _room().end.y - MARGIN - float(_at.y) - _height_but_list() - _list_top(top) * 2.0
+	return clampi(floori(room / maxf(_row_height(top), 1.0)), 1, ROWS_SHOWN)
+
+
+## The box's height but its list's: its margins, the field, the foot.
+func _height_but_list() -> float:
+	var gap: float = float((_field.get_parent() as Control).get_theme_constant("separation"))
+	return _chrome().y + _field.get_combined_minimum_size().y + gap * 2.0 \
+		+ maxf(_foot.custom_minimum_size.y, _foot.get_minimum_size().y)
+
+
+## The box's own margins round what it holds, across and down.
+func _chrome() -> Vector2:
+	var face: StyleBox = get_theme_stylebox("panel")
+	return face.get_minimum_size() if face != null else Vector2.ZERO
+
+
+## The window's part the box is drawn in.
+func _room() -> Rect2:
+	return get_parent().get_viewport().get_visible_rect()
+
+
+## Light [param row]: the keys' row, scrolled into sight, or the pointer's
+## ([param scroll] false: the list is not moved under the pointer).
+func _light(row: int, scroll: bool = true) -> void:
 	if _names.is_empty():
 		_lit = -1
 		return
 	_lit = clampi(row, 0, _names.size() - 1)
 	var item: TreeItem = _list.get_root().get_child(_lit)
 	item.select(0)
-	_list.scroll_to_item(item)
+	if scroll:
+		_list.scroll_to_item(item)
 	var named: String = _names[_lit]
 	if named.begins_with(PART):
-		_foot.text = "Takes it into hand, to put down with a click."
+		# Its whole name here, where a name cut short in its row is read.
+		_foot.text = "%s: takes it into hand, to put down with a click." % item.get_text(0)
 		return
 	var said: String = shell.command(named).tip
 	var why: String = shell.why_not(named)
 	if not why.is_empty():
 		said = "%s.%s" % [why, (" " + said) if not said.is_empty() else ""]
 	_foot.text = said if not said.is_empty() else where(named)
+
+
+## The pointer over a row lights it: one lit row, which Return runs.
+func _on_list_input(event: InputEvent) -> void:
+	var motion := event as InputEventMouseMotion
+	if motion == null:
+		return
+	var item: TreeItem = _list.get_item_at_position(motion.position)
+	if item != null and item.get_parent() == _list.get_root() and item.get_index() != _lit:
+		_light(item.get_index(), false)
 
 
 func _on_key(event: InputEvent) -> void:
@@ -359,11 +586,20 @@ func _words(named: String) -> String:
 	return command.words if command != null else named
 
 
-## A row's height, its spacing in, as the list lays its first out.
+## A row's height, its spacing in, as the list lays its first out: right
+## before the list has been drawn, as each row is one line at one size.
 func _row_height(top: TreeItem) -> float:
 	if top.get_child_count() > 0:
 		return _list.get_item_area_rect(top.get_child(0)).size.y
-	return _list.get_theme_font("font").get_height(14) + 2.0 * _list.get_theme_constant("v_separation")
+	return _list.get_theme_font("font").get_height(_list.get_theme_font_size("font_size")) \
+		+ _list.get_theme_constant("v_separation")
+
+
+## Above the first row, inside the list; as much is left under the last.
+func _list_top(top: TreeItem) -> float:
+	if top.get_child_count() > 0:
+		return maxf(_list.get_item_area_rect(top.get_child(0)).position.y, 0.0)
+	return 0.0
 
 
 ## Every command's home in the menus, the first that lists it: the menu

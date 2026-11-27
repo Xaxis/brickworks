@@ -9,9 +9,16 @@
 //   node tools/web/palette_flow.mjs --url=http://127.0.0.1:8761/index.html
 //
 // At 1280 x 800. The page is told what the box shows
-// (window.brickworksState.palette: open, typed, rows, lit, why); every act
-// is a key press, the first after the canvas has the keys. Pictures in
-// --out; it fails if a step does not happen or a script error is thrown.
+// (window.brickworksState.palette: open, typed, rows, lit, why, and where
+// the box is: rect, room, floor); every act is a key press, the first after
+// the canvas has the keys, but one move of the pointer. Pictures in --out;
+// it fails if a step does not happen or a script error is thrown.
+//
+// And where it opens, at its first open and every later one: wholly in the
+// window and under the top of the model's part of it, the menu bar and the
+// toolbar in sight. Its first open in a browser stood at the window's top,
+// over both, as tall as the window (palfix, 2026-11-27). The pointer on a
+// row lights it, the one lit row; "mirror" lists no part by a keyword alone.
 import { launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
@@ -49,6 +56,13 @@ await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
 const controls = () => page.evaluate(() => window.brickworksControls || {});
 const state = () => page.evaluate(() => window.brickworksState || {});
 const box = async () => (await state()).palette || {};
+// Wholly in the window and under the model's part's top, in the app's units.
+const placed = (now) => {
+  const [x, y, w, h] = now.rect || [];
+  const [across, down] = now.room || [];
+  return h > 0 && x >= 0 && x + w <= across && y + h <= down && y >= now.floor;
+};
+const where = (now) => `the box ${JSON.stringify(now.rect)} in ${JSON.stringify(now.room)}, the model from y ${now.floor}`;
 
 if (check("the app comes up", await until(page, async () => Boolean((await controls()).app_menu),
   START_MS / 1000))) {
@@ -62,11 +76,28 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
   await page.keyboard.press("Control+Slash");
   const opened = await until(page, async () => (await box()).open === true, 20);
   check("Ctrl+/ opens Find a command", opened);
+  await page.waitForTimeout(1000);
+  const first = await box();
+  check(`...where it is meant on its first open, under the toolbar: ${where(first)}`, placed(first));
+  await page.screenshot({ path: `${out}/first.png` });
+  // The pointer on the third row lights it: one lit row.
+  const rows = (await controls()).palette_rows;
+  if (check("...its rows are told the page", Boolean(rows))) {
+    const shown = Math.min((first.rows || []).length, 10);
+    await page.mouse.move(rows.x, rows.y - rows.h / 2 + rows.h * (2.5 / Math.max(shown, 3)));
+    check(`...the pointer on the third row lights it (${(await box()).lit})`, await until(page,
+      async () => (await box()).lit === (first.rows || [])[2], 10));
+    await page.screenshot({ path: `${out}/pointer.png` });
+    await page.mouse.move(8, 790);
+  }
   await page.keyboard.type("ren", { delay: 120 });
   check("\"ren\" puts Render… first", await until(page, async () => {
     const now = await box();
-    return now.typed === "ren" && (now.rows || [])[0] === "render";
+    return now.typed === "ren" && (now.rows || [])[0] === "render" && now.lit === "render";
   }, 20));
+  const typed = await box();
+  check(`...and the box stays put: ${where(typed)}`, placed(typed)
+    && JSON.stringify((typed.rect || []).slice(0, 2)) === JSON.stringify((first.rect || []).slice(0, 2)));
   await page.screenshot({ path: `${out}/typed.png` });
   await page.keyboard.press("Enter");
   check("Return opens Render, and the box is gone", await until(page, async () =>
@@ -83,10 +114,15 @@ if (check("the app comes up", await until(page, async () => Boolean((await contr
   await until(page, async () => (await box()).open === true, 20);
   check("opened again, Render is first, the last one run",
     await until(page, async () => ((await box()).rows || [])[0] === "render", 10));
+  const again = await box();
+  check(`...where it is meant again: ${where(again)}`, placed(again));
   await page.keyboard.type("mirror", { delay: 120 });
   const greyed = await until(page, async () => (await box()).lit === "mirror", 20);
-  const said = (await box()).why || "";
+  const mirror = await box();
+  const said = mirror.why || "";
   check(`with nothing selected Mirror is listed, saying why ("${said}")`, greyed && said.length > 0);
+  check(`...no part by a keyword alone (${(mirror.rows || []).join(", ")}), and the box where it is meant`,
+    !(mirror.rows || []).includes("part:80179") && placed(mirror));
   await page.screenshot({ path: `${out}/greyed.png` });
   await page.keyboard.press("Enter");
   await page.waitForTimeout(1500);
