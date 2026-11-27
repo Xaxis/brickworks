@@ -478,9 +478,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   where they were, and switches parts mid-count; `simple_switch_probe --case=models` reads
   it after the switch),
   which way its studs face, its sub-model, its step in the instructions (models
-  of 600 parts or fewer, worked out a slice a frame from the click,
+  of 600 parts or fewer, worked out in one go once the click's frame is drawn,
   `Inspector._plan_steps`: on the click, the first click after each edit held
-  6685-1 and 5972-1 80-110 ms) and whether it is locked; Joined, Lock, Hide. Several:
+  6685-1 and 5972-1 80-110 ms; paced over frames, a part deleted under it was
+  a script error) and whether it is locked; Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs. Asked for from a part's actions or its More

@@ -1048,10 +1048,15 @@ func _steps_key() -> String:
 	return "%d|%d" % [shell.world.brick_count(), shell.builder.history_depth()]
 
 
-## The steps for the model as it stands, worked out a slice a frame from the
-## click (Instructions.plan_paced), and the part shown by then given its
-## step. Worked out on the click, the first click on a part after each edit
-## held the window 80-110 ms on 6685-1 and 5972-1 (clickfast).
+## The steps for the model as it stands, worked out once the click's frame
+## is drawn, and the part shown by then given its step. Worked out on the
+## click, the first click on a part after each edit held the window
+## 80-110 ms on 6685-1 and 5972-1 (clickfast).
+##
+## In one go, not a slice a frame (Instructions.plan_paced): a plan paced
+## over frames reads the parts of a model the person goes on editing, and a
+## part deleted under it was a script error (modelinfo's Delete), as was
+## its cancel (assembly: _kept_paced given an untyped []).
 var _planning: String = ""
 var _plan_job: Working.Job = null
 
@@ -1066,17 +1071,11 @@ func _plan_steps(key: String) -> void:
 	job.can_cancel = true
 	job.first_slice(0)
 	_plan_job = job
-	# Once the click's frame is drawn: what the plan reads before its first
-	# slice is spent (the model's shape, whether its author gave steps) was
-	# 5-9 ms of the click on 6685-1 and 5972-1.
 	await job.next()
 	if _planning != key or job.cancelled:
 		return
 	# The author's steps when there are any, numbered as the booklet is.
-	var steps: Array = await Instructions.plan_paced(shell.world, shell.library,
-		shell.store.scenery, {}, job, true)
-	if _planning != key or job.cancelled:
-		return
+	var steps: Array = Instructions.plan(shell.world, shell.library, shell.store.scenery, {}, true)
 	_planning = ""
 	_plan_job = null
 	# Worked out for a model since changed: the next look asks again.
