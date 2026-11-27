@@ -2095,7 +2095,6 @@ func _ready() -> void:
 	# The model the address opens, its parts asked for before the studio is
 	# made, and so before its parts bin asks for any of its own.
 	_ask_early_model()
-	_ask_sample_early()
 	_build_ui()
 	# Told their keys before the menus' commands were learned (the view
 	# cube's Fit), told them again (Keymap.tell).
@@ -5450,47 +5449,6 @@ func _ask_early_model() -> void:
 	_early_model = parsed
 	_early_asked = true
 	_ask_early_current()
-
-
-## The example car's parts asked for as soon as the catalogue is read, on a
-## first visit that will open it (nothing kept in this browser, nothing the
-## address asks for): their geometry then comes while the studio is made,
-## not after. Asked once the car opened, after the window was built, they
-## were most of the 3.2 s from the first part laid to the car drawn whole on
-## a desktop's first visit against 1.6 s on a return, which reads them from
-## what it kept (webstart14, 2026-11-27). An account that turns out to keep
-## models opens its own instead (_open_theirs), and the 0.6 MB went for
-## nothing. On the web only: elsewhere the build carries every part.
-func _ask_sample_early() -> void:
-	if not OS.has_feature("web") or _early_asked or not _sample_likely():
-		return
-	var parsed: LdrModel = LdrModel.parse(FileAccess.get_file_as_string(SAMPLE_MODEL), SAMPLE_MODEL.get_file().get_basename())
-	if parsed == null:
-		return
-	if _library.remote_parts.is_empty():
-		_library.remote_parts = ModelLibrary.early_parts_url()
-	_library.set_fetch_host(self)
-	ModelStore.ask_geometry_in(_library, parsed, true)
-
-
-## Whether this start opens the example car: no model the address or the
-## command line asks for, no file given, not a New tab, and nothing kept in
-## this browser to bring back (this tab's autosave, a model saved here).
-func _sample_likely() -> bool:
-	if not (_viewing.is_empty() and _copying.is_empty() and _from_library.is_empty()):
-		return false
-	if not (_argument("--model").is_empty() and _argument("--stress").is_empty()):
-		return false
-	if not TabSession.given_file().is_empty() or TabSession.opened_new():
-		return false
-	if FileAccess.file_exists(ModelStore.autosave()):
-		return false
-	var saved: DirAccess = DirAccess.open(ModelStore.SAVE_DIR)
-	if saved != null:
-		for file_name: String in saved.get_files():
-			if file_name.ends_with(".ldr"):
-				return false
-	return true
 
 
 ## The model [method _ask_early_model] asked for quickly, until its parts

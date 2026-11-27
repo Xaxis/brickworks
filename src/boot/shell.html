@@ -1276,16 +1276,14 @@ brickworksEngine.ready.then(function (chosen) {
 	// for here instead, beside the engine's own files, and the index's entry
 	// for it found here: the app takes them from window.brickworksEarly
 	// (ModelLibrary.fetch and find), and asks itself for what did not come.
-	// For a shared model's link, and for any other start, only where the
-	// parts live: the app asks for the model's parts as soon as its
-	// catalogue is read (Main._ask_early_model), and a first visit's for the
-	// example car it will open (Main._ask_sample_early, webstart14), before
-	// its Deployment has said where they are.
+	// For a shared model's link only where the parts live: the app asks for
+	// its parts as soon as its catalogue is read (Main._ask_early_model),
+	// before its Deployment has said where they are.
 	const early = window.brickworksEarly = { files: {}, entry: null, parts: "" };
 	(function () {
 		const id = query.get("library") || "";
 		const set = /^omr-[A-Za-z0-9_-]{1,120}$/.test(id);
-		if (typeof fetch !== "function") return;
+		if (!(set || forShared) || typeof fetch !== "function") return;
 		const keep = function (url) {
 			const one = early.files[url] = { done: false, status: 0, bytes: null };
 			return fetch(url).then(function (answer) {
