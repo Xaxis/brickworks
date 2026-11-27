@@ -2863,6 +2863,9 @@ msgstr "Unida a %d piezas más, directamente o a través de otras"
 msgid "Joined to %d or more other parts, directly or through others"
 msgstr "Unida a %d piezas más o más, directamente o a través de otras"
 
+msgid "Joined to … other parts, directly or through others"
+msgstr "Unida a … piezas más, directamente o a través de otras"
+
 msgid "Faces: studs up"
 msgstr "Orientación: espigas arriba"
 

@@ -2863,6 +2863,9 @@ msgstr "Mit %d anderen Teilen verbunden, direkt oder über andere"
 msgid "Joined to %d or more other parts, directly or through others"
 msgstr "Mit %d oder mehr anderen Teilen verbunden, direkt oder über andere"
 
+msgid "Joined to … other parts, directly or through others"
+msgstr "Mit … anderen Teilen verbunden, direkt oder über andere"
+
 msgid "Faces: studs up"
 msgstr "Ausrichtung: Noppen oben"
 

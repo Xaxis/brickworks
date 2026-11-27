@@ -304,7 +304,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   with its find to type into (`SelectBy.wanted`: "3004", "3023" for 3023b,
   "brick 1x2" with every word as the parts bin searches, a colour of the
   model's by name, or both, "blue 1x2 brick"); Enter selects every row it
-  kept. In the list each row shows its part's picture in its colour
+  kept. The find is shown and has the keys in Ctrl-F's own press
+  (`Shell.TYPED_AFTER`), before the list is taken: what is typed while the
+  rows come is kept and found in them, and an Enter meanwhile chooses once
+  they are in (`InventoryPanel._fill_finding`); typed ten frames on, the
+  hotel's find had lost "30" of "3004" and C painted the selection.
+  In the list each row shows its part's picture in its colour
   (`ThumbTile`, drawn as it comes into sight), and a click selects that lot's
   every piece (a hose's every segment), frames them and says how many, with I
   for a buried one; the list opens again where it was. Parts inside
@@ -464,9 +469,32 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Probe: `columns_probe`. One part: its name, LDraw and BrickLink numbers, its colour by
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
-  it (refused and put back where there is no room); what it is joined to,
+  it (refused and put back where there is no room); what it is joined to
+  (up to 500, counted 4 ms a frame, `FramePace.LIGHT_US`, the first 2 ms on
+  the click, and given up when another part is shown, `Inspector._count_joined`;
+  at half a frame from 12 ms a slice it held frames of up to 97 ms; a part of many
+  boxes is asked a piece of its faces at a time, `SelectBy._joined_to_paced`,
+  since 10030's 6 x 12 plate asked whole was one frame of 130-370 ms, and the
+  sideways table a count that may reach every part builds is built between
+  slices, `SelectBy.sideways_paced` (20 ms in one frame on 6685-1); "Joined to …
+  other parts, directly or through others" holds its line until then, wrapped
+  as most counts are, so Joined, Lock and Hide stay put: on
+  the click it held 10030's window 1.2-1.7 s, and Simple's way back to Full as
+  long; `clickfast_probe` (headless) times five clicks on 10030-1, 6685-1,
+  5972-1 and Orthanc to the next frame under one, reads the line against a whole
+  look on the spot, holds every frame after the click's, of the count and of the
+  steps, to one (16.7 ms of the main thread's time on a CPU, from
+  /proc/thread-self/schedstat, each said beside its time in all and the load)
+  and the buttons where they were, and switches parts
+  mid-count; `simple_switch_probe --case=models` reads it after the switch),
   which way its studs face, its sub-model, its step in the instructions (models
-  of 600 parts or fewer) and whether it is locked; Joined, Lock, Hide. Several:
+  of 600 parts or fewer, worked out 4 ms a frame from once the click's frame is
+  drawn, `Inspector._plan_steps`: on the click, the first click after each edit
+  held 6685-1 and 5972-1 80-110 ms. `Instructions.plan_paced` plans a copy
+  taken a slice at a time, `BrickWorld.copy_paced`: read from the model itself
+  across frames, a part deleted under it was a script error, and so was a
+  cancel, an untyped [] handed to an Array[Step]) and whether it is locked;
+  Joined, Lock, Hide. Several:
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs. Asked for from a part's actions or its More
@@ -4086,7 +4114,9 @@ tools/probe.sh tooltip_fit_probe
 godot --headless --path . --script src/dev/select_probe.gd
 # a part found in the Boutique Hotel: the list's pictures, a row clicked (57
 # selected, framed, said), Select by, Part number or name… typed key by key
-# ("blue 1x2 brick", "3004"), Escape, look_at_model part=; then Orthanc's
+# ("blue 1x2 brick"; "3004" and Enter, and "no such part zzq", typed the moment
+# Find is asked, the list still coming: every key the find's, the parts
+# selected not painted or moved), Escape, look_at_model part=; then Orthanc's
 # 1,074-piece row against Select all, longest frame (-- --no-time, --time-only,
 # --rounds=N; on a base checkout only Select all). shots/findpart_*.png
 tools/probe.sh find_part_probe

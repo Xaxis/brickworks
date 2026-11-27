@@ -65,7 +65,7 @@ ui:model tree
 
 ## Properties {#properties}
 
-Select a part and Properties says what it is: its part, colour, place and what it is joined to. Type its **X**, **Y** and **Z** (to the hundredth of an LDraw unit), its **Turn**, **Tilt** and **Roll**, or, on a joint, its **Hinge** angle. With two parts selected across hinges, **Meet** swings them together ([Meet on hinges](/docs/joints-and-mechanisms#meet)). With nothing selected it holds the floor and the model's size and weight.
+Select a part and Properties says what it is: its part, colour, place and what it is joined to. The part is shown the moment you click it, however big the model; on a model of thousands of parts the joined count says "Joined to … other parts" for a second or two while you carry on. Type its **X**, **Y** and **Z** (to the hundredth of an LDraw unit), its **Turn**, **Tilt** and **Roll**, or, on a joint, its **Hinge** angle. With two parts selected across hinges, **Meet** swings them together ([Meet on hinges](/docs/joints-and-mechanisms#meet)). With nothing selected it holds the floor and the model's size and weight.
 
 While Properties is folded, the same fields sit under the parts bin; **More** opens the rest.
 
