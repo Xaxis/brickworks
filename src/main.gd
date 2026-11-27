@@ -11288,10 +11288,14 @@ func _weigh() -> void:
 	if _world.generation() != generation:
 		return
 	if report != null and report.balance != null:
+		# The weighing it replaces let go of on a worker, as its copies are.
+		var replaced: Array = [_weighed]
 		_weighed = report
+		WorkerTasks.let_go(replaced)
 		_weighed_revision = revision
 	if report == null:
-		# For a part the library had to add: weighed again.
+		# For a part the library had to add, or a change while the model
+		# was copied: weighed again.
 		_stability_revision = -1
 		return
 	_stability_text = report.summary()
@@ -11347,12 +11351,22 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 		report = _stability.check(_world)
 		_stability.with_margins = true
 	else:
+		# The model and its lattice copied a slice a frame, and let go of on
+		# a worker after: copied and freed each in one frame, Orthanc's 10,119
+		# parts held a frame 97 ms at every change, as GrabDrag's reading did
+		# (grabtake). A change while it is copied is weighed next, as a part
+		# the library adds meanwhile is.
+		var copy := BrickWorld.ReadingCopy.new(_world, _builder.lattice)
+		while not copy.step(Time.get_ticks_usec() + FramePace.light_us()):
+			if copy.dropped:
+				return null
+			await get_tree().process_frame
 		var judge := Stability.new()
 		judge.library = _library
 		judge.with_margins = margins
 		judge.floor_ids = scenery.duplicate()
-		judge.lattice = _builder.lattice.copy_for_reading()
-		var still: BrickWorld = _world.copy_for_reading()
+		judge.lattice = copy.lattice
+		var still: BrickWorld = copy.world
 		var weighed: Array = [null]
 		_library.begin_reading()
 		var task: int = WorkerTasks.add(func() -> void:
@@ -11362,8 +11376,13 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 			await get_tree().process_frame
 		WorkerTasks.collect(task)
 		_library.end_reading(task)
-		still.free()
 		report = weighed[0]
+		var copies: Array = [still, judge]
+		still = null
+		judge = null
+		copy.world = null
+		copy.lattice = null
+		WorkerTasks.let_go(copies)
 	if report == null:
 		return null
 	report.total_grams -= floor_grams

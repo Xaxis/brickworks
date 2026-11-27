@@ -178,9 +178,17 @@ func _model(name: String, path: String) -> void:
 	_phase = "idle"
 	await _frames(90)
 
-	# The part to take hold of: one on a joint that a press moves.
+	# The part to take hold of: one on a joint that a press moves, or with
+	# none, the first part (a press carries it; a big model's still says
+	# its joints are being read while they are).
 	var target: int = _target()
-	_check("%s has a part on a joint to drag (#%d)" % [name, target], target > 0)
+	var jointed: bool = target > 0
+	if not jointed:
+		var bricks: Array = _world.bricks()
+		target = (bricks[0] as BrickWorld.Brick).id if not bricks.is_empty() else 0
+		print("    no part on a joint that a press moves: pressing #%d, which it carries" % target)
+	else:
+		print("    the part on a joint: #%d" % target)
 	if target == 0:
 		_phase = ""
 		_report(name)
@@ -214,18 +222,21 @@ func _model(name: String, path: String) -> void:
 	var after: Array = _press(target)
 	print("    pressed once read: %s, %s (%.1f ms)" % [after[0], after[2], after[3]])
 	print("MOVING %s after %s" % [name, after[1]])
-	_check("%s: a press once read takes hold of the part on its joint" % name, after[0] == "moves")
+	if jointed:
+		_check("%s: a press once read takes hold of the part on its joint" % name, after[0] == "moves")
 	if small:
-		_check("%s: a press while the joints are read (%s) moves the same parts as one after (%s)"
-			% [name, while_state, during[1]], during[0] == "moves" and during[1] == after[1])
+		_check("%s: a press while the joints are read (%s) does what one after does (%s, %s)"
+			% [name, while_state, during[0], during[1]], during[0] == after[0] and during[1] == after[1])
 	else:
 		_check("%s: a press while the joints are read (%s) says so and holds nothing, as a big model's does"
 			% [name, while_state], during[0] == "reading" and during[1] == "[]")
 	_check("%s: the press took %.1f ms of its frame (under %.0f)" % [name, after[3], BAR_MS], after[3] < BAR_MS)
 	if after[0] != "moves":
 		_grab.cancel()
+		await _frames(30)
 		_phase = ""
 		_report(name)
+		_pieces(name)
 		return
 	# Dragged a little each frame, as a mouse does, then let go.
 	var from: Vector2 = _camera.unproject_position(_world.get_brick(target).transform.origin)

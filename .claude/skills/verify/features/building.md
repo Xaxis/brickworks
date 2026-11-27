@@ -2783,7 +2783,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   stop took 16 ms of its 24 ms frame, and a Technic beam 15's first aim 36 ms
   (`drag_cost_probe`, headless, about 1 min: three turns of the wheel, every
   frame under the grab's budget, the first turn's as the others'). The status bar's weighing
-  (`Main._weigh`) is on a worker too. Both give way when the library must be
+  (`Main._weigh`) is on a worker too, its copies made and let go of the same way
+  (`Main.weigh_joints`: a change while they are copied is weighed next). Both give way when the library must be
   written (`PartLibrary.reading_in`'s stop, a `WorkerTasks.Stop` that
   `Bodies`, `Balance.prepare` and `Stability.check` ask as they go): a model
   opened with parts of its own adds them at once, the reading of the model
