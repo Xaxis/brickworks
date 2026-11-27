@@ -495,6 +495,26 @@ var _not_mine: Dictionary = {}
 var _left_to_app: int = 0
 
 
+## The fingers down now are no longer the camera's: whatever they began (a
+## turn, a pinch, a two- or three-finger tap) ends here, and their lift does
+## nothing. For controls swapped under them (SimpleLayer.reset): two fingers
+## put down in Simple and lifted in Full were Full's two-finger tap, and
+## undid the last brick (simplereview2 S5).
+func let_go_of_fingers() -> void:
+	if _touches.is_empty():
+		return
+	for index: int in _touches:
+		_not_mine[index] = true
+	_touches.clear()
+	_end(_doing_with)
+	_gesture_most = 0
+	_gesture_still = false
+	_was_tap = false
+	_spread = 0.0
+	_tap_up_ms = -1000000
+	_fingers_changed()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var touch: InputEventScreenTouch = event
@@ -504,7 +524,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			# A tap on a bar between two on the model is not a double tap.
 			_tap_up_ms = -1000000
 			return
-		if phone and not touch.pressed and _not_mine.has(touch.index):
+		# A finger of a number let go of whose lift went elsewhere: the new
+		# one is a new finger, the camera's.
+		if touch.pressed:
+			_not_mine.erase(touch.index)
+		elif _not_mine.has(touch.index):
 			_not_mine.erase(touch.index)
 			return
 		if touch.pressed:
@@ -1899,6 +1923,64 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 		size = radius * 2.0 * margin / share
 	_keep_over_floor(line)
 	framed.emit(_target_focus)
+
+
+## Frame [param box] by its corners as the view's direction sees them, not by
+## the ball round it: a flat plate seen from above is far less tall than its
+## ball, and framed by the ball Simple's new 16 x 16 plate took 43% of a
+## 1280 x 800 window's room. Each corner kept inside the part of the window
+## the model is seen in, with [param margin] to spare, as [method frame]'s.
+func frame_corners(box: AABB, margin: float = 1.05) -> void:
+	var line: float = _floor_line()
+	frame(box, margin)
+	if box.size.length_squared() <= 0.0 or projection == Camera3D.PROJECTION_ORTHOGONAL:
+		return
+	var seen_size: Vector2 = seen_rect().size
+	if covered.is_valid():
+		var over: float = maxf(0.0, float(covered.call()))
+		seen_size.y = maxf(seen_size.y * 0.5, seen_size.y - 2.0 * over)
+	# How far off the middle a point may be, for each unit it is away: the
+	# lens spans the window's height (Camera3D keeps the height), and the
+	# focus is in the middle of the seen part (_put_lens).
+	var per: float = tan(deg_to_rad(fov) * 0.5) / _room().y
+	var wide: float = per * seen_size.x
+	var tall: float = per * seen_size.y
+	# The view's own axes where it is going, as look_at makes them.
+	var back: Vector3 = _eye_at(_target_pitch, 1.0, Vector3.ZERO).normalized()
+	var right: Vector3 = (_target_frame * Vector3.UP).cross(back)
+	if right.length_squared() < 0.000001:
+		return
+	right = right.normalized()
+	var up: Vector3 = back.cross(right)
+	# Each corner across, up and toward the eye from the focus.
+	var corners: Array[Vector3] = []
+	for n: int in 8:
+		var from_focus: Vector3 = box.get_endpoint(n) - _target_focus
+		corners.append(Vector3(from_focus.dot(right), from_focus.dot(up), from_focus.dot(back)))
+	# The box's middle is not its picture's: its near side is drawn larger
+	# than its far side, and fitted about the middle a plate seen from above
+	# left a third of a 1280 x 800 room empty over it. The focus is moved in
+	# the view's plane until the picture is as far from each side of the room
+	# as from the other, the distance found again each time.
+	var shift := Vector2.ZERO
+	var far: float = 0.0
+	for _again: int in 4:
+		far = 0.0
+		for corner: Vector3 in corners:
+			far = maxf(far, corner.z + absf(corner.x - shift.x) / wide)
+			far = maxf(far, corner.z + absf(corner.y - shift.y) / tall)
+		far *= margin
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		for corner: Vector3 in corners:
+			var depth: float = maxf(far - corner.z, 0.001)
+			var seen := Vector2((corner.x - shift.x) / depth, (corner.y - shift.y) / depth)
+			low = low.min(seen)
+			high = high.max(seen)
+		shift += (low + high) * 0.5 * far
+	_target_focus += right * shift.x + up * shift.y
+	_target_distance = clampf(far, min_distance, max_distance)
+	_keep_over_floor(line)
 
 
 ## Point the camera from a named direction, keeping the focus: of the model

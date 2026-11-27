@@ -8532,6 +8532,76 @@ a set brief, take the features from what the set shows where there is a
 reference. Results: `bench/results/design45-2026-11-27/` (FINDINGS.txt,
 pictures/).
 
+### Say what it is, a building by its own forms, no check (2026-11-27, design46, `be0960da4`, NO-GO)
+
+**Why.** design45 leaned the right way (+218), and its wins did not follow its
+check. It also named the example the next rule came from: its lever built a
+Guggenheim from drums where the set widens as it rises.
+
+**The change** (on pre261 `e8a726225`, not merged). Nothing in it names a
+subject or a set.
+- Kept from design45: `subject` comes first in `submit_design` and is required,
+  with its kind, what it is, and the 3-5 things a person knows it by. The first
+  save's fresh look lists those features. That list costs no extra call and no
+  extra picture.
+- Dropped: `check_reads` and its gate. It cost a tool, a picture of every first
+  build on a GPU queue with one slot, and up to 3 tries, and the wins did not
+  follow it.
+- New: a building or a named place is known by its own forms: how its mass
+  widens, narrows, steps back, leans or turns as it rises, its roof or crown,
+  the rhythm of its face. A session builds that shape, never a plain drum, box
+  or slab that stands in for it. The method says the same at step 2, in 1,463
+  of its 1,500 characters.
+
+**The bench.** design45's method on 24 subjects (12 Technic, 12 System, 6 of
+them buildings or named places), each fresh to both arms. One design a subject
+an arm, via the relay, `--instructions none`, held out, 45 minutes. pair46.py
+put each pair to the pairwise judge with the set's views as references: both
+orders, 4 verdicts each way. Each design took about 60 minutes, because its
+views waited about 20 minutes on the GPU. So at the 7-hour bound, 17 subjects
+were judged (9 Technic, 8 System, 5 buildings), 136 verdicts. The other 7 could
+not change the verdict. Scored as if each went 8 of 8 to the lever on every
+dimension, overall comes to +192 (with-runs -61, +369), still not beyond
+(`bestcase.py`). So the bench was stopped there.
+
+| lever minus base | share (95%) | ELO | with-runs 95% | beyond |
+|---|---|---|---|---|
+| overall, all 17 | 53% (34-71) | +21 | (-204, +254) | no |
+| likeness, all 17 | 53% (32-71) | +10 | (-186, +241) | no |
+| overall, all but 21004-1 | 50% (31-69) | -16 | (-240, +225) | no |
+| overall, Technic 9 | 56% (32-79) | +67 | (-204, +324) | no |
+| surface, Technic 9 | 19% (1-43) | -338 | (-565, -20) | worse |
+| overall, System 8 | 50% (20-78) | -32 | (-278, +254) | no |
+| likeness, buildings 5 | 30% (0-65) | -287 | (-540, +88) | no (judge's own 95% -381, -10) |
+
+- design45 scored +218 on 12 subjects with its check. Here, without it, the
+  lever scores +21 on 17. As design45 said, its lean was mostly which session
+  built the better model.
+- Technic leaned on likeness (+169) and colour (+300), and lost surface beyond
+  its interval. The lever's Technic models built the signature parts big: a
+  telehandler's boom and forks, a loader's bucket. The judge preferred the
+  base's surfaces, covered in tiles and curved slopes. The lever's left open
+  beam holes, sideways studs and stepped brick walls.
+- The building rule took hold in the words and not in the bricks. All 5
+  buildings stated their own forms, e.g. "a deep plain entablature topped by a
+  set-back attic storey". The Guggenheim, the subject the rule came from, went
+  8 of 8: its rotunda widens as it rises. The Lincoln Memorial and the Arc de
+  Triomphe went 0 of 8. The lever's colonnade was a solid wall, and its arch a
+  flat block with cluttered relief.
+- Reach: the subject was stated in 20 of 20 lever sessions, and the features
+  were listed at every first save (18 of 18). There were 0 `check_reads` calls.
+- Leaks 0 of 40, limits 0 of 40. Every design that ended has a model (17 lever,
+  18 base). The 5 still running at the bound were stopped.
+
+**Verdict.** NO-GO. The statement neither helps nor harms overall. The
+building rule changes what a session says, not what it builds.
+
+**Next.** No more wording on what a subject is. The losses are in finishing
+(Technic surface) and in building a stated form (an open colonnade, an arch
+through a block). A tool that builds a named form would serve both, e.g. a
+column row with gaps, an arch, or a ring that widens. Results:
+`bench/results/design46-2026-11-27/` (FINDINGS.txt, pictures/).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

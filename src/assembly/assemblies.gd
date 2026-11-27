@@ -234,13 +234,19 @@ static func _sort(node: Item) -> void:
 		_sort(child)
 
 
-## Every assembly's path, outermost first.
+## Every assembly's path, outermost first. Walked once a model
+## ([method _model]): the banner over the sub-assembly being edited asks for
+## them each time it shows (copies_of), and on Orthanc the walk was 15-29 ms
+## of the frame Full came back in from Simple (simple3 T6).
 func paths() -> PackedStringArray:
 	if _passing > 0:
 		_index()
 		var listed := PackedStringArray(_under.keys())
 		listed.sort()
 		return listed
+	var model: Array = _model()
+	if model == _paths_as:
+		return _paths
 	var found: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		var path: String = ""
@@ -249,7 +255,14 @@ func paths() -> PackedStringArray:
 			found[path] = true
 	var out := PackedStringArray(found.keys())
 	out.sort()
+	_paths = out
+	_paths_as = model
 	return out
+
+
+## What [method paths] last walked, and the model it was walked for.
+var _paths := PackedStringArray()
+var _paths_as: Array = []
 
 
 ## Each assembly's own parts by number, "3001,3004", path -> list: what a

@@ -18360,6 +18360,90 @@ msgstr "Bei diesem Konto meldest du dich nur mit einem Code an, den wir dir mail
 msgid "Too many sign-ins with %s just now. Try again in a few minutes, or sign in with a code we email you."
 msgstr "Gerade gab es zu viele Anmeldungen mit %s. Versuch es in ein paar Minuten noch einmal oder melde dich mit einem Code an, den wir dir mailen."
 
+# Simple
+msgid "Simple"
+msgstr "Einfach"
+
+msgid "Big bricks and fingers: tray, colours, drag to build"
+msgstr "Große Steine und Finger: Ablage, Farben, zum Bauen ziehen"
+
+msgid "Every tool of the studio, the same model"
+msgstr "Alle Werkzeuge des Studios, dasselbe Modell"
+
+msgid "Bricks"
+msgstr "Steine"
+
+msgid "Plates"
+msgstr "Platten"
+
+msgid "Specials"
+msgstr "Extras"
+
+msgid "Drop here to delete"
+msgstr "Hier ablegen zum Löschen"
+
+msgid "Two fingers turn the view"
+msgstr "Zwei Finger drehen die Ansicht"
+
+msgid "Let go to put it down"
+msgstr "Loslassen, um ihn abzusetzen"
+
+msgid "Let go to put it down · over the bin to delete it"
+msgstr "Loslassen, um ihn abzusetzen · über dem Papierkorb, um ihn zu löschen"
+
+msgid "Tap the model to put one there"
+msgstr "Tippe aufs Modell, um einen dort abzusetzen"
+
+msgid "Tap where it goes"
+msgstr "Tippe dorthin, wo er hin soll"
+
+msgid "Tap it to put it down · drag it to move it"
+msgstr "Tippe ihn an, um ihn abzusetzen · zieh ihn, um ihn zu verschieben"
+
+msgid "Drag a brick onto the model · two fingers turn the view"
+msgstr "Zieh einen Stein aufs Modell · zwei Finger drehen die Ansicht"
+
+msgid "Drag a brick onto the model · drag the view to turn it"
+msgstr "Zieh einen Stein aufs Modell · zieh die Ansicht, um sie zu drehen"
+
+msgid "Drag it to move it · tap a colour to paint it"
+msgstr "Zieh ihn, um ihn zu bewegen · tippe auf eine Farbe, um ihn einzufärben"
+
+msgid "A copy beside it: drag it where it goes"
+msgstr "Eine Kopie daneben: zieh sie dorthin, wo sie hingehört"
+
+msgid "Tap where the copy goes"
+msgstr "Tippe dorthin, wo die Kopie hin soll"
+
+msgid "Deleted"
+msgstr "Gelöscht"
+
+msgid "Turned"
+msgstr "Gedreht"
+
+msgid "Painted %s"
+msgstr "In %s gefärbt"
+
+msgid "No room there"
+msgstr "Dort ist kein Platz"
+
+msgid "No room to turn it there"
+msgstr "Dort ist kein Platz zum Drehen"
+
+msgid "Simple leaves %d parts as they are (in sub-assemblies, locked, tilted or bendy): Full changes them"
+msgstr "Einfach lässt %d Teile, wie sie sind (in Baugruppen, gesperrt, schräg oder biegsam): Voll ändert sie"
+
+msgid "That part is locked: Full unlocks it"
+msgstr "Dieses Teil ist gesperrt: Voll entsperrt es"
+
+msgid "Simple leaves that part as it is: Full changes it"
+msgstr "Einfach lässt dieses Teil, wie es ist: Voll ändert es"
+
+msgid "Simple mode"
+msgstr "Einfacher Modus"
+
+msgid "Put it on the plate or on a brick"
+msgstr "Setz ihn auf die Grundplatte oder auf einen Stein"
 # pubbind: an act begun on one model, another opened before it ended
 msgid "Another model was opened meanwhile."
 msgstr "Inzwischen wurde ein anderes Modell geöffnet."
@@ -18421,3 +18505,6 @@ msgstr "nicht geleert: ein anderes Modell wurde geöffnet"
 
 msgid "Stopped: another model was opened, and nothing more was built"
 msgstr "Angehalten: ein anderes Modell wurde geöffnet, und es wurde nichts mehr gebaut"
+
+msgid "Takes it into hand, to put down with a click."
+msgstr "Nimmt es in die Hand, mit einem Klick abzulegen."
