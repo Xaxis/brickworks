@@ -72,6 +72,13 @@ func next() -> void:
 	_until = Time.get_ticks_usec() + _slice(_least, _share)
 
 
+## How long a slice of light work is now, usec ([constant LIGHT_US] and
+## [constant LIGHT_SHARE]): for work spread over frames by hand, a slice
+## at each of a node's turns, rather than by awaiting [method next].
+static func light_us() -> int:
+	return _slice(LIGHT_US, LIGHT_SHARE)
+
+
 static func _slice(least: int = LEAST_US, share: int = 2) -> int:
 	if unwatched:
 		return maxi(UNWATCHED_US, least)

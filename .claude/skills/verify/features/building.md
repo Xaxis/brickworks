@@ -2766,7 +2766,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   set opened on a baseplate, whose laying left the worker's reading stale,
   and the probe read the model again on the main thread) (`GrabDrag._ready_ahead`;
   from 300 parts until 2026-10-21), the parts' exact shapes read first on the
-  main thread; a press before it is done waits for the rest below 300 parts
+  main thread. The copies are made a slice a frame (`BrickWorld.ReadingCopy`,
+  `GrabDrag._copy_step`, FramePace's light slice; a change meanwhile drops
+  it), and they, a reading not kept and the reading a new one replaces are
+  let go of on a worker (`WorkerTasks.let_go`): made and freed in one frame
+  each, Orthanc's held a frame 97 ms after it opened and 40 to 75 ms where the
+  worker ended (`tools/probe.sh grabtake_probe`, in a window, about 6 min:
+  Orthanc, 6660-1 and 10176-1 opened, left standing and a part on a joint
+  dragged, no frame of GrabDrag's own over 16 ms, and a press while the
+  joints are read taking hold of the parts one after does, or saying they
+  are being read from 300 parts). A press before it is done waits for the rest below 300 parts
   (`GrabDrag._ready_now`) and says so from 300. A reading on the main thread
   reads only the shapes of the parts on joints, and the rest, with the part
   in hand's, are read on a worker after it (`GrabDrag._read_shapes_ahead`):

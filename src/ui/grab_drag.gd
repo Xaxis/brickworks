@@ -961,6 +961,12 @@ func is_leaning() -> bool:
 
 func _exit_tree() -> void:
 	_unlean()
+	# A copy being made is no worker's yet: freed here, as the tasks that
+	# would let go of it are collected as the tree goes (WorkerTasks).
+	if _copying != null:
+		if _copying.world != null:
+			_copying.world.free()
+		_copying = null
 
 
 # -- for a session ------------------------------------------------------------------
@@ -1667,7 +1673,8 @@ func _process(_delta: float) -> void:
 	# waiting for them waited out (grab held rel-m343 and live alike).
 	# An edit, a press and a part's shape coming wake it.
 	if grab == null and chain == null and _swinging == null and _falling.is_empty() \
-			and _laying == null and _settling == null and _readying < 0 and _shapes_reading < 0 \
+			and _laying == null and _settling == null and _readying < 0 and _copying == null \
+			and _shapes_reading < 0 \
 			and _lay_task < 0 and (world == null or (is_ready() and (not show_marks or _mark_warmed))) \
 			and (unread_shapes.is_empty() or not Wake.owed(_unread_looked_at)) \
 			and (not OS.has_feature("web") or (not Wake.owed(_told_page_at) and not _page_behind)):
@@ -1774,6 +1781,24 @@ var _ready_for: int = -1
 var _still: BrickWorld = null
 var _still_lattice: BrickLattice = null
 var _ready_out: Array = []
+## The copies a reading reads being made, a slice a frame ([method
+## _copy_step]), before its worker begins: null when none is.
+var _copying: BrickWorld.ReadingCopy = null
+## What is held and what is the floor as that copy began, read with it.
+var _copy_floor: Dictionary = {}
+var _copy_held: Dictionary = {}
+## The frame the copy was last taken on in.
+var _copy_frame: int = -1
+## A slice of the copy, usec; 0 is FramePace's light work's (4 ms where
+## frames come sixty a second). A probe may set it smaller, so a copy spans
+## frames on a small model too.
+var copy_slice_us: int = 0
+## The last copy's frames and its longest slice, ms; the last reading's
+## taking in, ms, and the longest of those since a probe last cleared it.
+var copy_frames: int = 0
+var copy_worst_ms: float = 0.0
+var taken_ms: float = 0.0
+var taken_worst_ms: float = 0.0
 var _seen_revision: int = -1
 var _changed_at: int = 0
 ## The parts whose exact shapes were not here yet when the joints were last
@@ -1826,6 +1851,9 @@ func _ready_ahead() -> void:
 	if _readying >= 0:
 		_reading_done(grab == null)
 		return
+	if _copying != null:
+		_copy_step()
+		return
 	# Not while parts go down with the drawing held (a model being laid, a
 	# design put down a slice at a time): half of it is not the model, and a
 	# model laid stands still between slices while its lattice is told of
@@ -1847,6 +1875,7 @@ func _ready_ahead() -> void:
 		_ready_now()
 		return
 	_read_off_thread()
+	_copy_step()
 
 
 ## The reading on a worker taken in once it is done, kept when it is of the
@@ -1857,6 +1886,7 @@ func _reading_done(keep: bool, wait: bool = false) -> bool:
 		return true
 	if not wait and not WorkerThreadPool.is_task_completed(_readying):
 		return false
+	var began: int = Time.get_ticks_usec()
 	WorkerTasks.collect(_readying)
 	library.end_reading(_readying)
 	_readying = -1
@@ -1868,36 +1898,80 @@ func _reading_done(keep: bool, wait: bool = false) -> bool:
 		# Begun again once the model has stood still a moment, as after a
 		# change: what asked it to end is writing the library meanwhile.
 		_changed_at = Time.get_ticks_msec()
-	_still.free()
+	# The copies it read, and what it read when that is not kept, let go of
+	# on a worker: freed here, Orthanc's took 40 to 75 ms of the frame the
+	# reading was taken in on, seconds after it opened (simple3).
+	var copies: Array = [_still, _still_lattice, _ready_out]
 	_still = null
 	_still_lattice = null
+	_ready_out = []
+	WorkerTasks.let_go(copies)
+	taken_ms = float(Time.get_ticks_usec() - began) / 1000.0
+	taken_worst_ms = maxf(taken_worst_ms, taken_ms)
 	return true
 
 
 ## What a grab needs read on a worker, from copies of the model and its
-## lattice made here.
+## lattice made here a slice a frame ([method _copy_step]) and handed over
+## whole. Copied whole at once, Orthanc's 10,119 parts held the frame 97 ms
+## (simple3).
 func _read_off_thread() -> void:
-	var started: int = Time.get_ticks_msec()
-	read_began = started
+	read_began = Time.get_ticks_msec()
 	_ready_for = world.revision
+	_copying = BrickWorld.ReadingCopy.new(world, builder.lattice)
+	_copy_floor = scenery.duplicate()
+	_copy_held = builder.locked.duplicate()
+	copy_frames = 0
+	copy_worst_ms = 0.0
+
+
+## The copy a reading reads taken on, a slice a frame, or to its end when
+## [param whole]; its reading begun on a worker once it is whole. A change
+## to the model meanwhile lets it go, and it is begun again once the model
+## has stood still a moment, as after any change.
+func _copy_step(whole: bool = false) -> void:
+	if _copying == null:
+		return
+	var frame: int = Engine.get_process_frames()
+	if frame == _copy_frame and not whole:
+		return
+	_copy_frame = frame
+	var began: int = Time.get_ticks_usec()
+	if not _copying.copies(world, builder.lattice):
+		_copying.drop()
+	var slice: int = copy_slice_us if copy_slice_us > 0 else FramePace.light_us()
+	var whole_now: bool = _copying.step(0 if whole else began + slice)
+	copy_frames += 1
+	copy_worst_ms = maxf(copy_worst_ms, float(Time.get_ticks_usec() - began) / 1000.0)
+	if _copying.dropped:
+		_copying = null
+		_changed_at = Time.get_ticks_msec()
+	elif whole_now:
+		var copy: BrickWorld.ReadingCopy = _copying
+		_copying = null
+		_read_copy(copy)
+
+
+## The reading begun on a worker, of [param copy] made whole.
+func _read_copy(copy: BrickWorld.ReadingCopy) -> void:
+	var started: int = read_began
 	# The parts' exact shapes, read first: a worker takes a shape not read
 	# yet for one with joints (Bodies._unknown_shape), and Bodies takes a stud
 	# in one of their holes (a train's buffer beam's) and lodges a part with
 	# none by them (G13). Read on the worker, which can but in a browser:
 	# read here, Orthanc's 104 parts held a frame 223 ms a quarter of a second
 	# after it opened, the bar down (command_probe, 2026-10-23).
-	var part_ids: Dictionary = {}
-	for brick: BrickWorld.Brick in world.bricks():
-		part_ids[brick.part_id] = true
-	var ids: Array = part_ids.keys()
+	var ids: Array = copy.part_ids.keys()
 	var read_here: bool = OS.has_feature("web")
 	if read_here:
 		Exact.shapes_for(library, ids)
 	_reading_unread = _unknown_shapes(ids)
-	_still = world.copy_for_reading()
-	_still_lattice = builder.lattice.copy_for_reading()
-	var floor_ids: Dictionary = scenery.duplicate()
-	var held: Dictionary = builder.locked.duplicate()
+	_still = copy.world
+	_still_lattice = copy.lattice
+	var floor_ids: Dictionary = _copy_floor
+	var held: Dictionary = _copy_held
+	_copy_floor = {}
+	_copy_held = {}
 	var out: Array = [null, null, null, 0, {}, {}]
 	_ready_out = out
 	var still: BrickWorld = _still
@@ -1932,9 +2006,10 @@ func reads_ahead() -> bool:
 	return world != null and not OS.has_feature("nothreads") and is_processing()
 
 
-## Whether the joints are being read on a worker now.
+## Whether the joints are being read on a worker now, or the copies it
+## reads made for it.
 func is_reading() -> bool:
-	return _readying >= 0
+	return _readying >= 0 or _copying != null
 
 
 ## The reading on a worker taken in now if it is done, not at this node's
@@ -1960,9 +2035,12 @@ func _ready_for_session() -> void:
 		if OS.has_feature("nothreads"):
 			_ready_now()
 			return
-		if _readying < 0:
+		if _readying < 0 and _copying == null:
 			_read_off_thread()
-		while not _reading_done(true):
+		# Its copy taken on here too, a slice a frame (once a frame, with the
+		# node's own turn): asleep, the node takes none.
+		_copy_step()
+		if _copying != null or not _reading_done(true):
 			await Engine.get_main_loop().process_frame
 
 
@@ -1973,6 +2051,9 @@ func _ready_for_session() -> void:
 ## reading, and two at once run the same code on two threads. Otherwise
 ## read here, on this thread.
 func _ready_now() -> void:
+	# A copy under way made whole, and its reading begun and waited for, as
+	# a reading begun at once would have been.
+	_copy_step(true)
 	if _readying >= 0:
 		_reading_done(true, true)
 		if is_ready():
@@ -2118,6 +2199,10 @@ static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 
 
 func _adopt(read: Array, revision: int) -> void:
+	# What it replaces let go of on a worker, as the copies are
+	# (_reading_done): Orthanc's bodies, balance and gears freed here were
+	# much of the frame a reading was taken in on.
+	var replaced: Array = [_bodies, _judge, _mechanism, _hose_fits]
 	_bodies = read[0]
 	_judge = read[1]
 	_mechanism = read[2]
@@ -2131,6 +2216,7 @@ func _adopt(read: Array, revision: int) -> void:
 	if _judge != null:
 		_judge.lattice = builder.lattice
 	_judge_revision = revision
+	WorkerTasks.let_go(replaced)
 
 
 ## What a drag is doing, for a browser test: window.brickworksGrab. Its
