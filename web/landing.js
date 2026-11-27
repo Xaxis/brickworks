@@ -994,8 +994,9 @@ if (heroLoop) {
 // Start building leads to the studio, whose start waits for its engine and
 // its first pack before anything of it can run: 9.7 MB, 5.3 s of a desktop's
 // first visit on broadband (webstart14, 2026-11-27, against live's preview).
-// Fetched here once the page is in and the browser idle, they come from the
-// browser's own cache when the visitor goes on, as on a return: the studio's
+// Fetched here once a visitor shows they are going (intent, below), they
+// come from the browser's own cache when the visitor goes on, as on a
+// return: the studio's
 // page asks for those very addresses (the engine at its own /e/<hash>/, the
 // pack under the release's /b/<sha>/, both kept for good), and this reads
 // them from /app's own GODOT_CONFIG, so it never asks for other bytes. The
@@ -1010,8 +1011,19 @@ if (heroLoop) {
 // browser's own prefetches, after the hero's loop has had its turn: at the
 // lowest priority, and on through a click on Start building, where a fetch
 // of this page's own was cut off with the page and the studio began again.
-// <html data-studio-ahead>: skipped, fetching, fetched or failed.
+//
+// Only on intent: 9.7 MB for every home visit was bandwidth the site paid
+// for each visitor who never pressed Start (the lead, 2026-11-27). A member
+// signed in is going to the studio more often than not: theirs is fetched
+// once the page is in and the browser idle. Anyone else's only when the
+// pointer comes within AHEAD_NEAR_PX of a link into the studio (Start
+// building, Open the app, a post's Open in the studio), or one has the
+// focus, or is pressed.
+// <html data-studio-ahead>: skipped <why>, waiting (for intent), fetching,
+// fetched or failed; data-studio-ahead-by: member, near, focus or press.
 const AHEAD_AFTER_MS = 3000;
+const AHEAD_NEAR_PX = 64;
+const STUDIO_LINK = 'a[href="/app"], a[href^="/app?"]';
 function aheadSkipped() {
   const line = navigator.connection;
   if (line?.saveData) return "save-data";
@@ -1022,13 +1034,10 @@ function aheadSkipped() {
   if (/iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1)) return "apple";
   return "";
 }
-async function studioAhead() {
-  const why = aheadSkipped();
-  if (why) {
-    html.dataset.studioAhead = `skipped ${why}`;
-    return;
-  }
+async function studioAhead(by) {
+  if (html.dataset.studioAhead !== "waiting") return;
   html.dataset.studioAhead = "fetching";
+  html.dataset.studioAheadBy = by;
   try {
     const page = await fetch("/app", { credentials: "same-origin" }).then((answer) => (answer.ok ? answer.text() : ""));
     const found = /const GODOT_CONFIG = (\{[^\n]*\});/.exec(page);
@@ -1052,9 +1061,47 @@ async function studioAhead() {
     html.dataset.studioAhead = "failed";
   }
 }
+/// Whether the point (x, y) is within AHEAD_NEAR_PX of a link into the
+/// studio on the screen.
+function nearStudioLink(x, y) {
+  for (const link of document.querySelectorAll(STUDIO_LINK)) {
+    const box = link.getBoundingClientRect();
+    if (!box.width || !box.height) continue;
+    const dx = Math.max(box.left - x, 0, x - box.right);
+    const dy = Math.max(box.top - y, 0, y - box.bottom);
+    if (dx * dx + dy * dy <= AHEAD_NEAR_PX * AHEAD_NEAR_PX) return true;
+  }
+  return false;
+}
 {
-  const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));
-  const whenIn = () => setTimeout(() => idle(studioAhead, { timeout: 4000 }), AHEAD_AFTER_MS);
-  if (document.readyState === "complete") whenIn();
-  else addEventListener("load", whenIn, { once: true });
+  const why = aheadSkipped();
+  if (why) {
+    html.dataset.studioAhead = `skipped ${why}`;
+  } else {
+    html.dataset.studioAhead = "waiting";
+    const stop = new AbortController();
+    const go = (by) => {
+      stop.abort();
+      studioAhead(by);
+    };
+    let looked = 0;
+    addEventListener("pointermove", (event) => {
+      if (event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+      if (event.timeStamp - looked < 100) return;
+      looked = event.timeStamp;
+      if (nearStudioLink(event.clientX, event.clientY)) go("near");
+    }, { passive: true, signal: stop.signal });
+    addEventListener("focusin", (event) => {
+      if (event.target instanceof Element && event.target.matches(STUDIO_LINK)) go("focus");
+    }, { signal: stop.signal });
+    addEventListener("pointerdown", (event) => {
+      if (event.target instanceof Element && event.target.closest(STUDIO_LINK)) go("press");
+    }, { capture: true, signal: stop.signal });
+    if (signedIn()) {
+      const idle = window.requestIdleCallback || ((work) => setTimeout(work, 300));
+      const whenIn = () => setTimeout(() => idle(() => go("member"), { timeout: 4000 }), AHEAD_AFTER_MS);
+      if (document.readyState === "complete") whenIn();
+      else addEventListener("load", whenIn, { once: true, signal: stop.signal });
+    }
+  }
 }

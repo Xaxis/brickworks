@@ -390,9 +390,12 @@ every phase before and after).
   `fromDiskCache` false), 5 s of a desktop return at 20 Mbps that no
   visitor's return pays. `start_phases` now launches with `keepCache`.
 - **Start building finds the engine here.** The home page prefetches the
-  engine and its pack once it is in and idle, on a computer's connection
+  engine and its pack on intent, on a computer's connection
   (`web/landing.js` `studioAhead`): 9.7 MB, the 5 s a desktop first visit
-  spent on the files. Not on a phone's width, a cellular, slow or
+  spent on the files. Intent is a member signed in (at idle after the
+  load), or the pointer within 64 px of a link into the studio, its focus
+  or a press. Every visit at idle cost the site 9.7 MB per visitor who
+  never pressed Start. Not on a phone's width, a cellular, slow or
   Save-Data connection, nor an iPhone or iPad.
 - **Not the car's parts.** Asked for as soon as the catalogue is read,
   they were read in the open and the time from the first part to working

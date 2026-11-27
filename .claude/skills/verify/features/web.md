@@ -3415,7 +3415,12 @@ plan with Claude as the client.
   under prefers-reduced-motion or `navigator.connection.saveData`.
   `<html data-hero>`: poster, still, loading, playing, paused,
   kept-failed. The studio fetched ahead (webstart14, `web/landing.js`
-  `studioAhead`): 3 s after the load, at idle, the page reads `/app`'s own
+  `studioAhead`), on intent only: for a member signed in, 3 s after the
+  load at idle; for anyone else once the mouse comes within 64 px of a
+  link into the studio (`a[href="/app"]`, `a[href^="/app?"]`: Start
+  building, Open the app, a post's Open in the studio), one takes the
+  focus, or is pressed. A home visit with no intent fetches none of it
+  (it was 9.7 MB at every visit). The page reads `/app`'s own
   `GODOT_CONFIG` and fetches its engine's `.js` and `.wasm` (`/e/<hash>/`)
   and its pack (`/b/<sha>/index.pck`) as `<link rel=prefetch>`, at the
   lowest priority and on through the click, so Start building's studio
@@ -3423,10 +3428,13 @@ plan with Claude as the client.
   `fromDiskCache` for both, the wasm compiled at 1.2 s, webstart14); not
   on Save-Data, a 2g/3g or cellular connection, a window under 600 px, an
   iPhone or iPad (its engine is the switch's), nor a build not placed.
-  `<html data-studio-ahead>`: fetching, fetched, failed, `skipped <why>`
-  (save-data, slow, cellular, phone, apple, unplaced). Proven by `the
-  start by phase` with `--from=/` (the visit comes from the home page; the
-  attribute at the click is in its table); `homefeed`'s check 6 counts
+  `<html data-studio-ahead>`: waiting (for intent), fetching, fetched,
+  failed, `skipped <why>` (save-data, slow, cellular, phone, apple,
+  unplaced); `data-studio-ahead-by`: member, near, focus, press. Proven by
+  `the start by phase` with `--from=/` (the visit comes from the home page,
+  signed in as the checks' pool account, so a member's; the attribute at
+  the click is in its table), and the bytes of a home visit with and
+  without intent by webstart14's `homebytes.mjs` (bench results); `homefeed`'s check 6 counts
   these apart from the post's studio (the addresses of the page's own
   `link[rel=prefetch]`, read at the check, as Playwright gives a link
   prefetch no type of its own; and its fetch of `/app`). `#loop-say` shows the caption of the moment from
