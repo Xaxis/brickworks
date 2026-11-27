@@ -15,7 +15,7 @@
 # tools/web/browser.mjs, a module of the checks, built an identical site
 # twice, 457 s and 641 s in a heavy slot (2026-11-23).
 # tests/test_deploy_reads.py holds this list to the build's scripts.
-DEPLOY_READS_WEB=" alt_index.mjs brotli.mjs data_facts.mjs home_shelf.mjs packaged_facts.mjs part_facts.mjs pck_split.py place_build.py start_closure.py wasm_proxy_fix.py overlook_copy.sh package.json package-lock.json "
+DEPLOY_READS_WEB=" alt_index.mjs brotli.mjs data_facts.mjs home_shelf.mjs packaged_facts.mjs part_facts.mjs pck_split.py place_build.py start_closure.py tracer_port.py wasm_proxy_fix.py overlook_copy.sh package.json package-lock.json "
 
 # deploy_reads PATH: whether a change to PATH can change what a deploy makes.
 deploy_reads() {
